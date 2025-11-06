@@ -20,6 +20,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Autocomplete feature for agent builder instructions (wip)",
     stage: "dust_only",
   },
+  ashby_tool: {
+    description: "Ashby tool for ATS integration",
+    stage: "dust_only",
+  },
   claude_4_opus_feature: {
     description: "Access to Claude 4 Opus model in the agent builder",
     stage: "on_demand",
@@ -53,6 +57,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   google_ai_studio_experimental_models_feature: {
     description: "Access to experimental Google AI Studio models",
     stage: "on_demand",
+  },
+  gemini_image_generation: {
+    description:
+      "Use Gemini 2.5 Flash Image instead of OpenAI for image generation",
+    stage: "rolling_out",
   },
   google_sheets_tool: {
     description: "Google Sheets MCP tool",
@@ -212,15 +221,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   mentions_v2: {
     description: "Enable mentions v2, aka mention users",
     stage: "on_demand",
-  },
-  dust_global_agent_memory: {
-    description: "Enable agent memory tool on the @dust global agent",
-    stage: "dust_only",
-  },
-  dust_global_data_source_file_system: {
-    description:
-      "Use the Data Sources File System MCP server on the @dust global agent (replaces search tool server)",
-    stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;
 

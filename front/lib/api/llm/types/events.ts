@@ -44,7 +44,7 @@ export interface TextGeneratedEvent {
 export interface ReasoningGeneratedEvent {
   type: "reasoning_generated";
   content: Text;
-  metadata: LLMClientMetadata & { signature?: string };
+  metadata: LLMClientMetadata & { id?: string; encrypted_content?: string };
 }
 
 export type LLMOutputItem =
@@ -55,6 +55,7 @@ export type LLMOutputItem =
 // Completion results
 
 export interface TokenUsage {
+  cacheCreationTokens?: number;
   cachedTokens?: number;
   inputTokens: number;
   outputTokens: number;
@@ -74,10 +75,17 @@ export interface SuccessCompletionEvent {
   metadata: LLMClientMetadata;
 }
 
-export interface ErrorEvent {
-  type: "error";
-  content: LLMErrorInfo;
-  metadata: LLMClientMetadata;
+export class EventError extends Error {
+  public readonly type = "error";
+  public readonly content: LLMErrorInfo;
+  public readonly metadata: LLMClientMetadata;
+
+  constructor(content: LLMErrorInfo, metadata: LLMClientMetadata) {
+    super(content.message);
+
+    this.content = content;
+    this.metadata = metadata;
+  }
 }
 
 export type LLMEvent =
@@ -88,4 +96,4 @@ export type LLMEvent =
   | ReasoningGeneratedEvent
   | TokenUsageEvent
   | SuccessCompletionEvent
-  | ErrorEvent;
+  | EventError;

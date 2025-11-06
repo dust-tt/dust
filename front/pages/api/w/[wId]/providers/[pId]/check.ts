@@ -4,6 +4,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types";
 
 export type GetProvidersCheckResponseBody =
   | { ok: true }
@@ -109,7 +110,7 @@ async function handler(
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                model: "claude-3-5-sonnet-20241022",
+                model: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.modelId,
                 system: "You are a scientist",
                 messages: [
                   {

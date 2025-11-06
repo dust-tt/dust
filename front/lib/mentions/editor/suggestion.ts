@@ -1,4 +1,4 @@
-import { GLOBAL_AGENTS_SID } from "@app/types";
+import { compareAgentsForSort, GLOBAL_AGENTS_SID } from "@app/types";
 
 import { compareForFuzzySort, subFilter } from "../../utils";
 import type { RichAgentMention, RichMention, RichUserMention } from "../types";
@@ -28,12 +28,13 @@ function filterAndSortAgentSuggestions(
 ): RichAgentMention[] {
   return suggestions
     .filter((item) => subFilter(lowerCaseQuery, item.label.toLowerCase()))
-    .sort((a, b) =>
-      compareForFuzzySort(
-        lowerCaseQuery,
-        a.label.toLocaleLowerCase(),
-        b.label.toLocaleLowerCase()
-      )
+    .sort(
+      (a, b) =>
+        compareForFuzzySort(
+          lowerCaseQuery,
+          a.label.toLocaleLowerCase(),
+          b.label.toLocaleLowerCase()
+        ) || compareAgentSuggestionsForSort(a, b)
     )
     .sort((a, b) => {
       // If within SUGGESTION_DISPLAY_LIMIT there's one from SUGGESTION_PRIORITY,
@@ -42,6 +43,21 @@ function filterAndSortAgentSuggestions(
       const bPriority = SUGGESTION_PRIORITY[b.id] ?? Number.MAX_SAFE_INTEGER;
       return aPriority - bPriority;
     });
+}
+
+export function compareAgentSuggestionsForSort(
+  a: RichAgentMention,
+  b: RichAgentMention
+) {
+  const toSortable = (a: RichAgentMention) => {
+    return {
+      sId: a.id,
+      userFavorite: a.userFavorite,
+      scope: "visible",
+      name: a.label,
+    } as const;
+  };
+  return compareAgentsForSort(toSortable(a), toSortable(b));
 }
 
 /**

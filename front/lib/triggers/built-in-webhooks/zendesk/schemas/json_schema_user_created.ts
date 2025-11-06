@@ -74,3 +74,23 @@ export const userCreatedSchema: JSONSchema = {
     },
   },
 };
+
+export const userCreatedExample = {
+  type: "zen:event-type:user.created",
+  account_id: 12514403,
+  id: "6b9bbadf-5725-4e92-bebe-7b71011bf5f1",
+  subject: "zen:user:6596848315901",
+  time: "2025-01-08T05:33:18Z",
+  zendesk_event_version: "2022-06-20",
+  detail: {
+    created_at: "2025-01-08T05:27:58Z",
+    email: "[email protected]",
+    external_id: "",
+    default_group_id: "0",
+    id: "6596848315901",
+    organization_id: "0",
+    role: "end-user",
+    updated_at: "2025-01-08T05:33:18Z",
+  },
+  event: {},
+};

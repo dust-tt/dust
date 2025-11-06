@@ -145,6 +145,19 @@ makeScript(
           }
 
           await removeAllWorkspaceDomains(owner);
+
+          // 2) Update all users' region metadata.
+          const updateUsersRegionToDestRes =
+            await updateWorkspaceRegionMetadata(auth, logger, {
+              execute,
+              newRegion: destinationRegion,
+            });
+          if (updateUsersRegionToDestRes.isErr()) {
+            logger.error(
+              `Failed to update users' region metadata: ${updateUsersRegionToDestRes.error.message}`
+            );
+            return;
+          }
           break;
 
         case "resume-in-destination":

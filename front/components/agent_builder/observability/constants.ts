@@ -1,8 +1,8 @@
-export const OBSERVABILITY_TIME_RANGE = [7, 14, 30] as const;
+export const OBSERVABILITY_TIME_RANGE = [7, 14, 30, 90] as const;
 export type ObservabilityTimeRangeType =
   (typeof OBSERVABILITY_TIME_RANGE)[number];
 
-export const DEFAULT_PERIOD_DAYS = 14;
+export const DEFAULT_PERIOD_DAYS = 30;
 
 export const USAGE_METRICS_PALETTE = {
   messages: "text-golden-500 dark:text-golden-500-night",
@@ -21,25 +21,16 @@ export const LATENCY_PALETTE = {
 } as const;
 
 export const LATENCY_LEGEND = [
-  { key: "average", label: "Average latency" },
+  { key: "average", label: "Average time to complete output" },
 ] as const;
 
 export const CHART_HEIGHT = 260;
 export const CHART_CONTAINER_HEIGHT_CLASS = "h-100";
 
-export const VERSION_MARKER_STYLE = {
-  stroke: "hsl(var(--primary))",
-  strokeWidth: 2,
-  strokeDasharray: "5 5",
-  labelFontSize: 12,
-  labelOffsetBase: 10,
-  labelOffsetIncrement: 15,
-} as const;
-
 export const TOOL_COLORS = [
   "text-orange-300 dark:text-orange-300-night",
   "text-golden-200 dark:text-golden-200-night",
-  "text-rose-200 dark:text-rose-200-night",
+  "text-green-200 dark:text-green-200-night",
   "text-violet-300 dark:text-violet-300-night",
   "text-rose-300 dark:text-rose-300-night",
 ] as const;

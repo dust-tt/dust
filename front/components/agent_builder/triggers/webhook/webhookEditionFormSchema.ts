@@ -8,6 +8,8 @@ import type { UserTypeWithWorkspaces } from "@app/types";
 import { asDisplayName } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 
+const DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT = 50; // Default to 50 executions per day
+
 export const WebhookFormSchema = z.object({
   name: z
     .string()
@@ -20,6 +22,7 @@ export const WebhookFormSchema = z.object({
   filter: z.string().optional(),
   includePayload: z.boolean().default(false),
   naturalDescription: z.string().optional(),
+  executionPerDayLimitOverride: z.number(),
 });
 
 export type WebhookFormValues = z.infer<typeof WebhookFormSchema>;
@@ -35,10 +38,10 @@ export function getWebhookFormDefaultValues({
     name:
       trigger?.name ??
       (webhookSourceView
-        ? `${webhookSourceView.webhookSource.name} trigger` +
-          webhookSourceView.provider
-          ? `(${asDisplayName(webhookSourceView.provider)})`
-          : ""
+        ? `${webhookSourceView?.webhookSource.name}` +
+          (webhookSourceView?.provider
+            ? ` - ${asDisplayName(webhookSourceView?.provider)}`
+            : "")
         : "Webhook Trigger"),
     enabled: trigger?.enabled ?? true,
     customPrompt: trigger?.customPrompt ?? "",
@@ -47,6 +50,9 @@ export function getWebhookFormDefaultValues({
     filter: trigger?.configuration.filter ?? "",
     includePayload: trigger?.configuration.includePayload ?? true,
     naturalDescription: trigger?.naturalLanguageDescription ?? "",
+    executionPerDayLimitOverride:
+      trigger?.executionPerDayLimitOverride ??
+      DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT,
   };
 }
 
@@ -70,7 +76,7 @@ export function formValuesToWebhookTriggerData({
       ? webhook.naturalDescription?.trim() ?? null
       : null,
     kind: "webhook",
-    provider: webhookSourceView?.provider ?? null,
+    provider: webhookSourceView?.provider ?? undefined,
     configuration: {
       includePayload: webhook.includePayload,
       event: webhook.event,
@@ -83,5 +89,6 @@ export function formValuesToWebhookTriggerData({
       editTrigger?.kind === "webhook"
         ? editTrigger.editorName
         : user.fullName ?? undefined,
+    executionPerDayLimitOverride: webhook.executionPerDayLimitOverride,
   };
 }

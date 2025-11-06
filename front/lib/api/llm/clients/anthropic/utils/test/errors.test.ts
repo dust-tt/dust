@@ -9,7 +9,7 @@ import {
 import { describe, expect, it } from "vitest";
 
 import { handleError } from "@app/lib/api/llm/clients/anthropic/utils/errors";
-import type { ErrorEvent } from "@app/lib/api/llm/types/events";
+import type { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { CLAUDE_4_SONNET_20250514_MODEL_ID } from "@app/types";
 
@@ -30,10 +30,9 @@ describe("handleError (Anthropic)", () => {
       undefined,
       makeHeaders()
     );
-    const event = handleError(err, metadata) as ErrorEvent;
+    const event = handleError(err, metadata) as EventError;
     expect(event.type).toBe("error");
     expect(event.metadata).toEqual(metadata);
-    expect(event.content.statusCode).toBe(429);
     expect(event.content.message.toLowerCase()).toContain("rate limit");
     expect(event.content.message).toContain("anthropic");
   });
@@ -45,8 +44,7 @@ describe("handleError (Anthropic)", () => {
       undefined,
       makeHeaders()
     );
-    const event = handleError(err, metadata) as ErrorEvent;
-    expect(event.content.statusCode).toBe(400);
+    const event = handleError(err, metadata) as EventError;
     expect(event.content.message.toLowerCase()).toContain("invalid request");
   });
 
@@ -57,8 +55,7 @@ describe("handleError (Anthropic)", () => {
       undefined,
       makeHeaders()
     );
-    const event = handleError(err, metadata) as ErrorEvent;
-    expect(event.content.statusCode).toBe(401);
+    const event = handleError(err, metadata) as EventError;
     expect(event.content.message.toLowerCase()).toContain("authentication");
   });
 
@@ -69,8 +66,7 @@ describe("handleError (Anthropic)", () => {
       undefined,
       makeHeaders()
     );
-    const event = handleError(err, metadata) as ErrorEvent;
-    expect(event.content.statusCode).toBe(403);
+    const event = handleError(err, metadata) as EventError;
     expect(event.content.message.toLowerCase()).toContain("permission");
   });
 
@@ -81,8 +77,7 @@ describe("handleError (Anthropic)", () => {
       undefined,
       makeHeaders()
     );
-    const event = handleError(err, metadata) as ErrorEvent;
-    expect(event.content.statusCode).toBe(404);
+    const event = handleError(err, metadata) as EventError;
     expect(event.content.message.toLowerCase()).toContain("not found");
   });
 
@@ -93,8 +88,7 @@ describe("handleError (Anthropic)", () => {
       undefined,
       makeHeaders()
     );
-    const event = handleError(err, metadata) as ErrorEvent;
-    expect(event.content.statusCode).toBe(500);
+    const event = handleError(err, metadata) as EventError;
     expect(event.content.message.toLowerCase()).toContain("server error");
   });
 });

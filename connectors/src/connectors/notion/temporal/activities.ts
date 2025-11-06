@@ -43,6 +43,7 @@ import {
   DATABASE_PROCESSING_INTERVAL_MS,
   DATABASE_TO_CSV_MAX_SIZE,
 } from "@connectors/connectors/notion/temporal/config";
+import type { NotionWebhookEvent } from "@connectors/connectors/notion/temporal/signals";
 import { connectorsConfig } from "@connectors/connectors/shared/config";
 import {
   dataSourceConfigFromConnector,
@@ -79,6 +80,7 @@ import {
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
+import { statsDClient } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type {
   DataSourceConfig,
@@ -3503,4 +3505,36 @@ export async function checkResourceAccessibility({
     );
     throw error;
   }
+}
+
+export async function processWebhookEventActivity({
+  connectorId,
+  event,
+}: {
+  connectorId: ModelId;
+  event: NotionWebhookEvent;
+}) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
+  }
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const loggerArgs = {
+    workspaceId: dataSourceConfig.workspaceId,
+    connectorId,
+    provider: "notion",
+    dataSourceId: dataSourceConfig.dataSourceId,
+  };
+
+  // TODO: Implement the actual processing logic based on event type
+  logger.info(
+    {
+      ...loggerArgs,
+      eventType: event.type,
+      entityId: event.entity_id,
+    },
+    "Processing Notion webhook event"
+  );
+  statsDClient.increment("notion.webhook_events", 1, [`type:${event.type}`]);
 }

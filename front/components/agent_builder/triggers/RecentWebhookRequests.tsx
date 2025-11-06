@@ -5,6 +5,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import moment from "moment";
+import Link from "next/link";
 import React, { useState } from "react";
 
 import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
@@ -24,22 +25,21 @@ export function RecentWebhookRequests({
   agentConfigurationId,
   trigger,
 }: RecentWebhookRequestsProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const defaultOpen = true;
+  const [isOpen, setIsOpen] = useState(defaultOpen);
   return (
     <CollapsibleComponent
-      rootProps={{ defaultOpen: false, onOpenChange: setIsOpen }}
+      rootProps={{ defaultOpen, onOpenChange: setIsOpen }}
       triggerChildren={
         <Label className="cursor-pointer">Recent Requests</Label>
       }
       contentChildren={
-        <div className="pt-2">
-          <RecentWebhookRequestsContent
-            isOpen={isOpen}
-            owner={owner}
-            agentConfigurationId={agentConfigurationId}
-            trigger={trigger}
-          />
-        </div>
+        <RecentWebhookRequestsContent
+          isOpen={isOpen}
+          owner={owner}
+          agentConfigurationId={agentConfigurationId}
+          trigger={trigger}
+        />
       }
     />
   );
@@ -97,8 +97,31 @@ function RecentWebhookRequestsContent({
     );
   }
 
+  const wasRateLimited = webhookRequests.some(
+    (request) => request.status === "rate_limited"
+  );
+
   return (
     <div className="space-y-2">
+      {wasRateLimited && (
+        <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <p>
+            Some requests were rate limited.
+            <br />
+            <span className="font-semibold">
+              Consider increasing this trigger&apos;s rate limit
+            </span>{" "}
+            or contact{" "}
+            <Link
+              href="mailto:support@dust.tt?subject=Increase%20Webhook%20Trigger%20Rate%20Limit"
+              className="underline"
+            >
+              support@dust.tt
+            </Link>{" "}
+            to increase it even further.
+          </p>
+        </div>
+      )}
       {webhookRequests.map((request) => (
         <div
           key={request.id}

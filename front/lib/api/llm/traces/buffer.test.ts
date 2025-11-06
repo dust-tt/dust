@@ -1,13 +1,18 @@
 import { faker } from "@faker-js/faker";
 import { expect, test, vi } from "vitest";
 
-import { LLMTraceBuffer } from "@app/lib/api/llm/traces/buffer";
+import type { LLMTraceId } from "@app/lib/api/llm/traces/buffer";
+import {
+  createLLMTraceId,
+  LLMTraceBuffer,
+} from "@app/lib/api/llm/traces/buffer";
 import type {
   TextDeltaEvent,
   TextGeneratedEvent,
   TokenUsageEvent,
   ToolCallEvent,
 } from "@app/lib/api/llm/types/events";
+import { EventError } from "@app/lib/api/llm/types/events";
 
 // Mock GCS bucket to avoid external dependencies.
 vi.mock("@app/lib/file_storage", () => ({
@@ -59,12 +64,23 @@ class LLMEventFactory {
       metadata: { clientId: "test", modelId: "gpt-4-turbo" },
     };
   }
+
+  static error(): EventError {
+    return new EventError(
+      {
+        type: "maximum_length",
+        isRetryable: false,
+        message: "Maximum length reached",
+      },
+      { clientId: "test", modelId: "gpt-4-turbo" }
+    );
+  }
 }
 
 // Helper to create buffer with test data
-function createTestBuffer(runId?: string, workspaceId?: string) {
+function createTestBuffer(traceId?: LLMTraceId, workspaceId?: string) {
   const buffer = new LLMTraceBuffer(
-    runId ?? `llm_${faker.string.uuid()}`,
+    traceId ?? createLLMTraceId(faker.string.uuid()),
     workspaceId ?? faker.string.uuid(),
     {
       operationType: "agent_conversation",
@@ -78,6 +94,7 @@ function createTestBuffer(runId?: string, workspaceId?: string) {
     modelId: "gpt-4-turbo",
     prompt: faker.lorem.paragraph(),
     reasoningEffort: "medium",
+    responseFormat: null,
     specifications: [],
     temperature: 0.7,
   });
@@ -175,9 +192,9 @@ test("buffer calculates size correctly for UTF-8 content", () => {
 });
 
 test("buffer generates complete trace JSON", () => {
-  const runId = `llm_${faker.string.uuid()}`;
+  const traceId = createLLMTraceId(faker.string.uuid());
   const workspaceId = faker.string.uuid();
-  const buffer = createTestBuffer(runId, workspaceId);
+  const buffer = createTestBuffer(traceId, workspaceId);
 
   // Add some events.
   buffer.addEvent(LLMEventFactory.textDelta("Hello world"));
@@ -188,10 +205,9 @@ test("buffer generates complete trace JSON", () => {
     startTimestamp: "2024-01-01T00:00:00.000Z",
     endTimestamp: "2024-01-01T00:00:01.000Z",
     durationMs: 1000,
-    error: null,
   });
 
-  expect(trace.runId).toBe(runId);
+  expect(trace.traceId).toBe(traceId);
   expect(trace.workspaceId).toBe(workspaceId);
   expect(trace.metadata.durationMs).toBe(1000);
   expect(trace.output?.content).toBe("Hello world");
@@ -210,7 +226,6 @@ test("buffer includes truncation metadata when truncated", () => {
     startTimestamp: "2024-01-01T00:00:00.000Z",
     endTimestamp: "2024-01-01T00:00:01.000Z",
     durationMs: 1000,
-    error: null,
   });
 
   expect(trace.metadata.bufferTruncated).toBe(true);
@@ -223,16 +238,15 @@ test("buffer handles error traces correctly", () => {
 
   // Add some content before error.
   buffer.addEvent(LLMEventFactory.textDelta("Partial content"));
+  buffer.addEvent(LLMEventFactory.error());
 
-  const error = new Error("Test error");
   const trace = buffer.toTraceJSON({
     startTimestamp: "2024-01-01T00:00:00.000Z",
     endTimestamp: "2024-01-01T00:00:01.000Z",
     durationMs: 1000,
-    error,
   });
 
-  expect(trace.error?.message).toBe("Test error");
+  expect(trace.error?.message).toBe("Maximum length reached");
   expect(trace.error?.partialCompletion).toBe(true);
   expect(trace.output).toBeUndefined();
 });

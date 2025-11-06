@@ -31,7 +31,7 @@ export function ChartsTooltip({
     .map((p) => ({
       label: p.name || "",
       value: `${p.value}%`,
-      colorClassName: getToolColor(p.name || "", topTools),
+      colorClassName: getToolColor(p.name, topTools),
     }));
 
   const title = mode === "step" ? `Step ${String(label)}` : String(label);

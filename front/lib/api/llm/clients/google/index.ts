@@ -1,6 +1,7 @@
 import { ApiError, GoogleGenAI } from "@google/genai";
 
 import type { GoogleAIStudioWhitelistedModelId } from "@app/lib/api/llm/clients/google/types";
+import { getGoogleModelFamilyFromModelId } from "@app/lib/api/llm/clients/google/types";
 import {
   toContent,
   toTool,
@@ -56,22 +57,30 @@ export class GoogleLLM extends LLM {
     specifications,
   }: StreamParameters): AsyncGenerator<LLMEvent> {
     try {
+      const modelFamily = getGoogleModelFamilyFromModelId(this.modelId);
+
+      const thinkingConfig =
+        modelFamily === "reasoning"
+          ? {
+              includeThoughts: true,
+              // TODO(LLM-Router 2025-10-27): update according to effort
+              thinkingBudget: 1024,
+            }
+          : undefined;
+
       const contents = await Promise.all(conversation.messages.map(toContent));
+
       const generateContentResponses =
         await this.client.models.generateContentStream({
           model: this.modelId,
           contents,
           config: {
-            temperature: this.temperature,
+            temperature: this.temperature ?? undefined,
             tools: specifications.map(toTool),
             systemInstruction: { text: prompt },
             // We only need one
             candidateCount: 1,
-            thinkingConfig: {
-              includeThoughts: true,
-              // TODO(LLM-Router 2025-10-27): update according to effort
-              thinkingBudget: 1024,
-            },
+            thinkingConfig,
           },
         });
 

@@ -1,5 +1,5 @@
 import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
+import { Err, normalizeError, Ok } from "@dust-tt/client";
 import axios from "axios";
 import type { Activity, TurnContext } from "botbuilder";
 
@@ -46,63 +46,114 @@ export const getTenantSpecificToken: () => Promise<string> = cacheWithRedis(
 );
 
 /**
+ * Handles 429 (Too Many Requests) errors from Microsoft Bot Framework
+ */
+async function withRetry<T>(
+  operation: () => Promise<T>,
+  retryCount = 0,
+  maxRetries = 3
+): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    // Handle rate limiting with exponential backoff
+    if (axios.isAxiosError(error) && error.response?.status === 429) {
+      if (retryCount < maxRetries) {
+        // Exponential backoff: 500ms, 1000ms, 2000ms
+        const backoffMs = 500 * Math.pow(2, retryCount);
+        await new Promise((resolve) => setTimeout(resolve, backoffMs));
+        return withRetry(operation, retryCount + 1, maxRetries);
+      }
+      throw new Error(
+        `Rate limit exceeded after ${maxRetries} retries (429 Too Many Requests)`
+      );
+    }
+    throw error;
+  }
+}
+
+/**
  * Reliable replacement for context.sendActivity()
- * Uses tenant-specific token for authentication
+ * Uses tenant-specific token for authentication with automatic retry on rate limits
+ * @param skipRetry - If true, don't retry on errors (useful for streaming updates)
  */
 export async function sendActivity(
   context: TurnContext,
-  activity: Partial<Activity>
+  activity: Partial<Activity>,
+  skipRetry = false
 ): Promise<Result<string, Error>> {
-  const token = await getTenantSpecificToken();
+  try {
+    const operation = async () => {
+      const token = await getTenantSpecificToken();
 
-  const response = await axios.post(
-    `${context.activity.serviceUrl}/v3/conversations/${context.activity.conversation.id}/activities`,
-    activity,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      timeout: 10000,
+      return axios.post(
+        `${context.activity.serviceUrl}/v3/conversations/${context.activity.conversation.id}/activities`,
+        activity,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          timeout: 10000,
+        }
+      );
+    };
+
+    const response = skipRetry ? await operation() : await withRetry(operation);
+
+    if (response.data?.id) {
+      return new Ok(response.data.id);
     }
-  );
 
-  if (response.data?.id) {
-    return new Ok(response.data.id);
+    return new Err(new Error("Cannot send activity - no activity ID"));
+  } catch (error) {
+    return new Err(normalizeError(error));
   }
-
-  return new Err(new Error("Cannot send activity - no activity ID"));
 }
 
 /**
  * Reliable replacement for context.updateActivity()
- * Uses tenant-specific token for authentication
+ * Uses tenant-specific token for authentication with automatic retry on rate limits
+ * @param skipRetry - If true, don't retry on errors (useful for streaming updates)
  */
 export async function updateActivity(
   context: TurnContext,
-  activity: Partial<Activity>
-): Promise<Result<void, Error>> {
-  const token = await getTenantSpecificToken();
-
+  activity: Partial<Activity>,
+  skipRetry = false
+): Promise<Result<string, Error>> {
   if (!activity.id) {
     return new Err(
       new Error("Cannot update activity - no activity ID provided")
     );
   }
 
-  await axios.put(
-    `${context.activity.serviceUrl}/v3/conversations/${context.activity.conversation.id}/activities/${activity.id}`,
-    activity,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      timeout: 10000,
-    }
-  );
+  try {
+    const operation = async () => {
+      const token = await getTenantSpecificToken();
 
-  return new Ok(undefined);
+      return axios.put(
+        `${context.activity.serviceUrl}/v3/conversations/${context.activity.conversation.id}/activities/${activity.id}`,
+        activity,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          timeout: 10000,
+        }
+      );
+    };
+
+    const response = skipRetry ? await operation() : await withRetry(operation);
+
+    if (response.data?.id) {
+      return new Ok(response.data.id);
+    }
+
+    return new Err(new Error("Cannot update activity - no activity ID"));
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
 }
 
 /**

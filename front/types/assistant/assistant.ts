@@ -1,6 +1,7 @@
+import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import {
   CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG,
-  CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
+  CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
 import {
   GEMINI_2_5_FLASH_MODEL_CONFIG,
@@ -26,9 +27,7 @@ import {
   GROK_4_FAST_NON_REASONING_MODEL_CONFIG,
   GROK_4_MODEL_CONFIG,
 } from "@app/types/assistant/models/xai";
-
-import type { WorkspaceType } from "../user";
-import type { LightAgentConfigurationType } from "./agent";
+import type { WorkspaceType } from "@app/types/user";
 
 export function getSmallWhitelistedModel(
   owner: WorkspaceType
@@ -73,7 +72,7 @@ export function getLargeWhitelistedModel(
   owner: WorkspaceType
 ): ModelConfigurationType | null {
   if (isProviderWhitelisted(owner, "anthropic")) {
-    return CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG;
+    return CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG;
   }
   return getLargeNonAnthropicWhitelistedModel(owner);
 }
@@ -109,7 +108,6 @@ export enum GLOBAL_AGENTS_SID {
   HELPER = "helper",
   DUST = "dust",
   DEEP_DIVE = "deep-dive",
-  FEEDBACK_ANALYZER = "feedback-analyzer",
   DUST_TASK = "dust-task",
   DUST_BROWSER_SUMMARY = "dust-browser-summary",
   DUST_PLANNING = "dust-planning",
@@ -132,12 +130,7 @@ export enum GLOBAL_AGENTS_SID {
   CLAUDE_4_5_HAIKU = "claude-4.5-haiku",
   CLAUDE_4_5_SONNET = "claude-4.5-sonnet",
   CLAUDE_4_SONNET = "claude-4-sonnet",
-  CLAUDE_3_OPUS = "claude-3-opus",
-  CLAUDE_3_SONNET = "claude-3-sonnet",
   CLAUDE_3_HAIKU = "claude-3-haiku",
-  CLAUDE_3_7_SONNET = "claude-3-7-sonnet",
-  CLAUDE_2 = "claude-2",
-  CLAUDE_INSTANT = "claude-instant-1",
   MISTRAL_LARGE = "mistral-large",
   MISTRAL_MEDIUM = "mistral-medium",
   //!\ TEMPORARY WORKAROUND: Renaming 'mistral' to 'mistral-small' is not feasible since
@@ -201,10 +194,14 @@ const globalAgentIndexMap = new Map(
 
 // This function implements our general strategy to sort agents to users (input bar, agent list,
 // agent suggestions...).
-export function compareAgentsForSort(
-  a: LightAgentConfigurationType,
-  b: LightAgentConfigurationType
-) {
+export function compareAgentsForSort<
+  T extends {
+    sId: string;
+    userFavorite: boolean | undefined;
+    scope: AgentConfigurationScope;
+    name: string;
+  },
+>(a: T, b: T): number {
   if (a.userFavorite && !b.userFavorite) {
     return -1;
   }

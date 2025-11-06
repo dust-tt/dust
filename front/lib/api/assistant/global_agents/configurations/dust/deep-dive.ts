@@ -6,6 +6,10 @@ import {
   DEEP_DIVE_DESC,
   DEEP_DIVE_NAME,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
+import {
+  getCompanyDataAction,
+  getCompanyDataWarehousesAction,
+} from "@app/lib/api/assistant/global_agents/configurations/dust/shared";
 import type { PrefetchedDataSourcesType } from "@app/lib/api/assistant/global_agents/tools";
 import {
   _getDefaultWebActionsForGlobalAgent,
@@ -13,10 +17,6 @@ import {
 } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  isIncludedInDefaultCompanyData,
-  isRemoteDatabase,
-} from "@app/lib/data_sources";
 import type { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type {
@@ -409,96 +409,6 @@ function getMaxReasoningModelConfig(owner: WorkspaceType): {
     };
   }
   return getModelConfig(owner, "anthropic");
-}
-
-function getCompanyDataAction(
-  preFetchedDataSources: PrefetchedDataSourcesType | null,
-  dataSourcesFileSystemMCPServerView: MCPServerViewResource | null
-): MCPServerConfigurationType | null {
-  if (!preFetchedDataSources) {
-    return null;
-  }
-
-  const dataSourceViews = preFetchedDataSources.dataSourceViews.filter(
-    (dsView) =>
-      dsView.isInGlobalSpace &&
-      isIncludedInDefaultCompanyData(dsView.dataSource)
-  );
-  if (dataSourceViews.length === 0 || !dataSourcesFileSystemMCPServerView) {
-    return null;
-  }
-
-  return {
-    id: -1,
-    sId: GLOBAL_AGENTS_SID.DEEP_DIVE + "-company-data-action",
-    type: "mcp_server_configuration",
-    name: "company_data",
-    description: "The user's internal company data.",
-    mcpServerViewId: dataSourcesFileSystemMCPServerView.sId,
-    internalMCPServerId: dataSourcesFileSystemMCPServerView.internalMCPServerId,
-    dataSources: dataSourceViews.map((dsView) => ({
-      dataSourceViewId: dsView.sId,
-      workspaceId: preFetchedDataSources.workspaceId,
-      filter: {
-        parents: {
-          in: dsView.parentsIn ?? [],
-          not: [],
-        },
-        tags: null,
-      },
-    })),
-    tables: null,
-    childAgentId: null,
-    reasoningModel: null,
-    additionalConfiguration: {},
-    timeFrame: null,
-    dustAppConfiguration: null,
-    jsonSchema: null,
-    secretName: null,
-  };
-}
-
-function getCompanyDataWarehousesAction(
-  preFetchedDataSources: PrefetchedDataSourcesType | null,
-  dataWarehousesMCPServerView: MCPServerViewResource | null
-): MCPServerConfigurationType | null {
-  if (!preFetchedDataSources) {
-    return null;
-  }
-
-  const globalWarehouses = preFetchedDataSources.dataSourceViews.filter(
-    (dsView) => dsView.isInGlobalSpace && isRemoteDatabase(dsView.dataSource)
-  );
-
-  if (globalWarehouses.length === 0 || !dataWarehousesMCPServerView) {
-    return null;
-  }
-
-  return {
-    id: -1,
-    sId: GLOBAL_AGENTS_SID.DEEP_DIVE + "-data-warehouses-action",
-    type: "mcp_server_configuration",
-    name: "data_warehouses",
-    description: "The user's data warehouses.",
-    mcpServerViewId: dataWarehousesMCPServerView.sId,
-    internalMCPServerId: dataWarehousesMCPServerView.internalMCPServerId,
-    dataSources: globalWarehouses.map((dsView) => ({
-      dataSourceViewId: dsView.sId,
-      workspaceId: preFetchedDataSources.workspaceId,
-      filter: {
-        parents: { in: dsView.parentsIn ?? [], not: [] },
-        tags: null,
-      },
-    })),
-    tables: null,
-    childAgentId: null,
-    reasoningModel: null,
-    additionalConfiguration: {},
-    timeFrame: null,
-    dustAppConfiguration: null,
-    jsonSchema: null,
-    secretName: null,
-  };
 }
 
 export function _getDeepDiveGlobalAgent(

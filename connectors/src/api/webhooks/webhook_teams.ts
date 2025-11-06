@@ -88,22 +88,6 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
     });
   }
 
-  logger.info(
-    {
-      connectorProvider: "microsoft_bot",
-      headers: {
-        authorization: req.headers.authorization ? "Bearer [TOKEN]" : "MISSING",
-        contentType: req.headers["content-type"],
-        userAgent: req.headers["user-agent"],
-        msTeamsConversationId: req.headers["ms-teams-conversation-id"],
-      },
-      bodySize: JSON.stringify(req.body).length,
-      requestId: req.headers["x-request-id"],
-      clientIp: req.ip,
-    },
-    "Received Teams messages webhook with details"
-  );
-
   // Step 1: Validate Bot Framework JWT token
   const authHeader = req.headers.authorization;
   const token = extractBearerToken(authHeader);
@@ -166,27 +150,8 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
     });
   }
 
-  logger.info(
-    {
-      connectorProvider: "microsoft_bot",
-      appId: claims.aud,
-      serviceUrl: claims.serviceUrl,
-    },
-    "Teams webhook validation passed"
-  );
-
   try {
     await adapter.process(req, res, async (context) => {
-      logger.info(
-        {
-          connectorProvider: "microsoft_bot",
-          activityType: context.activity.type,
-          activityName: context.activity.name,
-          conversationId: context.activity.conversation?.id,
-        },
-        "Received Teams activity"
-      );
-
       const connector = await getConnector(context);
 
       const localLogger = logger.child({
@@ -234,42 +199,15 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
               break;
             }
 
-            localLogger.info(
-              {
-                agentName: validatedData.agentName,
-                toolName: validatedData.toolName,
-                conversationId: validatedData.conversationId,
-                messageId: validatedData.messageId,
-                microsoftBotMessageId: validatedData.microsoftBotMessageId,
-              },
-              "Handling tool execution approval card refresh"
-            );
-
             const cardResponse = {
               statusCode: 200,
               type: "application/vnd.microsoft.card.adaptive",
               value: createInteractiveToolApprovalAdaptiveCard(validatedData),
             };
-            localLogger.info(
-              cardResponse,
-              "Invoke reponse: tool execution approval card refresh response"
-            );
 
-            // For Bot Framework invoke activities, send response through context
-            await context.sendActivity({
-              type: "invokeResponse",
-              value: {
-                status: 200,
-                body: cardResponse,
-              },
-            });
+            res.set("Content-Type", "application/json; charset=utf-8");
+            res.status(200).json(cardResponse);
           } else {
-            localLogger.info(
-              {
-                verb: context.activity.value?.action?.verb,
-              },
-              "Handling invoke activity other than tool execution approval"
-            );
             await handleToolApproval(context, connector, localLogger);
           }
           break;
@@ -302,14 +240,6 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
           break;
 
         default:
-          localLogger.info(
-            {
-              connectorProvider: "microsoft_bot",
-              activityType: context.activity.type,
-              connectorId: connector?.id,
-            },
-            "Unhandled activity type"
-          );
           break;
       }
     });
@@ -333,7 +263,7 @@ async function handleMessage(
     return;
   }
 
-  localLogger.info({ text: message }, "Handling regular text message");
+  localLogger.info("Handling regular text message");
 
   // Send thinking message
   const thinkingCard = createThinkingAdaptiveCard();
@@ -480,8 +410,6 @@ async function handleToolApproval(
     messageId,
     actionId,
     microsoftBotMessageId,
-    agentName,
-    toolName,
     localLogger,
   });
 

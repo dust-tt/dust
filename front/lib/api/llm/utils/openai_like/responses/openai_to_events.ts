@@ -8,6 +8,7 @@ import type {
 import type { Response } from "openai/resources/responses/responses";
 
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
+import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { assertNever } from "@app/types";
 
@@ -60,16 +61,15 @@ function responseOutputToEvent(
         metadata,
       };
     case "refusal":
-      return {
-        type: "error",
-        content: {
+      return new EventError(
+        {
           type: "refusal_error",
           isRetryable: false,
           message: responseOutput.refusal,
-          statusCode: 500,
         },
-        metadata,
-      };
+        metadata
+      );
+
     default:
       assertNever(responseOutput);
   }
@@ -103,7 +103,7 @@ function itemToEvents(
         content: {
           text: summary.text,
         },
-        metadata,
+        metadata: { ...metadata, id: item.id },
       }));
     default:
       // TODO(LLM-Router 2025-10-28): Send error event
@@ -130,6 +130,7 @@ function responseCompleted(
   } = response.usage;
   // even if in the types `input_tokens_details` and `output_tokens_details` are NOT optional,
   // some providers (e.g. Fireworks) return them as null
+  // NB: OpenAI API does not return the number of cache writes
   const cachedTokens = response.usage.input_tokens_details?.cached_tokens;
   const reasoningTokens =
     response.usage.output_tokens_details?.reasoning_tokens;

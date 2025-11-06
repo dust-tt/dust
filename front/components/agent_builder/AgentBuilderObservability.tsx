@@ -21,12 +21,10 @@ import {
   CHART_CONTAINER_HEIGHT_CLASS,
   OBSERVABILITY_TIME_RANGE,
 } from "@app/components/agent_builder/observability/constants";
-import { ExportFeedbackCsvButton } from "@app/components/agent_builder/observability/ExportFeedbackCSVButton";
 import {
   ObservabilityProvider,
   useObservability,
 } from "@app/components/agent_builder/observability/ObservabilityContext";
-import { StartConversationWithFredButton } from "@app/components/agent_builder/observability/StartConversationWithFredButton";
 import {
   useAgentConfiguration,
   useAgentVersionMarkers,
@@ -67,14 +65,6 @@ export function AgentBuilderObservability({
           <HeaderGlobalSelector agentConfigurationId={agentConfigurationSId} />
         </div>
 
-        <div className="flex gap-2">
-          <ExportFeedbackCsvButton
-            agentConfigurationSId={agentConfigurationSId}
-          />
-          <StartConversationWithFredButton
-            agentConfigurationSId={agentConfigurationSId}
-          />
-        </div>
         <div className="grid grid-cols-1 gap-6">
           {isAgentConfigurationLoading ? (
             <>
@@ -167,13 +157,18 @@ function HeaderGlobalSelector({
       {mode === "timeRange" ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button label={`${period}d`} size="xs" variant="outline" isSelect />
+            <Button
+              label={`${period} days`}
+              size="xs"
+              variant="outline"
+              isSelect
+            />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             {OBSERVABILITY_TIME_RANGE.map((p) => (
               <DropdownMenuItem
                 key={p}
-                label={`${p}d`}
+                label={`${p} days`}
                 onClick={() => setPeriod(p)}
               />
             ))}

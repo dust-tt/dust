@@ -185,3 +185,32 @@ export const ticketCommentAddedSchema: JSONSchema = {
     },
   },
 };
+
+export const ticketCommentAddedExample = {
+  account_id: 22129848,
+  detail: {
+    id: "5158",
+    subject: "Cannot login to mobile app",
+    status: "OPEN",
+    priority: "HIGH",
+    created_at: "2025-01-08T10:12:07Z",
+    updated_at: "2025-01-08T14:25:30Z",
+  },
+  event: {
+    comment: {
+      id: 9876543210,
+      body: "We are investigating this issue and will update you shortly.",
+      is_public: true,
+      author: {
+        id: 8447388090495,
+        is_staff: true,
+        name: "Support Agent",
+      },
+    },
+  },
+  id: "d4f5c389-8f4a-4c2e-a1b9-8e4f39c71d52",
+  subject: "zen:ticket:5158",
+  time: "2025-01-08T14:25:30.123456789Z",
+  type: "zen:event-type:ticket.comment_added",
+  zendesk_event_version: "2022-11-06",
+};

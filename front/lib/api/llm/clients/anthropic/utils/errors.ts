@@ -3,6 +3,7 @@ import { APIConnectionError } from "@anthropic-ai/sdk";
 
 import type { LLMErrorInfo } from "@app/lib/api/llm/types/errors";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
+import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { normalizeError } from "@app/types";
 
@@ -11,11 +12,7 @@ export const handleError = (
   err: APIError,
   metadata: LLMClientMetadata
 ): LLMEvent => {
-  return {
-    type: "error",
-    content: categorizeAnthropicError(err, metadata),
-    metadata,
-  };
+  return new EventError(categorizeAnthropicError(err, metadata), metadata);
 };
 
 // From BaseAnthropic.shouldRetry
@@ -57,21 +54,20 @@ function shouldRetry(error: APIError) {
 // Yes, this is mainly duplicated between all providers. We know for sure each provider has a different error handling and http status code.
 // So we want to be able to tweak this by provider
 function categorizeAnthropicError(
-  error: APIError,
+  originalError: APIError,
   metadata: LLMClientMetadata
 ): LLMErrorInfo {
-  const normalized = normalizeError(error);
+  const normalized = normalizeError(originalError);
 
-  const statusCode = error.status ?? 500;
-  const isRetryable = shouldRetry(error);
+  const statusCode = originalError.status ?? 500;
+  const isRetryable = shouldRetry(originalError);
 
-  if (error instanceof APIConnectionError) {
+  if (originalError instanceof APIConnectionError) {
     return {
       type: "network_error",
       message: `Network error connecting to ${metadata.clientId}. ${normalized.message}`,
       isRetryable,
-      statusCode,
-      originalError: error,
+      originalError,
     };
   }
 
@@ -80,8 +76,7 @@ function categorizeAnthropicError(
       type: "invalid_request_error",
       message: `Invalid request to ${metadata.clientId}. ${normalized.message}`,
       isRetryable,
-      statusCode,
-      originalError: error,
+      originalError,
     };
   }
 
@@ -90,8 +85,7 @@ function categorizeAnthropicError(
       type: "authentication_error",
       message: `Authentication failed for ${metadata.clientId}. ${normalized.message}`,
       isRetryable,
-      statusCode,
-      originalError: error,
+      originalError,
     };
   }
 
@@ -100,8 +94,7 @@ function categorizeAnthropicError(
       type: "permission_error",
       message: `Permission denied for ${metadata.clientId}. ${normalized.message}`,
       isRetryable,
-      statusCode,
-      originalError: error,
+      originalError,
     };
   }
 
@@ -110,8 +103,7 @@ function categorizeAnthropicError(
       type: "not_found_error",
       message: `Resource not found for ${metadata.clientId}. ${normalized.message}`,
       isRetryable,
-      statusCode,
-      originalError: error,
+      originalError,
     };
   }
 
@@ -120,8 +112,7 @@ function categorizeAnthropicError(
       type: "invalid_request_error",
       message: `Invalid request to ${metadata.clientId}. ${normalized.message}`,
       isRetryable,
-      statusCode,
-      originalError: error,
+      originalError,
     };
   }
 
@@ -130,8 +121,7 @@ function categorizeAnthropicError(
       type: "rate_limit_error",
       message: `Rate limit exceeded for ${metadata.clientId}/${metadata.modelId}. ${normalized.message}`,
       isRetryable,
-      statusCode,
-      originalError: error,
+      originalError,
     };
   }
 
@@ -140,8 +130,7 @@ function categorizeAnthropicError(
       type: "server_error",
       message: `Server error from ${metadata.clientId}. ${normalized.message}`,
       isRetryable,
-      statusCode,
-      originalError: error,
+      originalError,
     };
   }
 
@@ -149,7 +138,6 @@ function categorizeAnthropicError(
     type: "unknown_error",
     message: `Unknown error from ${metadata.clientId}: ${normalized.message}`,
     isRetryable,
-    statusCode,
-    originalError: error,
+    originalError,
   };
 }

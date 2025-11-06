@@ -20,7 +20,11 @@ import { useObservability } from "@app/components/agent_builder/observability/Ob
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import { ChartLegend } from "@app/components/agent_builder/observability/shared/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
-import { useAgentErrorRate } from "@app/lib/swr/assistants";
+import { padSeriesToTimeRange } from "@app/components/agent_builder/observability/utils";
+import {
+  useAgentErrorRate,
+  useAgentVersionMarkers,
+} from "@app/lib/swr/assistants";
 
 const WARNING_THRESHOLD = 5;
 const CRITICAL_THRESHOLD = 10;
@@ -80,9 +84,9 @@ export function ErrorRateChart({
   workspaceId,
   agentConfigurationId,
 }: ErrorRateChartProps) {
-  const { period } = useObservability();
+  const { period, mode } = useObservability();
   const {
-    errorRate: data,
+    errorRate: rawData,
     isErrorRateLoading,
     isErrorRateError,
   } = useAgentErrorRate({
@@ -91,6 +95,20 @@ export function ErrorRateChart({
     days: period,
     disabled: !workspaceId || !agentConfigurationId,
   });
+
+  const { versionMarkers } = useAgentVersionMarkers({
+    workspaceId,
+    agentConfigurationId,
+    days: period,
+    disabled: !workspaceId || !agentConfigurationId,
+  });
+
+  const data = padSeriesToTimeRange(rawData, mode, period, (date) => ({
+    date,
+    total: 0,
+    failed: 0,
+    errorRate: 0,
+  }));
 
   const legendItems = ERROR_RATE_LEGEND.map(({ key, label }) => ({
     key,
@@ -192,12 +210,22 @@ export function ErrorRateChart({
             strokeWidth={1.5}
           />
           <Area
-            type="natural"
+            type="monotone"
             dataKey="errorRate"
             name="Error rate"
             fill="url(#fillErrorRate)"
             stroke="hsl(var(--chart-4))"
           />
+          {mode === "timeRange" &&
+            versionMarkers.map((versionMarker) => (
+              <ReferenceLine
+                key={versionMarker.timestamp}
+                x={versionMarker.timestamp}
+                strokeDasharray="5 5"
+                strokeWidth={1}
+                stroke="hsl(var(--chart-5))"
+              />
+            ))}
         </AreaChart>
       </ResponsiveContainer>
       <ChartLegend items={legendItems} />

@@ -2,6 +2,7 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -18,7 +19,11 @@ import { useObservability } from "@app/components/agent_builder/observability/Ob
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import { ChartLegend } from "@app/components/agent_builder/observability/shared/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
-import { useAgentLatency } from "@app/lib/swr/assistants";
+import { padSeriesToTimeRange } from "@app/components/agent_builder/observability/utils";
+import {
+  useAgentLatency,
+  useAgentVersionMarkers,
+} from "@app/lib/swr/assistants";
 
 interface LatencyData {
   messages: number;
@@ -47,7 +52,7 @@ function LatencyTooltip(
       title={title}
       rows={[
         {
-          label: "Average latency",
+          label: "Average time",
           value: `${row.average}s`,
           colorClassName: LATENCY_PALETTE.average,
         },
@@ -63,9 +68,9 @@ export function LatencyChart({
   workspaceId: string;
   agentConfigurationId: string;
 }) {
-  const { period } = useObservability();
+  const { period, mode } = useObservability();
   const {
-    latency: data,
+    latency: rawData,
     isLatencyLoading,
     isLatencyError,
   } = useAgentLatency({
@@ -74,6 +79,19 @@ export function LatencyChart({
     days: period,
     disabled: !workspaceId || !agentConfigurationId,
   });
+
+  const { versionMarkers } = useAgentVersionMarkers({
+    workspaceId,
+    agentConfigurationId,
+    days: period,
+    disabled: !workspaceId || !agentConfigurationId,
+  });
+
+  const data = padSeriesToTimeRange(rawData, mode, period, (date) => ({
+    date,
+    messages: 0,
+    average: 0,
+  }));
 
   const legendItems = LATENCY_LEGEND.map(({ key, label }) => ({
     key,
@@ -124,14 +142,9 @@ export function LatencyChart({
             tickLine={false}
             axisLine={false}
             tickMargin={8}
+            tickFormatter={(value) => `${value}s`}
             type="number"
             allowDecimals={true}
-            label={{
-              value: "Average latency (s)",
-              angle: -90,
-              position: "insideLeft",
-              style: { textAnchor: "middle" },
-            }}
           />
           <Tooltip
             content={LatencyTooltip}
@@ -145,13 +158,23 @@ export function LatencyChart({
             }}
           />
           <Area
-            type="natural"
+            type="monotone"
             dataKey="average"
-            name="Average latency"
+            name="Average time to complete output"
             className={LATENCY_PALETTE.average}
             fill="url(#fillAverage)"
             stroke="currentColor"
           />
+          {mode === "timeRange" &&
+            versionMarkers.map((versionMarker) => (
+              <ReferenceLine
+                key={versionMarker.timestamp}
+                x={versionMarker.timestamp}
+                strokeDasharray="5 5"
+                strokeWidth={1}
+                stroke="hsl(var(--chart-5))"
+              />
+            ))}
         </AreaChart>
       </ResponsiveContainer>
       <ChartLegend items={legendItems} />

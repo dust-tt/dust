@@ -31,9 +31,10 @@ export interface LLMTraceInput {
   conversation: ModelConversationTypeMultiActions;
   modelId: ModelIdType;
   prompt: string;
-  reasoningEffort: ReasoningEffort;
+  reasoningEffort: ReasoningEffort | null;
+  responseFormat: string | null;
   specifications: unknown[];
-  temperature: number;
+  temperature: number | null;
 }
 
 /**
@@ -88,7 +89,7 @@ export interface LLMTrace {
   input: LLMTraceInput;
   metadata: LLMTraceMetadata;
   output?: LLMTraceOutput;
-  runId: string;
+  traceId: string;
   workspaceId: string;
 }
 

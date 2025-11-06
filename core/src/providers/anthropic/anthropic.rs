@@ -34,16 +34,13 @@ pub struct AnthropicLLM {
 }
 
 fn get_max_tokens(model_id: &str) -> u64 {
-    if model_id.starts_with("claude-3-7-sonnet")
-        || model_id.starts_with("claude-4-sonnet")
+    if model_id.starts_with("claude-4-sonnet")
         || model_id.starts_with("claude-sonnet-4-")
         || model_id.starts_with("claude-haiku-4-5-")
     {
         64000
     } else if model_id.starts_with("claude-4-opus") {
         32000
-    } else if model_id.starts_with("claude-3-5-sonnet") {
-        8192
     } else {
         4096
     }
@@ -322,7 +319,7 @@ impl LLM for AnthropicLLM {
     }
 
     fn context_size(&self) -> usize {
-        if self.id.starts_with("claude-2.1") || self.id.starts_with("claude-3") {
+        if self.id.starts_with("claude-3") {
             200000
         } else {
             100000
@@ -641,12 +638,12 @@ impl Provider for AnthropicProvider {
 
     async fn test(&self) -> Result<()> {
         if !utils::confirm(
-            "You are about to make a request for 1 token to `claude-instant-1.2` on the Anthropic API.",
+            "You are about to make a request for 1 token to `claude-4.5-haiku` on the Anthropic API.",
         )? {
             Err(anyhow!("User aborted Anthropic test."))?;
         }
 
-        let mut llm = self.llm(String::from("claude-instant-1.2"));
+        let mut llm = self.llm(String::from("claude-4.5-haiku"));
         llm.initialize(Credentials::new()).await?;
 
         let llm_generation = llm

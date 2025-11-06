@@ -1,5 +1,9 @@
 import { GLOBAL_AGENTS_SID } from "@app/shared/lib/global_agents";
-import { compareForFuzzySort, subFilter } from "@app/shared/lib/utils";
+import {
+  compareAgentsForSort,
+  compareForFuzzySort,
+  subFilter,
+} from "@app/shared/lib/utils";
 
 export interface EditorSuggestion {
   id: string;
@@ -22,18 +26,34 @@ const SUGGESTION_PRIORITY: Record<string, number> = {
   [GLOBAL_AGENTS_SID.DEEP_DIVE]: 2,
 };
 
+function compareEditorSuggestionsForSort(
+  a: EditorSuggestion,
+  b: EditorSuggestion
+) {
+  const toSortable = (s: EditorSuggestion) => {
+    return {
+      sId: s.id,
+      userFavorite: s.userFavorite,
+      scope: "visible",
+      name: s.label,
+    } as const;
+  };
+  return compareAgentsForSort(toSortable(a), toSortable(b));
+}
+
 function filterAndSortSuggestions(
   lowerCaseQuery: string,
   suggestions: EditorSuggestion[]
 ) {
   return suggestions
     .filter((item) => subFilter(lowerCaseQuery, item.label.toLowerCase()))
-    .sort((a, b) =>
-      compareForFuzzySort(
-        lowerCaseQuery,
-        a.label.toLocaleLowerCase(),
-        b.label.toLocaleLowerCase()
-      )
+    .sort(
+      (a, b) =>
+        compareForFuzzySort(
+          lowerCaseQuery,
+          a.label.toLocaleLowerCase(),
+          b.label.toLocaleLowerCase()
+        ) || compareEditorSuggestionsForSort(a, b)
     )
     .sort((a, b) => {
       // If within SUGGESTION_DISPLAY_LIMIT there's one from AGENT_PRIORITY, we move it to the top.

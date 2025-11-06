@@ -152,7 +152,6 @@ export async function storeAgentAnalytics(
     user_id: user?.sId ?? "unknown",
     workspace_id: auth.getNonNullableWorkspace().sId,
     feedbacks,
-    content: null,
   };
 
   await storeToElasticsearch(document);
@@ -293,7 +292,6 @@ function getAgentMessageFeedbacksAnalytics(
     feedback_id: agentMessageFeedback.id,
     user_id: agentMessageFeedback.user?.sId ?? "unknown",
     thumb_direction: agentMessageFeedback.thumbDirection,
-    content: undefined,
     dismissed: agentMessageFeedback.dismissed,
     is_conversation_shared: agentMessageFeedback.isConversationShared,
     created_at: agentMessageFeedback.createdAt.toISOString(),

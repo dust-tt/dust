@@ -326,6 +326,10 @@ async function handler(
           ? getResourceIdFromSId(validatedTrigger.webhookSourceViewSId)
           : null;
 
+        const executionPerDay = isWebhookTriggerData(validatedTrigger)
+          ? validatedTrigger.executionPerDayLimitOverride
+          : null;
+
         const newTrigger = await TriggerResource.makeNew(auth, {
           workspaceId: workspace.id,
           agentConfigurationId,
@@ -338,6 +342,7 @@ async function handler(
           customPrompt: validatedTrigger.customPrompt,
           editor: auth.getNonNullableUser().id,
           webhookSourceViewId,
+          executionPerDayLimitOverride: executionPerDay,
         });
 
         if (newTrigger.isErr()) {

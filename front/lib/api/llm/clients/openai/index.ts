@@ -1,20 +1,19 @@
 import { APIError, OpenAI } from "openai";
-import type { ReasoningEffort as OpenAiReasoningEffort } from "openai/resources/shared";
 
-import type { OpenAIResponsesWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
-import {
-  isOpenAIResponsesWhitelistedReasoningModelId,
-  REASONING_EFFORT_TO_OPENAI_REASONING,
-} from "@app/lib/api/llm/clients/openai/types";
+import type { OpenAIWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
+import { overwriteLLMParameters } from "@app/lib/api/llm/clients/openai/types";
 import { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
+  LLMClientMetadata,
   LLMParameters,
   StreamParameters,
 } from "@app/lib/api/llm/types/options";
 import { handleError } from "@app/lib/api/llm/utils/openai_like/errors";
 import {
   toInput,
+  toReasoning,
+  toResponseFormat,
   toTool,
 } from "@app/lib/api/llm/utils/openai_like/responses/conversation_to_openai";
 import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_like/responses/openai_to_events";
@@ -25,40 +24,16 @@ import { handleGenericError } from "../../types/errors";
 
 export class OpenAIResponsesLLM extends LLM {
   private client: OpenAI;
-
-  private readonly reasoning: {
-    effort: OpenAiReasoningEffort;
-    summary: "auto";
-  } | null;
+  protected metadata: LLMClientMetadata = {
+    clientId: "openai_responses",
+    modelId: this.modelId,
+  };
 
   constructor(
     auth: Authenticator,
-    {
-      bypassFeatureFlag,
-      context,
-      modelId,
-      reasoningEffort,
-      temperature,
-    }: LLMParameters & { modelId: OpenAIResponsesWhitelistedModelId }
+    llmParameters: LLMParameters & { modelId: OpenAIWhitelistedModelId }
   ) {
-    super(auth, {
-      bypassFeatureFlag,
-      context,
-      modelId,
-      reasoningEffort,
-      temperature,
-      clientId: "openai_responses",
-    });
-
-    // OpenAI throws an error if reasoning is set for non reasoning models
-    // TODO(LLM-Router 2025-10-28): handle o3 models differently : temperature should be set to 0
-    // TODO(LLM-Router 2025-10-28): handle GPT-5 models differently : temperature not supported
-    this.reasoning = isOpenAIResponsesWhitelistedReasoningModelId(modelId)
-      ? {
-          effort: REASONING_EFFORT_TO_OPENAI_REASONING[this.reasoningEffort],
-          summary: "auto",
-        }
-      : null;
+    super(auth, overwriteLLMParameters(llmParameters));
 
     const { OPENAI_API_KEY, OPENAI_BASE_URL } = dustManagedCredentials();
     if (!OPENAI_API_KEY) {
@@ -81,9 +56,10 @@ export class OpenAIResponsesLLM extends LLM {
         model: this.modelId,
         input: toInput(prompt, conversation),
         stream: true,
-        temperature: this.temperature,
-        reasoning: this.reasoning,
+        temperature: this.temperature ?? undefined,
+        reasoning: toReasoning(this.reasoningEffort),
         tools: specifications.map(toTool),
+        text: { format: toResponseFormat(this.responseFormat) },
       });
 
       yield* streamLLMEvents(events, this.metadata);

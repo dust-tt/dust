@@ -18,6 +18,7 @@ import type {
   TokenUsageEvent,
   ToolCallEvent,
 } from "@app/lib/api/llm/types/events";
+import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { safeParseJSON } from "@app/types";
 
@@ -208,16 +209,14 @@ function* handleStopReason(
       break;
     case "max_tokens":
     case "refusal":
-      yield {
-        type: "error",
-        content: {
+      yield new EventError(
+        {
           type: "stop_error",
           message: `Stop reason: ${stopReason}`,
           isRetryable: false,
-          statusCode: 0,
         },
-        metadata,
-      };
+        metadata
+      );
       break;
   }
 }
@@ -268,7 +267,7 @@ function reasoningGenerated(
     content: {
       text,
     },
-    metadata: { ...metadata, signature },
+    metadata: { ...metadata, encrypted_content: signature },
   };
 }
 
@@ -281,10 +280,8 @@ function tokenUsage(
     content: {
       inputTokens: usage.input_tokens ?? 0,
       outputTokens: usage.output_tokens,
-      // TODO(LLM-Router) Need to split between cache read and hit
-      cachedTokens:
-        (usage.cache_creation_input_tokens ?? 0) +
-        (usage.cache_read_input_tokens ?? 0),
+      cachedTokens: usage.cache_read_input_tokens ?? 0,
+      cacheCreationTokens: usage.cache_creation_input_tokens ?? 0,
       totalTokens: (usage.input_tokens ?? 0) + usage.output_tokens,
     },
     metadata,

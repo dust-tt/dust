@@ -10,6 +10,7 @@ import cronstrue from "cronstrue";
 import React, { useMemo, useState } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
 
+import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
 import { useTextAsCronRule } from "@app/lib/swr/agent_triggers";
 import type { LightWorkspaceType } from "@app/types";
@@ -56,7 +57,8 @@ export function ScheduleEditionScheduler({
   isEditor,
   owner,
 }: ScheduleEditionSchedulerProps) {
-  const { control, setValue, getFieldState, formState } = useFormContext();
+  const { control, setValue, getFieldState, formState } =
+    useFormContext<TriggerViewsSheetFormValues>();
 
   const {
     field: {

@@ -1,5 +1,7 @@
 import {
   Button,
+  ButtonsSwitch,
+  ButtonsSwitchList,
   Checkbox,
   ContentMessage,
   DropdownMenu,
@@ -13,6 +15,7 @@ import {
   SliderToggle,
   TextArea,
 } from "@dust-tt/sparkle";
+import Link from "next/link";
 import React, { useMemo } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
@@ -83,6 +86,65 @@ function WebhookEditionStatusToggle({
   );
 }
 
+interface WebhookEditionExecutionLimitProps {
+  isEditor: boolean;
+}
+
+function WebhookEditionExecutionLimit({
+  isEditor,
+}: WebhookEditionExecutionLimitProps) {
+  const { control } = useFormContext<TriggerViewsSheetFormValues>();
+  const {
+    field: { value: executionLimit, onChange: setExecutionLimit },
+  } = useController({
+    control,
+    name: "webhook.executionPerDayLimitOverride",
+  });
+
+  const limitOptions = [
+    { label: "10/day", value: 10 },
+    { label: "25/day", value: 25 },
+    { label: "50/day", value: 50 },
+  ];
+
+  return (
+    <div className="flex flex-col space-y-1">
+      <Label htmlFor="execution-limit">Execution limit</Label>
+      <div className="pb-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <p>
+          Maximum number of times this trigger can execute per hour. This is
+          smoothed out over a 24 hour period.
+        </p>
+        <p className="font-semibold">
+          <Link
+            href="https://docs.dust.tt/update/docs/rate-limiting#/"
+            target="_blank"
+            rel="noreferrer"
+            className="underline"
+          >
+            Learn more
+          </Link>{" "}
+          about webhook trigger rate limiting.
+        </p>
+      </div>
+      <ButtonsSwitchList
+        defaultValue={executionLimit.toString()}
+        className="w-fit"
+      >
+        {limitOptions.map((option) => (
+          <ButtonsSwitch
+            key={option.value}
+            value={option.value.toString()}
+            label={option.label}
+            onClick={() => setExecutionLimit(option.value)}
+            disabled={!isEditor}
+          />
+        ))}
+      </ButtonsSwitchList>
+    </div>
+  );
+}
+
 interface WebhookEditionEventSelectorProps {
   isEditor: boolean;
   selectedPreset: PresetWebhook | null;
@@ -108,7 +170,7 @@ function WebhookEditionEventSelector({
     <div className="flex flex-col space-y-1">
       <Label htmlFor="webhook-event">Listen for</Label>
       <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-        Type of event that will start this agent.
+        External event that will trigger a run of this agent.
       </p>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -178,7 +240,7 @@ function WebhookEditionMessageInput({
 
   return (
     <div className="space-y-1">
-      <Label htmlFor="webhook-prompt">Message (Optional)</Label>
+      <Label htmlFor="webhook-prompt">Message (optional)</Label>
       <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
         Message for the agent when the trigger runs.
       </p>
@@ -261,6 +323,10 @@ export function WebhookEditionSheetContent({
           <WebhookEditionMessageInput isEditor={isEditor} />
           <WebhookEditionIncludePayload isEditor={isEditor} />
         </div>
+
+        <Separator />
+
+        <WebhookEditionExecutionLimit isEditor={isEditor} />
 
         {trigger && (
           <div className="space-y-1">

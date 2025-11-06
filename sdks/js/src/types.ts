@@ -50,30 +50,18 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "o3-mini"
   | "o4-mini"
   | "claude-3-5-haiku-20241022"
-  | "claude-3-5-sonnet-20240620"
-  | "claude-3-5-sonnet-20241022"
-  | "claude-3-7-sonnet-20250219"
   | "claude-3-haiku-20240307"
-  | "claude-3-opus-20240229"
   | "claude-4-opus-20250514"
   | "claude-4-sonnet-20250514"
   | "claude-haiku-4-5-20251001"
   | "claude-sonnet-4-5-20250929"
-  | "claude-2.1"
-  | "claude-instant-1.2"
   | "mistral-large-latest"
   | "mistral-medium"
   | "mistral-small-latest"
   | "codestral-latest"
-  | "gemini-1.5-pro-latest" // DEPRECATED
-  | "gemini-1.5-flash-latest" // DEPRECATED
   | "gemini-2.0-flash" // DEPRECATED
-  | "gemini-2.0-flash-lite" // DEPRECATED
-  | "gemini-2.5-pro-preview-03-25" // DEPRECATED
   | "gemini-2.0-flash-exp" // DEPRECATED
-  | "gemini-2.0-flash-lite-preview-02-05" // DEPRECATED
   | "gemini-2.0-pro-exp-02-05" // DEPRECATED
-  | "gemini-2.0-flash-thinking-exp-01-21" // DEPRECATED
   | "gemini-2.5-pro"
   | "gemini-2.5-flash"
   | "gemini-2.5-flash-lite"
@@ -651,6 +639,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "agent_management_tool"
   | "agent_to_yaml"
   | "anthropic_vertex_fallback"
+  | "ashby_tool"
   | "claude_4_opus_feature"
   | "confluence_tool"
   | "deepseek_feature"
@@ -662,6 +651,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "elevenlabs_tool"
   | "freshservice_tool"
   | "google_ai_studio_experimental_models_feature"
+  | "gemini_image_generation"
   | "google_sheets_tool"
   | "hootl_dev_webhooks"
   | "hootl_subscriptions"
@@ -701,8 +691,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "legacy_dust_apps"
   | "llm_router_direct_requests"
   | "mentions_v2"
-  | "dust_global_agent_memory"
-  | "dust_global_data_source_file_system"
   | "http_client_tool"
 >();
 
@@ -943,6 +931,15 @@ const AgentMentionSchema = z.object({
 
 export type AgentMentionType = z.infer<typeof AgentMentionSchema>;
 
+const UserMentionSchema = z.object({
+  type: z.literal("user"),
+  userId: z.string(),
+});
+
+export type UserMentionType = z.infer<typeof UserMentionSchema>;
+
+const MentionSchema = z.union([AgentMentionSchema, UserMentionSchema]);
+
 const UserMessageContextSchema = z.object({
   username: z.string(),
   timezone: Timezone,
@@ -964,7 +961,7 @@ const UserMessageSchema = z.object({
   visibility: VisibilitySchema,
   version: z.number(),
   user: UserSchema.nullable(),
-  mentions: z.array(AgentMentionSchema),
+  mentions: z.array(MentionSchema),
   content: z.string(),
   context: UserMessageContextSchema,
 });
@@ -1938,11 +1935,7 @@ export type GetWorkspaceFeatureFlagsResponseType = z.infer<
 export const PublicPostMessagesRequestBodySchema = z.intersection(
   z.object({
     content: z.string().min(1),
-    mentions: z.array(
-      z.object({
-        configurationId: z.string(),
-      })
-    ),
+    mentions: z.array(MentionSchema),
     context: UserMessageContextSchema.extend({
       clientSideMCPServerIds: z.array(z.string()).optional().nullable(),
     }),
@@ -1966,11 +1959,7 @@ export type PostMessagesResponseBody = {
 
 export const PublicPostEditMessagesRequestBodySchema = z.object({
   content: z.string(),
-  mentions: z.array(
-    z.object({
-      configurationId: z.string(),
-    })
-  ),
+  mentions: z.array(MentionSchema),
   skipToolsValidation: z.boolean().optional().default(false),
 });
 
@@ -2046,11 +2035,7 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
       z.intersection(
         z.object({
           content: z.string().min(1),
-          mentions: z.array(
-            z.object({
-              configurationId: z.string(),
-            })
-          ),
+          mentions: z.array(MentionSchema),
           context: UserMessageContextSchema,
         }),
         z
@@ -2779,6 +2764,8 @@ export type GetSpacesResponseType = z.infer<typeof GetSpacesResponseSchema>;
 const OAuthProviderSchema = FlexibleEnumSchema<
   | "confluence"
   | "confluence_tools"
+  | "discord"
+  | "fathom"
   | "freshservice"
   | "github"
   | "google_drive"
@@ -2796,7 +2783,6 @@ const OAuthProviderSchema = FlexibleEnumSchema<
   | "hubspot"
   | "mcp"
   | "mcp_static"
-  | "discord"
 >();
 
 const InternalAllowedIconSchema = FlexibleEnumSchema<

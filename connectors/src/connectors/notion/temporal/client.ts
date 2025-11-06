@@ -8,10 +8,13 @@ import {
   GARBAGE_COLLECT_QUEUE_NAME,
   QUEUE_NAME,
 } from "@connectors/connectors/notion/temporal/config";
+import type { NotionWebhookEvent } from "@connectors/connectors/notion/temporal/signals";
+import { notionWebhookSignal } from "@connectors/connectors/notion/temporal/signals";
 import {
+  notionProcessWebhooksWorkflow,
   notionSyncWorkflow,
-  updateOrphanedResourcesParentsWorkflow,
 } from "@connectors/connectors/notion/temporal/workflows/";
+import { updateOrphanedResourcesParentsWorkflow } from "@connectors/connectors/notion/temporal/workflows/";
 import { notionGarbageCollectionWorkflow } from "@connectors/connectors/notion/temporal/workflows/garbage_collection";
 import { processDatabaseUpsertQueueWorkflow } from "@connectors/connectors/notion/temporal/workflows/upsert_database_queue";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -188,6 +191,7 @@ export async function stopNotionSyncWorkflow(
 
   await stopNotionGarbageCollectorWorkflow(connectorId);
   await stopProcessDatabaseUpsertQueueWorkflow(connectorId);
+  await stopNotionWebhookProcessingWorkflow(connectorId);
 }
 
 export async function stopNotionGarbageCollectorWorkflow(
@@ -280,6 +284,47 @@ export async function stopProcessDatabaseUpsertQueueWorkflow(
   );
 }
 
+export async function stopNotionWebhookProcessingWorkflow(
+  connectorId: ModelId
+): Promise<void> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
+  }
+
+  const workflow = await getWebhookProcessingWorkflow(connectorId);
+
+  if (!workflow) {
+    logger.info(
+      { connectorId },
+      "stopNotionWebhookProcessingWorkflow: Notion webhook processing workflow not found."
+    );
+    return;
+  }
+
+  const { executionDescription: existingWorkflowExecution, handle } = workflow;
+
+  if (existingWorkflowExecution.status.name !== "RUNNING") {
+    logger.info(
+      { connectorId },
+      "stopNotionWebhookProcessingWorkflow: Notion webhook processing workflow is not running."
+    );
+    return;
+  }
+
+  logger.info(
+    { connectorId },
+    "Terminating existing Notion webhook processing workflow."
+  );
+
+  await handle.terminate();
+
+  logger.info(
+    { connectorId },
+    "Terminated Notion webhook processing workflow."
+  );
+}
+
 export async function launchUpdateOrphanedResourcesParentsWorkflow(
   connectorId: ModelId
 ) {
@@ -336,6 +381,50 @@ export async function launchProcessDatabaseUpsertQueueWorkflow(
     { connectorId },
     "launchProcessDatabaseUpsertQueueWorkflow: Started Notion process database upsert queue workflow."
   );
+}
+
+export async function getWebhookProcessingWorkflow(
+  connectorId: ModelId
+): Promise<{
+  executionDescription: WorkflowExecutionDescription;
+  handle: WorkflowHandle;
+} | null> {
+  const client = await getTemporalClient();
+
+  const handle: WorkflowHandle<typeof notionProcessWebhooksWorkflow> =
+    client.workflow.getHandle(
+      getNotionWorkflowId(connectorId, "process-webhooks")
+    );
+
+  try {
+    return { executionDescription: await handle.describe(), handle };
+  } catch (e) {
+    if (e instanceof WorkflowNotFoundError) {
+      return null;
+    }
+    throw e;
+  }
+}
+
+export async function launchNotionWebhookProcessingWorkflow(
+  connectorId: ModelId,
+  event: NotionWebhookEvent
+) {
+  const client = await getTemporalClient();
+
+  await client.workflow.signalWithStart(notionProcessWebhooksWorkflow, {
+    args: [{ connectorId }],
+    taskQueue: QUEUE_NAME,
+    workflowId: getNotionWorkflowId(connectorId, "process-webhooks"),
+    searchAttributes: {
+      connectorId: [connectorId],
+    },
+    signal: notionWebhookSignal,
+    signalArgs: [event],
+    memo: {
+      connectorId,
+    },
+  });
 }
 
 export async function getSyncWorkflow(connectorId: ModelId): Promise<{

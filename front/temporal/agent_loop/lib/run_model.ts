@@ -426,8 +426,13 @@ export async function runModelActivity(
     contextId: agentConfiguration.sId,
     userId: auth.user()?.sId,
   };
-  const llm = await getLLM(auth, { modelId: model.modelId }, traceContext);
-  const llmRunId = llm?.getRunId();
+  const llm = await getLLM(auth, {
+    modelId: model.modelId,
+    temperature: agentConfiguration.model.temperature,
+    reasoningEffort: agentConfiguration.model.reasoningEffort,
+    responseFormat: agentConfiguration.model.responseFormat,
+    context: traceContext,
+  });
   const modelInteractionStartDate = performance.now();
 
   if (llm === null) {
@@ -563,7 +568,8 @@ export async function runModelActivity(
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
         message: agentMessage,
-        runIds: [...runIds, dustRunId, ...(llmRunId ? [llmRunId] : [])],
+        // TODO(OBSERVABILITY 2025-11-04): Create a row in run with the associated usage.
+        runIds: [...runIds, dustRunId],
       },
       agentMessageRow,
       conversation,

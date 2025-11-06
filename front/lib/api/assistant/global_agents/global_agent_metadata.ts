@@ -4,15 +4,10 @@ import {
 } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
 import {
   assertNever,
-  CLAUDE_2_DEFAULT_MODEL_CONFIG,
-  CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
-  CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
-  CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
-  CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   GEMINI_2_5_PRO_MODEL_CONFIG,
   GLOBAL_AGENTS_SID,
   GPT_3_5_TURBO_MODEL_CONFIG,
@@ -37,14 +32,6 @@ type AgentMetadata = {
 
 export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
   switch (sId) {
-    case GLOBAL_AGENTS_SID.FEEDBACK_ANALYZER:
-      return {
-        sId: GLOBAL_AGENTS_SID.FEEDBACK_ANALYZER,
-        name: "Fred",
-        description:
-          "Analyze agent feedback to surface trends, themes, and actionable improvements.",
-        pictureUrl: "https://dust.tt/static/systemavatar/dust_avatar_full.png",
-      };
     case GLOBAL_AGENTS_SID.HELPER:
       return {
         sId: GLOBAL_AGENTS_SID.HELPER,
@@ -130,43 +117,11 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         description: O3_MODEL_CONFIG.description,
         pictureUrl: "https://dust.tt/static/systemavatar/o1_avatar_full.png",
       };
-    case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
-      return {
-        sId: GLOBAL_AGENTS_SID.CLAUDE_INSTANT,
-        name: "claude-instant",
-        description: CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG.description,
-        pictureUrl:
-          "https://dust.tt/static/systemavatar/claude_avatar_full.png",
-      };
-    case GLOBAL_AGENTS_SID.CLAUDE_2:
-      return {
-        sId: GLOBAL_AGENTS_SID.CLAUDE_2,
-        name: "claude-2",
-        description: CLAUDE_2_DEFAULT_MODEL_CONFIG.description,
-        pictureUrl:
-          "https://dust.tt/static/systemavatar/claude_avatar_full.png",
-      };
     case GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU:
       return {
         sId: GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU,
         name: "claude-3-haiku",
         description: CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG.description,
-        pictureUrl:
-          "https://dust.tt/static/systemavatar/claude_avatar_full.png",
-      };
-    case GLOBAL_AGENTS_SID.CLAUDE_3_OPUS:
-      return {
-        sId: GLOBAL_AGENTS_SID.CLAUDE_3_OPUS,
-        name: "claude-3-opus",
-        description: CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.description,
-        pictureUrl:
-          "https://dust.tt/static/systemavatar/claude_avatar_full.png",
-      };
-    case GLOBAL_AGENTS_SID.CLAUDE_3_SONNET:
-      return {
-        sId: GLOBAL_AGENTS_SID.CLAUDE_3_SONNET,
-        name: "claude-3.5",
-        description: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.description,
         pictureUrl:
           "https://dust.tt/static/systemavatar/claude_avatar_full.png",
       };
@@ -191,14 +146,6 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         sId: GLOBAL_AGENTS_SID.CLAUDE_4_5_HAIKU,
         name: "claude-4.5-haiku",
         description: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.description,
-        pictureUrl:
-          "https://dust.tt/static/systemavatar/claude_avatar_full.png",
-      };
-    case GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET:
-      return {
-        sId: GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET,
-        name: "claude-3.7",
-        description: CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG.description,
         pictureUrl:
           "https://dust.tt/static/systemavatar/claude_avatar_full.png",
       };

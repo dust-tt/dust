@@ -4,6 +4,7 @@ import React, { useMemo, useState } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
 
 import { TriggerFilterRenderer } from "@app/components/agent_builder/triggers/TriggerFilterRenderer";
+import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
 import { useWebhookFilterGenerator } from "@app/lib/swr/agent_triggers";
 import type { LightWorkspaceType } from "@app/types";
@@ -31,20 +32,10 @@ export function WebhookEditionFilters({
   availableEvents,
   workspace,
 }: WebhookEditionFiltersProps) {
-  const { setError, control } = useFormContext();
+  const { setError, control } = useFormContext<TriggerViewsSheetFormValues>();
 
   const selectedEvent = useWatch({ control, name: "webhook.event" });
 
-  const selectedEventSchema = useMemo<WebhookEvent | null>(() => {
-    if (!selectedEvent || !selectedPreset) {
-      return null;
-    }
-
-    return (
-      selectedPreset.events.find((event) => event.value === selectedEvent) ??
-      null
-    );
-  }, [selectedEvent, selectedPreset]);
   const {
     field: filterField,
     fieldState: { error: filterError },
@@ -67,7 +58,12 @@ export function WebhookEditionFilters({
 
   const triggerFilterGeneration = useDebounceWithAbort(
     async (txt: string, signal: AbortSignal) => {
-      if (txt.length < MIN_DESCRIPTION_LENGTH || !selectedEventSchema) {
+      if (
+        txt.length < MIN_DESCRIPTION_LENGTH ||
+        !selectedEvent ||
+        !webhookSourceView ||
+        !webhookSourceView.provider
+      ) {
         setFilterGenerationStatus("idle");
         return;
       }
@@ -75,7 +71,8 @@ export function WebhookEditionFilters({
       try {
         const result = await generateFilter({
           naturalDescription: txt,
-          eventSchema: selectedEventSchema,
+          event: selectedEvent,
+          provider: webhookSourceView.provider,
           signal,
         });
 
@@ -188,7 +185,7 @@ export function WebhookEditionFilters({
             <br />
             See documentation on{" "}
             <Link
-              href="https://docs.dust.tt/docs/filter-webhooks-payload#/f"
+              href="https://docs.dust.tt/docs/filter-webhooks-payload#/"
               target="_blank"
               rel="noreferrer"
               className="underline"
