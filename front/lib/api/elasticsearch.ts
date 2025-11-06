@@ -131,11 +131,7 @@ export function formatUTCDateFromMillis(ms: number): string {
   const y = d.getUTCFullYear();
   const m = String(d.getUTCMonth() + 1).padStart(2, "0");
   const day = String(d.getUTCDate()).padStart(2, "0");
-  let h = d.getUTCHours();
-  const min = String(d.getUTCMinutes()).padStart(2, "0");
-  const ampm = h >= 12 ? "PM" : "AM";
-  h = h % 12 || 12;
-  return `${y}-${m}-${day}, ${h}:${min}${ampm}`;
+  return `${y}-${m}-${day}`;
 }
 
 /**
