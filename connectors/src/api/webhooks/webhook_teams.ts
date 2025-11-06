@@ -152,9 +152,11 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
 
   try {
     await adapter.process(req, res, async (context) => {
-      const connector = await getConnector(context);
+      const { connector, tenantId } = await getConnector(context);
 
       const localLogger = logger.child({
+        tenantId,
+        activityType: context.activity.type,
         connectorProvider: "microsoft_bot",
         connectorId: connector?.id,
         workspaceId: connector?.workspaceId,
@@ -164,6 +166,10 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
       switch (context.activity.type) {
         case "message":
           if (!connector) {
+            localLogger.error(
+              "No Microsoft Bot configuration found for tenant"
+            );
+
             res.status(400).json({ error: "Connector not found" });
             return;
           }
@@ -176,6 +182,9 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
           break;
         case "invoke":
           if (!connector) {
+            localLogger.error(
+              "No Microsoft Bot configuration found for tenant"
+            );
             res.status(400).json({ error: "Connector not found" });
             return;
           }
@@ -213,14 +222,7 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
           break;
         case "installationUpdate":
           if (context.activity.action === "add") {
-            localLogger.info(
-              {
-                connectorProvider: "microsoft_bot",
-                activityType: context.activity.type,
-                connectorId: connector?.id,
-              },
-              "Installed app from Microsoft Teams"
-            );
+            localLogger.info("Installed app from Microsoft Teams");
 
             if (apiConfig.getIsMicrosoftPrimaryRegion()) {
               await sendActivity(context, createWelcomeAdaptiveCard());
@@ -228,14 +230,7 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
           }
 
           if (context.activity.action === "remove") {
-            localLogger.info(
-              {
-                connectorProvider: "microsoft_bot",
-                activityType: context.activity.type,
-                connectorId: connector?.id,
-              },
-              "Uninstalled app from Microsoft Teams"
-            );
+            localLogger.info("Uninstalled app from Microsoft Teams");
           }
           break;
 
