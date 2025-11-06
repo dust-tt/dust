@@ -396,14 +396,14 @@ function CheckConnectorStuck({ owner, dsId }: CheckConnectorStuckProps) {
             return (
               <div key={workflow.workflowId} className="rounded border p-2">
                 <div className="mb-1 font-semibold">{workflow.workflowId}</div>
-                <div className="text-muted-foreground">
+                <div className="text-muted-foreground dark:text-muted-foreground-night">
                   Status: {workflow.status}
                 </div>
                 <div className="mt-1 flex flex-col gap-1">
                   {workflow.stuckActivities.map((activity, idx) => (
                     <div
                       key={idx}
-                      className="rounded bg-gray-50 p-2 dark:bg-gray-800"
+                      className="rounded bg-muted-background p-2 dark:bg-muted-background-night"
                     >
                       <div>Activity: {activity.activityType}</div>
                       <div>Attempt: {activity.attempt}</div>
@@ -411,7 +411,7 @@ function CheckConnectorStuck({ owner, dsId }: CheckConnectorStuckProps) {
                         <div>Max Attempts: {activity.maximumAttempts}</div>
                       )}
                       {activity.lastFailure && (
-                        <div className="mt-1 text-red-600 dark:text-red-400">
+                        <div className="mt-1 text-warning-500">
                           Last Failure: {activity.lastFailure}
                         </div>
                       )}
