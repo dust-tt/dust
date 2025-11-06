@@ -2525,6 +2525,26 @@ const DateSchema = z
     "YYYY-MM or YYYY-MM-DD"
   );
 
+const IncludeInactiveSchema = z.preprocess((value) => {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (Array.isArray(value)) {
+    const [first] = value;
+    if (first === undefined) {
+      return undefined;
+    }
+    return first === "true" || first === true;
+  }
+  if (typeof value === "string") {
+    return value === "true";
+  }
+  if (typeof value === "boolean") {
+    return value;
+  }
+  return undefined;
+}, z.boolean().optional());
+
 export const GetWorkspaceUsageRequestSchema = z.union([
   z.object({
     start: DateSchema,
@@ -2532,6 +2552,7 @@ export const GetWorkspaceUsageRequestSchema = z.union([
     mode: z.literal("month"),
     table: SupportedUsageTablesSchema,
     format: z.enum(["csv", "json"]).optional().default("csv"),
+    includeInactive: IncludeInactiveSchema,
   }),
   z.object({
     start: DateSchema,
@@ -2539,6 +2560,7 @@ export const GetWorkspaceUsageRequestSchema = z.union([
     mode: z.literal("range"),
     table: SupportedUsageTablesSchema,
     format: z.enum(["csv", "json"]).optional().default("csv"),
+    includeInactive: IncludeInactiveSchema,
   }),
 ]);
 
