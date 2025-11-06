@@ -143,12 +143,25 @@ async function backfillAgentAnalytics(
             ],
           });
 
+          // Find the parent user message
+          if (!userMessage) {
+            logger.warn(
+              {
+                messageId: message.sId,
+                workspaceId: workspace.sId,
+              },
+              "Skipping agent message without parent user message"
+            );
+            return;
+          }
+
           const user = userMessage?.userMessage?.user;
 
           // Store the analytics
           await storeAgentAnalytics(auth, {
             message,
             user,
+            userMessage,
             agentMessage,
             conversation,
           });

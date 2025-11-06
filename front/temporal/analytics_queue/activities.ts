@@ -94,11 +94,16 @@ export async function storeAgentAnalyticsActivity(
     ],
   });
 
+  if (!userMessage) {
+    throw new Error("User message not found");
+  }
+
   const user = userMessage?.userMessage?.user;
 
   await storeAgentAnalytics(auth, {
     message,
     user,
+    userMessage,
     agentMessage,
     conversation,
   });
@@ -112,11 +117,13 @@ export async function storeAgentAnalytics(
   {
     message,
     user,
+    userMessage,
     agentMessage,
     conversation,
   }: {
     message: Message;
     user?: UserModel;
+    userMessage: Message;
     agentMessage: AgentMessage;
     conversation: ConversationModel;
   }
@@ -146,7 +153,8 @@ export async function storeAgentAnalytics(
     latency_ms: agentMessage.modelInteractionDurationMs ?? 0,
     message_id: message.sId,
     status: agentMessage.status,
-    timestamp: new Date(agentMessage.createdAt.getTime()).toISOString(),
+    // TODO(observability 21025-10-29): Use agentMessage.created timestamp to index documents
+    timestamp: new Date(userMessage.createdAt.getTime()).toISOString(),
     tokens,
     tools_used: toolsUsed,
     user_id: user?.sId ?? "unknown",
