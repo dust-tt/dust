@@ -50,6 +50,7 @@ import {
   isSlackAutoReadPatterns,
   safeParseJSON,
 } from "@app/types";
+import type { CheckStuckResponseBody } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/check-stuck";
 
 const { TEMPORAL_CONNECTORS_NAMESPACE = "" } = process.env;
 
@@ -632,6 +633,9 @@ const DataSourcePage = ({
                 icon={LockIcon}
               />
             ) : null}
+            {dataSource.connectorProvider && (
+              <CheckConnectorStuck owner={owner} dsId={dataSource.sId} />
+            )}
             {dataSource.connectorProvider === "notion" && (
               <>
                 <Button
@@ -1161,6 +1165,97 @@ function ZendeskTicketCheck({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+interface CheckConnectorStuckProps {
+  owner: WorkspaceType;
+  dsId: string;
+}
+
+function CheckConnectorStuck({ owner, dsId }: CheckConnectorStuckProps) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [result, setResult] = useState<CheckStuckResponseBody | null>(null);
+
+  const checkStuck = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(
+        `/api/poke/workspaces/${owner.sId}/data_sources/${dsId}/check-stuck`
+      );
+      if (!res.ok) {
+        const err = await res.json();
+        alert(`Failed to check connector status: ${JSON.stringify(err)}`);
+        return;
+      }
+      const data = await res.json();
+      setResult(data);
+    } catch (error) {
+      alert(`Error checking connector: ${error}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="mb-2 flex flex-col gap-2 rounded-md border px-2 py-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+      <div className="flex items-center gap-2 px-2 pt-2">
+        <Button
+          variant="outline"
+          label={isLoading ? "Checking..." : "Check if Stuck"}
+          icon={isLoading ? Spinner : MagnifyingGlassIcon}
+          disabled={isLoading}
+          onClick={checkStuck}
+        />
+      </div>
+      {result && (
+        <div className="flex flex-col gap-2 rounded-md p-4 pt-2">
+          <Chip
+            label={result.isStuck ? "Stuck!" : "Not Stuck"}
+            color={result.isStuck ? "warning" : "success"}
+          />
+          <div className="text-sm">{result.message}</div>
+          {result.isStuck && result.workflows.length > 0 && (
+            <div className="mt-2 flex flex-col gap-2">
+              {result.workflows.map((workflow) => {
+                if (workflow.stuckActivities.length === 0) {
+                  return null;
+                }
+                return (
+                  <div key={workflow.workflowId} className="rounded border p-2">
+                    <div className="mb-2 font-semibold">
+                      {workflow.workflowId}
+                    </div>
+                    <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                      Status: {workflow.status}
+                    </div>
+                    <div className="mt-2 flex flex-col gap-1">
+                      {workflow.stuckActivities.map((activity, idx) => (
+                        <div
+                          key={idx}
+                          className="rounded bg-gray-50 p-2 text-xs dark:bg-gray-800"
+                        >
+                          <div>Activity: {activity.activityType}</div>
+                          <div>Attempt: {activity.attempt}</div>
+                          {activity.maximumAttempts && (
+                            <div>Max Attempts: {activity.maximumAttempts}</div>
+                          )}
+                          {activity.lastFailure && (
+                            <div className="mt-1 text-red-600 dark:text-red-400">
+                              Last Failure: {activity.lastFailure}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
