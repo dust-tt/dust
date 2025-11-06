@@ -364,14 +364,15 @@ function applyUserIdMapping(
   userIdMapping: Map<ModelId, ModelId>,
   localLogger: typeof logger
 ): any[] {
-  // Common user-related foreign key column names
+  // User-related foreign key column names from Sequelize models
+  // Verified by scanning all models in lib/resources/storage/models and lib/models
   const userColumnNames = [
-    "userId",
-    "editedByUserId",
-    "createdByUserId",
-    "requestedByUserId",
-    "invitedByUserId",
-    "cancelledByUserId",
+    "authorId", // AgentConfiguration
+    "editedByUserId", // DataSource, DataSourceView, MCPServerView, WebhookSourcesView
+    "editor", // Trigger
+    "invitedUserId", // MembershipInvitation
+    "sharedBy", // FileShare
+    "userId", // All other models
   ];
 
   return applyIdMapping(
