@@ -494,9 +494,7 @@ export async function getUserUsageData(
     })) satisfies MembershipWithUser[];
 
     const existingEmails = new Set(
-      userUsage
-        .filter((usage) => usage.userEmail)
-        .map((usage) => usage.userEmail.toLowerCase())
+      userUsage.map((usage) => usage.userEmail?.toLowerCase())
     );
 
     memberships.forEach((membership) => {
@@ -527,6 +525,12 @@ export async function getUserUsageData(
     userUsage.sort((a, b) => {
       if (b.messageCount !== a.messageCount) {
         return b.messageCount - a.messageCount;
+      }
+      if (!b.userEmail) {
+        return -1;
+      }
+      if (!a.userEmail) {
+        return 1;
       }
       return a.userEmail.localeCompare(b.userEmail);
     });
