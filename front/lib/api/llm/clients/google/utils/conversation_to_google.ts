@@ -1,4 +1,10 @@
-import type { Content, FunctionResponse, Part, Tool } from "@google/genai";
+import type {
+  Content,
+  FunctionResponse,
+  GenerateContentConfig,
+  Part,
+  Tool,
+} from "@google/genai";
 import assert from "assert";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
@@ -10,7 +16,12 @@ import type {
   ModelMessageTypeMultiActionsWithoutContentFragment,
   TextContent,
 } from "@app/types";
-import { assertNever, isRecord, safeParseJSON } from "@app/types";
+import {
+  assertNever,
+  isRecord,
+  ResponseFormatSchema,
+  safeParseJSON,
+} from "@app/types";
 import type {
   FunctionCallContentType,
   ReasoningContentType,
@@ -195,4 +206,31 @@ export async function toContent(
     default:
       assertNever(message);
   }
+}
+
+export function toResponseFormat(
+  responseFormat: string | null
+):
+  | Pick<GenerateContentConfig, "responseJsonSchema" | "responseMimeType">
+  | undefined {
+  if (!responseFormat) {
+    return;
+  }
+
+  const responseFormatJson = safeParseJSON(responseFormat);
+  if (responseFormatJson.isErr() || responseFormatJson.value === null) {
+    return;
+  }
+
+  const responseFormatResult = ResponseFormatSchema.safeParse(
+    responseFormatJson.value
+  );
+  if (responseFormatResult.error) {
+    return;
+  }
+
+  return {
+    responseJsonSchema: responseFormatResult.data.json_schema.schema,
+    responseMimeType: "application/json",
+  };
 }

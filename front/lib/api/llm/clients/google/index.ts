@@ -4,6 +4,7 @@ import type { GoogleAIStudioWhitelistedModelId } from "@app/lib/api/llm/clients/
 import { getGoogleModelFamilyFromModelId } from "@app/lib/api/llm/clients/google/types";
 import {
   toContent,
+  toResponseFormat,
   toTool,
 } from "@app/lib/api/llm/clients/google/utils/conversation_to_google";
 import { streamLLMEvents } from "@app/lib/api/llm/clients/google/utils/google_to_events";
@@ -29,6 +30,7 @@ export class GoogleLLM extends LLM {
       context,
       modelId,
       reasoningEffort,
+      responseFormat,
       temperature,
     }: LLMParameters & { modelId: GoogleAIStudioWhitelistedModelId }
   ) {
@@ -37,6 +39,7 @@ export class GoogleLLM extends LLM {
       context,
       modelId,
       reasoningEffort,
+      responseFormat,
       temperature,
       clientId: "google_ai_studio",
     });
@@ -70,17 +73,22 @@ export class GoogleLLM extends LLM {
 
       const contents = await Promise.all(conversation.messages.map(toContent));
 
+      const maybeResponseFormat = toResponseFormat(this.responseFormat);
+
       const generateContentResponses =
         await this.client.models.generateContentStream({
           model: this.modelId,
           contents,
           config: {
             temperature: this.temperature ?? undefined,
-            tools: specifications.map(toTool),
             systemInstruction: { text: prompt },
             // We only need one
             candidateCount: 1,
             thinkingConfig,
+            // Google models does not currently support json output and tool calls in the same API call (https://discuss.ai.google.dev/t/function-calling-with-a-response-mime-type-application-json-is-unsupported/105093)
+            ...(maybeResponseFormat
+              ? maybeResponseFormat
+              : { tools: specifications.map(toTool) }),
           },
         });
 

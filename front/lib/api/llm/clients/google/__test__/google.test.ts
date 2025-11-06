@@ -5,8 +5,12 @@ import {
   getGoogleModelFamilyFromModelId,
   GOOGLE_AI_STUDIO_WHITELISTED_MODEL_IDS,
 } from "@app/lib/api/llm/clients/google/types";
-import { TEST_CONVERSATIONS } from "@app/lib/api/llm/tests/conversations";
+import {
+  TEST_CONVERSATIONS,
+  TEST_STRUCTURED_OUTPUT_CONVERSATIONS,
+} from "@app/lib/api/llm/tests/conversations";
 import { LLMClientTestSuite } from "@app/lib/api/llm/tests/LLMClientTestSuite";
+import { TEST_STRUCTURED_OUTPUT_KEYS } from "@app/lib/api/llm/tests/schemas";
 import type {
   ConfigParams,
   TestConfig,
@@ -23,6 +27,9 @@ const GOOGLE_MODEL_FAMILY_TO_TEST_CONFIGS: Record<
     { reasoningEffort: "light", temperature: 0 },
     { reasoningEffort: "medium", temperature: 1 },
     { reasoningEffort: "high" },
+    ...TEST_STRUCTURED_OUTPUT_KEYS.map((testStructuredOutputKey) => ({
+      testStructuredOutputKey,
+    })),
   ],
   "non-reasoning": [{ temperature: 1 }, { temperature: 0 }],
 };
@@ -55,8 +62,16 @@ class GoogleTestSuite extends LLMClientTestSuite {
   }
 
   protected getSupportedConversations(
-    _modelId: ModelIdType
+    _modelId: ModelIdType,
+    config: TestConfig
   ): TestConversation[] {
+    if (config.testStructuredOutputKey) {
+      // Only use specific conversation for structured output config
+      return TEST_STRUCTURED_OUTPUT_CONVERSATIONS.filter(
+        (conversation) => conversation.id === config.testStructuredOutputKey
+      );
+    }
+
     // Run all conversations for all Google models
     return TEST_CONVERSATIONS;
   }
