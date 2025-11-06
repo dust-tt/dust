@@ -1,4 +1,3 @@
-import { config as regionsConfig } from "@app/lib/api/regions/config";
 import type {
   AgentActionPublicType,
   ConversationPublicType,
@@ -297,14 +296,9 @@ async function streamAgentAnswerToSlack(
           finalAnswer,
           actions
         );
-        // Disable file upload in US region for now.
-        // TODO(2025-10-22 chris): remove this once Slack enables file:write scope
-        const currentRegion = regionsConfig.getCurrentRegion();
-        let filesUploaded: { file: Buffer; filename: string }[] = [];
-        if (currentRegion === "europe-west1") {
-          const files = actions.flatMap((action) => action.generatedFiles);
-          filesUploaded = await getFilesFromDust(files, dustAPI);
-        }
+        
+        const files = actions.flatMap((action) => action.generatedFiles);
+        const filesUploaded = await getFilesFromDust(files, dustAPI);
 
         const slackContent = slackifyMarkdown(
           normalizeContentForSlack(formattedContent)
