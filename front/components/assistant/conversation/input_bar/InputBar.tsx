@@ -336,6 +336,7 @@ export const InputBar = React.memo(function InputBar({
             onMCPServerViewSelect={handleMCPServerViewSelect}
             onMCPServerViewDeselect={handleMCPServerViewDeselect}
             attachedNodes={attachedNodes}
+            conversationId={conversationId}
           />
         </div>
       </div>

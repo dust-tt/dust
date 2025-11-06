@@ -27,6 +27,7 @@ import {
 import { ToolsPicker } from "@app/components/assistant/ToolsPicker";
 import { VoicePicker } from "@app/components/assistant/VoicePicker";
 import { getIcon } from "@app/components/resources/resources_icons";
+import { useDraftPersistence } from "@app/hooks/useDraftPersistence";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useVoiceTranscriberService } from "@app/hooks/useVoiceTranscriberService";
@@ -76,6 +77,7 @@ export interface InputBarContainerProps {
   onMCPServerViewSelect: (serverView: MCPServerViewType) => void;
   onMCPServerViewDeselect: (serverView: MCPServerViewType) => void;
   selectedMCPServerViews: MCPServerViewType[];
+  conversationId?: string | null;
 }
 
 const InputBarContainer = ({
@@ -96,8 +98,10 @@ const InputBarContainer = ({
   onMCPServerViewSelect,
   onMCPServerViewDeselect,
   selectedMCPServerViews,
+  conversationId,
 }: InputBarContainerProps) => {
   const isMobile = useIsMobile();
+  const sendNotification = useSendNotification();
   const agentSuggestions = useAgentSuggestions(agentConfigurations, owner);
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
     UrlCandidate | NodeCandidate | null
@@ -110,6 +114,17 @@ const InputBarContainer = ({
   // Create a ref to hold the editor instance
   const editorRef = useRef<Editor | null>(null);
   const pastedAttachmentIdsRef = useRef<Set<string>>(new Set());
+
+  // Draft persistence
+  const {
+    saveDraft,
+    loadDraft,
+    clearDraft,
+    hasDraft,
+  } = useDraftPersistence({
+    conversationId: conversationId || null,
+    enabled: true,
+  });
 
   const removePastedAttachmentChip = useCallback(
     (fileId: string) => {
@@ -208,8 +223,6 @@ const InputBarContainer = ({
     setNodeOrUrlCandidate(null);
   };
 
-  const sendNotification = useSendNotification();
-
   const handleInlineText = useCallback(
     async (fileId: string, textContent: string) => {
       const editorInstance = editorRef.current;
@@ -265,13 +278,59 @@ const InputBarContainer = ({
     editorRef
   );
 
+  // Load draft on mount
+  const [initialContent] = useState(() => {
+    const draft = loadDraft();
+    // Only show notification if there's actual content in the draft
+    if (draft && !disableAutoFocus) {
+      // Check if draft has meaningful content (not just empty paragraphs)
+      const hasContent = draft.content &&
+        Array.isArray(draft.content) &&
+        draft.content.some((node) => {
+          // Check if the node has actual text content
+          if (node.type === 'paragraph' && node.content && Array.isArray(node.content) && node.content.length > 0) {
+            return true;
+          }
+          // Check for mentions or other content types
+          if (node.type === 'mention') {
+            return true;
+          }
+          // Check for pasted attachments
+          if (node.type === 'pastedAttachment') {
+            return true;
+          }
+          return false;
+        });
+
+      if (hasContent) {
+        setTimeout(() => {
+          sendNotification({
+            title: "Draft restored",
+            description: "Your previous message has been restored",
+            type: "success",
+          });
+        }, 100);
+      }
+    }
+    return draft || undefined;
+  });
+
   const { editor, editorService } = useCustomEditor({
     suggestions: agentSuggestions,
-    onEnterKeyDown,
+    onEnterKeyDown: (isEmpty, markdownAndMentions, clearEditor, setLoading) => {
+      // Clear draft when message is sent
+      clearDraft();
+      onEnterKeyDown(isEmpty, markdownAndMentions, clearEditor, setLoading);
+    },
     disableAutoFocus,
     onUrlDetected: handleUrlDetected,
     suggestionHandler: agentMentionDropdown.getSuggestionHandler(),
     owner,
+    initialContent,
+    onContentChange: (content) => {
+      // Save draft on content change
+      saveDraft(content);
+    },
     onInlineText: handleInlineText,
     onLongTextPaste: async ({ text, from, to }) => {
       let filename = "";
@@ -318,6 +377,11 @@ const InputBarContainer = ({
       }
     },
   });
+
+  // Store editor reference when it's created
+  useEffect(() => {
+    editorRef.current = editor;
+  }, [editor]);
 
   useEffect(() => {
     // If an attachment disappears from the uploader, remove its chip from the editor

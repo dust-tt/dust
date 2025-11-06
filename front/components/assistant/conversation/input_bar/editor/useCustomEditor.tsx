@@ -272,6 +272,8 @@ export interface CustomEditorProps {
   }) => void;
   longTextPasteCharsThreshold?: number;
   onInlineText?: (fileId: string, textContent: string) => void;
+  initialContent?: JSONContent;
+  onContentChange?: (content: JSONContent) => void;
 }
 
 const useCustomEditor = ({
@@ -284,6 +286,8 @@ const useCustomEditor = ({
   onLongTextPaste,
   longTextPasteCharsThreshold,
   onInlineText,
+  initialContent,
+  onContentChange,
 }: CustomEditorProps) => {
   const extensions = [
     StarterKit.configure({
@@ -326,6 +330,7 @@ const useCustomEditor = ({
   const editor = useEditor({
     autofocus: disableAutoFocus ? false : "end",
     extensions,
+    content: initialContent,
     editorProps: {
       attributes: {
         class: "border-0 outline-none overflow-y-auto h-full scrollbar-hide",
@@ -346,6 +351,11 @@ const useCustomEditor = ({
         }
         return false;
       },
+    },
+    onUpdate: ({ editor }) => {
+      if (onContentChange) {
+        onContentChange(editor.getJSON());
+      }
     },
   });
 
