@@ -45,30 +45,16 @@ export function generateVizAccessToken({
   return jwt.sign(payload, secret, { algorithm: "HS256", expiresIn: "1m" });
 }
 
-export function verifyVizAccessToken(
-  token: string
-): VizAccessTokenPayload | null {
-  try {
-    const secret = config.getVizJwtSecret();
+function getRawPayloadFromToken(token: string): unknown {
+  const secret = config.getVizJwtSecret();
 
+  try {
     // Verify JWT signature.
     const rawPayload = jwt.verify(token, secret, {
       algorithms: ["HS256"],
     });
 
-    // Validate payload structure with zod schema.
-    const parseResult = VizAccessTokenPayloadSchema.safeParse(rawPayload);
-    if (!parseResult.success) {
-      logger.error(
-        {
-          error: parseResult.error.flatten(),
-        },
-        "Invalid viz access token payload structure"
-      );
-      return null;
-    }
-
-    return parseResult.data;
+    return rawPayload;
   } catch (error) {
     logger.error(
       {
@@ -76,7 +62,29 @@ export function verifyVizAccessToken(
       },
       "Failed to verify viz access token"
     );
-
     return null;
   }
+}
+
+export function verifyVizAccessToken(
+  token: string
+): VizAccessTokenPayload | null {
+  const rawPayload = getRawPayloadFromToken(token);
+  if (rawPayload === null) {
+    return null;
+  }
+
+  // Validate payload structure with zod schema.
+  const parseResult = VizAccessTokenPayloadSchema.safeParse(rawPayload);
+  if (!parseResult.success) {
+    logger.error(
+      {
+        error: parseResult.error.flatten(),
+      },
+      "Invalid viz access token payload structure"
+    );
+    return null;
+  }
+
+  return parseResult.data;
 }
