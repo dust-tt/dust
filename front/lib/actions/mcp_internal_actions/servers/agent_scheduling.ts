@@ -12,9 +12,55 @@ import { Message } from "@app/lib/models/assistant/conversation";
 import { AgentScheduledExecutionResource } from "@app/lib/resources/agent_scheduled_execution_resource";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import { makeScheduledAgentLoopWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
+import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
 const MAX_DELAY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+function validateAndParseDelay(delay: string): Result<number, MCPError> {
+  let delayMs: number;
+  try {
+    delayMs = ms(delay);
+  } catch (e) {
+    const cause = normalizeError(e);
+    return new Err(
+      new MCPError(
+        `Invalid delay format: "${delay}". Error: ${cause.message}`,
+        { cause }
+      )
+    );
+  }
+
+  if (isNaN(delayMs)) {
+    return new Err(
+      new MCPError(
+        `Invalid delay format: "${delay}". ` +
+          'Please use a valid time string like "2 hours", "30 minutes", "1 day".'
+      )
+    );
+  }
+
+  if (delayMs <= 0) {
+    return new Err(
+      new MCPError("Delay must be a positive duration.", {
+        tracked: false,
+      })
+    );
+  }
+
+  if (delayMs > MAX_DELAY_MS) {
+    return new Err(
+      new MCPError(
+        `Delay exceeds maximum allowed duration of 7 days (${MAX_DELAY_MS}ms). Requested: ${delayMs}ms.`,
+        {
+          tracked: false,
+        }
+      )
+    );
+  }
+
+  return new Ok(delayMs);
+}
 
 function createServer(
   auth: Authenticator,
@@ -55,37 +101,11 @@ function createServer(
         const agentMessageId = agentMessage.sId;
         const conversationId = conversation.sId;
 
-        let delayMs: number;
-        try {
-          delayMs = ms(delay);
-          if (isNaN(delayMs)) {
-            return new Err(
-              new MCPError(
-                `Invalid delay format: "${delay}". Please use a valid time string like "2 hours", "30 minutes", "1 day".`
-              )
-            );
-          }
-        } catch (e) {
-          const cause = normalizeError(e);
-          return new Err(
-            new MCPError(
-              `Invalid delay format: "${delay}". Error: ${cause.message}`,
-              { cause }
-            )
-          );
+        const parseResult = validateAndParseDelay(delay);
+        if (parseResult.isErr()) {
+          return parseResult;
         }
-
-        if (delayMs <= 0) {
-          return new Err(new MCPError("Delay must be a positive duration."));
-        }
-
-        if (delayMs > MAX_DELAY_MS) {
-          return new Err(
-            new MCPError(
-              `Delay exceeds maximum allowed duration of 7 days (${MAX_DELAY_MS}ms). Requested: ${delayMs}ms.`
-            )
-          );
-        }
+        const delayMs = parseResult.value;
 
         if (!agentMessage.parentMessageId) {
           return new Err(
