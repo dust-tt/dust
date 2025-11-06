@@ -212,15 +212,14 @@ export async function getPagesAndDatabasesEditedSince({
       );
       tries += 1;
       if (tries >= retry.retries) {
+        // We've observed some Notion workspaces where searching for databases consistently fails
+        // with a 400 cursor error. Since we've already retried a few times, we just log a warning
+        // and return an empty result set to avoid blocking the workflow entirely.
         if (
           filter === "database" &&
           APIResponseError.isAPIResponseError(e) &&
           e.status === 400
         ) {
-          // We've observed some Notion workspaces where searching for databases
-          // consistently fails with a 400 cursor error. Since we've already retried
-          // a few times, we just log a warning and return an empty result set to
-          // avoid blocking the workflow entirely.
           tryLogger.warn("Ignoring repeated 400 errors for database search.");
           return { pages: [], dbs: [], nextCursor: null };
         }
