@@ -6,7 +6,6 @@ import mainLogger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
-import { normalizeError } from "@connectors/types";
 
 const logger = mainLogger.child({ provider: "notion" });
 
@@ -16,6 +15,7 @@ type NotionWebhookVerification = {
   verification_token: string;
 };
 
+// TODO: Harden typing with union of expected events
 type NotionWebhookEventPayload = {
   workspace_id: string;
   type: string;
@@ -110,33 +110,20 @@ const _webhookNotionAPIHandler = async (
   logger.info(
     {
       connectorId: connector.id,
+      notionWorkspaceId,
       type: payload.type,
       entity: payload.entity?.id,
     },
     "Received Notion webhook event"
   );
 
-  if (payload.entity == null) {
-    logger.warn(
-      {
-        connectorId: connector.id,
-        payload,
-      },
-      "Received Notion webhook event with no entity, skipping."
-    );
-    return res.status(200).end();
-  }
-
   // Launch or signal the webhook processing workflow
   try {
-    await launchNotionWebhookProcessingWorkflow(connector.id, {
-      type: payload.type,
-      entity_id: payload.entity?.id,
-    });
+    await launchNotionWebhookProcessingWorkflow(connector.id, payload);
   } catch (err) {
     logger.error(
       {
-        err: normalizeError(err),
+        err,
         connectorId: connector.id,
         notionWorkspaceId,
       },
