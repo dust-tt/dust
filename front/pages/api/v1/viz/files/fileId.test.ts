@@ -1,63 +1,9 @@
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import type { PublicPostConversationsRequestBody } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createMocks } from "node-mocks-http";
 import { Readable } from "stream";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
-// Mock Redis connection to prevent REDIS_URI errors
-vi.mock("@app/lib/api/redis", () => ({
-  getRedisClient: vi.fn().mockReturnValue({
-    get: vi.fn().mockResolvedValue(null),
-    set: vi.fn().mockResolvedValue("OK"),
-    incr: vi.fn().mockResolvedValue(1),
-    expire: vi.fn().mockResolvedValue(1),
-    ttl: vi.fn().mockResolvedValue(-1),
-    del: vi.fn().mockResolvedValue(1),
-  }),
-}));
-
-// Mock the cache utility to prevent Redis calls
-vi.mock("@app/lib/utils/cache", async () => {
-  const actual = await vi.importActual("@app/lib/utils/cache");
-  return {
-    ...actual,
-    cacheWithRedis: vi.fn().mockImplementation((fn, resolver, options) => {
-      // Return a function that bypasses caching and calls the original function
-      return async (...args: any[]) => {
-        // For seat counting, return a mock value directly
-        const key = resolver(...args);
-        if (key.includes("seats") || key.includes("active")) {
-          return 100; // Mock 100 active seats
-        }
-        // For other cached functions, call the original
-        return await fn(...args);
-      };
-    }),
-    invalidateCacheWithRedis: vi.fn().mockResolvedValue(undefined),
-  };
-});
-
-// Mock the rate limiter functions
-vi.mock("@app/lib/utils/rate_limiter", () => ({
-  rateLimiter: vi.fn().mockResolvedValue(999), // Return high number = no limit
-  getTimeframeSecondsFromLiteral: vi.fn().mockReturnValue(60),
-}));
-
-// Mock rate limit key generators
-vi.mock("@app/lib/api/assistant/rate_limits", () => ({
-  makeMessageRateLimitKeyForWorkspace: vi
-    .fn()
-    .mockReturnValue("test-message-key"),
-  makeAgentMentionsRateLimitKeyForWorkspace: vi
-    .fn()
-    .mockReturnValue("test-mentions-key"),
-}));
-
-// Mock seat counting functions directly
-vi.mock("@app/lib/plans/usage/seats", () => ({
-  countActiveSeatsInWorkspace: vi.fn().mockResolvedValue(100),
-  countActiveSeatsInWorkspaceCached: vi.fn().mockResolvedValue(100),
-}));
 
 import { generateVizAccessToken } from "@app/lib/api/viz/access_tokens";
 import { mentionAgent } from "@app/lib/mentions";
@@ -70,6 +16,18 @@ import { frameContentType } from "@app/types/files";
 
 import publicConversationsHandler from "../../w/[wId]/assistant/conversations/index";
 import handler from "./[fileId]";
+
+// Mock the rate limiter functions.
+vi.mock("@app/lib/utils/rate_limiter", () => ({
+  rateLimiter: vi.fn().mockResolvedValue(999), // Return high number = no limit
+  getTimeframeSecondsFromLiteral: vi.fn().mockReturnValue(60),
+}));
+
+// Mock seat counting functions directly.
+vi.mock("@app/lib/plans/usage/seats", () => ({
+  countActiveSeatsInWorkspace: vi.fn().mockResolvedValue(100),
+  countActiveSeatsInWorkspaceCached: vi.fn().mockResolvedValue(100),
+}));
 
 describe("/api/v1/viz/files/[fileId] security tests", () => {
   let workspace: LightWorkspaceType;
@@ -634,8 +592,6 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       const parentConversation = parentData.conversation;
       const parentMessageId = parentData.message.sId;
 
-      console.log("Parent conversation created:", parentConversation.id);
-
       const { req: childReq, res: childRes } = await createPublicApiMockRequest(
         {
           method: "POST",
@@ -678,8 +634,6 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       expect(childRes._getStatusCode()).toBe(200);
       const childData = childRes._getJSONData();
       const childConversation = childData.conversation;
-
-      console.log("Child conversation created:", childConversation.id);
 
       // Create frame file in parent conversation A.
       const frameFile = await FileFactory.create(workspace, null, {
@@ -737,8 +691,8 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
 
     it("should reject access to files from unrelated conversations", async () => {
       const {
-        req: parentReq,
-        res: parentRes,
+        req: firstConvReq,
+        res: firstConvRes,
         workspace,
         key,
       } = await createPublicApiMockRequest({
@@ -746,14 +700,14 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       });
 
       // Create conversation A using API.
-      const parentBody: PublicPostConversationsRequestBody = {
-        title: "Parent Conversation",
+      const conversationABody: PublicPostConversationsRequestBody = {
+        title: "Conversation A",
         visibility: "unlisted",
         message: {
           content: `${mentionAgent({
             name: "noop",
             sId: "noop",
-          })} Hello from parent`,
+          })} Hello from conversation A`,
           mentions: [{ configurationId: "noop" }],
           context: {
             timezone: "UTC",
@@ -766,37 +720,36 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
         },
       };
 
-      parentReq.body = parentBody;
-      parentReq.query.wId = workspace.sId;
+      firstConvReq.body = conversationABody;
+      firstConvReq.query.wId = workspace.sId;
 
-      await publicConversationsHandler(parentReq, parentRes);
+      await publicConversationsHandler(firstConvReq, firstConvRes);
 
-      expect(parentRes._getStatusCode()).toBe(200);
-      const parentData = parentRes._getJSONData();
-      const conversationA = parentData.conversation;
+      expect(firstConvRes._getStatusCode()).toBe(200);
+      const firstConvData = firstConvRes._getJSONData();
+      const conversationA = firstConvData.conversation;
 
-      const { req: otherReq, res: otherRes } = await createPublicApiMockRequest(
-        {
+      const { req: conversationBReq, res: conversationBRes } =
+        await createPublicApiMockRequest({
           method: "POST",
-        }
-      );
+        });
 
       // Use a new request to avoid state carry-over. But reuse same workspace and key.
-      otherReq.headers = {
+      conversationBReq.headers = {
         authorization: "Bearer " + key.secret,
       };
-      otherReq.query.wId = workspace.sId;
+      conversationBReq.query.wId = workspace.sId;
 
       // Create another unrelated conversation B using API.
       const body: PublicPostConversationsRequestBody = {
-        title: "Another Conversation",
+        title: "Conversation B",
         visibility: "unlisted",
         depth: 0,
         message: {
           content: `${mentionAgent({
             name: "noop",
             sId: "noop",
-          })} Hello from child`,
+          })} Hello from conversation B`,
           mentions: [{ configurationId: "noop" }],
           context: {
             timezone: "UTC",
@@ -809,13 +762,13 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
         },
       };
 
-      otherReq.body = body;
+      conversationBReq.body = body;
 
-      await publicConversationsHandler(otherReq, otherRes);
+      await publicConversationsHandler(conversationBReq, conversationBRes);
 
-      expect(otherRes._getStatusCode()).toBe(200);
-      const childData = otherRes._getJSONData();
-      const conversationB = childData.conversation;
+      expect(conversationBRes._getStatusCode()).toBe(200);
+      const conversationBData = conversationBRes._getJSONData();
+      const conversationB = conversationBData.conversation;
 
       // Create frame file in conversation A.
       const frameFile = await FileFactory.create(workspace, null, {
