@@ -2,7 +2,7 @@ import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
 import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
 import { updateAnalyticsFeedback } from "@app/lib/analytics/feedback";
 import { calculateTokenUsageCost } from "@app/lib/api/assistant/token_pricing";
-import { ANALYTICS_ALIAS_NAME, getClient } from "@app/lib/api/elasticsearch";
+import { ANALYTICS_ALIAS_NAME, withEs } from "@app/lib/api/elasticsearch";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import type { AgentMessageFeedback } from "@app/lib/models/assistant/conversation";
@@ -17,8 +17,6 @@ import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_f
 import { RunResource } from "@app/lib/resources/run_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import logger from "@app/logger/logger";
-import { normalizeError } from "@app/types";
 import type {
   AgentLoopArgs,
   AgentMessageRef,
@@ -144,20 +142,20 @@ export async function storeAgentAnalytics(
     : [];
 
   // Build the complete analytics document.
-  const document = {
+  const document: AgentMessageAnalyticsData = {
     agent_id: agentAgentMessageRow.agentConfigurationId,
     agent_version: agentAgentMessageRow.agentConfigurationVersion.toString(),
     conversation_id: conversationRow.sId,
     latency_ms: agentAgentMessageRow.modelInteractionDurationMs ?? 0,
     message_id: agentMessageRow.sId,
     status: agentAgentMessageRow.status,
-    // TODO(observability 21025-10-29): Use agentMessage.created timestamp to index documents
-    timestamp: new Date(userMessageRow.createdAt.getTime()).toISOString(),
+    timestamp: new Date(agentMessageRow.createdAt).toISOString(),
     tokens,
     tools_used: toolsUsed,
     user_id: userUserMessageRow.user?.sId ?? "unknown",
     workspace_id: auth.getNonNullableWorkspace().sId,
     feedbacks,
+    version: agentMessageRow.version.toString(),
   };
 
   await storeToElasticsearch(document);
@@ -260,35 +258,37 @@ async function collectToolUsageFromMessage(
   });
 }
 
+function makeAgentMessageAnalyticsDocumentId({
+  messageId,
+  version,
+  workspaceId,
+}: {
+  messageId: string;
+  version: string;
+  workspaceId: string;
+}): string {
+  return `${workspaceId}_${messageId}_${version}`;
+}
+
 /**
  * Store document directly to Elasticsearch.
  */
 async function storeToElasticsearch(
   document: AgentMessageAnalyticsData
 ): Promise<void> {
-  const esClient = await getClient();
+  const documentId = makeAgentMessageAnalyticsDocumentId({
+    messageId: document.message_id,
+    version: document.version,
+    workspaceId: document.workspace_id,
+  });
 
-  const documentId = `${document.workspace_id}_${document.message_id}_${document.timestamp}`;
-
-  try {
-    await esClient.index({
+  await withEs(async (client) => {
+    await client.index({
       index: ANALYTICS_ALIAS_NAME,
       id: documentId,
       body: document,
     });
-  } catch (error) {
-    logger.error(
-      {
-        documentId,
-        error: normalizeError(error),
-        index: ANALYTICS_ALIAS_NAME,
-        messageId: document.message_id,
-      },
-      "Failed to index document in Elasticsearch"
-    );
-
-    throw error;
-  }
+  });
 }
 
 function getAgentMessageFeedbacksAnalytics(
@@ -340,38 +340,20 @@ export async function storeAgentMessageFeedbackActivity(
 
   const agentMessageModel = agentMessageRow.agentMessage;
 
-  const userMessageRow = await Message.findOne({
-    where: {
-      id: agentMessageRow.parentId,
-      conversationId: agentMessageRow.conversationId,
-      workspaceId: workspace.id,
-    },
-    include: [
-      {
-        model: UserMessage,
-        as: "userMessage",
-        required: true,
-      },
-    ],
-  });
-
-  if (!userMessageRow?.userMessage) {
-    throw new Error(
-      `User message not found for agent message: ${message.agentMessageId}`
-    );
-  }
-
   const agentMessageFeedbacks =
     await AgentMessageFeedbackResource.listByAgentMessageModelId(
       auth,
       agentMessageModel.id
     );
 
-  await updateAnalyticsFeedback(auth, {
-    message: {
-      sId: agentMessageRow.sId,
+  await updateAnalyticsFeedback(
+    {
+      documentId: makeAgentMessageAnalyticsDocumentId({
+        messageId: message.agentMessageId,
+        version: agentMessageRow.version.toString(),
+        workspaceId: workspace.sId,
+      }),
     },
-    createdTimestamp: userMessageRow.createdAt.getTime(),
-    feedbacks: getAgentMessageFeedbacksAnalytics(agentMessageFeedbacks),
-  });
+    getAgentMessageFeedbacksAnalytics(agentMessageFeedbacks)
+  );
 }

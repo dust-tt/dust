@@ -77,8 +77,6 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "accounts/fireworks/models/kimi-k2-instruct" // fireworks
   | "grok-3-latest" // xAI
   | "grok-3-mini-latest" // xAI
-  | "grok-3-fast-latest" // xAI
-  | "grok-3-mini-fast-latest" // xAI
   | "grok-4-latest" // xAI
   | "grok-4-fast-non-reasoning-latest"
   | "grok-4-fast-reasoning-latest"
@@ -651,7 +649,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "elevenlabs_tool"
   | "freshservice_tool"
   | "google_ai_studio_experimental_models_feature"
-  | "gemini_image_generation"
   | "google_sheets_tool"
   | "hootl_dev_webhooks"
   | "hootl_subscriptions"

@@ -3,8 +3,6 @@ import flatMap from "lodash/flatMap";
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import type { ModelIdType } from "@app/types";
 import {
-  GROK_3_FAST_MODEL_ID,
-  GROK_3_MINI_FAST_MODEL_ID,
   GROK_3_MINI_MODEL_ID,
   GROK_3_MODEL_ID,
   GROK_4_FAST_NON_REASONING_MODEL_ID,
@@ -26,12 +24,7 @@ export const XAI_MODEL_FAMILIES_CONFIGS: Record<
   }
 > = {
   "no-vision": {
-    modelIds: [
-      GROK_3_MODEL_ID,
-      GROK_3_MINI_MODEL_ID,
-      GROK_3_FAST_MODEL_ID,
-      GROK_3_MINI_FAST_MODEL_ID,
-    ],
+    modelIds: [GROK_3_MODEL_ID, GROK_3_MINI_MODEL_ID],
     overwrites: { reasoningEffort: null },
   },
   "non-reasoning": {
