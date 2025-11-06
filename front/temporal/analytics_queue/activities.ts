@@ -98,7 +98,7 @@ export async function storeAgentAnalyticsActivity(
 }
 
 /**
- * Build and storethe complete analytics document for an agent message.
+ * Build and store the complete analytics document for an agent message.
  */
 export async function storeAgentAnalytics(
   auth: Authenticator,
