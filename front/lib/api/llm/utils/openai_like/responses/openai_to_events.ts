@@ -98,12 +98,13 @@ function itemToEvents(
         },
       ];
     case "reasoning":
+      const encrypted_content = item.encrypted_content ?? undefined;
       return item.summary.map((summary) => ({
         type: "reasoning_generated",
         content: {
           text: summary.text,
         },
-        metadata: { ...metadata, id: item.id },
+        metadata: { ...metadata, id: item.id, encrypted_content },
       }));
     default:
       // TODO(LLM-Router 2025-10-28): Send error event
