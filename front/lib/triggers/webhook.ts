@@ -18,10 +18,8 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
-import {
-  WEBHOOK_PRESETS,
-  type WebhookSourceForAdminType,
-} from "@app/types/triggers/webhooks";
+import type { WebhookSourceForAdminType } from "@app/types/triggers/webhooks";
+import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
 const WORKSPACE_MESSAGE_LIMIT_MULTIPLIER = 0.5; // 50% of workspace message limit
 

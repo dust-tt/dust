@@ -21,7 +21,7 @@ import type {
 } from "@app/pages/api/w/[wId]/assistant/agent_configurations/webhook_filter_generator";
 import type { GetUserTriggersResponseBody } from "@app/pages/api/w/[wId]/me/triggers";
 import type { GetTriggerEstimationResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/[webhookSourceId]/trigger-estimation";
-import type { LightWorkspaceType, ModelId } from "@app/types";
+import type { LightWorkspaceType } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
 
@@ -324,11 +324,7 @@ export function useRemoveTriggerSubscriber({
   return removeSubscriber;
 }
 
-export function useTriggerEstimation({
-  workspaceId,
-}: {
-  workspaceId: string;
-}) {
+export function useTriggerEstimation({ workspaceId }: { workspaceId: string }) {
   const sendNotification = useSendNotification();
 
   const computeEstimation = useCallback(
