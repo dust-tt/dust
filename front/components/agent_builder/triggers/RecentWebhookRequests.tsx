@@ -1,7 +1,9 @@
 import {
+  Button,
   CollapsibleComponent,
   Label,
   Markdown,
+  Separator,
   Spinner,
 } from "@dust-tt/sparkle";
 import moment from "moment";
@@ -122,49 +124,45 @@ function RecentWebhookRequestsContent({
           </p>
         </div>
       )}
-      {webhookRequests.map((request) => (
-        <div
-          key={request.id}
-          className="bg-secondary dark:bg-secondary-night rounded-lg border border-border p-3 dark:border-border-night"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span
-                className="text-sm font-medium text-foreground dark:text-foreground-night"
-                title={new Date(request.timestamp).toLocaleString()}
-              >
+      <div className="flex flex-col gap-1">
+        {webhookRequests.map((request) => (
+          <>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
                 {moment(new Date(request.timestamp)).fromNow()}
-              </span>
-              <WebhookRequestStatusBadge status={request.status} />
-            </div>
-            {request.payload && (
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setExpandedRequestId(
-                    expandedRequestId === request.id ? null : request.id
-                  );
-                }}
-                className="text-action-secondary hover:text-action-secondary-hover dark:text-action-secondary-night dark:hover:text-action-secondary-hover-night text-xs"
-              >
-                {expandedRequestId === request.id ? "Hide" : "View"} Payload
-              </button>
-            )}
-          </div>
-
-          {expandedRequestId === request.id && request.payload && (
-            <div className="mt-3 rounded bg-background p-2 dark:bg-background-night">
-              <pre className="max-h-48 overflow-auto text-xs text-foreground dark:text-foreground-night">
-                <Markdown
-                  forcedTextSize="xs"
-                  content={`\`\`\`json\n${JSON.stringify(request.payload.body, null, 2)}\n\`\`\``}
+                <WebhookRequestStatusBadge status={request.status} />
+              </div>
+              {request.payload && (
+                <Button
+                  onClick={() => {
+                    setExpandedRequestId(
+                      expandedRequestId === request.id ? null : request.id
+                    );
+                  }}
+                  label={
+                    expandedRequestId === request.id
+                      ? "Hide Payload"
+                      : "View Payload"
+                  }
+                  variant="outline"
                 />
-              </pre>
+              )}
             </div>
-          )}
-        </div>
-      ))}
+
+            {expandedRequestId === request.id && request.payload && (
+              <div className="rounded">
+                <pre className="max-h-64 overflow-auto text-xs">
+                  <Markdown
+                    forcedTextSize="xs"
+                    content={`\`\`\`json\n${JSON.stringify(request.payload.body, null, 2)}\n\`\`\``}
+                  />
+                </pre>
+              </div>
+            )}
+            <Separator />
+          </>
+        ))}
+      </div>
     </div>
   );
 }

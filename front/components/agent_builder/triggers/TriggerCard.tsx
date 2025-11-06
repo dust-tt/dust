@@ -61,7 +61,8 @@ export const TriggerCard = ({
             ? "by " + trigger.configuration.event + " events"
             : "") +
           " on " +
-          webhookSourceView?.customName +
+          (webhookSourceView?.customName ??
+            webhookSourceView?.webhookSource.name) +
           "'s source."
         );
       }
