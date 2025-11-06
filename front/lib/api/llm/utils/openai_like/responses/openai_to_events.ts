@@ -7,6 +7,7 @@ import type {
 } from "openai/resources/responses/responses";
 import type { Response } from "openai/resources/responses/responses";
 
+import { SuccessAggregate } from "@app/lib/api/llm/types/aggregates";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
@@ -16,15 +17,27 @@ export async function* streamLLMEvents(
   responseStreamEvents: AsyncIterable<ResponseStreamEvent>,
   metadata: LLMClientMetadata
 ): AsyncGenerator<LLMEvent> {
+  const aggregate = new SuccessAggregate();
+
   for await (const event of responseStreamEvents) {
     const outputEvents = toEvents({
       event,
       metadata,
     });
     for (const outputEvent of outputEvents) {
+      aggregate.add(outputEvent);
       yield outputEvent;
     }
   }
+
+  yield {
+    type: "success",
+    aggregated: aggregate.aggregated,
+    textGenerated: aggregate.textGenerated,
+    reasoningGenerated: aggregate.reasoningGenerated,
+    toolCalls: aggregate.toolCalls,
+    metadata,
+  };
 }
 
 function textDelta(delta: string, metadata: LLMClientMetadata): LLMEvent {

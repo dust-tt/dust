@@ -71,7 +71,10 @@ export interface TokenUsageEvent {
 
 export interface SuccessCompletionEvent {
   type: "success";
-  content: LLMOutputItem[];
+  aggregated: LLMOutputItem[];
+  textGenerated?: TextGeneratedEvent;
+  reasoningGenerated?: ReasoningGeneratedEvent;
+  toolCalls?: ToolCallEvent[];
   metadata: LLMClientMetadata;
 }
 

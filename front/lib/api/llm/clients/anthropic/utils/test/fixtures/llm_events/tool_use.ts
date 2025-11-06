@@ -58,4 +58,61 @@ export const toolUseLLMEvents: LLMEvent[] = [
       modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
     },
   },
+  {
+    type: "success",
+    aggregated: [
+      {
+        type: "text_generated",
+        content: {
+          text: "Hello, how are you ?",
+        },
+        metadata: {
+          clientId: "anthropic" as const,
+          modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
+        },
+      },
+      {
+        type: "tool_call",
+        content: {
+          id: "DdHr7L197",
+          name: "web_search_browse__websearch",
+          arguments:
+            '{"query":"Paris France weather forecast October 23 2025"}',
+        },
+        metadata: {
+          clientId: "anthropic" as const,
+          modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
+        },
+      },
+    ],
+    textGenerated: {
+      type: "text_generated",
+      content: {
+        text: "Hello, how are you ?",
+      },
+      metadata: {
+        clientId: "anthropic" as const,
+        modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
+      },
+    },
+    toolCalls: [
+      {
+        type: "tool_call",
+        content: {
+          id: "DdHr7L197",
+          name: "web_search_browse__websearch",
+          arguments:
+            '{"query":"Paris France weather forecast October 23 2025"}',
+        },
+        metadata: {
+          clientId: "anthropic" as const,
+          modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
+        },
+      },
+    ],
+    metadata: {
+      clientId: "anthropic" as const,
+      modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
+    },
+  },
 ];

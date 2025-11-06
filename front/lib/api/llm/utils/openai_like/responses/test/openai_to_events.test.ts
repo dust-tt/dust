@@ -9,7 +9,7 @@ import { reasoningModelOutput } from "@app/lib/api/llm/utils/openai_like/respons
 
 const metadata = {
   clientId: "openai_responses",
-  modelId: "gpt-4.1-2025-04-14",
+  modelId: "gpt-5",
 } as const;
 
 describe("streamLLMEvents", () => {
@@ -24,9 +24,7 @@ describe("streamLLMEvents", () => {
       result.push(event);
     }
 
-    expect(result).toEqual(
-      functionCallLLMEvents.map((e) => ({ ...e, metadata }))
-    );
+    expect(result).toEqual(functionCallLLMEvents);
   });
   it("should convert events with reasoning", async () => {
     const responseStreamEvents = createAsyncGenerator(reasoningModelOutput);
@@ -39,11 +37,6 @@ describe("streamLLMEvents", () => {
       result.push(event);
     }
 
-    expect(result).toEqual(
-      reasoningLLMEvents.map((e) => ({
-        ...e,
-        metadata: { ...e.metadata, ...metadata },
-      }))
-    );
+    expect(result).toEqual(reasoningLLMEvents);
   });
 });
