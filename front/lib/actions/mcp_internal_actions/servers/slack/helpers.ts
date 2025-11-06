@@ -283,11 +283,14 @@ export async function executePostMessage(
   );
   message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${agentLoopContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
 
-  // If a file is provided, upload it as attachment of the original message.
   const currentRegion = regionsConfig.getCurrentRegion();
+  // Disable file upload in US region for now.
+  // TODO(2025-10-22 chris): remove this once Slack enables file:write scope
   if (currentRegion === "us-central1") {
-    fileId = undefined; // TODO(2025-10-22 chris): remove this once Slack enables file:write scope
+    fileId = undefined;
   }
+
+  // If a file is provided, upload it as attachment of the original message.
   if (fileId) {
     const file = await FileResource.fetchById(auth, fileId);
     if (!file) {

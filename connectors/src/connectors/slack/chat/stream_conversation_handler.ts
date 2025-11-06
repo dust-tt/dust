@@ -297,8 +297,10 @@ async function streamAgentAnswerToSlack(
           finalAnswer,
           actions
         );
+        // Disable file upload in US region for now.
+        // TODO(2025-10-22 chris): remove this once Slack enables file:write scope
         const currentRegion = regionsConfig.getCurrentRegion();
-        let filesUploaded: { file: Buffer; filename: string }[] = []; // TODO(2025-10-22 chris): remove this once Slack enables file:write scope
+        let filesUploaded: { file: Buffer; filename: string }[] = [];
         if (currentRegion === "europe-west1") {
           const files = actions.flatMap((action) => action.generatedFiles);
           filesUploaded = await getFilesFromDust(files, dustAPI);
