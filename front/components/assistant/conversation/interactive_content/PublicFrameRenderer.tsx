@@ -21,7 +21,7 @@ export function PublicFrameRenderer({
   shareToken,
   workspaceId,
 }: PublicFrameRendererProps) {
-  const { frameContent, conversationUrl, isFrameLoading, error } =
+  const { conversationUrl, isFrameLoading, error, accessToken } =
     usePublicFrame({
       shareToken,
     });
@@ -30,23 +30,6 @@ export function PublicFrameRenderer({
     revalidateOnFocus: false,
     revalidateIfStale: false,
   });
-
-  const getFileBlob = React.useCallback(
-    async (fileId: string): Promise<Blob | null> => {
-      const response = await fetch(
-        `/api/v1/public/frames/${shareToken}/files/${fileId}`
-      );
-      if (!response.ok) {
-        return null;
-      }
-
-      const resBuffer = await response.arrayBuffer();
-      return new Blob([resBuffer], {
-        type: response.headers.get("Content-Type") ?? undefined,
-      });
-    },
-    [shareToken]
-  );
 
   if (isFrameLoading) {
     return (
@@ -81,14 +64,13 @@ export function PublicFrameRenderer({
             conversationId={null}
             workspaceId={workspaceId}
             visualization={{
-              code: frameContent ?? "",
+              accessToken,
               complete: true,
               identifier: `viz-${fileId}`,
             }}
             key={`viz-${fileId}`}
             isInDrawer
             isPublic
-            getFileBlob={getFileBlob}
           />
         </div>
       </div>

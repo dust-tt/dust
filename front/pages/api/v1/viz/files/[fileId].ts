@@ -1,7 +1,7 @@
-import type { PublicFrameResponseBodyType } from "@dust-tt/client";
+/* eslint-disable dust/enforce-client-types-in-public-api */
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getAuthForSharedEndpointWorkspaceMembersOnly } from "@app/lib/api/auth_wrappers";
+import { verifyVizAccessToken } from "@app/lib/api/viz/access_tokens";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -12,11 +12,12 @@ import { frameContentType, isString } from "@app/types";
 /**
  * @ignoreswagger
  *
- * Undocumented API endpoint to get files used in a frame.
+ * Undocumented API endpoint to get files used in a vizualisation. This endpoint is only called
+ * when rendering vizualisations with an access token.
  */
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PublicFrameResponseBodyType>>
+  res: NextApiResponse<WithAPIErrorResponse<never>>
 ): Promise<void> {
   if (req.method !== "GET") {
     return apiError(req, res, {
@@ -28,8 +29,8 @@ async function handler(
     });
   }
 
-  const { token, fileId } = req.query;
-  if (!isString(token) || !isString(fileId)) {
+  const { fileId } = req.query;
+  if (!isString(fileId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -39,7 +40,55 @@ async function handler(
     });
   }
 
-  const result = await FileResource.fetchByShareTokenWithContent(token);
+  // Extract and validate access token from Authorization header.
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return apiError(req, res, {
+      status_code: 401,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "Authorization header required.",
+      },
+    });
+  }
+
+  const bearerPrefix = "Bearer ";
+  if (!authHeader.startsWith(bearerPrefix)) {
+    return apiError(req, res, {
+      status_code: 401,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "Authorization header must use Bearer token format.",
+      },
+    });
+  }
+
+  const accessToken = authHeader.substring(bearerPrefix.length).trim();
+  if (!accessToken) {
+    return apiError(req, res, {
+      status_code: 401,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "Access token is required.",
+      },
+    });
+  }
+
+  const tokenPayload = verifyVizAccessToken(accessToken);
+  if (!tokenPayload) {
+    return apiError(req, res, {
+      status_code: 401,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "Invalid or expired access token.",
+      },
+    });
+  }
+
+  // Get file info using the fileToken from the access token.
+  const result = await FileResource.fetchByShareTokenWithContent(
+    tokenPayload.fileToken
+  );
   if (!result) {
     return apiError(req, res, {
       status_code: 404,
@@ -64,6 +113,17 @@ async function handler(
   }
 
   const { file: frameFile, shareScope } = result;
+
+  // If current share scope differs from token scope, reject. It means share scope changed.
+  if (shareScope !== tokenPayload.shareScope) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "file_not_found",
+        message: "File not found.",
+      },
+    });
+  }
 
   // Only allow conversation Frame files.
   if (
@@ -102,24 +162,6 @@ async function handler(
         message: "File not found.",
       },
     });
-  }
-
-  // For workspace sharing, check authentication.
-  if (shareScope === "workspace") {
-    const auth = await getAuthForSharedEndpointWorkspaceMembersOnly(
-      req,
-      res,
-      workspace.sId
-    );
-    if (!auth) {
-      return apiError(req, res, {
-        status_code: 404,
-        api_error: {
-          type: "file_not_found",
-          message: "File not found.",
-        },
-      });
-    }
   }
 
   // Frame must have a conversation context.
