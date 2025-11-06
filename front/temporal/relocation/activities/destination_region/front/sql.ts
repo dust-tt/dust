@@ -26,7 +26,7 @@ export async function writeCoreEntitiesToDestinationRegion({
   destRegion: RegionType;
   sourceRegion: RegionType;
   workspaceId: string;
-}): Promise<string> {
+}): Promise<{ userIdMappingPath: string }> {
   const localLogger = logger.child({
     destRegion,
     sourceRegion,
@@ -165,7 +165,7 @@ export async function writeCoreEntitiesToDestinationRegion({
     "[SQL Core Entities] User ID mapping stored"
   );
 
-  return userIdMappingPath;
+  return { userIdMappingPath };
 }
 
 export async function processFrontTableChunk({

@@ -126,7 +126,7 @@ export async function workspaceRelocateFrontWorkflow({
       workspaceId,
     });
 
-  const userIdMappingPath =
+  const { userIdMappingPath } =
     await destinationRegionActivities.writeCoreEntitiesToDestinationRegion({
       dataPath: coreEntitiesDataPath,
       destRegion,
