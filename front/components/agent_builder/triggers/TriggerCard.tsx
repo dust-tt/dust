@@ -61,14 +61,20 @@ export const TriggerCard = ({
             ? "by " + trigger.configuration.event + " events"
             : "") +
           " on " +
-          webhookSourceView?.customName +
+          (webhookSourceView?.customName ??
+            webhookSourceView?.webhookSource.name) +
           "'s source."
         );
       }
     } catch (error) {
       return "";
     }
-  }, [trigger.kind, trigger.configuration, webhookSourceView?.customName]);
+  }, [
+    trigger.kind,
+    trigger.configuration,
+    webhookSourceView?.customName,
+    webhookSourceView?.webhookSource.name,
+  ]);
 
   return (
     <Card

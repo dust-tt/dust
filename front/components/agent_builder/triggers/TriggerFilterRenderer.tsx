@@ -1,4 +1,4 @@
-import { Chip, cn } from "@dust-tt/sparkle";
+import { Chip, cn, ContentMessage } from "@dust-tt/sparkle";
 import React from "react";
 
 import type { LogicalOp, MatcherExpression, Operation } from "@app/lib/matcher";
@@ -157,12 +157,10 @@ export function TriggerFilterRenderer({ data }: TriggerFilterRendererProps) {
 
   if (parseResult.isErr()) {
     return (
-      <div className="overflow-hidden px-4 py-4">
-        <p className="text-sm text-warning">
-          Error parsing filter expression: {parseResult.error.message}. Please
-          check the filter syntax.
-        </p>
-      </div>
+      <ContentMessage variant="warning" size="lg">
+        Error parsing filter expression: {parseResult.error.message}. Please
+        check the filter syntax.
+      </ContentMessage>
     );
   }
 
