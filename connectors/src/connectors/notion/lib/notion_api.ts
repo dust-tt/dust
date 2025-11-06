@@ -166,6 +166,7 @@ export async function getPagesAndDatabasesEditedSince({
     ...loggerArgs,
     cursors,
     sinceTs,
+    filter,
   });
 
   const notionClient = new Client({
@@ -189,6 +190,7 @@ export async function getPagesAndDatabasesEditedSince({
       maxTries: retry.retries,
     });
 
+    const now = Date.now();
     try {
       resultsPage = await wrapNotionAPITokenErrors(async () => {
         return notionClient.search({
@@ -205,11 +207,23 @@ export async function getPagesAndDatabasesEditedSince({
       });
     } catch (e) {
       tryLogger.error(
-        { error: e },
+        { error: e, duration: Date.now() - now },
         "Error fetching result page from Notion API."
       );
       tries += 1;
       if (tries >= retry.retries) {
+        if (
+          filter === "database" &&
+          APIResponseError.isAPIResponseError(e) &&
+          e.status === 400
+        ) {
+          // We've observed some Notion workspaces where searching for databases
+          // consistently fails with a 400 cursor error. Since we've already retried
+          // a few times, we just log a warning and return an empty result set to
+          // avoid blocking the workflow entirely.
+          tryLogger.warn("Ignoring repeated 400 errors for database search.");
+          return { pages: [], dbs: [], nextCursor: null };
+        }
         throw e;
       }
 
