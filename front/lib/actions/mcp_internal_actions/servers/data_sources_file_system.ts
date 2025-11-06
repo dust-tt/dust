@@ -8,7 +8,7 @@ import {
   FIND_TAGS_TOOL_NAME,
   SEARCH_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import { registerCatTool } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/cat";
+import { catCallback } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/cat";
 import { findCallback } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/find";
 import { listCallback } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/list";
 import { locateTreeCallback } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/locate_tree";
@@ -16,6 +16,7 @@ import { searchCallback } from "@app/lib/actions/mcp_internal_actions/tools/data
 import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/tools/tags/find_tags";
 import { shouldAutoGenerateTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import {
+  DataSourceFilesystemCatInputSchema,
   DataSourceFilesystemFindInputSchema,
   DataSourceFilesystemListInputSchema,
   DataSourceFilesystemLocateTreeInputSchema,
@@ -38,9 +39,9 @@ function createServer(
     ? shouldAutoGenerateTags(agentLoopContext)
     : false;
 
-  registerCatTool(auth, server, agentLoopContext, {
-    name: FILESYSTEM_CAT_TOOL_NAME,
-  });
+  const catToolDescription =
+    "Read the contents of a document, referred to by its nodeId (named after the 'cat' unix tool). " +
+    "The nodeId can be obtained using the 'find', 'list' or 'search' tools.";
 
   const listToolDescription =
     "List the direct contents of a node. Can be used to see what is inside a specific folder from " +
@@ -66,6 +67,21 @@ function createServer(
 
   if (!areTagsDynamic) {
     server.tool(
+      FILESYSTEM_CAT_TOOL_NAME,
+      catToolDescription,
+      DataSourceFilesystemCatInputSchema.shape,
+      withToolLogging(
+        auth,
+        {
+          toolNameForMonitoring: FILESYSTEM_CAT_TOOL_NAME,
+          agentLoopContext,
+          enableAlerting: true,
+        },
+        async (params) => catCallback(auth, params)
+      )
+    );
+
+    server.tool(
       FILESYSTEM_LIST_TOOL_NAME,
       listToolDescription,
       DataSourceFilesystemListInputSchema.shape,
@@ -79,6 +95,7 @@ function createServer(
         async (params) => listCallback(auth, params)
       )
     );
+
     server.tool(
       SEARCH_TOOL_NAME,
       searchToolDescription,
@@ -129,6 +146,28 @@ function createServer(
     registerFindTagsTool(auth, server, agentLoopContext, {
       name: FIND_TAGS_TOOL_NAME,
     });
+
+    server.tool(
+      FILESYSTEM_CAT_TOOL_NAME,
+      catToolDescription,
+      {
+        ...DataSourceFilesystemCatInputSchema.shape,
+        ...TagsInputSchema.shape,
+      },
+      withToolLogging(
+        auth,
+        {
+          toolNameForMonitoring: FILESYSTEM_CAT_TOOL_NAME,
+          agentLoopContext,
+          enableAlerting: true,
+        },
+        async (params) =>
+          catCallback(auth, params, {
+            tagsIn: params.tagsIn,
+            tagsNot: params.tagsNot,
+          })
+      )
+    );
 
     server.tool(
       FILESYSTEM_LIST_TOOL_NAME,
