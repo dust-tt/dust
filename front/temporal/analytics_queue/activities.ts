@@ -119,10 +119,14 @@ export async function storeAgentAnalytics(
   }
 
   // Only index agent messages if there are no blocked actions awaiting approval.
-  const hasBlockedActions = await checkForBlockedActions(
-    auth,
-    agentAgentMessageRow.id
+  const actions = await AgentMCPActionResource.listByAgentMessageIds(auth, [
+    agentAgentMessageRow.id,
+  ]);
+
+  const hasBlockedActions = actions.some((action) =>
+    isToolExecutionStatusBlocked(action.status)
   );
+
   if (hasBlockedActions) {
     return;
   }
@@ -131,14 +135,11 @@ export async function storeAgentAnalytics(
   const tokens = await collectTokenUsage(auth, agentAgentMessageRow);
 
   // Collect tool usage data from the agent message actions.
-  const toolsUsed = await collectToolUsageFromMessage(
-    auth,
-    agentAgentMessageRow.id
-  );
+  const toolsUsed = await collectToolUsageFromMessage(auth, actions);
 
-  // Collect feedbacks from the agent message.
+  // Collect feedback from the agent message.
   const feedbacks = agentAgentMessageRow.feedbacks
-    ? getAgentMessageFeedbacksAnalytics(agentAgentMessageRow.feedbacks)
+    ? getAgentMessageFeedbackAnalytics(agentAgentMessageRow.feedbacks)
     : [];
 
   // Build the complete analytics document.
@@ -159,23 +160,6 @@ export async function storeAgentAnalytics(
   };
 
   await storeToElasticsearch(document);
-}
-
-/**
- * Check if the agent message has any blocked actions awaiting approval.
- */
-async function checkForBlockedActions(
-  auth: Authenticator,
-  messageId: number
-): Promise<boolean> {
-  const blockedActions = await AgentMCPActionResource.listByAgentMessageIds(
-    auth,
-    [messageId]
-  );
-
-  return blockedActions.some((action) =>
-    isToolExecutionStatusBlocked(action.status)
-  );
 }
 
 /**
@@ -235,13 +219,8 @@ async function collectTokenUsage(
  */
 async function collectToolUsageFromMessage(
   auth: Authenticator,
-  messageId: number
+  actionResources: AgentMCPActionResource[]
 ): Promise<AgentMessageAnalyticsToolUsed[]> {
-  const actionResources = await AgentMCPActionResource.listByAgentMessageIds(
-    auth,
-    [messageId]
-  );
-
   return actionResources.map((actionResource) => {
     return {
       step_index: actionResource.stepContent.step,
@@ -291,7 +270,7 @@ async function storeToElasticsearch(
   });
 }
 
-function getAgentMessageFeedbacksAnalytics(
+function getAgentMessageFeedbackAnalytics(
   agentMessageFeedbacks: AgentMessageFeedbackResource[] | AgentMessageFeedback[]
 ): AgentMessageAnalyticsFeedback[] {
   return agentMessageFeedbacks.map((agentMessageFeedback) => ({
@@ -354,6 +333,6 @@ export async function storeAgentMessageFeedbackActivity(
         workspaceId: workspace.sId,
       }),
     },
-    getAgentMessageFeedbacksAnalytics(agentMessageFeedbacks)
+    getAgentMessageFeedbackAnalytics(agentMessageFeedbacks)
   );
 }
