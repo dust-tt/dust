@@ -53,7 +53,8 @@ export async function catCallback(
       node_ids: [nodeId],
       data_source_views: makeCoreSearchNodesFilters(
         agentDataSourceConfigurations,
-        additionalDynamicTags
+        additionalDynamicTags,
+        { useTagFilters: true }
       ),
     },
   });

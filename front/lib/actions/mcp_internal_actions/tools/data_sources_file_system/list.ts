@@ -83,7 +83,8 @@ export async function listCallback(
     // When nodeId is null, search for data sources only.
     const dataSourceViewFilter = makeCoreSearchNodesFilters(
       agentDataSourceConfigurations,
-      additionalDynamicTags
+      additionalDynamicTags,
+      { useTagFilters: false }
     ).map((view) => ({
       ...view,
       search_scope: "data_source_name" as const,
@@ -121,7 +122,8 @@ export async function listCallback(
       filter: {
         data_source_views: makeCoreSearchNodesFilters(
           [dataSourceConfig],
-          additionalDynamicTags
+          additionalDynamicTags,
+          { useTagFilters: false }
         ),
         node_ids: dataSourceConfig.filter.parents?.in ?? undefined,
         parent_id: dataSourceConfig.filter.parents?.in
@@ -137,7 +139,8 @@ export async function listCallback(
       filter: {
         data_source_views: makeCoreSearchNodesFilters(
           agentDataSourceConfigurations,
-          additionalDynamicTags
+          additionalDynamicTags,
+          { useTagFilters: false }
         ),
         parent_id: nodeId,
         mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,

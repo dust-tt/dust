@@ -188,17 +188,7 @@ export function DataSourceViewTagsFilterDropdown() {
   return (
     <PopoverRoot>
       <PopoverTrigger asChild>
-        <Button
-          label="Filters"
-          variant="outline"
-          isSelect
-          disabled={isExploratorySearchEnabled}
-          tooltip={
-            isExploratorySearchEnabled
-              ? "Exploratory search mode doesn't support filtering data sources yet"
-              : undefined
-          }
-        />
+        <Button label="Filters" variant="outline" isSelect />
       </PopoverTrigger>
 
       <PopoverContent
@@ -207,11 +197,21 @@ export function DataSourceViewTagsFilterDropdown() {
         collisionPadding={20}
       >
         <div className="flex flex-col gap-8 p-2">
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-3">
             <Page.SectionHeader
               title="Filtering"
               description="Filter to only include content bearing must-have labels, and exclude content with must-not-have labels."
             />
+            {isExploratorySearchEnabled && (
+              <div className="rounded-md bg-info-100 p-3 text-xs text-info-900 dark:bg-info-900/20 dark:text-info-200">
+                In exploratory search mode, the agent will respect label
+                filtering{" "}
+                <span className="font-semibold">
+                  except when listing folders or files
+                </span>
+                .
+              </div>
+            )}
           </div>
 
           <TagSearchSection

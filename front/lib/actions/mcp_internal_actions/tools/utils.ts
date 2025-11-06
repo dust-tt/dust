@@ -43,15 +43,15 @@ export type ResolvedDataSourceConfiguration = DataSourceConfiguration & {
 
 export function makeCoreSearchNodesFilters(
   agentDataSourceConfigurations: ResolvedDataSourceConfiguration[],
-  additionalDynamicTags?: TagsInputType
+  additionalDynamicTags?: TagsInputType,
+  options: { useTagFilters: boolean } = { useTagFilters: false }
 ): CoreAPIDatasourceViewFilter[] {
   return agentDataSourceConfigurations.map(
     ({ dataSource, dataSourceView, filter }) => ({
       data_source_id: dataSource.dustAPIDataSourceId,
       view_filter: dataSourceView.parentsIn ?? [],
       filter: filter.parents?.in ?? undefined,
-      // FIXME(ap): Remove additionalDynamicTags condition and add support in other file system tools.
-      ...(additionalDynamicTags
+      ...(options.useTagFilters
         ? {
             tags: {
               in: [
