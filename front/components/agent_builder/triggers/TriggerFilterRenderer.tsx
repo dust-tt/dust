@@ -154,15 +154,13 @@ export function TriggerFilterRenderer({ data }: TriggerFilterRendererProps) {
     return null;
   }
 
-  let parsedData: MatcherExpression;
-  try {
-    parsedData = parseMatcherExpression(data);
-  } catch (error) {
-    const errorMessage = normalizeError(error).message;
+  const parseResult = parseMatcherExpression(data);
+
+  if (parseResult.isErr()) {
     return (
       <ContentMessage variant="warning" size="lg">
-        Error parsing filter expression: {errorMessage}. Please check the filter
-        syntax.
+        Error parsing filter expression: {parseResult.error.message}. Please
+        check the filter syntax.
       </ContentMessage>
     );
   }
@@ -170,7 +168,7 @@ export function TriggerFilterRenderer({ data }: TriggerFilterRendererProps) {
   return (
     <div className="overflow-hidden rounded-xl border border-border px-4 py-4">
       <div className="max-w-full overflow-x-auto text-sm">
-        <ExpressionNode expression={parsedData} />
+        <ExpressionNode expression={parseResult.value} />
       </div>
     </div>
   );

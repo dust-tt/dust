@@ -7,12 +7,8 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import {
   FIREWORKS_DEEPSEEK_R1_MODEL_ID,
-  GEMINI_1_5_FLASH_LATEST_MODEL_ID,
-  GEMINI_1_5_PRO_LATEST_MODEL_ID,
   GEMINI_2_5_PRO_MODEL_ID,
-  GEMINI_2_FLASH_LITE_PREVIEW_MODEL_ID,
   GEMINI_2_FLASH_MODEL_ID,
-  GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_ID,
   GEMINI_2_PRO_PREVIEW_MODEL_ID,
   TOGETHERAI_DEEPSEEK_R1_MODEL_ID,
   TOGETHERAI_DEEPSEEK_V3_MODEL_ID,
@@ -255,11 +251,7 @@ async function handler(
         case "google_ai_studio":
           return res.status(200).json({
             models: [
-              { id: GEMINI_1_5_FLASH_LATEST_MODEL_ID },
-              { id: GEMINI_1_5_PRO_LATEST_MODEL_ID },
-              { id: GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_ID },
               { id: GEMINI_2_FLASH_MODEL_ID },
-              { id: GEMINI_2_FLASH_LITE_PREVIEW_MODEL_ID },
               { id: GEMINI_2_PRO_PREVIEW_MODEL_ID },
               { id: GEMINI_2_5_PRO_MODEL_ID },
             ],
