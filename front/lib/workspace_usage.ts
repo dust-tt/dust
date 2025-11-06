@@ -491,7 +491,7 @@ export async function getUserUsageData(
           attributes: ["id", "email", "name"],
         },
       ],
-    })) as MembershipWithUser[];
+    })) satisfies MembershipWithUser[];
 
     const existingEmails = new Set(
       userUsage.map((usage) => usage.userEmail?.toLowerCase())
@@ -679,8 +679,8 @@ export async function getAssistantsUsageData(
              END                                         AS "settings",
              ac."modelId",
              ac."providerId",
-             ARRAY_REMOVE(ARRAY_AGG(DISTINCT aut."email"), NULL)::text[]
-                                                       AS "authorEmails",
+             ARRAY_REMOVE(ARRAY_AGG(DISTINCT aut."email"), NULL)::text[] 
+                                                         AS "authorEmails",
              COUNT(a."id")                               AS "messages",
              COUNT(DISTINCT u."id")                      AS "distinctUsersReached",
              COUNT(DISTINCT m."conversationId")          AS "distinctConversations",
@@ -691,7 +691,7 @@ export async function getAssistantsUsageData(
       FROM "agent_configurations" ac
              LEFT JOIN "users" aut ON ac."authorId" = aut."id"
              LEFT JOIN "agent_messages" a
-                       ON a."agentConfigurationId" = ac."sId"
+                      ON a."agentConfigurationId" = ac."sId"
                       AND a."status" = 'succeeded'
                       AND a."createdAt" BETWEEN :startDate AND :endDate
              LEFT JOIN "messages" m ON a."id" = m."agentMessageId"
