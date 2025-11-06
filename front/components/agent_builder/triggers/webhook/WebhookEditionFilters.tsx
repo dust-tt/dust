@@ -262,10 +262,9 @@ export function WebhookEditionFilters({
         <>
           {estimationData.totalCount < 10 ? (
             <ContentMessageInline variant="warning">
-              Not enough data to compute statistics. Only{" "}
-              {estimationData.totalCount} event
-              {estimationData.totalCount !== 1 ? "s" : ""} found in the last 24
-              hours. At least 10 events are needed for estimation.
+              Not enough data to compute statistics. {estimationData.totalCount}{" "}
+              event{estimationData.totalCount !== 1 ? "s" : ""} found in the
+              last 24 hours. At least 10 events are needed for estimation.
             </ContentMessageInline>
           ) : (
             <ContentMessageInline variant="info">

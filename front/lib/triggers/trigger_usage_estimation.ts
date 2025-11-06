@@ -9,6 +9,7 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 
 export async function computeWebhookTriggerEstimation(
   auth: Authenticator,
@@ -68,8 +69,9 @@ export async function computeWebhookTriggerEstimation(
   let matchingCount = 0;
 
   const bucket = getWebhookRequestsBucket();
-  await Promise.all(
-    webhookRequests.map(async (webhookRequest) => {
+  await concurrentExecutor(
+    webhookRequests,
+    async (webhookRequest) => {
       const gcsPath = WebhookRequestResource.getGcsPath({
         workspaceId: workspace.sId,
         webhookSourceId: webhookSource.id,
@@ -133,7 +135,8 @@ export async function computeWebhookTriggerEstimation(
       }
 
       matchingCount++;
-    })
+    },
+    { concurrency: 10 }
   );
 
   return new Ok({ matchingCount, totalCount });

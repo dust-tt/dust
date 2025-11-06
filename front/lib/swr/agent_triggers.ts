@@ -325,8 +325,6 @@ export function useRemoveTriggerSubscriber({
 }
 
 export function useTriggerEstimation({ workspaceId }: { workspaceId: string }) {
-  const sendNotification = useSendNotification();
-
   const computeEstimation = useCallback(
     async ({
       filter,
