@@ -126,12 +126,13 @@ export async function workspaceRelocateFrontWorkflow({
       workspaceId,
     });
 
-  await destinationRegionActivities.writeCoreEntitiesToDestinationRegion({
-    dataPath: coreEntitiesDataPath,
-    destRegion,
-    sourceRegion,
-    workspaceId,
-  });
+  const userIdMappingPath =
+    await destinationRegionActivities.writeCoreEntitiesToDestinationRegion({
+      dataPath: coreEntitiesDataPath,
+      destRegion,
+      sourceRegion,
+      workspaceId,
+    });
 
   const tablesOrder =
     await sourceRegionActivities.getTablesWithWorkspaceIdOrder();
@@ -147,6 +148,7 @@ export async function workspaceRelocateFrontWorkflow({
           tableName,
           destRegion,
           workspaceId,
+          userIdMappingPath,
         },
       ],
       memo,
@@ -173,9 +175,11 @@ export async function workspaceRelocateFrontTableWorkflow({
   tableName,
   destRegion,
   workspaceId,
+  userIdMappingPath,
 }: RelocationWorkflowBase & {
   tableName: string;
   lastProcessedId?: ModelId;
+  userIdMappingPath?: string;
 }) {
   // Create activity proxies with dynamic task queues.
   const sourceRegionActivities = getFrontSourceRegionActivities(sourceRegion);
@@ -194,6 +198,7 @@ export async function workspaceRelocateFrontTableWorkflow({
         workspaceId,
         tableName,
         lastProcessedId: currentId,
+        userIdMappingPath,
       });
     }
 
@@ -215,6 +220,7 @@ export async function workspaceRelocateFrontTableWorkflow({
         sourceRegion,
         tableName,
         workspaceId,
+        userIdMappingPath,
       });
     }
 
