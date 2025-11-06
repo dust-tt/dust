@@ -11,6 +11,7 @@ import {
   ScrollArea,
   ScrollBar,
   Spinner,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
 import Link from "next/link";
@@ -383,10 +384,15 @@ function CheckConnectorStuck({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-2">
-        <Chip
-          label={result.isStuck ? "Stuck" : "Not Stuck"}
-          color={result.isStuck ? "info" : "success"}
-          size="xs"
+        <Tooltip
+          label={result.message}
+          trigger={
+            <Chip
+              label={result.isStuck ? "Stuck" : "Not Stuck"}
+              color={result.isStuck ? "info" : "success"}
+              size="xs"
+            />
+          }
         />
         {result.isStuck && result.workflows.length > 0 && (
           <Button
