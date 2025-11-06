@@ -58,13 +58,6 @@ async function isAncestorConversation(
     ],
   });
 
-  console.log(
-    "First user message:",
-    firstUserMessage?.conversationId,
-    firstUserMessage?.sId,
-    firstUserMessage?.userMessage?.userContextOriginMessageId
-  );
-
   const originMessageId =
     firstUserMessage?.userMessage?.userContextOriginMessageId;
   if (!originMessageId) {
@@ -105,6 +98,24 @@ async function isAncestorConversation(
   );
 }
 
+/**
+ * Check if a file can be accessed within a conversation context.
+ *
+ * This function handles two cases:
+ * 1. Direct access: File belongs to the same conversation as the frame
+ * 2. Hierarchical access: File belongs to a sub-conversation created via run_agent handovers
+ *
+ * For the hierarchical case, the current implementation requires traversing conversation chains by
+ * following userContextOriginMessageId references, which is fragile and performance-intensive. This
+ * depth checking logic is a temporary solution that will be simplified once the overall data model
+ * is improved to better represent conversation relationships.
+ *
+ * Current pain points:
+ * - Multiple database queries to traverse the hierarchy
+ * - Manual cycle detection and depth limiting
+ * - Complex permission filtering workarounds
+ * - No direct foreign key relationships between parent/child conversations
+ */
 export async function canAccessFileInConversation(
   owner: LightWorkspaceType,
   file: FileResource,
@@ -127,13 +138,6 @@ export async function canAccessFileInConversation(
   if (useCaseMetadata.conversationId === requestedConversationId) {
     return new Ok(true);
   }
-
-  console.log(
-    " >> looking for:",
-    useCaseMetadata.conversationId,
-    "in",
-    requestedConversationId
-  );
 
   const auth = await Authenticator.internalBuilderForWorkspace(owner.sId);
 
