@@ -18,8 +18,12 @@ import {
 } from "@app/components/agent_builder/observability/constants";
 import { useObservability } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
-import { ChartLegend } from "@app/components/agent_builder/observability/shared/ChartLegend";
+import {
+  ChartLegend,
+  legendFromConstant,
+} from "@app/components/agent_builder/observability/shared/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
+import { VersionMarkersDots } from "@app/components/agent_builder/observability/shared/VersionMarkers";
 import { padSeriesToTimeRange } from "@app/components/agent_builder/observability/utils";
 import {
   useAgentErrorRate,
@@ -110,11 +114,13 @@ export function ErrorRateChart({
     errorRate: 0,
   }));
 
-  const legendItems = ERROR_RATE_LEGEND.map(({ key, label }) => ({
-    key,
-    label,
-    colorClassName: ERROR_RATE_PALETTE[key],
-  }));
+  const legendItems = legendFromConstant(
+    ERROR_RATE_LEGEND,
+    ERROR_RATE_PALETTE,
+    {
+      includeVersionMarker: mode === "timeRange" && versionMarkers.length > 0,
+    }
+  );
 
   const getStatusChip = () => {
     const latestErrorRate = data[data.length - 1]?.errorRate ?? 0;
@@ -130,6 +136,7 @@ export function ErrorRateChart({
   return (
     <ChartContainer
       title="Error rate"
+      description="Share of messages that failed (%). Warning at 5%, critical at 10%."
       statusChip={
         !isErrorRateLoading && !isErrorRateError && data.length > 0
           ? getStatusChip()
@@ -216,16 +223,7 @@ export function ErrorRateChart({
             fill="url(#fillErrorRate)"
             stroke="hsl(var(--chart-4))"
           />
-          {mode === "timeRange" &&
-            versionMarkers.map((versionMarker) => (
-              <ReferenceLine
-                key={versionMarker.timestamp}
-                x={versionMarker.timestamp}
-                strokeDasharray="5 5"
-                strokeWidth={1}
-                stroke="hsl(var(--chart-5))"
-              />
-            ))}
+          <VersionMarkersDots mode={mode} versionMarkers={versionMarkers} />
         </AreaChart>
       </ResponsiveContainer>
       <ChartLegend items={legendItems} />

@@ -82,6 +82,7 @@ export function ToolUsageChart({
   return (
     <ChartContainer
       title="Tool Usage"
+      description={legendDescription}
       isLoading={isLoading}
       errorMessage={errorMessage}
       emptyMessage={chartData.length === 0 ? emptyMessage : undefined}
@@ -179,9 +180,6 @@ export function ToolUsageChart({
         </BarChart>
       </ResponsiveContainer>
       <ChartLegend items={legendItems} />
-      <div className="mt-4 text-xs text-muted-foreground">
-        <p>{legendDescription}</p>
-      </div>
     </ChartContainer>
   );
 }

@@ -2,15 +2,17 @@ import { cn } from "@dust-tt/sparkle";
 
 interface LegendDotProps {
   className: string;
+  rounded?: "sm" | "full";
 }
 
-export function LegendDot({ className }: LegendDotProps) {
+export function LegendDot({ className, rounded = "sm" }: LegendDotProps) {
   return (
     <span
       aria-hidden
       role="presentation"
       className={cn(
-        "inline-block h-2.5 w-2.5 rounded-sm bg-current",
+        "inline-block h-2.5 w-2.5 bg-current",
+        rounded === "full" ? "rounded-full" : "rounded-sm",
         className
       )}
     />
