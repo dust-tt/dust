@@ -494,7 +494,9 @@ export async function getUserUsageData(
     })) satisfies MembershipWithUser[];
 
     const existingEmails = new Set(
-      userUsage.map((usage) => usage.userEmail?.toLowerCase())
+      userUsage
+        .filter((usage) => usage.userEmail)
+        .map((usage) => usage.userEmail.toLowerCase())
     );
 
     memberships.forEach((membership) => {
