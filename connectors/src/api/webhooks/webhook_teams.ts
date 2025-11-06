@@ -268,14 +268,6 @@ async function handleMessage(
   // Send thinking message
   const thinkingCard = createThinkingAdaptiveCard();
 
-  localLogger.info(
-    {
-      serviceUrl: context.activity.serviceUrl,
-      conversationId: context.activity.conversation?.id,
-    },
-    "About to send thinking card to Bot Framework"
-  );
-
   // Use utility function for reliable messaging
   const thinkingActivity = await sendActivity(context, thinkingCard);
   if (thinkingActivity.isErr()) {
