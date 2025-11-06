@@ -61,6 +61,8 @@ pub enum OpenAIResponsesMessageContent {
     Structured(Vec<OpenAIResponsesInputContentBlock>),
 }
 
+type ResponseFormat = serde_json::Map<String, serde_json::Value>;
+
 // Input items for the input array format
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(tag = "type", rename_all = "snake_case")]
@@ -476,8 +478,8 @@ pub async fn openai_responses_api_completion(
         || model_id.starts_with("o4")
         || model_id.starts_with("gpt-5");
 
-    let (openai_org_id, instructions, reasoning_effort, store) = match &extras {
-        None => (None, None, None, true),
+    let (openai_org_id, instructions, response_format, reasoning_effort, store) = match &extras {
+        None => (None, None, None, None, true),
         Some(v) => (
             match v.get("openai_organization_id") {
                 Some(Value::String(o)) => Some(o.to_string()),
@@ -485,6 +487,10 @@ pub async fn openai_responses_api_completion(
             },
             match v.get("instructions") {
                 Some(Value::String(i)) => Some(i.to_string()),
+                _ => None,
+            },
+            match v.get("response_format") {
+                Some(Value::Object(f)) => Some(f.clone()),
                 _ => None,
             },
             match v.get("reasoning_effort") {
