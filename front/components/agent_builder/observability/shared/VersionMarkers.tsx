@@ -4,10 +4,12 @@ import type { ObservabilityMode } from "@app/components/agent_builder/observabil
 
 type Marker = { timestamp: string };
 
-function MarkerDotLabel(props: any) {
-  const vb = props?.viewBox as
-    | { x: number; y: number; width: number; height: number }
-    | undefined;
+interface MarkerDotLabelProps {
+  viewBox?: { x: number; y: number; width: number; height: number };
+}
+
+function MarkerDotLabel({ viewBox }: MarkerDotLabelProps) {
+  const vb = viewBox;
   if (!vb) {
     return null;
   }
@@ -26,16 +28,19 @@ function MarkerDotLabel(props: any) {
   );
 }
 
+interface VersionMarkersDotsProps {
+  mode: ObservabilityMode;
+  versionMarkers: Marker[];
+}
+
 export function VersionMarkersDots({
   mode,
   versionMarkers,
-}: {
-  mode: ObservabilityMode;
-  versionMarkers: Marker[];
-}) {
+}: VersionMarkersDotsProps) {
   if (mode !== "timeRange" || versionMarkers.length === 0) {
     return null;
   }
+
   return (
     <>
       {versionMarkers.map((m) => (
