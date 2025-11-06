@@ -205,6 +205,8 @@ export class UserMessage extends WorkspaceAwareModel<UserMessage> {
   declare userContextLastTriggerRunAt: Date | null;
 
   declare userId: ForeignKey<UserModel["id"]> | null;
+
+  declare user?: NonAttribute<UserModel>;
 }
 
 UserMessage.init(

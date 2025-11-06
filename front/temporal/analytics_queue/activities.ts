@@ -1,5 +1,3 @@
-import assert from "assert";
-
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
 import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
 import { updateAnalyticsFeedback } from "@app/lib/analytics/feedback";
@@ -9,21 +7,21 @@ import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import {
   AgentMessage,
+  ConversationModel,
   Message,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { AgentMessageType } from "@app/types";
 import { normalizeError } from "@app/types";
 import type {
   AgentLoopArgs,
   AgentMessageRef,
 } from "@app/types/assistant/agent_run";
-import { getAgentLoopData } from "@app/types/assistant/agent_run";
 import type {
   AgentMessageAnalyticsData,
   AgentMessageAnalyticsFeedback,
@@ -42,46 +40,124 @@ export async function storeAgentAnalyticsActivity(
   const auth = await Authenticator.fromJSON(authType);
   const workspace = auth.getNonNullableWorkspace();
 
-  const runAgentDataRes = await getAgentLoopData(authType, agentLoopArgs);
-  if (runAgentDataRes.isErr()) {
-    throw runAgentDataRes.error;
+  const { agentMessageId, userMessageId } = agentLoopArgs;
+
+  // Query the Message/AgentMessage/Conversation rows.
+  const message = await Message.findOne({
+    where: {
+      sId: agentMessageId,
+      workspaceId: workspace.id,
+    },
+    include: [
+      {
+        model: ConversationModel,
+        as: "conversation",
+        required: true,
+      },
+      {
+        model: AgentMessage,
+        as: "agentMessage",
+        required: true,
+      },
+    ],
+  });
+
+  if (!message) {
+    throw new Error("Message not found");
+  }
+  const { agentMessage, conversation } = message;
+
+  if (!conversation || !agentMessage) {
+    throw new Error("Message or conversation not found");
   }
 
-  const {
-    agentConfiguration,
+  // Query the UserMessage row to get user.
+  const userMessage = await Message.findOne({
+    where: {
+      sId: userMessageId,
+      workspaceId: workspace.id,
+    },
+    include: [
+      {
+        model: UserMessage,
+        as: "userMessage",
+        required: true,
+        include: [
+          {
+            model: UserModel,
+            as: "user",
+            required: true,
+          },
+        ],
+      },
+    ],
+  });
+
+  const user = userMessage?.userMessage?.user;
+
+  await buildAnalyticsDocument(auth, {
+    message,
+    user,
     agentMessage,
     conversation,
-    userMessage,
-    agentMessageRow,
-  } = runAgentDataRes.value;
+  });
+}
 
+/**
+ * Build the complete analytics document for an agent message.
+ */
+export async function buildAnalyticsDocument(
+  auth: Authenticator,
+  {
+    message,
+    user,
+    agentMessage,
+    conversation,
+  }: {
+    message: Message;
+    user?: UserModel;
+    agentMessage: AgentMessage;
+    conversation: ConversationModel;
+  }
+): Promise<void> {
   // Only index agent messages if there are no blocked actions awaiting approval.
-  const hasBlockedActions = await checkForBlockedActions(auth, agentMessage);
+  const hasBlockedActions = await checkForBlockedActions(auth, agentMessage.id);
   if (hasBlockedActions) {
     return;
   }
 
   // Collect token usage from run data.
-  const tokens = await collectTokenUsage(auth, agentMessageRow);
+  const tokens = await collectTokenUsage(auth, agentMessage);
 
   // Collect tool usage data from the agent message actions.
-  const toolsUsed = await collectToolUsageFromMessage(auth, agentMessage);
+  const toolsUsed = await collectToolUsageFromMessage(auth, agentMessage.id);
+
+  const feedbacks = agentMessage.feedbacks
+    ? agentMessage.feedbacks.map((agentMessageFeedback) => ({
+        feedback_id: agentMessageFeedback.id,
+        user_id: agentMessageFeedback.user?.sId ?? "unknown",
+        thumb_direction: agentMessageFeedback.thumbDirection,
+        content: undefined,
+        dismissed: agentMessageFeedback.dismissed,
+        is_conversation_shared: agentMessageFeedback.isConversationShared,
+        created_at: agentMessageFeedback.createdAt.toISOString(),
+      }))
+    : [];
 
   // Build the complete analytics document.
-  const document: AgentMessageAnalyticsData = {
-    agent_id: agentConfiguration.sId,
-    agent_version: agentConfiguration.version.toString(),
-    conversation_id: conversation.sId,
-    latency_ms: agentMessageRow.modelInteractionDurationMs ?? 0,
-    message_id: agentMessage.sId,
+  const document = {
+    agent_id: agentMessage.agentConfigurationId,
+    agent_version: agentMessage.agentConfigurationVersion.toString(),
+    conversation_id: conversation!.sId,
+    latency_ms: agentMessage.modelInteractionDurationMs ?? 0,
+    message_id: message.sId,
     status: agentMessage.status,
-    // TODO(observability 21025-10-29): Use agentMessage.created timestamp to index documents
-    timestamp: new Date(userMessage.created).toISOString(),
+    timestamp: new Date(agentMessage.createdAt.getTime()).toISOString(),
     tokens,
     tools_used: toolsUsed,
-    user_id: userMessage.user?.sId ?? "unknown",
-    workspace_id: workspace.sId,
-    feedbacks: [],
+    user_id: user?.sId ?? "unknown",
+    workspace_id: auth.getNonNullableWorkspace().sId,
+    feedbacks,
     content: null,
   };
 
@@ -93,11 +169,11 @@ export async function storeAgentAnalyticsActivity(
  */
 async function checkForBlockedActions(
   auth: Authenticator,
-  agentMessage: AgentMessageType
+  messageId: number
 ): Promise<boolean> {
   const blockedActions = await AgentMCPActionResource.listByAgentMessageIds(
     auth,
-    [agentMessage.agentMessageId]
+    [messageId]
   );
 
   return blockedActions.some((action) =>
@@ -162,30 +238,25 @@ async function collectTokenUsage(
  */
 async function collectToolUsageFromMessage(
   auth: Authenticator,
-  agentMessage: AgentMessageType
+  messageId: number
 ): Promise<AgentMessageAnalyticsToolUsed[]> {
-  const res = await AgentMCPActionResource.listByAgentMessageIds(auth, [
-    agentMessage.agentMessageId,
-  ]);
+  const actionResources = await AgentMCPActionResource.listByAgentMessageIds(
+    auth,
+    [messageId]
+  );
 
-  return agentMessage.actions.map((action) => {
-    // Look up the corresponding action resource to get more details.
-    const actionResource = res.find(
-      (r) =>
-        r.agentMessageId === agentMessage.agentMessageId && r.id === action.id
-    );
-
-    assert(actionResource, "Action resource not found for action");
-
+  return actionResources.map((actionResource) => {
     return {
-      step_index: action.step,
+      step_index: actionResource.stepContent.step,
       server_name:
-        action.internalMCPServerName ?? action.mcpServerId ?? "unknown",
+        actionResource.metadata.internalMCPServerName ??
+        actionResource.metadata.mcpServerId ??
+        "unknown",
       tool_name:
-        action.functionCallName.split(TOOL_NAME_SEPARATOR).pop() ??
-        action.functionCallName,
+        actionResource.functionCallName.split(TOOL_NAME_SEPARATOR).pop() ??
+        actionResource.functionCallName,
       execution_time_ms: actionResource.executionDurationMs,
-      status: action.status,
+      status: actionResource.status,
     };
   });
 }

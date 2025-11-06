@@ -1,7 +1,6 @@
 import { subDays } from "date-fns";
 import { Op } from "sequelize";
 
-import { updateAnalyticsFeedback } from "@app/lib/analytics/feedback";
 import { Authenticator } from "@app/lib/auth";
 import {
   AgentMessage,
@@ -17,10 +16,8 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import { storeAgentAnalyticsActivity } from "@app/temporal/analytics_queue/activities";
+import { buildAnalyticsDocument } from "@app/temporal/analytics_queue/activities";
 import { LightWorkspaceType } from "@app/types";
-import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
-import type { AgentMessageAnalyticsFeedback } from "@app/types/assistant/analytics";
 
 async function backfillAgentAnalytics(
   workspace: LightWorkspaceType,
@@ -100,7 +97,9 @@ async function backfillAgentAnalytics(
       allAgentMessages,
       async (message) => {
         try {
-          if (!message.agentMessage || !message.conversation) {
+          const { agentMessage, conversation } = message;
+
+          if (!conversation || !agentMessage) {
             logger.warn(
               {
                 messageId: message.sId,
@@ -123,7 +122,7 @@ async function backfillAgentAnalytics(
             return;
           }
 
-          const userMessageRow = await Message.findOne({
+          const userMessage = await Message.findOne({
             where: {
               id: message.parentId,
               workspaceId: workspace.id,
@@ -133,61 +132,26 @@ async function backfillAgentAnalytics(
                 model: UserMessage,
                 as: "userMessage",
                 required: true,
+                include: [
+                  {
+                    model: UserModel,
+                    as: "user",
+                    required: true,
+                  },
+                ],
               },
             ],
           });
 
-          if (!userMessageRow?.userMessage) {
-            logger.warn(
-              {
-                messageId: message.sId,
-                parentId: message.parentId,
-                workspaceId: workspace.sId,
-              },
-              "Could not find parent user message"
-            );
-            return;
-          }
-
-          // Construct AgentLoopArgs
-          const agentLoopArgs: AgentLoopArgs = {
-            agentMessageId: message.sId,
-            agentMessageVersion: message.version,
-            conversationId: message.conversation.sId,
-            conversationTitle: message.conversation.title,
-            userMessageId: userMessageRow.sId,
-            userMessageVersion: userMessageRow.version,
-          };
+          const user = userMessage?.userMessage?.user;
 
           // Store the analytics
-          await storeAgentAnalyticsActivity(auth.toJSON(), {
-            agentLoopArgs,
+          await buildAnalyticsDocument(auth, {
+            message,
+            user,
+            agentMessage,
+            conversation,
           });
-
-          // If there are feedbacks, update them directly (avoiding reloading from DB)
-          if (
-            message.agentMessage.feedbacks &&
-            message.agentMessage.feedbacks.length > 0
-          ) {
-            const feedbacks: AgentMessageAnalyticsFeedback[] =
-              message.agentMessage.feedbacks.map((feedback) => ({
-                feedback_id: feedback.id,
-                user_id: feedback.user?.sId ?? "unknown",
-                thumb_direction: feedback.thumbDirection,
-                content: feedback.content ?? undefined,
-                dismissed: feedback.dismissed,
-                is_conversation_shared: feedback.isConversationShared,
-                created_at: feedback.createdAt.toISOString(),
-              }));
-
-            await updateAnalyticsFeedback(auth, {
-              message: {
-                sId: message.sId,
-              },
-              createdTimestamp: userMessageRow.createdAt.getTime(),
-              feedbacks,
-            });
-          }
 
           successCount++;
         } catch (err) {
