@@ -72,7 +72,7 @@ export function ActivityReport({
                 }}
               />
               <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                Adds members and agents without messages to the exports.
+                Include members and agents without messages.
               </div>
             </div>
           </div>
