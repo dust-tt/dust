@@ -14,6 +14,7 @@ import {
   LATENCY_LEGEND,
   LATENCY_PALETTE,
 } from "@app/components/agent_builder/observability/constants";
+import { useLatencyData } from "@app/components/agent_builder/observability/hooks";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import {
@@ -23,10 +24,7 @@ import {
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
 import { VersionMarkersDots } from "@app/components/agent_builder/observability/shared/VersionMarkers";
 import { padSeriesToTimeRange } from "@app/components/agent_builder/observability/utils";
-import {
-  useAgentLatency,
-  useAgentVersionMarkers,
-} from "@app/lib/swr/assistants";
+import { useAgentVersionMarkers } from "@app/lib/swr/assistants";
 
 interface LatencyData {
   messages: number;
@@ -73,14 +71,14 @@ export function LatencyChart({
 }) {
   const { period, mode } = useObservabilityContext();
   const {
-    latency: rawData,
-    isLatencyLoading,
-    isLatencyError,
-  } = useAgentLatency({
+    data: rawData,
+    isLoading: isLatencyLoading,
+    errorMessage: isLatencyError,
+  } = useLatencyData({
     workspaceId,
     agentConfigurationId,
-    days: period,
-    disabled: !workspaceId || !agentConfigurationId,
+    period,
+    mode,
   });
 
   const { versionMarkers } = useAgentVersionMarkers({

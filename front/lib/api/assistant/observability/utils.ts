@@ -4,11 +4,13 @@ export function buildAgentAnalyticsBaseQuery({
   workspaceId,
   agentId,
   days,
+  version,
   feedbackNestedQuery,
 }: {
   workspaceId: string;
   agentId: string;
   days?: number;
+  version?: string;
   feedbackNestedQuery?: estypes.QueryDslQueryContainer;
 }): estypes.QueryDslQueryContainer {
   const filters: estypes.QueryDslQueryContainer[] = [
@@ -18,6 +20,9 @@ export function buildAgentAnalyticsBaseQuery({
 
   if (days) {
     filters.push({ range: { timestamp: { gte: `now-${days}d/d` } } });
+  }
+  if (version) {
+    filters.push({ term: { "configuration.version": version } });
   }
   if (feedbackNestedQuery) {
     filters.push({ nested: { path: "feedbacks", query: feedbackNestedQuery } });
