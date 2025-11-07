@@ -7,6 +7,7 @@ import type {
 import { CompletionResponseStreamChoiceFinishReason } from "@mistralai/mistralai/models/components";
 import compact from "lodash/compact";
 
+import { SuccessAggregate } from "@app/lib/api/llm/types/aggregates";
 import type {
   LLMEvent,
   TokenUsageEvent,
@@ -35,11 +36,14 @@ export async function* streamLLMEvents({
   // So we have to aggregate it ourselves as we receive text chunks
   let textDelta = "";
 
+  const aggregate = new SuccessAggregate();
+
   function* yieldEvents(events: LLMEvent[]) {
     for (const event of events) {
       if (event.type === "text_delta") {
         textDelta += event.content.delta;
       }
+      aggregate.add(event);
       yield event;
     }
   }
@@ -75,7 +79,7 @@ export async function* streamLLMEvents({
           metadata,
         };
         // Yield aggregated text before tool calls
-        yield textGeneratedEvent;
+        yield* yieldEvents([textGeneratedEvent]);
         yield* yieldEvents(events);
         textDelta = "";
         break;
@@ -84,28 +88,32 @@ export async function* streamLLMEvents({
         // yield error event after all received events
         yield* yieldEvents(events);
         textDelta = "";
-        yield new EventError(
-          {
-            type: "maximum_length",
-            isRetryable: false,
-            message: "Maximum length reached",
-          },
-          metadata
-        );
+        yield* yieldEvents([
+          new EventError(
+            {
+              type: "maximum_length",
+              isRetryable: false,
+              message: "Maximum length reached",
+            },
+            metadata
+          ),
+        ]);
         break;
       }
       case CompletionResponseStreamChoiceFinishReason.Error: {
         // yield error event after all received events
         yield* yieldEvents(events);
         textDelta = "";
-        yield new EventError(
-          {
-            type: "stop_error",
-            isRetryable: false,
-            message: "An error occurred during completion",
-          },
-          metadata
-        );
+        yield* yieldEvents([
+          new EventError(
+            {
+              type: "stop_error",
+              isRetryable: false,
+              message: "An error occurred during completion",
+            },
+            metadata
+          ),
+        ]);
 
         break;
       }
@@ -118,7 +126,7 @@ export async function* streamLLMEvents({
           metadata,
         };
         textDelta = "";
-        yield textGeneratedEvent;
+        yield* yieldEvents([textGeneratedEvent]);
         break;
       }
       default: {
@@ -128,8 +136,19 @@ export async function* streamLLMEvents({
     }
     // Whatever the completion, yield the token usage
     if (completionEvent.data.usage) {
-      yield toTokenUsage({ usage: completionEvent.data.usage, metadata });
+      yield* yieldEvents([
+        toTokenUsage({ usage: completionEvent.data.usage, metadata }),
+      ]);
     }
+
+    yield {
+      type: "success",
+      aggregated: aggregate.aggregated,
+      textGenerated: aggregate.textGenerated,
+      reasoningGenerated: aggregate.reasoningGenerated,
+      toolCalls: aggregate.toolCalls,
+      metadata,
+    };
   }
 }
 

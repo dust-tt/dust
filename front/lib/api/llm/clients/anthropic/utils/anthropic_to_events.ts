@@ -9,6 +9,7 @@ import cloneDeep from "lodash/cloneDeep";
 
 import { validateContentBlockIndex } from "@app/lib/api/llm/clients/anthropic/utils/predicates";
 import type { StreamState } from "@app/lib/api/llm/clients/anthropic/utils/types";
+import { SuccessAggregate } from "@app/lib/api/llm/types/aggregates";
 import type {
   LLMEvent,
   ReasoningDeltaEvent,
@@ -27,6 +28,8 @@ export async function* streamLLMEvents(
   metadata: LLMClientMetadata
 ): AsyncGenerator<LLMEvent> {
   const stateContainer = { state: null };
+  // Aggregate output items to build a SuccessCompletionEvent at the end of a turn.
+  const aggregate = new SuccessAggregate();
 
   // There is an issue in Anthropic SDK showcasing that stream events get mutated after they are yielded.
   // https://github.com/anthropics/anthropic-sdk-typescript/issues/777
@@ -34,12 +37,25 @@ export async function* streamLLMEvents(
   // To work around this, we clone each event before processing it.
   for await (const mutableMessageStreamEvent of messageStreamEvents) {
     const messageStreamEvent = cloneDeep(mutableMessageStreamEvent);
-    yield* handleMessageStreamEvent(
+
+    for (const ev of handleMessageStreamEvent(
       messageStreamEvent,
       stateContainer,
       metadata
-    );
+    )) {
+      aggregate.add(ev);
+      yield ev;
+    }
   }
+
+  yield {
+    type: "success",
+    aggregated: aggregate.aggregated,
+    textGenerated: aggregate.textGenerated,
+    reasoningGenerated: aggregate.reasoningGenerated,
+    toolCalls: aggregate.toolCalls,
+    metadata,
+  };
 }
 
 function* handleMessageStreamEvent(
