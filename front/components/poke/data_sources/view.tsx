@@ -2,9 +2,12 @@ import {
   BracesIcon,
   Button,
   Chip,
+  ContentMessage,
+  ContextItem,
   Dialog,
   DialogContainer,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   MagnifyingGlassIcon,
@@ -37,6 +40,7 @@ import type {
   DataSourceType,
   WorkspaceType,
 } from "@app/types";
+import { pluralize } from "@app/types";
 
 export function ViewDataSourceTable({
   connector,
@@ -341,11 +345,10 @@ function CheckConnectorStuck({
 }: CheckConnectorStuckProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<CheckStuckResponseBody | null>(null);
-  const [showDetails, setShowDetails] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
 
   const checkStuck = async () => {
     setIsLoading(true);
-    setShowDetails(false);
     try {
       const res = await fetch(
         `/api/poke/workspaces/${owner.sId}/data_sources/${dsId}/check-stuck`
@@ -382,7 +385,12 @@ function CheckConnectorStuck({
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <>
+      <StuckActivitiesModal
+        show={showDetailsModal}
+        onClose={() => setShowDetailsModal(false)}
+        result={result}
+      />
       <div className="flex items-center gap-2">
         <Tooltip
           label={result.message}
@@ -397,45 +405,96 @@ function CheckConnectorStuck({
         {result.isStuck && result.workflows.length > 0 && (
           <Button
             variant="ghost"
-            label={showDetails ? "Hide details" : "Show details"}
-            onClick={() => setShowDetails(!showDetails)}
+            label="Show details"
+            onClick={() => setShowDetailsModal(true)}
             size="xs"
           />
         )}
       </div>
-      {showDetails && result.isStuck && (
-        <div className="mt-2 flex flex-col gap-2 text-xs">
-          {result.workflows.map((workflow) => {
-            if (workflow.stuckActivities.length === 0) {
-              return null;
-            }
-            return (
-              <div key={workflow.workflowId} className="rounded border p-2">
-                <div className="mb-1 font-semibold">{workflow.workflowId}</div>
-                <div className="text-muted-foreground dark:text-muted-foreground-night">
-                  Status: {workflow.status}
-                </div>
-                <div className="mt-1 flex flex-col gap-1">
-                  {workflow.stuckActivities.map((activity, idx) => (
-                    <div
-                      key={idx}
-                      className="rounded bg-muted-background p-2 dark:bg-muted-background-night"
-                    >
-                      <div>Activity: {activity.activityType}</div>
-                      <div>Attempt: {activity.attempt}</div>
-                      {activity.lastFailure && (
-                        <div className="mt-1 text-warning-500">
-                          Last Failure: {activity.lastFailure}
+    </>
+  );
+}
+
+interface StuckActivitiesModalProps {
+  show: boolean;
+  onClose: () => void;
+  result: CheckStuckResponseBody;
+}
+
+function StuckActivitiesModal({
+  show,
+  onClose,
+  result,
+}: StuckActivitiesModalProps) {
+  const totalStuckActivities = result.workflows.reduce(
+    (sum, wf) => sum + wf.stuckActivities.length,
+    0
+  );
+
+  return (
+    <Dialog
+      open={show}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
+    >
+      <DialogContent size="lg">
+        <DialogHeader>
+          <DialogTitle>Stuck Activities Details</DialogTitle>
+        </DialogHeader>
+        <DialogContainer>
+          <div className="flex flex-col gap-4">
+            <ContentMessage
+              variant="info"
+              size="sm"
+              title={
+                `Found ${totalStuckActivities} stuck ` +
+                `${totalStuckActivities === 1 ? "activity" : "activities"} ` +
+                `across ${result.workflows.length} workflow${pluralize(result.workflows.length)}`
+              }
+            />
+            {result.workflows.map((workflow) => (
+              <ContextItem.List key={workflow.workflowId} hasBorder>
+                <ContextItem.SectionHeader
+                  title={workflow.workflowId}
+                  description={`Status: ${workflow.status}`}
+                />
+                {workflow.stuckActivities.map((activity, idx) => (
+                  <ContextItem
+                    key={idx}
+                    title={
+                      <span className="text-sm">{activity.activityType}</span>
+                    }
+                    visual={
+                      <Chip
+                        color="warning"
+                        label={`${activity.attempt} attempts`}
+                        size="xs"
+                      />
+                    }
+                    subElement={
+                      activity.lastFailure ? (
+                        <div className="text-sm text-warning-500">
+                          {activity.lastFailure}
                         </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
+                      ) : null
+                    }
+                  />
+                ))}
+              </ContextItem.List>
+            ))}
+          </div>
+        </DialogContainer>
+        <DialogFooter
+          leftButtonProps={{
+            label: "Close",
+            variant: "outline",
+            onClick: onClose,
+          }}
+        />
+      </DialogContent>
+    </Dialog>
   );
 }
