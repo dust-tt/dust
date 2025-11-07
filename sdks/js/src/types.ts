@@ -687,6 +687,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "mentions_v2"
   | "http_client_tool"
   | "slack_files_write_scope"
+  | "notifications"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

@@ -221,6 +221,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable files:write scope for Slack bot and MCP server",
     stage: "on_demand",
   },
+  notifications: {
+    description: "Enable notifications",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";

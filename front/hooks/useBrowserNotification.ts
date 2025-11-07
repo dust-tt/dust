@@ -1,10 +1,8 @@
 import { useCallback } from "react";
 
-interface BrowserNotificationOptions {
-  body?: string;
-  icon?: string;
-  tag?: string;
-}
+type BrowserNotificationOptions = NotificationOptions & {
+  onClick?: () => Promise<void>;
+};
 
 interface UseBrowserNotificationApi {
   notify: (title: string, options?: BrowserNotificationOptions) => void;
@@ -23,28 +21,17 @@ export function useBrowserNotification(): UseBrowserNotificationApi {
         return;
       }
 
-      // Do not send a system notification if the page is currently visible and focused. As an example, this implies
-      // that the conversation is on screen and the user can already see the outcome.
-      if (typeof document !== "undefined") {
-        const hasFocus =
-          typeof document.hasFocus === "function" ? document.hasFocus() : true;
-        if (document.visibilityState === "visible" && hasFocus) {
-          return;
-        }
-      }
-
       const show = () => {
         try {
-          const n = new Notification(title, {
-            body: options?.body,
-            icon: options?.icon,
-            tag: options?.tag,
-          });
+          const n = new Notification(title, options);
 
           // Focus the window when the notification is clicked.
-          n.onclick = () => {
+          n.onclick = async () => {
             window.focus();
             n.close();
+
+            // Call the onClick callback if provided.
+            await options?.onClick?.();
           };
         } catch (_) {
           // Silently ignore errors to avoid noisy logs as per logging policy.
