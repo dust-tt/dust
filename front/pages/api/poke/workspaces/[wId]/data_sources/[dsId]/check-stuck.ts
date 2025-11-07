@@ -34,6 +34,25 @@ export type CheckStuckResponseBody = {
 
 const STUCK_THRESHOLD = 5; // Consider an activity stuck if it has 5+ attempts
 
+function flattenStuckWorkflows(info: StuckWorkflowInfo): StuckWorkflowInfo[] {
+  const result: StuckWorkflowInfo[] = [];
+
+  // Add current workflow if it has stuck activities (without children).
+  if (info.stuckActivities.length > 0) {
+    result.push({
+      ...info,
+      childWorkflows: [],
+    });
+  }
+
+  // Recursively process child workflows.
+  for (const child of info.childWorkflows) {
+    result.push(...flattenStuckWorkflows(child));
+  }
+
+  return result;
+}
+
 async function checkWorkflowStuck(
   client: Client,
   {
@@ -103,6 +122,32 @@ async function checkWorkflowStuck(
   };
 }
 
+async function checkConnectorStuck(
+  client: Client,
+  workflowIds: string[]
+): Promise<CheckStuckResponseBody> {
+  const workflows: StuckWorkflowInfo[] = [];
+
+  for (const workflowId of workflowIds) {
+    const workflowInfo = await checkWorkflowStuck(client, { workflowId });
+    if (workflowInfo) {
+      const flattenedWorkflows = flattenStuckWorkflows(workflowInfo);
+      workflows.push(...flattenedWorkflows);
+    }
+  }
+
+  const hasStuckActivities = workflows.length > 0;
+  const message = hasStuckActivities
+    ? `Found ${workflows.reduce((count, wf) => count + wf.stuckActivities.length, 0)} stuck activities (${STUCK_THRESHOLD}+ retries)`
+    : "No stuck activities found";
+
+  return {
+    isStuck: hasStuckActivities,
+    workflows,
+    message,
+  };
+}
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<CheckStuckResponseBody>>,
@@ -169,53 +214,8 @@ async function handler(
         });
       }
 
-      const workflows: StuckWorkflowInfo[] = [];
-      let hasStuckActivities = false;
-
-      // Recursively flatten workflows to extract all workflows with stuck activities
-      const flattenStuckWorkflows = (
-        info: StuckWorkflowInfo
-      ): StuckWorkflowInfo[] => {
-        const result: StuckWorkflowInfo[] = [];
-
-        // Add current workflow if it has stuck activities (without children)
-        if (info.stuckActivities.length > 0) {
-          result.push({
-            ...info,
-            childWorkflows: [],
-          });
-        }
-
-        // Recursively process child workflows
-        for (const child of info.childWorkflows) {
-          result.push(...flattenStuckWorkflows(child));
-        }
-
-        return result;
-      };
-
-      for (const workflowId of workflowIds) {
-        const workflowInfo = await checkWorkflowStuck(client, { workflowId });
-        if (workflowInfo) {
-          const flattenedWorkflows = flattenStuckWorkflows(workflowInfo);
-          if (flattenedWorkflows.length > 0) {
-            workflows.push(...flattenedWorkflows);
-            hasStuckActivities = true;
-          }
-        }
-      }
-
-      const message = hasStuckActivities
-        ? `Found ${workflows.reduce((count, wf) => count + wf.stuckActivities.length, 0)} stuck activities (${STUCK_THRESHOLD}+ retries)`
-        : workflows.length > 0
-          ? "No stuck activities found"
-          : "No running workflows found";
-
-      return res.status(200).json({
-        isStuck: hasStuckActivities,
-        workflows,
-        message,
-      });
+      const result = await checkConnectorStuck(client, workflowIds);
+      return res.status(200).json(result);
 
     default:
       return apiError(req, res, {
