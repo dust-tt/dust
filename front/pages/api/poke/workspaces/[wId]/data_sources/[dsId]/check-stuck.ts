@@ -172,20 +172,34 @@ async function handler(
       const workflows: StuckWorkflowInfo[] = [];
       let hasStuckActivities = false;
 
+      // Recursively flatten workflows to extract all workflows with stuck activities
+      const flattenStuckWorkflows = (
+        info: StuckWorkflowInfo
+      ): StuckWorkflowInfo[] => {
+        const result: StuckWorkflowInfo[] = [];
+
+        // Add current workflow if it has stuck activities (without children)
+        if (info.stuckActivities.length > 0) {
+          result.push({
+            ...info,
+            childWorkflows: [],
+          });
+        }
+
+        // Recursively process child workflows
+        for (const child of info.childWorkflows) {
+          result.push(...flattenStuckWorkflows(child));
+        }
+
+        return result;
+      };
+
       for (const workflowId of workflowIds) {
         const workflowInfo = await checkWorkflowStuck(client, { workflowId });
         if (workflowInfo) {
-          workflows.push(workflowInfo);
-
-          // Check if this workflow or any of its children have stuck activities
-          const checkStuck = (info: StuckWorkflowInfo): boolean => {
-            if (info.stuckActivities.length > 0) {
-              return true;
-            }
-            return info.childWorkflows.some((child) => checkStuck(child));
-          };
-
-          if (checkStuck(workflowInfo)) {
+          const flattenedWorkflows = flattenStuckWorkflows(workflowInfo);
+          if (flattenedWorkflows.length > 0) {
+            workflows.push(...flattenedWorkflows);
             hasStuckActivities = true;
           }
         }
