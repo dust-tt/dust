@@ -1,10 +1,7 @@
 import {
   Button,
-  ButtonsSwitch,
-  ButtonsSwitchList,
   Checkbox,
   ContentMessage,
-  ContentMessageInline,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -88,16 +85,10 @@ function WebhookEditionStatusToggle({
   );
 }
 
-interface WebhookEditionExecutionLimitProps {
-  isEditor: boolean;
-}
-
-function WebhookEditionExecutionLimit({
-  isEditor,
-}: WebhookEditionExecutionLimitProps) {
+function WebhookEditionExecutionLimit() {
   const { control } = useFormContext<TriggerViewsSheetFormValues>();
   const {
-    field: { value: executionLimit, onChange: setExecutionLimit },
+    field: { value: executionLimit },
   } = useController({
     control,
     name: "webhook.executionPerDayLimitOverride",
