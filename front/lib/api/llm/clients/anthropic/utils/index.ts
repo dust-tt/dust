@@ -16,11 +16,11 @@ export function toThinkingConfig(
     return undefined;
   }
   if (reasoningEffort === "light") {
-    // For "light", we may not use thinking config but chain of though from prompt
+    // For "light", we may not use thinking config but chain of thought from prompt.
     if (useNativeLightReasoning) {
       return {
         type: "enabled",
-        budget_tokens: 1024, // minimum budget
+        budget_tokens: 1024, // Minimum budget.
       };
     } else {
       return undefined;
