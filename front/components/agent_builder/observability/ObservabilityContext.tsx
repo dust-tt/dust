@@ -2,6 +2,7 @@ import { createContext, useContext, useMemo, useState } from "react";
 
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
+import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 
 export type ObservabilityMode = "timeRange" | "version";
 
@@ -10,8 +11,8 @@ type ObservabilityContextValue = {
   setMode: (m: ObservabilityMode) => void;
   period: ObservabilityTimeRangeType;
   setPeriod: (p: ObservabilityTimeRangeType) => void;
-  selectedVersion: string | null;
-  setSelectedVersion: (v: string | null) => void;
+  selectedVersion: AgentVersionMarker | null;
+  setSelectedVersion: (v: AgentVersionMarker | null) => void;
 };
 
 const ObservabilityContext = createContext<ObservabilityContextValue | null>(
@@ -26,7 +27,8 @@ export function ObservabilityProvider({
   const [mode, setMode] = useState<ObservabilityMode>("timeRange");
   const [period, setPeriod] =
     useState<ObservabilityTimeRangeType>(DEFAULT_PERIOD_DAYS);
-  const [selectedVersion, setSelectedVersion] = useState<string | null>(null);
+  const [selectedVersion, setSelectedVersion] =
+    useState<AgentVersionMarker | null>(null);
 
   const value = useMemo(
     () => ({

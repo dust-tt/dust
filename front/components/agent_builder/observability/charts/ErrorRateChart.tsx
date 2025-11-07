@@ -98,7 +98,7 @@ export function ErrorRateChart({
     agentConfigurationId,
     period,
     mode,
-    filterVersion: selectedVersion,
+    filterVersion: selectedVersion?.version,
   });
 
   const { versionMarkers } = useAgentVersionMarkers({
