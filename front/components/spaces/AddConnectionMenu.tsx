@@ -29,7 +29,12 @@ import {
 } from "@app/lib/connector_providers";
 import { useSystemSpace } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import {
+  trackEvent,
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+  withTracking,
+} from "@app/lib/tracking";
 import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 import type {
   ConnectorProvider,
@@ -249,6 +254,15 @@ export const AddConnectionMenu = ({
           dataSource: DataSourceType;
           connector: ConnectorType;
         } = await res.json();
+        trackEvent({
+          area: TRACKING_AREAS.DATA_SOURCES,
+          object: "connection",
+          action: TRACKING_ACTIONS.CREATE,
+          extra: {
+            provider,
+            data_source_id: createdManagedDataSource.dataSource.sId,
+          },
+        });
         onCreated(createdManagedDataSource.dataSource);
       } else {
         const responseText = await res.text();

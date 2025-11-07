@@ -12,6 +12,7 @@ import { createGenericAgentConfiguration } from "@app/lib/api/assistant/configur
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import { ServerSideTracking } from "@app/lib/tracking/server";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { getLargeWhitelistedModel } from "@app/types";
@@ -244,6 +245,13 @@ async function handler(
           },
         });
       }
+
+      ServerSideTracking.trackAssistantCreated({
+        user: auth.user() ?? { id: "unknown", sId: "unknown" },
+        workspace: auth.workspace(),
+        assistant: result.value.agentConfiguration,
+        source: "generic_api",
+      });
 
       return res.status(200).json({
         agentConfiguration: result.value.agentConfiguration,
