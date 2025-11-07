@@ -28,6 +28,7 @@ import {
 } from "@app/components/markdown/PastedAttachmentBlock";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type { UserMessageType, WorkspaceType } from "@app/types";
+import { isTriggeredOrigin } from "@app/components/assistant/conversation/types";
 
 interface UserMessageProps {
   citations?: React.ReactElement[];
@@ -79,7 +80,7 @@ export function UserMessage({
           renderName={renderName}
           timestamp={formatTimestring(message.created)}
           infoChip={
-            message.context.origin === "triggered" && (
+            isTriggeredOrigin(message.context.origin) && (
               <span className="translate-y-1 text-muted-foreground dark:text-muted-foreground-night">
                 <TriggerChip message={message} />
               </span>

@@ -120,21 +120,6 @@ export async function runTriggerWebhookActivity({
     }
   }
 
-  // Check if the webhook request is rate limited
-  const rateLimiterRes = await checkWebhookRequestForRateLimit(auth);
-  if (rateLimiterRes.isErr()) {
-    const errorMessage = rateLimiterRes.error.message;
-    await webhookRequest.markAsFailed(errorMessage);
-
-    logger.error({ workspaceId, webhookRequestId }, errorMessage);
-    statsDClient.increment("webhook_rate_limit.hit.count", 1, [
-      `provider:${provider}`,
-      `workspace_id:${workspaceId}`,
-    ]);
-
-    throw new TriggerNonRetryableError(errorMessage);
-  }
-
   // Filter out non-subscribed events
   let receivedEventValue: string | undefined;
   if (webhookSource.provider) {
@@ -237,11 +222,35 @@ export async function runTriggerWebhookActivity({
       continue;
     }
 
-    const rateLimiterRes = await checkTriggerForExecutionPerDayLimit(auth, {
-      trigger,
-    });
-    if (rateLimiterRes.isErr()) {
-      const errorMessage = rateLimiterRes.error.message;
+    // Check if the webhook request is rate limited
+    if (!trigger.executionMode || trigger.executionMode === "fair_use") {
+      const globalRateLimitRes = await checkWebhookRequestForRateLimit(auth);
+      if (globalRateLimitRes.isErr()) {
+        const errorMessage = globalRateLimitRes.error.message;
+        await webhookRequest.markRelatedTrigger({
+          trigger,
+          status: "rate_limited",
+          errorMessage,
+        });
+        statsDClient.increment("webhook_workspace_rate_limit.hit.count", 1, [
+          `provider:${provider}`,
+          `workspace_id:${workspaceId}`,
+        ]);
+
+        logger.error({ workspaceId, webhookRequestId }, errorMessage);
+        throw new TriggerNonRetryableError(errorMessage);
+      }
+    }
+
+    const specificRateLimiterRes = await checkTriggerForExecutionPerDayLimit(
+      auth,
+      {
+        trigger,
+      }
+    );
+
+    if (specificRateLimiterRes.isErr()) {
+      const errorMessage = specificRateLimiterRes.error.message;
       await webhookRequest.markRelatedTrigger({
         trigger,
         status: "rate_limited",
@@ -251,6 +260,12 @@ export async function runTriggerWebhookActivity({
         { workspaceId, webhookRequestId, triggerId: trigger.sId },
         errorMessage
       );
+
+      statsDClient.increment("webhook_specific_rate_limit.hit.count", 1, [
+        `provider:${provider}`,
+        `workspace_id:${workspaceId}`,
+        `trigger_id:${trigger.sId}`,
+      ]);
       continue;
     }
 

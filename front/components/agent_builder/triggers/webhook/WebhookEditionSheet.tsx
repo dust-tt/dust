@@ -29,6 +29,7 @@ import type {
   PresetWebhook,
   WebhookEvent,
 } from "@app/types/triggers/webhooks_source_preset";
+import { TriggerExecutionMode } from "@app/types/assistant/triggers";
 
 interface WebhookEditionNameInputProps {
   isEditor: boolean;
@@ -85,7 +86,13 @@ function WebhookEditionStatusToggle({
   );
 }
 
-function WebhookEditionExecutionLimit() {
+interface WebhookEditionExecutionLimitProps {
+  executionMode: TriggerExecutionMode;
+}
+
+function WebhookEditionExecutionLimit({
+  executionMode,
+}: WebhookEditionExecutionLimitProps) {
   const { control } = useFormContext<TriggerViewsSheetFormValues>();
   const {
     field: { value: executionLimit },
@@ -106,7 +113,10 @@ function WebhookEditionExecutionLimit() {
       >
         This trigger can send per a limited amount of messages per day. This
         prevents a single trigger from using up your workspace's message fair
-        use quota (
+        use quota. This trigger is currently running on your workspace's{" "}
+        {executionMode === "fair_use" ? "fair use" : "programmatic usage"}{" "}
+        quota.
+        <br /> (
         <Link
           href="https://docs.dust.tt/update/docs/rate-limiting#/"
           target="_blank"
@@ -115,7 +125,7 @@ function WebhookEditionExecutionLimit() {
         >
           Learn more
         </Link>
-        ).
+        )
       </ContentMessage>
     </div>
   );
@@ -302,7 +312,9 @@ export function WebhookEditionSheetContent({
 
         <Separator />
 
-        <WebhookEditionExecutionLimit />
+        <WebhookEditionExecutionLimit
+          executionMode={trigger?.executionMode ?? "fair_use"}
+        />
         {trigger && (
           <div className="space-y-1">
             <RecentWebhookRequests

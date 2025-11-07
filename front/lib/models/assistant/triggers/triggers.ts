@@ -30,7 +30,7 @@ export class TriggerModel extends WorkspaceAwareModel<TriggerModel> {
    */
   declare webhookSourceViewId: ForeignKey<WebhookSourcesViewModel["id"]> | null;
   declare executionPerDayLimitOverride: number | null;
-  declare executionMode: TriggerExecutionMode;
+  declare executionMode: TriggerExecutionMode | null;
 
   /**
    * We use the sId, because it's static between an agent versions,
@@ -94,8 +94,7 @@ TriggerModel.init(
     },
     executionMode: {
       type: DataTypes.STRING,
-      allowNull: false,
-      defaultValue: "fair_use",
+      allowNull: true,
     },
   },
   {

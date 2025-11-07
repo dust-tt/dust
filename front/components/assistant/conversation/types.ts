@@ -14,6 +14,7 @@ import type {
   LightWorkspaceType,
   ModelId,
   Result,
+  UserMessageOrigin,
   UserMessageType,
   UserType,
 } from "@app/types";
@@ -75,6 +76,12 @@ export type VirtuosoMessageListContext = {
     resetConversation: () => void;
   };
   feedbacksByMessageId: Record<string, AgentMessageFeedbackType>;
+};
+
+export const isTriggeredOrigin = (origin?: UserMessageOrigin | null) => {
+  return (
+    origin && (origin === "triggered" || origin === "triggered_programmatic")
+  );
 };
 
 export const isUserMessage = (
