@@ -2,6 +2,7 @@ import {
   AnimatedText,
   ArrowRightIcon,
   ContentMessage,
+  ContentMessageInline,
   DotIcon,
   Label,
   TextArea,
@@ -183,9 +184,9 @@ export function ScheduleEditionScheduler({
       )}
 
       {(cronError !== undefined || timezoneError !== undefined) && (
-        <div className="text-xs text-warning">
+        <ContentMessageInline variant="warning">
           {cronError?.message ?? timezoneError?.message}
-        </div>
+        </ContentMessageInline>
       )}
     </div>
   );

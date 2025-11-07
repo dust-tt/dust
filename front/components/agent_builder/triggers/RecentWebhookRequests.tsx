@@ -1,5 +1,6 @@
 import {
   CollapsibleComponent,
+  ContentMessageInline,
   Label,
   Markdown,
   Separator,
@@ -80,9 +81,9 @@ function RecentWebhookRequestsContent({
 
   if (isWebhookRequestsError) {
     return (
-      <p className="text-sm text-warning">
+      <ContentMessageInline variant="warning">
         Unable to load recent webhook requests.
-      </p>
+      </ContentMessageInline>
     );
   }
 

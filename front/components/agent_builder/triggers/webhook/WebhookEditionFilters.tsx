@@ -148,10 +148,10 @@ export function WebhookEditionFilters({
         );
       case "error":
         return (
-          <p className="text-sm text-warning">
+          <ContentMessageInline variant="warning">
             {filterErrorMessage ??
               "Unable to generate filter. Please try rephrasing."}
-          </p>
+          </ContentMessageInline>
         );
       default:
         return null;
