@@ -9,7 +9,6 @@ export function AgentInsightsTab({
   owner: WorkspaceType;
   agentConfiguration: AgentConfigurationType;
 }) {
-  // Wrap the entire tab in ObservabilityProvider to enable charts + filters state.
   return (
     <ObservabilityProvider>
       <AgentObservability
@@ -20,4 +19,3 @@ export function AgentInsightsTab({
     </ObservabilityProvider>
   );
 }
-// thin wrapper only; all logic is inside AgentObservability
