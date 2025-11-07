@@ -18,6 +18,16 @@ export type MembershipInvitationTypeWithLink = MembershipInvitationType & {
   inviteLink: string;
 };
 
+export type PendingInvitationOption = {
+  invitationId: number;
+  invitationSid: string;
+  token: string;
+  workspaceName: string;
+  workspaceSid: string;
+  initialRole: ActiveRoleType;
+  createdAt: number;
+};
+
 // Types for the invite form in Poke.
 
 export const InviteMemberFormSchema = t.type({

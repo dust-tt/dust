@@ -15,16 +15,7 @@ import {
 } from "@app/lib/iam/session";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { useUser } from "@app/lib/swr/user";
-
-type PendingInvitationOption = {
-  invitationId: number;
-  invitationSid: string;
-  token: string;
-  workspaceName: string;
-  workspaceSid: string;
-  initialRole: string;
-  createdAt: number;
-};
+import type { PendingInvitationOption } from "@app/types/membership_invitation";
 
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   userFirstName: string;
@@ -51,7 +42,7 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
       workspaceSid: workspace.sId,
       initialRole: invitation.initialRole,
       createdAt: invitation.createdAt.getTime(),
-    } satisfies PendingInvitationOption;
+    };
   });
 
   return {
