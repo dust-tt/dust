@@ -30,6 +30,7 @@ import { AgentInfoTab } from "@app/components/assistant/details/tabs/AgentInfoTa
 import { AgentMemoryTab } from "@app/components/assistant/details/tabs/AgentMemoryTab";
 import { AgentPerformanceTab } from "@app/components/assistant/details/tabs/AgentPerformanceTab";
 import { AgentTriggersTab } from "@app/components/assistant/details/tabs/AgentTriggersTab";
+import { AgentInsightsTab } from "@app/components/assistant/details/tabs/AgentInsightsTab";
 import { RestoreAssistantDialog } from "@app/components/assistant/RestoreAssistantDialog";
 import { isMCPConfigurationForAgentMemory } from "@app/lib/actions/types/guards";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
@@ -84,12 +85,17 @@ export function AgentDetails({
   owner,
   user,
 }: AssistantDetailsProps) {
-  const { featureFlags } = useFeatureFlags({
+  const { featureFlags, hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
 
   const [selectedTab, setSelectedTab] = useState<
-    "info" | "performance" | "editors" | "agent_memory" | "triggers"
+    | "info"
+    | "insights"
+    | "performance"
+    | "editors"
+    | "agent_memory"
+    | "triggers"
   >("info");
   const {
     agentConfiguration,
@@ -125,6 +131,9 @@ export function AgentDetails({
     (agentConfiguration?.canEdit || isAdmin(owner)) &&
     agentId != null &&
     !isGlobalAgent;
+
+  const showInsightsTabs =
+    agentId != null && hasFeature("agent_builder_observability");
 
   const DescriptionSection = () => (
     <div className="flex flex-col gap-5">
@@ -211,7 +220,10 @@ export function AgentDetails({
               <DescriptionSection />
             </SheetHeader>
             <SheetContainer className="pb-4">
-              {showEditorsTabs || showPerformanceTabs || showAgentMemory ? (
+              {showEditorsTabs ||
+              showPerformanceTabs ||
+              showAgentMemory ||
+              showInsightsTabs ? (
                 <Tabs value={selectedTab}>
                   <TabsList border={false}>
                     <TabsTrigger
@@ -220,6 +232,14 @@ export function AgentDetails({
                       icon={InformationCircleIcon}
                       onClick={() => setSelectedTab("info")}
                     />
+                    {showInsightsTabs && (
+                      <TabsTrigger
+                        value="insights"
+                        label="Insights"
+                        icon={BarChartIcon}
+                        onClick={() => setSelectedTab("insights")}
+                      />
+                    )}
                     {showTriggersTabs && (
                       <TabsTrigger
                         value="triggers"
@@ -259,6 +279,12 @@ export function AgentDetails({
                         <AgentInfoTab
                           agentConfiguration={agentConfiguration}
                           owner={owner}
+                        />
+                      </TabsContent>
+                      <TabsContent value="insights">
+                        <AgentInsightsTab
+                          owner={owner}
+                          agentConfiguration={agentConfiguration}
                         />
                       </TabsContent>
                       <TabsContent value="triggers">
