@@ -10,6 +10,7 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { createOrUpdateUser, fetchUserFromSession } from "@app/lib/iam/users";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -109,17 +110,33 @@ async function handler(
     targetWorkspace = workspace;
     targetFlow = flow;
   } else {
-    // When user is just created, and no invitation is already provided, check if there is a
-    // pending invitation. If it does, we will use the first one and redirect to the join page.
-    const pendingInvitation =
-      userCreated && !membershipInvite
-        ? await MembershipInvitationResource.getPendingForEmail(user.email)
+    const { memberships } = await MembershipResource.getActiveMemberships({
+      users: [user],
+    });
+
+    // When user has no memberships, and no invitation is already provided, check if there is a
+    // pending invitation.
+    const pendingInvitations =
+      memberships.length === 0 && !membershipInvite
+        ? await MembershipInvitationResource.listPendingForEmail(user.email)
         : null;
 
-    const finalMembershipInvite = membershipInvite ?? pendingInvitation;
+    // More than one pending invitation, redirect to invite choose page - otherwise use the first one.
+    if (pendingInvitations && pendingInvitations.length > 1) {
+      res.redirect("/invite-choose");
+      return;
+    }
+
+    const finalMembershipInvite = membershipInvite ?? pendingInvitations?.[0];
     const loginFctn = finalMembershipInvite
       ? async () => handleMembershipInvite(user, finalMembershipInvite)
-      : async () => handleRegularSignupFlow(session, user, targetWorkspaceId);
+      : async () =>
+          handleRegularSignupFlow(
+            session,
+            user,
+            memberships,
+            targetWorkspaceId
+          );
 
     const result = await loginFctn();
     if (result.isErr()) {
