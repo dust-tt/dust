@@ -213,6 +213,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable mentions v2, aka mention users",
     stage: "on_demand",
   },
+  slack_files_write_scope: {
+    description: "Enable files:write scope for Slack bot and MCP server",
+    stage: "on_demand",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
