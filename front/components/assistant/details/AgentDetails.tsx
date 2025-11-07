@@ -154,8 +154,7 @@ export function AgentDetails({
             <div>
               <Chip
                 color={SCOPE_INFO[agentConfiguration.scope].color}
-                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                icon={SCOPE_INFO[agentConfiguration.scope].icon || undefined}
+                icon={SCOPE_INFO[agentConfiguration.scope].icon ?? undefined}
               >
                 {SCOPE_INFO[agentConfiguration.scope].label}
               </Chip>
