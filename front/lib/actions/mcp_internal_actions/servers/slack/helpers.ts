@@ -6,7 +6,6 @@ import slackifyMarkdown from "slackify-markdown";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
-import { config as regionsConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { removeDiacritics } from "@app/lib/utils";
@@ -283,10 +282,11 @@ export async function executePostMessage(
   );
   message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${agentLoopContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
 
-  const currentRegion = regionsConfig.getCurrentRegion();
-  // Disable file upload in US region for now.
-  // TODO(2025-10-22 chris): remove this once Slack enables file:write scope
-  if (currentRegion === "us-central1") {
+  const authResult = await slackClient.auth.test();
+  if (
+    !authResult.ok ||
+    !authResult.response_metadata?.scopes?.includes("files:write")
+  ) {
     fileId = undefined;
   }
 
