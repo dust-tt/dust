@@ -3,6 +3,7 @@ import type { AdaptiveCard } from "@microsoft/teams-ai";
 import type { Activity } from "botbuilder";
 
 import type { MessageFootnotes } from "@connectors/lib/bot/citations";
+import { convertUrlsToMarkdown } from "@connectors/lib/bot/citations";
 import { makeDustAppUrl } from "@connectors/lib/bot/conversation_utils";
 
 const DUST_URL = "https://dust.tt/home";
@@ -66,6 +67,9 @@ export function createResponseAdaptiveCard({
           },
         ];
 
+  // Convert plain URLs to Markdown links for Teams
+  const responseWithMarkdownLinks = convertUrlsToMarkdown(response);
+
   const card: AdaptiveCard = {
     type: "AdaptiveCard",
     $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
@@ -73,7 +77,7 @@ export function createResponseAdaptiveCard({
     body: [
       {
         type: "TextBlock",
-        text: response,
+        text: responseWithMarkdownLinks,
         wrap: true,
         spacing: "Medium",
         color: isError ? "Attention" : "Default",
@@ -203,6 +207,9 @@ export function createStreamingAdaptiveCard({
   conversationUrl: string | null;
   workspaceId: string;
 }): Partial<Activity> {
+  // Convert plain URLs to Markdown links for Teams
+  const responseWithMarkdownLinks = convertUrlsToMarkdown(response);
+
   return {
     type: "message",
     attachments: [
@@ -216,7 +223,7 @@ export function createStreamingAdaptiveCard({
             // Main response content
             {
               type: "TextBlock",
-              text: response,
+              text: responseWithMarkdownLinks,
               wrap: true,
               spacing: "Medium",
             },
