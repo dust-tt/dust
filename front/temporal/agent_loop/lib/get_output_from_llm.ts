@@ -23,6 +23,7 @@ export async function getOutputFromLLMStream(
     step,
     agentConfiguration,
     agentMessage,
+    model,
     publishAgentError,
     prompt,
     llm,
@@ -111,6 +112,18 @@ export async function getOutputFromLLMStream(
           step,
         });
 
+        // Add reasoning content to contents array
+        contents.push({
+          type: "reasoning",
+          value: {
+            reasoning: event.content.text,
+            metadata: JSON.stringify(event.metadata),
+            tokens: 0, // Will be updated later from token_usage event
+            provider: model.providerId,
+            region: null,
+          },
+        });
+
         nativeChainOfThought += "\n\n";
         continue;
       }
@@ -150,6 +163,20 @@ export async function getOutputFromLLMStream(
         value: event.content.text,
       });
       generation += event.content.text;
+    }
+
+    if (event.type === "token_usage") {
+      // Update reasoning token count on the last reasoning item
+      const reasoningTokens = event.content.reasoningTokens || 0;
+      if (reasoningTokens > 0) {
+        for (let i = contents.length - 1; i >= 0; i--) {
+          const content = contents[i];
+          if (content.type === "reasoning") {
+            content.value.tokens = reasoningTokens;
+            break;
+          }
+        }
+      }
     }
   }
 
