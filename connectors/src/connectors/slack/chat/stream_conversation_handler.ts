@@ -763,9 +763,9 @@ async function getFilesFromDust(
   }>,
   dustAPI: DustAPI
 ): Promise<{ file: Buffer; filename: string }[]> {
-  const hiddenFiles = files.filter((file) => file.hidden); // Skip hidden files
+  const visibleFiles = files.filter((file) => !file.hidden); // Skip hidden files
   const uploadResults = await concurrentExecutor(
-    hiddenFiles,
+    visibleFiles,
     async (file) => {
       try {
         const fileBuffer = await dustAPI.downloadFile({ fileID: file.fileId });
