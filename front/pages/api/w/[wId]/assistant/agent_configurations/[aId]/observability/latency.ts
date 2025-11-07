@@ -80,6 +80,7 @@ async function handler(
         workspaceId: owner.sId,
         agentId: assistant.sId,
         days,
+        version: q.data.version,
       });
 
       const latencyResult = await fetchLatency(baseQuery);
