@@ -22,7 +22,7 @@ export function buildAgentAnalyticsBaseQuery({
     filters.push({ range: { timestamp: { gte: `now-${days}d/d` } } });
   }
   if (version) {
-    filters.push({ term: { "configuration.version": version } });
+    filters.push({ term: { agent_version: version } });
   }
   if (feedbackNestedQuery) {
     filters.push({ nested: { path: "feedbacks", query: feedbackNestedQuery } });

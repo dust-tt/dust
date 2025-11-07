@@ -81,7 +81,7 @@ export function LatencyChart({
     agentConfigurationId,
     period,
     mode,
-    filterVersion: selectedVersion,
+    filterVersion: selectedVersion?.version,
   });
 
   const { versionMarkers } = useAgentVersionMarkers({
