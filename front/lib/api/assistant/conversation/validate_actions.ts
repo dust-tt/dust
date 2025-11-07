@@ -5,7 +5,7 @@ import {
   getMCPApprovalStateFromUserApprovalState,
   isMCPApproveExecutionEvent,
 } from "@app/lib/actions/mcp";
-import { setUserAlwaysApprovedTool } from "@app/lib/actions/utils";
+import { setUserAlwaysApprovedTool } from "@app/lib/actions/tool_status";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";

@@ -6,6 +6,7 @@ import slackifyMarkdown from "slackify-markdown";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
+import { config as regionsConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { removeDiacritics } from "@app/lib/utils";
@@ -282,8 +283,14 @@ export async function executePostMessage(
   );
   message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${agentLoopContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
 
+  const currentRegion = regionsConfig.getCurrentRegion();
+  // Disable file upload in US region for now.
+  // TODO(2025-10-22 chris): remove this once Slack enables file:write scope
+  if (currentRegion === "us-central1") {
+    fileId = undefined;
+  }
+
   // If a file is provided, upload it as attachment of the original message.
-  fileId = undefined; // TODO(2025-10-22 chris): remove this once Slack enables file:write scope
   if (fileId) {
     const file = await FileResource.fetchById(auth, fileId);
     if (!file) {

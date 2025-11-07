@@ -1,6 +1,7 @@
 import {
   ActionFrameIcon,
   ArrowPathIcon,
+  BookOpenIcon,
   Button,
   ContextItem,
   DiscordLogo,
@@ -55,7 +56,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   isSlackDataSourceBotEnabled: boolean;
-  isMicrosoftTeamsBotAvailable: boolean;
   isDiscordBotAvailable: boolean;
   slackBotDataSource: DataSourceType | null;
   microsoftBotDataSource: DataSourceType | null;
@@ -98,9 +98,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
 
   const featureFlags = await getFeatureFlags(owner);
-  const isMicrosoftTeamsBotAvailable = featureFlags.includes(
-    "microsoft_teams_bot"
-  );
   const isDiscordBotAvailable = featureFlags.includes("discord_bot");
 
   const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
@@ -110,7 +107,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       subscription,
       isSlackDataSourceBotEnabled,
-      isMicrosoftTeamsBotAvailable,
       isDiscordBotAvailable,
       slackBotDataSource: slackBotDataSource?.toJSON() ?? null,
       microsoftBotDataSource: microsoftBotDataSource?.toJSON() ?? null,
@@ -124,7 +120,6 @@ export default function WorkspaceAdmin({
   owner,
   subscription,
   isSlackDataSourceBotEnabled,
-  isMicrosoftTeamsBotAvailable,
   isDiscordBotAvailable,
   slackBotDataSource,
   microsoftBotDataSource,
@@ -269,60 +264,56 @@ export default function WorkspaceAdmin({
             <VoiceTranscriptionToggle owner={owner} />
           </ContextItem.List>
         </Page.Vertical>
-        {(!isSlackDataSourceBotEnabled ||
-          isMicrosoftTeamsBotAvailable ||
-          isDiscordBotAvailable) && (
-          <Page.Vertical align="stretch" gap="md">
-            <Page.H variant="h4">Integrations</Page.H>
-            <ContextItem.List>
-              <div className="h-full border-b border-border dark:border-border-night" />
-              {!isSlackDataSourceBotEnabled && (
-                <BotToggle
-                  owner={owner}
-                  botDataSource={slackBotDataSource}
-                  systemSpace={systemSpace}
-                  oauth={{ provider: "slack", useCase: "bot", extraConfig: {} }}
-                  connectorProvider="slack_bot"
-                  name="Slack Bot"
-                  description="Use Dust Agents in Slack with the Dust Slack app"
-                  visual={<SlackLogo className="h-6 w-6" />}
-                />
-              )}
-              {isMicrosoftTeamsBotAvailable && (
-                <BotToggle
-                  owner={owner}
-                  botDataSource={microsoftBotDataSource}
-                  systemSpace={systemSpace}
-                  oauth={{
-                    provider: "microsoft_tools",
-                    useCase: "bot",
-                    extraConfig: {},
-                  }}
-                  connectorProvider="microsoft_bot"
-                  name="Microsoft Teams Bot"
-                  description="Use Dust Agents in Teams with the Dust Microsoft Teams Bot"
-                  visual={<MicrosoftLogo className="h-6 w-6" />}
-                />
-              )}
-              {isDiscordBotAvailable && (
-                <BotToggle
-                  owner={owner}
-                  botDataSource={discordBotDataSource}
-                  systemSpace={systemSpace}
-                  oauth={{
-                    provider: "discord",
-                    useCase: "bot",
-                    extraConfig: {},
-                  }}
-                  connectorProvider="discord_bot"
-                  name="Discord Bot"
-                  description="Use Dust Agents in Discord with the Dust Discord app"
-                  visual={<DiscordLogo className="h-6 w-6" />}
-                />
-              )}
-            </ContextItem.List>
-          </Page.Vertical>
-        )}
+        <Page.Vertical align="stretch" gap="md">
+          <Page.H variant="h4">Integrations</Page.H>
+          <ContextItem.List>
+            <div className="h-full border-b border-border dark:border-border-night" />
+            {!isSlackDataSourceBotEnabled && (
+              <BotToggle
+                owner={owner}
+                botDataSource={slackBotDataSource}
+                systemSpace={systemSpace}
+                oauth={{ provider: "slack", useCase: "bot", extraConfig: {} }}
+                connectorProvider="slack_bot"
+                name="Slack Bot"
+                description="Use Dust Agents in Slack with the Dust Slack app"
+                visual={<SlackLogo className="h-6 w-6" />}
+                documentationUrl="https://docs.dust.tt/docs/slack"
+              />
+            )}
+            <BotToggle
+              owner={owner}
+              botDataSource={microsoftBotDataSource}
+              systemSpace={systemSpace}
+              oauth={{
+                provider: "microsoft_tools",
+                useCase: "bot",
+                extraConfig: {},
+              }}
+              connectorProvider="microsoft_bot"
+              name="Microsoft Teams Bot"
+              description="Use Dust Agents in Teams with the Dust Microsoft Teams Bot"
+              visual={<MicrosoftLogo className="h-6 w-6" />}
+              documentationUrl="https://docs.dust.tt/docs/dust-in-teams"
+            />
+            {isDiscordBotAvailable && (
+              <BotToggle
+                owner={owner}
+                botDataSource={discordBotDataSource}
+                systemSpace={systemSpace}
+                oauth={{
+                  provider: "discord",
+                  useCase: "bot",
+                  extraConfig: {},
+                }}
+                connectorProvider="discord_bot"
+                name="Discord Bot"
+                description="Use Dust Agents in Discord with the Dust Discord app"
+                visual={<DiscordLogo className="h-6 w-6" />}
+              />
+            )}
+          </ContextItem.List>
+        </Page.Vertical>
       </Page.Vertical>
     </AppCenteredLayout>
   );
@@ -337,6 +328,7 @@ function BotToggle({
   name,
   description,
   visual,
+  documentationUrl,
 }: {
   owner: WorkspaceType;
   botDataSource: DataSourceType | null;
@@ -350,6 +342,7 @@ function BotToggle({
   name: string;
   description: string;
   visual: React.ReactNode;
+  documentationUrl?: string;
 }) {
   const { configValue } = useConnectorConfig({
     configKey: "botEnabled",
@@ -430,8 +423,23 @@ function BotToggle({
   return (
     <ContextItem
       title={name}
-      subElement={description}
+      subElement={
+        <div className="flex flex-row items-center gap-2">
+          <span>{description}</span>
+          {documentationUrl && (
+            <a
+              href={documentationUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-action-400 hover:text-action-500 text-sm"
+            >
+              <BookOpenIcon className="h-4 w-4" />
+            </a>
+          )}
+        </div>
+      }
       visual={visual}
+      truncateSubElement={true}
       hasSeparatorIfLast={true}
       action={
         <div className="flex flex-row items-center gap-2">

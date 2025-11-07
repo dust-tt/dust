@@ -38,7 +38,9 @@ export function ChartContainer({
         <div className="flex items-center gap-3">{additionalControls}</div>
       </div>
       {description && (
-        <div className="my-3 text-xs text-muted-foreground">{description}</div>
+        <div className="my-3 text-xs text-muted-foreground dark:text-muted-foreground-night">
+          {description}
+        </div>
       )}
       {isLoading || message ? (
         <div
@@ -48,7 +50,7 @@ export function ChartContainer({
           {isLoading ? (
             <Spinner size="lg" />
           ) : (
-            <span className="text-sm text-muted-foreground dark:text-foreground-night">
+            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               {message}
             </span>
           )}

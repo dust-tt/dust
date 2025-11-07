@@ -187,10 +187,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Elevenlabs MCP tool for voice synthesis",
     stage: "on_demand",
   },
-  microsoft_teams_bot: {
-    description: "Microsoft Teams bot connector for workspace integration",
-    stage: "on_demand",
-  },
   agent_builder_observability: {
     description:
       "Observability tab in the Agent Builder (charts powered by Elasticsearch)",
@@ -215,6 +211,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   mentions_v2: {
     description: "Enable mentions v2, aka mention users",
+    stage: "on_demand",
+  },
+  slack_files_write_scope: {
+    description: "Enable files:write scope for Slack bot and MCP server",
     stage: "on_demand",
   },
 } as const satisfies Record<string, FeatureFlag>;

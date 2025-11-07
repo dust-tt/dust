@@ -298,8 +298,8 @@ export const runConversation = async (
           });
           break;
         case "token_usage":
-          outputTokens = event.content.outputTokens;
-          totalTokens = event.content.totalTokens;
+          outputTokens = event.content.outputTokens ?? null;
+          totalTokens = event.content.totalTokens ?? null;
           break;
         case "error":
           throw new Error(`LLM Error: ${event.content.message}`);
@@ -336,6 +336,7 @@ export const runConversation = async (
       // and end message may differ: we cannot just check equality
       expect(fullReasoning.length).toBeGreaterThan(0);
     }
+
     // Google answers 0 for short answers, so let's check that we got at least 1 total token
     if (outputTokens === 0) {
       expect(totalTokens).not.toBeNull();

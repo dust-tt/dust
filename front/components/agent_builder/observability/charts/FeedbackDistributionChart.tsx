@@ -97,20 +97,23 @@ export function FeedbackDistributionChart({
           data={data}
           margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
         >
-          <CartesianGrid vertical={false} className="stroke-border" />
+          <CartesianGrid
+            vertical={false}
+            className="stroke-border dark:stroke-border-night"
+          />
           <XAxis
             dataKey="date"
             type="category"
             scale="point"
             allowDuplicatedCategory={false}
-            className="text-xs text-muted-foreground"
+            className="text-xs text-muted-foreground dark:text-muted-foreground-night"
             tickLine={false}
             axisLine={false}
             tickMargin={8}
             minTickGap={16}
           />
           <YAxis
-            className="text-xs text-muted-foreground"
+            className="text-xs text-muted-foreground dark:text-muted-foreground-night"
             tickLine={false}
             axisLine={false}
             tickMargin={8}

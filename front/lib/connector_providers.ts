@@ -352,13 +352,12 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     name: "Microsoft Teams (Bot)",
     connectorProvider: "microsoft_bot",
     status: "built",
-    rollingOutFlag: "microsoft_teams_bot",
     hide: true,
     description:
       "Enable your Microsoft Teams bot integration to interact with Dust directly from Teams.",
     limitations: "Bot must be enabled in organization settings.",
     mismatchError: `You cannot select another Microsoft tenant.\nPlease contact us at support@dust.tt if you initially selected a wrong tenant.`,
-    guideLink: "https://docs.dust.tt/docs/microsoft-teams-bot",
+    guideLink: "https://docs.dust.tt/docs/dust-in-teams",
     selectLabel: "Bot configuration",
     getLogoComponent: () => {
       return MicrosoftLogo;
@@ -564,6 +563,7 @@ export const isConnectorProviderAllowedForPlan = (
     case "salesforce":
       return !!featureFlags?.includes("salesforce_synced_queries");
     case "microsoft":
+    case "microsoft_bot":
     case "slack_bot":
     case "discord_bot":
     case "snowflake":
@@ -571,8 +571,6 @@ export const isConnectorProviderAllowedForPlan = (
     case "bigquery":
     case "gong":
       return true;
-    case "microsoft_bot":
-      return !!featureFlags?.includes("microsoft_teams_bot");
     default:
       assertNever(provider);
   }
