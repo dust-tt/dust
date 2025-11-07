@@ -377,7 +377,7 @@ function CheckConnectorStuck({
         label={isLoading ? "Checking..." : "Check"}
         icon={isLoading ? Spinner : MagnifyingGlassIcon}
         disabled={isLoading}
-        onClick={!isLoading && !isRunning ? checkStuck : undefined}
+        onClick={!isLoading ? checkStuck : undefined}
         size="xs"
       />
     );
@@ -456,8 +456,8 @@ function StuckActivitiesModal({
             />
             {result.workflows.map((workflow) => (
               <div key={workflow.workflowId} className="flex flex-col gap-2">
-                <div className="rounded-lg border border-structure-200 dark:border-structure-200-dark">
-                  <div className="border-b border-structure-200 px-4 py-3 dark:border-structure-200-dark">
+                <div className="border-structure-200 dark:border-structure-200-dark rounded-lg border">
+                  <div className="border-structure-200 dark:border-structure-200-dark border-b px-4 py-3">
                     <div className="text-sm font-semibold">
                       {workflow.workflowId}
                     </div>
@@ -469,7 +469,7 @@ function StuckActivitiesModal({
                     {workflow.stuckActivities.map((activity, idx) => (
                       <div
                         key={idx}
-                        className="border-b border-structure-200 px-4 py-3 last:border-b-0 dark:border-structure-200-dark"
+                        className="border-structure-200 dark:border-structure-200-dark border-b px-4 py-3 last:border-b-0"
                       >
                         <div className="flex items-center justify-between gap-3">
                           <span className="text-sm">
