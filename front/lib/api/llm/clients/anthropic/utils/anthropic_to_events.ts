@@ -20,7 +20,7 @@ import type {
 } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
-import { safeParseJSON } from "@app/types";
+import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
 
 export async function* streamLLMEvents(
   messageStreamEvents: AsyncIterable<MessageStreamEvent>,
@@ -56,7 +56,7 @@ function* handleMessageStreamEvent(
     /* Content is sent as follows:
      * content_block_start (gives the type of the content block and some metadata)
      * content_block_delta (streams content) (multiple times)
-     * content_block_stop (makrs the end of the content block)
+     * content_block_stop (marks the end of the content block)
      */
     case "content_block_start":
       handleContentBlockStart(messageStreamEvent, stateContainer);
@@ -299,16 +299,12 @@ function toolCall({
   input: string;
   metadata: LLMClientMetadata;
 }): ToolCallEvent {
-  const args = safeParseJSON(input);
-  if (args.isErr()) {
-    throw new Error(`Failed to parse tool call arguments: ${args.error}`);
-  }
   return {
     type: "tool_call",
     content: {
       id: id,
       name: name,
-      arguments: JSON.stringify(args.value),
+      arguments: parseToolArguments(input),
     },
     metadata,
   };

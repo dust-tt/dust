@@ -20,6 +20,7 @@ import {
   isCorrectDelta,
   isCorrectToolCall,
 } from "@app/lib/api/llm/types/predicates";
+import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types";
 
@@ -184,14 +185,19 @@ function toToolEvent({
     return null;
   }
 
+  let args: Record<string, unknown>;
+  if (isString(toolCall.function.arguments)) {
+    args = parseToolArguments(toolCall.function.arguments);
+  } else {
+    args = toolCall.function.arguments;
+  }
+
   return {
     type: "tool_call",
     content: {
       id: toolCall.id,
       name: toolCall.function.name,
-      arguments: isString(toolCall.function.arguments)
-        ? toolCall.function.arguments
-        : JSON.stringify(toolCall.function.arguments),
+      arguments: args,
     },
     metadata,
   };

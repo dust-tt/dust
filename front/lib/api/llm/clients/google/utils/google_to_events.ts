@@ -186,8 +186,7 @@ function partToLLMEvent({
       content: {
         id,
         name,
-        // TODO(LLM-Router 2025-10-27): set arguments type as Record<string, unknown
-        arguments: JSON.stringify(args),
+        arguments: args,
       },
       metadata,
     };

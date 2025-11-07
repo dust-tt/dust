@@ -10,7 +10,7 @@ import type {
   GetOutputResponse,
   Output,
 } from "@app/temporal/agent_loop/lib/types";
-import { Err, Ok, safeParseJSON } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 export async function getOutputFromLLMStream(
   auth: Authenticator,
@@ -25,7 +25,6 @@ export async function getOutputFromLLMStream(
     agentConfiguration,
     agentMessage,
     model,
-    publishAgentError,
     prompt,
     llm,
   }: GetOutputRequestParams & { llm: LLM }
@@ -146,17 +145,6 @@ export async function getOutputFromLLMStream(
     }
 
     if (event.type === "tool_call") {
-      const argsRes = safeParseJSON(event.content.arguments);
-
-      if (argsRes.isErr()) {
-        await publishAgentError({
-          code: "tool_call_error",
-          message: `Error parsing tool call arguments: ${argsRes.error.message}`,
-          metadata: null,
-        });
-        return new Err({ type: "shouldReturnNull" });
-      }
-
       actions.push({
         name: event.content.name,
         functionCallId: event.content.id,
@@ -166,7 +154,7 @@ export async function getOutputFromLLMStream(
         value: {
           id: event.content.id,
           name: event.content.name,
-          arguments: event.content.arguments,
+          arguments: JSON.stringify(event.content.arguments),
         },
       });
     }

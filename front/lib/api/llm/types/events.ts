@@ -26,7 +26,7 @@ export interface ReasoningDeltaEvent {
 export interface ToolCall {
   id: string;
   name: string;
-  arguments: string;
+  arguments: Record<string, unknown>;
 }
 
 export interface ToolCallEvent {
