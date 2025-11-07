@@ -1,5 +1,4 @@
 import Anthropic, { APIError } from "@anthropic-ai/sdk";
-import type { ThinkingConfigParam } from "@anthropic-ai/sdk/resources/messages/messages.mjs";
 
 import type { AnthropicWhitelistedModelId } from "@app/lib/api/llm/clients/anthropic/types";
 import { overwriteLLMParameters } from "@app/lib/api/llm/clients/anthropic/types";

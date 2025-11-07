@@ -1,5 +1,6 @@
-import { ThinkingConfigParam } from "@anthropic-ai/sdk/resources/messages.mjs";
-import { ReasoningEffort } from "@app/types";
+import type { ThinkingConfigParam } from "@anthropic-ai/sdk/resources/messages.mjs";
+
+import type { ReasoningEffort } from "@app/types";
 
 export const CLAUDE_4_THINKING_BUDGET_TOKENS = {
   // thinking.enabled.budget_tokens: Input should be greater than or equal to 1024
