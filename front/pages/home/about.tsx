@@ -384,7 +384,7 @@ const PEOPLE: Record<
   },
   iliasbet: {
     name: "Ilias Bettahi",
-    title: "Tech Support Engineer",
+    title: "Support Engineer",
     image: "https://avatars.githubusercontent.com/iliasbet",
     linkedIn: "https://www.linkedin.com/in/iliasbet/",
     github: "https://github.com/iliasbet",
