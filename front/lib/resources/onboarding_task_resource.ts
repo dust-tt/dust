@@ -6,7 +6,6 @@ import type {
 } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
-import { DustError } from "@app/lib/error";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { OnboardingTaskKind } from "@app/lib/resources/storage/models/onboarding_tasks";
 import { OnboardingTaskModel } from "@app/lib/resources/storage/models/onboarding_tasks";
@@ -15,7 +14,7 @@ import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrapp
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { ModelId, Result, UserType } from "@app/types";
-import { Err, Ok, removeNulls } from "@app/types";
+import { Ok, removeNulls } from "@app/types";
 
 export type OnboardingTaskStatus = "to_do" | "achieved" | "skipped";
 
@@ -119,19 +118,8 @@ export class OnboardingTaskResource extends BaseResource<OnboardingTaskModel> {
   }
 
   async markCompleted(
-    auth: Authenticator,
     transaction?: Transaction
   ): Promise<Result<OnboardingTaskResource, Error>> {
-    const workspace = auth.getNonNullableWorkspace();
-    const user = auth.getNonNullableUser();
-    if (this.workspaceId !== workspace.id || this.userId !== user.id) {
-      return new Err(
-        new DustError(
-          "unauthorized",
-          "User does not have access to this onboarding task"
-        )
-      );
-    }
     await this.update(
       {
         completedAt: new Date(),
@@ -143,19 +131,8 @@ export class OnboardingTaskResource extends BaseResource<OnboardingTaskModel> {
   }
 
   async markSkipped(
-    auth: Authenticator,
     transaction?: Transaction
   ): Promise<Result<OnboardingTaskResource, Error>> {
-    const workspace = auth.getNonNullableWorkspace();
-    const user = auth.getNonNullableUser();
-    if (this.workspaceId !== workspace.id || this.userId !== user.id) {
-      return new Err(
-        new DustError(
-          "unauthorized",
-          "User does not have access to this onboarding task"
-        )
-      );
-    }
     await this.update(
       {
         skippedAt: new Date(),

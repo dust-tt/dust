@@ -86,9 +86,9 @@ describe("OnboardingTaskResource", () => {
 
     it("should include correct status in JSON", async () => {
       const completedTask = await OnboardingTaskFactory.create(authU1W1, {});
-      await completedTask.markCompleted(authU1W1);
+      await completedTask.markCompleted();
       const skippedTask = await OnboardingTaskFactory.create(authU1W1);
-      await skippedTask.markSkipped(authU1W1);
+      await skippedTask.markSkipped();
 
       const todoTask = await OnboardingTaskFactory.create(authU1W1);
       expect(completedTask.toJSON().status).toBe("achieved");
@@ -234,7 +234,7 @@ describe("OnboardingTaskResource", () => {
     it("should mark task as completed", async () => {
       const task = await OnboardingTaskFactory.create(authU1W1);
       expect(task.completedAt).toBeNull();
-      const result = await task.markCompleted(authU1W1);
+      const result = await task.markCompleted();
       expect(result.isOk()).toBe(true);
       expect(task.completedAt).toBeDefined();
       expect(task.completedAt).toBeInstanceOf(Date);
@@ -243,9 +243,9 @@ describe("OnboardingTaskResource", () => {
 
     it("should clear skipped status when marking as completed", async () => {
       const task = await OnboardingTaskFactory.create(authU1W1, {});
-      await task.markSkipped(authU1W1);
+      await task.markSkipped();
       expect(task.skippedAt).toBeDefined();
-      const result = await task.markCompleted(authU1W1);
+      const result = await task.markCompleted();
       expect(result.isOk()).toBe(true);
       expect(task.completedAt).toBeDefined();
       expect(task.skippedAt).toBeNull();
@@ -256,7 +256,7 @@ describe("OnboardingTaskResource", () => {
     it("should mark task as skipped", async () => {
       const task = await OnboardingTaskFactory.create(authU1W1);
       expect(task.skippedAt).toBeNull();
-      const result = await task.markSkipped(authU1W1);
+      const result = await task.markSkipped();
       expect(result.isOk()).toBe(true);
       expect(task.skippedAt).toBeDefined();
       expect(task.skippedAt).toBeInstanceOf(Date);
@@ -266,7 +266,7 @@ describe("OnboardingTaskResource", () => {
     it("should clear completed status when marking as skipped", async () => {
       const task = await OnboardingTaskFactory.create(authU1W1, {});
       expect(task.completedAt).toBeDefined();
-      const result = await task.markSkipped(authU1W1);
+      const result = await task.markSkipped();
       expect(result.isOk()).toBe(true);
       expect(task.skippedAt).toBeDefined();
       expect(task.completedAt).toBeNull();
@@ -281,13 +281,13 @@ describe("OnboardingTaskResource", () => {
 
     it("should return 'achieved' for completed tasks", async () => {
       const task = await OnboardingTaskFactory.create(authU1W1);
-      await task.markCompleted(authU1W1);
+      await task.markCompleted();
       expect(task.getStatus()).toBe("achieved");
     });
 
     it("should return 'skipped' for skipped tasks", async () => {
       const task = await OnboardingTaskFactory.create(authU1W1);
-      await task.markSkipped(authU1W1);
+      await task.markSkipped();
       expect(task.getStatus()).toBe("skipped");
     });
   });
