@@ -787,7 +787,9 @@ async function getFilesFromDust(
         );
         return null;
       }
-    }, { concurrency: 10 })
-  
+    },
+    { concurrency: 10 }
+  );
+
   return removeNulls(uploadResults);
 }
