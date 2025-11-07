@@ -55,7 +55,6 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
       },
       order: [["createdAt", "DESC"]],
       include: [WorkspaceModel],
-      order: [["createdAt", "DESC"]],
       // WORKSPACE_ISOLATION_BYPASS: Invitations can span multiple workspaces prior to login.
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
