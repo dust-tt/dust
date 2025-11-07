@@ -423,9 +423,6 @@ function CheckConnectorStuck({
                     >
                       <div>Activity: {activity.activityType}</div>
                       <div>Attempt: {activity.attempt}</div>
-                      {activity.maximumAttempts && (
-                        <div>Max Attempts: {activity.maximumAttempts}</div>
-                      )}
                       {activity.lastFailure && (
                         <div className="mt-1 text-warning-500">
                           Last Failure: {activity.lastFailure}

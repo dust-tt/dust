@@ -10,28 +10,27 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { getWorkflowIdsForConnector } from "@app/types/connectors/workflows";
 
-export interface PendingActivityInfo {
+export type PendingActivityInfo = {
   activityId: string;
   activityType: string;
   attempt: number;
-  maximumAttempts: number | null;
   lastFailure: string | null;
   state: string;
-}
+};
 
-export interface StuckWorkflowInfo {
+export type StuckWorkflowInfo = {
   workflowId: string;
   status: string;
   pendingActivities: PendingActivityInfo[];
   stuckActivities: PendingActivityInfo[];
   childWorkflows: StuckWorkflowInfo[];
-}
+};
 
-export interface CheckStuckResponseBody {
+export type CheckStuckResponseBody = {
   isStuck: boolean;
   workflows: StuckWorkflowInfo[];
   message: string;
-}
+};
 
 const STUCK_THRESHOLD = 5; // Consider an activity stuck if it has 5+ attempts
 
@@ -48,61 +47,60 @@ async function checkWorkflowStuck(
   }
   visitedWorkflowIds.add(workflowId);
 
+  let description: WorkflowExecutionDescription;
   try {
     const handle = client.workflow.getHandle(workflowId);
-    const description: WorkflowExecutionDescription = await handle.describe();
-
-    const pendingActivities: PendingActivityInfo[] = [];
-    const stuckActivities: PendingActivityInfo[] = [];
-
-    // Check pending activities
-    if (description.raw.pendingActivities) {
-      for (const activity of description.raw.pendingActivities) {
-        const activityInfo: PendingActivityInfo = {
-          activityId: activity.activityId ?? "unknown",
-          activityType: activity.activityType?.name ?? "unknown",
-          attempt: activity.attempt ?? 0,
-          maximumAttempts: activity.maximumAttempts ?? null,
-          lastFailure: activity.lastFailure?.message ?? null,
-          state: activity.state?.toString() ?? "unknown",
-        };
-
-        pendingActivities.push(activityInfo);
-
-        // Check if this activity is stuck (has many retries)
-        if (activityInfo.attempt >= STUCK_THRESHOLD) {
-          stuckActivities.push(activityInfo);
-        }
-      }
-    }
-
-    // Check child workflows recursively
-    const childWorkflows: StuckWorkflowInfo[] = [];
-    if (description.raw.pendingChildren) {
-      for (const child of description.raw.pendingChildren) {
-        if (child.workflowId) {
-          const childInfo = await checkWorkflowStuck(client, {
-            workflowId: child.workflowId,
-            visitedWorkflowIds,
-          });
-          if (childInfo) {
-            childWorkflows.push(childInfo);
-          }
-        }
-      }
-    }
-
-    return {
-      workflowId,
-      status: description.status.name,
-      pendingActivities,
-      stuckActivities,
-      childWorkflows,
-    };
+    description = await handle.describe();
   } catch (error) {
-    // Workflow might not exist or might be completed
     return null;
   }
+
+  const pendingActivities: PendingActivityInfo[] = [];
+  const stuckActivities: PendingActivityInfo[] = [];
+
+  // Check pending activities
+  if (description.raw.pendingActivities) {
+    for (const activity of description.raw.pendingActivities) {
+      const activityInfo: PendingActivityInfo = {
+        activityId: activity.activityId ?? "unknown",
+        activityType: activity.activityType?.name ?? "unknown",
+        attempt: activity.attempt ?? 0,
+        lastFailure: activity.lastFailure?.message ?? null,
+        state: activity.state?.toString() ?? "unknown",
+      };
+
+      pendingActivities.push(activityInfo);
+
+      // Check if this activity is stuck (has many retries)
+      if (activityInfo.attempt >= STUCK_THRESHOLD) {
+        stuckActivities.push(activityInfo);
+      }
+    }
+  }
+
+  // Check child workflows recursively
+  const childWorkflows: StuckWorkflowInfo[] = [];
+  if (description.raw.pendingChildren) {
+    for (const child of description.raw.pendingChildren) {
+      if (child.workflowId) {
+        const childInfo = await checkWorkflowStuck(client, {
+          workflowId: child.workflowId,
+          visitedWorkflowIds,
+        });
+        if (childInfo) {
+          childWorkflows.push(childInfo);
+        }
+      }
+    }
+  }
+
+  return {
+    workflowId,
+    status: description.status.name,
+    pendingActivities,
+    stuckActivities,
+    childWorkflows,
+  };
 }
 
 async function handler(
