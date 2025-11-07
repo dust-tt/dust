@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
-import { computeWebhookTriggerEstimation } from "@app/lib/triggers/trigger_usage_estimation";
+import { computeFilteredWebhookTriggerForecast } from "@app/lib/triggers/trigger_usage_estimation";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isString } from "@app/types";
@@ -70,11 +70,14 @@ async function handler(
         });
       }
 
-      const estimationResult = await computeWebhookTriggerEstimation(auth, {
-        webhookSource: webhookSourceResource,
-        filter,
-        event,
-      });
+      const estimationResult = await computeFilteredWebhookTriggerForecast(
+        auth,
+        {
+          webhookSource: webhookSourceResource,
+          filter,
+          event,
+        }
+      );
 
       if (estimationResult.isErr()) {
         return apiError(req, res, {

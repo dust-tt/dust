@@ -324,39 +324,52 @@ export function useRemoveTriggerSubscriber({
   return removeSubscriber;
 }
 
-export function useTriggerEstimation({ workspaceId }: { workspaceId: string }) {
-  const computeEstimation = useCallback(
-    async ({
-      filter,
-      webhookSourceId,
-      selectedEvent,
-    }: {
-      filter?: string | null;
-      webhookSourceId?: string | null;
-      selectedEvent?: string | null;
-    }): Promise<GetTriggerEstimationResponseBody | null> => {
-      if (!webhookSourceId) {
-        return null;
-      }
+export function useTriggerEstimation({
+  workspaceId,
+  webhookSourceId,
+  filter,
+  selectedEvent,
+}: {
+  workspaceId: string;
+  webhookSourceId?: string | null;
+  filter?: string | null;
+  selectedEvent?: string | null;
+}) {
+  const key = webhookSourceId
+    ? `/api/w/${workspaceId}/webhook_sources/${webhookSourceId}/trigger-estimation`
+    : null;
 
-      const params = new URLSearchParams();
-      if (filter && filter.trim()) {
-        params.append("filter", filter);
-      }
-      if (selectedEvent) {
-        params.append("event", selectedEvent);
-      }
+  const triggerEstimationFetcher: (
+    arg: string
+  ) => Promise<GetTriggerEstimationResponseBody> = (baseUrl) => {
+    const params = new URLSearchParams();
+    if (filter && filter.trim()) {
+      params.append("filter", filter);
+    }
+    if (selectedEvent) {
+      params.append("event", selectedEvent);
+    }
+    const queryString = params.toString();
+    const url = `${baseUrl}${queryString ? `?${queryString}` : ""}`;
+    return fetcher(url);
+  };
 
-      const queryString = params.toString();
-      const url = `/api/w/${workspaceId}/webhook_sources/${webhookSourceId}/trigger-estimation${
-        queryString ? `?${queryString}` : ""
-      }`;
-
-      const response: GetTriggerEstimationResponseBody = await fetcher(url);
-      return response;
-    },
-    [workspaceId]
+  const { data, error, isValidating, mutate } = useSWRWithDefaults(
+    key,
+    triggerEstimationFetcher,
+    {
+      revalidateOnMount: false,
+      revalidateIfStale: false,
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+    }
   );
 
-  return computeEstimation;
+  return {
+    estimation: (data as GetTriggerEstimationResponseBody | undefined) ?? null,
+    isEstimationLoading: !!webhookSourceId && !error && !data,
+    isEstimationError: error,
+    isEstimationValidating: isValidating,
+    mutateEstimation: mutate,
+  };
 }

@@ -32,7 +32,7 @@ export function RecentWebhookRequests({
     <CollapsibleComponent
       rootProps={{ defaultOpen, onOpenChange: setIsOpen }}
       triggerChildren={
-        <Label className="cursor-pointer">Requests history</Label>
+        <Label className="cursor-pointer">Request history</Label>
       }
       contentChildren={
         <RecentWebhookRequestsContent

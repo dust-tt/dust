@@ -140,7 +140,7 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     });
   }
 
-  static async fetchRecentByWebhookSourceId(
+  static async fetchRecentByWebhookSourceModelId(
     auth: Authenticator,
     { webhookSourceId }: { webhookSourceId: ModelId },
     opts: ResourceFindOptions<WebhookRequestModel> = {}

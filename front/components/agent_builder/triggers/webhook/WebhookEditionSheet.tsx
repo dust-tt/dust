@@ -111,7 +111,7 @@ function WebhookEditionExecutionLimit({
         <p>Limits are set on a 24 hours window. </p>
         <p>
           Control how many messages this trigger can send per day. This prevents
-          a single trigger from using up your workspace's message quota
+          a single trigger from using up all your triggered message quota.
         </p>
         <p className="font-semibold">
           <Link

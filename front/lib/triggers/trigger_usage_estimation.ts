@@ -5,13 +5,16 @@ import { getWebhookRequestsBucket } from "@app/lib/file_storage";
 import { matchPayload, parseMatcherExpression } from "@app/lib/matcher";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import type { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 
-export async function computeWebhookTriggerEstimation(
+const NUMBER_HOURS_TO_FETCH = 24;
+const MAX_OUTPUT = 100;
+
+export async function computeFilteredWebhookTriggerForecast(
   auth: Authenticator,
   {
     webhookSource,
@@ -28,7 +31,7 @@ export async function computeWebhookTriggerEstimation(
     { code: "invalid_filter_error"; message: string }
   >
 > {
-  const workspace = auth.getNonNullableWorkspace();
+  const owner = auth.getNonNullableWorkspace();
 
   // Parse filter if provided.
   let parsedFilter = null;
@@ -43,13 +46,12 @@ export async function computeWebhookTriggerEstimation(
     parsedFilter = parseResult.value;
   }
 
-  const NUMBER_HOURS_TO_FETCH = 24;
   const dateThreshold = new Date();
   dateThreshold.setHours(dateThreshold.getHours() - NUMBER_HOURS_TO_FETCH);
 
   // Fetch recent webhook requests (last 24 hours, max 100).
   const webhookRequests =
-    await WebhookRequestResource.fetchRecentByWebhookSourceId(
+    await WebhookRequestResource.fetchRecentByWebhookSourceModelId(
       auth,
       {
         webhookSourceId: webhookSource.id,
@@ -60,7 +62,7 @@ export async function computeWebhookTriggerEstimation(
             [Op.gte]: dateThreshold,
           },
         },
-        limit: 100,
+        limit: MAX_OUTPUT,
         order: [["createdAt", "DESC"]],
       }
     );
@@ -73,7 +75,7 @@ export async function computeWebhookTriggerEstimation(
     webhookRequests,
     async (webhookRequest) => {
       const gcsPath = WebhookRequestResource.getGcsPath({
-        workspaceId: workspace.sId,
+        workspaceId: owner.sId,
         webhookSourceId: webhookSource.id,
         webRequestId: webhookRequest.id,
       });

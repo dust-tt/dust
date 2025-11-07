@@ -18,7 +18,7 @@ import {
   useWebhookFilterGenerator,
 } from "@app/lib/swr/agent_triggers";
 import type { LightWorkspaceType } from "@app/types";
-import { normalizeError } from "@app/types";
+import { normalizeError, pluralize } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import type {
   PresetWebhook,
@@ -64,15 +64,13 @@ export function WebhookEditionFilters({
     null
   );
 
-  const [estimationData, setEstimationData] = useState<{
-    totalCount: number;
-    matchingCount: number;
-  } | null>(null);
-  const [isComputingEstimation, setIsComputingEstimation] = useState(false);
-
-  const computeEstimation = useTriggerEstimation({
-    workspaceId: workspace.sId,
-  });
+  const { estimation, isEstimationValidating, mutateEstimation } =
+    useTriggerEstimation({
+      workspaceId: workspace.sId,
+      webhookSourceId: webhookSourceView?.webhookSource.sId ?? null,
+      filter: filterField.value,
+      selectedEvent,
+    });
 
   const generateFilter = useWebhookFilterGenerator({ workspace });
 
@@ -80,18 +78,7 @@ export function WebhookEditionFilters({
     if (!webhookSourceView) {
       return;
     }
-
-    setIsComputingEstimation(true);
-    const result = await computeEstimation({
-      filter: filterField.value,
-      webhookSourceId: webhookSourceView.webhookSource.sId,
-      selectedEvent,
-    });
-
-    if (result) {
-      setEstimationData(result);
-    }
-    setIsComputingEstimation(false);
+    await mutateEstimation();
   };
 
   const triggerFilterGeneration = useDebounceWithAbort(
@@ -245,7 +232,7 @@ export function WebhookEditionFilters({
         </div>
       )}
 
-      <div className="pt-2">{filterGenerationResult}</div>
+      <div className="py-2">{filterGenerationResult}</div>
 
       {webhookSourceView && (
         <Button
@@ -253,24 +240,24 @@ export function WebhookEditionFilters({
           size="sm"
           variant="outline"
           onClick={handleComputeEstimation}
-          disabled={isComputingEstimation || !isEditor}
-          icon={isComputingEstimation ? Spinner : undefined}
+          disabled={isEstimationValidating || !isEditor}
+          isLoading={isEstimationValidating}
         />
       )}
 
-      {estimationData && (
+      {estimation && (
         <>
-          {estimationData.totalCount < 10 ? (
+          {estimation.totalCount < 10 ? (
             <ContentMessageInline variant="warning">
-              Not enough data to compute statistics. {estimationData.totalCount}{" "}
-              event{estimationData.totalCount !== 1 ? "s" : ""} found in the
-              last 24 hours. At least 10 events are needed for estimation.
+              Not enough data to compute statistics. {estimation.totalCount}{" "}
+              event{pluralize(estimation.totalCount)} found in the last 24
+              hours. At least 10 events are needed for estimation.
             </ContentMessageInline>
           ) : (
             <ContentMessageInline variant="info">
               According to the most recent data, this trigger would have created{" "}
-              {estimationData.matchingCount} conversations over{" "}
-              {estimationData.totalCount} events in the last 24 hours.
+              {estimation.matchingCount} conversations over{" "}
+              {estimation.totalCount} events in the last 24 hours.
             </ContentMessageInline>
           )}
         </>
