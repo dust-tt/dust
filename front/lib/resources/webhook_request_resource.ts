@@ -140,6 +140,21 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     });
   }
 
+  static async fetchRecentByWebhookSourceModelId(
+    auth: Authenticator,
+    { webhookSourceId }: { webhookSourceId: ModelId },
+    opts: ResourceFindOptions<WebhookRequestModel> = {}
+  ): Promise<WebhookRequestResource[]> {
+    return this.baseFetch(auth, {
+      where: {
+        ...opts.where,
+        webhookSourceId,
+      },
+      order: opts.order,
+      limit: opts.limit,
+    });
+  }
+
   static async listByStatus(
     auth: Authenticator,
     {

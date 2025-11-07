@@ -1,7 +1,5 @@
 import {
   Button,
-  ButtonsSwitch,
-  ButtonsSwitchList,
   Checkbox,
   ContentMessage,
   DropdownMenu,
@@ -9,6 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  ExclamationCircleIcon,
   Input,
   Label,
   Separator,
@@ -86,61 +85,38 @@ function WebhookEditionStatusToggle({
   );
 }
 
-interface WebhookEditionExecutionLimitProps {
-  isEditor: boolean;
-}
-
-function WebhookEditionExecutionLimit({
-  isEditor,
-}: WebhookEditionExecutionLimitProps) {
+function WebhookEditionExecutionLimit() {
   const { control } = useFormContext<TriggerViewsSheetFormValues>();
   const {
-    field: { value: executionLimit, onChange: setExecutionLimit },
+    field: { value: executionLimit },
   } = useController({
     control,
     name: "webhook.executionPerDayLimitOverride",
   });
 
-  const limitOptions = [
-    { label: "10/day", value: 10 },
-    { label: "25/day", value: 25 },
-    { label: "50/day", value: 50 },
-  ];
-
   return (
     <div className="flex flex-col space-y-1">
-      <Label htmlFor="execution-limit">Execution limit</Label>
-      <div className="pb-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
-        <p>
-          Maximum number of times this trigger can execute per hour. This is
-          smoothed out over a 24 hour period.
-        </p>
-        <p className="font-semibold">
-          <Link
-            href="https://docs.dust.tt/update/docs/rate-limiting#/"
-            target="_blank"
-            rel="noreferrer"
-            className="underline"
-          >
-            Learn more
-          </Link>{" "}
-          about webhook trigger rate limiting.
-        </p>
-      </div>
-      <ButtonsSwitchList
-        defaultValue={executionLimit.toString()}
-        className="w-fit"
+      <Label htmlFor="execution-limit">Rate limits</Label>
+      <p>Limits are set on a 24 hours window. </p>
+      <ContentMessage
+        variant="info"
+        size="lg"
+        icon={ExclamationCircleIcon}
+        title={`Up to ${executionLimit} requests per day`}
       >
-        {limitOptions.map((option) => (
-          <ButtonsSwitch
-            key={option.value}
-            value={option.value.toString()}
-            label={option.label}
-            onClick={() => setExecutionLimit(option.value)}
-            disabled={!isEditor}
-          />
-        ))}
-      </ButtonsSwitchList>
+        This trigger can send per a limited amount of messages per day. This
+        prevents a single trigger from using up your workspace's message fair
+        use quota (
+        <Link
+          href="https://docs.dust.tt/update/docs/rate-limiting#/"
+          target="_blank"
+          rel="noreferrer"
+          className="underline"
+        >
+          Learn more
+        </Link>
+        ).
+      </ContentMessage>
     </div>
   );
 }
@@ -326,8 +302,7 @@ export function WebhookEditionSheetContent({
 
         <Separator />
 
-        <WebhookEditionExecutionLimit isEditor={isEditor} />
-
+        <WebhookEditionExecutionLimit />
         {trigger && (
           <div className="space-y-1">
             <RecentWebhookRequests
