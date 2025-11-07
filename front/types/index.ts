@@ -11,6 +11,7 @@ export * from "./assistant/avatar";
 export * from "./assistant/builder";
 export * from "./assistant/conversation";
 export * from "./assistant/generation";
+export * from "./assistant/mentions";
 export * from "./assistant/models/anthropic";
 export * from "./assistant/models/deepseek";
 export * from "./assistant/models/embedding";

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import type { RichAgentMention, RichMention } from "../types";
+import type {
+  RichAgentMention,
+  RichMention,
+} from "@app/types/assistant/mentions";
+
 import {
   filterAgentSuggestions,
   filterMentionSuggestions,
