@@ -53,9 +53,12 @@ async function checkWorkflowStuck(
   {
     workflowId,
     visitedWorkflowIds = new Set(),
-  }: { workflowId: string; visitedWorkflowIds?: Set<string> }
+  }: {
+    workflowId: string;
+    visitedWorkflowIds?: Set<string>;
+  }
 ): Promise<StuckWorkflowInfo | null> {
-  // Prevent infinite loops if there are circular child workflows.
+  // Prevent infinite loops if there are circular child workflows (shouldn't happen but still).
   if (visitedWorkflowIds.has(workflowId)) {
     return null;
   }
@@ -72,7 +75,6 @@ async function checkWorkflowStuck(
   const pendingActivities: PendingActivityInfo[] = [];
   const stuckActivities: PendingActivityInfo[] = [];
 
-  // Check pending activities
   if (description.raw.pendingActivities) {
     for (const activity of description.raw.pendingActivities) {
       const activityInfo: PendingActivityInfo = {
@@ -85,14 +87,13 @@ async function checkWorkflowStuck(
 
       pendingActivities.push(activityInfo);
 
-      // Check if this activity is stuck (has many retries)
       if (activityInfo.attempt >= STUCK_THRESHOLD) {
         stuckActivities.push(activityInfo);
       }
     }
   }
 
-  // Check child workflows recursively
+  // Check child workflows recursively.
   const childWorkflows: StuckWorkflowInfo[] = [];
   if (description.raw.pendingChildren) {
     for (const child of description.raw.pendingChildren) {
@@ -132,8 +133,12 @@ async function checkConnectorStuck(
   }
 
   const hasStuckActivities = workflows.length > 0;
+  const totalStuckActivities = workflows.reduce(
+    (sum, wf) => sum + wf.stuckActivities.length,
+    0
+  );
   const message = hasStuckActivities
-    ? `Found ${workflows.reduce((count, wf) => count + wf.stuckActivities.length, 0)} stuck activities (${STUCK_THRESHOLD}+ retries)`
+    ? `Found ${totalStuckActivities} stuck activities (${STUCK_THRESHOLD}+ retries)`
     : "No stuck activities found";
 
   return {
