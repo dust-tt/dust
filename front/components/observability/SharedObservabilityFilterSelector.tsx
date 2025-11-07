@@ -51,8 +51,7 @@ export function SharedObservabilityFilterSelector({
       versionMarkers &&
       versionMarkers.length > 0
     ) {
-      const value = getVersionValue(versionMarkers[versionMarkers.length - 1]);
-      setSelectedVersion(value);
+      setSelectedVersion(versionMarkers[versionMarkers.length - 1]);
     }
   }, [mode, selectedVersion, versionMarkers, setSelectedVersion]);
 
@@ -97,7 +96,7 @@ export function SharedObservabilityFilterSelector({
             <Button
               label={
                 selectedVersion
-                  ? selectedVersion
+                  ? getVersionValue(selectedVersion)
                   : isVersionMarkersLoading
                     ? "Loading"
                     : "Not available"
@@ -110,16 +109,13 @@ export function SharedObservabilityFilterSelector({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel label="Last 30 days" />
-            {(versionMarkers ?? []).map((m) => {
-              const versionValue = getVersionValue(m);
-              return (
-                <DropdownMenuItem
-                  key={m.version}
-                  label={versionValue}
-                  onClick={() => setSelectedVersion(versionValue)}
-                />
-              );
-            })}
+            {(versionMarkers ?? []).map((marker) => (
+              <DropdownMenuItem
+                key={marker.version}
+                label={getVersionValue(marker)}
+                onClick={() => setSelectedVersion(marker)}
+              />
+            ))}
           </DropdownMenuContent>
         </DropdownMenu>
       )}

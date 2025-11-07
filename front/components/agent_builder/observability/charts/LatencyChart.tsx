@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
   Area,
   AreaChart,
@@ -69,16 +70,18 @@ export function LatencyChart({
   workspaceId: string;
   agentConfigurationId: string;
 }) {
-  const { period, mode } = useObservabilityContext();
+  const { period, mode, selectedVersion } = useObservabilityContext();
+
   const {
     data: rawData,
-    isLoading: isLatencyLoading,
-    errorMessage: isLatencyError,
+    isLoading,
+    errorMessage,
   } = useLatencyData({
     workspaceId,
     agentConfigurationId,
     period,
     mode,
+    filterVersion: selectedVersion?.version,
   });
 
   const { versionMarkers } = useAgentVersionMarkers({
@@ -88,11 +91,21 @@ export function LatencyChart({
     disabled: !workspaceId || !agentConfigurationId,
   });
 
-  const data = padSeriesToTimeRange(rawData, mode, period, (date) => ({
-    date,
-    messages: 0,
-    average: 0,
-  }));
+  const data = useMemo(() => {
+    if (mode === "timeRange") {
+      const dataWithDate = rawData.map((item) => ({
+        ...item,
+        date: item.date!,
+      }));
+      return padSeriesToTimeRange(dataWithDate, mode, period, (date) => ({
+        date,
+        label: date,
+        messages: 0,
+        average: 0,
+      }));
+    }
+    return rawData;
+  }, [rawData, mode, period]);
 
   const legendItems = legendFromConstant(LATENCY_LEGEND, LATENCY_PALETTE, {
     includeVersionMarker: mode === "timeRange" && versionMarkers.length > 0,
@@ -102,10 +115,8 @@ export function LatencyChart({
     <ChartContainer
       title="Latency"
       description="Average time to complete output (seconds). Lower is better."
-      isLoading={isLatencyLoading}
-      errorMessage={
-        isLatencyError ? "Failed to load observability data." : undefined
-      }
+      isLoading={isLoading}
+      errorMessage={errorMessage}
     >
       <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
         <AreaChart

@@ -58,7 +58,7 @@ export function ToolUsageChart({
     mode: toolMode,
     filterVersion:
       mode === "version" && toolMode === "version"
-        ? selectedVersion
+        ? selectedVersion?.version
         : undefined,
   });
 

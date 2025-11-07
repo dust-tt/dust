@@ -3,6 +3,7 @@ import {
   TOOL_COLORS,
 } from "@app/components/agent_builder/observability/constants";
 import type { ObservabilityMode } from "@app/components/agent_builder/observability/ObservabilityContext";
+import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 
 export type VersionMarker = { version: string; timestamp: string };
 
@@ -64,7 +65,7 @@ export function findVersionMarkerForDate(
 export function filterTimeSeriesByVersionWindow<T extends { date: string }>(
   points: T[] | undefined,
   mode: ObservabilityMode,
-  selectedVersion: string | null,
+  selectedVersion: AgentVersionMarker | null,
   versionMarkers?: VersionMarker[] | null
 ): T[] {
   const pts = points ?? [];
@@ -76,7 +77,9 @@ export function filterTimeSeriesByVersionWindow<T extends { date: string }>(
     return pts;
   }
 
-  const idx = versionMarkers.findIndex((m) => m.version === selectedVersion);
+  const idx = versionMarkers.findIndex(
+    (m) => m.version === selectedVersion.version
+  );
   if (idx < 0) {
     return pts;
   }
