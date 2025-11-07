@@ -101,11 +101,12 @@ export function ObservabilityFilterSelector({
                   ? selectedVersion
                   : isVersionMarkersLoading
                     ? "Loading"
-                    : "Select"
+                    : "Not available"
               }
               size="xs"
               variant="outline"
               isSelect
+              disabled={versionMarkers.length === 0}
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
