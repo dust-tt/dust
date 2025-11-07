@@ -1,3 +1,4 @@
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types";
 
@@ -490,14 +491,15 @@ export async function getActionsWithDetails(
     ? new Date().toISOString()
     : undefined;
 
-  const actionPromises = steps.map((step) =>
-    getActions(accessToken, user.id, {
-      stepId: step.id,
-      dueOnLte,
-    })
+  const actionArrays = await concurrentExecutor(
+    steps,
+    async (step) =>
+      getActions(accessToken, user.id, {
+        stepId: step.id,
+        dueOnLte,
+      }),
+    { concurrency: 10 }
   );
-
-  const actionArrays = await Promise.all(actionPromises);
   const allActions = actionArrays.flat();
 
   if (allActions.length === 0) {
@@ -539,12 +541,14 @@ export async function getActionsWithDetails(
     stepMap.set(step.id, step);
   }
 
-  const actionDetailsPromises = allActions.map((action) =>
-    action.action_details?.id && action.type
-      ? getActionDetails(accessToken, action.type, action.action_details.id)
-      : Promise.resolve(null)
+  const actionDetailsArray = await concurrentExecutor(
+    allActions,
+    async (action) =>
+      action.action_details?.id && action.type
+        ? getActionDetails(accessToken, action.type, action.action_details.id)
+        : null,
+    { concurrency: 10 }
   );
-  const actionDetailsArray = await Promise.all(actionDetailsPromises);
 
   const actionsWithDetails: SalesloftActionWithDetails[] = allActions.map(
     (action, index) => ({
