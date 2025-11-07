@@ -7,7 +7,7 @@ import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
 
-export const DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT = 50; // Default to 50 executions per day
+const DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT = 100; // Default to 100 executions per day
 
 export const checkTriggerForExecutionPerDayLimit = async (
   auth: Authenticator,
