@@ -667,6 +667,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "salesforce_synced_queries"
   | "salesforce_tool_write"
   | "salesforce_tool"
+  | "salesloft_tool"
   | "show_debug_tools"
   | "slack_bot_mcp"
   | "slack_enhanced_default_agent"

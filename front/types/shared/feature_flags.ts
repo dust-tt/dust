@@ -112,6 +112,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Salesforce MCP tool (activated by default on most plans, FF to override the plan config)",
     stage: "on_demand",
   },
+  salesloft_tool: {
+    description: "Salesloft MCP tool",
+    stage: "dust_only",
+  },
   salesforce_tool_write: {
     description: "Salesforce MCP tool: write operations (update_object)",
     stage: "on_demand",
