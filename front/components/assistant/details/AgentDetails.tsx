@@ -7,6 +7,7 @@ import {
   Chip,
   ContentMessage,
   InformationCircleIcon,
+  ListCheckIcon,
   LockIcon,
   Sheet,
   SheetContainer,
@@ -27,6 +28,7 @@ import { useEffect, useState } from "react";
 import { AssistantDetailsButtonBar } from "@app/components/assistant/details/AssistantDetailsButtonBar";
 import { AgentEditorsTab } from "@app/components/assistant/details/tabs/AgentEditorsTab";
 import { AgentInfoTab } from "@app/components/assistant/details/tabs/AgentInfoTab";
+import { AgentInsightsTab } from "@app/components/assistant/details/tabs/AgentInsightsTab";
 import { AgentMemoryTab } from "@app/components/assistant/details/tabs/AgentMemoryTab";
 import { AgentPerformanceTab } from "@app/components/assistant/details/tabs/AgentPerformanceTab";
 import { AgentTriggersTab } from "@app/components/assistant/details/tabs/AgentTriggersTab";
@@ -84,12 +86,17 @@ export function AgentDetails({
   owner,
   user,
 }: AssistantDetailsProps) {
-  const { featureFlags } = useFeatureFlags({
+  const { featureFlags, hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
 
   const [selectedTab, setSelectedTab] = useState<
-    "info" | "performance" | "editors" | "agent_memory" | "triggers"
+    | "info"
+    | "insights"
+    | "performance"
+    | "editors"
+    | "agent_memory"
+    | "triggers"
   >("info");
   const {
     agentConfiguration,
@@ -121,10 +128,15 @@ export function AgentDetails({
   );
 
   const showPerformanceTabs =
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    (agentConfiguration?.canEdit || isAdmin(owner)) &&
+    (agentConfiguration?.canEdit ?? isAdmin(owner)) &&
     agentId != null &&
     !isGlobalAgent;
+
+  const showInsightsTabs =
+    agentId != null &&
+    (agentConfiguration?.canEdit ?? isAdmin(owner)) &&
+    !isGlobalAgent &&
+    hasFeature("agent_builder_observability");
 
   const DescriptionSection = () => (
     <div className="flex flex-col gap-5">
@@ -211,7 +223,10 @@ export function AgentDetails({
               <DescriptionSection />
             </SheetHeader>
             <SheetContainer className="pb-4">
-              {showEditorsTabs || showPerformanceTabs || showAgentMemory ? (
+              {showEditorsTabs ||
+              showPerformanceTabs ||
+              showAgentMemory ||
+              showInsightsTabs ? (
                 <Tabs value={selectedTab}>
                   <TabsList border={false}>
                     <TabsTrigger
@@ -220,6 +235,14 @@ export function AgentDetails({
                       icon={InformationCircleIcon}
                       onClick={() => setSelectedTab("info")}
                     />
+                    {showInsightsTabs && (
+                      <TabsTrigger
+                        value="insights"
+                        label="Insights"
+                        icon={BarChartIcon}
+                        onClick={() => setSelectedTab("insights")}
+                      />
+                    )}
                     {showTriggersTabs && (
                       <TabsTrigger
                         value="triggers"
@@ -231,8 +254,8 @@ export function AgentDetails({
                     {showPerformanceTabs && (
                       <TabsTrigger
                         value="performance"
-                        label="Performance"
-                        icon={BarChartIcon}
+                        label="Feedback"
+                        icon={ListCheckIcon}
                         onClick={() => setSelectedTab("performance")}
                       />
                     )}
@@ -259,6 +282,12 @@ export function AgentDetails({
                         <AgentInfoTab
                           agentConfiguration={agentConfiguration}
                           owner={owner}
+                        />
+                      </TabsContent>
+                      <TabsContent value="insights">
+                        <AgentInsightsTab
+                          owner={owner}
+                          agentConfiguration={agentConfiguration}
                         />
                       </TabsContent>
                       <TabsContent value="triggers">

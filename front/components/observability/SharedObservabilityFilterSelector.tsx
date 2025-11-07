@@ -10,13 +10,13 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect } from "react";
 
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { OBSERVABILITY_TIME_RANGE } from "@app/components/agent_builder/observability/constants";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 import { useAgentVersionMarkers } from "@app/lib/swr/assistants";
 
-interface ObservabilityFilterSelectorProps {
+interface SharedObservabilityFilterSelectorProps {
+  workspaceId: string;
   agentConfigurationId: string;
 }
 
@@ -24,9 +24,10 @@ function getVersionValue(versionMarker: AgentVersionMarker) {
   return `v${versionMarker.version}: ${versionMarker.timestamp}`;
 }
 
-export function ObservabilityFilterSelector({
+export function SharedObservabilityFilterSelector({
+  workspaceId,
   agentConfigurationId,
-}: ObservabilityFilterSelectorProps) {
+}: SharedObservabilityFilterSelectorProps) {
   const {
     mode,
     setMode,
@@ -36,15 +37,13 @@ export function ObservabilityFilterSelector({
     setSelectedVersion,
   } = useObservabilityContext();
 
-  const { owner } = useAgentBuilderContext();
   const { versionMarkers, isVersionMarkersLoading } = useAgentVersionMarkers({
-    workspaceId: owner.sId,
+    workspaceId,
     agentConfigurationId,
     days: period,
     disabled: false,
   });
 
-  // Default to latest version when entering version mode with available markers
   useEffect(() => {
     if (
       mode === "version" &&
