@@ -424,9 +424,9 @@ interface StuckActivitiesModalProps {
 function StuckActivitiesModal({
   show,
   onClose,
-  result,
+  result: { workflows },
 }: StuckActivitiesModalProps) {
-  const totalStuckActivities = result.workflows.reduce(
+  const totalStuckActivities = workflows.reduce(
     (sum, wf) => sum + wf.stuckActivities.length,
     0
   );
@@ -452,10 +452,10 @@ function StuckActivitiesModal({
               title={
                 `Found ${totalStuckActivities} stuck ` +
                 `${totalStuckActivities === 1 ? "activity" : "activities"} ` +
-                `across ${result.workflows.length} workflow${pluralize(result.workflows.length)}`
+                `across ${workflows.length} workflow${pluralize(workflows.length)}`
               }
             />
-            {result.workflows.map((workflow) => (
+            {workflows.map((workflow) => (
               <ContextItem.List key={workflow.workflowId} hasBorder>
                 <ContextItem
                   title={workflow.workflowId}
@@ -476,11 +476,11 @@ function StuckActivitiesModal({
                       />
                     }
                   >
-                    {activity.lastFailure ? (
+                    {activity.lastFailure && (
                       <div className="text-sm text-warning-500">
                         {activity.lastFailure}
                       </div>
-                    ) : null}
+                    )}
                   </ContextItem>
                 ))}
               </ContextItem.List>
