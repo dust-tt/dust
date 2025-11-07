@@ -17,6 +17,7 @@
     "format:check": "prettier --check .",
     "tsc": "tsc",
     "test": "FRONT_DATABASE_URI=$TEST_FRONT_DATABASE_URI vitest --run",
+    "test:watch": "FRONT_DATABASE_URI=$TEST_FRONT_DATABASE_URI vitest --watch",
     "test:ci": "vitest --reporter=junit --outputFile=junit.xml --watch=false",
     "coverage": "vitest --coverage",
     "initdb": "./admin/init_db.sh",
