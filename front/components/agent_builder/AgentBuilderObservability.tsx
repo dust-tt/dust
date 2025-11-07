@@ -1,8 +1,8 @@
 import { cn, LoadingBlock } from "@dust-tt/sparkle";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { AgentObservability } from "@app/components/observability/AgentObservability";
+import { useAgentConfiguration } from "@app/lib/swr/assistants";
 
 interface AgentBuilderObservabilityProps {
   agentConfigurationSId: string;
@@ -34,7 +34,7 @@ export function AgentBuilderObservability({
     <AgentObservability
       workspaceId={owner.sId}
       agentConfigurationId={agentConfiguration.sId}
-      allowReactions={agentConfiguration.scope !== "global"}
+      isCustomAgent={agentConfiguration.scope !== "global"}
     />
   );
 }

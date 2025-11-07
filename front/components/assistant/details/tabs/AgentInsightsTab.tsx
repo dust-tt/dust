@@ -2,19 +2,21 @@ import { ObservabilityProvider } from "@app/components/agent_builder/observabili
 import { AgentObservability } from "@app/components/observability/AgentObservability";
 import type { AgentConfigurationType, WorkspaceType } from "@app/types";
 
+interface AgentInsightsTabProps {
+  owner: WorkspaceType;
+  agentConfiguration: AgentConfigurationType;
+}
+
 export function AgentInsightsTab({
   owner,
   agentConfiguration,
-}: {
-  owner: WorkspaceType;
-  agentConfiguration: AgentConfigurationType;
-}) {
+}: AgentInsightsTabProps) {
   return (
     <ObservabilityProvider>
       <AgentObservability
         workspaceId={owner.sId}
         agentConfigurationId={agentConfiguration.sId}
-        allowReactions={agentConfiguration.scope !== "global"}
+        isCustomAgent={agentConfiguration.scope !== "global"}
       />
     </ObservabilityProvider>
   );

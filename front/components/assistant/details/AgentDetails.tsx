@@ -2,12 +2,12 @@ import {
   ArrowPathIcon,
   Avatar,
   BarChartIcon,
-  ListCheckIcon,
   BellIcon,
   Button,
   Chip,
   ContentMessage,
   InformationCircleIcon,
+  ListCheckIcon,
   LockIcon,
   Sheet,
   SheetContainer,
@@ -28,10 +28,10 @@ import { useEffect, useState } from "react";
 import { AssistantDetailsButtonBar } from "@app/components/assistant/details/AssistantDetailsButtonBar";
 import { AgentEditorsTab } from "@app/components/assistant/details/tabs/AgentEditorsTab";
 import { AgentInfoTab } from "@app/components/assistant/details/tabs/AgentInfoTab";
+import { AgentInsightsTab } from "@app/components/assistant/details/tabs/AgentInsightsTab";
 import { AgentMemoryTab } from "@app/components/assistant/details/tabs/AgentMemoryTab";
 import { AgentPerformanceTab } from "@app/components/assistant/details/tabs/AgentPerformanceTab";
 import { AgentTriggersTab } from "@app/components/assistant/details/tabs/AgentTriggersTab";
-import { AgentInsightsTab } from "@app/components/assistant/details/tabs/AgentInsightsTab";
 import { RestoreAssistantDialog } from "@app/components/assistant/RestoreAssistantDialog";
 import { isMCPConfigurationForAgentMemory } from "@app/lib/actions/types/guards";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
@@ -128,13 +128,15 @@ export function AgentDetails({
   );
 
   const showPerformanceTabs =
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    (agentConfiguration?.canEdit || isAdmin(owner)) &&
+    (agentConfiguration?.canEdit ?? isAdmin(owner)) &&
     agentId != null &&
     !isGlobalAgent;
 
   const showInsightsTabs =
-    agentId != null && hasFeature("agent_builder_observability");
+    agentId != null &&
+    (agentConfiguration?.canEdit ?? isAdmin(owner)) &&
+    !isGlobalAgent &&
+    hasFeature("agent_builder_observability");
 
   const DescriptionSection = () => (
     <div className="flex flex-col gap-5">

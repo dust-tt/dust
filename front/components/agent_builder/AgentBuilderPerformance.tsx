@@ -1,6 +1,6 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { AgentFeedback } from "@app/components/observability/AgentFeedback";
+import { useAgentConfiguration } from "@app/lib/swr/assistants";
 
 function NoAgentState() {
   return (
@@ -29,8 +29,7 @@ export function AgentBuilderPerformance({
 
   const { agentConfiguration } = useAgentConfiguration({
     workspaceId: owner.sId,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    agentConfigurationId: agentConfigurationSId || null,
+    agentConfigurationId: agentConfigurationSId ?? null,
   });
 
   if (!agentConfiguration) {

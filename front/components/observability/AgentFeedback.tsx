@@ -17,17 +17,19 @@ import { useAgentAnalytics } from "@app/lib/swr/assistants";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightWorkspaceType } from "@app/types";
 
+interface AgentFeedbackProps {
+  owner: LightWorkspaceType;
+  agentConfigurationId: string;
+  allowReactions: boolean;
+  title?: string;
+}
+
 export function AgentFeedback({
   owner,
   agentConfigurationId,
   allowReactions,
   title = "Feedback",
-}: {
-  owner: LightWorkspaceType;
-  agentConfigurationId: string;
-  allowReactions: boolean;
-  title?: string;
-}) {
+}: AgentFeedbackProps) {
   const { period } = useObservabilityContext();
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,

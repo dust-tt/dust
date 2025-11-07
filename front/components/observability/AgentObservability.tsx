@@ -29,15 +29,17 @@ function getAverageErrorRate(errorRate: ErrorRatePoint[], period: number) {
   return Math.round((totalErrorRate / period) * 10) / 10;
 }
 
+interface AgentObservabilityProps {
+  workspaceId: string;
+  agentConfigurationId: string;
+  isCustomAgent: boolean;
+}
+
 export function AgentObservability({
   workspaceId,
   agentConfigurationId,
-  allowReactions,
-}: {
-  workspaceId: string;
-  agentConfigurationId: string;
-  allowReactions: boolean;
-}) {
+  isCustomAgent,
+}: AgentObservabilityProps) {
   const { period } = useObservabilityContext();
 
   const { errorRate } = useAgentErrorRate({
@@ -123,7 +125,7 @@ export function AgentObservability({
               className="h-24"
               content={
                 <div className="flex flex-row gap-4 text-lg">
-                  {allowReactions && agentAnalytics?.feedbacks ? (
+                  {isCustomAgent && agentAnalytics?.feedbacks ? (
                     <>
                       <div className="flex flex-row items-center">
                         <HandThumbUpIcon className="w-7 pr-2 text-gray-400 dark:text-muted-foreground-night" />
