@@ -45,6 +45,8 @@ export class MistralLLM extends LLM {
     }
     this.client = new Mistral({
       apiKey: MISTRAL_API_KEY,
+      // We want to handle the retries ourselves
+      retryConfig: { strategy: "none" },
     });
   }
 

@@ -46,6 +46,7 @@ export class GoogleLLM extends LLM {
         "GOOGLE_AI_STUDIO_API_KEY environment variable is required"
       );
     }
+    // as far as I know, there are no retries for google genai
     this.client = new GoogleGenAI({
       apiKey: GOOGLE_AI_STUDIO_API_KEY,
     });

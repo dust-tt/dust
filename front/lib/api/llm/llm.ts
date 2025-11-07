@@ -8,12 +8,14 @@ import {
 } from "@app/lib/api/llm/traces/buffer";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
+import { EventError } from "@app/lib/api/llm/types/events";
 import type {
   LLMClientMetadata,
   LLMParameters,
   StreamParameters,
 } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
+import logger from "@app/logger/logger";
 import type { ModelIdType, ReasoningEffort } from "@app/types";
 
 export abstract class LLM {
@@ -104,16 +106,58 @@ export abstract class LLM {
     return this.traceId;
   }
 
-  async *stream({
-    conversation,
-    prompt,
-    specifications,
-  }: StreamParameters): AsyncGenerator<LLMEvent> {
-    yield* this.streamWithTracing({
-      conversation,
-      prompt,
-      specifications,
-    });
+  async *stream(
+    args: StreamParameters,
+    retryOptions?: { retries?: number; delayBetweenRetriesMs?: number }
+  ): AsyncGenerator<LLMEvent> {
+    const retries = retryOptions?.retries ?? 3;
+    const delayBetweenRetriesMs = retryOptions?.delayBetweenRetriesMs ?? 1000;
+
+    const accumulatedErrors: EventError[] = [];
+    for (let i = 0; i < retries; i++) {
+      for await (const event of this.streamWithTracing(args)) {
+        const isError = event.type === "error";
+        const isRetryableError = isError && event.content.isRetryable;
+
+        if (!isRetryableError) {
+          yield event;
+          return;
+        }
+
+        if (!isError) {
+          yield event;
+          continue;
+        }
+
+        accumulatedErrors.push(event);
+
+        const sleepTime = delayBetweenRetriesMs * (i + 1) ** 2;
+        logger.warn(
+          {
+            error: event.content.originalError,
+            attempt: i + 1,
+            retries,
+            sleepTime,
+          },
+          "Error while calling LLM. Retrying..."
+        );
+        await new Promise((resolve) => setTimeout(resolve, sleepTime));
+      }
+
+      if (accumulatedErrors.length === 0) {
+        return;
+      }
+    }
+
+    yield new EventError(
+      {
+        type: "maximum_retries",
+        isRetryable: false,
+        message: "Maximum retries reached",
+      },
+      this.metadata,
+      accumulatedErrors
+    );
   }
 
   protected abstract internalStream({
