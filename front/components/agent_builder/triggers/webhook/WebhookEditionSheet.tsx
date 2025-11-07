@@ -4,11 +4,13 @@ import {
   ButtonsSwitchList,
   Checkbox,
   ContentMessage,
+  ContentMessageInline,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  ExclamationCircleIcon,
   Input,
   Label,
   Separator,
@@ -101,57 +103,29 @@ function WebhookEditionExecutionLimit({
     name: "webhook.executionPerDayLimitOverride",
   });
 
-  const limitOptions = [10, 20, 50];
-  const isOverridenBySupport = !limitOptions.includes(executionLimit);
-
   return (
     <div className="flex flex-col space-y-1">
       <Label htmlFor="execution-limit">Rate limits</Label>
-      <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-        <p>Limits are set on a 24 hours window. </p>
-        <p>
-          Control how many messages this trigger can send per day. This prevents
-          a single trigger from using up all your triggered message quota.
-        </p>
-        <p className="font-semibold">
-          <Link
-            href="https://docs.dust.tt/update/docs/rate-limiting#/"
-            target="_blank"
-            rel="noreferrer"
-            className="underline"
-          >
-            Learn more
-          </Link>{" "}
-          about webhook trigger rate limiting.
-        </p>
-      </div>
-      <div className="flex flex-row items-center gap-2">
-        <ButtonsSwitchList
-          defaultValue={executionLimit.toString()}
-          className="w-fit"
+      <p>Limits are set on a 24 hours window. </p>
+      <ContentMessage
+        variant="info"
+        size="lg"
+        icon={ExclamationCircleIcon}
+        title={`Up to ${executionLimit} requests per day`}
+      >
+        This trigger can send per a limited amount of messages per day. This
+        prevents a single trigger from using up your workspace's message fair
+        use quota (
+        <Link
+          href="https://docs.dust.tt/update/docs/rate-limiting#/"
+          target="_blank"
+          rel="noreferrer"
+          className="underline"
         >
-          {limitOptions.map((option) => (
-            <ButtonsSwitch
-              key={option}
-              value={option.toString()}
-              label={option + "/day"}
-              onClick={() => setExecutionLimit(option)}
-              disabled={!isEditor}
-            />
-          ))}
-        </ButtonsSwitchList>
-
-        {isOverridenBySupport && (
-          <Button
-            value={executionLimit.toString()}
-            label={`Overriden : ${executionLimit}/day`}
-            onClick={() => setExecutionLimit(executionLimit)}
-            disabled={!isEditor}
-            variant="outline"
-            size="sm"
-          />
-        )}
-      </div>
+          Learn more
+        </Link>
+        ).
+      </ContentMessage>
     </div>
   );
 }

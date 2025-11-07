@@ -254,10 +254,12 @@ export function WebhookEditionFilters({
               hours. At least 10 events are needed for estimation.
             </ContentMessageInline>
           ) : (
-            <ContentMessageInline variant="info">
+            <ContentMessageInline variant="outline">
               According to the most recent data, this trigger would have created{" "}
-              {estimation.matchingCount} conversations over{" "}
-              {estimation.totalCount} events in the last 24 hours.
+              <span className="font-semibold">{estimation.matchingCount}</span>{" "}
+              conversations out of{" "}
+              <span className="font-semibold">{estimation.totalCount}</span>{" "}
+              events in the last 24 hours.
             </ContentMessageInline>
           )}
         </>

@@ -8,7 +8,7 @@ import type { UserTypeWithWorkspaces } from "@app/types";
 import { asDisplayName } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 
-const DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT = 20; // Default to 20 executions per day
+const DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT = 50; // Default to 50 executions per day
 
 export const WebhookFormSchema = z.object({
   name: z

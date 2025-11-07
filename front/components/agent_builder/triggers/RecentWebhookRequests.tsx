@@ -105,17 +105,14 @@ function RecentWebhookRequestsContent({
           <p>
             Some requests were rate limited.
             <br />
-            <span className="font-semibold">
-              Consider increasing this trigger&apos;s rate limit
-            </span>{" "}
-            or contact{" "}
+            Contact{" "}
             <Link
               href="mailto:support@dust.tt?subject=Increase%20Webhook%20Trigger%20Rate%20Limit"
               className="underline"
             >
               support@dust.tt
             </Link>{" "}
-            to increase it even further.
+            to increase the rate limit for this trigger.
           </p>
         </div>
       )}
