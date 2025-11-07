@@ -36,7 +36,7 @@ export default function Analytics({
   subscription,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [downloadingMonth, setDownloadingMonth] = useState<string | null>(null);
-  const [includeInactive, setIncludeInactive] = useState(false);
+  const [includeInactive, setIncludeInactive] = useState(true);
 
   const { subscriptions } = useWorkspaceSubscriptions({
     owner,
