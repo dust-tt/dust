@@ -298,8 +298,13 @@ async function streamAgentAnswerToSlack(
           actions
         );
 
-        const files = actions.flatMap((action) => action.generatedFiles);
-        const filesUploaded = await getFilesFromDust(files, dustAPI);
+        const authResult = await slackClient.auth.test();
+        const scopes = authResult.response_metadata?.scopes ?? [];
+        let filesUploaded: { file: Buffer; filename: string }[] = [];
+        if (scopes.includes("files:write")) {
+          const files = actions.flatMap((action) => action.generatedFiles);
+          filesUploaded = await getFilesFromDust(files, dustAPI);
+        }
 
         const slackContent = slackifyMarkdown(
           normalizeContentForSlack(formattedContent)
