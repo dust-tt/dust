@@ -76,8 +76,7 @@ export const toolUseLLMEvents: LLMEvent[] = [
         content: {
           id: "DdHr7L197",
           name: "web_search_browse__websearch",
-          arguments:
-            '{"query":"Paris France weather forecast October 23 2025"}',
+          arguments: { query: "Paris France weather forecast October 23 2025" },
         },
         metadata: {
           clientId: "anthropic" as const,
@@ -101,8 +100,7 @@ export const toolUseLLMEvents: LLMEvent[] = [
         content: {
           id: "DdHr7L197",
           name: "web_search_browse__websearch",
-          arguments:
-            '{"query":"Paris France weather forecast October 23 2025"}',
+          arguments: { query: "Paris France weather forecast October 23 2025" },
         },
         metadata: {
           clientId: "anthropic" as const,
