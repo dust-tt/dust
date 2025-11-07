@@ -25,6 +25,7 @@ export default async function setup() {
     // Add any other essential vars you need to keep
     FRONT_DATABASE_URI: process.env.FRONT_DATABASE_URI,
     REDIS_CACHE_URI: process.env.REDIS_CACHE_URI,
+    REDIS_URI: process.env.REDIS_URI,
     NEXT_PUBLIC_DUST_CLIENT_FACING_URL: "http://fake-url",
     ENABLE_BOT_CRAWLING: process.env.ENABLE_BOT_CRAWLING,
     DUST_US_URL: "http://fake-url",

@@ -32,12 +32,6 @@ export function ClientVisualizationWrapper({
     [allowedOrigins, identifier]
   );
 
-  // Create RPC data API for dynamic fetching.
-  console.log(
-    ">> Creating RPCDataAPI with sendCrossDocumentMessage:",
-    sendCrossDocumentMessage
-  );
-
   const dataAPI = useMemo(
     () => new RPCDataAPI(sendCrossDocumentMessage),
     [sendCrossDocumentMessage]
