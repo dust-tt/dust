@@ -187,6 +187,7 @@ export const supportedResourceTypes = [
   "spaces",
   "workspaces",
   "agents",
+  "triggers",
   // Special case for global operations.
   "global",
 ] as const;
