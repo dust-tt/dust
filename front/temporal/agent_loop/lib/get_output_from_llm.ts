@@ -134,7 +134,7 @@ export async function getOutputFromLLMStream(
             metadata: JSON.stringify(event.metadata),
             tokens: 0, // Will be updated later from token_usage event
             provider: model.providerId,
-            region: null,
+            region: region,
           },
         });
 
