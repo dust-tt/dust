@@ -141,14 +141,14 @@ export async function renderConversationForModel(
   const previousInteractions = interactions.slice(0, -1);
 
   // prune previous interactions.
-  const { interactions: prunedPreviousInteractions, contextWindowHitCount } =
+  const { interactions: prunedPreviousInteractions, contextWindowHitPosition } =
     prunePreviousInteractions(
       previousInteractions,
       availableTokens,
       PREVIOUS_INTERACTIONS_TO_PRESERVE
     );
-  if (!isContextWindowHit && contextWindowHitCount > 0) {
-    logContextWindowHit(contextWindowHitCount + 1); // we add 1 to include the current interaction
+  if (!isContextWindowHit && contextWindowHitPosition > 0) {
+    logContextWindowHit(contextWindowHitPosition + 1); // we add 1 to include the current interaction
     isContextWindowHit = true;
   }
 
