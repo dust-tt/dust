@@ -1504,12 +1504,15 @@ export class CoreAPI {
     providerId: string;
   }): Promise<CoreAPIResponse<{ counts: number[] }>> {
     const credentials = dustManagedCredentials();
-    this._logger.info({
-      textsLength: texts.length,
-      modelId,
-      providerId,
-    }, "Calling core API tokenizer batch count endpoint");
-    
+    this._logger.info(
+      {
+        textsLength: texts.length,
+        modelId,
+        providerId,
+      },
+      "Calling core API tokenizer batch count endpoint"
+    );
+
     const response = await this._fetchWithError(
       `${this._url}/tokenize/batch/count`,
       {

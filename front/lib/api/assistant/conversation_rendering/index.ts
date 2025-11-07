@@ -103,11 +103,14 @@ export async function renderConversationForModel(
 
   let isContextWindowHit = false;
   function logContextWindowHit(interactionsCount: number) {
-    logger.info({
-      workspaceId: conversation.owner.sId,
-      conversationId: conversation.sId,
-      interactionsCount, // Number of interactions before hitting the context window
-    }, "Conversation hit context window");
+    logger.info(
+      {
+        workspaceId: conversation.owner.sId,
+        conversationId: conversation.sId,
+        interactionsCount, // Number of interactions before hitting the context window
+      },
+      "Conversation hit context window"
+    );
   }
 
   if (currentInteractionTokens > availableTokens) {
@@ -138,17 +141,21 @@ export async function renderConversationForModel(
   const previousInteractions = interactions.slice(0, -1);
 
   // prune previous interactions.
-  const { interactions: prunedPreviousInteractions, contextWindowHitCount } = prunePreviousInteractions(
-    previousInteractions,
-    availableTokens,
-    PREVIOUS_INTERACTIONS_TO_PRESERVE
-  );
+  const { interactions: prunedPreviousInteractions, contextWindowHitCount } =
+    prunePreviousInteractions(
+      previousInteractions,
+      availableTokens,
+      PREVIOUS_INTERACTIONS_TO_PRESERVE
+    );
   if (!isContextWindowHit && contextWindowHitCount > 0) {
     logContextWindowHit(contextWindowHitCount + 1); // we add 1 to include the current interaction
     isContextWindowHit = true;
   }
 
-  const prunedInteractions = [...prunedPreviousInteractions, currentInteraction];
+  const prunedInteractions = [
+    ...prunedPreviousInteractions,
+    currentInteraction,
+  ];
 
   // Select interactions that fit within token budget.
   const selected: MessageWithTokens[] = [];
