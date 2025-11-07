@@ -13,6 +13,23 @@ export function makeAgentLoopWorkflowId({
   return `agent-loop-workflow-${workspaceId}-${conversationId}-${agentMessageId}`;
 }
 
+export function makeScheduledAgentLoopWorkflowId({
+  workspaceId,
+  conversationId,
+  agentMessageId,
+  scheduledFor,
+}: {
+  workspaceId: string;
+  conversationId: string;
+  agentMessageId: string;
+  scheduledFor: Date;
+}) {
+  return (
+    makeAgentLoopWorkflowId({ workspaceId, conversationId, agentMessageId }) +
+    `-${scheduledFor.toISOString()}`
+  );
+}
+
 export function makeAgentLoopConversationTitleWorkflowId(
   authType: AuthenticatorType,
   runAgentArgs: AgentLoopArgs

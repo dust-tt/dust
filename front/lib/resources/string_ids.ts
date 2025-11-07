@@ -37,6 +37,7 @@ const RESOURCES_PREFIX = {
   agent_step_content: "asc",
   agent_memory: "amm",
   agent_message_feedback: "amf",
+  agent_scheduled_execution: "ase",
 
   // Resource relative to triggers.
   trigger: "trg",

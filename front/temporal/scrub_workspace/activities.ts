@@ -21,6 +21,7 @@ import {
   FREE_TEST_PLAN_CODE,
 } from "@app/lib/plans/plan_codes";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
+import { AgentScheduledExecutionResource } from "@app/lib/resources/agent_scheduled_execution_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -104,6 +105,7 @@ export async function scrubWorkspaceData({
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId, {
     dangerouslyRequestAllGroups: true,
   });
+  await deleteScheduledExecutions(auth);
   await deleteAllConversations(auth);
   await archiveAssistants(auth);
   await deleteAgentMemories(auth);
@@ -201,6 +203,10 @@ async function archiveAssistants(auth: Authenticator) {
   for (const agentConfiguration of agentConfigurationsToArchive) {
     await archiveAgentConfiguration(auth, agentConfiguration.sId);
   }
+}
+
+async function deleteScheduledExecutions(auth: Authenticator) {
+  await AgentScheduledExecutionResource.deleteAllForWorkspace(auth);
 }
 
 async function deleteAgentMemories(auth: Authenticator) {

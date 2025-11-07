@@ -20,11 +20,13 @@ export async function launchAgentLoopWorkflow({
   agentLoopArgs,
   startStep,
   waitForCompletion,
+  startDelay,
 }: {
   auth: Authenticator;
   agentLoopArgs: AgentLoopArgs;
   startStep: number;
   waitForCompletion?: boolean;
+  startDelay?: string;
 }): Promise<
   Result<undefined, Error | DustError<"agent_loop_already_running">>
 > {
@@ -32,8 +34,7 @@ export async function launchAgentLoopWorkflow({
 
   // Capture initial start time and log total execution start.
   const initialStartTime = Date.now();
-  const conversationId = agentLoopArgs.conversationId;
-  const agentMessageId = agentLoopArgs.agentMessageId;
+  const { conversationId, agentMessageId } = agentLoopArgs;
 
   logAgentLoopStart();
   // Clear action required in conversation - the loop will put them back if needed.
@@ -85,6 +86,7 @@ export async function launchAgentLoopWorkflow({
         conversationId,
         workspaceId: authType.workspaceId,
       },
+      startDelay,
     });
   } catch (error) {
     if (!(error instanceof WorkflowExecutionAlreadyStartedError)) {
