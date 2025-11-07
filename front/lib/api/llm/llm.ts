@@ -105,6 +105,7 @@ export abstract class LLM {
         workspaceId: this.authenticator.getNonNullableWorkspace().id,
       });
 
+      // Run usage is only populated if the run is successful.
       if (buffer.runTokenUsage) {
         await run.recordTokenUsage(buffer.runTokenUsage, this.modelId);
       }
