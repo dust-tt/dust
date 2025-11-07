@@ -22,7 +22,7 @@ interface RestoreAssistantDialogProps {
   owner: LightWorkspaceType;
 }
 
-export function RestoreAssistantDialog({
+export function RestoreAgentDialog({
   agentConfiguration,
   isOpen,
   onClose,

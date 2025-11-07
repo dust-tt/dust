@@ -26,7 +26,7 @@ interface DeleteAssistantDialogProps {
   owner: LightWorkspaceType;
 }
 
-export function DeleteAssistantDialog({
+export function DeleteAgentDialog({
   agentConfiguration,
   isOpen,
   onClose,
