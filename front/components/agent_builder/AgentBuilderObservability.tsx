@@ -128,9 +128,7 @@ export function AgentBuilderObservability({
               className="h-24"
               content={
                 <div className="flex flex-row items-center gap-2 text-2xl">
-                  {agentAnalytics?.mentions
-                    ? `${agentAnalytics.mentions.conversationCount}`
-                    : "-"}
+                  {avrErrorRate}%
                   <Chip
                     size="mini"
                     color={errorRateChipInfo.color}
