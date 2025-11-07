@@ -10,6 +10,7 @@ import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
+import { isTriggeredOrigin } from "@app/components/assistant/conversation/types";
 import {
   agentMentionDirective,
   getAgentMentionPlugin,
@@ -28,7 +29,6 @@ import {
 } from "@app/components/markdown/PastedAttachmentBlock";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type { UserMessageType, WorkspaceType } from "@app/types";
-import { isTriggeredOrigin } from "@app/components/assistant/conversation/types";
 
 interface UserMessageProps {
   citations?: React.ReactElement[];

@@ -5,11 +5,8 @@ import {
 } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types";
-import {
-  DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT,
-  WebhookTriggerType,
-  type TriggerType,
-} from "@app/types/assistant/triggers";
+import type { WebhookTriggerType } from "@app/types/assistant/triggers";
+import { DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT } from "@app/types/assistant/triggers";
 
 export const checkTriggerForExecutionPerDayLimit = async (
   auth: Authenticator,

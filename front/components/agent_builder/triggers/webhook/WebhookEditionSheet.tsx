@@ -23,13 +23,13 @@ import { RecentWebhookRequests } from "@app/components/agent_builder/triggers/Re
 import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
 import { WebhookEditionFilters } from "@app/components/agent_builder/triggers/webhook/WebhookEditionFilters";
 import type { LightWorkspaceType } from "@app/types";
+import type { TriggerExecutionMode } from "@app/types/assistant/triggers";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 import type {
   PresetWebhook,
   WebhookEvent,
 } from "@app/types/triggers/webhooks_source_preset";
-import { TriggerExecutionMode } from "@app/types/assistant/triggers";
 
 interface WebhookEditionNameInputProps {
   isEditor: boolean;
