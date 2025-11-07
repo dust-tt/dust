@@ -14,6 +14,7 @@ import { TabContentChildSectionLayout } from "@app/components/agent_builder/obse
 import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
 import { SharedObservabilityFilterSelector } from "@app/components/observability/SharedObservabilityFilterSelector";
 import { useAgentAnalytics } from "@app/lib/swr/assistants";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightWorkspaceType } from "@app/types";
 
 export function AgentFeedback({
@@ -28,6 +29,9 @@ export function AgentFeedback({
   title?: string;
 }) {
   const { period } = useObservabilityContext();
+  const { featureFlags } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
   const { agentAnalytics } = useAgentAnalytics({
     workspaceId: owner.sId,
     agentConfigurationId,
@@ -69,12 +73,14 @@ export function AgentFeedback({
         />
       </TabContentChildSectionLayout>
 
-      <TabContentChildSectionLayout title="Charts">
-        <FeedbackDistributionChart
-          workspaceId={owner.sId}
-          agentConfigurationId={agentConfigurationId}
-        />
-      </TabContentChildSectionLayout>
+      {featureFlags.includes("agent_builder_observability") && (
+        <TabContentChildSectionLayout title="Charts">
+          <FeedbackDistributionChart
+            workspaceId={owner.sId}
+            agentConfigurationId={agentConfigurationId}
+          />
+        </TabContentChildSectionLayout>
+      )}
 
       {allowReactions && (
         <FeedbacksSection
