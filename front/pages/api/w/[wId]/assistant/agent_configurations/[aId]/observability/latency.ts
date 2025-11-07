@@ -13,6 +13,7 @@ import type { WithAPIErrorResponse } from "@app/types";
 
 const QuerySchema = z.object({
   days: z.coerce.number().positive().optional(),
+  version: z.string().optional(),
 });
 
 export type GetLatencyResponse = {

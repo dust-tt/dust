@@ -16,6 +16,7 @@ import {
   ERROR_RATE_LEGEND,
   ERROR_RATE_PALETTE,
 } from "@app/components/agent_builder/observability/constants";
+import { useErrorRateData } from "@app/components/agent_builder/observability/hooks";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import {
@@ -28,10 +29,7 @@ import {
   getErrorRateChipInfo,
   padSeriesToTimeRange,
 } from "@app/components/agent_builder/observability/utils";
-import {
-  useAgentErrorRate,
-  useAgentVersionMarkers,
-} from "@app/lib/swr/assistants";
+import { useAgentVersionMarkers } from "@app/lib/swr/assistants";
 
 interface ErrorRateData {
   total: number;
@@ -90,14 +88,14 @@ export function ErrorRateChart({
 }: ErrorRateChartProps) {
   const { period, mode } = useObservabilityContext();
   const {
-    errorRate: rawData,
-    isErrorRateLoading,
-    isErrorRateError,
-  } = useAgentErrorRate({
+    data: rawData,
+    isLoading: isErrorRateLoading,
+    errorMessage: isErrorRateError,
+  } = useErrorRateData({
     workspaceId,
     agentConfigurationId,
-    days: period,
-    disabled: !workspaceId || !agentConfigurationId,
+    period,
+    mode,
   });
 
   const { versionMarkers } = useAgentVersionMarkers({
