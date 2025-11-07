@@ -302,7 +302,7 @@ export function WebhookEditionSheetContent({
 
         <Separator />
 
-        <WebhookEditionExecutionLimit isEditor={isEditor} />
+        <WebhookEditionExecutionLimit />
         {trigger && (
           <div className="space-y-1">
             <RecentWebhookRequests
