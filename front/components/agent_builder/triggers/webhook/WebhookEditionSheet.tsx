@@ -101,7 +101,7 @@ function WebhookEditionExecutionLimit({
     name: "webhook.executionPerDayLimitOverride",
   });
 
-  const limitOptions = [50, 100, 200];
+  const limitOptions = [10, 20, 50];
   const isOverridenBySupport = !limitOptions.includes(executionLimit);
 
   return (
