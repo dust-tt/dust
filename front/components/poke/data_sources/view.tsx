@@ -457,9 +457,10 @@ function StuckActivitiesModal({
             />
             {result.workflows.map((workflow) => (
               <ContextItem.List key={workflow.workflowId} hasBorder>
-                <ContextItem.SectionHeader
+                <ContextItem
                   title={workflow.workflowId}
-                  description={`Status: ${workflow.status}`}
+                  visual={null}
+                  hasSeparator={false}
                 />
                 {workflow.stuckActivities.map((activity, idx) => (
                   <ContextItem
