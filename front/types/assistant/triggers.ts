@@ -47,6 +47,8 @@ export function isValidTriggerKind(kind: string): kind is TriggerKind {
   return ["schedule", "webhook"].includes(kind);
 }
 
+export type TriggerExecutionMode = "fair_use" | "programmatic";
+
 export type WebhookTriggerType = TriggerType & {
   kind: "webhook";
   webhookSourceViewSId: string;
