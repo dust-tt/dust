@@ -43,7 +43,7 @@ export async function searchCallback(
   auth: Authenticator,
   agentLoopContext: AgentLoopContextType | undefined,
   { nodeIds, dataSources, query, relativeTimeFrame }: SearchWithNodesInputType,
-  { tagsIn, tagsNot }: { tagsIn?: string[]; tagsNot?: string[] } = {}
+  additionalDynamicTags: { tagsIn?: string[]; tagsNot?: string[] } = {}
 ): Promise<Result<CallToolResult["content"], MCPError>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const credentials = dustManagedCredentials();
@@ -143,7 +143,7 @@ export async function searchCallback(
 
   const conflictingTags = checkConflictingTags(
     coreSearchArgs.map(({ filter }) => filter.tags),
-    { tagsIn, tagsNot }
+    additionalDynamicTags
   );
   if (conflictingTags) {
     return new Err(new MCPError(conflictingTags, { tracked: false }));
@@ -156,10 +156,13 @@ export async function searchCallback(
     false,
     coreSearchArgs.map((args) => {
       // In addition to the tags provided by the user, we add the tags the agent passed.
-      const finalTagsIn = [...(args.filter.tags?.in ?? []), ...(tagsIn ?? [])];
+      const finalTagsIn = [
+        ...(args.filter.tags?.in ?? []),
+        ...(additionalDynamicTags.tagsIn ?? []),
+      ];
       const finalTagsNot = [
         ...(args.filter.tags?.not ?? []),
-        ...(tagsNot ?? []),
+        ...(additionalDynamicTags.tagsNot ?? []),
       ];
 
       return {
@@ -235,10 +238,11 @@ export async function searchCallback(
     const searchResult = await coreAPI.searchNodes({
       filter: {
         node_ids: searchNodeIds,
-        data_source_views: makeCoreSearchNodesFilters(
+        data_source_views: makeCoreSearchNodesFilters({
           agentDataSourceConfigurations,
-          { tagsIn, tagsNot }
-        ),
+          includeTagFilters: true,
+          additionalDynamicTags,
+        }),
       },
       options: {
         limit: searchNodeIds.length,
@@ -262,8 +266,8 @@ export async function searchCallback(
       resource: makeQueryResource({
         query,
         timeFrame,
-        tagsIn,
-        tagsNot,
+        tagsIn: additionalDynamicTags.tagsIn,
+        tagsNot: additionalDynamicTags.tagsNot,
         nodeIds,
       }),
     },

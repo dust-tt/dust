@@ -22,7 +22,7 @@ import { CoreAPI, DATA_SOURCE_NODE_ID, Err, Ok, removeNulls } from "@app/types";
 export async function locateTreeCallback(
   auth: Authenticator,
   { nodeId, dataSources }: DataSourceFilesystemLocateTreeInputType,
-  { tagsIn, tagsNot }: { tagsIn?: string[]; tagsNot?: string[] } = {}
+  additionalDynamicTags: { tagsIn?: string[]; tagsNot?: string[] } = {}
 ): Promise<Result<CallToolResult["content"], MCPError>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const fetchResult = await getAgentDataSourceConfigurations(auth, dataSources);
@@ -34,7 +34,7 @@ export async function locateTreeCallback(
 
   const conflictingTags = checkConflictingTags(
     agentDataSourceConfigurations.map(({ filter }) => filter.tags),
-    { tagsIn, tagsNot }
+    additionalDynamicTags
   );
   if (conflictingTags) {
     return new Err(new MCPError(conflictingTags, { tracked: false }));
@@ -85,10 +85,11 @@ export async function locateTreeCallback(
   const searchResult = await coreAPI.searchNodes({
     filter: {
       node_ids: [nodeId],
-      data_source_views: makeCoreSearchNodesFilters(
+      data_source_views: makeCoreSearchNodesFilters({
         agentDataSourceConfigurations,
-        { tagsIn, tagsNot }
-      ),
+        includeTagFilters: true,
+        additionalDynamicTags,
+      }),
     },
   });
 
@@ -113,9 +114,10 @@ export async function locateTreeCallback(
     const pathSearchResult = await coreAPI.searchNodes({
       filter: {
         node_ids: parentNodeIds,
-        data_source_views: makeCoreSearchNodesFilters(
-          agentDataSourceConfigurations
-        ),
+        data_source_views: makeCoreSearchNodesFilters({
+          agentDataSourceConfigurations,
+          includeTagFilters: false,
+        }),
       },
     });
 

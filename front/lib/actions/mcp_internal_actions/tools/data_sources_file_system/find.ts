@@ -28,7 +28,7 @@ export async function findCallback(
     rootNodeId,
     mimeTypes,
   }: DataSourceFilesystemFindInputType,
-  { tagsIn, tagsNot }: { tagsIn?: string[]; tagsNot?: string[] } = {}
+  additionalDynamicTags: { tagsIn?: string[]; tagsNot?: string[] } = {}
 ): Promise<Result<CallToolResult["content"], MCPError>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
@@ -41,7 +41,7 @@ export async function findCallback(
 
   const conflictingTags = checkConflictingTags(
     agentDataSourceConfigurations.map(({ filter }) => filter.tags),
-    { tagsIn, tagsNot }
+    additionalDynamicTags
   );
   if (conflictingTags) {
     return new Err(new MCPError(conflictingTags, { tracked: false }));
@@ -57,9 +57,10 @@ export async function findCallback(
   // are searched. It is not straightforward to guess which data source it
   // belongs to, this is why irrelevant data sources are not directly
   // filtered out.
-  let viewFilter = makeCoreSearchNodesFilters(agentDataSourceConfigurations, {
-    tagsIn,
-    tagsNot,
+  let viewFilter = makeCoreSearchNodesFilters({
+    agentDataSourceConfigurations,
+    includeTagFilters: true,
+    additionalDynamicTags,
   });
 
   if (dataSourceNodeId) {

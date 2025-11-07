@@ -6,6 +6,7 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import { FILESYSTEM_CAT_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { renderNode } from "@app/lib/actions/mcp_internal_actions/rendering";
+import { checkConflictingTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import {
   getAgentDataSourceConfigurations,
   makeCoreSearchNodesFilters,
@@ -94,13 +95,22 @@ export function registerCatTool(
           return new Err(authRes.error);
         }
 
+        const conflictingTags = checkConflictingTags(
+          agentDataSourceConfigurations.map(({ filter }) => filter.tags),
+          {}
+        );
+        if (conflictingTags) {
+          return new Err(new MCPError(conflictingTags, { tracked: false }));
+        }
+
         // Search the node using our search api.
         const searchResult = await coreAPI.searchNodes({
           filter: {
             node_ids: [nodeId],
-            data_source_views: makeCoreSearchNodesFilters(
-              agentDataSourceConfigurations
-            ),
+            data_source_views: makeCoreSearchNodesFilters({
+              agentDataSourceConfigurations,
+              includeTagFilters: true,
+            }),
           },
         });
 
