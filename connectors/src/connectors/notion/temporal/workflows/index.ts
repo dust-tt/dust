@@ -177,35 +177,33 @@ export async function notionSyncWorkflow({
   // wait for all child workflows to finish
   await Promise.all(promises);
 
-  if (isInitialSync) {
-    // These are resources (pages/DBs) that we didn't get from the search API but that are
-    // child/parent pages/DBs of other pages that we did get from the search API. We upsert those as
-    // well.
-    let discoveredResources: {
-      pageIds: string[];
-      databaseIds: string[];
-    } | null;
-    do {
-      discoveredResources = await getDiscoveredResourcesFromCache({
+  // These are resources (pages/DBs) that we didn't get from the search API but that are
+  // child/parent pages/DBs of other pages that we did get from the search API. We upsert those as
+  // well.
+  let discoveredResources: {
+    pageIds: string[];
+    databaseIds: string[];
+  } | null;
+  do {
+    discoveredResources = await getDiscoveredResourcesFromCache({
+      connectorId,
+      topLevelWorkflowId,
+    });
+    if (discoveredResources) {
+      await performUpserts({
         connectorId,
+        pageIds: discoveredResources.pageIds,
+        databaseIds: discoveredResources.databaseIds,
+        runTimestamp,
+        pageIndex: null,
+        isBatchSync: isInitialSync,
+        queue: childWorkflowQueue,
+        childWorkflowsNameSuffix: "discovered",
         topLevelWorkflowId,
+        forceResync: true, // Force resync to ensure we get all discovered resources
       });
-      if (discoveredResources) {
-        await performUpserts({
-          connectorId,
-          pageIds: discoveredResources.pageIds,
-          databaseIds: discoveredResources.databaseIds,
-          runTimestamp,
-          pageIndex: null,
-          isBatchSync: isInitialSync,
-          queue: childWorkflowQueue,
-          childWorkflowsNameSuffix: "discovered",
-          topLevelWorkflowId,
-          forceResync,
-        });
-      }
-    } while (discoveredResources && PROCESS_ALL_DISCOVERED_RESOURCES);
-  }
+    }
+  } while (discoveredResources && PROCESS_ALL_DISCOVERED_RESOURCES);
 
   // Drain the upsert queue before updating parents to ensure all document upserts are complete
   await executeChild(notionDrainDocumentUpsertQueueWorkflow, {
