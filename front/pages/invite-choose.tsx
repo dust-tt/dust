@@ -91,9 +91,7 @@ export default function InviteChoosePage({
         <div className="flex flex-col gap-4">
           {invitations.length === 0 ? (
             <div className="body-sm text-muted-foreground">
-              We couldn&apos;t find any pending invitations for{
-                " "
-              }
+              We couldn&apos;t find any pending invitations for{" "}
               {user?.email ?? "your account"}. Please contact your workspace
               admin or try another email address.
             </div>
@@ -134,4 +132,3 @@ export default function InviteChoosePage({
     </Page>
   );
 }
-
