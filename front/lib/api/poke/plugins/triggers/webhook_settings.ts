@@ -96,7 +96,7 @@ export const webhookSettingsPlugin = createPlugin({
     await TriggerModel.update(
       {
         executionPerDayLimitOverride: executionPerDayLimitOverride,
-        executionMode: executionMode || null,
+        executionMode: executionMode ?? null,
       },
       {
         where: {
@@ -107,7 +107,7 @@ export const webhookSettingsPlugin = createPlugin({
     );
 
     const limitText = `${executionPerDayLimitOverride} per day`;
-    const modeText = executionMode || "not set";
+    const modeText = executionMode ?? "not set";
 
     return new Ok({
       display: "text",

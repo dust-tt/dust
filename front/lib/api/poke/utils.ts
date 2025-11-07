@@ -11,8 +11,8 @@ import type {
   SupportedResourceType,
 } from "@app/types";
 import type { LightWorkspaceType } from "@app/types";
-import type { TriggerType } from "@app/types/assistant/triggers";
 import { assertNever } from "@app/types";
+import type { TriggerType } from "@app/types/assistant/triggers";
 
 export type ResourceTypeMap = {
   agents: LightAgentConfigurationType;
