@@ -32,7 +32,7 @@ import { useInView } from "react-intersection-observer";
 
 import { CreateAgentButton } from "@app/components/assistant/CreateAgentButton";
 import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
-import { AssistantDetailsDropdownMenu } from "@app/components/assistant/details/AssistantDetailsButtonBar";
+import { AgentDetailsDropdownMenu } from "@app/components/assistant/details/AgentDetailsButtonBar";
 import { rankAgentsByPopularity } from "@app/components/assistant/helpers/agents";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { useHashParam } from "@app/hooks/useHashParams";
@@ -175,7 +175,7 @@ export const AgentGrid = ({
           );
         })}
       </CardGrid>
-      <AssistantDetailsDropdownMenu
+      <AgentDetailsDropdownMenu
         agentConfiguration={contextMenuAgent ?? undefined}
         owner={owner}
         onClose={() => {
