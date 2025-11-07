@@ -3,7 +3,7 @@ import type { ThinkingConfigParam } from "@anthropic-ai/sdk/resources/messages/m
 
 import type { AnthropicWhitelistedModelId } from "@app/lib/api/llm/clients/anthropic/types";
 import { overwriteLLMParameters } from "@app/lib/api/llm/clients/anthropic/types";
-import { CLAUDE_4_THINKING_BUDGET_TOKENS } from "@app/lib/api/llm/clients/anthropic/utils";
+import { toThinkingConfig } from "@app/lib/api/llm/clients/anthropic/utils";
 import { streamLLMEvents } from "@app/lib/api/llm/clients/anthropic/utils/anthropic_to_events";
 import {
   toMessage,
@@ -19,24 +19,11 @@ import type {
 } from "@app/lib/api/llm/types/options";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import type { ReasoningEffort, SUPPORTED_MODEL_CONFIGS } from "@app/types";
+import type { SUPPORTED_MODEL_CONFIGS } from "@app/types";
 import { dustManagedCredentials } from "@app/types";
-
-function toThinkingConfig(
-  reasoningEffort: ReasoningEffort | null
-): ThinkingConfigParam | undefined {
-  if (!reasoningEffort || reasoningEffort === "none") {
-    return undefined;
-  }
-  return {
-    type: "enabled",
-    budget_tokens: CLAUDE_4_THINKING_BUDGET_TOKENS[reasoningEffort],
-  };
-}
 
 export class AnthropicLLM extends LLM {
   private client: Anthropic;
-  private readonly thinkingConfig?: ThinkingConfigParam;
   private modelConfig: (typeof SUPPORTED_MODEL_CONFIGS)[number];
 
   constructor(
@@ -69,7 +56,10 @@ export class AnthropicLLM extends LLM {
 
       const events = this.client.messages.stream({
         model: this.modelId,
-        thinking: toThinkingConfig(this.reasoningEffort),
+        thinking: toThinkingConfig(
+          this.reasoningEffort,
+          this.modelConfig.useNativeLightReasoning
+        ),
         system: [
           {
             type: "text",
