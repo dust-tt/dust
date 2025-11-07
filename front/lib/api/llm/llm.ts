@@ -14,6 +14,7 @@ import type {
   StreamParameters,
 } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
+import { RunResource } from "@app/lib/resources/run_resource";
 import type { ModelIdType, ReasoningEffort } from "@app/types";
 
 export abstract class LLM {
@@ -94,6 +95,19 @@ export abstract class LLM {
     } finally {
       const durationMs = Date.now() - startTime;
       buffer.writeToGCS({ durationMs, startTime }).catch(() => {});
+
+      const run = await RunResource.makeNew({
+        appId: null,
+        dustRunId: this.traceId,
+        runType: "deploy",
+        // Assumption made that this class exclusively uses Dust credentials.
+        useWorkspaceCredentials: false,
+        workspaceId: this.authenticator.getNonNullableWorkspace().id,
+      });
+
+      if (buffer.runTokenUsage) {
+        await run.recordTokenUsage(buffer.runTokenUsage, this.modelId);
+      }
     }
   }
 
