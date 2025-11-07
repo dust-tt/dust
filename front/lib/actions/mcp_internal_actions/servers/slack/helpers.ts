@@ -283,8 +283,10 @@ export async function executePostMessage(
   message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${agentLoopContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
 
   const authResult = await slackClient.auth.test();
-  const scopes = authResult.response_metadata?.scopes ?? [];
-  if (!scopes.includes("files:write")) {
+  if (
+    !authResult.ok ||
+    !authResult.response_metadata?.scopes?.includes("files:write")
+  ) {
     fileId = undefined;
   }
 
