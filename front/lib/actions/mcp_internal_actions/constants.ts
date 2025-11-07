@@ -108,6 +108,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "run_agent",
   "run_dust_app",
   "salesforce",
+  "salesloft",
   "slack",
   "slack_bot",
   "sound_studio",
@@ -1251,6 +1252,33 @@ The directive should be used to display a clickable version of the agent name in
       authorization: null,
       // TODO(2025-11-04 aubin): add logo.
       icon: "GithubLogo",
+      documentationUrl: null,
+      instructions: null,
+      developerSecretSelection: "required",
+    },
+  },
+  salesloft: {
+    id: 41,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("salesloft_tool");
+    },
+    isPreview: true,
+    tools_stakes: {
+      get_current_user: "never_ask",
+      get_cadences: "never_ask",
+      get_tasks: "never_ask",
+      get_actions: "never_ask",
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "salesloft",
+      version: "1.0.0",
+      description: "Access Salesloft cadences, tasks, and actions.",
+      authorization: null,
+      icon: "ActionDocumentTextIcon",
       documentationUrl: null,
       instructions: null,
       developerSecretSelection: "required",
