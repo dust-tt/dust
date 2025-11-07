@@ -25,7 +25,6 @@ export const LATENCY_LEGEND = [
 ] as const;
 
 export const CHART_HEIGHT = 260;
-export const CHART_CONTAINER_HEIGHT_CLASS = "h-100";
 
 export const TOOL_COLORS = [
   "text-orange-300 dark:text-orange-300-night",

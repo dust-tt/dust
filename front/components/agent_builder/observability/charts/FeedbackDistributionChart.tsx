@@ -14,7 +14,7 @@ import {
   FEEDBACK_DISTRIBUTION_LEGEND,
   FEEDBACK_DISTRIBUTION_PALETTE,
 } from "@app/components/agent_builder/observability/constants";
-import { useObservability } from "@app/components/agent_builder/observability/ObservabilityContext";
+import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import {
   ChartLegend,
@@ -39,7 +39,7 @@ export function FeedbackDistributionChart({
   workspaceId,
   agentConfigurationId,
 }: FeedbackDistributionChartProps) {
-  const { period, mode, selectedVersion } = useObservability();
+  const { period, mode, selectedVersion } = useObservabilityContext();
   const {
     feedbackDistribution,
     isFeedbackDistributionLoading,

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useMemo, useState } from "react";
 
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
@@ -28,27 +28,30 @@ export function ObservabilityProvider({
     useState<ObservabilityTimeRangeType>(DEFAULT_PERIOD_DAYS);
   const [selectedVersion, setSelectedVersion] = useState<string | null>(null);
 
+  const value = useMemo(
+    () => ({
+      mode,
+      setMode,
+      period,
+      setPeriod,
+      selectedVersion,
+      setSelectedVersion,
+    }),
+    [mode, period, selectedVersion, setMode, setPeriod, setSelectedVersion]
+  );
+
   return (
-    <ObservabilityContext.Provider
-      value={{
-        mode,
-        setMode,
-        period,
-        setPeriod,
-        selectedVersion,
-        setSelectedVersion,
-      }}
-    >
+    <ObservabilityContext.Provider value={value}>
       {children}
     </ObservabilityContext.Provider>
   );
 }
 
-export function useObservability() {
+export function useObservabilityContext() {
   const ctx = useContext(ObservabilityContext);
   if (!ctx) {
     throw new Error(
-      "useObservability must be used within an ObservabilityProvider"
+      "useObservabilityContext must be used within an ObservabilityProvider"
     );
   }
   return ctx;

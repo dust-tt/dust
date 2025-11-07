@@ -14,7 +14,7 @@ import {
   USAGE_METRICS_LEGEND,
   USAGE_METRICS_PALETTE,
 } from "@app/components/agent_builder/observability/constants";
-import { useObservability } from "@app/components/agent_builder/observability/ObservabilityContext";
+import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import {
   ChartLegend,
@@ -102,7 +102,7 @@ export function UsageMetricsChart({
   workspaceId: string;
   agentConfigurationId: string;
 }) {
-  const { period, mode, selectedVersion } = useObservability();
+  const { period, mode, selectedVersion } = useObservabilityContext();
   const { usageMetrics, isUsageMetricsLoading, isUsageMetricsError } =
     useAgentUsageMetrics({
       workspaceId,

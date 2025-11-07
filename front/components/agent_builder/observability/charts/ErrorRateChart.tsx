@@ -16,7 +16,7 @@ import {
   ERROR_RATE_LEGEND,
   ERROR_RATE_PALETTE,
 } from "@app/components/agent_builder/observability/constants";
-import { useObservability } from "@app/components/agent_builder/observability/ObservabilityContext";
+import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import {
   ChartLegend,
@@ -24,14 +24,14 @@ import {
 } from "@app/components/agent_builder/observability/shared/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
 import { VersionMarkersDots } from "@app/components/agent_builder/observability/shared/VersionMarkers";
-import { padSeriesToTimeRange } from "@app/components/agent_builder/observability/utils";
+import {
+  getErrorRateChipInfo,
+  padSeriesToTimeRange,
+} from "@app/components/agent_builder/observability/utils";
 import {
   useAgentErrorRate,
   useAgentVersionMarkers,
 } from "@app/lib/swr/assistants";
-
-const WARNING_THRESHOLD = 5;
-const CRITICAL_THRESHOLD = 10;
 
 interface ErrorRateData {
   total: number;
@@ -88,7 +88,7 @@ export function ErrorRateChart({
   workspaceId,
   agentConfigurationId,
 }: ErrorRateChartProps) {
-  const { period, mode } = useObservability();
+  const { period, mode } = useObservabilityContext();
   const {
     errorRate: rawData,
     isErrorRateLoading,
@@ -122,25 +122,22 @@ export function ErrorRateChart({
     }
   );
 
-  const getStatusChip = () => {
-    const latestErrorRate = data[data.length - 1]?.errorRate ?? 0;
-    if (latestErrorRate < WARNING_THRESHOLD) {
-      return <Chip color="success" size="xs" label="HEALTHY" />;
-    } else if (latestErrorRate < CRITICAL_THRESHOLD) {
-      return <Chip color="info" size="xs" label="WARNING" />;
-    } else {
-      return <Chip color="warning" size="xs" label="CRITICAL" />;
-    }
-  };
+  const errorRateChipInfo = getErrorRateChipInfo(
+    data[data.length - 1]?.errorRate ?? 0
+  );
 
   return (
     <ChartContainer
       title="Error rate"
       description="Share of messages that failed (%). Warning at 5%, critical at 10%."
       statusChip={
-        !isErrorRateLoading && !isErrorRateError && data.length > 0
-          ? getStatusChip()
-          : undefined
+        !isErrorRateLoading && !isErrorRateError && data.length > 0 ? (
+          <Chip
+            size="mini"
+            color={errorRateChipInfo.color}
+            label={errorRateChipInfo.label}
+          />
+        ) : undefined
       }
       isLoading={isErrorRateLoading}
       errorMessage={
