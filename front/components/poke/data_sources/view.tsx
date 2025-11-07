@@ -3,6 +3,7 @@ import {
   Button,
   Chip,
   ContentMessage,
+  ContextItem,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -455,43 +456,34 @@ function StuckActivitiesModal({
               }
             />
             {result.workflows.map((workflow) => (
-              <div key={workflow.workflowId} className="flex flex-col gap-2">
-                <div className="border-structure-200 dark:border-structure-200-dark rounded-lg border">
-                  <div className="border-structure-200 dark:border-structure-200-dark border-b px-4 py-3">
-                    <div className="text-sm font-semibold">
-                      {workflow.workflowId}
-                    </div>
-                    <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                      Status: {workflow.status}
-                    </div>
-                  </div>
-                  <div className="flex flex-col">
-                    {workflow.stuckActivities.map((activity, idx) => (
-                      <div
-                        key={idx}
-                        className="border-structure-200 dark:border-structure-200-dark border-b px-4 py-3 last:border-b-0"
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="text-sm">
-                            {activity.activityType}
-                          </span>
-                          <Chip
-                            color="warning"
-                            label={`${activity.attempt} attempts`}
-                            size="xs"
-                          />
+              <ContextItem.List key={workflow.workflowId} hasBorder>
+                <ContextItem.SectionHeader
+                  title={workflow.workflowId}
+                  description={`Status: ${workflow.status}`}
+                />
+                {workflow.stuckActivities.map((activity, idx) => (
+                  <ContextItem
+                    key={idx}
+                    title={
+                      <span className="text-sm">{activity.activityType}</span>
+                    }
+                    visual={
+                      <Chip
+                        color="warning"
+                        label={`${activity.attempt} attempts`}
+                        size="xs"
+                      />
+                    }
+                    subElement={
+                      activity.lastFailure ? (
+                        <div className="text-sm text-warning-500">
+                          {activity.lastFailure}
                         </div>
-                        {activity.lastFailure && (
-                          <div className="mt-2 text-xs text-warning-500">
-                            <span className="font-medium">Last Failure: </span>
-                            {activity.lastFailure}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+                      ) : null
+                    }
+                  />
+                ))}
+              </ContextItem.List>
             ))}
           </div>
         </DialogContainer>
