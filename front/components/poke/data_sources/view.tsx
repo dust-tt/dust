@@ -475,14 +475,13 @@ function StuckActivitiesModal({
                         size="xs"
                       />
                     }
-                    subElement={
-                      activity.lastFailure ? (
-                        <div className="text-sm text-warning-500">
-                          {activity.lastFailure}
-                        </div>
-                      ) : null
-                    }
-                  />
+                  >
+                    {activity.lastFailure ? (
+                      <div className="text-sm text-warning-500">
+                        {activity.lastFailure}
+                      </div>
+                    ) : null}
+                  </ContextItem>
                 ))}
               </ContextItem.List>
             ))}
