@@ -1,10 +1,8 @@
 import type { ModelId, ModelProviderIdType } from "@app/types";
-import type { FunctionCallType } from "@app/types/assistant/generation";
-
-export type TextContentType = {
-  type: "text_content";
-  value: string;
-};
+import type {
+  FunctionCallType,
+  TextContent,
+} from "@app/types/assistant/generation";
 
 export type ReasoningContentType = {
   type: "reasoning";
@@ -32,16 +30,10 @@ export type ErrorContentType = {
 };
 
 export type AgentContentItemType =
-  | TextContentType
+  | TextContent
   | ReasoningContentType
   | FunctionCallContentType
   | ErrorContentType;
-
-export function isTextContent(
-  content: AgentContentItemType
-): content is TextContentType {
-  return content.type === "text_content";
-}
 
 export function isReasoningContent(
   content: AgentContentItemType

@@ -12,20 +12,16 @@ import type {
   AssistantFunctionCallMessageTypeModel,
   Content,
   ModelMessageTypeMultiActionsWithoutContentFragment,
+  TextContent,
 } from "@app/types";
 import { assertNever } from "@app/types";
 import type {
   FunctionCallContentType,
   ReasoningContentType,
-  TextContentType,
 } from "@app/types/assistant/agent_message_content";
 
-function toContentChunk(
-  content: Content | TextContentType | ReasoningContentType
-): ContentChunk {
+function toContentChunk(content: Content | ReasoningContentType): ContentChunk {
   switch (content.type) {
-    case "text":
-      return content;
     case "image_url":
       return {
         type: "image_url",
@@ -57,8 +53,7 @@ function toAssistantMessage(
 
   const textContents = message.contents
     .filter(
-      (c): c is TextContentType | ReasoningContentType =>
-        c.type !== "function_call"
+      (c): c is TextContent | ReasoningContentType => c.type !== "function_call"
     )
     .map(toContentChunk);
   const toolCalls = message.contents
