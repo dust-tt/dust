@@ -1,4 +1,5 @@
 import { Chip } from "@dust-tt/sparkle";
+import { useMemo } from "react";
 import {
   Area,
   AreaChart,
@@ -86,16 +87,18 @@ export function ErrorRateChart({
   workspaceId,
   agentConfigurationId,
 }: ErrorRateChartProps) {
-  const { period, mode } = useObservabilityContext();
+  const { period, mode, selectedVersion } = useObservabilityContext();
+
   const {
     data: rawData,
-    isLoading: isErrorRateLoading,
-    errorMessage: isErrorRateError,
+    isLoading,
+    errorMessage,
   } = useErrorRateData({
     workspaceId,
     agentConfigurationId,
     period,
     mode,
+    filterVersion: selectedVersion,
   });
 
   const { versionMarkers } = useAgentVersionMarkers({
@@ -105,12 +108,22 @@ export function ErrorRateChart({
     disabled: !workspaceId || !agentConfigurationId,
   });
 
-  const data = padSeriesToTimeRange(rawData, mode, period, (date) => ({
-    date,
-    total: 0,
-    failed: 0,
-    errorRate: 0,
-  }));
+  const data = useMemo(() => {
+    if (mode === "timeRange") {
+      const dataWithDate = rawData.map((item) => ({
+        ...item,
+        date: item.date!,
+      }));
+      return padSeriesToTimeRange(dataWithDate, mode, period, (date) => ({
+        date,
+        label: date,
+        total: 0,
+        failed: 0,
+        errorRate: 0,
+      }));
+    }
+    return rawData;
+  }, [rawData, mode, period]);
 
   const legendItems = legendFromConstant(
     ERROR_RATE_LEGEND,
@@ -129,7 +142,7 @@ export function ErrorRateChart({
       title="Error rate"
       description="Share of messages that failed (%). Warning at 5%, critical at 10%."
       statusChip={
-        !isErrorRateLoading && !isErrorRateError && data.length > 0 ? (
+        !isLoading && !errorMessage && data.length > 0 ? (
           <Chip
             size="mini"
             color={errorRateChipInfo.color}
@@ -137,10 +150,8 @@ export function ErrorRateChart({
           />
         ) : undefined
       }
-      isLoading={isErrorRateLoading}
-      errorMessage={
-        isErrorRateError ? "Failed to load observability data." : undefined
-      }
+      isLoading={isLoading}
+      errorMessage={errorMessage}
     >
       <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
         <AreaChart
