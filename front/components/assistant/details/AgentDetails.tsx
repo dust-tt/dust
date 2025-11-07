@@ -2,6 +2,7 @@ import {
   ArrowPathIcon,
   Avatar,
   BarChartIcon,
+  ListCheckIcon,
   BellIcon,
   Button,
   Chip,
@@ -251,8 +252,8 @@ export function AgentDetails({
                     {showPerformanceTabs && (
                       <TabsTrigger
                         value="performance"
-                        label="Performance"
-                        icon={BarChartIcon}
+                        label="Feedback"
+                        icon={ListCheckIcon}
                         onClick={() => setSelectedTab("performance")}
                       />
                     )}

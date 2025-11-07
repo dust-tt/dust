@@ -1,22 +1,23 @@
 import {
   CardGrid,
   Chip,
+  HandThumbDownIcon,
+  HandThumbUpIcon,
   Separator,
   Spinner,
   ValueCard,
 } from "@dust-tt/sparkle";
-import { HandThumbDownIcon, HandThumbUpIcon } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
 import { ErrorRateChart } from "@app/components/agent_builder/observability/charts/ErrorRateChart";
 import { LatencyChart } from "@app/components/agent_builder/observability/charts/LatencyChart";
 import { ToolUsageChart } from "@app/components/agent_builder/observability/charts/ToolUsageChart";
 import { UsageMetricsChart } from "@app/components/agent_builder/observability/charts/UsageMetricsChart";
+import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
 import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
-import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
-import { SharedObservabilityFilterSelector } from "@app/components/observability/SharedObservabilityFilterSelector";
 import { getErrorRateChipInfo } from "@app/components/agent_builder/observability/utils";
+import { SharedObservabilityFilterSelector } from "@app/components/observability/SharedObservabilityFilterSelector";
 import type { ErrorRatePoint } from "@app/lib/api/assistant/observability/error_rate";
 import { useAgentAnalytics, useAgentErrorRate } from "@app/lib/swr/assistants";
 
