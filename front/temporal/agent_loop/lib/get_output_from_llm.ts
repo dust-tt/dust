@@ -172,10 +172,13 @@ export async function getOutputFromLLMStream(
     }
 
     if (event.type === "text_generated") {
-      contents.push({
-        type: "text_content",
-        value: event.content.text,
-      });
+      const parsed = await contentParser.parseContents([event.content.text]);
+      if (parsed.content !== null) {
+        contents.push({
+          type: "text_content",
+          value: parsed.content,
+        });
+      }
       generation += event.content.text;
     }
 
