@@ -5,7 +5,7 @@ import type {
   Result,
   UserMessageType,
 } from "@dust-tt/client";
-import { DustAPI } from "@dust-tt/client";
+import { DustAPI, removeNulls } from "@dust-tt/client";
 import {
   assertNever,
   Err,
@@ -29,6 +29,7 @@ import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_clien
 import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
 import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { annotateCitations } from "@connectors/lib/bot/citations";
 import { makeConversationUrl } from "@connectors/lib/bot/conversation_utils";
 import type { SlackChatBotMessage } from "@connectors/lib/models/slack";
@@ -762,9 +763,10 @@ async function getFilesFromDust(
   }>,
   dustAPI: DustAPI
 ): Promise<{ file: Buffer; filename: string }[]> {
-  const uploadPromises = files
-    .filter((file) => !file.hidden) // Skip hidden files
-    .map(async (file) => {
+  const hiddenFiles = files.filter((file) => file.hidden); // Skip hidden files
+  const uploadResults = await concurrentExecutor(
+    hiddenFiles,
+    async (file) => {
       try {
         const fileBuffer = await dustAPI.downloadFile({ fileID: file.fileId });
         if (!fileBuffer || fileBuffer.isErr()) {
@@ -785,11 +787,7 @@ async function getFilesFromDust(
         );
         return null;
       }
-    });
-
-  const uploadResults = await Promise.all(uploadPromises);
-  return uploadResults.filter((result) => result !== null) as {
-    file: Buffer;
-    filename: string;
-  }[];
+    }, { concurrency: 10 })
+  
+  return removeNulls(uploadResults);
 }
