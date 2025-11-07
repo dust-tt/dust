@@ -200,7 +200,9 @@ export async function notionSyncWorkflow({
         queue: childWorkflowQueue,
         childWorkflowsNameSuffix: "discovered",
         topLevelWorkflowId,
-        forceResync: true, // Force resync to ensure we get all discovered resources
+        // Force resync to ensure DBs are processed immediately, which then allows discovery
+        // of their child pages.
+        forceResync: true,
       });
     }
   } while (discoveredResources && PROCESS_ALL_DISCOVERED_RESOURCES);
