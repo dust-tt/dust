@@ -5,6 +5,7 @@ export const functionCallModelEvents: ResponseStreamEvent[] = [
   {
     type: "response.output_item.added",
     output_index: 0,
+    sequence_number: 1,
     item: {
       id: "fc_06aabf29f7da2e13016901cef49d6881989055afd74ea35208",
       type: "function_call",
@@ -18,26 +19,28 @@ export const functionCallModelEvents: ResponseStreamEvent[] = [
     type: "response.function_call_arguments.delta",
     item_id: "fc_06aabf29f7da2e13016901cef49d6881989055afd74ea35208",
     output_index: 0,
+    sequence_number: 2,
     // Chunks are much smaller
     delta: '{"expression":',
   },
   {
     type: "response.function_call_arguments.delta",
-    // sequence_number: 4,
+    sequence_number: 3,
     item_id: "fc_06aabf29f7da2e13016901cef49d6881989055afd74ea35208",
     output_index: 0,
     delta: '"x^2 + 2x + 1 = 0"}',
   },
   {
     type: "response.function_call_arguments.done",
-    // sequence_number: 20,
+    name: "common_utilities__math_operation",
+    sequence_number: 4,
     item_id: "fc_06aabf29f7da2e13016901cef49d6881989055afd74ea35208",
     output_index: 0,
     arguments: '{"expression":"x^2 + 2x + 1 = 0"}',
   },
   {
     type: "response.output_item.done",
-    // sequence_number: 21,
+    sequence_number: 5,
     output_index: 0,
     item: {
       id: "fc_06aabf29f7da2e13016901cef49d6881989055afd74ea35208",
@@ -50,7 +53,7 @@ export const functionCallModelEvents: ResponseStreamEvent[] = [
   },
   {
     type: "response.output_item.added",
-    // sequence_number: 22,
+    sequence_number: 6,
     output_index: 1,
     item: {
       id: "fc_06aabf29f7da2e13016901cef549108198b49dc352fc8889ff",
@@ -63,7 +66,7 @@ export const functionCallModelEvents: ResponseStreamEvent[] = [
   },
   {
     type: "response.function_call_arguments.delta",
-    // sequence_number: 23,
+    sequence_number: 7,
     item_id: "fc_06aabf29f7da2e13016901cef549108198b49dc352fc8889ff",
     output_index: 1,
     delta: '{"query":"weather forecast ',
@@ -71,7 +74,7 @@ export const functionCallModelEvents: ResponseStreamEvent[] = [
   },
   {
     type: "response.function_call_arguments.delta",
-    // sequence_number: 24,
+    sequence_number: 8,
     item_id: "fc_06aabf29f7da2e13016901cef549108198b49dc352fc8889ff",
     output_index: 1,
     delta: 'Paris France tomorrow","page":1}',
@@ -79,14 +82,15 @@ export const functionCallModelEvents: ResponseStreamEvent[] = [
   },
   {
     type: "response.function_call_arguments.done",
-    // sequence_number: 35,
+    sequence_number: 9,
     item_id: "fc_06aabf29f7da2e13016901cef549108198b49dc352fc8889ff",
+    name: "web_search_browse__websearch",
     output_index: 1,
     arguments: '{"query":"weather forecast Paris France tomorrow","page":1}',
   },
   {
     type: "response.output_item.done",
-    // sequence_number: 36,
+    sequence_number: 10,
     output_index: 1,
     item: {
       id: "fc_06aabf29f7da2e13016901cef549108198b49dc352fc8889ff",

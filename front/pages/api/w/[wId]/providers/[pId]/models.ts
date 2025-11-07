@@ -8,8 +8,6 @@ import type { WithAPIErrorResponse } from "@app/types";
 import {
   FIREWORKS_DEEPSEEK_R1_MODEL_ID,
   GEMINI_2_5_PRO_MODEL_ID,
-  GEMINI_2_FLASH_MODEL_ID,
-  GEMINI_2_PRO_PREVIEW_MODEL_ID,
   TOGETHERAI_DEEPSEEK_R1_MODEL_ID,
   TOGETHERAI_DEEPSEEK_V3_MODEL_ID,
   TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_ID,
@@ -250,11 +248,7 @@ async function handler(
 
         case "google_ai_studio":
           return res.status(200).json({
-            models: [
-              { id: GEMINI_2_FLASH_MODEL_ID },
-              { id: GEMINI_2_PRO_PREVIEW_MODEL_ID },
-              { id: GEMINI_2_5_PRO_MODEL_ID },
-            ],
+            models: [{ id: GEMINI_2_5_PRO_MODEL_ID }],
           });
 
         case "togetherai":

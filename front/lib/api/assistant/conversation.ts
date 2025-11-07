@@ -52,6 +52,7 @@ import {
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
+import type { MentionType } from "@app/types";
 import type {
   AgentMessageType,
   APIErrorWithStatusCode,
@@ -63,7 +64,6 @@ import type {
   ConversationVisibility,
   ConversationWithoutContentType,
   LightAgentConfigurationType,
-  MentionType,
   ModelId,
   PlanType,
   Result,
@@ -288,6 +288,33 @@ export async function getLastUserMessage(
     );
   }
   return new Ok(content);
+}
+
+export async function getUserMessageFromParentMessageId({
+  workspaceId,
+  conversationId,
+  parentMessageId,
+}: {
+  workspaceId: ModelId;
+  conversationId: ModelId;
+  parentMessageId: string;
+}): Promise<UserMessage | null> {
+  const message = await Message.findOne({
+    where: {
+      workspaceId,
+      conversationId,
+      sId: parentMessageId,
+    },
+    include: [
+      {
+        model: UserMessage,
+        as: "userMessage",
+      },
+    ],
+    attributes: ["id"],
+  });
+
+  return message?.userMessage ?? null;
 }
 
 /**

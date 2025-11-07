@@ -73,6 +73,7 @@ import {
   LabsTranscriptsHistoryModel,
 } from "@app/lib/resources/storage/models/labs_transcripts";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
+import { OnboardingTaskModel } from "@app/lib/resources/storage/models/onboarding_tasks";
 import { PluginRunModel } from "@app/lib/resources/storage/models/plugin_runs";
 import {
   RunModel,
@@ -183,6 +184,7 @@ async function main() {
   await PluginRunModel.sync({ alter: true });
 
   await AgentMemoryModel.sync({ alter: true });
+  await OnboardingTaskModel.sync({ alter: true });
 
   process.exit(0);
 }

@@ -16,18 +16,22 @@ import {
   ERROR_RATE_LEGEND,
   ERROR_RATE_PALETTE,
 } from "@app/components/agent_builder/observability/constants";
-import { useObservability } from "@app/components/agent_builder/observability/ObservabilityContext";
+import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
-import { ChartLegend } from "@app/components/agent_builder/observability/shared/ChartLegend";
+import {
+  ChartLegend,
+  legendFromConstant,
+} from "@app/components/agent_builder/observability/shared/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
-import { padSeriesToTimeRange } from "@app/components/agent_builder/observability/utils";
+import { VersionMarkersDots } from "@app/components/agent_builder/observability/shared/VersionMarkers";
+import {
+  getErrorRateChipInfo,
+  padSeriesToTimeRange,
+} from "@app/components/agent_builder/observability/utils";
 import {
   useAgentErrorRate,
   useAgentVersionMarkers,
 } from "@app/lib/swr/assistants";
-
-const WARNING_THRESHOLD = 5;
-const CRITICAL_THRESHOLD = 10;
 
 interface ErrorRateData {
   total: number;
@@ -84,7 +88,7 @@ export function ErrorRateChart({
   workspaceId,
   agentConfigurationId,
 }: ErrorRateChartProps) {
-  const { period, mode } = useObservability();
+  const { period, mode } = useObservabilityContext();
   const {
     errorRate: rawData,
     isErrorRateLoading,
@@ -110,30 +114,30 @@ export function ErrorRateChart({
     errorRate: 0,
   }));
 
-  const legendItems = ERROR_RATE_LEGEND.map(({ key, label }) => ({
-    key,
-    label,
-    colorClassName: ERROR_RATE_PALETTE[key],
-  }));
-
-  const getStatusChip = () => {
-    const latestErrorRate = data[data.length - 1]?.errorRate ?? 0;
-    if (latestErrorRate < WARNING_THRESHOLD) {
-      return <Chip color="success" size="xs" label="HEALTHY" />;
-    } else if (latestErrorRate < CRITICAL_THRESHOLD) {
-      return <Chip color="info" size="xs" label="WARNING" />;
-    } else {
-      return <Chip color="warning" size="xs" label="CRITICAL" />;
+  const legendItems = legendFromConstant(
+    ERROR_RATE_LEGEND,
+    ERROR_RATE_PALETTE,
+    {
+      includeVersionMarker: mode === "timeRange" && versionMarkers.length > 0,
     }
-  };
+  );
+
+  const errorRateChipInfo = getErrorRateChipInfo(
+    data[data.length - 1]?.errorRate ?? 0
+  );
 
   return (
     <ChartContainer
       title="Error rate"
+      description="Share of messages that failed (%). Warning at 5%, critical at 10%."
       statusChip={
-        !isErrorRateLoading && !isErrorRateError && data.length > 0
-          ? getStatusChip()
-          : undefined
+        !isErrorRateLoading && !isErrorRateError && data.length > 0 ? (
+          <Chip
+            size="mini"
+            color={errorRateChipInfo.color}
+            label={errorRateChipInfo.label}
+          />
+        ) : undefined
       }
       isLoading={isErrorRateLoading}
       errorMessage={
@@ -159,20 +163,23 @@ export function ErrorRateChart({
               />
             </linearGradient>
           </defs>
-          <CartesianGrid vertical={false} className="stroke-border" />
+          <CartesianGrid
+            vertical={false}
+            className="stroke-border dark:stroke-border-night"
+          />
           <XAxis
             dataKey="date"
             type="category"
             scale="point"
             allowDuplicatedCategory={false}
-            className="text-xs text-muted-foreground"
+            className="text-xs text-muted-foreground dark:text-muted-foreground-night"
             tickLine={false}
             axisLine={false}
             tickMargin={8}
             minTickGap={16}
           />
           <YAxis
-            className="text-xs text-muted-foreground"
+            className="text-xs text-muted-foreground dark:text-muted-foreground-night"
             tickLine={false}
             axisLine={false}
             tickMargin={8}
@@ -216,16 +223,7 @@ export function ErrorRateChart({
             fill="url(#fillErrorRate)"
             stroke="hsl(var(--chart-4))"
           />
-          {mode === "timeRange" &&
-            versionMarkers.map((versionMarker) => (
-              <ReferenceLine
-                key={versionMarker.timestamp}
-                x={versionMarker.timestamp}
-                strokeDasharray="5 5"
-                strokeWidth={1}
-                stroke="hsl(var(--chart-5))"
-              />
-            ))}
+          <VersionMarkersDots mode={mode} versionMarkers={versionMarkers} />
         </AreaChart>
       </ResponsiveContainer>
       <ChartLegend items={legendItems} />

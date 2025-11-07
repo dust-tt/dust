@@ -98,7 +98,10 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
 
           // TODO: This is temporary until our Slack app scope is approved.
           const currentRegion = regionsConfig.getCurrentRegion();
-          if (currentRegion === "europe-west1") {
+          if (
+            currentRegion === "europe-west1" &&
+            extraConfig?.slack_files_write_scope_feature_flag === "true"
+          ) {
             scopes.push("files:write");
           }
 
@@ -234,6 +237,10 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
       const config = { ...extraConfig };
       if (feature_flags.includes("slack_bot_mcp")) {
         config.slack_bot_mcp_feature_flag = "true";
+      }
+      // TODO: This is temporary until our Slack app scope is approved.
+      if (feature_flags.includes("slack_files_write_scope")) {
+        config.slack_files_write_scope_feature_flag = "true";
       }
       return config;
     }

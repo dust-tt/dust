@@ -46,6 +46,7 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
         inviteEmail: email,
         status: "pending",
       },
+      order: [["createdAt", "DESC"]],
       include: [WorkspaceModel],
       // WORKSPACE_ISOLATION_BYPASS: We don't know the workspace yet, the user is not authed
       dangerouslyBypassWorkspaceIsolationSecurity: true,

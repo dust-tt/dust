@@ -1,19 +1,24 @@
-import assert from "assert";
 import flatMap from "lodash/flatMap";
 
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import type { ModelIdType } from "@app/types";
 import { FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID } from "@app/types";
 
-const FIREWORKS_MODEL_FAMILIES = ["fireworks"] as const;
+export const FIREWORKS_MODEL_FAMILIES = ["kimi"] as const;
 export type FireworksModelFamily = (typeof FIREWORKS_MODEL_FAMILIES)[number];
 
-const FIREWORKS_MODEL_FAMILY_CONFIGS = {
-  fireworks: {
+export const FIREWORKS_MODEL_FAMILY_CONFIGS: Record<
+  FireworksModelFamily,
+  {
+    modelIds: ModelIdType[];
+    overwrites: Partial<LLMParameters>;
+  }
+> = {
+  kimi: {
     modelIds: [FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID],
-    overwrites: {},
+    overwrites: { reasoningEffort: "none" },
   },
-} as const;
+};
 
 export type FireworksWhitelistedModelId = {
   [K in FireworksModelFamily]: (typeof FIREWORKS_MODEL_FAMILY_CONFIGS)[K]["modelIds"][number];
@@ -28,23 +33,33 @@ export function isFireworksWhitelistedModelId(
   return new Set<string>(FIREWORKS_WHITELISTED_MODEL_IDS).has(modelId);
 }
 
+export function getFireworksModelFamilyFromModelId(
+  modelId: FireworksWhitelistedModelId
+): FireworksModelFamily {
+  const family = FIREWORKS_MODEL_FAMILIES.find((family) =>
+    FIREWORKS_MODEL_FAMILY_CONFIGS[family].modelIds.includes(modelId)
+  );
+  if (!family) {
+    throw new Error(
+      `Model ID ${modelId} does not belong to any Fireworks model family`
+    );
+  }
+  return family;
+}
+
 export function overwriteLLMParameters(
-  llMParameters: LLMParameters & { modelId: FireworksWhitelistedModelId }
+  llmParameters: LLMParameters & { modelId: FireworksWhitelistedModelId }
 ): LLMParameters & {
   modelId: FireworksWhitelistedModelId;
   clientId: "fireworks";
 } {
   const config = Object.values(FIREWORKS_MODEL_FAMILY_CONFIGS).find((config) =>
-    new Set<string>(config.modelIds).has(llMParameters.modelId)
-  );
-  assert(
-    config,
-    `No Fireworks model family config found for model ID ${llMParameters.modelId}`
+    new Set<string>(config.modelIds).has(llmParameters.modelId)
   );
 
   return {
-    ...llMParameters,
-    ...config.overwrites,
-    clientId: "fireworks",
+    ...llmParameters,
+    ...config?.overwrites,
+    clientId: "fireworks" as const,
   };
 }

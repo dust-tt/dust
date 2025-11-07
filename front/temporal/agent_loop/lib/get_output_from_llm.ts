@@ -1,6 +1,7 @@
 import { CancelledFailure, heartbeat, sleep } from "@temporalio/activity";
 
 import type { LLM } from "@app/lib/api/llm/llm";
+import { config as regionsConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
@@ -23,6 +24,7 @@ export async function getOutputFromLLMStream(
     step,
     agentConfiguration,
     agentMessage,
+    model,
     publishAgentError,
     prompt,
     llm,
@@ -111,6 +113,31 @@ export async function getOutputFromLLMStream(
           step,
         });
 
+        const currentRegion = regionsConfig.getCurrentRegion();
+        let region: "us" | "eu";
+        switch (currentRegion) {
+          case "europe-west1":
+            region = "eu";
+            break;
+          case "us-central1":
+            region = "us";
+            break;
+          default:
+            throw new Error(`Unexpected region: ${currentRegion}`);
+        }
+
+        // Add reasoning content to contents array
+        contents.push({
+          type: "reasoning",
+          value: {
+            reasoning: event.content.text,
+            metadata: JSON.stringify(event.metadata),
+            tokens: 0, // Will be updated later from token_usage event
+            provider: model.providerId,
+            region: region,
+          },
+        });
+
         nativeChainOfThought += "\n\n";
         continue;
       }
@@ -150,6 +177,20 @@ export async function getOutputFromLLMStream(
         value: event.content.text,
       });
       generation += event.content.text;
+    }
+
+    if (event.type === "token_usage") {
+      // Update reasoning token count on the last reasoning item
+      const reasoningTokens = event.content.reasoningTokens ?? 0;
+      if (reasoningTokens > 0) {
+        for (let i = contents.length - 1; i >= 0; i--) {
+          const content = contents[i];
+          if (content.type === "reasoning") {
+            content.value.tokens = reasoningTokens;
+            break;
+          }
+        }
+      }
     }
   }
 

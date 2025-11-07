@@ -9,6 +9,8 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@babel/parser": "^7.28.5",
+    "@babel/traverse": "^7.28.5",
     "@hookform/resolvers": "^5.2.1",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
@@ -49,6 +51,7 @@
     "next": "^14.2.25",
     "next-themes": "^0.4.6",
     "papaparse": "^5.4.1",
+    "pino": "^10.1.0",
     "react": "^18",
     "react-day-picker": "^9.8.1",
     "react-dom": "^18",
@@ -65,6 +68,7 @@
     "zod": "^4.0.17"
   },
   "devDependencies": {
+    "@types/babel__traverse": "^7.28.0",
     "@types/node": "^20",
     "@types/papaparse": "^5.3.14",
     "@types/react": "^18",

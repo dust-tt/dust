@@ -34,6 +34,37 @@ export const AshbyCandidateSchema = z
 
 export type AshbyCandidate = z.infer<typeof AshbyCandidateSchema>;
 
+export const AshbyReportSynchronousRequestSchema = z.object({
+  reportId: z.string().uuid(),
+});
+
+export type AshbyReportSynchronousRequest = z.infer<
+  typeof AshbyReportSynchronousRequestSchema
+>;
+
+export const AshbyReportSynchronousResponseSchema = z.object({
+  success: z.boolean(),
+  results: z.object({
+    requestId: z.string(),
+    status: z.string(),
+    reportData: z.object({
+      data: z.array(z.array(z.union([z.string(), z.number()]))),
+      columnNames: z.array(z.string()),
+      metadata: z
+        .object({
+          updatedAt: z.string(),
+          title: z.string(),
+        })
+        .passthrough(),
+    }),
+    failureReason: z.string().nullable(),
+  }),
+});
+
+export type AshbyReportSynchronousResponse = z.infer<
+  typeof AshbyReportSynchronousResponseSchema
+>;
+
 export const AshbyCandidateSearchRequestSchema = z.object({
   email: z.string().optional(),
   name: z.string().optional(),

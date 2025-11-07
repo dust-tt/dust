@@ -59,9 +59,6 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "mistral-medium"
   | "mistral-small-latest"
   | "codestral-latest"
-  | "gemini-2.0-flash" // DEPRECATED
-  | "gemini-2.0-flash-exp" // DEPRECATED
-  | "gemini-2.0-pro-exp-02-05" // DEPRECATED
   | "gemini-2.5-pro"
   | "gemini-2.5-flash"
   | "gemini-2.5-flash-lite"
@@ -659,7 +656,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_transcripts"
   | "legacy_dust_apps"
   | "llm_router_direct_requests"
-  | "microsoft_teams_bot"
   | "monday_tool"
   | "noop_model_feature"
   | "notion_private_integration"
@@ -689,6 +685,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "llm_router_direct_requests"
   | "mentions_v2"
   | "http_client_tool"
+  | "slack_files_write_scope"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -2529,6 +2526,26 @@ const DateSchema = z
     "YYYY-MM or YYYY-MM-DD"
   );
 
+const IncludeInactiveSchema = z.preprocess((value) => {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (Array.isArray(value)) {
+    const [first] = value;
+    if (first === undefined) {
+      return undefined;
+    }
+    return first === "true" || first === true;
+  }
+  if (typeof value === "string") {
+    return value === "true";
+  }
+  if (typeof value === "boolean") {
+    return value;
+  }
+  return undefined;
+}, z.boolean().optional());
+
 export const GetWorkspaceUsageRequestSchema = z.union([
   z.object({
     start: DateSchema,
@@ -2536,6 +2553,7 @@ export const GetWorkspaceUsageRequestSchema = z.union([
     mode: z.literal("month"),
     table: SupportedUsageTablesSchema,
     format: z.enum(["csv", "json"]).optional().default("csv"),
+    includeInactive: IncludeInactiveSchema,
   }),
   z.object({
     start: DateSchema,
@@ -2543,6 +2561,7 @@ export const GetWorkspaceUsageRequestSchema = z.union([
     mode: z.literal("range"),
     table: SupportedUsageTablesSchema,
     format: z.enum(["csv", "json"]).optional().default("csv"),
+    includeInactive: IncludeInactiveSchema,
   }),
 ]);
 
@@ -2620,13 +2639,23 @@ export type FileUploadedRequestResponseType = z.infer<
 >;
 
 export const PublicFrameResponseBodySchema = z.object({
-  content: z.string().optional(),
-  file: FileTypeSchema,
+  accessToken: z.string(),
   conversationUrl: z.string().nullable(),
+  file: FileTypeSchema,
 });
 
 export type PublicFrameResponseBodyType = z.infer<
   typeof PublicFrameResponseBodySchema
+>;
+
+export const PublicVizContentResponseBodySchema = z.object({
+  content: z.string(),
+  contentType: z.string(),
+  metadata: z.record(z.unknown()).optional(),
+});
+
+export type PublicVizContentResponseBodyType = z.infer<
+  typeof PublicVizContentResponseBodySchema
 >;
 
 export const MembershipOriginType = FlexibleEnumSchema<

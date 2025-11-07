@@ -7,8 +7,9 @@
 
 import type { Content, Editor } from "@tiptap/react";
 
+import type { RichMention } from "@app/types";
+
 import { extractFromEditorJSON } from "../format";
-import type { RichMention } from "../types";
 
 /**
  * Inserts a mention into the editor at the current cursor position.

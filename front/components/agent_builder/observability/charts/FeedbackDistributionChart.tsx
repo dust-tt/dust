@@ -2,7 +2,6 @@ import {
   CartesianGrid,
   Line,
   LineChart,
-  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -15,9 +14,13 @@ import {
   FEEDBACK_DISTRIBUTION_LEGEND,
   FEEDBACK_DISTRIBUTION_PALETTE,
 } from "@app/components/agent_builder/observability/constants";
-import { useObservability } from "@app/components/agent_builder/observability/ObservabilityContext";
+import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
-import { ChartLegend } from "@app/components/agent_builder/observability/shared/ChartLegend";
+import {
+  ChartLegend,
+  legendFromConstant,
+} from "@app/components/agent_builder/observability/shared/ChartLegend";
+import { VersionMarkersDots } from "@app/components/agent_builder/observability/shared/VersionMarkers";
 import {
   filterTimeSeriesByVersionWindow,
   padSeriesToTimeRange,
@@ -36,7 +39,7 @@ export function FeedbackDistributionChart({
   workspaceId,
   agentConfigurationId,
 }: FeedbackDistributionChartProps) {
-  const { period, mode, selectedVersion } = useObservability();
+  const { period, mode, selectedVersion } = useObservabilityContext();
   const {
     feedbackDistribution,
     isFeedbackDistributionLoading,
@@ -54,11 +57,13 @@ export function FeedbackDistributionChart({
     disabled: !workspaceId || !agentConfigurationId,
   });
 
-  const legendItems = FEEDBACK_DISTRIBUTION_LEGEND.map(({ key, label }) => ({
-    key,
-    label,
-    colorClassName: FEEDBACK_DISTRIBUTION_PALETTE[key],
-  }));
+  const legendItems = legendFromConstant(
+    FEEDBACK_DISTRIBUTION_LEGEND,
+    FEEDBACK_DISTRIBUTION_PALETTE,
+    {
+      includeVersionMarker: mode === "timeRange" && versionMarkers.length > 0,
+    }
+  );
 
   const filteredData = filterTimeSeriesByVersionWindow(
     feedbackDistribution,
@@ -76,6 +81,7 @@ export function FeedbackDistributionChart({
   return (
     <ChartContainer
       title="Feedback Trends"
+      description="Daily counts of positive and negative feedback."
       isLoading={isFeedbackDistributionLoading}
       errorMessage={
         isFeedbackDistributionError
@@ -91,20 +97,23 @@ export function FeedbackDistributionChart({
           data={data}
           margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
         >
-          <CartesianGrid vertical={false} className="stroke-border" />
+          <CartesianGrid
+            vertical={false}
+            className="stroke-border dark:stroke-border-night"
+          />
           <XAxis
             dataKey="date"
             type="category"
             scale="point"
             allowDuplicatedCategory={false}
-            className="text-xs text-muted-foreground"
+            className="text-xs text-muted-foreground dark:text-muted-foreground-night"
             tickLine={false}
             axisLine={false}
             tickMargin={8}
             minTickGap={16}
           />
           <YAxis
-            className="text-xs text-muted-foreground"
+            className="text-xs text-muted-foreground dark:text-muted-foreground-night"
             tickLine={false}
             axisLine={false}
             tickMargin={8}
@@ -138,16 +147,7 @@ export function FeedbackDistributionChart({
             strokeWidth={2}
             dot={false}
           />
-          {mode === "timeRange" &&
-            versionMarkers.map((versionMarker) => (
-              <ReferenceLine
-                key={versionMarker.timestamp}
-                x={versionMarker.timestamp}
-                strokeDasharray="5 5"
-                strokeWidth={1}
-                stroke="hsl(var(--chart-5))"
-              />
-            ))}
+          <VersionMarkersDots mode={mode} versionMarkers={versionMarkers} />
         </LineChart>
       </ResponsiveContainer>
       <ChartLegend items={legendItems} />

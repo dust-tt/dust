@@ -45,6 +45,8 @@
     "@mistralai/mistralai": "^1.10.0",
     "@modelcontextprotocol/sdk": "git://github.com:dust-tt/typescript-sdk.git#4a3d6b942e3982c818acd529de9b574c92776a2e",
     "@notionhq/client": "^2.3.0",
+    "@novu/framework": "^2.7.1",
+    "@novu/js": "^3.11.0",
     "@octokit/core": "^6.1.5",
     "@radix-ui/react-dialog": "^1.0.5",
     "@radix-ui/react-label": "^2.0.2",
@@ -126,7 +128,7 @@
     "motion": "^12.7.3",
     "next": "^14.2.29",
     "next-swagger-doc": "^0.4.0",
-    "openai": "^4.96.0",
+    "openai": "^6.8.1",
     "pegjs": "^0.10.0",
     "pg": "^8.8.0",
     "pg-hstore": "^2.3.4",
@@ -167,8 +169,8 @@
     "undici": "^7.8.0",
     "uuid": "^9.0.0",
     "yargs": "^17.7.2",
-    "zod": "^3.23.8",
-    "zod-to-json-schema": "^3.24.5",
+    "zod": "^3.25.76",
+    "zod-to-json-schema": "^3.24.6",
     "zod-validation-error": "^3.4.0"
   },
   "devDependencies": {

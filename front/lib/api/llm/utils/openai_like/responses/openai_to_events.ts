@@ -98,13 +98,23 @@ function itemToEvents(
         },
       ];
     case "reasoning":
-      return item.summary.map((summary) => ({
-        type: "reasoning_generated",
-        content: {
-          text: summary.text,
+      const encrypted_content = item.encrypted_content ?? undefined;
+      // OpenAI sometimes sends multiple summary blocks in a single reasoning item.
+      // Concatenate them into a single reasoning_generated event to ensure proper handling.
+      // We cannot split it into several reasoning_generated events because we would have multiple events with the same ID
+      // which is not supported by OpenAI.
+      const concatenatedSummary = item.summary
+        .map((summary) => summary.text)
+        .join("\n\n");
+      return [
+        {
+          type: "reasoning_generated",
+          content: {
+            text: concatenatedSummary,
+          },
+          metadata: { ...metadata, id: item.id, encrypted_content },
         },
-        metadata: { ...metadata, id: item.id },
-      }));
+      ];
     default:
       // TODO(LLM-Router 2025-10-28): Send error event
       throw new Error(`Unsupported OpenAI Response Item: ${item}`);

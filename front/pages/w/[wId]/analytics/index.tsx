@@ -36,6 +36,7 @@ export default function Analytics({
   subscription,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [downloadingMonth, setDownloadingMonth] = useState<string | null>(null);
+  const [includeInactive, setIncludeInactive] = useState(false);
 
   const { subscriptions } = useWorkspaceSubscriptions({
     owner,
@@ -46,12 +47,19 @@ export default function Analytics({
       return;
     }
 
-    const queryString = `mode=month&start=${selectedMonth}&table=all`;
+    const queryParams = new URLSearchParams({
+      mode: "month",
+      start: selectedMonth,
+      table: "all",
+    });
+    if (includeInactive) {
+      queryParams.set("includeInactive", "true");
+    }
 
     setDownloadingMonth(selectedMonth);
     try {
       const response = await fetch(
-        `/api/w/${owner.sId}/workspace-usage?${queryString}`
+        `/api/w/${owner.sId}/workspace-usage?${queryParams.toString()}`
       );
 
       if (!response.ok) {
@@ -156,6 +164,8 @@ export default function Analytics({
               downloadingMonth={downloadingMonth}
               monthOptions={monthOptions}
               handleDownload={handleDownload}
+              includeInactive={includeInactive}
+              onIncludeInactiveChange={setIncludeInactive}
             />
           </div>
         </Page.Vertical>
