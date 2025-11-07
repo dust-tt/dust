@@ -166,10 +166,6 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
       switch (context.activity.type) {
         case "message":
           if (!connector) {
-            localLogger.error(
-              "No Microsoft Bot configuration found for tenant"
-            );
-
             res.status(400).json({ error: "Connector not found" });
             return;
           }
@@ -182,9 +178,6 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
           break;
         case "invoke":
           if (!connector) {
-            localLogger.error(
-              "No Microsoft Bot configuration found for tenant"
-            );
             res.status(400).json({ error: "Connector not found" });
             return;
           }
@@ -279,11 +272,6 @@ async function handleMessage(
     );
     return;
   }
-
-  localLogger.info(
-    { activityId: thinkingActivity.value },
-    "Successfully sent thinking card"
-  );
 
   const result = await botAnswerMessage(
     context,
