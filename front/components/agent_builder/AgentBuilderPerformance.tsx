@@ -8,7 +8,7 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import { FeedbacksSection } from "@app/components/agent_builder/FeedbacksSection";
 import { FeedbackDistributionChart } from "@app/components/agent_builder/observability/charts/FeedbackDistributionChart";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
-import { ObservabilityFilterSelector } from "@app/components/agent_builder/observability/ObservabilityFilterSelector";
+import { SharedObservabilityFilterSelector } from "@app/components/observability/SharedObservabilityFilterSelector";
 import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
 import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
 import {
@@ -63,7 +63,8 @@ export function AgentBuilderPerformance({
     <TabContentLayout
       title="Feedback"
       headerAction={
-        <ObservabilityFilterSelector
+        <SharedObservabilityFilterSelector
+          workspaceId={owner.sId}
           agentConfigurationId={agentConfiguration.sId}
         />
       }
