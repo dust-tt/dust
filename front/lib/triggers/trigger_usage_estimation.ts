@@ -67,7 +67,7 @@ export async function computeFilteredWebhookTriggerForecast(
       }
     );
 
-  const totalCount = webhookRequests.length;
+  let totalCount = webhookRequests.length;
   let matchingCount = 0;
 
   const bucket = getWebhookRequestsBucket();
@@ -92,7 +92,8 @@ export async function computeFilteredWebhookTriggerForecast(
           },
           "Failed to fetch webhook request payload from GCS"
         );
-        // Continue without counting this request if GCS fetch fails.
+        // Continue without counting this request in the total if GCS fetch fails.
+        totalCount--;
         return;
       }
 
