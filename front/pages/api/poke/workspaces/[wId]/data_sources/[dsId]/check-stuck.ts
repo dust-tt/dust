@@ -37,15 +37,10 @@ const STUCK_THRESHOLD = 5; // Consider an activity stuck if it has 5+ attempts
 function flattenStuckWorkflows(info: StuckWorkflowInfo): StuckWorkflowInfo[] {
   const result: StuckWorkflowInfo[] = [];
 
-  // Add current workflow if it has stuck activities (without children).
   if (info.stuckActivities.length > 0) {
-    result.push({
-      ...info,
-      childWorkflows: [],
-    });
+    result.push(info);
   }
 
-  // Recursively process child workflows.
   for (const child of info.childWorkflows) {
     result.push(...flattenStuckWorkflows(child));
   }
