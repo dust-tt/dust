@@ -1412,6 +1412,7 @@ dependencies = [
  "sha2",
  "shellexpand",
  "sqids",
+ "sqlparser",
  "tempfile",
  "tera",
  "thiserror 1.0.69",
@@ -4653,6 +4654,15 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 2.0.12",
+]
+
+[[package]]
+name = "sqlparser"
+version = "0.45.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f7bbffee862a796d67959a89859d6b1046bb5016d63e23835ad0da182777bbe0"
+dependencies = [
+ "log",
 ]
 
 [[package]]

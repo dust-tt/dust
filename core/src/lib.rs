@@ -31,6 +31,7 @@ pub mod databases {
     pub mod table_schema;
     pub mod remote_databases {
         pub mod bigquery;
+        pub mod databricks;
         pub mod get_remote_database;
         pub mod remote_database;
 
@@ -142,7 +143,6 @@ pub mod oauth {
         pub mod confluence;
         pub mod confluence_tools;
         pub mod discord;
-        pub mod fathom;
         pub mod freshservice;
         pub mod github;
         pub mod gmail;
