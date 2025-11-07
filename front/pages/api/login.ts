@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getMembershipInvitationToken } from "@app/lib/api/invitation";
 import {
   handleEnterpriseSignUpFlow,
   handleMembershipInvite,
@@ -11,7 +10,6 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { createOrUpdateUser, fetchUserFromSession } from "@app/lib/iam/users";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
-import { getSignInUrl } from "@app/lib/signup";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -111,26 +109,16 @@ async function handler(
     targetWorkspace = workspace;
     targetFlow = flow;
   } else {
-    if (userCreated) {
-      // When user is just created, check whether they have a pending invitation. If they do, it is
-      // assumed they are coming from the invitation link and have seen the join page; we redirect
-      // (after workos login) to this URL with inviteToken appended. The user will then end up on the
-      // workspace's welcome page (see comment's PR)
-      const pendingInvitation =
-        await MembershipInvitationResource.getPendingForEmail(user.email);
-      if (pendingInvitation) {
-        const signUpUrl = await getSignInUrl({
-          signupCallbackUrl: `/api/login?inviteToken=${getMembershipInvitationToken(pendingInvitation.id)}`,
-          invitationEmail: pendingInvitation.inviteEmail,
-          userExists: true,
-        });
-        res.redirect(signUpUrl);
-        return;
-      }
-    }
+    // When user is just created, and no invitation is already provided, check if there is a
+    // pending invitation. If it does, we will use the first one and redirect to the join page.
+    const pendingInvitation =
+      userCreated && !membershipInvite
+        ? await MembershipInvitationResource.getPendingForEmail(user.email)
+        : null;
 
-    const loginFctn = membershipInvite
-      ? async () => handleMembershipInvite(user, membershipInvite)
+    const finalMembershipInvite = membershipInvite ?? pendingInvitation;
+    const loginFctn = finalMembershipInvite
+      ? async () => handleMembershipInvite(user, finalMembershipInvite)
       : async () => handleRegularSignupFlow(session, user, targetWorkspaceId);
 
     const result = await loginFctn();
