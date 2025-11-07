@@ -92,7 +92,8 @@ makeScript(
     eventType: {
       type: "string",
       alias: "t",
-      describe: `Event type (${SUPPORTED_EVENT_TYPES.join(", ")})`,
+      choices: SUPPORTED_EVENT_TYPES,
+      describe: "Event type",
       demandOption: true,
     },
     groupName: {
