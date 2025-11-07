@@ -67,7 +67,6 @@ export function createResponseAdaptiveCard({
           },
         ];
 
-  // Convert plain URLs to Markdown links for Teams
   const responseWithMarkdownLinks = convertUrlsToMarkdown(response);
 
   const card: AdaptiveCard = {
@@ -207,7 +206,6 @@ export function createStreamingAdaptiveCard({
   conversationUrl: string | null;
   workspaceId: string;
 }): Partial<Activity> {
-  // Convert plain URLs to Markdown links for Teams
   const responseWithMarkdownLinks = convertUrlsToMarkdown(response);
 
   return {
