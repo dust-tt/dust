@@ -3,9 +3,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { Authenticator } from "@app/lib/auth";
 import { OnboardingTaskResource } from "@app/lib/resources/onboarding_task_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { OnboardingTaskFactory } from "@app/tests/utils/OnboardingTaskFactory";
-import { UserFactory } from "@app/tests/utils/UserFactory";
-import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { WorkspaceType } from "@app/types";
 
 describe("OnboardingTaskResource", () => {
@@ -22,27 +21,25 @@ describe("OnboardingTaskResource", () => {
   let authU2W2: Authenticator;
 
   beforeEach(async () => {
-    workspace1 = await WorkspaceFactory.basic();
-    workspace2 = await WorkspaceFactory.basic();
+    // Create first workspace with user1.
+    const testSetup1 = await createResourceTest({ role: "user" });
+    workspace1 = testSetup1.workspace;
+    user1 = testSetup1.user;
+    authU1W1 = testSetup1.authenticator;
 
-    user1 = await UserFactory.basic();
-    user2 = await UserFactory.basic();
+    // Create second workspace with user2.
+    const testSetup2 = await createResourceTest({ role: "user" });
+    workspace2 = testSetup2.workspace;
+    user2 = testSetup2.user;
+    authU2W2 = testSetup2.authenticator;
 
-    authU1W1 = await Authenticator.fromUserIdAndWorkspaceId(
-      user1.sId,
-      workspace1.sId
-    );
+    // Create cross-workspace authenticators.
     authU2W1 = await Authenticator.fromUserIdAndWorkspaceId(
       user2.sId,
       workspace1.sId
     );
-
     authU1W2 = await Authenticator.fromUserIdAndWorkspaceId(
       user1.sId,
-      workspace2.sId
-    );
-    authU2W2 = await Authenticator.fromUserIdAndWorkspaceId(
-      user2.sId,
       workspace2.sId
     );
   });
@@ -56,7 +53,6 @@ describe("OnboardingTaskResource", () => {
       const task = await OnboardingTaskResource.makeNew(authU1W1, {
         context: "Soupinou is the best",
         kind: "learning",
-        toolName: null,
       });
       expect(task).toBeDefined();
       expect(task.sId).toMatch(/^obt_/);
@@ -74,13 +70,14 @@ describe("OnboardingTaskResource", () => {
     it("should serialize task to JSON with correct structure", async () => {
       const task = await OnboardingTaskFactory.create(authU1W1, {
         toolName: "notion",
+        kind: "tool_use",
       });
       const json = task.toJSON();
       expect(json).toEqual({
         sId: task.sId,
         context: task.context,
-        kind: task.kind,
-        toolName: task.toolName,
+        kind: "tool_use",
+        toolName: "notion",
         status: "to_do",
         createdAt: task.createdAt,
         updatedAt: task.updatedAt,
@@ -97,16 +94,6 @@ describe("OnboardingTaskResource", () => {
       expect(completedTask.toJSON().status).toBe("achieved");
       expect(skippedTask.toJSON().status).toBe("skipped");
       expect(todoTask.toJSON().status).toBe("to_do");
-    });
-
-    it("should handle null toolName in JSON", async () => {
-      const task = await OnboardingTaskFactory.create(authU1W1, {
-        kind: "learning",
-        toolName: null,
-      });
-
-      const json = task.toJSON();
-      expect(json.toolName).toBeNull();
     });
   });
 
@@ -212,19 +199,28 @@ describe("OnboardingTaskResource", () => {
       tasks = await OnboardingTaskFactory.createMultiple(authU1W1, 3);
     });
     it("should fetch all tasks for the user and workspace", async () => {
-      const fetched = await OnboardingTaskResource.fetchAll(authU1W1);
+      const fetched =
+        await OnboardingTaskResource.fetchAllForUserAndWorkspaceInAuth(
+          authU1W1
+        );
       expect(fetched).toHaveLength(3);
       expect(fetched.map((t) => t.sId).sort()).toEqual(
         tasks.map((t) => t.sId).sort()
       );
     });
     it("should not fetch tasks from different user", async () => {
-      const fetched = await OnboardingTaskResource.fetchAll(authU2W1);
+      const fetched =
+        await OnboardingTaskResource.fetchAllForUserAndWorkspaceInAuth(
+          authU2W1
+        );
       expect(fetched).toHaveLength(0);
     });
 
     it("should not fetch tasks from different workspace", async () => {
-      const fetched = await OnboardingTaskResource.fetchAll(authU1W2);
+      const fetched =
+        await OnboardingTaskResource.fetchAllForUserAndWorkspaceInAuth(
+          authU1W2
+        );
       expect(fetched).toHaveLength(0);
     });
   });

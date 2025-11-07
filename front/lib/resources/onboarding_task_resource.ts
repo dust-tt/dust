@@ -19,7 +19,7 @@ import { Err, Ok, removeNulls } from "@app/types";
 
 export type OnboardingTaskStatus = "to_do" | "achieved" | "skipped";
 
-export type OnboardingTask = {
+export type OnboardingTaskType = {
   sId: string;
   context: string;
   kind: OnboardingTaskKind;
@@ -83,7 +83,7 @@ export class OnboardingTaskResource extends BaseResource<OnboardingTaskModel> {
     return tasks.map((t) => new this(OnboardingTaskModel, t.get()));
   }
 
-  static async fetchAll(
+  static async fetchAllForUserAndWorkspaceInAuth(
     auth: Authenticator
   ): Promise<OnboardingTaskResource[]> {
     return this.baseFetch(auth, {
@@ -98,18 +98,11 @@ export class OnboardingTaskResource extends BaseResource<OnboardingTaskModel> {
     auth: Authenticator,
     sId: string
   ): Promise<OnboardingTaskResource | null> {
-    const id = getResourceIdFromSId(sId);
-    if (!id) {
+    const tasks = await this.fetchByIds(auth, [sId]);
+    if (tasks.length === 0) {
       return null;
     }
-
-    const [task] = await this.baseFetch(auth, {
-      where: {
-        id,
-      },
-    });
-
-    return task ?? null;
+    return tasks[0];
   }
 
   static async fetchByIds(
@@ -240,7 +233,7 @@ export class OnboardingTaskResource extends BaseResource<OnboardingTaskModel> {
     });
   }
 
-  toJSON(): OnboardingTask {
+  toJSON(): OnboardingTaskType {
     return {
       sId: this.sId,
       context: this.context,

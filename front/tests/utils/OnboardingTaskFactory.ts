@@ -10,8 +10,8 @@ export class OnboardingTaskFactory {
     auth: Authenticator,
     {
       context = faker.lorem.sentence(),
-      kind = faker.helpers.arrayElement(ONBOARDING_TASK_KINDS),
-      toolName = Math.random() > 0.5 ? faker.lorem.word() : null,
+      kind = "learning",
+      toolName = null,
     }: {
       context?: string;
       kind?: OnboardingTaskKind;

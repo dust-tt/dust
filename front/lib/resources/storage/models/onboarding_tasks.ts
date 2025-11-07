@@ -80,3 +80,8 @@ UserModel.hasMany(OnboardingTaskModel, {
   foreignKey: { allowNull: false },
   onDelete: "RESTRICT",
 });
+
+OnboardingTaskModel.belongsTo(UserModel, {
+  foreignKey: { name: "userId", allowNull: false },
+  onDelete: "RESTRICT",
+});
