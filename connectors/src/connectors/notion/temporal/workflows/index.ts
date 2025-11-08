@@ -178,6 +178,9 @@ export async function notionSyncWorkflow({
   // wait for all child workflows to finish
   await Promise.all(promises);
 
+  // TODO: remove else block when incr-sync-crawl patch is removed
+  // Next phase is to call deprecatePatch("incr-sync-crawl")
+  // https://docs.temporal.io/develop/typescript/versioning#patching
   if (patched("incr-sync-crawl")) {
     // These are resources (pages/DBs) that we didn't get from the search API but that are
     // child/parent pages/DBs of other pages that we did get from the search API. We upsert those as
@@ -203,9 +206,12 @@ export async function notionSyncWorkflow({
           childWorkflowsNameSuffix: "discovered",
           topLevelWorkflowId,
           // Force resync to ensure DBs are processed immediately, which then allows discovery
-          // of their child pages.
+          // of their child pages (effectively doing a crawl).
           forceResync: true,
         });
+        // Technically, we should clear NotionConnectorResourcesToCheckCacheEntry after each iteration,
+        // otherwise it keeps the already processed entries. In practice it's mostly harmless,
+        // as we have logic to not reprocess them, but it might make DB ops slightly less efficient.
       }
     } while (discoveredResources);
   } else {
