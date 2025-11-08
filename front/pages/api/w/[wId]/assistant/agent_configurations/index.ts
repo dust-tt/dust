@@ -162,10 +162,12 @@ async function handler(
         const feedbacks =
           await AgentMessageFeedbackResource.getFeedbackCountForAssistants(
             auth,
-            agentConfigurations
-              .filter((agent) => agent.scope !== "global")
-              .map((agent) => agent.sId),
-            30
+            {
+              agentConfigurationIds: agentConfigurations
+                .filter((agent) => agent.scope !== "global")
+                .map((agent) => agent.sId),
+              daysOld: 30,
+            }
           );
         agentConfigurations = agentConfigurations.map((agentConfiguration) => ({
           ...agentConfiguration,
