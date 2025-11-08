@@ -1,17 +1,21 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import { ZendeskClient } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/client";
 import { renderTicket } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/rendering";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { Authenticator } from "@app/lib/auth";
+import { Err, Ok } from "@app/types";
 
-const ERROR_MESSAGES = {
-  NO_ACCESS_TOKEN: "No access token found. Please connect your Zendesk account.",
-  NO_SUBDOMAIN:
-    "Zendesk subdomain not found in connection metadata. Please reconnect your Zendesk account.",
-} as const;
+const ZENDESK_TOOL_NAME = "zendesk";
 
-function createServer(): McpServer {
+function createServer(
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+): McpServer {
   const server = makeInternalMCPServer("zendesk");
 
   server.tool(
@@ -24,53 +28,53 @@ function createServer(): McpServer {
         .positive()
         .describe("The ID of the Zendesk ticket to retrieve."),
     },
-    async ({ ticketId }, { authInfo }) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: ERROR_MESSAGES.NO_ACCESS_TOKEN }],
-        };
-      }
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: ZENDESK_TOOL_NAME,
+        agentLoopContext,
+      },
+      async ({ ticketId }, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(
+            new MCPError(
+              "No access token found. Please connect your Zendesk account."
+            )
+          );
+        }
 
-      const subdomain = authInfo?.extra?.zendesk_subdomain as
-        | string
-        | undefined;
-      if (!subdomain) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: ERROR_MESSAGES.NO_SUBDOMAIN }],
-        };
-      }
+        const subdomain = authInfo?.extra?.zendesk_subdomain as
+          | string
+          | undefined;
+        if (!subdomain) {
+          return new Err(
+            new MCPError(
+              "Zendesk subdomain not found in connection metadata. Please reconnect your Zendesk account."
+            )
+          );
+        }
 
-      const client = new ZendeskClient(subdomain, accessToken);
-      const result = await client.getTicket(ticketId);
+        const client = new ZendeskClient(subdomain, accessToken);
+        const result = await client.getTicket(ticketId);
 
-      if (result.isErr()) {
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text",
-              text: `Failed to retrieve ticket: ${result.error.message}`,
-            },
-          ],
-        };
-      }
+        if (result.isErr()) {
+          return new Err(
+            new MCPError(`Failed to retrieve ticket: ${result.error.message}`)
+          );
+        }
 
-      const ticket = result.value;
-      const ticketText = renderTicket(ticket);
+        const ticket = result.value;
+        const ticketText = renderTicket(ticket);
 
-      return {
-        isError: false,
-        content: [
+        return new Ok([
           {
-            type: "text",
+            type: "text" as const,
             text: ticketText,
           },
-        ],
-      };
-    }
+        ]);
+      }
+    )
   );
 
   return server;

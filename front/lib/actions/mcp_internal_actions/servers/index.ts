@@ -207,7 +207,7 @@ export async function getInternalMCPServer(
     case "front":
       return frontServer(auth, agentLoopContext);
     case "zendesk":
-      return zendeskServer();
+      return zendeskServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }
