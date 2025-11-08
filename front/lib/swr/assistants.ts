@@ -417,24 +417,27 @@ export function useAgentAnalytics({
   workspaceId,
   agentConfigurationId,
   period,
+  version,
   disabled,
 }: {
   workspaceId: string;
   agentConfigurationId: string | null;
   period: number;
+  version?: string;
   disabled?: boolean;
 }) {
   const agentAnalyticsFetcher: Fetcher<GetAgentConfigurationAnalyticsResponseBody> =
     fetcher;
+  const versionParam = version ? `&version=${encodeURIComponent(version)}` : "";
   const fetchUrl = agentConfigurationId
-    ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/analytics?period=${period}`
+    ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/analytics?period=${period}${versionParam}`
     : null;
   const { data, error } = useSWRWithDefaults(fetchUrl, agentAnalyticsFetcher, {
     disabled,
   });
 
   return {
-    agentAnalytics: data ? data : null,
+    agentAnalytics: data ?? null,
     isAgentAnalyticsLoading: !error && !data && !disabled,
     isAgentAnalyticsError: error,
   };

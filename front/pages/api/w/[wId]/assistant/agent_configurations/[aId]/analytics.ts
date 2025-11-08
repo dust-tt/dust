@@ -25,9 +25,14 @@ export type DeleteAgentConfigurationResponseBody = {
   success: boolean;
 };
 
-const GetAgentConfigurationsAnalyticsQuerySchema = t.type({
-  period: t.string,
-});
+const GetAgentConfigurationsAnalyticsQuerySchema = t.intersection([
+  t.type({
+    period: t.string,
+  }),
+  t.partial({
+    version: t.string,
+  }),
+]);
 
 export type GetAgentConfigurationAnalyticsResponseBody = {
   users: {
@@ -95,6 +100,7 @@ async function handler(
         });
       }
       const period = parseInt(queryValidation.right.period);
+      const version = queryValidation.right.version;
 
       const owner = auth.getNonNullableWorkspace();
       const agentUsers = await getAgentUsers(auth, assistant, period);
@@ -106,7 +112,8 @@ async function handler(
         await AgentMessageFeedbackResource.getFeedbackCountForAssistants(
           auth,
           [assistant.sId],
-          period
+          period,
+          version
         );
       const positiveFeedbacks =
         feedbacks.find((f) => f.thumbDirection === "up")?.count ?? 0;

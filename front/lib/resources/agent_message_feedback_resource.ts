@@ -333,7 +333,8 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
   static async getFeedbackCountForAssistants(
     auth: Authenticator,
     agentConfigurationIds: string[],
-    daysOld?: number
+    daysOld?: number,
+    version?: string
   ) {
     const dateMinusXDays = new Date();
     if (daysOld) {
@@ -347,6 +348,20 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
         agentConfigurationId: agentConfigurationIds,
         ...(daysOld ? { createdAt: { [Op.gt]: dateMinusXDays } } : {}),
       },
+      include: version
+        ? [
+            {
+              model: AgentMessage,
+              as: "agentMessage",
+              required: true,
+              attributes: [],
+              where: {
+                agentConfigurationId: agentConfigurationIds,
+                agentConfigurationVersion: parseInt(version),
+              },
+            },
+          ]
+        : [],
       group: ["agentConfigurationId", "thumbDirection"],
     });
 
