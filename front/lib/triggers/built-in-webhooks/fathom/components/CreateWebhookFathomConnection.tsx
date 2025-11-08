@@ -1,4 +1,8 @@
-import { Checkbox, Label, Page } from "@dust-tt/sparkle";
+import {
+  CheckBoxWithTextAndDescription,
+  Label,
+  Page,
+} from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
 import type { WebhookCreateFormComponentProps } from "@app/components/triggers/webhook_preset_components";
@@ -106,21 +110,13 @@ export function CreateWebhookFathomConnection({
           </p>
           <div className="space-y-2">
             {RECORDING_TYPE_OPTIONS.map((option) => (
-              <div key={option.value} className="flex items-start">
-                <Checkbox
-                  checked={selectedRecordingTypes.includes(option.value)}
-                  onCheckedChange={() =>
-                    handleRecordingTypeToggle(option.value)
-                  }
-                  className="mt-0.5"
-                />
-                <div className="ml-3">
-                  <div className="text-sm font-medium">{option.label}</div>
-                  <div className="text-element-600 text-xs">
-                    {option.description}
-                  </div>
-                </div>
-              </div>
+              <CheckBoxWithTextAndDescription
+                key={option.value}
+                text={option.label}
+                description={option.description}
+                checked={selectedRecordingTypes.includes(option.value)}
+                onCheckedChange={() => handleRecordingTypeToggle(option.value)}
+              />
             ))}
           </div>
         </div>
@@ -131,77 +127,36 @@ export function CreateWebhookFathomConnection({
             Select at least one type of content to include
           </p>
           <div className="space-y-2">
-            <div className="flex items-start">
-              <Checkbox
-                checked={includeTranscript}
-                onCheckedChange={(checked) =>
-                  setIncludeTranscript(checked === true)
-                }
-                className="mt-0.5"
-              />
-              <div className="ml-3">
-                <div className="text-sm font-medium">
-                  {CONTENT_OPTIONS[0].label}
-                </div>
-                <div className="text-element-600 text-xs">
-                  {CONTENT_OPTIONS[0].description}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-start">
-              <Checkbox
-                checked={includeSummary}
-                onCheckedChange={(checked) =>
-                  setIncludeSummary(checked === true)
-                }
-                className="mt-0.5"
-              />
-              <div className="ml-3">
-                <div className="text-sm font-medium">
-                  {CONTENT_OPTIONS[1].label}
-                </div>
-                <div className="text-element-600 text-xs">
-                  {CONTENT_OPTIONS[1].description}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-start">
-              <Checkbox
-                checked={includeActionItems}
-                onCheckedChange={(checked) =>
-                  setIncludeActionItems(checked === true)
-                }
-                className="mt-0.5"
-              />
-              <div className="ml-3">
-                <div className="text-sm font-medium">
-                  {CONTENT_OPTIONS[2].label}
-                </div>
-                <div className="text-element-600 text-xs">
-                  {CONTENT_OPTIONS[2].description}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-start">
-              <Checkbox
-                checked={includeCrmMatches}
-                onCheckedChange={(checked) =>
-                  setIncludeCrmMatches(checked === true)
-                }
-                className="mt-0.5"
-              />
-              <div className="ml-3">
-                <div className="text-sm font-medium">
-                  {CONTENT_OPTIONS[3].label}
-                </div>
-                <div className="text-element-600 text-xs">
-                  {CONTENT_OPTIONS[3].description}
-                </div>
-              </div>
-            </div>
+            <CheckBoxWithTextAndDescription
+              text={CONTENT_OPTIONS[0].label}
+              description={CONTENT_OPTIONS[0].description}
+              checked={includeTranscript}
+              onCheckedChange={(checked) =>
+                setIncludeTranscript(checked === true)
+              }
+            />
+            <CheckBoxWithTextAndDescription
+              text={CONTENT_OPTIONS[1].label}
+              description={CONTENT_OPTIONS[1].description}
+              checked={includeSummary}
+              onCheckedChange={(checked) => setIncludeSummary(checked === true)}
+            />
+            <CheckBoxWithTextAndDescription
+              text={CONTENT_OPTIONS[2].label}
+              description={CONTENT_OPTIONS[2].description}
+              checked={includeActionItems}
+              onCheckedChange={(checked) =>
+                setIncludeActionItems(checked === true)
+              }
+            />
+            <CheckBoxWithTextAndDescription
+              text={CONTENT_OPTIONS[3].label}
+              description={CONTENT_OPTIONS[3].description}
+              checked={includeCrmMatches}
+              onCheckedChange={(checked) =>
+                setIncludeCrmMatches(checked === true)
+              }
+            />
           </div>
         </div>
       </div>
