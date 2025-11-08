@@ -8,10 +8,7 @@ export function finalizeUriForProvider(provider: OAuthProvider): string {
   // Fathom does not accept http nor localhost in the redirect URL, even in dev.
   // Currently relying on an ngrok.
   if (isDevelopment() && provider === "fathom") {
-    const { DEV_OAUTH_FATHOM_REDIRECT_BASE_URL } = process.env;
-    if (DEV_OAUTH_FATHOM_REDIRECT_BASE_URL) {
-      return `${DEV_OAUTH_FATHOM_REDIRECT_BASE_URL}/oauth/fathom/finalize`;
-    }
+    return config.getDevOAuthFathomRedirectBaseUrl() + "/oauth/fathom/finalize";
   }
   return config.getClientFacingUrl() + `/oauth/${provider}/finalize`;
 }
