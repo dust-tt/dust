@@ -128,12 +128,9 @@ export function AgentDetails({
   );
 
   const showPerformanceTabs =
-    (agentConfiguration?.canEdit ?? isAdmin(owner)) &&
-    agentId != null &&
-    !isGlobalAgent;
+    (agentConfiguration?.canEdit ?? isAdmin(owner)) && !isGlobalAgent;
 
   const showInsightsTabs =
-    agentId != null &&
     (agentConfiguration?.canEdit ?? isAdmin(owner)) &&
     !isGlobalAgent &&
     hasFeature("agent_builder_observability");
