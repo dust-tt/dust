@@ -1,6 +1,5 @@
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import type { FathomAdditionalData } from "@app/lib/triggers/built-in-webhooks/fathom/fathom_api_types";
 import { FathomClient } from "@app/lib/triggers/built-in-webhooks/fathom/fathom_client";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
@@ -41,7 +40,7 @@ export class FathomWebhookService implements RemoteWebhookService<"fathom"> {
 
   async getServiceData(
     oauthToken: string
-  ): Promise<Result<FathomAdditionalData, Error>> {
+  ): Promise<Result<Record<string, never>, Error>> {
     return new Ok({});
   }
 
@@ -89,12 +88,12 @@ export class FathomWebhookService implements RemoteWebhookService<"fathom"> {
       (remoteMetadata.include_crm_matches as boolean) ?? false;
 
     const createRes = await client.createWebhook({
-      destination_url: webhookUrl,
-      triggered_for: triggeredFor as any[],
-      include_transcript: includeTranscript,
-      include_summary: includeSummary,
-      include_action_items: includeActionItems,
-      include_crm_matches: includeCrmMatches,
+      destinationUrl: webhookUrl,
+      triggeredFor: triggeredFor as any[],
+      includeTranscript: includeTranscript,
+      includeSummary: includeSummary,
+      includeActionItems: includeActionItems,
+      includeCrmMatches: includeCrmMatches,
     });
 
     if (createRes.isErr()) {
@@ -113,11 +112,11 @@ export class FathomWebhookService implements RemoteWebhookService<"fathom"> {
       updatedRemoteMetadata: {
         ...remoteMetadata,
         webhookId: webhook.id,
-        triggered_for: webhook.triggered_for,
-        include_transcript: webhook.include_transcript,
-        include_summary: webhook.include_summary,
-        include_action_items: webhook.include_action_items,
-        include_crm_matches: webhook.include_crm_matches,
+        triggered_for: webhook.triggeredFor,
+        include_transcript: webhook.includeTranscript,
+        include_summary: webhook.includeSummary,
+        include_action_items: webhook.includeActionItems,
+        include_crm_matches: webhook.includeCrmMatches,
       },
     });
   }
