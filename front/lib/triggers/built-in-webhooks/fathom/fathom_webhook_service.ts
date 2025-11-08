@@ -1,9 +1,13 @@
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { FathomClient } from "@app/lib/triggers/built-in-webhooks/fathom/fathom_client";
+import {
+  isFathomWebhookCreateMetadata,
+  isFathomWebhookMetadata,
+} from "@app/lib/triggers/built-in-webhooks/fathom/types";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import { Err, isString, OAuthAPI, Ok } from "@app/types";
+import { Err, OAuthAPI, Ok } from "@app/types";
 import type { RemoteWebhookService } from "@app/types/triggers/remote_webhook_service";
 
 export class FathomWebhookService implements RemoteWebhookService<"fathom"> {
@@ -74,26 +78,21 @@ export class FathomWebhookService implements RemoteWebhookService<"fathom"> {
 
     const client = clientResult.value;
 
-    const triggeredFor = (remoteMetadata.triggered_for as string[]) || [
-      "my_recordings",
-      "shared_external_recordings",
-    ];
-
-    const includeTranscript =
-      (remoteMetadata.include_transcript as boolean) ?? true;
-    const includeSummary = (remoteMetadata.include_summary as boolean) ?? true;
-    const includeActionItems =
-      (remoteMetadata.include_action_items as boolean) ?? true;
-    const includeCrmMatches =
-      (remoteMetadata.include_crm_matches as boolean) ?? false;
+    if (!isFathomWebhookCreateMetadata(remoteMetadata)) {
+      return new Err(
+        new Error(
+          "Invalid remote metadata: missing or invalid Fathom webhook configuration"
+        )
+      );
+    }
 
     const createRes = await client.createWebhook({
       destinationUrl: webhookUrl,
-      triggeredFor: triggeredFor as any[],
-      includeTranscript: includeTranscript,
-      includeSummary: includeSummary,
-      includeActionItems: includeActionItems,
-      includeCrmMatches: includeCrmMatches,
+      triggeredFor: remoteMetadata.triggered_for,
+      includeTranscript: remoteMetadata.include_transcript,
+      includeSummary: remoteMetadata.include_summary,
+      includeActionItems: remoteMetadata.include_action_items,
+      includeCrmMatches: remoteMetadata.include_crm_matches,
     });
 
     if (createRes.isErr()) {
@@ -137,17 +136,19 @@ export class FathomWebhookService implements RemoteWebhookService<"fathom"> {
 
     const client = clientResult.value;
 
-    const { webhookId } = remoteMetadata;
-
-    if (!isString(webhookId)) {
-      return new Err(new Error("Remote metadata missing webhookId"));
+    if (!isFathomWebhookMetadata(remoteMetadata)) {
+      return new Err(
+        new Error(
+          "Invalid remote metadata: missing or invalid Fathom webhook metadata"
+        )
+      );
     }
 
-    const deleteRes = await client.deleteWebhook(webhookId);
+    const deleteRes = await client.deleteWebhook(remoteMetadata.webhookId);
 
     if (deleteRes.isErr()) {
       logger.warn(
-        { error: deleteRes.error, webhookId },
+        { error: deleteRes.error, webhookId: remoteMetadata.webhookId },
         "Failed to delete Fathom webhook"
       );
       return deleteRes;
