@@ -16,10 +16,17 @@ import { UsageMetricsChart } from "@app/components/agent_builder/observability/c
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
 import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
-import { getErrorRateChipInfo } from "@app/components/agent_builder/observability/utils";
+import {
+  filterTimeSeriesByVersionWindow,
+  getErrorRateChipInfo,
+} from "@app/components/agent_builder/observability/utils";
 import { SharedObservabilityFilterSelector } from "@app/components/observability/SharedObservabilityFilterSelector";
 import type { ErrorRatePoint } from "@app/lib/api/assistant/observability/error_rate";
-import { useAgentAnalytics, useAgentErrorRate } from "@app/lib/swr/assistants";
+import {
+  useAgentAnalytics,
+  useAgentErrorRate,
+  useAgentVersionMarkers,
+} from "@app/lib/swr/assistants";
 
 function getAverageErrorRate(errorRate: ErrorRatePoint[], period: number) {
   const totalErrorRate = errorRate.reduce(
@@ -40,7 +47,7 @@ export function AgentObservability({
   agentConfigurationId,
   isCustomAgent,
 }: AgentObservabilityProps) {
-  const { period } = useObservabilityContext();
+  const { period, mode, selectedVersion } = useObservabilityContext();
 
   const { errorRate } = useAgentErrorRate({
     workspaceId,
@@ -49,9 +56,27 @@ export function AgentObservability({
     disabled: !workspaceId || !agentConfigurationId,
   });
 
+  const { versionMarkers } = useAgentVersionMarkers({
+    workspaceId,
+    agentConfigurationId,
+    days: period,
+    disabled: !workspaceId || !agentConfigurationId,
+  });
+
+  const filteredErrorRate = useMemo(
+    () =>
+      filterTimeSeriesByVersionWindow(
+        errorRate,
+        mode,
+        selectedVersion,
+        versionMarkers
+      ),
+    [errorRate, mode, selectedVersion, versionMarkers]
+  );
+
   const avrErrorRate = useMemo(
-    () => getAverageErrorRate(errorRate, period),
-    [errorRate, period]
+    () => getAverageErrorRate(filteredErrorRate, period),
+    [filteredErrorRate, period]
   );
 
   const errorRateChipInfo = getErrorRateChipInfo(avrErrorRate);
@@ -60,6 +85,7 @@ export function AgentObservability({
     workspaceId,
     agentConfigurationId,
     period,
+    version: mode === "version" && selectedVersion ? selectedVersion.version : undefined,
   });
 
   return (
