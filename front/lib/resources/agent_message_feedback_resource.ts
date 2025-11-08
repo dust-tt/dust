@@ -332,9 +332,15 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
 
   static async getFeedbackCountForAssistants(
     auth: Authenticator,
-    agentConfigurationIds: string[],
-    daysOld?: number,
-    version?: string
+    {
+      agentConfigurationIds,
+      version,
+      daysOld,
+    }: {
+      agentConfigurationIds: string[];
+      daysOld?: number;
+      version?: string;
+    }
   ) {
     const dateMinusXDays = new Date();
     if (daysOld) {

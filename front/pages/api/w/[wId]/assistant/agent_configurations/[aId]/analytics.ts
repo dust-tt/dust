@@ -103,25 +103,24 @@ async function handler(
       const version = queryValidation.right.version;
 
       const owner = auth.getNonNullableWorkspace();
-      const agentUsers = await getAgentUsers(auth, assistant, period);
+      const agentUsers = await getAgentUsers(auth, assistant, period, version);
       const users = await UserResource.fetchByModelIds(
         agentUsers.map((r) => r.userId)
       );
 
       const feedbacks =
-        await AgentMessageFeedbackResource.getFeedbackCountForAssistants(
-          auth,
-          [assistant.sId],
-          period,
-          version
-        );
+        await AgentMessageFeedbackResource.getFeedbackCountForAssistants(auth, {
+          agentConfigurationIds: [assistant.sId],
+          daysOld: period,
+          version,
+        });
       const positiveFeedbacks =
         feedbacks.find((f) => f.thumbDirection === "up")?.count ?? 0;
       const negativeFeedbacks =
         feedbacks.find((f) => f.thumbDirection === "down")?.count ?? 0;
 
       const mentionCounts = (
-        await agentMentionsCount(owner.id, assistant, period)
+        await agentMentionsCount(owner.id, assistant, period, version)
       )[0];
 
       return res.status(200).json({
