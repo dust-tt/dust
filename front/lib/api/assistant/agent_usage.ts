@@ -136,7 +136,8 @@ export async function getAgentUsage(
 export async function agentMentionsCount(
   workspaceId: number,
   agentConfiguration?: LightAgentConfigurationType,
-  rankingUsageDays: number = RANKING_USAGE_DAYS
+  rankingUsageDays: number = RANKING_USAGE_DAYS,
+  version?: string
 ): Promise<AgentUsageCount[]> {
   const readReplica = getFrontReplicaDbConnection();
 
@@ -144,6 +145,10 @@ export async function agentMentionsCount(
     // Prevent SQL injection
     throw new Error("Invalid ranking usage days");
   }
+
+  const versionJoin = version
+    ? `INNER JOIN agent_messages am ON am."messageId" = m.id AND am."agentConfigurationId" = mentions."agentConfigurationId" AND am."agentConfigurationVersion" = :version`
+    : "";
 
   // eslint-disable-next-line dust/no-raw-sql -- Leggit
   const mentions = await readReplica.query(
@@ -158,6 +163,7 @@ export async function agentMentionsCount(
       INNER JOIN messages m ON m."conversationId" = c.id
       INNER JOIN mentions ON mentions."messageId" = m.id
       INNER JOIN user_messages um ON um.id = m."userMessageId"
+      ${versionJoin}
       WHERE
         c."workspaceId" = :workspaceId
         AND mentions."workspaceId" = :workspaceId
@@ -177,6 +183,7 @@ export async function agentMentionsCount(
       replacements: {
         workspaceId,
         agentConfigurationId: agentConfiguration?.sId ?? null,
+        version: version ? parseInt(version) : null,
       },
       type: QueryTypes.SELECT,
     }
@@ -289,13 +296,15 @@ type UsersUsageCount = {
 export async function getAgentUsers(
   auth: Authenticator,
   agentConfiguration: LightAgentConfigurationType,
-  rankingUsageDays: number = RANKING_USAGE_DAYS
+  rankingUsageDays: number = RANKING_USAGE_DAYS,
+  version?: string
 ): Promise<UsersUsageCount[]> {
   const mentions = await ConversationResource.listMentionsByConfiguration(
     auth,
     {
       agentConfiguration,
       rankingUsageDays,
+      version,
     }
   );
 

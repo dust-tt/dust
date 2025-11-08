@@ -206,9 +206,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     {
       agentConfiguration,
       rankingUsageDays,
+      version,
     }: {
       agentConfiguration: LightAgentConfigurationType;
       rankingUsageDays: number;
+      version?: string;
     }
   ) {
     const workspace = auth.getNonNullableWorkspace();
@@ -252,6 +254,20 @@ export class ConversationResource extends BaseResource<ConversationModel> {
               required: true,
               attributes: [],
             },
+            ...(version
+              ? [
+                  {
+                    model: AgentMessage,
+                    as: "agentMessage",
+                    required: true,
+                    attributes: [],
+                    where: {
+                      agentConfigurationId: agentConfiguration.sId,
+                      agentConfigurationVersion: parseInt(version),
+                    },
+                  },
+                ]
+              : []),
           ],
         },
       ],
