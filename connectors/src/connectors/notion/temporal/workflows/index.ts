@@ -209,9 +209,6 @@ export async function notionSyncWorkflow({
           // of their child pages (effectively doing a crawl).
           forceResync: true,
         });
-        // Technically, we should clear NotionConnectorResourcesToCheckCacheEntry after each iteration,
-        // otherwise it keeps the already processed entries. In practice it's mostly harmless,
-        // as we have logic to not reprocess them, but it might make DB ops slightly less efficient.
       }
     } while (discoveredResources);
   } else {

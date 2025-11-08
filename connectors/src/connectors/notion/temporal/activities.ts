@@ -2515,6 +2515,14 @@ export async function getDiscoveredResourcesFromCache({
     "Discovered new resources."
   );
 
+  // Since we're about to process these resources, clear them from the cache
+  await NotionConnectorResourcesToCheckCacheEntry.destroy({
+    where: {
+      connectorId: connector.id,
+      workflowId: topLevelWorkflowId,
+    },
+  });
+
   return {
     pageIds: discoveredPageIds,
     databaseIds: discoveredDatabaseIds,
