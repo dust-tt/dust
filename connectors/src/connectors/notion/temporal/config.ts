@@ -1,4 +1,4 @@
-const WORKFLOW_VERSION = 51;
+const WORKFLOW_VERSION = 50;
 export const QUEUE_NAME = `notion-queue-v${WORKFLOW_VERSION}`;
 export const GARBAGE_COLLECT_QUEUE_NAME = `notion-gc-queue-v${WORKFLOW_VERSION}`;
 
@@ -16,7 +16,7 @@ export const MAX_PENDING_UPSERT_ACTIVITIES_PER_CHILD_WORKFLOW = 5;
 export const MAX_PENDING_GARBAGE_COLLECTION_ACTIVITIES = 1;
 
 // If set to true, the workflow will process all discovered resources until empty.
-export const PROCESS_ALL_DISCOVERED_RESOURCES = true;
+export const PROCESS_ALL_DISCOVERED_RESOURCES = false;
 
 export const DATABASE_TO_CSV_MAX_SIZE = 256 * 1024 * 1024; // 256MB
 
