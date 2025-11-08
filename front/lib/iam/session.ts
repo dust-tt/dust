@@ -146,11 +146,10 @@ export function makeGetServerSidePropsRequirementsWrapper<
 
       const workspace = auth ? auth.workspace() : await getWorkspace(context);
       const maintenance = workspace?.metadata?.maintenance;
+      const isDustSuperUser = auth?.isDustSuperUser() ?? false;
 
-      // Allow Poke to work during maintenance.
-      const isPokeEndpoint = context.resolvedUrl.startsWith("/poke/");
-
-      if (maintenance && !isPokeEndpoint) {
+      // Checking isDustSuperUser allows Poke to work during maintenance.
+      if (maintenance && !isDustSuperUser) {
         return {
           redirect: {
             permanent: false,
@@ -201,7 +200,6 @@ export function makeGetServerSidePropsRequirementsWrapper<
         // This was checked above already.
         assert(session);
 
-        const isDustSuperUser = auth?.isDustSuperUser() ?? false;
         if (requireUserPrivilege === "superuser" && !isDustSuperUser) {
           return {
             notFound: true,
