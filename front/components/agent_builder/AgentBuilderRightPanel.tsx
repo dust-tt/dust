@@ -181,9 +181,9 @@ function ExpandedContent({
         </div>
       )}
       <ObservabilityProvider>
-        {selectedTab === "observability" && agentConfigurationSId && (
+        {selectedTab === "observability" && (
           <AgentBuilderObservability
-            agentConfigurationSId={agentConfigurationSId}
+            agentConfigurationSId={agentConfigurationSId ?? ""}
           />
         )}
         {selectedTab === "performance" && (
@@ -207,8 +207,7 @@ export function AgentBuilderRightPanel({
     usePreviewPanelContext();
   const { assistantTemplate, owner } = useAgentBuilderContext();
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-  const showObservability =
-    hasFeature("agent_builder_observability") && !!agentConfigurationSId;
+  const showObservability = hasFeature("agent_builder_observability");
 
   const hasTemplate = !!assistantTemplate;
 

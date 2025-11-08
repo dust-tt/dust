@@ -1,6 +1,8 @@
-import { cn, LoadingBlock } from "@dust-tt/sparkle";
+import { BarChartIcon, cn, LoadingBlock } from "@dust-tt/sparkle";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import { EmptyPlaceholder } from "@app/components/agent_builder/observability/shared/EmptyPlaceholder";
+import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
 import { AgentObservability } from "@app/components/observability/AgentObservability";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 
@@ -18,19 +20,31 @@ export function AgentBuilderObservability({
       agentConfigurationId: agentConfigurationSId,
     });
 
-  if (!agentConfiguration) {
-    return null;
+  if (isAgentConfigurationLoading) {
+    return (
+      <div className="grid grid-cols-1 gap-6">
+        <ChartContainerSkeleton />
+        <ChartContainerSkeleton />
+        <ChartContainerSkeleton />
+        <ChartContainerSkeleton />
+        <ChartContainerSkeleton />
+      </div>
+    );
   }
 
-  return isAgentConfigurationLoading || !agentConfiguration ? (
-    <div className="grid grid-cols-1 gap-6">
-      <ChartContainerSkeleton />
-      <ChartContainerSkeleton />
-      <ChartContainerSkeleton />
-      <ChartContainerSkeleton />
-      <ChartContainerSkeleton />
-    </div>
-  ) : (
+  if (!agentConfiguration) {
+    return (
+      <TabContentLayout title="Insights">
+        <EmptyPlaceholder
+          icon={BarChartIcon}
+          title="Waiting for data"
+          description="Use your agent or share it with your team to see performance data."
+        />
+      </TabContentLayout>
+    );
+  }
+
+  return (
     <AgentObservability
       workspaceId={owner.sId}
       agentConfigurationId={agentConfiguration.sId}
