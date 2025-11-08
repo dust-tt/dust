@@ -8,6 +8,7 @@ import type {
 } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
+import type { TokenUsage } from "@app/lib/api/llm/types/events";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { AppModel } from "@app/lib/resources/storage/models/apps";
@@ -17,6 +18,7 @@ import {
 } from "@app/lib/resources/storage/models/runs";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import logger from "@app/logger/logger";
 import { getRunExecutionsDeletionCutoffDate } from "@app/temporal/hard_delete/utils";
 import type {
   LightWorkspaceType,
@@ -25,7 +27,7 @@ import type {
   ModelProviderIdType,
   Result,
 } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import { Err, normalizeError, Ok, SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
 type RunResourceWithApp = RunResource & { app: AppModel };
 
@@ -256,12 +258,48 @@ export class RunResource extends BaseResource<RunModel> {
 
   async recordRunUsage(usages: RunUsageType[]) {
     await RunUsageModel.bulkCreate(
-      usages.map((usage) => ({
-        runId: this.id,
-        workspaceId: this.workspaceId,
-        ...usage,
-      }))
+      usages.map(
+        ({
+          providerId,
+          modelId,
+          promptTokens,
+          completionTokens,
+          cachedTokens,
+          cacheCreationTokens,
+        }) => ({
+          runId: this.id,
+          workspaceId: this.workspaceId,
+          providerId,
+          modelId,
+          promptTokens,
+          completionTokens,
+          cachedTokens,
+          cacheCreationTokens: cacheCreationTokens ?? null,
+        })
+      )
     );
+  }
+
+  async recordTokenUsage(usage: TokenUsage, modelId: ModelIdType) {
+    const modelConfig = SUPPORTED_MODEL_CONFIGS.find(
+      (config) => config.modelId === modelId
+    );
+
+    if (!modelConfig) {
+      logger.warn({ modelId }, "Unsupported model for usage recording");
+      return;
+    }
+
+    return this.recordRunUsage([
+      {
+        cacheCreationTokens: usage.cacheCreationTokens,
+        cachedTokens: usage.cachedTokens ?? null,
+        completionTokens: usage.outputTokens,
+        modelId: modelConfig.modelId,
+        promptTokens: usage.inputTokens,
+        providerId: modelConfig.providerId,
+      },
+    ]);
   }
 
   async listRunUsages(auth: Authenticator): Promise<RunUsageType[]> {
@@ -278,6 +316,7 @@ export class RunResource extends BaseResource<RunModel> {
       promptTokens: usage.promptTokens,
       providerId: usage.providerId as ModelProviderIdType,
       cachedTokens: usage.cachedTokens,
+      cacheCreationTokens: usage.cacheCreationTokens,
     }));
   }
 }
@@ -297,4 +336,6 @@ export interface RunUsageType {
   promptTokens: number;
   providerId: ModelProviderIdType;
   cachedTokens: number | null;
+  // Optional: tokens spent writing to cache (e.g., Anthropic cache creation)
+  cacheCreationTokens?: number | null;
 }

@@ -2,9 +2,9 @@ import { runActionStreamed } from "@app/lib/actions/server";
 import type { Authenticator } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import type { LightAgentConfigurationType, Result } from "@app/types";
+import { GEMINI_2_5_FLASH_MODEL_CONFIG } from "@app/types";
 import {
   Err,
-  GEMINI_2_FLASH_MODEL_CONFIG,
   getSmallWhitelistedModel,
   isProviderWhitelisted,
   removeNulls,
@@ -34,7 +34,7 @@ export async function getSuggestedAgentsForContent(
 
   // TODO(daphne): See if we can put Flash 2 as the default model.
   if (isProviderWhitelisted(owner, "google_ai_studio")) {
-    model = GEMINI_2_FLASH_MODEL_CONFIG;
+    model = GEMINI_2_5_FLASH_MODEL_CONFIG;
   }
 
   const config = cloneBaseConfig(

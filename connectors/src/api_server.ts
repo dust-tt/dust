@@ -30,6 +30,7 @@ import {
   webhookIntercomAPIHandler,
   webhookIntercomUninstallAPIHandler,
 } from "@connectors/api/webhooks/webhook_intercom";
+import { webhookNotionAPIHandler } from "@connectors/api/webhooks/webhook_notion";
 import { webhookSlackAPIHandler } from "@connectors/api/webhooks/webhook_slack";
 import { webhookSlackBotAPIHandler } from "@connectors/api/webhooks/webhook_slack_bot";
 import { webhookSlackBotInteractionsAPIHandler } from "@connectors/api/webhooks/webhook_slack_bot_interaction";
@@ -79,7 +80,7 @@ export function startServer(port: number) {
         const clientIp = req.ip;
         const remainingRequests = await rateLimiter({
           key: `rate_limit:${clientIp}`,
-          maxPerTimeframe: 1000,
+          maxPerTimeframe: req.path.endsWith("/notion") ? 3000 : 1000,
           timeframeSeconds: 60,
           logger: logger,
         });
@@ -164,6 +165,11 @@ export function startServer(port: number) {
     "/webhooks/:webhooks_secret/intercom/uninstall",
     bodyParser.raw({ type: "application/json" }),
     webhookIntercomUninstallAPIHandler
+  );
+  app.post(
+    "/webhooks/:webhooks_secret/notion",
+    bodyParser.raw({ type: "application/json" }),
+    webhookNotionAPIHandler
   );
   app.post(
     "/webhooks/:webhooks_secret/firecrawl",

@@ -41,7 +41,7 @@ import {
   isEmptyString,
 } from "@app/types";
 
-const MAX_CONVERSATION_DEPTH = 4;
+export const MAX_CONVERSATION_DEPTH = 4;
 
 /**
  * @swagger

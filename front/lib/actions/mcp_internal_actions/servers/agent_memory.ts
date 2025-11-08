@@ -3,7 +3,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import { z } from "zod";
 
-import type { MCPError } from "@app/lib/actions/mcp_errors";
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
@@ -11,7 +11,7 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import type { Result } from "@app/types";
-import { Ok } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 function createServer(
   auth: Authenticator,
@@ -147,12 +147,17 @@ function createServer(
         );
         const { agentConfiguration } = agentLoopContext.runContext;
 
-        const memory = await AgentMemoryResource.recordEntries(auth, {
+        const result = await AgentMemoryResource.recordEntries(auth, {
           agentConfiguration,
           user: user.toJSON(),
           entries,
         });
-        return renderMemory(memory);
+
+        if (result.isErr()) {
+          return new Err(new MCPError(result.error, { tracked: false }));
+        }
+
+        return renderMemory(result.value);
       }
     )
   );
@@ -216,12 +221,63 @@ function createServer(
         );
         const { agentConfiguration } = agentLoopContext.runContext;
 
-        const memory = await AgentMemoryResource.editEntries(auth, {
+        const result = await AgentMemoryResource.editEntries(auth, {
           agentConfiguration,
           user: user.toJSON(),
           edits,
         });
-        return renderMemory(memory);
+
+        if (result.isErr()) {
+          return new Err(new MCPError(result.error, { tracked: false }));
+        }
+
+        return renderMemory(result.value);
+      }
+    )
+  );
+
+  server.tool(
+    "compact_memory",
+    `Compact the memory by removing duplicate entries and summarizing long entries${isUserScopedMemory ? " for the current user" : ""}`,
+    {
+      edits: z
+        .array(
+          z.object({
+            index: z
+              .number()
+              .describe("The index of the memory entry to overwrite."),
+            content: z
+              .string()
+              .describe("The new compacted content for the memory entry."),
+          })
+        )
+        .describe("The array of memory entries to compact/edit."),
+    },
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: "agent_memory", agentLoopContext },
+      async ({ edits }) => {
+        assert(
+          agentLoopContext?.runContext,
+          "agentLoopContext is required to run the memory compact_memory tool"
+        );
+        const { agentConfiguration } = agentLoopContext.runContext;
+
+        const result = await AgentMemoryResource.editEntries(auth, {
+          agentConfiguration,
+          user: user.toJSON(),
+          edits,
+        });
+
+        if (result.isErr()) {
+          return new Err(
+            new MCPError(`Cannot compact memory entries. ${result.error}`, {
+              tracked: false,
+            })
+          );
+        }
+
+        return renderMemory(result.value);
       }
     )
   );

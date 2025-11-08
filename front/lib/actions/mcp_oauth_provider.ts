@@ -36,6 +36,8 @@ export class MCPOAuthProvider implements OAuthClientProvider {
       tos_uri: config.getClientFacingUrl() + "/terms",
       policy_uri: config.getClientFacingUrl() + "/privacy",
       software_id: "dust",
+      token_endpoint_auth_method: "none",
+      grant_types: ["authorization_code", "refresh_token"],
     };
   }
 

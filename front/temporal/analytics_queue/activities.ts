@@ -1,29 +1,26 @@
-import assert from "assert";
-
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
 import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
 import { updateAnalyticsFeedback } from "@app/lib/analytics/feedback";
 import { calculateTokenUsageCost } from "@app/lib/api/assistant/token_pricing";
-import { ANALYTICS_ALIAS_NAME, getClient } from "@app/lib/api/elasticsearch";
+import { ANALYTICS_ALIAS_NAME, withEs } from "@app/lib/api/elasticsearch";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
+import type { AgentMessageFeedback } from "@app/lib/models/assistant/conversation";
 import {
   AgentMessage,
+  ConversationModel,
   Message,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import logger from "@app/logger/logger";
-import type { AgentMessageType } from "@app/types";
-import { normalizeError } from "@app/types";
 import type {
   AgentLoopArgs,
   AgentMessageRef,
 } from "@app/types/assistant/agent_run";
-import { getAgentLoopData } from "@app/types/assistant/agent_run";
 import type {
   AgentMessageAnalyticsData,
   AgentMessageAnalyticsFeedback,
@@ -42,67 +39,138 @@ export async function storeAgentAnalyticsActivity(
   const auth = await Authenticator.fromJSON(authType);
   const workspace = auth.getNonNullableWorkspace();
 
-  const runAgentDataRes = await getAgentLoopData(authType, agentLoopArgs);
-  if (runAgentDataRes.isErr()) {
-    throw runAgentDataRes.error;
+  const { agentMessageId, userMessageId } = agentLoopArgs;
+
+  // Query the Message/AgentMessage/Conversation rows.
+  const agentMessageRow = await Message.findOne({
+    where: {
+      sId: agentMessageId,
+      workspaceId: workspace.id,
+    },
+    include: [
+      {
+        model: ConversationModel,
+        as: "conversation",
+        required: true,
+      },
+      {
+        model: AgentMessage,
+        as: "agentMessage",
+        required: true,
+      },
+    ],
+  });
+
+  if (!agentMessageRow) {
+    throw new Error("Message not found");
   }
 
-  const {
-    agentConfiguration,
-    agentMessage,
-    conversation,
-    userMessage,
-    agentMessageRow,
-  } = runAgentDataRes.value;
+  const { agentMessage: agentAgentMessageRow, conversation: conversationRow } =
+    agentMessageRow;
 
+  if (!agentAgentMessageRow || !conversationRow) {
+    throw new Error("Agent message or conversation not found");
+  }
+
+  // Query the UserMessage row to get user.
+  const userMessageRow = await Message.findOne({
+    where: {
+      sId: userMessageId,
+      workspaceId: workspace.id,
+    },
+    include: [
+      {
+        model: UserMessage,
+        as: "userMessage",
+        required: true,
+        include: [
+          {
+            model: UserModel,
+            as: "user",
+            required: false,
+          },
+        ],
+      },
+    ],
+  });
+
+  if (!userMessageRow) {
+    throw new Error("User message not found");
+  }
+
+  const { userMessage: userUserMessageRow } = userMessageRow;
+
+  if (!userUserMessageRow) {
+    throw new Error("User message not found");
+  }
+
+  await storeAgentAnalytics(auth, {
+    agentMessageRow,
+    agentAgentMessageRow,
+    userModel: userUserMessageRow.user ?? null,
+    conversationRow,
+  });
+}
+
+/**
+ * Build and store the complete analytics document for an agent message.
+ */
+export async function storeAgentAnalytics(
+  auth: Authenticator,
+  {
+    agentMessageRow,
+    agentAgentMessageRow,
+    userModel,
+    conversationRow,
+  }: {
+    agentMessageRow: Message;
+    agentAgentMessageRow: AgentMessage;
+    userModel: UserModel | null;
+    conversationRow: ConversationModel;
+  }
+): Promise<void> {
   // Only index agent messages if there are no blocked actions awaiting approval.
-  const hasBlockedActions = await checkForBlockedActions(auth, agentMessage);
+  const actions = await AgentMCPActionResource.listByAgentMessageIds(auth, [
+    agentAgentMessageRow.id,
+  ]);
+
+  const hasBlockedActions = actions.some((action) =>
+    isToolExecutionStatusBlocked(action.status)
+  );
+
   if (hasBlockedActions) {
     return;
   }
 
   // Collect token usage from run data.
-  const tokens = await collectTokenUsage(auth, agentMessageRow);
+  const tokens = await collectTokenUsage(auth, agentAgentMessageRow);
 
   // Collect tool usage data from the agent message actions.
-  const toolsUsed = await collectToolUsageFromMessage(auth, agentMessage);
+  const toolsUsed = await collectToolUsageFromMessage(auth, actions);
+
+  // Collect feedback from the agent message.
+  const feedbacks = agentAgentMessageRow.feedbacks
+    ? getAgentMessageFeedbackAnalytics(agentAgentMessageRow.feedbacks)
+    : [];
 
   // Build the complete analytics document.
   const document: AgentMessageAnalyticsData = {
-    agent_id: agentConfiguration.sId,
-    agent_version: agentConfiguration.version.toString(),
-    conversation_id: conversation.sId,
-    latency_ms: agentMessageRow.modelInteractionDurationMs ?? 0,
-    message_id: agentMessage.sId,
-    status: agentMessage.status,
-    // TODO(observability 21025-10-29): Use agentMessage.created timestamp to index documents
-    timestamp: new Date(userMessage.created).toISOString(),
+    agent_id: agentAgentMessageRow.agentConfigurationId,
+    agent_version: agentAgentMessageRow.agentConfigurationVersion.toString(),
+    conversation_id: conversationRow.sId,
+    latency_ms: agentAgentMessageRow.modelInteractionDurationMs ?? 0,
+    message_id: agentMessageRow.sId,
+    status: agentAgentMessageRow.status,
+    timestamp: new Date(agentMessageRow.createdAt).toISOString(),
     tokens,
     tools_used: toolsUsed,
-    user_id: userMessage.user?.sId ?? "unknown",
-    workspace_id: workspace.sId,
-    feedbacks: [],
-    content: agentMessage.content,
+    user_id: userModel?.sId ?? "unknown",
+    workspace_id: auth.getNonNullableWorkspace().sId,
+    feedbacks,
+    version: agentMessageRow.version.toString(),
   };
 
   await storeToElasticsearch(document);
-}
-
-/**
- * Check if the agent message has any blocked actions awaiting approval.
- */
-async function checkForBlockedActions(
-  auth: Authenticator,
-  agentMessage: AgentMessageType
-): Promise<boolean> {
-  const blockedActions = await AgentMCPActionResource.listByAgentMessageIds(
-    auth,
-    [agentMessage.agentMessageId]
-  );
-
-  return blockedActions.some((action) =>
-    isToolExecutionStatusBlocked(action.status)
-  );
 }
 
 /**
@@ -162,37 +230,34 @@ async function collectTokenUsage(
  */
 async function collectToolUsageFromMessage(
   auth: Authenticator,
-  agentMessage: AgentMessageType
+  actionResources: AgentMCPActionResource[]
 ): Promise<AgentMessageAnalyticsToolUsed[]> {
-  const res = await AgentMCPActionResource.listByAgentMessageIds(auth, [
-    agentMessage.agentMessageId,
-  ]);
-
-  return agentMessage.actions.map((action) => {
-    // Look up the corresponding action resource to get more details.
-    const actionResource = res.find(
-      (r) =>
-        r.agentMessageId === agentMessage.agentMessageId && r.id === action.id
-    );
-
-    assert(actionResource, "Action resource not found for action");
-
-    // TODO:(observability) This is not accurate as the action is created before tool validation
-    // is required. Meaning it accounts for the delay of user's validation time.
-    const executionTimeMs =
-      actionResource?.updatedAt.getTime() - actionResource?.createdAt.getTime();
-
+  return actionResources.map((actionResource) => {
     return {
-      step_index: action.step,
+      step_index: actionResource.stepContent.step,
       server_name:
-        action.internalMCPServerName ?? action.mcpServerId ?? "unknown",
+        actionResource.metadata.internalMCPServerName ??
+        actionResource.metadata.mcpServerId ??
+        "unknown",
       tool_name:
-        action.functionCallName.split(TOOL_NAME_SEPARATOR).pop() ??
-        action.functionCallName,
-      execution_time_ms: executionTimeMs,
-      status: action.status,
+        actionResource.functionCallName.split(TOOL_NAME_SEPARATOR).pop() ??
+        actionResource.functionCallName,
+      execution_time_ms: actionResource.executionDurationMs,
+      status: actionResource.status,
     };
   });
+}
+
+function makeAgentMessageAnalyticsDocumentId({
+  messageId,
+  version,
+  workspaceId,
+}: {
+  messageId: string;
+  version: string;
+  workspaceId: string;
+}): string {
+  return `${workspaceId}_${messageId}_${version}`;
 }
 
 /**
@@ -201,29 +266,32 @@ async function collectToolUsageFromMessage(
 async function storeToElasticsearch(
   document: AgentMessageAnalyticsData
 ): Promise<void> {
-  const esClient = await getClient();
+  const documentId = makeAgentMessageAnalyticsDocumentId({
+    messageId: document.message_id,
+    version: document.version,
+    workspaceId: document.workspace_id,
+  });
 
-  const documentId = `${document.workspace_id}_${document.message_id}_${document.timestamp}`;
-
-  try {
-    await esClient.index({
+  await withEs(async (client) => {
+    await client.index({
       index: ANALYTICS_ALIAS_NAME,
       id: documentId,
       body: document,
     });
-  } catch (error) {
-    logger.error(
-      {
-        documentId,
-        error: normalizeError(error),
-        index: ANALYTICS_ALIAS_NAME,
-        messageId: document.message_id,
-      },
-      "Failed to index document in Elasticsearch"
-    );
+  });
+}
 
-    throw error;
-  }
+function getAgentMessageFeedbackAnalytics(
+  agentMessageFeedbacks: AgentMessageFeedbackResource[] | AgentMessageFeedback[]
+): AgentMessageAnalyticsFeedback[] {
+  return agentMessageFeedbacks.map((agentMessageFeedback) => ({
+    feedback_id: agentMessageFeedback.id,
+    user_id: agentMessageFeedback.user?.sId ?? "unknown",
+    thumb_direction: agentMessageFeedback.thumbDirection,
+    dismissed: agentMessageFeedback.dismissed,
+    is_conversation_shared: agentMessageFeedback.isConversationShared,
+    created_at: agentMessageFeedback.createdAt.toISOString(),
+  }));
 }
 
 export async function storeAgentMessageFeedbackActivity(
@@ -262,49 +330,20 @@ export async function storeAgentMessageFeedbackActivity(
 
   const agentMessageModel = agentMessageRow.agentMessage;
 
-  const userMessageRow = await Message.findOne({
-    where: {
-      id: agentMessageRow.parentId,
-      conversationId: agentMessageRow.conversationId,
-      workspaceId: workspace.id,
-    },
-    include: [
-      {
-        model: UserMessage,
-        as: "userMessage",
-        required: true,
-      },
-    ],
-  });
-
-  if (!userMessageRow?.userMessage) {
-    throw new Error(
-      `User message not found for agent message: ${message.agentMessageId}`
-    );
-  }
-
   const agentMessageFeedbacks =
     await AgentMessageFeedbackResource.listByAgentMessageModelId(
       auth,
       agentMessageModel.id
     );
 
-  const allFeedbacks: AgentMessageAnalyticsFeedback[] =
-    agentMessageFeedbacks.map((agentMessageFeedback) => ({
-      feedback_id: agentMessageFeedback.id,
-      user_id: agentMessageFeedback.user?.sId ?? "unknown",
-      thumb_direction: agentMessageFeedback.thumbDirection,
-      content: agentMessageFeedback.content ?? undefined,
-      dismissed: agentMessageFeedback.dismissed,
-      is_conversation_shared: agentMessageFeedback.isConversationShared,
-      created_at: agentMessageFeedback.createdAt.toISOString(),
-    }));
-
-  await updateAnalyticsFeedback(auth, {
-    message: {
-      sId: agentMessageRow.sId,
+  await updateAnalyticsFeedback(
+    {
+      documentId: makeAgentMessageAnalyticsDocumentId({
+        messageId: message.agentMessageId,
+        version: agentMessageRow.version.toString(),
+        workspaceId: workspace.sId,
+      }),
     },
-    createdTimestamp: userMessageRow.createdAt.getTime(),
-    feedbacks: allFeedbacks,
-  });
+    getAgentMessageFeedbackAnalytics(agentMessageFeedbacks)
+  );
 }

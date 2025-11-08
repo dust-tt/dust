@@ -3,9 +3,8 @@ import userEvent from "@testing-library/user-event";
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType, RichMention } from "@app/types";
 
-import type { RichMention } from "../types";
 import { MentionDropdown } from "./MentionDropdown";
 
 // Mock Sparkle dropdown primitives to render content directly without portals.

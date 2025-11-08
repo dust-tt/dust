@@ -2,13 +2,12 @@ import type { ModelConfigurationType } from "@app/types";
 
 export const GROK_3_MODEL_ID = "grok-3-latest" as const;
 export const GROK_3_MINI_MODEL_ID = "grok-3-mini-latest" as const;
-export const GROK_3_FAST_MODEL_ID = "grok-3-fast-latest" as const;
-export const GROK_3_MINI_FAST_MODEL_ID = "grok-3-mini-fast-latest" as const;
 export const GROK_4_MODEL_ID = "grok-4-latest" as const;
 export const GROK_4_FAST_REASONING_MODEL_ID =
   "grok-4-fast-reasoning-latest" as const;
 export const GROK_4_FAST_NON_REASONING_MODEL_ID =
   "grok-4-fast-non-reasoning-latest" as const;
+
 export const GROK_3_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "xai",
   modelId: GROK_3_MODEL_ID,
@@ -49,48 +48,7 @@ export const GROK_3_MINI_MODEL_CONFIG: ModelConfigurationType = {
   supportsResponseFormat: false,
   featureFlag: "xai_feature",
 };
-// Deprecated
-export const GROK_3_FAST_MODEL_CONFIG: ModelConfigurationType = {
-  providerId: "xai",
-  modelId: GROK_3_FAST_MODEL_ID,
-  displayName: "Grok 3 Fast",
-  contextSize: 131_072,
-  recommendedTopK: 32,
-  recommendedExhaustiveTopK: 64,
-  largeModel: true,
-  description: "xAI's Grok 3 flagship model (131k context, fast infra).",
-  shortDescription: "xAI's fast flagship model.",
-  isLegacy: true,
-  isLatest: false,
-  generationTokensCount: 8_192,
-  supportsVision: false,
-  minimumReasoningEffort: "none",
-  maximumReasoningEffort: "none",
-  defaultReasoningEffort: "none",
-  supportsResponseFormat: false,
-  featureFlag: "xai_feature",
-};
-// Deprecated
-export const GROK_3_MINI_FAST_MODEL_CONFIG: ModelConfigurationType = {
-  providerId: "xai",
-  modelId: GROK_3_MINI_FAST_MODEL_ID,
-  displayName: "Grok 3 Mini (Fast)",
-  contextSize: 131_072,
-  recommendedTopK: 32,
-  recommendedExhaustiveTopK: 64,
-  largeModel: false,
-  description: "xAI's Grok 3 Mini model (131k context, reasoning, fast infra).",
-  shortDescription: "xAI's reasoning model.",
-  isLegacy: true,
-  isLatest: false,
-  generationTokensCount: 8_192,
-  supportsVision: false,
-  minimumReasoningEffort: "none",
-  maximumReasoningEffort: "none",
-  defaultReasoningEffort: "none",
-  supportsResponseFormat: false,
-  featureFlag: "xai_feature",
-};
+
 export const GROK_4_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "xai",
   modelId: GROK_4_MODEL_ID,

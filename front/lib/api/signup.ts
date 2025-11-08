@@ -218,6 +218,7 @@ export async function handleEnterpriseSignUpFlow(
 export async function handleRegularSignupFlow(
   session: SessionWithUser,
   user: UserResource,
+  activeMemberships: MembershipResource[],
   targetWorkspaceId?: string
 ): Promise<
   Result<
@@ -228,14 +229,9 @@ export async function handleRegularSignupFlow(
     AuthFlowError | SSOEnforcedError
   >
 > {
-  const { memberships: activeMemberships, total } =
-    await MembershipResource.getActiveMemberships({
-      users: [user],
-    });
-
   // Return early if the user is already a member of a workspace and is not attempting to join
   // another one.
-  if (total !== 0 && !targetWorkspaceId) {
+  if (activeMemberships.length > 0 && !targetWorkspaceId) {
     return new Ok({
       flow: null,
       workspace: null,

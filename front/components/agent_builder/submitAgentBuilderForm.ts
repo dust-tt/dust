@@ -293,6 +293,8 @@ async function processTriggers({
             if (trigger.kind === "webhook") {
               return {
                 ...baseData,
+                executionPerDayLimitOverride:
+                  trigger.executionPerDayLimitOverride,
                 webhookSourceViewSId: trigger.webhookSourceViewSId,
               } as PatchTriggersRequestBody["triggers"][number];
             }
@@ -341,6 +343,8 @@ async function processTriggers({
             if (trigger.kind === "webhook") {
               return {
                 ...baseData,
+                executionPerDayLimitOverride:
+                  trigger.executionPerDayLimitOverride,
                 webhookSourceViewSId: trigger.webhookSourceViewSId,
               } as PostTriggersRequestBody["triggers"][number];
             }

@@ -6,6 +6,7 @@ import {
   Hoverable,
   Spinner,
 } from "@dust-tt/sparkle";
+import uniqBy from "lodash/uniqBy";
 import React, { useMemo, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
@@ -81,7 +82,12 @@ export function AgentBuilderTriggersBlock({
 
   const accessibleWebhookSourceViews = useMemo(
     () =>
-      webhookSourceViews.filter((view) => accessibleSpaceIds.has(view.spaceId)),
+      uniqBy(
+        webhookSourceViews.filter((view) =>
+          accessibleSpaceIds.has(view.spaceId)
+        ),
+        (view) => view.webhookSource.sId
+      ).sort((a, b) => (a.createdAt >= b.createdAt ? -1 : 1)),
     [webhookSourceViews, accessibleSpaceIds]
   );
 
@@ -182,7 +188,7 @@ export function AgentBuilderTriggersBlock({
       title="Triggers"
       description={
         <>
-          Triggers agent execution based on events. Need help? Check our{" "}
+          Triggers agent runs based on events. Need help? Check our{" "}
           <Hoverable
             variant="primary"
             href="https://docs.dust.tt/docs/scheduling-your-agent-beta#/"
@@ -232,6 +238,11 @@ export function AgentBuilderTriggersBlock({
                     : `${item.source}-${item.index}`
                 }
                 trigger={item.trigger}
+                webhookSourceView={accessibleWebhookSourceViews.find((view) =>
+                  item.trigger.kind === "webhook"
+                    ? view.sId === item.trigger.webhookSourceViewSId
+                    : undefined
+                )}
                 onRemove={() => handleTriggerRemove(item.trigger, displayIndex)}
                 onEdit={() => handleTriggerEdit(item.trigger)}
               />

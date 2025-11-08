@@ -68,15 +68,6 @@ export async function validateBotFrameworkToken(
       return null;
     }
 
-    logger.info(
-      {
-        appId: verifiedPayload.aud,
-        serviceUrl: verifiedPayload.serviceurl,
-        exp: verifiedPayload.exp,
-      },
-      "Successfully validated Bot Framework JWT token"
-    );
-
     return verifiedPayload;
   } catch (error) {
     if (error instanceof Error) {

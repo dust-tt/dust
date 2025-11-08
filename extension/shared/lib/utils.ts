@@ -119,7 +119,7 @@ export function compareForFuzzySort(query: string, a: string, b: string) {
   if (a.length !== b.length) {
     return a.length - b.length;
   }
-  return a.localeCompare(b);
+  return 0;
 }
 
 /**
@@ -165,8 +165,10 @@ export function filterAndSortAgents(
   );
 
   if (searchText.length > 0) {
-    filtered.sort((a, b) =>
-      compareForFuzzySort(lowerCaseSearchText, a.name, b.name)
+    filtered.sort(
+      (a, b) =>
+        compareForFuzzySort(lowerCaseSearchText, a.name, b.name) ||
+        compareAgentsForSort(a, b)
     );
   }
 
@@ -180,12 +182,32 @@ export const isEqualNode = (
   lhs.internalId === rhs.internalId &&
   lhs.dataSourceView.dataSource.sId === rhs.dataSourceView.dataSource.sId;
 
+// Not exhaustive.
+const GLOBAL_AGENTS_SORT_ORDER: string[] = [
+  GLOBAL_AGENTS_SID.DUST,
+  GLOBAL_AGENTS_SID.DEEP_DIVE,
+  GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET,
+  GLOBAL_AGENTS_SID.GPT5,
+  GLOBAL_AGENTS_SID.GEMINI_PRO,
+  GLOBAL_AGENTS_SID.MISTRAL_LARGE,
+  GLOBAL_AGENTS_SID.CLAUDE_4_5_HAIKU,
+  GLOBAL_AGENTS_SID.GPT5_MINI,
+  GLOBAL_AGENTS_SID.GPT4,
+];
+const globalAgentIndexMap = new Map(
+  GLOBAL_AGENTS_SORT_ORDER.map((id, index) => [id, index])
+);
+
 // This function implements our general strategy to sort agents to users (input bar, agent list,
 // agent suggestions...).
-export function compareAgentsForSort(
-  a: LightAgentConfigurationType,
-  b: LightAgentConfigurationType
-) {
+export function compareAgentsForSort<
+  T extends {
+    sId: string;
+    userFavorite: boolean;
+    scope: string;
+    name: string;
+  },
+>(a: T, b: T): number {
   if (a.userFavorite && !b.userFavorite) {
     return -1;
   }
@@ -193,38 +215,16 @@ export function compareAgentsForSort(
     return 1;
   }
 
-  if (a.sId === GLOBAL_AGENTS_SID.DUST) {
-    return -1;
-  }
-  if (b.sId === GLOBAL_AGENTS_SID.DUST) {
-    return 1;
-  }
+  const aGlobalIndex = globalAgentIndexMap.get(a.sId) ?? -1;
+  const bGlobalIndex = globalAgentIndexMap.get(b.sId) ?? -1;
 
-  if (a.sId === GLOBAL_AGENTS_SID.DEEP_DIVE) {
+  if (aGlobalIndex !== -1 && bGlobalIndex !== -1) {
+    return aGlobalIndex - bGlobalIndex;
+  }
+  if (aGlobalIndex !== -1) {
     return -1;
   }
-  if (b.sId === GLOBAL_AGENTS_SID.DEEP_DIVE) {
-    return 1;
-  }
-
-  if (a.sId === GLOBAL_AGENTS_SID.CLAUDE_4_SONNET) {
-    return -1;
-  }
-  if (b.sId === GLOBAL_AGENTS_SID.CLAUDE_4_SONNET) {
-    return 1;
-  }
-
-  if (a.sId === GLOBAL_AGENTS_SID.GPT5) {
-    return -1;
-  }
-  if (b.sId === GLOBAL_AGENTS_SID.GPT5) {
-    return 1;
-  }
-
-  if (a.sId === GLOBAL_AGENTS_SID.GPT4) {
-    return -1;
-  }
-  if (b.sId === GLOBAL_AGENTS_SID.GPT4) {
+  if (bGlobalIndex !== -1) {
     return 1;
   }
 

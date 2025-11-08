@@ -1,9 +1,10 @@
-import { GLOBAL_AGENTS_SID } from "@app/types";
+import type { EditorSuggestionAgent } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
+import type { RichMention, RichUserMention } from "@app/types";
+import type { RichAgentMention } from "@app/types";
+import { compareAgentsForSort, GLOBAL_AGENTS_SID } from "@app/types";
+import { isRichAgentMention, isRichUserMention } from "@app/types";
 
 import { compareForFuzzySort, subFilter } from "../../utils";
-import type { RichAgentMention, RichMention, RichUserMention } from "../types";
-import { isRichUserMention } from "../types";
-import { isRichAgentMention } from "../types";
 
 /**
  * Maximum number of suggestions to display in the autocomplete dropdown.
@@ -19,29 +20,19 @@ const SUGGESTION_PRIORITY: Record<string, number> = {
   [GLOBAL_AGENTS_SID.DEEP_DIVE]: 2,
 };
 
-/**
- * Filters and sorts agent mention suggestions based on a query string.
- */
-function filterAndSortAgentSuggestions(
-  lowerCaseQuery: string,
-  suggestions: RichAgentMention[]
-): RichAgentMention[] {
-  return suggestions
-    .filter((item) => subFilter(lowerCaseQuery, item.label.toLowerCase()))
-    .sort((a, b) =>
-      compareForFuzzySort(
-        lowerCaseQuery,
-        a.label.toLocaleLowerCase(),
-        b.label.toLocaleLowerCase()
-      )
-    )
-    .sort((a, b) => {
-      // If within SUGGESTION_DISPLAY_LIMIT there's one from SUGGESTION_PRIORITY,
-      // we move it to the top.
-      const aPriority = SUGGESTION_PRIORITY[a.id] ?? Number.MAX_SAFE_INTEGER;
-      const bPriority = SUGGESTION_PRIORITY[b.id] ?? Number.MAX_SAFE_INTEGER;
-      return aPriority - bPriority;
-    });
+export function compareAgentSuggestionsForSort(
+  a: RichAgentMention,
+  b: RichAgentMention
+) {
+  const toSortable = (a: RichAgentMention) => {
+    return {
+      sId: a.id,
+      userFavorite: a.userFavorite,
+      scope: "visible",
+      name: a.label,
+    } as const;
+  };
+  return compareAgentsForSort(toSortable(a), toSortable(b));
 }
 
 /**
@@ -56,19 +47,42 @@ function filterAndSortAgentSuggestions(
  * @param fallbackSuggestions - Fallback suggestions (e.g., all available agents)
  * @returns Filtered and sorted suggestions, up to SUGGESTION_DISPLAY_LIMIT
  */
+
+function filterAndSortEditorSuggestionAgents(
+  lowerCaseQuery: string,
+  suggestions: EditorSuggestionAgent[]
+) {
+  return suggestions
+    .filter((item) => subFilter(lowerCaseQuery, item.label.toLowerCase()))
+    .sort(
+      (a, b) =>
+        compareForFuzzySort(
+          lowerCaseQuery,
+          a.label.toLocaleLowerCase(),
+          b.label.toLocaleLowerCase()
+        ) || compareAgentSuggestionsForSort(a, b)
+    )
+    .sort((a, b) => {
+      // If within SUGGESTION_DISPLAY_LIMIT there's one from SUGGESTION_PRIORITY, we move it to the top.
+      const aPriority = SUGGESTION_PRIORITY[a.id] ?? Number.MAX_SAFE_INTEGER;
+      const bPriority = SUGGESTION_PRIORITY[b.id] ?? Number.MAX_SAFE_INTEGER;
+      return aPriority - bPriority;
+    });
+}
+
 export function filterAgentSuggestions(
   query: string,
-  suggestions: RichAgentMention[],
-  fallbackSuggestions: RichAgentMention[]
-): RichAgentMention[] {
-  // When queried without content, keep the pre-defined order.
+  suggestions: EditorSuggestionAgent[],
+  fallbackSuggestions: EditorSuggestionAgent[]
+): EditorSuggestionAgent[] {
+  // keeping the pre-defined order when queried without content
   if (query === "") {
     return suggestions.slice(0, SUGGESTION_DISPLAY_LIMIT);
   }
 
   const lowerCaseQuery = query.toLowerCase();
 
-  const inListSuggestions = filterAndSortAgentSuggestions(
+  const inListSuggestions = filterAndSortEditorSuggestionAgents(
     lowerCaseQuery,
     suggestions
   ).slice(0, SUGGESTION_DISPLAY_LIMIT);
@@ -78,15 +92,15 @@ export function filterAgentSuggestions(
     return inListSuggestions;
   }
 
-  // Otherwise, fallback to all suggestions.
-  const allSuggestionsNoDuplicates = filterAndSortAgentSuggestions(
+  // Otherwise, fallback to all the suggestions.
+  const allSuggestionsNoDuplicates = filterAndSortEditorSuggestionAgents(
     lowerCaseQuery,
     fallbackSuggestions
   ).filter((item) => !inListSuggestions.find((i) => i.id === item.id));
 
-  // Sorts user's list suggestions alphabetically first, then appends and
-  // sorts remaining suggestions alphabetically, without sorting the combined
-  // list again.
+  // Sorts user's list suggestions alphabetically first,
+  // then appends and sorts remaining suggestions alphabetically,
+  // without sorting the combined list again.
   return [...inListSuggestions, ...allSuggestionsNoDuplicates].slice(
     0,
     SUGGESTION_DISPLAY_LIMIT

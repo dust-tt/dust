@@ -75,3 +75,23 @@ export const organizationCreatedSchema: JSONSchema = {
     },
   },
 };
+
+export const organizationCreatedExample = {
+  type: "zen:event-type:organization.created",
+  account_id: 10973248,
+  subject: "zen:organization:6607619104125",
+  id: "a540ab78-88f2-49e1-93a7-16152a6f782c",
+  time: "2025-01-07T03:44:13Z",
+  zendesk_event_version: "2022-06-20",
+  detail: {
+    created_at: "2025-01-07T03:44:13Z",
+    id: "6607619104125",
+    name: "Acme Corporation",
+    shared_comments: false,
+    shared_tickets: false,
+    updated_at: "2025-01-07T03:44:13Z",
+    group_id: null,
+    external_id: null,
+  },
+  event: {},
+};

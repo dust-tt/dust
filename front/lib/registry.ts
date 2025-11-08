@@ -163,20 +163,6 @@ export const BaseDustProdActionRegistry = {
       },
     },
   },
-  "assistant-builder-emoji-suggestions": {
-    app: {
-      appId: "b69YdlJ3PJ",
-      appHash:
-        "0b6b63def0224321f2bece0751bad632baca33f6d5bb596bbeb3f95b6bea5966",
-    },
-    config: {
-      CREATE_SUGGESTIONS: {
-        // `provider_id` and `model_id` must be set by caller.
-        function_call: "send_suggestions",
-        use_cache: false,
-      },
-    },
-  },
   "assistant-builder-process-action-schema-generator": {
     app: {
       appId: "b36c7416bd",
@@ -285,7 +271,7 @@ export const BaseDustProdActionRegistry = {
     app: {
       appId: "XNcJCE7lUj",
       appHash:
-        "9fa1ef11941288335a3cfcdcef9b4c811464ba3dddd8d72e2c0ca7922f7a0e93",
+        "257965e90775f1ad81975aa4a5b5b6169338c79561432cfa7f4e4e13fd8bc0cf",
     },
     config: {
       CREATE_FILTER: {

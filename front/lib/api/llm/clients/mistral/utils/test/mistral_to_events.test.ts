@@ -168,6 +168,37 @@ const finishStopLLMEvents = [
     },
     metadata,
   },
+  {
+    type: "token_usage",
+    content: {
+      inputTokens: 3186,
+      outputTokens: 192,
+      totalTokens: 3378,
+    },
+    metadata,
+  },
+  {
+    type: "success",
+    aggregated: [
+      {
+        type: "text_generated",
+        content: {
+          text: "Hello, how are you ?",
+        },
+        metadata,
+      },
+    ],
+    textGenerated: {
+      type: "text_generated",
+      content: {
+        text: "Hello, how are you ?",
+      },
+      metadata,
+    },
+    reasoningGenerated: undefined,
+    toolCalls: undefined,
+    metadata,
+  },
 ];
 
 const finishToolCallLLMEvents = [
@@ -190,8 +221,58 @@ const finishToolCallLLMEvents = [
     content: {
       id: "DdHr7L197",
       name: "web_search_browse__websearch",
-      arguments: '{"query": "Paris France weather forecast October 23 2025"}',
+      arguments: { query: "Paris France weather forecast October 23 2025" },
     },
+    metadata,
+  },
+  {
+    type: "token_usage",
+    content: {
+      inputTokens: 1766,
+      outputTokens: 128,
+      totalTokens: 1894,
+    },
+    metadata,
+  },
+  {
+    type: "success",
+    aggregated: [
+      {
+        type: "text_generated",
+        content: {
+          text: "Hi !",
+        },
+        metadata,
+      },
+      {
+        type: "tool_call",
+        content: {
+          id: "DdHr7L197",
+          name: "web_search_browse__websearch",
+          arguments: { query: "Paris France weather forecast October 23 2025" },
+        },
+        metadata,
+      },
+    ],
+    textGenerated: {
+      type: "text_generated",
+      content: {
+        text: "Hi !",
+      },
+      metadata,
+    },
+    reasoningGenerated: undefined,
+    toolCalls: [
+      {
+        type: "tool_call",
+        content: {
+          id: "DdHr7L197",
+          name: "web_search_browse__websearch",
+          arguments: { query: "Paris France weather forecast October 23 2025" },
+        },
+        metadata,
+      },
+    ],
     metadata,
   },
 ];

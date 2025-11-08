@@ -1,6 +1,7 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type { SuggestionResults } from "@app/lib/api/assistant/suggestions/types";
 import { getLLM } from "@app/lib/api/llm";
+import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import type {
@@ -9,7 +10,7 @@ import type {
   Result,
   UserMessageTypeModel,
 } from "@app/types";
-import { Err, isStringArray, Ok, safeParseJSON } from "@app/types";
+import { Err, isStringArray, Ok } from "@app/types";
 
 const FUNCTION_NAME = "send_suggestions";
 
@@ -98,50 +99,45 @@ export async function getBuilderNameSuggestions(
     "suggest good names for the agent. Names can not include whitespaces.";
   const conversation: ModelConversationTypeMultiActions =
     getConversationContext(inputs);
+  const traceContext: LLMTraceContext = {
+    operationType: "name_suggestion",
+    userId: auth.user()?.sId,
+  };
   const llm = await getLLM(auth, {
     modelId: "mistral-small-latest",
     bypassFeatureFlag: true,
+    context: traceContext,
   });
 
   if (llm === null) {
     return new Err(new Error("Model not found"));
   }
 
-  const res = llm.stream({
+  const events = llm.stream({
     conversation,
     prompt,
     specifications,
   });
 
-  if (res.isErr()) {
-    return new Err(new Error("No suggestions found"));
-  }
-
-  for await (const event of res.value) {
+  for await (const event of events) {
     if (event.type === "tool_call") {
-      const parsedArguments = safeParseJSON(event.content.arguments);
-      if (parsedArguments.isErr()) {
-        return new Err(
-          new Error(
-            `Error parsing suggestions from LLM: ${parsedArguments.error.message}`
-          )
-        );
-      }
+      const args = event.content.arguments;
+
       if (
-        !parsedArguments.value ||
-        !("suggestions" in parsedArguments.value) ||
-        !isStringArray(parsedArguments.value.suggestions)
+        !args ||
+        !("suggestions" in args) ||
+        !isStringArray(args.suggestions)
       ) {
         return new Err(
           new Error(
-            `Error retrieving suggestions from arguments: ${parsedArguments.value}`
+            `Error retrieving suggestions from arguments: ${JSON.stringify(args)}`
           )
         );
       }
 
       const filteredSuggestions = await filterSuggestedNames(
         auth,
-        parsedArguments.value.suggestions
+        args.suggestions
       );
 
       return new Ok({

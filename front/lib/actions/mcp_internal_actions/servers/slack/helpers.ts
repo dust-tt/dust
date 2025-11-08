@@ -83,6 +83,26 @@ export function cleanChannelPayload(channel: Channel): MinimalChannelInfo {
   };
 }
 
+// Minimal user information returned to reduce context window usage.
+export type MinimalUserInfo = {
+  id: string;
+  name: string;
+  real_name: string;
+  display_name: string;
+  email?: string;
+};
+
+// Clean user payload to keep only essential fields.
+export function cleanUserPayload(user: Member): MinimalUserInfo {
+  return {
+    id: user.id ?? "",
+    name: user.name ?? "",
+    real_name: user.real_name ?? "",
+    display_name: user.profile?.display_name ?? "",
+    email: user.profile?.email,
+  };
+}
+
 export const getPublicChannels = async ({
   slackClient,
 }: GetPublicChannelsArgs): Promise<ChannelWithIdAndName[]> => {
@@ -262,8 +282,15 @@ export async function executePostMessage(
   );
   message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${agentLoopContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
 
+  const authResult = await slackClient.auth.test();
+  if (
+    !authResult.ok ||
+    !authResult.response_metadata?.scopes?.includes("files:write")
+  ) {
+    fileId = undefined;
+  }
+
   // If a file is provided, upload it as attachment of the original message.
-  fileId = undefined; // TODO(2025-10-22 chris): remove this once Slack enables file:write scope
   if (fileId) {
     const file = await FileResource.fetchById(auth, fileId);
     if (!file) {
@@ -501,7 +528,7 @@ export async function executeListUsers(
       );
 
       if (filteredUsers.length > 0) {
-        return buildFilteredListResponse<Member>(
+        return buildFilteredListResponse<Member, MinimalUserInfo>(
           users,
           nameFilter,
           (user, normalizedFilter) =>
@@ -514,14 +541,15 @@ export async function executeListUsers(
           (count, hasFilter, filterText) =>
             hasFilter
               ? `The workspace has ${count} users containing "${filterText}"`
-              : `The workspace has ${count} users`
+              : `The workspace has ${count} users`,
+          cleanUserPayload
         );
       }
     }
   } while (cursor);
 
   // No filter or no matches found after checking all pages.
-  return buildFilteredListResponse<Member>(
+  return buildFilteredListResponse<Member, MinimalUserInfo>(
     users,
     nameFilter,
     (user, normalizedFilter) =>
@@ -534,7 +562,8 @@ export async function executeListUsers(
     (count, hasFilter, filterText) =>
       hasFilter
         ? `The workspace has ${count} users containing "${filterText}"`
-        : `The workspace has ${count} users`
+        : `The workspace has ${count} users`,
+    cleanUserPayload
   );
 }
 

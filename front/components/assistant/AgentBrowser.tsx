@@ -32,7 +32,7 @@ import { useInView } from "react-intersection-observer";
 
 import { CreateAgentButton } from "@app/components/assistant/CreateAgentButton";
 import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
-import { AssistantDetailsDropdownMenu } from "@app/components/assistant/details/AssistantDetailsButtonBar";
+import { AgentDetailsDropdownMenu } from "@app/components/assistant/details/AgentDetailsButtonBar";
 import { rankAgentsByPopularity } from "@app/components/assistant/helpers/agents";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { useHashParam } from "@app/hooks/useHashParams";
@@ -51,7 +51,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { isBuilder } from "@app/types";
+import { compareAgentsForSort, isBuilder } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 function isValidTab(tab: string, visibleTabs: TabId[]): tab is TabId {
@@ -175,7 +175,7 @@ export const AgentGrid = ({
           );
         })}
       </CardGrid>
-      <AssistantDetailsDropdownMenu
+      <AgentDetailsDropdownMenu
         agentConfiguration={contextMenuAgent ?? undefined}
         owner={owner}
         onClose={() => {
@@ -305,7 +305,9 @@ export function AgentBrowser({
               assistantSearch,
               getAgentSearchString(a),
               getAgentSearchString(b)
-            ) || (b.usage?.messageCount ?? 0) - (a.usage?.messageCount ?? 0)
+            ) ||
+            (b.usage?.messageCount ?? 0) - (a.usage?.messageCount ?? 0) ||
+            compareAgentsForSort(a, b)
           );
         });
 

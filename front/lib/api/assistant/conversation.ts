@@ -28,6 +28,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import {
   AgentMessage,
+  ConversationModel,
   Message,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
@@ -51,6 +52,7 @@ import {
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
+import type { MentionType } from "@app/types";
 import type {
   AgentMessageType,
   APIErrorWithStatusCode,
@@ -62,7 +64,6 @@ import type {
   ConversationVisibility,
   ConversationWithoutContentType,
   LightAgentConfigurationType,
-  MentionType,
   ModelId,
   PlanType,
   Result,
@@ -231,6 +232,31 @@ export async function getConversationMessageType(
   return null;
 }
 
+export async function getMessageConversationId(
+  auth: Authenticator,
+  { messageId }: { messageId: number }
+): Promise<{ conversationId: string | null; messageId: string | null }> {
+  const messageRow = await Message.findOne({
+    attributes: ["sId"],
+    where: {
+      agentMessageId: messageId,
+      workspaceId: auth.getNonNullableWorkspace().id,
+    },
+    include: [
+      {
+        model: ConversationModel,
+        as: "conversation",
+        attributes: ["sId"],
+      },
+    ],
+  });
+
+  return {
+    conversationId: messageRow?.conversation?.sId ?? null,
+    messageId: messageRow?.sId ?? null,
+  };
+}
+
 export async function getLastUserMessage(
   auth: Authenticator,
   conversation: ConversationWithoutContentType
@@ -262,6 +288,33 @@ export async function getLastUserMessage(
     );
   }
   return new Ok(content);
+}
+
+export async function getUserMessageFromParentMessageId({
+  workspaceId,
+  conversationId,
+  parentMessageId,
+}: {
+  workspaceId: ModelId;
+  conversationId: ModelId;
+  parentMessageId: string;
+}): Promise<UserMessage | null> {
+  const message = await Message.findOne({
+    where: {
+      workspaceId,
+      conversationId,
+      sId: parentMessageId,
+    },
+    include: [
+      {
+        model: UserMessage,
+        as: "userMessage",
+      },
+    ],
+    attributes: ["id"],
+  });
+
+  return message?.userMessage ?? null;
 }
 
 /**

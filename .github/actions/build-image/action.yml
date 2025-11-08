@@ -101,6 +101,8 @@ runs:
         while IFS='=' read -r key value; do
           [[ -n "$key" ]] && build_args+=("--build-arg" "$(echo "$key" | xargs)=$(echo "$value" | xargs)")
         done < "$CONFIG_FILE"
+        # Handle the last line if file doesn't end with newline
+        [[ -n "$key" ]] && build_args+=("--build-arg" "$(echo "$key" | xargs)=$(echo "$value" | xargs)")
 
         # Only set the Virtuoso license key if provided
         if [[ -n "${{ inputs.virtuoso_license_key }}" ]]; then

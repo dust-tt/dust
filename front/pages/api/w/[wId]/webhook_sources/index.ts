@@ -12,6 +12,7 @@ import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resourc
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { buildWebhookUrl } from "@app/lib/webhookSource";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import type {
@@ -215,13 +216,24 @@ async function handler(
         });
 
         if (result.isErr()) {
-          // If remote webhook creation fails, we still keep the webhook source
-          // but return an error message so the user knows
+          // If remote webhook creation fails, delete the webhook source
+          const deleteResult = await webhookSource.delete(auth);
+          if (deleteResult.isErr()) {
+            // Log the delete failure but still return the original error
+            logger.error(
+              {
+                error: deleteResult.error,
+                webhookSourceId: webhookSource.sId,
+              },
+              "Failed to delete webhook source after remote webhook creation failed"
+            );
+          }
+
           return apiError(req, res, {
             status_code: 500,
             api_error: {
               type: "internal_server_error",
-              message: `Webhook source created but failed to create remote webhook: ${result.error.message}`,
+              message: result.error.message,
             },
           });
         }

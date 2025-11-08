@@ -50,30 +50,15 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "o3-mini"
   | "o4-mini"
   | "claude-3-5-haiku-20241022"
-  | "claude-3-5-sonnet-20240620"
-  | "claude-3-5-sonnet-20241022"
-  | "claude-3-7-sonnet-20250219"
   | "claude-3-haiku-20240307"
-  | "claude-3-opus-20240229"
   | "claude-4-opus-20250514"
   | "claude-4-sonnet-20250514"
   | "claude-haiku-4-5-20251001"
   | "claude-sonnet-4-5-20250929"
-  | "claude-2.1"
-  | "claude-instant-1.2"
   | "mistral-large-latest"
   | "mistral-medium"
   | "mistral-small-latest"
   | "codestral-latest"
-  | "gemini-1.5-pro-latest" // DEPRECATED
-  | "gemini-1.5-flash-latest" // DEPRECATED
-  | "gemini-2.0-flash" // DEPRECATED
-  | "gemini-2.0-flash-lite" // DEPRECATED
-  | "gemini-2.5-pro-preview-03-25" // DEPRECATED
-  | "gemini-2.0-flash-exp" // DEPRECATED
-  | "gemini-2.0-flash-lite-preview-02-05" // DEPRECATED
-  | "gemini-2.0-pro-exp-02-05" // DEPRECATED
-  | "gemini-2.0-flash-thinking-exp-01-21" // DEPRECATED
   | "gemini-2.5-pro"
   | "gemini-2.5-flash"
   | "gemini-2.5-flash-lite"
@@ -89,8 +74,6 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "accounts/fireworks/models/kimi-k2-instruct" // fireworks
   | "grok-3-latest" // xAI
   | "grok-3-mini-latest" // xAI
-  | "grok-3-fast-latest" // xAI
-  | "grok-3-mini-fast-latest" // xAI
   | "grok-4-latest" // xAI
   | "grok-4-fast-non-reasoning-latest"
   | "grok-4-fast-reasoning-latest"
@@ -651,6 +634,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "agent_management_tool"
   | "agent_to_yaml"
   | "anthropic_vertex_fallback"
+  | "ashby_tool"
   | "claude_4_opus_feature"
   | "confluence_tool"
   | "deepseek_feature"
@@ -672,7 +656,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_transcripts"
   | "legacy_dust_apps"
   | "llm_router_direct_requests"
-  | "microsoft_teams_bot"
   | "monday_tool"
   | "noop_model_feature"
   | "notion_private_integration"
@@ -684,6 +667,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "salesforce_synced_queries"
   | "salesforce_tool_write"
   | "salesforce_tool"
+  | "salesloft_tool"
   | "show_debug_tools"
   | "slack_bot_mcp"
   | "slack_enhanced_default_agent"
@@ -701,9 +685,9 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "legacy_dust_apps"
   | "llm_router_direct_requests"
   | "mentions_v2"
-  | "dust_global_agent_memory"
-  | "dust_global_data_source_file_system"
   | "http_client_tool"
+  | "slack_files_write_scope"
+  | "notifications"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -943,6 +927,15 @@ const AgentMentionSchema = z.object({
 
 export type AgentMentionType = z.infer<typeof AgentMentionSchema>;
 
+const UserMentionSchema = z.object({
+  type: z.literal("user"),
+  userId: z.string(),
+});
+
+export type UserMentionType = z.infer<typeof UserMentionSchema>;
+
+const MentionSchema = z.union([AgentMentionSchema, UserMentionSchema]);
+
 const UserMessageContextSchema = z.object({
   username: z.string(),
   timezone: Timezone,
@@ -964,7 +957,7 @@ const UserMessageSchema = z.object({
   visibility: VisibilitySchema,
   version: z.number(),
   user: UserSchema.nullable(),
-  mentions: z.array(AgentMentionSchema),
+  mentions: z.array(MentionSchema),
   content: z.string(),
   context: UserMessageContextSchema,
 });
@@ -1938,11 +1931,7 @@ export type GetWorkspaceFeatureFlagsResponseType = z.infer<
 export const PublicPostMessagesRequestBodySchema = z.intersection(
   z.object({
     content: z.string().min(1),
-    mentions: z.array(
-      z.object({
-        configurationId: z.string(),
-      })
-    ),
+    mentions: z.array(MentionSchema),
     context: UserMessageContextSchema.extend({
       clientSideMCPServerIds: z.array(z.string()).optional().nullable(),
     }),
@@ -1966,11 +1955,7 @@ export type PostMessagesResponseBody = {
 
 export const PublicPostEditMessagesRequestBodySchema = z.object({
   content: z.string(),
-  mentions: z.array(
-    z.object({
-      configurationId: z.string(),
-    })
-  ),
+  mentions: z.array(MentionSchema),
   skipToolsValidation: z.boolean().optional().default(false),
 });
 
@@ -2046,11 +2031,7 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
       z.intersection(
         z.object({
           content: z.string().min(1),
-          mentions: z.array(
-            z.object({
-              configurationId: z.string(),
-            })
-          ),
+          mentions: z.array(MentionSchema),
           context: UserMessageContextSchema,
         }),
         z
@@ -2547,6 +2528,26 @@ const DateSchema = z
     "YYYY-MM or YYYY-MM-DD"
   );
 
+const IncludeInactiveSchema = z.preprocess((value) => {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (Array.isArray(value)) {
+    const [first] = value;
+    if (first === undefined) {
+      return undefined;
+    }
+    return first === "true" || first === true;
+  }
+  if (typeof value === "string") {
+    return value === "true";
+  }
+  if (typeof value === "boolean") {
+    return value;
+  }
+  return undefined;
+}, z.boolean().optional());
+
 export const GetWorkspaceUsageRequestSchema = z.union([
   z.object({
     start: DateSchema,
@@ -2554,6 +2555,7 @@ export const GetWorkspaceUsageRequestSchema = z.union([
     mode: z.literal("month"),
     table: SupportedUsageTablesSchema,
     format: z.enum(["csv", "json"]).optional().default("csv"),
+    includeInactive: IncludeInactiveSchema,
   }),
   z.object({
     start: DateSchema,
@@ -2561,6 +2563,7 @@ export const GetWorkspaceUsageRequestSchema = z.union([
     mode: z.literal("range"),
     table: SupportedUsageTablesSchema,
     format: z.enum(["csv", "json"]).optional().default("csv"),
+    includeInactive: IncludeInactiveSchema,
   }),
 ]);
 
@@ -2638,13 +2641,23 @@ export type FileUploadedRequestResponseType = z.infer<
 >;
 
 export const PublicFrameResponseBodySchema = z.object({
-  content: z.string().optional(),
-  file: FileTypeSchema,
+  accessToken: z.string(),
   conversationUrl: z.string().nullable(),
+  file: FileTypeSchema,
 });
 
 export type PublicFrameResponseBodyType = z.infer<
   typeof PublicFrameResponseBodySchema
+>;
+
+export const PublicVizContentResponseBodySchema = z.object({
+  content: z.string(),
+  contentType: z.string(),
+  metadata: z.record(z.unknown()).optional(),
+});
+
+export type PublicVizContentResponseBodyType = z.infer<
+  typeof PublicVizContentResponseBodySchema
 >;
 
 export const MembershipOriginType = FlexibleEnumSchema<
@@ -2779,6 +2792,8 @@ export type GetSpacesResponseType = z.infer<typeof GetSpacesResponseSchema>;
 const OAuthProviderSchema = FlexibleEnumSchema<
   | "confluence"
   | "confluence_tools"
+  | "discord"
+  | "fathom"
   | "freshservice"
   | "github"
   | "google_drive"
@@ -2796,7 +2811,6 @@ const OAuthProviderSchema = FlexibleEnumSchema<
   | "hubspot"
   | "mcp"
   | "mcp_static"
-  | "discord"
 >();
 
 const InternalAllowedIconSchema = FlexibleEnumSchema<
@@ -2816,6 +2830,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ActionTableIcon"
   | "ActionTimeIcon"
   | "AsanaLogo"
+  | "CanvaLogo"
   | "CommandLineIcon"
   | "ConfluenceLogo"
   | "DriveLogo"

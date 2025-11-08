@@ -41,6 +41,8 @@ import {
   timeFrameFromNow,
 } from "@app/types";
 
+const localLogger = logger.child({ module: "mcp_slack_personal" });
+
 export type SlackSearchMatch = {
   author_name?: string;
   channel_name?: string;
@@ -107,7 +109,7 @@ export const slackSearch = async (
   } catch (error) {
     // Fallback to standard search.messages API if assistant.search.context fails.
     // This typically happens when Slack AI is not enabled (local env) or the token doesn't have the required permissions.
-    logger.info(
+    localLogger.info(
       { error },
       "Failed to use assistant.search.context, falling back to search.messages"
     );
@@ -330,17 +332,17 @@ const _getSlackAIEnablementStatus = async ({
     );
 
     if (!assistantSearchInfo.ok) {
-      logger.warn("assistant.search.info returned !ok");
       return "disconnected";
     }
 
     const assistantSearchInfoJson = await assistantSearchInfo.json();
 
-    return assistantSearchInfoJson.is_ai_search_enabled
+    const status = assistantSearchInfoJson.is_ai_search_enabled
       ? "enabled"
       : "disabled";
+
+    return status;
   } catch (e) {
-    logger.warn({ error: e }, "Error fetching Slack AI enablement status");
     return "disconnected";
   }
 };
@@ -373,6 +375,15 @@ async function createServer(
         accessToken: c.access_token,
       })
     : "disconnected";
+
+  localLogger.info(
+    {
+      mcpServerId,
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      slackAIStatus,
+    },
+    "Slack MCP server initialized"
+  );
 
   // If we're not connected to Slack, we arbitrarily include the first search tool, just so there is one.
   // in the list. As soon as we're connected, it will show the correct one.

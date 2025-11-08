@@ -80,13 +80,13 @@ export function CreateWebhookSourceFormContent({
       <Controller
         control={form.control}
         name="name"
-        render={({ field }) => (
+        render={({ field, fieldState }) => (
           <Input
             {...field}
             label="Name"
             placeholder="Name..."
-            isError={form.formState.errors.name !== undefined}
-            message={form.formState.errors.name?.message}
+            isError={fieldState.error !== undefined}
+            message={fieldState.error?.message}
             messageStatus="error"
             autoFocus
           />
@@ -140,7 +140,9 @@ export function CreateWebhookSourceFormContent({
             return (
               <div className="flex flex-col gap-2">
                 <Label htmlFor="subscribedEvents">Events to watch</Label>
-                <p>Choose which events will activate this trigger</p>
+                <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  Choose which events will activate this trigger
+                </p>
                 <div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>

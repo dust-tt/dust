@@ -352,13 +352,12 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     name: "Microsoft Teams (Bot)",
     connectorProvider: "microsoft_bot",
     status: "built",
-    rollingOutFlag: "microsoft_teams_bot",
     hide: true,
     description:
       "Enable your Microsoft Teams bot integration to interact with Dust directly from Teams.",
     limitations: "Bot must be enabled in organization settings.",
     mismatchError: `You cannot select another Microsoft tenant.\nPlease contact us at support@dust.tt if you initially selected a wrong tenant.`,
-    guideLink: "https://docs.dust.tt/docs/microsoft-teams-bot",
+    guideLink: "https://docs.dust.tt/docs/dust-in-teams",
     selectLabel: "Bot configuration",
     getLogoComponent: () => {
       return MicrosoftLogo;
@@ -564,6 +563,7 @@ export const isConnectorProviderAllowedForPlan = (
     case "salesforce":
       return !!featureFlags?.includes("salesforce_synced_queries");
     case "microsoft":
+    case "microsoft_bot":
     case "slack_bot":
     case "discord_bot":
     case "snowflake":
@@ -571,8 +571,6 @@ export const isConnectorProviderAllowedForPlan = (
     case "bigquery":
     case "gong":
       return true;
-    case "microsoft_bot":
-      return !!featureFlags?.includes("microsoft_teams_bot");
     default:
       assertNever(provider);
   }
@@ -601,6 +599,32 @@ export const isConnectorProviderAssistantDefaultSelected = (
     case "salesforce":
     case "snowflake":
     case "webcrawler":
+      return false;
+    default:
+      assertNever(provider);
+  }
+};
+
+// Bot integrations are connectors that integrate chat apps rather than content sources.
+export const isBotIntegration = (provider: ConnectorProvider): boolean => {
+  switch (provider) {
+    case "slack_bot":
+    case "discord_bot":
+    case "microsoft_bot":
+      return true;
+    case "bigquery":
+    case "confluence":
+    case "github":
+    case "gong":
+    case "google_drive":
+    case "intercom":
+    case "microsoft":
+    case "notion":
+    case "salesforce":
+    case "slack":
+    case "snowflake":
+    case "webcrawler":
+    case "zendesk":
       return false;
     default:
       assertNever(provider);

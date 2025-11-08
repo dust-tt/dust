@@ -194,13 +194,14 @@ const webhookTriggerSchema = z.object({
   enabled: z.boolean().default(true),
   name: z.string(),
   kind: z.enum(["webhook"]),
-  provider: z.enum(WEBHOOK_PROVIDERS).nullable(),
+  provider: z.enum(WEBHOOK_PROVIDERS).optional(),
   customPrompt: z.string().nullable(),
   naturalLanguageDescription: z.string().nullable(),
   configuration: webhookConfigSchema,
   editor: z.number().nullable(),
   webhookSourceViewSId: z.string().nullable().optional(),
   editorName: z.string().optional(),
+  executionPerDayLimitOverride: z.number().nullable(),
 });
 
 const scheduleTriggerSchema = z.object({

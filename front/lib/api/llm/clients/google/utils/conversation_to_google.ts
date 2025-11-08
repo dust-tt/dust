@@ -2,6 +2,7 @@ import type { Content, FunctionResponse, Part, Tool } from "@google/genai";
 import assert from "assert";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
 import type {
   AssistantContentMessageTypeModel,
   AssistantFunctionCallMessageTypeModel,
@@ -10,7 +11,7 @@ import type {
   ModelMessageTypeMultiActionsWithoutContentFragment,
   TextContent,
 } from "@app/types";
-import { assertNever, isRecord, safeParseJSON } from "@app/types";
+import { assertNever } from "@app/types";
 import type {
   FunctionCallContentType,
   ReasoningContentType,
@@ -114,24 +115,11 @@ function assistantContentToPart(
         text: content.value,
       };
     case "function_call": {
-      const argsRes = safeParseJSON(content.value.arguments);
-      if (argsRes.isErr()) {
-        // TODO(LLM-Router 2025-10-27): Handle error properly and send Non retryableError event
-        throw new Error(
-          `Failed to parse function call arguments JSON: ${argsRes.error.message}`
-        );
-      }
-      if (argsRes.value !== null && !isRecord(argsRes.value)) {
-        // TODO(LLM-Router 2025-10-27): Handle error properly and send Non retryableError event
-        throw new Error(
-          `Function call arguments JSON is not a record: ${content.value.arguments}`
-        );
-      }
       return {
         functionCall: {
           id: content.value.id,
           name: content.value.name,
-          args: argsRes.value ?? undefined,
+          args: parseToolArguments(content.value.arguments),
         },
       };
     }

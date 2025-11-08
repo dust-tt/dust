@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { RichMention } from "@app/lib/mentions/types";
+import type { RichMention } from "@app/types";
 
 import { replaceMentionsWithAt, serializeMention } from "./format";
 

@@ -179,3 +179,24 @@ export const ticketStatusChangedSchema: JSONSchema = {
     },
   },
 };
+
+export const ticketStatusChangedExample = {
+  account_id: 22129848,
+  detail: {
+    id: "5158",
+    subject: "Cannot login to mobile app",
+    status: "SOLVED",
+    priority: "HIGH",
+    created_at: "2025-01-08T10:12:07Z",
+    updated_at: "2025-01-08T16:45:20Z",
+  },
+  event: {
+    current: "SOLVED",
+    previous: "OPEN",
+  },
+  id: "a8b9c1d2-3e4f-5a6b-7c8d-9e0f1a2b3c4d",
+  subject: "zen:ticket:5158",
+  time: "2025-01-08T16:45:20.987654321Z",
+  type: "zen:event-type:ticket.status_changed",
+  zendesk_event_version: "2022-11-06",
+};

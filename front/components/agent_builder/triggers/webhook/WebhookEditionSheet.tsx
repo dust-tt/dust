@@ -7,12 +7,14 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  ExclamationCircleIcon,
   Input,
   Label,
   Separator,
   SliderToggle,
   TextArea,
 } from "@dust-tt/sparkle";
+import Link from "next/link";
 import React, { useMemo } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
@@ -83,6 +85,42 @@ function WebhookEditionStatusToggle({
   );
 }
 
+function WebhookEditionExecutionLimit() {
+  const { control } = useFormContext<TriggerViewsSheetFormValues>();
+  const {
+    field: { value: executionLimit },
+  } = useController({
+    control,
+    name: "webhook.executionPerDayLimitOverride",
+  });
+
+  return (
+    <div className="flex flex-col space-y-1">
+      <Label htmlFor="execution-limit">Rate limits</Label>
+      <p>Limits are set on a 24 hours window. </p>
+      <ContentMessage
+        variant="info"
+        size="lg"
+        icon={ExclamationCircleIcon}
+        title={`Up to ${executionLimit} requests per day`}
+      >
+        This trigger can send per a limited amount of messages per day. This
+        prevents a single trigger from using up your workspace's message fair
+        use quota (
+        <Link
+          href="https://docs.dust.tt/update/docs/rate-limiting#/"
+          target="_blank"
+          rel="noreferrer"
+          className="underline"
+        >
+          Learn more
+        </Link>
+        ).
+      </ContentMessage>
+    </div>
+  );
+}
+
 interface WebhookEditionEventSelectorProps {
   isEditor: boolean;
   selectedPreset: PresetWebhook | null;
@@ -108,7 +146,7 @@ function WebhookEditionEventSelector({
     <div className="flex flex-col space-y-1">
       <Label htmlFor="webhook-event">Listen for</Label>
       <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-        Type of event that will start this agent.
+        External event that will trigger a run of this agent.
       </p>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -178,7 +216,7 @@ function WebhookEditionMessageInput({
 
   return (
     <div className="space-y-1">
-      <Label htmlFor="webhook-prompt">Message (Optional)</Label>
+      <Label htmlFor="webhook-prompt">Message (optional)</Label>
       <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
         Message for the agent when the trigger runs.
       </p>
@@ -262,6 +300,9 @@ export function WebhookEditionSheetContent({
           <WebhookEditionIncludePayload isEditor={isEditor} />
         </div>
 
+        <Separator />
+
+        <WebhookEditionExecutionLimit />
         {trigger && (
           <div className="space-y-1">
             <RecentWebhookRequests

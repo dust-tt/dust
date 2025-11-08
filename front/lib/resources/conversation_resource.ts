@@ -29,7 +29,7 @@ import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrapp
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import type { UserResource } from "@app/lib/resources/user_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
   ConversationMCPServerViewType,
@@ -970,6 +970,33 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
 
     return new Ok({ wasLastMember: remaining <= 1, affectedCount });
+  }
+
+  async listParticipants(
+    auth: Authenticator,
+    unreadOnly: boolean = false
+  ): Promise<(UserType & { unread: boolean })[]> {
+    const participants = await ConversationParticipantModel.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: this.id,
+        ...(unreadOnly ? { unread: true } : {}),
+      },
+    });
+
+    const unreadMap = new Map<number, boolean>();
+    for (const participant of participants) {
+      unreadMap.set(participant.userId, participant.unread);
+    }
+
+    const userResources = await UserResource.fetchByModelIds(
+      participants.map((p) => p.userId)
+    );
+
+    return userResources.map((userResource) => ({
+      ...userResource.toJSON(),
+      unread: unreadMap.get(userResource.id) ?? false,
+    }));
   }
 
   async isConversationParticipant(user: UserResource): Promise<boolean> {

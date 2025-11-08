@@ -9,6 +9,7 @@ import cloneDeep from "lodash/cloneDeep";
 
 import { validateContentBlockIndex } from "@app/lib/api/llm/clients/anthropic/utils/predicates";
 import type { StreamState } from "@app/lib/api/llm/clients/anthropic/utils/types";
+import { SuccessAggregate } from "@app/lib/api/llm/types/aggregates";
 import type {
   LLMEvent,
   ReasoningDeltaEvent,
@@ -18,14 +19,17 @@ import type {
   TokenUsageEvent,
   ToolCallEvent,
 } from "@app/lib/api/llm/types/events";
+import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
-import { safeParseJSON } from "@app/types";
+import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
 
 export async function* streamLLMEvents(
   messageStreamEvents: AsyncIterable<MessageStreamEvent>,
   metadata: LLMClientMetadata
 ): AsyncGenerator<LLMEvent> {
   const stateContainer = { state: null };
+  // Aggregate output items to build a SuccessCompletionEvent at the end of a turn.
+  const aggregate = new SuccessAggregate();
 
   // There is an issue in Anthropic SDK showcasing that stream events get mutated after they are yielded.
   // https://github.com/anthropics/anthropic-sdk-typescript/issues/777
@@ -33,12 +37,25 @@ export async function* streamLLMEvents(
   // To work around this, we clone each event before processing it.
   for await (const mutableMessageStreamEvent of messageStreamEvents) {
     const messageStreamEvent = cloneDeep(mutableMessageStreamEvent);
-    yield* handleMessageStreamEvent(
+
+    for (const ev of handleMessageStreamEvent(
       messageStreamEvent,
       stateContainer,
       metadata
-    );
+    )) {
+      aggregate.add(ev);
+      yield ev;
+    }
   }
+
+  yield {
+    type: "success",
+    aggregated: aggregate.aggregated,
+    textGenerated: aggregate.textGenerated,
+    reasoningGenerated: aggregate.reasoningGenerated,
+    toolCalls: aggregate.toolCalls,
+    metadata,
+  };
 }
 
 function* handleMessageStreamEvent(
@@ -55,7 +72,7 @@ function* handleMessageStreamEvent(
     /* Content is sent as follows:
      * content_block_start (gives the type of the content block and some metadata)
      * content_block_delta (streams content) (multiple times)
-     * content_block_stop (makrs the end of the content block)
+     * content_block_stop (marks the end of the content block)
      */
     case "content_block_start":
       handleContentBlockStart(messageStreamEvent, stateContainer);
@@ -90,7 +107,6 @@ function handleContentBlockStart(
     stateContainer.state === null,
     `A content block is already being processed, cannot start a new one at index ${event.index}`
   );
-
   const blockType = event.content_block.type;
   switch (blockType) {
     case "text":
@@ -140,8 +156,14 @@ function* handleContentBlockDelta(
     case "input_json_delta":
       stateContainer.state.accumulator += event.delta.partial_json;
       break;
-    case "citations_delta":
     case "signature_delta":
+      if (stateContainer.state.accumulatorType === "reasoning") {
+        const previousSignature = stateContainer.state.signature ?? "";
+        stateContainer.state.signature =
+          previousSignature + event.delta.signature;
+      }
+      break;
+    case "citations_delta":
       // TODO(LLM-Router) Handle these delta types if needed
       break;
     default:
@@ -160,7 +182,11 @@ function* handleContentBlockStop(
       yield textGenerated(stateContainer.state.accumulator, metadata);
       break;
     case "reasoning":
-      yield reasoningGenerated(stateContainer.state.accumulator, metadata);
+      yield reasoningGenerated(
+        stateContainer.state.accumulator,
+        metadata,
+        stateContainer.state.signature ?? ""
+      );
       break;
     case "tool_use":
       yield toolCall({
@@ -199,14 +225,14 @@ function* handleStopReason(
       break;
     case "max_tokens":
     case "refusal":
-      yield {
-        type: "error",
-        content: {
+      yield new EventError(
+        {
+          type: "stop_error",
           message: `Stop reason: ${stopReason}`,
-          code: 0,
+          isRetryable: false,
         },
-        metadata,
-      };
+        metadata
+      );
       break;
   }
 }
@@ -249,14 +275,15 @@ function textGenerated(
 
 function reasoningGenerated(
   text: string,
-  metadata: LLMClientMetadata
+  metadata: LLMClientMetadata,
+  signature: string
 ): ReasoningGeneratedEvent {
   return {
     type: "reasoning_generated",
     content: {
       text,
     },
-    metadata,
+    metadata: { ...metadata, encrypted_content: signature },
   };
 }
 
@@ -269,10 +296,8 @@ function tokenUsage(
     content: {
       inputTokens: usage.input_tokens ?? 0,
       outputTokens: usage.output_tokens,
-      // TODO(LLM-Router) Need to split between cache read and hit
-      cachedTokens:
-        (usage.cache_creation_input_tokens ?? 0) +
-        (usage.cache_read_input_tokens ?? 0),
+      cachedTokens: usage.cache_read_input_tokens ?? 0,
+      cacheCreationTokens: usage.cache_creation_input_tokens ?? 0,
       totalTokens: (usage.input_tokens ?? 0) + usage.output_tokens,
     },
     metadata,
@@ -290,16 +315,12 @@ function toolCall({
   input: string;
   metadata: LLMClientMetadata;
 }): ToolCallEvent {
-  const args = safeParseJSON(input);
-  if (args.isErr()) {
-    throw new Error(`Failed to parse tool call arguments: ${args.error}`);
-  }
   return {
     type: "tool_call",
     content: {
       id: id,
       name: name,
-      arguments: JSON.stringify(args.value),
+      arguments: parseToolArguments(input),
     },
     metadata,
   };

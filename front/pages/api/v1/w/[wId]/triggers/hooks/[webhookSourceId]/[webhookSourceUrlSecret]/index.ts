@@ -5,6 +5,7 @@ import { Authenticator } from "@app/lib/auth";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { processWebhookRequest } from "@app/lib/triggers/webhook";
+import { statsDClient } from "@app/logger/statsDClient";
 import type { NextApiRequestWithContext } from "@app/logger/withlogging";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -140,13 +141,34 @@ async function handler(
     });
   }
 
-  await processWebhookRequest(auth, {
+  const provider = webhookSource.provider ?? "custom";
+
+  statsDClient.increment("webhook_request.count", 1, [
+    `provider:${provider}`,
+    `workspace_id:${workspace.sId}`,
+  ]);
+
+  const result = await processWebhookRequest(auth, {
     webhookSource: webhookSource.toJSONForAdmin(),
     headers,
     body,
   });
 
-  // Always return success as the processing will be done in the background
+  if (result.isErr()) {
+    statsDClient.increment("webhook_error.count", 1, [
+      `provider:${provider}`,
+      `workspace_id:${workspace.sId}`,
+    ]);
+
+    return apiError(req, res, {
+      status_code: 500,
+      api_error: {
+        type: "webhook_processing_error",
+        message: result.error.message,
+      },
+    });
+  }
+
   return res.status(200).json({ success: true });
 }
 

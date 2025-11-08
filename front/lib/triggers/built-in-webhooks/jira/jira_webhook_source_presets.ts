@@ -1,7 +1,10 @@
 import { CreateWebhookJiraConnection } from "@app/lib/triggers/built-in-webhooks/jira/components/CreateWebhookJiraConnection";
 import { WebhookSourceJiraDetails } from "@app/lib/triggers/built-in-webhooks/jira/components/WebhookSourceJiraDetails";
 import { JiraWebhookService } from "@app/lib/triggers/built-in-webhooks/jira/jira_webhook_service";
-import { issueCreatedSchema } from "@app/lib/triggers/built-in-webhooks/jira/schemas/json_schema_issue_created";
+import {
+  issueCreatedExample,
+  issueCreatedSchema,
+} from "@app/lib/triggers/built-in-webhooks/jira/schemas/json_schema_issue_created";
 import type {
   PresetWebhook,
   WebhookEvent,
@@ -13,6 +16,7 @@ const JIRA_ISSUE_CREATED_EVENT: WebhookEvent = {
   description:
     "Triggered when a new issue is created in Jira. The event includes details about the issue, creator, and project.",
   schema: issueCreatedSchema,
+  sample: issueCreatedExample,
 };
 
 export const JIRA_WEBHOOK_PRESET: PresetWebhook<"jira"> = {

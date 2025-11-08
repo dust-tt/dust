@@ -1,10 +1,16 @@
-import type { GenerateContentResponse, Part } from "@google/genai";
+import type {
+  GenerateContentResponse,
+  GenerateContentResponseUsageMetadata,
+  Part,
+} from "@google/genai";
 import { FinishReason } from "@google/genai";
 import assert from "assert";
 import { hash as blake3 } from "blake3";
 import crypto from "crypto";
 
-import type { LLMEvent } from "@app/lib/api/llm/types/events";
+import { SuccessAggregate } from "@app/lib/api/llm/types/aggregates";
+import type { LLMEvent, TokenUsageEvent } from "@app/lib/api/llm/types/events";
+import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 
 function newId(): string {
@@ -24,6 +30,9 @@ export async function* streamLLMEvents({
   let textContentParts = "";
   let reasoningContentParts = "";
 
+  // Aggregate output items to build a SuccessCompletionEvent at the end of a turn.
+  const aggregate = new SuccessAggregate();
+
   function* yieldEvents(events: LLMEvent[]) {
     for (const event of events) {
       if (event.type === "text_delta") {
@@ -32,6 +41,8 @@ export async function* streamLLMEvents({
       if (event.type === "reasoning_delta") {
         reasoningContentParts += event.content.delta;
       }
+
+      aggregate.add(event);
       yield event;
     }
   }
@@ -66,40 +77,78 @@ export async function* streamLLMEvents({
       case FinishReason.STOP: {
         yield* yieldEvents(events);
         if (reasoningContentParts) {
-          yield {
-            type: "reasoning_generated" as const,
-            content: { text: reasoningContentParts },
-            metadata,
-          };
+          yield* yieldEvents([
+            {
+              type: "reasoning_generated" as const,
+              content: { text: reasoningContentParts },
+              metadata,
+            },
+          ]);
         }
         reasoningContentParts = "";
         if (textContentParts) {
-          yield {
-            type: "text_generated" as const,
-            content: { text: textContentParts },
-            metadata,
-          };
+          yield* yieldEvents([
+            {
+              type: "text_generated" as const,
+              content: { text: textContentParts },
+              metadata,
+            },
+          ]);
         }
         textContentParts = "";
+        yield tokenUsage(generateContentResponse.usageMetadata, metadata);
+        // emit success event after token usage
+        yield {
+          type: "success",
+          aggregated: aggregate.aggregated,
+          textGenerated: aggregate.textGenerated,
+          reasoningGenerated: aggregate.reasoningGenerated,
+          toolCalls: aggregate.toolCalls,
+          metadata,
+        };
         break;
       }
       default: {
         // yield error event after all received events
         yield* yieldEvents(events);
+        yield tokenUsage(generateContentResponse.usageMetadata, metadata);
         reasoningContentParts = "";
         textContentParts = "";
-        yield {
-          type: "error" as const,
-          content: {
-            message: "An error occurred during completion",
-            code: 500,
-          },
-          metadata,
-        };
+        yield* yieldEvents([
+          new EventError(
+            {
+              type: "stop_error",
+              isRetryable: false,
+              message: "An error occurred during completion",
+            },
+            metadata
+          ),
+        ]);
         break;
       }
     }
   }
+}
+
+function tokenUsage(
+  usage: GenerateContentResponseUsageMetadata | undefined,
+  metadata: LLMClientMetadata
+): TokenUsageEvent {
+  return {
+    type: "token_usage",
+    content: {
+      // Google input usage is split between prompt and tool use
+      // toolUsePromptTokenCount represents the number of tokens in the results
+      // from tool executions, which are provided back to the model as input
+      inputTokens:
+        (usage?.promptTokenCount ?? 0) + (usage?.toolUsePromptTokenCount ?? 0),
+      outputTokens: usage?.candidatesTokenCount ?? 0,
+      totalTokens: usage?.totalTokenCount ?? 0,
+      cachedTokens: usage?.cachedContentTokenCount,
+      reasoningTokens: usage?.thoughtsTokenCount,
+    },
+    metadata,
+  };
 }
 
 function textPartToEvent({
@@ -158,8 +207,7 @@ function partToLLMEvent({
       content: {
         id,
         name,
-        // TODO(LLM-Router 2025-10-27): set arguments type as Record<string, unknown
-        arguments: JSON.stringify(args),
+        arguments: args,
       },
       metadata,
     };

@@ -2,11 +2,18 @@ import type {
   CompletionEvent,
   ContentChunk,
   ToolCall,
+  UsageInfo,
 } from "@mistralai/mistralai/models/components";
 import { CompletionResponseStreamChoiceFinishReason } from "@mistralai/mistralai/models/components";
 import compact from "lodash/compact";
 
-import type { LLMEvent, ToolCallEvent } from "@app/lib/api/llm/types/events";
+import { SuccessAggregate } from "@app/lib/api/llm/types/aggregates";
+import type {
+  LLMEvent,
+  TokenUsageEvent,
+  ToolCallEvent,
+} from "@app/lib/api/llm/types/events";
+import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import type { ExpectedDeltaMessage } from "@app/lib/api/llm/types/predicates";
 import {
@@ -14,6 +21,7 @@ import {
   isCorrectDelta,
   isCorrectToolCall,
 } from "@app/lib/api/llm/types/predicates";
+import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types";
 
@@ -28,11 +36,14 @@ export async function* streamLLMEvents({
   // So we have to aggregate it ourselves as we receive text chunks
   let textDelta = "";
 
+  const aggregate = new SuccessAggregate();
+
   function* yieldEvents(events: LLMEvent[]) {
     for (const event of events) {
       if (event.type === "text_delta") {
         textDelta += event.content.delta;
       }
+      aggregate.add(event);
       yield event;
     }
   }
@@ -68,7 +79,7 @@ export async function* streamLLMEvents({
           metadata,
         };
         // Yield aggregated text before tool calls
-        yield textGeneratedEvent;
+        yield* yieldEvents([textGeneratedEvent]);
         yield* yieldEvents(events);
         textDelta = "";
         break;
@@ -77,25 +88,33 @@ export async function* streamLLMEvents({
         // yield error event after all received events
         yield* yieldEvents(events);
         textDelta = "";
-        yield {
-          type: "error" as const,
-          content: { message: "Maximum length reached", code: 413 },
-          metadata,
-        };
+        yield* yieldEvents([
+          new EventError(
+            {
+              type: "maximum_length",
+              isRetryable: false,
+              message: "Maximum length reached",
+            },
+            metadata
+          ),
+        ]);
         break;
       }
       case CompletionResponseStreamChoiceFinishReason.Error: {
         // yield error event after all received events
         yield* yieldEvents(events);
         textDelta = "";
-        yield {
-          type: "error" as const,
-          content: {
-            message: "An error occurred during completion",
-            code: 500,
-          },
-          metadata,
-        };
+        yield* yieldEvents([
+          new EventError(
+            {
+              type: "stop_error",
+              isRetryable: false,
+              message: "An error occurred during completion",
+            },
+            metadata
+          ),
+        ]);
+
         break;
       }
       // Streaming ends with a text response
@@ -107,7 +126,7 @@ export async function* streamLLMEvents({
           metadata,
         };
         textDelta = "";
-        yield textGeneratedEvent;
+        yield* yieldEvents([textGeneratedEvent]);
         break;
       }
       default: {
@@ -115,6 +134,21 @@ export async function* streamLLMEvents({
         break;
       }
     }
+    // Whatever the completion, yield the token usage
+    if (completionEvent.data.usage) {
+      yield* yieldEvents([
+        toTokenUsage({ usage: completionEvent.data.usage, metadata }),
+      ]);
+    }
+
+    yield {
+      type: "success",
+      aggregated: aggregate.aggregated,
+      textGenerated: aggregate.textGenerated,
+      reasoningGenerated: aggregate.reasoningGenerated,
+      toolCalls: aggregate.toolCalls,
+      metadata,
+    };
   }
 }
 
@@ -141,6 +175,24 @@ export function toLLMEvents({
   return toStreamEvents({ content, metadata });
 }
 
+function toTokenUsage({
+  usage,
+  metadata,
+}: {
+  usage: UsageInfo;
+  metadata: LLMClientMetadata;
+}): TokenUsageEvent {
+  return {
+    type: "token_usage",
+    content: {
+      inputTokens: usage.promptTokens ?? 0,
+      outputTokens: usage.completionTokens ?? 0,
+      totalTokens: usage.totalTokens ?? 0,
+    },
+    metadata,
+  };
+}
+
 function toToolEvent({
   toolCall,
   metadata,
@@ -152,14 +204,19 @@ function toToolEvent({
     return null;
   }
 
+  let args: Record<string, unknown>;
+  if (isString(toolCall.function.arguments)) {
+    args = parseToolArguments(toolCall.function.arguments);
+  } else {
+    args = toolCall.function.arguments;
+  }
+
   return {
     type: "tool_call",
     content: {
       id: toolCall.id,
       name: toolCall.function.name,
-      arguments: isString(toolCall.function.arguments)
-        ? toolCall.function.arguments
-        : JSON.stringify(toolCall.function.arguments),
+      arguments: args,
     },
     metadata,
   };

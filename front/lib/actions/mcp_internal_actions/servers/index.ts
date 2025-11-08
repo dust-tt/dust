@@ -8,6 +8,7 @@ import {
 import { default as agentManagementServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_management";
 import { default as agentMemoryServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_memory";
 import { default as agentRouterServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
+import { default as ashbyServer } from "@app/lib/actions/mcp_internal_actions/servers/ashby";
 import { default as commonUtilitiesServer } from "@app/lib/actions/mcp_internal_actions/servers/common_utilities";
 import { default as confluenceServer } from "@app/lib/actions/mcp_internal_actions/servers/confluence";
 import { default as conversationFilesServer } from "@app/lib/actions/mcp_internal_actions/servers/conversation_files";
@@ -43,6 +44,7 @@ import { default as reasoningServer } from "@app/lib/actions/mcp_internal_action
 import { default as runAgentServer } from "@app/lib/actions/mcp_internal_actions/servers/run_agent";
 import { default as dustAppServer } from "@app/lib/actions/mcp_internal_actions/servers/run_dust_app";
 import { default as salesforceServer } from "@app/lib/actions/mcp_internal_actions/servers/salesforce";
+import { default as salesloftServer } from "@app/lib/actions/mcp_internal_actions/servers/salesloft";
 import { default as searchServer } from "@app/lib/actions/mcp_internal_actions/servers/search";
 import { default as slackBotServer } from "@app/lib/actions/mcp_internal_actions/servers/slack/slack_bot";
 import { default as slackServer } from "@app/lib/actions/mcp_internal_actions/servers/slack/slack_personal";
@@ -98,6 +100,8 @@ export async function getInternalMCPServer(
   switch (internalMCPServerName) {
     case "github":
       return githubServer(auth, agentLoopContext);
+    case "ashby":
+      return ashbyServer(auth, agentLoopContext);
     case "hubspot":
       return hubspotServer();
     case "image_generation":
@@ -148,6 +152,8 @@ export async function getInternalMCPServer(
       return extractDataServer(auth, agentLoopContext);
     case "salesforce":
       return salesforceServer(auth, agentLoopContext);
+    case "salesloft":
+      return salesloftServer(auth, agentLoopContext);
     case "gmail":
       return gmailServer(auth, agentLoopContext);
     case "google_calendar":

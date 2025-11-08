@@ -1,58 +1,34 @@
-import { OpenAI } from "openai";
-import type { ReasoningEffort as OpenAiReasoningEffort } from "openai/resources/shared";
+import { APIError, OpenAI } from "openai";
 
-import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type { FireworksWhitelistedModelId } from "@app/lib/api/llm/clients/fireworks/types";
-import {
-  isOpenAIResponsesWhitelistedReasoningModelId,
-  REASONING_EFFORT_TO_OPENAI_REASONING,
-} from "@app/lib/api/llm/clients/openai/types";
+import { overwriteLLMParameters } from "@app/lib/api/llm/clients/fireworks/types";
 import { LLM } from "@app/lib/api/llm/llm";
+import { handleGenericError } from "@app/lib/api/llm/types/errors";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
-  LLMClientMetadata,
   LLMParameters,
+  StreamParameters,
 } from "@app/lib/api/llm/types/options";
 import {
-  toInput,
-  toTool,
-} from "@app/lib/api/llm/utils/openai_like/responses/conversation_to_openai";
-import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_like/responses/openai_to_events";
-import type { ModelConversationTypeMultiActions } from "@app/types";
+  toMessages,
+  toReasoningParam,
+  toTools,
+} from "@app/lib/api/llm/utils/openai_like/chat/conversation_to_openai";
+import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_like/chat/openai_to_events";
+import { handleError } from "@app/lib/api/llm/utils/openai_like/errors";
+import type { Authenticator } from "@app/lib/auth";
 import { dustManagedCredentials } from "@app/types";
 
 export class FireworksLLM extends LLM {
   private client: OpenAI;
-  private metadata: LLMClientMetadata = {
-    clientId: "openai_responses",
-    modelId: this.modelId,
-  };
-  private readonly reasoning: {
-    effort: OpenAiReasoningEffort;
-    summary: "auto";
-  } | null;
 
-  constructor({
-    modelId,
-    temperature,
-    reasoningEffort,
-    bypassFeatureFlag,
-  }: LLMParameters & {
-    modelId: FireworksWhitelistedModelId;
-  }) {
-    super({
-      modelId,
-      temperature,
-      reasoningEffort,
-      bypassFeatureFlag,
-    });
-
-    this.reasoning = isOpenAIResponsesWhitelistedReasoningModelId(modelId)
-      ? {
-          effort: REASONING_EFFORT_TO_OPENAI_REASONING[this.reasoningEffort],
-          summary: "auto",
-        }
-      : null;
+  constructor(
+    auth: Authenticator,
+    llmParameters: LLMParameters & {
+      modelId: FireworksWhitelistedModelId;
+    }
+  ) {
+    super(auth, overwriteLLMParameters(llmParameters));
 
     const { FIREWORKS_API_KEY } = dustManagedCredentials();
     if (!FIREWORKS_API_KEY) {
@@ -68,20 +44,27 @@ export class FireworksLLM extends LLM {
     conversation,
     prompt,
     specifications,
-  }: {
-    conversation: ModelConversationTypeMultiActions;
-    prompt: string;
-    specifications: AgentActionSpecification[];
-  }): AsyncGenerator<LLMEvent> {
-    const events = await this.client.responses.create({
-      model: this.modelId,
-      input: toInput(prompt, conversation),
-      stream: true,
-      temperature: this.temperature,
-      reasoning: this.reasoning,
-      tools: specifications.map(toTool),
-    });
+  }: StreamParameters): AsyncGenerator<LLMEvent> {
+    try {
+      const tools =
+        specifications.length > 0 ? toTools(specifications) : undefined;
 
-    yield* streamLLMEvents(events, this.metadata);
+      const events = await this.client.chat.completions.create({
+        model: this.modelId,
+        messages: toMessages(prompt, conversation),
+        stream: true,
+        temperature: this.temperature ?? undefined,
+        reasoning_effort: toReasoningParam(this.reasoningEffort),
+        ...(tools ? { tools } : {}),
+      });
+
+      yield* streamLLMEvents(events, this.metadata);
+    } catch (err) {
+      if (err instanceof APIError) {
+        yield handleError(err, this.metadata);
+      } else {
+        yield handleGenericError(err, this.metadata);
+      }
+    }
   }
 }

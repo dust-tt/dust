@@ -138,7 +138,7 @@ describe("DELETE /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
     req.query.webhookSourceId = webhookSource.sId;
 
     // Create associated webhook requests
-    const webhookRequest1 = await WebhookRequestResource.makeNew({
+    await WebhookRequestResource.makeNew({
       workspaceId: workspace.id,
       webhookSourceId: webhookSource.id,
       status: "received",
@@ -146,16 +146,13 @@ describe("DELETE /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
       errorMessage: null,
     });
 
-    const webhookRequest2 = await WebhookRequestResource.makeNew({
+    await WebhookRequestResource.makeNew({
       workspaceId: workspace.id,
       webhookSourceId: webhookSource.id,
       status: "processed",
       processedAt: new Date(),
       errorMessage: null,
     });
-
-    expect(webhookRequest1.isOk()).toBe(true);
-    expect(webhookRequest2.isOk()).toBe(true);
 
     // Verify the webhook requests were created
     const webhookRequests = await WebhookRequestResource.fetchByWebhookSourceId(

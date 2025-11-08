@@ -6,6 +6,10 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import {
+  WEBHOOK_PRESETS,
+  WEBHOOK_PROVIDERS,
+} from "@app/types/triggers/webhooks";
 
 export type PostWebhookFilterGeneratorResponseBody = {
   filter: string;
@@ -13,7 +17,8 @@ export type PostWebhookFilterGeneratorResponseBody = {
 
 const PostWebhookFilterGeneratorRequestBodySchema = z.object({
   naturalDescription: z.string(),
-  eventSchema: z.any(),
+  event: z.string(),
+  provider: z.enum(WEBHOOK_PROVIDERS),
 });
 
 export type PostWebhookFilterGeneratorRequestBody = z.infer<
@@ -44,11 +49,29 @@ async function handler(
         });
       }
 
-      const { naturalDescription, eventSchema } = bodyValidation.data;
+      const {
+        naturalDescription,
+        event: eventValue,
+        provider,
+      } = bodyValidation.data;
+
+      const event = WEBHOOK_PRESETS[provider].events.find(
+        (event) => event.value === eventValue
+      );
+
+      if (!event) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid event: ${eventValue} for provider ${provider}.`,
+          },
+        });
+      }
 
       const r = await generateWebhookFilter(auth, {
         naturalDescription,
-        eventSchema,
+        event,
       });
 
       if (r.isErr()) {

@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getMembershipInvitationToken } from "@app/lib/api/invitation";
 import {
   handleEnterpriseSignUpFlow,
   handleMembershipInvite,
@@ -11,7 +10,7 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { createOrUpdateUser, fetchUserFromSession } from "@app/lib/iam/users";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
-import { getSignInUrl } from "@app/lib/signup";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -111,27 +110,33 @@ async function handler(
     targetWorkspace = workspace;
     targetFlow = flow;
   } else {
-    if (userCreated) {
-      // When user is just created, check whether they have a pending invitation. If they do, it is
-      // assumed they are coming from the invitation link and have seen the join page; we redirect
-      // (after workos login) to this URL with inviteToken appended. The user will then end up on the
-      // workspace's welcome page (see comment's PR)
-      const pendingInvitation =
-        await MembershipInvitationResource.getPendingForEmail(user.email);
-      if (pendingInvitation) {
-        const signUpUrl = await getSignInUrl({
-          signupCallbackUrl: `/api/login?inviteToken=${getMembershipInvitationToken(pendingInvitation.id)}`,
-          invitationEmail: pendingInvitation.inviteEmail,
-          userExists: true,
-        });
-        res.redirect(signUpUrl);
-        return;
-      }
+    const { memberships } = await MembershipResource.getActiveMemberships({
+      users: [user],
+    });
+
+    // When user has no memberships, and no invitation is already provided, check if there is a
+    // pending invitation.
+    const pendingInvitations =
+      memberships.length === 0 && !membershipInvite
+        ? await MembershipInvitationResource.listPendingForEmail(user.email)
+        : null;
+
+    // More than one pending invitation, redirect to invite choose page - otherwise use the first one.
+    if (pendingInvitations && pendingInvitations.length > 1) {
+      res.redirect("/invite-choose");
+      return;
     }
 
-    const loginFctn = membershipInvite
-      ? async () => handleMembershipInvite(user, membershipInvite)
-      : async () => handleRegularSignupFlow(session, user, targetWorkspaceId);
+    const finalMembershipInvite = membershipInvite ?? pendingInvitations?.[0];
+    const loginFctn = finalMembershipInvite
+      ? async () => handleMembershipInvite(user, finalMembershipInvite)
+      : async () =>
+          handleRegularSignupFlow(
+            session,
+            user,
+            memberships,
+            targetWorkspaceId
+          );
 
     const result = await loginFctn();
     if (result.isErr()) {

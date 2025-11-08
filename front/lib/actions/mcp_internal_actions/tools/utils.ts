@@ -7,6 +7,7 @@ import {
   DATA_SOURCE_CONFIGURATION_URI_PATTERN,
   TABLE_CONFIGURATION_URI_PATTERN,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type { TagsInputType } from "@app/lib/actions/mcp_internal_actions/types";
 import type {
   DataSourceConfiguration,
   TableDataSourceConfiguration,
@@ -41,13 +42,29 @@ export type ResolvedDataSourceConfiguration = DataSourceConfiguration & {
 };
 
 export function makeCoreSearchNodesFilters(
-  agentDataSourceConfigurations: ResolvedDataSourceConfiguration[]
+  agentDataSourceConfigurations: ResolvedDataSourceConfiguration[],
+  additionalDynamicTags?: TagsInputType
 ): CoreAPIDatasourceViewFilter[] {
   return agentDataSourceConfigurations.map(
     ({ dataSource, dataSourceView, filter }) => ({
       data_source_id: dataSource.dustAPIDataSourceId,
       view_filter: dataSourceView.parentsIn ?? [],
       filter: filter.parents?.in ?? undefined,
+      // FIXME(ap): Remove additionalDynamicTags condition and add support in other file system tools.
+      ...(additionalDynamicTags
+        ? {
+            tags: {
+              in: [
+                ...(filter.tags?.in ?? []),
+                ...(additionalDynamicTags?.tagsIn ?? []),
+              ],
+              not: [
+                ...(filter.tags?.not ?? []),
+                ...(additionalDynamicTags?.tagsNot ?? []),
+              ],
+            },
+          }
+        : {}),
     })
   );
 }
@@ -345,7 +362,7 @@ export async function getAgentDataSourceConfigurations(
                       not: agentConfig.tagsNotIn ?? [],
                       mode: agentConfig.tagsMode ?? "custom",
                     }
-                  : undefined,
+                  : null,
             },
             dataSource: {
               dustAPIProjectId: agentConfig.dataSource.dustAPIProjectId,

@@ -41,21 +41,30 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
   static async getPendingForEmail(
     email: string
   ): Promise<MembershipInvitationResource | null> {
-    const pendingInvitation = await this.model.findOne({
+    const pendingInvitations = await this.listPendingForEmail(email);
+    return pendingInvitations.length > 0 ? pendingInvitations[0] : null;
+  }
+
+  static async listPendingForEmail(
+    email: string
+  ): Promise<MembershipInvitationResource[]> {
+    const invitations = await this.model.findAll({
       where: {
         inviteEmail: email,
         status: "pending",
       },
+      order: [["createdAt", "DESC"]],
       include: [WorkspaceModel],
-      // WORKSPACE_ISOLATION_BYPASS: We don't know the workspace yet, the user is not authed
+      // WORKSPACE_ISOLATION_BYPASS: Invitations can span multiple workspaces prior to login.
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
-    return pendingInvitation
-      ? new MembershipInvitationResource(this.model, pendingInvitation.get(), {
-          workspace: pendingInvitation.workspace,
+    return invitations.map(
+      (invitation) =>
+        new MembershipInvitationResource(this.model, invitation.get(), {
+          workspace: invitation.workspace,
         })
-      : null;
+    );
   }
 
   static async getPendingForEmailAndWorkspace(

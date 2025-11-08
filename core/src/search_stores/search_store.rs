@@ -832,12 +832,16 @@ impl ElasticsearchSearchStore {
 
                 if let Some(tags) = &f.tags {
                     if let Some(included_tags) = &tags.is_in {
-                        counter.add(1);
-                        bool_query = bool_query.filter(Query::terms("tags", included_tags));
+                        if !included_tags.is_empty() {
+                            counter.add(1);
+                            bool_query = bool_query.filter(Query::terms("tags", included_tags));
+                        }
                     }
                     if let Some(excluded_tags) = &tags.is_not {
-                        counter.add(1);
-                        bool_query = bool_query.must_not(Query::terms("tags", excluded_tags));
+                        if !excluded_tags.is_empty() {
+                            counter.add(1);
+                            bool_query = bool_query.must_not(Query::terms("tags", excluded_tags));
+                        }
                     }
                 }
 

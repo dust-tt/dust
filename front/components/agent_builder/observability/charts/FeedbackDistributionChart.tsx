@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import {
   CartesianGrid,
   Line,
@@ -15,10 +14,21 @@ import {
   FEEDBACK_DISTRIBUTION_LEGEND,
   FEEDBACK_DISTRIBUTION_PALETTE,
 } from "@app/components/agent_builder/observability/constants";
-import { useObservability } from "@app/components/agent_builder/observability/ObservabilityContext";
+import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
-import { ChartLegend } from "@app/components/agent_builder/observability/shared/ChartLegend";
-import { useAgentFeedbackDistribution } from "@app/lib/swr/assistants";
+import {
+  ChartLegend,
+  legendFromConstant,
+} from "@app/components/agent_builder/observability/shared/ChartLegend";
+import { VersionMarkersDots } from "@app/components/agent_builder/observability/shared/VersionMarkers";
+import {
+  filterTimeSeriesByVersionWindow,
+  padSeriesToTimeRange,
+} from "@app/components/agent_builder/observability/utils";
+import {
+  useAgentFeedbackDistribution,
+  useAgentVersionMarkers,
+} from "@app/lib/swr/assistants";
 
 interface FeedbackDistributionChartProps {
   workspaceId: string;
@@ -29,7 +39,7 @@ export function FeedbackDistributionChart({
   workspaceId,
   agentConfigurationId,
 }: FeedbackDistributionChartProps) {
-  const { period } = useObservability();
+  const { period, mode, selectedVersion } = useObservabilityContext();
   const {
     feedbackDistribution,
     isFeedbackDistributionLoading,
@@ -40,21 +50,38 @@ export function FeedbackDistributionChart({
     days: period,
     disabled: !workspaceId || !agentConfigurationId,
   });
+  const { versionMarkers } = useAgentVersionMarkers({
+    workspaceId,
+    agentConfigurationId,
+    days: period,
+    disabled: !workspaceId || !agentConfigurationId,
+  });
 
-  const legendItems = FEEDBACK_DISTRIBUTION_LEGEND.map(({ key, label }) => ({
-    key,
-    label,
-    colorClassName: FEEDBACK_DISTRIBUTION_PALETTE[key],
-  }));
-
-  const data = useMemo(
-    () => feedbackDistribution?.points ?? [],
-    [feedbackDistribution?.points]
+  const legendItems = legendFromConstant(
+    FEEDBACK_DISTRIBUTION_LEGEND,
+    FEEDBACK_DISTRIBUTION_PALETTE,
+    {
+      includeVersionMarker: mode === "timeRange" && versionMarkers.length > 0,
+    }
   );
+
+  const filteredData = filterTimeSeriesByVersionWindow(
+    feedbackDistribution,
+    mode,
+    selectedVersion,
+    versionMarkers
+  );
+
+  const data = padSeriesToTimeRange(filteredData, mode, period, (date) => ({
+    date,
+    positive: 0,
+    negative: 0,
+  }));
 
   return (
     <ChartContainer
-      title="Feedback trends"
+      title="Feedback Trends"
+      description="Daily counts of positive and negative feedback."
       isLoading={isFeedbackDistributionLoading}
       errorMessage={
         isFeedbackDistributionError
@@ -70,20 +97,23 @@ export function FeedbackDistributionChart({
           data={data}
           margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
         >
-          <CartesianGrid vertical={false} className="stroke-border" />
+          <CartesianGrid
+            vertical={false}
+            className="stroke-border dark:stroke-border-night"
+          />
           <XAxis
             dataKey="date"
             type="category"
             scale="point"
             allowDuplicatedCategory={false}
-            className="text-xs text-muted-foreground"
+            className="text-xs text-muted-foreground dark:text-muted-foreground-night"
             tickLine={false}
             axisLine={false}
             tickMargin={8}
             minTickGap={16}
           />
           <YAxis
-            className="text-xs text-muted-foreground"
+            className="text-xs text-muted-foreground dark:text-muted-foreground-night"
             tickLine={false}
             axisLine={false}
             tickMargin={8}
@@ -103,7 +133,8 @@ export function FeedbackDistributionChart({
             type="monotone"
             dataKey="positive"
             name="Positive"
-            stroke="hsl(var(--chart-1))"
+            className={FEEDBACK_DISTRIBUTION_PALETTE.positive}
+            stroke="currentColor"
             strokeWidth={2}
             dot={false}
           />
@@ -111,10 +142,12 @@ export function FeedbackDistributionChart({
             type="monotone"
             dataKey="negative"
             name="Negative"
-            stroke="hsl(var(--chart-4))"
+            className={FEEDBACK_DISTRIBUTION_PALETTE.negative}
+            stroke="currentColor"
             strokeWidth={2}
             dot={false}
           />
+          <VersionMarkersDots mode={mode} versionMarkers={versionMarkers} />
         </LineChart>
       </ResponsiveContainer>
       <ChartLegend items={legendItems} />

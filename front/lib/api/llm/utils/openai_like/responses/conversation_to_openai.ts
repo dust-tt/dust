@@ -1,21 +1,31 @@
-import assert from "node:assert";
-
 import type {
   FunctionTool,
+  ResponseFormatTextJSONSchemaConfig,
   ResponseFunctionToolCallOutputItem,
   ResponseInput,
   ResponseInputContent,
   ResponseInputItem,
 } from "openai/resources/responses/responses";
+import type {
+  Reasoning,
+  ReasoningEffort as OpenAiReasoningEffort,
+} from "openai/resources/shared";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import type { ModelConversationTypeMultiActions } from "@app/types";
+import {
+  extractEncryptedContentFromMetadata,
+  extractIdFromMetadata,
+} from "@app/lib/api/llm/utils";
+import type {
+  ModelConversationTypeMultiActions,
+  ReasoningEffort,
+} from "@app/types";
 import type {
   Content,
   FunctionMessageTypeModel,
   UserMessageTypeModel,
 } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever, ResponseFormatSchema, safeParseJSON } from "@app/types";
 import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
 
 function toInputContent(content: Content): ResponseInputContent {
@@ -49,12 +59,16 @@ function toAssistantInputItem(
         arguments: content.value.arguments,
       };
     case "reasoning":
-      assert(content.value.reasoning, "Expected non-null reasoning content");
+      const reasoning = content.value.reasoning;
+      const id = extractIdFromMetadata(content.value.metadata);
+      const encryptedContent = extractEncryptedContentFromMetadata(
+        content.value.metadata
+      );
       return {
-        // TODO(LLM-Router 2025-10-28): Use reasoning id sent by provider
-        id: "",
+        id,
         type: "reasoning",
-        summary: [{ type: "summary_text", text: content.value.reasoning }],
+        summary: reasoning ? [{ type: "summary_text", text: reasoning }] : [],
+        ...(encryptedContent ? { encrypted_content: encryptedContent } : {}),
       };
     case "error":
       return {
@@ -92,11 +106,12 @@ function toToolCallOutputItem(
 
 export function toInput(
   prompt: string,
-  conversation: ModelConversationTypeMultiActions
+  conversation: ModelConversationTypeMultiActions,
+  promptRole: "system" | "developer" = "developer"
 ): ResponseInput {
   const inputs: ResponseInput = [];
   inputs.push({
-    role: "developer",
+    role: promptRole,
     content: [{ type: "input_text", text: prompt }],
   });
 
@@ -139,5 +154,55 @@ export function toTool(tool: AgentActionSpecification): FunctionTool {
     name: tool.name,
     description: tool.description,
     parameters,
+  };
+}
+
+const REASONING_EFFORT_TO_OPENAI_REASONING: {
+  [key in ReasoningEffort]: OpenAiReasoningEffort;
+} = {
+  none: null,
+  light: "low",
+  medium: "medium",
+  high: "high",
+};
+
+export function toReasoning(
+  reasoningEffort: ReasoningEffort | null
+): Reasoning | null {
+  if (!reasoningEffort) {
+    return null;
+  }
+
+  return {
+    effort: REASONING_EFFORT_TO_OPENAI_REASONING[reasoningEffort],
+    summary: "auto",
+  };
+}
+
+export function toResponseFormat(
+  responseFormat: string | null
+): ResponseFormatTextJSONSchemaConfig | undefined {
+  if (!responseFormat) {
+    return;
+  }
+
+  const responseFormatJson = safeParseJSON(responseFormat);
+  if (responseFormatJson.isErr() || responseFormatJson.value === null) {
+    return;
+  }
+
+  const responseFormatResult = ResponseFormatSchema.safeParse(
+    responseFormatJson.value
+  );
+  if (responseFormatResult.error) {
+    return;
+  }
+
+  return {
+    type: "json_schema",
+    name: responseFormatResult.data.json_schema.name,
+    schema: responseFormatResult.data.json_schema.schema,
+    description: responseFormatResult.data.json_schema.description,
+    strict: responseFormatResult.data.json_schema.strict,
   };
 }

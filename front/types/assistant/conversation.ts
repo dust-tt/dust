@@ -1,10 +1,11 @@
 import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import type { AllSupportedWithDustSpecificFileContentType } from "@app/types";
+import type { ContentFragmentType } from "@app/types";
+import type { ModelId } from "@app/types";
+import type { MentionType } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 
-import type { ContentFragmentType } from "../content_fragment";
-import type { ModelId } from "../shared/model_id";
 import type { UserType, WorkspaceType } from "../user";
 import type {
   AgentConfigurationStatus,
@@ -13,21 +14,7 @@ import type {
 } from "./agent";
 import type { AgentContentItemType } from "./agent_message_content";
 
-/**
- * Mentions
- */
-
-export type AgentMention = {
-  configurationId: string;
-};
-
-export type MentionType = AgentMention;
-
 export type MessageVisibility = "visible" | "deleted";
-
-export function isAgentMention(arg: MentionType): arg is AgentMention {
-  return (arg as AgentMention).configurationId !== undefined;
-}
 
 export type ConversationMessageReactions = {
   messageId: string;

@@ -159,3 +159,24 @@ export const ticketPriorityChangedSchema: JSONSchema = {
     },
   },
 };
+
+export const ticketPriorityChangedExample = {
+  account_id: 22129848,
+  detail: {
+    id: "5158",
+    subject: "Cannot login to mobile app",
+    status: "OPEN",
+    priority: "URGENT",
+    created_at: "2025-01-08T10:12:07Z",
+    updated_at: "2025-01-08T11:30:15Z",
+  },
+  event: {
+    current: "URGENT",
+    previous: "HIGH",
+  },
+  id: "b7c8d9e0-1f2a-3b4c-5d6e-7f8a9b0c1d2e",
+  subject: "zen:ticket:5158",
+  time: "2025-01-08T11:30:15.456789012Z",
+  type: "zen:event-type:ticket.priority_changed",
+  zendesk_event_version: "2022-11-06",
+};

@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import {
   Area,
   AreaChart,
@@ -15,13 +14,27 @@ import {
   USAGE_METRICS_LEGEND,
   USAGE_METRICS_PALETTE,
 } from "@app/components/agent_builder/observability/constants";
-import { useObservability } from "@app/components/agent_builder/observability/ObservabilityContext";
+import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
-import { ChartLegend } from "@app/components/agent_builder/observability/shared/ChartLegend";
+import {
+  ChartLegend,
+  legendFromConstant,
+} from "@app/components/agent_builder/observability/shared/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
-import { useAgentUsageMetrics } from "@app/lib/swr/assistants";
+import { VersionMarkersDots } from "@app/components/agent_builder/observability/shared/VersionMarkers";
+import {
+  filterTimeSeriesByVersionWindow,
+  findVersionMarkerForDate,
+  padSeriesToTimeRange,
+} from "@app/components/agent_builder/observability/utils";
+import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
+import {
+  useAgentUsageMetrics,
+  useAgentVersionMarkers,
+} from "@app/lib/swr/assistants";
 
 interface UsageMetricsData {
+  date: string;
   messages: number;
   conversations: number;
   activeUsers: number;
@@ -38,21 +51,29 @@ function isUsageMetricsData(data: unknown): data is UsageMetricsData {
 }
 
 function UsageMetricsTooltip(
-  props: TooltipContentProps<number, string>
+  props: TooltipContentProps<number, string> & {
+    versionMarkers: AgentVersionMarker[];
+  }
 ): JSX.Element | null {
-  const { active, payload, label } = props;
+  const { active, payload, label, versionMarkers } = props;
   if (!active || !payload || payload.length === 0) {
     return null;
   }
+
   const first = payload[0];
   if (!first?.payload || !isUsageMetricsData(first.payload)) {
     return null;
   }
+
   const row = first.payload;
   const title = typeof label === "string" ? label : String(label);
+
+  const versionMarker = findVersionMarkerForDate(row.date, versionMarkers);
+  const version = versionMarker ? ` - v${versionMarker.version}` : "";
+
   return (
     <ChartTooltipCard
-      title={title}
+      title={`${title}${version}`}
       rows={[
         {
           label: "Messages",
@@ -81,7 +102,7 @@ export function UsageMetricsChart({
   workspaceId: string;
   agentConfigurationId: string;
 }) {
-  const { period } = useObservability();
+  const { period, mode, selectedVersion } = useObservabilityContext();
   const { usageMetrics, isUsageMetricsLoading, isUsageMetricsError } =
     useAgentUsageMetrics({
       workspaceId,
@@ -90,24 +111,45 @@ export function UsageMetricsChart({
       interval: "day",
       disabled: !workspaceId || !agentConfigurationId,
     });
+  const { versionMarkers } = useAgentVersionMarkers({
+    workspaceId,
+    agentConfigurationId,
+    days: period,
+    disabled: !workspaceId || !agentConfigurationId,
+  });
 
-  const legendItems = USAGE_METRICS_LEGEND.map(({ key, label }) => ({
-    key,
-    label,
-    colorClassName: USAGE_METRICS_PALETTE[key],
-  }));
+  const legendItems = legendFromConstant(
+    USAGE_METRICS_LEGEND,
+    USAGE_METRICS_PALETTE,
+    {
+      includeVersionMarker: mode === "timeRange" && versionMarkers.length > 0,
+    }
+  );
 
-  const data = useMemo(
-    () => usageMetrics?.points ?? [],
-    [usageMetrics?.points]
+  const filteredData = filterTimeSeriesByVersionWindow(
+    usageMetrics,
+    mode,
+    selectedVersion,
+    versionMarkers
+  );
+
+  const data = padSeriesToTimeRange<UsageMetricsData>(
+    filteredData,
+    mode,
+    period,
+    (date) => ({ date, messages: 0, conversations: 0, activeUsers: 0 })
   );
 
   return (
     <ChartContainer
       title="Usage Metrics"
+      description="Daily totals of messages, conversations, and active users."
       isLoading={isUsageMetricsLoading}
       errorMessage={
         isUsageMetricsError ? "Failed to load observability data." : undefined
+      }
+      emptyMessage={
+        data.length === 0 ? "No usage metrics for this selection." : undefined
       }
     >
       <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
@@ -116,63 +158,66 @@ export function UsageMetricsChart({
           margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
         >
           <defs>
-            <linearGradient id="fillMessages" x1="0" y1="0" x2="0" y2="1">
-              <stop
-                offset="5%"
-                stopColor="hsl(var(--chart-1))"
-                stopOpacity={0.8}
-              />
-              <stop
-                offset="95%"
-                stopColor="hsl(var(--chart-1))"
-                stopOpacity={0.1}
-              />
+            {/* Gradients use currentColor; color is set via classes */}
+            <linearGradient
+              id="fillMessages"
+              x1="0"
+              y1="0"
+              x2="0"
+              y2="1"
+              className={USAGE_METRICS_PALETTE.messages}
+            >
+              <stop offset="5%" stopColor="currentColor" stopOpacity={0.8} />
+              <stop offset="95%" stopColor="currentColor" stopOpacity={0.1} />
             </linearGradient>
-            <linearGradient id="fillConversations" x1="0" y1="0" x2="0" y2="1">
-              <stop
-                offset="5%"
-                stopColor="hsl(var(--chart-2))"
-                stopOpacity={0.8}
-              />
-              <stop
-                offset="95%"
-                stopColor="hsl(var(--chart-2))"
-                stopOpacity={0.1}
-              />
+            <linearGradient
+              id="fillConversations"
+              x1="0"
+              y1="0"
+              x2="0"
+              y2="1"
+              className={USAGE_METRICS_PALETTE.conversations}
+            >
+              <stop offset="5%" stopColor="currentColor" stopOpacity={0.8} />
+              <stop offset="95%" stopColor="currentColor" stopOpacity={0.1} />
             </linearGradient>
-            <linearGradient id="fillActiveUsers" x1="0" y1="0" x2="0" y2="1">
-              <stop
-                offset="5%"
-                stopColor="hsl(var(--chart-3))"
-                stopOpacity={0.8}
-              />
-              <stop
-                offset="95%"
-                stopColor="hsl(var(--chart-3))"
-                stopOpacity={0.1}
-              />
+            <linearGradient
+              id="fillActiveUsers"
+              x1="0"
+              y1="0"
+              x2="0"
+              y2="1"
+              className={USAGE_METRICS_PALETTE.activeUsers}
+            >
+              <stop offset="5%" stopColor="currentColor" stopOpacity={0.8} />
+              <stop offset="95%" stopColor="currentColor" stopOpacity={0.1} />
             </linearGradient>
           </defs>
-          <CartesianGrid vertical={false} className="stroke-border" />
+          <CartesianGrid
+            vertical={false}
+            className="stroke-border dark:stroke-border-night"
+          />
           <XAxis
             dataKey="date"
             type="category"
             scale="point"
             allowDuplicatedCategory={false}
-            className="text-xs text-muted-foreground"
+            className="text-xs text-muted-foreground dark:text-muted-foreground-night"
             tickLine={false}
             axisLine={false}
             tickMargin={8}
             minTickGap={16}
           />
           <YAxis
-            className="text-xs text-muted-foreground"
+            className="text-xs text-muted-foreground dark:text-muted-foreground-night"
             tickLine={false}
             axisLine={false}
             tickMargin={8}
           />
           <Tooltip
-            content={UsageMetricsTooltip}
+            content={(props: TooltipContentProps<number, string>) => (
+              <UsageMetricsTooltip {...props} versionMarkers={versionMarkers} />
+            )}
             cursor={false}
             wrapperStyle={{ outline: "none" }}
             contentStyle={{
@@ -184,26 +229,30 @@ export function UsageMetricsChart({
           />
           {/* Areas for each usage metric */}
           <Area
-            type="natural"
+            type="monotone"
             dataKey="messages"
             name="Messages"
+            className={USAGE_METRICS_PALETTE.messages}
             fill="url(#fillMessages)"
-            stroke="hsl(var(--chart-1))"
+            stroke="currentColor"
           />
           <Area
-            type="natural"
+            type="monotone"
             dataKey="conversations"
             name="Conversations"
+            className={USAGE_METRICS_PALETTE.conversations}
             fill="url(#fillConversations)"
-            stroke="hsl(var(--chart-2))"
+            stroke="currentColor"
           />
           <Area
-            type="natural"
+            type="monotone"
             dataKey="activeUsers"
             name="Active users"
+            className={USAGE_METRICS_PALETTE.activeUsers}
             fill="url(#fillActiveUsers)"
-            stroke="hsl(var(--chart-3))"
+            stroke="currentColor"
           />
+          <VersionMarkersDots mode={mode} versionMarkers={versionMarkers} />
         </AreaChart>
       </ResponsiveContainer>
       <ChartLegend items={legendItems} />
