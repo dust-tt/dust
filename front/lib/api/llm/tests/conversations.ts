@@ -316,7 +316,7 @@ export const runConversation = async (
                 type: "reasoning",
                 value: {
                   reasoning: event.content.text,
-                  metadata: otherMetadata,
+                  metadata: JSON.stringify(otherMetadata),
                   tokens: 12,
                   provider: config.provider,
                 },

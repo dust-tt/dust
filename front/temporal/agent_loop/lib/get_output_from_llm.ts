@@ -130,10 +130,7 @@ export async function getOutputFromLLMStream(
           type: "reasoning",
           value: {
             reasoning: event.content.text,
-            metadata: {
-              id: event.metadata.id,
-              encrypted_content: event.metadata.encrypted_content,
-            },
+            metadata: JSON.stringify(event.metadata),
             tokens: 0, // Will be updated later from token_usage event
             provider: model.providerId,
             region: region,

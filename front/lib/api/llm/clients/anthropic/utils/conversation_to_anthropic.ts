@@ -10,6 +10,7 @@ import type {
 import assert from "assert";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import { extractEncryptedContentFromMetadata } from "@app/lib/api/llm/utils";
 import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
 import type {
   AssistantContentMessageTypeModel,
@@ -56,12 +57,15 @@ function assistantContentToParam(
         text: content.value,
       };
     case "reasoning":
+      // TODO(LLM-Router): better typing for signature extraction
       assert(content.value.reasoning, "Reasoning content is missing reasoning");
-      const signature = content.value.metadata.encrypted_content ?? "";
+      const signature = extractEncryptedContentFromMetadata(
+        content.value.metadata
+      );
       return {
         type: "thinking",
         thinking: content.value.reasoning,
-        signature,
+        signature: signature,
       };
     case "function_call": {
       return {
