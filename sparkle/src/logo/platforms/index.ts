@@ -14,6 +14,7 @@ export { default as DriveLogo } from "./Drive";
 export { default as FathomLogo } from "./Fathom";
 export { default as FigmaLogo } from "./Figma";
 export { default as FireworksLogo } from "./Fireworks";
+export { default as FrontLogo } from "./Front";
 export { default as FreshdeskLogo } from "./Freshdesk";
 export { default as FreshserviceLogo } from "./Freshservice";
 export { default as GcalLogo } from "./Gcal";
