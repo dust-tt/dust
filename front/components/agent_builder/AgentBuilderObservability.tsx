@@ -57,7 +57,7 @@ function ChartContainerSkeleton() {
   return (
     <div
       className={cn(
-        "bg-card flex flex-col rounded-lg border border-border p-4"
+        "bg-card flex flex-col rounded-lg border border-border p-4 dark:border-border-night"
       )}
     >
       <div className="mb-4 flex items-center justify-between">
