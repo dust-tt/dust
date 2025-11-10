@@ -149,8 +149,26 @@ export function ToolsPicker({
                     filteredServerViews[0].sId
                   );
                   if (isSelected) {
+                    trackEvent({
+                      area: TRACKING_AREAS.TOOLS,
+                      object: "tool_deselect",
+                      action: TRACKING_ACTIONS.SELECT,
+                      extra: {
+                        tool_id: filteredServerViews[0].sId,
+                        tool_name: filteredServerViews[0].server.name,
+                      },
+                    });
                     onDeselect(filteredServerViews[0]);
                   } else {
+                    trackEvent({
+                      area: TRACKING_AREAS.TOOLS,
+                      object: "tool_select",
+                      action: TRACKING_ACTIONS.SELECT,
+                      extra: {
+                        tool_id: filteredServerViews[0].sId,
+                        tool_name: filteredServerViews[0].server.name,
+                      },
+                    });
                     onSelect(filteredServerViews[0]);
                   }
                   setSearchText("");
@@ -177,6 +195,15 @@ export function ToolsPicker({
                     onClick={(e) => {
                       e.stopPropagation();
                       e.preventDefault();
+                      trackEvent({
+                        area: TRACKING_AREAS.TOOLS,
+                        object: "tool_select",
+                        action: TRACKING_ACTIONS.SELECT,
+                        extra: {
+                          tool_id: v.sId,
+                          tool_name: v.server.name,
+                        },
+                      });
                       onSelect(v);
                       setIsOpen(false);
                     }}
