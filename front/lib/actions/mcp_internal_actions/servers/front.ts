@@ -839,29 +839,26 @@ const createServer = (
             );
           }
 
-          // Use the channel address as a resource alias (format: alt:address:EMAIL)
-          // The API will validate if the channel exists
           const channel_id = `alt:address:${channelAddress}`;
-
-          // Normalize newlines: convert all newline types to \n, then ensure
-          // single newlines become double newlines for proper markdown paragraph breaks.
-          // This preserves line breaks in the Front draft editor.
-          const normalizedBody = body
-            .replace(/\r\n/g, "\n")
-            .replace(/\r/g, "\n")
-            .replace(/\n(?!\n)/g, "\n\n")
-            // Collapse 3+ consecutive newlines to double newlines
-            .replace(/\n{3,}/g, "\n\n")
-            // Remove leading and trailing newlines
-            .replace(/^\n+/, "")
-            .replace(/\n+$/, "");
+          const htmlBody = body
+            .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+            .replace(/\*(.*?)\*/g, "<em>$1</em>")
+            .replace(/__(.*?)__/g, "<strong>$1</strong>")
+            .replace(/_(.*?)_/g, "<em>$1</em>")
+            .replace(/`(.*?)`/g, "<code>$1</code>")
+            .replace(/~~(.*?)~~/g, "<del>$1</del>")
+            .replace(
+              /(https?:\/\/[^\s]+)/g,
+              '<a href="$1" target="_blank">$1</a>'
+            )
+            .replace(/\r\n|\r|\n/g, "<br>\n");
 
           await makeFrontAPIRequest({
             method: "POST",
             endpoint: `conversations/${conversation_id}/drafts`,
             apiToken,
             body: {
-              body: normalizedBody,
+              body: htmlBody,
               mode: "shared",
               channel_id,
               ...(author_id && { author_id }),
