@@ -66,7 +66,6 @@ const truncateToMidnightUTC = (timestamp: number): number => {
     return date.getTime();
 };
 
-
 // Filters a generic time-series of points with a `timestamp` number to the
 // selected version window determined by version markers. If no selection or
 // markers are provided, returns the original points.
@@ -94,6 +93,8 @@ export function filterTimeSeriesByVersionWindow<
     return pts;
   }
 
+  // We only care if the point time is before/after of version marker's start/end date, 
+  // and no need to check the precise the timestamp.
   const start = truncateToMidnightUTC(versionMarkers[idx].timestamp);
   const end =
     idx + 1 < versionMarkers.length

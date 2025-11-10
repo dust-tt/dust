@@ -26,6 +26,7 @@ import { ChartTooltipCard } from "@app/components/agent_builder/observability/sh
 import { VersionMarkersDots } from "@app/components/agent_builder/observability/shared/VersionMarkers";
 import { padSeriesToTimeRange } from "@app/components/agent_builder/observability/utils";
 import { useAgentVersionMarkers } from "@app/lib/swr/assistants";
+import { formatShortDate } from "@app/lib/utils/timestamps";
 
 interface LatencyData {
   timestamp: number;
@@ -105,7 +106,8 @@ export function LatencyChart({
     if (mode === "timeRange") {
       return padSeriesToTimeRange(rawData, mode, period, zeroFactory);
     }
-    return rawData;
+  
+    return rawData.map(data => ({...data, date: formatShortDate(data.timestamp)}));
   }, [rawData, mode, period]);
 
   const legendItems = legendFromConstant(LATENCY_LEGEND, LATENCY_PALETTE, {
@@ -143,6 +145,9 @@ export function LatencyChart({
           />
           <XAxis
             dataKey="date"
+            type="category"
+            scale="point"
+            allowDuplicatedCategory={false}
             className="text-xs text-muted-foreground dark:text-muted-foreground-night"
             tickLine={false}
             axisLine={false}
