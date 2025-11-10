@@ -177,6 +177,15 @@ export function ToolsPicker({
                     onClick={(e) => {
                       e.stopPropagation();
                       e.preventDefault();
+                      trackEvent({
+                        area: TRACKING_AREAS.TOOLS,
+                        object: "tool_select",
+                        action: TRACKING_ACTIONS.SELECT,
+                        extra: {
+                          tool_id: v.sId,
+                          tool_name: v.server.name,
+                        },
+                      });
                       onSelect(v);
                       setIsOpen(false);
                     }}

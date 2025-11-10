@@ -540,6 +540,7 @@ export async function submitAgentBuilderForm({
         object: "create_agent",
         action: TRACKING_ACTIONS.SUBMIT,
         extra: {
+          agent_id: agentConfiguration.sId,
           scope: formData.agentSettings.scope,
           has_actions: processedActions.length > 0,
         },

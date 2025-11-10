@@ -123,7 +123,7 @@ export const AddToolsMenu = ({
                     createInternalMCPServer(mcpServer);
                   }
                 },
-                { tool_name: mcpServer.name }
+                { tool_name: mcpServer.name, tool_id: mcpServer.sId }
               )}
             />
           ))}
