@@ -1608,7 +1608,7 @@ The directive should be used to display a clickable version of the agent name in
         provider: "zendesk" as const,
         supported_use_cases: ["platform_actions", "personal_actions"] as const,
       },
-      icon: "ActionDocumentTextIcon",
+      icon: "ZendeskLogo",
       documentationUrl: null,
       instructions: null,
     },
