@@ -1,5 +1,5 @@
-import { Spinner } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useRef } from "react";
+import { Spinner, TestTubeIcon } from "@dust-tt/sparkle";
+import React, { useEffect, useMemo, useRef } from "react";
 import { useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -8,6 +8,8 @@ import {
   useDraftConversation,
 } from "@app/components/agent_builder/hooks/useAgentPreview";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
+import { EmptyPlaceholder } from "@app/components/agent_builder/observability/shared/EmptyPlaceholder";
+import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
 import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
 import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
@@ -240,10 +242,13 @@ export function AgentBuilderPreview() {
   const renderContent = () => {
     if (!hasContent) {
       return (
-        <EmptyState
-          message="Ready to test your agent?"
-          description="Add some instructions or actions to your agent to start testing it here."
-        />
+        <TabContentLayout title="Preview">
+          <EmptyPlaceholder
+            icon={TestTubeIcon}
+            title="Ready to test your agent?"
+            description="Add some instructions or actions to your agent to start testing it here."
+          />
+        </TabContentLayout>
       );
     }
 
