@@ -7,13 +7,10 @@ import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 export class ZendeskClient {
-  private readonly subdomain: string;
-  private readonly accessToken: string;
-
-  constructor(subdomain: string, accessToken: string) {
-    this.subdomain = subdomain;
-    this.accessToken = accessToken;
-  }
+  constructor(
+    private subdomain: string,
+    private accessToken: string
+  ) {}
 
   private async getRequest<T extends z.Schema>(
     endpoint: string,
