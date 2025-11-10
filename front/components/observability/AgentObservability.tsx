@@ -16,7 +16,6 @@ import { TabContentLayout } from "@app/components/agent_builder/observability/Ta
 import { SharedObservabilityFilterSelector } from "@app/components/observability/SharedObservabilityFilterSelector";
 import { useAgentAnalytics } from "@app/lib/swr/assistants";
 
-
 interface AgentObservabilityProps {
   workspaceId: string;
   agentConfigurationId: string;
@@ -49,7 +48,7 @@ export function AgentObservability({
       <TabContentChildSectionLayout title="Overview">
         {isAgentAnalyticsLoading ? (
           <div className="w-full p-6">
-            <Spinner variant="dark" />
+            <Spinner />
           </div>
         ) : (
           <CardGrid>
