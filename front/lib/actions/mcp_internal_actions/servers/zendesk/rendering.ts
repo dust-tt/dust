@@ -4,7 +4,7 @@ export function renderTicket(ticket: ZendeskTicket): string {
   const lines = [
     `ID: ${ticket.id}`,
     `URL: ${ticket.url}`,
-    `Subject: ${ticket.subject || "No subject"}`,
+    `Subject: ${ticket.subject ?? "No subject"}`,
     `Status: ${ticket.status}`,
   ];
 
@@ -50,9 +50,7 @@ export function renderTicket(ticket: ZendeskTicket): string {
   if (ticket.custom_fields.length > 0) {
     lines.push(`\nCustom Fields:`);
     ticket.custom_fields.forEach((field) => {
-      lines.push(
-        `  - Field ${field.id}: ${field.value !== null ? field.value : "null"}`
-      );
+      lines.push(`  - Field ${field.id}: ${field.value ?? "null"}`);
     });
   }
 
