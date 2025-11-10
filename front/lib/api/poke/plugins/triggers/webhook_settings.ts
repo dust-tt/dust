@@ -2,7 +2,6 @@ import { createPlugin } from "@app/lib/api/poke/types";
 import { TriggerModel } from "@app/lib/models/assistant/triggers/triggers";
 import { Err, Ok } from "@app/types";
 import type { TriggerExecutionMode } from "@app/types/assistant/triggers";
-import { isWebhookTrigger } from "@app/types/assistant/triggers";
 
 export const webhookSettingsPlugin = createPlugin({
   manifest: {
