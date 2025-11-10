@@ -18,7 +18,8 @@ import type {
   Result,
 } from "@app/types";
 import { Err, Ok } from "@app/types";
-import { WorkspaceResource } from "./workspace_resource";
+
+import type { WorkspaceResource } from "./workspace_resource";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
