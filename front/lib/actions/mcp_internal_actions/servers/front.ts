@@ -902,14 +902,20 @@ const createServer = (
           // Use the channel address as a resource alias (format: alt:address:EMAIL)
           // The API will validate if the channel exists
           const channel_id = `alt:address:${channelAddress}`;
-          logger.info(
-            {
-              conversation_id,
-              channel_address: channelAddress,
-              channel_id,
-            },
-            "Using channel ID for draft creation"
-          );
+
+          // Normalize newlines: convert all newline types to \n, then ensure
+          // single newlines become double newlines for proper markdown paragraph breaks.
+          // This preserves line breaks in the Front draft editor.
+          const normalizedBody = body
+            .replace(/\r\n/g, "\n")
+            .replace(/\r/g, "\n")
+            // Replace single newlines (not already part of double newlines) with double newlines
+            .replace(/\n(?!\n)/g, "\n\n")
+            // Collapse 3+ consecutive newlines to double newlines
+            .replace(/\n{3,}/g, "\n\n")
+            // Remove leading and trailing newlines
+            .replace(/^\n+/, "")
+            .replace(/\n+$/, "");
 
           // Create draft reply using the conversations endpoint
           // Endpoint: POST /conversations/{conversation_id}/drafts
@@ -918,7 +924,7 @@ const createServer = (
             endpoint: `conversations/${conversation_id}/drafts`,
             apiToken,
             body: {
-              body,
+              body: normalizedBody,
               mode: "shared",
               channel_id,
               ...(author_id && { author_id }),
