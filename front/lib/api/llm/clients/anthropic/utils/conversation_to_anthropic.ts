@@ -60,7 +60,6 @@ function assistantContentToParam(
         text: content.value,
       };
     case "reasoning":
-      // TODO(LLM-Router): better typing for signature extraction
       assert(content.value.reasoning, "Reasoning content is missing reasoning");
       const signature = extractEncryptedContentFromMetadata(
         content.value.metadata
