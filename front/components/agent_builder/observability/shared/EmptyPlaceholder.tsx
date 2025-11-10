@@ -13,7 +13,7 @@ export function EmptyPlaceholder({
   description,
 }: EmptyPlaceholderProps) {
   return (
-    <div className="flex min-h-[400px] flex-col items-center justify-center gap-3 text-center">
+    <div className="flex h-96 flex-col items-center justify-center gap-3 text-center">
       <Icon visual={icon} size="lg" className="text-muted-foreground" />
       <div className="flex flex-col gap-2">
         <div className="text-base font-medium text-foreground dark:text-foreground-night">
