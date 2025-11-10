@@ -10,6 +10,6 @@ SET value = jsonb_set(
   to_jsonb((value->'value'->'metadata')::text)
 )
 WHERE type = 'reasoning'
-  AND "createdAt" >= '2025-11-10'
+  AND "agentMessageId" IN (SELECT id FROM agent_messages WHERE "createdAt" >= '2025-11-10')
   AND jsonb_typeof(value->'value'->'metadata') = 'object';
 
