@@ -51,13 +51,6 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     );
   }
 
-  static async getPendingForEmail(
-    email: string
-  ): Promise<MembershipInvitationResource | null> {
-    const pendingInvitations = await this.listPendingForEmail({ email });
-    return pendingInvitations[0] ?? null;
-  }
-
   static async listPendingForEmail({
     email,
     includeExpired = false,
