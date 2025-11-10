@@ -32,9 +32,10 @@ import {
   useAgentUsageMetrics,
   useAgentVersionMarkers,
 } from "@app/lib/swr/assistants";
+import { formatShortDate } from "@app/lib/utils/timestamps";
 
 interface UsageMetricsData {
-  date: string;
+  timestamp: number;
   messages: number;
   conversations: number;
   activeUsers: number;
@@ -50,12 +51,21 @@ function isUsageMetricsData(data: unknown): data is UsageMetricsData {
   );
 }
 
+function zeroFactory(timestamp: number) {
+  return {
+    timestamp,
+    messages: 0,
+    conversations: 0,
+    activeUsers: 0,
+  };
+}
+
 function UsageMetricsTooltip(
   props: TooltipContentProps<number, string> & {
     versionMarkers: AgentVersionMarker[];
   }
 ): JSX.Element | null {
-  const { active, payload, label, versionMarkers } = props;
+  const { active, payload, versionMarkers } = props;
   if (!active || !payload || payload.length === 0) {
     return null;
   }
@@ -66,14 +76,13 @@ function UsageMetricsTooltip(
   }
 
   const row = first.payload;
-  const title = typeof label === "string" ? label : String(label);
 
-  const versionMarker = findVersionMarkerForDate(row.date, versionMarkers);
+  const versionMarker = findVersionMarkerForDate(row.timestamp, versionMarkers);
   const version = versionMarker ? ` - v${versionMarker.version}` : "";
 
   return (
     <ChartTooltipCard
-      title={`${title}${version}`}
+      title={`${row.date}${version}`}
       rows={[
         {
           label: "Messages",
@@ -137,7 +146,7 @@ export function UsageMetricsChart({
     filteredData,
     mode,
     period,
-    (date) => ({ date, messages: 0, conversations: 0, activeUsers: 0 })
+    zeroFactory
   );
 
   return (
@@ -199,9 +208,6 @@ export function UsageMetricsChart({
           />
           <XAxis
             dataKey="date"
-            type="category"
-            scale="point"
-            allowDuplicatedCategory={false}
             className="text-xs text-muted-foreground dark:text-muted-foreground-night"
             tickLine={false}
             axisLine={false}

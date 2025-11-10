@@ -21,7 +21,16 @@ interface SharedObservabilityFilterSelectorProps {
 }
 
 function getVersionValue(versionMarker: AgentVersionMarker) {
-  return `v${versionMarker.version}: ${versionMarker.timestamp}`;
+  const date = new Date(versionMarker.timestamp);
+  const formattedTimeDisplay = date.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  return `v${versionMarker.version}: ${formattedTimeDisplay}`;
 }
 
 export function SharedObservabilityFilterSelector({

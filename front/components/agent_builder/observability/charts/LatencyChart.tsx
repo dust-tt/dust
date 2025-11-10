@@ -28,6 +28,8 @@ import { padSeriesToTimeRange } from "@app/components/agent_builder/observabilit
 import { useAgentVersionMarkers } from "@app/lib/swr/assistants";
 
 interface LatencyData {
+  timestamp: number;
+  date: string;
   messages: number;
   average: number;
 }
@@ -36,10 +38,18 @@ function isLatencyData(data: unknown): data is LatencyData {
   return typeof data === "object" && data !== null && "average" in data;
 }
 
+function zeroFactory(timestamp: number) {
+  return {
+    timestamp,
+    messages: 0,
+    average: 0,
+  };
+}
+
 function LatencyTooltip(
   props: TooltipContentProps<number, string>
 ): JSX.Element | null {
-  const { active, payload, label } = props;
+  const { active, payload } = props;
   if (!active || !payload || payload.length === 0) {
     return null;
   }
@@ -48,10 +58,10 @@ function LatencyTooltip(
     return null;
   }
   const row = first.payload;
-  const title = typeof label === "string" ? label : String(label);
+
   return (
     <ChartTooltipCard
-      title={title}
+      title={row.date}
       rows={[
         {
           label: "Average time",
@@ -93,16 +103,7 @@ export function LatencyChart({
 
   const data = useMemo(() => {
     if (mode === "timeRange") {
-      const dataWithDate = rawData.map((item) => ({
-        ...item,
-        date: item.date!,
-      }));
-      return padSeriesToTimeRange(dataWithDate, mode, period, (date) => ({
-        date,
-        label: date,
-        messages: 0,
-        average: 0,
-      }));
+      return padSeriesToTimeRange(rawData, mode, period, zeroFactory);
     }
     return rawData;
   }, [rawData, mode, period]);
@@ -142,9 +143,6 @@ export function LatencyChart({
           />
           <XAxis
             dataKey="date"
-            type="category"
-            scale="point"
-            allowDuplicatedCategory={false}
             className="text-xs text-muted-foreground dark:text-muted-foreground-night"
             tickLine={false}
             axisLine={false}

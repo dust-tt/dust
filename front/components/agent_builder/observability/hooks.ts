@@ -16,6 +16,7 @@ import {
   useAgentToolExecution,
   useAgentToolStepIndex,
 } from "@app/lib/swr/assistants";
+import { formatShortDate } from "@app/lib/utils/timestamps";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 type ToolUsageResult = {
@@ -36,6 +37,7 @@ type ToolDataItem = {
 
 type ErrorRateDataResult = {
   data: {
+    timestamp: number;
     date: string;
     total: number;
     failed: number;
@@ -47,6 +49,7 @@ type ErrorRateDataResult = {
 
 type LatencyDataResult = {
   data: {
+    timestamp: number;
     date: string;
     messages: number;
     average: number;
@@ -274,7 +277,10 @@ export function useErrorRateData(params: {
   );
 
   return {
-    data: errorRate,
+    data: errorRate.map((item) => ({
+      ...item,
+      date: formatShortDate(item.timestamp),
+    })),
     isLoading: isErrorRateLoading,
     errorMessage: isErrorRateError
       ? "Failed to load error rate data."
@@ -301,7 +307,10 @@ export function useLatencyData(params: {
   });
 
   return {
-    data: latency,
+    data: latency.map((item) => ({
+      ...item,
+      date: formatShortDate(item.timestamp),
+    })),
     isLoading: isLatencyLoading,
     errorMessage: isLatencyError ? "Failed to load latency data." : undefined,
   };

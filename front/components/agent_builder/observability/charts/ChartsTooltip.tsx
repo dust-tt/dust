@@ -39,6 +39,7 @@ export function ChartsTooltip({
 }
 
 interface FeedbackDistributionData {
+  timestamp: number;
   positive: number;
   negative: number;
 }
@@ -57,7 +58,7 @@ function isFeedbackDistributionData(
 export function FeedbackDistributionTooltip(
   props: TooltipContentProps<number, string>
 ) {
-  const { active, payload, label } = props;
+  const { active, payload } = props;
   if (!active || !payload || payload.length === 0) {
     return null;
   }
@@ -66,7 +67,12 @@ export function FeedbackDistributionTooltip(
     return null;
   }
   const row = first.payload;
-  const title = typeof label === "string" ? label : String(label);
+  const date = new Date(row.timestamp);
+  const title = date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
   return (
     <ChartTooltipCard
       title={title}

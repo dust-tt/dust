@@ -33,6 +33,8 @@ import {
 import { useAgentVersionMarkers } from "@app/lib/swr/assistants";
 
 interface ErrorRateData {
+  timestamp: number;
+  date: string;
   total: number;
   failed: number;
   errorRate: number;
@@ -42,10 +44,18 @@ function isErrorRateData(data: unknown): data is ErrorRateData {
   return typeof data === "object" && data !== null && "errorRate" in data;
 }
 
+function zeroFactory(timestamp: number) {
+  return {
+    timestamp,
+    total: 0,
+    failed: 0,
+    errorRate: 0,
+  };
+}
+
 function ErrorRateTooltip({
   active,
   payload,
-  label,
 }: TooltipContentProps<number, string>): JSX.Element | null {
   if (!active || !payload || payload.length === 0) {
     return null;
@@ -55,10 +65,9 @@ function ErrorRateTooltip({
   if (!row || !isErrorRateData(row)) {
     return null;
   }
-  const title = typeof label === "number" ? String(label) : label;
   return (
     <ChartTooltipCard
-      title={title}
+      title={row.date}
       rows={[
         {
           label: "Error rate",
@@ -110,17 +119,7 @@ export function ErrorRateChart({
 
   const data = useMemo(() => {
     if (mode === "timeRange") {
-      const dataWithDate = rawData.map((item) => ({
-        ...item,
-        date: item.date!,
-      }));
-      return padSeriesToTimeRange(dataWithDate, mode, period, (date) => ({
-        date,
-        label: date,
-        total: 0,
-        failed: 0,
-        errorRate: 0,
-      }));
+      return padSeriesToTimeRange(rawData, mode, period, zeroFactory);
     }
     return rawData;
   }, [rawData, mode, period]);
@@ -178,9 +177,6 @@ export function ErrorRateChart({
           />
           <XAxis
             dataKey="date"
-            type="category"
-            scale="point"
-            allowDuplicatedCategory={false}
             className="text-xs text-muted-foreground dark:text-muted-foreground-night"
             tickLine={false}
             axisLine={false}
