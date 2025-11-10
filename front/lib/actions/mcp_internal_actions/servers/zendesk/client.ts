@@ -1,16 +1,14 @@
 import type { z } from "zod";
 
-import {
-  ZendeskTicketResponseSchema,
-  type ZendeskTicket,
-} from "@app/lib/actions/mcp_internal_actions/servers/zendesk/types";
+import type { ZendeskTicket } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/types";
+import { ZendeskTicketResponseSchema } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/types";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 export class ZendeskClient {
-  private subdomain: string;
-  private accessToken: string;
+  private readonly subdomain: string;
+  private readonly accessToken: string;
 
   constructor(subdomain: string, accessToken: string) {
     this.subdomain = subdomain;
