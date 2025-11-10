@@ -51,12 +51,5 @@ export function renderTicket(ticket: ZendeskTicket): string {
   lines.push(`\nCreated: ${new Date(ticket.created_at).toISOString()}`);
   lines.push(`Updated: ${new Date(ticket.updated_at).toISOString()}`);
 
-  if (ticket.custom_fields.length > 0) {
-    lines.push(`\nCustom Fields:`);
-    ticket.custom_fields.forEach((field) => {
-      lines.push(`  - Field ${field.id}: ${field.value ?? "null"}`);
-    });
-  }
-
   return lines.join("\n");
 }
