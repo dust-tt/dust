@@ -1593,7 +1593,9 @@ The directive should be used to display a clickable version of the agent name in
     id: 42,
     availability: "manual",
     allowMultipleInstances: true,
-    isRestricted: undefined,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("zendesk_tool");
+    },
     isPreview: false,
     tools_stakes: {
       get_ticket: "never_ask",
