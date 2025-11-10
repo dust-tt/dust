@@ -1603,7 +1603,8 @@ The directive should be used to display a clickable version of the agent name in
     serverInfo: {
       name: "zendesk",
       version: "1.0.0",
-      description: "Access support tickets and customer data.",
+      description:
+        "Access and manage support tickets, help center and customer interactions.",
       authorization: {
         provider: "zendesk" as const,
         supported_use_cases: ["platform_actions", "personal_actions"] as const,
