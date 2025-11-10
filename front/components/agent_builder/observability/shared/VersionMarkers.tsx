@@ -42,11 +42,10 @@ export function VersionMarkersDots({
     return null;
   }
 
-  const formattedVersionMakers = versionMarkers.map(marker => ({
+  const formattedVersionMakers = versionMarkers.map((marker) => ({
     ...marker,
-    date: formatShortDate(marker.timestamp)
-  }))
-
+    date: formatShortDate(marker.timestamp),
+  }));
 
   return (
     <>
@@ -65,4 +64,3 @@ export function VersionMarkersDots({
     </>
   );
 }
-

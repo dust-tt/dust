@@ -61,9 +61,9 @@ export function findVersionMarkerForDate(
 }
 
 const truncateToMidnightUTC = (timestamp: number): number => {
-    const date = new Date(timestamp);
-    date.setUTCHours(0, 0, 0, 0);
-    return date.getTime();
+  const date = new Date(timestamp);
+  date.setUTCHours(0, 0, 0, 0);
+  return date.getTime();
 };
 
 // Filters a generic time-series of points with a `timestamp` number to the
@@ -93,7 +93,7 @@ export function filterTimeSeriesByVersionWindow<
     return pts;
   }
 
-  // We only care if the point time is before/after of version marker's start/end date, 
+  // We only care if the point time is before/after of version marker's start/end date,
   // and no need to check the precise the timestamp.
   const start = truncateToMidnightUTC(versionMarkers[idx].timestamp);
   const end =
@@ -154,10 +154,13 @@ export function padSeriesToTimeRange<T extends { timestamp: number }>(
   mode: ObservabilityMode,
   periodDays: number,
   zeroFactory: (timestamp: number) => T
-): T[] {
+) {
   const pts = points ?? [];
   if (mode !== "timeRange") {
-    const formattedPts = pts.map((pt) => ({ ...pt, date: formatShortDate(pt.timestamp) }));
+    const formattedPts = pts.map((pt) => ({
+      ...pt,
+      date: formatShortDate(pt.timestamp),
+    }));
     return formattedPts;
   }
 
@@ -170,7 +173,7 @@ export function padSeriesToTimeRange<T extends { timestamp: number }>(
   const dayMs = 24 * 60 * 60 * 1000;
   const numDays = Math.floor((endTime - startTime) / dayMs) + 1;
 
-  const out: T[] = [];
+  const out = [];
   for (let i = 0; i < numDays; i++) {
     const timestamp = startTime + i * dayMs;
     const point = byTimestamp.get(timestamp) ?? zeroFactory(timestamp);

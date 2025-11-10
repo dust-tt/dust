@@ -106,8 +106,11 @@ export function LatencyChart({
     if (mode === "timeRange") {
       return padSeriesToTimeRange(rawData, mode, period, zeroFactory);
     }
-  
-    return rawData.map(data => ({...data, date: formatShortDate(data.timestamp)}));
+
+    return rawData.map((data) => ({
+      ...data,
+      date: formatShortDate(data.timestamp),
+    }));
   }, [rawData, mode, period]);
 
   const legendItems = legendFromConstant(LATENCY_LEGEND, LATENCY_PALETTE, {
