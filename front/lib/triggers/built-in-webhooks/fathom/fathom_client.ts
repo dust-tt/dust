@@ -33,7 +33,7 @@ export class FathomClient {
 
   async createWebhook(
     config: FathomWebhookConfig
-  ): Promise<Result<Webhook, FathomError>> {
+  ): Promise<Result<Webhook, FathomError | Error>> {
     logger.info({ config }, "HELLO");
     let webhook: Webhook | undefined;
     try {
@@ -46,7 +46,6 @@ export class FathomClient {
         includeCrmMatches: config.includeCrmMatches,
       });
     } catch (error) {
-      logger.error({ error }, "Error creating Fathom webhook");
       if (error instanceof FathomError) {
         return new Err(error);
       }
