@@ -4,7 +4,6 @@ import {
   isDustAppChatBlockType,
   runActionStreamed,
 } from "@app/lib/actions/server";
-import { parseLlmReasoningMetadata } from "@app/lib/api/llm/utils";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
@@ -189,14 +188,10 @@ export async function getOutputFromAction(
 
         const contents = (block.message.contents ?? []).map((content) => {
           if (content.type === "reasoning") {
-            const parsedMetadata = parseLlmReasoningMetadata(
-              content.value.metadata
-            );
             return {
               ...content,
               value: {
-                reasoning: content.value.reasoning,
-                metadata: parsedMetadata,
+                ...content.value,
                 tokens: 0, // Will be updated for the last reasoning item
                 provider: model.providerId,
                 region,

@@ -10,10 +10,7 @@ export type ReasoningContentType = {
   type: "reasoning";
   value: {
     reasoning?: string;
-    metadata: {
-      id?: string;
-      encrypted_content?: string;
-    };
+    metadata: string;
     tokens: number;
     provider: ModelProviderIdType;
     region?: string | null;
