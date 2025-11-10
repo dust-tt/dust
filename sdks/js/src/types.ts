@@ -683,7 +683,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "use_requested_space_ids"
   | "web_summarization"
   | "xai_feature"
-  | "zendesk_tool"
+  | "zendesk_features"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

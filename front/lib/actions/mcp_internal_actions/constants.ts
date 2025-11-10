@@ -1594,7 +1594,7 @@ The directive should be used to display a clickable version of the agent name in
     availability: "manual",
     allowMultipleInstances: true,
     isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("zendesk_tool");
+      return !featureFlags.includes("zendesk_features");
     },
     isPreview: false,
     tools_stakes: {
