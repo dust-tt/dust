@@ -152,14 +152,14 @@ export async function updateOrCreateInvitation(
 export function getMembershipInvitationToken(
   invitation: MembershipInvitationType
 ) {
-  const expirationEpochSeconds =
-    Math.floor(invitation.createdAt / 1000) + INVITATION_EXPIRATION_TIME_SEC;
+  const iat = Math.floor(invitation.createdAt / 1000);
+  const exp = iat + INVITATION_EXPIRATION_TIME_SEC;
 
   return sign(
     {
       membershipInvitationId: invitation.id,
-      iat: Math.floor(invitation.createdAt / 1000),
-      exp: expirationEpochSeconds,
+      iat,
+      exp,
     },
     config.getDustInviteTokenSecret()
   );
