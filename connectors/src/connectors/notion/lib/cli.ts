@@ -6,12 +6,11 @@ import { updateAllParentsFields } from "@connectors/connectors/notion/lib/parent
 import { pageOrDbIdFromUrl } from "@connectors/connectors/notion/lib/utils";
 import {
   clearParentsLastUpdatedAt,
-  deleteDatabase,
-  deletePage,
   updateParentsFields,
 } from "@connectors/connectors/notion/temporal/activities";
 import {
   launchUpdateOrphanedResourcesParentsWorkflow,
+  sendDeletionCrawlSignal,
   stopNotionGarbageCollectorWorkflow,
 } from "@connectors/connectors/notion/temporal/client";
 import { QUEUE_NAME } from "@connectors/connectors/notion/temporal/config";
@@ -21,7 +20,6 @@ import {
   upsertDatabaseWorkflow,
   upsertPageWorkflow,
 } from "@connectors/connectors/notion/temporal/workflows/admins";
-import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
@@ -163,8 +161,6 @@ export async function deleteNotionUrl({
 }) {
   const pageOrDbId = pageOrDbIdFromUrl(url);
 
-  const dataSourceConfig = await dataSourceConfigFromConnector(connector);
-
   const page = await NotionPage.findOne({
     where: {
       notionPageId: pageOrDbId,
@@ -172,12 +168,7 @@ export async function deleteNotionUrl({
     },
   });
   if (page) {
-    await deletePage({
-      connectorId: connector.id,
-      dataSourceConfig,
-      pageId: page.notionPageId,
-      logger,
-    });
+    await sendDeletionCrawlSignal(connector.id, page.notionPageId, "page");
   }
 
   const db = await NotionDatabase.findOne({
@@ -188,12 +179,11 @@ export async function deleteNotionUrl({
   });
 
   if (db) {
-    await deleteDatabase({
-      connectorId: connector.id,
-      dataSourceConfig,
-      databaseId: db.notionDatabaseId,
-      logger,
-    });
+    await sendDeletionCrawlSignal(
+      connector.id,
+      db.notionDatabaseId,
+      "database"
+    );
   }
 
   return { deletedPage: !!page, deletedDb: !!db };
