@@ -279,7 +279,7 @@ export const INTERNAL_MCP_SERVERS = {
     serverInfo: {
       name: "hubspot",
       version: "1.0.0",
-      description: "Access CRM contacts, deals, and customer activities.",
+      description: "Access CRM contacts, deals and customer activities.",
       authorization: {
         provider: "hubspot" as const,
         supported_use_cases: ["platform_actions", "personal_actions"] as const,
@@ -674,7 +674,7 @@ The directive should be used to display a clickable version of the agent name in
     serverInfo: {
       name: "monday",
       version: "1.0.0",
-      description: "Manage project boards, items, and updates.",
+      description: "Manage project boards, items and updates.",
       authorization: {
         provider: "monday" as const,
         supported_use_cases: ["personal_actions", "platform_actions"] as const,
@@ -742,7 +742,7 @@ The directive should be used to display a clickable version of the agent name in
     serverInfo: {
       name: "jira",
       version: "1.0.0",
-      description: "Create, update, and track project issues.",
+      description: "Create, update and track project issues.",
       authorization: {
         provider: "jira" as const,
         supported_use_cases: ["platform_actions", "personal_actions"] as const,
@@ -893,7 +893,7 @@ The directive should be used to display a clickable version of the agent name in
       name: "freshservice",
       icon: "FreshserviceLogo",
       version: "1.0.0",
-      description: "Connect to tickets, schedules, and service catalog.",
+      description: "Connect to tickets, schedules and service catalog.",
       authorization: {
         provider: "freshservice" as const,
         supported_use_cases: ["platform_actions", "personal_actions"] as const,
