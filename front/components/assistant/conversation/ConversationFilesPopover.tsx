@@ -223,7 +223,7 @@ export const ConversationFilesPopover = ({
         />
       </PopoverTrigger>
       <PopoverContent
-        className="flex w-96 max-h-[80vh] flex-col gap-3 overflow-hidden"
+        className="flex w-96 flex-col gap-3"
         align="end"
         onOpenAutoFocus={(e) => e.preventDefault()}
         onAnimationEnd={() => {
@@ -232,11 +232,15 @@ export const ConversationFilesPopover = ({
           }
         }}
       >
-        <div className="heading-base mb-2 text-primary dark:text-primary-night">
-          Generated Content
-        </div>
-        {/* Scroll within the content area only. */}
-        <ScrollArea className="flex-1 flex flex-col gap-3">
+        {/*
+          Constrain height so long lists become scrollable within the popover.
+          Without an explicit height, the ScrollArea expands with content and
+          the popover can overflow the viewport, making items unreachable.
+        */}
+        <ScrollArea className="flex max-h-[80vh] flex-col gap-3">
+          <div className="heading-base mb-2 text-primary dark:text-primary-night">
+            Generated Content
+          </div>
 
           {isConversationFilesLoading ? (
             <div className="flex w-full items-center justify-center p-8">
