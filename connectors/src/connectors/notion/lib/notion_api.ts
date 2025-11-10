@@ -212,15 +212,22 @@ export async function getPagesAndDatabasesEditedSince({
       );
       tries += 1;
       if (tries >= retry.retries) {
-        // We've observed some Notion workspaces where searching for databases consistently fails
-        // with a 400 cursor error. Since we've already retried a few times, we just log a warning
-        // and return an empty result set to avoid blocking the workflow entirely.
+        // We've observed some Notion workspaces where the search API consistently fails. This happens
+        // in two different ways:
+        // - A 400 "The start_cursor provided is invalid" error
+        // - A 504 Gateway Timeout error after 60 seconds
+        // I'm guessing in most cases they are the same, and the 504 would have eventually resulted
+        // in a 400 if it didn't get cut off first.
+        // Since we've already retried a few times, we just log a warning and return an empty result
+        // set to avoid blocking the workflow entirely.
         if (
-          filter === "database" &&
           APIResponseError.isAPIResponseError(e) &&
-          e.status === 400
+          (e.status === 400 || e.status === 504)
         ) {
-          tryLogger.warn("Ignoring repeated 400 errors for database search.");
+          tryLogger.warn(
+            { error: e },
+            "Ignoring repeated 400 or 504 errors for Notion search API."
+          );
           return { pages: [], dbs: [], nextCursor: null };
         }
         throw e;
