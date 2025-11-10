@@ -21,7 +21,7 @@ export type ResourceTypeMap = {
   data_sources: DataSourceResource;
   spaces: SpaceResource;
   data_source_views: DataSourceViewResource;
-  triggers: TriggerType;
+  triggers: TriggerResource;
   global: null;
 };
 
@@ -55,8 +55,7 @@ export async function fetchPluginResource<T extends SupportedResourceType>(
       result = await SpaceResource.fetchById(auth, resourceId);
       break;
     case "triggers":
-      const trigger = await TriggerResource.fetchById(auth, resourceId);
-      result = trigger ? trigger.toJSON() : null;
+      result = await TriggerResource.fetchById(auth, resourceId);
       break;
     case "global":
       result = null;

@@ -34,10 +34,6 @@ export const webhookSettingsPlugin = createPlugin({
       return new Err(new Error("Trigger not found"));
     }
 
-    if (!isWebhookTrigger(resource)) {
-      return new Err(new Error("This plugin only applies to webhook triggers"));
-    }
-
     const executionModes: {
       label: string;
       value: string;
@@ -63,10 +59,6 @@ export const webhookSettingsPlugin = createPlugin({
   execute: async (auth, resource, args) => {
     if (!resource) {
       return new Err(new Error("Trigger not found"));
-    }
-
-    if (!isWebhookTrigger(resource)) {
-      return new Err(new Error("This plugin only applies to webhook triggers"));
     }
 
     const executionPerDayLimitOverride = args.executionPerDayLimitOverride;
@@ -119,6 +111,6 @@ export const webhookSettingsPlugin = createPlugin({
       return false;
     }
 
-    return isWebhookTrigger(resource);
+    return resource.kind === "webhook";
   },
 });
