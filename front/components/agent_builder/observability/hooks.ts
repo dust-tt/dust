@@ -38,7 +38,7 @@ type ToolDataItem = {
 type ErrorRateDataResult = {
   data: {
     timestamp: number;
-    date: string;
+    date?: string;
     total: number;
     failed: number;
     errorRate: number;
@@ -50,7 +50,7 @@ type ErrorRateDataResult = {
 type LatencyDataResult = {
   data: {
     timestamp: number;
-    date: string;
+    date?: string;
     messages: number;
     average: number;
   }[];
@@ -277,10 +277,7 @@ export function useErrorRateData(params: {
   );
 
   return {
-    data: errorRate.map((item) => ({
-      ...item,
-      date: formatShortDate(item.timestamp),
-    })),
+    data: errorRate,
     isLoading: isErrorRateLoading,
     errorMessage: isErrorRateError
       ? "Failed to load error rate data."
@@ -307,10 +304,7 @@ export function useLatencyData(params: {
   });
 
   return {
-    data: latency.map((item) => ({
-      ...item,
-      date: formatShortDate(item.timestamp),
-    })),
+    data: latency,
     isLoading: isLatencyLoading,
     errorMessage: isLatencyError ? "Failed to load latency data." : undefined,
   };

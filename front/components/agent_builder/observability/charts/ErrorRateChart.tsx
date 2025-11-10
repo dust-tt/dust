@@ -177,6 +177,9 @@ export function ErrorRateChart({
           />
           <XAxis
             dataKey="date"
+            type="category"
+            scale="point"
+            allowDuplicatedCategory={false}
             className="text-xs text-muted-foreground dark:text-muted-foreground-night"
             tickLine={false}
             axisLine={false}

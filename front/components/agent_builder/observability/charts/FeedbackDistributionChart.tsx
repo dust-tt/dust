@@ -75,13 +75,8 @@ export function FeedbackDistributionChart({
     }
   );
 
-  const transformedFeedbackDistribution = feedbackDistribution.map((item) => ({
-    ...item,
-    date: formatShortDate(item.timestamp),
-  }));
-
   const filteredData = filterTimeSeriesByVersionWindow(
-    transformedFeedbackDistribution,
+    feedbackDistribution,
     mode,
     selectedVersion,
     versionMarkers
@@ -114,6 +109,9 @@ export function FeedbackDistributionChart({
           />
           <XAxis
             dataKey="date"
+            type="category"
+            scale="point"
+            allowDuplicatedCategory={false}
             className="text-xs text-muted-foreground dark:text-muted-foreground-night"
             tickLine={false}
             axisLine={false}

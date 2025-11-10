@@ -67,15 +67,10 @@ export function FeedbackDistributionTooltip(
     return null;
   }
   const row = first.payload;
-  const date = new Date(row.timestamp);
-  const title = date.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+
   return (
     <ChartTooltipCard
-      title={title}
+      title={row.date}
       rows={FEEDBACK_DISTRIBUTION_LEGEND.map(({ key, label: itemLabel }) => ({
         label: itemLabel,
         value: row[key],
