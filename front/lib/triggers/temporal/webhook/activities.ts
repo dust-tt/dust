@@ -280,7 +280,7 @@ export async function runTriggerWebhookActivity({
         errorMessage
       );
 
-      statsDClient.increment("webhook_specific_rate_limit.hit.count", 1, [
+      statsDClient.increment("webhook_trigger_rate_limit.hit.count", 1, [
         `provider:${provider}`,
         `workspace_id:${workspaceId}`,
         `trigger_id:${trigger.sId}`,

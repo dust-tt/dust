@@ -12,6 +12,7 @@ import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentMessageType,
   ConversationType,
+  UserMessageOrigin,
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import {
@@ -26,6 +27,7 @@ export type AgentLoopArgs = {
   conversationTitle: string | null;
   userMessageId: string;
   userMessageVersion: number;
+  userMessageOrigin?: UserMessageOrigin | null;
 };
 
 export type AgentMessageRef = {
