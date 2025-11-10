@@ -206,7 +206,10 @@ function toToolEvent({
 
   let args: Record<string, unknown>;
   if (isString(toolCall.function.arguments)) {
-    args = parseToolArguments(toolCall.function.arguments);
+    args = parseToolArguments(
+      toolCall.function.arguments,
+      toolCall.function.name
+    );
   } else {
     args = toolCall.function.arguments;
   }

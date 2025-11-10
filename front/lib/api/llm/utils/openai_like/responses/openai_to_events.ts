@@ -106,7 +106,7 @@ function itemToEvents(
           content: {
             id: item.call_id,
             name: item.name,
-            arguments: parseToolArguments(item.arguments),
+            arguments: parseToolArguments(item.arguments, item.name),
           },
           metadata,
         },
