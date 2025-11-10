@@ -142,10 +142,9 @@ export function useDraftConversation({
           });
         }
 
-        // Update mentions in the message data to use the current draft agent
         mentions = mentions.map((mention) =>
           mention.id === draftAgent?.sId && currentAgent?.sId
-            ? { ...mention, configurationId: currentAgent.sId }
+            ? { ...mention, id: currentAgent.sId }
             : mention
         );
       } catch (error) {
