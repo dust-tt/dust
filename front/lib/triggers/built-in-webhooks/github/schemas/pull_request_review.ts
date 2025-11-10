@@ -1,10 +1,8 @@
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 export const prReviewSchema: JSONSchema = {
-  $schema: "http://json-schema.org/draft-07/schema",
+  $schema: "http://json-schema.org/draft-07/schema#",
   type: "object",
-  title: "pull_request_review event",
-  required: ["action", "review", "pull_request", "repository", "sender"],
   properties: {
     action: {
       type: "string",
@@ -12,8 +10,39 @@ export const prReviewSchema: JSONSchema = {
       description: "The action performed on the pull request review",
     },
     review: {
-      $ref: "#/definitions/pull-request-review",
+      type: "object",
       description: "The review that was affected",
+      properties: {
+        id: { type: "integer", description: "Review ID" },
+        user: {
+          type: "object",
+          description: "User who submitted the review",
+          properties: {
+            login: { type: "string", description: "GitHub username" },
+            id: { type: "integer", description: "User ID" },
+            type: { type: "string", description: "Type of user account" },
+            site_admin: {
+              type: "boolean",
+              description: "Whether user is a site administrator",
+            },
+          },
+        },
+        body: { type: ["string", "null"], description: "Review body text" },
+        state: {
+          type: "string",
+          description: "Review state",
+          enum: ["approved", "changes_requested", "commented", "dismissed"],
+        },
+        submitted_at: {
+          type: "string",
+          format: "date-time",
+          description: "When the review was submitted",
+        },
+        commit_id: {
+          type: "string",
+          description: "SHA of the commit that was reviewed",
+        },
+      },
     },
     changes: {
       type: "object",
@@ -21,7 +50,7 @@ export const prReviewSchema: JSONSchema = {
       properties: {
         body: {
           type: "object",
-          required: ["from"],
+          description: "Changes to the review body",
           properties: {
             from: {
               type: "string",
@@ -29,1150 +58,330 @@ export const prReviewSchema: JSONSchema = {
                 "The previous version of the body if the action was edited",
             },
           },
-          additionalProperties: false,
         },
       },
-      additionalProperties: false,
     },
     pull_request: {
-      $schema: "http://json-schema.org/draft-07/schema",
-      description: "The pull request the review pertains to",
-      required: [
-        "url",
-        "id",
-        "node_id",
-        "html_url",
-        "diff_url",
-        "patch_url",
-        "issue_url",
-        "number",
-        "state",
-        "locked",
-        "title",
-        "user",
-        "body",
-        "created_at",
-        "updated_at",
-        "closed_at",
-        "merged_at",
-        "merge_commit_sha",
-        "assignee",
-        "assignees",
-        "requested_reviewers",
-        "requested_teams",
-        "labels",
-        "milestone",
-        "draft",
-        "commits_url",
-        "review_comments_url",
-        "review_comment_url",
-        "comments_url",
-        "statuses_url",
-        "head",
-        "base",
-        "_links",
-        "author_association",
-        "auto_merge",
-        "active_lock_reason",
-      ],
       type: "object",
+      description: "The pull request the review pertains to",
       properties: {
-        url: {
-          type: "string",
-          format: "uri",
-        },
-        id: {
-          type: "integer",
-        },
-        node_id: {
-          type: "string",
-        },
-        html_url: {
-          type: "string",
-          format: "uri",
-        },
-        diff_url: {
-          type: "string",
-          format: "uri",
-        },
-        patch_url: {
-          type: "string",
-          format: "uri",
-        },
-        issue_url: {
-          type: "string",
-          format: "uri",
-        },
-        number: {
-          type: "integer",
-        },
+        id: { type: "integer", description: "Pull request ID" },
+        number: { type: "integer", description: "Pull request number" },
         state: {
           type: "string",
-          enum: ["open", "closed"],
+          description: "State of the pull request (open or closed)",
         },
         locked: {
           type: "boolean",
+          description: "Whether the pull request is locked",
         },
         title: {
           type: "string",
+          description: "Title of the pull request",
         },
         user: {
-          $schema: "http://json-schema.org/draft-07/schema",
           type: "object",
-          required: [
-            "login",
-            "id",
-            "node_id",
-            "avatar_url",
-            "gravatar_id",
-            "url",
-            "html_url",
-            "followers_url",
-            "following_url",
-            "gists_url",
-            "starred_url",
-            "subscriptions_url",
-            "organizations_url",
-            "repos_url",
-            "events_url",
-            "received_events_url",
-            "type",
-            "site_admin",
-          ],
+          description: "User who created the pull request",
           properties: {
-            login: {
-              type: "string",
-            },
-            id: {
-              type: "integer",
-            },
-            node_id: {
-              type: "string",
-            },
-            name: {
-              type: "string",
-            },
-            email: {
-              type: ["string", "null"],
-            },
-            avatar_url: {
-              type: "string",
-              format: "uri",
-            },
-            gravatar_id: {
-              type: "string",
-            },
-            url: {
-              type: "string",
-              format: "uri",
-            },
-            html_url: {
-              type: "string",
-              format: "uri",
-            },
-            followers_url: {
-              type: "string",
-              format: "uri",
-            },
-            following_url: {
-              type: "string",
-              format: "uri-template",
-            },
-            gists_url: {
-              type: "string",
-              format: "uri-template",
-            },
-            starred_url: {
-              type: "string",
-              format: "uri-template",
-            },
-            subscriptions_url: {
-              type: "string",
-              format: "uri",
-            },
-            organizations_url: {
-              type: "string",
-              format: "uri",
-            },
-            repos_url: {
-              type: "string",
-              format: "uri",
-            },
-            events_url: {
-              type: "string",
-              format: "uri-template",
-            },
-            received_events_url: {
-              type: "string",
-              format: "uri",
-            },
-            type: {
-              type: "string",
-              enum: ["Bot", "User", "Organization"],
-            },
+            login: { type: "string", description: "GitHub username" },
+            id: { type: "integer", description: "User ID" },
+            type: { type: "string", description: "Type of user account" },
             site_admin: {
               type: "boolean",
+              description: "Whether user is a site administrator",
             },
           },
-          additionalProperties: false,
-          title: "User",
         },
         body: {
           type: ["string", "null"],
+          description: "Pull request body/description",
         },
         created_at: {
           type: "string",
           format: "date-time",
+          description: "When the pull request was created",
         },
         updated_at: {
           type: "string",
           format: "date-time",
+          description: "When the pull request was last updated",
         },
         closed_at: {
-          oneOf: [
-            {
-              type: "string",
-              format: "date-time",
-            },
-            {
-              type: "null",
-            },
-          ],
+          type: ["string", "null"],
+          format: "date-time",
+          description: "When the pull request was closed",
         },
         merged_at: {
-          oneOf: [
-            {
-              type: "string",
-              format: "date-time",
-            },
-            {
-              type: "null",
-            },
-          ],
-        },
-        merge_commit_sha: {
           type: ["string", "null"],
+          format: "date-time",
+          description: "When the pull request was merged",
         },
         assignee: {
-          oneOf: [
-            {
-              $schema: "http://json-schema.org/draft-07/schema",
-              type: "object",
-              required: [
-                "login",
-                "id",
-                "node_id",
-                "avatar_url",
-                "gravatar_id",
-                "url",
-                "html_url",
-                "followers_url",
-                "following_url",
-                "gists_url",
-                "starred_url",
-                "subscriptions_url",
-                "organizations_url",
-                "repos_url",
-                "events_url",
-                "received_events_url",
-                "type",
-                "site_admin",
-              ],
-              properties: {
-                login: {
-                  type: "string",
-                },
-                id: {
-                  type: "integer",
-                },
-                node_id: {
-                  type: "string",
-                },
-                name: {
-                  type: "string",
-                },
-                email: {
-                  type: ["string", "null"],
-                },
-                avatar_url: {
-                  type: "string",
-                  format: "uri",
-                },
-                gravatar_id: {
-                  type: "string",
-                },
-                url: {
-                  type: "string",
-                  format: "uri",
-                },
-                html_url: {
-                  type: "string",
-                  format: "uri",
-                },
-                followers_url: {
-                  type: "string",
-                  format: "uri",
-                },
-                following_url: {
-                  type: "string",
-                  format: "uri-template",
-                },
-                gists_url: {
-                  type: "string",
-                  format: "uri-template",
-                },
-                starred_url: {
-                  type: "string",
-                  format: "uri-template",
-                },
-                subscriptions_url: {
-                  type: "string",
-                  format: "uri",
-                },
-                organizations_url: {
-                  type: "string",
-                  format: "uri",
-                },
-                repos_url: {
-                  type: "string",
-                  format: "uri",
-                },
-                events_url: {
-                  type: "string",
-                  format: "uri-template",
-                },
-                received_events_url: {
-                  type: "string",
-                  format: "uri",
-                },
-                type: {
-                  type: "string",
-                  enum: ["Bot", "User", "Organization"],
-                },
-                site_admin: {
-                  type: "boolean",
-                },
-              },
-              additionalProperties: false,
-              title: "User",
+          type: ["object", "null"],
+          description: "User assigned to the pull request",
+          properties: {
+            login: { type: "string", description: "GitHub username" },
+            id: { type: "integer", description: "User ID" },
+            type: { type: "string", description: "Type of user account" },
+            site_admin: {
+              type: "boolean",
+              description: "Whether user is a site administrator",
             },
-            {
-              type: "null",
-            },
-          ],
+          },
         },
         assignees: {
           type: "array",
+          description: "Users assigned to the pull request",
           items: {
-            $schema: "http://json-schema.org/draft-07/schema",
             type: "object",
-            required: [
-              "login",
-              "id",
-              "node_id",
-              "avatar_url",
-              "gravatar_id",
-              "url",
-              "html_url",
-              "followers_url",
-              "following_url",
-              "gists_url",
-              "starred_url",
-              "subscriptions_url",
-              "organizations_url",
-              "repos_url",
-              "events_url",
-              "received_events_url",
-              "type",
-              "site_admin",
-            ],
             properties: {
-              login: {
-                type: "string",
-              },
-              id: {
-                type: "integer",
-              },
-              node_id: {
-                type: "string",
-              },
-              name: {
-                type: "string",
-              },
-              email: {
-                type: ["string", "null"],
-              },
-              avatar_url: {
-                type: "string",
-                format: "uri",
-              },
-              gravatar_id: {
-                type: "string",
-              },
-              url: {
-                type: "string",
-                format: "uri",
-              },
-              html_url: {
-                type: "string",
-                format: "uri",
-              },
-              followers_url: {
-                type: "string",
-                format: "uri",
-              },
-              following_url: {
-                type: "string",
-                format: "uri-template",
-              },
-              gists_url: {
-                type: "string",
-                format: "uri-template",
-              },
-              starred_url: {
-                type: "string",
-                format: "uri-template",
-              },
-              subscriptions_url: {
-                type: "string",
-                format: "uri",
-              },
-              organizations_url: {
-                type: "string",
-                format: "uri",
-              },
-              repos_url: {
-                type: "string",
-                format: "uri",
-              },
-              events_url: {
-                type: "string",
-                format: "uri-template",
-              },
-              received_events_url: {
-                type: "string",
-                format: "uri",
-              },
+              login: { type: "string", description: "GitHub username" },
+              id: { type: "integer", description: "User ID" },
               type: {
                 type: "string",
-                enum: ["Bot", "User", "Organization"],
+                description: "Type of user account",
               },
               site_admin: {
                 type: "boolean",
+                description: "Whether user is a site administrator",
               },
             },
-            additionalProperties: false,
-            title: "User",
           },
         },
         requested_reviewers: {
           type: "array",
+          description: "Users requested to review the pull request",
           items: {
-            oneOf: [
-              {
-                $schema: "http://json-schema.org/draft-07/schema",
-                type: "object",
-                required: [
-                  "login",
-                  "id",
-                  "node_id",
-                  "avatar_url",
-                  "gravatar_id",
-                  "url",
-                  "html_url",
-                  "followers_url",
-                  "following_url",
-                  "gists_url",
-                  "starred_url",
-                  "subscriptions_url",
-                  "organizations_url",
-                  "repos_url",
-                  "events_url",
-                  "received_events_url",
-                  "type",
-                  "site_admin",
-                ],
-                properties: {
-                  login: {
-                    type: "string",
-                  },
-                  id: {
-                    type: "integer",
-                  },
-                  node_id: {
-                    type: "string",
-                  },
-                  name: {
-                    type: "string",
-                  },
-                  email: {
-                    type: ["string", "null"],
-                  },
-                  avatar_url: {
-                    type: "string",
-                    format: "uri",
-                  },
-                  gravatar_id: {
-                    type: "string",
-                  },
-                  url: {
-                    type: "string",
-                    format: "uri",
-                  },
-                  html_url: {
-                    type: "string",
-                    format: "uri",
-                  },
-                  followers_url: {
-                    type: "string",
-                    format: "uri",
-                  },
-                  following_url: {
-                    type: "string",
-                    format: "uri-template",
-                  },
-                  gists_url: {
-                    type: "string",
-                    format: "uri-template",
-                  },
-                  starred_url: {
-                    type: "string",
-                    format: "uri-template",
-                  },
-                  subscriptions_url: {
-                    type: "string",
-                    format: "uri",
-                  },
-                  organizations_url: {
-                    type: "string",
-                    format: "uri",
-                  },
-                  repos_url: {
-                    type: "string",
-                    format: "uri",
-                  },
-                  events_url: {
-                    type: "string",
-                    format: "uri-template",
-                  },
-                  received_events_url: {
-                    type: "string",
-                    format: "uri",
-                  },
-                  type: {
-                    type: "string",
-                    enum: ["Bot", "User", "Organization"],
-                  },
-                  site_admin: {
-                    type: "boolean",
-                  },
-                },
-                additionalProperties: false,
-                title: "User",
+            type: "object",
+            properties: {
+              login: { type: "string", description: "GitHub username" },
+              id: { type: "integer", description: "User ID" },
+              type: {
+                type: "string",
+                description: "Type of user account",
               },
-              {
-                $schema: "http://json-schema.org/draft-07/schema",
-                description:
-                  "Groups of organization members that gives permissions on specified repositories.",
-                type: "object",
-                required: [
-                  "name",
-                  "id",
-                  "node_id",
-                  "slug",
-                  "description",
-                  "privacy",
-                  "url",
-                  "html_url",
-                  "members_url",
-                  "repositories_url",
-                  "permission",
-                ],
-                properties: {
-                  name: {
-                    type: "string",
-                    description: "Name of the team",
-                  },
-                  id: {
-                    type: "integer",
-                    description: "Unique identifier of the team",
-                  },
-                  node_id: {
-                    type: "string",
-                  },
-                  slug: {
-                    type: "string",
-                  },
-                  description: {
-                    type: ["string", "null"],
-                    description: "Description of the team",
-                  },
-                  privacy: {
-                    type: "string",
-                    enum: ["open", "closed", "secret"],
-                  },
-                  url: {
-                    type: "string",
-                    format: "uri",
-                    description: "URL for the team",
-                  },
-                  html_url: {
-                    type: "string",
-                    format: "uri",
-                  },
-                  members_url: {
-                    type: "string",
-                    format: "uri-template",
-                  },
-                  repositories_url: {
-                    type: "string",
-                    format: "uri",
-                  },
-                  permission: {
-                    type: "string",
-                    description:
-                      "Permission that the team will have for its repositories",
-                  },
-                  parent: {
-                    type: ["object", "null"],
-                    required: [
-                      "name",
-                      "id",
-                      "node_id",
-                      "slug",
-                      "description",
-                      "privacy",
-                      "url",
-                      "html_url",
-                      "members_url",
-                      "repositories_url",
-                      "permission",
-                    ],
-                    properties: {
-                      name: {
-                        type: "string",
-                        description: "Name of the team",
-                      },
-                      id: {
-                        type: "integer",
-                        description: "Unique identifier of the team",
-                      },
-                      node_id: {
-                        type: "string",
-                      },
-                      slug: {
-                        type: "string",
-                      },
-                      description: {
-                        type: ["string", "null"],
-                        description: "Description of the team",
-                      },
-                      privacy: {
-                        type: "string",
-                        enum: ["open", "closed", "secret"],
-                      },
-                      url: {
-                        type: "string",
-                        format: "uri",
-                        description: "URL for the team",
-                      },
-                      html_url: {
-                        type: "string",
-                        format: "uri",
-                      },
-                      members_url: {
-                        type: "string",
-                        format: "uri-template",
-                      },
-                      repositories_url: {
-                        type: "string",
-                        format: "uri",
-                      },
-                      permission: {
-                        type: "string",
-                        description:
-                          "Permission that the team will have for its repositories",
-                      },
-                      notification_setting: {
-                        type: "string",
-                        enum: [
-                          "notifications_enabled",
-                          "notifications_disabled",
-                        ],
-                        description:
-                          "Whether team members will receive notifications when their team is @mentioned",
-                      },
-                    },
-                    additionalProperties: false,
-                  },
-                  notification_setting: {
-                    type: "string",
-                    enum: ["notifications_enabled", "notifications_disabled"],
-                    description:
-                      "Whether team members will receive notifications when their team is @mentioned",
-                  },
-                },
-                additionalProperties: false,
-                title: "Team",
+              site_admin: {
+                type: "boolean",
+                description: "Whether user is a site administrator",
               },
-            ],
+            },
           },
         },
         requested_teams: {
           type: "array",
-          items: {
-            $schema: "http://json-schema.org/draft-07/schema",
-            description:
-              "Groups of organization members that gives permissions on specified repositories.",
-            type: "object",
-            required: [
-              "name",
-              "id",
-              "node_id",
-              "slug",
-              "description",
-              "privacy",
-              "url",
-              "html_url",
-              "members_url",
-              "repositories_url",
-              "permission",
-            ],
-            properties: {
-              name: {
-                type: "string",
-                description: "Name of the team",
-              },
-              id: {
-                type: "integer",
-                description: "Unique identifier of the team",
-              },
-              node_id: {
-                type: "string",
-              },
-              slug: {
-                type: "string",
-              },
-              description: {
-                type: ["string", "null"],
-                description: "Description of the team",
-              },
-              privacy: {
-                type: "string",
-                enum: ["open", "closed", "secret"],
-              },
-              url: {
-                type: "string",
-                format: "uri",
-                description: "URL for the team",
-              },
-              html_url: {
-                type: "string",
-                format: "uri",
-              },
-              members_url: {
-                type: "string",
-                format: "uri-template",
-              },
-              repositories_url: {
-                type: "string",
-                format: "uri",
-              },
-              permission: {
-                type: "string",
-                description:
-                  "Permission that the team will have for its repositories",
-              },
-              parent: {
-                type: ["object", "null"],
-                required: [
-                  "name",
-                  "id",
-                  "node_id",
-                  "slug",
-                  "description",
-                  "privacy",
-                  "url",
-                  "html_url",
-                  "members_url",
-                  "repositories_url",
-                  "permission",
-                ],
-                properties: {
-                  name: {
-                    type: "string",
-                    description: "Name of the team",
-                  },
-                  id: {
-                    type: "integer",
-                    description: "Unique identifier of the team",
-                  },
-                  node_id: {
-                    type: "string",
-                  },
-                  slug: {
-                    type: "string",
-                  },
-                  description: {
-                    type: ["string", "null"],
-                    description: "Description of the team",
-                  },
-                  privacy: {
-                    type: "string",
-                    enum: ["open", "closed", "secret"],
-                  },
-                  url: {
-                    type: "string",
-                    format: "uri",
-                    description: "URL for the team",
-                  },
-                  html_url: {
-                    type: "string",
-                    format: "uri",
-                  },
-                  members_url: {
-                    type: "string",
-                    format: "uri-template",
-                  },
-                  repositories_url: {
-                    type: "string",
-                    format: "uri",
-                  },
-                  permission: {
-                    type: "string",
-                    description:
-                      "Permission that the team will have for its repositories",
-                  },
-                  notification_setting: {
-                    type: "string",
-                    enum: ["notifications_enabled", "notifications_disabled"],
-                    description:
-                      "Whether team members will receive notifications when their team is @mentioned",
-                  },
-                },
-                additionalProperties: false,
-              },
-              notification_setting: {
-                type: "string",
-                enum: ["notifications_enabled", "notifications_disabled"],
-                description:
-                  "Whether team members will receive notifications when their team is @mentioned",
-              },
-            },
-            additionalProperties: false,
-            title: "Team",
-          },
+          description: "Teams requested to review the pull request",
+          items: { type: "object" },
         },
         labels: {
           type: "array",
+          description: "Labels assigned to the pull request",
           items: {
-            $ref: "#/definitions/label",
+            type: "object",
+            properties: {
+              id: { type: "integer", description: "Label ID" },
+              name: { type: "string", description: "Label name" },
+              default: {
+                type: "boolean",
+                description: "Whether this is a default label",
+              },
+              description: {
+                type: "string",
+                description: "Label description",
+              },
+            },
           },
         },
         milestone: {
-          oneOf: [
-            {
-              $ref: "#/definitions/milestone",
-            },
-            {
-              type: "null",
-            },
-          ],
+          type: ["object", "null"],
+          description: "Milestone associated with the pull request",
         },
         draft: {
           type: "boolean",
-        },
-        commits_url: {
-          type: "string",
-          format: "uri",
-        },
-        review_comments_url: {
-          type: "string",
-          format: "uri",
-        },
-        review_comment_url: {
-          type: "string",
-          format: "uri-template",
-        },
-        comments_url: {
-          type: "string",
-          format: "uri",
-        },
-        statuses_url: {
-          type: "string",
-          format: "uri",
+          description: "Whether the pull request is a draft",
         },
         head: {
           type: "object",
-          required: ["label", "ref", "sha", "user", "repo"],
+          description: "Head branch of the pull request",
           properties: {
-            label: {
-              type: "string",
-            },
-            ref: {
-              type: "string",
-            },
-            sha: {
-              type: "string",
-            },
+            label: { type: "string", description: "Head branch label" },
+            ref: { type: "string", description: "Head branch reference" },
+            sha: { type: "string", description: "Head commit SHA" },
             user: {
-              $schema: "http://json-schema.org/draft-07/schema",
               type: "object",
-              required: [
-                "login",
-                "id",
-                "node_id",
-                "avatar_url",
-                "gravatar_id",
-                "url",
-                "html_url",
-                "followers_url",
-                "following_url",
-                "gists_url",
-                "starred_url",
-                "subscriptions_url",
-                "organizations_url",
-                "repos_url",
-                "events_url",
-                "received_events_url",
-                "type",
-                "site_admin",
-              ],
+              description: "User who owns the head branch",
               properties: {
-                login: {
-                  type: "string",
-                },
-                id: {
-                  type: "integer",
-                },
-                node_id: {
-                  type: "string",
-                },
-                name: {
-                  type: "string",
-                },
-                email: {
-                  type: ["string", "null"],
-                },
-                avatar_url: {
-                  type: "string",
-                  format: "uri",
-                },
-                gravatar_id: {
-                  type: "string",
-                },
-                url: {
-                  type: "string",
-                  format: "uri",
-                },
-                html_url: {
-                  type: "string",
-                  format: "uri",
-                },
-                followers_url: {
-                  type: "string",
-                  format: "uri",
-                },
-                following_url: {
-                  type: "string",
-                  format: "uri-template",
-                },
-                gists_url: {
-                  type: "string",
-                  format: "uri-template",
-                },
-                starred_url: {
-                  type: "string",
-                  format: "uri-template",
-                },
-                subscriptions_url: {
-                  type: "string",
-                  format: "uri",
-                },
-                organizations_url: {
-                  type: "string",
-                  format: "uri",
-                },
-                repos_url: {
-                  type: "string",
-                  format: "uri",
-                },
-                events_url: {
-                  type: "string",
-                  format: "uri-template",
-                },
-                received_events_url: {
-                  type: "string",
-                  format: "uri",
-                },
+                login: { type: "string", description: "GitHub username" },
+                id: { type: "integer", description: "User ID" },
                 type: {
                   type: "string",
-                  enum: ["Bot", "User", "Organization"],
+                  description: "Type of user account",
                 },
                 site_admin: {
                   type: "boolean",
+                  description: "Whether user is a site administrator",
                 },
               },
-              additionalProperties: false,
-              title: "User",
             },
             repo: {
-              $ref: "#/definitions/repository",
+              type: "object",
+              description: "Repository containing the head branch",
             },
           },
-          additionalProperties: false,
         },
         base: {
           type: "object",
-          required: ["label", "ref", "sha", "user", "repo"],
+          description: "Base branch of the pull request",
           properties: {
-            label: {
-              type: "string",
-            },
-            ref: {
-              type: "string",
-            },
-            sha: {
-              type: "string",
-            },
+            label: { type: "string", description: "Base branch label" },
+            ref: { type: "string", description: "Base branch reference" },
+            sha: { type: "string", description: "Base commit SHA" },
             user: {
-              $schema: "http://json-schema.org/draft-07/schema",
               type: "object",
-              required: [
-                "login",
-                "id",
-                "node_id",
-                "avatar_url",
-                "gravatar_id",
-                "url",
-                "html_url",
-                "followers_url",
-                "following_url",
-                "gists_url",
-                "starred_url",
-                "subscriptions_url",
-                "organizations_url",
-                "repos_url",
-                "events_url",
-                "received_events_url",
-                "type",
-                "site_admin",
-              ],
-              properties: {
-                login: {
-                  type: "string",
-                },
-                id: {
-                  type: "integer",
-                },
-                node_id: {
-                  type: "string",
-                },
-                name: {
-                  type: "string",
-                },
-                email: {
-                  type: ["string", "null"],
-                },
-                avatar_url: {
-                  type: "string",
-                  format: "uri",
-                },
-                gravatar_id: {
-                  type: "string",
-                },
-                url: {
-                  type: "string",
-                  format: "uri",
-                },
-                html_url: {
-                  type: "string",
-                  format: "uri",
-                },
-                followers_url: {
-                  type: "string",
-                  format: "uri",
-                },
-                following_url: {
-                  type: "string",
-                  format: "uri-template",
-                },
-                gists_url: {
-                  type: "string",
-                  format: "uri-template",
-                },
-                starred_url: {
-                  type: "string",
-                  format: "uri-template",
-                },
-                subscriptions_url: {
-                  type: "string",
-                  format: "uri",
-                },
-                organizations_url: {
-                  type: "string",
-                  format: "uri",
-                },
-                repos_url: {
-                  type: "string",
-                  format: "uri",
-                },
-                events_url: {
-                  type: "string",
-                  format: "uri-template",
-                },
-                received_events_url: {
-                  type: "string",
-                  format: "uri",
-                },
-                type: {
-                  type: "string",
-                  enum: ["Bot", "User", "Organization"],
-                },
-                site_admin: {
-                  type: "boolean",
-                },
-              },
-              additionalProperties: false,
-              title: "User",
+              description: "User who owns the base branch",
             },
             repo: {
-              $ref: "#/definitions/repository",
+              type: "object",
+              description: "Repository containing the base branch",
             },
           },
-          additionalProperties: false,
         },
         author_association: {
-          $ref: "#/definitions/author_association",
+          type: "string",
+          description: "Association of the author with the repository",
         },
         auto_merge: {
-          oneOf: [
-            {
-              $ref: "#/definitions/auto-merge",
-            },
-            {
-              type: "null",
-            },
-          ],
+          type: ["object", "null"],
+          description: "Auto merge configuration",
         },
         active_lock_reason: {
           type: ["string", "null"],
-          enum: ["resolved", "off-topic", "too heated", "spam", null],
+          description: "Reason the pull request is locked",
         },
       },
-      additionalProperties: false,
-      title: "Simple Pull Request",
     },
     repository: {
-      $ref: "#/definitions/repository",
-      description: "The repository containing the pull request",
-    },
-    installation: {
-      type: ["object", "null"],
-      description:
-        "GitHub App installation object when the event is configured for and sent to a GitHub App",
+      type: "object",
+      description: "The repository where the event occurred",
       properties: {
-        id: { type: "integer", description: "Installation ID" },
+        id: { type: "integer", description: "Repository ID" },
+        name: { type: "string", description: "Repository name" },
+        full_name: {
+          type: "string",
+          description: "Full repository name (owner/repo)",
+        },
+        private: {
+          type: "boolean",
+          description: "Whether the repository is private",
+        },
+        owner: { type: "object", description: "Repository owner" },
+        description: {
+          type: ["string", "null"],
+          description: "Repository description",
+        },
+        fork: {
+          type: "boolean",
+          description: "Whether the repository is a fork",
+        },
+        created_at: {
+          type: "string",
+          format: "date-time",
+          description: "When the repository was created",
+        },
+        updated_at: {
+          type: "string",
+          format: "date-time",
+          description: "When the repository was last updated",
+        },
+        pushed_at: {
+          type: "string",
+          format: "date-time",
+          description: "When the repository was last pushed to",
+        },
+        homepage: {
+          type: ["string", "null"],
+          description: "Repository homepage URL",
+        },
+        size: { type: "integer", description: "Repository size in KB" },
+        stargazers_count: {
+          type: "integer",
+          description: "Number of stars",
+        },
+        watchers_count: {
+          type: "integer",
+          description: "Number of watchers",
+        },
+        language: {
+          type: ["string", "null"],
+          description: "Primary programming language",
+        },
+        has_issues: {
+          type: "boolean",
+          description: "Whether issues are enabled",
+        },
+        has_projects: {
+          type: "boolean",
+          description: "Whether projects are enabled",
+        },
+        has_downloads: {
+          type: "boolean",
+          description: "Whether downloads are enabled",
+        },
+        has_wiki: {
+          type: "boolean",
+          description: "Whether wiki is enabled",
+        },
+        has_pages: {
+          type: "boolean",
+          description: "Whether GitHub Pages is enabled",
+        },
+        forks_count: { type: "integer", description: "Number of forks" },
+        archived: {
+          type: "boolean",
+          description: "Whether the repository is archived",
+        },
+        disabled: {
+          type: "boolean",
+          description: "Whether the repository is disabled",
+        },
+        open_issues_count: {
+          type: "integer",
+          description: "Number of open issues",
+        },
+        license: {
+          type: ["string", "null"],
+          description: "Repository license",
+        },
+        forks: { type: "integer", description: "Number of forks" },
+        open_issues: {
+          type: "integer",
+          description: "Number of open issues",
+        },
+        watchers: { type: "integer", description: "Number of watchers" },
+        default_branch: {
+          type: "string",
+          description: "Default branch name",
+        },
+        is_template: {
+          type: "boolean",
+          description: "Whether the repository is a template",
+        },
+        topics: {
+          type: "array",
+          items: { type: "string" },
+          description: "Repository topics",
+        },
+        visibility: {
+          type: "string",
+          description: "Repository visibility (public/private)",
+        },
+        web_commit_signoff_required: {
+          type: "boolean",
+          description: "Whether web commit signoff is required",
+        },
+        custom_properties: {
+          type: "object",
+          description: "Custom repository properties",
+        },
       },
     },
     organization: {
@@ -1188,126 +397,29 @@ export const prReviewSchema: JSONSchema = {
         },
       },
     },
-    sender: {
-      $schema: "http://json-schema.org/draft-07/schema",
-      type: "object",
-      required: [
-        "login",
-        "id",
-        "node_id",
-        "avatar_url",
-        "gravatar_id",
-        "url",
-        "html_url",
-        "followers_url",
-        "following_url",
-        "gists_url",
-        "starred_url",
-        "subscriptions_url",
-        "organizations_url",
-        "repos_url",
-        "events_url",
-        "received_events_url",
-        "type",
-        "site_admin",
-      ],
+    installation: {
+      type: ["object", "null"],
+      description:
+        "GitHub App installation object when the event is configured for and sent to a GitHub App",
       properties: {
-        login: {
-          type: "string",
-        },
-        id: {
-          type: "integer",
-        },
-        node_id: {
-          type: "string",
-        },
-        name: {
-          type: "string",
-        },
-        email: {
-          type: ["string", "null"],
-        },
-        avatar_url: {
-          type: "string",
-          format: "uri",
-        },
-        gravatar_id: {
-          type: "string",
-        },
-        url: {
-          type: "string",
-          format: "uri",
-        },
-        html_url: {
-          type: "string",
-          format: "uri",
-        },
-        followers_url: {
-          type: "string",
-          format: "uri",
-        },
-        following_url: {
-          type: "string",
-          format: "uri-template",
-        },
-        gists_url: {
-          type: "string",
-          format: "uri-template",
-        },
-        starred_url: {
-          type: "string",
-          format: "uri-template",
-        },
-        subscriptions_url: {
-          type: "string",
-          format: "uri",
-        },
-        organizations_url: {
-          type: "string",
-          format: "uri",
-        },
-        repos_url: {
-          type: "string",
-          format: "uri",
-        },
-        events_url: {
-          type: "string",
-          format: "uri-template",
-        },
-        received_events_url: {
-          type: "string",
-          format: "uri",
-        },
-        type: {
-          type: "string",
-          enum: ["Bot", "User", "Organization"],
-        },
+        id: { type: "integer", description: "Installation ID" },
+      },
+    },
+    sender: {
+      type: "object",
+      description: "The user that triggered the event",
+      properties: {
+        login: { type: "string", description: "GitHub username" },
+        id: { type: "integer", description: "User ID" },
+        type: { type: "string", description: "Type of user account" },
         site_admin: {
           type: "boolean",
+          description: "Whether user is a site administrator",
         },
       },
-      additionalProperties: false,
-      title: "User",
     },
   },
-  additionalProperties: false,
-  if: {
-    properties: {
-      action: {
-        const: "edited",
-      },
-    },
-  },
-  then: {
-    required: [
-      "action",
-      "changes",
-      "review",
-      "pull_request",
-      "repository",
-      "sender",
-    ],
-  },
+  required: ["action", "review", "pull_request", "repository", "sender"],
 };
 
 export const prReviewExample = {};

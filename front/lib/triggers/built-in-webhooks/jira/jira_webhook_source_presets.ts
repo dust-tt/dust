@@ -4,7 +4,7 @@ import { JiraWebhookService } from "@app/lib/triggers/built-in-webhooks/jira/jir
 import {
   issueCreatedExample,
   issueCreatedSchema,
-} from "@app/lib/triggers/built-in-webhooks/jira/schemas/json_schema_issue_created";
+} from "@app/lib/triggers/built-in-webhooks/jira/schemas/issue_created";
 import type {
   PresetWebhook,
   WebhookEvent,

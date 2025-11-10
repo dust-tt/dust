@@ -1,23 +1,8 @@
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 export const pushSchema: JSONSchema = {
-  $schema: "http://json-schema.org/draft-07/schema",
+  $schema: "http://json-schema.org/draft-07/schema#",
   type: "object",
-  required: [
-    "ref",
-    "before",
-    "after",
-    "created",
-    "deleted",
-    "forced",
-    "base_ref",
-    "compare",
-    "commits",
-    "head_commit",
-    "repository",
-    "pusher",
-    "sender",
-  ],
   properties: {
     ref: {
       type: "string",
@@ -47,38 +32,27 @@ export const pushSchema: JSONSchema = {
     },
     base_ref: {
       type: ["string", "null"],
+      description: "The base reference for the push",
     },
     compare: {
       type: "string",
       description:
-        "URL that shows the changes in this `ref` update, from the `before` commit to the `after` commit. For a newly created `ref` that is directly based on the default branch, this is the comparison between the head of the default branch and the `after` commit. Otherwise, this shows all commits until the `after` commit.",
+        "URL that shows the changes in this `ref` update, from the `before` commit to the `after` commit.",
     },
     commits: {
       type: "array",
       description:
-        "An array of commit objects describing the pushed commits. (Pushed commits are all commits that are included in the `compare` between the `before` commit and the `after` commit.) The array includes a maximum of 20 commits. If necessary, you can use the [Commits API](https://docs.github.com/en/rest/reference/repos#commits) to fetch additional commits. This limit is applied to timeline events only and isn't applied to webhook deliveries.",
+        "An array of commit objects describing the pushed commits. The array includes a maximum of 20 commits.",
       items: {
-        $schema: "http://json-schema.org/draft-07/schema",
-        required: [
-          "id",
-          "tree_id",
-          "distinct",
-          "message",
-          "timestamp",
-          "url",
-          "author",
-          "committer",
-          "added",
-          "removed",
-          "modified",
-        ],
         type: "object",
         properties: {
           id: {
             type: "string",
+            description: "Commit SHA",
           },
           tree_id: {
             type: "string",
+            description: "Tree SHA",
           },
           distinct: {
             type: "boolean",
@@ -100,242 +74,175 @@ export const pushSchema: JSONSchema = {
             description: "URL that points to the commit API resource.",
           },
           author: {
-            $schema: "http://json-schema.org/draft-07/schema",
-            description: "Metaproperties for Git author/committer information.",
-            required: ["email", "name"],
             type: "object",
+            description: "Git author information",
             properties: {
               name: {
                 type: "string",
                 description: "The git author's name.",
               },
               email: {
+                type: ["string", "null"],
                 description: "The git author's email address.",
-                oneOf: [
-                  {
-                    type: "string",
-                  },
-                  {
-                    type: "null",
-                  },
-                ],
               },
               date: {
                 type: "string",
                 format: "date-time",
+                description: "Date of the commit",
               },
               username: {
                 type: "string",
+                description: "GitHub username",
               },
             },
-            additionalProperties: false,
-            title: "Committer",
           },
           committer: {
-            $schema: "http://json-schema.org/draft-07/schema",
-            description: "Metaproperties for Git author/committer information.",
-            required: ["email", "name"],
             type: "object",
+            description: "Git committer information",
             properties: {
               name: {
                 type: "string",
-                description: "The git author's name.",
+                description: "The git committer's name.",
               },
               email: {
-                description: "The git author's email address.",
-                oneOf: [
-                  {
-                    type: "string",
-                  },
-                  {
-                    type: "null",
-                  },
-                ],
+                type: ["string", "null"],
+                description: "The git committer's email address.",
               },
               date: {
                 type: "string",
                 format: "date-time",
+                description: "Date of the commit",
               },
               username: {
                 type: "string",
+                description: "GitHub username",
               },
             },
-            additionalProperties: false,
-            title: "Committer",
           },
           added: {
             type: "array",
             items: {
               type: "string",
             },
-            description:
-              "An array of files added in the commit. For extremely large commits where GitHub is unable to calculate this list in a timely manner, this may be empty even if files were added.",
+            description: "An array of files added in the commit.",
           },
           modified: {
             type: "array",
             items: {
               type: "string",
             },
-            description:
-              "An array of files modified by the commit. For extremely large commits where GitHub is unable to calculate this list in a timely manner, this may be empty even if files were modified.",
+            description: "An array of files modified by the commit.",
           },
           removed: {
             type: "array",
             items: {
               type: "string",
             },
-            description:
-              "An array of files removed in the commit. For extremely large commits where GitHub is unable to calculate this list in a timely manner, this may be empty even if files were removed.",
+            description: "An array of files removed in the commit.",
           },
         },
-        additionalProperties: false,
-        title: "Commit",
       },
     },
     head_commit: {
-      oneOf: [
-        {
-          $schema: "http://json-schema.org/draft-07/schema",
-          required: [
-            "id",
-            "tree_id",
-            "distinct",
-            "message",
-            "timestamp",
-            "url",
-            "author",
-            "committer",
-            "added",
-            "removed",
-            "modified",
-          ],
+      type: ["object", "null"],
+      description:
+        "For pushes where `after` is or points to a commit object, an expanded representation of that commit.",
+      properties: {
+        id: {
+          type: "string",
+          description: "Commit SHA",
+        },
+        tree_id: {
+          type: "string",
+          description: "Tree SHA",
+        },
+        distinct: {
+          type: "boolean",
+          description:
+            "Whether this commit is distinct from any that have been pushed before.",
+        },
+        message: {
+          type: "string",
+          description: "The commit message.",
+        },
+        timestamp: {
+          type: "string",
+          format: "date-time",
+          description: "The ISO 8601 timestamp of the commit.",
+        },
+        url: {
+          type: "string",
+          format: "uri",
+          description: "URL that points to the commit API resource.",
+        },
+        author: {
           type: "object",
+          description: "Git author information",
           properties: {
-            id: {
+            name: {
               type: "string",
+              description: "The git author's name.",
             },
-            tree_id: {
-              type: "string",
+            email: {
+              type: ["string", "null"],
+              description: "The git author's email address.",
             },
-            distinct: {
-              type: "boolean",
-              description:
-                "Whether this commit is distinct from any that have been pushed before.",
-            },
-            message: {
-              type: "string",
-              description: "The commit message.",
-            },
-            timestamp: {
+            date: {
               type: "string",
               format: "date-time",
-              description: "The ISO 8601 timestamp of the commit.",
+              description: "Date of the commit",
             },
-            url: {
+            username: {
               type: "string",
-              format: "uri",
-              description: "URL that points to the commit API resource.",
-            },
-            author: {
-              $schema: "http://json-schema.org/draft-07/schema",
-              description:
-                "Metaproperties for Git author/committer information.",
-              required: ["email", "name"],
-              type: "object",
-              properties: {
-                name: {
-                  type: "string",
-                  description: "The git author's name.",
-                },
-                email: {
-                  description: "The git author's email address.",
-                  oneOf: [
-                    {
-                      type: "string",
-                    },
-                    {
-                      type: "null",
-                    },
-                  ],
-                },
-                date: {
-                  type: "string",
-                  format: "date-time",
-                },
-                username: {
-                  type: "string",
-                },
-              },
-              additionalProperties: false,
-              title: "Committer",
-            },
-            committer: {
-              $schema: "http://json-schema.org/draft-07/schema",
-              description:
-                "Metaproperties for Git author/committer information.",
-              required: ["email", "name"],
-              type: "object",
-              properties: {
-                name: {
-                  type: "string",
-                  description: "The git author's name.",
-                },
-                email: {
-                  description: "The git author's email address.",
-                  oneOf: [
-                    {
-                      type: "string",
-                    },
-                    {
-                      type: "null",
-                    },
-                  ],
-                },
-                date: {
-                  type: "string",
-                  format: "date-time",
-                },
-                username: {
-                  type: "string",
-                },
-              },
-              additionalProperties: false,
-              title: "Committer",
-            },
-            added: {
-              type: "array",
-              items: {
-                type: "string",
-              },
-              description:
-                "An array of files added in the commit. For extremely large commits where GitHub is unable to calculate this list in a timely manner, this may be empty even if files were added.",
-            },
-            modified: {
-              type: "array",
-              items: {
-                type: "string",
-              },
-              description:
-                "An array of files modified by the commit. For extremely large commits where GitHub is unable to calculate this list in a timely manner, this may be empty even if files were modified.",
-            },
-            removed: {
-              type: "array",
-              items: {
-                type: "string",
-              },
-              description:
-                "An array of files removed in the commit. For extremely large commits where GitHub is unable to calculate this list in a timely manner, this may be empty even if files were removed.",
+              description: "GitHub username",
             },
           },
-          additionalProperties: false,
-          title: "Commit",
         },
-        {
-          type: "null",
+        committer: {
+          type: "object",
+          description: "Git committer information",
+          properties: {
+            name: {
+              type: "string",
+              description: "The git committer's name.",
+            },
+            email: {
+              type: ["string", "null"],
+              description: "The git committer's email address.",
+            },
+            date: {
+              type: "string",
+              format: "date-time",
+              description: "Date of the commit",
+            },
+            username: {
+              type: "string",
+              description: "GitHub username",
+            },
+          },
         },
-      ],
-      description:
-        "For pushes where `after` is or points to a commit object, an expanded representation of that commit. For pushes where `after` refers to an annotated tag object, an expanded representation of the commit pointed to by the annotated tag.",
+        added: {
+          type: "array",
+          items: {
+            type: "string",
+          },
+          description: "An array of files added in the commit.",
+        },
+        modified: {
+          type: "array",
+          items: {
+            type: "string",
+          },
+          description: "An array of files modified by the commit.",
+        },
+        removed: {
+          type: "array",
+          items: {
+            type: "string",
+          },
+          description: "An array of files removed in the commit.",
+        },
+      },
     },
     repository: {
       type: "object",
@@ -463,36 +370,27 @@ export const pushSchema: JSONSchema = {
       },
     },
     pusher: {
-      $schema: "http://json-schema.org/draft-07/schema",
-      description: "Metaproperties for Git author/committer information.",
-      required: ["email", "name"],
       type: "object",
+      description: "The person who pushed the commits",
       properties: {
         name: {
           type: "string",
-          description: "The git author's name.",
+          description: "The pusher's name.",
         },
         email: {
-          description: "The git author's email address.",
-          oneOf: [
-            {
-              type: "string",
-            },
-            {
-              type: "null",
-            },
-          ],
+          type: ["string", "null"],
+          description: "The pusher's email address.",
         },
         date: {
           type: "string",
           format: "date-time",
+          description: "Date of the push",
         },
         username: {
           type: "string",
+          description: "GitHub username",
         },
       },
-      additionalProperties: false,
-      title: "Committer",
     },
     sender: {
       type: "object",
@@ -529,8 +427,21 @@ export const pushSchema: JSONSchema = {
       },
     },
   },
-  additionalProperties: false,
-  title: "push event",
+  required: [
+    "ref",
+    "before",
+    "after",
+    "created",
+    "deleted",
+    "forced",
+    "base_ref",
+    "compare",
+    "commits",
+    "head_commit",
+    "repository",
+    "pusher",
+    "sender",
+  ],
 };
 
 export const pushExample = {};
