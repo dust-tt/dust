@@ -1,9 +1,13 @@
 import type { ZendeskTicket } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/types";
 
+function apiUrlToDocumentUrl(apiUrl: string): string {
+  return apiUrl.replace("/api/v2", "").replace(".json", "");
+}
+
 export function renderTicket(ticket: ZendeskTicket): string {
   const lines = [
     `ID: ${ticket.id}`,
-    `URL: ${ticket.url}`,
+    `URL: ${apiUrlToDocumentUrl(ticket.url)}`,
     `Subject: ${ticket.subject ?? "No subject"}`,
     `Status: ${ticket.status}`,
   ];
