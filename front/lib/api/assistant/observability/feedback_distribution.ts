@@ -5,7 +5,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
 export type FeedbackDistributionPoint = {
-  date: string;
+  timestamp: number;
   positive: number;
   negative: number;
 };
@@ -123,7 +123,7 @@ export async function fetchFeedbackDistribution(
 
   const points: FeedbackDistributionPoint[] = scriptedMetricResult.value.map(
     (row) => ({
-      date: row.day,
+      timestamp: new Date(row.day).getTime(),
       positive: row.up,
       negative: row.down,
     })
