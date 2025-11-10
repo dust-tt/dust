@@ -81,7 +81,7 @@ export async function* streamLLMEvents({
             {
               type: "reasoning_generated" as const,
               content: { text: reasoningContentParts },
-              metadata,
+              metadata: { ...metadata, encrypted_content: reasoningContentParts },
             },
           ]);
         }
