@@ -18,7 +18,6 @@ import type {
   RichTextItemResponse,
   SearchResponse,
 } from "@notionhq/client/build/src/api-endpoints";
-import { Context } from "@temporalio/activity";
 import { stringify } from "csv-stringify";
 import type { Logger } from "pino";
 
@@ -213,25 +212,6 @@ export async function getPagesAndDatabasesEditedSince({
       );
       tries += 1;
       if (tries >= retry.retries) {
-        // We've observed some Notion workspaces where the search API consistently fails. This happens
-        // in two different ways:
-        // - A 400 "The start_cursor provided is invalid" error
-        // - A 504 Gateway Timeout error after 60 seconds
-        // I'm guessing in most cases they are the same, and the 504 would have eventually resulted
-        // in a 400 if it didn't get cut off first.
-        // If we're on the 5th activity attempt, with each attempt having retried 5 times,
-        // we just log a warning and return an empty result set to avoid blocking the workflow entirely.
-        if (
-          Context.current().info.attempt >= 5 &&
-          APIResponseError.isAPIResponseError(e) &&
-          (e.status === 400 || e.status === 504)
-        ) {
-          tryLogger.warn(
-            { error: e },
-            "Ignoring repeated 400 or 504 errors for Notion search API."
-          );
-          return { pages: [], dbs: [], nextCursor: null };
-        }
         throw e;
       }
 
