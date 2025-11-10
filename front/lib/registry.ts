@@ -220,20 +220,6 @@ export const BaseDustProdActionRegistry = {
       },
     },
   },
-  "tag-manager-initial-suggestions": {
-    app: {
-      appId: "Huz76iC3FJ",
-      appHash:
-        "4c86322b20fa685fcbd87b23c5220e9be14fd56014a3f356a6cfe07b3573ab5d",
-    },
-    config: {
-      CREATE_SUGGESTIONS: {
-        function_call: "send_tags",
-        use_cache: false,
-        use_stream: true,
-      },
-    },
-  },
   "assistant-builder-webhook-filter-generator": {
     app: {
       appId: "XNcJCE7lUj",
