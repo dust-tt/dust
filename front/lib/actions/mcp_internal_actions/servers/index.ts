@@ -17,6 +17,7 @@ import { default as dataWarehousesServer } from "@app/lib/actions/mcp_internal_a
 import { default as deepDiveServer } from "@app/lib/actions/mcp_internal_actions/servers/deep_dive";
 import { default as generateFileServer } from "@app/lib/actions/mcp_internal_actions/servers/file_generation";
 import { default as freshserviceServer } from "@app/lib/actions/mcp_internal_actions/servers/freshservice";
+import { default as frontServer } from "@app/lib/actions/mcp_internal_actions/servers/front";
 import { default as githubServer } from "@app/lib/actions/mcp_internal_actions/servers/github";
 import { default as gmailServer } from "@app/lib/actions/mcp_internal_actions/servers/gmail";
 import { default as calendarServer } from "@app/lib/actions/mcp_internal_actions/servers/google_calendar";
@@ -202,6 +203,8 @@ export async function getInternalMCPServer(
       return deepDiveServer(auth, agentLoopContext);
     case "http_client":
       return httpClientServer(auth, agentLoopContext);
+    case "front":
+      return frontServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }

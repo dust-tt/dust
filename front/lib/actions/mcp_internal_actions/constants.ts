@@ -115,6 +115,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "speech_generator",
   "toolsets",
   "val_town",
+  "front",
   "web_search_&_browse",
   SEARCH_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
@@ -1536,6 +1537,52 @@ The directive should be used to display a clickable version of the agent name in
       icon: "ValTownLogo",
       documentationUrl: "https://docs.dust.tt/docs/val-town",
       instructions: null,
+      developerSecretSelection: "required",
+    },
+  },
+  front: {
+    id: 1018,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isRestricted: undefined,
+    isPreview: false,
+    tools_stakes: {
+      search_conversations: "never_ask",
+      get_conversation: "never_ask",
+      get_conversation_messages: "never_ask",
+      get_contact: "never_ask",
+      list_tags: "never_ask",
+      list_teammates: "never_ask",
+      get_customer_history: "never_ask",
+      list_inboxes: "never_ask",
+
+      create_conversation: "low",
+      create_draft: "low",
+      add_tags: "low",
+      add_comment: "low",
+      add_links: "low",
+
+      send_message: "high",
+      update_conversation_status: "high",
+      assign_conversation: "high",
+    },
+    tools_retry_policies: { default: "retry_on_interrupt" },
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "front",
+      version: "1.0.0",
+      description:
+        "Manage support conversations, messages, and customer interactions.",
+      authorization: null,
+      icon: "FrontLogo",
+      documentationUrl: "https://dev.frontapp.com/reference/introduction",
+      instructions:
+        "When handling support tickets:\n" +
+        "- Always check customer history before replying using get_customer_history\n" +
+        "- Auto-tag conversations based on issue type (bug, feature-request, billing)\n" +
+        "- Assign to teammate 'ilias' if T1 cannot resolve after three attempts\n" +
+        "- Use LLM-friendly timeline format for conversation data\n" +
+        "- Include full context (metadata, custom fields) in responses",
       developerSecretSelection: "required",
     },
   },
