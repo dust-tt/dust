@@ -6,7 +6,6 @@ import {
   Spinner,
   ValueCard,
 } from "@dust-tt/sparkle";
-import { useMemo } from "react";
 
 import { LatencyChart } from "@app/components/agent_builder/observability/charts/LatencyChart";
 import { ToolUsageChart } from "@app/components/agent_builder/observability/charts/ToolUsageChart";
@@ -15,16 +14,8 @@ import { useObservabilityContext } from "@app/components/agent_builder/observabi
 import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
 import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
 import { SharedObservabilityFilterSelector } from "@app/components/observability/SharedObservabilityFilterSelector";
-import type { ErrorRatePoint } from "@app/lib/api/assistant/observability/error_rate";
-import { useAgentAnalytics, useAgentErrorRate } from "@app/lib/swr/assistants";
+import { useAgentAnalytics } from "@app/lib/swr/assistants";
 
-function getAverageErrorRate(errorRate: ErrorRatePoint[], period: number) {
-  const totalErrorRate = errorRate.reduce(
-    (sum, current) => sum + current.errorRate,
-    0
-  );
-  return Math.round((totalErrorRate / period) * 10) / 10;
-}
 
 interface AgentObservabilityProps {
   workspaceId: string;
@@ -38,18 +29,6 @@ export function AgentObservability({
   isCustomAgent,
 }: AgentObservabilityProps) {
   const { period } = useObservabilityContext();
-
-  const { errorRate } = useAgentErrorRate({
-    workspaceId,
-    agentConfigurationId,
-    days: period,
-    disabled: !workspaceId || !agentConfigurationId,
-  });
-
-  const avrErrorRate = useMemo(
-    () => getAverageErrorRate(errorRate, period),
-    [errorRate, period]
-  );
 
   const { agentAnalytics, isAgentAnalyticsLoading } = useAgentAnalytics({
     workspaceId,
