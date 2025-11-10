@@ -4,7 +4,6 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
-import { updateInvitationStatusAndRole } from "@app/lib/api/invitation";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
@@ -13,7 +12,6 @@ import type { WithAPIErrorResponse } from "@app/types";
 
 const PokeDeleteInvitationRequestBodySchema = t.type({
   email: t.string,
-  includeExpired: t.boolean,
 });
 
 type PokePostInvitationResponseBody = {
@@ -88,11 +86,7 @@ async function handler(
         });
       }
 
-      await updateInvitationStatusAndRole(workspaceAdminAuth, {
-        invitation: invitation.toJSON(),
-        status: "revoked",
-        role: invitation.initialRole,
-      });
+      await invitation.revoke();
 
       res.status(200).json({ success: true, email });
       return;

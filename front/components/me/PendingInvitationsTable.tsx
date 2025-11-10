@@ -3,7 +3,6 @@ import type { ColumnDef } from "@tanstack/react-table";
 import type { MouseEvent } from "react";
 import { useMemo } from "react";
 
-import { isInvitationExpired } from "@app/components/members/utils";
 import { classNames } from "@app/lib/utils";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
 
@@ -32,9 +31,8 @@ export function PendingInvitationsTable({
     () =>
       sortedInvitations.map((invitation) => ({
         ...invitation,
-        isExpired: isInvitationExpired(invitation.createdAt),
         onJoin: () => {
-          if (isInvitationExpired(invitation.createdAt)) {
+          if (invitation.isExpired) {
             return;
           }
           window.location.assign(

@@ -8,10 +8,11 @@ import { ActiveRoleSchema } from "./user";
 export type MembershipInvitationType = {
   sId: string;
   id: ModelId;
-  status: "pending" | "consumed" | "revoked" | "expired";
+  status: "pending" | "consumed" | "revoked";
   inviteEmail: string;
   initialRole: ActiveRoleType;
   createdAt: number;
+  isExpired: boolean;
 };
 
 export type MembershipInvitationTypeWithLink = MembershipInvitationType & {
@@ -19,13 +20,11 @@ export type MembershipInvitationTypeWithLink = MembershipInvitationType & {
 };
 
 export interface PendingInvitationOption {
-  invitationId: number;
-  invitationSid: string;
   token: string;
   workspaceName: string;
-  workspaceSid: string;
   initialRole: ActiveRoleType;
   createdAt: number;
+  isExpired: boolean;
 }
 
 // Types for the invite form in Poke.

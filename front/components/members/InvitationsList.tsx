@@ -18,8 +18,6 @@ import { sendInvitations } from "@app/lib/invitations";
 import { useWorkspaceInvitations } from "@app/lib/swr/memberships";
 import type { MembershipInvitationType, WorkspaceType } from "@app/types";
 
-import { isInvitationExpired } from "./utils";
-
 type RowData = MembershipInvitationType & {
   onClick: () => void;
 };
@@ -66,7 +64,7 @@ export function InvitationsList({
       header: "Invitation Email",
       accessorKey: "inviteEmail",
       cell: (info: CellContext<RowData, string>) => {
-        const isExpired = isInvitationExpired(info.row.original.createdAt);
+        const isExpired = info.row.original.isExpired;
         return (
           <DataTable.CellContent>
             <div className="flex items-center gap-2">

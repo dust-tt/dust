@@ -51,13 +51,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       const workspace = invitation.workspace;
 
       return {
-        invitationId: invitation.id,
-        invitationSid: invitation.sId,
         workspaceName: workspace.name,
-        workspaceSid: workspace.sId,
         initialRole: invitation.initialRole,
         createdAt: invitation.createdAt.getTime(),
         token: getMembershipInvitationToken(invitation.toJSON()),
+        isExpired: invitation.isExpired(),
       };
     }
   );

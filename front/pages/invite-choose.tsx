@@ -37,13 +37,11 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
     const workspace = invitation.workspace;
 
     return {
-      invitationId: invitation.id,
-      invitationSid: invitation.sId,
       token: getMembershipInvitationToken(invitation.toJSON()),
       workspaceName: workspace.name,
-      workspaceSid: workspace.sId,
       initialRole: invitation.initialRole,
       createdAt: invitation.createdAt.getTime(),
+      isExpired: invitation.isExpired(),
     };
   });
 
@@ -96,7 +94,7 @@ export default function InviteChoosePage({
               <div className="flex flex-col gap-3">
                 {invitations.map((invitation) => (
                   <div
-                    key={invitation.invitationSid}
+                    key={invitation.workspaceName}
                     className="border-border-light bg-wash dark:bg-wash-dark flex items-center justify-between gap-4 rounded-xl border p-4 shadow-sm dark:border-border-night"
                   >
                     <div className="flex flex-col gap-1">

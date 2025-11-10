@@ -1,7 +1,6 @@
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
-import { isInvitationExpired } from "@app/components/members/utils";
 import { InvitationsDataTable } from "@app/components/poke/invitations/table";
 import { MembersDataTable } from "@app/components/poke/members/table";
 import PokeLayout from "@app/components/poke/PokeLayout";
@@ -43,7 +42,6 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
         const i = invite.toJSON();
         return {
           ...i,
-          status: isInvitationExpired(i.createdAt) ? "expired" : "pending",
           inviteLink: getMembershipInvitationUrl(owner, i),
         };
       }),
