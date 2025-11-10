@@ -148,7 +148,7 @@ export function padSeriesToTimeRange<T extends { timestamp: number }>(
 ): T[] {
   const pts = points ?? [];
   if (mode !== "timeRange") {
-    return pts;
+    return pts.map((pt) => ({ ...pt, date: formatShortDate(pt.timestamp) }));
   }
 
   const [startDate, endDate] = getTimeRangeBounds(periodDays);
