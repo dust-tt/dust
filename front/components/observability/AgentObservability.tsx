@@ -1,6 +1,5 @@
 import {
   CardGrid,
-  Chip,
   HandThumbDownIcon,
   HandThumbUpIcon,
   Separator,
@@ -15,7 +14,6 @@ import { UsageMetricsChart } from "@app/components/agent_builder/observability/c
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
 import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
-import { getErrorRateChipInfo } from "@app/components/agent_builder/observability/utils";
 import { SharedObservabilityFilterSelector } from "@app/components/observability/SharedObservabilityFilterSelector";
 import type { ErrorRatePoint } from "@app/lib/api/assistant/observability/error_rate";
 import { useAgentAnalytics, useAgentErrorRate } from "@app/lib/swr/assistants";
@@ -52,8 +50,6 @@ export function AgentObservability({
     () => getAverageErrorRate(errorRate, period),
     [errorRate, period]
   );
-
-  const errorRateChipInfo = getErrorRateChipInfo(avrErrorRate);
 
   const { agentAnalytics, isAgentAnalyticsLoading } = useAgentAnalytics({
     workspaceId,
