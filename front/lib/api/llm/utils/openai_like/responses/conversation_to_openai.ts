@@ -12,10 +12,6 @@ import type {
 } from "openai/resources/shared";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import {
-  extractEncryptedContentFromMetadata,
-  extractIdFromMetadata,
-} from "@app/lib/api/llm/utils";
 import type {
   ModelConversationTypeMultiActions,
   ReasoningEffort,
@@ -60,12 +56,9 @@ function toAssistantInputItem(
       };
     case "reasoning":
       const reasoning = content.value.reasoning;
-      const id = extractIdFromMetadata(content.value.metadata);
-      const encryptedContent = extractEncryptedContentFromMetadata(
-        content.value.metadata
-      );
+      const encryptedContent = content.value.metadata.encrypted_content;
       return {
-        id,
+        id: content.value.metadata.id ?? "",
         type: "reasoning",
         summary: reasoning ? [{ type: "summary_text", text: reasoning }] : [],
         ...(encryptedContent ? { encrypted_content: encryptedContent } : {}),
