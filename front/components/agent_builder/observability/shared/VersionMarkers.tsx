@@ -2,7 +2,7 @@ import { ReferenceLine } from "recharts";
 
 import type { ObservabilityMode } from "@app/components/agent_builder/observability/ObservabilityContext";
 
-type Marker = { timestamp: string };
+type Marker = { timestamp: number };
 
 interface MarkerDotLabelProps {
   viewBox?: { x: number; y: number; width: number; height: number };
