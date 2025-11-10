@@ -45,7 +45,7 @@ async function loadUserIdMapping(
   const mappingRecord =
     await readFromRelocationStorage<Record<string, ModelId>>(userIdMappingPath);
   const mappingEntries = Object.entries(mappingRecord).map(
-    ([sourceId, destId]) => [Number(sourceId) as ModelId, destId] as const
+    ([sourceId, destId]) => [Number(sourceId), destId] as const
   );
   const mapping = new Map<ModelId, ModelId>(mappingEntries);
   userIdMappingCache.set(userIdMappingPath, mapping);
@@ -171,12 +171,7 @@ export async function readCoreEntitiesFromSourceRegion({
 
   const usersForInsertion =
     userIdMapping.size > 0
-      ? users.filter((user) => {
-          const mappedUserId = userIdMapping.get(user.id as ModelId);
-          return (
-            mappedUserId === undefined || mappedUserId === (user.id as ModelId)
-          );
-        })
+      ? users.filter((user) => !userIdMapping.has(user.id))
       : users;
 
   // Fetch all associated users metadata of the workspace.
@@ -198,11 +193,8 @@ export async function readCoreEntitiesFromSourceRegion({
   const userMetadataForInsertion =
     userIdMapping.size > 0
       ? userMetadata.map((metadata) => {
-          const mappedUserId = userIdMapping.get(metadata.userId as ModelId);
-          if (
-            mappedUserId !== undefined &&
-            mappedUserId !== (metadata.userId as ModelId)
-          ) {
+          const mappedUserId = userIdMapping.get(metadata.userId);
+          if (mappedUserId !== undefined && mappedUserId !== metadata.userId) {
             return {
               ...metadata,
               userId: mappedUserId,
