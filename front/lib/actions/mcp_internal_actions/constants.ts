@@ -840,10 +840,8 @@ The directive should be used to display a clickable version of the agent name in
     id: 26,
     availability: "manual",
     allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("freshservice_tool");
-    },
-    isPreview: true,
+    isRestricted: undefined,
+    isPreview: false,
     tools_stakes: {
       // Read operations - never ask
       list_tickets: "never_ask",
@@ -977,7 +975,7 @@ The directive should be used to display a clickable version of the agent name in
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("slack_bot_mcp");
     },
-    isPreview: false,
+    isPreview: true,
     tools_stakes: {
       list_public_channels: "never_ask" as const,
       list_users: "never_ask" as const,
@@ -1039,7 +1037,7 @@ The directive should be used to display a clickable version of the agent name in
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("confluence_tool");
     },
-    isPreview: false,
+    isPreview: true,
     tools_stakes: {
       // Read operations - never ask
       get_current_user: "never_ask",
@@ -1237,7 +1235,7 @@ The directive should be used to display a clickable version of the agent name in
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("ashby_tool");
     },
-    isPreview: false,
+    isPreview: true,
     tools_stakes: {
       submit_feedback: "high",
       search_candidates: "never_ask",

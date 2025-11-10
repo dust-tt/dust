@@ -141,10 +141,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Monday MCP tool",
     stage: "rolling_out",
   },
-  freshservice_tool: {
-    description: "Freshservice MCP tool",
-    stage: "rolling_out",
-  },
   agent_management_tool: {
     description: "MCP tool for creating and managing agent configurations",
     stage: "dust_only",
