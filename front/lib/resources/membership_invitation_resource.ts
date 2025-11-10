@@ -1,8 +1,6 @@
 import { verify } from "jsonwebtoken";
-import type {Attributes, CreationAttributes, Transaction} from "sequelize";
-import {
-  Op
-} from "sequelize";
+import type { Attributes, CreationAttributes, Transaction } from "sequelize";
+import { Op } from "sequelize";
 
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";

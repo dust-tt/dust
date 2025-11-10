@@ -1,8 +1,8 @@
 import sgMail from "@sendgrid/mail";
 import { escape } from "html-escaper";
 import { sign } from "jsonwebtoken";
-import type {Transaction} from "sequelize";
-import { Op  } from "sequelize";
+import type { Transaction } from "sequelize";
+import { Op } from "sequelize";
 
 import config from "@app/lib/api/config";
 import {
