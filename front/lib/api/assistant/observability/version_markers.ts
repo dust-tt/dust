@@ -63,9 +63,12 @@ export async function fetchVersionMarkers(
             ? parseInt(firstSeenString, 10)
             : DEFAULT_TIMESTAMP_MS;
 
+      const date = new Date(timestampMs);
+      date.setUTCHours(0, 0, 0, 0);
+
       return {
         version: b.key,
-        timestamp: timestampMs,
+        timestamp: date.getTime(),
       };
     })
     .sort((a, b) => a.timestamp - b.timestamp);

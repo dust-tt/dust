@@ -60,6 +60,13 @@ export function findVersionMarkerForDate(
   return null;
 }
 
+const truncateToMidnightUTC = (timestamp: number): number => {
+    const date = new Date(timestamp);
+    date.setUTCHours(0, 0, 0, 0);
+    return date.getTime();
+};
+
+
 // Filters a generic time-series of points with a `timestamp` number to the
 // selected version window determined by version markers. If no selection or
 // markers are provided, returns the original points.
@@ -87,14 +94,15 @@ export function filterTimeSeriesByVersionWindow<
     return pts;
   }
 
-  const start = new Date(versionMarkers[idx].timestamp).getTime();
+  const start = truncateToMidnightUTC(versionMarkers[idx].timestamp);
   const end =
     idx + 1 < versionMarkers.length
-      ? new Date(versionMarkers[idx + 1].timestamp).getTime()
+      ? truncateToMidnightUTC(versionMarkers[idx + 1].timestamp)
       : undefined;
 
   return pts.filter((p) => {
-    return p.timestamp >= start && (end === undefined || p.timestamp < end);
+    const pointTime = truncateToMidnightUTC(p.timestamp);
+    return pointTime >= start && (end === undefined || pointTime < end);
   });
 }
 
@@ -148,7 +156,8 @@ export function padSeriesToTimeRange<T extends { timestamp: number }>(
 ): T[] {
   const pts = points ?? [];
   if (mode !== "timeRange") {
-    return pts.map((pt) => ({ ...pt, date: formatShortDate(pt.timestamp) }));
+    const formattedPts = pts.map((pt) => ({ ...pt, date: formatShortDate(pt.timestamp) }));
+    return formattedPts;
   }
 
   const [startDate, endDate] = getTimeRangeBounds(periodDays);
