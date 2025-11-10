@@ -113,7 +113,7 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     }
     const oneDayAgo = new Date();
     oneDayAgo.setDate(oneDayAgo.getDate() - 1);
-    const invitations = await MembershipInvitationModel.findAll({
+    const invitations = await this.model.findAll({
       where: {
         workspaceId: owner.id,
         status: ["pending", "revoked"],
@@ -133,12 +133,14 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     };
 
     for (const i of invitations) {
-      const status = i.status as "pending" | "revoked";
-      groupedInvitations[status].push(
-        new MembershipInvitationResource(this.model, i.get(), {
-          workspace: i.workspace,
-        })
-      );
+      const status = i.status;
+      if (status === "pending" || status === "revoked") {
+        groupedInvitations[status].push(
+          new MembershipInvitationResource(this.model, i.get(), {
+            workspace: i.workspace,
+          })
+        );
+      }
     }
 
     return groupedInvitations;
@@ -222,7 +224,7 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
       );
     }
 
-    const invitations = await MembershipInvitationModel.findAll({
+    const invitations = await this.model.findAll({
       where: {
         workspaceId: owner.id,
         status: "pending",
