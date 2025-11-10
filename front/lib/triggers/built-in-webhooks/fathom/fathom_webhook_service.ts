@@ -42,9 +42,7 @@ export class FathomWebhookService implements RemoteWebhookService<"fathom"> {
     return new Ok(new FathomClient(accessToken));
   }
 
-  async getServiceData(
-    oauthToken: string
-  ): Promise<Result<Record<string, never>, Error>> {
+  async getServiceData(): Promise<Result<Record<string, never>, Error>> {
     return new Ok({});
   }
 
@@ -53,8 +51,6 @@ export class FathomWebhookService implements RemoteWebhookService<"fathom"> {
     connectionId,
     remoteMetadata,
     webhookUrl,
-    events,
-    secret,
   }: {
     auth: Authenticator;
     connectionId: string;
