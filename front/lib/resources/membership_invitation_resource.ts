@@ -1,8 +1,10 @@
 import { verify } from "jsonwebtoken";
-import type { Attributes, Transaction } from "sequelize";
+import type { Attributes, CreationAttributes, Transaction } from "sequelize";
+import { Op } from "sequelize";
 
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import { INVITATION_EXPIRATION_TIME_SEC } from "@app/lib/constants/invitation";
 import { AuthFlowError } from "@app/lib/iam/errors";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -11,8 +13,16 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
-import type { MembershipInvitationType, Result } from "@app/types";
+import type {
+  ActiveRoleType,
+  LightWorkspaceType,
+  MembershipInvitationType,
+  Result,
+} from "@app/types";
 import { Err, Ok } from "@app/types";
+
+import { generateRandomModelSId } from "./string_ids";
+import type { WorkspaceResource } from "./workspace_resource";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -38,16 +48,111 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     this.workspace = workspace;
   }
 
-  static async getPendingForEmail(
-    email: string
-  ): Promise<MembershipInvitationResource | null> {
-    const pendingInvitations = await this.listPendingForEmail(email);
-    return pendingInvitations.length > 0 ? pendingInvitations[0] : null;
+  static async makeNew(
+    auth: Authenticator,
+    blob: Omit<
+      CreationAttributes<MembershipInvitationModel>,
+      "sId" | "workspaceId"
+    >,
+    transaction?: Transaction
+  ) {
+    const invitation = await this.model.create(
+      {
+        ...blob,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        sId: generateRandomModelSId(),
+      },
+      { transaction }
+    );
+    return new this(this.model, invitation.get(), {
+      workspace: invitation.workspace,
+    });
   }
 
-  static async listPendingForEmail(
-    email: string
-  ): Promise<MembershipInvitationResource[]> {
+  static async fetchById(
+    auth: Authenticator,
+    id: string
+  ): Promise<MembershipInvitationResource | null> {
+    const invitation = await this.model.findOne({
+      where: {
+        sId: id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+    return invitation
+      ? new MembershipInvitationResource(this.model, invitation.get(), {
+          workspace: invitation.workspace,
+        })
+      : null;
+  }
+
+  private static invitationExpired(createdAt: Date) {
+    return (
+      createdAt.getTime() + INVITATION_EXPIRATION_TIME_SEC * 1000 < Date.now()
+    );
+  }
+
+  static async listRecentPendingAndRevokedInvitations(
+    auth: Authenticator,
+    transaction?: Transaction
+  ): Promise<{
+    pending: MembershipInvitationResource[];
+    revoked: MembershipInvitationResource[];
+  }> {
+    const owner = auth.workspace();
+    if (!owner) {
+      return {
+        pending: [],
+        revoked: [],
+      };
+    }
+    if (!auth.isAdmin()) {
+      throw new Error(
+        "Only users that are `admins` for the current workspace can see membership invitations or modify it."
+      );
+    }
+    const oneDayAgo = new Date();
+    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+    const invitations = await this.model.findAll({
+      where: {
+        workspaceId: owner.id,
+        status: ["pending", "revoked"],
+        createdAt: {
+          [Op.gt]: oneDayAgo,
+        },
+      },
+      transaction,
+    });
+
+    const groupedInvitations: Record<
+      "pending" | "revoked",
+      MembershipInvitationResource[]
+    > = {
+      revoked: [],
+      pending: [],
+    };
+
+    for (const i of invitations) {
+      const status = i.status;
+      if (status === "pending" || status === "revoked") {
+        groupedInvitations[status].push(
+          new MembershipInvitationResource(this.model, i.get(), {
+            workspace: i.workspace,
+          })
+        );
+      }
+    }
+
+    return groupedInvitations;
+  }
+
+  static async listPendingForEmail({
+    email,
+    includeExpired = false,
+  }: {
+    email: string;
+    includeExpired?: boolean;
+  }): Promise<MembershipInvitationResource[]> {
     const invitations = await this.model.findAll({
       where: {
         inviteEmail: email,
@@ -59,32 +164,84 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
-    return invitations.map(
-      (invitation) =>
-        new MembershipInvitationResource(this.model, invitation.get(), {
-          workspace: invitation.workspace,
-        })
-    );
+    return invitations
+      .filter(
+        (invitation) =>
+          includeExpired || !this.invitationExpired(invitation.createdAt)
+      )
+      .map(
+        (invitation) =>
+          new MembershipInvitationResource(this.model, invitation.get(), {
+            workspace: invitation.workspace,
+          })
+      );
   }
 
-  static async getPendingForEmailAndWorkspace(
-    email: string,
-    workspaceId: number
-  ): Promise<MembershipInvitationResource | null> {
+  static async getPendingForEmailAndWorkspace({
+    email,
+    workspace,
+    includeExpired = false,
+    transaction,
+  }: {
+    email: string;
+    workspace: LightWorkspaceType | WorkspaceResource;
+    includeExpired?: boolean;
+    transaction?: Transaction;
+  }): Promise<MembershipInvitationResource | null> {
     const invitation = await this.model.findOne({
       where: {
         inviteEmail: email,
-        workspaceId,
+        workspaceId: workspace.id,
         status: "pending",
       },
       include: [WorkspaceModel],
+      transaction,
     });
 
-    return invitation
-      ? new MembershipInvitationResource(this.model, invitation.get(), {
-          workspace: invitation.workspace,
-        })
-      : null;
+    if (
+      !invitation ||
+      (!includeExpired && this.invitationExpired(invitation.createdAt))
+    ) {
+      return null;
+    }
+
+    return new MembershipInvitationResource(this.model, invitation.get(), {
+      workspace: invitation.workspace,
+    });
+  }
+
+  static async getPendingInvitations(
+    auth: Authenticator,
+    { includeExpired = false }: { includeExpired?: boolean } = {}
+  ): Promise<MembershipInvitationResource[]> {
+    const owner = auth.workspace();
+    if (!owner) {
+      return [];
+    }
+    if (!auth.isAdmin()) {
+      throw new Error(
+        "Only users that are `admins` for the current workspace can see membership invitations or modify it."
+      );
+    }
+
+    const invitations = await this.model.findAll({
+      where: {
+        workspaceId: owner.id,
+        status: "pending",
+      },
+    });
+
+    return invitations
+      .filter(
+        (invitation) =>
+          includeExpired || !this.invitationExpired(invitation.createdAt)
+      )
+      .map(
+        (i) =>
+          new MembershipInvitationResource(this.model, i.get(), {
+            workspace: i.workspace,
+          })
+      );
   }
 
   static async getPendingForToken(
@@ -135,6 +292,15 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
         );
       }
 
+      if (this.invitationExpired(membershipInvite.createdAt)) {
+        return new Err(
+          new AuthFlowError(
+            "expired_invitation",
+            "The invitation has expired, please ask your admin to resend it."
+          )
+        );
+      }
+
       return new Ok(
         new MembershipInvitationResource(this.model, membershipInvite.get(), {
           workspace: membershipInvite.workspace,
@@ -145,11 +311,48 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     return new Ok(null);
   }
 
+  isExpired() {
+    return (
+      this.createdAt.getTime() + INVITATION_EXPIRATION_TIME_SEC * 1000 <
+      Date.now()
+    );
+  }
+
   async markAsConsumed(user: UserResource) {
     return this.update({
       status: "consumed",
       invitedUserId: user.id,
     });
+  }
+
+  async revoke(transaction?: Transaction) {
+    return this.update(
+      {
+        status: "revoked",
+      },
+      transaction
+    );
+  }
+
+  async updateRole(role: ActiveRoleType, transaction?: Transaction) {
+    return this.update(
+      {
+        initialRole: role,
+      },
+      transaction
+    );
+  }
+
+  async updateStatus(
+    status: "pending" | "consumed" | "revoked",
+    transaction?: Transaction
+  ) {
+    return this.update(
+      {
+        status,
+      },
+      transaction
+    );
   }
 
   delete(
@@ -169,6 +372,7 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
       inviteEmail: this.inviteEmail,
       sId: this.sId,
       status: this.status,
+      isExpired: this.isExpired(),
     };
   }
 }

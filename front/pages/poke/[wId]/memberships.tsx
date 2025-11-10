@@ -1,16 +1,13 @@
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
-import React from "react";
 
 import { InvitationsDataTable } from "@app/components/poke/invitations/table";
 import { MembersDataTable } from "@app/components/poke/members/table";
 import PokeLayout from "@app/components/poke/PokeLayout";
-import {
-  getMembershipInvitationUrl,
-  getPendingInvitations,
-} from "@app/lib/api/invitation";
+import { getMembershipInvitationUrl } from "@app/lib/api/invitation";
 import { getMembers } from "@app/lib/api/workspace";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
+import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import type {
   MembershipInvitationTypeWithLink,
   UserTypeWithWorkspaces,
@@ -33,16 +30,21 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 
   const [{ members }, pendingInvitations] = await Promise.all([
     getMembers(auth),
-    getPendingInvitations(auth),
+    MembershipInvitationResource.getPendingInvitations(auth, {
+      includeExpired: true,
+    }),
   ]);
 
   return {
     props: {
       members,
-      pendingInvitations: pendingInvitations.map((invite) => ({
-        ...invite,
-        inviteLink: getMembershipInvitationUrl(owner, invite.id),
-      })),
+      pendingInvitations: pendingInvitations.map((invite) => {
+        const i = invite.toJSON();
+        return {
+          ...i,
+          inviteLink: getMembershipInvitationUrl(owner, i),
+        };
+      }),
       owner,
     },
   };
