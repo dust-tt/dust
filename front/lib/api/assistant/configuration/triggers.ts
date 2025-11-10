@@ -1,13 +1,9 @@
 import { runActionStreamed } from "@app/lib/actions/server";
+import { getCronTimezoneGeneration } from "@app/lib/api/assistant/configuration/triggers/cron_timezone";
 import type { Authenticator } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import type { Result } from "@app/types";
-import {
-  Err,
-  getLargeWhitelistedModel,
-  getSmallWhitelistedModel,
-  Ok,
-} from "@app/types";
+import { Err, getLargeWhitelistedModel, Ok } from "@app/types";
 import type { WebhookEvent } from "@app/types/triggers/webhooks_source_preset";
 
 function isValidIANATimezone(timezone: string): boolean {
@@ -35,78 +31,15 @@ const CRON_REGEXP =
 
 export async function generateCronRule(
   auth: Authenticator,
-  {
-    naturalDescription,
-    defaultTimezone,
-  }: {
-    naturalDescription: string;
-    defaultTimezone: string;
-  }
+  inputs: { naturalDescription: string; defaultTimezone: string }
 ): Promise<Result<{ cron: string; timezone: string }, Error>> {
-  const owner = auth.getNonNullableWorkspace();
-
-  const model = getSmallWhitelistedModel(owner);
-  if (!model) {
-    return new Err(
-      new Error("Failed to find a whitelisted model to generate cron rule")
-    );
-  }
-
-  const config = cloneBaseConfig(
-    getDustProdAction("assistant-builder-cron-timezone-generator").config
-  );
-  config.CREATE_CRON.provider_id = model.providerId;
-  config.CREATE_CRON.model_id = model.modelId;
-  config.CREATE_TZ.provider_id = model.providerId;
-  config.CREATE_TZ.model_id = model.modelId;
-
-  const res = await runActionStreamed(
-    auth,
-    "assistant-builder-cron-timezone-generator",
-    config,
-    [
-      {
-        naturalDescription,
-        defaultTimezone,
-      },
-    ],
-    {
-      workspaceId: auth.getNonNullableWorkspace().sId,
-    }
-  );
+  const res = await getCronTimezoneGeneration(auth, inputs);
 
   if (res.isErr()) {
-    return new Err(new Error(`Error generating cron rule: ${res.error}`));
+    return res;
   }
 
-  const { eventStream } = res.value;
-  let cronRule: string | null = null;
-  let timezone: string | null = null;
-
-  for await (const event of eventStream) {
-    if (event.type === "error") {
-      return new Err(
-        new Error(`Error generating cron rule: ${event.content.message}`)
-      );
-    }
-
-    if (event.type === "block_execution") {
-      const e = event.content.execution[0][0];
-      if (e.error) {
-        return new Err(new Error(`Error generating cron rule: ${e.error}`));
-      }
-
-      if (event.content.block_name === "OUTPUT" && e.value) {
-        const v = e.value as any;
-        if (v.cron) {
-          cronRule = v.cron;
-        }
-        if (v.timezone) {
-          timezone = v.timezone;
-        }
-      }
-    }
-  }
+  const { cron: cronRule, timezone } = res.value;
 
   if (
     !cronRule ||
@@ -115,12 +48,15 @@ export async function generateCronRule(
   ) {
     return new Err(new Error(GENERIC_ERROR_MESSAGE));
   }
+
   if (isTooFrequentCron(cronRule)) {
     return new Err(new Error(TOO_FREQUENT_MESSAGE));
   }
+
   if (!timezone || !isValidIANATimezone(timezone)) {
     return new Err(new Error(INVALID_TIMEZONE_MESSAGE));
   }
+
   return new Ok({ cron: cronRule, timezone });
 }
 
