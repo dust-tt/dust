@@ -13,6 +13,7 @@ export type LLMErrorType =
   | "overloaded_error"
   | "context_length_exceeded"
   | "invalid_request_error"
+  | "invalid_response_error"
   | "authentication_error"
   | "permission_error"
   | "not_found_error"
