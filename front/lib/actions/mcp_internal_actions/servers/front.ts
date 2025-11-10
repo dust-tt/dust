@@ -29,10 +29,10 @@ interface FrontAPIOptions {
 /**
  * Makes an API request to Front with retry logic and exponential backoff
  */
-async function makeFrontAPIRequest(
+const makeFrontAPIRequest = async (
   options: FrontAPIOptions,
   retryCount = 0
-): Promise<any> {
+): Promise<any> => {
   const { method, endpoint, apiToken, body, params } = options;
 
   const url = new URL(`${FRONT_API_BASE_URL}/${endpoint}`);
@@ -104,7 +104,7 @@ async function makeFrontAPIRequest(
   }
 
   return response.json();
-}
+};
 
 /**
  * Helper to get the API token from workspace secrets
