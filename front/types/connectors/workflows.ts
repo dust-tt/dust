@@ -1,4 +1,4 @@
-import type { ModelId } from "@app/types";
+import type { ConnectorProvider, ModelId } from "@app/types";
 
 export function getNotionWorkflowId(
   connectorId: ModelId,
@@ -41,4 +41,36 @@ export function microsoftIncrementalSyncWorkflowId(connectorId: ModelId) {
 
 export function microsoftGarbageCollectionWorkflowId(connectorId: ModelId) {
   return `microsoft-garbageCollection-${connectorId}`;
+}
+
+export function getWorkflowIdsForConnector(
+  connectorId: ModelId,
+  connectorType: ConnectorProvider
+): string[] {
+  switch (connectorType) {
+    case "notion":
+      return [
+        getNotionWorkflowId(connectorId, "sync"),
+        getNotionWorkflowId(connectorId, "garbage-collector"),
+        getNotionWorkflowId(connectorId, "process-database-upsert-queue"),
+      ];
+    case "intercom":
+      return [getIntercomSyncWorkflowId(connectorId)];
+    case "zendesk":
+      return [
+        getZendeskSyncWorkflowId(connectorId),
+        getZendeskGarbageCollectionWorkflowId(connectorId),
+      ];
+    case "google_drive":
+      return [googleDriveIncrementalSyncWorkflowId(connectorId)];
+    case "confluence":
+      return [makeConfluenceSyncWorkflowId(connectorId)];
+    case "microsoft":
+      return [
+        microsoftIncrementalSyncWorkflowId(connectorId),
+        microsoftGarbageCollectionWorkflowId(connectorId),
+      ];
+    default:
+      return [];
+  }
 }

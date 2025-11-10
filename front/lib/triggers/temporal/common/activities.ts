@@ -164,12 +164,12 @@ class TriggerNonRetryableError extends Error {}
 export async function runTriggeredAgentsActivity({
   userId,
   workspaceId,
-  trigger,
+  triggerId,
   contentFragment,
 }: {
   userId: string;
   workspaceId: string;
-  trigger: TriggerType;
+  triggerId: string;
   contentFragment?: ContentFragmentInputWithFileIdType;
 }) {
   const auth = await Authenticator.fromUserIdAndWorkspaceId(
@@ -189,6 +189,15 @@ export async function runTriggeredAgentsActivity({
     );
   }
 
+  const triggerResource = await TriggerResource.fetchById(auth, triggerId);
+  if (!triggerResource) {
+    throw new TriggerNonRetryableError(
+      `Trigger with ID ${triggerId} not found.`
+    );
+  }
+
+  const trigger = triggerResource.toJSON();
+
   const agentConfiguration = await getAgentConfiguration(auth, {
     agentId: trigger.agentConfigurationId,
     variant: "full",
@@ -204,13 +213,6 @@ export async function runTriggeredAgentsActivity({
     auth,
     agentConfiguration
   );
-
-  const triggerResource = await TriggerResource.fetchById(auth, trigger.sId);
-  if (!triggerResource) {
-    throw new TriggerNonRetryableError(
-      `Trigger with ID ${trigger.sId} not found.`
-    );
-  }
 
   if (!triggerResource.enabled) {
     logger.info({ triggerId: trigger.sId }, "Trigger is disabled.");

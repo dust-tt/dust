@@ -5,6 +5,7 @@ import * as reporter from "io-ts-reporters";
 import { runAction } from "@app/lib/actions/server";
 import { getBuilderDescriptionSuggestions } from "@app/lib/api/assistant/suggestions/description";
 import { getBuilderEmojiSuggestions } from "@app/lib/api/assistant/suggestions/emoji";
+import { getBuilderInstructionsSuggestions } from "@app/lib/api/assistant/suggestions/instructions";
 import { getBuilderNameSuggestions } from "@app/lib/api/assistant/suggestions/name";
 import { getBuilderTagSuggestions } from "@app/lib/api/assistant/suggestions/tags";
 import type { SuggestionResults } from "@app/lib/api/assistant/suggestions/types";
@@ -83,7 +84,10 @@ export async function getBuilderSuggestions(
 
     case "emoji":
       return getBuilderEmojiSuggestions(auth, inputs);
+
     case "instructions":
+      return getBuilderInstructionsSuggestions(auth, inputs);
+
     case "autocompletion": {
       const config = cloneBaseConfig(
         getDustProdActionRegistry()[`assistant-builder-${type}-suggestions`]

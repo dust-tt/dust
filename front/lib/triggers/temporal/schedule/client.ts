@@ -29,9 +29,11 @@ function getTriggerScheduleOptions(
       type: "startWorkflow",
       workflowType: agentTriggerWorkflow,
       args: [
-        auth.getNonNullableUser().sId,
-        auth.getNonNullableWorkspace().sId,
-        triggerData,
+        {
+          userId: auth.getNonNullableUser().sId,
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          triggerId: triggerData.sId,
+        },
       ],
       taskQueue: COMMON_QUEUE_NAME,
     },

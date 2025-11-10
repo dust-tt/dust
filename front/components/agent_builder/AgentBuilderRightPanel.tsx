@@ -197,11 +197,20 @@ function ExpandedContent({
               />
             </TabContentLayout>
           ))}
-        {selectedTab === "performance" && (
-          <AgentBuilderPerformance
-            agentConfigurationSId={agentConfigurationSId}
-          />
-        )}
+        {selectedTab === "performance" &&
+          (agentConfigurationSId ? (
+            <AgentBuilderPerformance
+              agentConfigurationSId={agentConfigurationSId}
+            />
+          ) : (
+            <TabContentLayout title="Feedback">
+              <EmptyPlaceholder
+                icon={ListCheckIcon}
+                title="Waiting for feedback"
+                description="When users give feedback on responses, you'll see it here."
+              />
+            </TabContentLayout>
+          ))}
       </ObservabilityProvider>
     </div>
   );

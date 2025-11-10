@@ -2,12 +2,14 @@ import type { Content, FunctionResponse, Part, Tool } from "@google/genai";
 import assert from "assert";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import { EventError } from "@app/lib/api/llm/types/events";
 import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
 import type {
   AssistantContentMessageTypeModel,
   AssistantFunctionCallMessageTypeModel,
   FunctionMessageTypeModel,
   ImageContent,
+  ModelIdType,
   ModelMessageTypeMultiActionsWithoutContentFragment,
   TextContent,
 } from "@app/types";
@@ -28,22 +30,29 @@ const GOOGLE_AI_STUDIO_SUPPORTED_MIME_TYPES = [
 ];
 
 async function contentToPart(
-  content: TextContent | ImageContent
+  content: TextContent | ImageContent,
+  modelId: ModelIdType
 ): Promise<Part> {
   switch (content.type) {
     case "text":
       return { text: content.text };
     case "image_url":
       // Google only accepts images as base64 inline data
-      // TODO(LLM-Router 2025-10-27): Handle error properly and send Non retryableError event
       const { mediaType, data } = await trustedFetchImageBase64(
         content.image_url.url
       );
 
       if (!GOOGLE_AI_STUDIO_SUPPORTED_MIME_TYPES.includes(mediaType)) {
-        // TODO(LLM-Router 2025-10-27): Handle error properly and send Non retryableError event
-        throw new Error(
-          `Image mime type ${mediaType} is not supported by Google AI Studio`
+        throw new EventError(
+          {
+            type: "invalid_request_error",
+            message: `Image mime type ${mediaType} is not supported by Google AI Studio`,
+            isRetryable: false,
+          },
+          {
+            clientId: "google_ai_studio",
+            modelId,
+          }
         );
       }
 
@@ -159,13 +168,16 @@ export function toTool(specification: AgentActionSpecification): Tool {
  * Converts messages to Google format, optionally fetching and converting images to base64
  */
 export async function toContent(
-  message: ModelMessageTypeMultiActionsWithoutContentFragment
+  message: ModelMessageTypeMultiActionsWithoutContentFragment,
+  modelId: ModelIdType
 ): Promise<Content> {
   switch (message.role) {
     case "user": {
       return {
         role: "user",
-        parts: await Promise.all(message.content.map(contentToPart)),
+        parts: await Promise.all(
+          message.content.map((content) => contentToPart(content, modelId))
+        ),
       };
     }
     case "function": {
