@@ -15,7 +15,7 @@ import {
   readFromRelocationStorage,
   writeToRelocationStorage,
 } from "@app/temporal/relocation/lib/file_storage/relocation";
-import type { ModelId } from "@app/types";
+import { removeNulls, type ModelId } from "@app/types";
 
 export async function writeCoreEntitiesToDestinationRegion({
   dataPath,
@@ -216,7 +216,11 @@ export async function prepareDestinationUserMapping({
     }
 
     const existingUsersByWorkOSId = new Map<string, ModelId>(
-      existingUsers.map((user) => [user.workOSUserId as string, user.id])
+      removeNulls(
+        existingUsers.map((user) =>
+          user.workOSUserId ? [user.workOSUserId, user.id] : null
+        )
+      )
     );
 
     const mapping: Record<string, ModelId> = {};
