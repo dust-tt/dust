@@ -9,12 +9,16 @@ import {
   QUEUE_NAME,
 } from "@connectors/connectors/notion/temporal/config";
 import type { NotionWebhookEvent } from "@connectors/connectors/notion/temporal/signals";
-import { notionWebhookSignal } from "@connectors/connectors/notion/temporal/signals";
+import {
+  notionDeletionCrawlSignal,
+  notionWebhookSignal,
+} from "@connectors/connectors/notion/temporal/signals";
 import {
   notionProcessWebhooksWorkflow,
   notionSyncWorkflow,
 } from "@connectors/connectors/notion/temporal/workflows/";
 import { updateOrphanedResourcesParentsWorkflow } from "@connectors/connectors/notion/temporal/workflows/";
+import { notionDeletionCrawlWorkflow } from "@connectors/connectors/notion/temporal/workflows/deletion_crawl";
 import { notionGarbageCollectionWorkflow } from "@connectors/connectors/notion/temporal/workflows/garbage_collection";
 import { processDatabaseUpsertQueueWorkflow } from "@connectors/connectors/notion/temporal/workflows/upsert_database_queue";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -421,6 +425,28 @@ export async function launchNotionWebhookProcessingWorkflow(
     },
     signal: notionWebhookSignal,
     signalArgs: [event],
+    memo: {
+      connectorId,
+    },
+  });
+}
+
+export async function sendDeletionCrawlSignal(
+  connectorId: ModelId,
+  resourceId: string,
+  resourceType: "page" | "database"
+) {
+  const client = await getTemporalClient();
+
+  await client.workflow.signalWithStart(notionDeletionCrawlWorkflow, {
+    args: [{ connectorId }],
+    taskQueue: QUEUE_NAME,
+    workflowId: getNotionWorkflowId(connectorId, "deletion-crawl"),
+    searchAttributes: {
+      connectorId: [connectorId],
+    },
+    signal: notionDeletionCrawlSignal,
+    signalArgs: [{ resourceId, resourceType }],
     memo: {
       connectorId,
     },

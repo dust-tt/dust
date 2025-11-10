@@ -8,3 +8,12 @@ export type NotionWebhookEvent = {
 export const notionWebhookSignal = defineSignal<[NotionWebhookEvent]>(
   "notion_webhook_signal"
 );
+
+export type NotionDeletionCrawlSignal = {
+  resourceId: string;
+  resourceType: "page" | "database";
+};
+
+export const notionDeletionCrawlSignal = defineSignal<
+  [NotionDeletionCrawlSignal]
+>("notion_deletion_crawl_signal");
