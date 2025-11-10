@@ -27,6 +27,7 @@ import {
   ConfluenceLogo,
   DriveLogo,
   FreshserviceLogo,
+  FrontLogo,
   GcalLogo,
   GithubLogo,
   GitlabLogo,
@@ -121,6 +122,7 @@ export const InternalActionIcons = {
   DriveLogo,
   ValTownLogo,
   ZendeskLogo,
+  FrontLogo,
 };
 
 export const INTERNAL_ALLOWED_ICONS = Object.keys(InternalActionIcons);

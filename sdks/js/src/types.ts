@@ -689,6 +689,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "http_client_tool"
   | "slack_files_write_scope"
   | "notifications"
+  | "front_tool"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -2841,6 +2842,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "GmailLogo"
   | "GoogleSpreadsheetLogo"
   | "FreshserviceLogo"
+  | "FrontLogo"
   | "HubspotLogo"
   | "MicrosoftExcelLogo"
   | "MicrosoftOutlookLogo"
