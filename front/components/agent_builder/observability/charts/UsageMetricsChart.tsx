@@ -1,7 +1,7 @@
 import {
-  Area,
-  AreaChart,
   CartesianGrid,
+  Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -153,7 +153,7 @@ export function UsageMetricsChart({
       }
     >
       <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-        <AreaChart
+        <LineChart
           data={data}
           margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
         >
@@ -228,32 +228,32 @@ export function UsageMetricsChart({
             }}
           />
           {/* Areas for each usage metric */}
-          <Area
+          <Line
             type="monotone"
             dataKey="messages"
             name="Messages"
             className={USAGE_METRICS_PALETTE.messages}
-            fill="url(#fillMessages)"
             stroke="currentColor"
+            dot={false}
           />
-          <Area
+          <Line
             type="monotone"
             dataKey="conversations"
             name="Conversations"
             className={USAGE_METRICS_PALETTE.conversations}
-            fill="url(#fillConversations)"
             stroke="currentColor"
+            dot={false}
           />
-          <Area
+          <Line
             type="monotone"
             dataKey="activeUsers"
             name="Active users"
             className={USAGE_METRICS_PALETTE.activeUsers}
-            fill="url(#fillActiveUsers)"
             stroke="currentColor"
+            dot={false}
           />
           <VersionMarkersDots mode={mode} versionMarkers={versionMarkers} />
-        </AreaChart>
+        </LineChart>
       </ResponsiveContainer>
       <ChartLegend items={legendItems} />
     </ChartContainer>

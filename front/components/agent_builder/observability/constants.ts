@@ -47,11 +47,3 @@ export const FEEDBACK_DISTRIBUTION_LEGEND = [
   { key: "positive", label: "Positive" },
   { key: "negative", label: "Negative" },
 ] as const;
-
-export const ERROR_RATE_PALETTE = {
-  errorRate: "text-[hsl(var(--chart-4))]",
-} as const;
-
-export const ERROR_RATE_LEGEND = [
-  { key: "errorRate", label: "Error rate" },
-] as const;

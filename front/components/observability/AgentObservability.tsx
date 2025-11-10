@@ -1,33 +1,20 @@
 import {
   CardGrid,
-  Chip,
   HandThumbDownIcon,
   HandThumbUpIcon,
   Separator,
   Spinner,
   ValueCard,
 } from "@dust-tt/sparkle";
-import { useMemo } from "react";
 
-import { ErrorRateChart } from "@app/components/agent_builder/observability/charts/ErrorRateChart";
 import { LatencyChart } from "@app/components/agent_builder/observability/charts/LatencyChart";
 import { ToolUsageChart } from "@app/components/agent_builder/observability/charts/ToolUsageChart";
 import { UsageMetricsChart } from "@app/components/agent_builder/observability/charts/UsageMetricsChart";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
 import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
-import { getErrorRateChipInfo } from "@app/components/agent_builder/observability/utils";
 import { SharedObservabilityFilterSelector } from "@app/components/observability/SharedObservabilityFilterSelector";
-import type { ErrorRatePoint } from "@app/lib/api/assistant/observability/error_rate";
-import { useAgentAnalytics, useAgentErrorRate } from "@app/lib/swr/assistants";
-
-function getAverageErrorRate(errorRate: ErrorRatePoint[], period: number) {
-  const totalErrorRate = errorRate.reduce(
-    (sum, current) => sum + current.errorRate,
-    0
-  );
-  return Math.round((totalErrorRate / period) * 10) / 10;
-}
+import { useAgentAnalytics } from "@app/lib/swr/assistants";
 
 interface AgentObservabilityProps {
   workspaceId: string;
@@ -41,20 +28,6 @@ export function AgentObservability({
   isCustomAgent,
 }: AgentObservabilityProps) {
   const { period } = useObservabilityContext();
-
-  const { errorRate } = useAgentErrorRate({
-    workspaceId,
-    agentConfigurationId,
-    days: period,
-    disabled: !workspaceId || !agentConfigurationId,
-  });
-
-  const avrErrorRate = useMemo(
-    () => getAverageErrorRate(errorRate, period),
-    [errorRate, period]
-  );
-
-  const errorRateChipInfo = getErrorRateChipInfo(avrErrorRate);
 
   const { agentAnalytics, isAgentAnalyticsLoading } = useAgentAnalytics({
     workspaceId,
@@ -75,7 +48,7 @@ export function AgentObservability({
       <TabContentChildSectionLayout title="Overview">
         {isAgentAnalyticsLoading ? (
           <div className="w-full p-6">
-            <Spinner variant="dark" />
+            <Spinner />
           </div>
         ) : (
           <CardGrid>
@@ -102,21 +75,6 @@ export function AgentObservability({
                   {agentAnalytics?.mentions
                     ? `${agentAnalytics.mentions.messageCount}`
                     : "-"}
-                </div>
-              }
-            />
-            <ValueCard
-              title="Error rate"
-              className="h-24"
-              content={
-                <div className="flex flex-row items-center gap-2 text-2xl">
-                  {avrErrorRate}%
-                  <Chip
-                    size="mini"
-                    color={errorRateChipInfo.color}
-                    label={errorRateChipInfo.label}
-                    className="h-fit"
-                  />
                 </div>
               }
             />
@@ -153,11 +111,6 @@ export function AgentObservability({
         />
         <Separator />
         <ToolUsageChart
-          workspaceId={workspaceId}
-          agentConfigurationId={agentConfigurationId}
-        />
-        <Separator />
-        <ErrorRateChart
           workspaceId={workspaceId}
           agentConfigurationId={agentConfigurationId}
         />
