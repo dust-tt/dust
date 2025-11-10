@@ -132,8 +132,7 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
         status: "pending",
       },
     });
-    console.log("invitations", invitations);
-    console.log("includeExpired", includeExpired);
+
     return invitations
       .filter(
         (invitation) =>
