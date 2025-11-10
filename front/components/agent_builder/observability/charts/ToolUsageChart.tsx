@@ -138,7 +138,7 @@ export function ToolUsageChart({
             className="text-xs text-muted-foreground dark:text-muted-foreground-night"
             tickLine={false}
             axisLine={false}
-            tickMargin={8}
+            // tickMargin={8}
             domain={[0, 100]}
             ticks={[0, 20, 40, 60, 80, 100]}
             tickFormatter={(value) => `${value}%`}
