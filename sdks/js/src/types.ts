@@ -650,7 +650,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "google_sheets_tool"
   | "hootl_dev_webhooks"
   | "hootl_subscriptions"
-  | "hootl_webhooks"
   | "index_private_slack_channel"
   | "labs_mcp_actions_dashboard"
   | "labs_trackers"
