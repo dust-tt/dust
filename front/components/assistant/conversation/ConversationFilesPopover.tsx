@@ -232,7 +232,12 @@ export const ConversationFilesPopover = ({
           }
         }}
       >
-        <ScrollArea className="flex flex-col gap-3">
+        {/*
+          Constrain height so long lists become scrollable within the popover.
+          Without an explicit height, the ScrollArea expands with content and
+          the popover can overflow the viewport, making items unreachable.
+        */}
+        <ScrollArea className="flex max-h-[80vh] h-[480px] flex-col gap-3">
           <div className="heading-base mb-2 text-primary dark:text-primary-night">
             Generated Content
           </div>
