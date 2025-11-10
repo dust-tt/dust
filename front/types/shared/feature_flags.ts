@@ -103,6 +103,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "OpenAI tool for tracking API consumption and costs",
     stage: "on_demand",
   },
+  onboarding_tool: {
+    description: "Onboarding tool - Growth team experiment",
+    stage: "dust_only",
+  },
   salesforce_synced_queries: {
     description: "Salesforce Connection: retrieval on Synchronized queries",
     stage: "on_demand",

@@ -35,6 +35,7 @@ import { default as microsoftTeamsServer } from "@app/lib/actions/mcp_internal_a
 import { default as missingActionCatcherServer } from "@app/lib/actions/mcp_internal_actions/servers/missing_action_catcher";
 import { default as mondayServer } from "@app/lib/actions/mcp_internal_actions/servers/monday";
 import { default as notionServer } from "@app/lib/actions/mcp_internal_actions/servers/notion";
+import { default as onboardingServer } from "@app/lib/actions/mcp_internal_actions/servers/onboarding";
 import { default as openaiUsageServer } from "@app/lib/actions/mcp_internal_actions/servers/openai_usage";
 import { default as outlookServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook";
 import { default as outlookCalendarServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook/calendar_server";
@@ -202,6 +203,8 @@ export async function getInternalMCPServer(
       return deepDiveServer(auth, agentLoopContext);
     case "http_client":
       return httpClientServer(auth, agentLoopContext);
+    case "onboarding":
+      return onboardingServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }

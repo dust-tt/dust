@@ -18,6 +18,8 @@ import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/se
 import {
   DEEP_DIVE_NAME,
   DEEP_DIVE_SERVER_INSTRUCTIONS,
+  ONBOARDING_SERVER_DESC,
+  ONBOARDING_SERVER_NAME,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
 import type {
   InternalMCPServerDefinitionType,
@@ -98,6 +100,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "missing_action_catcher",
   "monday",
   "notion",
+  "onboarding",
   "openai_usage",
   "outlook_calendar",
   "outlook",
@@ -1282,6 +1285,27 @@ The directive should be used to display a clickable version of the agent name in
       documentationUrl: null,
       instructions: null,
       developerSecretSelection: "required",
+    },
+  },
+  onboarding: {
+    id: 42,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("onboarding_tool");
+    },
+    isPreview: false,
+    tools_stakes: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: ONBOARDING_SERVER_NAME,
+      version: "1.0.0",
+      description: ONBOARDING_SERVER_DESC,
+      authorization: null,
+      icon: "ActionBrainIcon",
+      documentationUrl: null,
+      instructions: null,
     },
   },
   [SEARCH_SERVER_NAME]: {

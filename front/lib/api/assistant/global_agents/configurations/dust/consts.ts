@@ -19,3 +19,7 @@ Guidelines:
 - Let the user know that the handoff is launched by mentionning it before calling the deep dive tool.
 - The valid way to mention the @${DEEP_DIVE_NAME} agent is using the mention directive: ${mentionAgent({ name: DEEP_DIVE_NAME, sId: GLOBAL_AGENTS_SID.DEEP_DIVE })}
 `;
+
+export const ONBOARDING_SERVER_NAME = "onboarding";
+export const ONBOARDING_SERVER_DESC =
+  "Guide users through personalized product discovery with interactive onboarding tasks.";

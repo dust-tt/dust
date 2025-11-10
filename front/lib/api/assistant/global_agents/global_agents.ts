@@ -51,6 +51,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { OnboardingTaskResource } from "@app/lib/resources/onboarding_task_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type {
   AgentConfigurationType,
@@ -81,8 +82,10 @@ function getGlobalAgent({
   slideshowMCPServerView,
   deepDiveMCPServerView,
   agentMemoryMCPServerView,
+  onboardingMCPServerView,
   memories,
   availableToolsets,
+  onboardingTasks,
 }: {
   auth: Authenticator;
   sId: string | number;
@@ -100,8 +103,10 @@ function getGlobalAgent({
   slideshowMCPServerView: MCPServerViewResource | null;
   deepDiveMCPServerView: MCPServerViewResource | null;
   agentMemoryMCPServerView: MCPServerViewResource | null;
+  onboardingMCPServerView: MCPServerViewResource | null;
   memories: AgentMemoryResource[];
   availableToolsets: MCPServerViewResource[];
+  onboardingTasks: OnboardingTaskResource[];
 }): AgentConfigurationType | null {
   const settings =
     globalAgentSettings.find((settings) => settings.agentId === sId) ?? null;
@@ -313,8 +318,10 @@ function getGlobalAgent({
         interactiveContentMCPServerView,
         dataWarehousesMCPServerView,
         agentMemoryMCPServerView,
+        onboardingMCPServerView,
         memories,
         availableToolsets,
+        onboardingTasks,
       });
       break;
     case GLOBAL_AGENTS_SID.DEEP_DIVE:
@@ -424,6 +431,7 @@ export async function getGlobalAgents(
     slideshowMCPServerView,
     deepDiveMCPServerView,
     agentMemoryMCPServerView,
+    onboardingMCPServerView,
   ] = await Promise.all([
     variant === "full"
       ? getDataSourcesAndWorkspaceIdForGlobalAgents(auth)
@@ -498,6 +506,12 @@ export async function getGlobalAgents(
           "agent_memory"
         )
       : null,
+    variant === "full"
+      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "onboarding"
+        )
+      : null,
   ]);
 
   // If agentIds have been passed we fetch those. Otherwise we fetch them all, removing the retired
@@ -558,6 +572,17 @@ export async function getGlobalAgents(
     );
   }
 
+  let onboardingTasks: OnboardingTaskResource[] = [];
+  if (
+    variant === "full" &&
+    onboardingMCPServerView &&
+    auth.user() &&
+    agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST)
+  ) {
+    onboardingTasks =
+      await OnboardingTaskResource.fetchAllForUserAndWorkspaceInAuth(auth);
+  }
+
   // For now we retrieve them all
   // We will store them in the database later to allow admin enable them or not
   const agentCandidates = agentsIdsToFetch.map((sId) =>
@@ -578,8 +603,10 @@ export async function getGlobalAgents(
       slideshowMCPServerView,
       deepDiveMCPServerView,
       agentMemoryMCPServerView,
+      onboardingMCPServerView,
       memories,
       availableToolsets,
+      onboardingTasks,
     })
   );
 

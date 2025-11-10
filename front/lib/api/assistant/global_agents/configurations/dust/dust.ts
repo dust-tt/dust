@@ -27,6 +27,7 @@ import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
 import type { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import type { OnboardingTaskResource } from "@app/lib/resources/onboarding_task_resource";
 import { timeAgoFrom } from "@app/lib/utils";
 import type {
   AgentConfigurationType,
@@ -251,6 +252,41 @@ Never explicitly say "I remember" or "based on our previous conversation" - just
 ${memoryList.trim()}
 </existing_memories>`;
   },
+  onboarding: (onboardingTasks: OnboardingTaskResource[]) => {
+    return `<onboarding_guidelines>
+The user has some recommended "onboarding tasks" to complete so the onboarding tool is available to use.
+Onboarding tasks are designed to guide users through essential setup and learning steps.
+The onboarding tool can be used to mark tasks as complete or skipped.
+
+<onboarding_behavior>
+PROACTIVE ASSISTANCE:
+- When the user asks general questions or seems unsure what to do, check if any pending onboarding tasks are relevant
+- Naturally suggest completing relevant onboarding tasks when they align with the user's current needs
+- For example, if a user asks about connecting data sources and there's a related setup task, guide them through it
+- Don't overwhelm users - suggest one task at a time based on context
+- Be helpful but not pushy - users should feel guided, not nagged
+- Focus on value and outcomes, not task completion for its own sake
+- Adapt your suggestions to the user's immediate needs and interests
+- Remember that onboarding is about empowerment, not compliance
+NATURAL INTEGRATION:
+- Don't explicitly mention "onboarding tasks" unless the user asks about them
+- Instead, naturally guide users: "I can help you set up [X]" or "Let me show you how to [Y]"
+- Frame suggestions as helpful next steps rather than required tasks
+- Celebrate progress when tasks are completed to encourage engagement
+- Skip tasks if the user is not interested in completing them
+</onboarding_behavior>
+
+<task_to_complete>
+If the task to complete is about setting up a tool, use the :tool[toolName]{sId=toolId} tool to complete the task.
+This will add a button to the user's interface to complete the task.
+Otherwise do nothing.
+</task_to_complete>
+
+<onboarding_tasks>
+${onboardingTasks.map((task) => task.toPrettyString()).join("\n")}
+</completed_tasks>
+</onboarding_guidelines>`;
+  },
 };
 
 const formatMemory = (memory: AgentMemoryResource) =>
@@ -264,6 +300,8 @@ function buildInstructions({
   hasToolsets,
   memories,
   availableToolsets,
+  hasOnboarding,
+  onboardingTasks,
 }: {
   hasDeepDive: boolean;
   hasFilesystemTools: boolean;
@@ -272,6 +310,8 @@ function buildInstructions({
   hasToolsets: boolean;
   memories: AgentMemoryResource[];
   availableToolsets: MCPServerViewResource[];
+  hasOnboarding: boolean;
+  onboardingTasks: OnboardingTaskResource[];
 }): string {
   const parts: string[] = [
     INSTRUCTION_SECTIONS.primary,
@@ -283,6 +323,7 @@ function buildInstructions({
     hasToolsets && INSTRUCTION_SECTIONS.toolsets(availableToolsets),
     INSTRUCTION_SECTIONS.help,
     hasAgentMemory && INSTRUCTION_SECTIONS.memory(memories),
+    hasOnboarding && INSTRUCTION_SECTIONS.onboarding(onboardingTasks),
   ].filter((part): part is string => typeof part === "string");
 
   return parts.join("\n\n");
@@ -300,10 +341,11 @@ export function _getDustGlobalAgent(
     deepDiveMCPServerView,
     interactiveContentMCPServerView,
     dataWarehousesMCPServerView,
-
     agentMemoryMCPServerView,
+    onboardingMCPServerView,
     memories,
     availableToolsets,
+    onboardingTasks,
   }: {
     settings: GlobalAgentSettings | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
@@ -315,8 +357,10 @@ export function _getDustGlobalAgent(
     interactiveContentMCPServerView: MCPServerViewResource | null;
     dataWarehousesMCPServerView: MCPServerViewResource | null;
     agentMemoryMCPServerView: MCPServerViewResource | null;
+    onboardingMCPServerView: MCPServerViewResource | null;
     memories: AgentMemoryResource[];
     availableToolsets: MCPServerViewResource[];
+    onboardingTasks: OnboardingTaskResource[];
   }
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
@@ -329,11 +373,9 @@ export function _getDustGlobalAgent(
     if (!auth.isUpgraded()) {
       return getSmallWhitelistedModel(owner);
     }
-
     if (isProviderWhitelisted(owner, "anthropic")) {
       return CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG;
     }
-
     return getLargeWhitelistedModel(owner);
   })();
 
@@ -347,9 +389,14 @@ export function _getDustGlobalAgent(
     : dummyModelConfiguration;
 
   const hasFilesystemTools = dataSourcesFileSystemMCPServerView !== null;
-
   const hasAgentMemory = agentMemoryMCPServerView !== null;
   const hasToolsets = toolsetsMCPServerView !== null;
+
+  // TODO(growth): We need to put a condition to stop showing onboarding tasks after a certain date?
+  const hasOnboarding =
+    onboardingMCPServerView !== null &&
+    onboardingTasks.length > 0 &&
+    onboardingTasks.some((task) => task.getStatus() === "to_do");
 
   // Filter available toolsets (similar to toolsets>list logic): tools with no requirements and not auto-hidden.
   const filteredAvailableToolsets = availableToolsets.filter((toolset) => {
@@ -373,6 +420,8 @@ export function _getDustGlobalAgent(
     hasToolsets,
     availableToolsets: filteredAvailableToolsets,
     memories,
+    hasOnboarding,
+    onboardingTasks,
   });
 
   const dustAgent = {
@@ -490,6 +539,27 @@ export function _getDustGlobalAgent(
       description: "The agent memory tool",
       mcpServerViewId: agentMemoryMCPServerView.sId,
       internalMCPServerId: agentMemoryMCPServerView.internalMCPServerId,
+      dataSources: null,
+      tables: null,
+      childAgentId: null,
+      reasoningModel: null,
+      additionalConfiguration: {},
+      timeFrame: null,
+      dustAppConfiguration: null,
+      jsonSchema: null,
+      secretName: null,
+    });
+  }
+
+  if (hasOnboarding) {
+    actions.push({
+      id: -1,
+      sId: GLOBAL_AGENTS_SID.DUST + "-onboarding",
+      type: "mcp_server_configuration",
+      name: "onboarding" satisfies InternalMCPServerNameType,
+      description: "Manage user onboarding tasks",
+      mcpServerViewId: onboardingMCPServerView.sId,
+      internalMCPServerId: onboardingMCPServerView.internalMCPServerId,
       dataSources: null,
       tables: null,
       childAgentId: null,

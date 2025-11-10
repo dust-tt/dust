@@ -221,4 +221,8 @@ export class OnboardingTaskResource extends BaseResource<OnboardingTaskModel> {
       updatedAt: this.updatedAt,
     };
   }
+
+  toPrettyString(): string {
+    return `[${this.sId}] Status: ${this.getStatus()}, Context: ${this.context}, Kind: ${this.kind}, Tool Name: ${this.toolName ?? "N/A"}, Created At: ${this.createdAt.toISOString()}`;
+  }
 }
