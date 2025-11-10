@@ -4,17 +4,16 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
-import {
-  getPendingInvitations,
-  updateInvitationStatusAndRole,
-} from "@app/lib/api/invitation";
+import { updateInvitationStatusAndRole } from "@app/lib/api/invitation";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
+import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
 const PokeDeleteInvitationRequestBodySchema = t.type({
   email: t.string,
+  includeExpired: t.boolean,
 });
 
 type PokePostInvitationResponseBody = {
@@ -70,7 +69,10 @@ async function handler(
       );
 
       const pendingInvitations =
-        await getPendingInvitations(workspaceAdminAuth);
+        await MembershipInvitationResource.getPendingInvitations(
+          workspaceAdminAuth,
+          true
+        );
 
       const invitation = pendingInvitations.find(
         (inv) => inv.inviteEmail === email
@@ -87,7 +89,7 @@ async function handler(
       }
 
       await updateInvitationStatusAndRole(workspaceAdminAuth, {
-        invitation,
+        invitation: invitation.toJSON(),
         status: "revoked",
         role: invitation.initialRole,
       });

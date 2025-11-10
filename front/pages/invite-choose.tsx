@@ -30,7 +30,9 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   }
 
   const invitationsResources =
-    await MembershipInvitationResource.listPendingForEmail(user.email);
+    await MembershipInvitationResource.listPendingForEmail({
+      email: user.email,
+    });
 
   const invitations = invitationsResources.map((invitation) => {
     const workspace = invitation.workspace;

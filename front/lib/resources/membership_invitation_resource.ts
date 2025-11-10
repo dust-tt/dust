@@ -12,8 +12,13 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
-import type { MembershipInvitationType, Result } from "@app/types";
+import type {
+  LightWorkspaceType,
+  MembershipInvitationType,
+  Result,
+} from "@app/types";
 import { Err, Ok } from "@app/types";
+import { WorkspaceResource } from "./workspace_resource";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -48,17 +53,17 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
   static async getPendingForEmail(
     email: string
   ): Promise<MembershipInvitationResource | null> {
-    const pendingInvitations = await this.listPendingForEmail(email);
-    return (
-      pendingInvitations.find(
-        (invitation) => !this.invitationExpired(invitation.createdAt)
-      ) ?? null
-    );
+    const pendingInvitations = await this.listPendingForEmail({ email });
+    return pendingInvitations[0] ?? null;
   }
 
-  static async listPendingForEmail(
-    email: string
-  ): Promise<MembershipInvitationResource[]> {
+  static async listPendingForEmail({
+    email,
+    includeExpired = false,
+  }: {
+    email: string;
+    includeExpired?: boolean;
+  }): Promise<MembershipInvitationResource[]> {
     const invitations = await this.model.findAll({
       where: {
         inviteEmail: email,
@@ -71,7 +76,10 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     });
 
     return invitations
-      .filter((invitation) => !this.invitationExpired(invitation.createdAt))
+      .filter(
+        (invitation) =>
+          includeExpired || !this.invitationExpired(invitation.createdAt)
+      )
       .map(
         (invitation) =>
           new MembershipInvitationResource(this.model, invitation.get(), {
@@ -80,26 +88,69 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
       );
   }
 
-  static async getPendingForEmailAndWorkspace(
-    email: string,
-    workspaceId: number
-  ): Promise<MembershipInvitationResource | null> {
+  static async getPendingForEmailAndWorkspace({
+    email,
+    workspace,
+    includeExpired = false,
+  }: {
+    email: string;
+    workspace: LightWorkspaceType | WorkspaceResource;
+    includeExpired?: boolean;
+  }): Promise<MembershipInvitationResource | null> {
     const invitation = await this.model.findOne({
       where: {
         inviteEmail: email,
-        workspaceId,
+        workspaceId: workspace.id,
         status: "pending",
       },
       include: [WorkspaceModel],
     });
 
-    if (!invitation || this.invitationExpired(invitation.createdAt)) {
+    if (
+      !invitation ||
+      (!includeExpired && this.invitationExpired(invitation.createdAt))
+    ) {
       return null;
     }
 
     return new MembershipInvitationResource(this.model, invitation.get(), {
       workspace: invitation.workspace,
     });
+  }
+
+  static async getPendingInvitations(
+    auth: Authenticator,
+    { includeExpired = false }: { includeExpired?: boolean } = {}
+  ): Promise<MembershipInvitationResource[]> {
+    const owner = auth.workspace();
+    if (!owner) {
+      return [];
+    }
+    if (!auth.isAdmin()) {
+      throw new Error(
+        "Only users that are `admins` for the current workspace can see membership invitations or modify it."
+      );
+    }
+
+    const invitations = await MembershipInvitationModel.findAll({
+      where: {
+        workspaceId: owner.id,
+        status: "pending",
+      },
+    });
+    console.log("invitations", invitations);
+    console.log("includeExpired", includeExpired);
+    return invitations
+      .filter(
+        (invitation) =>
+          includeExpired || !this.invitationExpired(invitation.createdAt)
+      )
+      .map(
+        (i) =>
+          new MembershipInvitationResource(this.model, i.get(), {
+            workspace: i.workspace,
+          })
+      );
   }
 
   static async getPendingForToken(

@@ -4,6 +4,7 @@ import { sign } from "jsonwebtoken";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
+import { isInvitationExpired } from "@app/components/members/utils";
 import config from "@app/lib/api/config";
 import {
   getMembers,
@@ -123,7 +124,12 @@ export async function updateOrCreateInvitation(
     transaction,
   });
 
-  if (existingInvitation) {
+  if (
+    existingInvitation &&
+    isInvitationExpired(existingInvitation.createdAt.getTime())
+  ) {
+    await existingInvitation.update({ status: "revoked" }, { transaction });
+  } else if (existingInvitation) {
     await existingInvitation.update({
       initialRole,
     });
@@ -197,43 +203,6 @@ export async function sendWorkspaceInvitationEmail(
 
   sgMail.setApiKey(config.getSendgridApiKey());
   await sgMail.send(message);
-}
-/**
- * Returns the pending inviations associated with the authenticator's owner workspace.
- * @param auth Authenticator
- * @returns MenbershipInvitation[] members of the workspace
- */
-
-export async function getPendingInvitations(
-  auth: Authenticator
-): Promise<MembershipInvitationType[]> {
-  const owner = auth.workspace();
-  if (!owner) {
-    return [];
-  }
-  if (!auth.isAdmin()) {
-    throw new Error(
-      "Only users that are `admins` for the current workspace can see membership invitations or modify it."
-    );
-  }
-
-  const invitations = await MembershipInvitationModel.findAll({
-    where: {
-      workspaceId: owner.id,
-      status: "pending",
-    },
-  });
-
-  return invitations.map((i) => {
-    return {
-      sId: i.sId,
-      id: i.id,
-      status: i.status,
-      inviteEmail: i.inviteEmail,
-      initialRole: i.initialRole,
-      createdAt: i.createdAt.getTime(),
-    };
-  });
 }
 
 /**

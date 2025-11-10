@@ -5,12 +5,10 @@ import { isInvitationExpired } from "@app/components/members/utils";
 import { InvitationsDataTable } from "@app/components/poke/invitations/table";
 import { MembersDataTable } from "@app/components/poke/members/table";
 import PokeLayout from "@app/components/poke/PokeLayout";
-import {
-  getMembershipInvitationUrl,
-  getPendingInvitations,
-} from "@app/lib/api/invitation";
+import { getMembershipInvitationUrl } from "@app/lib/api/invitation";
 import { getMembers } from "@app/lib/api/workspace";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
+import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import type {
   MembershipInvitationTypeWithLink,
   UserTypeWithWorkspaces,
@@ -33,17 +31,20 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 
   const [{ members }, pendingInvitations] = await Promise.all([
     getMembers(auth),
-    getPendingInvitations(auth),
+    MembershipInvitationResource.getPendingInvitations(auth, true),
   ]);
 
   return {
     props: {
       members,
-      pendingInvitations: pendingInvitations.map((invite) => ({
-        ...invite,
-        status: isInvitationExpired(invite.createdAt) ? "expired" : "pending",
-        inviteLink: getMembershipInvitationUrl(owner, invite),
-      })),
+      pendingInvitations: pendingInvitations.map((invite) => {
+        const i = invite.toJSON();
+        return {
+          ...i,
+          status: isInvitationExpired(i.createdAt) ? "expired" : "pending",
+          inviteLink: getMembershipInvitationUrl(owner, i),
+        };
+      }),
       owner,
     },
   };

@@ -43,7 +43,9 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
 
   const invitationResources =
-    await MembershipInvitationResource.listPendingForEmail(userResource.email);
+    await MembershipInvitationResource.listPendingForEmail({
+      email: userResource.email,
+    });
 
   const pendingInvitations: PendingInvitationOption[] = invitationResources.map(
     (invitation) => {

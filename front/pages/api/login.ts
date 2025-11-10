@@ -118,7 +118,9 @@ async function handler(
     // pending invitation.
     const pendingInvitations =
       memberships.length === 0 && !membershipInvite
-        ? await MembershipInvitationResource.listPendingForEmail(user.email)
+        ? await MembershipInvitationResource.listPendingForEmail({
+            email: user.email,
+          })
         : null;
 
     // More than one pending invitation, redirect to invite choose page - otherwise use the first one.

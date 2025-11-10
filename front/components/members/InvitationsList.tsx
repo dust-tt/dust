@@ -31,7 +31,9 @@ export function InvitationsList({
   owner: WorkspaceType;
   searchText?: string;
 }) {
-  const { invitations, isInvitationsLoading } = useWorkspaceInvitations(owner);
+  const { invitations, isInvitationsLoading } = useWorkspaceInvitations(owner, {
+    includeExpired: true,
+  });
   const [selectedInvite, setSelectedInvite] =
     useState<MembershipInvitationType | null>(null);
   const sendNotification = useSendNotification();
