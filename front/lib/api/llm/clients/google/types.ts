@@ -55,7 +55,7 @@ export const GOOGLE_REASONING_EFFORT_TO_THINKING_BUDGET: {
   [key in ReasoningEffort]: number;
 } = {
   none: 0,
-  light: 0, // for light reasoning, we use chain of thought from prompt instead of thinking budget
-  medium: 1024,
+  light: 1024,
+  medium: 2048,
   high: 4096,
-}; // inspired by Claude 4 thinking budget tokens
+};
