@@ -118,7 +118,9 @@ function assistantContentToPart(
       return {
         text: content.value.reasoning,
         thought: true,
-        thoughtSignature: extractEncryptedContentFromMetadata(content.value.metadata),
+        thoughtSignature: extractEncryptedContentFromMetadata(
+          content.value.metadata
+        ),
       };
     case "text_content":
       return {
