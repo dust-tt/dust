@@ -1,4 +1,4 @@
-import type { ModelIdType } from "@app/types";
+import type { ModelIdType, ReasoningEffort } from "@app/types";
 import {
   GEMINI_2_5_FLASH_LITE_MODEL_ID,
   GEMINI_2_5_FLASH_MODEL_ID,
@@ -50,3 +50,12 @@ export function getGoogleModelFamilyFromModelId(
 
   throw new Error(`Unknown Google model ID: ${modelId}`);
 }
+
+export const GOOGLE_REASONING_EFFORT_TO_THINKING_BUDGET: {
+  [key in ReasoningEffort]: number;
+} = {
+  none: 0,
+  light: 0,
+  medium: 1024,
+  high: 4096,
+}; // inspired by Claude 4 thinking budget tokens
