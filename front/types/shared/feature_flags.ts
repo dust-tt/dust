@@ -145,6 +145,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Freshservice MCP tool",
     stage: "rolling_out",
   },
+  front_tool: {
+    description:
+      "Front MCP tool for managing support conversations, messages, and customer interactions.",
+    stage: "rolling_out",
+  },
   agent_management_tool: {
     description: "MCP tool for creating and managing agent configurations",
     stage: "dust_only",
@@ -169,10 +174,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   slack_message_splitting: {
     description:
       "Enable splitting agent responses into multiple Slack messages for Slack (instead of truncation)",
-    stage: "dust_only",
-  },
-  hootl_webhooks: {
-    description: "Webhooks for Human Out Of The Loop (aka Triggers) / webhooks",
     stage: "dust_only",
   },
   slack_bot_mcp: {

@@ -343,6 +343,8 @@ async function handler(
           editor: auth.getNonNullableUser().id,
           webhookSourceViewId,
           executionPerDayLimitOverride: executionPerDay,
+          executionMode:
+            validatedTrigger.kind === "webhook" ? "fair_use" : null,
         });
 
         if (newTrigger.isErr()) {

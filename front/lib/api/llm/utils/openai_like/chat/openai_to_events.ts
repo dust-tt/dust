@@ -102,7 +102,10 @@ export async function* streamLLMEvents(
                 content: {
                   id: toolCall.id,
                   name: toolCall.name,
-                  arguments: parseToolArguments(toolCall.arguments),
+                  arguments: parseToolArguments(
+                    toolCall.arguments,
+                    toolCall.name
+                  ),
                 },
                 metadata,
               };

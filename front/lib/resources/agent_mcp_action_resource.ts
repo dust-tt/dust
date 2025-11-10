@@ -45,7 +45,7 @@ import type {
   AgentMCPActionType,
   AgentMCPActionWithOutputType,
 } from "@app/types/actions";
-import type { FunctionCallContentType } from "@app/types/assistant/agent_message_content";
+import type { AgentFunctionCallContentType } from "@app/types/assistant/agent_message_content";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -62,7 +62,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     model: ModelStaticWorkspaceAware<AgentMCPActionModel>,
     blob: Attributes<AgentMCPActionModel>,
     readonly stepContent: NonAttribute<
-      AgentStepContentResource & { value: FunctionCallContentType }
+      AgentStepContentResource & { value: AgentFunctionCallContentType }
     >,
     readonly metadata: {
       internalMCPServerName: InternalMCPServerNameType | null;

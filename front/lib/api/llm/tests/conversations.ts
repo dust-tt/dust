@@ -179,6 +179,30 @@ export const TEST_CONVERSATIONS: TestConversation[] = [
     ],
   },
   {
+    id: "tool-call-without-params",
+    name: "Tool call without params",
+    systemPrompt: SYSTEM_PROMPT,
+    conversationActions: [
+      userMessage("Use a call to list my files"),
+      userToolCall("ListFiles", "[users.pdf,zebra.png]"),
+    ],
+    expectedInResponses: [
+      hasToolCall("ListFiles", {}),
+      containsTextChecker(["users.pdf", "zebra.png"]),
+    ],
+    specifications: [
+      {
+        name: "ListFiles",
+        description: "List all files in the user's account.",
+        inputSchema: {
+          type: "object",
+          properties: {},
+          required: [],
+        },
+      },
+    ],
+  },
+  {
     id: "image-description",
     name: "Image description",
     systemPrompt: SYSTEM_PROMPT,

@@ -1,4 +1,5 @@
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
+import { hasReachedPublicAPILimits } from "@app/lib/api/public_api_limits";
 import { Authenticator } from "@app/lib/auth";
 import { getWebhookRequestsBucket } from "@app/lib/file_storage";
 import { matchPayload, parseMatcherExpression } from "@app/lib/matcher";
@@ -120,21 +121,6 @@ export async function runTriggerWebhookActivity({
     }
   }
 
-  // Check if the webhook request is rate limited
-  const rateLimiterRes = await checkWebhookRequestForRateLimit(auth);
-  if (rateLimiterRes.isErr()) {
-    const errorMessage = rateLimiterRes.error.message;
-    await webhookRequest.markAsFailed(errorMessage);
-
-    logger.error({ workspaceId, webhookRequestId }, errorMessage);
-    statsDClient.increment("webhook_rate_limit.hit.count", 1, [
-      `provider:${provider}`,
-      `workspace_id:${workspaceId}`,
-    ]);
-
-    throw new TriggerNonRetryableError(errorMessage);
-  }
-
   // Filter out non-subscribed events
   let receivedEventValue: string | undefined;
   if (webhookSource.provider) {
@@ -237,11 +223,53 @@ export async function runTriggerWebhookActivity({
       continue;
     }
 
-    const rateLimiterRes = await checkTriggerForExecutionPerDayLimit(auth, {
-      trigger,
-    });
-    if (rateLimiterRes.isErr()) {
-      const errorMessage = rateLimiterRes.error.message;
+    /**
+     * Check for workspace-level rate limits
+     * - for fair use execution mode, check global rate limits
+     * - for programmatic usage mode, check public API limits
+     */
+    let workspaceRateLimitErrorMessage: string | undefined = undefined;
+    if (!trigger.executionMode || trigger.executionMode === "fair_use") {
+      const globalRateLimitRes = await checkWebhookRequestForRateLimit(auth);
+      if (globalRateLimitRes.isErr()) {
+        workspaceRateLimitErrorMessage = globalRateLimitRes.error.message;
+      }
+    } else {
+      const publicAPILimit = await hasReachedPublicAPILimits(auth, true);
+      if (publicAPILimit) {
+        workspaceRateLimitErrorMessage =
+          "Workspace has reached its public API limits for the current billing period.";
+      }
+    }
+
+    if (workspaceRateLimitErrorMessage !== undefined) {
+      await webhookRequest.markRelatedTrigger({
+        trigger,
+        status: "rate_limited",
+        errorMessage: workspaceRateLimitErrorMessage,
+      });
+
+      statsDClient.increment("webhook_workspace_rate_limit.hit.count", 1, [
+        `provider:${provider}`,
+        `workspace_id:${workspaceId}`,
+      ]);
+
+      logger.error(
+        { workspaceId, webhookRequestId },
+        workspaceRateLimitErrorMessage
+      );
+      throw new TriggerNonRetryableError(workspaceRateLimitErrorMessage);
+    }
+
+    const specificRateLimiterRes = await checkTriggerForExecutionPerDayLimit(
+      auth,
+      {
+        trigger,
+      }
+    );
+
+    if (specificRateLimiterRes.isErr()) {
+      const errorMessage = specificRateLimiterRes.error.message;
       await webhookRequest.markRelatedTrigger({
         trigger,
         status: "rate_limited",
@@ -251,6 +279,12 @@ export async function runTriggerWebhookActivity({
         { workspaceId, webhookRequestId, triggerId: trigger.sId },
         errorMessage
       );
+
+      statsDClient.increment("webhook_trigger_rate_limit.hit.count", 1, [
+        `provider:${provider}`,
+        `workspace_id:${workspaceId}`,
+        `trigger_id:${trigger.sId}`,
+      ]);
       continue;
     }
 

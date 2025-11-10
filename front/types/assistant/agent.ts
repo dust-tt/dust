@@ -9,9 +9,9 @@ import type {
 } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
-  FunctionCallContentType,
-  ReasoningContentType,
-  TextContentType,
+  AgentFunctionCallContentType,
+  AgentReasoningContentType,
+  AgentTextContentType,
 } from "@app/types/assistant/agent_message_content";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
 import { isOAuthProvider, isValidScope } from "@app/types/oauth/lib";
@@ -389,5 +389,8 @@ export type AgentStepContentEvent = {
   configurationId: string;
   messageId: string;
   index: number;
-  content: TextContentType | FunctionCallContentType | ReasoningContentType;
+  content:
+    | AgentTextContentType
+    | AgentFunctionCallContentType
+    | AgentReasoningContentType;
 };

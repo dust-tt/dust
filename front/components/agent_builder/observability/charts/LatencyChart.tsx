@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import {
-  Area,
-  AreaChart,
   CartesianGrid,
+  Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -122,7 +122,7 @@ export function LatencyChart({
       errorMessage={errorMessage}
     >
       <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-        <AreaChart
+        <LineChart
           data={data}
           margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
         >
@@ -174,16 +174,17 @@ export function LatencyChart({
               boxShadow: "none",
             }}
           />
-          <Area
+          <Line
             type="monotone"
             dataKey="average"
             name="Average time to complete output"
             className={LATENCY_PALETTE.average}
             fill="url(#fillAverage)"
             stroke="currentColor"
+            dot={false}
           />
           <VersionMarkersDots mode={mode} versionMarkers={versionMarkers} />
-        </AreaChart>
+        </LineChart>
       </ResponsiveContainer>
       <ChartLegend items={legendItems} />
     </ChartContainer>

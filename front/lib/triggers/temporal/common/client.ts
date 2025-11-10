@@ -26,10 +26,12 @@ export async function launchAgentTriggerWorkflow({
 
   await client.workflow.start(agentTriggerWorkflow, {
     args: [
-      auth.getNonNullableUser().sId,
-      auth.getNonNullableWorkspace().sId,
-      trigger,
-      contentFragment,
+      {
+        userId: auth.getNonNullableUser().sId,
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        triggerId: trigger.sId,
+        contentFragment,
+      },
     ],
     taskQueue: QUEUE_NAME,
     workflowId,

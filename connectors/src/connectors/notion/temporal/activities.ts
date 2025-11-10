@@ -346,31 +346,29 @@ export async function getPagesAndDatabasesToSync({
       filter,
     });
   } catch (e) {
-    if (isNotionClientError(e)) {
-      // Sometimes a cursor will consistently fail with 500.
-      // In this case, there is not much we can do, so we just give up and move on.
-      // Notion workspaces are resynced daily so nothing is lost forever.
-      switch (e.code) {
-        case "internal_server_error":
-        case "validation_error":
-          if (Context.current().info.attempt > 14) {
-            localLogger.error(
-              {
-                error: e,
-                attempt: Context.current().info.attempt,
-              },
-              "Failed to get Notion search result page with cursor. Giving up and moving on"
-            );
-            return {
-              pageIds: [],
-              databaseIds: [],
-              nextCursor: null,
-            };
-          }
-          throw e;
-
-        default:
-          throw e;
+    // Sometimes a cursor will consistently fail with various errors.
+    // In this case, there is not much we can do, so we just give up and move on.
+    // Notion workspaces are resynced daily so nothing is lost forever.
+    const isNotionErrorWeGiveUpOn =
+      isNotionClientError(e) &&
+      (e.code === "internal_server_error" || e.code === "validation_error");
+    const isAPIErrorWeGiveUpOn =
+      APIResponseError.isAPIResponseError(e) &&
+      (e.status === 400 || e.status === 504);
+    if (isNotionErrorWeGiveUpOn || isAPIErrorWeGiveUpOn) {
+      if (Context.current().info.attempt > 14) {
+        localLogger.error(
+          {
+            error: e,
+            attempt: Context.current().info.attempt,
+          },
+          "Failed to get Notion search result page with cursor. Giving up and moving on"
+        );
+        return {
+          pageIds: [],
+          databaseIds: [],
+          nextCursor: null,
+        };
       }
     }
 

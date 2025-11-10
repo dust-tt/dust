@@ -106,7 +106,7 @@ function itemToEvents(
           content: {
             id: item.call_id,
             name: item.name,
-            arguments: parseToolArguments(item.arguments),
+            arguments: parseToolArguments(item.arguments, item.name),
           },
           metadata,
         },
@@ -131,8 +131,14 @@ function itemToEvents(
         },
       ];
     default:
-      // TODO(LLM-Router 2025-10-28): Send error event
-      throw new Error(`Unsupported OpenAI Response Item: ${item}`);
+      throw new EventError(
+        {
+          type: "invalid_response_error",
+          message: `Unsupported OpenAI Response Item: ${item}`,
+          isRetryable: false,
+        },
+        metadata
+      );
   }
 }
 

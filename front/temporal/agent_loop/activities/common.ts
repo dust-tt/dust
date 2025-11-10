@@ -154,11 +154,17 @@ async function processEventForUnreadState(
 // Process potential token usage tracking for agent events before publishing to Redis.
 async function processEventForTokenUsageTracking(
   auth: Authenticator,
-  { event }: { event: AgentMessageEvents }
+  {
+    event,
+    userMessageOrigin,
+  }: { event: AgentMessageEvents; userMessageOrigin?: string | null }
 ) {
   if (event.type === "agent_message_success") {
     const { runIds } = event;
-    await maybeTrackTokenUsageCost(auth, { dustRunIds: runIds });
+    await maybeTrackTokenUsageCost(auth, {
+      dustRunIds: runIds,
+      userMessageOrigin,
+    });
   }
 }
 
@@ -170,12 +176,14 @@ export async function updateResourceAndPublishEvent(
     conversation,
     step,
     modelInteractionDurationMs,
+    userMessageOrigin,
   }: {
     event: AgentMessageEvents;
     agentMessageRow: AgentMessage;
     conversation: ConversationWithoutContentType;
     step: number;
     modelInteractionDurationMs?: number;
+    userMessageOrigin?: string | null;
   }
 ): Promise<void> {
   // Processing of events before publishing to Redis.
@@ -188,7 +196,7 @@ export async function updateResourceAndPublishEvent(
       modelInteractionDurationMs,
     }),
     processEventForUnreadState(auth, { event, conversation }),
-    processEventForTokenUsageTracking(auth, { event }),
+    processEventForTokenUsageTracking(auth, { event, userMessageOrigin }),
   ]);
 
   await publishConversationRelatedEvent({

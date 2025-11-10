@@ -6,7 +6,6 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { MAX_RESOURCE_CONTENT_SIZE } from "@app/lib/actions/action_output_limits";
 import {
   isBlobResource,
-  isIncludeQueryResourceType,
   isRunAgentQueryResourceType,
   isSearchQueryResourceType,
   isToolGeneratedFile,
@@ -105,7 +104,6 @@ export function rewriteContentForModel(
   if (
     isToolMarkerResourceType(content) ||
     isSearchQueryResourceType(content) ||
-    isIncludeQueryResourceType(content) ||
     isWebsearchQueryResourceType(content) ||
     isRunAgentQueryResourceType(content)
   ) {

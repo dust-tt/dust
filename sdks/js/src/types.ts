@@ -305,6 +305,7 @@ const UserMessageOriginSchema = FlexibleEnumSchema<
   | "slack"
   | "teams"
   | "triggered"
+  | "triggered_programmatic"
   | "web"
   | "zapier"
   | "zendesk"
@@ -649,7 +650,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "google_sheets_tool"
   | "hootl_dev_webhooks"
   | "hootl_subscriptions"
-  | "hootl_webhooks"
   | "index_private_slack_channel"
   | "labs_mcp_actions_dashboard"
   | "labs_trackers"
@@ -688,6 +688,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "http_client_tool"
   | "slack_files_write_scope"
   | "notifications"
+  | "front_tool"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -2840,6 +2841,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "GmailLogo"
   | "GoogleSpreadsheetLogo"
   | "FreshserviceLogo"
+  | "FrontLogo"
   | "HubspotLogo"
   | "MicrosoftExcelLogo"
   | "MicrosoftOutlookLogo"

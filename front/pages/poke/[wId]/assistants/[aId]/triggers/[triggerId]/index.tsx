@@ -2,6 +2,7 @@ import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
 import { ConversationDataTable } from "@app/components/poke/conversation/table";
+import { PluginList } from "@app/components/poke/plugins/PluginList";
 import PokeLayout from "@app/components/poke/PokeLayout";
 import { ViewTriggerTable } from "@app/components/poke/triggers/view";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
@@ -72,6 +73,16 @@ export default function TriggerPage({
   return (
     <div className="flex flex-col gap-y-6">
       <ViewTriggerTable trigger={trigger} agent={agent} owner={owner} />
+      <div className="border-t border-gray-200 pt-6">
+        <h2 className="mb-4 text-lg font-semibold">Plugins</h2>
+        <PluginList
+          pluginResourceTarget={{
+            resourceType: "triggers",
+            resourceId: trigger.sId,
+            workspace: owner,
+          }}
+        />
+      </div>
       <div className="border-t border-gray-200 pt-6">
         <h2 className="mb-4 text-lg font-semibold">Conversations</h2>
         <ConversationDataTable owner={owner} conversations={conversations} />

@@ -576,6 +576,7 @@ const DataSourcePage = ({
       <div className="flex flex-row gap-x-6">
         <ViewDataSourceTable
           dataSource={dataSource}
+          owner={owner}
           temporalWorkspace={temporalWorkspace}
           coreDataSource={coreDataSource}
           connector={connector}
