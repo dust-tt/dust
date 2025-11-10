@@ -1,22 +1,10 @@
+import { ListCheckIcon } from "@dust-tt/sparkle";
+
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import { EmptyPlaceholder } from "@app/components/agent_builder/observability/shared/EmptyPlaceholder";
+import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
 import { AgentFeedback } from "@app/components/observability/AgentFeedback";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
-
-function NoAgentState() {
-  return (
-    <div className="flex h-full min-h-0 items-center justify-center">
-      <div className="px-4 text-center">
-        <div className="mb-2 text-lg font-medium text-foreground">
-          No Performance Data Available
-        </div>
-        <div className="max-w-sm text-muted-foreground">
-          Performance metrics will be available after your agent is created and
-          used in conversations.
-        </div>
-      </div>
-    </div>
-  );
-}
 
 interface AgentBuilderPerformanceProps {
   agentConfigurationSId?: string;
@@ -33,7 +21,15 @@ export function AgentBuilderPerformance({
   });
 
   if (!agentConfiguration) {
-    return <NoAgentState />;
+    return (
+      <TabContentLayout title="Feedback">
+        <EmptyPlaceholder
+          icon={ListCheckIcon}
+          title="Waiting for feedback"
+          description="When users give feedback on responses, you'll see it here."
+        />
+      </TabContentLayout>
+    );
   }
 
   return (
