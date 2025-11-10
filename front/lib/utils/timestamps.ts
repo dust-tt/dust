@@ -57,6 +57,7 @@ export const formatShortDate = (timestamp: number | string): string => {
   return new Date(timestamp).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
+    timeZone: "UTC",
   });
 };
 
