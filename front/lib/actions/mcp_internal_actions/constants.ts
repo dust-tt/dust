@@ -117,6 +117,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "val_town",
   "front",
   "web_search_&_browse",
+  "zendesk",
   SEARCH_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
 ] as const;
@@ -1586,6 +1587,33 @@ The directive should be used to display a clickable version of the agent name in
         "- Use LLM-friendly timeline format for conversation data\n" +
         "- Include full context (metadata, custom fields) in responses",
       developerSecretSelection: "required",
+    },
+  },
+  zendesk: {
+    id: 42,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("zendesk_features");
+    },
+    isPreview: false,
+    tools_stakes: {
+      get_ticket: "never_ask",
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "zendesk",
+      version: "1.0.0",
+      description:
+        "Access and manage support tickets, help center, and customer interactions.",
+      authorization: {
+        provider: "zendesk" as const,
+        supported_use_cases: ["platform_actions"] as const,
+      },
+      icon: "ZendeskLogo",
+      documentationUrl: null,
+      instructions: null,
     },
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
