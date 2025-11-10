@@ -8,7 +8,7 @@ import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/uti
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
-import { Err, Ok } from "@app/types";
+import { Err, isString, Ok } from "@app/types";
 
 const ZENDESK_TOOL_NAME = "zendesk";
 
@@ -44,10 +44,8 @@ function createServer(
           );
         }
 
-        const subdomain = authInfo?.extra?.zendesk_subdomain as
-          | string
-          | undefined;
-        if (!subdomain) {
+        const subdomain = authInfo?.extra?.zendesk_subdomain;
+        if (!isString(subdomain)) {
           return new Err(
             new MCPError(
               "Zendesk subdomain not found in connection metadata. Please reconnect your Zendesk account."
