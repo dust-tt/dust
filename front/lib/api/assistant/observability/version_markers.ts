@@ -63,7 +63,6 @@ export async function fetchVersionMarkers(
             ? parseInt(firstSeenString, 10)
             : DEFAULT_TIMESTAMP_MS;
 
-
       return {
         version: b.key,
         timestamp,
