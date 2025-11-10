@@ -3,6 +3,7 @@ import assert from "assert";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { EventError } from "@app/lib/api/llm/types/events";
+import { extractEncryptedContentFromMetadata } from "@app/lib/api/llm/utils";
 import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
 import type {
   AssistantContentMessageTypeModel,
@@ -117,7 +118,7 @@ function assistantContentToPart(
       return {
         text: content.value.reasoning,
         thought: true,
-        // TODO(LLM-Router 2025-10-27): add thoughtSignature
+        thoughtSignature: extractEncryptedContentFromMetadata(content.value.metadata),
       };
     case "text_content":
       return {
