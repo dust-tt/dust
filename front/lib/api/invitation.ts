@@ -24,7 +24,6 @@ import type {
   APIErrorWithStatusCode,
   LightWorkspaceType,
   MembershipInvitationType,
-  ModelId,
   Result,
   SubscriptionType,
   UserType,
@@ -151,13 +150,16 @@ export async function updateOrCreateInvitation(
 }
 
 export function getMembershipInvitationToken(
-  invitationId: ModelId,
-  expiresAtEpochSeconds: number
+  invitation: MembershipInvitationType
 ) {
+  const expirationEpochSeconds =
+    Math.floor(invitation.createdAt / 1000) + INVITATION_EXPIRATION_TIME_SEC;
+
   return sign(
     {
-      membershipInvitationId: invitationId,
-      exp: expiresAtEpochSeconds,
+      membershipInvitationId: invitation.id,
+      iat: Math.floor(invitation.createdAt / 1000),
+      exp: expirationEpochSeconds,
     },
     config.getDustInviteTokenSecret()
   );
@@ -174,12 +176,7 @@ export function getMembershipInvitationUrl(
   owner: LightWorkspaceType,
   invitation: MembershipInvitationType
 ) {
-  const expirationEpochSeconds =
-    Math.floor(invitation.createdAt / 1000) + INVITATION_EXPIRATION_TIME_SEC;
-  const invitationToken = getMembershipInvitationToken(
-    invitation.id,
-    expirationEpochSeconds
-  );
+  const invitationToken = getMembershipInvitationToken(invitation);
   return getMembershipInvitationUrlForToken(owner, invitationToken);
 }
 

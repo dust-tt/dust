@@ -9,7 +9,6 @@ import type { InferGetServerSidePropsType } from "next";
 import { useCallback } from "react";
 
 import { getMembershipInvitationToken } from "@app/lib/api/invitation";
-import { INVITATION_EXPIRATION_TIME_SEC } from "@app/lib/constants/invitation";
 import {
   getUserFromSession,
   withDefaultUserAuthPaywallWhitelisted,
@@ -40,11 +39,7 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
     return {
       invitationId: invitation.id,
       invitationSid: invitation.sId,
-      token: getMembershipInvitationToken(
-        invitation.id,
-        Math.floor(invitation.createdAt.getTime() / 1000) +
-          INVITATION_EXPIRATION_TIME_SEC
-      ),
+      token: getMembershipInvitationToken(invitation.toJSON()),
       workspaceName: workspace.name,
       workspaceSid: workspace.sId,
       initialRole: invitation.initialRole,
