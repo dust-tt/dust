@@ -15,6 +15,7 @@ import type {
 } from "@app/temporal/agent_loop/lib/types";
 import { Err, Ok, safeParseJSON } from "@app/types";
 import type { ReasoningContentType } from "@app/types/assistant/agent_message_content";
+import { parseLlmReasoningMetadata } from "@app/lib/api/llm/utils";
 
 export async function getOutputFromAction(
   auth: Authenticator,
@@ -188,10 +189,14 @@ export async function getOutputFromAction(
 
         const contents = (block.message.contents ?? []).map((content) => {
           if (content.type === "reasoning") {
+            const parsedMetadata = parseLlmReasoningMetadata(
+              content.value.metadata
+            );
             return {
               ...content,
               value: {
-                ...content.value,
+                reasoning: content.value.reasoning,
+                metadata: parsedMetadata,
                 tokens: 0, // Will be updated for the last reasoning item
                 provider: model.providerId,
                 region,

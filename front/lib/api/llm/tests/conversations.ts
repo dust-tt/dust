@@ -292,7 +292,7 @@ export const runConversation = async (
                 type: "reasoning",
                 value: {
                   reasoning: event.content.text,
-                  metadata: JSON.stringify(otherMetadata),
+                  metadata: otherMetadata,
                   tokens: 12,
                   provider: config.provider,
                 },
