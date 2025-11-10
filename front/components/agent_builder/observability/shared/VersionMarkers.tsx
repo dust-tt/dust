@@ -1,6 +1,7 @@
 import { ReferenceLine } from "recharts";
 
 import type { ObservabilityMode } from "@app/components/agent_builder/observability/ObservabilityContext";
+import { formatShortDate } from "@app/lib/utils/timestamps";
 
 type Marker = { timestamp: number };
 
@@ -41,12 +42,18 @@ export function VersionMarkersDots({
     return null;
   }
 
+  const formattedVersionMakers = versionMarkers.map(marker => ({
+    ...marker,
+    date: formatShortDate(marker.timestamp)
+  }))
+
+
   return (
     <>
-      {versionMarkers.map((m) => (
+      {formattedVersionMakers.map((m) => (
         <ReferenceLine
-          key={m.timestamp}
-          x={m.timestamp}
+          key={m.date}
+          x={m.date}
           className="text-gray-300 dark:text-gray-300-night"
           stroke="currentColor"
           strokeDasharray="5 5"
@@ -58,3 +65,4 @@ export function VersionMarkersDots({
     </>
   );
 }
+
