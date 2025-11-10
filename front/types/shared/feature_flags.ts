@@ -145,6 +145,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Freshservice MCP tool",
     stage: "rolling_out",
   },
+  front_tool: {
+    description:
+      "Front MCP tool for managing support conversations, messages, and customer interactions.",
+    stage: "rolling_out",
+  },
   agent_management_tool: {
     description: "MCP tool for creating and managing agent configurations",
     stage: "dust_only",

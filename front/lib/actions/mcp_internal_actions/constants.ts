@@ -1544,8 +1544,10 @@ The directive should be used to display a clickable version of the agent name in
     id: 1018,
     availability: "manual",
     allowMultipleInstances: false,
-    isRestricted: undefined,
-    isPreview: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("front_tool");
+    },
+    isPreview: true,
     tools_stakes: {
       search_conversations: "never_ask",
       get_conversation: "never_ask",
