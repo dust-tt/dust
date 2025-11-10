@@ -4,6 +4,7 @@ import {
   isDustAppChatBlockType,
   runActionStreamed,
 } from "@app/lib/actions/server";
+import { parseLlmReasoningMetadata } from "@app/lib/api/llm/utils";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
@@ -15,7 +16,6 @@ import type {
 } from "@app/temporal/agent_loop/lib/types";
 import { Err, Ok, safeParseJSON } from "@app/types";
 import type { ReasoningContentType } from "@app/types/assistant/agent_message_content";
-import { parseLlmReasoningMetadata } from "@app/lib/api/llm/utils";
 
 export async function getOutputFromAction(
   auth: Authenticator,
