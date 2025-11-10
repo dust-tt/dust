@@ -3,6 +3,7 @@ import type { Attributes, Transaction } from "sequelize";
 
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import { INVITATION_EXPIRATION_TIME_SEC } from "@app/lib/constants/invitation";
 import { AuthFlowError } from "@app/lib/iam/errors";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -38,11 +39,21 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     this.workspace = workspace;
   }
 
+  private static invitationExpired(createdAt: Date) {
+    return (
+      createdAt.getTime() + INVITATION_EXPIRATION_TIME_SEC * 1000 < Date.now()
+    );
+  }
+
   static async getPendingForEmail(
     email: string
   ): Promise<MembershipInvitationResource | null> {
     const pendingInvitations = await this.listPendingForEmail(email);
-    return pendingInvitations.length > 0 ? pendingInvitations[0] : null;
+    return (
+      pendingInvitations.find(
+        (invitation) => !this.invitationExpired(invitation.createdAt)
+      ) ?? null
+    );
   }
 
   static async listPendingForEmail(
@@ -59,12 +70,14 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
-    return invitations.map(
-      (invitation) =>
-        new MembershipInvitationResource(this.model, invitation.get(), {
-          workspace: invitation.workspace,
-        })
-    );
+    return invitations
+      .filter((invitation) => !this.invitationExpired(invitation.createdAt))
+      .map(
+        (invitation) =>
+          new MembershipInvitationResource(this.model, invitation.get(), {
+            workspace: invitation.workspace,
+          })
+      );
   }
 
   static async getPendingForEmailAndWorkspace(
@@ -80,11 +93,13 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
       include: [WorkspaceModel],
     });
 
-    return invitation
-      ? new MembershipInvitationResource(this.model, invitation.get(), {
-          workspace: invitation.workspace,
-        })
-      : null;
+    if (!invitation || this.invitationExpired(invitation.createdAt)) {
+      return null;
+    }
+
+    return new MembershipInvitationResource(this.model, invitation.get(), {
+      workspace: invitation.workspace,
+    });
   }
 
   static async getPendingForToken(
@@ -131,6 +146,15 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
           new AuthFlowError(
             "invalid_invitation_token",
             "The invite token is invalid, please ask your admin to resend an invitation."
+          )
+        );
+      }
+
+      if (this.invitationExpired(membershipInvite.createdAt)) {
+        return new Err(
+          new AuthFlowError(
+            "expired_invitation",
+            "The invitation has expired, please ask your admin to resend it."
           )
         );
       }

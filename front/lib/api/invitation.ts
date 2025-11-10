@@ -144,11 +144,14 @@ export async function updateOrCreateInvitation(
   );
 }
 
-export function getMembershipInvitationToken(invitationId: number) {
+export function getMembershipInvitationToken(
+  invitationId: ModelId,
+  expiresAtEpochSeconds: number
+) {
   return sign(
     {
       membershipInvitationId: invitationId,
-      exp: Math.floor(Date.now() / 1000) + INVITATION_EXPIRATION_TIME_SEC,
+      exp: expiresAtEpochSeconds,
     },
     config.getDustInviteTokenSecret()
   );
@@ -163,9 +166,14 @@ function getMembershipInvitationUrlForToken(
 
 export function getMembershipInvitationUrl(
   owner: LightWorkspaceType,
-  invitationId: ModelId
+  invitation: MembershipInvitationType
 ) {
-  const invitationToken = getMembershipInvitationToken(invitationId);
+  const expirationEpochSeconds =
+    Math.floor(invitation.createdAt / 1000) + INVITATION_EXPIRATION_TIME_SEC;
+  const invitationToken = getMembershipInvitationToken(
+    invitation.id,
+    expirationEpochSeconds
+  );
   return getMembershipInvitationUrlForToken(owner, invitationToken);
 }
 
@@ -180,7 +188,7 @@ export async function sendWorkspaceInvitationEmail(
     from: config.getSupportEmailAddress(),
     templateId: config.getInvitationEmailTemplate(),
     dynamic_template_data: {
-      inviteLink: getMembershipInvitationUrl(owner, invitation.id),
+      inviteLink: getMembershipInvitationUrl(owner, invitation),
       // Escape the name to prevent XSS attacks via injected script elements.
       inviterName: escape(user.fullName),
       workspaceName: owner.name,

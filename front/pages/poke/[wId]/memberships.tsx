@@ -1,7 +1,7 @@
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
-import React from "react";
 
+import { isInvitationExpired } from "@app/components/members/utils";
 import { InvitationsDataTable } from "@app/components/poke/invitations/table";
 import { MembersDataTable } from "@app/components/poke/members/table";
 import PokeLayout from "@app/components/poke/PokeLayout";
@@ -41,7 +41,8 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       members,
       pendingInvitations: pendingInvitations.map((invite) => ({
         ...invite,
-        inviteLink: getMembershipInvitationUrl(owner, invite.id),
+        status: isInvitationExpired(invite.createdAt) ? "expired" : "pending",
+        inviteLink: getMembershipInvitationUrl(owner, invite),
       })),
       owner,
     },

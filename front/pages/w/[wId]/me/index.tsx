@@ -20,6 +20,7 @@ import { UserToolsTable } from "@app/components/me/UserToolsTable";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getMembershipInvitationToken } from "@app/lib/api/invitation";
+import { INVITATION_EXPIRATION_TIME_SEC } from "@app/lib/constants/invitation";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { useUser } from "@app/lib/swr/user";
@@ -55,7 +56,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
         workspaceSid: workspace.sId,
         initialRole: invitation.initialRole,
         createdAt: invitation.createdAt.getTime(),
-        token: getMembershipInvitationToken(invitation.id),
+        token: getMembershipInvitationToken(
+          invitation.id,
+          Math.floor(invitation.createdAt.getTime() / 1000) +
+            INVITATION_EXPIRATION_TIME_SEC
+        ),
       };
     }
   );

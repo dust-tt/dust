@@ -8,7 +8,7 @@ import { ActiveRoleSchema } from "./user";
 export type MembershipInvitationType = {
   sId: string;
   id: ModelId;
-  status: "pending" | "consumed" | "revoked";
+  status: "pending" | "consumed" | "revoked" | "expired";
   inviteEmail: string;
   initialRole: ActiveRoleType;
   createdAt: number;
@@ -18,7 +18,7 @@ export type MembershipInvitationTypeWithLink = MembershipInvitationType & {
   inviteLink: string;
 };
 
-export type PendingInvitationOption = {
+export interface PendingInvitationOption {
   invitationId: number;
   invitationSid: string;
   token: string;
@@ -26,7 +26,7 @@ export type PendingInvitationOption = {
   workspaceSid: string;
   initialRole: ActiveRoleType;
   createdAt: number;
-};
+}
 
 // Types for the invite form in Poke.
 
