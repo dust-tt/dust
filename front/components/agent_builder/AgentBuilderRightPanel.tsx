@@ -20,6 +20,8 @@ import { AgentBuilderPerformance } from "@app/components/agent_builder/AgentBuil
 import { AgentBuilderPreview } from "@app/components/agent_builder/AgentBuilderPreview";
 import { AgentBuilderTemplate } from "@app/components/agent_builder/AgentBuilderTemplate";
 import { ObservabilityProvider } from "@app/components/agent_builder/observability/ObservabilityContext";
+import { EmptyPlaceholder } from "@app/components/agent_builder/observability/shared/EmptyPlaceholder";
+import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
 import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
@@ -181,11 +183,20 @@ function ExpandedContent({
         </div>
       )}
       <ObservabilityProvider>
-        {selectedTab === "observability" && (
-          <AgentBuilderObservability
-            agentConfigurationSId={agentConfigurationSId ?? ""}
-          />
-        )}
+        {selectedTab === "observability" &&
+          (agentConfigurationSId ? (
+            <AgentBuilderObservability
+              agentConfigurationSId={agentConfigurationSId ?? ""}
+            />
+          ) : (
+            <TabContentLayout title="Insights">
+              <EmptyPlaceholder
+                icon={BarChartIcon}
+                title="Waiting for data"
+                description="Use your agent or share it with your team to see performance data."
+              />
+            </TabContentLayout>
+          ))}
         {selectedTab === "performance" && (
           <AgentBuilderPerformance
             agentConfigurationSId={agentConfigurationSId}
