@@ -248,20 +248,6 @@ export const BaseDustProdActionRegistry = {
       },
     },
   },
-  "voice-find-agent-and-tools": {
-    app: {
-      appId: "F15zoc9d8a",
-      appHash:
-        "ce806cd503d298c64ae97a8f786a60be62d81aa000fca02c363efec51356926f",
-    },
-    config: {
-      GET_AUGMENTED_MESSAGE: {
-        function_call: "find_agents_and_tools",
-        use_cache: false,
-        use_stream: true,
-      },
-    },
-  },
 };
 
 export type DustRegistryActionName = keyof typeof BaseDustProdActionRegistry;
