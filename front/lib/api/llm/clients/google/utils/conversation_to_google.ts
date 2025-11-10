@@ -119,7 +119,7 @@ function assistantContentToPart(
         functionCall: {
           id: content.value.id,
           name: content.value.name,
-          args: parseToolArguments(content.value.arguments),
+          args: parseToolArguments(content.value.arguments, content.value.name),
         },
       };
     }

@@ -72,7 +72,7 @@ function assistantContentToParam(
         type: "tool_use",
         id: content.value.id,
         name: content.value.name,
-        input: parseToolArguments(content.value.arguments),
+        input: parseToolArguments(content.value.arguments, content.value.name),
       };
     }
   }

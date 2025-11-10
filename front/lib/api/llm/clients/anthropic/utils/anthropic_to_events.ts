@@ -320,7 +320,7 @@ function toolCall({
     content: {
       id: id,
       name: name,
-      arguments: parseToolArguments(input),
+      arguments: parseToolArguments(input, name),
     },
     metadata,
   };
