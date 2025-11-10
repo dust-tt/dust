@@ -39,13 +39,13 @@ import { ConversationError, Err, Ok, removeNulls } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
   AgentContentItemType,
-  ReasoningContentType,
-  TextContentType,
+  AgentReasoningContentType,
+  AgentTextContentType,
 } from "@app/types/assistant/agent_message_content";
 import {
-  isFunctionCallContent,
-  isReasoningContent,
-  isTextContent,
+  isAgentFunctionCallContent,
+  isAgentReasoningContent,
+  isAgentTextContent,
 } from "@app/types/assistant/agent_message_content";
 import type { ParsedContentItem } from "@app/types/assistant/conversation";
 
@@ -79,7 +79,7 @@ export async function generateParsedContents(
       parsedContents[step] = [];
     }
 
-    if (isReasoningContent(c.content)) {
+    if (isAgentReasoningContent(c.content)) {
       const reasoning = c.content.value.reasoning;
       if (reasoning && reasoning.trim()) {
         parsedContents[step].push({ kind: "reasoning", content: reasoning });
@@ -87,7 +87,7 @@ export async function generateParsedContents(
       continue;
     }
 
-    if (isTextContent(c.content)) {
+    if (isAgentTextContent(c.content)) {
       const contentParser = new AgentMessageContentParser(
         agentConfiguration,
         messageId,
@@ -106,7 +106,7 @@ export async function generateParsedContents(
       continue;
     }
 
-    if (isFunctionCallContent(c.content)) {
+    if (isAgentFunctionCallContent(c.content)) {
       const functionCallId = c.content.value.id;
       const matchingAction = actionsByCallId.get(functionCallId);
 
@@ -348,8 +348,10 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         agentStepContents
       );
 
-      const textContents: Array<{ step: number; content: TextContentType }> =
-        [];
+      const textContents: Array<{
+        step: number;
+        content: AgentTextContentType;
+      }> = [];
       for (const content of agentStepContents) {
         if (content.content.type === "text_content") {
           textContents.push({ step: content.step, content: content.content });
@@ -358,7 +360,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
 
       const reasoningContents: Array<{
         step: number;
-        content: ReasoningContentType;
+        content: AgentReasoningContentType;
       }> = [];
       for (const content of agentStepContents) {
         if (content.content.type === "reasoning") {

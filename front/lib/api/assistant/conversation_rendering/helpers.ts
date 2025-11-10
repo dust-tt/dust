@@ -24,14 +24,14 @@ import { removeNulls } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
   AgentContentItemType,
-  ErrorContentType,
+  AgentErrorContentType,
 } from "@app/types/assistant/agent_message_content";
 
 /**
  * Type for a step in agent message processing
  */
 export type Step = {
-  contents: Exclude<AgentContentItemType, ErrorContentType>[];
+  contents: Exclude<AgentContentItemType, AgentErrorContentType>[];
   actions: {
     call: FunctionCallType;
     result: FunctionMessageTypeModel;
