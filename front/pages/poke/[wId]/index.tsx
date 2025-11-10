@@ -31,6 +31,11 @@ import { MCPServerViewsDataTable } from "@app/components/poke/mcp_server_views/t
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { PluginRunsDataTable } from "@app/components/poke/plugins/table";
 import PokeLayout from "@app/components/poke/PokeLayout";
+import {
+  PokeAlert,
+  PokeAlertDescription,
+  PokeAlertTitle,
+} from "@app/components/poke/shadcn/ui/alert";
 import { SpaceDataTable } from "@app/components/poke/spaces/table";
 import {
   ActiveSubscriptionTable,
@@ -167,9 +172,19 @@ const WorkspacePage = ({
 
   const workspaceRetention = dataRetention?.workspace ?? null;
   const agentsRetention = dataRetention?.agents ?? {};
+  const isInMaintenance = owner.metadata?.maintenance;
 
   return (
     <div className="ml-8 p-6">
+      {isInMaintenance && (
+        <PokeAlert variant="destructive" className="mb-6">
+          <PokeAlertTitle>Workspace in Maintenance Mode</PokeAlertTitle>
+          <PokeAlertDescription>
+            This workspace is currently in maintenance mode and should not be
+            modified, unless you know what you are doing.
+          </PokeAlertDescription>
+        </PokeAlert>
+      )}
       <div className="flex justify-between gap-3">
         <div className="flex-grow">
           <span className="text-2xl font-bold">{owner.name}</span>

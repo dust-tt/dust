@@ -29,12 +29,12 @@ async function backfillAgentAnalytics(
   });
 
   // Get all agent messages from the last 30 days for this workspace
-  const thirtyDaysAgo = subDays(new Date(), 30);
+  const ninetyDaysAgo = subDays(new Date(), 90);
 
   logger.info(
     {
       workspaceId: workspace.sId,
-      since: thirtyDaysAgo.toISOString(),
+      since: ninetyDaysAgo.toISOString(),
     },
     "Starting agent analytics backfill"
   );
@@ -46,7 +46,7 @@ async function backfillAgentAnalytics(
         [Op.ne]: null,
       },
       createdAt: {
-        [Op.gte]: thirtyDaysAgo,
+        [Op.gte]: ninetyDaysAgo,
       },
     },
     include: [
@@ -123,7 +123,7 @@ async function backfillAgentAnalytics(
                   {
                     model: UserModel,
                     as: "user",
-                    required: true,
+                    required: false,
                   },
                 ],
               },
@@ -229,9 +229,12 @@ makeScript(
       );
     } else {
       // Run on all workspaces
-      return runOnAllWorkspaces(async (workspace) => {
-        await backfillAgentAnalytics(workspace, logger, execute);
-      });
+      return runOnAllWorkspaces(
+        async (workspace) => {
+          await backfillAgentAnalytics(workspace, logger, execute);
+        },
+        { concurrency: 5 }
+      );
     }
   }
 );

@@ -296,6 +296,10 @@ export class LLMTraceBuffer {
     return this.outputByteSize;
   }
 
+  get runTokenUsage(): TokenUsage | undefined {
+    return this.tokenUsage;
+  }
+
   /**
    * Writes the final trace to GCS and log.
    * GCS write failures do not fail the main LLM operation.

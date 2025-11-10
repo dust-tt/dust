@@ -108,9 +108,10 @@ export function prunePreviousInteractions(
   inputInteractions: InteractionWithTokens[],
   maxTokens: number,
   interactionsToPreserve: number
-): InteractionWithTokens[] {
+): { interactions: InteractionWithTokens[]; contextWindowHitPosition: number } {
   const interactions = [...inputInteractions];
 
+  let contextWindowHitPosition = 0;
   let shouldPrune = false;
   let availableTokens = maxTokens;
   for (let i = interactions.length - 1; i >= 0; i--) {
@@ -137,6 +138,7 @@ export function prunePreviousInteractions(
       interactions[i] = pruneAllToolResults(interaction);
       interactionTokens = getInteractionTokenCount(interaction);
       shouldPrune = true;
+      contextWindowHitPosition = interactions.length - i; // contextWindowHitPosition is the number of interactions before hitting the context window
     } else {
       // Interaction fits within the token budget.
       // We keep it as-is
@@ -146,5 +148,8 @@ export function prunePreviousInteractions(
     availableTokens -= interactionTokens;
   }
 
-  return interactions;
+  return {
+    interactions,
+    contextWindowHitPosition,
+  };
 }

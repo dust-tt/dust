@@ -1,6 +1,6 @@
 import {
-  Button,
   CollapsibleComponent,
+  ContentMessageInline,
   Label,
   Markdown,
   Separator,
@@ -33,7 +33,7 @@ export function RecentWebhookRequests({
     <CollapsibleComponent
       rootProps={{ defaultOpen, onOpenChange: setIsOpen }}
       triggerChildren={
-        <Label className="cursor-pointer">Recent Requests</Label>
+        <Label className="cursor-pointer">Request history</Label>
       }
       contentChildren={
         <RecentWebhookRequestsContent
@@ -68,10 +68,6 @@ function RecentWebhookRequestsContent({
       disabled: !trigger || !agentConfigurationId || !isOpen,
     });
 
-  const [expandedRequestId, setExpandedRequestId] = useState<number | null>(
-    null
-  );
-
   if (isWebhookRequestsLoading || !isOpen) {
     return (
       <div className="flex items-center gap-2">
@@ -85,9 +81,9 @@ function RecentWebhookRequestsContent({
 
   if (isWebhookRequestsError) {
     return (
-      <p className="text-sm text-warning">
+      <ContentMessageInline variant="warning">
         Unable to load recent webhook requests.
-      </p>
+      </ContentMessageInline>
     );
   }
 
@@ -110,57 +106,51 @@ function RecentWebhookRequestsContent({
           <p>
             Some requests were rate limited.
             <br />
-            <span className="font-semibold">
-              Consider increasing this trigger&apos;s rate limit
-            </span>{" "}
-            or contact{" "}
+            Contact{" "}
             <Link
               href="mailto:support@dust.tt?subject=Increase%20Webhook%20Trigger%20Rate%20Limit"
               className="underline"
             >
               support@dust.tt
             </Link>{" "}
-            to increase it even further.
+            to increase the rate limit for this trigger.
           </p>
         </div>
       )}
-      <div className="flex flex-col gap-1">
-        {webhookRequests.map((request) => (
-          <>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                {moment(new Date(request.timestamp)).fromNow()}
-                <WebhookRequestStatusBadge status={request.status} />
-              </div>
-              {request.payload && (
-                <Button
-                  onClick={() => {
-                    setExpandedRequestId(
-                      expandedRequestId === request.id ? null : request.id
-                    );
-                  }}
-                  label={
-                    expandedRequestId === request.id
-                      ? "Hide Payload"
-                      : "View Payload"
-                  }
-                  variant="outline"
-                />
-              )}
-            </div>
-
-            {expandedRequestId === request.id && request.payload && (
-              <div className="rounded">
-                <pre className="max-h-64 overflow-auto text-xs">
-                  <Markdown
-                    forcedTextSize="xs"
-                    content={`\`\`\`json\n${JSON.stringify(request.payload.body, null, 2)}\n\`\`\``}
-                  />
-                </pre>
-              </div>
-            )}
-            <Separator />
-          </>
+      <div className="flex flex-col px-4">
+        {webhookRequests.map((request, idx) => (
+          <div key={request.id}>
+            <CollapsibleComponent
+              rootProps={{ defaultOpen: false }}
+              triggerChildren={
+                <div className="my-2 flex w-full items-center justify-between gap-4">
+                  {moment(new Date(request.timestamp)).calendar(undefined, {
+                    sameDay: "[Today at] LTS",
+                    lastDay: "[Yesterday at] LTS",
+                    lastWeek: "[Last] dddd [at] LTS",
+                  })}
+                  <WebhookRequestStatusBadge status={request.status} />
+                </div>
+              }
+              contentChildren={
+                request.payload ? (
+                  <div className="rounded">
+                    <pre className="max-h-64 overflow-auto text-xs">
+                      <Markdown
+                        forcedTextSize="xs"
+                        content={`\`\`\`json\n${JSON.stringify(request.payload.body, null, 2)}\n\`\`\``}
+                      />
+                    </pre>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                    No payload available.
+                  </p>
+                )
+              }
+            />
+            {idx < webhookRequests.length - 1 && <Separator />}
+          </div>
         ))}
       </div>
     </div>

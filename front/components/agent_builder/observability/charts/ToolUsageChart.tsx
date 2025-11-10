@@ -22,7 +22,7 @@ import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 import { ChartsTooltip } from "@app/components/agent_builder/observability/charts/ChartsTooltip";
 import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
 import { useToolUsageData } from "@app/components/agent_builder/observability/hooks";
-import { useObservability } from "@app/components/agent_builder/observability/ObservabilityContext";
+import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import { ChartLegend } from "@app/components/agent_builder/observability/shared/ChartLegend";
 import { RoundedTopBarShape } from "@app/components/agent_builder/observability/shared/ChartShapes";
@@ -40,7 +40,7 @@ export function ToolUsageChart({
   workspaceId: string;
   agentConfigurationId: string;
 }) {
-  const { period, mode, selectedVersion } = useObservability();
+  const { period, mode, selectedVersion } = useObservabilityContext();
   const [toolMode, setToolMode] = useState<ToolChartModeType>("version");
 
   const {
@@ -58,7 +58,7 @@ export function ToolUsageChart({
     mode: toolMode,
     filterVersion:
       mode === "version" && toolMode === "version"
-        ? selectedVersion
+        ? selectedVersion?.version
         : undefined,
   });
 
@@ -117,10 +117,13 @@ export function ToolUsageChart({
           data={chartData}
           margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
         >
-          <CartesianGrid vertical={false} className="stroke-border" />
+          <CartesianGrid
+            vertical={false}
+            className="stroke-border dark:stroke-border-night"
+          />
           <XAxis
             dataKey="label"
-            className="text-xs text-muted-foreground"
+            className="text-xs text-muted-foreground dark:text-muted-foreground-night"
             tickLine={false}
             axisLine={false}
             tickMargin={8}
@@ -132,7 +135,7 @@ export function ToolUsageChart({
             }}
           />
           <YAxis
-            className="text-xs text-muted-foreground"
+            className="text-xs text-muted-foreground dark:text-muted-foreground-night"
             tickLine={false}
             axisLine={false}
             tickMargin={8}

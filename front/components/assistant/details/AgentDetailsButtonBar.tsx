@@ -18,7 +18,7 @@ import {
 import { useRouter } from "next/router";
 import { useState } from "react";
 
-import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistantDialog";
+import { DeleteAgentDialog } from "@app/components/assistant/DeleteAgentDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
@@ -32,20 +32,19 @@ import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
 import { isAdmin, isBuilder, normalizeError } from "@app/types";
 
-interface AssistantDetailsButtonBarProps {
+interface AgentDetailsButtonBarProps {
   agentConfiguration: LightAgentConfigurationType;
   owner: WorkspaceType;
   isAgentConfigurationValidating: boolean;
 }
 
-export function AssistantDetailsButtonBar({
+export function AgentDetailsButtonBar({
   agentConfiguration,
   isAgentConfigurationValidating,
   owner,
-}: AssistantDetailsButtonBarProps) {
+}: AgentDetailsButtonBarProps) {
   const { user } = useUser();
-  const { onOpenChange: onOpenChangeAssistantModal } =
-    useURLSheet("agentDetails");
+  const { onOpenChange: onOpenChangeAgentModal } = useURLSheet("agentDetails");
 
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
@@ -68,7 +67,7 @@ export function AssistantDetailsButtonBar({
     return null;
   }
 
-  const canEditAssistant = agentConfiguration.canEdit || isAdmin(owner);
+  const canEditAgent = agentConfiguration.canEdit || isAdmin(owner);
 
   const isFavoriteDisabled =
     isAgentConfigurationValidating || isUpdatingFavorite;
@@ -127,29 +126,29 @@ export function AssistantDetailsButtonBar({
             size="sm"
             tooltip="Edit agent"
             href={
-              canEditAssistant
+              canEditAgent
                 ? getAgentBuilderRoute(owner.sId, agentConfiguration.sId)
                 : undefined
             }
-            disabled={!canEditAssistant}
+            disabled={!canEditAgent}
             variant="outline"
             icon={PencilSquareIcon}
           />
         )}
 
       {agentConfiguration.scope !== "global" && (
-        <AssistantDetailsDropdownMenu
+        <AgentDetailsDropdownMenu
           showTrigger
           agentConfiguration={agentConfiguration}
           owner={owner}
-          onClose={() => onOpenChangeAssistantModal(false)}
+          onClose={() => onOpenChangeAgentModal(false)}
         />
       )}
     </div>
   );
 }
 
-interface AssistantDetailsDropdownMenuProps {
+interface AgentDetailsDropdownMenuProps {
   agentConfiguration?: LightAgentConfigurationType;
   owner: WorkspaceType;
   showTrigger?: boolean;
@@ -158,14 +157,14 @@ interface AssistantDetailsDropdownMenuProps {
   contextMenuPosition?: { x: number; y: number };
 }
 
-export function AssistantDetailsDropdownMenu({
+export function AgentDetailsDropdownMenu({
   agentConfiguration,
   owner,
   showTrigger = false,
   onClose,
   showEditOption = false,
   contextMenuPosition,
-}: AssistantDetailsDropdownMenuProps) {
+}: AgentDetailsDropdownMenuProps) {
   const sendNotification = useSendNotification();
   const router = useRouter();
 
@@ -177,7 +176,7 @@ export function AssistantDetailsDropdownMenu({
   }
 
   const allowDeletion = agentConfiguration?.canEdit || isAdmin(owner);
-  const canEditAssistant = agentConfiguration?.canEdit || isAdmin(owner);
+  const canEditAgent = agentConfiguration?.canEdit || isAdmin(owner);
 
   const handleExportToYAML = async () => {
     setIsExporting(true);
@@ -235,7 +234,7 @@ export function AssistantDetailsDropdownMenu({
     <>
       {showEditOption &&
         agentConfiguration.scope !== "global" &&
-        canEditAssistant && (
+        canEditAgent && (
           <DropdownMenuItem
             label="Edit agent"
             onClick={(e) => {
@@ -271,8 +270,8 @@ export function AssistantDetailsDropdownMenu({
         <>
           <DropdownMenuItem
             label="Duplicate (New)"
-            data-gtm-label="assistantDuplicationButton"
-            data-gtm-location="assistantDetails"
+            data-gtm-label="agentDuplicationButton"
+            data-gtm-location="agentDetails"
             icon={ClipboardIcon}
             onClick={async (e) => {
               e.stopPropagation();
@@ -305,7 +304,7 @@ export function AssistantDetailsDropdownMenu({
   // Context menu version
   return (
     <>
-      <DeleteAssistantDialog
+      <DeleteAgentDialog
         owner={owner}
         isOpen={showDeletionModal}
         agentConfiguration={agentConfiguration}

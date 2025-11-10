@@ -1,4 +1,5 @@
 import { Chip } from "@dust-tt/sparkle";
+import { useMemo } from "react";
 import {
   Area,
   AreaChart,
@@ -16,7 +17,8 @@ import {
   ERROR_RATE_LEGEND,
   ERROR_RATE_PALETTE,
 } from "@app/components/agent_builder/observability/constants";
-import { useObservability } from "@app/components/agent_builder/observability/ObservabilityContext";
+import { useErrorRateData } from "@app/components/agent_builder/observability/hooks";
+import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import {
   ChartLegend,
@@ -24,14 +26,11 @@ import {
 } from "@app/components/agent_builder/observability/shared/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
 import { VersionMarkersDots } from "@app/components/agent_builder/observability/shared/VersionMarkers";
-import { padSeriesToTimeRange } from "@app/components/agent_builder/observability/utils";
 import {
-  useAgentErrorRate,
-  useAgentVersionMarkers,
-} from "@app/lib/swr/assistants";
-
-const WARNING_THRESHOLD = 5;
-const CRITICAL_THRESHOLD = 10;
+  getErrorRateChipInfo,
+  padSeriesToTimeRange,
+} from "@app/components/agent_builder/observability/utils";
+import { useAgentVersionMarkers } from "@app/lib/swr/assistants";
 
 interface ErrorRateData {
   total: number;
@@ -88,16 +87,18 @@ export function ErrorRateChart({
   workspaceId,
   agentConfigurationId,
 }: ErrorRateChartProps) {
-  const { period, mode } = useObservability();
+  const { period, mode, selectedVersion } = useObservabilityContext();
+
   const {
-    errorRate: rawData,
-    isErrorRateLoading,
-    isErrorRateError,
-  } = useAgentErrorRate({
+    data: rawData,
+    isLoading,
+    errorMessage,
+  } = useErrorRateData({
     workspaceId,
     agentConfigurationId,
-    days: period,
-    disabled: !workspaceId || !agentConfigurationId,
+    period,
+    mode,
+    filterVersion: selectedVersion?.version,
   });
 
   const { versionMarkers } = useAgentVersionMarkers({
@@ -107,12 +108,22 @@ export function ErrorRateChart({
     disabled: !workspaceId || !agentConfigurationId,
   });
 
-  const data = padSeriesToTimeRange(rawData, mode, period, (date) => ({
-    date,
-    total: 0,
-    failed: 0,
-    errorRate: 0,
-  }));
+  const data = useMemo(() => {
+    if (mode === "timeRange") {
+      const dataWithDate = rawData.map((item) => ({
+        ...item,
+        date: item.date!,
+      }));
+      return padSeriesToTimeRange(dataWithDate, mode, period, (date) => ({
+        date,
+        label: date,
+        total: 0,
+        failed: 0,
+        errorRate: 0,
+      }));
+    }
+    return rawData;
+  }, [rawData, mode, period]);
 
   const legendItems = legendFromConstant(
     ERROR_RATE_LEGEND,
@@ -122,30 +133,25 @@ export function ErrorRateChart({
     }
   );
 
-  const getStatusChip = () => {
-    const latestErrorRate = data[data.length - 1]?.errorRate ?? 0;
-    if (latestErrorRate < WARNING_THRESHOLD) {
-      return <Chip color="success" size="xs" label="HEALTHY" />;
-    } else if (latestErrorRate < CRITICAL_THRESHOLD) {
-      return <Chip color="info" size="xs" label="WARNING" />;
-    } else {
-      return <Chip color="warning" size="xs" label="CRITICAL" />;
-    }
-  };
+  const errorRateChipInfo = getErrorRateChipInfo(
+    data[data.length - 1]?.errorRate ?? 0
+  );
 
   return (
     <ChartContainer
       title="Error rate"
       description="Share of messages that failed (%). Warning at 5%, critical at 10%."
       statusChip={
-        !isErrorRateLoading && !isErrorRateError && data.length > 0
-          ? getStatusChip()
-          : undefined
+        !isLoading && !errorMessage && data.length > 0 ? (
+          <Chip
+            size="mini"
+            color={errorRateChipInfo.color}
+            label={errorRateChipInfo.label}
+          />
+        ) : undefined
       }
-      isLoading={isErrorRateLoading}
-      errorMessage={
-        isErrorRateError ? "Failed to load observability data." : undefined
-      }
+      isLoading={isLoading}
+      errorMessage={errorMessage}
     >
       <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
         <AreaChart
@@ -166,20 +172,23 @@ export function ErrorRateChart({
               />
             </linearGradient>
           </defs>
-          <CartesianGrid vertical={false} className="stroke-border" />
+          <CartesianGrid
+            vertical={false}
+            className="stroke-border dark:stroke-border-night"
+          />
           <XAxis
             dataKey="date"
             type="category"
             scale="point"
             allowDuplicatedCategory={false}
-            className="text-xs text-muted-foreground"
+            className="text-xs text-muted-foreground dark:text-muted-foreground-night"
             tickLine={false}
             axisLine={false}
             tickMargin={8}
             minTickGap={16}
           />
           <YAxis
-            className="text-xs text-muted-foreground"
+            className="text-xs text-muted-foreground dark:text-muted-foreground-night"
             tickLine={false}
             axisLine={false}
             tickMargin={8}

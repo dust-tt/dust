@@ -62,21 +62,11 @@ export const reasoningLLMEvents = [
   {
     type: "reasoning_generated",
     content: {
-      text: "**Solving the Equation**\n\nWe need to solve the equation.\n\n",
+      text: "**Solving the Equation**\n\nWe need to solve the equation.\n\n\n\n**Solving the Quadratic**\n\nTo solve the equation $$x^2 + 2x + 1 = 0$$, I can factor it...",
     },
     metadata: {
       id: "rs_06e2b572b276da09016901d7350ae08198ba76145524efe4b2",
-      clientId: "openai_responses",
-      modelId: "gpt-5",
-    },
-  },
-  {
-    type: "reasoning_generated",
-    content: {
-      text: "**Solving the Quadratic**\n\nTo solve the equation $$x^2 + 2x + 1 = 0$$, I can factor it...",
-    },
-    metadata: {
-      id: "rs_06e2b572b276da09016901d7350ae08198ba76145524efe4b2",
+      encrypted_content: undefined,
       clientId: "openai_responses",
       modelId: "gpt-5",
     },
@@ -100,6 +90,60 @@ export const reasoningLLMEvents = [
       outputTokens: 414,
       totalTokens: 7267,
     },
+    metadata: {
+      clientId: "openai_responses",
+      modelId: "gpt-5",
+    },
+  },
+  {
+    type: "success",
+    aggregated: [
+      {
+        type: "reasoning_generated",
+        content: {
+          text: "**Solving the Equation**\n\nWe need to solve the equation.\n\n\n\n**Solving the Quadratic**\n\nTo solve the equation $$x^2 + 2x + 1 = 0$$, I can factor it...",
+        },
+        metadata: {
+          id: "rs_06e2b572b276da09016901d7350ae08198ba76145524efe4b2",
+          clientId: "openai_responses",
+          modelId: "gpt-5",
+          encrypted_content: undefined,
+        },
+      },
+      {
+        type: "text_generated",
+        content: {
+          text: "# Solving the equation\n\nGiven:\n$$\nx^2 + 2x + 1 = 0\n$$\n\nNotice it factors as:\n$$\n(x + 1)^2 = 0\n$$\n\n",
+        },
+        metadata: {
+          clientId: "openai_responses",
+          modelId: "gpt-5",
+        },
+      },
+    ],
+    textGenerated: {
+      type: "text_generated",
+      content: {
+        text: "# Solving the equation\n\nGiven:\n$$\nx^2 + 2x + 1 = 0\n$$\n\nNotice it factors as:\n$$\n(x + 1)^2 = 0\n$$\n\n",
+      },
+      metadata: {
+        clientId: "openai_responses",
+        modelId: "gpt-5",
+      },
+    },
+    reasoningGenerated: {
+      type: "reasoning_generated",
+      content: {
+        text: "**Solving the Equation**\n\nWe need to solve the equation.\n\n\n\n**Solving the Quadratic**\n\nTo solve the equation $$x^2 + 2x + 1 = 0$$, I can factor it...",
+      },
+      metadata: {
+        id: "rs_06e2b572b276da09016901d7350ae08198ba76145524efe4b2",
+        clientId: "openai_responses",
+        modelId: "gpt-5",
+        encrypted_content: undefined,
+      },
+    },
+    toolCalls: undefined,
     metadata: {
       clientId: "openai_responses",
       modelId: "gpt-5",

@@ -16,12 +16,12 @@ import {
   Hoverable,
   Icon,
   NavigationListLabel,
-  Page,
   Spinner,
 } from "@dust-tt/sparkle";
 import { memo, useCallback, useEffect, useState } from "react";
 import { useInView } from "react-intersection-observer";
 
+import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
 import { useDismissFeedback } from "@app/hooks/useDismissFeedback";
 import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
 import {
@@ -146,9 +146,9 @@ export const FeedbacksSection = ({
   const latestVersion = agentConfigurationHistory[0].version;
 
   return (
-    <>
-      <div className="mb-4 flex items-center justify-between">
-        <Page.H variant="h5">Feedback</Page.H>
+    <TabContentChildSectionLayout
+      title="Feedback"
+      headerAction={
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -168,7 +168,8 @@ export const FeedbacksSection = ({
             />
           </DropdownMenuContent>
         </DropdownMenu>
-      </div>
+      }
+    >
       {!agentConfigurationFeedbacks ||
       agentConfigurationFeedbacks.length === 0 ? (
         <div className="mt-3 text-sm text-muted-foreground dark:text-muted-foreground-night">
@@ -212,7 +213,7 @@ export const FeedbacksSection = ({
       )}
       {/* Invisible div to act as a scroll anchor for detecting when the user has scrolled to the bottom */}
       <div ref={bottomRef} className="h-1.5" />
-    </>
+    </TabContentChildSectionLayout>
   );
 };
 

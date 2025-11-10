@@ -16,7 +16,7 @@ import { useRouter } from "next/router";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
-import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistantDialog";
+import { DeleteAgentDialog } from "@app/components/assistant/DeleteAgentDialog";
 import { SCOPE_INFO } from "@app/components/assistant/details/AgentDetails";
 import { GlobalAgentAction } from "@app/components/assistant/manager/GlobalAgentAction";
 import { TableTagSelector } from "@app/components/assistant/manager/TableTagSelector";
@@ -454,8 +454,8 @@ export function AssistantsTable({
                   },
                   {
                     label: "Duplicate (New)",
-                    "data-gtm-label": "assistantDuplicationButton",
-                    "data-gtm-location": "assistantDetails",
+                    "data-gtm-label": "agentDuplicationButton",
+                    "data-gtm-location": "agentDetails",
                     icon: ClipboardIcon,
                     onClick: (e: React.MouseEvent) => {
                       e.stopPropagation();
@@ -501,7 +501,7 @@ export function AssistantsTable({
 
   return (
     <>
-      <DeleteAssistantDialog
+      <DeleteAgentDialog
         owner={owner}
         isOpen={showDeleteDialog.open}
         agentConfiguration={showDeleteDialog.agentConfiguration}

@@ -656,7 +656,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_transcripts"
   | "legacy_dust_apps"
   | "llm_router_direct_requests"
-  | "microsoft_teams_bot"
   | "monday_tool"
   | "noop_model_feature"
   | "notion_private_integration"
@@ -668,6 +667,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "salesforce_synced_queries"
   | "salesforce_tool_write"
   | "salesforce_tool"
+  | "salesloft_tool"
   | "show_debug_tools"
   | "slack_bot_mcp"
   | "slack_enhanced_default_agent"
@@ -686,6 +686,8 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "llm_router_direct_requests"
   | "mentions_v2"
   | "http_client_tool"
+  | "slack_files_write_scope"
+  | "notifications"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -2526,6 +2528,26 @@ const DateSchema = z
     "YYYY-MM or YYYY-MM-DD"
   );
 
+const IncludeInactiveSchema = z.preprocess((value) => {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (Array.isArray(value)) {
+    const [first] = value;
+    if (first === undefined) {
+      return undefined;
+    }
+    return first === "true" || first === true;
+  }
+  if (typeof value === "string") {
+    return value === "true";
+  }
+  if (typeof value === "boolean") {
+    return value;
+  }
+  return undefined;
+}, z.boolean().optional());
+
 export const GetWorkspaceUsageRequestSchema = z.union([
   z.object({
     start: DateSchema,
@@ -2533,6 +2555,7 @@ export const GetWorkspaceUsageRequestSchema = z.union([
     mode: z.literal("month"),
     table: SupportedUsageTablesSchema,
     format: z.enum(["csv", "json"]).optional().default("csv"),
+    includeInactive: IncludeInactiveSchema,
   }),
   z.object({
     start: DateSchema,
@@ -2540,6 +2563,7 @@ export const GetWorkspaceUsageRequestSchema = z.union([
     mode: z.literal("range"),
     table: SupportedUsageTablesSchema,
     format: z.enum(["csv", "json"]).optional().default("csv"),
+    includeInactive: IncludeInactiveSchema,
   }),
 ]);
 

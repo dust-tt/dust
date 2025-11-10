@@ -810,15 +810,18 @@ export function useAgentLatency({
   workspaceId,
   agentConfigurationId,
   days = DEFAULT_PERIOD_DAYS,
+  version,
   disabled,
 }: {
   workspaceId: string;
   agentConfigurationId: string;
   days?: number;
+  version?: string;
   disabled?: boolean;
 }) {
   const fetcherFn: Fetcher<GetLatencyResponse> = fetcher;
-  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/latency?days=${days}`;
+  const versionParam = version ? `&version=${encodeURIComponent(version)}` : "";
+  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/latency?days=${days}${versionParam}`;
 
   const { data, error, isValidating } = useSWRWithDefaults(
     disabled ? null : key,
@@ -837,15 +840,18 @@ export function useAgentErrorRate({
   workspaceId,
   agentConfigurationId,
   days = DEFAULT_PERIOD_DAYS,
+  version,
   disabled,
 }: {
   workspaceId: string;
   agentConfigurationId: string;
   days?: number;
+  version?: string;
   disabled?: boolean;
 }) {
   const fetcherFn: Fetcher<GetErrorRateResponse> = fetcher;
-  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/error_rate?days=${days}`;
+  const versionParam = version ? `&version=${encodeURIComponent(version)}` : "";
+  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/error_rate?days=${days}${versionParam}`;
 
   const { data, error, isValidating } = useSWRWithDefaults(
     disabled ? null : key,

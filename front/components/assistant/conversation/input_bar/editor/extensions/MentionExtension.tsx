@@ -100,7 +100,7 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
                 text: match[1],
                 replaceWith: suggestion.label,
                 data: {
-                  type: "agent",
+                  type: suggestion.type,
                   id: suggestion.id,
                   label: suggestion.label,
                   description: suggestion.description,

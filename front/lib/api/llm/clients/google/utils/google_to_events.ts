@@ -8,6 +8,7 @@ import assert from "assert";
 import { hash as blake3 } from "blake3";
 import crypto from "crypto";
 
+import { SuccessAggregate } from "@app/lib/api/llm/types/aggregates";
 import type { LLMEvent, TokenUsageEvent } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
@@ -29,6 +30,9 @@ export async function* streamLLMEvents({
   let textContentParts = "";
   let reasoningContentParts = "";
 
+  // Aggregate output items to build a SuccessCompletionEvent at the end of a turn.
+  const aggregate = new SuccessAggregate();
+
   function* yieldEvents(events: LLMEvent[]) {
     for (const event of events) {
       if (event.type === "text_delta") {
@@ -37,6 +41,8 @@ export async function* streamLLMEvents({
       if (event.type === "reasoning_delta") {
         reasoningContentParts += event.content.delta;
       }
+
+      aggregate.add(event);
       yield event;
     }
   }
@@ -71,22 +77,35 @@ export async function* streamLLMEvents({
       case FinishReason.STOP: {
         yield* yieldEvents(events);
         if (reasoningContentParts) {
-          yield {
-            type: "reasoning_generated" as const,
-            content: { text: reasoningContentParts },
-            metadata,
-          };
+          yield* yieldEvents([
+            {
+              type: "reasoning_generated" as const,
+              content: { text: reasoningContentParts },
+              metadata,
+            },
+          ]);
         }
         reasoningContentParts = "";
         if (textContentParts) {
-          yield {
-            type: "text_generated" as const,
-            content: { text: textContentParts },
-            metadata,
-          };
+          yield* yieldEvents([
+            {
+              type: "text_generated" as const,
+              content: { text: textContentParts },
+              metadata,
+            },
+          ]);
         }
         textContentParts = "";
         yield tokenUsage(generateContentResponse.usageMetadata, metadata);
+        // emit success event after token usage
+        yield {
+          type: "success",
+          aggregated: aggregate.aggregated,
+          textGenerated: aggregate.textGenerated,
+          reasoningGenerated: aggregate.reasoningGenerated,
+          toolCalls: aggregate.toolCalls,
+          metadata,
+        };
         break;
       }
       default: {
@@ -95,14 +114,16 @@ export async function* streamLLMEvents({
         yield tokenUsage(generateContentResponse.usageMetadata, metadata);
         reasoningContentParts = "";
         textContentParts = "";
-        yield new EventError(
-          {
-            type: "stop_error",
-            isRetryable: false,
-            message: "An error occurred during completion",
-          },
-          metadata
-        );
+        yield* yieldEvents([
+          new EventError(
+            {
+              type: "stop_error",
+              isRetryable: false,
+              message: "An error occurred during completion",
+            },
+            metadata
+          ),
+        ]);
         break;
       }
     }
@@ -186,8 +207,7 @@ function partToLLMEvent({
       content: {
         id,
         name,
-        // TODO(LLM-Router 2025-10-27): set arguments type as Record<string, unknown
-        arguments: JSON.stringify(args),
+        arguments: args,
       },
       metadata,
     };

@@ -112,6 +112,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Salesforce MCP tool (activated by default on most plans, FF to override the plan config)",
     stage: "on_demand",
   },
+  salesloft_tool: {
+    description: "Salesloft MCP tool",
+    stage: "dust_only",
+  },
   salesforce_tool_write: {
     description: "Salesforce MCP tool: write operations (update_object)",
     stage: "on_demand",
@@ -187,10 +191,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Elevenlabs MCP tool for voice synthesis",
     stage: "on_demand",
   },
-  microsoft_teams_bot: {
-    description: "Microsoft Teams bot connector for workspace integration",
-    stage: "on_demand",
-  },
   agent_builder_observability: {
     description:
       "Observability tab in the Agent Builder (charts powered by Elasticsearch)",
@@ -216,6 +216,14 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   mentions_v2: {
     description: "Enable mentions v2, aka mention users",
     stage: "on_demand",
+  },
+  slack_files_write_scope: {
+    description: "Enable files:write scope for Slack bot and MCP server",
+    stage: "on_demand",
+  },
+  notifications: {
+    description: "Enable notifications",
+    stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;
 

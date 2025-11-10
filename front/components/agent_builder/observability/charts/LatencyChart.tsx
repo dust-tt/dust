@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
   Area,
   AreaChart,
@@ -14,7 +15,8 @@ import {
   LATENCY_LEGEND,
   LATENCY_PALETTE,
 } from "@app/components/agent_builder/observability/constants";
-import { useObservability } from "@app/components/agent_builder/observability/ObservabilityContext";
+import { useLatencyData } from "@app/components/agent_builder/observability/hooks";
+import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import {
   ChartLegend,
@@ -23,10 +25,7 @@ import {
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
 import { VersionMarkersDots } from "@app/components/agent_builder/observability/shared/VersionMarkers";
 import { padSeriesToTimeRange } from "@app/components/agent_builder/observability/utils";
-import {
-  useAgentLatency,
-  useAgentVersionMarkers,
-} from "@app/lib/swr/assistants";
+import { useAgentVersionMarkers } from "@app/lib/swr/assistants";
 
 interface LatencyData {
   messages: number;
@@ -71,16 +70,18 @@ export function LatencyChart({
   workspaceId: string;
   agentConfigurationId: string;
 }) {
-  const { period, mode } = useObservability();
+  const { period, mode, selectedVersion } = useObservabilityContext();
+
   const {
-    latency: rawData,
-    isLatencyLoading,
-    isLatencyError,
-  } = useAgentLatency({
+    data: rawData,
+    isLoading,
+    errorMessage,
+  } = useLatencyData({
     workspaceId,
     agentConfigurationId,
-    days: period,
-    disabled: !workspaceId || !agentConfigurationId,
+    period,
+    mode,
+    filterVersion: selectedVersion?.version,
   });
 
   const { versionMarkers } = useAgentVersionMarkers({
@@ -90,11 +91,21 @@ export function LatencyChart({
     disabled: !workspaceId || !agentConfigurationId,
   });
 
-  const data = padSeriesToTimeRange(rawData, mode, period, (date) => ({
-    date,
-    messages: 0,
-    average: 0,
-  }));
+  const data = useMemo(() => {
+    if (mode === "timeRange") {
+      const dataWithDate = rawData.map((item) => ({
+        ...item,
+        date: item.date!,
+      }));
+      return padSeriesToTimeRange(dataWithDate, mode, period, (date) => ({
+        date,
+        label: date,
+        messages: 0,
+        average: 0,
+      }));
+    }
+    return rawData;
+  }, [rawData, mode, period]);
 
   const legendItems = legendFromConstant(LATENCY_LEGEND, LATENCY_PALETTE, {
     includeVersionMarker: mode === "timeRange" && versionMarkers.length > 0,
@@ -104,10 +115,8 @@ export function LatencyChart({
     <ChartContainer
       title="Latency"
       description="Average time to complete output (seconds). Lower is better."
-      isLoading={isLatencyLoading}
-      errorMessage={
-        isLatencyError ? "Failed to load observability data." : undefined
-      }
+      isLoading={isLoading}
+      errorMessage={errorMessage}
     >
       <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
         <AreaChart
@@ -127,20 +136,23 @@ export function LatencyChart({
               <stop offset="95%" stopColor="currentColor" stopOpacity={0.1} />
             </linearGradient>
           </defs>
-          <CartesianGrid vertical={false} className="stroke-border" />
+          <CartesianGrid
+            vertical={false}
+            className="stroke-border dark:stroke-border-night"
+          />
           <XAxis
             dataKey="date"
             type="category"
             scale="point"
             allowDuplicatedCategory={false}
-            className="text-xs text-muted-foreground"
+            className="text-xs text-muted-foreground dark:text-muted-foreground-night"
             tickLine={false}
             axisLine={false}
             tickMargin={8}
             minTickGap={16}
           />
           <YAxis
-            className="text-xs text-muted-foreground"
+            className="text-xs text-muted-foreground dark:text-muted-foreground-night"
             tickLine={false}
             axisLine={false}
             tickMargin={8}

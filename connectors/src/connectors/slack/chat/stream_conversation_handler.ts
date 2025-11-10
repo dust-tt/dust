@@ -5,7 +5,7 @@ import type {
   Result,
   UserMessageType,
 } from "@dust-tt/client";
-import { DustAPI } from "@dust-tt/client";
+import { DustAPI, removeNulls } from "@dust-tt/client";
 import {
   assertNever,
   Err,
@@ -29,6 +29,7 @@ import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_clien
 import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
 import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { annotateCitations } from "@connectors/lib/bot/citations";
 import { makeConversationUrl } from "@connectors/lib/bot/conversation_utils";
 import type { SlackChatBotMessage } from "@connectors/lib/models/slack";
@@ -296,9 +297,16 @@ async function streamAgentAnswerToSlack(
           finalAnswer,
           actions
         );
-        const filesUploaded: { file: Buffer; filename: string }[] = []; // TODO(2025-10-22 chris): remove this once Slack enables file:write scope
-        // const files = actions.flatMap((action) => action.generatedFiles);
-        // const filesUploaded = await getFilesFromDust(files, dustAPI);
+
+        const authResult = await slackClient.auth.test();
+        let filesUploaded: { file: Buffer; filename: string }[] = [];
+        if (
+          authResult.ok &&
+          authResult.response_metadata?.scopes?.includes("files:write")
+        ) {
+          const files = actions.flatMap((action) => action.generatedFiles);
+          filesUploaded = await getFilesFromDust(files, dustAPI);
+        }
 
         const slackContent = slackifyMarkdown(
           normalizeContentForSlack(formattedContent)
@@ -752,44 +760,43 @@ async function getMessageSplittingFromFeatureFlag(
   }
 }
 
-// async function getFilesFromDust(
-//   files: Array<{
-//     fileId: string;
-//     title: string;
-//     contentType: string;
-//     snippet: string | null;
-//     hidden?: boolean;
-//   }>,
-//   dustAPI: DustAPI
-// ): Promise<{ file: Buffer; filename: string }[]> {
-//   const uploadPromises = files
-//     .filter((file) => !file.hidden) // Skip hidden files
-//     .map(async (file) => {
-//       try {
-//         const fileBuffer = await dustAPI.downloadFile({ fileID: file.fileId });
-//         if (!fileBuffer || fileBuffer.isErr()) {
-//           return null;
-//         }
-//         return {
-//           file: fileBuffer.value,
-//           filename: file.title,
-//         };
-//       } catch (error) {
-//         logger.error(
-//           {
-//             fileId: file.fileId,
-//             title: file.title,
-//             error: error instanceof Error ? error.message : String(error),
-//           },
-//           "Error downloading file from Dust"
-//         );
-//         return null;
-//       }
-//     });
+async function getFilesFromDust(
+  files: Array<{
+    fileId: string;
+    title: string;
+    contentType: string;
+    snippet: string | null;
+    hidden?: boolean;
+  }>,
+  dustAPI: DustAPI
+): Promise<{ file: Buffer; filename: string }[]> {
+  const visibleFiles = files.filter((file) => !file.hidden); // Skip hidden files
+  const uploadResults = await concurrentExecutor(
+    visibleFiles,
+    async (file) => {
+      try {
+        const fileBuffer = await dustAPI.downloadFile({ fileID: file.fileId });
+        if (!fileBuffer || fileBuffer.isErr()) {
+          return null;
+        }
+        return {
+          file: fileBuffer.value,
+          filename: file.title,
+        };
+      } catch (error) {
+        logger.error(
+          {
+            fileId: file.fileId,
+            title: file.title,
+            error: error instanceof Error ? error.message : String(error),
+          },
+          "Error downloading file from Dust"
+        );
+        return null;
+      }
+    },
+    { concurrency: 10 }
+  );
 
-//   const uploadResults = await Promise.all(uploadPromises);
-//   return uploadResults.filter((result) => result !== null) as {
-//     file: Buffer;
-//     filename: string;
-//   }[];
-// }
+  return removeNulls(uploadResults);
+}

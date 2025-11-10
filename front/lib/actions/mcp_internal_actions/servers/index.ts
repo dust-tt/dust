@@ -44,6 +44,7 @@ import { default as reasoningServer } from "@app/lib/actions/mcp_internal_action
 import { default as runAgentServer } from "@app/lib/actions/mcp_internal_actions/servers/run_agent";
 import { default as dustAppServer } from "@app/lib/actions/mcp_internal_actions/servers/run_dust_app";
 import { default as salesforceServer } from "@app/lib/actions/mcp_internal_actions/servers/salesforce";
+import { default as salesloftServer } from "@app/lib/actions/mcp_internal_actions/servers/salesloft";
 import { default as searchServer } from "@app/lib/actions/mcp_internal_actions/servers/search";
 import { default as slackBotServer } from "@app/lib/actions/mcp_internal_actions/servers/slack/slack_bot";
 import { default as slackServer } from "@app/lib/actions/mcp_internal_actions/servers/slack/slack_personal";
@@ -151,6 +152,8 @@ export async function getInternalMCPServer(
       return extractDataServer(auth, agentLoopContext);
     case "salesforce":
       return salesforceServer(auth, agentLoopContext);
+    case "salesloft":
+      return salesloftServer(auth, agentLoopContext);
     case "gmail":
       return gmailServer(auth, agentLoopContext);
     case "google_calendar":

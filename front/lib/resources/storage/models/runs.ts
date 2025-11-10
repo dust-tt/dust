@@ -13,7 +13,7 @@ export class RunModel extends WorkspaceAwareModel<RunModel> {
   declare runType: string;
   declare useWorkspaceCredentials: boolean | null;
 
-  declare appId: ForeignKey<AppModel["id"]>;
+  declare appId: ForeignKey<AppModel["id"]> | null;
 
   declare app: NonAttribute<AppModel>;
 }
@@ -54,12 +54,12 @@ RunModel.init(
   }
 );
 AppModel.hasMany(RunModel, {
-  foreignKey: { allowNull: false },
+  foreignKey: { allowNull: true },
   onDelete: "RESTRICT",
 });
 RunModel.belongsTo(AppModel, {
   as: "app",
-  foreignKey: { name: "appId", allowNull: false },
+  foreignKey: { name: "appId", allowNull: true },
 });
 
 export class RunUsageModel extends WorkspaceAwareModel<RunUsageModel> {

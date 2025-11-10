@@ -60,6 +60,9 @@ export class OpenAIResponsesLLM extends LLM {
         reasoning: toReasoning(this.reasoningEffort),
         tools: specifications.map(toTool),
         text: { format: toResponseFormat(this.responseFormat) },
+        // Only models supporting reasoning can do encrypted content for reasoning.
+        include:
+          this.reasoningEffort !== null ? ["reasoning.encrypted_content"] : [],
       });
 
       yield* streamLLMEvents(events, this.metadata);

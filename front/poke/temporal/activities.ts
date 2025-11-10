@@ -37,6 +37,7 @@ import { KeyResource } from "@app/lib/resources/key_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { OnboardingTaskResource } from "@app/lib/resources/onboarding_task_resource";
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
@@ -469,6 +470,7 @@ export async function deleteMembersActivity({
             userId: user.id,
           },
         });
+        await OnboardingTaskResource.deleteAllForUser(auth, user.toJSON());
 
         await user.delete(auth, {});
       }
@@ -605,6 +607,7 @@ export async function deleteWorkspaceActivity({
     },
   });
   await AgentMemoryResource.deleteAllForWorkspace(auth);
+  await OnboardingTaskResource.deleteAllForWorkspace(auth);
 
   hardDeleteLogger.info({ workspaceId }, "Deleting Workspace");
 

@@ -14,7 +14,7 @@ import {
   USAGE_METRICS_LEGEND,
   USAGE_METRICS_PALETTE,
 } from "@app/components/agent_builder/observability/constants";
-import { useObservability } from "@app/components/agent_builder/observability/ObservabilityContext";
+import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import {
   ChartLegend,
@@ -102,7 +102,7 @@ export function UsageMetricsChart({
   workspaceId: string;
   agentConfigurationId: string;
 }) {
-  const { period, mode, selectedVersion } = useObservability();
+  const { period, mode, selectedVersion } = useObservabilityContext();
   const { usageMetrics, isUsageMetricsLoading, isUsageMetricsError } =
     useAgentUsageMetrics({
       workspaceId,
@@ -193,20 +193,23 @@ export function UsageMetricsChart({
               <stop offset="95%" stopColor="currentColor" stopOpacity={0.1} />
             </linearGradient>
           </defs>
-          <CartesianGrid vertical={false} className="stroke-border" />
+          <CartesianGrid
+            vertical={false}
+            className="stroke-border dark:stroke-border-night"
+          />
           <XAxis
             dataKey="date"
             type="category"
             scale="point"
             allowDuplicatedCategory={false}
-            className="text-xs text-muted-foreground"
+            className="text-xs text-muted-foreground dark:text-muted-foreground-night"
             tickLine={false}
             axisLine={false}
             tickMargin={8}
             minTickGap={16}
           />
           <YAxis
-            className="text-xs text-muted-foreground"
+            className="text-xs text-muted-foreground dark:text-muted-foreground-night"
             tickLine={false}
             axisLine={false}
             tickMargin={8}

@@ -3,6 +3,7 @@ import {
   TOOL_COLORS,
 } from "@app/components/agent_builder/observability/constants";
 import type { ObservabilityMode } from "@app/components/agent_builder/observability/ObservabilityContext";
+import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 
 export type VersionMarker = { version: string; timestamp: string };
 
@@ -64,7 +65,7 @@ export function findVersionMarkerForDate(
 export function filterTimeSeriesByVersionWindow<T extends { date: string }>(
   points: T[] | undefined,
   mode: ObservabilityMode,
-  selectedVersion: string | null,
+  selectedVersion: AgentVersionMarker | null,
   versionMarkers?: VersionMarker[] | null
 ): T[] {
   const pts = points ?? [];
@@ -76,7 +77,9 @@ export function filterTimeSeriesByVersionWindow<T extends { date: string }>(
     return pts;
   }
 
-  const idx = versionMarkers.findIndex((m) => m.version === selectedVersion);
+  const idx = versionMarkers.findIndex(
+    (m) => m.version === selectedVersion.version
+  );
   if (idx < 0) {
     return pts;
   }
@@ -91,6 +94,30 @@ export function filterTimeSeriesByVersionWindow<T extends { date: string }>(
     const t = new Date(p.date).getTime();
     return t >= start && (end === undefined || t < end);
   });
+}
+
+const WARNING_THRESHOLD = 5;
+const CRITICAL_THRESHOLD = 10;
+
+export function getErrorRateChipInfo(errorRate: number) {
+  if (errorRate < WARNING_THRESHOLD) {
+    return {
+      color: "success" as const,
+      label: "HEALTHY",
+    };
+  }
+
+  if (errorRate < CRITICAL_THRESHOLD) {
+    return {
+      color: "info" as const,
+      label: "WARNING",
+    };
+  }
+
+  return {
+    color: "warning" as const,
+    label: "CRITICAL",
+  };
 }
 
 export function formatUTCDateString(d: Date): string {

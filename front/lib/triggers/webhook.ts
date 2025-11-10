@@ -19,9 +19,16 @@ import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import type { WebhookSourceForAdminType } from "@app/types/triggers/webhooks";
+import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
-const WORKSPACE_MESSAGE_LIMIT_MULTIPLIER = 0.1; // 10% of workspace message limit
-const HEADERS_ALLOWED_LIST = ["x-github-event"]; // To avoid storing all headers in GCS, they might contain sensitive information
+const WORKSPACE_MESSAGE_LIMIT_MULTIPLIER = 0.5; // 50% of workspace message limit
+
+/**
+ * To avoid storing sensitive information, only these headers are allowed to be stored in GCS.
+ */
+const HEADERS_ALLOWED_LIST = Object.values(WEBHOOK_PRESETS)
+  .filter((preset) => preset.eventCheck.type === "headers")
+  .map((preset) => preset.eventCheck.field.toLowerCase());
 
 export function checkSignature({
   headerName,
@@ -83,12 +90,12 @@ export async function checkWebhookRequestForRateLimit(
   const workspace = auth.getNonNullableWorkspace();
   const { maxMessages, maxMessagesTimeframe } = plan.limits.assistant;
 
-  // Rate limiting: 10% of workspace message limit
+  // Rate limiting: 50% of workspace message limit
   if (maxMessages !== -1) {
     const activeSeats = await countActiveSeatsInWorkspaceCached(workspace.sId);
     const webhookLimit = Math.ceil(
       maxMessages * activeSeats * WORKSPACE_MESSAGE_LIMIT_MULTIPLIER
-    ); // 10% of workspace message limit
+    ); // 50% of workspace message limit
 
     const remaining = await rateLimiter({
       key: `workspace:${workspace.sId}:webhook_triggers:${maxMessagesTimeframe}`,

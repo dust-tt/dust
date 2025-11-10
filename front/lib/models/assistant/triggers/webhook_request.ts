@@ -76,6 +76,9 @@ WebhookRequestModel.init(
       {
         fields: ["workspaceId", "webhookSourceId", "status"],
       },
+      {
+        fields: ["workspaceId", "webhookSourceId", "createdAt"],
+      },
     ],
   }
 );

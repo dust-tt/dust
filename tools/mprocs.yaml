@@ -70,3 +70,7 @@ procs:
     cwd: "<CONFIG_DIR>/../extension"
     shell: "source ~/.nvm/nvm.sh && nvm install && npm install && npm run dev:chrome"
     autostart: false
+
+  novu:
+    shell: "npx novu@latest dev --port 3000"
+    autostart: false
