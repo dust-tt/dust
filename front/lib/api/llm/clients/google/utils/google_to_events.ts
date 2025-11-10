@@ -18,6 +18,10 @@ function newId(): string {
   return blake3(uuid).toString("hex");
 }
 
+type StateContainer = {
+  thinkingSignature?: string;
+}
+
 export async function* streamLLMEvents({
   generateContentResponses,
   metadata,
@@ -47,6 +51,7 @@ export async function* streamLLMEvents({
     }
   }
 
+  const stateContainer: StateContainer = { };
   for await (const generateContentResponse of generateContentResponses) {
     assert(
       generateContentResponse.candidates &&
@@ -64,7 +69,7 @@ export async function* streamLLMEvents({
     );
 
     const events = (content?.parts ?? []).map((part) =>
-      partToLLMEvent({ part, metadata })
+      partToLLMEvent({ part, metadata }, stateContainer)
     );
 
     // Passthrough, keep streaming
@@ -81,7 +86,7 @@ export async function* streamLLMEvents({
             {
               type: "reasoning_generated" as const,
               content: { text: reasoningContentParts },
-              metadata: { ...metadata, encrypted_content: reasoningContentParts },
+              metadata: { ...metadata, encrypted_content: stateContainer.thinkingSignature },
             },
           ]);
         }
@@ -155,10 +160,14 @@ function textPartToEvent({
   part,
   metadata,
 }: {
-  part: { text: string; thought?: boolean };
+  part: { text: string; thought?: boolean; thoughtSignature?: string };
   metadata: LLMClientMetadata;
-}): LLMEvent {
-  const { text, thought } = part;
+}, stateContainer: StateContainer): LLMEvent {
+  const { text, thought, thoughtSignature } = part;
+
+  if (thoughtSignature) {
+    stateContainer.thinkingSignature = thoughtSignature;
+  }
 
   if (!thought) {
     return {
@@ -171,7 +180,7 @@ function textPartToEvent({
   return {
     type: "reasoning_delta",
     content: { delta: text },
-    metadata,
+    metadata: { ...metadata, encrypted_content: thoughtSignature },
   };
 }
 
@@ -181,14 +190,14 @@ function partToLLMEvent({
 }: {
   part: Part;
   metadata: LLMClientMetadata;
-}): LLMEvent {
+}, stateContainer: StateContainer): LLMEvent {
   // Exactly one "structuring" field within a Part should be set
   if (part.text) {
-    const { text, thought } = part;
+    const { text, thought, thoughtSignature } = part;
     return textPartToEvent({
-      part: { text, thought },
+      part: { text, thought, thoughtSignature },
       metadata,
-    });
+    }, stateContainer);
   }
 
   if (part.functionCall) {
