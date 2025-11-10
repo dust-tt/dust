@@ -6,23 +6,13 @@ export async function* createAsyncGenerator<T>(items: T[]): AsyncGenerator<T> {
   }
 }
 
-export function extractEncryptedContentFromMetadata(metadata: string): string {
-  const parsed = safeParseJSON(metadata);
-  if (parsed.isErr()) {
-    throw new Error(
-      `Failed to parse reasoning metadata JSON: ${parsed.error.message}`
-    );
+export function parseLlmReasoningMetadata(metadata: string): {
+  id?: string;
+  encrypted_content?: string;
+} {
+  if (metadata.trim() === "") {
+    return {};
   }
-  const encryptedContent =
-    parsed.value &&
-    "encrypted_content" in parsed.value &&
-    isString(parsed.value.encrypted_content)
-      ? parsed.value.encrypted_content
-      : "";
-  return encryptedContent;
-}
-
-export function extractIdFromMetadata(metadata: string): string {
   const parsed = safeParseJSON(metadata);
   if (parsed.isErr()) {
     throw new Error(
@@ -32,6 +22,12 @@ export function extractIdFromMetadata(metadata: string): string {
   const id =
     parsed.value && "id" in parsed.value && isString(parsed.value.id)
       ? parsed.value.id
-      : "";
-  return id;
+      : undefined;
+  const encryptedContent =
+    parsed.value &&
+    "encrypted_content" in parsed.value &&
+    isString(parsed.value.encrypted_content)
+      ? parsed.value.encrypted_content
+      : undefined;
+  return { id, encrypted_content: encryptedContent };
 }
