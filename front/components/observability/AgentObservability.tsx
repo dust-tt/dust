@@ -9,7 +9,6 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
-import { ErrorRateChart } from "@app/components/agent_builder/observability/charts/ErrorRateChart";
 import { LatencyChart } from "@app/components/agent_builder/observability/charts/LatencyChart";
 import { ToolUsageChart } from "@app/components/agent_builder/observability/charts/ToolUsageChart";
 import { UsageMetricsChart } from "@app/components/agent_builder/observability/charts/UsageMetricsChart";
@@ -106,21 +105,6 @@ export function AgentObservability({
               }
             />
             <ValueCard
-              title="Error rate"
-              className="h-24"
-              content={
-                <div className="flex flex-row items-center gap-2 text-2xl">
-                  {avrErrorRate}%
-                  <Chip
-                    size="mini"
-                    color={errorRateChipInfo.color}
-                    label={errorRateChipInfo.label}
-                    className="h-fit"
-                  />
-                </div>
-              }
-            />
-            <ValueCard
               title="Reactions"
               className="h-24"
               content={
@@ -153,11 +137,6 @@ export function AgentObservability({
         />
         <Separator />
         <ToolUsageChart
-          workspaceId={workspaceId}
-          agentConfigurationId={agentConfigurationId}
-        />
-        <Separator />
-        <ErrorRateChart
           workspaceId={workspaceId}
           agentConfigurationId={agentConfigurationId}
         />
