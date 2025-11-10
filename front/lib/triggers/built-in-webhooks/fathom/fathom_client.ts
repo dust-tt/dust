@@ -34,38 +34,6 @@ export class FathomClient {
   async createWebhook(
     config: FathomWebhookConfig
   ): Promise<Result<Webhook, FathomError>> {
-    if (config.triggeredFor.length === 0) {
-      return new Err(
-        new FathomError(
-          "At least one value must be specified in triggeredFor array",
-          {
-            response: new Response(),
-            request: new Request(""),
-            body: "",
-          }
-        )
-      );
-    }
-
-    const hasContent =
-      (config.includeTranscript ?? false) ||
-      (config.includeSummary ?? false) ||
-      (config.includeActionItems ?? false) ||
-      (config.includeCrmMatches ?? false);
-
-    if (!hasContent) {
-      return new Err(
-        new FathomError(
-          "At least one of includeTranscript, includeSummary, includeActionItems, or includeCrmMatches must be true",
-          {
-            response: new Response(),
-            request: new Request(""),
-            body: "",
-          }
-        )
-      );
-    }
-
     let webhook: Webhook | undefined;
     try {
       webhook = await this.client.createWebhook({
