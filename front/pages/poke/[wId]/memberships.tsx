@@ -31,7 +31,9 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 
   const [{ members }, pendingInvitations] = await Promise.all([
     getMembers(auth),
-    MembershipInvitationResource.getPendingInvitations(auth, true),
+    MembershipInvitationResource.getPendingInvitations(auth, {
+      includeExpired: true,
+    }),
   ]);
 
   return {

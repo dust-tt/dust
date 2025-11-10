@@ -74,10 +74,9 @@ async function handler(
     case "GET":
       const includeExpired = req.query.includeExpired === "true";
       const invitations =
-        await MembershipInvitationResource.getPendingInvitations(
-          auth,
-          includeExpired
-        );
+        await MembershipInvitationResource.getPendingInvitations(auth, {
+          includeExpired,
+        });
       res.status(200).json({ invitations: invitations.map((i) => i.toJSON()) });
       return;
 

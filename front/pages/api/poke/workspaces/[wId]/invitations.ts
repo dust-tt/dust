@@ -71,7 +71,7 @@ async function handler(
       const pendingInvitations =
         await MembershipInvitationResource.getPendingInvitations(
           workspaceAdminAuth,
-          true
+          { includeExpired: true }
         );
 
       const invitation = pendingInvitations.find(
