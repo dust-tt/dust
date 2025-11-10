@@ -2,25 +2,22 @@
 import { isSupportedPlainTextContentType } from "@dust-tt/client";
 
 import { isPastedFile } from "@app/components/assistant/conversation/input_bar/pasted_utils";
-import { runAction } from "@app/lib/actions/server";
 import config from "@app/lib/api/config";
+import { generateFileSnippet } from "@app/lib/api/files/file_snippet_generator";
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
-import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { isSupportedAudioContentType } from "@app/types";
 import {
-  assertNever,
   CoreAPI,
   Err,
   getSmallWhitelistedModel,
   isSupportedDelimitedTextContentType,
   isSupportedImageContentType,
   Ok,
-  removeNulls,
 } from "@app/types";
 
 const ENABLE_LLM_SNIPPETS = false;
@@ -90,15 +87,9 @@ export async function generateSnippet(
     const model = getSmallWhitelistedModel(owner);
     if (!model) {
       return new Err(
-        new Error(`Failed to find a whitelisted model to generate title`)
+        new Error(`Failed to find a whitelisted model to generate snippet`)
       );
     }
-
-    const appConfig = cloneBaseConfig(
-      getDustProdAction("conversation-file-summarizer").config
-    );
-    appConfig.MODEL.provider_id = model.providerId;
-    appConfig.MODEL.model_id = model.modelId;
 
     const resTokenize = await coreAPI.tokenize({
       text: content,
@@ -117,7 +108,7 @@ export async function generateSnippet(
     const tokensCount = resTokenize.value.tokens.length;
     const allowedTokens = model.contextSize * 0.9;
     if (tokensCount > allowedTokens) {
-      // Truncate the content to the context size * 0.9 using cross product
+      // Truncate the content to the context size * 0.9 using cross product.
       const truncateLength = Math.floor(
         (allowedTokens * content.length) / tokensCount
       );
@@ -134,63 +125,25 @@ export async function generateSnippet(
       content = content.slice(0, truncateLength);
     }
 
-    const res = await runAction(
+    const res = await generateFileSnippet(
       auth,
-      "conversation-file-summarizer",
-      appConfig,
-      [
-        {
-          content: content,
-        },
-      ]
+      { modelId: model.modelId, providerId: model.providerId },
+      { content }
+    );
+    if (res.isErr()) {
+      return new Err(res.error);
+    }
+
+    const endTime = Date.now();
+    logger.info(
+      {
+        workspaceId: owner.sId,
+        fileId: file.sId,
+      },
+      `Snippet generation took ${endTime - startTime}ms`
     );
 
-    if (res.isErr()) {
-      return new Err(
-        new Error(
-          `Error generating snippet: ${res.error.type} ${res.error.message}`
-        )
-      );
-    }
-
-    const {
-      status: { run },
-      traces,
-      results,
-    } = res.value;
-
-    switch (run) {
-      case "errored":
-        const error = removeNulls(traces.map((t) => t[1][0][0].error)).join(
-          ", "
-        );
-        return new Err(new Error(`Error generating snippet: ${error}`));
-      case "succeeded":
-        if (!results || results.length === 0) {
-          return new Err(
-            new Error(
-              `Error generating snippet: no results returned while run was successful`
-            )
-          );
-        }
-        const snippet = results[0][0].value as string;
-        const endTime = Date.now();
-        logger.info(
-          {
-            workspaceId: owner.sId,
-            fileId: file.sId,
-          },
-          `Snippet generation took ${endTime - startTime}ms`
-        );
-
-        return new Ok(snippet);
-      case "running":
-        return new Err(
-          new Error(`Snippet generation is still running, should never happen.`)
-        );
-      default:
-        assertNever(run);
-    }
+    return new Ok(res.value.snippet);
   }
 
   if (isSupportedAudioContentType(file.contentType)) {

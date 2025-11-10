@@ -177,20 +177,7 @@ export const BaseDustProdActionRegistry = {
       },
     },
   },
-  "conversation-file-summarizer": {
-    app: {
-      appId: "iy1pjLCMzZ",
-      appHash:
-        "0cd0a82dcfaa327b2d5d1f645a314ea885e995a12921a1024ee96b92e8f15768",
-    },
-    config: {
-      MODEL: {
-        // `provider_id` and `model_id` must be set by caller.
-        use_cache: false,
-        use_stream: false,
-      },
-    },
-  },
+
   "assistant-v2-reason": {
     app: {
       appId: "hUJvIB2KDb",
