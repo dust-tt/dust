@@ -34,6 +34,7 @@ export class FathomClient {
   async createWebhook(
     config: FathomWebhookConfig
   ): Promise<Result<Webhook, FathomError>> {
+    logger.info({ config }, "HELLO");
     let webhook: Webhook | undefined;
     try {
       webhook = await this.client.createWebhook({
@@ -53,13 +54,7 @@ export class FathomClient {
     }
 
     if (!webhook) {
-      return new Err(
-        new FathomError("Failed to create webhook: no response", {
-          response: new Response(),
-          request: new Request(""),
-          body: "",
-        })
-      );
+      return new Err(new Error("Failed to create webhook: no response"));
     }
 
     return new Ok(webhook);
