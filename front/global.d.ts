@@ -8,6 +8,9 @@ type DataLayer =
       user_email: string;
       company_name: string;
       gclid: string | null;
+    }
+  | {
+      event: "hubspot_form_submitted";
     };
 
 interface Signals {
