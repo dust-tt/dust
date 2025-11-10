@@ -68,7 +68,9 @@ export class GoogleLLM extends LLM {
             }
           : undefined;
 
-      const contents = await Promise.all(conversation.messages.map(toContent));
+      const contents = await Promise.all(
+        conversation.messages.map((message) => toContent(message, this.modelId))
+      );
 
       const generateContentResponses =
         await this.client.models.generateContentStream({
