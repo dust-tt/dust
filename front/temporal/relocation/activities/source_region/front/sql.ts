@@ -305,7 +305,7 @@ export async function readFrontTableChunk({
   const idClause = lastId ? `AND id > ${lastId}` : "";
 
   // eslint-disable-next-line dust/no-raw-sql
-  const rows = await frontSequelize.query<{ id: ModelId }>(
+  const rows = await frontSequelize.query<Record<string, any>>(
     `SELECT * FROM "${tableName}"
      WHERE "workspaceId" = :workspaceId ${idClause}
      ORDER BY id

@@ -11,11 +11,11 @@ export const USER_ID_COLUMN_NAMES = [
 
 export type UserIdMapping = Map<ModelId, ModelId>;
 
-export function mapUserIdsInRow<T extends Record<string, any>>(
-  row: T,
+export function mapUserIdsInRow(
+  row: Record<string, any>,
   userIdMapping: UserIdMapping
-): T {
-  let updatedRow: T | null = null;
+): Record<string, any> {
+  let updatedRow: Record<string, any> | null = null;
 
   for (const column of USER_ID_COLUMN_NAMES) {
     if (!(column in row)) {
@@ -27,22 +27,22 @@ export function mapUserIdsInRow<T extends Record<string, any>>(
       continue;
     }
 
-    const mappedValue = userIdMapping.get(currentValue as ModelId);
+    const mappedValue = userIdMapping.get(currentValue);
     if (mappedValue !== undefined) {
       if (!updatedRow) {
         updatedRow = { ...row };
       }
-      (updatedRow as Record<string, any>)[column] = mappedValue;
+      updatedRow[column] = mappedValue;
     }
   }
 
   return updatedRow ?? row;
 }
 
-export function mapUserIdsInRows<RowType extends Record<string, any>>(
-  rows: RowType[],
+export function mapUserIdsInRows(
+  rows: Record<string, any>[],
   userIdMapping: UserIdMapping
-): RowType[] {
+): Record<string, any>[] {
   if (userIdMapping.size === 0) {
     return rows;
   }
