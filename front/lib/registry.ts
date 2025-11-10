@@ -135,20 +135,6 @@ export const BaseDustProdActionRegistry = {
       },
     },
   },
-  "assistant-builder-instructions-suggestions": {
-    app: {
-      appId: "d995d868a8",
-      appHash:
-        "7fb9c826d9de74c98de2a675093f66eab9da93a1a2cb9bc0bcc919fd074cd7eb",
-    },
-    config: {
-      CREATE_SUGGESTIONS: {
-        // `provider_id` and `model_id` must be set by caller.
-        function_call: "send_ranked_suggestions",
-        use_cache: false,
-      },
-    },
-  },
   "assistant-builder-autocompletion-suggestions": {
     app: {
       appId: "eDoafmNqwn",
@@ -243,25 +229,6 @@ export const BaseDustProdActionRegistry = {
     config: {
       CREATE_SUGGESTIONS: {
         function_call: "send_tags",
-        use_cache: false,
-        use_stream: true,
-      },
-    },
-  },
-  "assistant-builder-cron-timezone-generator": {
-    app: {
-      appId: "T454vmSliN",
-      appHash:
-        "a7183268ee1d99e56774a5c93e6d715eb684bbfab9d34da99e0b92d299bfbde7",
-    },
-    config: {
-      CREATE_CRON: {
-        function_call: "set_schedule",
-        use_cache: false,
-        use_stream: true,
-      },
-      CREATE_TZ: {
-        function_call: "set_tz",
         use_cache: false,
         use_stream: true,
       },

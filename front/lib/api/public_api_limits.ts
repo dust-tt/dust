@@ -33,9 +33,10 @@ function shouldTrackTokenUsageCosts(auth: Authenticator): boolean {
 }
 
 export async function hasReachedPublicAPILimits(
-  auth: Authenticator
+  auth: Authenticator,
+  shouldTrack: boolean = false
 ): Promise<boolean> {
-  if (!shouldTrackTokenUsageCosts(auth)) {
+  if (!shouldTrackTokenUsageCosts(auth) && !shouldTrack) {
     return false;
   }
 

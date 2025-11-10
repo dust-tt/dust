@@ -305,6 +305,7 @@ const UserMessageOriginSchema = FlexibleEnumSchema<
   | "slack"
   | "teams"
   | "triggered"
+  | "triggered_programmatic"
   | "web"
   | "zapier"
   | "zendesk"

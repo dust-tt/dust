@@ -62,6 +62,7 @@ export type UserMessageOrigin =
   | "slack"
   | "teams"
   | "triggered"
+  | "triggered_programmatic"
   | "web"
   | "zapier"
   | "zendesk"

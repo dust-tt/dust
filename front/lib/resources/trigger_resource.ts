@@ -688,7 +688,6 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       editor: this.editor,
       customPrompt: this.customPrompt,
       enabled: this.enabled,
-      executionPerDayLimitOverride: this.executionPerDayLimitOverride,
       naturalLanguageDescription: this.naturalLanguageDescription,
       createdAt: this.createdAt.getTime(),
     };
@@ -699,6 +698,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         kind: "webhook" as const,
         configuration: this.configuration as WebhookConfig,
         executionPerDayLimitOverride: this.executionPerDayLimitOverride,
+        executionMode: this.executionMode,
         webhookSourceViewSId: this.webhookSourceViewId
           ? makeSId("webhook_sources_view", {
               id: this.webhookSourceViewId,
