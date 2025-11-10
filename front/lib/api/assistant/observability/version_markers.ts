@@ -56,19 +56,17 @@ export async function fetchVersionMarkers(
     .map((b) => {
       const firstSeenValue = b.first_seen?.value;
       const firstSeenString = b.first_seen?.value_as_string;
-      const timestampMs =
+      const timestamp =
         typeof firstSeenValue === "number"
           ? firstSeenValue
           : typeof firstSeenString === "string"
             ? parseInt(firstSeenString, 10)
             : DEFAULT_TIMESTAMP_MS;
 
-      const date = new Date(timestampMs);
-      date.setUTCHours(0, 0, 0, 0);
 
       return {
         version: b.key,
-        timestamp: date.getTime(),
+        timestamp,
       };
     })
     .sort((a, b) => a.timestamp - b.timestamp);
