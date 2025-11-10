@@ -22,7 +22,12 @@ export async function launchAgentTriggerWebhookWorkflow({
   const workflowId = makeAgentTriggerWebhookWorkflowId(auth, webhookRequest);
 
   await client.workflow.start(agentTriggerWebhookWorkflow, {
-    args: [auth.getNonNullableWorkspace().sId, webhookRequest.id],
+    args: [
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        webhookRequestId: webhookRequest.id,
+      },
+    ],
     taskQueue: QUEUE_NAME,
     workflowId,
   });
