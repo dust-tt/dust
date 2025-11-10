@@ -18,6 +18,7 @@ import type {
   RichTextItemResponse,
   SearchResponse,
 } from "@notionhq/client/build/src/api-endpoints";
+import { Context } from "@temporalio/activity";
 import { stringify } from "csv-stringify";
 import type { Logger } from "pino";
 
@@ -218,9 +219,10 @@ export async function getPagesAndDatabasesEditedSince({
         // - A 504 Gateway Timeout error after 60 seconds
         // I'm guessing in most cases they are the same, and the 504 would have eventually resulted
         // in a 400 if it didn't get cut off first.
-        // Since we've already retried a few times, we just log a warning and return an empty result
-        // set to avoid blocking the workflow entirely.
+        // If we're on the 5th activity attempt, with each attempt having retried 5 times,
+        // we just log a warning and return an empty result set to avoid blocking the workflow entirely.
         if (
+          Context.current().info.attempt >= 5 &&
           APIResponseError.isAPIResponseError(e) &&
           (e.status === 400 || e.status === 504)
         ) {
