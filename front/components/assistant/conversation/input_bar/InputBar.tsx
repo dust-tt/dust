@@ -204,7 +204,7 @@ export const InputBar = React.memo(function InputBar({
       object: "message_send",
       action: "submit",
       extra: {
-        conversation_id: conversationId || "new",
+        conversation_id: conversationId ?? "new",
         has_attachments: attachedNodes.length > 0 || uploadedFiles.length > 0,
         has_tools: selectedMCPServerViews.length > 0,
         has_agents: mentionedAgents.length > 0,
