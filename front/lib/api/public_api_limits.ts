@@ -19,11 +19,12 @@ function getRedisKey(workspace: LightWorkspaceType): string {
 
 function shouldTrackTokenUsageCosts(
   auth: Authenticator,
-  userMessageOrigin?: string | null
+  { userMessageOrigin }: { userMessageOrigin?: string | null } = {}
 ): boolean {
   const workspace = auth.getNonNullableWorkspace();
   const limits = getWorkspacePublicAPILimits(workspace);
 
+  // Don't track on workspaces without limits.
   if (!limits?.enabled) {
     return false;
   }
@@ -141,7 +142,7 @@ export async function maybeTrackTokenUsageCost(
     userMessageOrigin,
   }: { dustRunIds: string[]; userMessageOrigin?: string | null }
 ) {
-  if (!shouldTrackTokenUsageCosts(auth, userMessageOrigin)) {
+  if (!shouldTrackTokenUsageCosts(auth, { userMessageOrigin })) {
     return;
   }
 
