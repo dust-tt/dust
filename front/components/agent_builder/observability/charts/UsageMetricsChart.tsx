@@ -32,7 +32,6 @@ import {
   useAgentUsageMetrics,
   useAgentVersionMarkers,
 } from "@app/lib/swr/assistants";
-import { formatShortDate } from "@app/lib/utils/timestamps";
 
 interface UsageMetricsData {
   timestamp: number;

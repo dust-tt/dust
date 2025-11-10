@@ -16,7 +16,6 @@ import {
   useAgentToolExecution,
   useAgentToolStepIndex,
 } from "@app/lib/swr/assistants";
-import { formatShortDate } from "@app/lib/utils/timestamps";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 type ToolUsageResult = {
