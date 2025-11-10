@@ -123,7 +123,13 @@ export const AddToolsMenu = ({
                     createInternalMCPServer(mcpServer);
                   }
                 },
-                { tool_name: mcpServer.name, tool_id: mcpServer.sId }
+                {
+                  tool_name: mcpServer.name,
+                  tool_id: mcpServer.sId,
+                  tool_type: getDefaultRemoteMCPServerByName(mcpServer.name)
+                    ? "remote"
+                    : "internal",
+                }
               )}
             />
           ))}

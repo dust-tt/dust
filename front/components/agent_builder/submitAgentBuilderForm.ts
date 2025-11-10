@@ -543,6 +543,11 @@ export async function submitAgentBuilderForm({
           agent_id: agentConfiguration.sId,
           scope: formData.agentSettings.scope,
           has_actions: processedActions.length > 0,
+          action_count: processedActions.length,
+          action_names: processedActions.map((a) => a.name).join(","),
+          has_instructions: !!formData.instructions,
+          model_id: formData.generationSettings.modelSettings.modelId,
+          model_provider: formData.generationSettings.modelSettings.providerId,
         },
       });
     }
