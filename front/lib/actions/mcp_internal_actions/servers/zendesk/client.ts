@@ -1,7 +1,13 @@
 import type { z } from "zod";
 
-import type { ZendeskTicket } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/types";
-import { ZendeskTicketResponseSchema } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/types";
+import type {
+  ZendeskSearchResponse,
+  ZendeskTicket,
+} from "@app/lib/actions/mcp_internal_actions/servers/zendesk/types";
+import {
+  ZendeskSearchResponseSchema,
+  ZendeskTicketResponseSchema,
+} from "@app/lib/actions/mcp_internal_actions/servers/zendesk/types";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
@@ -65,5 +71,34 @@ export class ZendeskClient {
     }
 
     return new Ok(result.value.ticket);
+  }
+
+  async searchTickets(
+    query: string,
+    sortBy?: string,
+    sortOrder?: string
+  ): Promise<Result<ZendeskSearchResponse, Error>> {
+    const params = new URLSearchParams({
+      query: `type:ticket ${query}`,
+    });
+
+    if (sortBy) {
+      params.append("sort_by", sortBy);
+    }
+
+    if (sortOrder) {
+      params.append("sort_order", sortOrder);
+    }
+
+    const result = await this.getRequest(
+      `search.json?${params.toString()}`,
+      ZendeskSearchResponseSchema
+    );
+
+    if (result.isErr()) {
+      return new Err(result.error);
+    }
+
+    return new Ok(result.value);
   }
 }
