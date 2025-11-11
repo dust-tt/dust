@@ -1,6 +1,7 @@
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import { normalizeError } from "@app/types";
+import type { Result } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 const SALESLOFT_API_BASE_URL = "https://api.salesloft.com/v2";
 
@@ -82,7 +83,6 @@ export interface SalesloftActionWithDetails {
   cadence: SalesloftCadence | null;
   step: SalesloftStep | null;
   task: SalesloftTask | null;
-  user: SalesloftUser | null;
   action_details: SalesloftActionDetails | null;
 }
 
@@ -228,36 +228,6 @@ async function getAllPages<T>(
   return allResults;
 }
 
-export async function getCurrentUser(
-  accessToken: string
-): Promise<SalesloftUser> {
-  const url = new URL(`${SALESLOFT_API_BASE_URL}/me`);
-  const response = await fetch(url.toString(), {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    await handleSalesloftError(response, errorText);
-  }
-
-  const userData = await response.json();
-
-  if (!userData?.id) {
-    throw new Error("Invalid user data returned from Salesloft API");
-  }
-
-  return {
-    id: userData.id,
-    email: userData.email,
-    first_name: userData.first_name,
-    last_name: userData.last_name,
-  };
-}
-
 async function getCadencesByIds(
   accessToken: string,
   cadenceIds: number[]
@@ -334,28 +304,25 @@ async function getTasksByIds(
   return taskMap;
 }
 
-async function getUsersByIds(
+export async function getUserByEmail(
   accessToken: string,
-  userIds: number[]
-): Promise<Map<number, SalesloftUser>> {
-  if (userIds.length === 0) {
-    return new Map();
+  email: string
+): Promise<SalesloftUser | null> {
+  const users = await getAllPages<SalesloftUser>(accessToken, "/users", {
+    email_address: email,
+  });
+
+  if (users.length === 0) {
+    return null;
   }
 
-  const users = await getAllPages<SalesloftUser>(accessToken, "/users", {});
-
-  const userMap = new Map<number, SalesloftUser>();
-  for (const user of users) {
-    if (userIds.includes(user.id)) {
-      userMap.set(user.id, {
-        id: user.id,
-        email: user.email,
-        first_name: user.first_name,
-        last_name: user.last_name,
-      });
-    }
-  }
-  return userMap;
+  const user = users[0];
+  return {
+    id: user.id,
+    email: user.email,
+    first_name: user.first_name,
+    last_name: user.last_name,
+  };
 }
 
 async function getActionDetails(
@@ -469,18 +436,25 @@ export async function getActions(
 
 export async function getActionsWithDetails(
   accessToken: string,
-  options?: {
+  options: {
     includeDueActionsOnly?: boolean;
+    userEmail: string;
   }
-): Promise<SalesloftActionWithDetails[]> {
-  const user = await getCurrentUser(accessToken);
+): Promise<Result<SalesloftActionWithDetails[], Error>> {
+  const user = await getUserByEmail(accessToken, options.userEmail);
+  if (!user) {
+    return new Err(
+      new Error(`User not found with email: ${options.userEmail}`)
+    );
+  }
+  const userId = user.id;
 
-  const steps = await getSteps(accessToken, user.id, {
+  const steps = await getSteps(accessToken, userId, {
     hasDueActions: options?.includeDueActionsOnly,
   });
 
   if (steps.length === 0) {
-    return [];
+    return new Ok([]);
   }
 
   const cadenceIds = [...new Set(steps.map((step) => step.cadence_id))];
@@ -494,7 +468,7 @@ export async function getActionsWithDetails(
   const actionArrays = await concurrentExecutor(
     steps,
     async (step) =>
-      getActions(accessToken, user.id, {
+      getActions(accessToken, userId, {
         stepId: step.id,
         dueOnLte,
       }),
@@ -503,7 +477,7 @@ export async function getActionsWithDetails(
   const allActions = actionArrays.flat();
 
   if (allActions.length === 0) {
-    return [];
+    return new Ok([]);
   }
 
   const personIds = [
@@ -522,19 +496,9 @@ export async function getActionsWithDetails(
     ),
   ];
 
-  const userIds = [
-    ...new Set(
-      allActions
-        .map((action) => action.user?.id ?? null)
-        .filter((id): id is number => id !== null)
-    ),
-  ];
-
   const peopleMap = await getPeopleByIds(accessToken, personIds);
 
   const taskMap = await getTasksByIds(accessToken, taskIds);
-
-  const userMap = await getUsersByIds(accessToken, userIds);
 
   const stepMap = new Map<number, SalesloftStep>();
   for (const step of steps) {
@@ -561,10 +525,9 @@ export async function getActionsWithDetails(
         : null,
       step: action.step?.id ? stepMap.get(action.step.id) ?? null : null,
       task: action.task?.id ? taskMap.get(action.task.id) ?? null : null,
-      user: action.user?.id ? userMap.get(action.user.id) ?? null : null,
       action_details: actionDetailsArray[index] ?? null,
     })
   );
 
-  return actionsWithDetails;
+  return new Ok(actionsWithDetails);
 }

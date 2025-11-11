@@ -10,7 +10,7 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
 import { DustAppSecret } from "@app/lib/models/dust_app_secret";
-import { decrypt, Err, normalizeError, Ok } from "@app/types";
+import { decrypt, Err, Ok } from "@app/types";
 
 async function getBearerToken(
   auth: Authenticator,
@@ -88,12 +88,6 @@ function formatActionAsString(action: SalesloftActionWithDetails): string {
     }
   }
 
-  if (action.user) {
-    parts.push(
-      `\nAssigned User: ${action.user.first_name} ${action.user.last_name} (${action.user.email})`
-    );
-  }
-
   if (action.action_details) {
     parts.push(`\nAction Details: Available`);
   }
@@ -141,45 +135,55 @@ function createServer(
           );
         }
 
-        try {
-          const actionsWithDetails = await getActionsWithDetails(bearerToken, {
-            includeDueActionsOnly: include_due_actions_only,
-          });
+        const userEmail = auth.user()?.email;
+        if (!userEmail) {
+          return new Err(
+            new MCPError(
+              "Unable to determine user email. Please ensure you are authenticated."
+            )
+          );
+        }
 
-          const actionTypeText = include_due_actions_only
-            ? "due or overdue"
-            : "";
+        const result = await getActionsWithDetails(bearerToken, {
+          includeDueActionsOnly: include_due_actions_only,
+          userEmail: userEmail,
+        });
 
-          if (actionsWithDetails.length === 0) {
-            return new Ok([
-              {
-                type: "text" as const,
-                text: include_due_actions_only
-                  ? "No due or overdue actions found."
-                  : "No actions found.",
-              },
-            ]);
-          }
+        if (result.isErr()) {
+          return new Err(
+            new MCPError(result.error.message ?? "Operation failed")
+          );
+        }
 
-          const formattedText = actionsWithDetails
-            .map((action, index) => {
-              return `--- Action ${index + 1} of ${actionsWithDetails.length} ---\n${formatActionAsString(
-                action
-              )}`;
-            })
-            .join("\n\n");
+        const actionsWithDetails = result.value;
 
+        const actionTypeText = include_due_actions_only ? "due or overdue" : "";
+
+        if (actionsWithDetails.length === 0) {
           return new Ok([
             {
               type: "text" as const,
-              text: `Found ${actionsWithDetails.length} ${actionTypeText} action(s):\n\n${formattedText}`,
+              text: include_due_actions_only
+                ? "No due or overdue actions found."
+                : "No actions found.",
             },
           ]);
-        } catch (error: unknown) {
-          return new Err(
-            new MCPError(normalizeError(error).message ?? "Operation failed")
-          );
         }
+
+        const formattedText = actionsWithDetails
+          .map((action, index) => {
+            return `--- Action ${index + 1} of ${actionsWithDetails.length} ---\n${formatActionAsString(
+              action
+            )}`;
+          })
+          .join("\n\n");
+
+        return new Ok([
+          {
+            type: "text" as const,
+            text: `Found ${actionsWithDetails.length} ${actionTypeText} action(s):\n\n${formattedText}`,
+          },
+        ]);
       }
     )
   );
