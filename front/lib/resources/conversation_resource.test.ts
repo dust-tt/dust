@@ -782,7 +782,6 @@ describe("ConversationResource", () => {
       expect(conversationData.sId).toBeDefined();
       expect(conversationData.title).toBeDefined();
       expect(conversationData.created).toBeDefined();
-      expect(Array.isArray(conversationData.requestedGroupIds)).toBe(true);
       expect(Array.isArray(conversationData.requestedSpaceIds)).toBe(true);
     });
 
