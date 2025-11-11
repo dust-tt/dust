@@ -42,25 +42,20 @@ export function VersionMarkersDots({
     return null;
   }
 
-  const formattedVersionMakers = versionMarkers.map((marker) => ({
-    ...marker,
-    date: formatShortDate(marker.timestamp),
-  }));
+  return versionMarkers.map((m) => {
+    const formattedDate = formatShortDate(m.timestamp);
 
-  return (
-    <>
-      {formattedVersionMakers.map((m) => (
-        <ReferenceLine
-          key={m.date}
-          x={m.date}
-          className="text-gray-300 dark:text-gray-300-night"
-          stroke="currentColor"
-          strokeDasharray="5 5"
-          strokeWidth={1}
-          ifOverflow="extendDomain"
-          label={<MarkerDotLabel />}
-        />
-      ))}
-    </>
-  );
+    return (
+      <ReferenceLine
+        key={formattedDate}
+        x={formattedDate}
+        className="text-gray-300 dark:text-gray-300-night"
+        stroke="currentColor"
+        strokeDasharray="5 5"
+        strokeWidth={1}
+        ifOverflow="extendDomain"
+        label={<MarkerDotLabel />}
+      />
+    );
+  });
 }
