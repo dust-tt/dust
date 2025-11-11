@@ -125,13 +125,11 @@ function createServer(
 
         if (result.isErr()) {
           return new Err(
-            new MCPError(
-              `Failed to search tickets: ${result.error.message}`
-            )
+            new MCPError(`Failed to search tickets: ${result.error.message}`)
           );
         }
 
-        const { results, count } = result.value;
+        const { results, count, next_page } = result.value;
 
         if (results.length === 0) {
           return new Ok([
@@ -144,17 +142,18 @@ function createServer(
 
         const ticketsText = results
           .map((ticket) => {
-            return [
-              "---",
-              renderTicket(ticket),
-            ].join("\n");
+            return ["---", renderTicket(ticket)].join("\n");
           })
           .join("\n\n");
+
+        const paginationInfo = next_page
+          ? "\n\nNote: There are more tickets available."
+          : "";
 
         return new Ok([
           {
             type: "text" as const,
-            text: `Found ${count} ticket(s):\n\n${ticketsText}`,
+            text: `Found ${count} ticket(s):\n\n${ticketsText}${paginationInfo}`,
           },
         ]);
       }
