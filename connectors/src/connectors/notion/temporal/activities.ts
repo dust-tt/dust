@@ -5,6 +5,7 @@ import {
   isFullBlock,
   isFullPage,
   isNotionClientError,
+  UnknownHTTPResponseError,
 } from "@notionhq/client";
 import type { PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 import { Context } from "@temporalio/activity";
@@ -332,6 +333,7 @@ export async function getPagesAndDatabasesToSync({
   );
 
   let res;
+  const now = Date.now();
   try {
     res = await getPagesAndDatabasesEditedSince({
       notionAccessToken: accessToken,
@@ -352,10 +354,21 @@ export async function getPagesAndDatabasesToSync({
     const isNotionErrorWeGiveUpOn =
       isNotionClientError(e) &&
       (e.code === "internal_server_error" || e.code === "validation_error");
-    const isAPIErrorWeGiveUpOn =
-      APIResponseError.isAPIResponseError(e) &&
-      (e.status === 400 || e.status === 504);
-    if (isNotionErrorWeGiveUpOn || isAPIErrorWeGiveUpOn) {
+    const isGatewayTimeoutError =
+      UnknownHTTPResponseError.isUnknownHTTPResponseError(e) &&
+      e.status === 504;
+    localLogger.error(
+      {
+        error: e,
+        attempt: Context.current().info.attempt,
+        lastCursor: cursors.last,
+        isNotionErrorWeGiveUpOn,
+        isGatewayTimeoutError,
+        durationMs: Date.now() - now,
+      },
+      "Error getting Notion search result page with cursor"
+    );
+    if (isNotionErrorWeGiveUpOn || isGatewayTimeoutError) {
       if (Context.current().info.attempt > 14) {
         localLogger.error(
           {
