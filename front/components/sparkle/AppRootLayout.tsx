@@ -68,7 +68,8 @@ export default function AppRootLayout({
                 if (notification.result.primaryAction?.redirect) {
                   const url = notification.result.primaryAction.redirect.url;
                   const startWithDustDomain = url.startsWith(dustFacingUrl);
-                  const isRelativeUrl = url.startsWith("/") && !url.startsWith("//");
+                  const isRelativeUrl =
+                    url.startsWith("/") && !url.startsWith("//");
 
                   if (startWithDustDomain || isRelativeUrl) {
                     await push(url);
