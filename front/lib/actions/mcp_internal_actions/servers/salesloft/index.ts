@@ -10,7 +10,7 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
 import { DustAppSecret } from "@app/lib/models/dust_app_secret";
-import { decrypt, Err, normalizeError, Ok } from "@app/types";
+import { decrypt, Err, Ok } from "@app/types";
 
 async function getBearerToken(
   auth: Authenticator,
@@ -118,9 +118,6 @@ function createServer(
           "Whether to only include actions that are currently due or overdue. Defaults to true."
         )
         .default(true),
-      user_email: z
-        .string()
-        .describe("Email address of the Salesloft user to get actions for."),
     },
     withToolLogging(
       auth,
@@ -128,7 +125,7 @@ function createServer(
         toolNameForMonitoring: "salesloft_get_actions",
         agentLoopContext,
       },
-      async ({ include_due_actions_only, user_email }) => {
+      async ({ include_due_actions_only }) => {
         const bearerToken = await getBearerToken(auth, agentLoopContext);
         if (!bearerToken) {
           return new Err(
@@ -138,46 +135,55 @@ function createServer(
           );
         }
 
-        try {
-          const actionsWithDetails = await getActionsWithDetails(bearerToken, {
-            includeDueActionsOnly: include_due_actions_only,
-            userEmail: user_email,
-          });
+        const userEmail = auth.user()?.email;
+        if (!userEmail) {
+          return new Err(
+            new MCPError(
+              "Unable to determine user email. Please ensure you are authenticated."
+            )
+          );
+        }
 
-          const actionTypeText = include_due_actions_only
-            ? "due or overdue"
-            : "";
+        const result = await getActionsWithDetails(bearerToken, {
+          includeDueActionsOnly: include_due_actions_only,
+          userEmail: userEmail,
+        });
 
-          if (actionsWithDetails.length === 0) {
-            return new Ok([
-              {
-                type: "text" as const,
-                text: include_due_actions_only
-                  ? "No due or overdue actions found."
-                  : "No actions found.",
-              },
-            ]);
-          }
+        if (result.isErr()) {
+          return new Err(
+            new MCPError(result.error.message ?? "Operation failed")
+          );
+        }
 
-          const formattedText = actionsWithDetails
-            .map((action, index) => {
-              return `--- Action ${index + 1} of ${actionsWithDetails.length} ---\n${formatActionAsString(
-                action
-              )}`;
-            })
-            .join("\n\n");
+        const actionsWithDetails = result.value;
 
+        const actionTypeText = include_due_actions_only ? "due or overdue" : "";
+
+        if (actionsWithDetails.length === 0) {
           return new Ok([
             {
               type: "text" as const,
-              text: `Found ${actionsWithDetails.length} ${actionTypeText} action(s):\n\n${formattedText}`,
+              text: include_due_actions_only
+                ? "No due or overdue actions found."
+                : "No actions found.",
             },
           ]);
-        } catch (error: unknown) {
-          return new Err(
-            new MCPError(normalizeError(error).message ?? "Operation failed")
-          );
         }
+
+        const formattedText = actionsWithDetails
+          .map((action, index) => {
+            return `--- Action ${index + 1} of ${actionsWithDetails.length} ---\n${formatActionAsString(
+              action
+            )}`;
+          })
+          .join("\n\n");
+
+        return new Ok([
+          {
+            type: "text" as const,
+            text: `Found ${actionsWithDetails.length} ${actionTypeText} action(s):\n\n${formattedText}`,
+          },
+        ]);
       }
     )
   );

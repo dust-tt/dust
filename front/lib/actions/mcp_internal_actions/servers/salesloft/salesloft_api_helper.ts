@@ -1,6 +1,7 @@
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import { normalizeError } from "@app/types";
+import type { Result } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 const SALESLOFT_API_BASE_URL = "https://api.salesloft.com/v2";
 
@@ -439,10 +440,12 @@ export async function getActionsWithDetails(
     includeDueActionsOnly?: boolean;
     userEmail: string;
   }
-): Promise<SalesloftActionWithDetails[]> {
+): Promise<Result<SalesloftActionWithDetails[], Error>> {
   const user = await getUserByEmail(accessToken, options.userEmail);
   if (!user) {
-    throw new Error(`User not found with email: ${options.userEmail}`);
+    return new Err(
+      new Error(`User not found with email: ${options.userEmail}`)
+    );
   }
   const userId = user.id;
 
@@ -451,7 +454,7 @@ export async function getActionsWithDetails(
   });
 
   if (steps.length === 0) {
-    return [];
+    return new Ok([]);
   }
 
   const cadenceIds = [...new Set(steps.map((step) => step.cadence_id))];
@@ -474,7 +477,7 @@ export async function getActionsWithDetails(
   const allActions = actionArrays.flat();
 
   if (allActions.length === 0) {
-    return [];
+    return new Ok([]);
   }
 
   const personIds = [
@@ -526,5 +529,5 @@ export async function getActionsWithDetails(
     })
   );
 
-  return actionsWithDetails;
+  return new Ok(actionsWithDetails);
 }
