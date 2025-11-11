@@ -88,12 +88,6 @@ function formatActionAsString(action: SalesloftActionWithDetails): string {
     }
   }
 
-  if (action.user) {
-    parts.push(
-      `\nAssigned User: ${action.user.first_name} ${action.user.last_name} (${action.user.email})`
-    );
-  }
-
   if (action.action_details) {
     parts.push(`\nAction Details: Available`);
   }
@@ -124,6 +118,9 @@ function createServer(
           "Whether to only include actions that are currently due or overdue. Defaults to true."
         )
         .default(true),
+      user_email: z
+        .string()
+        .describe("Email address of the Salesloft user to get actions for."),
     },
     withToolLogging(
       auth,
@@ -131,7 +128,7 @@ function createServer(
         toolNameForMonitoring: "salesloft_get_actions",
         agentLoopContext,
       },
-      async ({ include_due_actions_only }) => {
+      async ({ include_due_actions_only, user_email }) => {
         const bearerToken = await getBearerToken(auth, agentLoopContext);
         if (!bearerToken) {
           return new Err(
@@ -144,6 +141,7 @@ function createServer(
         try {
           const actionsWithDetails = await getActionsWithDetails(bearerToken, {
             includeDueActionsOnly: include_due_actions_only,
+            userEmail: user_email,
           });
 
           const actionTypeText = include_due_actions_only
