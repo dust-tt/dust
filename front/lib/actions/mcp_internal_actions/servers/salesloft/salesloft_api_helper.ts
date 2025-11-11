@@ -282,13 +282,17 @@ async function getPeopleByIds(
 
 async function getTasksByIds(
   accessToken: string,
-  taskIds: number[]
+  taskIds: number[],
+  userId: number
 ): Promise<Map<number, SalesloftTask>> {
   if (taskIds.length === 0) {
     return new Map();
   }
 
-  const tasks = await getAllPages<SalesloftTask>(accessToken, "/tasks", {});
+  const tasks = await getAllPages<SalesloftTask>(accessToken, "/tasks", {
+    user_id: userId,
+    current_state: "scheduled",
+  });
 
   const taskMap = new Map<number, SalesloftTask>();
   for (const task of tasks) {
@@ -498,7 +502,7 @@ export async function getActionsWithDetails(
 
   const peopleMap = await getPeopleByIds(accessToken, personIds);
 
-  const taskMap = await getTasksByIds(accessToken, taskIds);
+  const taskMap = await getTasksByIds(accessToken, taskIds, user.id);
 
   const stepMap = new Map<number, SalesloftStep>();
   for (const step of steps) {
