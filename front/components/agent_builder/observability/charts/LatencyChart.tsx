@@ -25,18 +25,21 @@ import {
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
 import { VersionMarkersDots } from "@app/components/agent_builder/observability/shared/VersionMarkers";
 import { padSeriesToTimeRange } from "@app/components/agent_builder/observability/utils";
+import type { LatencyPoint } from "@app/lib/api/assistant/observability/latency";
 import { useAgentVersionMarkers } from "@app/lib/swr/assistants";
 import { formatShortDate } from "@app/lib/utils/timestamps";
 
-interface LatencyData {
-  timestamp: number;
+interface LatencyData extends LatencyPoint {
   date: string;
-  messages: number;
-  average: number;
 }
 
 function isLatencyData(data: unknown): data is LatencyData {
-  return typeof data === "object" && data !== null && "average" in data;
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    "average" in data &&
+    "median" in data
+  );
 }
 
 function zeroFactory(timestamp: number) {
@@ -44,6 +47,7 @@ function zeroFactory(timestamp: number) {
     timestamp,
     messages: 0,
     average: 0,
+    median: 0,
   };
 }
 
@@ -68,6 +72,11 @@ function LatencyTooltip(
           label: "Average time",
           value: `${row.average}s`,
           colorClassName: LATENCY_PALETTE.average,
+        },
+        {
+          label: "Median time",
+          value: `${row.median}s`,
+          colorClassName: LATENCY_PALETTE.median,
         },
       ]}
     />
@@ -120,7 +129,7 @@ export function LatencyChart({
   return (
     <ChartContainer
       title="Latency"
-      description="Average time to complete output (seconds). Lower is better."
+      description="Average and median time to complete output (seconds). Lower is better."
       isLoading={isLoading}
       errorMessage={errorMessage}
     >
@@ -183,6 +192,14 @@ export function LatencyChart({
             name="Average time to complete output"
             className={LATENCY_PALETTE.average}
             fill="url(#fillAverage)"
+            stroke="currentColor"
+            dot={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="median"
+            name="Median time to complete output"
+            className={LATENCY_PALETTE.median}
             stroke="currentColor"
             dot={false}
           />
