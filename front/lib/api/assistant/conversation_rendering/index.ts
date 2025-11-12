@@ -128,10 +128,10 @@ export async function renderConversationForModel(
 
   // prune previous interactions.
   previousInteractions = prunePreviousInteractions(
-      previousInteractions,
-      availableTokens,
-      PREVIOUS_INTERACTIONS_TO_PRESERVE
-    );
+    previousInteractions,
+    availableTokens,
+    PREVIOUS_INTERACTIONS_TO_PRESERVE
+  );
 
   const prunedInteractions = [...previousInteractions, currentInteraction];
 
