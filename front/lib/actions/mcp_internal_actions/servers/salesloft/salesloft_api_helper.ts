@@ -278,7 +278,7 @@ export async function getUserByEmail(
   email: string
 ): Promise<SalesloftUser | null> {
   const users = await getAllPages<SalesloftUser>(accessToken, "/users", {
-    email_addresses: email,
+    emails: email,
   });
 
   if (users.length === 0) {
