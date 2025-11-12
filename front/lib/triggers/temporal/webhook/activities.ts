@@ -57,8 +57,6 @@ export async function runTriggerWebhookActivity({
     throw new TriggerNonRetryableError(errorMessage);
   }
 
-  const provider = webhookSource.provider ?? "custom";
-
   if (webhookSource.workspaceId !== auth.getNonNullableWorkspace().id) {
     const errorMessage = "Webhook source not found in workspace.";
     await webhookRequest.markAsFailed(errorMessage);
@@ -95,26 +93,27 @@ export async function runTriggerWebhookActivity({
     throw new TriggerNonRetryableError(errorMessage);
   }
 
-  // Validate webhook signature if secret is configured
-  if (webhookSource.secret) {
-    if (!webhookSource.signatureHeader || !webhookSource.signatureAlgorithm) {
-      const errorMessage =
-        "Webhook source is missing header or algorithm configuration.";
-      await webhookRequest.markAsFailed(errorMessage);
-      logger.error({ workspaceId, webhookRequestId }, errorMessage);
-      throw new TriggerNonRetryableError(errorMessage);
-    }
+  const {
+    provider,
+    secret,
+    signatureHeader,
+    signatureAlgorithm,
+    subscribedEvents,
+  } = webhookSource;
 
-    const r = checkSignature({
-      headerName: webhookSource.signatureHeader,
-      algorithm: webhookSource.signatureAlgorithm,
-      secret: webhookSource.secret,
+  // Validate webhook signature if secret is configured
+  if (secret) {
+    const signatureCheckResult = checkSignature({
+      headerName: signatureHeader,
+      algorithm: signatureAlgorithm,
+      secret,
       headers,
       body,
+      provider,
     });
 
-    if (r.isErr()) {
-      const errorMessage = r.error.message;
+    if (signatureCheckResult.isErr()) {
+      const { message: errorMessage } = signatureCheckResult.error;
       await webhookRequest.markAsFailed(errorMessage);
       logger.error({ workspaceId, webhookRequestId }, errorMessage);
       throw new TriggerNonRetryableError(errorMessage);
@@ -123,12 +122,12 @@ export async function runTriggerWebhookActivity({
 
   // Filter out non-subscribed events
   let receivedEventValue: string | undefined;
-  if (webhookSource.provider) {
+  if (provider) {
     const {
       eventCheck,
       event_blacklist: blacklist,
       events,
-    } = WEBHOOK_PRESETS[webhookSource.provider];
+    } = WEBHOOK_PRESETS[provider];
 
     if (eventCheck) {
       const { type, field } = eventCheck;
@@ -159,7 +158,7 @@ export async function runTriggerWebhookActivity({
           {
             workspaceId,
             webhookRequestId,
-            provider: webhookSource.provider,
+            provider,
             eventValue: receivedEventValue,
           },
           "Webhook event is blacklisted, ignoring."
@@ -171,7 +170,7 @@ export async function runTriggerWebhookActivity({
         // Event not in preset
         !events.map((event) => event.value).includes(receivedEventValue) ||
         // Event not subscribed
-        !webhookSource.subscribedEvents.includes(receivedEventValue)
+        !subscribedEvents.includes(receivedEventValue)
       ) {
         const errorMessage =
           "Webhook event not subscribed or not in preset. Potential cause: the events selection was manually modified on the service.";
@@ -219,7 +218,7 @@ export async function runTriggerWebhookActivity({
       configuration: { event, filter },
     } = trigger;
 
-    if (event && event !== receivedEventValue) {
+    if (event && receivedEventValue && event !== receivedEventValue) {
       // Received event doesn't match the trigger's event, skip this trigger
       await webhookRequest.markRelatedTrigger({
         trigger,
