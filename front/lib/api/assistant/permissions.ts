@@ -1,10 +1,14 @@
+import { Op } from "sequelize";
+
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { getAvailabilityOfInternalMCPServerById } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { UnsavedMCPServerConfigurationType } from "@app/lib/actions/types/agent";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import type { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
@@ -14,6 +18,30 @@ import type {
   ModelId,
 } from "@app/types";
 import { assertNever, removeNulls } from "@app/types";
+
+// TODO(2025-10-17 thomas): Remove this - used only by workflow to update permission when space coonfiguration change.
+export async function listAgentConfigurationsForGroups(
+  auth: Authenticator,
+  groups: GroupResource[]
+) {
+  return AgentConfiguration.findAll({
+    attributes: ["sId"],
+    where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      status: "active",
+      // This checks for PARTIAL matches in group requirements, not exact matches.
+      // Op.contains will match if ANY array in `requestedGroupIds` contains ALL elements of
+      // [groups.map(g => g.id)]
+      // Example: if groups=[1,2]
+      //  - requestedGroupIds=[[1,2,3]] -> MATCH (contains all required elements plus more)
+      //  - requestedGroupIds=[[1,2]] -> MATCH (exact match)
+      //  - requestedGroupIds=[[1]] -> NO MATCH (missing element)
+      requestedGroupIds: {
+        [Op.contains]: [groups.map((g) => g.id)],
+      },
+    },
+  });
+}
 
 export function getDataSourceViewIdsFromActions(
   actions: UnsavedMCPServerConfigurationType[]
@@ -56,13 +84,14 @@ export function groupsFromRequestedPermissions(
   );
 }
 
+// TODO(2025-10-17 thomas): Remove groupIds.
 export async function getAgentConfigurationRequirementsFromActions(
   auth: Authenticator,
   params: {
     actions: UnsavedMCPServerConfigurationType[];
     ignoreSpaces?: SpaceResource[];
   }
-): Promise<{ requestedSpaceIds: ModelId[] }> {
+): Promise<{ requestedGroupIds: ModelId[][]; requestedSpaceIds: ModelId[] }> {
   const { actions, ignoreSpaces } = params;
   const ignoreSpaceIds = new Set(ignoreSpaces?.map((space) => space.sId));
 
@@ -71,7 +100,7 @@ export async function getAgentConfigurationRequirementsFromActions(
     getDataSourceViewIdsFromActions(actions)
   );
   // Map spaceId to its group requirements.
-  const spacePermissions = new Set<string>();
+  const spacePermissions = new Map<string, Set<number>>();
 
   // Collect DataSourceView permissions by space.
   for (const view of dsViews) {
@@ -80,7 +109,11 @@ export async function getAgentConfigurationRequirementsFromActions(
       continue;
     }
 
-    spacePermissions.add(spaceId);
+    if (!spacePermissions.has(spaceId)) {
+      spacePermissions.set(spaceId, new Set());
+    }
+    const groups = groupsFromRequestedPermissions(view.requestedPermissions());
+    groups.forEach((g) => spacePermissions.get(spaceId)!.add(g));
   }
 
   // Collect MCPServerView permissions by space.
@@ -116,8 +149,11 @@ export async function getAgentConfigurationRequirementsFromActions(
           assertNever(availability);
       }
     }
-
-    spacePermissions.add(spaceId);
+    if (!spacePermissions.has(spaceId)) {
+      spacePermissions.set(spaceId, new Set());
+    }
+    const groups = groupsFromRequestedPermissions(view.requestedPermissions());
+    groups.forEach((g) => spacePermissions.get(spaceId)!.add(g));
   }
 
   // Collect Dust App permissions by space.
@@ -135,15 +171,25 @@ export async function getAgentConfigurationRequirementsFromActions(
       if (ignoreSpaceIds?.has(spaceId)) {
         continue;
       }
-
-      spacePermissions.add(spaceId);
+      if (!spacePermissions.has(spaceId)) {
+        spacePermissions.set(spaceId, new Set());
+      }
+      const groups = groupsFromRequestedPermissions(
+        app.space.requestedPermissions()
+      );
+      groups.forEach((g) => spacePermissions.get(spaceId)!.add(g));
     }
   }
 
   // Convert Map to array of arrays, filtering out empty sets.
   return {
     requestedSpaceIds: removeNulls(
-      Array.from(spacePermissions).map(getResourceIdFromSId)
+      Array.from(spacePermissions.keys()).map(getResourceIdFromSId)
+    ),
+    requestedGroupIds: removeNulls(
+      Array.from(spacePermissions.values())
+        .map((set) => Array.from(set))
+        .filter((arr) => arr.length > 0)
     ),
   };
 }

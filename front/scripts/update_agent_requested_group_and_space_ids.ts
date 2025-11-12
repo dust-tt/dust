@@ -7,11 +7,12 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { isArrayEqual2DUnordered, normalizeArrays } from "@app/lib/utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 
-async function updateAgentRequestedSpaceIds(
+async function updateAgentRequestedGroupIds(
   workspaceId: string,
   execute: boolean,
   logger: Logger,
@@ -34,7 +35,7 @@ async function updateAgentRequestedSpaceIds(
       workspaceId,
       workspaceName: workspace.name,
     },
-    "Starting requestedSpaceIds update for workspace"
+    "Starting requestedGroupIds update for workspace"
   );
 
   // Build where clause
@@ -100,6 +101,20 @@ async function updateAgentRequestedSpaceIds(
       }
     );
 
+    // Convert current requestedGroupIds from string[][] (sIds) to number[][] (modelIds)
+    const currentRequestedGroupIds = agentConfiguration.requestedGroupIds.map(
+      (groupArray) =>
+        groupArray.map((groupSId) => {
+          const modelId = getResourceIdFromSId(groupSId);
+          if (modelId === null) {
+            throw new Error(
+              `Invalid group sId: ${groupSId} for agent ${agent.sId}`
+            );
+          }
+          return modelId;
+        })
+    );
+
     const currentRequestedSpaceIds = agentConfiguration.requestedSpaceIds.map(
       (spaceSId) => {
         const modelId = getResourceIdFromSId(spaceSId);
@@ -113,10 +128,20 @@ async function updateAgentRequestedSpaceIds(
     );
 
     // Normalize the arrays for comparison
+    const normalizedNewGroupIds = normalizeArrays(
+      newRequirements.requestedGroupIds
+    );
+    const normalizedCurrentGroupIds = normalizeArrays(currentRequestedGroupIds);
     const newSpaceIds = newRequirements.requestedSpaceIds;
 
     // Check if the group IDs have changed
-    if (isEqual(newSpaceIds.sort(), currentRequestedSpaceIds.sort())) {
+    if (
+      isArrayEqual2DUnordered(
+        normalizedNewGroupIds,
+        normalizedCurrentGroupIds
+      ) &&
+      isEqual(newSpaceIds.sort(), currentRequestedSpaceIds.sort())
+    ) {
       logger.info(
         {
           agentId: agent.sId,
@@ -132,18 +157,21 @@ async function updateAgentRequestedSpaceIds(
       {
         agentId: agent.sId,
         agentName: agent.name,
+        currentGroupIds: normalizedCurrentGroupIds,
+        newGroupIds: normalizedNewGroupIds,
         newSpaceIds: newSpaceIds,
         currentSpaceIds: currentRequestedSpaceIds,
         execute,
       },
       execute
-        ? "Updating agent requestedSpaceIds"
-        : "[DRY RUN] Would update agent requestedSpaceIds"
+        ? "Updating agent requestedGroupIds and requestedSpaceIds"
+        : "[DRY RUN] Would update agent requestedGroupIds and requestedSpaceIds"
     );
 
     if (execute) {
       await AgentConfiguration.update(
         {
+          requestedGroupIds: normalizedNewGroupIds,
           requestedSpaceIds: newSpaceIds,
         },
         {
@@ -172,8 +200,8 @@ async function updateAgentRequestedSpaceIds(
       execute,
     },
     execute
-      ? "Completed requestedSpaceIds update"
-      : "[DRY RUN] Completed requestedSpaceIds dry run"
+      ? "Completed requestedGroupIds update"
+      : "[DRY RUN] Completed requestedGroupIds dry run"
   );
 
   return {
@@ -206,7 +234,7 @@ makeScript(
   async ({ workspaceId, execute, onlyActive, agentIds }, logger) => {
     if (workspaceId) {
       // Process specific workspace
-      await updateAgentRequestedSpaceIds(workspaceId, execute, logger, {
+      await updateAgentRequestedGroupIds(workspaceId, execute, logger, {
         onlyActive,
         agentIds: agentIds.map(String),
       });
@@ -214,7 +242,7 @@ makeScript(
       // Process all workspaces
       await runOnAllWorkspaces(
         async (workspace) => {
-          await updateAgentRequestedSpaceIds(workspace.sId, execute, logger, {
+          await updateAgentRequestedGroupIds(workspace.sId, execute, logger, {
             onlyActive,
             agentIds: agentIds.map(String),
           });

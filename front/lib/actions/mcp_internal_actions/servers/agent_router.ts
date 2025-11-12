@@ -130,12 +130,7 @@ function createServer(
         if (getAgentsRes.isErr()) {
           return new Err(new MCPError("Error fetching agent configurations"));
         }
-        const agents = getAgentsRes.value.map((agent) => ({
-          ...agent,
-          tags: [],
-          canRead: true,
-          canEdit: false,
-        })) as LightAgentConfigurationType[];
+        const agents = getAgentsRes.value as LightAgentConfigurationType[];
 
         const suggestedAgentsRes = await getSuggestedAgentsForContent(auth, {
           agents,

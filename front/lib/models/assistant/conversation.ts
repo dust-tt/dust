@@ -27,6 +27,7 @@ export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
   declare triggerId: ForeignKey<TriggerModel["id"]> | null;
   declare hasError: CreationOptional<boolean>;
 
+  declare requestedGroupIds: number[][];
   declare requestedSpaceIds: number[];
 }
 
@@ -59,6 +60,11 @@ ConversationModel.init(
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0,
+    },
+    requestedGroupIds: {
+      type: DataTypes.ARRAY(DataTypes.ARRAY(DataTypes.BIGINT)),
+      allowNull: false,
+      defaultValue: [],
     },
     requestedSpaceIds: {
       type: DataTypes.ARRAY(DataTypes.BIGINT),

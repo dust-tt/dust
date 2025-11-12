@@ -77,6 +77,7 @@ async function handler(
           actionRequired: false, // We don't care about actionRequired/unread, so set to false
           unread: false,
           hasError: c.hasError,
+          requestedGroupIds: c.getRequestedGroupIdsFromModel(auth),
           requestedSpaceIds: c.getRequestedSpaceIdsFromModel(auth),
         };
       });

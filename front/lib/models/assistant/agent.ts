@@ -47,6 +47,7 @@ export class AgentConfiguration extends WorkspaceAwareModel<AgentConfiguration> 
 
   declare templateId: ForeignKey<TemplateModel["id"]> | null;
 
+  declare requestedGroupIds: number[][];
   declare requestedSpaceIds: number[];
 
   declare author: NonAttribute<UserModel>;
@@ -145,6 +146,11 @@ AgentConfiguration.init(
     pictureUrl: {
       type: DataTypes.TEXT,
       allowNull: false,
+    },
+    requestedGroupIds: {
+      type: DataTypes.ARRAY(DataTypes.ARRAY(DataTypes.BIGINT)),
+      allowNull: false,
+      defaultValue: [],
     },
     requestedSpaceIds: {
       type: DataTypes.ARRAY(DataTypes.BIGINT),
