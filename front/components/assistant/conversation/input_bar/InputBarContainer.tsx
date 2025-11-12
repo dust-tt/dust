@@ -1,6 +1,7 @@
 import { ArrowUpIcon, Button, Chip } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
+import { useRouter } from "next/router";
 import React, {
   useCallback,
   useContext,
@@ -10,6 +11,7 @@ import React, {
   useState,
 } from "react";
 
+import { useHandleUnsentMessage } from "@app/assistant/conversation/hooks/useHandleUnsendMessage";
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { MentionDropdown } from "@app/components/assistant/conversation/input_bar/editor/MentionDropdown";
 import useAgentSuggestions from "@app/components/assistant/conversation/input_bar/editor/useAgentSuggestions";
@@ -34,6 +36,7 @@ import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
+import { AGENT_MENTION_REGEX } from "@app/lib/mentions/format";
 import { getSpaceAccessPriority } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
@@ -99,6 +102,7 @@ const InputBarContainer = ({
 }: InputBarContainerProps) => {
   const isMobile = useIsMobile();
   const agentSuggestions = useAgentSuggestions(agentConfigurations, owner);
+  const router = useRouter();
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
     UrlCandidate | NodeCandidate | null
   >(null);
@@ -318,6 +322,16 @@ const InputBarContainer = ({
       }
     },
   });
+
+  const getUserTextWithoutMentions = useCallback(() => {
+    const { text } = editorService.getTextAndMentions();
+
+    const userInput = text ? text.replace(AGENT_MENTION_REGEX, "") : "";
+
+    return userInput;
+  }, [editorService]);
+
+  useHandleUnsentMessage({ getUserTextWithoutMentions, router });
 
   useEffect(() => {
     // If an attachment disappears from the uploader, remove its chip from the editor

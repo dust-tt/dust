@@ -16,7 +16,7 @@ import { assertNever } from "@app/types";
  * Regular expression for parsing agent mention strings.
  * Format: `:mention[name]{sId=xxx}`
  */
-const AGENT_MENTION_REGEX = /:mention\[([^\]]+)\]\{[^}]+\}/g;
+export const AGENT_MENTION_REGEX = /:mention\[([^\]]+)\]\{[^}]+\}/g;
 
 /**
  * Regular expression for parsing mention strings.
