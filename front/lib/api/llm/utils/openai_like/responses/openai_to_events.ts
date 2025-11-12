@@ -194,6 +194,13 @@ function toEvents({
       return [reasoningDelta(event.delta, metadata)];
     case "response.completed":
       return responseCompleted(event.response, metadata);
+    case "response.reasoning_summary_part.added": {
+      if (event.summary_index === 0) {
+        return [];
+      }
+
+      return [reasoningDelta("\n\n", metadata)];
+    }
     default:
       return [];
   }
