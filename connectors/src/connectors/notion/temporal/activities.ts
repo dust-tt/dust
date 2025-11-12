@@ -1076,7 +1076,21 @@ export async function deletePageOrDatabaseIfArchived({
   if (!resourceIsAccessible) {
     // Send signal to deletion crawl workflow
     // The deletion crawl workflow will handle the actual deletion after checking parent/children
-    await sendDeletionCrawlSignal(connectorId, objectId, objectType);
+    const result = await sendDeletionCrawlSignal(
+      connectorId,
+      objectId,
+      objectType
+    );
+    if (result.isErr()) {
+      localLogger.error(
+        {
+          objectType,
+          error: result.error,
+        },
+        `Failed to send deletion crawl signal (archived/inaccessible)`
+      );
+      throw result.error;
+    }
     localLogger.info(
       {
         objectType,
@@ -3551,7 +3565,23 @@ export async function processWebhookEventActivity({
       },
       "Page deleted/archived, triggering deletion crawl"
     );
-    await sendDeletionCrawlSignal(connectorId, event.entity_id, "page");
+    const result = await sendDeletionCrawlSignal(
+      connectorId,
+      event.entity_id,
+      "page"
+    );
+    if (result.isErr()) {
+      logger.error(
+        {
+          ...loggerArgs,
+          eventType: event.type,
+          entityId: event.entity_id,
+          error: result.error,
+        },
+        "Failed to send deletion crawl signal for page"
+      );
+      throw result.error;
+    }
   } else if (event.type === "database.deleted") {
     logger.info(
       {
@@ -3561,7 +3591,23 @@ export async function processWebhookEventActivity({
       },
       "Database deleted/archived, triggering deletion crawl"
     );
-    await sendDeletionCrawlSignal(connectorId, event.entity_id, "database");
+    const result = await sendDeletionCrawlSignal(
+      connectorId,
+      event.entity_id,
+      "database"
+    );
+    if (result.isErr()) {
+      logger.error(
+        {
+          ...loggerArgs,
+          eventType: event.type,
+          entityId: event.entity_id,
+          error: result.error,
+        },
+        "Failed to send deletion crawl signal for database"
+      );
+      throw result.error;
+    }
   }
 }
 

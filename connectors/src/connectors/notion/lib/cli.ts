@@ -168,7 +168,22 @@ export async function deleteNotionUrl({
     },
   });
   if (page) {
-    await sendDeletionCrawlSignal(connector.id, page.notionPageId, "page");
+    const result = await sendDeletionCrawlSignal(
+      connector.id,
+      page.notionPageId,
+      "page"
+    );
+    if (result.isErr()) {
+      mainLogger.error(
+        {
+          error: result.error,
+          connectorId: connector.id,
+          pageId: page.notionPageId,
+        },
+        "Failed to send deletion crawl signal for page"
+      );
+      throw result.error;
+    }
   }
 
   const db = await NotionDatabase.findOne({
@@ -179,11 +194,22 @@ export async function deleteNotionUrl({
   });
 
   if (db) {
-    await sendDeletionCrawlSignal(
+    const result = await sendDeletionCrawlSignal(
       connector.id,
       db.notionDatabaseId,
       "database"
     );
+    if (result.isErr()) {
+      mainLogger.error(
+        {
+          error: result.error,
+          connectorId: connector.id,
+          databaseId: db.notionDatabaseId,
+        },
+        "Failed to send deletion crawl signal for database"
+      );
+      throw result.error;
+    }
   }
 
   return { deletedPage: !!page, deletedDb: !!db };
