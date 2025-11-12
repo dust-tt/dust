@@ -3,7 +3,7 @@ import { useEffect } from "react";
 
 import { isDevelopment } from "@app/types";
 
-interface useHandleUnsentMessageProps {
+interface UseHandleUnsentMessageProps {
   getUserTextWithoutMentions: () => string;
   router: NextRouter;
 }
@@ -13,7 +13,7 @@ const THRESHOLD_TEXT_LENGTH = 20;
 export function useHandleUnsentMessage({
   getUserTextWithoutMentions,
   router,
-}: useHandleUnsentMessageProps) {
+}: UseHandleUnsentMessageProps) {
   // This handles page reload.
   useEffect(() => {
     // You cannot customize the warning message for page navigation.
@@ -22,14 +22,13 @@ export function useHandleUnsentMessage({
 
       if (!isDevelopment() && userInput.length > THRESHOLD_TEXT_LENGTH) {
         e.preventDefault();
-        window.confirm();
       }
     };
 
     window.addEventListener("beforeunload", handleBeforeReload);
 
     return () => {
-      window.addEventListener("beforeunload", handleBeforeReload);
+      window.removeEventListener("beforeunload", handleBeforeReload);
     };
   }, [getUserTextWithoutMentions]);
 
@@ -37,6 +36,11 @@ export function useHandleUnsentMessage({
   useEffect(() => {
     // Handle custom event for shallow navigation
     const handleBeforeNavigationChange = () => {
+      // we should do not trigger this when you post a new message (which causes the router navigation).
+      if (router.query.cId === 'new') {
+        return;
+      }
+
       const userInput = getUserTextWithoutMentions();
 
       if (!isDevelopment() && userInput.length > THRESHOLD_TEXT_LENGTH) {
