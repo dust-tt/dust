@@ -218,7 +218,7 @@ export async function runTriggerWebhookActivity({
       configuration: { event, filter },
     } = trigger;
 
-    if (event && event !== receivedEventValue) {
+    if (event && receivedEventValue && event !== receivedEventValue) {
       // Received event doesn't match the trigger's event, skip this trigger
       await webhookRequest.markRelatedTrigger({
         trigger,
