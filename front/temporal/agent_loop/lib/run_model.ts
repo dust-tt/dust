@@ -463,6 +463,12 @@ export async function runModelActivity(
       prompt,
     });
   } else {
+    if (userMessage.rank === 0) {
+      // Log conversations that are using the new LLM router (log only once when the conversation starts)
+      localLogger.info({
+        conversationId: conversation.sId,
+      }, "Running model with the new LLM router");
+    }
     getOutputFromActionResponse = await getOutputFromLLMStream(auth, {
       modelConversationRes,
       conversation,
