@@ -1,8 +1,4 @@
-import {
-  CheckBoxWithTextAndDescription,
-  Label,
-  Page,
-} from "@dust-tt/sparkle";
+import { CheckBoxWithTextAndDescription, Label, Page } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
 import type { WebhookCreateFormComponentProps } from "@app/components/triggers/webhook_preset_components";
