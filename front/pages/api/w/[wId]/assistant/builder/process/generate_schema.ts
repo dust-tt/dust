@@ -1,3 +1,4 @@
+import type { JSONSchema7 } from "json-schema";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getBuilderJsonSchemaGenerator } from "@app/lib/api/assistant/json_schema_generator";
@@ -16,7 +17,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<{
-      schema: Record<string, unknown>;
+      schema: JSONSchema7;
     }>
   >,
   auth: Authenticator

@@ -1,7 +1,10 @@
+import type { JSONSchema7 } from "json-schema";
+
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { getLLM } from "@app/lib/api/llm";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import type { Authenticator } from "@app/lib/auth";
+import { isJSONSchemaObject } from "@app/lib/utils/json_schemas";
 import type {
   ModelConversationTypeMultiActions,
   ModelIdType,
@@ -33,7 +36,7 @@ const specifications: AgentActionSpecification[] = [
 export async function getBuilderJsonSchemaGenerator(
   auth: Authenticator,
   inputs: { instructions: string; modelId: ModelIdType }
-): Promise<Result<{ status: "ok"; schema: Record<string, unknown> }, Error>> {
+): Promise<Result<{ status: "ok"; schema: JSONSchema7 }, Error>> {
   const prompt =
     "Based on the instructions provided, generate a JSON schema that will be embedded in the following JSON schema:\n" +
     "```\n" +
@@ -97,7 +100,11 @@ export async function getBuilderJsonSchemaGenerator(
 
       const parsedSchema = safeParseJSON(args.schema);
 
-      if (parsedSchema.isErr() || parsedSchema.value === null) {
+      if (
+        parsedSchema.isErr() ||
+        parsedSchema.value === null ||
+        !isJSONSchemaObject(parsedSchema.value)
+      ) {
         return new Err(
           new Error(
             `Error parsing schema from arguments: ${JSON.stringify(args)}`
@@ -107,7 +114,7 @@ export async function getBuilderJsonSchemaGenerator(
 
       return new Ok({
         status: "ok",
-        schema: parsedSchema.value as Record<string, unknown>,
+        schema: parsedSchema.value,
       });
     }
   }
