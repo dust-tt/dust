@@ -383,13 +383,8 @@ export async function trackersGenerationActivity(
     });
 
     if (scoreDocsRes.isErr()) {
-      const runId = isErrorWithRunId(scoreDocsRes.error)
-        ? scoreDocsRes.error.runId
-        : null;
-
       trackerLogger.error(
         {
-          runId,
           error: scoreDocsRes.error,
         },
         "Error scoring documents. Skipping this tracker."
@@ -398,11 +393,7 @@ export async function trackersGenerationActivity(
       continue;
     }
 
-    const scoreDocsOutput = scoreDocsRes.value.result;
-    trackerLogger = trackerLogger.child({
-      scoreDocsRunId: scoreDocsRes.value.runId,
-    });
-
+    const scoreDocsOutput = scoreDocsRes.value;
     trackerLogger.info(
       {
         scoredDocumentsCount: scoreDocsOutput.length,
