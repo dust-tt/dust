@@ -15,6 +15,7 @@ export interface LLMTraceContext {
     | "builder_suggestion"
     | "agent_preview"
     | "name_suggestion"
+    | "schema_generator"
     | "other";
 
   /** Context-specific identifier (e.g., agentConfigId, userId, etc.) */
