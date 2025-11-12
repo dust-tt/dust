@@ -1055,7 +1055,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       id: this.id,
       // TODO(REQUESTED_SPACE_IDS 2025-10-24): Stop exposing this once all logic is centralized
       // in baseFetchWithAuthorization.
-      requestedGroupIds: [],
       requestedSpaceIds: this.requestedSpaceIds.map((id) =>
         SpaceResource.modelIdToSId({
           id,
