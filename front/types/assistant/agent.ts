@@ -141,6 +141,16 @@ export type LightAgentConfigurationType = {
   // TODO(2025-10-20 flav): Remove once SDK JS does not rely on it anymore.
   visualizationEnabled?: boolean;
 
+  // TODO(2025-10-17 thomas): Remove this.
+  // Group restrictions for accessing the agent/conversation. Deprecated
+  // The array of arrays represents permission requirements:
+  // - If empty, no restrictions apply
+  // - Each sub-array represents an OR condition (user must belong to AT LEAST ONE group)
+  // - Sub-arrays are combined with AND logic (user must satisfy ALL sub-arrays)
+  //
+  // Example: [[1,2], [3,4]] means (1 OR 2) AND (3 OR 4)
+  requestedGroupIds: string[][];
+
   // Space restrictions for accessing the agent/conversation - replaces group restrictions.
   // The array represents permission requirements:
   // - If empty, no restrictions apply

@@ -16,6 +16,7 @@ import {
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import {
   createResourcePermissionsFromSpacesWithMap,
@@ -403,6 +404,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       actionRequired,
       unread,
       hasError: conversation.hasError,
+      requestedGroupIds: conversation.getRequestedGroupIdsFromModel(auth),
       requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(auth),
     });
   }
@@ -522,6 +524,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           actionRequired,
           unread,
           hasError: c.hasError,
+          requestedGroupIds: c.getRequestedGroupIdsFromModel(auth),
           requestedSpaceIds: c.getRequestedSpaceIdsFromModel(auth),
         };
       })
@@ -777,9 +780,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok(message);
   }
 
-  static async updateRequirements(
+  // TODO(2025-10-17 thomas): Rename and remove requestedGroupIds
+  static async updateRequestedGroupIds(
     auth: Authenticator,
     sId: string,
+    requestedGroupIds: number[][],
     requestedSpaceIds: number[],
     transaction?: Transaction
   ) {
@@ -788,7 +793,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return new Err(new ConversationError("conversation_not_found"));
     }
 
-    await conversation.updateRequirements(requestedSpaceIds, transaction);
+    await conversation.updateRequestedGroupIds(
+      requestedGroupIds,
+      requestedSpaceIds,
+      transaction
+    );
     return new Ok(undefined);
   }
 
@@ -848,7 +857,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   ): Promise<Result<undefined, Error>> {
     // For now we only allow MCP server views from the Company Space.
     // It's blocked in the UI but it's a last line of defense.
-    // If we lift this limit, we should handle the requestedSpaceIds on the conversation.
+    // If we lift this limit, we should handle the requestedGroupIds on the conversation.
     if (
       mcpServerViews.some(
         (mcpServerViewResource) => mcpServerViewResource.space.kind !== "global"
@@ -913,12 +922,15 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return this.update({ visibility: "unlisted" });
   }
 
-  async updateRequirements(
+  // TODO(2025-10-17 thomas): Rename and remove requestedGroupIds
+  async updateRequestedGroupIds(
+    requestedGroupIds: number[][],
     requestedSpaceIds: number[],
     transaction?: Transaction
   ) {
     return this.update(
       {
+        requestedGroupIds,
         requestedSpaceIds,
       },
       transaction
@@ -1058,6 +1070,19 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
   }
 
+  getRequestedGroupIdsFromModel(auth: Authenticator) {
+    const workspace = auth.getNonNullableWorkspace();
+
+    return this.requestedGroupIds.map((groups) =>
+      groups.map((g) =>
+        GroupResource.modelIdToSId({
+          id: g,
+          workspaceId: workspace.id,
+        })
+      )
+    );
+  }
+
   getRequestedSpaceIdsFromModel(auth: Authenticator) {
     const workspace = auth.getNonNullableWorkspace();
 
@@ -1084,6 +1109,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       id: this.id,
       // TODO(REQUESTED_SPACE_IDS 2025-10-24): Stop exposing this once all logic is centralized
       // in baseFetchWithAuthorization.
+      requestedGroupIds: this.requestedGroupIds.map((groups) =>
+        groups.map((g) =>
+          GroupResource.modelIdToSId({
+            id: g,
+            workspaceId: this.workspaceId,
+          })
+        )
+      ),
       requestedSpaceIds: this.requestedSpaceIds.map((id) =>
         SpaceResource.modelIdToSId({
           id,

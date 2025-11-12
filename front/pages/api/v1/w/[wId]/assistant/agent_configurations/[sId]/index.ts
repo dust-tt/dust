@@ -153,11 +153,7 @@ async function handler(
   switch (req.method) {
     case "GET": {
       return res.status(200).json({
-        agentConfiguration: {
-          ...agentConfiguration,
-          requestedGroupIds: [], // Remove once all old SDKs users are updated
-          requestedSpaceIds: [],
-        },
+        agentConfiguration,
       });
     }
     case "PATCH": {
@@ -193,11 +189,7 @@ async function handler(
       }
 
       return res.status(200).json({
-        agentConfiguration: {
-          ...agentConfiguration,
-          requestedGroupIds: [], // Remove once all old SDKs users are updated
-          requestedSpaceIds: [],
-        },
+        agentConfiguration,
       });
     }
     default:

@@ -431,10 +431,7 @@ async function handler(
       }
 
       res.status(200).json({
-        conversation: {
-          ...conversation,
-          requestedGroupIds: [], // Remove once all old SDKs users are updated
-        },
+        conversation,
         message: newMessage ?? undefined,
         contentFragment: newContentFragment ?? undefined,
       });

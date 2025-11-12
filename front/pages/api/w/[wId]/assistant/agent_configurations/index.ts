@@ -4,10 +4,8 @@ import _ from "lodash";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
-import type {
-  MCPServerConfigurationType,
-  ServerSideMCPServerConfigurationType,
-} from "@app/lib/actions/mcp";
+import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
+import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { getAgentsUsage } from "@app/lib/api/assistant/agent_usage";
 import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
 import {
@@ -323,6 +321,7 @@ export async function createOrUpgradeAgentConfiguration({
     model: assistant.model,
     agentConfigurationId,
     templateId: assistant.templateId ?? null,
+    requestedGroupIds: requirements.requestedGroupIds,
     requestedSpaceIds: requirements.requestedSpaceIds,
     tags: assistant.tags,
     editors,
