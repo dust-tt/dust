@@ -21,6 +21,7 @@ const FATHOM_MEETING_CONTENT_READY_EVENT: WebhookEvent = {
 
 export const FATHOM_WEBHOOK_PRESET: PresetWebhook<"fathom"> = {
   name: "Fathom",
+  // No event check, there's only one type of event.
   eventCheck: null,
   events: [FATHOM_MEETING_CONTENT_READY_EVENT],
   icon: "ActionMicIcon",
