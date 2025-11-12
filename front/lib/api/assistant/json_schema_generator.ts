@@ -12,6 +12,26 @@ import type {
 } from "@app/types";
 import { Err, Ok, safeParseJSON } from "@app/types";
 
+const PROMPT = `Based on the instructions provided, generate a JSON schema that will be embedded in the following JSON schema:
+\`\`\`
+{
+  "name": "extract_data",
+  "description": "Call this function with an array of extracted data points",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "schema": $SCHEMA,
+      "description": "The schema following instructions."
+    },
+    "required": ["schema"]
+  }
+}
+\`\`\`
+
+$SCHEMA MUST be a valid JSON schema. Use only standard JSON Schema 7 core fields (type, properties, required, description) and avoid custom keywords or extensions that are not part of the core specification.
+
+This schema will be used as signature to extract the relevant information based on selected documents to properly follow instructions.`;
+
 const FUNCTION_NAME = "set_extraction_schema";
 
 const specifications: AgentActionSpecification[] = [
@@ -37,25 +57,6 @@ export async function getBuilderJsonSchemaGenerator(
   auth: Authenticator,
   inputs: { instructions: string; modelId: ModelIdType }
 ): Promise<Result<{ status: "ok"; schema: JSONSchema7 }, Error>> {
-  const prompt =
-    "Based on the instructions provided, generate a JSON schema that will be embedded in the following JSON schema:\n" +
-    "```\n" +
-    "{\n" +
-    '  "name": "extract_data",\n' +
-    '  "description": "Call this function with an array of extracted data points",\n' +
-    '  "parameters": {\n' +
-    '    "type": "object",\n' +
-    '    "properties": {\n' +
-    '      "schema": $SCHEMA,\n' +
-    '      "description": "The schema following instructions."\n' +
-    "    },\n" +
-    '    "required": ["schema"]\n' +
-    "  }\n" +
-    "}\n" +
-    "```\n\n" +
-    "$SCHEMA MUST be a valid JSON schema. Use only standard JSON Schema 7 core fields (type, properties, required, description) and avoid custom keywords or extensions that are not part of the core specification.\n\n" +
-    "This schema will be used as signature to extract the relevant information based on selected documents to properly follow instructions.";
-
   const conversation: ModelConversationTypeMultiActions = {
     messages: [
       {
@@ -82,7 +83,7 @@ export async function getBuilderJsonSchemaGenerator(
 
   const events = llm.stream({
     conversation,
-    prompt,
+    prompt: PROMPT,
     specifications,
   });
 
