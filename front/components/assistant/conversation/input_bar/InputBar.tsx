@@ -223,7 +223,6 @@ export const InputBar = React.memo(function InputBar({
     // When we are creating a new conversation, we will disable the input bar, show a loading
     // spinner and in case of error, re-enable the input bar
     if (!conversationId) {
-      debugger;
       setLoading(true);
       setDisableSendButton(true);
 
@@ -248,7 +247,6 @@ export const InputBar = React.memo(function InputBar({
       setLoading(false);
       setDisableSendButton(false);
       if (r.isOk()) {
-        debugger;
         resetEditorText();
         fileUploaderService.resetUpload();
       }
@@ -301,14 +299,14 @@ export const InputBar = React.memo(function InputBar({
           disable && "cursor-not-allowed opacity-75",
           isFloating
             ? classNames(
-              "focus-within:ring-1 dark:focus-within:ring-1",
-              "dark:focus-within:ring-highlight/30-night focus-within:ring-highlight/30",
-              "sm:focus-within:ring-2 dark:sm:focus-within:ring-2"
-            )
+                "focus-within:ring-1 dark:focus-within:ring-1",
+                "dark:focus-within:ring-highlight/30-night focus-within:ring-highlight/30",
+                "sm:focus-within:ring-2 dark:sm:focus-within:ring-2"
+              )
             : classNames(
-              "focus-within:border-highlight-300",
-              "dark:focus-within:border-highlight-300-night"
-            ),
+                "focus-within:border-highlight-300",
+                "dark:focus-within:border-highlight-300-night"
+              ),
           isAnimating ? "duration-600 animate-shake" : "duration-300"
         )}
       >

@@ -37,7 +37,7 @@ export function useHandleUnsentMessage({
     // Handle custom event for shallow navigation
     const handleBeforeNavigationChange = () => {
       // we should do not trigger this when you post a new message (which causes the router navigation).
-      if (router.query.cId === 'new') {
+      if (router.query.cId === "new") {
         return;
       }
 
