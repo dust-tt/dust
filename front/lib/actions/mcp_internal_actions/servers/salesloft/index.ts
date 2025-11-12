@@ -54,7 +54,7 @@ function formatActionAsString(action: SalesloftActionWithDetails): string {
     const personName = [action.person.first_name, action.person.last_name]
       .filter(Boolean)
       .join(" ");
-    parts.push(`\Contact: ${personName || "Unknown"}`);
+    parts.push(`\nContact: ${personName || "Unknown"}`);
     if (action.person.email_address) {
       parts.push(`  Email: ${action.person.email_address}`);
     }
