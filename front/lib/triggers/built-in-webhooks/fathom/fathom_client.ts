@@ -7,7 +7,7 @@ import type {
 
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 export type FathomWebhookConfig = {
   destinationUrl: string;
@@ -68,5 +68,22 @@ export class FathomClient {
     }
 
     return new Ok(undefined);
+  }
+
+  static verifyWebhook({
+    secret,
+    headers,
+    body,
+  }: {
+    secret: string;
+    headers: Record<string, string>;
+    body: string;
+  }): Result<void, Error> {
+    try {
+      Fathom.verifyWebhook(secret, headers, body);
+      return new Ok(undefined);
+    } catch (error) {
+      return new Err(normalizeError(error));
+    }
   }
 }
