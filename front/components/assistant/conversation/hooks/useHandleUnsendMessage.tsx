@@ -39,16 +39,18 @@ export function useHandleUnsentMessage({
       url: string,
       { shallow }: { shallow: boolean }
     ) => {
-      // We should do not trigger this when you post a new message (which causes the router navigation),
+      const cId = router.query.cId;
+
+      // We should do not trigger this when you are in AB or you post a new message (which causes the router navigation),
       // but this also disable the confirmation dialog when you go to a different conversation from a new conversation.
       // TODO (yuka 12th nov): fix this logic and only disable it when you post a message as a new conversation
-      if (router.query.cId === "new" && shallow) {
+      if (isDevelopment() || !cId || (router.query.cId === "new" && shallow)) {
         return;
       }
 
       const userInput = getUserTextWithoutMentions();
 
-      if (!isDevelopment() && userInput.length > THRESHOLD_TEXT_LENGTH) {
+      if (userInput.length > THRESHOLD_TEXT_LENGTH) {
         const shouldProceed = window.confirm(
           `Your message hasn't been sent. Are you sure you want to leave this conversation?`
         );
