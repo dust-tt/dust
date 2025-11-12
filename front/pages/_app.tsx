@@ -11,9 +11,18 @@ import type { AppProps } from "next/app";
 
 // Initialize Langfuse instrumentation (server-side only)
 if (typeof window === "undefined") {
-  import("@app/lib/api/llm/instrumentation").then(({ initializeLangfuseInstrumentation }) => {
-    initializeLangfuseInstrumentation();
-  });
+  import("@app/lib/api/instrumentation/init")
+    .then(({ initializeLangfuseInstrumentation }) => {
+      initializeLangfuseInstrumentation();
+    })
+    .catch((error) => {
+      logger.warn(
+        {
+          error: normalizeError(error),
+        },
+        "Failed to initialize Langfuse instrumentation"
+      );
+    });
 }
 
 // Important: avoid destructuring process.env on the client.
@@ -26,6 +35,8 @@ const COMMIT_HASH = process.env.NEXT_PUBLIC_COMMIT_HASH;
 
 import { PostHogTracker } from "@app/components/app/PostHogTracker";
 import RootLayout from "@app/components/app/RootLayout";
+import logger from "@app/logger/logger";
+import { normalizeError } from "@app/types";
 
 if (DATADOG_CLIENT_TOKEN) {
   datadogLogs.init({

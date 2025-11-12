@@ -1,15 +1,19 @@
 import { NodeSDK } from "@opentelemetry/sdk-node";
 
 import config from "@app/lib/api/config";
-import { FilteredLangfuseSpanProcessor } from "@app/lib/api/langfuse/span_processor";
+import { FilteredLangfuseSpanProcessor } from "@app/lib/api/instrumentation/processor";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types";
 
 let sdk: NodeSDK | null = null;
 
+export function isLangfuseEnabled(): boolean {
+  return !!config.getLangfuseSecretKey() && !!config.getLangfusePublicKey();
+}
+
 /**
- * Initialize OpenTelemetry with Langfuse instrumentation
- * This sets up manual tracing for LLM and agent operations only
+ * Initialize OpenTelemetry with Langfuse instrumentation.
+ * This sets up manual tracing for LLM and agent operations only.
  */
 export function initializeLangfuseInstrumentation(): void {
   if (!isLangfuseEnabled() || sdk) {
@@ -45,11 +49,4 @@ export async function shutdownLangfuseInstrumentation(): Promise<void> {
       console.warn("Failed to shutdown Langfuse instrumentation:", error);
     }
   }
-}
-
-/**
- * Check if Langfuse is enabled
- */
-export function isLangfuseEnabled(): boolean {
-  return !!config.getLangfuseSecretKey() && !!config.getLangfusePublicKey();
 }
