@@ -17,7 +17,6 @@ import type {
 import type { Authenticator } from "@app/lib/auth";
 import { RunResource } from "@app/lib/resources/run_resource";
 import type { ModelIdType, ReasoningEffort } from "@app/types";
-import { auth } from "@modelcontextprotocol/sdk/client/auth.js";
 
 export abstract class LLM {
   protected modelId: ModelIdType;
@@ -107,10 +106,6 @@ export abstract class LLM {
       temperature: this.temperature,
     });
 
-    let streamedContent = "";
-    let streamedReasoning = "";
-    const streamedToolCalls = new Map<string, any>();
-
     try {
       for await (const event of this.internalStream({
         conversation,
@@ -119,84 +114,41 @@ export abstract class LLM {
       })) {
         buffer.addEvent(event);
 
-        // Update Langfuse observation with each event
-        switch (event.type) {
-          case "text_delta":
-            streamedContent += event.content.delta;
-            generation.update({
-              output: {
-                content: streamedContent,
-                toolCalls: Array.from(streamedToolCalls.values()),
-                reasoning: streamedReasoning || undefined,
-              },
-            });
-            break;
-
-          case "reasoning_delta":
-            streamedReasoning += event.content.delta;
-            generation.update({
-              output: {
-                content: streamedContent,
-                reasoning: streamedReasoning,
-                toolCalls: Array.from(streamedToolCalls.values()),
-              },
-            });
-            break;
-
-          case "tool_call":
-            streamedToolCalls.set(event.content.id, event.content);
-            generation.update({
-              output: {
-                content: streamedContent,
-                toolCalls: Array.from(streamedToolCalls.values()),
-                reasoning: streamedReasoning || undefined,
-              },
-            });
-            break;
-
-          case "token_usage":
-            generation.update({
-              usageDetails: {
-                input: event.content.inputTokens,
-                output: event.content.outputTokens,
-                total: event.content.totalTokens,
-                cache_read_input_tokens: event.content.cachedTokens ?? 0,
-                cache_creation_input_tokens:
-                  event.content.cacheCreationTokens ?? 0,
-                reasoning_tokens: event.content.reasoningTokens ?? 0,
-              },
-            });
-            break;
-
-          // case "success":
-          //   generation.update({
-          //     output: {
-          //       // TODO: Refine based on final output structure.
-          //       content: buffer.output
-          //       // reasoning: event.r.content.text,
-          //       // toolCalls: event.toolCalls?.map((tc) => tc.content),
-          //     },
-          //     level: "DEFAULT",
-          //   });
-          //   break;
-
-          case "error":
-            generation.update({
-              level: "ERROR",
-              statusMessage: event.content.message,
-              metadata: {
-                errorType: event.content.type,
-                errorMessage: event.content.message,
-              },
-            });
-            break;
-        }
-
         yield event;
       }
     } finally {
       const durationMs = Date.now() - startTime;
       buffer.writeToGCS({ durationMs, startTime }).catch(() => {});
+
+      const { tokenUsage, ...rest } = buffer.currentOutput;
+
+      generation.update({
+        output: { ...rest },
+      });
+
+      if (tokenUsage) {
+        generation.update({
+          usageDetails: {
+            input: tokenUsage.inputTokens,
+            output: tokenUsage.outputTokens,
+            total: tokenUsage.totalTokens,
+            cache_read_input_tokens: tokenUsage.cachedTokens ?? 0,
+            cache_creation_input_tokens: tokenUsage.cacheCreationTokens ?? 0,
+            reasoning_tokens: tokenUsage.reasoningTokens ?? 0,
+          },
+        });
+      }
+
+      if (buffer.error) {
+        generation.update({
+          level: "ERROR",
+          statusMessage: buffer.error.message,
+          metadata: {
+            errorType: buffer.error.type,
+            errorMessage: buffer.error.message,
+          },
+        });
+      }
 
       generation.end();
 
