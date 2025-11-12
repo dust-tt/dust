@@ -227,19 +227,21 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       const creationRes =
         await GongConnectorManager.createGongSchedule(connector);
 
-      if (creationRes.isErr()) {
-        return creationRes;
+      if (creationRes.isOk()) {
+        return new Ok(undefined);
+      } else {
+        return new Err(creationRes.error);
       }
+    } else {
+      const result = await triggerSchedule({
+        connector,
+        scheduleId,
+      });
+      if (result.isErr()) {
+        throw result.error;
+      }
+      return new Ok(undefined);
     }
-
-    const result = await triggerSchedule({
-      connector,
-      scheduleId,
-    });
-    if (result.isErr()) {
-      throw result.error;
-    }
-    return new Ok(undefined);
   }
 
   async sync({
