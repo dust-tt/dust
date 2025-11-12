@@ -1,12 +1,13 @@
 import * as t from "io-ts";
 import _ from "lodash";
 
-import { callAction } from "@app/lib/actions/helpers";
+import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { TrackerMaintainedScopeType } from "@app/lib/resources/tracker_resource";
+import logger from "@app/logger/logger";
 import type { APIError, Result } from "@app/types";
-import { Ok } from "@app/types";
+import { CoreAPI, dustManagedCredentials, Err, Ok } from "@app/types";
 
 export async function callDocTrackerRetrievalAction(
   auth: Authenticator,
@@ -32,8 +33,6 @@ export async function callDocTrackerRetrievalAction(
     APIError
   >
 > {
-  const ownerWorkspace = auth.getNonNullableWorkspace();
-
   if (!maintainedScope.length) {
     return new Ok({
       result: [],
@@ -47,31 +46,103 @@ export async function callDocTrackerRetrievalAction(
     throw new Error("Duplicate data source ids in maintained scope");
   }
 
-  const action = getDustProdAction("doc-tracker-retrieval");
-  const config = cloneBaseConfig(action.config);
+  // Fetch all data source views.
+  const dataSourceViewIds = maintainedScope.map(
+    (view) => view.dataSourceViewId
+  );
+  const dataSourceViews = await DataSourceViewResource.fetchByIds(
+    auth,
+    dataSourceViewIds
+  );
 
-  config.SEMANTIC_SEARCH.data_sources = maintainedScope.map((view) => ({
-    workspace_id: ownerWorkspace.sId,
-    data_source_id: view.dataSourceViewId,
-  }));
-
-  if (Object.keys(parentsInMap).length > 0) {
-    config.SEMANTIC_SEARCH.filter.parents = {
-      in_map: parentsInMap,
-    };
+  if (dataSourceViews.length !== maintainedScope.length) {
+    return new Err({
+      type: "internal_server_error",
+      message: `Expected ${maintainedScope.length} data source views, got ${dataSourceViews.length}`,
+    });
   }
 
-  config.SEMANTIC_SEARCH.target_document_tokens = targetDocumentTokens;
-  config.SEMANTIC_SEARCH.top_k = topK;
+  // Build search parameters for each data source.
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+  const credentials = dustManagedCredentials();
 
-  const res = await callAction(auth, {
-    action,
-    config,
-    input: { input_text: inputText },
-    responseValueSchema: DocTrackerRetrievalActionValueSchema,
+  const searches = dataSourceViews.map((view) => {
+    const dataSource = view.dataSource;
+    const dustAPIDataSourceId = dataSource.dustAPIDataSourceId;
+
+    // Get parents filter for this data source if available.
+    const parentsFilter = parentsInMap[dustAPIDataSourceId] ?? null;
+
+    return {
+      projectId: dataSource.dustAPIProjectId,
+      dataSourceId: dustAPIDataSourceId,
+      filter: {
+        tags: {
+          in: ["__DUST_TRACKED"],
+          not: null,
+        },
+        parents: parentsFilter
+          ? {
+              in: parentsFilter,
+              not: null,
+            }
+          : {
+              in: null,
+              not: null,
+            },
+        timestamp: null,
+      },
+      view_filter: view.toViewFilter(),
+    };
   });
 
-  return res;
+  // Perform the search across all data sources.
+  const searchResult = await coreAPI.searchDataSources(
+    inputText,
+    topK,
+    credentials,
+    false, // fullText
+    searches,
+    targetDocumentTokens
+  );
+
+  if (searchResult.isErr()) {
+    return new Err({
+      type: "internal_server_error",
+      message: searchResult.error.message,
+    });
+  }
+
+  // Transform CoreAPIDocument array to match the expected schema.
+  // CoreAPIDocument doesn't include token_count, and has slightly different types.
+  // We need to transform the documents to match the expected schema.
+  const documents = searchResult.value.documents.map((doc) => ({
+    data_source_id: doc.data_source_id,
+    created: doc.created,
+    document_id: doc.document_id,
+    timestamp: doc.timestamp,
+    title: doc.title,
+    tags: doc.tags,
+    parents: doc.parents,
+    source_url: doc.source_url ?? null,
+    hash: doc.hash,
+    text_size: doc.text_size,
+    text: doc.text ?? null,
+    chunk_count: doc.chunk_count,
+    chunks: doc.chunks.map((chunk) => ({
+      text: chunk.text,
+      hash: chunk.hash,
+      offset: chunk.offset,
+      score: chunk.score ?? 0,
+      expanded_offsets: undefined, // This field may be added by Core API in some contexts
+    })),
+    token_count: Math.ceil(doc.text_size / 4), // Estimate: 1 token ≈ 4 characters
+  }));
+
+  return new Ok({
+    result: documents,
+    runId: null,
+  });
 }
 
 // Must map CoreAPIDocument
