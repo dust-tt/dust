@@ -1,17 +1,13 @@
 import type { estypes } from "@elastic/elasticsearch";
 
-import {
-  bucketsToArray,
-  formatUTCDateFromMillis,
-  searchAnalytics,
-} from "@app/lib/api/elasticsearch";
+import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
 const DEFAULT_METRIC_VALUE = 0;
 
 export type UsageMetricsPoint = {
-  date: string;
+  timestamp: number;
   messages: number;
   conversations: number;
   activeUsers: number;
@@ -63,9 +59,8 @@ export async function fetchUsageMetrics(
   );
 
   const points: UsageMetricsPoint[] = buckets.map((b) => {
-    const date = formatUTCDateFromMillis(b.key);
     return {
-      date,
+      timestamp: b.key,
       messages: b.doc_count ?? DEFAULT_METRIC_VALUE,
       conversations: Math.round(
         b.unique_conversations?.value ?? DEFAULT_METRIC_VALUE

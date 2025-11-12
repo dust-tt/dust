@@ -1,17 +1,13 @@
 import type { estypes } from "@elastic/elasticsearch";
 
-import {
-  bucketsToArray,
-  formatUTCDateFromMillis,
-  searchAnalytics,
-} from "@app/lib/api/elasticsearch";
+import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
 const DEFAULT_METRIC_VALUE = 0;
 
 export type LatencyPoint = {
-  date: string;
+  timestamp: number;
   messages: number;
   average: number;
 };
@@ -59,9 +55,8 @@ export async function fetchLatency(
   const points: LatencyPoint[] = buckets
     .filter((b) => b.doc_count > 0)
     .map((b) => {
-      const date = formatUTCDateFromMillis(b.key);
       return {
-        date,
+        timestamp: b.key,
         messages: b.doc_count ?? DEFAULT_METRIC_VALUE,
         average: Number(
           ((b.avg_latency_ms?.value ?? DEFAULT_METRIC_VALUE) / 1000).toFixed(2)

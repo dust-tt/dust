@@ -128,7 +128,7 @@ export async function getConversation(
     title: conversation.title,
     visibility: conversation.visibility,
     depth: conversation.depth,
-    triggerId: conversation.triggerSId(),
+    triggerId: conversation.triggerSId,
     content,
     actionRequired,
     unread,

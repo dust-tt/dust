@@ -279,6 +279,7 @@ export type AgentErrorEvent = {
   configurationId: string;
   messageId: string;
   error: GenericErrorContent;
+  runIds?: string[];
 };
 
 // Generic event sent when an agent message is done (could be successful, failed, or cancelled).

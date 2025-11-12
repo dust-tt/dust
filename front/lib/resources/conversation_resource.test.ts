@@ -10,6 +10,7 @@ import {
 
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import { Authenticator } from "@app/lib/auth";
+import { Message } from "@app/lib/models/assistant/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import {
@@ -27,6 +28,7 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type {
+  ConversationType,
   LightAgentConfigurationType,
   LightWorkspaceType,
 } from "@app/types";
@@ -855,6 +857,256 @@ describe("ConversationResource", () => {
 
       // Clean up
       await destroyConversation(adminAuth, { conversationId: testConvo.sId });
+    });
+  });
+
+  describe("getMessageById", () => {
+    let auth: Authenticator;
+    let conversation: ConversationType;
+    let agents: LightAgentConfigurationType[];
+    let conversationIds: string[];
+
+    beforeEach(async () => {
+      const workspace = await WorkspaceFactory.basic();
+      const user = await UserFactory.basic();
+      auth = await Authenticator.fromUserIdAndWorkspaceId(
+        user.sId,
+        workspace.sId
+      );
+      agents = await setupTestAgents(workspace, user);
+
+      conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agents[0].sId,
+        messagesCreatedAt: [dateFromDaysAgo(5), dateFromDaysAgo(3)],
+      });
+
+      conversationIds = [conversation.sId];
+    });
+
+    afterEach(async () => {
+      for (const sId of conversationIds) {
+        await destroyConversation(auth, { conversationId: sId });
+      }
+    });
+
+    it("should retrieve a user message with the userMessage include", async () => {
+      // Get the conversation resource to access getMessageById
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      assert(conversationResource, "Conversation resource not found");
+
+      // Get all messages to find a user message
+      const messages = await Message.findAll({
+        where: {
+          conversationId: conversationResource.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      });
+      assert(messages.length > 0, "No messages found");
+
+      // Find a user message
+      const userMessageRecord = messages.find((m) => m.userMessageId);
+      assert(userMessageRecord, "No user message found");
+
+      // Call getMessageById
+      const result = await conversationResource.getMessageById(
+        auth,
+        userMessageRecord.sId
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const message = result.value;
+
+        // Verify the userMessage include is present and populated
+        expect(message.userMessage).toBeDefined();
+        expect(message.userMessage).not.toBeNull();
+        expect(message.userMessage?.id).toBe(userMessageRecord.userMessageId);
+        expect(message.userMessage?.content).toBe("Test user Message.");
+      }
+    });
+
+    it("should retrieve an agent message with the agentMessage include", async () => {
+      // Get the conversation resource to access getMessageById
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      assert(conversationResource, "Conversation resource not found");
+
+      // Get all messages to find an agent message
+      const messages = await Message.findAll({
+        where: {
+          conversationId: conversationResource.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      });
+      assert(messages.length > 0, "No messages found");
+
+      // Find an agent message
+      const agentMessageRecord = messages.find((m) => m.agentMessageId);
+      assert(agentMessageRecord, "No agent message found");
+
+      // Call getMessageById
+      const result = await conversationResource.getMessageById(
+        auth,
+        agentMessageRecord.sId
+      );
+
+      expect(result.isOk()).toBe(true);
+
+      if (result.isOk()) {
+        const message = result.value;
+
+        // Verify the agentMessage include is present and populated
+        expect(message.agentMessage).toBeDefined();
+        expect(message.agentMessage).not.toBeNull();
+        expect(message.agentMessage?.id).toBe(
+          agentMessageRecord.agentMessageId
+        );
+        expect(message.agentMessage?.agentConfigurationId).toBe(agents[0].sId);
+      }
+    });
+
+    it("should return error when message not found", async () => {
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      assert(conversationResource, "Conversation resource not found");
+
+      // Try to fetch a non-existent message
+      const result = await conversationResource.getMessageById(
+        auth,
+        "nonexistent"
+      );
+
+      expect(result.isOk()).toBe(false);
+      if (result.isErr()) {
+        expect(result.error.message).toBe("Message not found");
+      }
+    });
+
+    it("should only retrieve messages from the same conversation", async () => {
+      // Create another conversation
+      const otherConversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agents[1].sId,
+        messagesCreatedAt: [dateFromDaysAgo(2)],
+      });
+      conversationIds.push(otherConversation.sId);
+
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      assert(conversationResource, "Conversation resource not found");
+
+      // Get a message from the other conversation
+      const otherMessages = await Message.findAll({
+        where: {
+          conversationId: (await ConversationResource.fetchById(
+            auth,
+            otherConversation.sId
+          ))!.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      });
+      assert(otherMessages.length > 0, "No messages in other conversation");
+
+      // Try to retrieve a message from another conversation using the first conversation resource
+      const result = await conversationResource.getMessageById(
+        auth,
+        otherMessages[0].sId
+      );
+
+      // Should not find the message from the other conversation
+      expect(result.isOk()).toBe(false);
+      if (result.isErr()) {
+        expect(result.error.message).toBe("Message not found");
+      }
+    });
+
+    it("should verify includes are not optional (both UserMessage and AgentMessage)", async () => {
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      assert(conversationResource, "Conversation resource not found");
+
+      // Get all messages
+      const messages = await Message.findAll({
+        where: {
+          conversationId: conversationResource.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      });
+      assert(messages.length > 0, "No messages found");
+
+      for (const messageRecord of messages) {
+        const result = await conversationResource.getMessageById(
+          auth,
+          messageRecord.sId
+        );
+
+        expect(result.isOk()).toBe(true);
+        if (result.isOk()) {
+          const message = result.value;
+
+          // Verify the includes object structure is present even if values are null/undefined
+          // This ensures the query includes the associations
+          if (messageRecord.userMessageId) {
+            expect(message.userMessage).toBeDefined();
+          } else {
+            // Should explicitly be undefined/null, not missing
+            expect("userMessage" in message).toBe(true);
+          }
+
+          if (messageRecord.agentMessageId) {
+            expect(message.agentMessage).toBeDefined();
+          } else {
+            // Should explicitly be undefined/null, not missing
+            expect("agentMessage" in message).toBe(true);
+          }
+        }
+      }
+    });
+
+    it("should return a valid Message object with all expected fields", async () => {
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      assert(conversationResource, "Conversation resource not found");
+
+      // Get the first message
+      const messages = await Message.findAll({
+        where: {
+          conversationId: conversationResource.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+        limit: 1,
+      });
+      assert(messages.length > 0, "No messages found");
+
+      const result = await conversationResource.getMessageById(
+        auth,
+        messages[0].sId
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const message = result.value;
+
+        // Verify essential message fields
+        expect(message.id).toBeDefined();
+        expect(message.sId).toBeDefined();
+        expect(message.conversationId).toBe(conversationResource.id);
+        expect(message.workspaceId).toBe(auth.getNonNullableWorkspace().id);
+        expect(message.createdAt).toBeDefined();
+        expect(message.rank).toBeDefined();
+      }
     });
   });
 });

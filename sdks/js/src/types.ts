@@ -1277,6 +1277,7 @@ const AgentErrorEventSchema = z.object({
     message: z.string(),
     metadata: z.record(z.any()).nullable(),
   }),
+  runIds: z.array(z.string()).optional(),
 });
 export type AgentErrorEvent = z.infer<typeof AgentErrorEventSchema>;
 

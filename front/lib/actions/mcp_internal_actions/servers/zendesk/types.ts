@@ -43,3 +43,12 @@ export const ZendeskTicketResponseSchema = z.object({
 });
 
 export type ZendeskTicketResponse = z.infer<typeof ZendeskTicketResponseSchema>;
+
+export const ZendeskSearchResponseSchema = z.object({
+  results: z.array(ZendeskTicketSchema),
+  count: z.number(),
+  next_page: z.string().nullable(),
+  previous_page: z.string().nullable(),
+});
+
+export type ZendeskSearchResponse = z.infer<typeof ZendeskSearchResponseSchema>;

@@ -129,9 +129,11 @@ function handleContentBlockStart(
       };
       break;
     case "redacted_thinking":
+      // "Redacted thinking" provides no actionable information, as everything is encrypted
+      break;
     case "server_tool_use":
     case "web_search_tool_result":
-      // TODO(LLM-Router) Handle these block types if needed
+      // We don't use these Antropic tools
       break;
     default:
       assertNever(blockType);
@@ -164,7 +166,7 @@ function* handleContentBlockDelta(
       }
       break;
     case "citations_delta":
-      // TODO(LLM-Router) Handle these delta types if needed
+      // We don't use Anthropic citations, as we have our own citations implementation
       break;
     default:
       assertNever(event.delta);

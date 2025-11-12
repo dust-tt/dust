@@ -11,7 +11,6 @@ import {
   TabsTrigger,
   TestTubeIcon,
 } from "@dust-tt/sparkle";
-import { ActivityIcon } from "lucide-react";
 import React, { useState } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -27,9 +26,9 @@ import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 type AgentBuilderRightPanelTabType =
   | "testing"
-  | "performance"
+  | "feedback"
   | "template"
-  | "observability";
+  | "insights";
 
 interface PanelHeaderProps {
   isPreviewPanelOpen: boolean;
@@ -70,17 +69,17 @@ function PanelHeader({
                 />
                 {showObservability && (
                   <TabsTrigger
-                    value="observability"
+                    value="insights"
                     label="Insights"
                     icon={BarChartIcon}
-                    onClick={() => onTabChange("observability")}
+                    onClick={() => onTabChange("insights")}
                   />
                 )}
                 <TabsTrigger
-                  value="performance"
+                  value="feedback"
                   label="Feedback"
                   icon={ListCheckIcon}
-                  onClick={() => onTabChange("performance")}
+                  onClick={() => onTabChange("feedback")}
                 />
                 {hasTemplate && (
                   <TabsTrigger
@@ -129,22 +128,22 @@ function CollapsedTabs({
         tooltip="Testing"
         onClick={() => onTabSelect("testing")}
       />
-      <Button
-        icon={BarChartIcon}
-        variant="ghost"
-        size="sm"
-        tooltip="Performance"
-        onClick={() => onTabSelect("performance")}
-      />
       {showObservability && (
         <Button
-          icon={ActivityIcon}
+          icon={BarChartIcon}
           variant="ghost"
           size="sm"
           tooltip="Insights"
-          onClick={() => onTabSelect("observability")}
+          onClick={() => onTabSelect("insights")}
         />
       )}
+      <Button
+        icon={ListCheckIcon}
+        variant="ghost"
+        size="sm"
+        tooltip="Feedback"
+        onClick={() => onTabSelect("feedback")}
+      />
       {hasTemplate && (
         <Button
           icon={MagicIcon}
@@ -183,7 +182,7 @@ function ExpandedContent({
         </div>
       )}
       <ObservabilityProvider>
-        {selectedTab === "observability" &&
+        {selectedTab === "insights" &&
           (agentConfigurationSId ? (
             <AgentBuilderObservability
               agentConfigurationSId={agentConfigurationSId ?? ""}
@@ -193,11 +192,11 @@ function ExpandedContent({
               <EmptyPlaceholder
                 icon={BarChartIcon}
                 title="Waiting for data"
-                description="Use your agent or share it with your team to see performance data."
+                description="Use your agent or share it with your team to see feedback data."
               />
             </TabContentLayout>
           ))}
-        {selectedTab === "performance" &&
+        {selectedTab === "feedback" &&
           (agentConfigurationSId ? (
             <AgentBuilderPerformance
               agentConfigurationSId={agentConfigurationSId}

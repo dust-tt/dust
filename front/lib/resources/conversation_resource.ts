@@ -163,7 +163,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       : null;
   }
 
-  triggerSId(): string | null {
+  get triggerSId(): string | null {
     return ConversationResource.triggerIdToSId(
       this.triggerId,
       this.workspaceId
@@ -399,7 +399,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       created: conversation.createdAt.getTime(),
       sId: conversation.sId,
       title: conversation.title,
-      triggerId: conversation.triggerSId(),
+      triggerId: conversation.triggerSId,
       actionRequired,
       unread,
       hasError: conversation.hasError,
@@ -744,6 +744,37 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     });
 
     return results;
+  }
+
+  async getMessageById(
+    auth: Authenticator,
+    messageId: string
+  ): Promise<Result<Message, Error>> {
+    const message = await Message.findOne({
+      where: {
+        conversationId: this.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        sId: messageId,
+      },
+      include: [
+        {
+          model: UserMessage,
+          as: "userMessage",
+          required: false,
+        },
+        {
+          model: AgentMessage,
+          as: "agentMessage",
+          required: false,
+        },
+      ],
+    });
+
+    if (!message) {
+      return new Err(new Error("Message not found"));
+    }
+
+    return new Ok(message);
   }
 
   static async updateRequirements(
