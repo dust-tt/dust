@@ -140,7 +140,6 @@ export function getLightAgentMessageFromAgentMessage(
       pictureUrl: agentMessage.configuration.pictureUrl,
       status: agentMessage.configuration.status,
       canRead: agentMessage.configuration.canRead,
-      requestedSpaceIds: agentMessage.configuration.requestedSpaceIds,
     },
     citations: getCitationsFromActions(agentMessage.actions),
     generatedFiles: agentMessage.actions

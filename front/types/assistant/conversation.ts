@@ -173,7 +173,6 @@ export type LightAgentMessageType = BaseAgentMessageType & {
     pictureUrl: string;
     status: AgentConfigurationStatus;
     canRead: boolean;
-    requestedSpaceIds: string[];
   };
   citations: Record<string, CitationType>;
   generatedFiles: Omit<ActionGeneratedFileType, "snippet">[];
