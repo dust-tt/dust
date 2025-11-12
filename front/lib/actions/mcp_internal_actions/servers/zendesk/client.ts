@@ -18,17 +18,32 @@ export class ZendeskClient {
     private accessToken: string
   ) {}
 
-  private async getRequest<T extends z.Schema>(
+  private async request<T extends z.Schema>(
     endpoint: string,
-    schema: T
+    schema: T,
+    {
+      method,
+      body,
+    }:
+      | {
+          method: "GET";
+          body?: never;
+        }
+      | {
+          method: "POST" | "PUT";
+          body: unknown;
+        } = {
+      method: "GET",
+    }
   ): Promise<Result<z.infer<T>, Error>> {
     const url = `https://${this.subdomain}.zendesk.com/api/v2/${endpoint}`;
     const response = await fetch(url, {
-      method: "GET",
+      method,
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${this.accessToken}`,
       },
+      body: body ? JSON.stringify(body) : undefined,
     });
 
     if (!response.ok) {
@@ -61,7 +76,7 @@ export class ZendeskClient {
   }
 
   async getTicket(ticketId: number): Promise<Result<ZendeskTicket, Error>> {
-    const result = await this.getRequest(
+    const result = await this.request(
       `tickets/${ticketId}`,
       ZendeskTicketResponseSchema
     );
@@ -90,7 +105,7 @@ export class ZendeskClient {
       params.append("sort_order", sortOrder);
     }
 
-    const result = await this.getRequest(
+    const result = await this.request(
       `search.json?${params.toString()}`,
       ZendeskSearchResponseSchema
     );
@@ -100,5 +115,32 @@ export class ZendeskClient {
     }
 
     return new Ok(result.value);
+  }
+
+  async draftReply(
+    ticketId: number,
+    body: string
+  ): Promise<Result<ZendeskTicket, Error>> {
+    const result = await this.request(
+      `tickets/${ticketId}`,
+      ZendeskTicketResponseSchema,
+      {
+        method: "PUT",
+        body: {
+          ticket: {
+            comment: {
+              body,
+              public: false,
+            },
+          },
+        },
+      }
+    );
+
+    if (result.isErr()) {
+      return new Err(result.error);
+    }
+
+    return new Ok(result.value.ticket);
   }
 }
