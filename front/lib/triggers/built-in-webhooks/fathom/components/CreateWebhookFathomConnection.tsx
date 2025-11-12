@@ -1,4 +1,5 @@
 import { CheckBoxWithTextAndDescription, Label, Page } from "@dust-tt/sparkle";
+import type { TriggeredFor } from "fathom-typescript/sdk/models/shared";
 import { useEffect, useState } from "react";
 
 import type { WebhookCreateFormComponentProps } from "@app/components/triggers/webhook_preset_components";
@@ -33,7 +34,7 @@ export function CreateWebhookFathomConnection({
   connectionId,
 }: WebhookCreateFormComponentProps) {
   const [selectedRecordingTypes, setSelectedRecordingTypes] = useState<
-    string[]
+    TriggeredFor[]
   >(["my_recordings", "shared_external_recordings"]);
 
   const [includeTranscript, setIncludeTranscript] = useState(true);
@@ -82,7 +83,7 @@ export function CreateWebhookFathomConnection({
     onReadyToSubmitChange,
   ]);
 
-  const handleRecordingTypeToggle = (value: string) => {
+  const handleRecordingTypeToggle = (value: TriggeredFor) => {
     setSelectedRecordingTypes((prev) =>
       prev.includes(value) ? prev.filter((t) => t !== value) : [...prev, value]
     );

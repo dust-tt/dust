@@ -1,6 +1,9 @@
 import { Fathom } from "fathom-typescript";
 import { FathomError } from "fathom-typescript/sdk/models/errors";
-import type { Webhook } from "fathom-typescript/sdk/models/shared";
+import type {
+  TriggeredFor,
+  Webhook,
+} from "fathom-typescript/sdk/models/shared";
 
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
@@ -8,12 +11,7 @@ import { Err, Ok } from "@app/types";
 
 export type FathomWebhookConfig = {
   destinationUrl: string;
-  triggeredFor: (
-    | "my_recordings"
-    | "shared_external_recordings"
-    | "my_shared_with_team_recordings"
-    | "shared_team_recordings"
-  )[];
+  triggeredFor: TriggeredFor[];
   includeTranscript?: boolean;
   includeSummary?: boolean;
   includeActionItems?: boolean;
