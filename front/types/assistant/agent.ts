@@ -142,7 +142,7 @@ export type LightAgentConfigurationType = {
   visualizationEnabled?: boolean;
 
   // Remove this once we have completely removed from the sdk.
-  requestedGroupIds: string[][];
+  // requestedGroupIds: string[][];
 
   // Space restrictions for accessing the agent/conversation - replaces group restrictions.
   // The array represents permission requirements:

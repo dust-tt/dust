@@ -177,7 +177,7 @@ export function _getHelperGlobalAgent({
     actions,
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     templateId: null,
-    requestedGroupIds: [],
+    // requestedGroupIds: [],
     requestedSpaceIds: [],
     tags: [],
     canRead: true,

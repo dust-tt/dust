@@ -403,7 +403,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       actionRequired,
       unread,
       hasError: conversation.hasError,
-      requestedGroupIds: [],
+      // requestedGroupIds: [],
       requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(auth),
     });
   }
@@ -523,7 +523,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           actionRequired,
           unread,
           hasError: c.hasError,
-          requestedGroupIds: [],
+          // requestedGroupIds: [],
           requestedSpaceIds: c.getRequestedSpaceIdsFromModel(auth),
         };
       })

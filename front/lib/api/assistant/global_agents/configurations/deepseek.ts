@@ -46,7 +46,7 @@ export function _getDeepSeekR1GlobalAgent({
     actions: [],
     maxStepsPerRun: 1,
     templateId: null,
-    requestedGroupIds: [],
+    // requestedGroupIds: [],
     requestedSpaceIds: [],
     tags: [],
     canRead: true,

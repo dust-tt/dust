@@ -70,7 +70,7 @@ function _getManagedDataSourceAgent(
     userFavorite: false,
     model,
     templateId: null,
-    requestedGroupIds: [],
+    // requestedGroupIds: [],
     requestedSpaceIds: [],
     tags: [],
     canRead: true,
