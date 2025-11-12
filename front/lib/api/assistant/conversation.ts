@@ -123,7 +123,6 @@ export async function createConversation(
     actionRequired: false,
     hasError: false,
     visibility: conversation.visibility,
-    requestedGroupIds: [],
     requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(auth),
   };
 }

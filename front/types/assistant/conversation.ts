@@ -220,8 +220,7 @@ export type ConversationWithoutContentType = {
   sId: string;
   title: string | null;
 
-  // Ideally, theses 2 properties should be moved to the ConversationType.
-  requestedGroupIds: string[][];
+  // Ideally, this property should be moved to the ConversationType.
   requestedSpaceIds: string[];
 };
 
