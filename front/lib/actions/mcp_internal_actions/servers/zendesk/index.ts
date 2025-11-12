@@ -1,3 +1,4 @@
+import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
@@ -8,6 +9,7 @@ import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/uti
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
+import type { Result } from "@app/types";
 import { Err, isString, Ok } from "@app/types";
 
 const ZENDESK_TOOL_NAME = "zendesk";
@@ -36,25 +38,12 @@ function createServer(
         agentLoopContext,
       },
       async ({ ticketId }, { authInfo }) => {
-        const accessToken = authInfo?.token;
-        if (!accessToken) {
-          return new Err(
-            new MCPError(
-              "No access token found. Please connect your Zendesk account."
-            )
-          );
+        const clientResult = getZendeskClient(authInfo);
+        if (clientResult.isErr()) {
+          return clientResult;
         }
+        const client = clientResult.value;
 
-        const subdomain = authInfo?.extra?.zendesk_subdomain;
-        if (!isString(subdomain)) {
-          return new Err(
-            new MCPError(
-              "Zendesk subdomain not found in connection metadata. Please reconnect your Zendesk account."
-            )
-          );
-        }
-
-        const client = new ZendeskClient(subdomain, accessToken);
         const result = await client.getTicket(ticketId);
 
         if (result.isErr()) {
@@ -108,25 +97,12 @@ function createServer(
         agentLoopContext,
       },
       async ({ query, sortBy, sortOrder }, { authInfo }) => {
-        const accessToken = authInfo?.token;
-        if (!accessToken) {
-          return new Err(
-            new MCPError(
-              "No access token found. Please connect your Zendesk account."
-            )
-          );
+        const clientResult = getZendeskClient(authInfo);
+        if (clientResult.isErr()) {
+          return clientResult;
         }
+        const client = clientResult.value;
 
-        const subdomain = authInfo?.extra?.zendesk_subdomain;
-        if (!isString(subdomain)) {
-          return new Err(
-            new MCPError(
-              "Zendesk subdomain not found in connection metadata. Please reconnect your Zendesk account."
-            )
-          );
-        }
-
-        const client = new ZendeskClient(subdomain, accessToken);
         const result = await client.searchTickets(query, sortBy, sortOrder);
 
         if (result.isErr()) {
@@ -186,25 +162,12 @@ function createServer(
         agentLoopContext,
       },
       async ({ ticketId, body }, { authInfo }) => {
-        const accessToken = authInfo?.token;
-        if (!accessToken) {
-          return new Err(
-            new MCPError(
-              "No access token found. Please connect your Zendesk account."
-            )
-          );
+        const clientResult = getZendeskClient(authInfo);
+        if (clientResult.isErr()) {
+          return clientResult;
         }
+        const client = clientResult.value;
 
-        const subdomain = authInfo?.extra?.zendesk_subdomain;
-        if (!isString(subdomain)) {
-          return new Err(
-            new MCPError(
-              "Zendesk subdomain not found in connection metadata. Please reconnect your Zendesk account."
-            )
-          );
-        }
-
-        const client = new ZendeskClient(subdomain, accessToken);
         const result = await client.draftReply(ticketId, body);
 
         if (result.isErr()) {
@@ -224,6 +187,30 @@ function createServer(
   );
 
   return server;
+}
+
+function getZendeskClient(
+  authInfo: AuthInfo | undefined
+): Result<ZendeskClient, MCPError> {
+  const accessToken = authInfo?.token;
+  if (!accessToken) {
+    return new Err(
+      new MCPError(
+        "No access token found. Please connect your Zendesk account."
+      )
+    );
+  }
+
+  const subdomain = authInfo?.extra?.zendesk_subdomain;
+  if (!isString(subdomain)) {
+    return new Err(
+      new MCPError(
+        "Zendesk subdomain not found in connection metadata. Please reconnect your Zendesk account."
+      )
+    );
+  }
+
+  return new Ok(new ZendeskClient(subdomain, accessToken));
 }
 
 export default createServer;
