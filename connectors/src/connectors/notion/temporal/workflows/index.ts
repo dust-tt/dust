@@ -2,6 +2,7 @@ import {
   continueAsNew,
   defineQuery,
   executeChild,
+  patched,
   proxyActivities,
   sleep,
   workflowInfo,
@@ -177,7 +178,10 @@ export async function notionSyncWorkflow({
   // wait for all child workflows to finish
   await Promise.all(promises);
 
-  if (isInitialSync) {
+  // TODO: remove else block when incr-sync-crawl patch is removed
+  // Next phase is to call deprecatePatch("incr-sync-crawl")
+  // https://docs.temporal.io/develop/typescript/versioning#patching
+  if (patched("incr-sync-crawl")) {
     // These are resources (pages/DBs) that we didn't get from the search API but that are
     // child/parent pages/DBs of other pages that we did get from the search API. We upsert those as
     // well.
@@ -201,10 +205,42 @@ export async function notionSyncWorkflow({
           queue: childWorkflowQueue,
           childWorkflowsNameSuffix: "discovered",
           topLevelWorkflowId,
-          forceResync,
+          // Force resync to ensure DBs are processed immediately, which then allows discovery
+          // of their child pages (effectively doing a crawl).
+          forceResync: true,
         });
       }
-    } while (discoveredResources && PROCESS_ALL_DISCOVERED_RESOURCES);
+    } while (discoveredResources);
+  } else {
+    if (isInitialSync) {
+      // These are resources (pages/DBs) that we didn't get from the search API but that are
+      // child/parent pages/DBs of other pages that we did get from the search API. We upsert those as
+      // well.
+      let discoveredResources: {
+        pageIds: string[];
+        databaseIds: string[];
+      } | null;
+      do {
+        discoveredResources = await getDiscoveredResourcesFromCache({
+          connectorId,
+          topLevelWorkflowId,
+        });
+        if (discoveredResources) {
+          await performUpserts({
+            connectorId,
+            pageIds: discoveredResources.pageIds,
+            databaseIds: discoveredResources.databaseIds,
+            runTimestamp,
+            pageIndex: null,
+            isBatchSync: isInitialSync,
+            queue: childWorkflowQueue,
+            childWorkflowsNameSuffix: "discovered",
+            topLevelWorkflowId,
+            forceResync,
+          });
+        }
+      } while (discoveredResources && PROCESS_ALL_DISCOVERED_RESOURCES);
+    }
   }
 
   // Drain the upsert queue before updating parents to ensure all document upserts are complete

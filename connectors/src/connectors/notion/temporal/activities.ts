@@ -398,7 +398,7 @@ export async function getPagesAndDatabasesToSync({
     };
   }
 
-  // We exclude pages that we have already seen since their lastEditedTs we recieved from
+  // We exclude pages that we have already seen since their lastEditedTs we received from
   // getPagesEditedSince.
   const existingPages = await NotionPage.findAll({
     where: {
@@ -439,10 +439,12 @@ export async function getPagesAndDatabasesToSync({
     },
     attributes: ["notionDatabaseId", "lastSeenTs"],
   });
-  localLogger.info(
-    { count: existingDatabases.length },
-    "Found existing databases"
-  );
+  if (existingDatabases.length > 0) {
+    localLogger.info(
+      { count: existingDatabases.length },
+      "Found existing databases"
+    );
+  }
   const lastSeenTsByDatabaseId = new Map<string, number>();
   for (const db of existingDatabases) {
     lastSeenTsByDatabaseId.set(db.notionDatabaseId, db.lastSeenTs.getTime());
@@ -2525,6 +2527,14 @@ export async function getDiscoveredResourcesFromCache({
     },
     "Discovered new resources."
   );
+
+  // Since we're about to process these resources, clear them from the cache
+  await NotionConnectorResourcesToCheckCacheEntry.destroy({
+    where: {
+      connectorId: connector.id,
+      workflowId: topLevelWorkflowId,
+    },
+  });
 
   return {
     pageIds: discoveredPageIds,
