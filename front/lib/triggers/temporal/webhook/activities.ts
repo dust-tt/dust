@@ -103,14 +103,6 @@ export async function runTriggerWebhookActivity({
 
   // Validate webhook signature if secret is configured
   if (secret) {
-    if (!signatureHeader || !signatureAlgorithm) {
-      const errorMessage =
-        "Webhook source is missing header or algorithm configuration.";
-      await webhookRequest.markAsFailed(errorMessage);
-      logger.error({ workspaceId, webhookRequestId }, errorMessage);
-      throw new TriggerNonRetryableError(errorMessage);
-    }
-
     const r = checkSignature({
       headerName: signatureHeader,
       algorithm: signatureAlgorithm,

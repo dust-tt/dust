@@ -76,14 +76,6 @@ export function checkSignature({
     return new Ok(undefined);
   }
 
-  if (!secret) {
-    return new Err({
-      name: "dust_error",
-      code: "invalid_signature_error",
-      message: "Missing secret for webhook verification",
-    });
-  }
-
   if (!headerName || !algorithm) {
     return new Err({
       name: "dust_error",
