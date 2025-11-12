@@ -43,15 +43,14 @@ export async function notionDeletionCrawlWorkflow({
     topLevelWorkflowId,
   });
 
-  // Helper to create unique key for seen tracking
   const resourceKey = (resourceId: string, resourceType: string) =>
     `${resourceType}:${resourceId}`;
+  const hasBeenSeen = (resourceId: string, resourceType: string): boolean => {
+    return seen.has(resourceKey(resourceId, resourceType));
+  };
 
-  // Set up signal handler
   setHandler(notionDeletionCrawlSignal, (signal: NotionDeletionCrawlSignal) => {
-    const key = resourceKey(signal.resourceId, signal.resourceType);
-    // Only add to queue if not already seen
-    if (!seen.has(key)) {
+    if (!hasBeenSeen(signal.resourceId, signal.resourceType)) {
       resourceQueue.push(signal);
     }
   });
@@ -62,7 +61,6 @@ export async function notionDeletionCrawlWorkflow({
       return;
     }
 
-    // Process all queued resources
     while (resourceQueue.length > 0) {
       const resource = resourceQueue.shift();
       if (!resource) {
@@ -71,10 +69,8 @@ export async function notionDeletionCrawlWorkflow({
 
       const key = resourceKey(resource.resourceId, resource.resourceType);
 
-      // Mark as seen before processing (prevents duplicates)
       seen.add(key);
 
-      // Check this resource and get discovered parent/children
       const discovered = await checkResourceAndQueueRelated({
         connectorId,
         resourceId: resource.resourceId,
@@ -82,17 +78,14 @@ export async function notionDeletionCrawlWorkflow({
         workflowId: topLevelWorkflowId,
       });
 
-      // Add discovered resources to queue (signal handler will check seen set)
       for (const pageId of discovered.pageIds) {
-        const pageKey = resourceKey(pageId, "page");
-        if (!seen.has(pageKey)) {
+        if (!hasBeenSeen(pageId, "page")) {
           resourceQueue.push({ resourceId: pageId, resourceType: "page" });
         }
       }
 
       for (const databaseId of discovered.databaseIds) {
-        const dbKey = resourceKey(databaseId, "database");
-        if (!seen.has(dbKey)) {
+        if (!hasBeenSeen(databaseId, "database")) {
           resourceQueue.push({
             resourceId: databaseId,
             resourceType: "database",
@@ -114,6 +107,7 @@ export async function notionDeletionCrawlWorkflow({
         });
       }
     }
+    seen.clear();
 
     await batchDeleteResources({
       connectorId,

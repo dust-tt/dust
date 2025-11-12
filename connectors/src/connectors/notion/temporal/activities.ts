@@ -3533,7 +3533,6 @@ export async function processWebhookEventActivity({
     dataSourceId: dataSourceConfig.dataSourceId,
   };
 
-  // TODO: Implement the actual processing logic based on event type
   logger.info(
     {
       ...loggerArgs,
@@ -3543,6 +3542,29 @@ export async function processWebhookEventActivity({
     "Processing Notion webhook event"
   );
   statsDClient.increment("notion.webhook_events", 1, [`type:${event.type}`]);
+
+  // Handle deletion/archive events by triggering deletion crawl
+  if (event.type === "page.deleted") {
+    logger.info(
+      {
+        ...loggerArgs,
+        eventType: event.type,
+        entityId: event.entity_id,
+      },
+      "Page deleted/archived, triggering deletion crawl"
+    );
+    await sendDeletionCrawlSignal(connectorId, event.entity_id, "page");
+  } else if (event.type === "data_source.deleted") {
+    logger.info(
+      {
+        ...loggerArgs,
+        eventType: event.type,
+        entityId: event.entity_id,
+      },
+      "Database deleted/archived, triggering deletion crawl"
+    );
+    await sendDeletionCrawlSignal(connectorId, event.entity_id, "database");
+  }
 }
 
 /**

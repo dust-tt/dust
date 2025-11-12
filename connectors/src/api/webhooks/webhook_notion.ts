@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 
 import { launchNotionWebhookProcessingWorkflow } from "@connectors/connectors/notion/temporal/client";
+import type { NotionWebhookEvent } from "@connectors/connectors/notion/temporal/signals";
 import { NotionConnectorState } from "@connectors/lib/models/notion";
 import mainLogger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
@@ -18,7 +19,7 @@ type NotionWebhookVerification = {
 
 type NotionWebhookEventPayload = {
   workspace_id: string;
-  type: string;
+  type: NotionWebhookEvent["type"];
   entity?: {
     id: string;
     [key: string]: unknown;
