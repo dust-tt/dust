@@ -1,6 +1,9 @@
 import type { AgentConfigurationType } from "@app/types";
-import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types";
-import { GLOBAL_AGENTS_SID, NOOP_MODEL_CONFIG } from "@app/types";
+import {
+  GLOBAL_AGENTS_SID,
+  MAX_STEPS_USE_PER_RUN_LIMIT,
+  NOOP_MODEL_CONFIG,
+} from "@app/types";
 
 export function _getNoopAgent(): AgentConfigurationType | null {
   return {
@@ -24,7 +27,6 @@ export function _getNoopAgent(): AgentConfigurationType | null {
     actions: [],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     templateId: null,
-    requestedGroupIds: [],
     requestedSpaceIds: [],
     tags: [],
     canRead: true,
