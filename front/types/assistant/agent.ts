@@ -141,9 +141,6 @@ export type LightAgentConfigurationType = {
   // TODO(2025-10-20 flav): Remove once SDK JS does not rely on it anymore.
   visualizationEnabled?: boolean;
 
-  // Remove this once we have completely removed from the sdk.
-  // requestedGroupIds: string[][];
-
   // Space restrictions for accessing the agent/conversation - replaces group restrictions.
   // The array represents permission requirements:
   // - If empty, no restrictions apply
