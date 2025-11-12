@@ -174,6 +174,11 @@ export function AnnouncementForm({
   const watchTitle = form.watch("title");
   const watchSlug = form.watch("slug");
 
+  // Update image preview URL when announcement changes
+  useEffect(() => {
+    setImagePreviewUrl(announcement?.imageUrl || null);
+  }, [announcement]);
+
   // Auto-generate slug from title if not manually edited
   useEffect(() => {
     if (!isSlugManuallyEdited && watchTitle) {
@@ -348,22 +353,6 @@ export function AnnouncementForm({
 
         <PokeFormField
           control={form.control}
-          name="showInAppBanner"
-          render={({ field }) => (
-            <PokeFormItem className="flex items-center gap-2">
-              <Checkbox
-                checked={field.value}
-                onCheckedChange={field.onChange}
-              />
-              <PokeFormLabel className="!mt-0">
-                Show as In-App Banner
-              </PokeFormLabel>
-            </PokeFormItem>
-          )}
-        />
-
-        <PokeFormField
-          control={form.control}
           name="publishedAt"
           render={({ field }) => (
             <PokeFormItem>
@@ -444,6 +433,22 @@ export function AnnouncementForm({
             { value: "draft", display: "Draft" },
             { value: "published", display: "Published" },
           ]}
+        />
+
+        <PokeFormField
+          control={form.control}
+          name="showInAppBanner"
+          render={({ field }) => (
+            <PokeFormItem className="flex items-center gap-2">
+              <Checkbox
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
+              <PokeFormLabel className="!mt-0">
+                Show as In-App Banner
+              </PokeFormLabel>
+            </PokeFormItem>
+          )}
         />
 
         <div className="flex gap-4">

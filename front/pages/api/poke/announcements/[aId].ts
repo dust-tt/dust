@@ -78,8 +78,13 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
+      const announcementJSON = announcement.toJSON();
+      // Generate image URL from imageFileId
+      if (announcementJSON.imageFileId) {
+        announcementJSON.imageUrl = `https://storage.googleapis.com/dust-public-uploads-test/announcements/images/${announcementJSON.imageFileId}`;
+      }
       return res.status(200).json({
-        announcement: announcement.toJSON(),
+        announcement: announcementJSON,
       });
     }
 
@@ -161,8 +166,14 @@ async function handler(
         });
       }
 
+      const updatedAnnouncementJSON = updatedAnnouncement.toJSON();
+      // Generate image URL from imageFileId
+      if (updatedAnnouncementJSON.imageFileId) {
+        updatedAnnouncementJSON.imageUrl = `https://storage.googleapis.com/dust-public-uploads-test/announcements/images/${updatedAnnouncementJSON.imageFileId}`;
+      }
+
       return res.status(200).json({
-        announcement: updatedAnnouncement.toJSON(),
+        announcement: updatedAnnouncementJSON,
       });
     }
 
