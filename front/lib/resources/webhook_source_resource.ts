@@ -163,8 +163,11 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
     Object.assign(this, updates);
   }
 
-  async updateSecret(secret: WebhookSourceModel["secret"]): Promise<void> {
-    await this.update({ secret });
+  async updateSecret(
+    secret: WebhookSourceModel["secret"],
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    await this.update({ secret }, transaction);
   }
 
   async delete(
