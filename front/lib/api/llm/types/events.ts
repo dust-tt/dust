@@ -19,7 +19,7 @@ export interface TextDeltaEvent {
 export interface ReasoningDeltaEvent {
   type: "reasoning_delta";
   content: Delta;
-  metadata: LLMClientMetadata;
+  metadata: LLMClientMetadata & { encrypted_content?: string };
 }
 
 // Output items
