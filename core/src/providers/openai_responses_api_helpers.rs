@@ -61,8 +61,6 @@ pub enum OpenAIResponsesMessageContent {
     Structured(Vec<OpenAIResponsesInputContentBlock>),
 }
 
-type ResponseFormat = serde_json::Map<String, serde_json::Value>;
-
 // Input items for the input array format
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(tag = "type", rename_all = "snake_case")]
@@ -117,11 +115,32 @@ pub struct OpenAIResponseAPITool {
     pub strict: Option<bool>,
 }
 
+type ResponseFormatSchema = serde_json::Map<String, serde_json::Value>;
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct ResponseFormatJSONSchemaConfig {
+    #[serde(rename = "type")]
+    pub r#type: String,
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub strict: Option<bool>,
+    pub schema: ResponseFormatSchema,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct OpenAIResponseAPITextConfig {
+    pub format: Option<ResponseFormatJSONSchemaConfig>,
+}
+
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct OpenAIResponsesRequest {
     pub model: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub input: Option<Vec<OpenAIResponseInputItem>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub text: Option<OpenAIResponseAPITextConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reasoning: Option<OpenAIResponseReasoningConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -518,6 +537,31 @@ pub async fn openai_responses_api_completion(
         ),
     };
 
+    let text_config = response_format.and_then(|f| {
+        let json_schema = f.get("json_schema")?;
+        let name = json_schema
+            .get("name")
+            .and_then(|n| n.as_str())
+            .map(|s| s.to_string())?;
+        let schema = json_schema.get("schema")?;
+
+        let description = json_schema
+            .get("description")
+            .and_then(|d| d.as_str())
+            .map(|s| s.to_string());
+        let strict = json_schema.get("strict").and_then(|s| s.as_bool());
+
+        Some(OpenAIResponseAPITextConfig {
+            format: Some(ResponseFormatJSONSchemaConfig {
+                name,
+                schema: schema.as_object()?.clone(),
+                r#type: "json_schema".to_string(),
+                description: description,
+                strict: strict,
+            }),
+        })
+    });
+
     let input = responses_api_input_from_chat_messages(
         messages,
         transform_system_messages,
@@ -557,6 +601,7 @@ pub async fn openai_responses_api_completion(
     let request = OpenAIResponsesRequest {
         model: model_id.clone(),
         input: Some(input),
+        text: text_config,
         reasoning: reasoning_config,
         tools: if tools.is_empty() { None } else { Some(tools) },
         instructions,
