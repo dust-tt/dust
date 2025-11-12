@@ -6,7 +6,6 @@ import type { MessageTemporaryState } from "@app/components/assistant/conversati
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 import type { PostMessagesResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages";
-import type { MentionType } from "@app/types";
 import type {
   ContentFragmentsType,
   ContentFragmentType,
@@ -14,6 +13,7 @@ import type {
   ConversationVisibility,
   FileContentFragmentType,
   InternalPostConversationsRequestBodySchema,
+  MentionType,
   Result,
   SubmitMessageError,
   SupportedContentFragmentType,
@@ -22,8 +22,12 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { toMentionType } from "@app/types";
-import { Err, isSupportedContentNodeFragmentContentType, Ok } from "@app/types";
+import {
+  Err,
+  isSupportedContentNodeFragmentContentType,
+  Ok,
+  toMentionType,
+} from "@app/types";
 
 export type ContentFragmentInput = {
   title: string;
@@ -170,7 +174,6 @@ export function createPlaceholderAgentMessage({
         pictureUrl: mention.pictureUrl ?? "",
         status: "active",
         canRead: true,
-        requestedSpaceIds: [],
       },
       citations: {},
       generatedFiles: [],
