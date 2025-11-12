@@ -20,7 +20,8 @@ function createServer(
 
   server.tool(
     "get_ticket",
-    "Retrieve a Zendesk ticket by its ID. Returns the ticket details including subject, description, status, priority, assignee, and other metadata.",
+    "Retrieve a Zendesk ticket by its ID. Returns the ticket details including subject, " +
+      "description, status, priority, assignee, and other metadata.",
     {
       ticketId: z
         .number()
@@ -77,12 +78,17 @@ function createServer(
 
   server.tool(
     "search_tickets",
-    "Search for Zendesk tickets using query syntax. Returns a list of matching tickets with their details. You can search by status, priority, assignee, tags, and other fields. Query examples: 'status:open', 'priority:high', 'status:open priority:urgent', 'assignee:me', 'tags:bug'.",
+    "Search for Zendesk tickets using query syntax. Returns a list of matching tickets with their " +
+      "details. You can search by status, priority, assignee, tags, and other fields. Query " +
+      "examples: 'status:open', 'priority:high', 'status:open priority:urgent', 'assignee:me', " +
+      "'tags:bug'.",
     {
       query: z
         .string()
         .describe(
-          "The search query using Zendesk query syntax. Examples: 'status:open', 'priority:high status:pending', 'assignee:123', 'tags:bug tags:critical'. Do not include 'type:ticket' as it is automatically added."
+          "The search query using Zendesk query syntax. Examples: 'status:open', 'priority:high " +
+            "status:pending', 'assignee:123', 'tags:bug tags:critical'." +
+            "Do not include 'type:ticket'  as it is automatically added."
         ),
       sortBy: z
         .enum(["updated_at", "created_at", "priority", "status", "ticket_type"])
