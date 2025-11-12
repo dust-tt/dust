@@ -205,21 +205,6 @@ export const BaseDustProdActionRegistry = {
       },
     },
   },
-  "suggest-agent-from-message": {
-    app: {
-      appId: "fcYLVzSHdU",
-      appHash:
-        "5764c8eb5d325e01213b3af3cc2230c88f5264ac6ebf438d1ad64e4c71b3a296",
-    },
-    config: {
-      MODEL: {
-        // `provider_id` and `model_id` must be set by caller.
-        function_call: "suggest_agents",
-        use_cache: false,
-        use_stream: true,
-      },
-    },
-  },
   "assistant-builder-webhook-filter-generator": {
     app: {
       appId: "XNcJCE7lUj",
