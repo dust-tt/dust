@@ -866,8 +866,8 @@ export async function garbageCollectBatch({
     "notionhq_client_response_error",
   ];
 
-  let markedForDeletionPagesCount = 0;
-  let markedForDeletionDatabasesCount = 0;
+  let deletedPagesCount = 0;
+  let deletedDatabasesCount = 0;
 
   let stillAccessiblePagesCount = 0;
   let stillAccessibleDatabasesCount = 0;
@@ -886,8 +886,8 @@ export async function garbageCollectBatch({
       batchCount: batch.length,
       index: i,
       batchIndex: batchIndex,
-      markedForDeletionPagesCount,
-      markedForDeletionDatabasesCount,
+      deletedPagesCount,
+      deletedDatabasesCount,
       stillAccessiblePagesCount,
       stillAccessibleDatabasesCount,
     });
@@ -960,16 +960,23 @@ export async function garbageCollectBatch({
         assertNever(x.type);
       }
     } else {
-      // Resource is not accessible - send signal to deletion crawl workflow
-      // The deletion crawl workflow will handle the actual deletion after checking parent/children
+      const dataSourceConfig = dataSourceConfigFromConnector(connector);
       if (x.type === "page") {
-        await sendDeletionCrawlSignal(connector.id, x.id, "page");
-        iterationLogger.info("Sent deletion crawl signal for page");
-        markedForDeletionPagesCount++;
+        await deletePage({
+          connectorId: connector.id,
+          dataSourceConfig,
+          pageId: x.id,
+          logger: iterationLogger,
+        });
+        deletedPagesCount++;
       } else {
-        await sendDeletionCrawlSignal(connector.id, x.id, "database");
-        iterationLogger.info("Sent deletion crawl signal for database");
-        markedForDeletionDatabasesCount++;
+        await deleteDatabase({
+          connectorId: connector.id,
+          dataSourceConfig,
+          databaseId: x.id,
+          logger: iterationLogger,
+        });
+        deletedDatabasesCount++;
       }
     }
   }
@@ -1071,7 +1078,10 @@ export async function deletePageOrDatabaseIfArchived({
     // The deletion crawl workflow will handle the actual deletion after checking parent/children
     await sendDeletionCrawlSignal(connectorId, objectId, objectType);
     localLogger.info(
-      `Sent deletion crawl signal for ${objectType} (archived/inaccessible)`
+      {
+        objectType,
+      },
+      `Sent deletion crawl signal (archived/inaccessible)`
     );
   }
 }
