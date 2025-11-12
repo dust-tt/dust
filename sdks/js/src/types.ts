@@ -2831,6 +2831,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "CommandLineIcon"
   | "ConfluenceLogo"
   | "DriveLogo"
+  | "FathomLogo"
   | "GcalLogo"
   | "GithubLogo"
   | "GitlabLogo"
