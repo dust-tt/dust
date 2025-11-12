@@ -276,6 +276,7 @@ export function registerWebBrowserTool(
           const tokensRes = await tokenCountForTexts([contentText ?? ""], {
             providerId: "openai",
             modelId: "gpt-4o",
+            tokenizer: { type: "tiktoken", base: "o200k_base" },
           });
 
           if (tokensRes.isErr()) {
