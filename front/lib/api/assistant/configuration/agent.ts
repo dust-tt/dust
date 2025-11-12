@@ -560,7 +560,6 @@ export async function createAgentConfiguration(
       status: agent.status,
       maxStepsPerRun: agent.maxStepsPerRun,
       templateId: template?.sId ?? null,
-      // requestedGroupIds: [],
       requestedSpaceIds: agent.requestedSpaceIds.map((spaceId) =>
         SpaceResource.modelIdToSId({ id: spaceId, workspaceId: owner.id })
       ),

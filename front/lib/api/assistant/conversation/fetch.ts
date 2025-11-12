@@ -133,7 +133,6 @@ export async function getConversation(
     actionRequired,
     unread,
     hasError: conversation.hasError,
-    // requestedGroupIds: [],
     requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(auth),
   });
 }

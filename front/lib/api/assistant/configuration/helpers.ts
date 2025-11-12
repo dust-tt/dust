@@ -173,7 +173,6 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
         : null,
       // TODO(2025-10-20 flav): Remove once SDK JS does not rely on it anymore.
       visualizationEnabled: false,
-      // requestedGroupIds: [],
       requestedSpaceIds: agent.requestedSpaceIds.map((spaceId) =>
         SpaceResource.modelIdToSId({
           id: spaceId,

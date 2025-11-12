@@ -389,7 +389,6 @@ export function _getDustGlobalAgent(
     userFavorite: false,
     model,
     templateId: null,
-    // requestedGroupIds: [],
     requestedSpaceIds: [],
     tags: [],
     canRead: true,
