@@ -2413,18 +2413,6 @@ export async function clearWorkflowCache({
     },
     "notionClearConnectorCacheActivity: Clearing cache."
   );
-  await NotionConnectorPageCacheEntry.destroy({
-    where: {
-      connectorId: connector.id,
-      workflowId: topLevelWorkflowId,
-    },
-  });
-  await NotionConnectorBlockCacheEntry.destroy({
-    where: {
-      connectorId: connector.id,
-      workflowId: topLevelWorkflowId,
-    },
-  });
   await NotionConnectorResourcesToCheckCacheEntry.destroy({
     where: {
       connectorId: connector.id,
@@ -3554,7 +3542,7 @@ export async function processWebhookEventActivity({
       "Page deleted/archived, triggering deletion crawl"
     );
     await sendDeletionCrawlSignal(connectorId, event.entity_id, "page");
-  } else if (event.type === "data_source.deleted") {
+  } else if (event.type === "database.deleted") {
     logger.info(
       {
         ...loggerArgs,
@@ -3627,35 +3615,12 @@ export async function checkResourceAndQueueRelated({
     );
 
     // Add to cache (will be batch deleted later)
-    if (resourceType === "page") {
-      await NotionConnectorPageCacheEntry.upsert({
-        notionPageId: resourceId,
-        connectorId,
-        workflowId,
-        // These fields are required but not used for deletion tracking
-        pageProperties: {},
-        pagePropertiesText: "",
-        parentId: "",
-        parentType: "unknown",
-        lastEditedById: "",
-        createdById: "",
-        createdTime: "",
-        lastEditedTime: "",
-        url: "",
-      });
-    } else {
-      // Use BlockCacheEntry for databases (we can distinguish by checking if it exists in NotionDatabase)
-      await NotionConnectorBlockCacheEntry.upsert({
-        notionPageId: resourceId, // Store database ID here
-        notionBlockId: resourceId,
-        connectorId,
-        workflowId,
-        blockText: null,
-        blockType: "unsupported",
-        parentBlockId: null,
-        indexInParent: 0,
-      });
-    }
+    await NotionConnectorResourcesToCheckCacheEntry.upsert({
+      notionId: resourceId,
+      resourceType,
+      connectorId,
+      workflowId,
+    });
 
     // Get the resource from DB to find parent and children
     let parentId: string | undefined;
@@ -3721,35 +3686,19 @@ export async function getResourcesToDeleteFromCache({
   connectorId: ModelId;
   workflowId: string;
 }): Promise<{ pageIds: string[]; databaseIds: string[] }> {
-  const pageEntries = await NotionConnectorPageCacheEntry.findAll({
+  const entries = await NotionConnectorResourcesToCheckCacheEntry.findAll({
     where: {
       connectorId,
       workflowId,
     },
   });
 
-  const blockEntries = await NotionConnectorBlockCacheEntry.findAll({
-    where: {
-      connectorId,
-      workflowId,
-    },
-  });
-
-  const pageIds = pageEntries.map((entry) => entry.notionPageId);
-
-  // Databases are stored in block cache - filter to only actual databases
-  const databaseIds: string[] = [];
-  for (const entry of blockEntries) {
-    const isDatabase = await NotionDatabase.findOne({
-      where: {
-        connectorId,
-        notionDatabaseId: entry.notionPageId,
-      },
-    });
-    if (isDatabase) {
-      databaseIds.push(entry.notionPageId);
-    }
-  }
+  const pageIds = entries
+    .filter((e) => e.resourceType === "page")
+    .map((e) => e.notionId);
+  const databaseIds = entries
+    .filter((e) => e.resourceType === "database")
+    .map((e) => e.notionId);
 
   return { pageIds, databaseIds };
 }
@@ -3808,14 +3757,7 @@ export async function batchDeleteResources({
     });
   }
 
-  await NotionConnectorPageCacheEntry.destroy({
-    where: {
-      connectorId,
-      workflowId,
-    },
-  });
-
-  await NotionConnectorBlockCacheEntry.destroy({
+  await NotionConnectorResourcesToCheckCacheEntry.destroy({
     where: {
       connectorId,
       workflowId,

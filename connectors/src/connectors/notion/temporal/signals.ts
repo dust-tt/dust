@@ -1,7 +1,7 @@
 import { defineSignal } from "@temporalio/workflow";
 
 export type NotionWebhookEvent = {
-  type: "data_source.deleted" | "page.deleted";
+  type: "database.deleted" | "page.deleted";
   entity_id: string;
 };
 

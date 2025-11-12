@@ -71,6 +71,7 @@ export async function notionDeletionCrawlWorkflow({
 
       seen.add(key);
 
+      // check only direct children + parent
       const discovered = await checkResourceAndQueueRelated({
         connectorId,
         resourceId: resource.resourceId,
