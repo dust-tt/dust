@@ -51,6 +51,4 @@ export const ZendeskSearchResponseSchema = z.object({
   previous_page: z.string().nullable(),
 });
 
-export type ZendeskSearchResponse = z.infer<
-  typeof ZendeskSearchResponseSchema
->;
+export type ZendeskSearchResponse = z.infer<typeof ZendeskSearchResponseSchema>;
