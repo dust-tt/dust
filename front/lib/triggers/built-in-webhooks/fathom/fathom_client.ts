@@ -23,10 +23,10 @@ export type FathomWebhookConfig = {
 export class FathomClient {
   private client: Fathom;
 
-  constructor(apiKey: string) {
+  constructor(accessToken: string) {
     this.client = new Fathom({
       security: {
-        apiKeyAuth: apiKey,
+        bearerAuth: accessToken,
       },
     });
   }
