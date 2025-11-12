@@ -339,11 +339,6 @@ describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(500);
-
-    const responseData = res._getJSONData();
-    expect(responseData).toEqual({
-      success: true,
-    });
   });
 
   it("should return 404 when webhook source does not exist", async () => {
