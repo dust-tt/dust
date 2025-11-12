@@ -326,7 +326,7 @@ describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
     expect(updatedWebhookSource?.oauthConnectionId).toBe("valid-connection");
   });
 
-  it("should return 200 with empty body (no updates)", async () => {
+  it("should return 500 on empty body (no updates)", async () => {
     const { req, res, workspace } = await setupTest("admin", "PATCH");
 
     const webhookSource = await createWebhookSource(
@@ -338,7 +338,7 @@ describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
 
     await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(200);
+    expect(res._getStatusCode()).toBe(500);
 
     const responseData = res._getJSONData();
     expect(responseData).toEqual({
