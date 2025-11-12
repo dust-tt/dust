@@ -21,10 +21,7 @@ const FATHOM_MEETING_CONTENT_READY_EVENT: WebhookEvent = {
 
 export const FATHOM_WEBHOOK_PRESET: PresetWebhook<"fathom"> = {
   name: "Fathom",
-  eventCheck: {
-    type: "headers",
-    field: "webhook-id",
-  },
+  eventCheck: null,
   events: [FATHOM_MEETING_CONTENT_READY_EVENT],
   icon: "ActionMicIcon",
   description:
