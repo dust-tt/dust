@@ -1,6 +1,6 @@
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
-export const issuesSchema: JSONSchema = {
+export const issueSchema: JSONSchema = {
   $schema: "http://json-schema.org/draft-07/schema#",
   type: "object",
   properties: {
@@ -469,7 +469,7 @@ export const issuesSchema: JSONSchema = {
   required: ["action", "issue", "repository", "sender"],
 };
 
-export const issuesExample = {
+export const issueExample = {
   action: "opened",
   issue: {
     url: "https://api.github.com/repos/octocat/Hello-World/issues/1347",

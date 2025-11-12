@@ -113,6 +113,7 @@ export const TriggerCard = ({
           </span>
         )}
       </div>
+      r
     </Card>
   );
 };

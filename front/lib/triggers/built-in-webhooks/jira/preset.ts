@@ -1,10 +1,10 @@
 import { CreateWebhookJiraConnection } from "@app/lib/triggers/built-in-webhooks/jira/components/CreateWebhookJiraConnection";
 import { WebhookSourceJiraDetails } from "@app/lib/triggers/built-in-webhooks/jira/components/WebhookSourceJiraDetails";
-import { JiraWebhookService } from "@app/lib/triggers/built-in-webhooks/jira/jira_webhook_service";
 import {
   issueCreatedExample,
   issueCreatedSchema,
-} from "@app/lib/triggers/built-in-webhooks/jira/schemas/json_schema_issue_created";
+} from "@app/lib/triggers/built-in-webhooks/jira/schemas/issue_created";
+import { JiraWebhookService } from "@app/lib/triggers/built-in-webhooks/jira/service";
 import type {
   PresetWebhook,
   WebhookEvent,
