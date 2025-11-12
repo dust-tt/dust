@@ -1599,6 +1599,7 @@ The directive should be used to display a clickable version of the agent name in
     isPreview: false,
     tools_stakes: {
       get_ticket: "never_ask",
+      search_tickets: "never_ask",
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
