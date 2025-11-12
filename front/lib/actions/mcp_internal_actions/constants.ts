@@ -1600,6 +1600,7 @@ The directive should be used to display a clickable version of the agent name in
     tools_stakes: {
       get_ticket: "never_ask",
       search_tickets: "never_ask",
+      draft_reply: "low", // Low because it's a draft.
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,

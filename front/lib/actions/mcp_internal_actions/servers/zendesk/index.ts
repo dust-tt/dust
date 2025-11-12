@@ -166,6 +166,63 @@ function createServer(
     )
   );
 
+  server.tool(
+    "draft_reply",
+    "Draft a reply to a Zendesk ticket. Creates a private comment (not visible to the end user) " +
+      "that can be edited before being published. This is useful for preparing responses before " +
+      "making them public.",
+    {
+      ticketId: z
+        .number()
+        .int()
+        .positive()
+        .describe("The ID of the Zendesk ticket to reply to."),
+      body: z.string().describe("The content of the draft reply."),
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: ZENDESK_TOOL_NAME,
+        agentLoopContext,
+      },
+      async ({ ticketId, body }, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(
+            new MCPError(
+              "No access token found. Please connect your Zendesk account."
+            )
+          );
+        }
+
+        const subdomain = authInfo?.extra?.zendesk_subdomain;
+        if (!isString(subdomain)) {
+          return new Err(
+            new MCPError(
+              "Zendesk subdomain not found in connection metadata. Please reconnect your Zendesk account."
+            )
+          );
+        }
+
+        const client = new ZendeskClient(subdomain, accessToken);
+        const result = await client.draftReply(ticketId, body);
+
+        if (result.isErr()) {
+          return new Err(
+            new MCPError(`Failed to draft reply: ${result.error.message}`)
+          );
+        }
+
+        return new Ok([
+          {
+            type: "text" as const,
+            text: `Draft reply successfully added to ticket ${ticketId}. The comment is private and not visible to the end user.`,
+          },
+        ]);
+      }
+    )
+  );
+
   return server;
 }
 
