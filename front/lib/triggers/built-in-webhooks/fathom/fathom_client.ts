@@ -34,7 +34,6 @@ export class FathomClient {
   async createWebhook(
     config: FathomWebhookConfig
   ): Promise<Result<Webhook, FathomError | Error>> {
-    logger.info({ config }, "HELLO");
     let webhook: Webhook | undefined;
     try {
       webhook = await this.client.createWebhook({
