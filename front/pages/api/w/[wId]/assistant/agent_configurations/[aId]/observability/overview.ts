@@ -8,14 +8,10 @@ import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observabili
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
-import type { UserType, WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types";
 
 export type GetAgentOverviewResponseBody = {
-  users: {
-    user: UserType | undefined;
-    count: number;
-    timePeriodSec: number;
-  }[];
+  activeUsers: number;
   mentions: {
     messageCount: number;
     conversationCount: number;
@@ -117,14 +113,8 @@ async function handler(
         negativeFeedbacks,
       } = overview.value;
 
-      const users = Array.from({ length: activeUsers }).map(() => ({
-        user: undefined,
-        count: 0,
-        timePeriodSec: days * 24 * 60 * 60,
-      }));
-
       return res.status(200).json({
-        users,
+        activeUsers,
         mentions: {
           messageCount,
           conversationCount,

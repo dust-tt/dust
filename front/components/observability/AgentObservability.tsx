@@ -58,9 +58,9 @@ export function AgentObservability({
               className="h-24"
               content={
                 <div className="flex flex-col gap-1 text-2xl">
-                  {agentAnalytics?.users ? (
+                  {agentAnalytics?.activeUsers !== undefined ? (
                     <div className="truncate text-foreground dark:text-foreground-night">
-                      {agentAnalytics.users.length}
+                      {agentAnalytics.activeUsers}
                     </div>
                   ) : (
                     "-"
