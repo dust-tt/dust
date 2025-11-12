@@ -11,8 +11,8 @@ import React, {
   useState,
 } from "react";
 
-import { useHandleUnsentMessage } from "@app/assistant/conversation/hooks/useHandleUnsendMessage";
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
+import { useHandleUnsentMessage } from "@app/components/assistant/conversation/hooks/useHandleUnsendMessage";
 import { MentionDropdown } from "@app/components/assistant/conversation/input_bar/editor/MentionDropdown";
 import useAgentSuggestions from "@app/components/assistant/conversation/input_bar/editor/useAgentSuggestions";
 import type { CustomEditorProps } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
@@ -409,25 +409,25 @@ const InputBarContainer = ({
   const { searchResultNodes, isSearchLoading } = useSpacesSearch(
     isNodeCandidate(nodeOrUrlCandidate)
       ? {
-          // NodeIdSearchParams
-          nodeIds: nodeOrUrlCandidate?.node ? [nodeOrUrlCandidate.node] : [],
-          includeDataSources: false,
-          owner,
-          viewType: "all",
-          disabled: isSpacesLoading || !nodeOrUrlCandidate,
-          spaceIds: spaces.map((s) => s.sId),
-        }
+        // NodeIdSearchParams
+        nodeIds: nodeOrUrlCandidate?.node ? [nodeOrUrlCandidate.node] : [],
+        includeDataSources: false,
+        owner,
+        viewType: "all",
+        disabled: isSpacesLoading || !nodeOrUrlCandidate,
+        spaceIds: spaces.map((s) => s.sId),
+      }
       : {
-          // TextSearchParams
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          search: nodeOrUrlCandidate?.url || "",
-          searchSourceUrls: true,
-          includeDataSources: false,
-          owner,
-          viewType: "all",
-          disabled: isSpacesLoading || !nodeOrUrlCandidate,
-          spaceIds: spaces.map((s) => s.sId),
-        }
+        // TextSearchParams
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+        search: nodeOrUrlCandidate?.url || "",
+        searchSourceUrls: true,
+        includeDataSources: false,
+        owner,
+        viewType: "all",
+        disabled: isSpacesLoading || !nodeOrUrlCandidate,
+        spaceIds: spaces.map((s) => s.sId),
+      }
   );
 
   useEffect(() => {
@@ -605,26 +605,26 @@ const InputBarContainer = ({
               )}
               {(actions.includes("agents-list") ||
                 actions.includes("agents-list-with-actions")) && (
-                <AgentPicker
-                  owner={owner}
-                  size={buttonSize}
-                  onItemClick={(c) => {
-                    editorService.insertMention({
-                      type: "agent",
-                      id: c.sId,
-                      label: c.name,
-                      description: c.description,
-                      pictureUrl: c.pictureUrl,
-                    });
-                  }}
-                  agents={allAgents}
-                  showDropdownArrow={false}
-                  showFooterButtons={actions.includes(
-                    "agents-list-with-actions"
-                  )}
-                  disabled={disableTextInput}
-                />
-              )}
+                  <AgentPicker
+                    owner={owner}
+                    size={buttonSize}
+                    onItemClick={(c) => {
+                      editorService.insertMention({
+                        type: "agent",
+                        id: c.sId,
+                        label: c.name,
+                        description: c.description,
+                        pictureUrl: c.pictureUrl,
+                      });
+                    }}
+                    agents={allAgents}
+                    showDropdownArrow={false}
+                    showFooterButtons={actions.includes(
+                      "agents-list-with-actions"
+                    )}
+                    disabled={disableTextInput}
+                  />
+                )}
             </div>
             <div className="grow" />
             <div className="flex items-center gap-2 md:gap-1">
