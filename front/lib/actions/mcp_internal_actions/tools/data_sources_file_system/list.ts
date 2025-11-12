@@ -95,11 +95,14 @@ export function registerListTool(
 
         let searchResult: Result<CoreAPISearchNodesResponse, CoreAPIError>;
 
+        // By-pass tag filters when exploring the filesystem hierarchy
+        const includeTagFilters = false;
+
         if (!nodeId) {
           // When nodeId is null, search for data sources only.
           const dataSourceViewFilter = makeCoreSearchNodesFilters({
             agentDataSourceConfigurations,
-            includeTagFilters: false,
+            includeTagFilters,
           }).map((view) => ({
             ...view,
             search_scope: "data_source_name" as const,
@@ -137,7 +140,7 @@ export function registerListTool(
             filter: {
               data_source_views: makeCoreSearchNodesFilters({
                 agentDataSourceConfigurations: [dataSourceConfig],
-                includeTagFilters: false,
+                includeTagFilters,
               }),
               node_ids: dataSourceConfig.filter.parents?.in ?? undefined,
               parent_id: dataSourceConfig.filter.parents?.in
@@ -153,7 +156,7 @@ export function registerListTool(
             filter: {
               data_source_views: makeCoreSearchNodesFilters({
                 agentDataSourceConfigurations,
-                includeTagFilters: false,
+                includeTagFilters,
               }),
               parent_id: nodeId,
               mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,

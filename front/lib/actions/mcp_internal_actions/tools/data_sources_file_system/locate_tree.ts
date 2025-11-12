@@ -87,7 +87,6 @@ export async function locateTreeCallback(
       node_ids: [nodeId],
       data_source_views: makeCoreSearchNodesFilters({
         agentDataSourceConfigurations,
-        includeTagFilters: true,
         additionalDynamicTags,
       }),
     },
@@ -116,7 +115,7 @@ export async function locateTreeCallback(
         node_ids: parentNodeIds,
         data_source_views: makeCoreSearchNodesFilters({
           agentDataSourceConfigurations,
-          includeTagFilters: false,
+          includeTagFilters: false, // By-pass tag filters when searching the parents nodes
         }),
       },
     });

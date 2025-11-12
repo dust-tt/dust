@@ -109,7 +109,6 @@ export function registerCatTool(
             node_ids: [nodeId],
             data_source_views: makeCoreSearchNodesFilters({
               agentDataSourceConfigurations,
-              includeTagFilters: true,
             }),
           },
         });

@@ -240,7 +240,7 @@ export async function searchCallback(
         node_ids: searchNodeIds,
         data_source_views: makeCoreSearchNodesFilters({
           agentDataSourceConfigurations,
-          includeTagFilters: true,
+
           additionalDynamicTags,
         }),
       },

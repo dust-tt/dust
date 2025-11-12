@@ -59,7 +59,6 @@ export async function findCallback(
   // filtered out.
   let viewFilter = makeCoreSearchNodesFilters({
     agentDataSourceConfigurations,
-    includeTagFilters: true,
     additionalDynamicTags,
   });
 
