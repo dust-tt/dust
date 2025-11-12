@@ -277,7 +277,11 @@ async function startCrawlJob(
     } else {
       // Shouldn't happen, but based on the types, let's make sure
       logger.warn(
-        { webCrawlerConfigId: webCrawlerConfig.id, url, connectorId: connector.id },
+        {
+          webCrawlerConfigId: webCrawlerConfig.id,
+          url,
+          connectorId: connector.id,
+        },
         "No ID found when creating a Firecrawl crawler"
       );
     }
@@ -301,7 +305,11 @@ async function startBatchScrapeJob(
 
   if (!mapUrlResult.success) {
     logger.error(
-      { url, connectorId: connector.id, webCrawlerConfigId: webCrawlerConfig.id },
+      {
+        url,
+        connectorId: connector.id,
+        webCrawlerConfigId: webCrawlerConfig.id,
+      },
       `Error mapping rootUrl: ${mapUrlResult.error}`
     );
     return;
@@ -340,7 +348,11 @@ async function startBatchScrapeJob(
     } else {
       // Shouldn't happen, but based on the types, let's make sure
       logger.warn(
-        { webCrawlerConfigId: webCrawlerConfig.id, url, connectorId: connector.id },
+        {
+          webCrawlerConfigId: webCrawlerConfig.id,
+          url,
+          connectorId: connector.id,
+        },
         "No ID found when creating a Firecrawl crawler"
       );
     }
@@ -379,11 +391,9 @@ export async function webCrawlerGarbageCollector(
       Context.current().heartbeat({
         type: "delete_page",
       });
-      await deleteDataSourceDocument(
-        dataSourceConfig,
-        page.documentId,
-        { connectorId }
-      );
+      await deleteDataSourceDocument(dataSourceConfig, page.documentId, {
+        connectorId,
+      });
       await page.destroy();
     }
   } while (pagesToDelete.length > 0);
