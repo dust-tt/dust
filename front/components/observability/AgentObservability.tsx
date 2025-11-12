@@ -27,12 +27,13 @@ export function AgentObservability({
   agentConfigurationId,
   isCustomAgent,
 }: AgentObservabilityProps) {
-  const { period } = useObservabilityContext();
+  const { period, mode, selectedVersion } = useObservabilityContext();
 
   const { agentAnalytics, isAgentAnalyticsLoading } = useAgentAnalytics({
     workspaceId,
     agentConfigurationId,
     period,
+    version: mode === "version" ? selectedVersion?.version : undefined,
   });
 
   return (

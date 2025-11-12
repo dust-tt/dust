@@ -30,7 +30,7 @@ export function AgentFeedback({
   allowReactions,
   title = "Feedback",
 }: AgentFeedbackProps) {
-  const { period } = useObservabilityContext();
+  const { period, mode, selectedVersion } = useObservabilityContext();
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
   });
@@ -38,6 +38,7 @@ export function AgentFeedback({
     workspaceId: owner.sId,
     agentConfigurationId,
     period,
+    version: mode === "version" ? selectedVersion?.version : undefined,
   });
 
   return (

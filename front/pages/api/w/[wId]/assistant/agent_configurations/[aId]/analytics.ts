@@ -1,17 +1,12 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
-import {
-  agentMentionsCount,
-  getAgentUsers,
-} from "@app/lib/api/assistant/agent_usage";
+import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
+import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
-import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
 import type {
   AgentConfigurationType,
@@ -25,8 +20,9 @@ export type DeleteAgentConfigurationResponseBody = {
   success: boolean;
 };
 
-const GetAgentConfigurationsAnalyticsQuerySchema = t.type({
-  period: t.string,
+const QuerySchema = z.object({
+  days: z.coerce.number().positive().optional(),
+  version: z.string().optional(),
 });
 
 export type GetAgentConfigurationAnalyticsResponseBody = {
@@ -81,54 +77,61 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const queryValidation = GetAgentConfigurationsAnalyticsQuerySchema.decode(
-        req.query
-      );
-      if (isLeft(queryValidation)) {
-        const pathError = reporter.formatValidationErrors(queryValidation.left);
+      const q = QuerySchema.safeParse(req.query);
+      if (!q.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid query parameters: ${pathError}`,
+            message: `Invalid query parameters: ${q.error.message}`,
           },
         });
       }
-      const period = parseInt(queryValidation.right.period);
+      const period = q.data.days ?? DEFAULT_PERIOD_DAYS;
+      const version = q.data.version;
 
       const owner = auth.getNonNullableWorkspace();
-      const agentUsers = await getAgentUsers(auth, assistant, period);
-      const users = await UserResource.fetchByModelIds(
-        agentUsers.map((r) => r.userId)
-      );
 
-      const feedbacks =
-        await AgentMessageFeedbackResource.getFeedbackCountForAssistants(
-          auth,
-          [assistant.sId],
-          period
-        );
-      const positiveFeedbacks =
-        feedbacks.find((f) => f.thumbDirection === "up")?.count ?? 0;
-      const negativeFeedbacks =
-        feedbacks.find((f) => f.thumbDirection === "down")?.count ?? 0;
+      // Build ES base query (filters workspace, agent, optional days + version)
+      const baseQuery = buildAgentAnalyticsBaseQuery({
+        workspaceId: owner.sId,
+        agentId: assistant.sId,
+        days: period,
+        version,
+      });
+      const overview = await fetchAgentOverview(baseQuery, period);
+      if (overview.isErr()) {
+        const e = overview.error;
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: `Failed to retrieve agent analytics: ${e.message}`,
+          },
+        });
+      }
 
-      const mentionCounts = (
-        await agentMentionsCount(owner.id, assistant, period)
-      )[0];
+      const {
+        activeUsers,
+        conversationCount,
+        messageCount,
+        positiveFeedbacks,
+        negativeFeedbacks,
+      } = overview.value;
+
+      // We only use users.length in the UI. Populate with placeholders of the right length.
+      const users = Array.from({ length: activeUsers }).map(() => ({
+        user: undefined as UserType | undefined,
+        count: 0,
+        timePeriodSec: period * 60 * 60 * 24,
+      }));
 
       return res.status(200).json({
-        users: agentUsers
-          .map((r) => ({
-            user: users.find((u) => u.id === r.userId)?.toJSON(),
-            count: r.messageCount,
-            timePeriodSec: r.timePeriodSec,
-          }))
-          .filter((r) => r.user),
+        users,
         mentions: {
-          messageCount: mentionCounts?.messageCount ?? 0,
-          conversationCount: mentionCounts?.conversationCount ?? 0,
-          timePeriodSec: mentionCounts?.timePeriodSec ?? period * 60 * 60 * 24,
+          messageCount,
+          conversationCount,
+          timePeriodSec: period * 60 * 60 * 24,
         },
         feedbacks: {
           positiveFeedbacks,
