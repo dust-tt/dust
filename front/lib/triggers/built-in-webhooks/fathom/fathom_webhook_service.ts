@@ -113,6 +113,7 @@ export class FathomWebhookService implements RemoteWebhookService<"fathom"> {
         include_action_items: webhook.includeActionItems,
         include_crm_matches: webhook.includeCrmMatches,
       },
+      secret: webhook.secret,
     });
   }
 
