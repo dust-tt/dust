@@ -19,9 +19,21 @@ export class ZendeskOAuthProvider implements BaseOAuthStrategyProvider {
     useCase: OAuthUseCase;
   }) {
     // Webhooks require write scope to create/manage webhooks
-    const scopes = useCase === "webhooks" ? ["webhooks:write"] : ["read"];
+    let scopes;
+    switch (useCase) {
+      case "webhooks":
+        scopes = ["webhooks:write"];
+        break;
+      case "platform_actions":
+      case "personal_actions":
+        scopes = ["read", "write"];
+        break;
+      default:
+        scopes = ["read"];
+        break;
+    }
     if (!isValidZendeskSubdomain(connection.metadata.zendesk_subdomain)) {
-      throw "Invalid Zendesk subdomain";
+      throw new Error("Invalid Zendesk subdomain");
     }
     return (
       `https://${connection.metadata.zendesk_subdomain}.zendesk.com/oauth/authorizations/new?` +
