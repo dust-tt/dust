@@ -24,7 +24,7 @@ export const FATHOM_WEBHOOK_PRESET: PresetWebhook<"fathom"> = {
   // No event check, there's only one type of event.
   eventCheck: null,
   events: [FATHOM_MEETING_CONTENT_READY_EVENT],
-  icon: "ActionMicIcon",
+  icon: "FathomLogo",
   description:
     "Receive events from Fathom when meeting recordings are ready with transcripts, summaries, and action items.",
   webhookPageUrl: "https://app.fathom.video/settings/api",
