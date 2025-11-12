@@ -8,24 +8,9 @@ import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observabili
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  AgentConfigurationType,
-  UserType,
-  WithAPIErrorResponse,
-} from "@app/types";
-export type GetAgentConfigurationResponseBody = {
-  agentConfiguration: AgentConfigurationType;
-};
-export type DeleteAgentConfigurationResponseBody = {
-  success: boolean;
-};
+import type { UserType, WithAPIErrorResponse } from "@app/types";
 
-const QuerySchema = z.object({
-  days: z.coerce.number().positive().optional(),
-  version: z.string().optional(),
-});
-
-export type GetAgentConfigurationAnalyticsResponseBody = {
+export type GetAgentOverviewResponseBody = {
   users: {
     user: UserType | undefined;
     count: number;
@@ -43,15 +28,28 @@ export type GetAgentConfigurationAnalyticsResponseBody = {
   };
 };
 
+const QuerySchema = z.object({
+  days: z.coerce.number().positive().optional(),
+  version: z.string().optional(),
+});
+
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<GetAgentConfigurationAnalyticsResponseBody>
-  >,
+  res: NextApiResponse<WithAPIErrorResponse<GetAgentOverviewResponseBody>>,
   auth: Authenticator
-): Promise<void> {
+) {
+  if (typeof req.query.aId !== "string") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid agent configuration ID.",
+      },
+    });
+  }
+
   const assistant = await getAgentConfiguration(auth, {
-    agentId: req.query.aId as string,
+    agentId: req.query.aId,
     variant: "light",
   });
 
@@ -70,13 +68,13 @@ async function handler(
       status_code: 403,
       api_error: {
         type: "app_auth_error",
-        message: "Only editors can get agent analytics.",
+        message: "Only editors can get agent observability.",
       },
     });
   }
 
   switch (req.method) {
-    case "GET":
+    case "GET": {
       const q = QuerySchema.safeParse(req.query);
       if (!q.success) {
         return apiError(req, res, {
@@ -87,26 +85,26 @@ async function handler(
           },
         });
       }
-      const period = q.data.days ?? DEFAULT_PERIOD_DAYS;
-      const version = q.data.version;
 
+      const days = q.data.days ?? DEFAULT_PERIOD_DAYS;
+      const version = q.data.version;
       const owner = auth.getNonNullableWorkspace();
 
-      // Build ES base query (filters workspace, agent, optional days + version)
       const baseQuery = buildAgentAnalyticsBaseQuery({
         workspaceId: owner.sId,
         agentId: assistant.sId,
-        days: period,
+        days,
         version,
       });
-      const overview = await fetchAgentOverview(baseQuery, period);
+
+      const overview = await fetchAgentOverview(baseQuery, days);
       if (overview.isErr()) {
         const e = overview.error;
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: `Failed to retrieve agent analytics: ${e.message}`,
+            message: `Failed to retrieve agent overview: ${e.message}`,
           },
         });
       }
@@ -119,11 +117,10 @@ async function handler(
         negativeFeedbacks,
       } = overview.value;
 
-      // We only use users.length in the UI. Populate with placeholders of the right length.
       const users = Array.from({ length: activeUsers }).map(() => ({
-        user: undefined as UserType | undefined,
+        user: undefined,
         count: 0,
-        timePeriodSec: period * 60 * 60 * 24,
+        timePeriodSec: days * 24 * 60 * 60,
       }));
 
       return res.status(200).json({
@@ -131,14 +128,15 @@ async function handler(
         mentions: {
           messageCount,
           conversationCount,
-          timePeriodSec: period * 60 * 60 * 24,
+          timePeriodSec: days * 24 * 60 * 60,
         },
         feedbacks: {
           positiveFeedbacks,
           negativeFeedbacks,
-          timePeriodSec: period * 60 * 60 * 24,
+          timePeriodSec: days * 24 * 60 * 60,
         },
       });
+    }
     default:
       return apiError(req, res, {
         status_code: 405,
