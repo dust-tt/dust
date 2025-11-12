@@ -2,6 +2,7 @@ import { Chip, Page } from "@dust-tt/sparkle";
 
 import type { WebhookDetailsComponentProps } from "@app/components/triggers/webhook_preset_components";
 import { RECORDING_TYPE_LABELS } from "@app/lib/triggers/built-in-webhooks/fathom/constants";
+import { isFathomWebhookMetadata } from "@app/lib/triggers/built-in-webhooks/fathom/types";
 
 export function WebhookSourceFathomDetails({
   webhookSource,
@@ -10,12 +11,18 @@ export function WebhookSourceFathomDetails({
     return null;
   }
 
-  const metadata = webhookSource.remoteMetadata;
-  const triggeredFor = (metadata.triggered_for as string[]) || [];
-  const includeTranscript = metadata.include_transcript === true;
-  const includeSummary = metadata.include_summary === true;
-  const includeActionItems = metadata.include_action_items === true;
-  const includeCrmMatches = metadata.include_crm_matches === true;
+  const { remoteMetadata: metadata } = webhookSource;
+  if (!isFathomWebhookMetadata(metadata)) {
+    return null;
+  }
+
+  const {
+    triggered_for,
+    include_transcript,
+    include_summary,
+    include_action_items,
+    include_crm_matches,
+  } = metadata;
 
   return (
     <div className="space-y-4">
@@ -26,8 +33,8 @@ export function WebhookSourceFathomDetails({
       <div>
         <div className="mb-2 text-sm font-medium">Recording Types</div>
         <div className="flex flex-wrap gap-1">
-          {triggeredFor.length > 0 ? (
-            triggeredFor.map((type) => (
+          {triggered_for.length > 0 ? (
+            triggered_for.map((type) => (
               <Chip
                 key={type}
                 label={RECORDING_TYPE_LABELS[type] || type}
@@ -44,24 +51,18 @@ export function WebhookSourceFathomDetails({
       <div>
         <div className="mb-2 text-sm font-medium">Included Content</div>
         <div className="flex flex-wrap gap-1">
-          {includeTranscript && (
+          {include_transcript && (
             <Chip label="Transcript" size="xs" color="success" />
           )}
-          {includeSummary && <Chip label="Summary" size="xs" color="success" />}
-          {includeActionItems && (
+          {include_summary && (
+            <Chip label="Summary" size="xs" color="success" />
+          )}
+          {include_action_items && (
             <Chip label="Action Items" size="xs" color="success" />
           )}
-          {includeCrmMatches && (
+          {include_crm_matches && (
             <Chip label="CRM Matches" size="xs" color="success" />
           )}
-          {!includeTranscript &&
-            !includeSummary &&
-            !includeActionItems &&
-            !includeCrmMatches && (
-              <span className="text-element-600 text-sm">
-                No content included
-              </span>
-            )}
         </div>
       </div>
     </div>
