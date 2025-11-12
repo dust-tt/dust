@@ -226,10 +226,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable notifications",
     stage: "dust_only",
   },
-  zendesk_features: {
-    description: "Zendesk MCP tool and webhook triggers",
-    stage: "rolling_out",
-  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
