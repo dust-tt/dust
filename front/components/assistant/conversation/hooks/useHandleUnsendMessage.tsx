@@ -35,9 +35,11 @@ export function useHandleUnsentMessage({
   // This handles router navigation.
   useEffect(() => {
     // Handle custom event for shallow navigation
-    const handleBeforeNavigationChange = () => {
-      // we should do not trigger this when you post a new message (which causes the router navigation).
-      if (router.query.cId === "new") {
+    const handleBeforeNavigationChange = (url: string, { shallow }: { shallow: boolean }) => {
+      // We should do not trigger this when you post a new message (which causes the router navigation),
+      // but this also disable the confirmation dialog when you go to a different conversation from a new conversation.
+      // TODO (yuka 12th nov): fix this logic and only disable it when you post a message as a new conversation
+      if (router.query.cId === "new" && shallow) {
         return;
       }
 
@@ -48,6 +50,8 @@ export function useHandleUnsentMessage({
           `Your message hasn't been sent. Are you sure you want to leave this conversation?`
         );
         if (!shouldProceed) {
+          // We need to emit this to stop loading animation spinner
+          router.events.emit("routeChangeError");
           // Not ideal but I cannot find the other way to cancel the route navigation.
           throw "Abort route change. User cancelled navigation.";
         }
