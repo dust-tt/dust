@@ -103,7 +103,7 @@ export async function runTriggerWebhookActivity({
 
   // Validate webhook signature if secret is configured
   if (secret) {
-    const r = checkSignature({
+    const signatureCheckResult = checkSignature({
       headerName: signatureHeader,
       algorithm: signatureAlgorithm,
       secret,
@@ -112,8 +112,8 @@ export async function runTriggerWebhookActivity({
       provider,
     });
 
-    if (r.isErr()) {
-      const errorMessage = r.error.message;
+    if (signatureCheckResult.isErr()) {
+      const { message: errorMessage } = signatureCheckResult.error;
       await webhookRequest.markAsFailed(errorMessage);
       logger.error({ workspaceId, webhookRequestId }, errorMessage);
       throw new TriggerNonRetryableError(errorMessage);
