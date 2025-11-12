@@ -124,63 +124,68 @@ export async function runTriggerWebhookActivity({
   // Filter out non-subscribed events
   let receivedEventValue: string | undefined;
   if (webhookSource.provider) {
-    const { type, field } = WEBHOOK_PRESETS[webhookSource.provider].eventCheck;
+    const {
+      eventCheck,
+      event_blacklist: blacklist,
+      events,
+    } = WEBHOOK_PRESETS[webhookSource.provider];
 
-    // Node http module behavior is to lowercase all headers keys
-    switch (type) {
-      case "headers":
-        receivedEventValue = headers[field.toLowerCase()];
-        break;
-      case "body":
-        receivedEventValue = body[field];
-        break;
-      default:
-        assertNever(type);
-    }
+    if (eventCheck) {
+      const { type, field } = eventCheck;
 
-    if (!receivedEventValue) {
-      const errorMessage = `Unable to determine webhook event from ${type}.`;
-      await webhookRequest.markAsFailed(errorMessage);
-      logger.error({ workspaceId, webhookRequestId }, errorMessage);
-      throw new TriggerNonRetryableError(errorMessage);
-    }
+      // Node http module behavior is to lowercase all headers keys
+      switch (type) {
+        case "headers":
+          receivedEventValue = headers[field.toLowerCase()];
+          break;
+        case "body":
+          receivedEventValue = body[field];
+          break;
+        default:
+          assertNever(type);
+      }
 
-    const blacklist = WEBHOOK_PRESETS[webhookSource.provider].event_blacklist;
-    if (blacklist && blacklist.includes(receivedEventValue)) {
-      // Silently ignore blacklisted events
-      await webhookRequest.markAsProcessed();
-      logger.info(
-        {
-          workspaceId,
-          webhookRequestId,
-          provider: webhookSource.provider,
-          eventValue: receivedEventValue,
-        },
-        "Webhook event is blacklisted, ignoring."
-      );
-      return;
-    }
+      if (!receivedEventValue) {
+        const errorMessage = `Unable to determine webhook event from ${type}.`;
+        await webhookRequest.markAsFailed(errorMessage);
+        logger.error({ workspaceId, webhookRequestId }, errorMessage);
+        throw new TriggerNonRetryableError(errorMessage);
+      }
 
-    if (
-      // Event not in preset
-      !WEBHOOK_PRESETS[webhookSource.provider].events
-        .map((event) => event.value)
-        .includes(receivedEventValue) ||
-      // Event not subscribed
-      !webhookSource.subscribedEvents.includes(receivedEventValue)
-    ) {
-      const errorMessage =
-        "Webhook event not subscribed or not in preset. Potential cause: the events selection was manually modified on the service.";
-      await webhookRequest.markAsFailed(errorMessage);
-      logger.error(
-        {
-          workspaceId,
-          webhookRequestId,
-          eventValue: receivedEventValue,
-        },
-        errorMessage
-      );
-      throw new TriggerNonRetryableError(errorMessage);
+      if (blacklist && blacklist.includes(receivedEventValue)) {
+        // Silently ignore blacklisted events
+        await webhookRequest.markAsProcessed();
+        logger.info(
+          {
+            workspaceId,
+            webhookRequestId,
+            provider: webhookSource.provider,
+            eventValue: receivedEventValue,
+          },
+          "Webhook event is blacklisted, ignoring."
+        );
+        return;
+      }
+
+      if (
+        // Event not in preset
+        !events.map((event) => event.value).includes(receivedEventValue) ||
+        // Event not subscribed
+        !webhookSource.subscribedEvents.includes(receivedEventValue)
+      ) {
+        const errorMessage =
+          "Webhook event not subscribed or not in preset. Potential cause: the events selection was manually modified on the service.";
+        await webhookRequest.markAsFailed(errorMessage);
+        logger.error(
+          {
+            workspaceId,
+            webhookRequestId,
+            eventValue: receivedEventValue,
+          },
+          errorMessage
+        );
+        throw new TriggerNonRetryableError(errorMessage);
+      }
     }
   }
 
