@@ -158,7 +158,7 @@ export class AnnouncementResource extends BaseResource<AnnouncementModel> {
     blob: Partial<Attributes<AnnouncementModel>>,
     transaction?: Transaction
   ): Promise<[affectedCount: number]> {
-    return await super.update(blob, transaction);
+    return super.update(blob, transaction);
   }
 
   async delete(

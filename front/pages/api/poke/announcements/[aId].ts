@@ -5,8 +5,8 @@ import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { AnnouncementResource } from "@app/lib/resources/announcement_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { AnnouncementContentType } from "@app/types/announcement";
 import type { WithAPIErrorResponse } from "@app/types";
+import type { AnnouncementContentType } from "@app/types/announcement";
 
 export type GetPokeAnnouncementResponseBody = {
   announcement: AnnouncementContentType;
@@ -122,11 +122,11 @@ async function handler(
       }
 
       const updateData: Record<string, unknown> = {};
-      if (slug !== undefined) updateData.slug = slug;
-      if (title !== undefined) updateData.title = title;
-      if (description !== undefined) updateData.description = description;
-      if (content !== undefined) updateData.content = content;
-      if (isPublished !== undefined) updateData.isPublished = isPublished;
+      if (slug !== undefined) {updateData.slug = slug;}
+      if (title !== undefined) {updateData.title = title;}
+      if (description !== undefined) {updateData.description = description;}
+      if (content !== undefined) {updateData.content = content;}
+      if (isPublished !== undefined) {updateData.isPublished = isPublished;}
       if (publishedAt !== undefined) {
         updateData.publishedAt = publishedAt ? new Date(publishedAt) : null;
       }
@@ -136,12 +136,12 @@ async function handler(
       if (eventDate !== undefined) {
         updateData.eventDate = eventDate ? new Date(eventDate) : null;
       }
-      if (eventTimezone !== undefined) updateData.eventTimezone = eventTimezone;
-      if (eventLocation !== undefined) updateData.eventLocation = eventLocation;
-      if (eventUrl !== undefined) updateData.eventUrl = eventUrl;
-      if (categories !== undefined) updateData.categories = categories;
-      if (tags !== undefined) updateData.tags = tags;
-      if (imageFileId !== undefined) updateData.imageFileId = imageFileId;
+      if (eventTimezone !== undefined) {updateData.eventTimezone = eventTimezone;}
+      if (eventLocation !== undefined) {updateData.eventLocation = eventLocation;}
+      if (eventUrl !== undefined) {updateData.eventUrl = eventUrl;}
+      if (categories !== undefined) {updateData.categories = categories;}
+      if (tags !== undefined) {updateData.tags = tags;}
+      if (imageFileId !== undefined) {updateData.imageFileId = imageFileId;}
 
       const [affectedCount] = await announcement.update(updateData);
       if (affectedCount === 0) {

@@ -6,11 +6,11 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { AnnouncementResource } from "@app/lib/resources/announcement_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
 import type {
   AnnouncementContentType,
   AnnouncementType,
 } from "@app/types/announcement";
-import type { WithAPIErrorResponse } from "@app/types";
 
 export type GetPokeAnnouncementsResponseBody = {
   announcements: AnnouncementContentType[];

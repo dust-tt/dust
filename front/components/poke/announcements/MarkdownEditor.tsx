@@ -204,7 +204,7 @@ export function MarkdownEditor({
 
       if (ulMatch) {
         if (!inList || listType !== "ul") {
-          if (inList) processed.push(`</${listType}>`);
+          if (inList) {processed.push(`</${listType}>`);}
           processed.push("<ul>");
           inList = true;
           listType = "ul";
@@ -212,7 +212,7 @@ export function MarkdownEditor({
         processed.push(`<li>${ulMatch[1]}</li>`);
       } else if (olMatch) {
         if (!inList || listType !== "ol") {
-          if (inList) processed.push(`</${listType}>`);
+          if (inList) {processed.push(`</${listType}>`);}
           processed.push("<ol>");
           inList = true;
           listType = "ol";
@@ -238,7 +238,7 @@ export function MarkdownEditor({
       .split("\n\n")
       .map((block) => {
         block = block.trim();
-        if (!block) return "";
+        if (!block) {return "";}
         // Don't wrap if it's already an HTML tag
         if (
           block.startsWith("<h") ||

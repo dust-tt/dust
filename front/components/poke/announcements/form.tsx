@@ -20,7 +20,6 @@ import {
 import type {
   AnnouncementContentType,
   AnnouncementType,
-  ChangelogCategory,
 } from "@app/types/announcement";
 import {
   ANNOUNCEMENT_TYPES,
@@ -195,7 +194,9 @@ export function AnnouncementForm({
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      return;
+    }
 
     setIsUploadingImage(true);
     try {
@@ -228,7 +229,6 @@ export function AnnouncementForm({
       await onSubmit(data);
       void router.push("/poke/announcements");
     } catch (error) {
-      console.error("Failed to save announcement:", error);
       alert("Failed to save announcement. Please try again.");
     } finally {
       setIsSubmitting(false);

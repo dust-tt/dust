@@ -1,3 +1,7 @@
+import {
+  AnnouncementBannerDismissalModel,
+  AnnouncementModel,
+} from "@app/lib/models/announcement";
 import { ConversationMCPServerViewModel } from "@app/lib/models/assistant/actions/conversation_mcp_server_view";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import {
@@ -44,10 +48,6 @@ import {
 } from "@app/lib/models/doc_tracker";
 import { DustAppSecret } from "@app/lib/models/dust_app_secret";
 import { ExtensionConfigurationModel } from "@app/lib/models/extension";
-import {
-  AnnouncementBannerDismissalModel,
-  AnnouncementModel,
-} from "@app/lib/models/announcement";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { Plan, Subscription } from "@app/lib/models/plan";

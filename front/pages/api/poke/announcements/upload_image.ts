@@ -9,7 +9,6 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { apiError } from "@app/logger/withlogging";
 import type {
-  AllSupportedFileContentType,
   WithAPIErrorResponse,
 } from "@app/types";
 
