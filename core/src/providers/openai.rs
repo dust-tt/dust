@@ -1,12 +1,12 @@
 use crate::providers::chat_messages::ChatMessage;
 use crate::providers::embedder::{Embedder, EmbedderVector};
 use crate::providers::llm::ChatFunction;
+use crate::providers::llm::TokenizerSingleton;
 use crate::providers::llm::Tokens;
 use crate::providers::llm::{LLMChatGeneration, LLMGeneration, LLMTokenUsage, LLM};
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::{
-    batch_tokenize_async, cl100k_base_singleton, o200k_base_singleton, p50k_base_singleton,
-    r50k_base_singleton, CoreBPE,
+    batch_tokenize_async, cl100k_base_singleton, p50k_base_singleton, r50k_base_singleton, CoreBPE,
 };
 use crate::providers::tiktoken::tiktoken::{decode_async, encode_async};
 use crate::run::Credentials;
@@ -692,6 +692,7 @@ pub struct OpenAILLM {
     host: Option<String>,
     use_eu_endpoint: bool,
     api_key: Option<String>,
+    tokenizer: Option<TokenizerSingleton>,
 }
 
 impl OpenAILLM {
@@ -701,6 +702,7 @@ impl OpenAILLM {
             host: None,
             use_eu_endpoint: false,
             api_key: None,
+            tokenizer: None,
         }
     }
 
@@ -718,27 +720,6 @@ impl OpenAILLM {
 
     fn responses_uri(&self) -> Result<Uri> {
         Ok(format!("https://{}/v1/responses", self.host.as_ref().unwrap()).parse::<Uri>()?)
-    }
-
-    fn tokenizer(&self) -> Arc<RwLock<CoreBPE>> {
-        match self.id.as_str() {
-            "code_davinci-002" | "code-cushman-001" => p50k_base_singleton(),
-            "text-davinci-002" | "text-davinci-003" => p50k_base_singleton(),
-            _ => {
-                if self.id.starts_with("gpt-4o")
-                    || self.id.starts_with("gpt-4.1")
-                    || self.id.starts_with("o4")
-                    || self.id.starts_with("o3")
-                    || self.id.starts_with("o1")
-                {
-                    o200k_base_singleton()
-                } else if self.id.starts_with("gpt-3.5-turbo") || self.id.starts_with("gpt-4") {
-                    cl100k_base_singleton()
-                } else {
-                    r50k_base_singleton()
-                }
-            }
-        }
     }
 
     pub fn openai_context_size(model_id: &str) -> usize {
@@ -826,16 +807,33 @@ impl LLM for OpenAILLM {
         Self::openai_context_size(self.id.as_str())
     }
 
+    fn set_tokenizer_from_config(&mut self, config: crate::types::tokenizer::TokenizerConfig) {
+        self.tokenizer = match self.id.as_str() {
+            "code_davinci-002" | "code-cushman-001" => Some(TokenizerSingleton::Tiktoken(p50k_base_singleton())),
+            "text-davinci-002" | "text-davinci-003" => Some(TokenizerSingleton::Tiktoken(p50k_base_singleton())),
+            _ => TokenizerSingleton::from_config(config),
+        };
+    }
+
     async fn encode(&self, text: &str) -> Result<Vec<usize>> {
-        encode_async(self.tokenizer(), text).await
+        match &self.tokenizer {
+            Some(t) => t.encode(text).await,
+            None => Err(anyhow!("Tokenizer not initialized")),
+        }
     }
 
     async fn decode(&self, tokens: Vec<usize>) -> Result<String> {
-        decode_async(self.tokenizer(), tokens).await
+        match &self.tokenizer {
+            Some(t) => t.decode(tokens).await,
+            None => Err(anyhow!("Tokenizer not initialized")),
+        }
     }
 
     async fn tokenize(&self, texts: Vec<String>) -> Result<Vec<Vec<(usize, String)>>> {
-        batch_tokenize_async(self.tokenizer(), texts).await
+        match &self.tokenizer {
+            Some(t) => t.tokenize(texts).await,
+            None => Err(anyhow!("Tokenizer not initialized")),
+        }
     }
 
     async fn generate(

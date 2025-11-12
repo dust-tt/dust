@@ -1,19 +1,16 @@
 use crate::providers::chat_messages::ChatMessage;
 use crate::providers::embedder::Embedder;
 use crate::providers::llm::ChatFunction;
+use crate::providers::llm::TokenizerSingleton;
 use crate::providers::llm::{LLMChatGeneration, LLMGeneration, LLM};
 use crate::providers::provider::{Provider, ProviderID};
-use crate::providers::tiktoken::tiktoken::{batch_tokenize_async, o200k_base_singleton, CoreBPE};
-use crate::providers::tiktoken::tiktoken::{decode_async, encode_async};
 use crate::run::Credentials;
 use crate::utils;
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use hyper::Uri;
-use parking_lot::RwLock;
 use serde_json::Value;
-use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::helpers::strip_tools_from_chat_history;
@@ -33,21 +30,21 @@ const MODEL_IDS_WITH_TOOLS_SUPPORT: &[&str] = &[
 
 pub struct TogetherAILLM {
     id: String,
+    tokenizer: Option<TokenizerSingleton>,
     api_key: Option<String>,
 }
 
 impl TogetherAILLM {
     pub fn new(id: String) -> Self {
-        TogetherAILLM { id, api_key: None }
+        TogetherAILLM {
+            id,
+            tokenizer: None,
+            api_key: None,
+        }
     }
 
     fn chat_uri(&self) -> Result<Uri> {
         Ok(format!("https://api.together.xyz/v1/chat/completions",).parse::<Uri>()?)
-    }
-
-    fn tokenizer(&self) -> Arc<RwLock<CoreBPE>> {
-        // TODO(@fontanierh): TBD
-        o200k_base_singleton()
     }
 
     pub fn togetherai_context_size(_model_id: &str) -> usize {
@@ -85,16 +82,29 @@ impl LLM for TogetherAILLM {
         Self::togetherai_context_size(self.id.as_str())
     }
 
+    fn set_tokenizer_from_config(&mut self, config: crate::types::tokenizer::TokenizerConfig) {
+        self.tokenizer = TokenizerSingleton::from_config(config);
+    }
+
     async fn encode(&self, text: &str) -> Result<Vec<usize>> {
-        encode_async(self.tokenizer(), text).await
+        match &self.tokenizer {
+            Some(t) => t.encode(text).await,
+            None => Err(anyhow!("Tokenizer not initialized")),
+        }
     }
 
     async fn decode(&self, tokens: Vec<usize>) -> Result<String> {
-        decode_async(self.tokenizer(), tokens).await
+        match &self.tokenizer {
+            Some(t) => t.decode(tokens).await,
+            None => Err(anyhow!("Tokenizer not initialized")),
+        }
     }
 
     async fn tokenize(&self, texts: Vec<String>) -> Result<Vec<Vec<(usize, String)>>> {
-        batch_tokenize_async(self.tokenizer(), texts).await
+        match &self.tokenizer {
+            Some(t) => t.tokenize(texts).await,
+            None => Err(anyhow!("Tokenizer not initialized")),
+        }
     }
 
     async fn generate(

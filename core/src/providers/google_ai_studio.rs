@@ -3,19 +3,15 @@ use super::{
     embedder::Embedder,
     helpers::{convert_message_images_to_base64, fetch_and_encode_images_from_messages},
     llm::{ChatFunction, LLMChatGeneration, LLMGeneration, LLM},
+    llm::TokenizerSingleton,
     openai_compatible_helpers::{openai_compatible_chat_completion, TransformSystemMessages},
     provider::{Provider, ProviderID},
-    tiktoken::tiktoken::{
-        batch_tokenize_async, cl100k_base_singleton, decode_async, encode_async, CoreBPE,
-    },
 };
 use crate::{run::Credentials, utils};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use http::Uri;
-use parking_lot::RwLock;
 use serde_json::Value;
-use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 
 pub struct GoogleAiStudioProvider {}
@@ -56,22 +52,22 @@ impl Provider for GoogleAiStudioProvider {
 pub struct GoogleAiStudioLLM {
     id: String,
     api_key: Option<String>,
+    tokenizer: Option<TokenizerSingleton>,
 }
 
 impl GoogleAiStudioLLM {
     pub fn new(id: String) -> Self {
-        Self { id, api_key: None }
+        Self {
+            id,
+            api_key: None,
+            tokenizer: None,
+        }
     }
 
     fn model_endpoint(&self) -> Uri {
         Uri::from_static("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions")
     }
 
-    fn tokenizer(&self) -> Arc<RwLock<CoreBPE>> {
-        // TODO: use countTokens API
-        // "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:countTokens"
-        cl100k_base_singleton()
-    }
 }
 
 #[async_trait]
@@ -94,16 +90,29 @@ impl LLM for GoogleAiStudioLLM {
         1_000_000
     }
 
+    fn set_tokenizer_from_config(&mut self, config: crate::types::tokenizer::TokenizerConfig) {
+        self.tokenizer = TokenizerSingleton::from_config(config);
+    }
+
     async fn encode(&self, text: &str) -> Result<Vec<usize>> {
-        encode_async(self.tokenizer(), text).await
+        match &self.tokenizer {
+            Some(t) => t.encode(text).await,
+            None => Err(anyhow!("Tokenizer not initialized")),
+        }
     }
 
     async fn decode(&self, tokens: Vec<usize>) -> Result<String> {
-        decode_async(self.tokenizer(), tokens).await
+        match &self.tokenizer {
+            Some(t) => t.decode(tokens).await,
+            None => Err(anyhow!("Tokenizer not initialized")),
+        }
     }
 
     async fn tokenize(&self, texts: Vec<String>) -> Result<Vec<Vec<(usize, String)>>> {
-        batch_tokenize_async(self.tokenizer(), texts).await
+        match &self.tokenizer {
+            Some(t) => t.tokenize(texts).await,
+            None => Err(anyhow!("Tokenizer not initialized")),
+        }
     }
 
     async fn generate(

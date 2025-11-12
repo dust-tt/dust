@@ -10,6 +10,7 @@ use crate::providers::anthropic::types::{
 use crate::providers::chat_messages::{AssistantChatMessage, ChatMessage};
 use crate::providers::embedder::{Embedder, EmbedderVector};
 use crate::providers::llm::ChatFunction;
+use crate::providers::llm::TokenizerSingleton;
 use crate::providers::llm::{LLMChatGeneration, LLMGeneration, LLMTokenUsage, LLM};
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::anthropic_base_singleton;
@@ -31,6 +32,7 @@ pub struct AnthropicLLM {
     api_key: Option<String>,
     backend: Box<dyn AnthropicBackend + Send + Sync>,
     user_id: Option<String>,
+    tokenizer: Option<TokenizerSingleton>,
 }
 
 fn get_max_tokens(model_id: &str) -> u64 {
@@ -56,6 +58,7 @@ impl AnthropicLLM {
             api_key: None,
             user_id: None,
             backend: Box::new(DirectAnthropicBackend::new()),
+            tokenizer: None,
         }
     }
 
@@ -329,6 +332,10 @@ impl LLM for AnthropicLLM {
         }
     }
 
+    fn set_tokenizer_from_config(&mut self, config: crate::types::tokenizer::TokenizerConfig) {
+        self.tokenizer = TokenizerSingleton::from_config(config.clone());
+    }
+
     async fn generate(
         &self,
         _prompt: &str,
@@ -349,15 +356,24 @@ impl LLM for AnthropicLLM {
     }
 
     async fn encode(&self, text: &str) -> Result<Vec<usize>> {
-        encode_async(anthropic_base_singleton(), text).await
+        match &self.tokenizer {
+            Some(t) => t.encode(text).await,
+            None => Err(anyhow!("Tokenizer not initialized")),
+        }
     }
 
     async fn decode(&self, tokens: Vec<usize>) -> Result<String> {
-        decode_async(anthropic_base_singleton(), tokens).await
+        match &self.tokenizer {
+            Some(t) => t.decode(tokens).await,
+            None => Err(anyhow!("Tokenizer not initialized")),
+        }
     }
 
     async fn tokenize(&self, texts: Vec<String>) -> Result<Vec<Vec<(usize, String)>>> {
-        batch_tokenize_async(anthropic_base_singleton(), texts).await
+        match &self.tokenizer {
+            Some(t) => t.tokenize(texts).await,
+            None => Err(anyhow!("Tokenizer not initialized")),
+        }
     }
 
     async fn chat(

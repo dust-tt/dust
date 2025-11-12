@@ -180,6 +180,7 @@ export async function trackersGenerationActivity(
     text: diffString,
     providerId: "openai",
     modelId: "gpt-3.5-turbo",
+    tokenizer: { type: "tiktoken", base: "cl100k_base" },
   });
   if (tokensInDiff.isErr()) {
     throw tokensInDiff.error;

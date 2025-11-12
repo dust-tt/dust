@@ -1,5 +1,6 @@
 use crate::providers::provider::{provider, ProviderID};
 use crate::run;
+use crate::types::tokenizer::TokenizerConfig;
 use crate::utils::{error_response, APIResponse};
 use axum::Json;
 use http::StatusCode;
@@ -11,6 +12,7 @@ pub struct TokenizePayload {
     provider_id: ProviderID,
     model_id: String,
     credentials: Option<run::Credentials>,
+    tokenizer: TokenizerConfig,
 }
 
 pub async fn tokenize(Json(payload): Json<TokenizePayload>) -> (StatusCode, Json<APIResponse>) {
@@ -33,6 +35,9 @@ pub async fn tokenize(Json(payload): Json<TokenizePayload>) -> (StatusCode, Json
         }
         None => (),
     }
+
+    // Initialize the tokenizer from the config
+    llm.set_tokenizer_from_config(payload.tokenizer);
 
     match llm.tokenize(vec![payload.text]).await {
         Err(e) => error_response(
@@ -66,6 +71,7 @@ pub struct TokenizeBatchPayload {
     texts: Vec<String>,
     provider_id: ProviderID,
     model_id: String,
+    tokenizer: TokenizerConfig,
     credentials: Option<run::Credentials>,
 }
 
@@ -78,6 +84,9 @@ async fn tokenize_batch_internal(
     if let Some(c) = payload.credentials {
         llm.initialize(c).await?;
     }
+    
+    // Initialize the tokenizer from the config
+    llm.set_tokenizer_from_config(payload.tokenizer);
 
     llm.tokenize(payload.texts).await
 }

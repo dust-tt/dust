@@ -2,32 +2,29 @@ use crate::providers::chat_messages::AssistantContentItem::TextContent;
 use crate::providers::chat_messages::{AssistantChatMessage, ChatMessage};
 use crate::providers::embedder::Embedder;
 use crate::providers::llm::{ChatFunction, ChatMessageRole, Tokens};
+use crate::providers::llm::TokenizerSingleton;
 use crate::providers::llm::{LLMChatGeneration, LLMGeneration, LLM};
 use crate::providers::provider::{Provider, ProviderID};
-use crate::providers::tiktoken::tiktoken::{
-    batch_tokenize_async, decode_async, encode_async, o200k_base_singleton, CoreBPE,
-};
 use crate::run::Credentials;
 use crate::utils;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use parking_lot::RwLock;
 use serde_json::{json, Value};
-use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 
 pub struct NoopLLM {
     id: String,
+    tokenizer: Option<TokenizerSingleton>,
 }
 
 impl NoopLLM {
     pub fn new(id: String) -> Self {
-        NoopLLM { id }
+        NoopLLM {
+            id,
+            tokenizer: None,
+        }
     }
 
-    fn tokenizer(&self) -> Arc<RwLock<CoreBPE>> {
-        o200k_base_singleton()
-    }
 }
 
 #[async_trait]
@@ -44,16 +41,29 @@ impl LLM for NoopLLM {
         1_000_000
     }
 
+    fn set_tokenizer_from_config(&mut self, config: crate::types::tokenizer::TokenizerConfig) {
+        self.tokenizer = TokenizerSingleton::from_config(config);
+    }
+
     async fn encode(&self, text: &str) -> Result<Vec<usize>> {
-        encode_async(self.tokenizer(), text).await
+        match &self.tokenizer {
+            Some(t) => t.encode(text).await,
+            None => Err(anyhow!("Tokenizer not initialized")),
+        }
     }
 
     async fn decode(&self, tokens: Vec<usize>) -> Result<String> {
-        decode_async(self.tokenizer(), tokens).await
+        match &self.tokenizer {
+            Some(t) => t.decode(tokens).await,
+            None => Err(anyhow!("Tokenizer not initialized")),
+        }
     }
 
     async fn tokenize(&self, texts: Vec<String>) -> Result<Vec<Vec<(usize, String)>>> {
-        batch_tokenize_async(self.tokenizer(), texts).await
+        match &self.tokenizer {
+            Some(t) => t.tokenize(texts).await,
+            None => Err(anyhow!("Tokenizer not initialized")),
+        }
     }
 
     async fn generate(
