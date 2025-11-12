@@ -1,16 +1,14 @@
-import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { ZendeskClient } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/client";
+import { getZendeskClient } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/client";
 import { renderTicket } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/rendering";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
-import type { Result } from "@app/types";
-import { Err, isString, Ok } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 const ZENDESK_TOOL_NAME = "zendesk";
 
@@ -187,30 +185,6 @@ function createServer(
   );
 
   return server;
-}
-
-function getZendeskClient(
-  authInfo: AuthInfo | undefined
-): Result<ZendeskClient, MCPError> {
-  const accessToken = authInfo?.token;
-  if (!accessToken) {
-    return new Err(
-      new MCPError(
-        "No access token found. Please connect your Zendesk account."
-      )
-    );
-  }
-
-  const subdomain = authInfo?.extra?.zendesk_subdomain;
-  if (!isString(subdomain)) {
-    return new Err(
-      new MCPError(
-        "Zendesk subdomain not found in connection metadata. Please reconnect your Zendesk account."
-      )
-    );
-  }
-
-  return new Ok(new ZendeskClient(subdomain, accessToken));
 }
 
 export default createServer;

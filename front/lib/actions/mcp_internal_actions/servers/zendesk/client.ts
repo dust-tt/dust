@@ -1,5 +1,7 @@
+import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { z } from "zod";
 
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   ZendeskSearchResponse,
   ZendeskTicket,
@@ -10,9 +12,33 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/types";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, isString, Ok } from "@app/types";
 
-export class ZendeskClient {
+export function getZendeskClient(
+  authInfo: AuthInfo | undefined
+): Result<ZendeskClient, MCPError> {
+  const accessToken = authInfo?.token;
+  if (!accessToken) {
+    return new Err(
+      new MCPError(
+        "No access token found. Please connect your Zendesk account."
+      )
+    );
+  }
+
+  const subdomain = authInfo?.extra?.zendesk_subdomain;
+  if (!isString(subdomain)) {
+    return new Err(
+      new MCPError(
+        "Zendesk subdomain not found in connection metadata. Please reconnect your Zendesk account."
+      )
+    );
+  }
+
+  return new Ok(new ZendeskClient(subdomain, accessToken));
+}
+
+class ZendeskClient {
   constructor(
     private subdomain: string,
     private accessToken: string
