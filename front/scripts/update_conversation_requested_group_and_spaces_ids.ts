@@ -13,14 +13,13 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { isArrayEqual2DUnordered, normalizeArrays } from "@app/lib/utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import type { LightAgentConfigurationType, ModelId } from "@app/types";
 
 const BATCH_SIZE = 1000; // Process conversations in batches of 1000
 
-async function updateConversationRequestedGroupIds(
+async function updateConversationRequestedSpaceIds(
   workspaceId: string,
   execute: boolean,
   logger: Logger,
@@ -43,7 +42,7 @@ async function updateConversationRequestedGroupIds(
       workspaceId,
       workspaceName: workspace.name,
     },
-    "Starting requestedGroupIds and requestedSpaceIds update for conversations"
+    "Starting requestedSpaceIds update for conversations"
   );
 
   // Build where clause
@@ -205,12 +204,6 @@ async function updateConversationRequestedGroupIds(
         );
       }
 
-      // Calculate new requestedGroupIds from agents
-      // Note: agents.requestedGroupIds is string[][] (sIds) from the API after enrichment
-      const agentGroupRequirements: string[][] = agents.flatMap(
-        (agent: LightAgentConfigurationType) => agent.requestedGroupIds
-      );
-
       // Calculate new requestedSpaceIds from agents
       // Note: agents.requestedSpaceIds is string[] (sIds) from the API after enrichment
       const agentSpaceRequirements: string[] = agents.flatMap(
@@ -220,39 +213,16 @@ async function updateConversationRequestedGroupIds(
       logger.info(
         {
           conversationId: conversation.sId,
-          agentGroupRequirements,
           agentSpaceRequirements,
           agentsWithRequirements: agents.map(
             (a: LightAgentConfigurationType) => ({
               sId: a.sId,
               version: a.version,
-              requestedGroupIds: a.requestedGroupIds,
               requestedSpaceIds: a.requestedSpaceIds,
             })
           ),
         },
         "Agent requirements extracted"
-      );
-
-      // Remove duplicates and sort each requirement
-      const uniqueGroupRequirements = agentGroupRequirements
-        .map((r) => sortBy(r))
-        .filter(
-          (req, index, self) => self.findIndex((r) => isEqual(r, req)) === index
-        );
-
-      // Convert sIds to modelIds for groups
-      const newRequestedGroupIds: ModelId[][] = uniqueGroupRequirements.map(
-        (groupSIds) =>
-          groupSIds.map((groupSId) => {
-            const modelId = getResourceIdFromSId(groupSId);
-            if (modelId === null) {
-              throw new Error(
-                `Invalid group sId: ${groupSId} for conversation ${conversation.sId}`
-              );
-            }
-            return modelId;
-          })
       );
 
       // Remove duplicates from space requirements
@@ -273,15 +243,6 @@ async function updateConversationRequestedGroupIds(
         }
       );
 
-      // Convert current requestedGroupIds (stored as BIGINT, returned as strings by Sequelize)
-      // Parse strings to numbers for proper comparison
-      const currentRequestedGroupIds = conversation.requestedGroupIds.map(
-        (groupArray) =>
-          groupArray.map((groupId) =>
-            typeof groupId === "string" ? parseInt(groupId, 10) : groupId
-          )
-      );
-
       // Convert current requestedSpaceIds (stored as BIGINT, returned as strings by Sequelize)
       // Parse strings to numbers for proper comparison
       const currentRequestedSpaceIds = conversation.requestedSpaceIds.map(
@@ -289,24 +250,14 @@ async function updateConversationRequestedGroupIds(
           typeof spaceId === "string" ? parseInt(spaceId, 10) : spaceId
       );
 
-      // Normalize for comparison
-      const normalizedNewGroupIds = normalizeArrays(newRequestedGroupIds);
-      const normalizedCurrentGroupIds = normalizeArrays(
-        currentRequestedGroupIds
-      );
-
       // Sort space IDs for comparison
       const sortedNewSpaceIds = sortBy(newRequestedSpaceIds);
       const sortedCurrentSpaceIds = sortBy(currentRequestedSpaceIds);
 
-      // Check if both group IDs and space IDs are unchanged
-      const groupIdsEqual = isArrayEqual2DUnordered(
-        normalizedNewGroupIds,
-        normalizedCurrentGroupIds
-      );
+      // Check if  space IDs are unchanged
       const spaceIdsEqual = isEqual(sortedNewSpaceIds, sortedCurrentSpaceIds);
 
-      if (groupIdsEqual && spaceIdsEqual) {
+      if (spaceIdsEqual) {
         logger.info(
           {
             conversationId: conversation.sId,
@@ -323,23 +274,19 @@ async function updateConversationRequestedGroupIds(
           conversationId: conversation.sId,
           conversationTitle: conversation.title,
           agentCount: agents.length,
-          currentGroupIds: normalizedCurrentGroupIds,
-          newGroupIds: normalizedNewGroupIds,
           currentSpaceIds: sortedCurrentSpaceIds,
           newSpaceIds: sortedNewSpaceIds,
-          groupIdsChanged: !groupIdsEqual,
           spaceIdsChanged: !spaceIdsEqual,
           execute,
         },
         execute
-          ? "Updating conversation requestedGroupIds and requestedSpaceIds"
-          : "[DRY RUN] Would update conversation requestedGroupIds and requestedSpaceIds"
+          ? "Updating conversation requestedSpaceIds"
+          : "[DRY RUN] Would update conversation requestedSpaceIds"
       );
 
       if (execute) {
         await ConversationModel.update(
           {
-            requestedGroupIds: normalizedNewGroupIds,
             requestedSpaceIds: sortedNewSpaceIds,
           },
           {
@@ -386,8 +333,8 @@ async function updateConversationRequestedGroupIds(
       execute,
     },
     execute
-      ? "Completed requestedGroupIds and requestedSpaceIds update"
-      : "[DRY RUN] Completed requestedGroupIds and requestedSpaceIds dry run"
+      ? "Completed requestedSpaceIds update"
+      : "[DRY RUN] Completed requestedSpaceIds dry run"
   );
 
   return {
@@ -417,7 +364,7 @@ makeScript(
     },
   },
   async ({ workspaceId, execute, conversationIds, limit }, logger) => {
-    await updateConversationRequestedGroupIds(workspaceId, execute, logger, {
+    await updateConversationRequestedSpaceIds(workspaceId, execute, logger, {
       conversationIds: conversationIds.map(String),
       limit,
     });
