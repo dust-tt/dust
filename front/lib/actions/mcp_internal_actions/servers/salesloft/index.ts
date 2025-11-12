@@ -76,18 +76,6 @@ function formatActionAsString(action: SalesloftActionWithDetails): string {
     );
   }
 
-  if (action.task) {
-    parts.push(`\nTask: ${action.task.subject ?? "No subject"}`);
-    if (action.task.due_date) {
-      parts.push(
-        `  Due Date: ${new Date(action.task.due_date).toLocaleString()}`
-      );
-    }
-    if (action.task.current_state) {
-      parts.push(`  State: ${action.task.current_state}`);
-    }
-  }
-
   if (action.action_details) {
     parts.push(`\nAction Details: Available`);
   }

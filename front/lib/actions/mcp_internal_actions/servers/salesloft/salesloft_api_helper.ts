@@ -66,13 +66,6 @@ interface SalesloftAction {
   } | null;
 }
 
-interface SalesloftTask {
-  id: number;
-  subject: string | null;
-  due_date: string | null;
-  current_state: string | null;
-}
-
 interface SalesloftActionDetails {
   [key: string]: unknown;
 }
@@ -82,7 +75,6 @@ export interface SalesloftActionWithDetails {
   person: SalesloftPerson | null;
   cadence: SalesloftCadence | null;
   step: SalesloftStep | null;
-  task: SalesloftTask | null;
   action_details: SalesloftActionDetails | null;
 }
 
@@ -179,7 +171,7 @@ async function getAllPages<T>(
   let currentPage = 1;
   const perPage = 100;
   let hasMorePages = true;
-  const maxPages = 1000;
+  const maxPages = 5;
   let pagesFetched = 0;
 
   while (hasMorePages && pagesFetched < maxPages) {
@@ -278,34 +270,6 @@ async function getPeopleByIds(
     }
   }
   return peopleMap;
-}
-
-async function getTasksByIds(
-  accessToken: string,
-  taskIds: number[],
-  userId: number
-): Promise<Map<number, SalesloftTask>> {
-  if (taskIds.length === 0) {
-    return new Map();
-  }
-
-  const tasks = await getAllPages<SalesloftTask>(accessToken, "/tasks", {
-    user_id: userId,
-    current_state: "scheduled",
-  });
-
-  const taskMap = new Map<number, SalesloftTask>();
-  for (const task of tasks) {
-    if (taskIds.includes(task.id)) {
-      taskMap.set(task.id, {
-        id: task.id,
-        subject: task.subject,
-        due_date: task.due_date,
-        current_state: task.current_state,
-      });
-    }
-  }
-  return taskMap;
 }
 
 export async function getUserByEmail(
@@ -441,7 +405,7 @@ export async function getActions(
 export async function getActionsWithDetails(
   accessToken: string,
   options: {
-    includeDueActionsOnly?: boolean;
+    includeDueActionsOnly: boolean;
     userEmail: string;
   }
 ): Promise<Result<SalesloftActionWithDetails[], Error>> {
@@ -454,7 +418,7 @@ export async function getActionsWithDetails(
   const userId = user.id;
 
   const steps = await getSteps(accessToken, userId, {
-    hasDueActions: options?.includeDueActionsOnly,
+    hasDueActions: options.includeDueActionsOnly,
   });
 
   if (steps.length === 0) {
@@ -492,17 +456,7 @@ export async function getActionsWithDetails(
     ),
   ];
 
-  const taskIds = [
-    ...new Set(
-      allActions
-        .map((action) => action.task?.id ?? null)
-        .filter((id): id is number => id !== null)
-    ),
-  ];
-
   const peopleMap = await getPeopleByIds(accessToken, personIds);
-
-  const taskMap = await getTasksByIds(accessToken, taskIds, user.id);
 
   const stepMap = new Map<number, SalesloftStep>();
   for (const step of steps) {
@@ -528,7 +482,6 @@ export async function getActionsWithDetails(
         ? cadenceMap.get(action.cadence.id) ?? null
         : null,
       step: action.step?.id ? stepMap.get(action.step.id) ?? null : null,
-      task: action.task?.id ? taskMap.get(action.task.id) ?? null : null,
       action_details: actionDetailsArray[index] ?? null,
     })
   );
