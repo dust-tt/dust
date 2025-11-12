@@ -45,27 +45,6 @@ export const BaseDustProdActionRegistry = {
       },
     },
   },
-  "assistant-v2-process": {
-    app: {
-      appId: "953b79fe89",
-      appHash:
-        "689c0cde9d4962a57b5a38caab6244fdd4b30ce5e52af0f40333a03a847a91f1",
-    },
-    config: {
-      DATASOURCE: {
-        data_sources: [],
-        top_k: 128,
-        filter: { tags: null, parents: null, timestamp: null },
-        use_cache: false,
-      },
-      MODEL: {
-        // `provider_id` and `model_id` must be set by caller.
-        function_call: "extract_data",
-        use_cache: false,
-      },
-    },
-  },
-
   "doc-tracker-retrieval": {
     app: {
       appId: "4180309c80",
