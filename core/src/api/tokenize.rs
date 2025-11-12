@@ -84,7 +84,7 @@ async fn tokenize_batch_internal(
     if let Some(c) = payload.credentials {
         llm.initialize(c).await?;
     }
-    
+
     // Initialize the tokenizer from the config
     llm.set_tokenizer_from_config(payload.tokenizer);
 

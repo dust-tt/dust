@@ -809,8 +809,12 @@ impl LLM for OpenAILLM {
 
     fn set_tokenizer_from_config(&mut self, config: crate::types::tokenizer::TokenizerConfig) {
         self.tokenizer = match self.id.as_str() {
-            "code_davinci-002" | "code-cushman-001" => Some(TokenizerSingleton::Tiktoken(p50k_base_singleton())),
-            "text-davinci-002" | "text-davinci-003" => Some(TokenizerSingleton::Tiktoken(p50k_base_singleton())),
+            "code_davinci-002" | "code-cushman-001" => {
+                Some(TokenizerSingleton::Tiktoken(p50k_base_singleton()))
+            }
+            "text-davinci-002" | "text-davinci-003" => {
+                Some(TokenizerSingleton::Tiktoken(p50k_base_singleton()))
+            }
             _ => TokenizerSingleton::from_config(config),
         };
     }

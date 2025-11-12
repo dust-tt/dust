@@ -2,8 +2,8 @@ use super::{
     chat_messages::ChatMessage,
     embedder::Embedder,
     helpers::{convert_message_images_to_base64, fetch_and_encode_images_from_messages},
-    llm::{ChatFunction, LLMChatGeneration, LLMGeneration, LLM},
     llm::TokenizerSingleton,
+    llm::{ChatFunction, LLMChatGeneration, LLMGeneration, LLM},
     openai_compatible_helpers::{openai_compatible_chat_completion, TransformSystemMessages},
     provider::{Provider, ProviderID},
 };
@@ -67,7 +67,6 @@ impl GoogleAiStudioLLM {
     fn model_endpoint(&self) -> Uri {
         Uri::from_static("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions")
     }
-
 }
 
 #[async_trait]

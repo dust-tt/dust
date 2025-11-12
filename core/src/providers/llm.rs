@@ -22,7 +22,8 @@ use crate::providers::sentencepiece::sentencepiece::{
 };
 use crate::providers::tiktoken::tiktoken::CoreBPE;
 use crate::providers::tiktoken::tiktoken::{
-    anthropic_base_singleton, cl100k_base_singleton, o200k_base_singleton, p50k_base_singleton, r50k_base_singleton,
+    anthropic_base_singleton, cl100k_base_singleton, o200k_base_singleton, p50k_base_singleton,
+    r50k_base_singleton,
 };
 use crate::types::tokenizer::{SentencePieceTokenizerBase, TiktokenTokenizerBase};
 use parking_lot::RwLock;
@@ -74,7 +75,8 @@ impl TokenizerSingleton {
                 crate::providers::tiktoken::tiktoken::encode_async(bpe.clone(), text).await
             }
             TokenizerSingleton::SentencePiece(spp) => {
-                crate::providers::sentencepiece::sentencepiece::encode_async(spp.clone(), text).await
+                crate::providers::sentencepiece::sentencepiece::encode_async(spp.clone(), text)
+                    .await
             }
         }
     }
@@ -85,7 +87,8 @@ impl TokenizerSingleton {
                 crate::providers::tiktoken::tiktoken::decode_async(bpe.clone(), tokens).await
             }
             TokenizerSingleton::SentencePiece(spp) => {
-                crate::providers::sentencepiece::sentencepiece::decode_async(spp.clone(), tokens).await
+                crate::providers::sentencepiece::sentencepiece::decode_async(spp.clone(), tokens)
+                    .await
             }
         }
     }
@@ -96,7 +99,11 @@ impl TokenizerSingleton {
                 crate::providers::tiktoken::tiktoken::batch_tokenize_async(bpe.clone(), texts).await
             }
             TokenizerSingleton::SentencePiece(spp) => {
-                crate::providers::sentencepiece::sentencepiece::batch_tokenize_async(spp.clone(), texts).await
+                crate::providers::sentencepiece::sentencepiece::batch_tokenize_async(
+                    spp.clone(),
+                    texts,
+                )
+                .await
             }
         }
     }

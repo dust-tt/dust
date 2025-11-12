@@ -9,9 +9,7 @@ use crate::providers::openai::streamed_completion;
 use crate::providers::openai::{completion, REMAINING_TOKENS_MARGIN};
 use crate::providers::provider::{Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::{batch_tokenize_async, decode_async, encode_async};
-use crate::providers::tiktoken::tiktoken::{
-    cl100k_base_singleton, CoreBPE, p50k_base_singleton,
-};
+use crate::providers::tiktoken::tiktoken::{cl100k_base_singleton, p50k_base_singleton, CoreBPE};
 use crate::run::Credentials;
 use crate::utils;
 use anyhow::{anyhow, Result};
@@ -155,7 +153,6 @@ impl AzureOpenAILLM {
         )
         .parse::<Uri>()?)
     }
-
 }
 
 #[async_trait]
@@ -218,8 +215,12 @@ impl LLM for AzureOpenAILLM {
     fn set_tokenizer_from_config(&mut self, config: crate::types::tokenizer::TokenizerConfig) {
         self.tokenizer = match self.model_id.as_ref() {
             Some(model_id) => match model_id.as_str() {
-                "code_davinci-002" | "code-cushman-001" => Some(TokenizerSingleton::Tiktoken(p50k_base_singleton())),
-                "text-davinci-002" | "text-davinci-003" => Some(TokenizerSingleton::Tiktoken(p50k_base_singleton())),
+                "code_davinci-002" | "code-cushman-001" => {
+                    Some(TokenizerSingleton::Tiktoken(p50k_base_singleton()))
+                }
+                "text-davinci-002" | "text-davinci-003" => {
+                    Some(TokenizerSingleton::Tiktoken(p50k_base_singleton()))
+                }
                 _ => match model_id.starts_with("gpt-3.5-turbo") || model_id.starts_with("gpt-4") {
                     true => Some(TokenizerSingleton::Tiktoken(cl100k_base_singleton())),
                     false => TokenizerSingleton::from_config(config),

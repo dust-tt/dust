@@ -1,8 +1,8 @@
 use crate::providers::chat_messages::AssistantContentItem::TextContent;
 use crate::providers::chat_messages::{AssistantChatMessage, ChatMessage};
 use crate::providers::embedder::Embedder;
-use crate::providers::llm::{ChatFunction, ChatMessageRole, Tokens};
 use crate::providers::llm::TokenizerSingleton;
+use crate::providers::llm::{ChatFunction, ChatMessageRole, Tokens};
 use crate::providers::llm::{LLMChatGeneration, LLMGeneration, LLM};
 use crate::providers::provider::{Provider, ProviderID};
 use crate::run::Credentials;
@@ -24,7 +24,6 @@ impl NoopLLM {
             tokenizer: None,
         }
     }
-
 }
 
 #[async_trait]

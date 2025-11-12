@@ -920,12 +920,14 @@ impl LLM for MistralAILLM {
             || self.id.starts_with("open-mistral-7b")
             || self.id.starts_with("open-mixtral-8x7b")
         {
-            self.tokenizer = Some(TokenizerSingleton::SentencePiece(mistral_tokenizer_model_v1_base_singleton()));
-        }
-        else if self.id.starts_with("open-mixtral-8x22b") {
-            self.tokenizer = Some(TokenizerSingleton::SentencePiece(mistral_instruct_tokenizer_240216_model_v3_base_singleton()));
-        }
-        else {
+            self.tokenizer = Some(TokenizerSingleton::SentencePiece(
+                mistral_tokenizer_model_v1_base_singleton(),
+            ));
+        } else if self.id.starts_with("open-mixtral-8x22b") {
+            self.tokenizer = Some(TokenizerSingleton::SentencePiece(
+                mistral_instruct_tokenizer_240216_model_v3_base_singleton(),
+            ));
+        } else {
             self.tokenizer = TokenizerSingleton::from_config(config);
         }
     }
