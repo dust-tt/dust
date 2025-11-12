@@ -95,7 +95,7 @@ export function filterTimeSeriesByVersionWindow<
 
   // The timestamp of version markers is createdAt, meaning that it's precise time like `1760256757215` Sun Oct 12 2025 10:12:37,
   // so when we compare with point time (which usually comes at midnight time like `1761782400000` since we aggregate the data of the day), we could drop some data
-  // if we don't truncate to midnight UTC.  
+  // if we don't truncate to midnight UTC.
   const start = truncateToMidnightUTC(versionMarkers[idx].timestamp);
   const end =
     idx + 1 < versionMarkers.length
