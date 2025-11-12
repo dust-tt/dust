@@ -43,15 +43,7 @@ export class AnnouncementResource extends BaseResource<AnnouncementModel> {
     return new this(AnnouncementModel, announcement.get());
   }
 
-  static async fetchById(id: ModelId): Promise<AnnouncementResource | null> {
-    const announcement = await AnnouncementModel.findByPk(id);
-    if (!announcement) {
-      return null;
-    }
-    return new this(AnnouncementModel, announcement.get());
-  }
-
-  static async fetchBySId(sId: string): Promise<AnnouncementResource | null> {
+  static async fetchById(sId: string): Promise<AnnouncementResource | null> {
     const announcement = await AnnouncementModel.findOne({
       where: { sId },
     });

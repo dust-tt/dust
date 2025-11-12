@@ -64,68 +64,16 @@ const COMMON_TIMEZONES = [
   "UTC",
 ];
 
-const SMALL_WORDS = new Set([
-  "a",
-  "an",
-  "and",
-  "as",
-  "at",
-  "but",
-  "by",
-  "for",
-  "from",
-  "in",
-  "into",
-  "of",
-  "on",
-  "or",
-  "the",
-  "to",
-  "with",
-  "is",
-  "are",
-  "was",
-  "were",
-  "be",
-  "been",
-  "being",
-  "have",
-  "has",
-  "had",
-  "do",
-  "does",
-  "did",
-  "will",
-  "would",
-  "should",
-  "could",
-  "may",
-  "might",
-  "must",
-  "can",
-  "shall",
-  "via",
-  "per",
-  "vs",
-  "nor",
-  "yet",
-  "so",
-  "my",
-  "your",
-  "his",
-  "her",
-  "its",
-  "our",
-  "their",
-]);
-
-function slugify(text: string): string {
+function createAnnouncementSlug(text: string): string {
+  // Simplified slugify that uses dashes (URL-friendly) instead of underscores
   return text
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
-    .split(/\s+/)
-    .filter((word) => !SMALL_WORDS.has(word))
-    .join(" ")
-    .replace(/[^a-z0-9]+/g, "-")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/[^\w-]+/g, "-")
+    .replace(/--+/g, "-")
     .replace(/^-+|-+$/g, "");
 }
 
@@ -185,7 +133,7 @@ export function AnnouncementForm({
         .toISOString()
         .slice(0, 10)
         .replace(/-/g, "");
-      const slugifiedTitle = slugify(watchTitle);
+      const slugifiedTitle = createAnnouncementSlug(watchTitle);
       form.setValue("slug", `${datePrefix}-${slugifiedTitle}`, {
         shouldValidate: false,
       });
@@ -216,7 +164,6 @@ export function AnnouncementForm({
       form.setValue("imageFileId", data.fileId);
       setImagePreviewUrl(data.url);
     } catch (error) {
-      logger.error({ err: error }, "Failed to upload image");
       alert("Failed to upload image. Please try again.");
     } finally {
       setIsUploadingImage(false);

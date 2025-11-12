@@ -1,7 +1,11 @@
+import { z } from "zod";
+
 import type { ModelId } from "./shared/model_id";
 
 export const ANNOUNCEMENT_TYPES = ["changelog", "event"] as const;
 export type AnnouncementType = (typeof ANNOUNCEMENT_TYPES)[number];
+
+export const announcementTypeSchema = z.enum(ANNOUNCEMENT_TYPES);
 
 export const CHANGELOG_CATEGORIES = [
   "improvements",

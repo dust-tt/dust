@@ -1,4 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
@@ -12,22 +14,26 @@ export type GetPokeAnnouncementResponseBody = {
   announcement: AnnouncementContentType;
 };
 
-export type PatchPokeAnnouncementRequestBody = {
-  slug?: string;
-  title?: string;
-  description?: string;
-  content?: string;
-  isPublished?: boolean;
-  publishedAt?: string | null;
-  showInAppBanner?: boolean;
-  eventDate?: string | null;
-  eventTimezone?: string | null;
-  eventLocation?: string | null;
-  eventUrl?: string | null;
-  categories?: string[] | null;
-  tags?: string[] | null;
-  imageFileId?: string | null;
-};
+const PatchPokeAnnouncementRequestBodySchema = z.object({
+  slug: z.string().optional(),
+  title: z.string().optional(),
+  description: z.string().optional(),
+  content: z.string().optional(),
+  isPublished: z.boolean().optional(),
+  publishedAt: z.string().nullable().optional(),
+  showInAppBanner: z.boolean().optional(),
+  eventDate: z.string().nullable().optional(),
+  eventTimezone: z.string().nullable().optional(),
+  eventLocation: z.string().nullable().optional(),
+  eventUrl: z.string().nullable().optional(),
+  categories: z.array(z.string()).nullable().optional(),
+  tags: z.array(z.string()).nullable().optional(),
+  imageFileId: z.string().nullable().optional(),
+});
+
+export type PatchPokeAnnouncementRequestBody = z.infer<
+  typeof PatchPokeAnnouncementRequestBodySchema
+>;
 
 export type PatchPokeAnnouncementResponseBody = {
   announcement: AnnouncementContentType;
@@ -89,6 +95,18 @@ async function handler(
     }
 
     case "PATCH": {
+      const parseResult =
+        PatchPokeAnnouncementRequestBodySchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: fromError(parseResult.error).toString(),
+          },
+        });
+      }
+
       const {
         slug,
         title,
@@ -104,7 +122,7 @@ async function handler(
         categories,
         tags,
         imageFileId,
-      } = req.body as PatchPokeAnnouncementRequestBody;
+      } = parseResult.data;
 
       // If slug is being changed, validate uniqueness
       if (slug && slug !== announcement.slug) {
