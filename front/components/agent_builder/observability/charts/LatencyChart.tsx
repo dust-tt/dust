@@ -26,8 +26,11 @@ import { ChartTooltipCard } from "@app/components/agent_builder/observability/sh
 import { VersionMarkersDots } from "@app/components/agent_builder/observability/shared/VersionMarkers";
 import { padSeriesToTimeRange } from "@app/components/agent_builder/observability/utils";
 import { useAgentVersionMarkers } from "@app/lib/swr/assistants";
+import { formatShortDate } from "@app/lib/utils/timestamps";
 
 interface LatencyData {
+  timestamp: number;
+  date: string;
   messages: number;
   average: number;
 }
@@ -36,10 +39,18 @@ function isLatencyData(data: unknown): data is LatencyData {
   return typeof data === "object" && data !== null && "average" in data;
 }
 
+function zeroFactory(timestamp: number) {
+  return {
+    timestamp,
+    messages: 0,
+    average: 0,
+  };
+}
+
 function LatencyTooltip(
   props: TooltipContentProps<number, string>
 ): JSX.Element | null {
-  const { active, payload, label } = props;
+  const { active, payload } = props;
   if (!active || !payload || payload.length === 0) {
     return null;
   }
@@ -48,10 +59,10 @@ function LatencyTooltip(
     return null;
   }
   const row = first.payload;
-  const title = typeof label === "string" ? label : String(label);
+
   return (
     <ChartTooltipCard
-      title={title}
+      title={row.date}
       rows={[
         {
           label: "Average time",
@@ -93,18 +104,13 @@ export function LatencyChart({
 
   const data = useMemo(() => {
     if (mode === "timeRange") {
-      const dataWithDate = rawData.map((item) => ({
-        ...item,
-        date: item.date!,
-      }));
-      return padSeriesToTimeRange(dataWithDate, mode, period, (date) => ({
-        date,
-        label: date,
-        messages: 0,
-        average: 0,
-      }));
+      return padSeriesToTimeRange(rawData, mode, period, zeroFactory);
     }
-    return rawData;
+
+    return rawData.map((data) => ({
+      ...data,
+      date: formatShortDate(data.timestamp),
+    }));
   }, [rawData, mode, period]);
 
   const legendItems = legendFromConstant(LATENCY_LEGEND, LATENCY_PALETTE, {

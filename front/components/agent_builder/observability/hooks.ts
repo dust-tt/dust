@@ -36,7 +36,7 @@ type ToolDataItem = {
 
 type ErrorRateDataResult = {
   data: {
-    date: string;
+    timestamp: number;
     total: number;
     failed: number;
     errorRate: number;
@@ -47,7 +47,7 @@ type ErrorRateDataResult = {
 
 type LatencyDataResult = {
   data: {
-    date: string;
+    timestamp: number;
     messages: number;
     average: number;
   }[];
