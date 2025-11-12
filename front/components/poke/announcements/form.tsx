@@ -216,7 +216,7 @@ export function AnnouncementForm({
       form.setValue("imageFileId", data.fileId);
       setImagePreviewUrl(data.url);
     } catch (error) {
-      console.error("Failed to upload image:", error);
+      logger.error({ err: error }, "Failed to upload image");
       alert("Failed to upload image. Please try again.");
     } finally {
       setIsUploadingImage(false);

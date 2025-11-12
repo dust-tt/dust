@@ -69,6 +69,17 @@ async function handler(
       });
     }
 
+    // Validate file type - only allow safe image formats
+    if (!file.mimetype || !isSupportedImageContentType(file.mimetype)) {
+      return apiError(req, res, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed. Received: ${file.mimetype || "unknown"}`,
+        },
+      });
+    }
+
     // Generate a unique file ID
     const fileId = generateRandomModelSId();
     const bucket = getPublicUploadBucket();
@@ -82,7 +93,11 @@ async function handler(
     // Upload directly to GCS using the bucket file API
     const gcsFile = bucket.file(storagePath);
     await gcsFile.save(fileBuffer, {
-      contentType: file.mimetype || "image/png",
+      contentType: file.mimetype,
+      metadata: {
+        cacheControl: "public, max-age=31536000",
+      },
+    });
       metadata: {
         cacheControl: "public, max-age=31536000",
       },
@@ -96,7 +111,7 @@ async function handler(
       url: publicUrl,
     });
   } catch (error) {
-    console.error("Image upload error:", error);
+    logger.error({ err: error }, "Image upload error");
     return apiError(req, res, {
       status_code: 500,
       api_error: {
