@@ -97,7 +97,7 @@ async function handler(
       url: publicUrl,
     });
   } catch (error) {
-    console.error("Image upload error:", error);
+    logger.error({ err: error }, "Image upload error");
     return apiError(req, res, {
       status_code: 500,
       api_error: {

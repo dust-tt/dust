@@ -215,7 +215,7 @@ export function AnnouncementForm({
       form.setValue("imageFileId", data.fileId);
       setImagePreviewUrl(data.url);
     } catch (error) {
-      console.error("Failed to upload image:", error);
+      logger.error({ err: error }, "Failed to upload image");
       alert("Failed to upload image. Please try again.");
     } finally {
       setIsUploadingImage(false);
@@ -228,7 +228,7 @@ export function AnnouncementForm({
       await onSubmit(data);
       void router.push("/poke/announcements");
     } catch (error) {
-      console.error("Failed to save announcement:", error);
+      logger.error({ err: error }, "Failed to save announcement");
       alert("Failed to save announcement. Please try again.");
     } finally {
       setIsSubmitting(false);
