@@ -17,6 +17,7 @@ import type {
 import type { Authenticator } from "@app/lib/auth";
 import { RunResource } from "@app/lib/resources/run_resource";
 import type { ModelIdType, ReasoningEffort } from "@app/types";
+import { auth } from "@modelcontextprotocol/sdk/client/auth.js";
 
 export abstract class LLM {
   protected modelId: ModelIdType;
@@ -88,6 +89,11 @@ export abstract class LLM {
       },
       { asType: "generation" }
     );
+
+    generation.updateTrace({
+      tags: [`workspaceId:${this.authenticator.getNonNullableWorkspace().sId}`],
+      userId: this.authenticator.user()?.sId,
+    });
 
     const startTime = Date.now();
 
