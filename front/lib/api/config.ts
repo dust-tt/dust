@@ -316,6 +316,12 @@ const config = {
       password: EnvironmentConfig.getEnvVariable("ELASTICSEARCH_PASSWORD"),
     };
   },
+  getLangfuseSecretKey: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("LANGFUSE_SECRET_KEY");
+  },
+  getLangfusePublicKey: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("LANGFUSE_PUBLIC_KEY");
+  },
 };
 
 export default config;

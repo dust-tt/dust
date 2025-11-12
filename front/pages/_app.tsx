@@ -9,6 +9,13 @@ import { datadogLogs } from "@datadog/browser-logs";
 import type { NextPage } from "next";
 import type { AppProps } from "next/app";
 
+// Initialize Langfuse instrumentation (server-side only)
+if (typeof window === "undefined") {
+  import("@app/lib/api/llm/instrumentation").then(({ initializeLangfuseInstrumentation }) => {
+    initializeLangfuseInstrumentation();
+  });
+}
+
 // Important: avoid destructuring process.env on the client.
 // Next.js replaces direct property access (process.env.NEXT_PUBLIC_*) at build time,
 // but destructuring `process.env` does not get inlined.

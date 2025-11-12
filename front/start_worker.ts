@@ -3,6 +3,7 @@ import { Runtime } from "@temporalio/worker/lib/runtime";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
+import { initializeLangfuseInstrumentation } from "@app/lib/api/llm/instrumentation";
 import logger from "@app/logger/logger";
 import type { WorkerName } from "@app/temporal/worker_registry";
 import {
@@ -13,6 +14,9 @@ import {
 import { setupGlobalErrorHandler } from "@app/types/shared/utils/global_error_handler";
 
 setupGlobalErrorHandler(logger);
+
+// Initialize Langfuse instrumentation for the worker
+initializeLangfuseInstrumentation();
 
 const pinoAdapter: Logger = {
   log: (level: LogLevel, msg: string, meta: object) =>
