@@ -1,4 +1,8 @@
 export const WHITELISTABLE_FEATURES_CONFIG = {
+  growth_onboarding_chat: {
+    description: "Enable model-led onboarding chat for brand-new workspaces",
+    stage: "on_demand",
+  },
   advanced_notion_management: {
     description:
       "Advanced features for Notion workspace management shown to admins",

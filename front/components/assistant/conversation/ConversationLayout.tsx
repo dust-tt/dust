@@ -24,6 +24,7 @@ import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideP
 import { ErrorBoundary } from "@app/components/error_boundary/ErrorBoundary";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import { useURLSheet } from "@app/hooks/useURLSheet";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { useConversation } from "@app/lib/swr/conversations";
 import type {
   ConversationError,
@@ -91,6 +92,7 @@ const ConversationLayoutContent = ({
     conversationId: activeConversationId,
     workspaceId: owner.sId,
   });
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
 
   const agentSId = useMemo(() => {
     const sid = router.query.agentDetails ?? [];
@@ -105,8 +107,13 @@ const ConversationLayoutContent = ({
     useWelcomeTourGuide();
 
   const shouldDisplayWelcomeTourGuide = useMemo(() => {
-    return router.query.welcome === "true" && !activeConversationId;
-  }, [router.query.welcome, activeConversationId]);
+    // Disable the legacy Welcome Tour when onboarding chat is enabled.
+    return (
+      router.query.welcome === "true" &&
+      !activeConversationId &&
+      !featureFlags.includes("growth_onboarding_chat")
+    );
+  }, [router.query.welcome, activeConversationId, featureFlags]);
 
   const onTourGuideEnd = () => {
     void router.push(router.asPath.replace("?welcome=true", ""), undefined, {

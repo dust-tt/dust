@@ -22,6 +22,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
+import type { UserMessageOrigin } from "@app/types";
 import { toMentionType } from "@app/types";
 import { Err, isSupportedContentNodeFragmentContentType, Ok } from "@app/types";
 
@@ -353,6 +354,7 @@ export async function createConversationWithMessage({
     contentFragments: ContentFragmentsType;
     clientSideMCPServerIds?: string[];
     selectedMCPServerViewIds?: string[];
+    origin?: UserMessageOrigin;
   };
   visibility?: ConversationVisibility;
   title?: string;
@@ -363,6 +365,7 @@ export async function createConversationWithMessage({
     contentFragments,
     clientSideMCPServerIds,
     selectedMCPServerViewIds,
+    origin,
   } = messageData;
 
   const body: t.TypeOf<typeof InternalPostConversationsRequestBodySchema> = {
@@ -375,6 +378,7 @@ export async function createConversationWithMessage({
         profilePictureUrl: user.image,
         clientSideMCPServerIds,
         selectedMCPServerViewIds,
+        origin: origin ?? undefined,
       },
       mentions,
     },

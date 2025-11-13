@@ -31,6 +31,7 @@ import type {
 import {
   areSameRank,
   getMessageRank,
+  isHiddenContextOrigin,
   isMessageTemporayState,
   isUserMessage,
   makeInitialMessageStreamState,
@@ -153,9 +154,13 @@ export const ConversationViewer = ({
   // Setup the initial list data when the conversation is loaded.
   useEffect(() => {
     if (!initialListData && messages.length > 0) {
-      const messagesToRender = convertLightMessageTypeToVirtuosoMessages(
-        messages.flatMap((m) => m.messages)
-      );
+      const raw = messages
+        .flatMap((m) => m.messages)
+        .filter((m) =>
+          isUserMessageType(m) ? !isHiddenContextOrigin(m.context.origin) : true
+        );
+
+      const messagesToRender = convertLightMessageTypeToVirtuosoMessages(raw);
 
       setInitialListData(messagesToRender);
     }
@@ -180,8 +185,11 @@ export const ConversationViewer = ({
     );
 
     if (olderMessagesFromBackend.length > 0) {
+      const filtered = olderMessagesFromBackend.filter((m) =>
+        isUserMessageType(m) ? !isHiddenContextOrigin(m.context.origin) : true
+      );
       ref.current.data.prepend(
-        convertLightMessageTypeToVirtuosoMessages(olderMessagesFromBackend)
+        convertLightMessageTypeToVirtuosoMessages(filtered)
       );
     }
 
@@ -248,6 +256,9 @@ export const ConversationViewer = ({
         switch (event.type) {
           case "user_message_new":
             if (ref.current) {
+              if (isHiddenContextOrigin(event.message.context.origin)) {
+                break;
+              }
               const userMessage: VirtuosoMessage = {
                 ...event.message,
                 contentFragments: [],

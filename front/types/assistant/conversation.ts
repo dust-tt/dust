@@ -69,7 +69,8 @@ export type UserMessageOrigin =
   | "excel"
   | "powerpoint"
   | "run_agent"
-  | "agent_handover";
+  | "agent_handover"
+  | "onboarding_conversation";
 
 export type UserMessageContext = {
   username: string;

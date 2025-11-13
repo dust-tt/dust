@@ -23,6 +23,7 @@ export const MessageBaseSchema = t.type({
       profilePictureUrl: t.union([t.string, t.null]),
     }),
     t.partial({
+      origin: t.string,
       clientSideMCPServerIds: t.array(t.string),
       selectedMCPServerViewIds: t.array(t.string),
       originMessageId: t.string,
