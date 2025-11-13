@@ -94,7 +94,7 @@ export function PokeSearchCommand() {
       >
         <PokeCommandInput
           placeholder="Type a command or search..."
-          onValueChange={(value) => setSearchTerm(value)}
+          onValueChange={(value) => setSearchTerm(value.trim())}
           className="border-none focus:outline-none focus:ring-0"
         />
         <PokeCommandList>
