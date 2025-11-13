@@ -138,19 +138,17 @@ export function toTool(tool: AgentActionSpecification): FunctionTool {
   const parameters: {
     type: "object";
     properties: Record<string, unknown>;
-    required: string[];
-    additionalProperties: boolean;
   } = {
     type: "object",
     properties,
-    // OpenAI requires all properties to be marked as required
-    required: Object.keys(properties),
-    additionalProperties: false,
   };
 
   return {
     type: "function",
-    strict: true,
+    // If not set to false, OpenAI requires all properties to be required,
+    // and all additionalProperties to be false.
+    // This does not fit with many tools that enable permissive filter properties.
+    strict: false,
     name: tool.name,
     description: tool.description,
     parameters,

@@ -1,10 +1,10 @@
 import { CreateWebhookFathomConnection } from "@app/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection";
 import { WebhookSourceFathomDetails } from "@app/lib/triggers/built-in-webhooks/fathom/components/WebhookSourceFathomDetails";
-import { FathomWebhookService } from "@app/lib/triggers/built-in-webhooks/fathom/fathom_webhook_service";
 import {
   meetingContentReadyExample,
   meetingContentReadySchema,
-} from "@app/lib/triggers/built-in-webhooks/fathom/schemas/json_schema_meeting_content_ready";
+} from "@app/lib/triggers/built-in-webhooks/fathom/schemas/meeting_content_ready";
+import { FathomWebhookService } from "@app/lib/triggers/built-in-webhooks/fathom/service";
 import type {
   PresetWebhook,
   WebhookEvent,
@@ -28,7 +28,6 @@ export const FATHOM_WEBHOOK_PRESET: PresetWebhook<"fathom"> = {
   description:
     "Receive events from Fathom when meeting recordings are ready with transcripts, summaries, and action items.",
   webhookPageUrl: "https://app.fathom.video/settings/api",
-  featureFlag: "hootl_dev_webhooks",
   webhookService: new FathomWebhookService(),
   components: {
     detailsComponent: WebhookSourceFathomDetails,

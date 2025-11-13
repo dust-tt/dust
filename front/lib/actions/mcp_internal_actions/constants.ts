@@ -1241,9 +1241,10 @@ The directive should be used to display a clickable version of the agent name in
     },
     isPreview: false,
     tools_stakes: {
-      submit_feedback: "high",
       search_candidates: "never_ask",
       get_report_data: "never_ask",
+      get_latest_interview_feedback: "never_ask",
+      create_candidate_note: "high",
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -1593,9 +1594,7 @@ The directive should be used to display a clickable version of the agent name in
     id: 42,
     availability: "manual",
     allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("zendesk_features");
-    },
+    isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
       get_ticket: "never_ask",

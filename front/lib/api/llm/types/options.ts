@@ -20,7 +20,7 @@ export type LLMClientMetadata = {
   modelId: ModelIdType;
 };
 
-export interface StreamParameters {
+export interface LLMStreamParameters {
   conversation: ModelConversationTypeMultiActions;
   prompt: string;
   specifications: AgentActionSpecification[];

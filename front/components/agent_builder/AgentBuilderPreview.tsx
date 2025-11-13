@@ -242,7 +242,7 @@ export function AgentBuilderPreview() {
   const renderContent = () => {
     if (!hasContent) {
       return (
-        <TabContentLayout title="Preview">
+        <TabContentLayout title="Testing">
           <EmptyPlaceholder
             icon={TestTubeIcon}
             title="Ready to test your agent?"

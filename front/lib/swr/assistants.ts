@@ -28,6 +28,7 @@ import type { GetUsageMetricsResponse } from "@app/pages/api/w/[wId]/assistant/a
 import type { GetVersionMarkersResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/version-markers";
 import type { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/usage";
 import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api/w/[wId]/assistant/builder/slack/channels_linked_with_agent";
+import type { GetMemberResponseBody } from "@app/pages/api/w/[wId]/members/[uId]";
 import type { PostAgentUserFavoriteRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_favorite";
 import type {
   AgentConfigurationType,
@@ -978,5 +979,28 @@ export function useAgentToolStepIndex({
     isToolStepIndexLoading: !error && !data && !disabled,
     isToolStepIndexError: error,
     isToolStepIndexValidating: isValidating,
+  };
+}
+
+export function useMemberDetails({
+  workspaceId,
+  userId,
+}: {
+  workspaceId: string;
+  userId: string | null;
+}) {
+  const userConfigurationFetcher: Fetcher<GetMemberResponseBody> = fetcher;
+
+  const { data, error, mutate, isValidating } = useSWRWithDefaults(
+    userId ? `/api/w/${workspaceId}/members/${userId}` : null,
+    userConfigurationFetcher
+  );
+
+  return {
+    userDetails: data?.member,
+    isUserDetailsLoading: !error && !data && !!userId,
+    isUserDetailsError: error,
+    isUserConfigurationValidating: isValidating,
+    mutateUserConfiguration: mutate,
   };
 }

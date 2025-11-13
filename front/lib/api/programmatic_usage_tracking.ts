@@ -10,11 +10,12 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { LightWorkspaceType } from "@app/types";
 
-const PUBLIC_API_REMAINING_CREDITS_KEY = "public_api_remaining_credits";
+// Programmatic usage tracking: keep Redis key name for backward compatibility.
+const PROGRAMMATIC_USAGE_REMAINING_CREDITS_KEY = "public_api_remaining_credits";
 const REDIS_ORIGIN = "public_api_limits";
 
 function getRedisKey(workspace: LightWorkspaceType): string {
-  return `${PUBLIC_API_REMAINING_CREDITS_KEY}:${workspace.id}`;
+  return `${PROGRAMMATIC_USAGE_REMAINING_CREDITS_KEY}:${workspace.id}`;
 }
 
 function shouldTrackTokenUsageCosts(

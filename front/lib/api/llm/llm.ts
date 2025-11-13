@@ -11,7 +11,7 @@ import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
   LLMClientMetadata,
   LLMParameters,
-  StreamParameters,
+  LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { RunResource } from "@app/lib/resources/run_resource";
@@ -63,7 +63,7 @@ export abstract class LLM {
     conversation,
     prompt,
     specifications,
-  }: StreamParameters): AsyncGenerator<LLMEvent> {
+  }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
     if (!this.context) {
       yield* this.internalStream({ conversation, prompt, specifications });
       return;
@@ -152,7 +152,7 @@ export abstract class LLM {
     conversation,
     prompt,
     specifications,
-  }: StreamParameters): AsyncGenerator<LLMEvent> {
+  }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
     yield* this.streamWithTracing({
       conversation,
       prompt,
@@ -164,5 +164,5 @@ export abstract class LLM {
     conversation,
     prompt,
     specifications,
-  }: StreamParameters): AsyncGenerator<LLMEvent>;
+  }: LLMStreamParameters): AsyncGenerator<LLMEvent>;
 }

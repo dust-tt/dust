@@ -5,9 +5,11 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   ZendeskSearchResponse,
   ZendeskTicket,
+  ZendeskTicketMetrics,
 } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/types";
 import {
   ZendeskSearchResponseSchema,
+  ZendeskTicketMetricsResponseSchema,
   ZendeskTicketResponseSchema,
 } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/types";
 import logger from "@app/logger/logger";
@@ -112,6 +114,21 @@ class ZendeskClient {
     }
 
     return new Ok(result.value.ticket);
+  }
+
+  async getTicketMetrics(
+    ticketId: number
+  ): Promise<Result<ZendeskTicketMetrics, Error>> {
+    const result = await this.request(
+      `tickets/${ticketId}/metrics`,
+      ZendeskTicketMetricsResponseSchema
+    );
+
+    if (result.isErr()) {
+      return new Err(result.error);
+    }
+
+    return new Ok(result.value.ticket_metric);
   }
 
   async searchTickets(

@@ -15,7 +15,6 @@ export const ZENDESK_WEBHOOK_PRESET: PresetWebhook<"zendesk"> = {
   icon: "ZendeskLogo",
   description:
     "Receive events from Zendesk such as ticket creation or modification",
-  featureFlag: "zendesk_features",
   webhookService: new ZendeskWebhookService(),
   components: {
     detailsComponent: WebhookSourceZendeskDetails,
