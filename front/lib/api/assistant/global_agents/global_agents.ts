@@ -1,6 +1,9 @@
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import {
+  _getClaude3_7GlobalAgent,
+  _getClaude3GlobalAgent,
   _getClaude3HaikuGlobalAgent,
+  _getClaude3OpusGlobalAgent,
   _getClaude4_5HaikuGlobalAgent,
   _getClaude4_5SonnetGlobalAgent,
   _getClaude4SonnetGlobalAgent,
@@ -225,8 +228,32 @@ function getGlobalAgent({
         interactiveContentMCPServerView,
       });
       break;
+    case GLOBAL_AGENTS_SID.CLAUDE_3_OPUS:
+      agentConfiguration = _getClaude3OpusGlobalAgent({
+        auth,
+        settings,
+        webSearchBrowseMCPServerView,
+        interactiveContentMCPServerView,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.CLAUDE_3_SONNET:
+      agentConfiguration = _getClaude3GlobalAgent({
+        auth,
+        settings,
+        webSearchBrowseMCPServerView,
+        interactiveContentMCPServerView,
+      });
+      break;
     case GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU:
       agentConfiguration = _getClaude3HaikuGlobalAgent({
+        settings,
+        webSearchBrowseMCPServerView,
+        interactiveContentMCPServerView,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET:
+      agentConfiguration = _getClaude3_7GlobalAgent({
+        auth,
         settings,
         webSearchBrowseMCPServerView,
         interactiveContentMCPServerView,
@@ -372,7 +399,10 @@ function getGlobalAgent({
 // to be accessible to users moving forward.
 const RETIRED_GLOBAL_AGENTS_SID = [
   GLOBAL_AGENTS_SID.CLAUDE_4_SONNET,
+  GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET,
   GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU,
+  GLOBAL_AGENTS_SID.CLAUDE_3_OPUS,
+  GLOBAL_AGENTS_SID.CLAUDE_3_SONNET,
   GLOBAL_AGENTS_SID.GITHUB,
   GLOBAL_AGENTS_SID.GOOGLE_DRIVE,
   GLOBAL_AGENTS_SID.GPT35_TURBO,
