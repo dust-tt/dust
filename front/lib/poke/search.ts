@@ -24,20 +24,22 @@ async function searchPokeWorkspaces(
     return [
       {
         id: workspaceInfos.id,
-        name: `Workspace (${workspaceInfos.name})`,
+        name: workspaceInfos.name,
         link: `${config.getClientFacingUrl()}/poke/${workspaceInfos.sId}`,
+        type: "Workspace",
       },
     ];
   }
 
-  const workspaceModelId = parseInt(searchTerm);
+  const workspaceModelId = parseInt(searchTerm, 10);
   if (!isNaN(workspaceModelId)) {
     const workspaces = await unsafeGetWorkspacesByModelId([workspaceModelId]);
     if (workspaces.length > 0) {
       return workspaces.map((w) => ({
         id: w.id,
-        name: `Workspace (${w.name})`,
+        name: w.name,
         link: `${config.getClientFacingUrl()}/poke/${w.sId}`,
+        type: "Workspace",
       }));
     }
   }
@@ -49,8 +51,9 @@ async function searchPokeWorkspaces(
       return [
         {
           id: workspaceByOrgId.id,
-          name: `Workspace (${workspaceByOrgId.name})`,
+          name: workspaceByOrgId.name,
           link: `${config.getClientFacingUrl()}/poke/${workspaceByOrgId.sId}`,
+          type: "Workspace",
         },
       ];
     }
@@ -60,7 +63,7 @@ async function searchPokeWorkspaces(
 }
 
 async function searchConnectorModelId(searchTerm: string) {
-  const connectorModelId = parseInt(searchTerm);
+  const connectorModelId = parseInt(searchTerm, 10);
   if (!isNaN(connectorModelId)) {
     const connectorsAPI = new ConnectorsAPI(
       config.getConnectorsAPIConfig(),
@@ -75,9 +78,10 @@ async function searchConnectorModelId(searchTerm: string) {
 
       return [
         {
-          id: parseInt(connector.id),
-          name: "Connector",
+          id: parseInt(connector.id, 10),
+          name: `Connector ${connector.id}`,
           link: `${config.getClientFacingUrl()}/poke/${connector.workspaceId}/data_sources/${connector.dataSourceId}`,
+          type: "Connector",
         },
       ];
     }
