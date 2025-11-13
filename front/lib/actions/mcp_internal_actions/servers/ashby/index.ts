@@ -12,11 +12,13 @@ import {
   renderInterviewFeedbackRecap,
   renderReportInfo,
 } from "@app/lib/actions/mcp_internal_actions/servers/ashby/rendering";
+import type { AshbyCandidate } from "@app/lib/actions/mcp_internal_actions/servers/ashby/types";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { toCsv } from "@app/lib/api/csv";
 import type { Authenticator } from "@app/lib/auth";
+import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 const DEFAULT_SEARCH_LIMIT = 20;
@@ -232,14 +234,6 @@ function createServer(
         agentLoopContext,
       },
       async ({ email, name }) => {
-        if (!email && !name) {
-          return new Err(
-            new MCPError(
-              "At least one search parameter (email or name) must be provided."
-            )
-          );
-        }
-
         const apiKeyResult = await getAshbyAPIKey(auth, agentLoopContext);
         if (apiKeyResult.isErr()) {
           return new Err(apiKeyResult.error);
@@ -247,40 +241,15 @@ function createServer(
 
         const client = new AshbyClient(apiKeyResult.value);
 
-        const searchResult = await client.searchCandidates({ email, name });
-        if (searchResult.isErr()) {
-          return new Err(
-            new MCPError(
-              `Failed to search candidates: ${searchResult.error.message}`
-            )
-          );
+        const candidateResult = await findUniqueCandidate(client, {
+          email,
+          name,
+        });
+        if (candidateResult.isErr()) {
+          return new Err(candidateResult.error);
         }
 
-        const candidates = searchResult.value.results;
-        if (candidates.length === 0) {
-          return new Ok([
-            {
-              type: "text" as const,
-              text: "No candidates found matching the search criteria.",
-            },
-          ]);
-        }
-
-        if (candidates.length > 1) {
-          const candidatesList = candidates
-            .map(
-              (c, i) =>
-                `${i + 1}. ${c.name} (${c.primaryEmailAddress?.value ?? "no email"})`
-            )
-            .join("\n");
-          return new Err(
-            new MCPError(
-              `Multiple candidates found. Please refine your search:\n\n${candidatesList}`
-            )
-          );
-        }
-
-        const candidate = candidates[0];
+        const candidate = candidateResult.value;
 
         if (
           !candidate.applicationIds ||
@@ -354,14 +323,6 @@ function createServer(
         agentLoopContext,
       },
       async ({ email, name, noteContent }) => {
-        if (!email && !name) {
-          return new Err(
-            new MCPError(
-              "At least one search parameter (email or name) must be provided."
-            )
-          );
-        }
-
         const apiKeyResult = await getAshbyAPIKey(auth, agentLoopContext);
         if (apiKeyResult.isErr()) {
           return new Err(apiKeyResult.error);
@@ -369,40 +330,16 @@ function createServer(
 
         const client = new AshbyClient(apiKeyResult.value);
 
-        const searchResult = await client.searchCandidates({ email, name });
-        if (searchResult.isErr()) {
-          return new Err(
-            new MCPError(
-              `Failed to search candidates: ${searchResult.error.message}`
-            )
-          );
+        const candidateResult = await findUniqueCandidate(client, {
+          email,
+          name,
+        });
+
+        if (candidateResult.isErr()) {
+          return new Err(candidateResult.error);
         }
 
-        const candidates = searchResult.value.results;
-        if (candidates.length === 0) {
-          return new Ok([
-            {
-              type: "text" as const,
-              text: "No candidates found matching the search criteria.",
-            },
-          ]);
-        }
-
-        if (candidates.length > 1) {
-          const candidatesList = candidates
-            .map(
-              (c, i) =>
-                `${i + 1}. ${c.name} (${c.primaryEmailAddress?.value ?? "no email"})`
-            )
-            .join("\n");
-          return new Err(
-            new MCPError(
-              `Multiple candidates found. Please refine your search:\n\n${candidatesList}`
-            )
-          );
-        }
-
-        const candidate = candidates[0];
+        const candidate = candidateResult.value;
 
         const noteResult = await client.createCandidateNote({
           candidateId: candidate.id,
@@ -442,6 +379,49 @@ function createServer(
   );
 
   return server;
+}
+
+async function findUniqueCandidate(
+  client: AshbyClient,
+  { email, name }: z.infer<typeof CandidateSearchInputSchema>
+): Promise<Result<AshbyCandidate, MCPError>> {
+  if (!email && !name) {
+    return new Err(
+      new MCPError(
+        "At least one search parameter (email or name) must be provided."
+      )
+    );
+  }
+
+  const searchResult = await client.searchCandidates({ email, name });
+  if (searchResult.isErr()) {
+    return new Err(
+      new MCPError(`Failed to search candidates: ${searchResult.error.message}`)
+    );
+  }
+
+  const candidates = searchResult.value.results;
+  if (candidates.length === 0) {
+    return new Err(
+      new MCPError("No candidates found matching the search criteria.")
+    );
+  }
+
+  if (candidates.length > 1) {
+    const candidatesList = candidates
+      .map(
+        (c, i) =>
+          `${i + 1}. ${c.name} (${c.primaryEmailAddress?.value ?? "no email"})`
+      )
+      .join("\n");
+    return new Err(
+      new MCPError(
+        `Multiple candidates found. Please refine your search:\n\n${candidatesList}`
+      )
+    );
+  }
+
+  return new Ok(candidates[0]);
 }
 
 export default createServer;
