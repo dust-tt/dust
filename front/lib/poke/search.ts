@@ -14,7 +14,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type { ConnectorType, PokeItemBase } from "@app/types";
-import { ConnectorsAPI } from "@app/types";
+import { asDisplayName, ConnectorsAPI } from "@app/types";
 
 async function searchPokeWorkspaces(
   searchTerm: string
@@ -76,10 +76,17 @@ async function searchConnectorModelId(searchTerm: string) {
         connectionId: null,
       };
 
+      const workspace = await WorkspaceResource.fetchById(
+        connector.workspaceId
+      );
+      if (!workspace) {
+        return null;
+      }
+
       return [
         {
           id: parseInt(connector.id, 10),
-          name: `Connector ${connector.id}`,
+          name: `${workspace.name}'s ${asDisplayName(connector.type)}`,
           link: `${config.getClientFacingUrl()}/poke/${connector.workspaceId}/data_sources/${connector.dataSourceId}`,
           type: "Connector",
         },
