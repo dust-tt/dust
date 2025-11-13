@@ -1,10 +1,10 @@
 import { CreateWebhookFathomConnection } from "@app/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection";
 import { WebhookSourceFathomDetails } from "@app/lib/triggers/built-in-webhooks/fathom/components/WebhookSourceFathomDetails";
-import { FathomWebhookService } from "@app/lib/triggers/built-in-webhooks/fathom/fathom_webhook_service";
 import {
   meetingContentReadyExample,
   meetingContentReadySchema,
-} from "@app/lib/triggers/built-in-webhooks/fathom/schemas/json_schema_meeting_content_ready";
+} from "@app/lib/triggers/built-in-webhooks/fathom/schemas/meeting_content_ready";
+import { FathomWebhookService } from "@app/lib/triggers/built-in-webhooks/fathom/service";
 import type {
   PresetWebhook,
   WebhookEvent,
