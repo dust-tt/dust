@@ -450,6 +450,31 @@ export class FileResource extends BaseResource<FileModel> {
     return ["upsert_document", "upsert_table"].includes(this.useCase);
   }
 
+  /**
+   * Check if this file belongs to a specific conversation by comparing the
+   * conversationId stored in useCaseMetadata.
+   *
+   * @param requestedConversationId The conversation ID to check against
+   * @returns Ok(true) if file belongs to the conversation, Ok(false) if it belongs
+   *          to a different conversation, Err if file is not associated with any conversation
+   */
+  belongsToConversation(
+    requestedConversationId: string
+  ): Result<boolean, Error> {
+    const { useCaseMetadata } = this;
+
+    if (!useCaseMetadata?.conversationId) {
+      return new Err(new Error("File is not associated with a conversation"));
+    }
+
+    // Direct access, file belongs to the requested conversation.
+    if (useCaseMetadata.conversationId === requestedConversationId) {
+      return new Ok(true);
+    }
+
+    return new Ok(false);
+  }
+
   getBucketForVersion(version: FileVersion) {
     if (version === "public") {
       return getPublicUploadBucket();
