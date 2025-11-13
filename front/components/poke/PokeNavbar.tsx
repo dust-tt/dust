@@ -106,7 +106,37 @@ export function PokeSearchCommand() {
             )}
           {isError && <div className="p-4 text-sm">Something went wrong.</div>}
           {searchTerm.length < 2 && (
-            <div className="p-4 text-sm">Enter at least 2 characters...</div>
+            <div className="p-4 text-sm">
+              <div className="mb-3 text-muted-foreground dark:text-muted-foreground-night">
+                Search for resources by:
+              </div>
+              <div className="space-y-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                <div>
+                  <span className="font-medium">Workspace name:</span>{" "}
+                  <span className="font-mono">acme</span>
+                </div>
+                <div>
+                  <span className="font-medium">Workspace ID:</span>{" "}
+                  <span className="font-mono">123456</span>
+                </div>
+                <div>
+                  <span className="font-medium">WorkOS org ID:</span>{" "}
+                  <span className="font-mono">org_01AB</span>
+                </div>
+                <div>
+                  <span className="font-medium">Data source view:</span>{" "}
+                  <span className="font-mono">dsv_abc123</span>
+                </div>
+                <div>
+                  <span className="font-medium">Data source:</span>{" "}
+                  <span className="font-mono">dts_abc123</span>
+                </div>
+                <div>
+                  <span className="font-medium">Connector ID:</span>{" "}
+                  <span className="font-mono">78901</span>
+                </div>
+              </div>
+            </div>
           )}
 
           {results.map(({ id, link, name }, index) =>
