@@ -421,5 +421,3 @@ export const prReviewSchema: JSONSchema = {
   },
   required: ["action", "review", "pull_request", "repository", "sender"],
 };
-
-export const prReviewExample = {};

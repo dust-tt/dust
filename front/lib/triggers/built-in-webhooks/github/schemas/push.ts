@@ -443,5 +443,3 @@ export const pushSchema: JSONSchema = {
     "sender",
   ],
 };
-
-export const pushExample = {};

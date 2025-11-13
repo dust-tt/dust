@@ -290,5 +290,3 @@ export const releaseSchema: JSONSchema = {
   },
   required: ["action", "release", "repository", "sender"],
 };
-
-export const releaseExample = {};
