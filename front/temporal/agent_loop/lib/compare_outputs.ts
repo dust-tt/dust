@@ -26,8 +26,16 @@ export type ComparisonResult = {
  * rather than exact text matching.
  */
 export function compareOutputs(
-  coreOutput: PromiseSettledResult<GetOutputResponse>,
-  llmOutput: PromiseSettledResult<GetOutputResponse>
+  coreOutput: PromiseSettledResult<{
+    response: GetOutputResponse;
+    duration: number;
+    timeToFirstEvent: number | null;
+  }>,
+  llmOutput: PromiseSettledResult<{
+    response: GetOutputResponse;
+    duration: number;
+    timeToFirstEvent: number | null;
+  }>
 ): ComparisonResult | null {
   // if either response is rejected, we can't compare
   if (coreOutput.status === "rejected" || llmOutput.status === "rejected") {
@@ -36,12 +44,12 @@ export function compareOutputs(
 
   // If either output is an error, we can't compare
 
-  if (coreOutput.value.isErr() || llmOutput.value.isErr()) {
+  if (coreOutput.value.response.isErr() || llmOutput.value.response.isErr()) {
     return null;
   }
 
-  const core = coreOutput.value.value;
-  const llm = llmOutput.value.value;
+  const core = coreOutput.value.response.value;
+  const llm = llmOutput.value.response.value;
 
   // 1. Compare action count
   const sameActionsCount =
