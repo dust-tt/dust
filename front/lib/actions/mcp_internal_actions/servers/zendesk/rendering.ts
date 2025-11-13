@@ -1,4 +1,7 @@
-import type { ZendeskTicket } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/types";
+import type {
+  ZendeskTicket,
+  ZendeskTicketMetrics,
+} from "@app/lib/actions/mcp_internal_actions/servers/zendesk/types";
 
 function apiUrlToDocumentUrl(apiUrl: string): string {
   return apiUrl.replace("/api/v2", "").replace(".json", "");
@@ -50,6 +53,86 @@ export function renderTicket(ticket: ZendeskTicket): string {
 
   lines.push(`\nCreated: ${new Date(ticket.created_at).toISOString()}`);
   lines.push(`Updated: ${new Date(ticket.updated_at).toISOString()}`);
+
+  return lines.join("\n");
+}
+
+function formatMinutes(minutes: number | null): string {
+  if (minutes === null || minutes === 0) {
+    return "0 minutes";
+  }
+
+  const hours = Math.floor(minutes / 60);
+  const mins = Math.round(minutes % 60);
+
+  if (hours === 0) {
+    return `${mins} minute${mins !== 1 ? "s" : ""}`;
+  }
+
+  if (mins === 0) {
+    return `${hours} hour${hours !== 1 ? "s" : ""}`;
+  }
+
+  return `${hours} hour${hours !== 1 ? "s" : ""} ${mins} minute${mins !== 1 ? "s" : ""}`;
+}
+
+export function renderTicketMetrics(metrics: ZendeskTicketMetrics): string {
+  const lines = ["\n--- Metrics ---"];
+
+  lines.push(`Reopens: ${metrics.reopens}`);
+  lines.push(`Replies: ${metrics.replies}`);
+  lines.push(`Assignee Stations: ${metrics.assignee_stations}`);
+  lines.push(`Group Stations: ${metrics.group_stations}`);
+
+  if (metrics.reply_time_in_minutes) {
+    lines.push(
+      `\nReply Time: ${formatMinutes(metrics.reply_time_in_minutes.calendar)}`
+    );
+  }
+
+  if (metrics.first_resolution_time_in_minutes) {
+    lines.push(
+      `\nFirst Resolution Time: ${formatMinutes(metrics.first_resolution_time_in_minutes.calendar)}`
+    );
+  }
+
+  if (metrics.full_resolution_time_in_minutes) {
+    lines.push(
+      `\nFull Resolution Time: ${formatMinutes(metrics.full_resolution_time_in_minutes.calendar)}`
+    );
+  }
+
+  if (metrics.agent_wait_time_in_minutes) {
+    lines.push(
+      `\nAgent Wait Time: ${formatMinutes(metrics.agent_wait_time_in_minutes.calendar)}`
+    );
+  }
+
+  if (metrics.requester_wait_time_in_minutes) {
+    lines.push(
+      `\nRequester Wait Time: ${formatMinutes(metrics.requester_wait_time_in_minutes.calendar)}`
+    );
+  }
+
+  if (metrics.on_hold_time_in_minutes) {
+    lines.push(
+      `\nOn Hold Time: ${formatMinutes(metrics.on_hold_time_in_minutes.calendar)}`
+    );
+  }
+
+  if (metrics.assigned_at) {
+    lines.push(`\nAssigned At: ${new Date(metrics.assigned_at).toISOString()}`);
+  }
+
+  if (metrics.solved_at) {
+    lines.push(`Solved At: ${new Date(metrics.solved_at).toISOString()}`);
+  }
+
+  if (metrics.initially_assigned_at) {
+    lines.push(
+      `Initially Assigned At: ${new Date(metrics.initially_assigned_at).toISOString()}`
+    );
+  }
 
   return lines.join("\n");
 }
