@@ -71,38 +71,38 @@ export const ZendeskTicketMetricsSchema = z.object({
   latest_comment_added_at: z.string().nullable(),
   reply_time_in_minutes: z
     .object({
-      calendar: z.number(),
-      business: z.number(),
+      calendar: z.number().nullable(),
+      business: z.number().nullable(),
     })
     .nullable(),
   first_resolution_time_in_minutes: z
     .object({
-      calendar: z.number(),
-      business: z.number(),
+      calendar: z.number().nullable(),
+      business: z.number().nullable(),
     })
     .nullable(),
   full_resolution_time_in_minutes: z
     .object({
-      calendar: z.number(),
-      business: z.number(),
+      calendar: z.number().nullable(),
+      business: z.number().nullable(),
     })
     .nullable(),
   agent_wait_time_in_minutes: z
     .object({
-      calendar: z.number(),
-      business: z.number(),
+      calendar: z.number().nullable(),
+      business: z.number().nullable(),
     })
     .nullable(),
   requester_wait_time_in_minutes: z
     .object({
-      calendar: z.number(),
-      business: z.number(),
+      calendar: z.number().nullable(),
+      business: z.number().nullable(),
     })
     .nullable(),
   on_hold_time_in_minutes: z
     .object({
-      calendar: z.number(),
-      business: z.number(),
+      calendar: z.number().nullable(),
+      business: z.number().nullable(),
     })
     .nullable(),
   url: z.string(),

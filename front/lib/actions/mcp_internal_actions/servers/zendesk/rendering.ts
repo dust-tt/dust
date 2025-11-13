@@ -90,31 +90,31 @@ export function renderTicketMetrics(metrics: ZendeskTicketMetrics): string {
     );
   }
 
-  if (metrics.first_resolution_time_in_minutes) {
+  if (metrics.first_resolution_time_in_minutes?.calendar) {
     lines.push(
       `\nFirst Resolution Time: ${formatMinutes(metrics.first_resolution_time_in_minutes.calendar)}`
     );
   }
 
-  if (metrics.full_resolution_time_in_minutes) {
+  if (metrics.full_resolution_time_in_minutes?.calendar) {
     lines.push(
       `\nFull Resolution Time: ${formatMinutes(metrics.full_resolution_time_in_minutes.calendar)}`
     );
   }
 
-  if (metrics.agent_wait_time_in_minutes) {
+  if (metrics.agent_wait_time_in_minutes?.calendar) {
     lines.push(
       `\nAgent Wait Time: ${formatMinutes(metrics.agent_wait_time_in_minutes.calendar)}`
     );
   }
 
-  if (metrics.requester_wait_time_in_minutes) {
+  if (metrics.requester_wait_time_in_minutes?.calendar) {
     lines.push(
       `\nRequester Wait Time: ${formatMinutes(metrics.requester_wait_time_in_minutes.calendar)}`
     );
   }
 
-  if (metrics.on_hold_time_in_minutes) {
+  if (metrics.on_hold_time_in_minutes?.calendar) {
     lines.push(
       `\nOn Hold Time: ${formatMinutes(metrics.on_hold_time_in_minutes.calendar)}`
     );
