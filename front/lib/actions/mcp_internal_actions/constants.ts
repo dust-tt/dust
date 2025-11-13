@@ -1243,7 +1243,7 @@ The directive should be used to display a clickable version of the agent name in
     tools_stakes: {
       search_candidates: "never_ask",
       get_report_data: "never_ask",
-      get_latest_interview_feedback: "never_ask",
+      get_interview_feedback: "never_ask",
       create_candidate_note: "high",
     },
     tools_retry_policies: undefined,

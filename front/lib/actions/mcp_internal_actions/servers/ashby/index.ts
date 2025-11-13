@@ -233,7 +233,7 @@ function createServer(
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: "ashby_get_latest_interview_feedback",
+        toolNameForMonitoring: "ashby_get_interview_feedback",
         agentLoopContext,
       },
       async ({ email, name }) => {
