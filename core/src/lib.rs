@@ -151,6 +151,7 @@ pub mod oauth {
         pub mod hubspot;
         pub mod intercom;
         pub mod jira;
+        pub mod linear;
         pub mod mcp;
         pub mod mcp_static;
         pub mod microsoft;
