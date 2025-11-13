@@ -1,5 +1,6 @@
 import type {
   AshbyCandidate,
+  AshbyFeedbackSubmission,
   AshbyReportSynchronousResponse,
 } from "@app/lib/actions/mcp_internal_actions/servers/ashby/types";
 
@@ -45,4 +46,61 @@ export function renderReportInfo(
     `Fields: ${reportData.columnNames.join(", ")}\n\n` +
     "The data has been saved as a CSV file."
   );
+}
+
+export function renderInterviewFeedbackRecap(
+  candidate: AshbyCandidate,
+  feedback: AshbyFeedbackSubmission
+): string {
+  const lines = [
+    "# Interview Feedback Recap",
+    "",
+    `**Candidate:** ${candidate.name}`,
+    `**Candidate ID:** ${candidate.id}`,
+  ];
+
+  if (candidate.primaryEmailAddress) {
+    lines.push(`**Email:** ${candidate.primaryEmailAddress.value}`);
+  }
+
+  lines.push("", "---", "");
+
+  if (feedback.formDefinition.title) {
+    lines.push(`**Interview Form:** ${feedback.formDefinition.title}`);
+  }
+
+  if (feedback.submittedBy) {
+    lines.push(
+      `**Submitted by:** ${feedback.submittedBy.firstName} ${feedback.submittedBy.lastName} (${feedback.submittedBy.email})`
+    );
+  }
+
+  if (feedback.submittedAt) {
+    lines.push(
+      `**Submitted at:** ${new Date(feedback.submittedAt).toISOString()}`
+    );
+  }
+
+  lines.push("", "## Feedback Details", "");
+
+  if (feedback.values) {
+    const fieldMap = new Map(
+      feedback.formDefinition.fields?.map((f) => [f.id, f.title ?? f.id]) ?? []
+    );
+
+    for (const [fieldId, value] of Object.entries(feedback.values)) {
+      const fieldTitle = fieldMap.get(fieldId) ?? fieldId;
+      let displayValue = String(value);
+
+      if (typeof value === "object" && value !== null) {
+        displayValue = JSON.stringify(value, null, 2);
+      }
+
+      lines.push(`**${fieldTitle}:**`);
+      lines.push(displayValue);
+      lines.push("");
+    }
+  }
+
+  return lines.join("\n");
 }
