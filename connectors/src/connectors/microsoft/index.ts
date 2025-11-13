@@ -13,21 +13,17 @@ import {
   ConnectorManagerError,
 } from "@connectors/connectors/interface";
 import {
-  getChannelAsContentNode,
   getDriveAsContentNode,
   getFolderAsContentNode,
   getMicrosoftNodeAsContentNode,
   getSiteAsContentNode,
-  getTeamAsContentNode,
 } from "@connectors/connectors/microsoft/lib/content_nodes";
 import {
   getAllPaginatedEntities,
-  getChannels,
   getDrives,
   getFilesAndFolders,
   getSites,
   getSubSites,
-  getTeams,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import type { MicrosoftNodeType } from "@connectors/connectors/microsoft/lib/types";
 import {
@@ -75,7 +71,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     const { client, tenantId } = await getMicrosoftConnectionData(connectionId);
 
     try {
-      // Sanity checks - check connectivity and permissions. User should be able to access the sites and teams list.
+      // Sanity checks - check connectivity and permissions. User should be able to access the sites list.
       await getSites(logger, client);
     } catch (err) {
       logger.error(
@@ -251,9 +247,6 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       await MicrosoftRootResource.listRootsByConnectorId(connector.id)
     ).map((r) => r.internalId);
 
-    // at the time, we only sync sharepoint sites and drives, not team channels
-    // work on teams has been started here and in graph_api.ts but is not yet
-    // user facing
     if (!parentInternalId) {
       parentInternalId = internalIdFromTypeAndPath({
         nodeType: "sites-root",
@@ -270,22 +263,6 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
             getSites(logger, client, nextLink)
           );
           nodes.push(...sites.map((n) => getSiteAsContentNode(n)));
-          break;
-        }
-        case "teams-root": {
-          const teams = await getAllPaginatedEntities((nextLink) =>
-            getTeams(logger, client, nextLink)
-          );
-          nodes.push(...teams.map((n) => getTeamAsContentNode(n)));
-          break;
-        }
-        case "team": {
-          const channels = await getAllPaginatedEntities((nextLink) =>
-            getChannels(logger, client, parentInternalId, nextLink)
-          );
-          nodes.push(
-            ...channels.map((n) => getChannelAsContentNode(n, parentInternalId))
-          );
           break;
         }
         case "site": {
@@ -312,7 +289,6 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
           );
           break;
         }
-        case "channel":
         case "file":
         case "page":
         case "message":
