@@ -1034,23 +1034,30 @@ export async function unsafeHardDeleteAgentConfiguration(
 ): Promise<void> {
   const workspaceId = auth.getNonNullableWorkspace().id;
 
-  await TagAgentModel.destroy({
-    where: {
-      agentConfigurationId: agentConfiguration.id,
-      workspaceId,
-    },
-  });
-  await GroupAgentModel.destroy({
-    where: {
-      agentConfigurationId: agentConfiguration.id,
-      workspaceId,
-    },
-  });
-  await AgentConfiguration.destroy({
-    where: {
-      id: agentConfiguration.id,
-      workspaceId,
-    },
+  await withTransaction(async (t) => {
+    await TagAgentModel.destroy({
+      where: {
+        agentConfigurationId: agentConfiguration.id,
+        workspaceId,
+      },
+      transaction: t,
+    });
+
+    await GroupAgentModel.destroy({
+      where: {
+        agentConfigurationId: agentConfiguration.id,
+        workspaceId,
+      },
+      transaction: t,
+    });
+
+    await AgentConfiguration.destroy({
+      where: {
+        id: agentConfiguration.id,
+        workspaceId,
+      },
+      transaction: t,
+    });
   });
 }
 
