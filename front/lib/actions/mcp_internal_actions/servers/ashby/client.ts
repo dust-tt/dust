@@ -23,7 +23,7 @@ import { decrypt, Err, Ok } from "@app/types";
 
 const ASHBY_API_BASE_URL = "https://api.ashbyhq.com";
 
-export async function getAshbyApiKey(
+export async function getAshbyAPIKey(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): Promise<Result<string, MCPError>> {

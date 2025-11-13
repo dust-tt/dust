@@ -5,7 +5,7 @@ import { z } from "zod";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   AshbyClient,
-  getAshbyApiKey,
+  getAshbyAPIKey,
 } from "@app/lib/actions/mcp_internal_actions/servers/ashby/client";
 import {
   renderCandidateList,
@@ -55,7 +55,7 @@ function createServer(
           );
         }
 
-        const apiKeyResult = await getAshbyApiKey(auth, agentLoopContext);
+        const apiKeyResult = await getAshbyAPIKey(auth, agentLoopContext);
         if (apiKeyResult.isErr()) {
           return new Err(apiKeyResult.error);
         }
@@ -126,7 +126,7 @@ function createServer(
       auth,
       { toolNameForMonitoring: "ashby_get_report_data", agentLoopContext },
       async ({ reportUrl }) => {
-        const apiKeyResult = await getAshbyApiKey(auth, agentLoopContext);
+        const apiKeyResult = await getAshbyAPIKey(auth, agentLoopContext);
         if (apiKeyResult.isErr()) {
           return new Err(apiKeyResult.error);
         }
@@ -240,7 +240,7 @@ function createServer(
           );
         }
 
-        const apiKeyResult = await getAshbyApiKey(auth, agentLoopContext);
+        const apiKeyResult = await getAshbyAPIKey(auth, agentLoopContext);
         if (apiKeyResult.isErr()) {
           return new Err(apiKeyResult.error);
         }
@@ -362,7 +362,7 @@ function createServer(
           );
         }
 
-        const apiKeyResult = await getAshbyApiKey(auth, agentLoopContext);
+        const apiKeyResult = await getAshbyAPIKey(auth, agentLoopContext);
         if (apiKeyResult.isErr()) {
           return new Err(apiKeyResult.error);
         }
