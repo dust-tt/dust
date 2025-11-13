@@ -28,7 +28,7 @@ export interface LLMTraceContext {
 
   /** Context-specific identifier (e.g., agentConfigId, conversationId, etc.) */
   contextId?: string;
-
+  workspaceId?: string;
   /** User who triggered the operation */
   userId?: string;
 }
