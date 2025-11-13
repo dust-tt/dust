@@ -6,6 +6,7 @@ import {
 } from "@app/components/agent_builder/observability/constants";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
 import type { ToolChartModeType } from "@app/components/agent_builder/observability/types";
+import { isToolChartUsagePayload } from "@app/components/agent_builder/observability/types";
 import { getToolColor } from "@app/components/agent_builder/observability/utils";
 
 export interface ToolUsageTooltipProps
@@ -25,14 +26,21 @@ export function ChartsTooltip({
     return null;
   }
 
-  const rows = payload
-    .filter((p) => typeof p.value === "number" && p.value > 0)
-    .sort((a, b) => b.value - a.value)
-    .map((p) => ({
-      label: p.name || "",
-      value: `${p.value}%`,
-      colorClassName: getToolColor(p.name, topTools),
-    }));
+  const typed = payload.filter(isToolChartUsagePayload);
+  const rows = typed
+    .filter((p) => (p.value ?? 0) > 0)
+    .sort((a, b) => (b.value ?? 0) - (a.value ?? 0))
+    .map((p) => {
+      const toolName = p.name ?? "";
+      const percent = p.payload?.values?.[toolName]?.percent ?? 0;
+      const count = p.payload?.values?.[toolName]?.count ?? 0;
+      return {
+        label: toolName,
+        value: count,
+        percent,
+        colorClassName: getToolColor(toolName, topTools),
+      };
+    });
 
   const title = mode === "step" ? `Step ${String(label)}` : String(label);
   return <ChartTooltipCard title={title} rows={rows} />;
