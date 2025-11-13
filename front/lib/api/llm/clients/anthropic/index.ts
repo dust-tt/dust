@@ -14,7 +14,7 @@ import { handleGenericError } from "@app/lib/api/llm/types/errors";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
   LLMParameters,
-  StreamParameters,
+  LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
@@ -49,7 +49,7 @@ export class AnthropicLLM extends LLM {
     conversation,
     prompt,
     specifications,
-  }: StreamParameters): AsyncGenerator<LLMEvent> {
+  }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
     try {
       const messages = conversation.messages.map(toMessage);
 

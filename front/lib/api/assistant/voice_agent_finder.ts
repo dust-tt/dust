@@ -2,6 +2,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 
+import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types";
@@ -24,7 +25,7 @@ const VoiceAgentFinderResponseSchema = t.type({
   ),
 });
 
-const specifications = [
+const specifications: AgentActionSpecification[] = [
   {
     name: FIND_AGENTS_AND_TOOLS_FUNCTION_NAME,
     description: "Find agents and tools in a message",
@@ -154,12 +155,19 @@ export async function findAgentsInMessageGeneration(
         messages: [
           {
             role: "user",
-            content: inputs.message.trim(),
+            content: [{ type: "text", text: inputs.message.trim() }],
+            name: "",
           },
         ],
       },
       prompt: instructionsWithAgents,
       specifications,
+    },
+    {
+      context: {
+        operationType: "voice_agent_finder",
+        userId: auth.user()?.sId,
+      },
     }
   );
 

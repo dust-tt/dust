@@ -1,5 +1,7 @@
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 import z from "zod";
 
+import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -8,6 +10,7 @@ import logger from "@app/logger/logger";
 import type {
   AgentModelConfigurationType,
   CoreAPISearchFilter,
+  ModelConversationTypeMultiActions,
   Result,
 } from "@app/types";
 import { CoreAPI, dustManagedCredentials, Err, Ok } from "@app/types";
@@ -32,7 +35,7 @@ type ProcessDataSourcesParams = {
   model: AgentModelConfigurationType;
   prompt: string;
   objective: string;
-  jsonSchema: unknown;
+  jsonSchema: JSONSchema;
   topK: number;
 };
 
@@ -121,7 +124,7 @@ export async function processDataSources({
   }
 
   // Step 4: Build function specification
-  const specifications = [
+  const specifications: AgentActionSpecification[] = [
     {
       name: EXTRACT_DATA_FUNCTION_NAME,
       description:
@@ -145,13 +148,19 @@ export async function processDataSources({
   const extractionResults = await concurrentExecutor(
     batches,
     async (batchContent) => {
-      const conversation = {
+      const conversation: ModelConversationTypeMultiActions = {
         messages: [
           {
-            role: "user" as const,
-            content:
-              `USER OBJECTIVE: ${objective}\nOnly call ${EXTRACT_DATA_FUNCTION_NAME} with data points relevant to the user objective.\n\n` +
-              `CHUNKS:\n${batchContent}`,
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text:
+                  `USER OBJECTIVE: ${objective}\nOnly call ${EXTRACT_DATA_FUNCTION_NAME} with data points relevant to the user objective.\n\n` +
+                  `CHUNKS:\n${batchContent}`,
+              },
+            ],
+            name: "",
           },
         ],
       };
@@ -169,6 +178,12 @@ export async function processDataSources({
           conversation,
           prompt,
           specifications,
+        },
+        {
+          context: {
+            operationType: "process_data_sources",
+            userId: auth.user()?.sId,
+          },
         }
       );
 

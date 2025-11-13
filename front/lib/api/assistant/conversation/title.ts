@@ -1,3 +1,4 @@
+import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
@@ -86,7 +87,7 @@ const MODEL_ID: ModelIdType = GPT_4O_MINI_MODEL_ID;
 
 const FUNCTION_NAME = "update_title";
 
-const specifications = [
+const specifications: AgentActionSpecification[] = [
   {
     name: FUNCTION_NAME,
     description: "Update the title of the conversation",
@@ -157,6 +158,13 @@ async function generateConversationTitle(
         "Generate a concise conversation title (3-8 words) based on the user's message and context. " +
         "The title should capture the main topic or request without being too generic.",
       specifications,
+    },
+    {
+      context: {
+        operationType: "conversation_title_suggestion",
+        contextId: conversation.sId,
+        userId: auth.user()?.sId,
+      },
     }
   );
 
