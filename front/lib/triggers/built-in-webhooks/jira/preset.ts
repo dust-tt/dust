@@ -4,6 +4,7 @@ import {
   issueCreatedExample,
   issueCreatedSchema,
 } from "@app/lib/triggers/built-in-webhooks/jira/schemas/issue_created";
+import { issueDeletedSchema } from "@app/lib/triggers/built-in-webhooks/jira/schemas/issue_deleted";
 import { issueUpdatedSchema } from "@app/lib/triggers/built-in-webhooks/jira/schemas/issue_updated";
 import { JiraWebhookService } from "@app/lib/triggers/built-in-webhooks/jira/service";
 import type {
@@ -34,7 +35,7 @@ const JIRA_ISSUE_DELETED_EVENT: WebhookEvent = {
   value: "jira:issue_deleted",
   description:
     "Triggered when an issue is deleted in Jira. The event includes details about the deleted issue and the user who performed the deletion.",
-  schema: {},
+  schema: issueDeletedSchema,
   sample: null,
 };
 
