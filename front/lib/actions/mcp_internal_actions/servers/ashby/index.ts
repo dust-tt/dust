@@ -10,7 +10,10 @@ import {
   renderInterviewFeedbackRecap,
   renderReportInfo,
 } from "@app/lib/actions/mcp_internal_actions/servers/ashby/rendering";
-import type { AshbyCandidate } from "@app/lib/actions/mcp_internal_actions/servers/ashby/types";
+import type {
+  AshbyCandidate,
+  AshbyFeedbackSubmission,
+} from "@app/lib/actions/mcp_internal_actions/servers/ashby/types";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -266,10 +269,11 @@ function createServer(
           );
         }
 
-        const allFeedback = [];
+        let latestApplicationFeedback: AshbyFeedbackSubmission[] | null = null;
+        let latestApplicationDate: Date | null = null;
 
         for (const applicationId of candidate.applicationIds) {
-          const feedbackResult = await client.getApplicationFeedback({
+          const feedbackResult = await client.listApplicationFeedback({
             applicationId,
           });
 
@@ -277,10 +281,23 @@ function createServer(
             continue;
           }
 
-          allFeedback.push(...feedbackResult.value.results);
+          // We consider the max date across all feedback for the application.
+          for (const feedback of feedbackResult.value.results) {
+            if (!feedback.submittedAt) {
+              continue;
+            }
+            const submittedAt = new Date(feedback.submittedAt);
+            if (!latestApplicationDate || submittedAt > latestApplicationDate) {
+              latestApplicationDate = submittedAt;
+              latestApplicationFeedback = feedbackResult.value.results;
+            }
+          }
         }
 
-        if (allFeedback.length === 0) {
+        if (
+          !latestApplicationFeedback ||
+          latestApplicationFeedback.length === 0
+        ) {
           return new Err(
             new MCPError(
               `No submitted interview feedback found for candidate ${candidate.name}.`
@@ -288,13 +305,16 @@ function createServer(
           );
         }
 
-        allFeedback.sort((a, b) => {
+        latestApplicationFeedback.sort((a, b) => {
           const dateA = new Date(a.submittedAt!);
           const dateB = new Date(b.submittedAt!);
           return dateB.getTime() - dateA.getTime();
         });
 
-        const recapText = renderInterviewFeedbackRecap(candidate, allFeedback);
+        const recapText = renderInterviewFeedbackRecap(
+          candidate,
+          latestApplicationFeedback
+        );
 
         return new Ok([
           {

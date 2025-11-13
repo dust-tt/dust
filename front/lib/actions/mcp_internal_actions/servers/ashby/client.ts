@@ -138,7 +138,7 @@ export class AshbyClient {
     );
   }
 
-  async getApplicationFeedback(request: AshbyApplicationFeedbackListRequest) {
+  async listApplicationFeedback(request: AshbyApplicationFeedbackListRequest) {
     return this.postRequest(
       "applicationFeedback.list",
       request,
