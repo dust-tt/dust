@@ -4,7 +4,7 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
-import { Op, literal } from "sequelize";
+import { literal,Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -16,8 +16,7 @@ import { Err, normalizeError, Ok, removeNulls } from "@app/types";
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface CreditResource
-  extends ReadonlyAttributesType<CreditModel> {}
+export interface CreditResource extends ReadonlyAttributesType<CreditModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class CreditResource extends BaseResource<CreditModel> {
   static model: ModelStatic<CreditModel> = CreditModel;
@@ -68,15 +67,22 @@ export class CreditResource extends BaseResource<CreditModel> {
     const now = new Date();
     return this.baseFetch(auth, {
       where: {
-        remainingAmount: { [Op.gt]: 0 } as any,
-        [Op.or]: [{ expirationDate: null }, { expirationDate: { [Op.gt]: now } }],
-      } as any,
+        remainingAmount: { [Op.gt]: 0 },
+        [Op.or]: [
+          { expirationDate: null },
+          { expirationDate: { [Op.gt]: now } },
+        ],
+      },
     });
   }
 
   static async fetchByIds(auth: Authenticator, ids: string[]) {
     return this.baseFetch(auth, {
-      where: { id: removeNulls(ids.map((v) => (typeof v === "string" ? parseInt(v, 10) : v))) },
+      where: {
+        id: removeNulls(
+          ids.map((v) => (typeof v === "string" ? parseInt(v, 10) : v))
+        ),
+      },
     });
   }
 
@@ -85,21 +91,28 @@ export class CreditResource extends BaseResource<CreditModel> {
     return row ?? null;
   }
 
-  async consume(amountInCents: number, { transaction }: { transaction?: Transaction } = {}) {
+  async consume(
+    amountInCents: number,
+    { transaction }: { transaction?: Transaction } = {}
+  ) {
     if (amountInCents < 0) {
       return new Err(new Error("Amount to consume must be positive."));
     }
     try {
       // Atomic decrement guarded by remainingAmount >= amountInCents to prevent double spending.
       const [affected] = await this.model.update(
-        { remainingAmount: literal(`"remainingAmount" - ${amountInCents}`) as any },
+        {
+          // Assign a literal expression; cast through unknown to satisfy TS without any.
+          remainingAmount: literal(
+            `"remainingAmount" - ${amountInCents}`
+          ) as unknown as number,
+        },
         {
           where: {
             id: this.id,
             // extra guard by workspace for tenant safety
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            workspaceId: (this as any).workspaceId,
-            remainingAmount: { [Op.gte]: amountInCents } as any,
+            workspaceId: this.workspaceId,
+            remainingAmount: { [Op.gte]: amountInCents },
           },
           transaction,
         }
@@ -129,9 +142,11 @@ export class CreditResource extends BaseResource<CreditModel> {
   toLogJSON() {
     return {
       id: this.id,
-      workspaceId: (this as any).workspaceId,
+      workspaceId: this.workspaceId,
       remainingAmount: this.remainingAmount,
-      expirationDate: this.expirationDate ? this.expirationDate.toISOString() : null,
+      expirationDate: this.expirationDate
+        ? this.expirationDate.toISOString()
+        : null,
     };
   }
 }
