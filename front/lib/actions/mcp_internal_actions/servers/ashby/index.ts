@@ -312,13 +312,7 @@ function createServer(
             continue;
           }
 
-          const feedbackList = feedbackResult.value.results;
-
-          for (const feedback of feedbackList) {
-            if (feedback.submittedAt) {
-              allFeedback.push(feedback);
-            }
-          }
+          allFeedback.push(...feedbackResult.value.results);
         }
 
         if (allFeedback.length === 0) {
