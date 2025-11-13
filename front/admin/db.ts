@@ -81,6 +81,7 @@ import {
 } from "@app/lib/resources/storage/models/runs";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
+import { CreditModel } from "@app/lib/resources/storage/models/credits";
 import {
   UserMetadataModel,
   UserModel,
@@ -141,6 +142,7 @@ async function main() {
   await Plan.sync({ alter: true });
   await Subscription.sync({ alter: true });
   await TemplateModel.sync({ alter: true });
+  await CreditModel.sync({ alter: true });
 
   await AgentConfiguration.sync({ alter: true });
   await AgentUserRelation.sync({ alter: true });
