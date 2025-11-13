@@ -28,7 +28,6 @@ export const FATHOM_WEBHOOK_PRESET: PresetWebhook<"fathom"> = {
   description:
     "Receive events from Fathom when meeting recordings are ready with transcripts, summaries, and action items.",
   webhookPageUrl: "https://app.fathom.video/settings/api",
-  featureFlag: "hootl_dev_webhooks",
   webhookService: new FathomWebhookService(),
   components: {
     detailsComponent: WebhookSourceFathomDetails,
