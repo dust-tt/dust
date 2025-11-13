@@ -205,7 +205,6 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       if (r.isErr()) {
         return r;
       }
-      gs;
     }
 
     return new Ok(trigger);
