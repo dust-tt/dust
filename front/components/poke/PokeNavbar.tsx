@@ -1,4 +1,4 @@
-import { Button, Logo } from "@dust-tt/sparkle";
+import { Button, ChevronRightIcon, Chip, Logo } from "@dust-tt/sparkle";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -94,7 +94,7 @@ export function PokeSearchCommand() {
       >
         <PokeCommandInput
           placeholder="Type a command or search..."
-          onValueChange={(value) => setSearchTerm(value)}
+          onValueChange={(value) => setSearchTerm(value.trim())}
           className="border-none focus:outline-none focus:ring-0"
         />
         <PokeCommandList>
@@ -137,19 +137,30 @@ export function PokeSearchCommand() {
             </div>
           )}
 
-          {results.map(({ id, link, name }, index) =>
-            link ? (
+          {results.map(({ id, link, name, type }, index) => {
+            const CommandItem = () => (
+              <PokeCommandItem value={name} index={index}>
+                <div className="flex w-full items-center justify-between gap-3 px-2 text-foreground dark:text-foreground-night">
+                  <div className="flex min-w-0 items-baseline gap-3">
+                    <Chip size="xs">{type}</Chip>
+                    <span className="text-sm font-medium">{name}</span>
+                    <span className="font-mono text-xs text-muted-foreground dark:text-muted-foreground-night">
+                      (id: {id})
+                    </span>
+                  </div>
+                  <ChevronRightIcon className="h-4 w-4 flex-shrink-0" />
+                </div>
+              </PokeCommandItem>
+            );
+
+            return link ? (
               <Link href={link} key={id}>
-                <PokeCommandItem value={name} index={index}>
-                  {name} (id: {id})
-                </PokeCommandItem>
+                <CommandItem />
               </Link>
             ) : (
-              <PokeCommandItem key={id} value={name} index={index}>
-                {name} (id: {id})
-              </PokeCommandItem>
-            )
-          )}
+              <CommandItem />
+            );
+          })}
         </PokeCommandList>
       </PokeCommandDialog>
     </>

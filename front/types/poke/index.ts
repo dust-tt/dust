@@ -19,6 +19,7 @@ export interface PokeItemBase {
   id: ModelId;
   link: string | null;
   name: string;
+  type: string;
 }
 
 export type PokeSpaceType = SpaceType & {
