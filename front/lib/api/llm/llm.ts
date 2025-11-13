@@ -15,6 +15,7 @@ import type {
 } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { RunResource } from "@app/lib/resources/run_resource";
+import logger from "@app/logger/logger";
 import type { ModelIdType, ReasoningEffort } from "@app/types";
 
 export abstract class LLM {
@@ -83,16 +84,44 @@ export abstract class LLM {
       temperature: this.temperature,
     });
 
+    // TODO(LLM-Router 13/11/2025): Temporary logs, TBRemoved
+    let currentEvent: LLMEvent | null = null;
     try {
       for await (const event of this.internalStream({
         conversation,
         prompt,
         specifications,
       })) {
+        currentEvent = event;
         buffer.addEvent(event);
         yield event;
       }
     } finally {
+      if (currentEvent?.type === "error") {
+        logger.error(
+          {
+            llmEventType: "error",
+            message: currentEvent.content.message,
+            modelId: this.modelId,
+          },
+          "LLM Error"
+        );
+      } else if (currentEvent?.type === "success") {
+        logger.info(
+          { llmEventType: "success", modelId: this.modelId },
+          "LLM Success"
+        );
+      } else {
+        logger.warn(
+          {
+            llmEventType: "uncategorized",
+            lastEventType: currentEvent?.type,
+            modelId: this.modelId,
+          },
+          "LLM uncategorized"
+        );
+      }
+
       const durationMs = Date.now() - startTime;
       buffer.writeToGCS({ durationMs, startTime }).catch(() => {});
 
