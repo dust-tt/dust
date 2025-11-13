@@ -433,8 +433,9 @@ export async function runModelActivity(
   let getOutputFromActionResponse: GetOutputResponse;
   const traceContext: LLMTraceContext = {
     operationType: "agent_conversation",
-    contextId: agentConfiguration.sId,
+    contextId: conversation.sId,
     userId: auth.user()?.sId,
+    workspaceId: conversation.owner.sId,
   };
   const llm = await getLLM(auth, {
     modelId: model.modelId,
