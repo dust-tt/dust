@@ -32,7 +32,9 @@ export async function dataSourceToPokeJSON(
     link: workspace
       ? `${config.getClientFacingUrl()}/poke/${workspace.sId}/data_sources/${dataSource.sId}`
       : null,
-    name: getDisplayNameForDataSource(dataSource.toJSON()),
+    name:
+      (workspace ? `${workspace.name}'s ` : "") +
+      getDisplayNameForDataSource(dataSource.toJSON()),
     type: "Data Source",
     space: spaceToPokeJSON(dataSource.space),
   };
@@ -51,7 +53,9 @@ export async function dataSourceViewToPokeJSON(
     link: workspace
       ? `${config.getClientFacingUrl()}/poke/${workspace.sId}/spaces/${dataSourceView.space.sId}/data_source_views/${dataSourceView.sId}`
       : null,
-    name: getDisplayNameForDataSource(dataSourceView.dataSource.toJSON()),
+    name:
+      (workspace ? `${workspace.name}'s ` : "") +
+      getDisplayNameForDataSource(dataSourceView.dataSource.toJSON()),
     type: "Data Source View",
     space: spaceToPokeJSON(dataSourceView.space),
   };
