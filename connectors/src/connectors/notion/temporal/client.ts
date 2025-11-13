@@ -5,6 +5,7 @@ import type {
   WorkflowHandle,
 } from "@temporalio/client";
 import { WorkflowNotFoundError } from "@temporalio/client";
+import { z } from "zod";
 
 import {
   GARBAGE_COLLECT_QUEUE_NAME,
@@ -14,7 +15,6 @@ import type { NotionWebhookEvent } from "@connectors/connectors/notion/temporal/
 import {
   notionDeletionCrawlSignal,
   notionWebhookSignal,
-  validateDeletionCrawlSignalArgs,
 } from "@connectors/connectors/notion/temporal/signals";
 import {
   notionProcessWebhooksWorkflow,
@@ -33,6 +33,45 @@ import type { ModelId } from "@connectors/types";
 import { getNotionWorkflowId, normalizeError } from "@connectors/types";
 
 const logger = mainLogger.child({ provider: "notion" });
+
+/**
+ * Zod schema for validating deletion crawl signal arguments
+ * Validates connectorId, resourceId, and resourceType together
+ */
+const DeletionCrawlSignalArgsSchema = z.object({
+  connectorId: z
+    .number()
+    .int("Connector ID must be an integer")
+    .positive("Connector ID must be positive"),
+  resourceId: z.string().min(1, "Resource ID cannot be empty").trim(),
+  resourceType: z.enum(["page", "database"], {
+    errorMap: () => ({ message: "Resource type must be 'page' or 'database'" }),
+  }),
+});
+
+/**
+ * Type definition for deletion crawl signal arguments (inferred from schema)
+ */
+type DeletionCrawlSignalArgs = z.infer<typeof DeletionCrawlSignalArgsSchema>;
+
+/**
+ * Validates deletion crawl signal arguments using Zod schema
+ * @param args - The arguments to validate
+ * @returns Validated arguments or null if validation fails
+ */
+function validateDeletionCrawlSignalArgs(
+  args: unknown
+): DeletionCrawlSignalArgs | null {
+  const result = DeletionCrawlSignalArgsSchema.safeParse(args);
+  if (!result.success) {
+    logger.warn(
+      { error: result.error.flatten(), receivedArgs: args },
+      "Invalid deletion crawl signal arguments"
+    );
+    return null;
+  }
+  return result.data;
+}
 
 export async function launchNotionSyncWorkflow(
   connectorId: ModelId,
