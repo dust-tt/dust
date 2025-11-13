@@ -2,6 +2,8 @@ import express from "express";
 
 import { createTeamsRoutes } from "./microsoft/routes.js";
 import { createTeamsVerificationMiddleware } from "./microsoft/verification.js";
+import { createNotionRoutes } from "./notion/routes.js";
+import { createNotionVerificationMiddleware } from "./notion/verification.js";
 import type { SecretManager } from "./secrets.js";
 import { createSlackRoutes } from "./slack/routes.js";
 import { createSlackVerificationMiddleware } from "./slack/verification.js";
@@ -45,6 +47,7 @@ export function createRoutes(secretManager: SecretManager) {
   // Create platform-specific verification middlewares (without webhook secret validation)
   const slackVerification = createSlackVerificationMiddleware(secretManager);
   const teamsVerification = createTeamsVerificationMiddleware(secretManager);
+  const notionVerification = createNotionVerificationMiddleware(secretManager);
 
   // Mount platform routes with webhook secret validation first
   const slackRoutes = createSlackRoutes(secretManager, slackVerification);
@@ -52,6 +55,9 @@ export function createRoutes(secretManager: SecretManager) {
 
   const teamsRoutes = createTeamsRoutes(secretManager, teamsVerification);
   router.use("/:webhookSecret/microsoft", webhookSecretValidation, teamsRoutes);
+
+  const notionRoutes = createNotionRoutes(secretManager, notionVerification);
+  router.use("/:webhookSecret/notion", webhookSecretValidation, notionRoutes);
 
   return router;
 }
