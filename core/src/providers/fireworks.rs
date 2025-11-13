@@ -5,7 +5,7 @@ use crate::providers::llm::TokenizerSingleton;
 use crate::providers::llm::{LLMChatGeneration, LLMGeneration, LLM};
 use crate::providers::provider::{Provider, ProviderID};
 use crate::run::Credentials;
-use crate::types::tokenizer::{TokenizerConfig, TiktokenTokenizerBase};
+use crate::types::tokenizer::{TiktokenTokenizerBase, TokenizerConfig};
 use crate::utils;
 
 use anyhow::{anyhow, Result};
@@ -40,7 +40,11 @@ impl FireworksLLM {
         FireworksLLM {
             id,
             api_key: None,
-            tokenizer,
+            tokenizer: tokenizer.or_else(|| {
+                TokenizerSingleton::from_config(&TokenizerConfig::Tiktoken {
+                    base: TiktokenTokenizerBase::O200kBase,
+                })
+            }),
         }
     }
 
@@ -82,7 +86,6 @@ impl LLM for FireworksLLM {
     fn context_size(&self) -> usize {
         Self::fireworks_context_size(self.id.as_str())
     }
-
 
     async fn encode(&self, text: &str) -> Result<Vec<usize>> {
         self.tokenizer
@@ -230,9 +233,10 @@ impl Provider for FireworksProvider {
         let tokenizer = TokenizerSingleton::from_config(&TokenizerConfig::Tiktoken {
             base: TiktokenTokenizerBase::O200kBase,
         });
-        let mut llm = self.llm(String::from(
-            "accounts/fireworks/models/llama-v3p1-8b-instruct",
-        ), tokenizer);
+        let mut llm = self.llm(
+            String::from("accounts/fireworks/models/llama-v3p1-8b-instruct"),
+            tokenizer,
+        );
         llm.initialize(Credentials::new()).await?;
 
         let _ = llm

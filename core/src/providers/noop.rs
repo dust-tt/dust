@@ -6,6 +6,7 @@ use crate::providers::llm::{ChatFunction, ChatMessageRole, Tokens};
 use crate::providers::llm::{LLMChatGeneration, LLMGeneration, LLM};
 use crate::providers::provider::{Provider, ProviderID};
 use crate::run::Credentials;
+use crate::types::tokenizer::{TiktokenTokenizerBase, TokenizerConfig};
 use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -21,7 +22,11 @@ impl NoopLLM {
     pub fn new(id: String, tokenizer: Option<TokenizerSingleton>) -> Self {
         NoopLLM {
             id,
-            tokenizer,
+            tokenizer: tokenizer.or_else(|| {
+                TokenizerSingleton::from_config(&TokenizerConfig::Tiktoken {
+                    base: TiktokenTokenizerBase::O200kBase,
+                })
+            }),
         }
     }
 }
@@ -39,7 +44,6 @@ impl LLM for NoopLLM {
     fn context_size(&self) -> usize {
         1_000_000
     }
-
 
     async fn encode(&self, text: &str) -> Result<Vec<usize>> {
         self.tokenizer

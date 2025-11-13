@@ -59,7 +59,11 @@ impl AnthropicLLM {
             api_key: None,
             user_id: None,
             backend: Box::new(DirectAnthropicBackend::new()),
-            tokenizer,
+            tokenizer: tokenizer.or_else(|| {
+                TokenizerSingleton::from_config(&TokenizerConfig::Tiktoken {
+                    base: TiktokenTokenizerBase::AnthropicBase,
+                })
+            }),
         }
     }
 

@@ -10,7 +10,7 @@ use crate::providers::tiktoken::tiktoken::{
 };
 use crate::providers::tiktoken::tiktoken::{decode_async, encode_async};
 use crate::run::Credentials;
-use crate::types::tokenizer::{TokenizerConfig, TiktokenTokenizerBase};
+use crate::types::tokenizer::{TiktokenTokenizerBase, TokenizerConfig};
 use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -703,7 +703,11 @@ impl OpenAILLM {
             host: None,
             use_eu_endpoint: false,
             api_key: None,
-            tokenizer,
+            tokenizer: tokenizer.or_else(|| {
+                TokenizerSingleton::from_config(&TokenizerConfig::Tiktoken {
+                    base: TiktokenTokenizerBase::R50kBase,
+                })
+            }),
         }
     }
 
@@ -807,7 +811,6 @@ impl LLM for OpenAILLM {
     fn context_size(&self) -> usize {
         Self::openai_context_size(self.id.as_str())
     }
-
 
     async fn encode(&self, text: &str) -> Result<Vec<usize>> {
         self.tokenizer

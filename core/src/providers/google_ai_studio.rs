@@ -7,6 +7,7 @@ use super::{
     openai_compatible_helpers::{openai_compatible_chat_completion, TransformSystemMessages},
     provider::{Provider, ProviderID},
 };
+use crate::types::tokenizer::{TiktokenTokenizerBase, TokenizerConfig};
 use crate::{run::Credentials, utils};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -60,7 +61,11 @@ impl GoogleAiStudioLLM {
         Self {
             id,
             api_key: None,
-            tokenizer,
+            tokenizer: tokenizer.or_else(|| {
+                TokenizerSingleton::from_config(&TokenizerConfig::Tiktoken {
+                    base: TiktokenTokenizerBase::Cl100kBase,
+                })
+            }),
         }
     }
 
@@ -88,7 +93,6 @@ impl LLM for GoogleAiStudioLLM {
     fn context_size(&self) -> usize {
         1_000_000
     }
-
 
     async fn encode(&self, text: &str) -> Result<Vec<usize>> {
         self.tokenizer

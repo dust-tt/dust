@@ -10,10 +10,11 @@ use crate::providers::llm::{
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 use crate::providers::sentencepiece::sentencepiece::{
     batch_tokenize_async, decode_async, encode_async,
+    mistral_instruct_tokenizer_240216_model_v3_base_singleton,
     mistral_tokenizer_model_v1_base_singleton,
 };
 use crate::run::Credentials;
-use crate::types::tokenizer::{TokenizerConfig, SentencePieceTokenizerBase};
+use crate::types::tokenizer::{SentencePieceTokenizerBase, TokenizerConfig};
 use crate::utils::{self, now, ParseError};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -426,9 +427,26 @@ pub struct MistralAILLM {
 impl MistralAILLM {
     pub fn new(id: String, tokenizer: Option<TokenizerSingleton>) -> Self {
         MistralAILLM {
-            id,
+            id: id.clone(),
             api_key: None,
-            tokenizer,
+            tokenizer: tokenizer.or_else(|| {
+                if id.starts_with("mistral-tiny")
+                    || id.starts_with("open-mistral-7b")
+                    || id.starts_with("open-mixtral-8x7b")
+                {
+                    Some(TokenizerSingleton::SentencePiece(
+                        mistral_tokenizer_model_v1_base_singleton(),
+                    ))
+                } else if id.starts_with("open-mixtral-8x22b") {
+                    Some(TokenizerSingleton::SentencePiece(
+                        mistral_instruct_tokenizer_240216_model_v3_base_singleton(),
+                    ))
+                } else {
+                    TokenizerSingleton::from_config(&TokenizerConfig::SentencePiece {
+                        base: SentencePieceTokenizerBase::ModelV2,
+                    })
+                }
+            }),
         }
     }
 
@@ -914,7 +932,6 @@ impl LLM for MistralAILLM {
     fn context_size(&self) -> usize {
         return 32768;
     }
-
 
     async fn encode(&self, text: &str) -> Result<Vec<usize>> {
         self.tokenizer

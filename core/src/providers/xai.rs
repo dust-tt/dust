@@ -5,7 +5,7 @@ use crate::providers::llm::TokenizerSingleton;
 use crate::providers::llm::{LLMChatGeneration, LLMGeneration, LLM};
 use crate::providers::provider::{Provider, ProviderID};
 use crate::run::Credentials;
-use crate::types::tokenizer::{TokenizerConfig, TiktokenTokenizerBase};
+use crate::types::tokenizer::{TiktokenTokenizerBase, TokenizerConfig};
 use crate::utils;
 
 use anyhow::{anyhow, Result};
@@ -28,7 +28,11 @@ impl XaiLLM {
     pub fn new(id: String, tokenizer: Option<TokenizerSingleton>) -> Self {
         XaiLLM {
             id,
-            tokenizer,
+            tokenizer: tokenizer.or_else(|| {
+                TokenizerSingleton::from_config(&TokenizerConfig::Tiktoken {
+                    base: TiktokenTokenizerBase::O200kBase,
+                })
+            }),
             api_key: None,
         }
     }
@@ -68,7 +72,6 @@ impl LLM for XaiLLM {
     fn context_size(&self) -> usize {
         Self::xai_context_size(self.id.as_str())
     }
-
 
     async fn encode(&self, text: &str) -> Result<Vec<usize>> {
         self.tokenizer

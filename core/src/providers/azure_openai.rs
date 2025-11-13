@@ -11,6 +11,7 @@ use crate::providers::provider::{Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::{batch_tokenize_async, decode_async, encode_async};
 use crate::providers::tiktoken::tiktoken::{cl100k_base_singleton, CoreBPE};
 use crate::run::Credentials;
+use crate::types::tokenizer::{TiktokenTokenizerBase, TokenizerConfig};
 use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -125,11 +126,15 @@ pub struct AzureOpenAILLM {
 impl AzureOpenAILLM {
     pub fn new(deployment_id: String, tokenizer: Option<TokenizerSingleton>) -> Self {
         AzureOpenAILLM {
-            deployment_id,
+            deployment_id: deployment_id.clone(),
             model_id: None,
             endpoint: None,
             api_key: None,
-            tokenizer,
+            tokenizer: tokenizer.or_else(|| {
+                TokenizerSingleton::from_config(&TokenizerConfig::Tiktoken {
+                    base: TiktokenTokenizerBase::Cl100kBase,
+                })
+            }),
         }
     }
 
@@ -200,7 +205,17 @@ impl LLM for AzureOpenAILLM {
         )
         .await?;
 
-        self.model_id = Some(d.model);
+        self.model_id = Some(d.model.clone());
+
+        // Update tokenizer based on actual model_id
+        match self.model_id.as_ref().unwrap().as_str() {
+            "code_davinci-002" | "code-cushman-001" | "text-davinci-002" | "text-davinci-003" => {
+                self.tokenizer = TokenizerSingleton::from_config(&TokenizerConfig::Tiktoken {
+                    base: TiktokenTokenizerBase::P50kBase,
+                });
+            }
+            _ => (),
+        }
 
         Ok(())
     }
@@ -211,7 +226,6 @@ impl LLM for AzureOpenAILLM {
             None => 128000,
         }
     }
-
 
     async fn encode(&self, text: &str) -> Result<Vec<usize>> {
         self.tokenizer
