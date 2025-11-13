@@ -25,18 +25,18 @@ import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import { isRemoteDatabase } from "@app/lib/data_sources";
 import type { DustError } from "@app/lib/error";
+import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
+import {
+  AgentChildAgentConfiguration,
+  AgentMCPServerConfiguration,
+} from "@app/lib/models/assistant/actions/mcp";
+import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
+import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import {
   AgentConfiguration,
   AgentUserRelation,
 } from "@app/lib/models/assistant/agent";
 import { GroupAgentModel } from "@app/lib/models/assistant/group_agent";
-import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
-import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
-import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
-import {
-  AgentChildAgentConfiguration,
-  AgentMCPServerConfiguration,
-} from "@app/lib/models/assistant/actions/mcp";
 import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
