@@ -337,35 +337,6 @@ export async function getWorksheetContent(
   return res;
 }
 
-export async function getMessages(
-  logger: LoggerInterface,
-  client: Client,
-  parentInternalId: string,
-  nextLink?: string
-): Promise<{ results: ChatMessage[]; nextLink?: string }> {
-  const { nodeType, itemAPIPath: parentResourcePath } =
-    typeAndPathFromInternalId(parentInternalId);
-
-  if (nodeType !== "channel") {
-    throw new Error(
-      `Invalid node type: ${nodeType} for getMessages, expected channel`
-    );
-  }
-
-  const res = nextLink
-    ? await clientApiGet(logger, client, nextLink)
-    : await clientApiGet(logger, client, parentResourcePath);
-
-  if ("@odata.nextLink" in res) {
-    return {
-      results: res.value,
-      nextLink: res["@odata.nextLink"],
-    };
-  }
-
-  return { results: res.value };
-}
-
 export async function getMessagesFromConversation(
   logger: LoggerInterface,
   client: Client,
