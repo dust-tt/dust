@@ -6,7 +6,7 @@ import type {
 } from "@app/lib/api/llm/types/events";
 import type {
   LLMParameters,
-  StreamParameters,
+  LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 
@@ -64,7 +64,7 @@ export class NoopLLM extends LLM {
   async *internalStream({
     conversation: _conversation,
     prompt: _prompt,
-  }: StreamParameters): AsyncGenerator<LLMEvent> {
+  }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
     // Emit a simple flow of event:
     // 1. text delta "Soup"
     // 2. text delta "inou!"
