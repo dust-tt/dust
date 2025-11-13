@@ -12,7 +12,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/types";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import { Err, isString, Ok } from "@app/types";
+import { Err, isValidZendeskSubdomain, Ok } from "@app/types";
 
 export function getZendeskClient(
   authInfo: AuthInfo | undefined
@@ -27,10 +27,10 @@ export function getZendeskClient(
   }
 
   const subdomain = authInfo?.extra?.zendesk_subdomain;
-  if (!isString(subdomain)) {
+  if (!isValidZendeskSubdomain(subdomain)) {
     return new Err(
       new MCPError(
-        "Zendesk subdomain not found in connection metadata. Please reconnect your Zendesk account."
+        "Invalid or missing Zendesk subdomain. Please reconnect your Zendesk account."
       )
     );
   }
