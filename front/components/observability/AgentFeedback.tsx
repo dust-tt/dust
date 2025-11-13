@@ -6,15 +6,11 @@ import {
 
 import { FeedbacksSection } from "@app/components/agent_builder/FeedbacksSection";
 import { FeedbackDistributionChart } from "@app/components/agent_builder/observability/charts/FeedbackDistributionChart";
-import {
-  ObservabilityProvider,
-  useObservabilityContext,
-} from "@app/components/agent_builder/observability/ObservabilityContext";
+import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
 import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
 import { SharedObservabilityFilterSelector } from "@app/components/observability/SharedObservabilityFilterSelector";
 import { useAgentAnalytics } from "@app/lib/swr/assistants";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightWorkspaceType } from "@app/types";
 
 interface AgentFeedbackProps {
@@ -31,9 +27,6 @@ export function AgentFeedback({
   title = "Feedback",
 }: AgentFeedbackProps) {
   const { period, mode, selectedVersion } = useObservabilityContext();
-  const { featureFlags } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
   const { agentAnalytics } = useAgentAnalytics({
     workspaceId: owner.sId,
     agentConfigurationId,
@@ -90,19 +83,5 @@ export function AgentFeedback({
         />
       )}
     </TabContentLayout>
-  );
-}
-
-// Helper wrapper to provide context when used in places without an outer provider
-export function AgentFeedbackWithProvider(props: {
-  owner: LightWorkspaceType;
-  agentConfigurationId: string;
-  allowReactions: boolean;
-  title?: string;
-}) {
-  return (
-    <ObservabilityProvider>
-      <AgentFeedback {...props} />
-    </ObservabilityProvider>
   );
 }
