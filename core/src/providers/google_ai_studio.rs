@@ -94,24 +94,27 @@ impl LLM for GoogleAiStudioLLM {
     }
 
     async fn encode(&self, text: &str) -> Result<Vec<usize>> {
-        match &self.tokenizer {
-            Some(t) => t.encode(text).await,
-            None => Err(anyhow!("Tokenizer not initialized")),
-        }
+        self.tokenizer
+            .as_ref()
+            .ok_or_else(|| anyhow!("Tokenizer not initialized"))?
+            .encode(text)
+            .await
     }
 
     async fn decode(&self, tokens: Vec<usize>) -> Result<String> {
-        match &self.tokenizer {
-            Some(t) => t.decode(tokens).await,
-            None => Err(anyhow!("Tokenizer not initialized")),
-        }
+        self.tokenizer
+            .as_ref()
+            .ok_or_else(|| anyhow!("Tokenizer not initialized"))?
+            .decode(tokens)
+            .await
     }
 
     async fn tokenize(&self, texts: Vec<String>) -> Result<Vec<Vec<(usize, String)>>> {
-        match &self.tokenizer {
-            Some(t) => t.tokenize(texts).await,
-            None => Err(anyhow!("Tokenizer not initialized")),
-        }
+        self.tokenizer
+            .as_ref()
+            .ok_or_else(|| anyhow!("Tokenizer not initialized"))?
+            .tokenize(texts)
+            .await
     }
 
     async fn generate(
