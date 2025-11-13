@@ -1,5 +1,6 @@
 import type {
   AshbyCandidate,
+  AshbyFeedbackSubmission,
   AshbyReportSynchronousResponse,
 } from "@app/lib/actions/mcp_internal_actions/servers/ashby/types";
 
@@ -44,5 +45,90 @@ export function renderReportInfo(
     `Rows: ${dataRows.length}\n` +
     `Fields: ${reportData.columnNames.join(", ")}\n\n` +
     "The data has been saved as a CSV file."
+  );
+}
+
+function renderSingleFeedback(feedback: AshbyFeedbackSubmission): string {
+  const lines = [];
+
+  if (feedback.submittedByUser) {
+    lines.push(
+      `**Submitted by:** ${feedback.submittedByUser.firstName} ${feedback.submittedByUser.lastName} (${feedback.submittedByUser.email})`
+    );
+  }
+
+  if (feedback.submittedAt) {
+    lines.push(
+      `**Submitted at:** ${new Date(feedback.submittedAt).toISOString()}`
+    );
+  }
+
+  lines.push("");
+
+  if (feedback.submittedValues && feedback.formDefinition.sections) {
+    for (const section of feedback.formDefinition.sections) {
+      for (const fieldWrapper of section.fields) {
+        const field = fieldWrapper.field;
+        const value = feedback.submittedValues[field.path];
+
+        if (value === undefined || value === null) {
+          continue;
+        }
+
+        lines.push(`**${field.title}:**`);
+
+        if (Array.isArray(value)) {
+          lines.push(value.join(", "));
+        } else if (
+          field.type === "ValueSelect" &&
+          field.selectableValues &&
+          typeof value === "string"
+        ) {
+          const selectedOption = field.selectableValues.find(
+            (opt) => opt.value === value
+          );
+          lines.push(selectedOption ? selectedOption.label : String(value));
+        } else if (typeof value === "object") {
+          lines.push(JSON.stringify(value, null, 2));
+        } else {
+          lines.push(String(value));
+        }
+
+        lines.push("");
+      }
+    }
+  }
+
+  return lines.join("\n");
+}
+
+export function renderInterviewFeedbackRecap(
+  candidate: AshbyCandidate,
+  allFeedback: AshbyFeedbackSubmission[]
+): string {
+  const header = [
+    "# Interview Feedback Summary",
+    "",
+    `**Candidate:** ${candidate.name}`,
+  ];
+
+  if (candidate.primaryEmailAddress) {
+    header.push(`**Email:** ${candidate.primaryEmailAddress.value}`);
+  }
+
+  header.push(
+    "",
+    `**Total Feedback:** ${allFeedback.length}`,
+    "",
+    "=".repeat(80),
+    ""
+  );
+
+  const feedbackTexts = allFeedback.map((feedback) =>
+    renderSingleFeedback(feedback)
+  );
+
+  return (
+    header.join("\n") + feedbackTexts.join("\n\n" + "=".repeat(80) + "\n\n")
   );
 }
