@@ -35,6 +35,7 @@ export const OAUTH_PROVIDERS = [
   "gmail",
   "intercom",
   "jira",
+  "linear",
   "monday",
   "notion",
   "slack",
@@ -59,6 +60,7 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   google_drive: "Google",
   intercom: "Intercom",
   jira: "Jira",
+  linear: "Linear",
   monday: "Monday",
   notion: "Notion",
   slack: "Slack",
@@ -210,6 +212,7 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
     case "google_drive":
     case "intercom":
     case "jira":
+    case "linear":
     case "mcp":
     case "discord":
     case "fathom":
