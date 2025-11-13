@@ -14,4 +14,4 @@ export type SentencePieceTokenizerBase = (typeof SENTENCEPIECE_BASE)[number];
 
 export type TokenizerConfig =
   | { type: "tiktoken"; base: TiktokenTokenizerBase }
-  | { type: "sentencepiece"; base: SentencePieceTokenizerBase };
+  | { type: "sentence_piece"; base: SentencePieceTokenizerBase };

@@ -215,16 +215,9 @@ impl LLM for AzureOpenAILLM {
     fn set_tokenizer_from_config(&mut self, config: crate::types::tokenizer::TokenizerConfig) {
         self.tokenizer = match self.model_id.as_ref() {
             Some(model_id) => match model_id.as_str() {
-                "code_davinci-002" | "code-cushman-001" => {
-                    Some(TokenizerSingleton::Tiktoken(p50k_base_singleton()))
-                }
-                "text-davinci-002" | "text-davinci-003" => {
-                    Some(TokenizerSingleton::Tiktoken(p50k_base_singleton()))
-                }
-                _ => match model_id.starts_with("gpt-3.5-turbo") || model_id.starts_with("gpt-4") {
-                    true => Some(TokenizerSingleton::Tiktoken(cl100k_base_singleton())),
-                    false => TokenizerSingleton::from_config(&config),
-                },
+                "code_davinci-002" | "code-cushman-001" | "text-davinci-002"
+                | "text-davinci-003" => Some(TokenizerSingleton::Tiktoken(p50k_base_singleton())),
+                _ => TokenizerSingleton::from_config(&config),
             },
             None => TokenizerSingleton::from_config(&config),
         };
