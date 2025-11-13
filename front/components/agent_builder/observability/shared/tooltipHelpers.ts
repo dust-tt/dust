@@ -11,7 +11,7 @@ export function formatTimeSeriesTitle(
     return dateLabel;
   }
   const marker = findVersionMarkerForDate(new Date(timestamp), versionMarkers);
-  return marker ? `${dateLabel} - version ${marker.version}` : dateLabel;
+  return marker ? `${dateLabel} - Version ${marker.version}` : dateLabel;
 }
 
 export function normalizeVersionLabel(label: string): string {

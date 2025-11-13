@@ -1,11 +1,4 @@
-import {
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from "@dust-tt/sparkle";
+import { ButtonsSwitch, ButtonsSwitchList } from "@dust-tt/sparkle";
 import { useCallback, useMemo, useState } from "react";
 import {
   Bar,
@@ -30,7 +23,6 @@ import type {
   ChartDatum,
   ToolChartModeType,
 } from "@app/components/agent_builder/observability/types";
-import { isToolChartMode } from "@app/components/agent_builder/observability/types";
 import { getToolColor } from "@app/components/agent_builder/observability/utils";
 
 export function ToolUsageChart({
@@ -87,29 +79,18 @@ export function ToolUsageChart({
       errorMessage={errorMessage}
       emptyMessage={chartData.length === 0 ? emptyMessage : undefined}
       additionalControls={
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              size="xs"
-              variant="outline"
-              isSelect
-              label={toolMode === "version" ? "Version" : "Step"}
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuRadioGroup
-              value={toolMode}
-              onValueChange={(value) =>
-                isToolChartMode(value) && setToolMode(value)
-              }
-            >
-              <DropdownMenuRadioItem value="version">
-                Version
-              </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="step">Step</DropdownMenuRadioItem>
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <ButtonsSwitchList defaultValue={toolMode} size="xs">
+          <ButtonsSwitch
+            value="version"
+            label="By version"
+            onClick={() => setToolMode("version")}
+          />
+          <ButtonsSwitch
+            value="step"
+            label="By step"
+            onClick={() => setToolMode("step")}
+          />
+        </ButtonsSwitchList>
       }
     >
       <ResponsiveContainer width="100%" height={CHART_HEIGHT}>

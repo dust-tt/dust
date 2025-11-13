@@ -23,12 +23,12 @@ import {
   legendFromConstant,
 } from "@app/components/agent_builder/observability/shared/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
+import { formatTimeSeriesTitle } from "@app/components/agent_builder/observability/shared/tooltipHelpers";
 import { VersionMarkersDots } from "@app/components/agent_builder/observability/shared/VersionMarkers";
 import { padSeriesToTimeRange } from "@app/components/agent_builder/observability/utils";
 import type { LatencyPoint } from "@app/lib/api/assistant/observability/latency";
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 import { useAgentVersionMarkers } from "@app/lib/swr/assistants";
-import { formatTimeSeriesTitle } from "@app/components/agent_builder/observability/shared/tooltipHelpers";
 import { formatShortDate } from "@app/lib/utils/timestamps";
 
 interface LatencyData extends LatencyPoint {
@@ -133,7 +133,7 @@ export function LatencyChart({
   return (
     <ChartContainer
       title="Latency"
-      description="Average and median time to complete output (seconds). Lower is better."
+      description="Average and median time to complete output. Lower is better."
       isLoading={isLoading}
       errorMessage={errorMessage}
     >
