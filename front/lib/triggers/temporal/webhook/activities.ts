@@ -19,8 +19,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import type { ContentFragmentInputWithFileIdType, Result } from "@app/types";
-import { isString } from "@app/types";
-import { assertNever, Err, errorToString, Ok } from "@app/types";
+import { assertNever, Err, errorToString, isString, Ok } from "@app/types";
 import type { WebhookTriggerType } from "@app/types/assistant/triggers";
 import { isWebhookTrigger } from "@app/types/assistant/triggers";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
@@ -48,13 +47,13 @@ async function validateEventSubscription({
   Result<
     {
       shouldProcess: boolean;
-      receivedEventValue: string | undefined;
+      receivedEventValue: string | null;
     },
     Error
   >
 > {
   if (!provider) {
-    return new Ok({ shouldProcess: true, receivedEventValue: undefined });
+    return new Ok({ shouldProcess: true, receivedEventValue: null });
   }
 
   const {
@@ -64,19 +63,19 @@ async function validateEventSubscription({
   } = WEBHOOK_PRESETS[provider];
 
   if (!eventCheck) {
-    return new Ok({ shouldProcess: true, receivedEventValue: undefined });
+    return new Ok({ shouldProcess: true, receivedEventValue: null });
   }
 
   const { type, field } = eventCheck;
 
-  let receivedEventValue: string | undefined;
+  let receivedEventValue: string | null = null;
   switch (type) {
     case "headers":
       receivedEventValue = headers[field.toLowerCase()];
       break;
     case "body":
       const bodyField = body[field];
-      receivedEventValue = isString(bodyField) ? bodyField : undefined;
+      receivedEventValue = isString(bodyField) ? bodyField : null;
       break;
     default:
       assertNever(type);
