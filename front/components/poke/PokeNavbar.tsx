@@ -14,6 +14,8 @@ import { classNames } from "@app/lib/utils";
 import { usePokeSearch } from "@app/poke/swr/search";
 import { isDevelopment } from "@app/types";
 
+const MIN_SEARCH_CHARACTERS = 2;
+
 interface PokeNavbarProps {
   currentRegion?: RegionType;
   regionUrls?: Record<RegionType, string>;
@@ -59,8 +61,8 @@ export function PokeSearchCommand() {
   const [searchTerm, setSearchTerm] = useState("");
 
   const { isError, isLoading, results } = usePokeSearch({
-    // Disable search until the user has typed at least 2 characters.
-    disabled: searchTerm.length < 2,
+    // Disable search until the user has typed at least MIN_SEARCH_CHARACTERS characters.
+    disabled: searchTerm.length < MIN_SEARCH_CHARACTERS,
     search: searchTerm,
   });
 
@@ -98,15 +100,41 @@ export function PokeSearchCommand() {
         <PokeCommandList>
           {isLoading && <div className="p-4 text-sm">Searching...</div>}
           {searchTerm &&
-            searchTerm.length >= 2 &&
+            searchTerm.length >= MIN_SEARCH_CHARACTERS &&
             !isError &&
             !isLoading &&
             results.length === 0 && (
               <div className="p-4 text-sm">No results found.</div>
             )}
           {isError && <div className="p-4 text-sm">Something went wrong.</div>}
-          {searchTerm.length < 2 && (
-            <div className="p-4 text-sm">Enter at least 2 characters...</div>
+          {searchTerm.length < MIN_SEARCH_CHARACTERS && (
+            <div className="p-4 text-sm">
+              <div className="mb-3 text-muted-foreground dark:text-muted-foreground-night">
+                Search for resources by:
+              </div>
+              <div className="space-y-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                <div>
+                  <span className="font-medium">Workspace ID:</span>{" "}
+                  <span className="font-mono">123456</span>
+                </div>
+                <div>
+                  <span className="font-medium">WorkOS org ID:</span>{" "}
+                  <span className="font-mono">org_01AB</span>
+                </div>
+                <div>
+                  <span className="font-medium">Data source view:</span>{" "}
+                  <span className="font-mono">dsv_abc123</span>
+                </div>
+                <div>
+                  <span className="font-medium">Data source:</span>{" "}
+                  <span className="font-mono">dts_abc123</span>
+                </div>
+                <div>
+                  <span className="font-medium">Connector ID:</span>{" "}
+                  <span className="font-mono">78901</span>
+                </div>
+              </div>
+            </div>
           )}
 
           {results.map(({ id, link, name }, index) =>

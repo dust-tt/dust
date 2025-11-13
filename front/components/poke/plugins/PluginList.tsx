@@ -23,7 +23,7 @@ function PluginCard({ onClick, plugin }: PluginCardProps) {
       className="flex h-20 w-44 cursor-pointer hover:bg-gray-100 dark:hover:bg-muted/10"
       onClick={onClick}
     >
-      <PokeCardHeader className="flex space-y-1.5 overflow-hidden p-2 text-left">
+      <PokeCardHeader className="flex space-y-2 overflow-hidden p-2 text-left">
         <PokeCardTitle className="text-sm font-medium">
           {plugin.name}
         </PokeCardTitle>
