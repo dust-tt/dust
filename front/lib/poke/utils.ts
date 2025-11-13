@@ -1,4 +1,5 @@
 import config from "@app/lib/api/config";
+import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -31,7 +32,7 @@ export async function dataSourceToPokeJSON(
     link: workspace
       ? `${config.getClientFacingUrl()}/poke/${workspace.sId}/data_sources/${dataSource.sId}`
       : null,
-    name: dataSource.name,
+    name: getDisplayNameForDataSource(dataSource.toJSON()),
     type: "Data Source",
     space: spaceToPokeJSON(dataSource.space),
   };
@@ -50,7 +51,7 @@ export async function dataSourceViewToPokeJSON(
     link: workspace
       ? `${config.getClientFacingUrl()}/poke/${workspace.sId}/spaces/${dataSourceView.space.sId}/data_source_views/${dataSourceView.sId}`
       : null,
-    name: dataSourceView.dataSource.name,
+    name: getDisplayNameForDataSource(dataSourceView.dataSource.toJSON()),
     type: "Data Source View",
     space: spaceToPokeJSON(dataSourceView.space),
   };
