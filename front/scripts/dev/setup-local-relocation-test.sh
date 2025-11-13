@@ -107,14 +107,14 @@ async function main() {
   console.error(`Fetching system key for workspace: ${workspaceId}`);
 
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const systemKey = await getOrCreateSystemApiKey(auth.getNonNullableWorkspace());
+  const systemAPIKeyRes = await getOrCreateSystemApiKey(auth.getNonNullableWorkspace());
 
-  if (!systemKey) {
-    throw new Error("No system key found for workspace");
+  if (systemAPIKeyRes.isErr()) {
+    throw systemAPIKeyRes.error;
   }
 
   // Only output the key to stdout
-  console.log(systemKey.secret);
+  console.log(systemAPIKeyRes.value.secret);
 }
 
 main().catch((err) => {
