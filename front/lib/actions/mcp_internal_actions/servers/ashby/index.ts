@@ -21,6 +21,17 @@ import { Err, Ok } from "@app/types";
 
 const DEFAULT_SEARCH_LIMIT = 20;
 
+const CandidateSearchInputSchema = z.object({
+  email: z
+    .string()
+    .optional()
+    .describe("Email address to search for (partial matches supported)."),
+  name: z
+    .string()
+    .optional()
+    .describe("Name to search for (partial matches supported)."),
+});
+
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
@@ -31,16 +42,7 @@ function createServer(
     "search_candidates",
     "Search for candidates in Ashby ATS by name and/or email. " +
       `Returns up to ${DEFAULT_SEARCH_LIMIT} matching candidates by default.`,
-    {
-      email: z
-        .string()
-        .optional()
-        .describe("Email address to search for (partial matches supported)."),
-      name: z
-        .string()
-        .optional()
-        .describe("Name to search for (partial matches supported)."),
-    },
+    CandidateSearchInputSchema.shape,
     withToolLogging(
       auth,
       { toolNameForMonitoring: "ashby_search_candidates", agentLoopContext },
@@ -222,18 +224,7 @@ function createServer(
     "Retrieve all interview feedback for a candidate. " +
       "This tool will search for the candidate by name or email and return all submitted " +
       "interview feedback, sorted by most recent first.",
-    {
-      email: z
-        .string()
-        .optional()
-        .describe(
-          "Email address of the candidate (partial matches supported)."
-        ),
-      name: z
-        .string()
-        .optional()
-        .describe("Name of the candidate (partial matches supported)."),
-    },
+    CandidateSearchInputSchema.shape,
     withToolLogging(
       auth,
       {
@@ -351,16 +342,7 @@ function createServer(
     "Create a note on a candidate's profile in Ashby. " +
       "The note content can include basic HTML formatting (supported tags: h1-h6, p, b, i, u, a, ul, ol, li, code, pre).",
     {
-      email: z
-        .string()
-        .optional()
-        .describe(
-          "Email address of the candidate (partial matches supported)."
-        ),
-      name: z
-        .string()
-        .optional()
-        .describe("Name of the candidate (partial matches supported)."),
+      ...CandidateSearchInputSchema.shape,
       noteContent: z
         .string()
         .describe("The content of the note in HTML format."),
