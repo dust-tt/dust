@@ -35,11 +35,10 @@ interface MentionDropdownProps {
  * - Agent mentions: start a conversation or view details
  * - User mentions: view user profile
  */
-export function MentionDropdown({
-  mention,
-  owner,
-  children,
-}: MentionDropdownProps) {
+export const MentionDropdown = React.forwardRef<
+  HTMLDivElement,
+  MentionDropdownProps
+>(({ mention, owner, children }, ref) => {
   const router = useRouter();
   const { onOpenChange: onOpenChangeAgentModal } = useURLSheet("agentDetails");
 
@@ -58,7 +57,9 @@ export function MentionDropdown({
 
     return (
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
+        <DropdownMenuTrigger asChild>
+          <div ref={ref}>{children}</div>
+        </DropdownMenuTrigger>
         <DropdownMenuContent side="bottom" align="start">
           <DropdownMenuItem
             onClick={handleStartConversation}
@@ -79,7 +80,9 @@ export function MentionDropdown({
   if (isRichUserMention(mention)) {
     return (
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
+        <DropdownMenuTrigger asChild>
+          <div ref={ref}>{children}</div>
+        </DropdownMenuTrigger>
         <DropdownMenuContent side="bottom" align="start">
           <DropdownMenuItem
             icon={UserIcon}
@@ -91,5 +94,7 @@ export function MentionDropdown({
   }
 
   // Unsupported mention type, render children without dropdown.
-  return <>{children}</>;
-}
+  return <div ref={ref}>{children}</div>;
+});
+
+MentionDropdown.displayName = "MentionDropdown";
