@@ -1,3 +1,5 @@
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import type {
   WorkflowExecutionDescription,
   WorkflowHandle,
@@ -9,12 +11,17 @@ import {
   QUEUE_NAME,
 } from "@connectors/connectors/notion/temporal/config";
 import type { NotionWebhookEvent } from "@connectors/connectors/notion/temporal/signals";
-import { notionWebhookSignal } from "@connectors/connectors/notion/temporal/signals";
+import {
+  notionDeletionCrawlSignal,
+  notionWebhookSignal,
+  validateDeletionCrawlSignalArgs,
+} from "@connectors/connectors/notion/temporal/signals";
 import {
   notionProcessWebhooksWorkflow,
   notionSyncWorkflow,
 } from "@connectors/connectors/notion/temporal/workflows/";
 import { updateOrphanedResourcesParentsWorkflow } from "@connectors/connectors/notion/temporal/workflows/";
+import { notionDeletionCrawlWorkflow } from "@connectors/connectors/notion/temporal/workflows/deletion_crawl";
 import { notionGarbageCollectionWorkflow } from "@connectors/connectors/notion/temporal/workflows/garbage_collection";
 import { processDatabaseUpsertQueueWorkflow } from "@connectors/connectors/notion/temporal/workflows/upsert_database_queue";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -23,7 +30,7 @@ import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
-import { getNotionWorkflowId } from "@connectors/types";
+import { getNotionWorkflowId, normalizeError } from "@connectors/types";
 
 const logger = mainLogger.child({ provider: "notion" });
 
@@ -425,6 +432,77 @@ export async function launchNotionWebhookProcessingWorkflow(
       connectorId,
     },
   });
+}
+
+export async function sendDeletionCrawlSignal(
+  connectorId: ModelId,
+  resourceId: string,
+  resourceType: "page" | "database"
+): Promise<Result<void, Error>> {
+  // Validate all arguments using Zod
+  const validated = validateDeletionCrawlSignalArgs({
+    connectorId,
+    resourceId,
+    resourceType,
+  });
+
+  if (!validated) {
+    return new Err(
+      new Error(
+        `Invalid deletion crawl signal arguments: ` +
+          `connectorId=${connectorId}, resourceId="${resourceId}", resourceType="${resourceType}"`
+      )
+    );
+  }
+
+  // Use validated data for the rest of the function
+  const {
+    connectorId: validConnectorId,
+    resourceId: validResourceId,
+    resourceType: validResourceType,
+  } = validated;
+
+  try {
+    const client = await getTemporalClient();
+
+    await client.workflow.signalWithStart(notionDeletionCrawlWorkflow, {
+      args: [{ connectorId: validConnectorId }],
+      taskQueue: QUEUE_NAME,
+      workflowId: getNotionWorkflowId(validConnectorId, "deletion-crawl"),
+      searchAttributes: {
+        connectorId: [validConnectorId],
+      },
+      signal: notionDeletionCrawlSignal,
+      signalArgs: [
+        { resourceId: validResourceId, resourceType: validResourceType },
+      ],
+      memo: {
+        connectorId: validConnectorId,
+      },
+    });
+
+    logger.info(
+      {
+        connectorId: validConnectorId,
+        resourceId: validResourceId,
+        resourceType: validResourceType,
+      },
+      "Sent deletion crawl signal"
+    );
+
+    return new Ok(undefined);
+  } catch (e) {
+    logger.error(
+      {
+        connectorId: validConnectorId,
+        resourceId: validResourceId,
+        resourceType: validResourceType,
+        error: e,
+      },
+      "Failed to send deletion crawl signal"
+    );
+    return new Err(normalizeError(e));
+  }
 }
 
 export async function getSyncWorkflow(connectorId: ModelId): Promise<{
