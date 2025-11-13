@@ -49,7 +49,7 @@ export function renderReportInfo(
 }
 
 function renderSingleFeedback(feedback: AshbyFeedbackSubmission): string {
-  const lines = [];
+  const lines: string[] = [];
 
   if (feedback.submittedByUser) {
     lines.push(
@@ -106,6 +106,8 @@ export function renderInterviewFeedbackRecap(
   candidate: AshbyCandidate,
   allFeedback: AshbyFeedbackSubmission[]
 ): string {
+  const delimiterLine = "=".repeat(80);
+
   const header = [
     "# Interview Feedback Summary",
     "",
@@ -120,7 +122,7 @@ export function renderInterviewFeedbackRecap(
     "",
     `**Total Feedback:** ${allFeedback.length}`,
     "",
-    "=".repeat(80),
+    delimiterLine,
     ""
   );
 
@@ -128,7 +130,5 @@ export function renderInterviewFeedbackRecap(
     renderSingleFeedback(feedback)
   );
 
-  return (
-    header.join("\n") + feedbackTexts.join("\n\n" + "=".repeat(80) + "\n\n")
-  );
+  return header.join("\n") + feedbackTexts.join(`\n\n${delimiterLine}\n\n`);
 }
