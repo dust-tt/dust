@@ -1,32 +1,36 @@
-import type { ThinkingConfigParam } from "@anthropic-ai/sdk/resources/messages.mjs";
+import type { ThinkingConfig } from "@google/genai";
 
 import type { ReasoningEffort } from "@app/types";
 
-export const CLAUDE_4_THINKING_BUDGET_TOKENS = {
-  // thinking.enabled.budget_tokens: Input should be greater than or equal to 1024
-  medium: 1024,
+export const GOOGLE_REASONING_EFFORT_TO_THINKING_BUDGET: {
+  [key in ReasoningEffort]: number;
+} = {
+  none: 0,
+  light: 1024,
+  medium: 2048,
   high: 4096,
 };
 
 export function toThinkingConfig(
   reasoningEffort: ReasoningEffort | null,
   useNativeLightReasoning?: boolean
-): ThinkingConfigParam | undefined {
+): ThinkingConfig | undefined {
   if (!reasoningEffort || reasoningEffort === "none") {
     return undefined;
   }
   if (reasoningEffort !== "light") {
     return {
-      type: "enabled",
-      budget_tokens: CLAUDE_4_THINKING_BUDGET_TOKENS[reasoningEffort],
+      includeThoughts: true,
+      thinkingBudget:
+        GOOGLE_REASONING_EFFORT_TO_THINKING_BUDGET[reasoningEffort],
     };
   }
 
   // For "light", we may not use thinking config but chain of thought from prompt.
   if (useNativeLightReasoning) {
     return {
-      type: "enabled",
-      budget_tokens: 1024, // Minimum budget.
+      includeThoughts: true,
+      thinkingBudget: GOOGLE_REASONING_EFFORT_TO_THINKING_BUDGET.light,
     };
   }
 
