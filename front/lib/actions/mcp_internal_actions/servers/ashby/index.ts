@@ -226,9 +226,9 @@ function createServer(
 
   server.tool(
     "get_interview_feedback",
-    "Retrieve all interview feedback for a candidate. " +
+    "Retrieve interview feedback for a candidate. " +
       "This tool will search for the candidate by name or email and return all submitted " +
-      "interview feedback, sorted by most recent first.",
+      "interview feedback for the most recent application.",
     CandidateSearchInputSchema.shape,
     withToolLogging(
       auth,
@@ -304,12 +304,6 @@ function createServer(
             )
           );
         }
-
-        latestApplicationFeedback.sort((a, b) => {
-          const dateA = new Date(a.submittedAt!);
-          const dateB = new Date(b.submittedAt!);
-          return dateB.getTime() - dateA.getTime();
-        });
 
         const recapText = renderInterviewFeedbackRecap(
           candidate,
