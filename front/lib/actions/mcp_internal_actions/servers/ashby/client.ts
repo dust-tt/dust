@@ -23,10 +23,10 @@ import { decrypt, Err, Ok } from "@app/types";
 
 const ASHBY_API_BASE_URL = "https://api.ashbyhq.com";
 
-export async function getAshbyAPIKey(
+export async function getAshbyClient(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): Promise<Result<string, MCPError>> {
+): Promise<Result<AshbyClient, MCPError>> {
   const toolConfig = agentLoopContext?.runContext?.toolConfiguration;
   if (
     !toolConfig ||
@@ -64,7 +64,7 @@ export async function getAshbyAPIKey(
     );
   }
 
-  return new Ok(apiKey);
+  return new Ok(new AshbyClient(apiKey));
 }
 
 export class AshbyClient {
