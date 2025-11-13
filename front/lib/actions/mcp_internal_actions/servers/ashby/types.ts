@@ -129,9 +129,9 @@ export const AshbyFeedbackSubmissionSchema = z
                       )
                       .optional(),
                   }),
-                }),
+                })
               ),
-            }),
+            })
           )
           .optional(),
       })
