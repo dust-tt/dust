@@ -223,10 +223,10 @@ impl LLM for AzureOpenAILLM {
                 }
                 _ => match model_id.starts_with("gpt-3.5-turbo") || model_id.starts_with("gpt-4") {
                     true => Some(TokenizerSingleton::Tiktoken(cl100k_base_singleton())),
-                    false => TokenizerSingleton::from_config(config),
+                    false => TokenizerSingleton::from_config(&config),
                 },
             },
-            None => TokenizerSingleton::from_config(config),
+            None => TokenizerSingleton::from_config(&config),
         };
     }
 

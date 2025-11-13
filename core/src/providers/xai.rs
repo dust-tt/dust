@@ -69,7 +69,7 @@ impl LLM for XaiLLM {
     }
 
     fn set_tokenizer_from_config(&mut self, config: crate::types::tokenizer::TokenizerConfig) {
-        self.tokenizer = TokenizerSingleton::from_config(config);
+        self.tokenizer = TokenizerSingleton::from_config(&config);
     }
 
     async fn encode(&self, text: &str) -> Result<Vec<usize>> {

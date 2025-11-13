@@ -928,7 +928,7 @@ impl LLM for MistralAILLM {
                 mistral_instruct_tokenizer_240216_model_v3_base_singleton(),
             ));
         } else {
-            self.tokenizer = TokenizerSingleton::from_config(config);
+            self.tokenizer = TokenizerSingleton::from_config(&config);
         }
     }
 

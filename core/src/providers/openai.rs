@@ -815,7 +815,7 @@ impl LLM for OpenAILLM {
             "text-davinci-002" | "text-davinci-003" => {
                 Some(TokenizerSingleton::Tiktoken(p50k_base_singleton()))
             }
-            _ => TokenizerSingleton::from_config(config),
+            _ => TokenizerSingleton::from_config(&config),
         };
     }
 

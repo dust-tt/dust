@@ -16,6 +16,7 @@ use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, P
 use crate::providers::tiktoken::tiktoken::anthropic_base_singleton;
 use crate::providers::tiktoken::tiktoken::{batch_tokenize_async, decode_async, encode_async};
 use crate::run::Credentials;
+use crate::types::tokenizer::TokenizerConfig;
 use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -332,8 +333,8 @@ impl LLM for AnthropicLLM {
         }
     }
 
-    fn set_tokenizer_from_config(&mut self, config: crate::types::tokenizer::TokenizerConfig) {
-        self.tokenizer = TokenizerSingleton::from_config(config.clone());
+    fn set_tokenizer_from_config(&mut self, config: TokenizerConfig) {
+        self.tokenizer = TokenizerSingleton::from_config(&config);
     }
 
     async fn generate(

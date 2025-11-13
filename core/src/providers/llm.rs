@@ -36,7 +36,7 @@ pub enum TokenizerSingleton {
 }
 
 impl TokenizerSingleton {
-    pub fn from_config(config: TokenizerConfig) -> Option<Self> {
+    pub fn from_config(config: &TokenizerConfig) -> Option<Self> {
         match config {
             TokenizerConfig::Tiktoken { base } => match base {
                 TiktokenTokenizerBase::O200kBase => {

@@ -62,7 +62,6 @@ export type ModelConfigurationType = {
   featureFlag?: WhitelistableFeature;
   customAssistantFeatureFlag?: WhitelistableFeature;
 
-  // Tokenizer configuration for the model
   tokenizer: TokenizerConfig;
 };
 
