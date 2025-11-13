@@ -1,4 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import sanitizeHtml from "sanitize-html";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
@@ -217,7 +218,7 @@ function createServer(
   );
 
   server.tool(
-    "get_latest_interview_feedback",
+    "get_interview_feedback",
     "Retrieve all interview feedback for a candidate. " +
       "This tool will search for the candidate by name or email and return all submitted " +
       "interview feedback, sorted by most recent first.",
@@ -296,7 +297,11 @@ function createServer(
         ) {
           return new Err(
             new MCPError(
-              `Candidate ${candidate.name} has no applications in the system.`
+              `Candidate ${candidate.name} ` +
+                (candidate.primaryEmailAddress?.value
+                  ? `(${candidate.primaryEmailAddress?.value}) `
+                  : "") +
+                "has no applications in the system."
             )
           );
         }
@@ -421,7 +426,7 @@ function createServer(
           candidateId: candidate.id,
           note: {
             type: "text/html",
-            value: noteContent,
+            value: sanitizeHtml(noteContent),
           },
         });
 
@@ -443,8 +448,11 @@ function createServer(
           {
             type: "text" as const,
             text:
-              `Successfully created note on candidate ${candidate.name}'s profile.\n\n` +
-              `Note ID: ${noteResult.value.results.id}`,
+              `Successfully created note on candidate ${candidate.name}'s ` +
+              (candidate.primaryEmailAddress?.value
+                ? `(${candidate.primaryEmailAddress?.value}) `
+                : "") +
+              `profile.\n\nNote ID: ${noteResult.value.results.id}`,
           },
         ]);
       }

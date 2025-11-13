@@ -110,7 +110,6 @@ export function renderInterviewFeedbackRecap(
     "# Interview Feedback Summary",
     "",
     `**Candidate:** ${candidate.name}`,
-    `**Candidate ID:** ${candidate.id}`,
   ];
 
   if (candidate.primaryEmailAddress) {
