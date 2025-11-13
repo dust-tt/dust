@@ -38,10 +38,8 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
-import { getOutputFromAction } from "@app/temporal/agent_loop/lib/get_output_from_action";
-import { getOutputFromLLMStream } from "@app/temporal/agent_loop/lib/get_output_from_llm";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
-import type { GetOutputResponse } from "@app/temporal/agent_loop/lib/types";
+import { getOutputFromLLM } from "@app/temporal/agent_loop/lib/utils";
 import type { AgentActionsEvent, ModelId } from "@app/types";
 import { assertNever, removeNulls } from "@app/types";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
@@ -430,7 +428,6 @@ export async function runModelActivity(
     getDelimitersConfiguration({ agentConfiguration })
   );
 
-  let getOutputFromActionResponse: GetOutputResponse;
   const traceContext: LLMTraceContext = {
     operationType: "agent_conversation",
     contextId: conversation.sId,
@@ -446,35 +443,10 @@ export async function runModelActivity(
   });
   const modelInteractionStartDate = performance.now();
 
-  if (llm === null) {
-    getOutputFromActionResponse = await getOutputFromAction(auth, {
-      modelConversationRes,
-      conversation,
-      userMessage,
-      runConfig,
-      specifications,
-      flushParserTokens,
-      contentParser,
-      agentMessageRow,
-      step,
-      agentConfiguration,
-      agentMessage,
-      model,
-      publishAgentError,
-      prompt,
-      updateResourceAndPublishEvent,
-    });
-  } else {
-    if (userMessage.rank === 0) {
-      // Log conversations that are using the new LLM router (log only once when the conversation starts)
-      localLogger.info(
-        {
-          conversationId: conversation.sId,
-        },
-        "Running model with the new LLM router"
-      );
-    }
-    getOutputFromActionResponse = await getOutputFromLLMStream(auth, {
+  const getOutputFromActionResponse = await getOutputFromLLM(
+    auth,
+    localLogger,
+    {
       modelConversationRes,
       conversation,
       userMessage,
@@ -491,8 +463,8 @@ export async function runModelActivity(
       prompt,
       llm,
       updateResourceAndPublishEvent,
-    });
-  }
+    }
+  );
 
   const modelInteractionEndDate = performance.now();
 
