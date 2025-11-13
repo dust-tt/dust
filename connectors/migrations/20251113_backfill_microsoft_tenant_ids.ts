@@ -1,13 +1,10 @@
 import { makeScript } from "scripts/helpers";
 import { Op } from "sequelize";
 
-import {
-  extractTenantIdFromAccessToken,
-  getMicrosoftConnectionData,
-} from "@connectors/connectors/microsoft";
+import { getMicrosoftConnectionData } from "@connectors/connectors/microsoft";
 import type { Logger } from "@connectors/logger/logger";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { ConnectorMetadata } from "@connectors/resources/storage/models/connector_model";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 async function backfillConnectorTenant({
   connector,
@@ -27,10 +24,9 @@ async function backfillConnectorTenant({
   }
 
   try {
-    const { accessToken } = await getMicrosoftConnectionData(
+    const { tenantId } = await getMicrosoftConnectionData(
       connector.connectionId
     );
-    const tenantId = extractTenantIdFromAccessToken(accessToken);
 
     if (!tenantId) {
       childLogger.warn("Unable to extract tenant id from access token");
@@ -72,7 +68,10 @@ makeScript(
       default: 50,
     },
   },
-  async ({ connectorId, nextConnectorId, batchSize, execute }, scriptLogger) => {
+  async (
+    { connectorId, nextConnectorId, batchSize, execute },
+    scriptLogger
+  ) => {
     if (connectorId && connectorId > 0) {
       const connector = await ConnectorModel.findByPk(connectorId);
       if (!connector || connector.type !== "microsoft") {
@@ -82,7 +81,11 @@ makeScript(
         );
         return;
       }
-      await backfillConnectorTenant({ connector, execute, logger: scriptLogger });
+      await backfillConnectorTenant({
+        connector,
+        execute,
+        logger: scriptLogger,
+      });
       return;
     }
 
@@ -124,4 +127,3 @@ makeScript(
     }
   }
 );
-
