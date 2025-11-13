@@ -56,7 +56,7 @@ export const GEMINI_2_5_PRO_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: true,
   generationTokensCount: 64_000,
   supportsVision: true,
-  minimumReasoningEffort: "none",
-  maximumReasoningEffort: "none",
-  defaultReasoningEffort: "none",
+  minimumReasoningEffort: "light",
+  maximumReasoningEffort: "high",
+  defaultReasoningEffort: "light",
 };

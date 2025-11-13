@@ -73,11 +73,10 @@ async function handler(
           title: c.title,
           visibility: c.visibility,
           depth: c.depth,
-          triggerId: c.triggerSId(),
+          triggerId: c.triggerSId,
           actionRequired: false, // We don't care about actionRequired/unread, so set to false
           unread: false,
           hasError: c.hasError,
-          requestedGroupIds: c.getRequestedGroupIdsFromModel(auth),
           requestedSpaceIds: c.getRequestedSpaceIdsFromModel(auth),
         };
       });

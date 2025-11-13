@@ -51,19 +51,23 @@ export async function conversationUnreadNotificationActivity(
   const participants = await conversation.listParticipants(auth, true);
 
   if (participants.length !== 0) {
-    const payload: ConversationUnreadPayloadType = {
-      conversationId: conversation.sId,
-      conversationTitle: conversation.title ?? "A conversation",
-      workspaceId: auth.getNonNullableWorkspace().sId,
-    };
     try {
       const novuClient = await getNovuClient();
+
       await novuClient.bulkTrigger(
-        participants.map((p) => ({
-          name: CONVERSATION_UNREAD_TRIGGER_ID,
-          to: { subscriberId: p.sId },
-          payload,
-        }))
+        participants.map((p) => {
+          const payload: ConversationUnreadPayloadType = {
+            conversationId: conversation.sId,
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            userId: p.sId,
+            messageId: agentLoopArgs.agentMessageId,
+          };
+          return {
+            name: CONVERSATION_UNREAD_TRIGGER_ID,
+            to: { subscriberId: p.sId },
+            payload,
+          };
+        })
       );
     } catch (error) {
       logger.error(

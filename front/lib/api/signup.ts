@@ -189,10 +189,10 @@ export async function handleEnterpriseSignUpFlow(
 
   // Look if there is a pending membership invitation for the user at the workspace.
   const pendingMembershipInvitation =
-    await MembershipInvitationResource.getPendingForEmailAndWorkspace(
-      user.email,
-      workspace.id
-    );
+    await MembershipInvitationResource.getPendingForEmailAndWorkspace({
+      email: user.email,
+      workspace,
+    });
 
   // Initialize membership if it's not present or has been previously revoked. In the case of
   // enterprise connections, Dust access is overridden by the identity management service.

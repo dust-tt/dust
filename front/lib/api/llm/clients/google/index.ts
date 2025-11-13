@@ -1,7 +1,10 @@
 import { ApiError, GoogleGenAI } from "@google/genai";
 
 import type { GoogleAIStudioWhitelistedModelId } from "@app/lib/api/llm/clients/google/types";
-import { getGoogleModelFamilyFromModelId } from "@app/lib/api/llm/clients/google/types";
+import {
+  getGoogleModelFamilyFromModelId,
+  GOOGLE_REASONING_EFFORT_TO_THINKING_BUDGET,
+} from "@app/lib/api/llm/clients/google/types";
 import {
   toContent,
   toTool,
@@ -12,7 +15,7 @@ import { handleGenericError } from "@app/lib/api/llm/types/errors";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
   LLMParameters,
-  StreamParameters,
+  LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { dustManagedCredentials } from "@app/types";
@@ -55,7 +58,7 @@ export class GoogleLLM extends LLM {
     conversation,
     prompt,
     specifications,
-  }: StreamParameters): AsyncGenerator<LLMEvent> {
+  }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
     try {
       const modelFamily = getGoogleModelFamilyFromModelId(this.modelId);
 
@@ -63,8 +66,11 @@ export class GoogleLLM extends LLM {
         modelFamily === "reasoning"
           ? {
               includeThoughts: true,
-              // TODO(LLM-Router 2025-10-27): update according to effort
-              thinkingBudget: 1024,
+              thinkingBudget: this.reasoningEffort
+                ? GOOGLE_REASONING_EFFORT_TO_THINKING_BUDGET[
+                    this.reasoningEffort
+                  ]
+                : undefined,
             }
           : undefined;
 

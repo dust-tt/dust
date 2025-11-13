@@ -774,14 +774,6 @@ const createServer = (
           // First, try to use the inbox address from the conversation (most reliable)
           if (conversation.inbox?.address) {
             channelAddress = conversation.inbox.address;
-            logger.info(
-              {
-                conversation_id,
-                channel_address: channelAddress,
-                source: "inbox",
-              },
-              "Selected channel address from conversation inbox"
-            );
           } else {
             // If inbox address is not available, we need to identify which recipient is a channel
             // by matching recipients from the previous message against available channels
@@ -793,18 +785,6 @@ const createServer = (
               lastInboundMessage?.recipients &&
               lastInboundMessage.recipients.length > 0
             ) {
-              logger.info(
-                {
-                  conversation_id,
-                  message_id: lastInboundMessage.id,
-                  recipients: lastInboundMessage.recipients,
-                },
-                "Checking recipients to identify which is a channel"
-              );
-
-              // Try each recipient address by attempting to fetch it as a channel
-              // Using resource alias: GET /channels/alt:address:{address}
-              // If it returns 200, it's a channel; if 404, it's not
               for (const recipient of lastInboundMessage.recipients) {
                 const recipientAddress = recipient.handle || recipient.email;
                 if (!recipientAddress) {
@@ -819,64 +799,24 @@ const createServer = (
                     apiToken,
                   });
 
-                  // If we get here without an error, this recipient is a channel
                   channelAddress = recipientAddress;
-                  logger.info(
-                    {
-                      conversation_id,
-                      channel_address: channelAddress,
-                      source: "verified_recipient_is_channel",
-                      message_id: lastInboundMessage.id,
-                      recipient: {
-                        handle: recipient.handle,
-                        email: recipient.email,
-                        role: recipient.role,
-                      },
-                    },
-                    "Selected channel address by verifying recipient is a channel"
-                  );
                   break;
                 } catch (error) {
-                  // If it's a 404, this recipient is not a channel, continue to next
                   if (
                     error instanceof MCPError &&
                     error.message.includes("Resource not found")
                   ) {
-                    logger.debug(
-                      {
-                        conversation_id,
-                        recipient_address: recipientAddress,
-                        recipient_role: recipient.role,
-                      },
-                      "Recipient is not a channel (404)"
-                    );
                     continue;
                   }
                   // For other errors, log but continue trying other recipients
                   logger.warn(
                     {
                       conversation_id,
-                      recipient_address: recipientAddress,
                       error: normalizeError(error).message,
                     },
-                    "Error checking if recipient is a channel"
+                    "[FrontMCP] Error checking if recipient is a channel"
                   );
                 }
-              }
-
-              if (!channelAddress) {
-                logger.warn(
-                  {
-                    conversation_id,
-                    message_id: lastInboundMessage.id,
-                    recipients: lastInboundMessage.recipients.map((r: any) => ({
-                      handle: r.handle,
-                      email: r.email,
-                      role: r.role,
-                    })),
-                  },
-                  "No recipient was verified as a channel"
-                );
               }
             } else {
               logger.warn(
@@ -886,7 +826,7 @@ const createServer = (
                   message_recipients_count:
                     lastInboundMessage?.recipients?.length ?? 0,
                 },
-                "Unable to find channel address from last inbound message"
+                "[FrontMCP] Unable to find channel address from last inbound message"
               );
             }
           }
@@ -899,26 +839,26 @@ const createServer = (
             );
           }
 
-          // Use the channel address as a resource alias (format: alt:address:EMAIL)
-          // The API will validate if the channel exists
           const channel_id = `alt:address:${channelAddress}`;
-          logger.info(
-            {
-              conversation_id,
-              channel_address: channelAddress,
-              channel_id,
-            },
-            "Using channel ID for draft creation"
-          );
+          const htmlBody = body
+            .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+            .replace(/\*(.*?)\*/g, "<em>$1</em>")
+            .replace(/__(.*?)__/g, "<strong>$1</strong>")
+            .replace(/_(.*?)_/g, "<em>$1</em>")
+            .replace(/`(.*?)`/g, "<code>$1</code>")
+            .replace(/~~(.*?)~~/g, "<del>$1</del>")
+            .replace(
+              /(https?:\/\/[^\s]+)/g,
+              '<a href="$1" target="_blank">$1</a>'
+            )
+            .replace(/\r\n|\r|\n/g, "<br>\n");
 
-          // Create draft reply using the conversations endpoint
-          // Endpoint: POST /conversations/{conversation_id}/drafts
           await makeFrontAPIRequest({
             method: "POST",
             endpoint: `conversations/${conversation_id}/drafts`,
             apiToken,
             body: {
-              body,
+              body: htmlBody,
               mode: "shared",
               channel_id,
               ...(author_id && { author_id }),

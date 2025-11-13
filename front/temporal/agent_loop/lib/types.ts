@@ -12,9 +12,9 @@ import type {
   UserMessageType,
 } from "@app/types";
 import type {
-  FunctionCallContentType,
-  ReasoningContentType,
-  TextContentType,
+  AgentFunctionCallContentType,
+  AgentReasoningContentType,
+  AgentTextContentType,
 } from "@app/types/assistant/agent_message_content";
 
 export type Output = {
@@ -24,7 +24,9 @@ export type Output = {
   }>;
   generation: string | null;
   contents: Array<
-    TextContentType | FunctionCallContentType | ReasoningContentType
+    | AgentTextContentType
+    | AgentFunctionCallContentType
+    | AgentReasoningContentType
   >;
 };
 

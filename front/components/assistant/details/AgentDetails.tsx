@@ -128,13 +128,15 @@ export function AgentDetails({
   );
 
   const showPerformanceTabs =
-    (agentConfiguration?.canEdit ?? isAdmin(owner)) &&
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    (agentConfiguration?.canEdit || isAdmin(owner)) &&
     agentId != null &&
     !isGlobalAgent;
 
   const showInsightsTabs =
     agentId != null &&
-    (agentConfiguration?.canEdit ?? isAdmin(owner)) &&
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    (agentConfiguration?.canEdit || isAdmin(owner)) &&
     !isGlobalAgent &&
     hasFeature("agent_builder_observability");
 
@@ -152,8 +154,7 @@ export function AgentDetails({
             <div>
               <Chip
                 color={SCOPE_INFO[agentConfiguration.scope].color}
-                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                icon={SCOPE_INFO[agentConfiguration.scope].icon || undefined}
+                icon={SCOPE_INFO[agentConfiguration.scope].icon ?? undefined}
               >
                 {SCOPE_INFO[agentConfiguration.scope].label}
               </Chip>

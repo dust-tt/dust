@@ -101,23 +101,9 @@ export async function renderConversationForModel(
 
   let availableTokens = allowedTokenCount - baseTokens;
 
-  let isContextWindowHit = false;
-  function logContextWindowHit(interactionsCount: number) {
-    logger.info(
-      {
-        workspaceId: conversation.owner.sId,
-        conversationId: conversation.sId,
-        interactionsCount, // Number of interactions before hitting the context window
-      },
-      "Conversation hit context window"
-    );
-  }
-
   if (currentInteractionTokens > availableTokens) {
     // The last interaction does not fit within the token budget.
     // We apply progressive pruning to that interaction until it fits within the token budget.
-    logContextWindowHit(1);
-    isContextWindowHit = true;
     currentInteraction = progressivelyPruneInteraction(
       currentInteraction,
       availableTokens
@@ -138,24 +124,16 @@ export async function renderConversationForModel(
     availableTokens -= currentInteractionTokens;
   }
 
-  const previousInteractions = interactions.slice(0, -1);
+  let previousInteractions = interactions.slice(0, -1);
 
   // prune previous interactions.
-  const { interactions: prunedPreviousInteractions, contextWindowHitPosition } =
-    prunePreviousInteractions(
-      previousInteractions,
-      availableTokens,
-      PREVIOUS_INTERACTIONS_TO_PRESERVE
-    );
-  if (!isContextWindowHit && contextWindowHitPosition > 0) {
-    logContextWindowHit(contextWindowHitPosition + 1); // we add 1 to include the current interaction
-    isContextWindowHit = true;
-  }
+  previousInteractions = prunePreviousInteractions(
+    previousInteractions,
+    availableTokens,
+    PREVIOUS_INTERACTIONS_TO_PRESERVE
+  );
 
-  const prunedInteractions = [
-    ...prunedPreviousInteractions,
-    currentInteraction,
-  ];
+  const prunedInteractions = [...previousInteractions, currentInteraction];
 
   // Select interactions that fit within token budget.
   const selected: MessageWithTokens[] = [];
@@ -170,9 +148,6 @@ export async function renderConversationForModel(
       tokensUsed += interactionTokens;
       selected.unshift(...interaction.messages);
     } else {
-      if (!isContextWindowHit) {
-        logContextWindowHit(prunedInteractions.length - i);
-      }
       break;
     }
   }

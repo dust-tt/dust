@@ -34,13 +34,16 @@ pub struct AnthropicLLM {
 }
 
 fn get_max_tokens(model_id: &str) -> u64 {
-    if model_id.starts_with("claude-4-sonnet")
+    if model_id.starts_with("claude-3-7-sonnet")
+        || model_id.starts_with("claude-4-sonnet")
         || model_id.starts_with("claude-sonnet-4-")
         || model_id.starts_with("claude-haiku-4-5-")
     {
         64000
     } else if model_id.starts_with("claude-4-opus") {
         32000
+    } else if model_id.starts_with("claude-3-5-sonnet") {
+        8192
     } else {
         4096
     }

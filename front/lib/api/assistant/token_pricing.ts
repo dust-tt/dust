@@ -96,6 +96,30 @@ const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
     cache_creation_input_tokens: 3.75,
     cache_read_input_tokens: 0.3,
   },
+  "claude-3-opus-20240229": {
+    input: 15.0,
+    output: 75.0,
+    cache_creation_input_tokens: 18.75,
+    cache_read_input_tokens: 1.5,
+  },
+  "claude-3-5-sonnet-20240620": {
+    input: 3.0,
+    output: 15.0,
+    cache_creation_input_tokens: 3.75,
+    cache_read_input_tokens: 0.3,
+  },
+  "claude-3-5-sonnet-20241022": {
+    input: 3.0,
+    output: 15.0,
+    cache_creation_input_tokens: 3.75,
+    cache_read_input_tokens: 0.3,
+  },
+  "claude-3-7-sonnet-20250219": {
+    input: 3.0,
+    output: 15.0,
+    cache_creation_input_tokens: 3.75,
+    cache_read_input_tokens: 0.3,
+  },
   "claude-3-haiku-20240307": {
     input: 0.25,
     output: 1.25,
@@ -282,6 +306,14 @@ const LEGACY_MODEL_PRICING: Record<string, PricingEntry> = {
   "o1-mini-2024-09-12": {
     input: 3.0,
     output: 12.0,
+  },
+  "claude-3-sonnet-20240229": {
+    input: 3.0,
+    output: 15.0,
+  },
+  "claude-3-5-sonnet-latest": {
+    input: 3.0,
+    output: 15.0,
   },
   "claude-4-sonnet-latest": {
     input: 3.0,

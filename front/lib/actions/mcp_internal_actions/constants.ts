@@ -117,6 +117,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "val_town",
   "front",
   "web_search_&_browse",
+  "zendesk",
   SEARCH_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
 ] as const;
@@ -1240,9 +1241,10 @@ The directive should be used to display a clickable version of the agent name in
     },
     isPreview: false,
     tools_stakes: {
-      submit_feedback: "high",
       search_candidates: "never_ask",
       get_report_data: "never_ask",
+      get_latest_interview_feedback: "never_ask",
+      create_candidate_note: "high",
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -1586,6 +1588,33 @@ The directive should be used to display a clickable version of the agent name in
         "- Use LLM-friendly timeline format for conversation data\n" +
         "- Include full context (metadata, custom fields) in responses",
       developerSecretSelection: "required",
+    },
+  },
+  zendesk: {
+    id: 42,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: undefined,
+    isPreview: false,
+    tools_stakes: {
+      get_ticket: "never_ask",
+      search_tickets: "never_ask",
+      draft_reply: "low", // Low because it's a draft.
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "zendesk",
+      version: "1.0.0",
+      description:
+        "Access and manage support tickets, help center, and customer interactions.",
+      authorization: {
+        provider: "zendesk" as const,
+        supported_use_cases: ["platform_actions"] as const,
+      },
+      icon: "ZendeskLogo",
+      documentationUrl: null,
+      instructions: null,
     },
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.

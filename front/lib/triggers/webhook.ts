@@ -8,6 +8,7 @@ import type { WebhookRequestTriggerStatus } from "@app/lib/models/assistant/trig
 import { WebhookRequestTriggerModel } from "@app/lib/models/assistant/triggers/webhook_request_trigger";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
+import { FathomClient } from "@app/lib/triggers/built-in-webhooks/fathom/fathom_client";
 import { launchAgentTriggerWebhookWorkflow } from "@app/lib/triggers/temporal/webhook/client";
 import {
   getTimeframeSecondsFromLiteral,
@@ -16,9 +17,12 @@ import {
 import { verifySignature } from "@app/lib/webhookSource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import { Err, normalizeError, Ok, removeNulls } from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
-import type { WebhookSourceForAdminType } from "@app/types/triggers/webhooks";
+import type {
+  WebhookProvider,
+  WebhookSourceForAdminType,
+} from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
 const WORKSPACE_MESSAGE_LIMIT_MULTIPLIER = 0.5; // 50% of workspace message limit
@@ -26,9 +30,15 @@ const WORKSPACE_MESSAGE_LIMIT_MULTIPLIER = 0.5; // 50% of workspace message limi
 /**
  * To avoid storing sensitive information, only these headers are allowed to be stored in GCS.
  */
-const HEADERS_ALLOWED_LIST = Object.values(WEBHOOK_PRESETS)
-  .filter((preset) => preset.eventCheck.type === "headers")
-  .map((preset) => preset.eventCheck.field.toLowerCase());
+const HEADERS_ALLOWED_LIST = [
+  ...removeNulls(
+    Object.values(WEBHOOK_PRESETS)
+      .filter((preset) => preset.eventCheck?.type === "headers")
+      .map((preset) => preset.eventCheck?.field.toLowerCase())
+  ),
+  // Header used by Fathom.
+  "webhook-signature",
+];
 
 export function checkSignature({
   headerName,
@@ -36,16 +46,45 @@ export function checkSignature({
   secret,
   headers,
   body,
+  provider,
 }: {
-  headerName: string;
-  algorithm: "sha1" | "sha256" | "sha512";
+  headerName: string | null;
+  algorithm: "sha1" | "sha256" | "sha512" | null;
   secret: string;
   headers: Record<string, string>;
   body: unknown;
+  provider: WebhookProvider | null;
 }): Result<
   void,
   Omit<DustError, "code"> & { code: "invalid_signature_error" }
 > {
+  if (provider === "fathom") {
+    const verifyRes = FathomClient.verifyWebhook({
+      secret,
+      headers,
+      body: JSON.stringify(body),
+    });
+
+    if (verifyRes.isErr()) {
+      return new Err({
+        name: "dust_error",
+        code: "invalid_signature_error",
+        message: `Invalid Fathom webhook signature: ${verifyRes.error.message}`,
+      });
+    }
+
+    return new Ok(undefined);
+  }
+
+  if (!headerName || !algorithm) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_signature_error",
+      message:
+        "Missing headerName or algorithm for custom webhook verification",
+    });
+  }
+
   const signature = headers[headerName.toLowerCase()] as string;
 
   if (!signature) {

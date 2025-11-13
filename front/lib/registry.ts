@@ -45,27 +45,6 @@ export const BaseDustProdActionRegistry = {
       },
     },
   },
-  "assistant-v2-process": {
-    app: {
-      appId: "953b79fe89",
-      appHash:
-        "689c0cde9d4962a57b5a38caab6244fdd4b30ce5e52af0f40333a03a847a91f1",
-    },
-    config: {
-      DATASOURCE: {
-        data_sources: [],
-        top_k: 128,
-        filter: { tags: null, parents: null, timestamp: null },
-        use_cache: false,
-      },
-      MODEL: {
-        // `provider_id` and `model_id` must be set by caller.
-        function_call: "extract_data",
-        use_cache: false,
-      },
-    },
-  },
-
   "doc-tracker-retrieval": {
     app: {
       appId: "4180309c80",
@@ -149,20 +128,6 @@ export const BaseDustProdActionRegistry = {
       },
     },
   },
-  "assistant-builder-process-action-schema-generator": {
-    app: {
-      appId: "b36c7416bd",
-      appHash:
-        "decdb1f2c554b78fee580f826adefc06fac9c936a3c71980d5cdf81aa33bdcc8",
-    },
-    config: {
-      MODEL: {
-        // `provider_id` and `model_id` must be set by caller.
-        function_call: "set_extraction_schema",
-        use_cache: false,
-      },
-    },
-  },
   "assistant-v2-visualization": {
     app: {
       appId: "tWcuYDj1OE",
@@ -200,63 +165,6 @@ export const BaseDustProdActionRegistry = {
     config: {
       MODEL: {
         // `provider_id` and `model_id` must be set by caller.
-        use_cache: false,
-        use_stream: true,
-      },
-    },
-  },
-  "suggest-agent-from-message": {
-    app: {
-      appId: "fcYLVzSHdU",
-      appHash:
-        "5764c8eb5d325e01213b3af3cc2230c88f5264ac6ebf438d1ad64e4c71b3a296",
-    },
-    config: {
-      MODEL: {
-        // `provider_id` and `model_id` must be set by caller.
-        function_call: "suggest_agents",
-        use_cache: false,
-        use_stream: true,
-      },
-    },
-  },
-  "tag-manager-initial-suggestions": {
-    app: {
-      appId: "Huz76iC3FJ",
-      appHash:
-        "4c86322b20fa685fcbd87b23c5220e9be14fd56014a3f356a6cfe07b3573ab5d",
-    },
-    config: {
-      CREATE_SUGGESTIONS: {
-        function_call: "send_tags",
-        use_cache: false,
-        use_stream: true,
-      },
-    },
-  },
-  "assistant-builder-webhook-filter-generator": {
-    app: {
-      appId: "XNcJCE7lUj",
-      appHash:
-        "257965e90775f1ad81975aa4a5b5b6169338c79561432cfa7f4e4e13fd8bc0cf",
-    },
-    config: {
-      CREATE_FILTER: {
-        function_call: "set_filter",
-        use_cache: false,
-        use_stream: true,
-      },
-    },
-  },
-  "voice-find-agent-and-tools": {
-    app: {
-      appId: "F15zoc9d8a",
-      appHash:
-        "ce806cd503d298c64ae97a8f786a60be62d81aa000fca02c363efec51356926f",
-    },
-    config: {
-      GET_AUGMENTED_MESSAGE: {
-        function_call: "find_agents_and_tools",
         use_cache: false,
         use_stream: true,
       },

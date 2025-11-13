@@ -1,6 +1,6 @@
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
-export const prSchema: JSONSchema = {
+export const pullRequestSchema: JSONSchema = {
   $schema: "http://json-schema.org/draft-07/schema#",
   type: "object",
   properties: {
@@ -609,7 +609,7 @@ export const prSchema: JSONSchema = {
   required: ["action", "number", "pull_request", "repository", "sender"],
 };
 
-export const prExample = {
+export const pullRequestExample = {
   action: "opened",
   number: 15,
   pull_request: {

@@ -18,10 +18,12 @@ export const USAGE_METRICS_LEGEND = [
 
 export const LATENCY_PALETTE = {
   average: "text-blue-400 dark:text-blue-400-night",
+  median: "text-violet-300 dark:text-violet-300-night",
 } as const;
 
 export const LATENCY_LEGEND = [
   { key: "average", label: "Average time to complete output" },
+  { key: "median", label: "Median time to complete output" },
 ] as const;
 
 export const CHART_HEIGHT = 260;
@@ -46,12 +48,4 @@ export const FEEDBACK_DISTRIBUTION_PALETTE = {
 export const FEEDBACK_DISTRIBUTION_LEGEND = [
   { key: "positive", label: "Positive" },
   { key: "negative", label: "Negative" },
-] as const;
-
-export const ERROR_RATE_PALETTE = {
-  errorRate: "text-[hsl(var(--chart-4))]",
-} as const;
-
-export const ERROR_RATE_LEGEND = [
-  { key: "errorRate", label: "Error rate" },
 ] as const;

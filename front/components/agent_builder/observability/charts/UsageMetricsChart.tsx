@@ -1,7 +1,7 @@
 import {
-  Area,
-  AreaChart,
   CartesianGrid,
+  Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -34,7 +34,7 @@ import {
 } from "@app/lib/swr/assistants";
 
 interface UsageMetricsData {
-  date: string;
+  timestamp: number;
   messages: number;
   conversations: number;
   activeUsers: number;
@@ -50,12 +50,21 @@ function isUsageMetricsData(data: unknown): data is UsageMetricsData {
   );
 }
 
+function zeroFactory(timestamp: number) {
+  return {
+    timestamp,
+    messages: 0,
+    conversations: 0,
+    activeUsers: 0,
+  };
+}
+
 function UsageMetricsTooltip(
   props: TooltipContentProps<number, string> & {
     versionMarkers: AgentVersionMarker[];
   }
 ): JSX.Element | null {
-  const { active, payload, label, versionMarkers } = props;
+  const { active, payload, versionMarkers } = props;
   if (!active || !payload || payload.length === 0) {
     return null;
   }
@@ -66,14 +75,13 @@ function UsageMetricsTooltip(
   }
 
   const row = first.payload;
-  const title = typeof label === "string" ? label : String(label);
 
-  const versionMarker = findVersionMarkerForDate(row.date, versionMarkers);
+  const versionMarker = findVersionMarkerForDate(row.timestamp, versionMarkers);
   const version = versionMarker ? ` - v${versionMarker.version}` : "";
 
   return (
     <ChartTooltipCard
-      title={`${title}${version}`}
+      title={`${row.date}${version}`}
       rows={[
         {
           label: "Messages",
@@ -137,7 +145,7 @@ export function UsageMetricsChart({
     filteredData,
     mode,
     period,
-    (date) => ({ date, messages: 0, conversations: 0, activeUsers: 0 })
+    zeroFactory
   );
 
   return (
@@ -153,7 +161,7 @@ export function UsageMetricsChart({
       }
     >
       <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-        <AreaChart
+        <LineChart
           data={data}
           margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
         >
@@ -228,32 +236,32 @@ export function UsageMetricsChart({
             }}
           />
           {/* Areas for each usage metric */}
-          <Area
+          <Line
             type="monotone"
             dataKey="messages"
             name="Messages"
             className={USAGE_METRICS_PALETTE.messages}
-            fill="url(#fillMessages)"
             stroke="currentColor"
+            dot={false}
           />
-          <Area
+          <Line
             type="monotone"
             dataKey="conversations"
             name="Conversations"
             className={USAGE_METRICS_PALETTE.conversations}
-            fill="url(#fillConversations)"
             stroke="currentColor"
+            dot={false}
           />
-          <Area
+          <Line
             type="monotone"
             dataKey="activeUsers"
             name="Active users"
             className={USAGE_METRICS_PALETTE.activeUsers}
-            fill="url(#fillActiveUsers)"
             stroke="currentColor"
+            dot={false}
           />
           <VersionMarkersDots mode={mode} versionMarkers={versionMarkers} />
-        </AreaChart>
+        </LineChart>
       </ResponsiveContainer>
       <ChartLegend items={legendItems} />
     </ChartContainer>

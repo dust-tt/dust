@@ -132,7 +132,12 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      return res.status(200).json({ conversation });
+      return res.status(200).json({
+        conversation: {
+          ...conversation,
+          requestedGroupIds: [], // Remove once all old SDKs users are updated
+        },
+      });
     }
 
     case "PATCH": {

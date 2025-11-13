@@ -176,10 +176,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable splitting agent responses into multiple Slack messages for Slack (instead of truncation)",
     stage: "dust_only",
   },
-  hootl_webhooks: {
-    description: "Webhooks for Human Out Of The Loop (aka Triggers) / webhooks",
-    stage: "dust_only",
-  },
   slack_bot_mcp: {
     description: "Slack bot MCP server for workspace-level Slack integration",
     stage: "on_demand",

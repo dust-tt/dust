@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import {
-  Area,
-  AreaChart,
   CartesianGrid,
+  Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -25,21 +25,36 @@ import {
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
 import { VersionMarkersDots } from "@app/components/agent_builder/observability/shared/VersionMarkers";
 import { padSeriesToTimeRange } from "@app/components/agent_builder/observability/utils";
+import type { LatencyPoint } from "@app/lib/api/assistant/observability/latency";
 import { useAgentVersionMarkers } from "@app/lib/swr/assistants";
+import { formatShortDate } from "@app/lib/utils/timestamps";
 
-interface LatencyData {
-  messages: number;
-  average: number;
+interface LatencyData extends LatencyPoint {
+  date: string;
 }
 
 function isLatencyData(data: unknown): data is LatencyData {
-  return typeof data === "object" && data !== null && "average" in data;
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    "average" in data &&
+    "median" in data
+  );
+}
+
+function zeroFactory(timestamp: number) {
+  return {
+    timestamp,
+    messages: 0,
+    average: 0,
+    median: 0,
+  };
 }
 
 function LatencyTooltip(
   props: TooltipContentProps<number, string>
 ): JSX.Element | null {
-  const { active, payload, label } = props;
+  const { active, payload } = props;
   if (!active || !payload || payload.length === 0) {
     return null;
   }
@@ -48,15 +63,20 @@ function LatencyTooltip(
     return null;
   }
   const row = first.payload;
-  const title = typeof label === "string" ? label : String(label);
+
   return (
     <ChartTooltipCard
-      title={title}
+      title={row.date}
       rows={[
         {
           label: "Average time",
           value: `${row.average}s`,
           colorClassName: LATENCY_PALETTE.average,
+        },
+        {
+          label: "Median time",
+          value: `${row.median}s`,
+          colorClassName: LATENCY_PALETTE.median,
         },
       ]}
     />
@@ -93,18 +113,13 @@ export function LatencyChart({
 
   const data = useMemo(() => {
     if (mode === "timeRange") {
-      const dataWithDate = rawData.map((item) => ({
-        ...item,
-        date: item.date!,
-      }));
-      return padSeriesToTimeRange(dataWithDate, mode, period, (date) => ({
-        date,
-        label: date,
-        messages: 0,
-        average: 0,
-      }));
+      return padSeriesToTimeRange(rawData, mode, period, zeroFactory);
     }
-    return rawData;
+
+    return rawData.map((data) => ({
+      ...data,
+      date: formatShortDate(data.timestamp),
+    }));
   }, [rawData, mode, period]);
 
   const legendItems = legendFromConstant(LATENCY_LEGEND, LATENCY_PALETTE, {
@@ -114,12 +129,12 @@ export function LatencyChart({
   return (
     <ChartContainer
       title="Latency"
-      description="Average time to complete output (seconds). Lower is better."
+      description="Average and median time to complete output (seconds). Lower is better."
       isLoading={isLoading}
       errorMessage={errorMessage}
     >
       <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-        <AreaChart
+        <LineChart
           data={data}
           margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
         >
@@ -171,16 +186,25 @@ export function LatencyChart({
               boxShadow: "none",
             }}
           />
-          <Area
+          <Line
             type="monotone"
             dataKey="average"
             name="Average time to complete output"
             className={LATENCY_PALETTE.average}
             fill="url(#fillAverage)"
             stroke="currentColor"
+            dot={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="median"
+            name="Median time to complete output"
+            className={LATENCY_PALETTE.median}
+            stroke="currentColor"
+            dot={false}
           />
           <VersionMarkersDots mode={mode} versionMarkers={versionMarkers} />
-        </AreaChart>
+        </LineChart>
       </ResponsiveContainer>
       <ChartLegend items={legendItems} />
     </ChartContainer>
