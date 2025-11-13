@@ -41,7 +41,6 @@ import {
   ActiveSubscriptionTable,
   PlanLimitationsTable,
 } from "@app/components/poke/subscriptions/table";
-import { TrackerDataTable } from "@app/components/poke/trackers/table";
 import { TriggerDataTable } from "@app/components/poke/triggers/table";
 import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
 import config from "@app/lib/api/config";
@@ -279,7 +278,7 @@ const WorkspacePage = ({
               <TabsTrigger value="groups" label="Groups" />
               <TabsTrigger value="mcpviews" label="MCP Server Views" />
               <TabsTrigger value="spaces" label="Spaces" />
-              <TabsTrigger value="trackers" label="Trackers" />
+
               <TabsTrigger value="triggers" label="Triggers" />
 
               {/* Plugin Logs on the far right */}
@@ -318,9 +317,7 @@ const WorkspacePage = ({
                 loadOnInit
               />
             </TabsContent>
-            <TabsContent value="trackers">
-              <TrackerDataTable owner={owner} loadOnInit />
-            </TabsContent>
+
             <TabsContent value="triggers">
               <TriggerDataTable owner={owner} loadOnInit />
             </TabsContent>
