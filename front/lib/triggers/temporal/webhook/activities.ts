@@ -84,7 +84,13 @@ async function validateEventSubscription({
   if (!receivedEventValue) {
     const errorMessage = `Unable to determine webhook event from ${type}.`;
     await webhookRequest.markAsFailed(errorMessage);
-    logger.error({ workspaceId, webhookRequestId }, errorMessage);
+    logger.error(
+      {
+        workspaceId,
+        webhookRequestId,
+      },
+      errorMessage
+    );
     return new Err(new TriggerNonRetryableError(errorMessage));
   }
 
