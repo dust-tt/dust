@@ -26,12 +26,24 @@ export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
       metadata: { workspace_id: string; user_id: string };
     };
   }) {
-    const scopes = [
-      "User.Read",
-      "Sites.Read.All",
-      "Files.Read.All",
-      "offline_access",
-    ];
+    const metadata = connection.metadata ?? {};
+    const hasSelectedSites = (() => {
+      const raw = (metadata as Record<string, unknown>).selected_sites;
+      if (typeof raw === "string") {
+        return raw.trim().length > 0;
+      }
+      if (Array.isArray(raw)) {
+        return raw.some((value) =>
+          typeof value === "string" ? value.trim().length > 0 : value != null
+        );
+      }
+      return false;
+    })();
+
+    const scopes = ["User.Read", "Files.Read.All", "offline_access"];
+    if (!hasSelectedSites) {
+      scopes.splice(1, 0, "Sites.Read.All");
+    }
     if (relatedCredential) {
       return `${config.getClientFacingUrl()}/oauth/microsoft/finalize?provider=microsoft&code=client&state=${connection.connection_id}`;
     } else {
@@ -55,13 +67,42 @@ export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
   }
 
   isExtraConfigValid(extraConfig: ExtraConfigType) {
+    const useServicePrincipal =
+      !!extraConfig.client_id ||
+      !!extraConfig.client_secret ||
+      !!extraConfig.tenant_id ||
+      !!extraConfig.selected_sites;
+
+    if (!useServicePrincipal) {
+      return true;
+    }
+
+    const selectedSites = (() => {
+      const raw = extraConfig.selected_sites as unknown;
+      if (typeof raw === "string") {
+        return raw.trim();
+      }
+      if (Array.isArray(raw)) {
+        return raw
+          .map((value: unknown) =>
+            typeof value === "string"
+              ? value.trim()
+              : value !== null && value !== undefined
+                ? String(value).trim()
+                : ""
+          )
+          .filter((value: string) => value.length > 0)
+          .join("\n")
+          .trim();
+      }
+      return "";
+    })();
+
     return (
-      Object.keys(extraConfig).length === 0 ||
-      !!(
-        extraConfig.client_id &&
-        extraConfig.client_secret &&
-        extraConfig.tenant_id
-      )
+      !!extraConfig.client_id &&
+      !!extraConfig.client_secret &&
+      !!extraConfig.tenant_id &&
+      selectedSites.length > 0
     );
   }
   async getRelatedCredential(
@@ -99,6 +140,14 @@ export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
   ): Promise<ExtraConfigType> {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we filter out the client_secret from the extraConfig.
     const { client_secret, ...restConfig } = extraConfig;
+
+    if (typeof restConfig.selected_sites === "string") {
+      restConfig.selected_sites = restConfig.selected_sites
+        .split(/\r?\n/)
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0)
+        .join("\n");
+    }
 
     return restConfig;
   }
