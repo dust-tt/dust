@@ -1,7 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { FILESYSTEM_LIST_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { renderSearchResults } from "@app/lib/actions/mcp_internal_actions/rendering";
 import {
   extractDataSourceIdFromNodeId,
@@ -40,7 +39,7 @@ export function registerListTool(
     "the next step's nodeId. If a node output by this tool or the find tool has children " +
     "(hasChildren: true), it means that this tool can be used again on it.";
   const toolDescription = extraDescription
-    ? baseDescription + " " + extraDescription
+    ? baseDescription + "\n" + extraDescription
     : baseDescription;
 
   server.tool(
@@ -50,7 +49,7 @@ export function registerListTool(
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: FILESYSTEM_LIST_TOOL_NAME,
+        toolNameForMonitoring: name,
         agentLoopContext,
         enableAlerting: true,
       },
@@ -96,11 +95,15 @@ export function registerListTool(
 
         let searchResult: Result<CoreAPISearchNodesResponse, CoreAPIError>;
 
+        // By-pass tag filters when exploring the filesystem hierarchy
+        const includeTagFilters = false;
+
         if (!nodeId) {
           // When nodeId is null, search for data sources only.
-          const dataSourceViewFilter = makeCoreSearchNodesFilters(
-            agentDataSourceConfigurations
-          ).map((view) => ({
+          const dataSourceViewFilter = makeCoreSearchNodesFilters({
+            agentDataSourceConfigurations,
+            includeTagFilters,
+          }).map((view) => ({
             ...view,
             search_scope: "data_source_name" as const,
           }));
@@ -135,7 +138,10 @@ export function registerListTool(
 
           searchResult = await coreAPI.searchNodes({
             filter: {
-              data_source_views: makeCoreSearchNodesFilters([dataSourceConfig]),
+              data_source_views: makeCoreSearchNodesFilters({
+                agentDataSourceConfigurations: [dataSourceConfig],
+                includeTagFilters,
+              }),
               node_ids: dataSourceConfig.filter.parents?.in ?? undefined,
               parent_id: dataSourceConfig.filter.parents?.in
                 ? undefined
@@ -146,13 +152,12 @@ export function registerListTool(
           });
         } else {
           // Regular node listing.
-          const dataSourceViewFilter = makeCoreSearchNodesFilters(
-            agentDataSourceConfigurations
-          );
-
           searchResult = await coreAPI.searchNodes({
             filter: {
-              data_source_views: dataSourceViewFilter,
+              data_source_views: makeCoreSearchNodesFilters({
+                agentDataSourceConfigurations,
+                includeTagFilters,
+              }),
               parent_id: nodeId,
               mime_types: mimeTypes ? { in: mimeTypes, not: null } : undefined,
             },

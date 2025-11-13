@@ -268,6 +268,13 @@ async function handler(
         user,
       });
 
+      await launchAgentMessageFeedbackWorkflow(auth, {
+        message: {
+          conversationId: conversation.sId,
+          agentMessageId: messageId,
+        },
+      });
+
       if (deleted) {
         res.status(200).json({ success: true });
       }

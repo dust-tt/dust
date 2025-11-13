@@ -1,3 +1,4 @@
+import type { LLMErrorInfo } from "@app/lib/api/llm/types/errors";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 
 export type Delta = {
@@ -18,14 +19,14 @@ export interface TextDeltaEvent {
 export interface ReasoningDeltaEvent {
   type: "reasoning_delta";
   content: Delta;
-  metadata: LLMClientMetadata;
+  metadata: LLMClientMetadata & { encrypted_content?: string };
 }
 
 // Output items
 export interface ToolCall {
   id: string;
   name: string;
-  arguments: string;
+  arguments: Record<string, unknown>;
 }
 
 export interface ToolCallEvent {
@@ -43,7 +44,7 @@ export interface TextGeneratedEvent {
 export interface ReasoningGeneratedEvent {
   type: "reasoning_generated";
   content: Text;
-  metadata: LLMClientMetadata;
+  metadata: LLMClientMetadata & { id?: string; encrypted_content?: string };
 }
 
 export type LLMOutputItem =
@@ -54,10 +55,11 @@ export type LLMOutputItem =
 // Completion results
 
 export interface TokenUsage {
-  inputTokens: number;
-  reasoningTokens?: number;
-  outputTokens: number;
+  cacheCreationTokens?: number;
   cachedTokens?: number;
+  inputTokens: number;
+  outputTokens: number;
+  reasoningTokens?: number;
   totalTokens: number;
 }
 
@@ -69,19 +71,24 @@ export interface TokenUsageEvent {
 
 export interface SuccessCompletionEvent {
   type: "success";
-  content: LLMOutputItem[];
+  aggregated: LLMOutputItem[];
+  textGenerated?: TextGeneratedEvent;
+  reasoningGenerated?: ReasoningGeneratedEvent;
+  toolCalls?: ToolCallEvent[];
   metadata: LLMClientMetadata;
 }
 
-export interface CompletionError {
-  message: string;
-  code: number;
-}
+export class EventError extends Error {
+  public readonly type = "error";
+  public readonly content: LLMErrorInfo;
+  public readonly metadata: LLMClientMetadata;
 
-export interface ErrorCompletionEvent {
-  type: "error";
-  content: CompletionError;
-  metadata: LLMClientMetadata;
+  constructor(content: LLMErrorInfo, metadata: LLMClientMetadata) {
+    super(content.message);
+
+    this.content = content;
+    this.metadata = metadata;
+  }
 }
 
 export type LLMEvent =
@@ -92,4 +99,4 @@ export type LLMEvent =
   | ReasoningGeneratedEvent
   | TokenUsageEvent
   | SuccessCompletionEvent
-  | ErrorCompletionEvent;
+  | EventError;

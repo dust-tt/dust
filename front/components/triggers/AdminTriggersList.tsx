@@ -101,6 +101,7 @@ export const AdminTriggersList = ({
       }),
     [spaces, webhookSourcesWithSystemView]
   );
+
   const columns = useMemo((): ColumnDef<RowData>[] => {
     const columns: ColumnDef<RowData, any>[] = [];
 
@@ -118,6 +119,24 @@ export const AdminTriggersList = ({
           return rowA.original.webhookSource.name.localeCompare(
             rowB.original.webhookSource.name
           );
+        },
+      },
+      {
+        header: "Provider",
+        accessorKey: "webhookSource.provider",
+        cell: (info) => (
+          <DataTable.BasicCellContent
+            className="capitalize"
+            label={info.row.original.webhookSource.provider ?? "custom"}
+          />
+        ),
+        sortingFn: (rowA, rowB) => {
+          return (
+            rowA.original.webhookSource.provider ?? "custom"
+          ).localeCompare(rowB.original.webhookSource.provider ?? "custom");
+        },
+        meta: {
+          className: "w-32",
         },
       },
       {
@@ -145,7 +164,7 @@ export const AdminTriggersList = ({
         cell: (info: CellContext<RowData, SpaceType[]>) => {
           const globalSpace = info.getValue().find((s) => s.kind === "global");
           const accessibleTo = globalSpace
-            ? "Everyone"
+            ? "Workspace"
             : info
                 .getValue()
                 .filter((s) => s.kind === "regular")
@@ -164,7 +183,7 @@ export const AdminTriggersList = ({
           );
         },
         meta: {
-          className: "w-28",
+          className: "w-48",
         },
       },
       {
@@ -199,6 +218,12 @@ export const AdminTriggersList = ({
             )}
           />
         ),
+        sortingFn: (rowA, rowB) => {
+          return (
+            rowB.original.webhookSource.updatedAt -
+            rowA.original.webhookSource.updatedAt
+          );
+        },
         meta: {
           className: "w-64",
         },

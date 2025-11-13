@@ -29,6 +29,9 @@ export type WebhookEvent = {
 
   // The JSON schema describing the payload sent by the webhook for this event.
   schema: JSONSchema;
+
+  // Sample event that will be shown to the model to help it generate a filter.
+  sample: Record<string, unknown> | null;
 };
 
 export type PresetWebhook<P extends WebhookProvider = WebhookProvider> = {
@@ -40,7 +43,7 @@ export type PresetWebhook<P extends WebhookProvider = WebhookProvider> = {
   // It's made of a type (headers or body) and a field (header name or body property name)
   // to match against the event values defined below.
   // For example, GitHub uses a specific header "X-GitHub-Event" to indicate the event type.
-  eventCheck: EventCheck;
+  eventCheck: EventCheck | null;
   events: WebhookEvent[];
   // List of event values to ignore. For example, GitHub sends a "ping" event when a webhook is created.
   // We will not want to implement it, and don't want to throw errors when receiving it.

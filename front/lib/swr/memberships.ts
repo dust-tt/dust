@@ -67,11 +67,14 @@ export function useMembers({
   };
 }
 
-export function useWorkspaceInvitations(owner: LightWorkspaceType) {
+export function useWorkspaceInvitations(
+  owner: LightWorkspaceType,
+  { includeExpired = false }: { includeExpired?: boolean } = {}
+) {
   const workspaceInvitationsFetcher: Fetcher<GetWorkspaceInvitationsResponseBody> =
     fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/invitations`,
+    `/api/w/${owner.sId}/invitations?includeExpired=${includeExpired}`,
     workspaceInvitationsFetcher
   );
 

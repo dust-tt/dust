@@ -3,6 +3,7 @@ import sanitizeHtml from "sanitize-html";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import type { TeamsMessage } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/utils";
 import { getGraphClient } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
@@ -12,6 +13,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+
+const MAX_NUMBER_OF_MESSAGES = 200;
 
 function createServer(
   auth: Authenticator,
@@ -249,24 +252,29 @@ function createServer(
 
   server.tool(
     "list_messages",
-    "List all messages (and their replies) in a specific channel. Returns thread messages with their replies.",
+    "List all messages (and their replies) in a specific channel. Returns thread messages with their replies. Supports pagination to retrieve all results and filtering by date range.",
     {
       teamId: z.string().describe("The ID of the team containing the channel."),
       channelId: z
         .string()
         .describe("The ID of the channel to list threads from."),
-      limit: z
-        .number()
+      fromDate: z
+        .string()
         .optional()
-        .default(50)
         .describe(
-          "Maximum number of messages to return (default: 50, max: 50)."
+          "ISO 8601 date string (e.g., '2024-01-01T00:00:00Z'). Only retrieve messages modified after this date."
+        ),
+      toDate: z
+        .string()
+        .optional()
+        .describe(
+          "ISO 8601 date string (e.g., '2024-12-31T23:59:59Z'). Only retrieve messages modified before this date. Defaults to current time."
         ),
     },
     withToolLogging(
       auth,
       { toolNameForMonitoring: "microsoft_teams", agentLoopContext },
-      async ({ teamId, channelId, limit }, { authInfo }) => {
+      async ({ teamId, channelId, fromDate, toDate }, { authInfo }) => {
         const client = await getGraphClient(authInfo);
         if (!client) {
           return new Err(
@@ -275,16 +283,54 @@ function createServer(
         }
 
         try {
-          const maxLimit = Math.min(limit || 50, 50);
-          const response = await client
+          const allMessages: TeamsMessage[] = [];
+          let nextLink: string | undefined = undefined;
+          const fromDateTime = fromDate ? new Date(fromDate) : null;
+          const toDateTime = toDate ? new Date(toDate) : new Date();
+
+          // Filter function to check if message is in date range
+          const isMessageInDateRange = (message: TeamsMessage): boolean => {
+            const messageDate = new Date(message.lastModifiedDateTime);
+            const afterFromDate = !fromDateTime || messageDate >= fromDateTime;
+            const beforeToDate = messageDate <= toDateTime;
+            return afterFromDate && beforeToDate;
+          };
+
+          // Process messages and update shouldContinue flag
+          const processMessages = (messages: TeamsMessage[]): boolean => {
+            const messagesInDateRange = messages.filter(isMessageInDateRange);
+            allMessages.push(...messagesInDateRange);
+            return (
+              // if the last message in the current page is in the date range, we should continue
+              messagesInDateRange
+                .map((message) => message.id)
+                .includes(messages[messages.length - 1].id) &&
+              allMessages.length < MAX_NUMBER_OF_MESSAGES
+            );
+          };
+
+          // First page
+          let response = await client
             .api(`/teams/${teamId}/channels/${channelId}/messages`)
-            .top(maxLimit)
+            .top(50)
             .get();
+
+          let shouldContinue = processMessages(response.value);
+
+          // Follow pagination links until no more pages or date threshold reached
+          nextLink = response["@odata.nextLink"];
+          while (nextLink && shouldContinue) {
+            response = await client.api(nextLink).get();
+            shouldContinue = processMessages(response.value);
+            nextLink = response["@odata.nextLink"];
+          }
+
+          const limitedMessages = allMessages.slice(0, MAX_NUMBER_OF_MESSAGES);
 
           return new Ok([
             {
               type: "text" as const,
-              text: JSON.stringify(response.value, null, 2),
+              text: JSON.stringify(limitedMessages, null, 2),
             },
           ]);
         } catch (err) {

@@ -19,6 +19,7 @@ export * from "./restore_conversation";
 export * from "./revoke_users";
 export * from "./set_public_api_limits";
 export * from "./sync_missing_transcripts_date_range";
+export * from "./toggle_auto_create_space";
 export * from "./toggle_feature_flag";
 export * from "./upgrade_downgrade";
 export * from "./upgrade_to_business_plan";

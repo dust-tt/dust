@@ -83,7 +83,7 @@ export const useMentionAgentDropdown = (
           .insertContent({
             type: "mention",
             attrs: {
-              type: "agent",
+              type: suggestion.type,
               id: suggestion.id,
               label: suggestion.label,
               description: suggestion.description,

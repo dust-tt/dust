@@ -81,12 +81,12 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
   static async makeNew(
     blob: CreationAttributes<WebhookRequestModel>,
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Result<WebhookRequestResource, Error>> {
+  ): Promise<WebhookRequestResource> {
     const webhookRequest = await this.model.create(blob, {
       transaction,
     });
 
-    return new Ok(new this(this.model, webhookRequest.get()));
+    return new this(this.model, webhookRequest.get());
   }
 
   private static async baseFetch(
@@ -137,6 +137,21 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
         ...options.where,
         webhookSourceId,
       },
+    });
+  }
+
+  static async fetchRecentByWebhookSourceModelId(
+    auth: Authenticator,
+    { webhookSourceId }: { webhookSourceId: ModelId },
+    opts: ResourceFindOptions<WebhookRequestModel> = {}
+  ): Promise<WebhookRequestResource[]> {
+    return this.baseFetch(auth, {
+      where: {
+        ...opts.where,
+        webhookSourceId,
+      },
+      order: opts.order,
+      limit: opts.limit,
     });
   }
 

@@ -14,7 +14,6 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
-import { checkTriggerForExecutionPerDayLimit } from "@app/lib/triggers/common";
 import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
@@ -122,7 +121,10 @@ async function createConversationForAgentConfiguration({
     fullName: auth.getNonNullableUser().fullName(),
     email: auth.getNonNullableUser().email,
     profilePictureUrl: null,
-    origin: "triggered" as const,
+    origin:
+      trigger.kind === "webhook" && trigger.executionMode === "programmatic"
+        ? ("triggered_programmatic" as const)
+        : ("triggered" as const),
     lastTriggerRunAt: lastRunAt?.getTime() ?? null,
   };
 
@@ -162,12 +164,12 @@ class TriggerNonRetryableError extends Error {}
 export async function runTriggeredAgentsActivity({
   userId,
   workspaceId,
-  trigger,
+  triggerId,
   contentFragment,
 }: {
   userId: string;
   workspaceId: string;
-  trigger: TriggerType;
+  triggerId: string;
   contentFragment?: ContentFragmentInputWithFileIdType;
 }) {
   const auth = await Authenticator.fromUserIdAndWorkspaceId(
@@ -187,6 +189,15 @@ export async function runTriggeredAgentsActivity({
     );
   }
 
+  const triggerResource = await TriggerResource.fetchById(auth, triggerId);
+  if (!triggerResource) {
+    throw new TriggerNonRetryableError(
+      `Trigger with ID ${triggerId} not found.`
+    );
+  }
+
+  const trigger = triggerResource.toJSON();
+
   const agentConfiguration = await getAgentConfiguration(auth, {
     agentId: trigger.agentConfigurationId,
     variant: "full",
@@ -203,23 +214,9 @@ export async function runTriggeredAgentsActivity({
     agentConfiguration
   );
 
-  const triggerResource = await TriggerResource.fetchById(auth, trigger.sId);
-  if (!triggerResource) {
-    throw new TriggerNonRetryableError(
-      `Trigger with ID ${trigger.sId} not found.`
-    );
-  }
-
   if (!triggerResource.enabled) {
     logger.info({ triggerId: trigger.sId }, "Trigger is disabled.");
     return;
-  }
-
-  const rateLimiterRes = await checkTriggerForExecutionPerDayLimit(auth, {
-    trigger: triggerResource.toJSON(),
-  });
-  if (rateLimiterRes.isErr()) {
-    throw new TriggerNonRetryableError(rateLimiterRes.error.message);
   }
 
   const subscribers = await triggerResource.getSubscribers(auth);

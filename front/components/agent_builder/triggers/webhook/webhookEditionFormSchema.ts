@@ -5,6 +5,8 @@ import type {
   AgentBuilderWebhookTriggerType,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { UserTypeWithWorkspaces } from "@app/types";
+import { asDisplayName } from "@app/types";
+import { DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT } from "@app/types/assistant/triggers";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 
 export const WebhookFormSchema = z.object({
@@ -19,6 +21,8 @@ export const WebhookFormSchema = z.object({
   filter: z.string().optional(),
   includePayload: z.boolean().default(false),
   naturalDescription: z.string().optional(),
+  executionPerDayLimitOverride: z.number(),
+  executionMode: z.enum(["fair_use", "programmatic"]).default("fair_use"),
 });
 
 export type WebhookFormValues = z.infer<typeof WebhookFormSchema>;
@@ -31,7 +35,14 @@ export function getWebhookFormDefaultValues({
   webhookSourceView: WebhookSourceViewType | null;
 }): WebhookFormValues {
   return {
-    name: trigger?.name ?? "Webhook Trigger",
+    name:
+      trigger?.name ??
+      (webhookSourceView
+        ? `${webhookSourceView?.webhookSource.name}` +
+          (webhookSourceView?.provider
+            ? ` - ${asDisplayName(webhookSourceView?.provider)}`
+            : "")
+        : "Webhook Trigger"),
     enabled: trigger?.enabled ?? true,
     customPrompt: trigger?.customPrompt ?? "",
     webhookSourceViewSId: webhookSourceView?.sId ?? "",
@@ -39,6 +50,10 @@ export function getWebhookFormDefaultValues({
     filter: trigger?.configuration.filter ?? "",
     includePayload: trigger?.configuration.includePayload ?? true,
     naturalDescription: trigger?.naturalLanguageDescription ?? "",
+    executionPerDayLimitOverride:
+      trigger?.executionPerDayLimitOverride ??
+      DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT,
+    executionMode: trigger?.executionMode ?? "fair_use",
   };
 }
 
@@ -62,7 +77,7 @@ export function formValuesToWebhookTriggerData({
       ? webhook.naturalDescription?.trim() ?? null
       : null,
     kind: "webhook",
-    provider: webhookSourceView?.provider ?? null,
+    provider: webhookSourceView?.provider ?? undefined,
     configuration: {
       includePayload: webhook.includePayload,
       event: webhook.event,
@@ -75,5 +90,7 @@ export function formValuesToWebhookTriggerData({
       editTrigger?.kind === "webhook"
         ? editTrigger.editorName
         : user.fullName ?? undefined,
+    executionPerDayLimitOverride: webhook.executionPerDayLimitOverride,
+    executionMode: webhook.executionMode,
   };
 }

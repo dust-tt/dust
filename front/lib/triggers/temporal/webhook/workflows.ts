@@ -11,10 +11,13 @@ const { runTriggerWebhookActivity, webhookCleanupActivity } = proxyActivities<
   },
 });
 
-export async function agentTriggerWebhookWorkflow(
-  workspaceId: string,
-  webhookRequestId: number
-) {
+export async function agentTriggerWebhookWorkflow({
+  workspaceId,
+  webhookRequestId,
+}: {
+  workspaceId: string;
+  webhookRequestId: number;
+}) {
   await runTriggerWebhookActivity({
     workspaceId,
     webhookRequestId,

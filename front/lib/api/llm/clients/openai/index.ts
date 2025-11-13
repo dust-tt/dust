@@ -1,61 +1,45 @@
-import { OpenAI } from "openai";
-import type { ReasoningEffort as OpenAiReasoningEffort } from "openai/resources/shared";
+import { APIError, OpenAI } from "openai";
 
-import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import type { OpenAIResponsesWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
-import {
-  isOpenAIResponsesWhitelistedReasoningModelId,
-  REASONING_EFFORT_TO_OPENAI_REASONING,
-} from "@app/lib/api/llm/clients/openai/types";
+import type { OpenAIWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
+import { overwriteLLMParameters } from "@app/lib/api/llm/clients/openai/types";
 import { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
   LLMClientMetadata,
   LLMParameters,
+  StreamParameters,
 } from "@app/lib/api/llm/types/options";
+import { handleError } from "@app/lib/api/llm/utils/openai_like/errors";
 import {
   toInput,
+  toReasoning,
+  toResponseFormat,
   toTool,
 } from "@app/lib/api/llm/utils/openai_like/responses/conversation_to_openai";
 import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_like/responses/openai_to_events";
-import type { ModelConversationTypeMultiActions } from "@app/types";
+import type { Authenticator } from "@app/lib/auth";
 import { dustManagedCredentials } from "@app/types";
+
+import { handleGenericError } from "../../types/errors";
 
 export class OpenAIResponsesLLM extends LLM {
   private client: OpenAI;
-  private metadata: LLMClientMetadata = {
+  protected metadata: LLMClientMetadata = {
     clientId: "openai_responses",
     modelId: this.modelId,
   };
-  private reasoning: { effort: OpenAiReasoningEffort; summary: "auto" } | null;
 
-  constructor({
-    modelId,
-    temperature,
-    reasoningEffort,
-    bypassFeatureFlag,
-  }: LLMParameters & { modelId: OpenAIResponsesWhitelistedModelId }) {
-    super({
-      modelId,
-      temperature,
-      reasoningEffort,
-      bypassFeatureFlag,
-    });
-
-    // OpenAI throws an error if reasoning is set for non reasoning models
-    // TODO(LLM-Router 2025-10-28): handle o3 models differently : temperature should be set to 0
-    // TODO(LLM-Router 2025-10-28): handle GPT-5 models differently : temperature not supported
-    this.reasoning = isOpenAIResponsesWhitelistedReasoningModelId(modelId)
-      ? {
-          effort: REASONING_EFFORT_TO_OPENAI_REASONING[this.reasoningEffort],
-          summary: "auto",
-        }
-      : null;
+  constructor(
+    auth: Authenticator,
+    llmParameters: LLMParameters & { modelId: OpenAIWhitelistedModelId }
+  ) {
+    super(auth, overwriteLLMParameters(llmParameters));
 
     const { OPENAI_API_KEY, OPENAI_BASE_URL } = dustManagedCredentials();
     if (!OPENAI_API_KEY) {
       throw new Error("OPENAI_API_KEY environment variable is required");
     }
+
     this.client = new OpenAI({
       apiKey: OPENAI_API_KEY,
       baseURL: OPENAI_BASE_URL ?? "https://api.openai.com/v1",
@@ -66,20 +50,28 @@ export class OpenAIResponsesLLM extends LLM {
     conversation,
     prompt,
     specifications,
-  }: {
-    conversation: ModelConversationTypeMultiActions;
-    prompt: string;
-    specifications: AgentActionSpecification[];
-  }): AsyncGenerator<LLMEvent> {
-    const events = await this.client.responses.create({
-      model: this.modelId,
-      input: toInput(prompt, conversation),
-      stream: true,
-      temperature: this.temperature,
-      reasoning: this.reasoning,
-      tools: specifications.map(toTool),
-    });
+  }: StreamParameters): AsyncGenerator<LLMEvent> {
+    try {
+      const events = await this.client.responses.create({
+        model: this.modelId,
+        input: toInput(prompt, conversation),
+        stream: true,
+        temperature: this.temperature ?? undefined,
+        reasoning: toReasoning(this.reasoningEffort),
+        tools: specifications.map(toTool),
+        text: { format: toResponseFormat(this.responseFormat) },
+        // Only models supporting reasoning can do encrypted content for reasoning.
+        include:
+          this.reasoningEffort !== null ? ["reasoning.encrypted_content"] : [],
+      });
 
-    yield* streamLLMEvents(events, this.metadata);
+      yield* streamLLMEvents(events, this.metadata);
+    } catch (err) {
+      if (err instanceof APIError) {
+        yield handleError(err, this.metadata);
+      } else {
+        yield handleGenericError(err, this.metadata);
+      }
+    }
   }
 }

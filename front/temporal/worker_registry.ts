@@ -7,14 +7,10 @@ import { runDataRetentionWorker } from "@app/temporal/data_retention/worker";
 import { runHardDeleteWorker } from "@app/temporal/hard_delete/worker";
 import { runLabsTranscriptsWorker } from "@app/temporal/labs/transcripts/worker";
 import { runMentionsCountWorker } from "@app/temporal/mentions_count_queue/worker";
-import { runPermissionsWorker } from "@app/temporal/permissions_queue/worker";
 import { runProductionChecksWorker } from "@app/temporal/production_checks/worker";
 import { runRelocationWorker } from "@app/temporal/relocation/worker";
 import { runRemoteToolsSyncWorker } from "@app/temporal/remote_tools/worker";
-import {
-  runScrubWorkspaceQueueWorker,
-  runScrubWorkspaceQueueWorkerV1,
-} from "@app/temporal/scrub_workspace/worker";
+import { runScrubWorkspaceQueueWorker } from "@app/temporal/scrub_workspace/worker";
 import {
   runTrackerNotificationWorker,
   runTrackerWorker,
@@ -34,13 +30,11 @@ export type WorkerName =
   | "hard_delete"
   | "labs"
   | "mentions_count"
-  | "permissions_queue"
   | "poke"
   | "production_checks"
   | "relocation"
   | "remote_tools_sync"
   | "scrub_workspace_queue"
-  | "scrub_workspace_queue_v1"
   | "tracker_notification"
   | "update_workspace_usage"
   | "upsert_queue"
@@ -57,14 +51,11 @@ export const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   hard_delete: runHardDeleteWorker,
   labs: runLabsTranscriptsWorker,
   mentions_count: runMentionsCountWorker,
-  permissions_queue: runPermissionsWorker,
   poke: runPokeWorker,
   production_checks: runProductionChecksWorker,
   relocation: runRelocationWorker,
   remote_tools_sync: runRemoteToolsSyncWorker,
   scrub_workspace_queue: runScrubWorkspaceQueueWorker,
-  // TODO(rcs): remove this after all workflows on the v1 are done, ETA 2025-11-15
-  scrub_workspace_queue_v1: runScrubWorkspaceQueueWorkerV1,
   tracker_notification: runTrackerNotificationWorker,
   update_workspace_usage: runUpdateWorkspaceUsageWorker,
   upsert_queue: runUpsertQueueWorker,

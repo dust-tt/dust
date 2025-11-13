@@ -10,6 +10,8 @@ import type {
 import assert from "assert";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import { extractEncryptedContentFromMetadata } from "@app/lib/api/llm/utils";
+import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
 import type {
   AssistantContentMessageTypeModel,
   AssistantFunctionCallMessageTypeModel,
@@ -18,11 +20,11 @@ import type {
   ModelMessageTypeMultiActionsWithoutContentFragment,
   UserMessageTypeModel,
 } from "@app/types";
-import { assertNever, isString, safeParseJSON } from "@app/types";
+import { assertNever, isString } from "@app/types";
 import type {
-  FunctionCallContentType,
-  ReasoningContentType,
-  TextContentType,
+  AgentFunctionCallContentType,
+  AgentReasoningContentType,
+  AgentTextContentType,
 } from "@app/types/assistant/agent_message_content";
 
 function userContentToParam(
@@ -46,7 +48,10 @@ function userContentToParam(
 }
 
 function assistantContentToParam(
-  content: TextContentType | ReasoningContentType | FunctionCallContentType
+  content:
+    | AgentTextContentType
+    | AgentReasoningContentType
+    | AgentFunctionCallContentType
 ): TextBlockParam | ImageBlockParam | ThinkingBlockParam | ToolUseBlockParam {
   switch (content.type) {
     case "text_content":
@@ -56,25 +61,20 @@ function assistantContentToParam(
       };
     case "reasoning":
       assert(content.value.reasoning, "Reasoning content is missing reasoning");
+      const signature = extractEncryptedContentFromMetadata(
+        content.value.metadata
+      );
       return {
         type: "thinking",
         thinking: content.value.reasoning,
-        /*TODO(DIRECT_LLM 2025-10-24) Signatures should be stored in AnthropicLLM's metadata of
-         * thinking events and re-extracted */
-        signature: "",
+        signature: signature,
       };
     case "function_call": {
-      const argsRes = safeParseJSON(content.value.arguments);
-      if (argsRes.isErr()) {
-        throw new Error(
-          `Failed to parse function call arguments JSON: ${argsRes.error.message}`
-        );
-      }
       return {
         type: "tool_use",
         id: content.value.id,
         name: content.value.name,
-        input: argsRes.value,
+        input: parseToolArguments(content.value.arguments, content.value.name),
       };
     }
   }

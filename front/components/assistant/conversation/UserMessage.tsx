@@ -10,6 +10,7 @@ import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
+import { isTriggeredOrigin } from "@app/components/assistant/conversation/types";
 import {
   agentMentionDirective,
   getAgentMentionPlugin,
@@ -79,7 +80,7 @@ export function UserMessage({
           renderName={renderName}
           timestamp={formatTimestring(message.created)}
           infoChip={
-            message.context.origin === "triggered" && (
+            isTriggeredOrigin(message.context.origin) && (
               <span className="translate-y-1 text-muted-foreground dark:text-muted-foreground-night">
                 <TriggerChip message={message} />
               </span>

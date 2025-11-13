@@ -19,6 +19,7 @@ import {
 } from "@app/components/actions/mcp/details/input_rendering";
 import { MCPAgentManagementActionDetails } from "@app/components/actions/mcp/details/MCPAgentManagementActionDetails";
 import {
+  MCPAgentMemoryEditActionDetails,
   MCPAgentMemoryEraseActionDetails,
   MCPAgentMemoryRecordActionDetails,
   MCPAgentMemoryRetrieveActionDetails,
@@ -269,6 +270,14 @@ export function MCPActionDetails({
     }
     if (toolName === "erase_entries") {
       return <MCPAgentMemoryEraseActionDetails {...toolOutputDetailsProps} />;
+    }
+    if (toolName === "edit_entries" || toolName === "compact_memory") {
+      return (
+        <MCPAgentMemoryEditActionDetails
+          {...toolOutputDetailsProps}
+          toolName={toolName}
+        />
+      );
     }
   }
   if (isInternalMCPServerOfName(mcpServerId, "toolsets")) {

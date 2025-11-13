@@ -16,6 +16,7 @@ import {
   logAgentLoopPhaseStartActivity,
   logAgentLoopStepCompletionActivity,
 } from "@app/temporal/agent_loop/activities/instrumentation";
+import { conversationUnreadNotificationActivity } from "@app/temporal/agent_loop/activities/notification";
 import { publishDeferredEventsActivity } from "@app/temporal/agent_loop/activities/publish_deferred_events";
 import { runModelAndCreateActionsActivity } from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
@@ -30,6 +31,7 @@ export async function runAgentLoopWorker() {
   const worker = await Worker.create({
     workflowsPath: require.resolve("./workflows"),
     activities: {
+      conversationUnreadNotificationActivity,
       ensureConversationTitleActivity,
       finalizeCancellationActivity,
       launchAgentMessageAnalyticsActivity,

@@ -41,7 +41,7 @@ import {
   isEmptyString,
 } from "@app/types";
 
-const MAX_CONVERSATION_DEPTH = 4;
+export const MAX_CONVERSATION_DEPTH = 4;
 
 /**
  * @swagger
@@ -431,7 +431,10 @@ async function handler(
       }
 
       res.status(200).json({
-        conversation,
+        conversation: {
+          ...conversation,
+          requestedGroupIds: [], // Remove once all old SDKs users are updated
+        },
         message: newMessage ?? undefined,
         contentFragment: newContentFragment ?? undefined,
       });

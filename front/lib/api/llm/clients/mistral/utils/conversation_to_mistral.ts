@@ -15,13 +15,13 @@ import type {
 } from "@app/types";
 import { assertNever } from "@app/types";
 import type {
-  FunctionCallContentType,
-  ReasoningContentType,
-  TextContentType,
+  AgentFunctionCallContentType,
+  AgentReasoningContentType,
+  AgentTextContentType,
 } from "@app/types/assistant/agent_message_content";
 
 function toContentChunk(
-  content: Content | TextContentType | ReasoningContentType
+  content: Content | AgentTextContentType | AgentReasoningContentType
 ): ContentChunk {
   switch (content.type) {
     case "text":
@@ -57,12 +57,14 @@ function toAssistantMessage(
 
   const textContents = message.contents
     .filter(
-      (c): c is TextContentType | ReasoningContentType =>
+      (c): c is AgentTextContentType | AgentReasoningContentType =>
         c.type !== "function_call"
     )
     .map(toContentChunk);
   const toolCalls = message.contents
-    .filter((c): c is FunctionCallContentType => c.type === "function_call")
+    .filter(
+      (c): c is AgentFunctionCallContentType => c.type === "function_call"
+    )
     .map((fc) => ({
       id: fc.value.id,
       function: {

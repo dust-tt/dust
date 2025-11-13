@@ -212,28 +212,6 @@ export const isSearchResultResourceType = (
   );
 };
 
-// Data source inclusion outputs, query and results
-export const IncludeQueryResourceSchema = z.object({
-  mimeType: z.literal(
-    INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_INCLUDE_QUERY
-  ),
-  text: z.string(),
-  uri: z.literal(""),
-});
-
-export type IncludeQueryResourceType = z.infer<
-  typeof IncludeQueryResourceSchema
->;
-
-export const isIncludeQueryResourceType = (
-  outputBlock: CallToolResult["content"][number]
-): outputBlock is { type: "resource"; resource: IncludeQueryResourceType } => {
-  return (
-    outputBlock.type === "resource" &&
-    IncludeQueryResourceSchema.safeParse(outputBlock.resource).success
-  );
-};
-
 export const WarningResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.WARNING),
   warningTitle: z.string(),

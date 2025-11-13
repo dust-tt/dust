@@ -17,6 +17,7 @@ import {
   executeListUsers,
   executePostMessage,
   executeReadThreadMessages,
+  executeScheduleMessage,
   getSlackClient,
 } from "@app/lib/actions/mcp_internal_actions/servers/slack/helpers";
 import {
@@ -39,6 +40,8 @@ import {
   stripNullBytes,
   timeFrameFromNow,
 } from "@app/types";
+
+const localLogger = logger.child({ module: "mcp_slack_personal" });
 
 export type SlackSearchMatch = {
   author_name?: string;
@@ -106,7 +109,7 @@ export const slackSearch = async (
   } catch (error) {
     // Fallback to standard search.messages API if assistant.search.context fails.
     // This typically happens when Slack AI is not enabled (local env) or the token doesn't have the required permissions.
-    logger.info(
+    localLogger.info(
       { error },
       "Failed to use assistant.search.context, falling back to search.messages"
     );
@@ -121,7 +124,7 @@ export const slackSearch = async (
     });
 
     if (!response.ok) {
-      throw new Error(response.error ?? "unknown_error");
+      throw new Error("Failed to search messages");
     }
 
     const rawMatches = response.messages?.matches ?? [];
@@ -329,17 +332,17 @@ const _getSlackAIEnablementStatus = async ({
     );
 
     if (!assistantSearchInfo.ok) {
-      logger.warn("assistant.search.info returned !ok");
       return "disconnected";
     }
 
     const assistantSearchInfoJson = await assistantSearchInfo.json();
 
-    return assistantSearchInfoJson.is_ai_search_enabled
+    const status = assistantSearchInfoJson.is_ai_search_enabled
       ? "enabled"
       : "disabled";
+
+    return status;
   } catch (e) {
-    logger.warn({ error: e }, "Error fetching Slack AI enablement status");
     return "disconnected";
   }
 };
@@ -372,6 +375,15 @@ async function createServer(
         accessToken: c.access_token,
       })
     : "disconnected";
+
+  localLogger.info(
+    {
+      mcpServerId,
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      slackAIStatus,
+    },
+    "Slack MCP server initialized"
+  );
 
   // If we're not connected to Slack, we arbitrarily include the first search tool, just so there is one.
   // in the list. As soon as we're connected, it will show the correct one.
@@ -735,6 +747,69 @@ async function createServer(
   );
 
   server.tool(
+    "schedule_message",
+    "Schedule a message to be posted to a channel at a future time. Messages can be scheduled up to 120 days in advance. Maximum of 30 scheduled messages per 5 minutes per channel.",
+    {
+      to: z
+        .string()
+        .describe(
+          "The channel or user to schedule the message to. Accepted values are the channel name, the channel id or the user id. If you need to find the user id, you can use the `list_users` tool. " +
+            "Messages sent to a user will be sent as a direct message."
+        ),
+      message: z
+        .string()
+        .describe(
+          "The message to post, must follow the Slack message formatting rules."
+        ),
+      post_at: z
+        .union([z.number().int().positive(), z.string()])
+        .describe(
+          "When to post the message. Can be either: (1) A Unix timestamp in seconds (e.g., 1730380000), or (2) An ISO 8601 datetime string (e.g., '2025-10-31T14:55:00Z' or '2025-10-31T14:55:00+01:00'). The time must be in the future and within 120 days from now."
+        ),
+      threadTs: z
+        .string()
+        .optional()
+        .describe(
+          "The thread ts of the message to reply to. If you need to find the thread ts, you can use the `search_messages` tool, the thread ts is the id of the message you want to reply to. If you don't provide a thread ts, the message will be posted as a top-level message."
+        ),
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
+        agentLoopContext,
+      },
+      async ({ to, message, post_at, threadTs }, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("Access token not found"));
+        }
+
+        if (!agentLoopContext?.runContext) {
+          return new Err(
+            new MCPError("Unreachable: missing agentLoopRunContext.")
+          );
+        }
+
+        try {
+          return await executeScheduleMessage(auth, agentLoopContext, {
+            to,
+            message,
+            post_at,
+            threadTs,
+            accessToken,
+          });
+        } catch (error) {
+          if (isSlackTokenRevoked(error)) {
+            return new Ok(makePersonalAuthenticationError("slack").content);
+          }
+          return new Err(new MCPError(`Error scheduling message: ${error}`));
+        }
+      }
+    )
+  );
+
+  server.tool(
     "list_users",
     "List all users in the workspace",
     {
@@ -898,13 +973,7 @@ async function createServer(
           });
 
           if (!response.ok || !response.channel) {
-            return new Err(
-              new MCPError(
-                response.error === "channel_not_found"
-                  ? "Channel not found"
-                  : response.error ?? "Unknown error"
-              )
-            );
+            return new Err(new MCPError("Failed to get channel details"));
           }
 
           return new Ok([
@@ -1113,6 +1182,116 @@ async function createServer(
           latest,
           accessToken
         );
+      }
+    )
+  );
+
+  server.tool(
+    "add_reaction",
+    "Add a reaction emoji to a message",
+    {
+      channel: z.string().describe("The channel where the message is located"),
+      timestamp: z
+        .string()
+        .describe("The timestamp of the message to react to"),
+      name: z
+        .string()
+        .describe(
+          "The name of the emoji reaction (without colons, e.g., 'thumbsup', 'heart')"
+        ),
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
+        agentLoopContext,
+      },
+      async ({ channel, timestamp, name }, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("Access token not found"));
+        }
+
+        const slackClient = await getSlackClient(accessToken);
+
+        try {
+          const response = await slackClient.reactions.add({
+            channel,
+            timestamp,
+            name,
+          });
+
+          if (!response.ok) {
+            return new Err(new MCPError("Failed to add reaction"));
+          }
+
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `Successfully added ${name} reaction to message`,
+            },
+          ]);
+        } catch (error) {
+          if (isSlackTokenRevoked(error)) {
+            return new Ok(makePersonalAuthenticationError("slack").content);
+          }
+          return new Err(new MCPError(`Error adding reaction: ${error}`));
+        }
+      }
+    )
+  );
+
+  server.tool(
+    "remove_reaction",
+    "Remove a reaction emoji from a message",
+    {
+      channel: z.string().describe("The channel where the message is located"),
+      timestamp: z
+        .string()
+        .describe("The timestamp of the message to remove reaction from"),
+      name: z
+        .string()
+        .describe(
+          "The name of the emoji reaction to remove (without colons, e.g., 'thumbsup', 'heart')"
+        ),
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
+        agentLoopContext,
+      },
+      async ({ channel, timestamp, name }, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("Access token not found"));
+        }
+
+        const slackClient = await getSlackClient(accessToken);
+
+        try {
+          const response = await slackClient.reactions.remove({
+            channel,
+            timestamp,
+            name,
+          });
+
+          if (!response.ok) {
+            return new Err(new MCPError("Failed to remove reaction"));
+          }
+
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `Successfully removed ${name} reaction from message`,
+            },
+          ]);
+        } catch (error) {
+          if (isSlackTokenRevoked(error)) {
+            return new Ok(makePersonalAuthenticationError("slack").content);
+          }
+          return new Err(new MCPError(`Error removing reaction: ${error}`));
+        }
       }
     )
   );

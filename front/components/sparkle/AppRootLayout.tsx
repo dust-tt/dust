@@ -1,4 +1,6 @@
+import type { Novu } from "@novu/js";
 import Head from "next/head";
+import { useRouter } from "next/router";
 import Script from "next/script";
 import React, { useEffect } from "react";
 
@@ -6,7 +8,9 @@ import { WelcomeTourGuideProvider } from "@app/components/assistant/WelcomeTourG
 import { DesktopNavigationProvider } from "@app/components/navigation/DesktopNavigationContext";
 import { QuickStartGuide } from "@app/components/QuickStartGuide";
 import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
+import { useBrowserNotification } from "@app/hooks/useBrowserNotification";
 import { useDatadogLogs } from "@app/hooks/useDatadogLogs";
+import { useNovuClient } from "@app/hooks/useNovuClient";
 import { useUser } from "@app/lib/swr/user";
 import { getFaviconPath } from "@app/lib/utils";
 
@@ -18,7 +22,9 @@ export default function AppRootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const { push } = useRouter();
   const { user } = useUser();
+  const { novuClient } = useNovuClient();
   useDatadogLogs();
   const faviconPath = getFaviconPath();
 
@@ -41,6 +47,62 @@ export default function AppRootLayout({
       }
     }
   }, [user?.email, user?.fullName, user?.sId]);
+
+  const { notify } = useBrowserNotification();
+
+  useEffect(() => {
+    const setupNotifications = async (novuClient: Novu) => {
+      const dustFacingUrl =
+        process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL ?? "https://dust.tt";
+
+      const unsubscribe = await novuClient.on(
+        "notifications.notification_received",
+        (notification) => {
+          if (!notification.result.data?.skipPushNotification) {
+            notify(notification.result.subject ?? "New notification", {
+              body: notification.result.body.replaceAll("\n", " ").trim(),
+              icon:
+                notification.result.avatar ??
+                `${dustFacingUrl}/static/landing/logos/dust/Dust_LogoSquare.svg`,
+              onClick: async () => {
+                if (notification.result.primaryAction?.redirect) {
+                  const url = notification.result.primaryAction.redirect.url;
+                  const startWithDustDomain = url.startsWith(dustFacingUrl);
+                  const isRelativeUrl =
+                    url.startsWith("/") && !url.startsWith("//");
+
+                  if (startWithDustDomain || isRelativeUrl) {
+                    await push(url);
+                  }
+                }
+              },
+            });
+          }
+
+          // If the notification has the autoDelete flag, delete the notification immediately after it is received.
+          if (notification.result.data?.autoDelete) {
+            void novuClient.notifications.delete({
+              notificationId: notification.result.id,
+            });
+          }
+        }
+      );
+      return { unsubscribe };
+    };
+    if (novuClient) {
+      try {
+        const result = setupNotifications(novuClient);
+
+        return () => {
+          void result.then((result) => {
+            result?.unsubscribe();
+          });
+        };
+      } catch (error) {
+        console.error("Failed to setup notifications", { error });
+      }
+    }
+  }, [notify, novuClient, push]);
 
   return (
     <ThemeProvider>

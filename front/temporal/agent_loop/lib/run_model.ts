@@ -27,6 +27,7 @@ import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent"
 import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
 import config from "@app/lib/api/config";
 import { getLLM } from "@app/lib/api/llm";
+import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
@@ -113,11 +114,14 @@ export async function runModelActivity(
 
   const model = getSupportedModelConfig(agentConfiguration.model);
 
-  async function publishAgentError(error: {
-    code: string;
-    message: string;
-    metadata: Record<string, string | number | boolean> | null;
-  }): Promise<void> {
+  async function publishAgentError(
+    error: {
+      code: string;
+      message: string;
+      metadata: Record<string, string | number | boolean> | null;
+    },
+    dustRunId?: string
+  ): Promise<void> {
     // Check if this is a multi_actions_error that hit max retries
     let logMessage = `Agent error: ${error.message}`;
     if (
@@ -147,6 +151,7 @@ export async function runModelActivity(
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
         error,
+        runIds: dustRunId ? [...runIds, dustRunId] : runIds,
       },
       agentMessageRow,
       conversation,
@@ -365,14 +370,12 @@ export async function runModelActivity(
     runConfig.MODEL.anthropic_beta_flags = anthropicBetaFlags;
   }
 
-  // Set prompt_caching from agent configuration
-  if (agentConfiguration.model.promptCaching) {
-    runConfig.MODEL.prompt_caching = agentConfiguration.model.promptCaching;
-  }
-
   // Errors occurring during the multi-actions-agent dust app may be retryable.
   // Their implicit code should be "multi_actions_error".
-  async function handlePossiblyRetryableError(message: string) {
+  async function handlePossiblyRetryableError(
+    message: string,
+    dustRunId?: string
+  ) {
     const { category, publicMessage, errorTitle } = categorizeAgentErrorMessage(
       {
         code: "multi_actions_error",
@@ -405,15 +408,18 @@ export async function runModelActivity(
       });
     }
 
-    await publishAgentError({
-      code: "multi_actions_error",
-      message: publicMessage,
-      metadata: {
-        category,
-        errorTitle,
-        retriesAttempted: autoRetryCount,
+    await publishAgentError(
+      {
+        code: "multi_actions_error",
+        message: publicMessage,
+        metadata: {
+          category,
+          errorTitle,
+          retriesAttempted: autoRetryCount,
+        },
       },
-    });
+      dustRunId
+    );
 
     return null;
   }
@@ -425,7 +431,18 @@ export async function runModelActivity(
   );
 
   let getOutputFromActionResponse: GetOutputResponse;
-  const llm = await getLLM(auth, { modelId: model.modelId });
+  const traceContext: LLMTraceContext = {
+    operationType: "agent_conversation",
+    contextId: agentConfiguration.sId,
+    userId: auth.user()?.sId,
+  };
+  const llm = await getLLM(auth, {
+    modelId: model.modelId,
+    temperature: agentConfiguration.model.temperature,
+    reasoningEffort: agentConfiguration.model.reasoningEffort,
+    responseFormat: agentConfiguration.model.responseFormat,
+    context: traceContext,
+  });
   const modelInteractionStartDate = performance.now();
 
   if (llm === null) {
@@ -446,6 +463,15 @@ export async function runModelActivity(
       prompt,
     });
   } else {
+    if (userMessage.rank === 0) {
+      // Log conversations that are using the new LLM router (log only once when the conversation starts)
+      localLogger.info(
+        {
+          conversationId: conversation.sId,
+        },
+        "Running model with the new LLM router"
+      );
+    }
     getOutputFromActionResponse = await getOutputFromLLMStream(auth, {
       modelConversationRes,
       conversation,
@@ -472,7 +498,9 @@ export async function runModelActivity(
 
     switch (error.type) {
       case "shouldRetryMessage":
-        return handlePossiblyRetryableError(error.message);
+        // Get the dustRunId from the llm object (if available)
+        const errorDustRunId = llm?.getTraceId();
+        return handlePossiblyRetryableError(error.message, errorDustRunId);
       case "shouldReturnNull":
         return null;
       default:
@@ -561,6 +589,7 @@ export async function runModelActivity(
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
         message: agentMessage,
+        // TODO(OBSERVABILITY 2025-11-04): Create a row in run with the associated usage.
         runIds: [...runIds, dustRunId],
       },
       agentMessageRow,
@@ -568,6 +597,7 @@ export async function runModelActivity(
       step,
       modelInteractionDurationMs:
         modelInteractionEndDate - modelInteractionStartDate,
+      userMessageOrigin: userMessage.context.origin,
     });
     localLogger.info("Agent message generation succeeded");
 

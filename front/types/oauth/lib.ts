@@ -28,6 +28,7 @@ export const OAUTH_PROVIDERS = [
   "confluence",
   "confluence_tools",
   "discord",
+  "fathom",
   "freshservice",
   "github",
   "google_drive",
@@ -51,6 +52,7 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   confluence: "Confluence",
   confluence_tools: "Confluence Tools",
   discord: "Discord",
+  fathom: "Fathom",
   freshservice: "Freshservice",
   github: "GitHub",
   gmail: "Gmail",
@@ -81,6 +83,7 @@ const SUPPORTED_OAUTH_CREDENTIALS = [
   "authorization_endpoint",
   "freshservice_domain",
   "freshworks_org_url",
+  "zendesk_subdomain",
 ] as const;
 
 export type SupportedOAuthCredentials =
@@ -181,8 +184,20 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
         return result;
       }
       return null;
-    case "hubspot":
     case "zendesk":
+      if (useCase === "personal_actions" || useCase === "platform_actions") {
+        const result: OAuthCredentialInputs = {
+          zendesk_subdomain: {
+            label: "Zendesk account subdomain",
+            value: undefined,
+            helpMessage: "The first part of your Zendesk account URL.",
+            validator: isValidZendeskSubdomain,
+          },
+        };
+        return result;
+      }
+      return null;
+    case "hubspot":
     case "slack":
     case "gong":
     case "microsoft":
@@ -197,6 +212,7 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
     case "jira":
     case "mcp":
     case "discord":
+    case "fathom":
       return null;
     case "mcp_static":
       if (useCase === "personal_actions" || useCase === "platform_actions") {

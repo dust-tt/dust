@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import type {
   AgentReasoningEffort,
   EMBEDDING_PROVIDER_IDS,
@@ -75,3 +77,19 @@ export type ReasoningModelConfigurationType = {
   temperature: number | null;
 };
 export type EmbeddingProviderIdType = (typeof EMBEDDING_PROVIDER_IDS)[number];
+
+export const ResponseFormatSchema = z.object({
+  type: z.literal("json_schema"),
+  json_schema: z.object({
+    name: z.string(),
+    schema: z.object({
+      type: z.literal("object"),
+      properties: z.record(z.unknown()),
+      required: z.array(z.string()),
+      additionalProperties: z.boolean(),
+    }),
+    description: z.string().optional(),
+    strict: z.boolean().nullable().optional(),
+  }),
+});
+export type ResponseFormat = z.infer<typeof ResponseFormatSchema>;

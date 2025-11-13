@@ -85,7 +85,6 @@ impl AnthropicLLM {
         stream: bool,
         thinking: Option<(String, u64)>,
         beta_flags: &Vec<&str>,
-        prompt_caching: bool,
     ) -> Value {
         let is_claude_4_5 =
             self.id.starts_with("claude-sonnet-4-5") || self.id.starts_with("claude-haiku-4-5");
@@ -116,11 +115,8 @@ impl AnthropicLLM {
         }
 
         if system.is_some() {
-            if prompt_caching {
-                body["system"] = json!([{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}]);
-            } else {
-                body["system"] = json!(system);
-            }
+            body["system"] =
+                json!([{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}]);
         }
 
         if let Some((thinking_type, thinking_budget_tokens)) = thinking {
@@ -169,7 +165,6 @@ impl AnthropicLLM {
         stop_sequences: &Vec<String>,
         max_tokens: i32,
         beta_flags: &Vec<&str>,
-        prompt_caching: bool,
     ) -> Result<(ChatResponse, Option<String>)> {
         assert!(self.api_key.is_some());
 
@@ -185,7 +180,6 @@ impl AnthropicLLM {
             false,
             None,
             beta_flags,
-            prompt_caching,
         );
 
         let body = self.backend.build_request_body(base_body, &self.id);
@@ -251,7 +245,6 @@ impl AnthropicLLM {
         beta_flags: &Vec<&str>,
         event_sender: UnboundedSender<Value>,
         thinking: Option<(String, u64)>,
-        prompt_caching: bool,
     ) -> Result<(ChatResponse, Option<String>)> {
         let base_body = self.build_base_request_body(
             messages,
@@ -265,7 +258,6 @@ impl AnthropicLLM {
             true,
             thinking,
             beta_flags,
-            prompt_caching,
         );
 
         let body = self.backend.build_request_body(base_body, &self.id);
@@ -330,7 +322,7 @@ impl LLM for AnthropicLLM {
     }
 
     fn context_size(&self) -> usize {
-        if self.id.starts_with("claude-2.1") || self.id.starts_with("claude-3") {
+        if self.id.starts_with("claude-3") {
             200000
         } else {
             100000
@@ -409,29 +401,19 @@ impl LLM for AnthropicLLM {
             None => (None, 0),
         };
 
-        let prompt_caching = match &extras {
-            None => false,
-            Some(v) => match v.get("prompt_caching") {
-                Some(Value::Bool(b)) => *b,
-                _ => false,
-            },
-        };
-
         let mut anthropic_messages =
             get_anthropic_chat_messages(messages[slice_from..].to_vec()).await?;
 
-        if prompt_caching {
-            anthropic_messages
-                .last_mut()
-                .map(|last| match last.content.last_mut() {
-                    Some(last_content) => {
-                        last_content.cache_control = Some(AnthropicCacheControl {
-                            r#type: AnthropicCacheControlType::Ephemeral,
-                        })
-                    }
-                    _ => {}
-                });
-        }
+        anthropic_messages
+            .last_mut()
+            .map(|last| match last.content.last_mut() {
+                Some(last_content) => {
+                    last_content.cache_control = Some(AnthropicCacheControl {
+                        r#type: AnthropicCacheControlType::Ephemeral,
+                    })
+                }
+                _ => {}
+            });
 
         let tools = functions
             .iter()
@@ -539,7 +521,6 @@ impl LLM for AnthropicLLM {
                     &beta_flags,
                     es,
                     thinking,
-                    prompt_caching,
                 )
                 .await?
             }
@@ -560,7 +541,6 @@ impl LLM for AnthropicLLM {
                         None => get_max_tokens(self.id.as_str()) as i32,
                     },
                     &beta_flags,
-                    prompt_caching,
                 )
                 .await?
             }
@@ -576,6 +556,7 @@ impl LLM for AnthropicLLM {
                     + c.usage.cache_creation_input_tokens.unwrap_or(0),
                 completion_tokens: c.usage.output_tokens,
                 cached_tokens: c.usage.cache_read_input_tokens,
+                cache_creation_input_tokens: c.usage.cache_creation_input_tokens,
                 // Note: the model can actually use less than that, but best we can do is report
                 // the full budget.
                 reasoning_tokens: thinking_budget,
@@ -660,12 +641,12 @@ impl Provider for AnthropicProvider {
 
     async fn test(&self) -> Result<()> {
         if !utils::confirm(
-            "You are about to make a request for 1 token to `claude-instant-1.2` on the Anthropic API.",
+            "You are about to make a request for 1 token to `claude-4.5-haiku` on the Anthropic API.",
         )? {
             Err(anyhow!("User aborted Anthropic test."))?;
         }
 
-        let mut llm = self.llm(String::from("claude-instant-1.2"));
+        let mut llm = self.llm(String::from("claude-4.5-haiku"));
         llm.initialize(Credentials::new()).await?;
 
         let llm_generation = llm

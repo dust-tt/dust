@@ -2,14 +2,18 @@ import {
   MAX_TOOLS_DISPLAYED,
   OTHER_TOOLS_LABEL,
 } from "@app/components/agent_builder/observability/constants";
+import type { ObservabilityMode } from "@app/components/agent_builder/observability/ObservabilityContext";
 import type {
   ChartDatum,
   ToolChartModeType,
 } from "@app/components/agent_builder/observability/types";
 import { selectTopTools } from "@app/components/agent_builder/observability/utils";
+import type { LatencyPoint } from "@app/lib/api/assistant/observability/latency";
 import type { ToolExecutionByVersion } from "@app/lib/api/assistant/observability/tool_execution";
 import type { ToolStepIndexByStep } from "@app/lib/api/assistant/observability/tool_step_index";
 import {
+  useAgentErrorRate,
+  useAgentLatency,
   useAgentToolExecution,
   useAgentToolStepIndex,
 } from "@app/lib/swr/assistants";
@@ -29,6 +33,23 @@ type ToolDataItem = {
   label: string | number;
   tools: Record<string, { count: number }>;
   total?: number;
+};
+
+type ErrorRateDataResult = {
+  data: {
+    timestamp: number;
+    total: number;
+    failed: number;
+    errorRate: number;
+  }[];
+  isLoading: boolean;
+  errorMessage: string | undefined;
+};
+
+type LatencyDataResult = {
+  data: LatencyPoint[];
+  isLoading: boolean;
+  errorMessage: string | undefined;
 };
 
 function calculatePercentage(count: number, total: number): number {
@@ -163,8 +184,10 @@ export function useToolUsageData(params: {
   agentConfigurationId: string;
   period: number;
   mode: ToolChartModeType;
+  filterVersion?: string | null;
 }): ToolUsageResult {
-  const { workspaceId, agentConfigurationId, period, mode } = params;
+  const { workspaceId, agentConfigurationId, period, mode, filterVersion } =
+    params;
 
   const exec = useAgentToolExecution({
     workspaceId,
@@ -181,8 +204,12 @@ export function useToolUsageData(params: {
 
   switch (mode) {
     case "version": {
-      const rawData = exec.toolExecutionByVersion ?? [];
-      const normalizedData = normalizeVersionData(rawData);
+      const rawData = exec.toolExecutionByVersion;
+      let normalizedData = normalizeVersionData(rawData);
+      if (filterVersion) {
+        const vv = `v${filterVersion}`;
+        normalizedData = normalizedData.filter((d) => d.label === vv);
+      }
       const isLoading = exec.isToolExecutionLoading;
       const errorMessage = exec.isToolExecutionError
         ? "Failed to load tool execution data."
@@ -191,7 +218,9 @@ export function useToolUsageData(params: {
       return processToolUsageData(
         normalizedData,
         "Version",
-        "No tool execution data available for this period.",
+        filterVersion
+          ? "No tool execution data for the selected version."
+          : "No tool execution data available for this period.",
         `Shows the relative usage frequency (%) of the top ${MAX_TOOLS_DISPLAYED} tools for each agent version.`,
         isLoading,
         errorMessage
@@ -219,4 +248,58 @@ export function useToolUsageData(params: {
     default:
       assertNever(mode);
   }
+}
+
+export function useErrorRateData(params: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  period: number;
+  mode: ObservabilityMode;
+  filterVersion?: string | null;
+}): ErrorRateDataResult {
+  const { workspaceId, agentConfigurationId, period, mode, filterVersion } =
+    params;
+
+  const { errorRate, isErrorRateLoading, isErrorRateError } = useAgentErrorRate(
+    {
+      workspaceId,
+      agentConfigurationId,
+      days: period,
+      version: mode === "version" ? filterVersion ?? undefined : undefined,
+      disabled: !workspaceId || !agentConfigurationId,
+    }
+  );
+
+  return {
+    data: errorRate,
+    isLoading: isErrorRateLoading,
+    errorMessage: isErrorRateError
+      ? "Failed to load error rate data."
+      : undefined,
+  };
+}
+
+export function useLatencyData(params: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  period: number;
+  mode: ObservabilityMode;
+  filterVersion?: string | null;
+}): LatencyDataResult {
+  const { workspaceId, agentConfigurationId, period, mode, filterVersion } =
+    params;
+
+  const { latency, isLatencyLoading, isLatencyError } = useAgentLatency({
+    workspaceId,
+    agentConfigurationId,
+    days: period,
+    version: mode === "version" ? filterVersion ?? undefined : undefined,
+    disabled: !workspaceId || !agentConfigurationId,
+  });
+
+  return {
+    data: latency,
+    isLoading: isLatencyLoading,
+    errorMessage: isLatencyError ? "Failed to load latency data." : undefined,
+  };
 }

@@ -1,27 +1,7 @@
-import {
-  Button,
-  cn,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  Label,
-  LoadingBlock,
-} from "@dust-tt/sparkle";
+import { cn, LoadingBlock } from "@dust-tt/sparkle";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import { FeedbackDistributionChart } from "@app/components/agent_builder/observability/charts/FeedbackDistributionChart";
-import { ToolLatencyChart } from "@app/components/agent_builder/observability/charts/ToolLatencyChart";
-import { ToolUsageChart } from "@app/components/agent_builder/observability/charts/ToolUsageChart";
-import { UsageMetricsChart } from "@app/components/agent_builder/observability/charts/UsageMetricsChart";
-import {
-  CHART_CONTAINER_HEIGHT_CLASS,
-  OBSERVABILITY_TIME_RANGE,
-} from "@app/components/agent_builder/observability/constants";
-import {
-  ObservabilityProvider,
-  useObservability,
-} from "@app/components/agent_builder/observability/ObservabilityContext";
+import { AgentObservability } from "@app/components/observability/AgentObservability";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 
 interface AgentBuilderObservabilityProps {
@@ -32,7 +12,6 @@ export function AgentBuilderObservability({
   agentConfigurationSId,
 }: AgentBuilderObservabilityProps) {
   const { owner } = useAgentBuilderContext();
-
   const { agentConfiguration, isAgentConfigurationLoading } =
     useAgentConfiguration({
       workspaceId: owner.sId,
@@ -43,75 +22,20 @@ export function AgentBuilderObservability({
     return null;
   }
 
-  return (
-    <ObservabilityProvider>
-      <div className="flex h-full flex-col space-y-6 overflow-y-auto">
-        <div className="flex items-start justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">
-              Observability
-            </h2>
-            <span className="text-sm text-muted-foreground dark:text-muted-foreground">
-              Monitor key metrics and performance indicators for your agent.
-            </span>
-          </div>
-          <HeaderPeriodDropdown />
-        </div>
-
-        <div className="grid grid-cols-1 gap-6">
-          {isAgentConfigurationLoading ? (
-            <>
-              <ChartContainerSkeleton />
-              <ChartContainerSkeleton />
-              <ChartContainerSkeleton />
-              <ChartContainerSkeleton />
-            </>
-          ) : (
-            <>
-              <UsageMetricsChart
-                workspaceId={owner.sId}
-                agentConfigurationId={agentConfiguration.sId}
-              />
-              <FeedbackDistributionChart
-                workspaceId={owner.sId}
-                agentConfigurationId={agentConfiguration.sId}
-              />
-              <ToolUsageChart
-                workspaceId={owner.sId}
-                agentConfigurationId={agentConfiguration.sId}
-              />
-              <ToolLatencyChart
-                workspaceId={owner.sId}
-                agentConfigurationId={agentConfiguration.sId}
-              />
-            </>
-          )}
-        </div>
-      </div>
-    </ObservabilityProvider>
-  );
-}
-
-function HeaderPeriodDropdown() {
-  const { period, setPeriod } = useObservability();
-  return (
-    <div className="flex items-center gap-2 pr-2">
-      <Label>Period:</Label>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button label={`${period}d`} size="xs" variant="outline" isSelect />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          {OBSERVABILITY_TIME_RANGE.map((p) => (
-            <DropdownMenuItem
-              key={p}
-              label={`${p}d`}
-              onClick={() => setPeriod(p)}
-            />
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+  return isAgentConfigurationLoading || !agentConfiguration ? (
+    <div className="grid grid-cols-1 gap-6">
+      <ChartContainerSkeleton />
+      <ChartContainerSkeleton />
+      <ChartContainerSkeleton />
+      <ChartContainerSkeleton />
+      <ChartContainerSkeleton />
     </div>
+  ) : (
+    <AgentObservability
+      workspaceId={owner.sId}
+      agentConfigurationId={agentConfiguration.sId}
+      isCustomAgent={agentConfiguration.scope !== "global"}
+    />
   );
 }
 
@@ -119,8 +43,7 @@ function ChartContainerSkeleton() {
   return (
     <div
       className={cn(
-        "bg-card flex flex-col rounded-lg border border-border p-4",
-        CHART_CONTAINER_HEIGHT_CLASS
+        "bg-card flex flex-col rounded-lg border border-border p-4 dark:border-border-night"
       )}
     >
       <div className="mb-4 flex items-center justify-between">

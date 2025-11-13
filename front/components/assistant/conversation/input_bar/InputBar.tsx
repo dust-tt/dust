@@ -204,6 +204,7 @@ export const InputBar = React.memo(function InputBar({
       object: "message_send",
       action: "submit",
       extra: {
+        conversation_id: conversationId ?? "new",
         has_attachments: attachedNodes.length > 0 || uploadedFiles.length > 0,
         has_tools: selectedMCPServerViews.length > 0,
         has_agents: mentionedAgents.length > 0,
@@ -211,8 +212,11 @@ export const InputBar = React.memo(function InputBar({
         has_custom_agent: mentionedAgents.some((a) => !isGlobalAgentId(a.sId)),
         is_new_conversation: !conversationId,
         agent_count: mentions.length,
+        agent_ids: mentionedAgents.map((a) => a.sId).join(","),
         attachment_count: attachedNodes.length + uploadedFiles.length,
         tool_count: selectedMCPServerViews.length,
+        tool_names: selectedMCPServerViews.map((t) => t.server.name).join(","),
+        message_length: markdown.length,
       },
     });
 

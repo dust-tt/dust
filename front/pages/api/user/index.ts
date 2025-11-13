@@ -6,6 +6,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
+import { getSubscriberHash } from "@app/lib/notifications";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -27,7 +28,7 @@ const PatchUserBodySchema = t.type({
 });
 
 export type GetUserResponseBody = {
-  user: UserTypeWithWorkspaces;
+  user: UserTypeWithWorkspaces & { subscriberHash: string | null };
 };
 
 async function handler(
@@ -58,7 +59,9 @@ async function handler(
           "Failed to track user memberships"
         );
       });
-      return res.status(200).json({ user });
+
+      const subscriberHash = await getSubscriberHash(user);
+      return res.status(200).json({ user: { ...user, subscriberHash } });
 
     case "PATCH":
       const bodyValidation = PatchUserBodySchema.decode(req.body);

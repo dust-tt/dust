@@ -19,7 +19,7 @@ import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resou
 import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import logger from "@app/logger/logger";
 import type { ModelId, Result } from "@app/types";
-import { Err, normalizeError, Ok, redactString } from "@app/types";
+import { Ok, redactString } from "@app/types";
 import type {
   WebhookSourceForAdminType as WebhookSourceForAdminType,
   WebhookSourceType,
@@ -157,15 +157,14 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
     >,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<void> {
-    await WebhookSourceModel.update(updates, {
-      where: {
-        id: this.id,
-      },
-      transaction,
-    });
+    await this.update(updates, transaction);
+  }
 
-    // Update the current instance
-    Object.assign(this, updates);
+  async updateSecret(
+    secret: WebhookSourceModel["secret"],
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    await this.update({ secret }, transaction);
   }
 
   async delete(
@@ -181,77 +180,66 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
 
     if (this.provider && this.remoteMetadata && this.oauthConnectionId) {
       const service = WEBHOOK_PRESETS[this.provider].webhookService;
-      try {
-        const result = await service.deleteWebhooks({
-          auth,
-          connectionId: this.oauthConnectionId,
-          remoteMetadata: this.remoteMetadata,
-        });
+      const result = await service.deleteWebhooks({
+        auth,
+        connectionId: this.oauthConnectionId,
+        remoteMetadata: this.remoteMetadata,
+      });
 
-        if (result.isErr()) {
-          logger.error(
-            { error: result.error },
-            `Failed to delete remote webhook on ${this.provider}`
-          );
-        }
-      } catch (error) {
+      if (result.isErr()) {
         logger.error(
-          { error },
+          { error: result.error },
           `Failed to delete remote webhook on ${this.provider}`
         );
-        // Continue with local deletion even if remote deletion fails
+      }
+      // Continue with local deletion even if remote deletion fails
+    }
+
+    // Find all webhook sources views for this webhook source
+    const webhookSourceViews = await WebhookSourcesViewModel.findAll({
+      where: {
+        workspaceId: owner.id,
+        webhookSourceId: this.id,
+      },
+    });
+
+    // Delete all triggers for each webhook source view
+    for (const webhookSourceView of webhookSourceViews) {
+      const triggers = await TriggerResource.listByWebhookSourceViewId(
+        auth,
+        webhookSourceView.id
+      );
+      for (const trigger of triggers) {
+        await trigger.delete(auth, { transaction });
       }
     }
 
-    try {
-      // Find all webhook sources views for this webhook source
-      const webhookSourceViews = await WebhookSourcesViewModel.findAll({
-        where: {
-          workspaceId: owner.id,
-          webhookSourceId: this.id,
-        },
-      });
+    // Directly delete the WebhookSourceViewModel to avoid a circular dependency.
+    await WebhookSourcesViewModel.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        webhookSourceId: this.id,
+      },
+      // Use 'hardDelete: true' to ensure the record is permanently deleted from the database,
+      // bypassing the soft deletion in place.
+      hardDelete: true,
+      transaction,
+    });
 
-      // Delete all triggers for each webhook source view
-      for (const webhookSourceView of webhookSourceViews) {
-        const triggers = await TriggerResource.listByWebhookSourceViewId(
-          auth,
-          webhookSourceView.id
-        );
-        for (const trigger of triggers) {
-          await trigger.delete(auth, { transaction });
-        }
-      }
+    // Directly delete the webhook requests associated with this webhook source
+    await WebhookRequestResource.deleteByWebhookSourceId(auth, this.id, {
+      transaction,
+    });
 
-      // Directly delete the WebhookSourceViewModel to avoid a circular dependency.
-      await WebhookSourcesViewModel.destroy({
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          webhookSourceId: this.id,
-        },
-        // Use 'hardDelete: true' to ensure the record is permanently deleted from the database,
-        // bypassing the soft deletion in place.
-        hardDelete: true,
-        transaction,
-      });
-
-      // Directly delete the webhook requests associated with this webhook source
-      await WebhookRequestResource.deleteByWebhookSourceId(auth, this.id, {
-        transaction,
-      });
-
-      // Then delete the webhook source itself
-      await WebhookSourceModel.destroy({
-        where: {
-          id: this.id,
-          workspaceId: owner.id,
-        },
-        transaction,
-      });
-      return new Ok(undefined);
-    } catch (error) {
-      return new Err(normalizeError(error));
-    }
+    // Then delete the webhook source itself
+    await WebhookSourceModel.destroy({
+      where: {
+        id: this.id,
+        workspaceId: owner.id,
+      },
+      transaction,
+    });
+    return new Ok(undefined);
   }
 
   static modelIdToSId({

@@ -36,10 +36,17 @@ const example = `
 
 ###### Level 6 Title
 
+Got it. I won’t escape your Markdown.
+
+If you intended to render a footnote reference like [^4], you can write it directly without backslashes:
+
+- Footnote reference in text: [^4]
+- Footnote definition at the end:
+  [^4]: Your footnote content here
 
 This is a paragraph with **bold** text and *italic* text. This is \`code\` block:
 \`\`\`
-Block 
+Block
 \`\`\`
 
 Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
@@ -53,7 +60,7 @@ Demo of a list, showcasing our pets of the month:
 - Anakine
 - Goose
 
-Ordered list: 
+Ordered list:
 1. Soupinou
 2. Chawarma
 3. Chalom
@@ -109,7 +116,7 @@ footnote [^1]
 
 $$ \\sigma(z_i) = \\frac{e^{z_{i}}}{\\sum_{j=1}^K e^{z_{j}}} \\ \\ \\ for\\ i=1,2,\\dots,K $$
 
-### This is a CSV: 
+### This is a CSV:
 
 \`\`\`csv
 Date,High (°C),Low (°C)
@@ -182,7 +189,7 @@ function renderHeader(latitude, longitude) {
 \`\`\`
 
 
-### Some CLI code: 
+### Some CLI code:
 
 \`\`\`bash
 # Define variables
@@ -232,15 +239,15 @@ class WeatherDashboard:
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("Weather Dashboard")
-        
+
         # Create header frame
         self.header_frame = ttk.Frame(root, padding="10")
         self.header_frame.grid(row=0, column=0, sticky=(tk.W, tk.E))
-        
+
         # Create chart frame
         self.chart_frame = ttk.Frame(root, padding="10")
         self.chart_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        
+
     def render_header(self, latitude: float, longitude: float) -> None:
         """
         Render the dashboard header with time and location information
@@ -248,25 +255,25 @@ class WeatherDashboard:
         # Clear existing widgets
         for widget in self.header_frame.winfo_children():
             widget.destroy()
-            
+
         # Get current time in local timezone
         current_time = datetime.datetime.now()
         local_tz = datetime.datetime.now(pytz.timezone('UTC')).astimezone().tzinfo
         formatted_time = current_time.strftime('%A, %I:%M:%S %p')
-        
+
         # Create time section
         time_frame = ttk.LabelFrame(self.header_frame, text="Local Time")
         time_frame.grid(row=0, column=0, padx=5, pady=5, sticky=(tk.W))
         ttk.Label(time_frame, text=formatted_time).grid(row=0, column=0, padx=5, pady=2)
-        
+
         # Create location section
         location_frame = ttk.LabelFrame(self.header_frame, text="Location")
         location_frame.grid(row=0, column=1, padx=5, pady=5, sticky=(tk.W))
         ttk.Label(
-            location_frame, 
+            location_frame,
             text=f"Lat: {latitude:.2f}, Lon: {longitude:.2f}"
         ).grid(row=0, column=0, padx=5, pady=2)
-        
+
     def create_chart(self) -> None:
         """
         Create a line chart using matplotlib
@@ -274,25 +281,25 @@ class WeatherDashboard:
         # Create figure and axis
         fig = Figure(figsize=(8, 4))
         ax = fig.add_subplot(111)
-        
+
         # Extract data for plotting
         dates = [d['date'] for d in data]
         highs = [d['high'] for d in data]
         lows = [d['low'] for d in data]
-        
+
         # Plot lines
         ax.plot(dates, highs, marker='o', label='High', color='red')
         ax.plot(dates, lows, marker='o', label='Low', color='blue')
-        
+
         # Customize chart
         ax.grid(True)
         ax.set_xlabel('Date')
         ax.set_ylabel('Temperature')
         ax.legend()
-        
+
         # Rotate x-axis labels for better readability
         plt.setp(ax.get_xticklabels(), rotation=45)
-        
+
         # Create canvas and add to frame
         canvas = FigureCanvasTkAgg(fig, master=self.chart_frame)
         canvas.draw()
@@ -301,15 +308,15 @@ class WeatherDashboard:
 def main():
     root = tk.Tk()
     dashboard = WeatherDashboard(root)
-    
+
     # Example coordinates (Paris)
     dashboard.render_header(48.8566, 2.3522)
     dashboard.create_chart()
-    
+
     # Configure grid weights
     root.columnconfigure(0, weight=1)
     root.rowconfigure(1, weight=1)
-    
+
     # Start the application
     root.mainloop()
 

@@ -17,25 +17,36 @@ function getRedisKey(workspace: LightWorkspaceType): string {
   return `${PUBLIC_API_REMAINING_CREDITS_KEY}:${workspace.id}`;
 }
 
-function shouldTrackTokenUsageCosts(auth: Authenticator): boolean {
-  // Only compute token usage for API keys.
-  if (!auth.isKey() || auth.isSystemKey()) {
-    return false;
-  }
-
+function shouldTrackTokenUsageCosts(
+  auth: Authenticator,
+  { userMessageOrigin }: { userMessageOrigin?: string | null } = {}
+): boolean {
   const workspace = auth.getNonNullableWorkspace();
   const limits = getWorkspacePublicAPILimits(workspace);
+
+  // Don't track on workspaces without limits.
   if (!limits?.enabled) {
     return false;
   }
 
-  return true;
+  // Track for API keys.
+  if (auth.isKey() && !auth.isSystemKey()) {
+    return true;
+  }
+
+  // Track for programmatic webhook triggers.
+  if (userMessageOrigin === "triggered_programmatic") {
+    return true;
+  }
+
+  return false;
 }
 
 export async function hasReachedPublicAPILimits(
-  auth: Authenticator
+  auth: Authenticator,
+  shouldTrack: boolean = false
 ): Promise<boolean> {
-  if (!shouldTrackTokenUsageCosts(auth)) {
+  if (!shouldTrackTokenUsageCosts(auth) && !shouldTrack) {
     return false;
   }
 
@@ -126,9 +137,12 @@ async function initializeCredits(
 
 export async function maybeTrackTokenUsageCost(
   auth: Authenticator,
-  { dustRunIds }: { dustRunIds: string[] }
+  {
+    dustRunIds,
+    userMessageOrigin,
+  }: { dustRunIds: string[]; userMessageOrigin?: string | null }
 ) {
-  if (!shouldTrackTokenUsageCosts(auth)) {
+  if (!shouldTrackTokenUsageCosts(auth, { userMessageOrigin })) {
     return;
   }
 

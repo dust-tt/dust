@@ -9,9 +9,8 @@
 
 import type { JSONContent } from "@tiptap/react";
 
+import type { RichMention } from "@app/types";
 import { assertNever } from "@app/types";
-
-import type { RichMention } from "./types";
 
 /**
  * Regular expression for parsing agent mention strings.
@@ -109,22 +108,20 @@ export function extractFromEditorJSON(node?: JSONContent): {
     textContent += node.text;
   }
 
-  // If the node is a 'mention', serialize it and add to mentions array.
+  // If the node is a 'mention', concatenate the mention label and add to mentions array.
   if (node.type === "mention") {
-    const mentionData: RichMention = {
+    mentions.push({
       id: node.attrs?.id,
       label: node.attrs?.label,
       type: node.attrs?.type,
-      pictureUrl: node.attrs?.pictureUrl ?? "",
-      description: node.attrs?.description ?? "",
-    };
-
-    textContent += serializeMention({
-      name: mentionData.label,
-      sId: mentionData.id,
+      pictureUrl: node.attrs?.pictureUrl,
+      description: node.attrs?.description,
     });
 
-    mentions.push(mentionData);
+    textContent += serializeMention({
+      name: node.attrs?.label,
+      sId: node.attrs?.id,
+    });
   }
 
   // If the node is a 'hardBreak' or a 'paragraph', add a newline character.
@@ -132,14 +129,13 @@ export function extractFromEditorJSON(node?: JSONContent): {
     textContent += "\n";
   }
 
-  // Handle pasted attachments.
   if (node.type === "pastedAttachment") {
     const title = node.attrs?.title ?? "";
     const fileId = node.attrs?.fileId ?? "";
     textContent += `:pasted_content[${title}]{pastedId=${fileId}}`;
   }
 
-  // If the node has content, recursively extract from each child node.
+  // If the node has content, recursively get text and mentions from each child node
   if (node.content) {
     node.content.forEach((childNode) => {
       const childResult = extractFromEditorJSON(childNode);

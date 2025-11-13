@@ -1,43 +1,35 @@
-import Anthropic from "@anthropic-ai/sdk";
-import type { ThinkingConfigParam } from "@anthropic-ai/sdk/resources/messages/messages.mjs";
+import Anthropic, { APIError } from "@anthropic-ai/sdk";
 
-import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type { AnthropicWhitelistedModelId } from "@app/lib/api/llm/clients/anthropic/types";
-import { CLAUDE_4_THINKING_BUDGET_TOKENS } from "@app/lib/api/llm/clients/anthropic/utils";
+import { overwriteLLMParameters } from "@app/lib/api/llm/clients/anthropic/types";
+import { toThinkingConfig } from "@app/lib/api/llm/clients/anthropic/utils";
 import { streamLLMEvents } from "@app/lib/api/llm/clients/anthropic/utils/anthropic_to_events";
 import {
   toMessage,
   toTool,
 } from "@app/lib/api/llm/clients/anthropic/utils/conversation_to_anthropic";
+import { handleError } from "@app/lib/api/llm/clients/anthropic/utils/errors";
 import { LLM } from "@app/lib/api/llm/llm";
+import { handleGenericError } from "@app/lib/api/llm/types/errors";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
-  LLMClientMetadata,
   LLMParameters,
+  StreamParameters,
 } from "@app/lib/api/llm/types/options";
 import { getSupportedModelConfig } from "@app/lib/assistant";
-import type {
-  ModelConversationTypeMultiActions,
-  SUPPORTED_MODEL_CONFIGS,
-} from "@app/types";
+import type { Authenticator } from "@app/lib/auth";
+import type { SUPPORTED_MODEL_CONFIGS } from "@app/types";
 import { dustManagedCredentials } from "@app/types";
 
 export class AnthropicLLM extends LLM {
   private client: Anthropic;
-  private metadata: LLMClientMetadata = {
-    clientId: "anthropic",
-    modelId: this.modelId,
-  };
-  private thinkingConfig?: ThinkingConfigParam;
   private modelConfig: (typeof SUPPORTED_MODEL_CONFIGS)[number];
 
-  constructor({
-    modelId,
-    temperature,
-    reasoningEffort,
-    bypassFeatureFlag,
-  }: LLMParameters & { modelId: AnthropicWhitelistedModelId }) {
-    super({ modelId, temperature, reasoningEffort, bypassFeatureFlag });
+  constructor(
+    auth: Authenticator,
+    llmParameters: LLMParameters & { modelId: AnthropicWhitelistedModelId }
+  ) {
+    super(auth, overwriteLLMParameters(llmParameters));
     const { ANTHROPIC_API_KEY } = dustManagedCredentials();
     if (!ANTHROPIC_API_KEY) {
       throw new Error("ANTHROPIC_API_KEY environment variable is required");
@@ -48,12 +40,6 @@ export class AnthropicLLM extends LLM {
       providerId: "anthropic",
     });
 
-    if (reasoningEffort && reasoningEffort != "none") {
-      this.thinkingConfig = {
-        type: "enabled",
-        budget_tokens: CLAUDE_4_THINKING_BUDGET_TOKENS[reasoningEffort],
-      };
-    }
     this.client = new Anthropic({
       apiKey: ANTHROPIC_API_KEY,
     });
@@ -63,26 +49,39 @@ export class AnthropicLLM extends LLM {
     conversation,
     prompt,
     specifications,
-  }: {
-    conversation: ModelConversationTypeMultiActions;
-    prompt: string;
-    specifications: AgentActionSpecification[];
-  }): AsyncGenerator<LLMEvent> {
-    const messages = conversation.messages.map(toMessage);
+  }: StreamParameters): AsyncGenerator<LLMEvent> {
+    try {
+      const messages = conversation.messages.map(toMessage);
 
-    const events = this.client.messages.stream({
-      model: this.modelId,
-      thinking: this.thinkingConfig,
-      system: prompt,
-      messages,
-      // Thinking isn’t compatible with temperature: `temperature` may only be set to 1 when thinking is enabled.
-      temperature: this.thinkingConfig ? 1 : this.temperature,
-      stream: true,
+      const events = this.client.messages.stream({
+        model: this.modelId,
+        thinking: toThinkingConfig(
+          this.reasoningEffort,
+          this.modelConfig.useNativeLightReasoning
+        ),
+        system: [
+          {
+            type: "text",
+            text: prompt,
+            cache_control: {
+              type: "ephemeral",
+            },
+          },
+        ],
+        messages,
+        temperature: this.temperature ?? undefined,
+        stream: true,
+        tools: specifications.map(toTool),
+        max_tokens: this.modelConfig.generationTokensCount,
+      });
 
-      tools: specifications.map(toTool),
-      max_tokens: this.modelConfig.generationTokensCount,
-    });
-
-    yield* streamLLMEvents(events, this.metadata);
+      yield* streamLLMEvents(events, this.metadata);
+    } catch (err) {
+      if (err instanceof APIError) {
+        yield handleError(err, this.metadata);
+      } else {
+        yield handleGenericError(err, this.metadata);
+      }
+    }
   }
 }

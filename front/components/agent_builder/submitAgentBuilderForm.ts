@@ -293,6 +293,8 @@ async function processTriggers({
             if (trigger.kind === "webhook") {
               return {
                 ...baseData,
+                executionPerDayLimitOverride:
+                  trigger.executionPerDayLimitOverride,
                 webhookSourceViewSId: trigger.webhookSourceViewSId,
               } as PatchTriggersRequestBody["triggers"][number];
             }
@@ -341,6 +343,8 @@ async function processTriggers({
             if (trigger.kind === "webhook") {
               return {
                 ...baseData,
+                executionPerDayLimitOverride:
+                  trigger.executionPerDayLimitOverride,
                 webhookSourceViewSId: trigger.webhookSourceViewSId,
               } as PostTriggersRequestBody["triggers"][number];
             }
@@ -536,8 +540,14 @@ export async function submitAgentBuilderForm({
         object: "create_agent",
         action: TRACKING_ACTIONS.SUBMIT,
         extra: {
+          agent_id: agentConfiguration.sId,
           scope: formData.agentSettings.scope,
           has_actions: processedActions.length > 0,
+          action_count: processedActions.length,
+          action_names: processedActions.map((a) => a.name).join(","),
+          has_instructions: !!formData.instructions,
+          model_id: formData.generationSettings.modelSettings.modelId,
+          model_provider: formData.generationSettings.modelSettings.providerId,
         },
       });
     }

@@ -1,10 +1,19 @@
 import { DEFAULT_AGENT_ROUTER_ACTION_NAME } from "@app/lib/actions/constants";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
-import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import {
+  autoInternalMCPServerNameToSId,
+  getMcpServerViewDescription,
+  getMcpServerViewDisplayName,
+} from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { SUGGEST_AGENTS_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
 import { DEEP_DIVE_NAME } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
+import {
+  getCompanyDataAction,
+  getCompanyDataWarehousesAction,
+} from "@app/lib/api/assistant/global_agents/configurations/dust/shared";
 import { globalAgentGuidelines } from "@app/lib/api/assistant/global_agents/guidelines";
 import type { PrefetchedDataSourcesType } from "@app/lib/api/assistant/global_agents/tools";
 import {
@@ -22,7 +31,6 @@ import { timeAgoFrom } from "@app/lib/utils";
 import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
-  WhitelistableFeature,
 } from "@app/types";
 import {
   CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
@@ -124,11 +132,65 @@ ALWAYS provide a \`limit\` when using \`cat\`. The maximum \`limit\` is 10,000 c
 </cat_tool_guidelines>
 </company_data_guidelines>`,
 
-  toolsets: `<toolsets_guidelines>
+  warehouses: `<data_warehouses_guidelines>
+You can use the Data Warehouses tools to:
+- explore what tables are available in the user's data warehouses
+- describe the tables structure
+- execute a SQL query against a set of tables
+
+In order to properly use the data warehouses, it is useful to also search through company data in case there is some documentation available about the tables, some additional semantic layer, or some code that may define how the tables are built in the first place.
+Tables are identified by ids in the format 'table-<dataSourceId>-<nodeId>'.
+The dataSourceId can typically be found by exploring the warehouse, each warehouse is identified by an id in the format 'warehouse-<dataSourceId>'.
+A dataSourceId typically starts with the prefix "dts_".
+</data_warehouses_guidelines>`,
+
+  toolsets: (availableToolsets: MCPServerViewResource[]) => {
+    const toolsetsList = availableToolsets
+      .map((toolset) => {
+        const mcpServerView = toolset.toJSON();
+        const sId = mcpServerView.sId;
+        const displayName = getMcpServerViewDisplayName(mcpServerView);
+        const description = getMcpServerViewDescription(mcpServerView);
+        return `- **${displayName}** (toolsetId: \`${sId}\`): ${description}`;
+      })
+      .join("\n");
+
+    return `<toolsets_guidelines>
 The "toolsets" tools allow listing and enabling additional tools.
-At the start of each conversation or when encountering any request that might benefit from specialized tools, use \`toolsets__list\` to discover available toolsets.
-Enable relevant toolsets before attempting to fulfill the request. Never assume or reply that you cannot do something before checking the toolsets available.
-</toolsets_guidelines>`,
+
+<available_toolsets>
+${toolsetsList.length > 0 ? toolsetsList : "No additional toolsets are currently available."}
+</available_toolsets>
+
+When encountering any request that might benefit from specialized tools, review the available toolsets above.
+Enable relevant toolsets using \`toolsets__enable\` with the toolsetId (shown in backticks) before attempting to fulfill the request.
+Never assume or reply that you cannot do something before checking if there's a relevant toolset available.
+</toolsets_guidelines>`;
+  },
+
+  help: `<dust_platform_support_guidelines>
+Follow these guidelines when the user unambiguously asks support questions specifically about how to use Dust features, or needs help understanding Dust.
+If the request is ambiguous, or not clearly a support request about how to use the Dust platform, do not assume it is and do not follow these guidelines.
+The vast majority of the time, the user is not asking for help with Dust.
+
+1. Perform web searches using site:dust.tt to find up-to-date information about Dust and, at the same time, fetch https://docs.dust.tt/llms.txt to easily view the documentation site map.
+2. Provide clear, straightforward answers with accuracy and empathy.
+3. Use bullet points and steps to guide the user effectively.
+4. NEVER invent features or capabilities that Dust does not have.
+5. NEVER make promises about future features.
+6. Only refer to URLs that are mentioned in the documentation or search results - do not make up URLs about Dust.
+7. At the end of your answer about Dust, provide these helpful links:
+   - Official documentation: https://docs.dust.tt
+   - Community support on Slack: https://dust-community.tightknit.community/join
+
+Examples of help queries:
+- "How do I create an agent in Dust?"
+- "What are Dust's data source capabilities?"
+- "Can Dust integrate with Slack?"
+- "How does Dust's memory feature work?"
+
+Remember: Always base your answers on the documentation. If you don't know the answer after searching, be honest about it.
+</dust_platform_support_guidelines>`,
 
   memory: (memories: AgentMemoryResource[]) => {
     const memoryList = memories.length
@@ -198,13 +260,19 @@ const formatMemory = (memory: AgentMemoryResource) =>
 function buildInstructions({
   hasDeepDive,
   hasFilesystemTools,
+  hasDataWarehouses,
   hasAgentMemory,
+  hasToolsets,
   memories,
+  availableToolsets,
 }: {
   hasDeepDive: boolean;
   hasFilesystemTools: boolean;
+  hasDataWarehouses: boolean;
   hasAgentMemory: boolean;
+  hasToolsets: boolean;
   memories: AgentMemoryResource[];
+  availableToolsets: MCPServerViewResource[];
 }): string {
   const parts: string[] = [
     INSTRUCTION_SECTIONS.primary,
@@ -212,7 +280,9 @@ function buildInstructions({
       ? INSTRUCTION_SECTIONS.complexRequests
       : INSTRUCTION_SECTIONS.simpleRequests,
     hasFilesystemTools && INSTRUCTION_SECTIONS.companyData,
-    INSTRUCTION_SECTIONS.toolsets,
+    hasDataWarehouses && INSTRUCTION_SECTIONS.warehouses,
+    hasToolsets && INSTRUCTION_SECTIONS.toolsets(availableToolsets),
+    INSTRUCTION_SECTIONS.help,
     hasAgentMemory && INSTRUCTION_SECTIONS.memory(memories),
   ].filter((part): part is string => typeof part === "string");
 
@@ -226,27 +296,28 @@ export function _getDustGlobalAgent(
     preFetchedDataSources,
     agentRouterMCPServerView,
     webSearchBrowseMCPServerView,
-    searchMCPServerView,
     dataSourcesFileSystemMCPServerView,
     toolsetsMCPServerView,
     deepDiveMCPServerView,
     interactiveContentMCPServerView,
+    dataWarehousesMCPServerView,
+
     agentMemoryMCPServerView,
     memories,
-    featureFlags,
+    availableToolsets,
   }: {
     settings: GlobalAgentSettings | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     agentRouterMCPServerView: MCPServerViewResource | null;
     webSearchBrowseMCPServerView: MCPServerViewResource | null;
-    searchMCPServerView: MCPServerViewResource | null;
     dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
     toolsetsMCPServerView: MCPServerViewResource | null;
     deepDiveMCPServerView: MCPServerViewResource | null;
     interactiveContentMCPServerView: MCPServerViewResource | null;
+    dataWarehousesMCPServerView: MCPServerViewResource | null;
     agentMemoryMCPServerView: MCPServerViewResource | null;
     memories: AgentMemoryResource[];
-    featureFlags: WhitelistableFeature[];
+    availableToolsets: MCPServerViewResource[];
   }
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
@@ -273,22 +344,35 @@ export function _getDustGlobalAgent(
         modelId: modelConfiguration.modelId,
         temperature: 0.7,
         reasoningEffort: modelConfiguration.defaultReasoningEffort,
-        promptCaching: modelConfiguration.supportsPromptCaching,
       }
     : dummyModelConfiguration;
 
-  const hasFilesystemTools =
-    featureFlags.includes("dust_global_data_source_file_system") &&
-    dataSourcesFileSystemMCPServerView !== null;
+  const hasFilesystemTools = dataSourcesFileSystemMCPServerView !== null;
 
-  const hasAgentMemory =
-    featureFlags.includes("dust_global_agent_memory") &&
-    agentMemoryMCPServerView !== null;
+  const hasAgentMemory = agentMemoryMCPServerView !== null;
+  const hasToolsets = toolsetsMCPServerView !== null;
+
+  // Filter available toolsets (similar to toolsets>list logic): tools with no requirements and not auto-hidden.
+  const filteredAvailableToolsets = availableToolsets.filter((toolset) => {
+    const mcpServerView = toolset.toJSON();
+    return (
+      getMCPServerRequirements(mcpServerView).noRequirement &&
+      mcpServerView.server.availability !== "auto_hidden_builder"
+    );
+  });
+
+  const dataWarehousesAction = getCompanyDataWarehousesAction(
+    preFetchedDataSources,
+    dataWarehousesMCPServerView
+  );
 
   const instructions = buildInstructions({
     hasDeepDive: !!deepDiveMCPServerView,
     hasFilesystemTools,
+    hasDataWarehouses: !!dataWarehousesAction,
     hasAgentMemory,
+    hasToolsets,
+    availableToolsets: filteredAvailableToolsets,
     memories,
   });
 
@@ -343,84 +427,19 @@ export function _getDustGlobalAgent(
 
   const actions: MCPServerConfigurationType[] = [];
 
-  const dataSourceViews = preFetchedDataSources.dataSourceViews.filter(
-    (dsView) => dsView.dataSource.assistantDefaultSelected === true
-  );
-
-  // Decide which MCP server to use for data sources: default `search`,
-  // or `data_sources_file_system` when the feature flag is enabled.
-  const dataSourcesServerView = hasFilesystemTools
-    ? dataSourcesFileSystemMCPServerView ?? null
-    : searchMCPServerView;
-
-  // Only add the action if there are data sources and the chosen MCP server is available.
-  if (dataSourceViews.length > 0 && dataSourcesServerView) {
-    // We push one action with all data sources
-    actions.push({
-      id: -1,
-      sId: GLOBAL_AGENTS_SID.DUST + "-datasource-action",
-      type: "mcp_server_configuration",
-      name: hasFilesystemTools ? "company_data" : "search_all_data_sources",
-      description: hasFilesystemTools
-        ? "The user's internal company data."
-        : "The user's entire workspace data sources",
-      mcpServerViewId: dataSourcesServerView.sId,
-      internalMCPServerId: dataSourcesServerView.internalMCPServerId,
-      dataSources: dataSourceViews.map((dsView) => ({
-        dataSourceViewId: dsView.sId,
-        workspaceId: preFetchedDataSources.workspaceId,
-        filter: { parents: null, tags: null },
-      })),
-      tables: null,
-      childAgentId: null,
-      reasoningModel: null,
-      additionalConfiguration: {},
-      timeFrame: null,
-      dustAppConfiguration: null,
-      jsonSchema: null,
-      secretName: null,
-    });
-
-    // In filesystem mode we only expose a single `company_data` action.
-    // Otherwise (search mode) we add one hidden action per managed data source
-    // to improve queries like "search in <data_source>".
-    if (!hasFilesystemTools) {
-      dataSourceViews.forEach((dsView) => {
-        if (
-          dsView.dataSource.connectorProvider &&
-          dsView.dataSource.connectorProvider !== "webcrawler" &&
-          dsView.isInGlobalSpace
-        ) {
-          actions.push({
-            id: -1,
-            sId:
-              GLOBAL_AGENTS_SID.DUST +
-              "-datasource-action-" +
-              dsView.dataSource.sId,
-            type: "mcp_server_configuration",
-            name: "hidden_dust_search_" + dsView.dataSource.name,
-            description: `The user's ${dsView.dataSource.connectorProvider} data source.`,
-            mcpServerViewId: dataSourcesServerView.sId,
-            internalMCPServerId: dataSourcesServerView.internalMCPServerId,
-            dataSources: [
-              {
-                workspaceId: preFetchedDataSources.workspaceId,
-                dataSourceViewId: dsView.sId,
-                filter: { parents: null, tags: null },
-              },
-            ],
-            tables: null,
-            childAgentId: null,
-            reasoningModel: null,
-            additionalConfiguration: {},
-            timeFrame: null,
-            dustAppConfiguration: null,
-            jsonSchema: null,
-            secretName: null,
-          });
-        }
-      });
+  // Add the filesystem tools action with all data sources in the global space.
+  if (hasFilesystemTools) {
+    const companyDataAction = getCompanyDataAction(
+      preFetchedDataSources,
+      dataSourcesFileSystemMCPServerView
+    );
+    if (companyDataAction) {
+      actions.push(companyDataAction);
     }
+  }
+
+  if (dataWarehousesAction) {
+    actions.push(dataWarehousesAction);
   }
 
   actions.push(

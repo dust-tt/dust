@@ -21,8 +21,11 @@ const {
   startToCloseTimeout: "5 minutes",
 });
 
+const { syncTeamOnlyActivity } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "10 minutes",
+});
+
 const {
-  syncTeamOnlyActivity,
   getTeamIdsToSyncActivity,
   getNextConversationBatchToSyncActivity,
   syncConversationBatchActivity,

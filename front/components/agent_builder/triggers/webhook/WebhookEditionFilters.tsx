@@ -1,12 +1,24 @@
-import { Label, Spinner, TextArea } from "@dust-tt/sparkle";
-import React, { useEffect, useMemo, useState } from "react";
+import {
+  Button,
+  ContentMessage,
+  ContentMessageInline,
+  Label,
+  Spinner,
+  TextArea,
+} from "@dust-tt/sparkle";
+import Link from "next/link";
+import React, { useMemo, useState } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
 
 import { TriggerFilterRenderer } from "@app/components/agent_builder/triggers/TriggerFilterRenderer";
-import { useDebounce } from "@app/hooks/useDebounce";
-import { useWebhookFilterGenerator } from "@app/lib/swr/agent_triggers";
+import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
+import { useDebounceWithAbort } from "@app/hooks/useDebounce";
+import {
+  useTriggerEstimation,
+  useWebhookFilterGenerator,
+} from "@app/lib/swr/agent_triggers";
 import type { LightWorkspaceType } from "@app/types";
-import { normalizeError } from "@app/types";
+import { normalizeError, pluralize } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import type {
   PresetWebhook,
@@ -21,6 +33,8 @@ interface WebhookEditionFiltersProps {
   workspace: LightWorkspaceType;
 }
 
+const MIN_DESCRIPTION_LENGTH = 10;
+
 export function WebhookEditionFilters({
   isEditor,
   webhookSourceView,
@@ -28,20 +42,10 @@ export function WebhookEditionFilters({
   availableEvents,
   workspace,
 }: WebhookEditionFiltersProps) {
-  const { setError, control } = useFormContext();
+  const { setError, control } = useFormContext<TriggerViewsSheetFormValues>();
 
   const selectedEvent = useWatch({ control, name: "webhook.event" });
 
-  const selectedEventSchema = useMemo<WebhookEvent | null>(() => {
-    if (!selectedEvent || !selectedPreset) {
-      return null;
-    }
-
-    return (
-      selectedPreset.events.find((event) => event.value === selectedEvent) ??
-      null
-    );
-  }, [selectedEvent, selectedPreset]);
   const {
     field: filterField,
     fieldState: { error: filterError },
@@ -60,56 +64,71 @@ export function WebhookEditionFilters({
     null
   );
 
+  const { estimation, isEstimationValidating, mutateEstimation } =
+    useTriggerEstimation({
+      workspaceId: workspace.sId,
+      webhookSourceId: webhookSourceView?.webhookSource.sId ?? null,
+      filter: filterField.value,
+      selectedEvent,
+    });
+
   const generateFilter = useWebhookFilterGenerator({ workspace });
 
-  const {
-    inputValue: naturalDescription,
-    debouncedValue: debouncedDescription,
-    isDebouncing,
-    setValue: setNaturalDescription,
-  } = useDebounce(naturalDescriptionValue ?? "", { delay: 500, minLength: 10 });
+  const handleComputeEstimation = async () => {
+    if (!webhookSourceView) {
+      return;
+    }
+    await mutateEstimation();
+  };
+
+  const triggerFilterGeneration = useDebounceWithAbort(
+    async (txt: string, signal: AbortSignal) => {
+      if (
+        txt.length < MIN_DESCRIPTION_LENGTH ||
+        !selectedEvent ||
+        !webhookSourceView ||
+        !webhookSourceView.provider
+      ) {
+        setFilterGenerationStatus("idle");
+        return;
+      }
+
+      try {
+        const result = await generateFilter({
+          naturalDescription: txt,
+          event: selectedEvent,
+          provider: webhookSourceView.provider,
+          signal,
+        });
+
+        // If the request was not aborted, we can update the form
+        if (!signal.aborted) {
+          filterField.onChange(result.filter);
+          setFilterGenerationStatus("idle");
+          setFilterErrorMessage(null);
+        }
+      } catch (error) {
+        // If the request was not aborted, we can update the error state
+        if (!signal.aborted) {
+          setFilterGenerationStatus("error");
+          setFilterErrorMessage(
+            `Error generating filter: ${normalizeError(error).message}`
+          );
+        }
+      }
+    },
+    { delayMs: 500 }
+  );
 
   // Update form field when naturalDescription changes
   const handleNaturalDescriptionChange = (value: string) => {
-    setNaturalDescription(value);
     onNaturalDescriptionChange(value);
+
+    const txt = value.trim();
+    setFilterGenerationStatus(txt ? "loading" : "idle");
+
+    triggerFilterGeneration(txt);
   };
-
-  useEffect(() => {
-    if (isDebouncing) {
-      setFilterGenerationStatus("loading");
-    }
-  }, [isDebouncing]);
-
-  useEffect(() => {
-    if (!debouncedDescription || !selectedEventSchema) {
-      if (!debouncedDescription) {
-        setFilterGenerationStatus("idle");
-        setFilterErrorMessage(null);
-      }
-      return;
-    }
-
-    const generateFilterAsync = async () => {
-      setFilterGenerationStatus("loading");
-      try {
-        const result = await generateFilter({
-          naturalDescription: debouncedDescription,
-          eventSchema: selectedEventSchema,
-        });
-        filterField.onChange(result.filter);
-        setFilterGenerationStatus("idle");
-        setFilterErrorMessage(null);
-      } catch (error) {
-        setFilterGenerationStatus("error");
-        setFilterErrorMessage(
-          `Error generating filter: ${normalizeError(error).message}`
-        );
-      }
-    };
-
-    void generateFilterAsync();
-  }, [debouncedDescription, selectedEventSchema, generateFilter, filterField]);
 
   const filterGenerationResult = useMemo(() => {
     switch (filterGenerationStatus) {
@@ -129,10 +148,10 @@ export function WebhookEditionFilters({
         );
       case "error":
         return (
-          <p className="text-sm text-warning">
+          <ContentMessageInline variant="warning">
             {filterErrorMessage ??
               "Unable to generate filter. Please try rephrasing."}
-          </p>
+          </ContentMessageInline>
         );
       default:
         return null;
@@ -153,7 +172,7 @@ export function WebhookEditionFilters({
             id="webhook-filter-description"
             placeholder='Describe the conditions (e.g "Pull requests by John on dust repository")'
             rows={3}
-            value={naturalDescription}
+            value={naturalDescriptionValue ?? ""}
             disabled={!isEditor}
             onChange={(e) => {
               if (!selectedEvent || !selectedPreset) {
@@ -170,8 +189,8 @@ export function WebhookEditionFilters({
         </>
       )}
 
-      {webhookSourceView?.provider === null && (
-        <>
+      {!webhookSourceView?.provider && (
+        <div className="space-y-2">
           <Label htmlFor="webhook-filter-description">
             Filter Expression (optional)
           </Label>
@@ -179,6 +198,27 @@ export function WebhookEditionFilters({
             Enter a filter that will be used to filter the webhook payload JSON.
             Will always trigger if left empty.
           </p>
+          <ContentMessage
+            variant="highlight"
+            size="lg"
+            title="Payload filtering Syntax"
+          >
+            This trigger uses a custom webhook without an integrated provider.
+            As a result, Dust is unable to automatically generate a payload
+            filter. You can manually write a filter expression using our syntax
+            to specify conditions on your webhook's payload.
+            <br />
+            See documentation on{" "}
+            <Link
+              href="https://docs.dust.tt/docs/filter-webhooks-payload#/"
+              target="_blank"
+              rel="noreferrer"
+              className="underline"
+            >
+              filter expressions
+            </Link>{" "}
+            to learn how to write them.
+          </ContentMessage>
           <TextArea
             id="webhook-filter-description"
             placeholder={
@@ -189,10 +229,41 @@ export function WebhookEditionFilters({
             disabled={!isEditor}
             error={filterError?.message}
           />
-        </>
+        </div>
       )}
 
-      <div className="pt-2">{filterGenerationResult}</div>
+      <div className="py-2">{filterGenerationResult}</div>
+
+      {webhookSourceView && (
+        <Button
+          label="Compute stats"
+          size="sm"
+          variant="outline"
+          onClick={handleComputeEstimation}
+          disabled={isEstimationValidating || !isEditor}
+          isLoading={isEstimationValidating}
+        />
+      )}
+
+      {estimation && (
+        <>
+          {estimation.totalCount < 10 ? (
+            <ContentMessageInline variant="warning">
+              Not enough data to compute statistics. {estimation.totalCount}{" "}
+              event{pluralize(estimation.totalCount)} found in the last 24
+              hours. At least 10 events are needed for estimation.
+            </ContentMessageInline>
+          ) : (
+            <ContentMessageInline variant="outline">
+              According to the most recent data, this trigger would have created{" "}
+              <span className="font-semibold">{estimation.matchingCount}</span>{" "}
+              conversations out of{" "}
+              <span className="font-semibold">{estimation.totalCount}</span>{" "}
+              events in the last 24 hours.
+            </ContentMessageInline>
+          )}
+        </>
+      )}
     </div>
   );
 }

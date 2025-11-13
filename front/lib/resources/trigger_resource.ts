@@ -64,9 +64,12 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     });
 
     const resource = new this(TriggerModel, trigger.get());
-    const r = await resource.upsertTemporalWorkflow(auth);
-    if (r.isErr()) {
-      return r;
+
+    if (resource.enabled) {
+      const r = await resource.upsertTemporalWorkflow(auth);
+      if (r.isErr()) {
+        return r;
+      }
     }
 
     return new Ok(resource);
@@ -191,7 +194,13 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }
 
     await trigger.update(blob, transaction);
-    const r = await trigger.upsertTemporalWorkflow(auth);
+
+    let r = null;
+    if (trigger.enabled) {
+      r = await trigger.upsertTemporalWorkflow(auth);
+    } else {
+      r = await trigger.removeTemporalWorkflow(auth);
+    }
     if (r.isErr()) {
       return r;
     }
@@ -688,7 +697,6 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       editor: this.editor,
       customPrompt: this.customPrompt,
       enabled: this.enabled,
-      executionPerDayLimitOverride: this.executionPerDayLimitOverride,
       naturalLanguageDescription: this.naturalLanguageDescription,
       createdAt: this.createdAt.getTime(),
     };
@@ -698,6 +706,8 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         ...base,
         kind: "webhook" as const,
         configuration: this.configuration as WebhookConfig,
+        executionPerDayLimitOverride: this.executionPerDayLimitOverride,
+        executionMode: this.executionMode,
         webhookSourceViewSId: this.webhookSourceViewId
           ? makeSId("webhook_sources_view", {
               id: this.webhookSourceViewId,

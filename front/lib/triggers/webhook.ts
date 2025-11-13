@@ -8,6 +8,7 @@ import type { WebhookRequestTriggerStatus } from "@app/lib/models/assistant/trig
 import { WebhookRequestTriggerModel } from "@app/lib/models/assistant/triggers/webhook_request_trigger";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
+import { FathomClient } from "@app/lib/triggers/built-in-webhooks/fathom/fathom_client";
 import { launchAgentTriggerWebhookWorkflow } from "@app/lib/triggers/temporal/webhook/client";
 import {
   getTimeframeSecondsFromLiteral,
@@ -16,29 +17,74 @@ import {
 import { verifySignature } from "@app/lib/webhookSource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import { Err, normalizeError, Ok, removeNulls } from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
-import type { WebhookSourceForAdminType } from "@app/types/triggers/webhooks";
+import type {
+  WebhookProvider,
+  WebhookSourceForAdminType,
+} from "@app/types/triggers/webhooks";
+import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
-const WORKSPACE_MESSAGE_LIMIT_MULTIPLIER = 0.1; // 10% of workspace message limit
-const HEADERS_ALLOWED_LIST = ["x-github-event"]; // To avoid storing all headers in GCS, they might contain sensitive information
+const WORKSPACE_MESSAGE_LIMIT_MULTIPLIER = 0.5; // 50% of workspace message limit
 
-export const checkSignature = ({
+/**
+ * To avoid storing sensitive information, only these headers are allowed to be stored in GCS.
+ */
+const HEADERS_ALLOWED_LIST = [
+  ...removeNulls(
+    Object.values(WEBHOOK_PRESETS)
+      .filter((preset) => preset.eventCheck?.type === "headers")
+      .map((preset) => preset.eventCheck?.field.toLowerCase())
+  ),
+  // Header used by Fathom.
+  "webhook-signature",
+];
+
+export function checkSignature({
   headerName,
   algorithm,
   secret,
   headers,
   body,
+  provider,
 }: {
-  headerName: string;
-  algorithm: "sha1" | "sha256" | "sha512";
+  headerName: string | null;
+  algorithm: "sha1" | "sha256" | "sha512" | null;
   secret: string;
   headers: Record<string, string>;
   body: unknown;
+  provider: WebhookProvider | null;
 }): Result<
   void,
   Omit<DustError, "code"> & { code: "invalid_signature_error" }
-> => {
+> {
+  if (provider === "fathom") {
+    const verifyRes = FathomClient.verifyWebhook({
+      secret,
+      headers,
+      body: JSON.stringify(body),
+    });
+
+    if (verifyRes.isErr()) {
+      return new Err({
+        name: "dust_error",
+        code: "invalid_signature_error",
+        message: `Invalid Fathom webhook signature: ${verifyRes.error.message}`,
+      });
+    }
+
+    return new Ok(undefined);
+  }
+
+  if (!headerName || !algorithm) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_signature_error",
+      message:
+        "Missing headerName or algorithm for custom webhook verification",
+    });
+  }
+
   const signature = headers[headerName.toLowerCase()] as string;
 
   if (!signature) {
@@ -67,9 +113,9 @@ export const checkSignature = ({
   }
 
   return new Ok(undefined);
-};
+}
 
-export const checkWebhookRequestForRateLimit = async (
+export async function checkWebhookRequestForRateLimit(
   auth: Authenticator
 ): Promise<
   Result<
@@ -78,17 +124,17 @@ export const checkWebhookRequestForRateLimit = async (
       code: "rate_limit_error";
     }
   >
-> => {
+> {
   const plan = auth.getNonNullablePlan();
   const workspace = auth.getNonNullableWorkspace();
   const { maxMessages, maxMessagesTimeframe } = plan.limits.assistant;
 
-  // Rate limiting: 10% of workspace message limit
+  // Rate limiting: 50% of workspace message limit
   if (maxMessages !== -1) {
     const activeSeats = await countActiveSeatsInWorkspaceCached(workspace.sId);
     const webhookLimit = Math.ceil(
       maxMessages * activeSeats * WORKSPACE_MESSAGE_LIMIT_MULTIPLIER
-    ); // 10% of workspace message limit
+    ); // 50% of workspace message limit
 
     const remaining = await rateLimiter({
       key: `workspace:${workspace.sId}:webhook_triggers:${maxMessagesTimeframe}`,
@@ -101,16 +147,19 @@ export const checkWebhookRequestForRateLimit = async (
       return new Err({
         name: "dust_error",
         code: "rate_limit_error",
-        message: `Webhook triggers rate limit exceeded. You can trigger up to ${webhookLimit} webhooks per ${maxMessagesTimeframe}.`,
+        message:
+          "Webhook triggers rate limit exceeded. " +
+          `You can trigger up to ${webhookLimit} webhooks per ` +
+          (maxMessagesTimeframe === "day" ? "day" : "month"),
       });
     }
     return new Ok(undefined);
-  } else {
-    return new Ok(undefined);
   }
-};
 
-export const processWebhookRequest = async (
+  return new Ok(undefined);
+}
+
+export async function processWebhookRequest(
   auth: Authenticator,
   {
     webhookSource,
@@ -119,9 +168,9 @@ export const processWebhookRequest = async (
   }: {
     webhookSource: WebhookSourceForAdminType;
     headers: IncomingHttpHeaders;
-    body: any;
+    body: unknown;
   }
-) => {
+): Promise<Result<void, Error>> {
   // Store on GCS as a file
   const content = JSON.stringify({
     headers: Object.fromEntries(
@@ -135,18 +184,11 @@ export const processWebhookRequest = async (
   const bucket = getWebhookRequestsBucket();
 
   // Store in DB
-  const webhookRequestRes = await WebhookRequestResource.makeNew({
+  const webhookRequest = await WebhookRequestResource.makeNew({
     workspaceId: auth.getNonNullableWorkspace().id,
     webhookSourceId: webhookSource.id,
     status: "received",
   });
-
-  // Failure when storing in DB
-  if (webhookRequestRes.isErr()) {
-    return webhookRequestRes;
-  }
-
-  const webhookRequest = webhookRequestRes.value;
 
   const gcsPath = WebhookRequestResource.getGcsPath({
     workspaceId: auth.getNonNullableWorkspace().sId,
@@ -178,7 +220,9 @@ export const processWebhookRequest = async (
     );
     return new Err(normalizedError);
   }
-};
+
+  return new Ok(undefined);
+}
 
 export async function fetchRecentWebhookRequestTriggersWithPayload(
   auth: Authenticator,
@@ -190,7 +234,7 @@ export async function fetchRecentWebhookRequestTriggersWithPayload(
     limit?: number;
   }
 ): Promise<
-  Array<{
+  {
     id: number;
     timestamp: number;
     status: WebhookRequestTriggerStatus;
@@ -198,7 +242,7 @@ export async function fetchRecentWebhookRequestTriggersWithPayload(
       headers?: Record<string, string | string[]>;
       body?: unknown;
     };
-  }>
+  }[]
 > {
   const workspace = auth.getNonNullableWorkspace();
   const webhookRequestTriggers = await WebhookRequestTriggerModel.findAll({

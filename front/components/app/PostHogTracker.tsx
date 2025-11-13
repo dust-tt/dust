@@ -91,7 +91,7 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
     }
 
     posthog.init(POSTHOG_KEY, {
-      api_host: "/ingest",
+      api_host: "/subtle1",
       person_profiles: "identified_only",
       defaults: "2025-05-24",
       opt_out_capturing_by_default: !shouldTrack,

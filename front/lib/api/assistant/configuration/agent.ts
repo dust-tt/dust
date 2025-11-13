@@ -44,7 +44,6 @@ import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { normalizeArrays } from "@app/lib/utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type {
@@ -70,50 +69,58 @@ import {
 } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
-/**
- * Get one specific version of a single agent
- */
-async function getAgentConfigurationWithVersion<V extends AgentFetchVariant>(
+export async function getAgentConfigurationsWithVersion<
+  V extends AgentFetchVariant,
+>(
   auth: Authenticator,
-  {
-    agentId,
-    agentVersion,
-    variant,
-  }: { agentId: string; agentVersion: number; variant: V }
+  agentIdsWithVersion: { agentId: string; agentVersion: number }[],
+  { variant }: { variant: V }
 ): Promise<
-  | (V extends "light" ? LightAgentConfigurationType : AgentConfigurationType)
-  | null
+  V extends "light" ? LightAgentConfigurationType[] : AgentConfigurationType[]
 > {
   const owner = auth.workspace();
   if (!owner || !auth.isUser()) {
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
-  assert(!isGlobalAgentId(agentId), "Global agents are not versioned.");
+  const globalAgentIds = agentIdsWithVersion
+    .map(({ agentId }) => agentId)
+    .filter(isGlobalAgentId);
 
-  const agentModels = await AgentConfiguration.findAll({
+  let globalAgents: AgentConfigurationType[] = [];
+  if (globalAgentIds.length > 0) {
+    globalAgents = await getGlobalAgents(auth, globalAgentIds, variant);
+  }
+
+  const workspaceAgentModels = await AgentConfiguration.findAll({
     where: {
-      // Relies on the indexes (workspaceId), (sId, version).
       workspaceId: owner.id,
-      sId: agentId,
-      version: agentVersion,
+      [Op.or]: agentIdsWithVersion
+        .filter(({ agentId }) => !isGlobalAgentId(agentId))
+        .map(({ agentId: sId, agentVersion: version }) => ({
+          sId,
+          version,
+        })),
     },
-    order: [["version", "DESC"]],
   });
 
   const allowedAgentModels = await filterAgentsByRequestedSpaces(
     auth,
-    agentModels
+    workspaceAgentModels
   );
-  const agents = await enrichAgentConfigurations(auth, allowedAgentModels, {
-    variant,
-  });
+  const workspaceAgents = await enrichAgentConfigurations(
+    auth,
+    allowedAgentModels,
+    {
+      variant,
+    }
+  );
 
-  return (
-    (agents[0] as V extends "light"
-      ? LightAgentConfigurationType
-      : AgentConfigurationType) || null
-  );
+  const agents = [...globalAgents, ...workspaceAgents];
+
+  return agents as V extends "light"
+    ? LightAgentConfigurationType[]
+    : AgentConfigurationType[];
 }
 
 /**
@@ -249,12 +256,19 @@ export async function getAgentConfiguration<V extends AgentFetchVariant>(
   | null
 > {
   return tracer.trace("getAgentConfiguration", async () => {
-    if (agentVersion !== undefined) {
-      return getAgentConfigurationWithVersion(auth, {
-        agentId,
-        agentVersion,
-        variant,
-      });
+    if (agentVersion !== undefined && !isGlobalAgentId(agentId)) {
+      const [agent] = await getAgentConfigurationsWithVersion(
+        auth,
+        [{ agentId, agentVersion }],
+        {
+          variant,
+        }
+      );
+      return (
+        (agent as V extends "light"
+          ? LightAgentConfigurationType
+          : AgentConfigurationType) || null
+      );
     }
     const [agent] = await getAgentConfigurations(auth, {
       agentIds: [agentId],
@@ -307,7 +321,6 @@ export async function createAgentConfiguration(
     model,
     agentConfigurationId,
     templateId,
-    requestedGroupIds,
     requestedSpaceIds,
     tags,
     editors,
@@ -321,7 +334,6 @@ export async function createAgentConfiguration(
     model: AgentModelConfigurationType;
     agentConfigurationId?: string;
     templateId: string | null;
-    requestedGroupIds: number[][];
     requestedSpaceIds: number[];
     tags: TagType[];
     editors: UserType[];
@@ -421,8 +433,6 @@ export async function createAgentConfiguration(
           workspaceId: owner.id,
           authorId: user.id,
           templateId: template?.id,
-          // TODO(2025-10-17 thomas): Remove requestedGroupIds.
-          requestedGroupIds: normalizeArrays(requestedGroupIds),
           requestedSpaceIds: requestedSpaceIds,
           responseFormat: model.responseFormat,
         },
@@ -550,12 +560,7 @@ export async function createAgentConfiguration(
       status: agent.status,
       maxStepsPerRun: agent.maxStepsPerRun,
       templateId: template?.sId ?? null,
-      // TODO(2025-10-17 thomas): Remove requestedGroupIds.
-      requestedGroupIds: agent.requestedGroupIds.map((groups) =>
-        groups.map((id) =>
-          GroupResource.modelIdToSId({ id, workspaceId: owner.id })
-        )
-      ),
+      requestedGroupIds: [],
       requestedSpaceIds: agent.requestedSpaceIds.map((spaceId) =>
         SpaceResource.modelIdToSId({ id: spaceId, workspaceId: owner.id })
       ),
@@ -658,8 +663,6 @@ export async function createGenericAgentConfiguration(
     scope: "hidden", // Unpublished
     model,
     templateId: null,
-    // TODO(2025-10-17 thomas): Remove requestedGroupIds.
-    requestedGroupIds: [],
     requestedSpaceIds: [],
     tags: [],
     editors: [user.toJSON()], // Only the current user as editor
@@ -1031,23 +1034,30 @@ export async function unsafeHardDeleteAgentConfiguration(
 ): Promise<void> {
   const workspaceId = auth.getNonNullableWorkspace().id;
 
-  await TagAgentModel.destroy({
-    where: {
-      agentConfigurationId: agentConfiguration.id,
-      workspaceId,
-    },
-  });
-  await GroupAgentModel.destroy({
-    where: {
-      agentConfigurationId: agentConfiguration.id,
-      workspaceId,
-    },
-  });
-  await AgentConfiguration.destroy({
-    where: {
-      id: agentConfiguration.id,
-      workspaceId,
-    },
+  await withTransaction(async (t) => {
+    await TagAgentModel.destroy({
+      where: {
+        agentConfigurationId: agentConfiguration.id,
+        workspaceId,
+      },
+      transaction: t,
+    });
+
+    await GroupAgentModel.destroy({
+      where: {
+        agentConfigurationId: agentConfiguration.id,
+        workspaceId,
+      },
+      transaction: t,
+    });
+
+    await AgentConfiguration.destroy({
+      where: {
+        id: agentConfiguration.id,
+        workspaceId,
+      },
+      transaction: t,
+    });
   });
 }
 
@@ -1144,19 +1154,17 @@ export async function updateAgentConfigurationScope(
   return new Ok(undefined);
 }
 
-// TODO(2025-10-17 thomas): Update name, remove requestedGroupIds.
-export async function updateAgentRequestedGroupIds(
+export async function updateAgentRequirements(
   auth: Authenticator,
-  params: { agentId: string; newGroupIds: number[][]; newSpaceIds: number[] },
+  params: { agentId: string; newSpaceIds: number[] },
   options?: { transaction?: Transaction }
 ): Promise<Result<boolean, Error>> {
-  const { agentId, newGroupIds, newSpaceIds } = params;
+  const { agentId, newSpaceIds } = params;
 
   const owner = auth.getNonNullableWorkspace();
 
   const updated = await AgentConfiguration.update(
     {
-      requestedGroupIds: normalizeArrays(newGroupIds),
       requestedSpaceIds: newSpaceIds,
     },
     {

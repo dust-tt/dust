@@ -20,6 +20,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Autocomplete feature for agent builder instructions (wip)",
     stage: "dust_only",
   },
+  ashby_tool: {
+    description: "Ashby tool for ATS integration",
+    stage: "dust_only",
+  },
   claude_4_opus_feature: {
     description: "Access to Claude 4 Opus model in the agent builder",
     stage: "on_demand",
@@ -108,6 +112,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Salesforce MCP tool (activated by default on most plans, FF to override the plan config)",
     stage: "on_demand",
   },
+  salesloft_tool: {
+    description: "Salesloft MCP tool",
+    stage: "dust_only",
+  },
   salesforce_tool_write: {
     description: "Salesforce MCP tool: write operations (update_object)",
     stage: "on_demand",
@@ -137,6 +145,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Freshservice MCP tool",
     stage: "rolling_out",
   },
+  front_tool: {
+    description:
+      "Front MCP tool for managing support conversations, messages, and customer interactions.",
+    stage: "rolling_out",
+  },
   agent_management_tool: {
     description: "MCP tool for creating and managing agent configurations",
     stage: "dust_only",
@@ -163,10 +176,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable splitting agent responses into multiple Slack messages for Slack (instead of truncation)",
     stage: "dust_only",
   },
-  hootl_webhooks: {
-    description: "Webhooks for Human Out Of The Loop (aka Triggers) / webhooks",
-    stage: "dust_only",
-  },
   slack_bot_mcp: {
     description: "Slack bot MCP server for workspace-level Slack integration",
     stage: "on_demand",
@@ -181,10 +190,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   elevenlabs_tool: {
     description: "Elevenlabs MCP tool for voice synthesis",
-    stage: "on_demand",
-  },
-  microsoft_teams_bot: {
-    description: "Microsoft Teams bot connector for workspace integration",
     stage: "on_demand",
   },
   agent_builder_observability: {
@@ -213,14 +218,17 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable mentions v2, aka mention users",
     stage: "on_demand",
   },
-  dust_global_agent_memory: {
-    description: "Enable agent memory tool on the @dust global agent",
+  slack_files_write_scope: {
+    description: "Enable files:write scope for Slack bot and MCP server",
+    stage: "on_demand",
+  },
+  notifications: {
+    description: "Enable notifications",
     stage: "dust_only",
   },
-  dust_global_data_source_file_system: {
-    description:
-      "Use the Data Sources File System MCP server on the @dust global agent (replaces search tool server)",
-    stage: "dust_only",
+  zendesk_features: {
+    description: "Zendesk MCP tool and webhook triggers",
+    stage: "rolling_out",
   },
 } as const satisfies Record<string, FeatureFlag>;
 

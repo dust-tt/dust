@@ -138,7 +138,7 @@ describe("DELETE /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
     req.query.webhookSourceId = webhookSource.sId;
 
     // Create associated webhook requests
-    const webhookRequest1 = await WebhookRequestResource.makeNew({
+    await WebhookRequestResource.makeNew({
       workspaceId: workspace.id,
       webhookSourceId: webhookSource.id,
       status: "received",
@@ -146,16 +146,13 @@ describe("DELETE /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
       errorMessage: null,
     });
 
-    const webhookRequest2 = await WebhookRequestResource.makeNew({
+    await WebhookRequestResource.makeNew({
       workspaceId: workspace.id,
       webhookSourceId: webhookSource.id,
       status: "processed",
       processedAt: new Date(),
       errorMessage: null,
     });
-
-    expect(webhookRequest1.isOk()).toBe(true);
-    expect(webhookRequest2.isOk()).toBe(true);
 
     // Verify the webhook requests were created
     const webhookRequests = await WebhookRequestResource.fetchByWebhookSourceId(
@@ -329,7 +326,7 @@ describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
     expect(updatedWebhookSource?.oauthConnectionId).toBe("valid-connection");
   });
 
-  it("should return 200 with empty body (no updates)", async () => {
+  it("should return 500 on empty body (no updates)", async () => {
     const { req, res, workspace } = await setupTest("admin", "PATCH");
 
     const webhookSource = await createWebhookSource(
@@ -341,12 +338,7 @@ describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
 
     await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(200);
-
-    const responseData = res._getJSONData();
-    expect(responseData).toEqual({
-      success: true,
-    });
+    expect(res._getStatusCode()).toBe(500);
   });
 
   it("should return 404 when webhook source does not exist", async () => {

@@ -8,6 +8,7 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
   TriggerConfigurationType,
+  TriggerExecutionMode,
   TriggerKind,
 } from "@app/types/assistant/triggers";
 import { isValidTriggerKind } from "@app/types/assistant/triggers";
@@ -29,6 +30,7 @@ export class TriggerModel extends WorkspaceAwareModel<TriggerModel> {
    */
   declare webhookSourceViewId: ForeignKey<WebhookSourcesViewModel["id"]> | null;
   declare executionPerDayLimitOverride: number | null;
+  declare executionMode: TriggerExecutionMode | null;
 
   /**
    * We use the sId, because it's static between an agent versions,
@@ -89,6 +91,10 @@ TriggerModel.init(
       type: DataTypes.INTEGER,
       allowNull: true,
       defaultValue: null,
+    },
+    executionMode: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
   },
   {
