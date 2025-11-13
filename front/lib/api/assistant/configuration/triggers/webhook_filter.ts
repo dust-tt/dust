@@ -1,3 +1,4 @@
+import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types";
@@ -6,7 +7,7 @@ import type { WebhookEvent } from "@app/types/triggers/webhooks_source_preset";
 
 const SET_FILTER_FUNCTION_NAME = "set_filter";
 
-const specifications = [
+const specifications: AgentActionSpecification[] = [
   {
     name: SET_FILTER_FUNCTION_NAME,
     description: "Setup a filter for a webhook payload",
@@ -273,8 +274,10 @@ export async function getWebhookFilterGeneration(
   const { naturalDescription, event } = inputs;
 
   const userContent = [
-    `<eventJSONSchema>\n${event.schema}</eventJSONSchema>`,
-    event.sample ? `<sampleEvent>\n${event.sample}</sampleEvent>` : null,
+    `<eventJSONSchema>\n${JSON.stringify(event.schema)}</eventJSONSchema>`,
+    event.sample
+      ? `<sampleEvent>\n${JSON.stringify(event.sample)}</sampleEvent>`
+      : null,
     "The main goal of the filter is to filter in events that match the following description:",
     naturalDescription,
   ]
@@ -295,12 +298,19 @@ export async function getWebhookFilterGeneration(
         messages: [
           {
             role: "user",
-            content: userContent,
+            content: [{ type: "text", text: userContent }],
+            name: "",
           },
         ],
       },
       prompt: INSTRUCTIONS,
       specifications,
+    },
+    {
+      context: {
+        operationType: "trigger_webhook_filter_generator",
+        userId: auth.user()?.sId,
+      },
     }
   );
 

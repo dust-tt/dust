@@ -13,7 +13,7 @@ import { handleGenericError } from "@app/lib/api/llm/types/errors";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
   LLMParameters,
-  StreamParameters,
+  LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { dustManagedCredentials } from "@app/types";
@@ -52,7 +52,7 @@ export class MistralLLM extends LLM {
     conversation,
     prompt,
     specifications,
-  }: StreamParameters): AsyncGenerator<LLMEvent> {
+  }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
     try {
       const messages = [
         {

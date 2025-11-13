@@ -1,3 +1,4 @@
+import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { Authenticator } from "@app/lib/auth";
 import type { LightAgentConfigurationType, Result } from "@app/types";
@@ -40,7 +41,7 @@ You must always use the field from the "id" attribute of the agent.
 Here is the list of available agents:
 `;
 
-const SUGGEST_AGENTS_FUNCTION_SPECIFICATIONS = [
+const SUGGEST_AGENTS_FUNCTION_SPECIFICATIONS: AgentActionSpecification[] = [
   {
     name: "suggest_agents",
     description:
@@ -119,12 +120,25 @@ export async function getSuggestedAgentsForContent(
       useCache: true,
     },
     {
-      conversation: { messages: [{ role: "user", content: content.trim() }] },
+      conversation: {
+        messages: [
+          {
+            role: "user",
+            content: [{ type: "text", text: content.trim() }],
+            name: "",
+          },
+        ],
+      },
       prompt: `${INSTRUCTIONS}${formattedAgents}`,
       specifications: SUGGEST_AGENTS_FUNCTION_SPECIFICATIONS,
     },
     {
       tracingRecords,
+      context: {
+        operationType: "agent_suggestion",
+        contextId: conversationId,
+        userId: auth.user()?.sId,
+      },
     }
   );
 

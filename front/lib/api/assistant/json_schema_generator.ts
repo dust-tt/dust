@@ -68,7 +68,7 @@ export async function getBuilderJsonSchemaGenerator(
   };
 
   const traceContext: LLMTraceContext = {
-    operationType: "schema_generator",
+    operationType: "process_schema_generator",
     userId: auth.user()?.sId,
   };
   const llm = await getLLM(auth, {

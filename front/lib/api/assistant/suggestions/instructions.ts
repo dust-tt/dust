@@ -1,12 +1,18 @@
+import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { SuggestionResults } from "@app/lib/api/assistant/suggestions/types";
 import type { Authenticator } from "@app/lib/auth";
-import type { BuilderSuggestionInputType, Result } from "@app/types";
+import type {
+  BuilderSuggestionInputType,
+  ModelConversationTypeMultiActions,
+  ModelMessageTypeMultiActionsWithoutContentFragment,
+  Result,
+} from "@app/types";
 import { Err, GPT_4_TURBO_MODEL_ID, isStringArray, Ok } from "@app/types";
 
 const FUNCTION_NAME = "send_ranked_suggestions";
 
-const specifications = [
+const specifications: AgentActionSpecification[] = [
   {
     name: FUNCTION_NAME,
     description:
@@ -60,7 +66,9 @@ const specifications = [
   },
 ];
 
-function getConversationContext(inputs: BuilderSuggestionInputType) {
+function getConversationContext(
+  inputs: BuilderSuggestionInputType
+): ModelConversationTypeMultiActions {
   const currentInstructions =
     "current_instructions" in inputs ? inputs.current_instructions : "";
   const formerSuggestions =
@@ -70,19 +78,26 @@ function getConversationContext(inputs: BuilderSuggestionInputType) {
     ? "Instructions I wrote for my assistant:\n" + currentInstructions
     : "";
 
-  const messages = [
+  const messages: ModelMessageTypeMultiActionsWithoutContentFragment[] = [
     {
       role: "user",
-      content: currentInstructionsText,
+      content: [{ type: "text", text: currentInstructionsText }],
+      name: "",
     },
   ];
 
   if (formerSuggestions.length > 0) {
     messages.push({
       role: "user",
-      content:
-        "Former suggestions, that were already made regarding a former version of those instructions (you should make new suggestions that are different from those ones):\n" +
-        JSON.stringify(formerSuggestions),
+      content: [
+        {
+          type: "text",
+          text:
+            "Former suggestions, that were already made regarding a former version of those instructions (you should make new suggestions that are different from those ones):\n" +
+            JSON.stringify(formerSuggestions),
+        },
+      ],
+      name: "",
     });
   }
 
@@ -107,6 +122,12 @@ export async function getBuilderInstructionsSuggestions(
       prompt:
         'A user is working on a Saas product called Dust, a tool for creating custom assistants based on large language models, to help employees to be more productive. \n\nContext\n---\nA few elements to bear in mind:\n- On Dust, users can give assistants access to company data (on slack, notion, google drive, github, intercom, confluence). Assistants that are configured to use company data can do semantic searches before answering the user, and use the retrieved data to reply;\n- some companies have created "Dust apps" and for some advanced use cases assistants can execute those dust apps before answering;\n- advanced use cases also include allowing assistants to query structured data from Notion Databases or Google Spreadsheets, that is, treating those documents as SQL databases and running sql queries on them;\n- however, in the majority of cases, custom assistants are either asked to reply only (i.e. without searching data, acting or querying structured data), or to perform retrieval-augmented-generation, that is to do semantic search on data and add the result to the LLM\'s context before generating the reply.\n\nThe user is currently writing instructions for the large language model prompt that will be the basis of a custom assistant they are creating for a specific purpose.\n\nYour task\n---\nBased on the instructions the user has written, propose two new suggestions to improve them, different from the already-existing former suggestions the user provided. Indicate if the instructions are already very good as they are. Rank all suggestions (former and new) by most important first.\n',
       specifications,
+    },
+    {
+      context: {
+        operationType: "agent_builder_instruction_suggestion",
+        userId: auth.user()?.sId,
+      },
     }
   );
 
