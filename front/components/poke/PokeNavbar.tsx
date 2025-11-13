@@ -1,4 +1,4 @@
-import { Button, Chip, ExternalLinkIcon, Logo } from "@dust-tt/sparkle";
+import { Button, ChevronRightIcon, Chip, Logo } from "@dust-tt/sparkle";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -148,7 +148,7 @@ export function PokeSearchCommand() {
                       (id: {id})
                     </span>
                   </div>
-                  <ExternalLinkIcon className="h-4 w-4 flex-shrink-0" />
+                  <ChevronRightIcon className="h-4 w-4 flex-shrink-0" />
                 </div>
               </PokeCommandItem>
             );
