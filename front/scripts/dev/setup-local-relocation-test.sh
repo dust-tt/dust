@@ -95,8 +95,7 @@ get_or_create_api_key() {
     cd "$FRONT_DIR"
 
     cat > /tmp/get_system_key.ts << 'EOF'
-import { Authenticator } from "@app/lib/auth";
-import { KeyResource } from "@app/lib/resources/key_resource";
+import { Authenticator, getOrCreateSystemApiKey } from "@app/lib/auth";
 
 async function main() {
   const workspaceId = process.env.DUST_APPS_WORKSPACE_ID!;
@@ -108,7 +107,7 @@ async function main() {
   console.error(`Fetching system key for workspace: ${workspaceId}`);
 
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const systemKey = await KeyResource.fetchSystemKeyForWorkspace(auth.getNonNullableWorkspace());
+  const systemKey = await getOrCreateSystemApiKey(auth.getNonNullableWorkspace());
 
   if (!systemKey) {
     throw new Error("No system key found for workspace");
