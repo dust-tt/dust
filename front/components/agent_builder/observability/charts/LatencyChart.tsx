@@ -26,7 +26,9 @@ import { ChartTooltipCard } from "@app/components/agent_builder/observability/sh
 import { VersionMarkersDots } from "@app/components/agent_builder/observability/shared/VersionMarkers";
 import { padSeriesToTimeRange } from "@app/components/agent_builder/observability/utils";
 import type { LatencyPoint } from "@app/lib/api/assistant/observability/latency";
+import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 import { useAgentVersionMarkers } from "@app/lib/swr/assistants";
+import { formatTimeSeriesTitle } from "@app/components/agent_builder/observability/shared/tooltipHelpers";
 import { formatShortDate } from "@app/lib/utils/timestamps";
 
 interface LatencyData extends LatencyPoint {
@@ -52,9 +54,11 @@ function zeroFactory(timestamp: number) {
 }
 
 function LatencyTooltip(
-  props: TooltipContentProps<number, string>
+  props: TooltipContentProps<number, string> & {
+    versionMarkers: AgentVersionMarker[];
+  }
 ): JSX.Element | null {
-  const { active, payload } = props;
+  const { active, payload, versionMarkers } = props;
   if (!active || !payload || payload.length === 0) {
     return null;
   }
@@ -66,7 +70,7 @@ function LatencyTooltip(
 
   return (
     <ChartTooltipCard
-      title={row.date}
+      title={formatTimeSeriesTitle(row.date, row.timestamp, versionMarkers)}
       rows={[
         {
           label: "Average time",
@@ -176,7 +180,9 @@ export function LatencyChart({
             allowDecimals={true}
           />
           <Tooltip
-            content={LatencyTooltip}
+            content={(props: TooltipContentProps<number, string>) => (
+              <LatencyTooltip {...props} versionMarkers={versionMarkers} />
+            )}
             cursor={false}
             wrapperStyle={{ outline: "none" }}
             contentStyle={{

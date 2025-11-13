@@ -21,6 +21,7 @@ import {
   legendFromConstant,
 } from "@app/components/agent_builder/observability/shared/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
+import { formatTimeSeriesTitle } from "@app/components/agent_builder/observability/shared/tooltipHelpers";
 import { VersionMarkersDots } from "@app/components/agent_builder/observability/shared/VersionMarkers";
 import {
   filterTimeSeriesByVersionWindow,
@@ -76,12 +77,9 @@ function UsageMetricsTooltip(
 
   const row = first.payload;
 
-  const versionMarker = findVersionMarkerForDate(row.timestamp, versionMarkers);
-  const version = versionMarker ? ` - v${versionMarker.version}` : "";
-
   return (
     <ChartTooltipCard
-      title={`${row.date}${version}`}
+      title={formatTimeSeriesTitle(row.date, row.timestamp, versionMarkers)}
       rows={[
         {
           label: "Messages",
