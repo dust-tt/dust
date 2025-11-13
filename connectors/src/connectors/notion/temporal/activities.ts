@@ -3801,6 +3801,14 @@ export async function batchDeleteResources({
       pageId,
       logger: localLogger,
     });
+    await NotionConnectorResourcesToCheckCacheEntry.destroy({
+      where: {
+        resourceType: "page",
+        notionId: pageId,
+        connectorId,
+        workflowId,
+      },
+    });
   }
 
   // Delete databases
@@ -3811,14 +3819,15 @@ export async function batchDeleteResources({
       databaseId,
       logger: localLogger,
     });
+    await NotionConnectorResourcesToCheckCacheEntry.destroy({
+      where: {
+        resourceType: "database",
+        notionId: databaseId,
+        connectorId,
+        workflowId,
+      },
+    });
   }
-
-  await NotionConnectorResourcesToCheckCacheEntry.destroy({
-    where: {
-      connectorId,
-      workflowId,
-    },
-  });
 
   return {
     deletedPages: pageIds.length,
