@@ -44,7 +44,9 @@ export function ChartsTooltip({
     });
 
   const title =
-    mode === "step" ? `Step ${String(label)}` : normalizeVersionLabel(label);
+    mode === "step"
+      ? `Step ${String(label)}`
+      : normalizeVersionLabel(String(label));
   return <ChartTooltipCard title={title} rows={rows} />;
 }
 
