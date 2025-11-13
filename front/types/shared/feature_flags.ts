@@ -205,6 +205,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Use direct LLM call over Dust app run in a conversation.",
     stage: "on_demand",
   },
+  llm_comparison_mode_enabled: {
+    description: "Enable LLM comparison mode.",
+    stage: "on_demand",
+  },
   use_requested_space_ids: {
     description: "Use requested spaces Ids for permissions checking.",
     stage: "dust_only",
