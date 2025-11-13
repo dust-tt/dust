@@ -152,14 +152,19 @@ export const ConversationViewer = ({
 
   // Setup the initial list data when the conversation is loaded.
   useEffect(() => {
-    if (!initialListData && messages.length > 0) {
+    // We also wait in case of revalidation because otherwise we might use stale data from the swr cache.
+    // Consider this scenario:
+    // Load a conversation A, send a message, answer is streaming (streaming events have a short TTL).
+    // Switch to conversation B, wait till A is done streaming, then switch back to A.
+    // Without waiting for revalidation, we would use whatever data was in the swr cache and see the last message as "streaming" (old data, no more streaming events).
+    if (!initialListData && messages.length > 0 && !isValidating) {
       const messagesToRender = convertLightMessageTypeToVirtuosoMessages(
         messages.flatMap((m) => m.messages)
       );
 
       setInitialListData(messagesToRender);
     }
-  }, [initialListData, messages, setInitialListData]);
+  }, [initialListData, messages, setInitialListData, isValidating]);
 
   // This is to handle we just fetched more messages by scrolling up.
   useEffect(() => {
