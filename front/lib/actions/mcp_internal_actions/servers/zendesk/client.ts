@@ -9,8 +9,8 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/types";
 import {
   ZendeskSearchResponseSchema,
-  ZendeskTicketResponseSchema,
   ZendeskTicketMetricsResponseSchema,
+  ZendeskTicketResponseSchema,
 } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/types";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
