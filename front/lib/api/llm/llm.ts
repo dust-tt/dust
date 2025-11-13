@@ -103,12 +103,17 @@ export abstract class LLM {
             llmEventType: "error",
             message: currentEvent.content.message,
             modelId: this.modelId,
+            context: this.context,
           },
           "LLM Error"
         );
       } else if (currentEvent?.type === "success") {
         logger.info(
-          { llmEventType: "success", modelId: this.modelId },
+          {
+            llmEventType: "success",
+            modelId: this.modelId,
+            context: this.context,
+          },
           "LLM Success"
         );
       } else {
@@ -117,6 +122,7 @@ export abstract class LLM {
             llmEventType: "uncategorized",
             lastEventType: currentEvent?.type,
             modelId: this.modelId,
+            context: this.context,
           },
           "LLM uncategorized"
         );
