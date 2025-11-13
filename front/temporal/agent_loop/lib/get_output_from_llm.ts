@@ -1,5 +1,6 @@
 import { CancelledFailure, heartbeat, sleep } from "@temporalio/activity";
 
+import { runActionStreamed } from "@app/lib/actions/server";
 import type { LLM } from "@app/lib/api/llm/llm";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -27,8 +28,13 @@ export async function getOutputFromLLMStream(
     model,
     prompt,
     llm,
+    userMessage,
+    runConfig,
   }: GetOutputRequestParams & { llm: LLM }
 ): Promise<GetOutputResponse> {
+  let startTime = performance.now();
+  console.log("================= START FRONT STREAM ==================");
+  console.log("startTime", startTime);
   const events = llm.stream({
     conversation: modelConversationRes.value.modelConversation,
     prompt,
@@ -41,6 +47,7 @@ export async function getOutputFromLLMStream(
   let nativeChainOfThought = "";
 
   for await (const event of events) {
+    logger.info({ messageId: agentMessage.sId, duration: performance.now() - startTime, type: event.type, from: "front" }, "First interaction event received");
     if (event.type === "error") {
       await flushParserTokens();
       return new Err({
@@ -181,6 +188,40 @@ export async function getOutputFromLLMStream(
       }
     }
   }
+  console.log("================= END FRONT STREAM ==================");
+
+  startTime = performance.now();
+  console.log("================= START CORE STREAM ==================");
+  console.log("startTime", startTime);
+  const actionEvents = await runActionStreamed(
+    auth,
+    "assistant-v2-multi-actions-agent",
+    runConfig,
+    [
+      {
+        conversation: modelConversationRes.value.modelConversation,
+        specifications,
+        prompt,
+      },
+    ],
+    {
+      conversationId: conversation.sId,
+      workspaceId: conversation.owner.sId,
+      userMessageId: userMessage.sId,
+    }
+  )
+  // Start consuming the action event stream in the background immediately
+  const actionEventStream = (actionEvents as Ok<{ eventStream: AsyncGenerator<any> }>).value.eventStream;
+  void (async () => {
+    const isFirst = true;
+    for await (const event of actionEventStream) {
+      if (isFirst) {
+        logger.info({ messageId: agentMessage.sId, duration: performance.now() - startTime, type: event.type, from: "core" }, "First interaction event received");
+        // isFirst = false;
+      }
+    }
+    console.log("================= END CORE STREAM ==================");
+  })();
 
   await flushParserTokens();
 
