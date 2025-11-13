@@ -76,14 +76,12 @@ export function AgentFeedback({
         />
       </TabContentChildSectionLayout>
 
-      {featureFlags.includes("agent_builder_observability") && (
-        <TabContentChildSectionLayout title="Charts">
-          <FeedbackDistributionChart
-            workspaceId={owner.sId}
-            agentConfigurationId={agentConfigurationId}
-          />
-        </TabContentChildSectionLayout>
-      )}
+      <TabContentChildSectionLayout title="Charts">
+        <FeedbackDistributionChart
+          workspaceId={owner.sId}
+          agentConfigurationId={agentConfigurationId}
+        />
+      </TabContentChildSectionLayout>
 
       {allowReactions && (
         <FeedbacksSection

@@ -192,11 +192,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Elevenlabs MCP tool for voice synthesis",
     stage: "on_demand",
   },
-  agent_builder_observability: {
-    description:
-      "Observability tab in the Agent Builder (charts powered by Elasticsearch)",
-    stage: "dust_only",
-  },
   legacy_dust_apps: {
     description: "Access to legacy Dust Apps (editor and associated tools)",
     stage: "on_demand",
