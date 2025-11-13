@@ -25,7 +25,6 @@ import { formatTimeSeriesTitle } from "@app/components/agent_builder/observabili
 import { VersionMarkersDots } from "@app/components/agent_builder/observability/shared/VersionMarkers";
 import {
   filterTimeSeriesByVersionWindow,
-  findVersionMarkerForDate,
   padSeriesToTimeRange,
 } from "@app/components/agent_builder/observability/utils";
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
