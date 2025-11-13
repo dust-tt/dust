@@ -2,9 +2,9 @@ import { Octokit } from "@octokit/core";
 
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import type { GithubAdditionalData } from "@app/lib/triggers/built-in-webhooks/github/github_service_types";
 import { getGithubOrganizations } from "@app/lib/triggers/built-in-webhooks/github/orgs";
 import { getGithubRepositories } from "@app/lib/triggers/built-in-webhooks/github/repos";
+import type { GithubAdditionalData } from "@app/lib/triggers/built-in-webhooks/github/types";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, isString, OAuthAPI, Ok } from "@app/types";

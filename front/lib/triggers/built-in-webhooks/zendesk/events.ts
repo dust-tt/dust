@@ -1,31 +1,31 @@
 import {
   organizationCreatedExample,
   organizationCreatedSchema,
-} from "@app/lib/triggers/built-in-webhooks/zendesk/schemas/json_schema_organization_created";
+} from "@app/lib/triggers/built-in-webhooks/zendesk/schemas/organization_created";
 import {
   ticketAgentAssignmentChangedExample,
   ticketAgentAssignmentChangedSchema,
-} from "@app/lib/triggers/built-in-webhooks/zendesk/schemas/json_schema_ticket_agent_assignment_changed";
+} from "@app/lib/triggers/built-in-webhooks/zendesk/schemas/ticket_agent_assignment_changed";
 import {
   ticketCommentAddedExample,
   ticketCommentAddedSchema,
-} from "@app/lib/triggers/built-in-webhooks/zendesk/schemas/json_schema_ticket_comment_added";
+} from "@app/lib/triggers/built-in-webhooks/zendesk/schemas/ticket_comment_added";
 import {
   ticketCreatedExample,
   ticketCreatedSchema,
-} from "@app/lib/triggers/built-in-webhooks/zendesk/schemas/json_schema_ticket_created";
+} from "@app/lib/triggers/built-in-webhooks/zendesk/schemas/ticket_created";
 import {
   ticketPriorityChangedExample,
   ticketPriorityChangedSchema,
-} from "@app/lib/triggers/built-in-webhooks/zendesk/schemas/json_schema_ticket_priority_changed";
+} from "@app/lib/triggers/built-in-webhooks/zendesk/schemas/ticket_priority_changed";
 import {
   ticketStatusChangedExample,
   ticketStatusChangedSchema,
-} from "@app/lib/triggers/built-in-webhooks/zendesk/schemas/json_schema_ticket_status_changed";
+} from "@app/lib/triggers/built-in-webhooks/zendesk/schemas/ticket_status_changed";
 import {
   userCreatedExample,
   userCreatedSchema,
-} from "@app/lib/triggers/built-in-webhooks/zendesk/schemas/json_schema_user_created";
+} from "@app/lib/triggers/built-in-webhooks/zendesk/schemas/user_created";
 import type { WebhookEvent } from "@app/types/triggers/webhooks_source_preset";
 
 export const ZENDESK_TICKET_CREATED_EVENT: WebhookEvent = {

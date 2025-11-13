@@ -17,7 +17,7 @@ import { useWebhookServiceData } from "@app/lib/swr/useWebhookServiceData";
 import type {
   GithubOrganization,
   GithubRepository,
-} from "@app/lib/triggers/built-in-webhooks/github/github_service_types";
+} from "@app/lib/triggers/built-in-webhooks/github/types";
 
 export function CreateWebhookGithubConnection({
   owner,

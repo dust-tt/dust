@@ -1,6 +1,6 @@
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import type { ZendeskWebhookStoredMetadata } from "@app/lib/triggers/built-in-webhooks/zendesk/zendesk_service_types";
+import type { ZendeskWebhookStoredMetadata } from "@app/lib/triggers/built-in-webhooks/zendesk/types";
 import logger from "@app/logger/logger";
 import type { Result, WorkspaceType } from "@app/types";
 import { Err, OAuthAPI, Ok } from "@app/types";
