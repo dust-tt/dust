@@ -1,3 +1,4 @@
+import { trackEvent, TRACKING_AREAS } from "@app/shared/lib/tracking";
 import { filterAndSortAgents } from "@app/shared/lib/utils";
 import type {
   LightAgentConfigurationType,
@@ -92,6 +93,15 @@ export function AssistantPicker({
               icon={() => <Avatar size="xs" visual={c.pictureUrl} />}
               label={c.name}
               onClick={() => {
+                trackEvent({
+                  area: TRACKING_AREAS.ASSISTANT,
+                  object: "assistant_picker_select",
+                  action: "select",
+                  extra: {
+                    assistant_id: c.sId,
+                    assistant_name: c.name,
+                  },
+                });
                 onItemClick(c);
                 setSearchText("");
               }}

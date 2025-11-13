@@ -13,6 +13,7 @@ import {
   PlatformProvider,
   usePlatform,
 } from "@app/shared/context/PlatformContext";
+import { initializeTracking } from "@app/shared/lib/tracking";
 import { AuthProvider } from "@app/ui/components/auth/AuthProvider";
 import { routes } from "@app/ui/pages/routes";
 import { datadogLogs } from "@datadog/browser-logs";
@@ -43,6 +44,13 @@ if (process.env.DATADOG_CLIENT_TOKEN) {
 
 const logger = datadogLogs.logger;
 logger.info("Dust extension loaded");
+
+// Initialize PostHog tracking
+// Note: These environment variables need to be set in webpack config
+void initializeTracking(
+  process.env.POSTHOG_KEY,
+  process.env.POSTHOG_HOST || "https://eu.i.posthog.com"
+);
 
 const router = createBrowserRouter(routes);
 
