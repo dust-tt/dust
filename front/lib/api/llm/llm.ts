@@ -92,8 +92,8 @@ export abstract class LLM {
         prompt,
         specifications,
       })) {
-        buffer.addEvent(event);
         currentEvent = event;
+        buffer.addEvent(event);
         yield event;
       }
     } finally {
