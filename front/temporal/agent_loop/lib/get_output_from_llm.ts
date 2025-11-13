@@ -33,8 +33,8 @@ export async function getOutputFromLLMStream(
   }: GetOutputRequestParams & { llm: LLM }
 ): Promise<GetOutputResponse> {
   let startTime = performance.now();
-  console.log("================= START FRONT STREAM ==================");
-  console.log("startTime", startTime);
+  logger.info("================= START FRONT STREAM ==================");
+  logger.info("startTime", startTime);
   const events = llm.stream({
     conversation: modelConversationRes.value.modelConversation,
     prompt,
@@ -188,11 +188,11 @@ export async function getOutputFromLLMStream(
       }
     }
   }
-  console.log("================= END FRONT STREAM ==================");
+  logger.info("================= END FRONT STREAM ==================");
 
   startTime = performance.now();
-  console.log("================= START CORE STREAM ==================");
-  console.log("startTime", startTime);
+  logger.info("================= START CORE STREAM ==================");
+  logger.info("startTime", startTime);
   const actionEvents = await runActionStreamed(
     auth,
     "assistant-v2-multi-actions-agent",
@@ -220,7 +220,7 @@ export async function getOutputFromLLMStream(
         // isFirst = false;
       }
     }
-    console.log("================= END CORE STREAM ==================");
+    logger.info("================= END CORE STREAM ==================");
   })();
 
   await flushParserTokens();
