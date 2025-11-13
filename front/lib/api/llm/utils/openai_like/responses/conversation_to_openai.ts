@@ -147,7 +147,7 @@ export function toTool(tool: AgentActionSpecification): FunctionTool {
     type: "function",
     // If not set to false, OpenAI requires all properties to be required,
     // and all additionalProperties to be false.
-    // This does not fit with Notion tools that enable permissive filter properties.
+    // This does not fit with many tools that enable permissive filter properties.
     strict: false,
     name: tool.name,
     description: tool.description,
