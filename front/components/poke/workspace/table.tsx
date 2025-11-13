@@ -101,7 +101,7 @@ export function WorkspaceInfoTable({
                     target="_blank"
                     className="text-xs text-highlight-400"
                   >
-                    Organization
+                    {owner.workOSOrganizationId}
                   </Link>
                 )}
               </PokeTableCell>
@@ -147,14 +147,6 @@ export function WorkspaceInfoTable({
                 {extensionConfig?.blacklistedDomains.length
                   ? extensionConfig.blacklistedDomains.join(", ")
                   : "None"}
-              </PokeTableCell>
-            </PokeTableRow>
-            <PokeTableRow>
-              <PokeTableCell className="max-w-48">
-                WorkOS organization
-              </PokeTableCell>
-              <PokeTableCell>
-                {owner.workOSOrganizationId ?? "None"}
               </PokeTableCell>
             </PokeTableRow>
             <PokeTableRow>
