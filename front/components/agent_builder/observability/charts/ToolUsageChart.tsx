@@ -170,7 +170,7 @@ export function ToolUsageChart({
           {topTools.map((toolName) => (
             <Bar
               key={toolName}
-              dataKey={(row: ChartDatum) => row.values[toolName] ?? 0}
+              dataKey={(row: ChartDatum) => row.values[toolName]?.percent ?? 0}
               stackId="a"
               fill="currentColor"
               className={getToolColor(toolName, topTools)}

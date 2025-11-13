@@ -6,6 +6,7 @@ import type { ObservabilityMode } from "@app/components/agent_builder/observabil
 import type {
   ChartDatum,
   ToolChartModeType,
+  ToolChartUsageDatum,
 } from "@app/components/agent_builder/observability/types";
 import { selectTopTools } from "@app/components/agent_builder/observability/utils";
 import type { LatencyPoint } from "@app/lib/api/assistant/observability/latency";
@@ -82,7 +83,7 @@ function createChartData(
       item.total ??
       Object.values(item.tools).reduce((acc, tool) => acc + tool.count, 0);
 
-    const values: Record<string, number> = {};
+    const values: Record<string, ToolChartUsageDatum> = {};
     let topToolsCount = 0;
     for (const toolName of displayTools) {
       if (toolName === OTHER_TOOLS_LABEL) {
@@ -92,7 +93,10 @@ function createChartData(
       const toolData = item.tools[toolName];
       const count = toolData?.count ?? 0;
       if (count > 0) {
-        values[toolName] = calculatePercentage(count, total);
+        values[toolName] = {
+          percent: calculatePercentage(count, total),
+          count,
+        };
         topToolsCount += count;
       }
     }
@@ -101,11 +105,14 @@ function createChartData(
       const othersCount = total - topToolsCount;
 
       if (othersCount > 0) {
-        values[OTHER_TOOLS_LABEL] = calculatePercentage(othersCount, total);
+        values[OTHER_TOOLS_LABEL] = {
+          percent: calculatePercentage(othersCount, total),
+          count: othersCount,
+        };
       }
     }
 
-    return { label: item.label, values };
+    return { label: item.label, values, total };
   });
 }
 
