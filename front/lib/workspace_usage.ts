@@ -673,6 +673,9 @@ export async function getAssistantsUsageData(
   const wId = workspace.id;
   const includeInactiveAgents = options?.includeInactive ?? false;
   const readReplica = getFrontReplicaDbConnection();
+  // Include unpublished agents for workspace admins.
+  const scopeFilter =
+    workspace.role === "admin" ? "" : "AND ac.\"scope\" != 'hidden'";
   // eslint-disable-next-line dust/no-raw-sql -- Leggit
   const agents = await readReplica.query<AgentUsageQueryResult>(
     `
@@ -706,7 +709,7 @@ export async function getAssistantsUsageData(
              LEFT JOIN "users" u ON um."userId" = u."id"
       WHERE ac."workspaceId" = :wId
         AND ac."status" = 'active'
-        AND ac."scope" != 'hidden'
+        ${scopeFilter}
       GROUP BY ac."id"
       ORDER BY "messages" DESC, ac."name" ASC;
     `,
