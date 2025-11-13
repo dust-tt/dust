@@ -218,8 +218,9 @@ function createServer(
 
   server.tool(
     "get_latest_interview_feedback",
-    "Retrieve the latest interview feedback for a candidate. " +
-      "This tool will search for the candidate by name or email and return the most recent submitted interview feedback.",
+    "Retrieve all interview feedback for a candidate. " +
+      "This tool will search for the candidate by name or email and return all submitted " +
+      "interview feedback, sorted by most recent first.",
     {
       email: z
         .string()
@@ -300,8 +301,7 @@ function createServer(
           );
         }
 
-        let latestFeedback = null;
-        let latestSubmittedAt: Date | null = null;
+        const allFeedback = [];
 
         for (const applicationId of candidate.applicationIds) {
           const feedbackResult = await client.getApplicationFeedback({
@@ -315,20 +315,13 @@ function createServer(
           const feedbackList = feedbackResult.value.results;
 
           for (const feedback of feedbackList) {
-            if (!feedback.submittedAt) {
-              continue;
-            }
-
-            const submittedAt = new Date(feedback.submittedAt);
-
-            if (!latestSubmittedAt || submittedAt > latestSubmittedAt) {
-              latestSubmittedAt = submittedAt;
-              latestFeedback = feedback;
+            if (feedback.submittedAt) {
+              allFeedback.push(feedback);
             }
           }
         }
 
-        if (!latestFeedback) {
+        if (allFeedback.length === 0) {
           return new Err(
             new MCPError(
               `No submitted interview feedback found for candidate ${candidate.name}.`
@@ -336,15 +329,20 @@ function createServer(
           );
         }
 
-        const recapText = renderInterviewFeedbackRecap(
-          candidate,
-          latestFeedback
+        allFeedback.sort((a, b) => {
+          const dateA = new Date(a.submittedAt!);
+          const dateB = new Date(b.submittedAt!);
+          return dateB.getTime() - dateA.getTime();
+        });
+
+        const feedbackTexts = allFeedback.map((feedback) =>
+          renderInterviewFeedbackRecap(candidate, feedback)
         );
 
         return new Ok([
           {
             type: "text" as const,
-            text: recapText,
+            text: feedbackTexts.join("\n\n" + "=".repeat(80) + "\n\n"),
           },
         ]);
       }

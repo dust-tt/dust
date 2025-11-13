@@ -53,7 +53,7 @@ export function renderInterviewFeedbackRecap(
   feedback: AshbyFeedbackSubmission
 ): string {
   const lines = [
-    "# Interview Feedback Recap",
+    "# Interview Feedback",
     "",
     `**Candidate:** ${candidate.name}`,
     `**Candidate ID:** ${candidate.id}`,
@@ -65,40 +65,45 @@ export function renderInterviewFeedbackRecap(
 
   lines.push("", "---", "");
 
-  if (feedback.formDefinition.title) {
-    lines.push(`**Interview Form:** ${feedback.formDefinition.title}`);
-  }
-
-  if (feedback.submittedBy) {
+  if (feedback.submittedByUser) {
     lines.push(
-      `**Submitted by:** ${feedback.submittedBy.firstName} ${feedback.submittedBy.lastName} (${feedback.submittedBy.email})`
+      `**Submitted by:** ${feedback.submittedByUser.firstName} ${feedback.submittedByUser.lastName} (${feedback.submittedByUser.email})`
     );
   }
 
-  if (feedback.submittedAt) {
-    lines.push(
-      `**Submitted at:** ${new Date(feedback.submittedAt).toISOString()}`
-    );
-  }
+  lines.push("", "## Feedback", "");
 
-  lines.push("", "## Feedback Details", "");
+  if (feedback.submittedValues && feedback.formDefinition.sections) {
+    for (const section of feedback.formDefinition.sections) {
+      for (const fieldWrapper of section.fields) {
+        const field = fieldWrapper.field;
+        const value = feedback.submittedValues[field.path];
 
-  if (feedback.values) {
-    const fieldMap = new Map(
-      feedback.formDefinition.fields?.map((f) => [f.id, f.title ?? f.id]) ?? []
-    );
+        if (value === undefined || value === null) {
+          continue;
+        }
 
-    for (const [fieldId, value] of Object.entries(feedback.values)) {
-      const fieldTitle = fieldMap.get(fieldId) ?? fieldId;
-      let displayValue = String(value);
+        lines.push(`**${field.title}:**`);
 
-      if (typeof value === "object" && value !== null) {
-        displayValue = JSON.stringify(value, null, 2);
+        if (Array.isArray(value)) {
+          lines.push(value.join(", "));
+        } else if (
+          field.type === "ValueSelect" &&
+          field.selectableValues &&
+          typeof value === "string"
+        ) {
+          const selectedOption = field.selectableValues.find(
+            (opt) => opt.value === value
+          );
+          lines.push(selectedOption ? selectedOption.label : String(value));
+        } else if (typeof value === "object") {
+          lines.push(JSON.stringify(value, null, 2));
+        } else {
+          lines.push(String(value));
+        }
+
+        lines.push("");
       }
-
-      lines.push(`**${fieldTitle}:**`);
-      lines.push(displayValue);
-      lines.push("");
     }
   }
 

@@ -93,9 +93,8 @@ export type AshbyApplicationFeedbackListRequest = z.infer<
 export const AshbyFeedbackSubmissionSchema = z
   .object({
     id: z.string(),
-    createdAt: z.string(),
     submittedAt: z.string().optional().nullable(),
-    submittedBy: z
+    submittedByUser: z
       .object({
         id: z.string(),
         firstName: z.string(),
@@ -108,20 +107,39 @@ export const AshbyFeedbackSubmissionSchema = z
     interviewEventId: z.string().optional().nullable(),
     formDefinition: z
       .object({
-        id: z.string(),
-        title: z.string().optional(),
-        fields: z
+        sections: z
           .array(
             z.object({
-              id: z.string(),
-              title: z.string().optional(),
-              type: z.string(),
-            })
+              fields: z.array(
+                z.object({
+                  isRequired: z.boolean(),
+                  field: z.object({
+                    id: z.string(),
+                    type: z.string(),
+                    path: z.string(),
+                    title: z.string(),
+                    humanReadablePath: z.string().optional(),
+                    isNullable: z.boolean(),
+                    selectableValues: z
+                      .array(
+                        z.object({
+                          label: z.string(),
+                          value: z.string(),
+                        })
+                      )
+                      .optional(),
+                  }),
+                }),
+              ),
+            }),
           )
           .optional(),
       })
       .passthrough(),
-    values: z.record(z.unknown()).optional(),
+    submittedValues: z.record(z.unknown()).optional(),
+    feedbackFormDefinitionId: z.string().optional(),
+    applicationId: z.string().optional(),
+    applicationHistoryId: z.string().optional(),
   })
   .passthrough();
 
