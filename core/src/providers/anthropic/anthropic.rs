@@ -16,7 +16,7 @@ use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, P
 use crate::providers::tiktoken::tiktoken::anthropic_base_singleton;
 use crate::providers::tiktoken::tiktoken::{batch_tokenize_async, decode_async, encode_async};
 use crate::run::Credentials;
-use crate::types::tokenizer::TokenizerConfig;
+use crate::types::tokenizer::{TiktokenTokenizerBase, TokenizerConfig};
 use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -53,13 +53,13 @@ fn get_max_tokens(model_id: &str) -> u64 {
 }
 
 impl AnthropicLLM {
-    pub fn new(id: String) -> Self {
+    pub fn new(id: String, tokenizer: Option<TokenizerSingleton>) -> Self {
         Self {
             id,
             api_key: None,
             user_id: None,
             backend: Box::new(DirectAnthropicBackend::new()),
-            tokenizer: None,
+            tokenizer,
         }
     }
 
@@ -331,10 +331,6 @@ impl LLM for AnthropicLLM {
         } else {
             100000
         }
-    }
-
-    fn set_tokenizer_from_config(&mut self, config: TokenizerConfig) {
-        self.tokenizer = TokenizerSingleton::from_config(&config);
     }
 
     async fn generate(
@@ -666,7 +662,10 @@ impl Provider for AnthropicProvider {
             Err(anyhow!("User aborted Anthropic test."))?;
         }
 
-        let mut llm = self.llm(String::from("claude-4.5-haiku"));
+        let tokenizer = TokenizerSingleton::from_config(&TokenizerConfig::Tiktoken {
+            base: TiktokenTokenizerBase::AnthropicBase,
+        });
+        let mut llm = self.llm(String::from("claude-4.5-haiku"), tokenizer);
         llm.initialize(Credentials::new()).await?;
 
         let llm_generation = llm
@@ -697,8 +696,8 @@ impl Provider for AnthropicProvider {
         Ok(())
     }
 
-    fn llm(&self, id: String) -> Box<dyn LLM + Sync + Send> {
-        Box::new(AnthropicLLM::new(id))
+    fn llm(&self, id: String, tokenizer: Option<TokenizerSingleton>) -> Box<dyn LLM + Sync + Send> {
+        Box::new(AnthropicLLM::new(id, tokenizer))
     }
 
     fn embedder(&self, id: String) -> Box<dyn Embedder + Sync + Send> {

@@ -1,3 +1,4 @@
+use crate::providers::llm::TokenizerSingleton;
 use crate::providers::provider::{provider, ProviderID};
 use crate::run;
 use crate::types::tokenizer::TokenizerConfig;
@@ -16,7 +17,8 @@ pub struct TokenizePayload {
 }
 
 pub async fn tokenize(Json(payload): Json<TokenizePayload>) -> (StatusCode, Json<APIResponse>) {
-    let mut llm = provider(payload.provider_id).llm(payload.model_id);
+    let tokenizer = TokenizerSingleton::from_config(&payload.tokenizer);
+    let mut llm = provider(payload.provider_id).llm(payload.model_id, tokenizer);
 
     // If we received credentials we initialize the llm with them.
     match payload.credentials {
@@ -35,9 +37,6 @@ pub async fn tokenize(Json(payload): Json<TokenizePayload>) -> (StatusCode, Json
         }
         None => (),
     }
-
-    // Initialize the tokenizer from the config
-    llm.set_tokenizer_from_config(payload.tokenizer);
 
     match llm.tokenize(vec![payload.text]).await {
         Err(e) => error_response(
@@ -78,15 +77,13 @@ pub struct TokenizeBatchPayload {
 async fn tokenize_batch_internal(
     payload: TokenizeBatchPayload,
 ) -> Result<Vec<Vec<(usize, String)>>, anyhow::Error> {
-    let mut llm = provider(payload.provider_id).llm(payload.model_id);
+    let tokenizer = TokenizerSingleton::from_config(&payload.tokenizer);
+    let mut llm = provider(payload.provider_id).llm(payload.model_id, tokenizer);
 
     // If we received credentials we initialize the llm with them.
     if let Some(c) = payload.credentials {
         llm.initialize(c).await?;
     }
-
-    // Initialize the tokenizer from the config
-    llm.set_tokenizer_from_config(payload.tokenizer);
 
     llm.tokenize(payload.texts).await
 }

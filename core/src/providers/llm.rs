@@ -221,8 +221,6 @@ pub trait LLM {
 
     fn context_size(&self) -> usize;
 
-    fn set_tokenizer_from_config(&mut self, config: TokenizerConfig);
-
     async fn encode(&self, text: &str) -> Result<Vec<usize>>;
     async fn decode(&self, tokens: Vec<usize>) -> Result<String>;
     async fn tokenize(&self, texts: Vec<String>) -> Result<Vec<Vec<(usize, String)>>>;
@@ -358,7 +356,7 @@ impl LLMRequest {
         event_sender: Option<UnboundedSender<Value>>,
         run_id: String,
     ) -> Result<LLMGeneration> {
-        let mut llm = provider(self.provider_id).llm(self.model_id.clone());
+        let mut llm = provider(self.provider_id).llm(self.model_id.clone(), None);
         llm.initialize(credentials).await?;
 
         let out = with_retryable_back_off(
@@ -584,7 +582,7 @@ impl LLMChatRequest {
         event_sender: Option<UnboundedSender<Value>>,
         run_id: String,
     ) -> Result<LLMChatGeneration> {
-        let mut llm = provider(self.provider_id).llm(self.model_id.clone());
+        let mut llm = provider(self.provider_id).llm(self.model_id.clone(), None);
         llm.initialize(credentials).await?;
 
         let out = with_retryable_back_off(

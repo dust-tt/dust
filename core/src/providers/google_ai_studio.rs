@@ -40,8 +40,8 @@ impl Provider for GoogleAiStudioProvider {
         ))
     }
 
-    fn llm(&self, id: String) -> Box<dyn LLM + Sync + Send> {
-        Box::new(GoogleAiStudioLLM::new(id))
+    fn llm(&self, id: String, tokenizer: Option<TokenizerSingleton>) -> Box<dyn LLM + Sync + Send> {
+        Box::new(GoogleAiStudioLLM::new(id, tokenizer))
     }
 
     fn embedder(&self, _id: String) -> Box<dyn Embedder + Sync + Send> {
@@ -56,11 +56,11 @@ pub struct GoogleAiStudioLLM {
 }
 
 impl GoogleAiStudioLLM {
-    pub fn new(id: String) -> Self {
+    pub fn new(id: String, tokenizer: Option<TokenizerSingleton>) -> Self {
         Self {
             id,
             api_key: None,
-            tokenizer: None,
+            tokenizer,
         }
     }
 
@@ -89,9 +89,6 @@ impl LLM for GoogleAiStudioLLM {
         1_000_000
     }
 
-    fn set_tokenizer_from_config(&mut self, config: crate::types::tokenizer::TokenizerConfig) {
-        self.tokenizer = TokenizerSingleton::from_config(&config);
-    }
 
     async fn encode(&self, text: &str) -> Result<Vec<usize>> {
         self.tokenizer

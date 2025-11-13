@@ -6,10 +6,11 @@ use crate::providers::llm::Tokens;
 use crate::providers::llm::{LLMChatGeneration, LLMGeneration, LLMTokenUsage, LLM};
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::{
-    batch_tokenize_async, cl100k_base_singleton, p50k_base_singleton, r50k_base_singleton, CoreBPE,
+    batch_tokenize_async, cl100k_base_singleton, r50k_base_singleton, CoreBPE,
 };
 use crate::providers::tiktoken::tiktoken::{decode_async, encode_async};
 use crate::run::Credentials;
+use crate::types::tokenizer::{TokenizerConfig, TiktokenTokenizerBase};
 use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -696,13 +697,13 @@ pub struct OpenAILLM {
 }
 
 impl OpenAILLM {
-    pub fn new(id: String) -> Self {
+    pub fn new(id: String, tokenizer: Option<TokenizerSingleton>) -> Self {
         OpenAILLM {
             id,
             host: None,
             use_eu_endpoint: false,
             api_key: None,
-            tokenizer: None,
+            tokenizer,
         }
     }
 
@@ -807,17 +808,6 @@ impl LLM for OpenAILLM {
         Self::openai_context_size(self.id.as_str())
     }
 
-    fn set_tokenizer_from_config(&mut self, config: crate::types::tokenizer::TokenizerConfig) {
-        self.tokenizer = match self.id.as_str() {
-            "code_davinci-002" | "code-cushman-001" => {
-                Some(TokenizerSingleton::Tiktoken(p50k_base_singleton()))
-            }
-            "text-davinci-002" | "text-davinci-003" => {
-                Some(TokenizerSingleton::Tiktoken(p50k_base_singleton()))
-            }
-            _ => TokenizerSingleton::from_config(&config),
-        };
-    }
 
     async fn encode(&self, text: &str) -> Result<Vec<usize>> {
         self.tokenizer
@@ -1368,7 +1358,10 @@ impl Provider for OpenAIProvider {
             Err(anyhow!("User aborted OpenAI test."))?;
         }
 
-        let mut llm = self.llm(String::from("text-ada-001"));
+        let tokenizer = TokenizerSingleton::from_config(&TokenizerConfig::Tiktoken {
+            base: TiktokenTokenizerBase::Cl100kBase,
+        });
+        let mut llm = self.llm(String::from("text-ada-001"), tokenizer);
         llm.initialize(Credentials::new()).await?;
 
         let _ = llm
@@ -1392,8 +1385,8 @@ impl Provider for OpenAIProvider {
         Ok(())
     }
 
-    fn llm(&self, id: String) -> Box<dyn LLM + Sync + Send> {
-        Box::new(OpenAILLM::new(id))
+    fn llm(&self, id: String, tokenizer: Option<TokenizerSingleton>) -> Box<dyn LLM + Sync + Send> {
+        Box::new(OpenAILLM::new(id, tokenizer))
     }
 
     fn embedder(&self, id: String) -> Box<dyn Embedder + Sync + Send> {

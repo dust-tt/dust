@@ -9,7 +9,7 @@ use crate::providers::openai::streamed_completion;
 use crate::providers::openai::{completion, REMAINING_TOKENS_MARGIN};
 use crate::providers::provider::{Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::{batch_tokenize_async, decode_async, encode_async};
-use crate::providers::tiktoken::tiktoken::{cl100k_base_singleton, p50k_base_singleton, CoreBPE};
+use crate::providers::tiktoken::tiktoken::{cl100k_base_singleton, CoreBPE};
 use crate::run::Credentials;
 use crate::utils;
 use anyhow::{anyhow, Result};
@@ -123,13 +123,13 @@ pub struct AzureOpenAILLM {
 }
 
 impl AzureOpenAILLM {
-    pub fn new(deployment_id: String) -> Self {
+    pub fn new(deployment_id: String, tokenizer: Option<TokenizerSingleton>) -> Self {
         AzureOpenAILLM {
             deployment_id,
             model_id: None,
             endpoint: None,
             api_key: None,
-            tokenizer: None,
+            tokenizer,
         }
     }
 
@@ -212,16 +212,6 @@ impl LLM for AzureOpenAILLM {
         }
     }
 
-    fn set_tokenizer_from_config(&mut self, config: crate::types::tokenizer::TokenizerConfig) {
-        self.tokenizer = match self.model_id.as_ref() {
-            Some(model_id) => match model_id.as_str() {
-                "code_davinci-002" | "code-cushman-001" | "text-davinci-002"
-                | "text-davinci-003" => Some(TokenizerSingleton::Tiktoken(p50k_base_singleton())),
-                _ => TokenizerSingleton::from_config(&config),
-            },
-            None => TokenizerSingleton::from_config(&config),
-        };
-    }
 
     async fn encode(&self, text: &str) -> Result<Vec<usize>> {
         self.tokenizer
@@ -720,8 +710,8 @@ impl Provider for AzureOpenAIProvider {
         Ok(())
     }
 
-    fn llm(&self, id: String) -> Box<dyn LLM + Sync + Send> {
-        Box::new(AzureOpenAILLM::new(id))
+    fn llm(&self, id: String, tokenizer: Option<TokenizerSingleton>) -> Box<dyn LLM + Sync + Send> {
+        Box::new(AzureOpenAILLM::new(id, tokenizer))
     }
 
     fn embedder(&self, id: String) -> Box<dyn Embedder + Sync + Send> {

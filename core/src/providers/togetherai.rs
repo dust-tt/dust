@@ -5,6 +5,7 @@ use crate::providers::llm::TokenizerSingleton;
 use crate::providers::llm::{LLMChatGeneration, LLMGeneration, LLM};
 use crate::providers::provider::{Provider, ProviderID};
 use crate::run::Credentials;
+use crate::types::tokenizer::{TokenizerConfig, TiktokenTokenizerBase};
 use crate::utils;
 
 use anyhow::{anyhow, Result};
@@ -35,10 +36,10 @@ pub struct TogetherAILLM {
 }
 
 impl TogetherAILLM {
-    pub fn new(id: String) -> Self {
+    pub fn new(id: String, tokenizer: Option<TokenizerSingleton>) -> Self {
         TogetherAILLM {
             id,
-            tokenizer: None,
+            tokenizer,
             api_key: None,
         }
     }
@@ -82,9 +83,6 @@ impl LLM for TogetherAILLM {
         Self::togetherai_context_size(self.id.as_str())
     }
 
-    fn set_tokenizer_from_config(&mut self, config: crate::types::tokenizer::TokenizerConfig) {
-        self.tokenizer = TokenizerSingleton::from_config(&config);
-    }
 
     async fn encode(&self, text: &str) -> Result<Vec<usize>> {
         self.tokenizer
@@ -229,7 +227,10 @@ impl Provider for TogetherAIProvider {
             Err(anyhow!("User aborted OpenAI test."))?;
         }
 
-        let mut llm = self.llm(String::from("meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo"));
+        let tokenizer = TokenizerSingleton::from_config(&TokenizerConfig::Tiktoken {
+            base: TiktokenTokenizerBase::O200kBase,
+        });
+        let mut llm = self.llm(String::from("meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo"), tokenizer);
         llm.initialize(Credentials::new()).await?;
 
         let _ = llm
@@ -253,8 +254,8 @@ impl Provider for TogetherAIProvider {
         Ok(())
     }
 
-    fn llm(&self, id: String) -> Box<dyn LLM + Sync + Send> {
-        Box::new(TogetherAILLM::new(id))
+    fn llm(&self, id: String, tokenizer: Option<TokenizerSingleton>) -> Box<dyn LLM + Sync + Send> {
+        Box::new(TogetherAILLM::new(id, tokenizer))
     }
 
     fn embedder(&self, _id: String) -> Box<dyn Embedder + Sync + Send> {

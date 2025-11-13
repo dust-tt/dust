@@ -5,6 +5,7 @@ use crate::providers::llm::TokenizerSingleton;
 use crate::providers::llm::{LLMChatGeneration, LLMGeneration, LLM};
 use crate::providers::provider::{Provider, ProviderID};
 use crate::run::Credentials;
+use crate::types::tokenizer::{TokenizerConfig, TiktokenTokenizerBase};
 use crate::utils;
 
 use anyhow::{anyhow, Result};
@@ -24,10 +25,10 @@ pub struct XaiLLM {
 }
 
 impl XaiLLM {
-    pub fn new(id: String) -> Self {
+    pub fn new(id: String, tokenizer: Option<TokenizerSingleton>) -> Self {
         XaiLLM {
             id,
-            tokenizer: None,
+            tokenizer,
             api_key: None,
         }
     }
@@ -68,9 +69,6 @@ impl LLM for XaiLLM {
         Self::xai_context_size(self.id.as_str())
     }
 
-    fn set_tokenizer_from_config(&mut self, config: crate::types::tokenizer::TokenizerConfig) {
-        self.tokenizer = TokenizerSingleton::from_config(&config);
-    }
 
     async fn encode(&self, text: &str) -> Result<Vec<usize>> {
         self.tokenizer
@@ -198,7 +196,10 @@ impl Provider for XaiProvider {
             Err(anyhow!("User aborted xAI test."))?;
         }
 
-        let mut llm = self.llm(String::from("grok-3-mini-beta"));
+        let tokenizer = TokenizerSingleton::from_config(&TokenizerConfig::Tiktoken {
+            base: TiktokenTokenizerBase::O200kBase,
+        });
+        let mut llm = self.llm(String::from("grok-3-mini-beta"), tokenizer);
         llm.initialize(Credentials::new()).await?;
 
         let messages = vec![
@@ -239,8 +240,8 @@ impl Provider for XaiProvider {
         Ok(())
     }
 
-    fn llm(&self, id: String) -> Box<dyn LLM + Sync + Send> {
-        Box::new(XaiLLM::new(id))
+    fn llm(&self, id: String, tokenizer: Option<TokenizerSingleton>) -> Box<dyn LLM + Sync + Send> {
+        Box::new(XaiLLM::new(id, tokenizer))
     }
 
     fn embedder(&self, _id: String) -> Box<dyn Embedder + Sync + Send> {

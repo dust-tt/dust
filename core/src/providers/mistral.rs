@@ -10,10 +10,10 @@ use crate::providers::llm::{
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 use crate::providers::sentencepiece::sentencepiece::{
     batch_tokenize_async, decode_async, encode_async,
-    mistral_instruct_tokenizer_240216_model_v3_base_singleton,
     mistral_tokenizer_model_v1_base_singleton,
 };
 use crate::run::Credentials;
+use crate::types::tokenizer::{TokenizerConfig, SentencePieceTokenizerBase};
 use crate::utils::{self, now, ParseError};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -424,11 +424,11 @@ pub struct MistralAILLM {
 }
 
 impl MistralAILLM {
-    pub fn new(id: String) -> Self {
+    pub fn new(id: String, tokenizer: Option<TokenizerSingleton>) -> Self {
         MistralAILLM {
             id,
             api_key: None,
-            tokenizer: None,
+            tokenizer,
         }
     }
 
@@ -915,22 +915,6 @@ impl LLM for MistralAILLM {
         return 32768;
     }
 
-    fn set_tokenizer_from_config(&mut self, config: crate::types::tokenizer::TokenizerConfig) {
-        if self.id.starts_with("mistral-tiny")
-            || self.id.starts_with("open-mistral-7b")
-            || self.id.starts_with("open-mixtral-8x7b")
-        {
-            self.tokenizer = Some(TokenizerSingleton::SentencePiece(
-                mistral_tokenizer_model_v1_base_singleton(),
-            ));
-        } else if self.id.starts_with("open-mixtral-8x22b") {
-            self.tokenizer = Some(TokenizerSingleton::SentencePiece(
-                mistral_instruct_tokenizer_240216_model_v3_base_singleton(),
-            ));
-        } else {
-            self.tokenizer = TokenizerSingleton::from_config(&config);
-        }
-    }
 
     async fn encode(&self, text: &str) -> Result<Vec<usize>> {
         self.tokenizer
@@ -1329,7 +1313,10 @@ impl Provider for MistralProvider {
             Err(anyhow!("User aborted Mistral AI test."))?;
         }
 
-        let mut llm = self.llm(String::from("mistral-tiny"));
+        let tokenizer = TokenizerSingleton::from_config(&TokenizerConfig::SentencePiece {
+            base: SentencePieceTokenizerBase::ModelV1,
+        });
+        let mut llm = self.llm(String::from("mistral-tiny"), tokenizer);
         llm.initialize(Credentials::new()).await?;
 
         let _ = llm
@@ -1355,8 +1342,8 @@ impl Provider for MistralProvider {
         Ok(())
     }
 
-    fn llm(&self, id: String) -> Box<dyn LLM + Sync + Send> {
-        Box::new(MistralAILLM::new(id))
+    fn llm(&self, id: String, tokenizer: Option<TokenizerSingleton>) -> Box<dyn LLM + Sync + Send> {
+        Box::new(MistralAILLM::new(id, tokenizer))
     }
 
     fn embedder(&self, id: String) -> Box<dyn Embedder + Sync + Send> {
