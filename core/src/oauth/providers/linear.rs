@@ -67,7 +67,6 @@ impl Provider for LinearConnectionProvider {
                 None => Err(anyhow!("Invalid `expires_in` in response from Linear"))?,
             },
             _ => {
-                // Default to 24 hours (86400 seconds) if not provided for older Linear OAuth apps
                 86400
             }
         };
@@ -75,8 +74,7 @@ impl Provider for LinearConnectionProvider {
         let refresh_token = match raw_json["refresh_token"].as_str() {
             Some(token) => Some(token.to_string()),
             None => {
-                // Refresh tokens are optional for older Linear OAuth apps created before Oct 1, 2025
-                None
+                None => Err(anyhow!("Missing `refresh_token` in response from Linear"))?,
             }
         };
 
