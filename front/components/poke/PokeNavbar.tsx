@@ -112,10 +112,6 @@ export function PokeSearchCommand() {
               </div>
               <div className="space-y-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
                 <div>
-                  <span className="font-medium">Workspace name:</span>{" "}
-                  <span className="font-mono">acme</span>
-                </div>
-                <div>
                   <span className="font-medium">Workspace ID:</span>{" "}
                   <span className="font-mono">123456</span>
                 </div>
