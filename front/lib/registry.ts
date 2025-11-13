@@ -205,20 +205,6 @@ export const BaseDustProdActionRegistry = {
       },
     },
   },
-  "assistant-builder-webhook-filter-generator": {
-    app: {
-      appId: "XNcJCE7lUj",
-      appHash:
-        "257965e90775f1ad81975aa4a5b5b6169338c79561432cfa7f4e4e13fd8bc0cf",
-    },
-    config: {
-      CREATE_FILTER: {
-        function_call: "set_filter",
-        use_cache: false,
-        use_stream: true,
-      },
-    },
-  },
 };
 
 export type DustRegistryActionName = keyof typeof BaseDustProdActionRegistry;
