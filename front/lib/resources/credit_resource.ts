@@ -4,6 +4,7 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
+import { Op, literal } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -65,11 +66,12 @@ export class CreditResource extends BaseResource<CreditModel> {
   static async listActive(auth: Authenticator) {
     // Non-expired or no expiration, with remainingAmount > 0
     const now = new Date();
-    return this.baseFetch(auth).then((rows) =>
-      rows.filter(
-        (r) => r.remainingAmount > 0 && (!r.expirationDate || r.expirationDate > now)
-      )
-    );
+    return this.baseFetch(auth, {
+      where: {
+        remainingAmount: { [Op.gt]: 0 } as any,
+        [Op.or]: [{ expirationDate: null }, { expirationDate: { [Op.gt]: now } }],
+      } as any,
+    });
   }
 
   static async fetchByIds(auth: Authenticator, ids: string[]) {
@@ -83,30 +85,29 @@ export class CreditResource extends BaseResource<CreditModel> {
     return row ?? null;
   }
 
-  async topUp(amountInCents: number, { transaction }: { transaction?: Transaction } = {}) {
-    // Increase both remaining and initial (initial tracks granted amount for this credit line)
-    const [count] = await this.update(
-      {
-        initialAmount: (this.initialAmount ?? 0) + amountInCents,
-        remainingAmount: (this.remainingAmount ?? 0) + amountInCents,
-      },
-      transaction
-    );
-    return count;
-  }
-
   async consume(amountInCents: number, { transaction }: { transaction?: Transaction } = {}) {
     if (amountInCents < 0) {
       return new Err(new Error("Amount to consume must be positive."));
     }
-    if (this.remainingAmount < amountInCents) {
-      return new Err(new Error("Insufficient credit on this line."));
-    }
     try {
-      await this.update(
-        { remainingAmount: this.remainingAmount - amountInCents },
-        transaction
+      // Atomic decrement guarded by remainingAmount >= amountInCents to prevent double spending.
+      const [affected] = await this.model.update(
+        { remainingAmount: literal(`"remainingAmount" - ${amountInCents}`) as any },
+        {
+          where: {
+            id: this.id,
+            // extra guard by workspace for tenant safety
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            workspaceId: (this as any).workspaceId,
+            remainingAmount: { [Op.gte]: amountInCents } as any,
+          },
+          transaction,
+        }
       );
+
+      if (affected !== 1) {
+        return new Err(new Error("Insufficient credit on this line."));
+      }
       return new Ok(undefined);
     } catch (e) {
       return new Err(normalizeError(e));
