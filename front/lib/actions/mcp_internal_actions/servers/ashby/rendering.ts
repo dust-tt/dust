@@ -48,22 +48,8 @@ export function renderReportInfo(
   );
 }
 
-export function renderInterviewFeedbackRecap(
-  candidate: AshbyCandidate,
-  feedback: AshbyFeedbackSubmission
-): string {
-  const lines = [
-    "# Interview Feedback",
-    "",
-    `**Candidate:** ${candidate.name}`,
-    `**Candidate ID:** ${candidate.id}`,
-  ];
-
-  if (candidate.primaryEmailAddress) {
-    lines.push(`**Email:** ${candidate.primaryEmailAddress.value}`);
-  }
-
-  lines.push("", "---", "");
+function renderSingleFeedback(feedback: AshbyFeedbackSubmission): string {
+  const lines = [];
 
   if (feedback.submittedByUser) {
     lines.push(
@@ -71,7 +57,13 @@ export function renderInterviewFeedbackRecap(
     );
   }
 
-  lines.push("", "## Feedback", "");
+  if (feedback.submittedAt) {
+    lines.push(
+      `**Submitted at:** ${new Date(feedback.submittedAt).toISOString()}`
+    );
+  }
+
+  lines.push("");
 
   if (feedback.submittedValues && feedback.formDefinition.sections) {
     for (const section of feedback.formDefinition.sections) {
@@ -108,4 +100,36 @@ export function renderInterviewFeedbackRecap(
   }
 
   return lines.join("\n");
+}
+
+export function renderInterviewFeedbackRecap(
+  candidate: AshbyCandidate,
+  allFeedback: AshbyFeedbackSubmission[]
+): string {
+  const header = [
+    "# Interview Feedback Summary",
+    "",
+    `**Candidate:** ${candidate.name}`,
+    `**Candidate ID:** ${candidate.id}`,
+  ];
+
+  if (candidate.primaryEmailAddress) {
+    header.push(`**Email:** ${candidate.primaryEmailAddress.value}`);
+  }
+
+  header.push(
+    "",
+    `**Total Feedback:** ${allFeedback.length}`,
+    "",
+    "=".repeat(80),
+    ""
+  );
+
+  const feedbackTexts = allFeedback.map((feedback) =>
+    renderSingleFeedback(feedback)
+  );
+
+  return (
+    header.join("\n") + feedbackTexts.join("\n\n" + "=".repeat(80) + "\n\n")
+  );
 }

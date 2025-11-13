@@ -329,14 +329,12 @@ function createServer(
           return dateB.getTime() - dateA.getTime();
         });
 
-        const feedbackTexts = allFeedback.map((feedback) =>
-          renderInterviewFeedbackRecap(candidate, feedback)
-        );
+        const recapText = renderInterviewFeedbackRecap(candidate, allFeedback);
 
         return new Ok([
           {
             type: "text" as const,
-            text: feedbackTexts.join("\n\n" + "=".repeat(80) + "\n\n"),
+            text: recapText,
           },
         ]);
       }
