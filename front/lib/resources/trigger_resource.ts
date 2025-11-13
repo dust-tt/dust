@@ -64,9 +64,12 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     });
 
     const resource = new this(TriggerModel, trigger.get());
-    const r = await resource.upsertTemporalWorkflow(auth);
-    if (r.isErr()) {
-      return r;
+
+    if (resource.enabled) {
+      const r = await resource.upsertTemporalWorkflow(auth);
+      if (r.isErr()) {
+        return r;
+      }
     }
 
     return new Ok(resource);
@@ -191,9 +194,17 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }
 
     await trigger.update(blob, transaction);
-    const r = await trigger.upsertTemporalWorkflow(auth);
-    if (r.isErr()) {
-      return r;
+
+    if (trigger.enabled) {
+      const r = await trigger.upsertTemporalWorkflow(auth);
+      if (r.isErr()) {
+        return r;
+      }
+    } else {
+      const r = await trigger.removeTemporalWorkflow(auth);
+      if (r.isErr()) {
+        return r;
+      }
     }
 
     return new Ok(trigger);
