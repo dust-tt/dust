@@ -195,15 +195,17 @@ export class TriggerResource extends BaseResource<TriggerModel> {
 
     await trigger.update(blob, transaction);
 
-    let r: Result<undefined, Error>;
     if (trigger.enabled) {
-      r = await trigger.enable(auth);
+      const r = await trigger.upsertTemporalWorkflow(auth);
+      if (r.isErr()) {
+        return r;
+      }
     } else {
-      r = await trigger.disable(auth);
-    }
-
-    if (r.isErr()) {
-      return r;
+      const r = await trigger.removeTemporalWorkflow(auth);
+      if (r.isErr()) {
+        return r;
+      }
+      g;
     }
 
     return new Ok(trigger);
