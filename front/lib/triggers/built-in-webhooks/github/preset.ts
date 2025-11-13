@@ -1,6 +1,5 @@
 import { CreateWebhookGithubConnection } from "@app/lib/triggers/built-in-webhooks/github/components/CreateWebhookGithubConnection";
 import { WebhookSourceGithubDetails } from "@app/lib/triggers/built-in-webhooks/github/components/WebhookSourceGithubDetails";
-import { GitHubWebhookService } from "@app/lib/triggers/built-in-webhooks/github/service";
 import {
   issueExample,
   issueSchema,
@@ -9,6 +8,7 @@ import {
   pullRequestExample,
   pullRequestSchema,
 } from "@app/lib/triggers/built-in-webhooks/github/schemas/pull_request";
+import { GitHubWebhookService } from "@app/lib/triggers/built-in-webhooks/github/service";
 import type {
   PresetWebhook,
   WebhookEvent,

@@ -5,8 +5,8 @@ import type {
   InternalAllowedIconType,
 } from "@app/components/resources/resources_icons";
 import { FATHOM_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/fathom/fathom_webhook_source_presets";
-import type { GithubAdditionalData } from "@app/lib/triggers/built-in-webhooks/github/types";
 import { GITHUB_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/github/preset";
+import type { GithubAdditionalData } from "@app/lib/triggers/built-in-webhooks/github/types";
 import type { JiraAdditionalData } from "@app/lib/triggers/built-in-webhooks/jira/jira_api_types";
 import { JIRA_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/jira/preset";
 import { ZENDESK_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/zendesk/preset";
