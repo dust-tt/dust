@@ -43,7 +43,7 @@ function createServer(
 
   server.tool(
     "search_candidates",
-    "Search for candidates in Ashby ATS by name and/or email. " +
+    "Search for candidates by name and/or email. " +
       `Returns up to ${DEFAULT_SEARCH_LIMIT} matching candidates by default.`,
     CandidateSearchInputSchema.shape,
     withToolLogging(
@@ -118,7 +118,7 @@ function createServer(
 
   server.tool(
     "get_report_data",
-    "Retrieve report data from Ashby ATS synchronously and save as a CSV file.",
+    "Retrieve report data and save it as a CSV file.",
     {
       reportUrl: z
         .string()
