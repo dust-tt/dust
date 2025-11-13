@@ -635,7 +635,6 @@ export type RetrievalDocumentPublicType = z.infer<
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "advanced_notion_management"
   | "agent_builder_instructions_autocomplete"
-  | "agent_builder_observability"
   | "agent_management_tool"
   | "agent_to_yaml"
   | "anthropic_vertex_fallback"
