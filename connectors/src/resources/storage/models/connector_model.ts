@@ -12,6 +12,12 @@ import type {
 export interface ConnectorMetadata {
   rateLimited?: { at: Date } | null;
   tenantId?: string;
+  selectedSites?: Array<{
+    siteId: string;
+    internalId: string;
+    displayName?: string | null;
+    webUrl?: string | null;
+  }>;
 }
 
 export class ConnectorModel extends BaseModel<ConnectorModel> {
