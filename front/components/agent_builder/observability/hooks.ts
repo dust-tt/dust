@@ -228,7 +228,7 @@ export function useToolUsageData(params: {
         filterVersion
           ? "No tool execution data for the selected version."
           : "No tool execution data available for this period.",
-        `Shows the relative usage frequency (%) of the top ${MAX_TOOLS_DISPLAYED} tools for each agent version.`,
+        `Usage frequency of tools for each agent version.`,
         isLoading,
         errorMessage
       );
@@ -239,14 +239,14 @@ export function useToolUsageData(params: {
       const normalizedData = normalizeStepData(rawData);
       const isLoading = step.isToolStepIndexLoading;
       const errorMessage = step.isToolStepIndexError
-        ? "Failed to load step index distribution."
+        ? "Failed to load step distribution."
         : undefined;
 
       return processToolUsageData(
         normalizedData,
         "Step",
-        "No tool usage by step index for this period.",
-        `Shows relative usage (%) of top ${MAX_TOOLS_DISPLAYED} tools per step index within a message.`,
+        "No tool usage by step for this period.",
+        `Usage tools per step within a message.`,
         isLoading,
         errorMessage
       );

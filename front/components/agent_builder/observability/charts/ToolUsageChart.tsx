@@ -81,7 +81,7 @@ export function ToolUsageChart({
 
   return (
     <ChartContainer
-      title="Tool Usage"
+      title="Tools"
       description={legendDescription}
       isLoading={isLoading}
       errorMessage={errorMessage}

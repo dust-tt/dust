@@ -105,7 +105,7 @@ export function AgentObservability({
         )}
       </TabContentChildSectionLayout>
 
-      <TabContentChildSectionLayout title="Charts">
+      <TabContentChildSectionLayout title="Details">
         <UsageMetricsChart
           workspaceId={workspaceId}
           agentConfigurationId={agentConfigurationId}

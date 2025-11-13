@@ -150,8 +150,8 @@ export function UsageMetricsChart({
 
   return (
     <ChartContainer
-      title="Usage Metrics"
-      description="Daily totals of messages, conversations, and active users."
+      title="Activity"
+      description="Messages, conversations, and active users."
       isLoading={isUsageMetricsLoading}
       errorMessage={
         isUsageMetricsError ? "Failed to load observability data." : undefined
@@ -237,7 +237,11 @@ export function UsageMetricsChart({
           />
           {/* Areas for each usage metric */}
           <Line
-            type="monotone"
+            type={
+              mode === "version" || period === 7 || period === 14
+                ? "linear"
+                : "monotone"
+            }
             dataKey="messages"
             name="Messages"
             className={USAGE_METRICS_PALETTE.messages}
@@ -245,7 +249,11 @@ export function UsageMetricsChart({
             dot={false}
           />
           <Line
-            type="monotone"
+            type={
+              mode === "version" || period === 7 || period === 14
+                ? "linear"
+                : "monotone"
+            }
             dataKey="conversations"
             name="Conversations"
             className={USAGE_METRICS_PALETTE.conversations}
@@ -253,7 +261,11 @@ export function UsageMetricsChart({
             dot={false}
           />
           <Line
-            type="monotone"
+            type={
+              mode === "version" || period === 7 || period === 14
+                ? "linear"
+                : "monotone"
+            }
             dataKey="activeUsers"
             name="Active users"
             className={USAGE_METRICS_PALETTE.activeUsers}
