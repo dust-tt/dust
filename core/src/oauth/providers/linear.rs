@@ -16,8 +16,7 @@ use std::env;
 
 lazy_static! {
     static ref OAUTH_LINEAR_CLIENT_ID: String = env::var("OAUTH_LINEAR_CLIENT_ID").unwrap();
-    static ref OAUTH_LINEAR_CLIENT_SECRET: String =
-        env::var("OAUTH_LINEAR_CLIENT_SECRET").unwrap();
+    static ref OAUTH_LINEAR_CLIENT_SECRET: String = env::var("OAUTH_LINEAR_CLIENT_SECRET").unwrap();
 }
 
 pub struct LinearConnectionProvider {}
