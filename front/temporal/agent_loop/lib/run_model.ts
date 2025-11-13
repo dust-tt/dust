@@ -461,6 +461,7 @@ export async function runModelActivity(
       model,
       publishAgentError,
       prompt,
+      updateResourceAndPublishEvent,
     });
   } else {
     if (userMessage.rank === 0) {
@@ -488,6 +489,7 @@ export async function runModelActivity(
       publishAgentError,
       prompt,
       llm,
+      updateResourceAndPublishEvent,
     });
   }
 

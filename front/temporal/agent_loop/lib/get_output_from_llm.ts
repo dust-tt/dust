@@ -4,7 +4,6 @@ import type { LLM } from "@app/lib/api/llm/llm";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import type {
   GetOutputRequestParams,
   GetOutputResponse,
@@ -27,6 +26,7 @@ export async function getOutputFromLLMStream(
     model,
     prompt,
     llm,
+    updateResourceAndPublishEvent,
   }: GetOutputRequestParams & { llm: LLM }
 ): Promise<GetOutputResponse> {
   const events = llm.stream({
