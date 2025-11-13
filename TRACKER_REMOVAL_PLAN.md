@@ -1,7 +1,8 @@
 # Trackers Feature Removal Plan
 
-**Date Created:** 2025-11-04
-**Branch:** `claude/remove-trackers-feature-011CUoXitSPm2L5qsr7Q3Pzd`
+**Date Created:** 2025-11-04  
+**Last Updated:** 2025-11-13
+**Branch:** `claude/remove-trackers-ui-011CUoXitSPm2L5qsr7Q3Pzd`
 
 ---
 
@@ -23,7 +24,24 @@ This document provides a complete, step-by-step plan to remove the "trackers" fe
 - [ ] Backup production database (if applicable)
 - [ ] Stop all running Temporal workflows for trackers
 - [ ] Notify stakeholders (Henry or eng oncall per feature flag comment)
-- [ ] Create feature branch: `claude/remove-trackers-feature-011CUoXitSPm2L5qsr7Q3Pzd`
+- [ ] Create feature branch: `claude/remove-trackers-ui-011CUoXitSPm2L5qsr7Q3Pzd`
+
+---
+
+## Status Snapshot (vs origin/main)
+
+Use this to quickly see what’s already removed on this branch.
+
+Verification command:
+
+```
+git fetch origin --prune
+git diff --name-status origin/main...HEAD | sort
+```
+
+Summary as of 2025-11-13:
+- Frontend UI and pages for trackers have been removed (files deleted) and the Poke page no longer renders the Trackers tab.
+- API routes, SWR hooks, resources/models, Temporal code, feature flag, and types are still present.
 
 ---
 
@@ -49,24 +67,26 @@ This document provides a complete, step-by-step plan to remove the "trackers" fe
 
 ### Delete Component Files
 
-- [ ] `/home/user/dust/front/components/trackers/TrackerBuilder.tsx`
-- [ ] `/home/user/dust/front/components/trackers/TrackerBuilderDataSourceModal.tsx`
-- [ ] `/home/user/dust/front/components/trackers/TrackerDataSourceSelectedTree.tsx`
-- [ ] `/home/user/dust/front/components/poke/trackers/columns.tsx`
-- [ ] `/home/user/dust/front/components/poke/trackers/table.tsx`
+- [x] `front/components/trackers/TrackerBuilder.tsx`
+- [x] `front/components/trackers/TrackerBuilderDataSourceModal.tsx`
+- [x] `front/components/trackers/TrackerDataSourceSelectedTree.tsx`
+- [x] `front/components/poke/trackers/columns.tsx`
+- [x] `front/components/poke/trackers/table.tsx`
 
-**Action:** Delete entire `/home/user/dust/front/components/trackers/` directory
-**Action:** Delete entire `/home/user/dust/front/components/poke/trackers/` directory
+**Action:** Delete entire `front/components/trackers/` directory
+**Action:** Delete entire `front/components/poke/trackers/` directory
 
 ### Delete Page Files
 
-- [ ] `/home/user/dust/front/pages/w/[wId]/labs/trackers/index.tsx` (list trackers)
-- [ ] `/home/user/dust/front/pages/w/[wId]/labs/trackers/new.tsx` (create tracker)
-- [ ] `/home/user/dust/front/pages/w/[wId]/labs/trackers/[tId]/index.tsx` (edit tracker)
-- [ ] `/home/user/dust/front/pages/poke/[wId]/trackers/[tId]/index.tsx` (admin view)
+- [x] `front/pages/w/[wId]/labs/trackers/index.tsx` (list trackers)
 
-**Action:** Delete entire `/home/user/dust/front/pages/w/[wId]/labs/trackers/` directory
-**Action:** Delete entire `/home/user/dust/front/pages/poke/[wId]/trackers/` directory
+Note: The Poke workspace page `front/pages/poke/[wId]/index.tsx` was updated to remove the Trackers tab and import.
+- [x] `front/pages/w/[wId]/labs/trackers/new.tsx` (create tracker)
+- [x] `front/pages/w/[wId]/labs/trackers/[tId]/index.tsx` (edit tracker)
+- [x] `front/pages/poke/[wId]/trackers/[tId]/index.tsx` (admin view)
+
+**Action:** Delete entire `front/pages/w/[wId]/labs/trackers/` directory
+**Action:** Delete entire `front/pages/poke/[wId]/trackers/` directory
 
 ---
 
@@ -74,20 +94,20 @@ This document provides a complete, step-by-step plan to remove the "trackers" fe
 
 ### Delete API Endpoint Files
 
-- [ ] `/home/user/dust/front/pages/api/w/[wId]/spaces/[spaceId]/trackers/index.ts`
+- [ ] `front/pages/api/w/[wId]/spaces/[spaceId]/trackers/index.ts`
   - **Methods:** GET (list trackers), POST (create tracker)
 
-- [ ] `/home/user/dust/front/pages/api/w/[wId]/spaces/[spaceId]/trackers/[tId]/index.ts`
+- [ ] `front/pages/api/w/[wId]/spaces/[spaceId]/trackers/[tId]/index.ts`
   - **Methods:** PATCH (update tracker), DELETE (delete tracker)
 
-- [ ] `/home/user/dust/front/pages/api/poke/workspaces/[wId]/trackers/index.ts`
+- [ ] `front/pages/api/poke/workspaces/[wId]/trackers/index.ts`
   - **Methods:** Admin list trackers
 
-- [ ] `/home/user/dust/front/pages/api/poke/workspaces/[wId]/trackers/[tId].ts`
+- [ ] `front/pages/api/poke/workspaces/[wId]/trackers/[tId].ts`
   - **Methods:** Admin view tracker
 
-**Action:** Delete entire `/home/user/dust/front/pages/api/w/[wId]/spaces/[spaceId]/trackers/` directory
-**Action:** Delete entire `/home/user/dust/front/pages/api/poke/workspaces/[wId]/trackers/` directory
+**Action:** Delete entire `front/pages/api/w/[wId]/spaces/[spaceId]/trackers/` directory
+**Action:** Delete entire `front/pages/api/poke/workspaces/[wId]/trackers/` directory
 
 ---
 
@@ -95,24 +115,24 @@ This document provides a complete, step-by-step plan to remove the "trackers" fe
 
 ### Delete Document Upsert Hook Files
 
-- [ ] `/home/user/dust/front/lib/document_upsert_hooks/hooks/tracker/index.ts`
+- [ ] `front/lib/document_upsert_hooks/hooks/tracker/index.ts`
   - **Contains:** `trackerUpsertHook` registration
 
-- [ ] `/home/user/dust/front/lib/document_upsert_hooks/hooks/tracker/actions/doc_tracker_retrieval.ts`
+- [ ] `front/lib/document_upsert_hooks/hooks/tracker/actions/doc_tracker_retrieval.ts`
   - **Contains:** `callDocTrackerRetrievalAction()` - semantic search in maintained scope
 
-- [ ] `/home/user/dust/front/lib/document_upsert_hooks/hooks/tracker/actions/doc_tracker_score_docs.ts`
+- [ ] `front/lib/document_upsert_hooks/hooks/tracker/actions/doc_tracker_score_docs.ts`
   - **Contains:** `callDocTrackerScoreDocsAction()` - relevance scoring
 
-- [ ] `/home/user/dust/front/lib/document_upsert_hooks/hooks/tracker/actions/doc_tracker_suggest_changes.ts`
+- [ ] `front/lib/document_upsert_hooks/hooks/tracker/actions/doc_tracker_suggest_changes.ts`
   - **Contains:** `callDocTrackerSuggestChangesAction()` - LLM change generation
 
-**Action:** Delete entire `/home/user/dust/front/lib/document_upsert_hooks/hooks/tracker/` directory
+**Action:** Delete entire `front/lib/document_upsert_hooks/hooks/tracker/` directory
 
 ### Unregister Hook
 
 - [ ] Find where `trackerUpsertHook` is registered in the document upsert pipeline
-  - **Likely location:** `/home/user/dust/front/lib/document_upsert_hooks/index.ts` or similar registry
+  - **Location:** `front/lib/document_upsert_hooks/hooks/index.ts`
   - **Action:** Remove tracker hook from registration array/map
 
 ---
@@ -121,13 +141,13 @@ This document provides a complete, step-by-step plan to remove the "trackers" fe
 
 ### Delete Temporal Workflow Files
 
-- [ ] `/home/user/dust/front/temporal/tracker/workflows.ts`
+- [ ] `front/temporal/tracker/workflows.ts`
   - **Contains:**
     - `trackersGenerationWorkflow()` - triggered on document upsert
     - `trackersNotificationsWorkflow()` - hourly cron (0 * * * *)
     - `processTrackerNotificationWorkflow()` - per-tracker child workflow
 
-- [ ] `/home/user/dust/front/temporal/tracker/activities.ts`
+- [ ] `front/temporal/tracker/activities.ts`
   - **Contains:**
     - `trackersGenerationActivity()` - main generation pipeline
     - `shouldRunTrackersActivity()` - check if should run
@@ -135,26 +155,26 @@ This document provides a complete, step-by-step plan to remove the "trackers" fe
     - `getTrackerIdsToNotifyActivity()` - fetch trackers to notify
     - `processTrackerNotificationWorkflowActivity()` - send emails
 
-- [ ] `/home/user/dust/front/temporal/tracker/client.ts`
+- [ ] `front/temporal/tracker/client.ts`
   - **Contains:**
     - `launchTrackersGenerationWorkflow()`
     - `launchTrackerNotificationWorkflow()`
     - `stopTrackerNotificationWorkflow()`
 
-- [ ] `/home/user/dust/front/temporal/tracker/config.ts`
+- [ ] `front/temporal/tracker/config.ts`
   - **Contains:** Queue names:
     - `RUN_QUEUE_NAME: "document-tracker-queue-v3"`
     - `TRACKER_NOTIFICATION_QUEUE_NAME: "document-tracker-notify-queue-v1"`
 
-- [ ] `/home/user/dust/front/temporal/tracker/signals.ts`
+- [ ] `front/temporal/tracker/signals.ts`
   - **Contains:**
     - `newUpsertSignal`
     - `notifySignal`
 
-- [ ] `/home/user/dust/front/temporal/tracker/admin/cli.ts`
+- [ ] `front/temporal/tracker/admin/cli.ts`
   - **Contains:** Admin CLI tools for tracker management
 
-**Action:** Delete entire `/home/user/dust/front/temporal/tracker/` directory
+**Action:** Delete entire `front/temporal/tracker/` directory
 
 ### Stop Running Workflows
 
@@ -173,13 +193,13 @@ This document provides a complete, step-by-step plan to remove the "trackers" fe
 
 ### Delete Resource Files
 
-- [ ] `/home/user/dust/front/lib/resources/tracker_resource.ts`
+- [ ] `front/lib/resources/tracker_resource.ts`
   - **Contains:** `TrackerConfigurationResource` class
   - **Key methods:** makeNew, updateConfig, fetchById, listBySpace, addGeneration, etc.
 
 ### Delete Model Files
 
-- [ ] `/home/user/dust/front/lib/models/doc_tracker.ts`
+- [ ] `front/lib/models/doc_tracker.ts`
   - **Contains:**
     - `TrackerConfigurationModel`
     - `TrackerDataSourceConfigurationModel`
@@ -191,15 +211,15 @@ This document provides a complete, step-by-step plan to remove the "trackers" fe
 
 ### Delete SWR Hook Files
 
-- [ ] `/home/user/dust/front/lib/swr/trackers.ts`
+- [ ] `front/lib/swr/trackers.ts`
   - **Contains:** `useTrackers()` hook
 
-- [ ] `/home/user/dust/front/poke/swr/trackers.ts`
+- [ ] `front/poke/swr/trackers.ts`
   - **Contains:** Admin-specific SWR hooks
 
 ### Delete Utility Files
 
-- [ ] `/home/user/dust/front/lib/api/tracker.ts`
+- [ ] `front/lib/api/tracker.ts`
   - **Contains:**
     - `processTrackerNotification()` - email notification logic
     - `sendTrackerDefaultEmail()` - "no updates" email
@@ -211,7 +231,7 @@ This document provides a complete, step-by-step plan to remove the "trackers" fe
 
 ### Delete Type Files
 
-- [ ] `/home/user/dust/front/types/tracker.ts`
+- [ ] `front/types/tracker.ts`
   - **Contains:**
     - `TrackerConfigurationType`
     - `TrackerDataSourceConfigurationType`
@@ -253,17 +273,17 @@ DROP TABLE IF EXISTS tracker_configurations CASCADE;
 
 ### Migration Files to Reference (DO NOT DELETE - historical record)
 
-- [ ] `/home/user/dust/front/migrations/db/migration_126.sql` - Initial table creation
-- [ ] `/home/user/dust/front/migrations/db/migration_127.sql` - Added name and description
-- [ ] `/home/user/dust/front/migrations/db/migration_130.sql` - Added lastNotifiedAt and consumedAt
-- [ ] `/home/user/dust/front/migrations/db/migration_135.sql` - Added skipEmptyEmails
-- [ ] `/home/user/dust/front/migrations/db/migration_138.sql` - Added indexes on data source IDs
-- [ ] `/home/user/dust/front/migrations/db/migration_140.sql` - Added maintainedDocumentId
-- [ ] `/home/user/dust/front/migrations/db/migration_147.sql` - Added workspaceId
-- [ ] `/home/user/dust/front/migrations/db/migration_148.sql` - Backfill workspace IDs
-- [ ] `/home/user/dust/front/migrations/db/migration_265.sql` - Added compound indexes
-- [ ] `/home/user/dust/front/migrations/db/migration_267.sql` - Added workspace/tracker/scope index
-- [ ] `/home/user/dust/front/migrations/db/migration_364.sql` - Added workspace index on generations
+- [ ] `front/migrations/db/migration_126.sql` - Initial table creation
+- [ ] `front/migrations/db/migration_127.sql` - Added name and description
+- [ ] `front/migrations/db/migration_130.sql` - Added lastNotifiedAt and consumedAt
+- [ ] `front/migrations/db/migration_135.sql` - Added skipEmptyEmails
+- [ ] `front/migrations/db/migration_138.sql` - Added indexes on data source IDs
+- [ ] `front/migrations/db/migration_140.sql` - Added maintainedDocumentId
+- [ ] `front/migrations/db/migration_147.sql` - Added workspaceId
+- [ ] `front/migrations/db/migration_148.sql` - Backfill workspace IDs
+- [ ] `front/migrations/db/migration_265.sql` - Added compound indexes
+- [ ] `front/migrations/db/migration_267.sql` - Added workspace/tracker/scope index
+- [ ] `front/migrations/db/migration_364.sql` - Added workspace index on generations
 
 **Note:** Keep historical migrations for reference. The new down migration will handle cleanup.
 
@@ -279,7 +299,7 @@ DROP TABLE IF EXISTS tracker_configurations CASCADE;
 
 ### Remove Feature Flag
 
-- [ ] Edit `/home/user/dust/front/types/shared/feature_flags.ts`
+- [ ] Edit `front/types/shared/feature_flags.ts`
   - **Remove:** `labs_trackers` flag definition
 
 **Current Definition:**
@@ -309,12 +329,12 @@ grep -r "document-tracker-queue" front/
 
 ### Delete Script Files
 
-- [ ] `/home/user/dust/front/scripts/send_tracker_generations.ts`
+- [ ] `front/scripts/send_tracker_generations.ts`
   - **Purpose:** Manual script to send tracker generations
 
 ### Remove Test Cases
 
-- [ ] Search for tracker-related tests in `/home/user/dust/front/pages/api/v1/w/[wId]/feature_flags.test.ts`
+- [ ] Search for tracker-related tests in `front/pages/api/v1/w/[wId]/feature_flags.test.ts`
   - **Action:** Remove test cases for `labs_trackers` feature flag
 
 - [ ] Search for other tracker tests:
@@ -324,12 +344,12 @@ grep -r "tracker" front/ --include="*.test.ts" --include="*.test.tsx"
 
 ### Clean Up Miscellaneous References
 
-- [ ] Check `/home/user/dust/front/components/app/PostHogTracker.tsx` for tracker analytics
+- [ ] Check `front/components/app/PostHogTracker.tsx` for tracker analytics
   - **Note:** This is likely a generic analytics component, not tracker-specific
 
-- [ ] Check `/home/user/dust/lib/utils/url-to-poke.ts` for tracker poke links
+- [ ] Check `front/lib/utils/url-to-poke.ts` for tracker poke links
 
-- [ ] Check `/home/user/dust/lib/registry.ts` for Dust action registry entries:
+- [ ] Check `front/lib/registry.ts` for Dust action registry entries:
   - `doc-tracker-retrieval`
   - `doc-tracker-score-docs`
   - `doc-tracker-suggest-changes`
@@ -436,7 +456,7 @@ Refs: TRACKER_REMOVAL_PLAN.md"
 
 - [ ] Push to feature branch:
 ```bash
-git push -u origin claude/remove-trackers-feature-011CUoXitSPm2L5qsr7Q3Pzd
+git push -u origin claude/remove-trackers-ui-011CUoXitSPm2L5qsr7Q3Pzd
 ```
 
 ### Create Pull Request
@@ -520,31 +540,31 @@ If issues arise, rollback procedure:
 ## File Checklist Summary
 
 ### Directories to Delete (7)
-- [ ] `/front/components/trackers/`
-- [ ] `/front/components/poke/trackers/`
-- [ ] `/front/pages/w/[wId]/labs/trackers/`
-- [ ] `/front/pages/poke/[wId]/trackers/`
-- [ ] `/front/pages/api/w/[wId]/spaces/[spaceId]/trackers/`
-- [ ] `/front/pages/api/poke/workspaces/[wId]/trackers/`
-- [ ] `/front/temporal/tracker/`
-- [ ] `/front/lib/document_upsert_hooks/hooks/tracker/`
+- [x] `front/components/trackers/`
+- [ ] `front/components/poke/trackers/`
+- [x] `front/pages/w/[wId]/labs/trackers/`
+- [x] `front/pages/poke/[wId]/trackers/`
+- [ ] `front/pages/api/w/[wId]/spaces/[spaceId]/trackers/`
+- [ ] `front/pages/api/poke/workspaces/[wId]/trackers/`
+- [ ] `front/temporal/tracker/`
+- [ ] `front/lib/document_upsert_hooks/hooks/tracker/`
 
 ### Individual Files to Delete (9)
-- [ ] `/front/lib/resources/tracker_resource.ts`
-- [ ] `/front/lib/models/doc_tracker.ts`
-- [ ] `/front/lib/swr/trackers.ts`
-- [ ] `/front/poke/swr/trackers.ts`
-- [ ] `/front/lib/api/tracker.ts`
-- [ ] `/front/types/tracker.ts`
-- [ ] `/front/scripts/send_tracker_generations.ts`
+- [ ] `front/lib/resources/tracker_resource.ts`
+- [ ] `front/lib/models/doc_tracker.ts`
+- [ ] `front/lib/swr/trackers.ts`
+- [ ] `front/poke/swr/trackers.ts`
+- [ ] `front/lib/api/tracker.ts`
+- [ ] `front/types/tracker.ts`
+- [ ] `front/scripts/send_tracker_generations.ts`
 
 ### Files to Modify (2+)
-- [ ] `/front/types/shared/feature_flags.ts` (remove `labs_trackers`)
+- [ ] `front/types/shared/feature_flags.ts` (remove `labs_trackers`)
 - [ ] Document upsert hook registry (unregister `trackerUpsertHook`)
 - [ ] Any remaining files with tracker imports/references
 
 ### New Files to Create (1)
-- [ ] `/front/migrations/db/migration_XXX_drop_tracker_tables.sql`
+- [ ] `front/migrations/db/migration_XXX_drop_tracker_tables.sql`
 
 ---
 
