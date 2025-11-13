@@ -19,6 +19,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import type { ContentFragmentInputWithFileIdType, Result } from "@app/types";
+import { isString } from "@app/types";
 import { assertNever, Err, errorToString, Ok } from "@app/types";
 import type { WebhookTriggerType } from "@app/types/assistant/triggers";
 import { isWebhookTrigger } from "@app/types/assistant/triggers";
@@ -74,7 +75,8 @@ async function validateEventSubscription({
       receivedEventValue = headers[field.toLowerCase()];
       break;
     case "body":
-      receivedEventValue = body[field] as string | undefined;
+      const bodyField = body[field];
+      receivedEventValue = isString(bodyField) ? bodyField : undefined;
       break;
     default:
       assertNever(type);
