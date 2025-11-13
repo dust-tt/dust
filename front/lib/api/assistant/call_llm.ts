@@ -10,14 +10,12 @@ import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import type { ModelProviderIdType } from "@app/lib/resources/storage/models/workspace";
 import logger from "@app/logger/logger";
 import type { ModelIdType, Result } from "@app/types";
-import { Err, isReasoningEffort, Ok } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 export interface LLMConfig {
   functionCall?: string | null;
   modelId: ModelIdType;
   providerId: ModelProviderIdType;
-  reasoningEffort?: string;
-  responseFormat?: string;
   temperature?: number;
   useCache?: boolean;
   useStream?: boolean;
@@ -55,15 +53,9 @@ export async function runMultiActionsAgent(
   input: LLMStreamParameters,
   options: LLMOptions = {}
 ): Promise<Result<LLMOutput, Error>> {
-  const reasoningEffort = config.reasoningEffort ?? "none";
-
   const llm = await getLLM(auth, {
     modelId: config.modelId,
     temperature: config.temperature,
-    reasoningEffort: isReasoningEffort(reasoningEffort)
-      ? reasoningEffort
-      : "none",
-    responseFormat: config.responseFormat,
     context: options.context,
   });
 
