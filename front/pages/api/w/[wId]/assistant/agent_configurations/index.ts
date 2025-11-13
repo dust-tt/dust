@@ -385,7 +385,7 @@ export async function createOrUpgradeAgentConfiguration({
             agentConfigurationRes.value.sId
           );
           if (!restored) {
-            logger.warn(
+            logger.error(
               {
                 workspaceId: auth.getNonNullableWorkspace().sId,
                 agentConfigurationId: agentConfigurationRes.value.sId,
