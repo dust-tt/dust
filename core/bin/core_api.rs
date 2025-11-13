@@ -325,8 +325,11 @@ fn main() {
         let (tx1, rx1) = tokio::sync::oneshot::channel::<()>();
         let (tx2, rx2) = tokio::sync::oneshot::channel::<()>();
 
+        let port = std::env::var("CORE_PORT").unwrap_or_else(|_| "3001".to_string());
+        let addr = format!("[::]:{}", port);
+
         let srv = axum::serve(
-            TcpListener::bind::<std::net::SocketAddr>("[::]:3001".parse().unwrap()).await?,
+            TcpListener::bind::<std::net::SocketAddr>(addr.parse().unwrap()).await?,
             app.into_make_service(),
         )
         .with_graceful_shutdown(async {

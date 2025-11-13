@@ -234,7 +234,11 @@ export async function importApp(
   Result<{ app: AppResource; updated: boolean }, CoreAPIError | Error>
 > {
   logger.info(
-    { sId: appToImport.sId, name: appToImport.name },
+    {
+      sId: appToImport.sId,
+      name: appToImport.name,
+      workspaceId: auth.getNonNullableWorkspace().sId,
+    },
     "Importing app"
   );
   const appRes = await updateOrCreateApp(auth, {
