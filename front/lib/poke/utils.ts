@@ -31,7 +31,8 @@ export async function dataSourceToPokeJSON(
     link: workspace
       ? `${config.getClientFacingUrl()}/poke/${workspace.sId}/data_sources/${dataSource.sId}`
       : null,
-    name: `Data Source (${dataSource.name})`,
+    name: dataSource.name,
+    type: "Data Source",
     space: spaceToPokeJSON(dataSource.space),
   };
 }
@@ -49,7 +50,8 @@ export async function dataSourceViewToPokeJSON(
     link: workspace
       ? `${config.getClientFacingUrl()}/poke/${workspace.sId}/spaces/${dataSourceView.space.sId}/data_source_views/${dataSourceView.sId}`
       : null,
-    name: `Data Source View (${dataSourceView.dataSource.name})`,
+    name: dataSourceView.dataSource.name,
+    type: "Data Source View",
     space: spaceToPokeJSON(dataSourceView.space),
   };
 }
@@ -68,6 +70,7 @@ export async function mcpServerViewToPokeJSON(
       ? `${config.getClientFacingUrl()}/poke/${workspace.sId}/spaces/${mcpServerView.space.sId}/mcp_server_views/${mcpServerView.sId}`
       : null,
     name: json.server.name,
+    type: "MCP Server View",
     space: spaceToPokeJSON(mcpServerView.space),
   };
 }
