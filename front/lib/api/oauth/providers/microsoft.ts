@@ -30,9 +30,6 @@ export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
       "User.Read",
       "Sites.Read.All",
       "Files.Read.All",
-      "Team.ReadBasic.All",
-      "ChannelSettings.Read.All",
-      "ChannelMessage.Read.All",
       "offline_access",
     ];
     if (relatedCredential) {

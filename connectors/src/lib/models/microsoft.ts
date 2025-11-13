@@ -53,10 +53,10 @@ MicrosoftConfigurationModel.init(
   }
 );
 
-// MicrosoftRoot stores the drive/folders/channels selected by the user to sync.
+// MicrosoftRoot stores the sites/drives selected by the user to sync.
 // In order to be able to uniquely identify each node, we store the GET path
-// to the item in the itemApiPath field (e.g. /drives/{drive-id}), except for the toplevel
-// sites-root and teams-root, which are stored as "sites-root" and "teams-root" respectively.
+// to the item in the itemApiPath field (e.g. /drives/{drive-id}), except for the top-level
+// sites-root, which is stored as "sites-root".
 export class MicrosoftRootModel extends ConnectorBaseModel<MicrosoftRootModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
