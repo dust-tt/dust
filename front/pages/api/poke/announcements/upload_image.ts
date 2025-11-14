@@ -1,4 +1,3 @@
-import { isSupportedImageContentType } from "@dust-tt/client";
 import formidable from "formidable";
 import fs from "fs/promises";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -11,6 +10,7 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { isSupportedImageContentType } from "@app/types";
 
 export type PostPokeAnnouncementImageUploadResponseBody = {
   fileId: string;
@@ -56,7 +56,7 @@ async function handler(
   const form = formidable({ maxFileSize: 10 * 1024 * 1024 }); // 10MB max
 
   try {
-    const [fields, files] = await form.parse(req);
+    const [_fields, files] = await form.parse(req);
     const file = Array.isArray(files.file) ? files.file[0] : files.file;
 
     if (!file) {
@@ -75,7 +75,7 @@ async function handler(
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
-          message: `Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed. Received: ${file.mimetype || "unknown"}`,
+          message: `Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed. Received: ${file.mimetype ?? "unknown"}`,
         },
       });
     }

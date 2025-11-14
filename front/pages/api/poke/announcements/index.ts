@@ -164,12 +164,12 @@ async function handler(
         publishedAt: publishedAt ? new Date(publishedAt) : null,
         showInAppBanner: showInAppBanner || false,
         eventDate: eventDate ? new Date(eventDate) : null,
-        eventTimezone: eventTimezone || null,
-        eventLocation: eventLocation || null,
-        eventUrl: eventUrl || null,
-        categories: categories || null,
-        tags: tags || null,
-        imageFileId: imageFileId || null,
+        eventTimezone: eventTimezone ?? null,
+        eventLocation: eventLocation ?? null,
+        eventUrl: eventUrl ?? null,
+        categories: categories ?? null,
+        tags: tags ?? null,
+        imageFileId: imageFileId ?? null,
       });
 
       return res.status(201).json({

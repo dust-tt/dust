@@ -59,7 +59,7 @@ export default function EditAnnouncementPage() {
         eventUrl: data.eventUrl || null,
         categories: data.categories ? [data.categories] : null,
         tags: null,
-        imageFileId: data.imageFileId || null,
+        imageFileId: data.imageFileId ?? null,
       }),
     });
 
