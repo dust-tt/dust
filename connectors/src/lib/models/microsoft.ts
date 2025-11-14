@@ -11,6 +11,7 @@ export class MicrosoftConfigurationModel extends ConnectorBaseModel<MicrosoftCon
   declare pdfEnabled: boolean;
   declare csvEnabled: boolean;
   declare largeFilesEnabled: boolean;
+  declare tenantId: string | null;
 }
 MicrosoftConfigurationModel.init(
   {
@@ -38,6 +39,10 @@ MicrosoftConfigurationModel.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
+    },
+    tenantId: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
   },
   {

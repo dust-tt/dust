@@ -3,7 +3,7 @@ import { Op } from "sequelize";
 
 import { getMicrosoftConnectionData } from "@connectors/connectors/microsoft";
 import type { Logger } from "@connectors/logger/logger";
-import type { ConnectorMetadata } from "@connectors/resources/storage/models/connector_model";
+import { MicrosoftConfigurationResource } from "@connectors/resources/microsoft_resource";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 async function backfillConnectorTenant({
@@ -17,33 +17,31 @@ async function backfillConnectorTenant({
 }) {
   const childLogger = logger.child({ connectorId: connector.id });
 
-  const metadata = (connector.metadata ?? {}) as ConnectorMetadata;
-  if (metadata.tenantId) {
+  const config = await MicrosoftConfigurationResource.fetchByConnectorId(
+    connector.id
+  );
+
+  if (!config) {
+    childLogger.warn("No Microsoft configuration found, skipping");
+    return;
+  }
+
+  if (config.tenantId) {
     childLogger.info("Tenant id already present, skipping");
     return;
   }
 
-  try {
-    const { tenantId } = await getMicrosoftConnectionData(
-      connector.connectionId
-    );
+  const { tenantId } = await getMicrosoftConnectionData(connector.connectionId);
 
-    if (!tenantId) {
-      childLogger.warn("Unable to extract tenant id from access token");
-      return;
-    }
+  if (!tenantId) {
+    childLogger.warn("Unable to extract tenant id from access token");
+    return;
+  }
 
-    childLogger.info({ tenantId, execute }, "Backfilling tenant id");
+  childLogger.info({ tenantId, execute }, "Backfilling tenant id");
 
-    if (execute) {
-      const newMetadata: ConnectorMetadata = {
-        ...metadata,
-        tenantId,
-      };
-      await connector.update({ metadata: newMetadata });
-    }
-  } catch (error) {
-    childLogger.error({ error }, "Failed to backfill tenant id");
+  if (execute) {
+    await config.update({ tenantId });
   }
 }
 
