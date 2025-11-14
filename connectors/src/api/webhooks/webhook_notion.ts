@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 
-import { launchNotionWebhookProcessingWorkflow } from "@connectors/connectors/notion/temporal/client";
-import type { NotionWebhookEvent } from "@connectors/connectors/notion/temporal/signals";
+import type { NotionWebhookEvent } from "@connectors/connectors/notion/lib/webhooks";
+import { processNotionWebhookEvent } from "@connectors/connectors/notion/lib/webhooks";
 import { NotionConnectorState } from "@connectors/lib/models/notion";
 import mainLogger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
@@ -128,11 +128,14 @@ const _webhookNotionAPIHandler = async (
     return res.status(200).end();
   }
 
-  // Launch or signal the webhook processing workflow
+  // Process the webhook event
   try {
-    await launchNotionWebhookProcessingWorkflow(connector.id, {
-      type: payload.type,
-      entity_id: payload.entity?.id,
+    await processNotionWebhookEvent({
+      connectorId: connector.id,
+      event: {
+        type: payload.type,
+        entity_id: payload.entity?.id,
+      },
     });
   } catch (err) {
     logger.error(
@@ -141,7 +144,7 @@ const _webhookNotionAPIHandler = async (
         connectorId: connector.id,
         notionWorkspaceId,
       },
-      "Failed to launch Notion webhook processing workflow"
+      "Failed to process Notion webhook event"
     );
     return res.status(500).end();
   }
