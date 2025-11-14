@@ -53,6 +53,7 @@ import {
 import { classNames } from "@app/lib/utils";
 import type {
   AgentGenerationCancelledEvent,
+  AgentMention,
   AgentMessageDoneEvent,
   AgentMessageNewEvent,
   ContentFragmentsType,
@@ -60,10 +61,12 @@ import type {
   ConversationTitleEvent,
   LightMessageType,
   Result,
+  UserMention,
   UserMessageNewEvent,
   UserType,
   WorkspaceType,
 } from "@app/types";
+import { assertNever } from "@app/types";
 import { Err, isContentFragmentType, isUserMessageType, Ok } from "@app/types";
 
 const DEFAULT_PAGE_LIMIT = 50;
@@ -425,7 +428,23 @@ export const ConversationViewer = ({
       }
       const messageData = {
         input,
-        mentions: mentions.map((mention) => ({ configurationId: mention.id })),
+        mentions: mentions.map((mention) => {
+          switch (mention.type) {
+            case "agent": {
+              return {
+                configurationId: mention.id,
+              } satisfies AgentMention;
+            }
+            case "user": {
+              return {
+                type: "user",
+                userId: mention.id,
+              } satisfies UserMention;
+            }
+            default:
+              assertNever(mention.type);
+          }
+        }),
         contentFragments,
       };
 
