@@ -69,7 +69,8 @@ export function createNotionVerificationMiddleware(
       const stringBody = await parseExpressRequestRawBody(req);
 
       // Verify Notion signature.
-      const signature = req.headers["X-Notion-Signature"];
+      // Even though it's documented as "X-Notion-Signature", the actual header name is lowercase in practice.
+      const signature = req.headers["x-notion-signature"];
 
       if (typeof signature !== "string") {
         throw new ReceiverAuthenticityError(
