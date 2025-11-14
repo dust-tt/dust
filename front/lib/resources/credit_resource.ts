@@ -63,7 +63,6 @@ export class CreditResource extends BaseResource<CreditModel> {
   }
 
   static async listActive(auth: Authenticator) {
-    // Non-expired or no expiration, with remainingAmount > 0
     const now = new Date();
     return this.baseFetch(auth, {
       where: {
@@ -95,12 +94,12 @@ export class CreditResource extends BaseResource<CreditModel> {
     amountInCents: number,
     { transaction }: { transaction?: Transaction } = {}
   ) {
-    if (amountInCents < 0) {
-      return new Err(new Error("Amount to consume must be positive."));
+    if (amountInCents <= 0) {
+      return new Err(new Error("Amount to consume must be strictly positive."));
     }
     try {
       // Atomic decrement guarded by remainingAmount >= amountInCents to prevent double spending.
-      const decResult = await this.model.decrement("remainingAmount", {
+      const [, affectedCount] = await this.model.decrement("remainingAmount", {
         by: amountInCents,
         where: {
           id: this.id,
@@ -110,13 +109,7 @@ export class CreditResource extends BaseResource<CreditModel> {
         transaction,
       });
 
-      const affected = Array.isArray(decResult)
-        ? typeof decResult[1] === "number"
-          ? decResult[1]
-          : decResult.length
-        : 0;
-
-      if (affected < 1) {
+      if (!affectedCount || affectedCount < 1) {
         return new Err(new Error("Insufficient credit on this line."));
       }
       return new Ok(undefined);
