@@ -59,6 +59,7 @@ import type {
   ContentNodesViewType,
   DataSourceConfig,
 } from "@connectors/types";
+import { concurrentExecutor } from "@connectors/types/shared/utils/async_utils";
 import { isString } from "@connectors/types/shared/utils/general";
 
 export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
@@ -74,12 +75,12 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     const { client, tenantId, connection } =
       await getMicrosoftConnectionData(connectionId);
 
-    const selectedSitesInput = connection.metadata?.selected_sites;
+    const { selected_sites } = connection.metadata || {};
 
-    const resolvedSites = isString(selectedSitesInput)
+    const resolvedSites = isString(selected_sites)
       ? await resolveSelectedSites({
           client,
-          siteInputs: selectedSitesInput,
+          siteInputs: selected_sites,
         })
       : [];
 
@@ -650,31 +651,37 @@ async function resolveSelectedSites({
   const resolvedSites: ResolvedSelectedSite[] = [];
   const seenInternalIds = new Set<string>();
 
-  for (const rawInput of siteInputsArray) {
-    const input = rawInput.trim();
-    if (!input) {
-      continue;
-    }
-
-    try {
-      const resolved = await fetchSiteForIdentifier(client, input);
-      if (!resolved) {
-        continue;
+  await concurrentExecutor(
+    siteInputsArray,
+    async (rawInput) => {
+      const input = rawInput.trim();
+      if (!input) {
+        return;
       }
 
-      if (seenInternalIds.has(resolved.internalId)) {
-        continue;
-      }
+      try {
+        const resolved = await fetchSiteForIdentifier(client, input);
+        if (!resolved) {
+          return;
+        }
 
-      seenInternalIds.add(resolved.internalId);
-      resolvedSites.push(resolved);
-    } catch (error) {
-      logger.error(
-        { error, siteIdentifier: input },
-        "Failed to resolve selected Sharepoint site, ignoring"
-      );
+        if (seenInternalIds.has(resolved.internalId)) {
+          return;
+        }
+
+        seenInternalIds.add(resolved.internalId);
+        resolvedSites.push(resolved);
+      } catch (error) {
+        logger.error(
+          { error, siteIdentifier: input },
+          "Failed to resolve selected Sharepoint site, ignoring"
+        );
+      }
+    },
+    {
+      concurrency: 5,
     }
-  }
+  );
 
   return resolvedSites;
 }
