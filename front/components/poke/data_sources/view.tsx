@@ -166,6 +166,7 @@ export function ViewDataSourceTable({
                           owner={owner}
                           dsId={dataSource.sId}
                           isRunning={isRunning}
+                          temporalWorkspace={temporalWorkspace}
                         />
                       </PokeTableCell>
                     </PokeTableRow>
@@ -342,6 +343,7 @@ function CheckConnectorStuck({
   owner,
   dsId,
   isRunning,
+  temporalWorkspace,
 }: CheckConnectorStuckProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<CheckStuckResponseBody | null>(null);
