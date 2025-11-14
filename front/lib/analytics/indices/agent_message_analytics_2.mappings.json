@@ -19,6 +19,9 @@
       "user_id": {
         "type": "keyword"
       },
+      "context_origin": {
+        "type": "keyword"
+      },
       "timestamp": {
         "type": "date"
       },
