@@ -75,7 +75,8 @@ impl Provider for LinearConnectionProvider {
             None => Err(anyhow!("Missing `refresh_token` in response from Linear"))?,
         };
 
-        let access_token_expiry = Some(utils::now() + (expires_in - PROVIDER_TIMEOUT_SECONDS) * 1000);
+        let access_token_expiry =
+            Some(utils::now() + (expires_in - PROVIDER_TIMEOUT_SECONDS) * 1000);
 
         Ok(FinalizeResult {
             redirect_uri: redirect_uri.to_string(),
