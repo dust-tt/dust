@@ -17,6 +17,7 @@ pub static CREDENTIAL_ID_PREFIX: &str = "cred";
 pub enum CredentialProvider {
     Snowflake,
     Bigquery,
+    Databricks,
     Salesforce,
     Microsoft,
     MicrosoftTools,
@@ -203,6 +204,9 @@ impl Credential {
                     "universe_domain",
                     "location",
                 ]
+            }
+            CredentialProvider::Databricks => {
+                vec!["host", "http_path", "access_token"]
             }
             CredentialProvider::Salesforce => {
                 vec!["client_id", "client_secret"]
