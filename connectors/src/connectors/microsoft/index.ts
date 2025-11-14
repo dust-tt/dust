@@ -3,7 +3,6 @@ import { assertNever, Err, Ok } from "@dust-tt/client";
 import { Client } from "@microsoft/microsoft-graph-client";
 import type { Site } from "@microsoft/microsoft-graph-types";
 import { decodeJwt } from "jose";
-import type { Logger } from "pino";
 
 import type {
   CreateConnectorErrorCode,
@@ -79,7 +78,6 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
 
     const resolvedSites = isString(selectedSitesInput)
       ? await resolveSelectedSites({
-          logger,
           client,
           siteInputs: selectedSitesInput,
         })
@@ -638,11 +636,9 @@ type ResolvedSelectedSite = {
 };
 
 async function resolveSelectedSites({
-  logger,
   client,
   siteInputs,
 }: {
-  logger: Logger;
   client: Client;
   siteInputs: string;
 }): Promise<ResolvedSelectedSite[]> {
@@ -661,7 +657,7 @@ async function resolveSelectedSites({
     }
 
     try {
-      const resolved = await fetchSiteForIdentifier(logger, client, input);
+      const resolved = await fetchSiteForIdentifier(client, input);
       if (!resolved) {
         continue;
       }
@@ -684,7 +680,6 @@ async function resolveSelectedSites({
 }
 
 async function fetchSiteForIdentifier(
-  logger: Logger,
   client: Client,
   identifier: string
 ): Promise<ResolvedSelectedSite | null> {
