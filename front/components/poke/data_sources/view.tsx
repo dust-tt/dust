@@ -390,7 +390,7 @@ function CheckConnectorStuck({
 
   return (
     <>
-      <StuckActivitiesModal
+      <StuckActivitiesDialog
         show={showDetailsModal}
         onClose={() => setShowDetailsModal(false)}
         result={result}
@@ -420,19 +420,19 @@ function CheckConnectorStuck({
   );
 }
 
-interface StuckActivitiesModalProps {
+interface StuckActivitiesDialogProps {
   show: boolean;
   onClose: () => void;
   result: CheckStuckResponseBody;
   temporalWorkspace: string;
 }
 
-function StuckActivitiesModal({
+function StuckActivitiesDialog({
   show,
   onClose,
   result: { workflows },
   temporalWorkspace,
-}: StuckActivitiesModalProps) {
+}: StuckActivitiesDialogProps) {
   const totalStuckActivities = workflows.reduce(
     (sum, wf) => sum + wf.stuckActivities.length,
     0
