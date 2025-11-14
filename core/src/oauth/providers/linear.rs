@@ -40,17 +40,19 @@ impl Provider for LinearConnectionProvider {
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
+        let params = [
+            ("grant_type", "authorization_code"),
+            ("client_id", OAUTH_LINEAR_CLIENT_ID.as_str()),
+            ("client_secret", OAUTH_LINEAR_CLIENT_SECRET.as_str()),
+            ("code", code),
+            ("redirect_uri", redirect_uri),
+        ];
+
         let req = self
             .reqwest_client()
             .post("https://api.linear.app/oauth/token")
             .header("Content-Type", "application/x-www-form-urlencoded")
-            .form(&[
-                ("grant_type", "authorization_code"),
-                ("client_id", OAUTH_LINEAR_CLIENT_ID.as_str()),
-                ("client_secret", OAUTH_LINEAR_CLIENT_SECRET.as_str()),
-                ("code", code),
-                ("redirect_uri", redirect_uri),
-            ]);
+            .form(&params);
 
         let raw_json = execute_request(ConnectionProvider::Linear, req)
             .await

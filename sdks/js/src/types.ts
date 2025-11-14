@@ -2800,6 +2800,7 @@ const OAuthProviderSchema = FlexibleEnumSchema<
   | "gmail"
   | "intercom"
   | "jira"
+  | "linear"
   | "monday"
   | "notion"
   | "slack"
