@@ -690,6 +690,20 @@ async function fetchSiteForIdentifier(
   client: Client,
   identifier: string
 ): Promise<ResolvedSelectedSite | null> {
+  // Validate identifier to prevent path traversal and API endpoint injection
+  if (!identifier || identifier.includes("..") || identifier.includes("//")) {
+    throw new Error("Invalid site identifier: path traversal detected");
+  }
+
+  // Allow valid SharePoint site identifier formats:
+  // - hostname.sharepoint.com:/sites/sitename
+  // - hostname.sharepoint.com,{guid},{guid}
+  // - alphanumeric site IDs
+  const validIdentifierPattern = /^[a-zA-Z0-9._:\/-]+$/;
+  if (!validIdentifierPattern.test(identifier)) {
+    throw new Error("Invalid site identifier format");
+  }
+
   const endpoint = `/sites/${identifier}`;
 
   const site = await clientApiGet(logger, client, endpoint);
