@@ -7,7 +7,6 @@ import {
 import { config as regionsConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import type {
   GetOutputRequestParams,
   GetOutputResponse,
@@ -33,6 +32,7 @@ export async function getOutputFromAction(
     model,
     publishAgentError,
     prompt,
+    updateResourceAndPublishEvent,
   }: GetOutputRequestParams
 ): Promise<GetOutputResponse> {
   let blockExecutionOutput: Output | null = null;
