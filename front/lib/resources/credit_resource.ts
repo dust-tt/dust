@@ -123,7 +123,7 @@ export class CreditResource extends BaseResource<CreditModel> {
     { transaction }: { transaction?: Transaction }
   ): Promise<Result<undefined | number, Error>> {
     try {
-      await this.model.destroy({ where: { id: this.id }, transaction });
+      await this.model.destroy({ where: { id: this.id, workspaceId: this.workspaceId }, transaction });
       return new Ok(undefined);
     } catch (err) {
       return new Err(normalizeError(err));
