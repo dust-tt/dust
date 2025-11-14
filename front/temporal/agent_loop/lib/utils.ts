@@ -55,15 +55,6 @@ export async function getOutputFromLLM(
       updateResourceAndPublishEvent,
     });
   } else {
-    if (userMessage.rank === 0) {
-      // Log conversations that are using the new LLM router (log only once when the conversation starts)
-      localLogger.info(
-        {
-          conversationId: conversation.sId,
-        },
-        "Running model with the new LLM router"
-      );
-    }
     return getOutputFromLLMStream(auth, {
       modelConversationRes,
       conversation,
