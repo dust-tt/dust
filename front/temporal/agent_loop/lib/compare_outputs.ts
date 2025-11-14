@@ -18,6 +18,9 @@ export type ComparisonResult = {
   // Summary
   hasCriticalDifferences: boolean;
   summary: string;
+
+  // Time to first event comparison
+  timeRatio: number | null;
 };
 
 /**
@@ -120,6 +123,13 @@ export function compareOutputs(
     summary += " (content structure differs)";
   }
 
+  // 8 Compare time to first event
+  let timeRatio: number | null = null;
+  if (core.timeToFirstEvent && llm.timeToFirstEvent) {
+    timeRatio =
+      Math.round((llm.timeToFirstEvent / core.timeToFirstEvent) * 100) / 100;
+  }
+
   return {
     sameActionsCount,
     sameActionNames,
@@ -131,5 +141,6 @@ export function compareOutputs(
     generationLengthDifferencePercent,
     hasCriticalDifferences,
     summary,
+    timeRatio,
   };
 }
