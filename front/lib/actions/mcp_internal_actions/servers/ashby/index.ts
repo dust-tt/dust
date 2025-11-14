@@ -10,7 +10,10 @@ import {
   renderInterviewFeedbackRecap,
   renderReportInfo,
 } from "@app/lib/actions/mcp_internal_actions/servers/ashby/rendering";
-import type { AshbyCandidate } from "@app/lib/actions/mcp_internal_actions/servers/ashby/types";
+import type {
+  AshbyCandidate,
+  AshbyFeedbackSubmission,
+} from "@app/lib/actions/mcp_internal_actions/servers/ashby/types";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -40,7 +43,7 @@ function createServer(
 
   server.tool(
     "search_candidates",
-    "Search for candidates in Ashby ATS by name and/or email. " +
+    "Search for candidates by name and/or email. " +
       `Returns up to ${DEFAULT_SEARCH_LIMIT} matching candidates by default.`,
     CandidateSearchInputSchema.shape,
     withToolLogging(
@@ -115,7 +118,7 @@ function createServer(
 
   server.tool(
     "get_report_data",
-    "Retrieve report data from Ashby ATS synchronously and save as a CSV file.",
+    "Retrieve report data and save it as a CSV file.",
     {
       reportUrl: z
         .string()
@@ -223,14 +226,14 @@ function createServer(
 
   server.tool(
     "get_interview_feedback",
-    "Retrieve all interview feedback for a candidate. " +
+    "Retrieve interview feedback for a candidate. " +
       "This tool will search for the candidate by name or email and return all submitted " +
-      "interview feedback, sorted by most recent first.",
+      "interview feedback for the most recent application.",
     CandidateSearchInputSchema.shape,
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: "ashby_get_latest_interview_feedback",
+        toolNameForMonitoring: "ashby_get_interview_feedback",
         agentLoopContext,
       },
       async ({ email, name }) => {
@@ -266,10 +269,11 @@ function createServer(
           );
         }
 
-        const allFeedback = [];
+        let latestApplicationFeedback: AshbyFeedbackSubmission[] | null = null;
+        let latestApplicationDate: Date | null = null;
 
         for (const applicationId of candidate.applicationIds) {
-          const feedbackResult = await client.getApplicationFeedback({
+          const feedbackResult = await client.listApplicationFeedback({
             applicationId,
           });
 
@@ -277,10 +281,23 @@ function createServer(
             continue;
           }
 
-          allFeedback.push(...feedbackResult.value.results);
+          // We consider the max date across all feedback for the application.
+          for (const feedback of feedbackResult.value) {
+            if (!feedback.submittedAt) {
+              continue;
+            }
+            const submittedAt = new Date(feedback.submittedAt);
+            if (!latestApplicationDate || submittedAt > latestApplicationDate) {
+              latestApplicationDate = submittedAt;
+              latestApplicationFeedback = feedbackResult.value;
+            }
+          }
         }
 
-        if (allFeedback.length === 0) {
+        if (
+          !latestApplicationFeedback ||
+          latestApplicationFeedback.length === 0
+        ) {
           return new Err(
             new MCPError(
               `No submitted interview feedback found for candidate ${candidate.name}.`
@@ -288,13 +305,10 @@ function createServer(
           );
         }
 
-        allFeedback.sort((a, b) => {
-          const dateA = new Date(a.submittedAt!);
-          const dateB = new Date(b.submittedAt!);
-          return dateB.getTime() - dateA.getTime();
-        });
-
-        const recapText = renderInterviewFeedbackRecap(candidate, allFeedback);
+        const recapText = renderInterviewFeedbackRecap(
+          candidate,
+          latestApplicationFeedback
+        );
 
         return new Ok([
           {
