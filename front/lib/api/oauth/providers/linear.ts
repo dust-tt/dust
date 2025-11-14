@@ -12,11 +12,15 @@ import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
 export class LinearOAuthProvider implements BaseOAuthStrategyProvider {
   setupUri({
     connection,
+    useCase,
   }: {
     connection: OAuthConnectionType;
     useCase: OAuthUseCase;
   }) {
-    const scopes = ["read", "write", "admin"];
+    let scopes: string[] = ["read", "write"];
+    if (useCase === "webhooks") {
+      scopes.push("admin");
+    }
 
     return (
       `https://linear.app/oauth/authorize` +
