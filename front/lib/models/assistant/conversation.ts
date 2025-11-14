@@ -739,6 +739,7 @@ export class Mention extends WorkspaceAwareModel<Mention> {
   // a Mention is either an agent mention xor a user mention
   declare agentConfigurationId: string | null; // Not a relation as global agents are not in the DB
   declare userId: ForeignKey<UserModel["id"]> | null;
+  declare user: NonAttribute<UserModel> | null;
 
   declare message: NonAttribute<Message>;
 }

@@ -9,7 +9,10 @@ import {
 } from "@app/lib/api/assistant/configuration/agent";
 import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
-import { createAgentMessages } from "@app/lib/api/assistant/conversation/mentions";
+import {
+  createAgentMessages,
+  createUserMentions,
+} from "@app/lib/api/assistant/conversation/mentions";
 import { getContentFragmentSpaceIds } from "@app/lib/api/assistant/permissions";
 import {
   makeAgentMentionsRateLimitKeyForWorkspace,
@@ -570,6 +573,13 @@ export async function postUserMessage(
         excludedUser: user?.toJSON(),
       });
 
+      await createUserMentions(auth, {
+        mentions,
+        message: m,
+        owner,
+        transaction: t,
+      });
+
       const agentMessagesResult = await createAgentMessages({
         mentions,
         agentConfigurations,
@@ -912,6 +922,13 @@ export async function editUserMessage(
           },
           transaction: t,
         })) ?? -1) + 1;
+
+      await createUserMentions(auth, {
+        mentions,
+        message: m,
+        owner,
+        transaction: t,
+      });
 
       const agentMessagesResult = await createAgentMessages({
         mentions,
