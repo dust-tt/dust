@@ -708,6 +708,73 @@ export async function executeListJoinedChannels(
   );
 }
 
+// Helper function to resolve user ID to display name.
+// Returns the user's display name or real name, or null if not found.
+export async function resolveUserDisplayName(
+  userId: string,
+  accessToken: string
+): Promise<string | null> {
+  const slackClient = await getSlackClient(accessToken);
+
+  try {
+    const response = await slackClient.users.info({ user: userId });
+    if (response.ok && response.user) {
+      // Prefer display_name, fallback to real_name, then to name
+      return (
+        response.user.profile?.display_name ||
+        response.user.real_name ||
+        response.user.name ||
+        null
+      );
+    }
+  } catch (error) {
+    // Return null if we can't resolve the user
+  }
+
+  return null;
+}
+
+// Helper function to resolve channel name or ID to channel ID.
+// Supports public channels, private channels, and DMs.
+export async function resolveChannelId(
+  channelNameOrId: string,
+  accessToken: string,
+  mcpServerId: string
+): Promise<string | null> {
+  const slackClient = await getSlackClient(accessToken);
+  const searchString = channelNameOrId.trim().replace(/^#/, "").replace(/^@/, "");
+
+  // If searchString looks like a Slack channel/DM ID (starts with C, G, or D), try direct lookup first.
+  if (searchString.match(/^[CGD][A-Z0-9]+$/)) {
+    try {
+      const infoResp = await slackClient.conversations.info({
+        channel: searchString,
+      });
+      if (infoResp.ok && infoResp.channel?.id) {
+        return infoResp.channel.id;
+      }
+    } catch (error) {
+      // Fall through to name-based search.
+    }
+  }
+
+  // Search by name in public channels, private channels, and DMs.
+  const channels = await getChannels({
+    mcpServerId,
+    slackClient,
+    types: "public_channel,private_channel,im,mpim",
+    memberOnly: false,
+  });
+
+  const channel = channels.find(
+    (c) =>
+      c.name?.toLowerCase() === searchString.toLowerCase() ||
+      c.id?.toLowerCase() === searchString.toLowerCase()
+  );
+
+  return channel?.id ?? null;
+}
+
 export async function executeReadThreadMessages(
   channel: string,
   threadTs: string,

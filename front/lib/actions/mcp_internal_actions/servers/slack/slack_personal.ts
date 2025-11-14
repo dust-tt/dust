@@ -19,6 +19,8 @@ import {
   executeReadThreadMessages,
   executeScheduleMessage,
   getSlackClient,
+  resolveChannelId,
+  resolveUserDisplayName,
 } from "@app/lib/actions/mcp_internal_actions/servers/slack/helpers";
 import {
   makeInternalMCPServer,
@@ -65,6 +67,8 @@ export const slackSearch = async (
       sort: "score",
       sort_dir: "desc",
       limit: SLACK_SEARCH_ACTION_NUM_RESULTS.toString(),
+      // Search across all conversation types: public channels, private channels, DMs, and group DMs.
+      channel_types: "public_channel,private_channel,mpim,im",
     });
 
     const resp = await fetch(
@@ -97,10 +101,20 @@ export const slackSearch = async (
       throw new Error(data.error || "unknown_error");
     }
 
-    const rawMatches: SlackSearchMatch[] = data.results.messages;
+    const rawMatches = data.results.messages;
+
+    // Map API response to SlackSearchMatch format.
+    // For DMs, channel_id is the user ID that needs to be resolved.
+    const mappedMatches: SlackSearchMatch[] = rawMatches.map((msg: any) => ({
+      author_name: msg.author_user_id,
+      channel_name: msg.channel_id, // For DMs, this will be a user ID (U...)
+      message_ts: msg.message_ts,
+      content: msg.content,
+      permalink: msg.permalink,
+    }));
 
     // Filter out matches that don't have a text.
-    const matchesWithText = rawMatches.filter((match) => !!match.content);
+    const matchesWithText = mappedMatches.filter((match) => !!match.content);
 
     // Keep only the top SLACK_SEARCH_ACTION_NUM_RESULTS matches.
     const matches = matchesWithText.slice(0, SLACK_SEARCH_ACTION_NUM_RESULTS);
@@ -184,8 +198,7 @@ function makeQueryResource(
   relativeTimeFrame: TimeFrame | null,
   channels?: string[],
   usersFrom?: string[],
-  usersTo?: string[],
-  usersMentioned?: string[]
+  usersTo?: string[]
 ): SearchQueryResourceType {
   const timeFrameAsString =
     renderRelativeTimeFrameForToolOutput(relativeTimeFrame);
@@ -201,9 +214,6 @@ function makeQueryResource(
   }
   if (usersTo && usersTo.length > 0) {
     text += ` to users: ${usersTo.join(", ")}`;
-  }
-  if (usersMentioned && usersMentioned.length > 0) {
-    text += ` mentioning users: ${usersMentioned.join(", ")}`;
   }
 
   return {
@@ -234,41 +244,37 @@ const buildCommonSearchParams = () => ({
     .describe(
       "Narrow the search to direct messages sent to specific user IDs (optional)"
     ),
-  usersMentioned: z
-    .string()
-    .array()
-    .optional()
-    .describe(
-      "Narrow the search to messages mentioning specific users ids (optional)"
-    ),
   relativeTimeFrame: z
     .string()
     .regex(/^(all|\d+[hdwmy])$/)
+    .default("all")
     .describe(
       "The time frame (relative to LOCAL_TIME) to restrict the search based" +
         " on the user request and past conversation context." +
         " Possible values are: `all`, `{k}h`, `{k}d`, `{k}w`, `{k}m`, `{k}y`" +
         " where {k} is a number. Be strict, do not invent invalid values." +
-        " Also, do not pass this unless the user explicitly asks for some timeframe."
+        " Default is 'all' which searches across all time."
     ),
 });
 
-function buildSlackSearchQuery(
+async function buildSlackSearchQuery(
   initial: string,
   {
     timeFrame,
     channels,
     usersFrom,
     usersTo,
-    usersMentioned,
+    accessToken,
+    mcpServerId,
   }: {
     timeFrame: TimeFrame | null;
     channels?: string[];
     usersFrom?: string[];
     usersTo?: string[];
-    usersMentioned?: string[];
+    accessToken: string;
+    mcpServerId: string;
   }
-): string {
+): Promise<string> {
   let query = initial;
   if (timeFrame) {
     const timestampInMs = timeFrameFromNow(timeFrame);
@@ -276,21 +282,49 @@ function buildSlackSearchQuery(
     query = `${query} after:${formatDateForSlackQuery(date)}`;
   }
   if (channels && channels.length > 0) {
-    query = `${query} ${channels
-      .map((channel) =>
-        // Because we use channel names and not IDs, we need to use the #CHANNEL format instead of <#CHANNEL_ID>.
-        channel.charAt(0) === "#" ? `in:${channel}` : `in:#${channel}`
-      )
-      .join(" ")}`;
+    // For Slack search API, we need to use channel names, not IDs.
+    // First, resolve channel names/IDs to get the actual channel objects.
+    const slackClient = await getSlackClient(accessToken);
+    const resolvedChannels = await Promise.all(
+      channels.map(async (channel) => {
+        const channelId = await resolveChannelId(
+          channel,
+          accessToken,
+          mcpServerId
+        );
+        if (!channelId) return null;
+
+        // Get channel info to retrieve the channel name.
+        try {
+          const channelInfo = await slackClient.conversations.info({
+            channel: channelId,
+          });
+          if (channelInfo.ok && channelInfo.channel?.name) {
+            return channelInfo.channel.name;
+          }
+        } catch (error) {
+          // If we can't get channel info, skip this channel.
+        }
+        return null;
+      })
+    );
+
+    // Build query with channel names (not IDs).
+    // Use in:#channel-name format as required by Slack search API.
+    const channelQueries = resolvedChannels
+      .filter((name): name is string => name !== null)
+      .map((name) => `in:#${name}`)
+      .join(" ");
+
+    if (channelQueries) {
+      query = `${query} ${channelQueries}`;
+    }
   }
   if (usersFrom && usersFrom.length > 0) {
     query = `${query} ${usersFrom.map((user) => `from:${user}`).join(" ")}`;
   }
   if (usersTo && usersTo.length > 0) {
     query = `${query} ${usersTo.map((user) => `to:${user}`).join(" ")}`;
-  }
-  if (usersMentioned && usersMentioned.length > 0) {
-    query = `${query} ${usersMentioned.map((user) => `${user}`).join(" ")}`;
   }
   return query;
 }
@@ -413,7 +447,6 @@ async function createServer(
             keywords,
             usersFrom,
             usersTo,
-            usersMentioned,
             relativeTimeFrame,
             channels,
           },
@@ -447,12 +480,13 @@ async function createServer(
             const results: SlackSearchMatch[][] = await concurrentExecutor(
               keywords,
               async (keyword) => {
-                const query = buildSlackSearchQuery(keyword, {
+                const query = await buildSlackSearchQuery(keyword, {
                   timeFrame,
                   channels,
                   usersFrom,
                   usersTo,
-                  usersMentioned,
+                  accessToken,
+                  mcpServerId,
                 });
 
                 return slackSearch(query, accessToken);
@@ -485,8 +519,7 @@ async function createServer(
                     timeFrame,
                     channels,
                     usersFrom,
-                    usersTo,
-                    usersMentioned
+                    usersTo
                   ),
                 },
               ]);
@@ -499,15 +532,33 @@ async function createServer(
                 citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
               );
 
-              const results = buildSearchResults<SlackSearchMatch>(
-                matches,
+              // Resolve channel/user names for display
+              const resolvedMatches = await Promise.all(
+                matches.map(async (match) => {
+                  let displayName = match.channel_name ?? "Unknown";
+
+                  // If channel_name looks like a user ID (starts with U), resolve to user name
+                  if (displayName.match(/^U[A-Z0-9]+$/)) {
+                    const userName = await resolveUserDisplayName(displayName, accessToken);
+                    displayName = userName ? `@${userName}` : `@${displayName}`;
+                  } else if (displayName !== "Unknown") {
+                    displayName = `#${displayName}`;
+                  } else {
+                    displayName = "#Unknown";
+                  }
+
+                  return { match, displayName };
+                })
+              );
+
+              const results = buildSearchResults<{ match: SlackSearchMatch; displayName: string }>(
+                resolvedMatches,
                 refs,
                 {
-                  permalink: (match) => match.permalink,
-                  text: (match) =>
-                    `#${match.channel_name ?? "Unknown"}, ${match.content ?? ""}`,
-                  id: (match) => match.message_ts ?? "",
-                  content: (match) => match.content ?? "",
+                  permalink: (item) => item.match.permalink,
+                  text: (item) => `${item.displayName}, ${item.match.content ?? ""}`,
+                  id: (item) => item.match.message_ts ?? "",
+                  content: (item) => item.match.content ?? "",
                 }
               );
 
@@ -523,8 +574,7 @@ async function createServer(
                     timeFrame,
                     channels,
                     usersFrom,
-                    usersTo,
-                    usersMentioned
+                    usersTo
                   ),
                 },
               ]);
@@ -563,7 +613,6 @@ async function createServer(
             query,
             usersFrom,
             usersTo,
-            usersMentioned,
             relativeTimeFrame,
             channels,
           },
@@ -583,12 +632,13 @@ async function createServer(
           const timeFrame = parseTimeFrame(relativeTimeFrame);
 
           try {
-            const searchQuery = buildSlackSearchQuery(query, {
+            const searchQuery = await buildSlackSearchQuery(query, {
               timeFrame,
               channels,
               usersFrom,
               usersTo,
-              usersMentioned,
+              accessToken,
+              mcpServerId,
             });
 
             const matches = await slackSearch(searchQuery, accessToken);
@@ -603,8 +653,7 @@ async function createServer(
                     timeFrame,
                     channels,
                     usersFrom,
-                    usersTo,
-                    usersMentioned
+                    usersTo
                   ),
                 },
               ]);
@@ -617,13 +666,26 @@ async function createServer(
                 citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
               );
 
-              const getTextFromMatch = (match: SlackSearchMatch) => {
+              const getTextFromMatch = async (match: SlackSearchMatch) => {
                 // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 const author = match.author_name || "Unknown";
                 // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                const channel = match.channel_name || "Unknown";
+                let channel = match.channel_name || "Unknown";
                 // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 let content = match.content || "";
+
+                // If channel looks like a user ID (starts with U), resolve to user name.
+                if (channel.match(/^U[A-Z0-9]+$/)) {
+                  const userName = await resolveUserDisplayName(
+                    channel,
+                    accessToken
+                  );
+                  channel = userName ? `@${userName}` : `@${channel}`;
+                } else if (channel !== "Unknown") {
+                  channel = `#${channel}`;
+                } else {
+                  channel = "#Unknown";
+                }
 
                 // assistant.search.context wraps search words in \uE000 and \uE001.
                 // which display as squares in the UI, so we strip them out.
@@ -636,17 +698,28 @@ async function createServer(
                   (_m, _id, username) => `@${username}`
                 );
 
-                return `From ${author} in #${channel}: ${content}`;
+                return `From ${author} in ${channel}: ${content}`;
               };
 
-              const results = buildSearchResults<SlackSearchMatch>(
-                matches,
+              // Resolve all matches with user names for DMs.
+              const resolvedMatches = await Promise.all(
+                matches.map(async (match) => ({
+                  match,
+                  text: await getTextFromMatch(match),
+                }))
+              );
+
+              const results = buildSearchResults<{
+                match: SlackSearchMatch;
+                text: string;
+              }>(
+                resolvedMatches,
                 refs,
                 {
-                  permalink: (match) => match.permalink,
-                  text: (match) => getTextFromMatch(match),
-                  id: (match) => match.message_ts ?? "",
-                  content: (match) => match.content ?? "",
+                  permalink: ({ match }) => match.permalink,
+                  text: ({ text }) => text,
+                  id: ({ match }) => match.message_ts ?? "",
+                  content: ({ match }) => match.content ?? "",
                 }
               );
 
@@ -662,8 +735,7 @@ async function createServer(
                     timeFrame,
                     channels,
                     usersFrom,
-                    usersTo,
-                    usersMentioned
+                    usersTo
                   ),
                 },
               ]);
@@ -1036,31 +1108,56 @@ async function createServer(
         const timeFrame = parseTimeFrame(relativeTimeFrame);
 
         try {
-          let query = `-threads:replies in:${channel.charAt(0) === "#" ? channel : `#${channel}`}`;
+          // Resolve channel name to channel ID (supports both public and private channels).
+          const channelId = await resolveChannelId(
+            channel,
+            accessToken,
+            mcpServerId
+          );
 
-          if (timeFrame) {
-            const timestampInMs = timeFrameFromNow(timeFrame);
-            const date = new Date(timestampInMs);
-            query = `${query} after:${formatDateForSlackQuery(date)}`;
+          if (!channelId) {
+            return new Err(
+              new MCPError(
+                `Unable to find channel "${channel}". Make sure the channel exists and you have access to it.`
+              )
+            );
           }
 
-          const r = await slackClient.search.messages({
-            query,
-            sort: "timestamp",
-            sort_dir: "desc",
-            highlight: false,
-            count: SLACK_SEARCH_ACTION_NUM_RESULTS,
-            page: 1,
+          // Calculate timestamp for timeFrame filtering.
+          const oldest = timeFrame
+            ? (timeFrameFromNow(timeFrame) / 1000).toString()
+            : undefined;
+
+          // Use conversations.history to get messages, which works for both public and private channels.
+          const response = await slackClient.conversations.history({
+            channel: channelId,
+            oldest,
+            limit: 100, // Get more messages to have enough threads.
           });
 
-          if (!r.ok) {
-            return new Err(new MCPError(r.error ?? "Unknown error"));
+          if (!response.ok) {
+            // Provide specific error message for missing_scope
+            if (response.error === "missing_scope") {
+              return new Err(
+                new MCPError(
+                  "Missing permission to access this channel. Please reconnect your Slack account in the connections settings to grant the required permissions."
+                )
+              );
+            }
+            return new Err(
+              new MCPError(response.error ?? "Failed to list threads")
+            );
           }
 
-          const rawMatches = r.messages?.matches ?? [];
+          const rawMessages = response.messages ?? [];
 
-          // Keep only the top SLACK_SEARCH_ACTION_NUM_RESULTS matches.
-          const matches = rawMatches.slice(0, SLACK_SEARCH_ACTION_NUM_RESULTS);
+          // Filter to only keep messages that have threads (reply_count > 0).
+          const threadsOnly = rawMessages.filter(
+            (msg) => msg.reply_count && msg.reply_count > 0
+          );
+
+          // Keep only the top SLACK_SEARCH_ACTION_NUM_RESULTS threads.
+          const matches = threadsOnly.slice(0, SLACK_SEARCH_ACTION_NUM_RESULTS);
 
           if (matches.length === 0) {
             return new Ok([
@@ -1075,7 +1172,6 @@ async function createServer(
                   timeFrame,
                   [channel],
                   [],
-                  [],
                   []
                 ),
               },
@@ -1088,15 +1184,40 @@ async function createServer(
               citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
             );
 
+            // Get channel info to display channel name in results.
+            const channelInfo = await slackClient.conversations.info({
+              channel: channelId,
+            });
+
+            // Determine display name based on channel type
+            let displayName: string;
+            if (channelInfo.ok && channelInfo.channel) {
+              // For DMs, channelId starts with "D" and channel.name contains the user ID
+              if (channelId.startsWith("D") && channelInfo.channel.name) {
+                // It's a DM, channel.name is the user ID - resolve to user name
+                const userName = await resolveUserDisplayName(
+                  channelInfo.channel.name,
+                  accessToken
+                );
+                displayName = userName ? `@${userName}` : `@${channelInfo.channel.name}`;
+              } else if (channelInfo.channel.name) {
+                // Regular channel
+                displayName = `#${channelInfo.channel.name}`;
+              } else {
+                displayName = `#${channel}`;
+              }
+            } else {
+              displayName = `#${channel}`;
+            }
+
             const results = buildSearchResults<{
-              permalink?: string;
-              channel?: { name?: string };
               text?: string;
               ts?: string;
+              permalink?: string;
             }>(matches, refs, {
               permalink: (match) => match.permalink,
               text: (match) =>
-                `#${match.channel?.name ?? "Unknown"}, ${match.text ?? ""}`,
+                `${displayName}, ${match.text ?? "Thread with no preview"}`,
               id: (match) => match.ts ?? "",
               content: (match) => match.text ?? "",
             });
@@ -1112,7 +1233,6 @@ async function createServer(
                   [],
                   timeFrame,
                   [channel],
-                  [],
                   [],
                   []
                 ),
@@ -1182,116 +1302,6 @@ async function createServer(
           latest,
           accessToken
         );
-      }
-    )
-  );
-
-  server.tool(
-    "add_reaction",
-    "Add a reaction emoji to a message",
-    {
-      channel: z.string().describe("The channel where the message is located"),
-      timestamp: z
-        .string()
-        .describe("The timestamp of the message to react to"),
-      name: z
-        .string()
-        .describe(
-          "The name of the emoji reaction (without colons, e.g., 'thumbsup', 'heart')"
-        ),
-    },
-    withToolLogging(
-      auth,
-      {
-        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
-        agentLoopContext,
-      },
-      async ({ channel, timestamp, name }, { authInfo }) => {
-        const accessToken = authInfo?.token;
-        if (!accessToken) {
-          return new Err(new MCPError("Access token not found"));
-        }
-
-        const slackClient = await getSlackClient(accessToken);
-
-        try {
-          const response = await slackClient.reactions.add({
-            channel,
-            timestamp,
-            name,
-          });
-
-          if (!response.ok) {
-            return new Err(new MCPError("Failed to add reaction"));
-          }
-
-          return new Ok([
-            {
-              type: "text" as const,
-              text: `Successfully added ${name} reaction to message`,
-            },
-          ]);
-        } catch (error) {
-          if (isSlackTokenRevoked(error)) {
-            return new Ok(makePersonalAuthenticationError("slack").content);
-          }
-          return new Err(new MCPError(`Error adding reaction: ${error}`));
-        }
-      }
-    )
-  );
-
-  server.tool(
-    "remove_reaction",
-    "Remove a reaction emoji from a message",
-    {
-      channel: z.string().describe("The channel where the message is located"),
-      timestamp: z
-        .string()
-        .describe("The timestamp of the message to remove reaction from"),
-      name: z
-        .string()
-        .describe(
-          "The name of the emoji reaction to remove (without colons, e.g., 'thumbsup', 'heart')"
-        ),
-    },
-    withToolLogging(
-      auth,
-      {
-        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
-        agentLoopContext,
-      },
-      async ({ channel, timestamp, name }, { authInfo }) => {
-        const accessToken = authInfo?.token;
-        if (!accessToken) {
-          return new Err(new MCPError("Access token not found"));
-        }
-
-        const slackClient = await getSlackClient(accessToken);
-
-        try {
-          const response = await slackClient.reactions.remove({
-            channel,
-            timestamp,
-            name,
-          });
-
-          if (!response.ok) {
-            return new Err(new MCPError("Failed to remove reaction"));
-          }
-
-          return new Ok([
-            {
-              type: "text" as const,
-              text: `Successfully removed ${name} reaction from message`,
-            },
-          ]);
-        } catch (error) {
-          if (isSlackTokenRevoked(error)) {
-            return new Ok(makePersonalAuthenticationError("slack").content);
-          }
-          return new Err(new MCPError(`Error removing reaction: ${error}`));
-        }
       }
     )
   );
