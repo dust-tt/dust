@@ -1,4 +1,12 @@
 import {
+  Button,
+  FullscreenIcon,
+  Sheet,
+  SheetContent,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
+import { useState } from "react";
+import {
   CartesianGrid,
   Line,
   LineChart,
@@ -34,6 +42,8 @@ interface ActivityChartProps {
 }
 
 export function ActivityChart({ workspaceId, period }: ActivityChartProps) {
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
   const { usageMetrics, isUsageMetricsLoading, isUsageMetricsError } =
     useWorspaceUsageMetrics({
       workspaceId,
@@ -50,19 +60,9 @@ export function ActivityChart({ workspaceId, period }: ActivityChartProps) {
     zeroFactory
   );
 
-  return (
-    <ChartContainer
-      title="Activity"
-      description="Messages, conversations, and active users."
-      isLoading={isUsageMetricsLoading}
-      errorMessage={
-        isUsageMetricsError ? "Failed to load observability data." : undefined
-      }
-      emptyMessage={
-        data.length === 0 ? "No usage metrics for this selection." : undefined
-      }
-    >
-      <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
+  // Render the chart (used in both normal and fullscreen modes)
+  const renderChart = (height: number) => (
+    <ResponsiveContainer width="100%" height={height}>
         <LineChart
           data={data}
           margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
@@ -134,8 +134,59 @@ export function ActivityChart({ workspaceId, period }: ActivityChartProps) {
             dot={false}
           />
         </LineChart>
-      </ResponsiveContainer>
-      <ChartLegend items={legendItems} />
-    </ChartContainer>
+    </ResponsiveContainer>
+  );
+
+  return (
+    <>
+      <ChartContainer
+        title="Activity"
+        description="Messages, conversations, and active users."
+        isLoading={isUsageMetricsLoading}
+        errorMessage={
+          isUsageMetricsError
+            ? "Failed to load observability data."
+            : undefined
+        }
+        emptyMessage={
+          data.length === 0 ? "No usage metrics for this selection." : undefined
+        }
+        additionalControls={
+          <Button
+            icon={FullscreenIcon}
+            variant="ghost"
+            size="xs"
+            onClick={() => setIsFullscreen(true)}
+            tooltip="View fullscreen"
+          />
+        }
+      >
+        {renderChart(CHART_HEIGHT)}
+        <ChartLegend items={legendItems} />
+      </ChartContainer>
+
+      <Sheet open={isFullscreen} onOpenChange={setIsFullscreen}>
+        <SheetContent size="xl">
+            <div className="flex h-full flex-col">
+              <div className="mb-4 flex items-center justify-between border-b pb-4">
+                <h2 className="text-xl font-semibold">
+                  Activity - Cost Overview
+                </h2>
+                <Button
+                  icon={XMarkIcon}
+                  variant="ghost"
+                  onClick={() => setIsFullscreen(false)}
+                />
+              </div>
+              <div className="flex-1 overflow-hidden">
+                {renderChart(window.innerHeight - 200)}
+              </div>
+              <div className="mt-4 border-t pt-4">
+                <ChartLegend items={legendItems} />
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
+    </>
   );
 }

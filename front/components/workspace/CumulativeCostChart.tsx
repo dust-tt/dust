@@ -4,6 +4,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  FullscreenIcon,
+  Sheet,
+  SheetContent,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 import {
@@ -34,22 +38,25 @@ const GROUP_BY_OPTIONS = [
 ];
 
 const COLORS = [
-  "#3b82f6",
-  "#10b981",
-  "#f59e0b",
-  "#ef4444",
-  "#8b5cf6",
-  "#ec4899",
-  "#06b6d4",
-  "#84cc16",
-  "#f97316",
-  "#6366f1",
+  "#3b82f6", // blue
+  "#10b981", // green
+  "#f59e0b", // amber
+  "#ef4444", // red
+  "#8b5cf6", // purple
+  "#ec4899", // pink
+  "#06b6d4", // cyan
+  "#84cc16", // lime
+  "#f97316", // orange
+  "#6366f1", // indigo
 ];
+
+const OTHERS_COLOR = "#9ca3af"; // gray for "Others" group
 
 export function CumulativeCostChart({ workspaceId }: CumulativeCostChartProps) {
   const [groupBy, setGroupBy] = useState<"global" | "agent" | "origin">(
     "global"
   );
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const {
     cumulativeCostData,
@@ -131,50 +138,21 @@ export function CumulativeCostChart({ workspaceId }: CumulativeCostChartProps) {
         (a, b) => a.timestamp - b.timestamp
       );
 
-      // Get group names
-      groups = Object.values(cumulativeCostData.groups).map((g) => g.name);
+      // Get group names, with "Others" at the end
+      const groupEntries = Object.entries(cumulativeCostData.groups);
+      const regularGroups = groupEntries
+        .filter(([key]) => key !== "others")
+        .map(([, data]) => data.name);
+      const othersGroup = groupEntries
+        .filter(([key]) => key === "others")
+        .map(([, data]) => data.name);
+      groups = [...regularGroups, ...othersGroup];
     }
   }
 
-  return (
-    <ChartContainer
-      title={`Cumulative Cost - ${currentMonth}`}
-      description="Total cost accumulated since the start of the month."
-      isLoading={isCumulativeCostLoading}
-      errorMessage={
-        isCumulativeCostError
-          ? "Failed to load cumulative cost data."
-          : undefined
-      }
-      emptyMessage={
-        chartData.length === 0 ? "No cost data for this month." : undefined
-      }
-      additionalControls={
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              label={
-                GROUP_BY_OPTIONS.find((opt) => opt.value === groupBy)?.label ||
-                "Global"
-              }
-              size="xs"
-              variant="outline"
-              isSelect
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {GROUP_BY_OPTIONS.map((option) => (
-              <DropdownMenuItem
-                key={option.value}
-                label={option.label}
-                onClick={() => setGroupBy(option.value)}
-              />
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      }
-    >
-      <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
+  // Render the chart (used in both normal and fullscreen modes)
+  const renderChart = (height: number) => (
+    <ResponsiveContainer width="100%" height={height}>
         {groupBy === "global" ? (
           <LineChart
             data={chartData}
@@ -232,7 +210,10 @@ export function CumulativeCostChart({ workspaceId }: CumulativeCostChartProps) {
           >
             <defs>
               {groups.map((groupName, index) => {
-                const color = COLORS[index % COLORS.length];
+                const color =
+                  groupName === "Others"
+                    ? OTHERS_COLOR
+                    : COLORS[index % COLORS.length];
                 return (
                   <linearGradient
                     key={`gradient-${groupName}`}
@@ -284,20 +265,122 @@ export function CumulativeCostChart({ workspaceId }: CumulativeCostChartProps) {
             <Legend
               wrapperStyle={{ fontSize: "12px", paddingTop: "10px" }}
             />
-            {groups.map((groupName, index) => (
-              <Area
-                key={groupName}
-                type="monotone"
-                dataKey={groupName}
-                stackId="cost"
-                stroke={COLORS[index % COLORS.length]}
-                fill={`url(#fill-${groupName.replace(/\s+/g, "-")})`}
-                strokeWidth={2}
-              />
-            ))}
+            {groups.map((groupName, index) => {
+              const color =
+                groupName === "Others"
+                  ? OTHERS_COLOR
+                  : COLORS[index % COLORS.length];
+              return (
+                <Area
+                  key={groupName}
+                  type="monotone"
+                  dataKey={groupName}
+                  stackId="cost"
+                  stroke={color}
+                  fill={`url(#fill-${groupName.replace(/\s+/g, "-")})`}
+                  strokeWidth={2}
+                />
+              );
+            })}
           </AreaChart>
         )}
-      </ResponsiveContainer>
-    </ChartContainer>
+    </ResponsiveContainer>
+  );
+
+  return (
+    <>
+      <ChartContainer
+        title={`Cumulative Cost - ${currentMonth}`}
+        description="Total cost accumulated since the start of the month."
+        isLoading={isCumulativeCostLoading}
+        errorMessage={
+          isCumulativeCostError
+            ? "Failed to load cumulative cost data."
+            : undefined
+        }
+        emptyMessage={
+          chartData.length === 0 ? "No cost data for this month." : undefined
+        }
+        additionalControls={
+          <div className="flex items-center gap-2">
+            <Button
+              icon={FullscreenIcon}
+              variant="ghost"
+              size="xs"
+              onClick={() => setIsFullscreen(true)}
+              tooltip="View fullscreen"
+            />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  label={
+                    GROUP_BY_OPTIONS.find((opt) => opt.value === groupBy)
+                      ?.label || "Global"
+                  }
+                  size="xs"
+                  variant="outline"
+                  isSelect
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {GROUP_BY_OPTIONS.map((option) => (
+                  <DropdownMenuItem
+                    key={option.value}
+                    label={option.label}
+                    onClick={() => setGroupBy(option.value)}
+                  />
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        }
+      >
+        {renderChart(CHART_HEIGHT)}
+      </ChartContainer>
+
+      <Sheet open={isFullscreen} onOpenChange={setIsFullscreen}>
+        <SheetContent size="xl">
+            <div className="flex h-full flex-col">
+              <div className="mb-4 flex items-center justify-between border-b pb-4">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-xl font-semibold">
+                    Cumulative Cost - {currentMonth}
+                  </h2>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        label={
+                          GROUP_BY_OPTIONS.find((opt) => opt.value === groupBy)
+                            ?.label || "Global"
+                        }
+                        size="sm"
+                        variant="outline"
+                        isSelect
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {GROUP_BY_OPTIONS.map((option) => (
+                        <DropdownMenuItem
+                          key={option.value}
+                          label={option.label}
+                          onClick={() => setGroupBy(option.value)}
+                        />
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                <Button
+                  icon={XMarkIcon}
+                  variant="ghost"
+                  onClick={() => setIsFullscreen(false)}
+                />
+              </div>
+              <div className="flex-1 overflow-hidden">
+                {renderChart(window.innerHeight - 200)}
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
+    </>
   );
 }

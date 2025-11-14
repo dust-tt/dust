@@ -195,6 +195,28 @@ async function handler(
         });
       }
 
+      // Calculate total cost for each group to identify top 5
+      const groupsWithTotals = groupBuckets.map((groupBucket) => {
+        const dailyBuckets = bucketsToArray<DailyBucket>(
+          groupBucket.by_day?.buckets
+        );
+        const totalCost = dailyBuckets.reduce(
+          (sum, bucket) => sum + Math.round(bucket.cost_cents?.value ?? 0),
+          0
+        );
+        return {
+          groupKey: groupBucket.key,
+          groupBucket,
+          dailyBuckets,
+          totalCost,
+        };
+      });
+
+      // Sort by total cost descending and take top 5
+      groupsWithTotals.sort((a, b) => b.totalCost - a.totalCost);
+      const top5Groups = groupsWithTotals.slice(0, 5);
+      const otherGroups = groupsWithTotals.slice(5);
+
       // Process groups
       const groups: {
         [key: string]: {
@@ -207,8 +229,8 @@ async function handler(
         };
       } = {};
 
-      for (const groupBucket of groupBuckets) {
-        const groupKey = groupBucket.key;
+      // Process top 5 groups
+      for (const { groupKey, dailyBuckets } of top5Groups) {
         let groupName: string;
 
         if (groupKey === "unknown") {
@@ -218,10 +240,6 @@ async function handler(
         } else {
           groupName = groupKey;
         }
-
-        const dailyBuckets = bucketsToArray<DailyBucket>(
-          groupBucket.by_day?.buckets
-        );
 
         let cumulativeCost = 0;
         const points = dailyBuckets.map((bucket) => {
@@ -236,6 +254,42 @@ async function handler(
 
         groups[groupKey] = {
           name: groupName,
+          points,
+        };
+      }
+
+      // Aggregate "Others" group if there are more than 5 groups
+      if (otherGroups.length > 0) {
+        // Collect all timestamps and aggregate daily costs
+        const dailyCostsByTimestamp: Record<number, number> = {};
+
+        for (const { dailyBuckets } of otherGroups) {
+          for (const bucket of dailyBuckets) {
+            const timestamp = bucket.key;
+            const dailyCost = Math.round(bucket.cost_cents?.value ?? 0);
+            dailyCostsByTimestamp[timestamp] =
+              (dailyCostsByTimestamp[timestamp] || 0) + dailyCost;
+          }
+        }
+
+        // Convert to array and sort by timestamp
+        const sortedTimestamps = Object.keys(dailyCostsByTimestamp)
+          .map(Number)
+          .sort((a, b) => a - b);
+
+        let cumulativeCost = 0;
+        const points = sortedTimestamps.map((timestamp) => {
+          const dailyCost = dailyCostsByTimestamp[timestamp];
+          cumulativeCost += dailyCost;
+          return {
+            timestamp,
+            cumulativeCostCents: cumulativeCost,
+            dailyCostCents: dailyCost,
+          };
+        });
+
+        groups["others"] = {
+          name: "Others",
           points,
         };
       }
