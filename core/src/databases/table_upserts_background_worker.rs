@@ -95,9 +95,22 @@ impl TableUpsertsBackgroundWorker {
 
         if !rows.is_empty() {
             let local_table = LocalTable::from_table(table.clone())?;
-            local_table
+            if let Err(e) = local_table
                 .upsert_rows_gcs(&self.store, &self.gcs_db_store, rows, false)
-                .await?;
+                .await
+            {
+                if e.to_string().contains("Too many columns in CSV file") {
+                    error!(
+                        project_id = table_data.project_id,
+                        data_source_id = table_data.data_source_id,
+                        table_id = table_data.table_id,
+                        "TableUpsertsBackgroundWorker: Too many columns in CSV file, ignoring: {}",
+                        e
+                    );
+                } else {
+                    return Err(e);
+                }
+            }
         }
 
         let _: () = self
