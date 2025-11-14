@@ -7,7 +7,6 @@ import { ReactNodeViewRenderer } from "@tiptap/react";
 import { nodePasteRule } from "@tiptap/react";
 import escapeRegExp from "lodash/escapeRegExp";
 
-import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import type { WorkspaceType } from "@app/types";
 
 import { MentionComponent } from "../MentionComponent";
@@ -80,15 +79,14 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
     const pasteRule = nodePasteRule({
       find: (text) => {
         // Note: the `suggestions` object should be available from the MentionStorage extension but it might takes some time to load.
-        const suggestions: EditorSuggestions =
-          this.editor.storage.MentionStorage.suggestions;
+        const suggestions = this.editor.storage.MentionStorage.suggestions;
 
         const results: PasteRuleMatch[] = suggestions.suggestions.flatMap(
           (suggestion) => {
             return [
               ...text.matchAll(
                 // Note: matching the @ that are found either at the start of a line or after a whitespace character.
-                // and that also are followed by a newline, a whitespace character or the end of the string.
+                // and that also is followed by a newline, a whitespace character or the end of the string.
                 new RegExp(
                   `((^@|\\s@)${escapeRegExp(suggestion.label)})(\\s|$)`,
                   "g"
@@ -140,7 +138,6 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
   // the @-suggestion dropdown).
   addKeyboardShortcuts() {
     return {
-      ...(this.parent?.() ?? {}),
       Backspace: () =>
         this.editor.commands.command(({ tr, state, dispatch }) => {
           const { selection } = state;
