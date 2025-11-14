@@ -14,6 +14,7 @@ import {
   AgentMCPServerConfiguration,
 } from "@app/lib/models/assistant/actions/mcp";
 import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
+import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/assistant/actions/remote_mcp_server_tool_metadata";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import {
   AgentConfiguration,
@@ -608,6 +609,9 @@ export async function deleteWorkspaceActivity({
   });
   await AgentMemoryResource.deleteAllForWorkspace(auth);
   await OnboardingTaskResource.deleteAllForWorkspace(auth);
+  await RemoteMCPServerToolMetadataModel.destroy({
+    where: { workspaceId: workspace.id },
+  });
 
   hardDeleteLogger.info({ workspaceId }, "Deleting Workspace");
 
