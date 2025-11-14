@@ -41,6 +41,17 @@ async function backfillConnectorTenant({
   childLogger.info({ tenantId, execute }, "Backfilling tenant id");
 
   if (execute) {
+    await config.model.update(
+      { tenantId },
+      {
+        where: {
+          id: config.id,
+        },
+        hooks: false,
+        silent: true,
+      }
+    );
+
     await config.update({ tenantId });
   }
 }
