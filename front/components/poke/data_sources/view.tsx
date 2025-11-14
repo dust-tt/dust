@@ -440,7 +440,7 @@ function StuckActivitiesModal({
         }
       }}
     >
-      <DialogContent size="lg">
+      <DialogContent size="md">
         <DialogHeader>
           <DialogTitle>Stuck Activities Details</DialogTitle>
         </DialogHeader>
