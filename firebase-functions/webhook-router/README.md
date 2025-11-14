@@ -69,6 +69,7 @@ npm run dev      # Start Firebase emulator
 http://localhost:5001/dust-infra/us-central1/webhookRouter/YOUR_WEBHOOK_SECRET/slack/events
 http://localhost:5001/dust-infra/us-central1/webhookRouter/YOUR_WEBHOOK_SECRET/slack/interactions
 http://localhost:5001/dust-infra/us-central1/webhookRouter/YOUR_WEBHOOK_SECRET/microsoft/teams/messages
+http://localhost:5001/dust-infra/us-central1/webhookRouter/YOUR_WEBHOOK_SECRET/notion
 ```
 
 ### Production
@@ -79,6 +80,7 @@ http://localhost:5001/dust-infra/us-central1/webhookRouter/YOUR_WEBHOOK_SECRET/m
 https://us-central1-dust-infra.cloudfunctions.net/webhookRouter/YOUR_WEBHOOK_SECRET/slack/events
 https://us-central1-dust-infra.cloudfunctions.net/webhookRouter/YOUR_WEBHOOK_SECRET/slack/interactions
 https://us-central1-dust-infra.cloudfunctions.net/webhookRouter/YOUR_WEBHOOK_SECRET/microsoft/teams/messages
+https://us-central1-dust-infra.cloudfunctions.net/webhookRouter/YOUR_WEBHOOK_SECRET/notion
 ```
 
 **Custom Domain (via Firebase Hosting):**
@@ -87,6 +89,7 @@ https://us-central1-dust-infra.cloudfunctions.net/webhookRouter/YOUR_WEBHOOK_SEC
 https://webhook.dust.tt/YOUR_WEBHOOK_SECRET/slack/events
 https://webhook.dust.tt/YOUR_WEBHOOK_SECRET/slack/interactions
 https://webhook.dust.tt/YOUR_WEBHOOK_SECRET/microsoft/teams/messages
+https://webhook.dust.tt/YOUR_WEBHOOK_SECRET/notion
 ```
 
 ## Architecture
@@ -123,6 +126,7 @@ For local development, set environment variables:
 export DUST_CONNECTORS_WEBHOOKS_SECRET="your-webhook-secret"
 export SLACK_SIGNING_SECRET="your-slack-signing-secret"
 export MICROSOFT_BOT_ID_SECRET="your-bot-app-id"
+export NOTION_SIGNING_SECRET="your-notion-signing-secret"
 ```
 
 ## Benefits over Cloud Run
@@ -143,6 +147,10 @@ export MICROSOFT_BOT_ID_SECRET="your-bot-app-id"
 ### Microsoft Teams Endpoints
 
 - `POST /:webhookSecret/microsoft/teams/messages` - Teams messages
+
+### Notion Endpoint
+
+- `POST /:webhookSecret/notion` - Teams messages
 
 ## Development
 

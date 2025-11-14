@@ -30,7 +30,8 @@ function verifyRequestSignature({
   hmac.update(body);
 
   // Use crypto.timingSafeEqual for timing-safe comparison.
-  const expectedHash = hmac.digest("hex");
+  const expectedHash = `sha256=${hmac.digest("hex")}`;
+
   if (signature.length !== expectedHash.length) {
     throw new ReceiverAuthenticityError(
       "Notion request signing verification failed. Signature mismatch."
