@@ -83,7 +83,7 @@ export const createAgentMessages = async ({
 
         const parentAgentMessageId =
           userMessage.context.origin === "agent_handover"
-            ? userMessage.context.originMessageId ?? null
+            ? (userMessage.context.originMessageId ?? null)
             : null;
 
         return {

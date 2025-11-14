@@ -412,7 +412,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       })();
 
       const parentMessage = message.parentId
-        ? messagesById.get(message.parentId) ?? null
+        ? (messagesById.get(message.parentId) ?? null)
         : null;
 
       let parentAgentMessage: Message | null = null;
