@@ -99,6 +99,10 @@ impl TableUpsertsBackgroundWorker {
                 .upsert_rows_gcs(&self.store, &self.gcs_db_store, rows, false)
                 .await
             {
+                // If the csv file in GCS already has too many columns, we're in a state
+                // where the background worker keeps failing and retrying.
+                // It's best to ignore those errors, since there isn't much we can do about them.
+                // Checking by error string is not ideal, but this is a tactical fix.
                 if e.to_string().contains("Too many columns in CSV file") {
                     error!(
                         project_id = table_data.project_id,
