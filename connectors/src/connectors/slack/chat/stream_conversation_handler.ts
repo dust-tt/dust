@@ -37,14 +37,12 @@ import { throttleWithRedis } from "@connectors/lib/throttle";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
-// Base throttle: update every 1s for short messages.
 const SLACK_MESSAGE_UPDATE_THROTTLE_MS = 1_000;
-// Slow throttle: update every 5s for long messages.
 const SLACK_MESSAGE_UPDATE_SLOW_THROTTLE_MS = 5_000;
-// Character threshold to switch to slow throttle.
 const SLACK_MESSAGE_LONG_THRESHOLD_CHARS = 300;
 
-// Dynamic throttling: longer messages get less frequent updates to reduce UX disruption
+// Dynamic throttling: longer messages get less frequent updates to reduce UX disruption when the content is expanded.
+// Posting an update on an expanded message will collapse it, frequent updates prevent users from reading the content.
 const getThrottleDelay = (textLength: number): number => {
   if (textLength >= SLACK_MESSAGE_LONG_THRESHOLD_CHARS) {
     return SLACK_MESSAGE_UPDATE_SLOW_THROTTLE_MS;
