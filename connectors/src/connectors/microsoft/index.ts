@@ -60,6 +60,7 @@ import type {
   ContentNodesViewType,
   DataSourceConfig,
 } from "@connectors/types";
+import { isString } from "@connectors/types/shared/utils/general";
 
 export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
   readonly provider: ConnectorProvider = "microsoft";
@@ -638,7 +639,7 @@ export function extractTenantIdFromAccessToken(
 
   try {
     const payload = decodeJwt(accessToken);
-    if (typeof payload.tid === "string") {
+    if (isString(payload.tid)) {
       return payload.tid;
     }
   } catch (e) {
