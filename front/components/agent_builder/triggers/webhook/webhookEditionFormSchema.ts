@@ -6,9 +6,8 @@ import type {
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { UserTypeWithWorkspaces } from "@app/types";
 import { asDisplayName } from "@app/types";
+import { DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT } from "@app/types/assistant/triggers";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
-
-const DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT = 50; // Default to 50 executions per day
 
 export const WebhookFormSchema = z.object({
   name: z
@@ -23,6 +22,7 @@ export const WebhookFormSchema = z.object({
   includePayload: z.boolean().default(false),
   naturalDescription: z.string().optional(),
   executionPerDayLimitOverride: z.number(),
+  executionMode: z.enum(["fair_use", "programmatic"]).default("fair_use"),
 });
 
 export type WebhookFormValues = z.infer<typeof WebhookFormSchema>;
@@ -53,6 +53,7 @@ export function getWebhookFormDefaultValues({
     executionPerDayLimitOverride:
       trigger?.executionPerDayLimitOverride ??
       DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT,
+    executionMode: trigger?.executionMode ?? "fair_use",
   };
 }
 
@@ -73,7 +74,7 @@ export function formValuesToWebhookTriggerData({
     name: webhook.name.trim(),
     customPrompt: webhook.customPrompt?.trim() ?? null,
     naturalLanguageDescription: webhookSourceView?.provider
-      ? webhook.naturalDescription?.trim() ?? null
+      ? (webhook.naturalDescription?.trim() ?? null)
       : null,
     kind: "webhook",
     provider: webhookSourceView?.provider ?? undefined,
@@ -84,11 +85,12 @@ export function formValuesToWebhookTriggerData({
     },
     webhookSourceViewSId: webhook.webhookSourceViewSId ?? undefined,
     editor:
-      editTrigger?.kind === "webhook" ? editTrigger.editor : user.id ?? null,
+      editTrigger?.kind === "webhook" ? editTrigger.editor : (user.id ?? null),
     editorName:
       editTrigger?.kind === "webhook"
         ? editTrigger.editorName
-        : user.fullName ?? undefined,
+        : (user.fullName ?? undefined),
     executionPerDayLimitOverride: webhook.executionPerDayLimitOverride,
+    executionMode: webhook.executionMode,
   };
 }

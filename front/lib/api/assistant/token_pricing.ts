@@ -13,6 +13,11 @@ type PricingEntry = {
 // This record must contain all BaseModelIdType values.
 const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
   // https://openai.com/api/pricing
+  "gpt-5.1": {
+    input: 1.25,
+    output: 10.0,
+    cache_read_input_tokens: 0.125,
+  },
   "gpt-5": {
     input: 1.25,
     output: 10.0,
@@ -91,6 +96,30 @@ const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
     cache_read_input_tokens: 0.3,
   },
   "claude-sonnet-4-5-20250929": {
+    input: 3.0,
+    output: 15.0,
+    cache_creation_input_tokens: 3.75,
+    cache_read_input_tokens: 0.3,
+  },
+  "claude-3-opus-20240229": {
+    input: 15.0,
+    output: 75.0,
+    cache_creation_input_tokens: 18.75,
+    cache_read_input_tokens: 1.5,
+  },
+  "claude-3-5-sonnet-20240620": {
+    input: 3.0,
+    output: 15.0,
+    cache_creation_input_tokens: 3.75,
+    cache_read_input_tokens: 0.3,
+  },
+  "claude-3-5-sonnet-20241022": {
+    input: 3.0,
+    output: 15.0,
+    cache_creation_input_tokens: 3.75,
+    cache_read_input_tokens: 0.3,
+  },
+  "claude-3-7-sonnet-20250219": {
     input: 3.0,
     output: 15.0,
     cache_creation_input_tokens: 3.75,
@@ -282,6 +311,14 @@ const LEGACY_MODEL_PRICING: Record<string, PricingEntry> = {
   "o1-mini-2024-09-12": {
     input: 3.0,
     output: 12.0,
+  },
+  "claude-3-sonnet-20240229": {
+    input: 3.0,
+    output: 15.0,
+  },
+  "claude-3-5-sonnet-latest": {
+    input: 3.0,
+    output: 15.0,
   },
   "claude-4-sonnet-latest": {
     input: 3.0,

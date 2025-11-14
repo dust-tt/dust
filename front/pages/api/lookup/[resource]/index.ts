@@ -6,7 +6,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import config from "@app/lib/api/config";
 import {
   handleLookupWorkspace,
-  lookupUserRegionByEmail,
+  hasEmailLocalRegionAffinity,
 } from "@app/lib/api/regions/lookup";
 import { getBearerToken } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -122,7 +122,7 @@ async function handler(
           });
         }
         response = {
-          exists: await lookupUserRegionByEmail(bodyValidation.right.user),
+          exists: await hasEmailLocalRegionAffinity(bodyValidation.right.user),
         };
       }
       break;

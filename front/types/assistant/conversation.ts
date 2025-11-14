@@ -1,8 +1,11 @@
 import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
-import type { AllSupportedWithDustSpecificFileContentType } from "@app/types";
-import type { ContentFragmentType } from "@app/types";
-import type { ModelId } from "@app/types";
+import type {
+  AllSupportedWithDustSpecificFileContentType,
+  ContentFragmentType,
+  MentionType,
+  ModelId,
+} from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 
 import type { UserType, WorkspaceType } from "../user";
@@ -13,26 +16,7 @@ import type {
 } from "./agent";
 import type { AgentContentItemType } from "./agent_message_content";
 
-/**
- * Mentions
- */
-
-export type AgentMention = {
-  configurationId: string;
-};
-
-export type UserMention = {
-  type: "user";
-  userId: string;
-};
-
-export type MentionType = AgentMention | UserMention;
-
 export type MessageVisibility = "visible" | "deleted";
-
-export function isAgentMention(arg: MentionType): arg is AgentMention {
-  return (arg as AgentMention).configurationId !== undefined;
-}
 
 export type ConversationMessageReactions = {
   messageId: string;
@@ -80,6 +64,7 @@ export type UserMessageOrigin =
   | "slack"
   | "teams"
   | "triggered"
+  | "triggered_programmatic"
   | "web"
   | "zapier"
   | "zendesk"
@@ -188,8 +173,6 @@ export type LightAgentMessageType = BaseAgentMessageType & {
     pictureUrl: string;
     status: AgentConfigurationStatus;
     canRead: boolean;
-    requestedGroupIds: string[][];
-    requestedSpaceIds: string[];
   };
   citations: Record<string, CitationType>;
   generatedFiles: Omit<ActionGeneratedFileType, "snippet">[];
@@ -237,8 +220,7 @@ export type ConversationWithoutContentType = {
   sId: string;
   title: string | null;
 
-  // Ideally, theses 2 properties should be moved to the ConversationType.
-  requestedGroupIds: string[][];
+  // Ideally, this property should be moved to the ConversationType.
   requestedSpaceIds: string[];
 };
 

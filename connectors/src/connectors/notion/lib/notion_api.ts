@@ -166,6 +166,7 @@ export async function getPagesAndDatabasesEditedSince({
     ...loggerArgs,
     cursors,
     sinceTs,
+    filter,
   });
 
   const notionClient = new Client({
@@ -189,6 +190,7 @@ export async function getPagesAndDatabasesEditedSince({
       maxTries: retry.retries,
     });
 
+    const now = Date.now();
     try {
       resultsPage = await wrapNotionAPITokenErrors(async () => {
         return notionClient.search({
@@ -205,7 +207,7 @@ export async function getPagesAndDatabasesEditedSince({
       });
     } catch (e) {
       tryLogger.error(
-        { error: e },
+        { error: e, duration: Date.now() - now },
         "Error fetching result page from Notion API."
       );
       tries += 1;

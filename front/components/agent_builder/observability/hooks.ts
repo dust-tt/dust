@@ -2,14 +2,19 @@ import {
   MAX_TOOLS_DISPLAYED,
   OTHER_TOOLS_LABEL,
 } from "@app/components/agent_builder/observability/constants";
+import type { ObservabilityMode } from "@app/components/agent_builder/observability/ObservabilityContext";
 import type {
   ChartDatum,
   ToolChartModeType,
+  ToolChartUsageDatum,
 } from "@app/components/agent_builder/observability/types";
 import { selectTopTools } from "@app/components/agent_builder/observability/utils";
+import type { LatencyPoint } from "@app/lib/api/assistant/observability/latency";
 import type { ToolExecutionByVersion } from "@app/lib/api/assistant/observability/tool_execution";
 import type { ToolStepIndexByStep } from "@app/lib/api/assistant/observability/tool_step_index";
 import {
+  useAgentErrorRate,
+  useAgentLatency,
   useAgentToolExecution,
   useAgentToolStepIndex,
 } from "@app/lib/swr/assistants";
@@ -29,6 +34,23 @@ type ToolDataItem = {
   label: string | number;
   tools: Record<string, { count: number }>;
   total?: number;
+};
+
+type ErrorRateDataResult = {
+  data: {
+    timestamp: number;
+    total: number;
+    failed: number;
+    errorRate: number;
+  }[];
+  isLoading: boolean;
+  errorMessage: string | undefined;
+};
+
+type LatencyDataResult = {
+  data: LatencyPoint[];
+  isLoading: boolean;
+  errorMessage: string | undefined;
 };
 
 function calculatePercentage(count: number, total: number): number {
@@ -61,7 +83,7 @@ function createChartData(
       item.total ??
       Object.values(item.tools).reduce((acc, tool) => acc + tool.count, 0);
 
-    const values: Record<string, number> = {};
+    const values: Record<string, ToolChartUsageDatum> = {};
     let topToolsCount = 0;
     for (const toolName of displayTools) {
       if (toolName === OTHER_TOOLS_LABEL) {
@@ -71,7 +93,10 @@ function createChartData(
       const toolData = item.tools[toolName];
       const count = toolData?.count ?? 0;
       if (count > 0) {
-        values[toolName] = calculatePercentage(count, total);
+        values[toolName] = {
+          percent: calculatePercentage(count, total),
+          count,
+        };
         topToolsCount += count;
       }
     }
@@ -80,11 +105,14 @@ function createChartData(
       const othersCount = total - topToolsCount;
 
       if (othersCount > 0) {
-        values[OTHER_TOOLS_LABEL] = calculatePercentage(othersCount, total);
+        values[OTHER_TOOLS_LABEL] = {
+          percent: calculatePercentage(othersCount, total),
+          count: othersCount,
+        };
       }
     }
 
-    return { label: item.label, values };
+    return { label: item.label, values, total };
   });
 }
 
@@ -200,7 +228,7 @@ export function useToolUsageData(params: {
         filterVersion
           ? "No tool execution data for the selected version."
           : "No tool execution data available for this period.",
-        `Shows the relative usage frequency (%) of the top ${MAX_TOOLS_DISPLAYED} tools for each agent version.`,
+        `Usage frequency of tools for each agent version.`,
         isLoading,
         errorMessage
       );
@@ -211,14 +239,14 @@ export function useToolUsageData(params: {
       const normalizedData = normalizeStepData(rawData);
       const isLoading = step.isToolStepIndexLoading;
       const errorMessage = step.isToolStepIndexError
-        ? "Failed to load step index distribution."
+        ? "Failed to load step distribution."
         : undefined;
 
       return processToolUsageData(
         normalizedData,
         "Step",
-        "No tool usage by step index for this period.",
-        `Shows relative usage (%) of top ${MAX_TOOLS_DISPLAYED} tools per step index within a message.`,
+        "No tool usage by step for this period.",
+        `Usage tools per step within a message.`,
         isLoading,
         errorMessage
       );
@@ -227,4 +255,58 @@ export function useToolUsageData(params: {
     default:
       assertNever(mode);
   }
+}
+
+export function useErrorRateData(params: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  period: number;
+  mode: ObservabilityMode;
+  filterVersion?: string | null;
+}): ErrorRateDataResult {
+  const { workspaceId, agentConfigurationId, period, mode, filterVersion } =
+    params;
+
+  const { errorRate, isErrorRateLoading, isErrorRateError } = useAgentErrorRate(
+    {
+      workspaceId,
+      agentConfigurationId,
+      days: period,
+      version: mode === "version" ? (filterVersion ?? undefined) : undefined,
+      disabled: !workspaceId || !agentConfigurationId,
+    }
+  );
+
+  return {
+    data: errorRate,
+    isLoading: isErrorRateLoading,
+    errorMessage: isErrorRateError
+      ? "Failed to load error rate data."
+      : undefined,
+  };
+}
+
+export function useLatencyData(params: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  period: number;
+  mode: ObservabilityMode;
+  filterVersion?: string | null;
+}): LatencyDataResult {
+  const { workspaceId, agentConfigurationId, period, mode, filterVersion } =
+    params;
+
+  const { latency, isLatencyLoading, isLatencyError } = useAgentLatency({
+    workspaceId,
+    agentConfigurationId,
+    days: period,
+    version: mode === "version" ? (filterVersion ?? undefined) : undefined,
+    disabled: !workspaceId || !agentConfigurationId,
+  });
+
+  return {
+    data: latency,
+    isLoading: isLatencyLoading,
+    errorMessage: isLatencyError ? "Failed to load latency data." : undefined,
+  };
 }

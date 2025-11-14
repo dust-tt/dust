@@ -41,6 +41,7 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "gpt-4o-mini"
   | "gpt-4.1-2025-04-14"
   | "gpt-4.1-mini-2025-04-14"
+  | "gpt-5.1"
   | "gpt-5-nano"
   | "gpt-5-mini"
   | "gpt-5"
@@ -50,7 +51,11 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "o3-mini"
   | "o4-mini"
   | "claude-3-5-haiku-20241022"
+  | "claude-3-5-sonnet-20240620"
+  | "claude-3-5-sonnet-20241022"
+  | "claude-3-7-sonnet-20250219"
   | "claude-3-haiku-20240307"
+  | "claude-3-opus-20240229"
   | "claude-4-opus-20250514"
   | "claude-4-sonnet-20250514"
   | "claude-haiku-4-5-20251001"
@@ -305,6 +310,7 @@ const UserMessageOriginSchema = FlexibleEnumSchema<
   | "slack"
   | "teams"
   | "triggered"
+  | "triggered_programmatic"
   | "web"
   | "zapier"
   | "zendesk"
@@ -630,7 +636,6 @@ export type RetrievalDocumentPublicType = z.infer<
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "advanced_notion_management"
   | "agent_builder_instructions_autocomplete"
-  | "agent_builder_observability"
   | "agent_management_tool"
   | "agent_to_yaml"
   | "anthropic_vertex_fallback"
@@ -645,20 +650,23 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "discord_bot"
   | "elevenlabs_tool"
   | "freshservice_tool"
+  | "front_tool"
   | "google_ai_studio_experimental_models_feature"
   | "google_sheets_tool"
   | "hootl_dev_webhooks"
   | "hootl_subscriptions"
-  | "hootl_webhooks"
+  | "http_client_tool"
   | "index_private_slack_channel"
   | "labs_mcp_actions_dashboard"
   | "labs_trackers"
   | "labs_transcripts"
   | "legacy_dust_apps"
+  | "llm_comparison_mode_enabled"
   | "llm_router_direct_requests"
-  | "microsoft_teams_bot"
+  | "mentions_v2"
   | "monday_tool"
   | "noop_model_feature"
+  | "notifications"
   | "notion_private_integration"
   | "openai_o1_custom_assistants_feature"
   | "openai_o1_feature"
@@ -666,11 +674,13 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_o1_high_reasoning_feature"
   | "openai_usage_mcp"
   | "salesforce_synced_queries"
-  | "salesforce_tool_write"
   | "salesforce_tool"
+  | "salesforce_tool_write"
+  | "salesloft_tool"
   | "show_debug_tools"
   | "slack_bot_mcp"
   | "slack_enhanced_default_agent"
+  | "slack_files_write_scope"
   | "slack_message_splitting"
   | "slack_semantic_search"
   | "slideshow"
@@ -678,14 +688,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "use_requested_space_ids"
   | "web_summarization"
   | "xai_feature"
-  | "noop_model_feature"
-  | "discord_bot"
-  | "elevenlabs_tool"
-  | "agent_builder_observability"
-  | "legacy_dust_apps"
-  | "llm_router_direct_requests"
-  | "mentions_v2"
-  | "http_client_tool"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -834,8 +836,8 @@ const LightAgentConfigurationSchema = z.object({
   visualizationEnabled: z.boolean().optional(),
   templateId: z.string().nullable(),
   groupIds: z.array(z.string()).optional(),
-  requestedGroupIds: z.array(z.array(z.string())),
-  requestedSpaceIds: z.array(z.string()),
+  requestedGroupIds: z.array(z.array(z.string())).optional(),
+  requestedSpaceIds: z.array(z.string()).optional(),
 });
 
 export type LightAgentConfigurationType = z.infer<
@@ -1279,6 +1281,7 @@ const AgentErrorEventSchema = z.object({
     message: z.string(),
     metadata: z.record(z.any()).nullable(),
   }),
+  runIds: z.array(z.string()).optional(),
 });
 export type AgentErrorEvent = z.infer<typeof AgentErrorEventSchema>;
 
@@ -2526,6 +2529,26 @@ const DateSchema = z
     "YYYY-MM or YYYY-MM-DD"
   );
 
+const IncludeInactiveSchema = z.preprocess((value) => {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (Array.isArray(value)) {
+    const [first] = value;
+    if (first === undefined) {
+      return undefined;
+    }
+    return first === "true" || first === true;
+  }
+  if (typeof value === "string") {
+    return value === "true";
+  }
+  if (typeof value === "boolean") {
+    return value;
+  }
+  return undefined;
+}, z.boolean().optional());
+
 export const GetWorkspaceUsageRequestSchema = z.union([
   z.object({
     start: DateSchema,
@@ -2533,6 +2556,7 @@ export const GetWorkspaceUsageRequestSchema = z.union([
     mode: z.literal("month"),
     table: SupportedUsageTablesSchema,
     format: z.enum(["csv", "json"]).optional().default("csv"),
+    includeInactive: IncludeInactiveSchema,
   }),
   z.object({
     start: DateSchema,
@@ -2540,6 +2564,7 @@ export const GetWorkspaceUsageRequestSchema = z.union([
     mode: z.literal("range"),
     table: SupportedUsageTablesSchema,
     format: z.enum(["csv", "json"]).optional().default("csv"),
+    includeInactive: IncludeInactiveSchema,
   }),
 ]);
 
@@ -2776,6 +2801,7 @@ const OAuthProviderSchema = FlexibleEnumSchema<
   | "gmail"
   | "intercom"
   | "jira"
+  | "linear"
   | "monday"
   | "notion"
   | "slack"
@@ -2810,12 +2836,14 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "CommandLineIcon"
   | "ConfluenceLogo"
   | "DriveLogo"
+  | "FathomLogo"
   | "GcalLogo"
   | "GithubLogo"
   | "GitlabLogo"
   | "GmailLogo"
   | "GoogleSpreadsheetLogo"
   | "FreshserviceLogo"
+  | "FrontLogo"
   | "HubspotLogo"
   | "MicrosoftExcelLogo"
   | "MicrosoftOutlookLogo"

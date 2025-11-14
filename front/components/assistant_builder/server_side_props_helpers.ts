@@ -162,6 +162,7 @@ async function getMCPServerActionConfiguration(
     : null;
   builderAction.configuration.additionalConfiguration =
     action.additionalConfiguration;
+  builderAction.configuration.secretName = action.secretName;
 
   return builderAction;
 }

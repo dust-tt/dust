@@ -17,6 +17,7 @@ import { default as dataWarehousesServer } from "@app/lib/actions/mcp_internal_a
 import { default as deepDiveServer } from "@app/lib/actions/mcp_internal_actions/servers/deep_dive";
 import { default as generateFileServer } from "@app/lib/actions/mcp_internal_actions/servers/file_generation";
 import { default as freshserviceServer } from "@app/lib/actions/mcp_internal_actions/servers/freshservice";
+import { default as frontServer } from "@app/lib/actions/mcp_internal_actions/servers/front";
 import { default as githubServer } from "@app/lib/actions/mcp_internal_actions/servers/github";
 import { default as gmailServer } from "@app/lib/actions/mcp_internal_actions/servers/gmail";
 import { default as calendarServer } from "@app/lib/actions/mcp_internal_actions/servers/google_calendar";
@@ -44,6 +45,7 @@ import { default as reasoningServer } from "@app/lib/actions/mcp_internal_action
 import { default as runAgentServer } from "@app/lib/actions/mcp_internal_actions/servers/run_agent";
 import { default as dustAppServer } from "@app/lib/actions/mcp_internal_actions/servers/run_dust_app";
 import { default as salesforceServer } from "@app/lib/actions/mcp_internal_actions/servers/salesforce";
+import { default as salesloftServer } from "@app/lib/actions/mcp_internal_actions/servers/salesloft";
 import { default as searchServer } from "@app/lib/actions/mcp_internal_actions/servers/search";
 import { default as slackBotServer } from "@app/lib/actions/mcp_internal_actions/servers/slack/slack_bot";
 import { default as slackServer } from "@app/lib/actions/mcp_internal_actions/servers/slack/slack_personal";
@@ -54,6 +56,7 @@ import { default as tablesQueryServerV2 } from "@app/lib/actions/mcp_internal_ac
 import { default as toolsetsServer } from "@app/lib/actions/mcp_internal_actions/servers/toolsets";
 import { default as valtownServer } from "@app/lib/actions/mcp_internal_actions/servers/valtown";
 import { default as webtoolsServer } from "@app/lib/actions/mcp_internal_actions/servers/webtools";
+import { default as zendeskServer } from "@app/lib/actions/mcp_internal_actions/servers/zendesk";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   isLightServerSideMCPToolConfiguration,
@@ -151,6 +154,8 @@ export async function getInternalMCPServer(
       return extractDataServer(auth, agentLoopContext);
     case "salesforce":
       return salesforceServer(auth, agentLoopContext);
+    case "salesloft":
+      return salesloftServer(auth, agentLoopContext);
     case "gmail":
       return gmailServer(auth, agentLoopContext);
     case "google_calendar":
@@ -199,6 +204,10 @@ export async function getInternalMCPServer(
       return deepDiveServer(auth, agentLoopContext);
     case "http_client":
       return httpClientServer(auth, agentLoopContext);
+    case "front":
+      return frontServer(auth, agentLoopContext);
+    case "zendesk":
+      return zendeskServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }

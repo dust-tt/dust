@@ -1,5 +1,3 @@
-import assert from "node:assert";
-
 import type {
   FunctionTool,
   ResponseFormatTextJSONSchemaConfig,
@@ -14,7 +12,10 @@ import type {
 } from "openai/resources/shared";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import { extractIdFromMetadata } from "@app/lib/api/llm/utils";
+import {
+  extractEncryptedContentFromMetadata,
+  extractIdFromMetadata,
+} from "@app/lib/api/llm/utils";
 import type {
   ModelConversationTypeMultiActions,
   ReasoningEffort,
@@ -58,12 +59,16 @@ function toAssistantInputItem(
         arguments: content.value.arguments,
       };
     case "reasoning":
-      assert(content.value.reasoning, "Expected non-null reasoning content");
+      const reasoning = content.value.reasoning;
       const id = extractIdFromMetadata(content.value.metadata);
+      const encryptedContent = extractEncryptedContentFromMetadata(
+        content.value.metadata
+      );
       return {
         id,
         type: "reasoning",
-        summary: [{ type: "summary_text", text: content.value.reasoning }],
+        summary: reasoning ? [{ type: "summary_text", text: reasoning }] : [],
+        ...(encryptedContent ? { encrypted_content: encryptedContent } : {}),
       };
     case "error":
       return {
@@ -133,19 +138,17 @@ export function toTool(tool: AgentActionSpecification): FunctionTool {
   const parameters: {
     type: "object";
     properties: Record<string, unknown>;
-    required: string[];
-    additionalProperties: boolean;
   } = {
     type: "object",
     properties,
-    // OpenAI requires all properties to be marked as required
-    required: Object.keys(properties),
-    additionalProperties: false,
   };
 
   return {
     type: "function",
-    strict: true,
+    // If not set to false, OpenAI requires all properties to be required,
+    // and all additionalProperties to be false.
+    // This does not fit with many tools that enable permissive filter properties.
+    strict: false,
     name: tool.name,
     description: tool.description,
     parameters,
@@ -162,16 +165,21 @@ const REASONING_EFFORT_TO_OPENAI_REASONING: {
 };
 
 export function toReasoning(
-  reasoningEffort: ReasoningEffort | null
+  reasoningEffort: ReasoningEffort | null,
+  useNativeLightReasoning?: boolean
 ): Reasoning | null {
-  if (!reasoningEffort) {
+  if (!reasoningEffort || reasoningEffort === "none") {
     return null;
   }
 
-  return {
-    effort: REASONING_EFFORT_TO_OPENAI_REASONING[reasoningEffort],
-    summary: "auto",
-  };
+  if (reasoningEffort !== "light" || useNativeLightReasoning) {
+    // For light, we might not use native reasoning but Chain of Thought instead
+    return {
+      effort: REASONING_EFFORT_TO_OPENAI_REASONING[reasoningEffort],
+      summary: "auto",
+    };
+  }
+  return null;
 }
 
 export function toResponseFormat(

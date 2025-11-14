@@ -15,8 +15,8 @@ import {
 import React from "react";
 
 import type { WorkspaceType } from "@app/types";
+import type { RichMention } from "@app/types";
 
-import type { RichMention } from "../types";
 import { MentionDropdown } from "./MentionDropdown";
 
 interface MentionDisplayProps {
@@ -24,6 +24,18 @@ interface MentionDisplayProps {
   interactive?: boolean;
   owner?: WorkspaceType;
   showTooltip?: boolean;
+}
+
+interface MentionTriggerProps {
+  mention: RichMention;
+}
+
+function MentionTrigger({ mention }: MentionTriggerProps) {
+  return (
+    <span className="inline-block cursor-pointer font-medium text-highlight-500">
+      @{mention.label}
+    </span>
+  );
 }
 
 /**
@@ -39,31 +51,27 @@ export function MentionDisplay({
   owner,
   showTooltip = true,
 }: MentionDisplayProps) {
-  const trigger = (
-    <span className="inline-block cursor-pointer font-medium text-highlight-500">
-      @{mention.label}
-    </span>
-  );
-
   // If interactive and owner is provided, wrap with dropdown.
   if (interactive && owner) {
     // If tooltip is requested and description exists, wrap with tooltip.
     if (showTooltip && mention.description) {
       return (
         <TooltipProvider>
-          <MentionDropdown mention={mention} owner={owner}>
-            <TooltipRoot>
-              <TooltipTrigger asChild>{trigger}</TooltipTrigger>
-              <TooltipContent>{mention.description}</TooltipContent>
-            </TooltipRoot>
-          </MentionDropdown>
+          <TooltipRoot>
+            <TooltipTrigger asChild>
+              <MentionDropdown mention={mention} owner={owner}>
+                <MentionTrigger mention={mention} />
+              </MentionDropdown>
+            </TooltipTrigger>
+            <TooltipContent>{mention.description}</TooltipContent>
+          </TooltipRoot>
         </TooltipProvider>
       );
     }
 
     return (
       <MentionDropdown mention={mention} owner={owner}>
-        {trigger}
+        <MentionTrigger mention={mention} />
       </MentionDropdown>
     );
   }
@@ -73,12 +81,14 @@ export function MentionDisplay({
     return (
       <TooltipProvider>
         <TooltipRoot>
-          <TooltipTrigger asChild>{trigger}</TooltipTrigger>
+          <TooltipTrigger asChild>
+            <MentionTrigger mention={mention} />
+          </TooltipTrigger>
           <TooltipContent>{mention.description}</TooltipContent>
         </TooltipRoot>
       </TooltipProvider>
     );
   }
 
-  return trigger;
+  return <MentionTrigger mention={mention} />;
 }

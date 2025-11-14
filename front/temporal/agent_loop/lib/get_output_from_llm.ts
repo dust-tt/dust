@@ -1,15 +1,15 @@
 import { CancelledFailure, heartbeat, sleep } from "@temporalio/activity";
 
 import type { LLM } from "@app/lib/api/llm/llm";
+import { config as regionsConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import type {
   GetOutputRequestParams,
   GetOutputResponse,
   Output,
 } from "@app/temporal/agent_loop/lib/types";
-import { Err, Ok, safeParseJSON } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 export async function getOutputFromLLMStream(
   auth: Authenticator,
@@ -23,11 +23,14 @@ export async function getOutputFromLLMStream(
     step,
     agentConfiguration,
     agentMessage,
-    publishAgentError,
+    model,
     prompt,
     llm,
+    updateResourceAndPublishEvent,
   }: GetOutputRequestParams & { llm: LLM }
 ): Promise<GetOutputResponse> {
+  const start = Date.now();
+  let timeToFirstEvent: number | undefined = undefined;
   const events = llm.stream({
     conversation: modelConversationRes.value.modelConversation,
     prompt,
@@ -40,6 +43,7 @@ export async function getOutputFromLLMStream(
   let nativeChainOfThought = "";
 
   for await (const event of events) {
+    timeToFirstEvent = Date.now() - start;
     if (event.type === "error") {
       await flushParserTokens();
       return new Err({
@@ -111,6 +115,31 @@ export async function getOutputFromLLMStream(
           step,
         });
 
+        const currentRegion = regionsConfig.getCurrentRegion();
+        let region: "us" | "eu";
+        switch (currentRegion) {
+          case "europe-west1":
+            region = "eu";
+            break;
+          case "us-central1":
+            region = "us";
+            break;
+          default:
+            throw new Error(`Unexpected region: ${currentRegion}`);
+        }
+
+        // Add reasoning content to contents array
+        contents.push({
+          type: "reasoning",
+          value: {
+            reasoning: event.content.text,
+            metadata: JSON.stringify(event.metadata),
+            tokens: 0, // Will be updated later from token_usage event
+            provider: model.providerId,
+            region: region,
+          },
+        });
+
         nativeChainOfThought += "\n\n";
         continue;
       }
@@ -119,17 +148,6 @@ export async function getOutputFromLLMStream(
     }
 
     if (event.type === "tool_call") {
-      const argsRes = safeParseJSON(event.content.arguments);
-
-      if (argsRes.isErr()) {
-        await publishAgentError({
-          code: "tool_call_error",
-          message: `Error parsing tool call arguments: ${argsRes.error.message}`,
-          metadata: null,
-        });
-        return new Err({ type: "shouldReturnNull" });
-      }
-
       actions.push({
         name: event.content.name,
         functionCallId: event.content.id,
@@ -139,7 +157,7 @@ export async function getOutputFromLLMStream(
         value: {
           id: event.content.id,
           name: event.content.name,
-          arguments: event.content.arguments,
+          arguments: JSON.stringify(event.content.arguments),
         },
       });
     }
@@ -150,6 +168,20 @@ export async function getOutputFromLLMStream(
         value: event.content.text,
       });
       generation += event.content.text;
+    }
+
+    if (event.type === "token_usage") {
+      // Update reasoning token count on the last reasoning item
+      const reasoningTokens = event.content.reasoningTokens ?? 0;
+      if (reasoningTokens > 0) {
+        for (let i = contents.length - 1; i >= 0; i--) {
+          const content = contents[i];
+          if (content.type === "reasoning") {
+            content.value.tokens = reasoningTokens;
+            break;
+          }
+        }
+      }
     }
   }
 
@@ -170,5 +202,6 @@ export async function getOutputFromLLMStream(
     },
     nativeChainOfThought,
     dustRunId: llm.getTraceId(),
+    timeToFirstEvent,
   });
 }

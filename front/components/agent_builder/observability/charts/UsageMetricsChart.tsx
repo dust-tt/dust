@@ -1,7 +1,7 @@
 import {
-  Area,
-  AreaChart,
   CartesianGrid,
+  Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -14,17 +14,17 @@ import {
   USAGE_METRICS_LEGEND,
   USAGE_METRICS_PALETTE,
 } from "@app/components/agent_builder/observability/constants";
-import { useObservability } from "@app/components/agent_builder/observability/ObservabilityContext";
+import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import {
   ChartLegend,
   legendFromConstant,
 } from "@app/components/agent_builder/observability/shared/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
+import { formatTimeSeriesTitle } from "@app/components/agent_builder/observability/shared/tooltipHelpers";
 import { VersionMarkersDots } from "@app/components/agent_builder/observability/shared/VersionMarkers";
 import {
   filterTimeSeriesByVersionWindow,
-  findVersionMarkerForDate,
   padSeriesToTimeRange,
 } from "@app/components/agent_builder/observability/utils";
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
@@ -34,7 +34,7 @@ import {
 } from "@app/lib/swr/assistants";
 
 interface UsageMetricsData {
-  date: string;
+  timestamp: number;
   messages: number;
   conversations: number;
   activeUsers: number;
@@ -50,12 +50,21 @@ function isUsageMetricsData(data: unknown): data is UsageMetricsData {
   );
 }
 
+function zeroFactory(timestamp: number) {
+  return {
+    timestamp,
+    messages: 0,
+    conversations: 0,
+    activeUsers: 0,
+  };
+}
+
 function UsageMetricsTooltip(
   props: TooltipContentProps<number, string> & {
     versionMarkers: AgentVersionMarker[];
   }
 ): JSX.Element | null {
-  const { active, payload, label, versionMarkers } = props;
+  const { active, payload, versionMarkers } = props;
   if (!active || !payload || payload.length === 0) {
     return null;
   }
@@ -66,14 +75,10 @@ function UsageMetricsTooltip(
   }
 
   const row = first.payload;
-  const title = typeof label === "string" ? label : String(label);
-
-  const versionMarker = findVersionMarkerForDate(row.date, versionMarkers);
-  const version = versionMarker ? ` - v${versionMarker.version}` : "";
 
   return (
     <ChartTooltipCard
-      title={`${title}${version}`}
+      title={formatTimeSeriesTitle(row.date, row.timestamp, versionMarkers)}
       rows={[
         {
           label: "Messages",
@@ -102,7 +107,7 @@ export function UsageMetricsChart({
   workspaceId: string;
   agentConfigurationId: string;
 }) {
-  const { period, mode, selectedVersion } = useObservability();
+  const { period, mode, selectedVersion } = useObservabilityContext();
   const { usageMetrics, isUsageMetricsLoading, isUsageMetricsError } =
     useAgentUsageMetrics({
       workspaceId,
@@ -137,13 +142,13 @@ export function UsageMetricsChart({
     filteredData,
     mode,
     period,
-    (date) => ({ date, messages: 0, conversations: 0, activeUsers: 0 })
+    zeroFactory
   );
 
   return (
     <ChartContainer
-      title="Usage Metrics"
-      description="Daily totals of messages, conversations, and active users."
+      title="Activity"
+      description="Messages, conversations, and active users."
       isLoading={isUsageMetricsLoading}
       errorMessage={
         isUsageMetricsError ? "Failed to load observability data." : undefined
@@ -153,7 +158,7 @@ export function UsageMetricsChart({
       }
     >
       <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-        <AreaChart
+        <LineChart
           data={data}
           margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
         >
@@ -193,20 +198,23 @@ export function UsageMetricsChart({
               <stop offset="95%" stopColor="currentColor" stopOpacity={0.1} />
             </linearGradient>
           </defs>
-          <CartesianGrid vertical={false} className="stroke-border" />
+          <CartesianGrid
+            vertical={false}
+            className="stroke-border dark:stroke-border-night"
+          />
           <XAxis
             dataKey="date"
             type="category"
             scale="point"
             allowDuplicatedCategory={false}
-            className="text-xs text-muted-foreground"
+            className="text-xs text-muted-foreground dark:text-muted-foreground-night"
             tickLine={false}
             axisLine={false}
             tickMargin={8}
             minTickGap={16}
           />
           <YAxis
-            className="text-xs text-muted-foreground"
+            className="text-xs text-muted-foreground dark:text-muted-foreground-night"
             tickLine={false}
             axisLine={false}
             tickMargin={8}
@@ -225,32 +233,44 @@ export function UsageMetricsChart({
             }}
           />
           {/* Areas for each usage metric */}
-          <Area
-            type="monotone"
+          <Line
+            type={
+              mode === "version" || period === 7 || period === 14
+                ? "linear"
+                : "monotone"
+            }
             dataKey="messages"
             name="Messages"
             className={USAGE_METRICS_PALETTE.messages}
-            fill="url(#fillMessages)"
             stroke="currentColor"
+            dot={false}
           />
-          <Area
-            type="monotone"
+          <Line
+            type={
+              mode === "version" || period === 7 || period === 14
+                ? "linear"
+                : "monotone"
+            }
             dataKey="conversations"
             name="Conversations"
             className={USAGE_METRICS_PALETTE.conversations}
-            fill="url(#fillConversations)"
             stroke="currentColor"
+            dot={false}
           />
-          <Area
-            type="monotone"
+          <Line
+            type={
+              mode === "version" || period === 7 || period === 14
+                ? "linear"
+                : "monotone"
+            }
             dataKey="activeUsers"
             name="Active users"
             className={USAGE_METRICS_PALETTE.activeUsers}
-            fill="url(#fillActiveUsers)"
             stroke="currentColor"
+            dot={false}
           />
           <VersionMarkersDots mode={mode} versionMarkers={versionMarkers} />
-        </AreaChart>
+        </LineChart>
       </ResponsiveContainer>
       <ChartLegend items={legendItems} />
     </ChartContainer>

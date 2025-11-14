@@ -1,51 +1,41 @@
 import { ApiError, GoogleGenAI } from "@google/genai";
 
 import type { GoogleAIStudioWhitelistedModelId } from "@app/lib/api/llm/clients/google/types";
-import { getGoogleModelFamilyFromModelId } from "@app/lib/api/llm/clients/google/types";
 import {
   toContent,
   toTool,
 } from "@app/lib/api/llm/clients/google/utils/conversation_to_google";
 import { streamLLMEvents } from "@app/lib/api/llm/clients/google/utils/google_to_events";
+import { toThinkingConfig } from "@app/lib/api/llm/clients/google/utils/to_thinking";
 import { LLM } from "@app/lib/api/llm/llm";
 import { handleGenericError } from "@app/lib/api/llm/types/errors";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
   LLMParameters,
-  StreamParameters,
+  LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { dustManagedCredentials } from "@app/types";
 
 import { handleError } from "./utils/errors";
 
+const GOOGLE_AI_STUDIO_PROVIDER_ID = "google_ai_studio";
+
 export class GoogleLLM extends LLM {
   private client: GoogleGenAI;
 
   constructor(
     auth: Authenticator,
-    {
-      bypassFeatureFlag,
-      context,
-      modelId,
-      reasoningEffort,
-      temperature,
-    }: LLMParameters & { modelId: GoogleAIStudioWhitelistedModelId }
+    llmParameters: LLMParameters & { modelId: GoogleAIStudioWhitelistedModelId }
   ) {
-    super(auth, {
-      bypassFeatureFlag,
-      context,
-      modelId,
-      reasoningEffort,
-      temperature,
-      clientId: "google_ai_studio",
-    });
+    super(auth, { ...llmParameters, clientId: GOOGLE_AI_STUDIO_PROVIDER_ID });
     const { GOOGLE_AI_STUDIO_API_KEY } = dustManagedCredentials();
     if (!GOOGLE_AI_STUDIO_API_KEY) {
       throw new Error(
         "GOOGLE_AI_STUDIO_API_KEY environment variable is required"
       );
     }
+
     this.client = new GoogleGenAI({
       apiKey: GOOGLE_AI_STUDIO_API_KEY,
     });
@@ -55,20 +45,11 @@ export class GoogleLLM extends LLM {
     conversation,
     prompt,
     specifications,
-  }: StreamParameters): AsyncGenerator<LLMEvent> {
+  }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
     try {
-      const modelFamily = getGoogleModelFamilyFromModelId(this.modelId);
-
-      const thinkingConfig =
-        modelFamily === "reasoning"
-          ? {
-              includeThoughts: true,
-              // TODO(LLM-Router 2025-10-27): update according to effort
-              thinkingBudget: 1024,
-            }
-          : undefined;
-
-      const contents = await Promise.all(conversation.messages.map(toContent));
+      const contents = await Promise.all(
+        conversation.messages.map((message) => toContent(message, this.modelId))
+      );
 
       const generateContentResponses =
         await this.client.models.generateContentStream({
@@ -80,7 +61,10 @@ export class GoogleLLM extends LLM {
             systemInstruction: { text: prompt },
             // We only need one
             candidateCount: 1,
-            thinkingConfig,
+            thinkingConfig: toThinkingConfig(
+              this.reasoningEffort,
+              this.modelConfig.useNativeLightReasoning
+            ),
           },
         });
 

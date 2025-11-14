@@ -236,6 +236,14 @@ const config = {
   getOAuthFathomClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_FATHOM_CLIENT_ID");
   },
+  getDevOAuthFathomRedirectBaseUrl: (): string => {
+    return EnvironmentConfig.getEnvVariable(
+      "DEV_OAUTH_FATHOM_REDIRECT_BASE_URL"
+    );
+  },
+  getOAuthLinearClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_LINEAR_CLIENT_ID");
+  },
 
   // Text extraction.
   getTextExtractionUrl: (): string => {

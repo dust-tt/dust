@@ -2,19 +2,23 @@ import type { Content, FunctionResponse, Part, Tool } from "@google/genai";
 import assert from "assert";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import { EventError } from "@app/lib/api/llm/types/events";
+import { extractEncryptedContentFromMetadata } from "@app/lib/api/llm/utils";
+import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
 import type {
   AssistantContentMessageTypeModel,
   AssistantFunctionCallMessageTypeModel,
   FunctionMessageTypeModel,
   ImageContent,
+  ModelIdType,
   ModelMessageTypeMultiActionsWithoutContentFragment,
   TextContent,
 } from "@app/types";
-import { assertNever, isRecord, safeParseJSON } from "@app/types";
+import { assertNever } from "@app/types";
 import type {
-  FunctionCallContentType,
-  ReasoningContentType,
-  TextContentType,
+  AgentFunctionCallContentType,
+  AgentReasoningContentType,
+  AgentTextContentType,
 } from "@app/types/assistant/agent_message_content";
 import { trustedFetchImageBase64 } from "@app/types/shared/utils/image_utils";
 
@@ -27,22 +31,29 @@ const GOOGLE_AI_STUDIO_SUPPORTED_MIME_TYPES = [
 ];
 
 async function contentToPart(
-  content: TextContent | ImageContent
+  content: TextContent | ImageContent,
+  modelId: ModelIdType
 ): Promise<Part> {
   switch (content.type) {
     case "text":
       return { text: content.text };
     case "image_url":
       // Google only accepts images as base64 inline data
-      // TODO(LLM-Router 2025-10-27): Handle error properly and send Non retryableError event
       const { mediaType, data } = await trustedFetchImageBase64(
         content.image_url.url
       );
 
       if (!GOOGLE_AI_STUDIO_SUPPORTED_MIME_TYPES.includes(mediaType)) {
-        // TODO(LLM-Router 2025-10-27): Handle error properly and send Non retryableError event
-        throw new Error(
-          `Image mime type ${mediaType} is not supported by Google AI Studio`
+        throw new EventError(
+          {
+            type: "invalid_request_error",
+            message: `Image mime type ${mediaType} is not supported by Google AI Studio`,
+            isRetryable: false,
+          },
+          {
+            clientId: "google_ai_studio",
+            modelId,
+          }
         );
       }
 
@@ -99,7 +110,10 @@ async function functionMessageToResponses(
 }
 
 function assistantContentToPart(
-  content: ReasoningContentType | TextContentType | FunctionCallContentType
+  content:
+    | AgentReasoningContentType
+    | AgentTextContentType
+    | AgentFunctionCallContentType
 ): Part {
   switch (content.type) {
     case "reasoning":
@@ -107,31 +121,20 @@ function assistantContentToPart(
       return {
         text: content.value.reasoning,
         thought: true,
-        // TODO(LLM-Router 2025-10-27): add thoughtSignature
+        thoughtSignature: extractEncryptedContentFromMetadata(
+          content.value.metadata
+        ),
       };
     case "text_content":
       return {
         text: content.value,
       };
     case "function_call": {
-      const argsRes = safeParseJSON(content.value.arguments);
-      if (argsRes.isErr()) {
-        // TODO(LLM-Router 2025-10-27): Handle error properly and send Non retryableError event
-        throw new Error(
-          `Failed to parse function call arguments JSON: ${argsRes.error.message}`
-        );
-      }
-      if (argsRes.value !== null && !isRecord(argsRes.value)) {
-        // TODO(LLM-Router 2025-10-27): Handle error properly and send Non retryableError event
-        throw new Error(
-          `Function call arguments JSON is not a record: ${content.value.arguments}`
-        );
-      }
       return {
         functionCall: {
           id: content.value.id,
           name: content.value.name,
-          args: argsRes.value ?? undefined,
+          args: parseToolArguments(content.value.arguments, content.value.name),
         },
       };
     }
@@ -171,13 +174,16 @@ export function toTool(specification: AgentActionSpecification): Tool {
  * Converts messages to Google format, optionally fetching and converting images to base64
  */
 export async function toContent(
-  message: ModelMessageTypeMultiActionsWithoutContentFragment
+  message: ModelMessageTypeMultiActionsWithoutContentFragment,
+  modelId: ModelIdType
 ): Promise<Content> {
   switch (message.role) {
     case "user": {
       return {
         role: "user",
-        parts: await Promise.all(message.content.map(contentToPart)),
+        parts: await Promise.all(
+          message.content.map((content) => contentToPart(content, modelId))
+        ),
       };
     }
     case "function": {

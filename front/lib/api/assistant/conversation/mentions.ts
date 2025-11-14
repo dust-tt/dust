@@ -6,15 +6,41 @@ import {
   Message,
 } from "@app/lib/models/assistant/conversation";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import type { MentionType } from "@app/types";
 import type {
   AgentMessageType,
   ConversationType,
   LightAgentConfigurationType,
-  MentionType,
   UserMessageType,
   WorkspaceType,
 } from "@app/types";
-import { isAgentMention } from "@app/types";
+import { isAgentMention, isUserMention } from "@app/types";
+
+export const createUserMessages = async ({
+  mentions,
+  message,
+  owner,
+  transaction,
+}: {
+  mentions: MentionType[];
+  message: Message;
+  owner: WorkspaceType;
+  transaction: Transaction;
+}) => {
+  // Store user mentions in the database
+  await Promise.all(
+    mentions.filter(isUserMention).map((mention) =>
+      Mention.create(
+        {
+          messageId: message.id,
+          userId: parseInt(mention.userId, 10),
+          workspaceId: owner.id,
+        },
+        { transaction }
+      )
+    )
+  );
+};
 
 export const createAgentMessages = async ({
   mentions,
@@ -83,7 +109,7 @@ export const createAgentMessages = async ({
 
         const parentAgentMessageId =
           userMessage.context.origin === "agent_handover"
-            ? userMessage.context.originMessageId ?? null
+            ? (userMessage.context.originMessageId ?? null)
             : null;
 
         return {

@@ -22,7 +22,12 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { Err, isSupportedContentNodeFragmentContentType, Ok } from "@app/types";
+import {
+  Err,
+  isSupportedContentNodeFragmentContentType,
+  Ok,
+  toMentionType,
+} from "@app/types";
 
 export type ContentFragmentInput = {
   title: string;
@@ -50,7 +55,7 @@ export function createPlaceholderUserMessage({
     id: -1,
     content: input,
     created: createdAt,
-    mentions: mentions.map((mention) => ({ configurationId: mention.id })),
+    mentions: mentions.map((mention) => toMentionType(mention)),
     user,
     visibility: "visible",
     type: "user_message",
@@ -169,9 +174,6 @@ export function createPlaceholderAgentMessage({
         pictureUrl: mention.pictureUrl ?? "",
         status: "active",
         canRead: true,
-        // TODO(2025-10-17 thomas): Remove.
-        requestedGroupIds: [],
-        requestedSpaceIds: [],
       },
       citations: {},
       generatedFiles: [],

@@ -13,15 +13,33 @@ import type {
   Content,
   ModelMessageTypeMultiActionsWithoutContentFragment,
 } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever, safeParseJSON } from "@app/types";
 import type {
-  FunctionCallContentType,
-  ReasoningContentType,
-  TextContentType,
+  AgentFunctionCallContentType,
+  AgentReasoningContentType,
+  AgentTextContentType,
 } from "@app/types/assistant/agent_message_content";
 
+function removeReferenceKeys(obj: any): any {
+  if (obj === null || typeof obj !== "object") {
+    return obj;
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map(removeReferenceKeys);
+  }
+
+  const result: any = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (key !== "reference") {
+      result[key] = removeReferenceKeys(value);
+    }
+  }
+  return result;
+}
+
 function toContentChunk(
-  content: Content | TextContentType | ReasoningContentType
+  content: Content | AgentTextContentType | AgentReasoningContentType
 ): ContentChunk {
   switch (content.type) {
     case "text":
@@ -57,12 +75,14 @@ function toAssistantMessage(
 
   const textContents = message.contents
     .filter(
-      (c): c is TextContentType | ReasoningContentType =>
+      (c): c is AgentTextContentType | AgentReasoningContentType =>
         c.type !== "function_call"
     )
     .map(toContentChunk);
   const toolCalls = message.contents
-    .filter((c): c is FunctionCallContentType => c.type === "function_call")
+    .filter(
+      (c): c is AgentFunctionCallContentType => c.type === "function_call"
+    )
     .map((fc) => ({
       id: fc.value.id,
       function: {
@@ -101,6 +121,31 @@ export function toMessage(
       };
     }
     case "function": {
+      if (typeof message.content === "string") {
+        const parsedContentRes = safeParseJSON(message.content);
+        if (
+          parsedContentRes.isErr() ||
+          message.name !== "web_search_browse__websearch"
+        ) {
+          return {
+            role: "tool",
+            content: message.content,
+            name: message.name,
+            toolCallId: message.function_call_id,
+          };
+        }
+
+        // There is a conflict with Mistral web search tool that is supposed to send back reference ids as number
+        // But we send to mistral string references which makes the Mistral client invalidate the event it send back
+        const cleanedContent = removeReferenceKeys(parsedContentRes.value);
+        return {
+          role: "tool",
+          content: JSON.stringify(cleanedContent),
+          name: message.name,
+          toolCallId: message.function_call_id,
+        };
+      }
+
       return {
         role: "tool",
         content:

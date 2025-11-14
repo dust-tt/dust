@@ -1,3 +1,5 @@
+import { isDeepStrictEqual } from "node:util";
+
 import { assert, expect } from "vitest";
 
 import { getLLM } from "@app/lib/api/llm";
@@ -102,7 +104,7 @@ function containsTextChecker(anyString: string[]): ResponseChecker {
 
 function hasToolCall(
   toolName: string,
-  expectedArguments: string
+  expectedArguments: Record<string, unknown>
 ): ResponseChecker {
   return {
     type: "has_tool_call",
@@ -156,7 +158,7 @@ export const TEST_CONVERSATIONS: TestConversation[] = [
       userToolCall("GetUserId", "88888"),
     ],
     expectedInResponses: [
-      hasToolCall("GetUserId", "Stan"),
+      hasToolCall("GetUserId", { name: "Stan" }),
       containsTextChecker(["88888", "88 888"]),
     ],
     specifications: [
@@ -172,6 +174,30 @@ export const TEST_CONVERSATIONS: TestConversation[] = [
             },
           },
           required: ["name"],
+        },
+      },
+    ],
+  },
+  {
+    id: "tool-call-without-params",
+    name: "Tool call without params",
+    systemPrompt: SYSTEM_PROMPT,
+    conversationActions: [
+      userMessage("Use a call to list my files"),
+      userToolCall("ListFiles", "[users.pdf,zebra.png]"),
+    ],
+    expectedInResponses: [
+      hasToolCall("ListFiles", {}),
+      containsTextChecker(["users.pdf", "zebra.png"]),
+    ],
+    specifications: [
+      {
+        name: "ListFiles",
+        description: "List all files in the user's account.",
+        inputSchema: {
+          type: "object",
+          properties: {},
+          required: [],
         },
       },
     ],
@@ -258,7 +284,8 @@ export const runConversation = async (
     let fullReasoning = "";
     let outputTokens: number | null = null;
     let totalTokens: number | null = null;
-    const toolCalls: { name: string; arguments: string }[] = [];
+    const toolCalls: { name: string; arguments: Record<string, unknown> }[] =
+      [];
     let toolCallId = 1;
 
     // Collect all events
@@ -318,7 +345,7 @@ export const runConversation = async (
                   // mistral only support ids of size 9
                   id: toolCallId.toString().padStart(9, "0"),
                   name: event.content.name,
-                  arguments: event.content.arguments,
+                  arguments: JSON.stringify(event.content.arguments),
                 },
               },
             ],
@@ -361,7 +388,8 @@ export const runConversation = async (
           const { toolName, expectedArguments } = expectedInResponse;
           const matchingToolCall = toolCalls.find(
             (tc) =>
-              tc.name === toolName && tc.arguments.includes(expectedArguments)
+              tc.name === toolName &&
+              isDeepStrictEqual(tc.arguments, expectedArguments)
           );
           expect(matchingToolCall).toBeDefined();
           break;

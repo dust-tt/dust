@@ -13,6 +13,7 @@ import type { WithAPIErrorResponse } from "@app/types";
 
 const QuerySchema = z.object({
   days: z.coerce.number().positive().optional(),
+  version: z.string().optional(),
 });
 
 export type GetLatencyResponse = {
@@ -80,6 +81,7 @@ async function handler(
         workspaceId: owner.sId,
         agentId: assistant.sId,
         days,
+        version: q.data.version,
       });
 
       const latencyResult = await fetchLatency(baseQuery);

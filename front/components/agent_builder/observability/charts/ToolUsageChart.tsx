@@ -1,11 +1,4 @@
-import {
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from "@dust-tt/sparkle";
+import { ButtonsSwitch, ButtonsSwitchList } from "@dust-tt/sparkle";
 import { useCallback, useMemo, useState } from "react";
 import {
   Bar,
@@ -22,7 +15,7 @@ import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 import { ChartsTooltip } from "@app/components/agent_builder/observability/charts/ChartsTooltip";
 import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
 import { useToolUsageData } from "@app/components/agent_builder/observability/hooks";
-import { useObservability } from "@app/components/agent_builder/observability/ObservabilityContext";
+import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import { ChartLegend } from "@app/components/agent_builder/observability/shared/ChartLegend";
 import { RoundedTopBarShape } from "@app/components/agent_builder/observability/shared/ChartShapes";
@@ -30,7 +23,6 @@ import type {
   ChartDatum,
   ToolChartModeType,
 } from "@app/components/agent_builder/observability/types";
-import { isToolChartMode } from "@app/components/agent_builder/observability/types";
 import { getToolColor } from "@app/components/agent_builder/observability/utils";
 
 export function ToolUsageChart({
@@ -40,7 +32,7 @@ export function ToolUsageChart({
   workspaceId: string;
   agentConfigurationId: string;
 }) {
-  const { period, mode, selectedVersion } = useObservability();
+  const { period, mode, selectedVersion } = useObservabilityContext();
   const [toolMode, setToolMode] = useState<ToolChartModeType>("version");
 
   const {
@@ -58,7 +50,7 @@ export function ToolUsageChart({
     mode: toolMode,
     filterVersion:
       mode === "version" && toolMode === "version"
-        ? selectedVersion
+        ? selectedVersion?.version
         : undefined,
   });
 
@@ -81,35 +73,24 @@ export function ToolUsageChart({
 
   return (
     <ChartContainer
-      title="Tool Usage"
+      title="Tools"
       description={legendDescription}
       isLoading={isLoading}
       errorMessage={errorMessage}
       emptyMessage={chartData.length === 0 ? emptyMessage : undefined}
       additionalControls={
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              size="xs"
-              variant="outline"
-              isSelect
-              label={toolMode === "version" ? "Version" : "Step"}
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuRadioGroup
-              value={toolMode}
-              onValueChange={(value) =>
-                isToolChartMode(value) && setToolMode(value)
-              }
-            >
-              <DropdownMenuRadioItem value="version">
-                Version
-              </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="step">Step</DropdownMenuRadioItem>
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <ButtonsSwitchList defaultValue={toolMode} size="xs">
+          <ButtonsSwitch
+            value="version"
+            label="By version"
+            onClick={() => setToolMode("version")}
+          />
+          <ButtonsSwitch
+            value="step"
+            label="By step"
+            onClick={() => setToolMode("step")}
+          />
+        </ButtonsSwitchList>
       }
     >
       <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
@@ -117,10 +98,13 @@ export function ToolUsageChart({
           data={chartData}
           margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
         >
-          <CartesianGrid vertical={false} className="stroke-border" />
+          <CartesianGrid
+            vertical={false}
+            className="stroke-border dark:stroke-border-night"
+          />
           <XAxis
             dataKey="label"
-            className="text-xs text-muted-foreground"
+            className="text-xs text-muted-foreground dark:text-muted-foreground-night"
             tickLine={false}
             axisLine={false}
             tickMargin={8}
@@ -132,7 +116,7 @@ export function ToolUsageChart({
             }}
           />
           <YAxis
-            className="text-xs text-muted-foreground"
+            className="text-xs text-muted-foreground dark:text-muted-foreground-night"
             tickLine={false}
             axisLine={false}
             tickMargin={8}
@@ -167,7 +151,7 @@ export function ToolUsageChart({
           {topTools.map((toolName) => (
             <Bar
               key={toolName}
-              dataKey={(row: ChartDatum) => row.values[toolName] ?? 0}
+              dataKey={(row: ChartDatum) => row.values[toolName]?.percent ?? 0}
               stackId="a"
               fill="currentColor"
               className={getToolColor(toolName, topTools)}

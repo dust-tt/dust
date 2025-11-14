@@ -7,6 +7,7 @@ import {
   Chip,
   ContentMessage,
   InformationCircleIcon,
+  ListCheckIcon,
   LockIcon,
   Sheet,
   SheetContainer,
@@ -24,13 +25,14 @@ import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { BrainIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { AssistantDetailsButtonBar } from "@app/components/assistant/details/AssistantDetailsButtonBar";
+import { AgentDetailsButtonBar } from "@app/components/assistant/details/AgentDetailsButtonBar";
 import { AgentEditorsTab } from "@app/components/assistant/details/tabs/AgentEditorsTab";
 import { AgentInfoTab } from "@app/components/assistant/details/tabs/AgentInfoTab";
+import { AgentInsightsTab } from "@app/components/assistant/details/tabs/AgentInsightsTab";
 import { AgentMemoryTab } from "@app/components/assistant/details/tabs/AgentMemoryTab";
 import { AgentPerformanceTab } from "@app/components/assistant/details/tabs/AgentPerformanceTab";
 import { AgentTriggersTab } from "@app/components/assistant/details/tabs/AgentTriggersTab";
-import { RestoreAssistantDialog } from "@app/components/assistant/RestoreAssistantDialog";
+import { RestoreAgentDialog } from "@app/components/assistant/RestoreAgentDialog";
 import { isMCPConfigurationForAgentMemory } from "@app/lib/actions/types/guards";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -71,7 +73,7 @@ export const SCOPE_INFO: Record<
   },
 } as const;
 
-type AssistantDetailsProps = {
+type AgentDetailsProps = {
   owner: WorkspaceType;
   onClose: () => void;
   agentId: string | null;
@@ -83,13 +85,18 @@ export function AgentDetails({
   onClose,
   owner,
   user,
-}: AssistantDetailsProps) {
+}: AgentDetailsProps) {
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
   });
 
   const [selectedTab, setSelectedTab] = useState<
-    "info" | "performance" | "editors" | "agent_memory" | "triggers"
+    | "info"
+    | "insights"
+    | "performance"
+    | "editors"
+    | "agent_memory"
+    | "triggers"
   >("info");
   const {
     agentConfiguration,
@@ -126,6 +133,12 @@ export function AgentDetails({
     agentId != null &&
     !isGlobalAgent;
 
+  const showInsightsTabs =
+    agentId != null &&
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    (agentConfiguration?.canEdit || isAdmin(owner)) &&
+    !isGlobalAgent;
+
   const DescriptionSection = () => (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-3 sm:flex-row">
@@ -140,8 +153,7 @@ export function AgentDetails({
             <div>
               <Chip
                 color={SCOPE_INFO[agentConfiguration.scope].color}
-                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                icon={SCOPE_INFO[agentConfiguration.scope].icon || undefined}
+                icon={SCOPE_INFO[agentConfiguration.scope].icon ?? undefined}
               >
                 {SCOPE_INFO[agentConfiguration.scope].label}
               </Chip>
@@ -150,7 +162,7 @@ export function AgentDetails({
         </div>
       </div>
       {agentConfiguration?.status === "active" && (
-        <AssistantDetailsButtonBar
+        <AgentDetailsButtonBar
           owner={owner}
           agentConfiguration={agentConfiguration}
           isAgentConfigurationValidating={isAgentConfigurationValidating}
@@ -180,7 +192,7 @@ export function AgentDetails({
             </div>
           </ContentMessage>
 
-          <RestoreAssistantDialog
+          <RestoreAgentDialog
             owner={owner}
             isOpen={showRestoreModal}
             agentConfiguration={agentConfiguration}
@@ -211,7 +223,10 @@ export function AgentDetails({
               <DescriptionSection />
             </SheetHeader>
             <SheetContainer className="pb-4">
-              {showEditorsTabs || showPerformanceTabs || showAgentMemory ? (
+              {showEditorsTabs ||
+              showPerformanceTabs ||
+              showAgentMemory ||
+              showInsightsTabs ? (
                 <Tabs value={selectedTab}>
                   <TabsList border={false}>
                     <TabsTrigger
@@ -220,6 +235,14 @@ export function AgentDetails({
                       icon={InformationCircleIcon}
                       onClick={() => setSelectedTab("info")}
                     />
+                    {showInsightsTabs && (
+                      <TabsTrigger
+                        value="insights"
+                        label="Insights"
+                        icon={BarChartIcon}
+                        onClick={() => setSelectedTab("insights")}
+                      />
+                    )}
                     {showTriggersTabs && (
                       <TabsTrigger
                         value="triggers"
@@ -231,8 +254,8 @@ export function AgentDetails({
                     {showPerformanceTabs && (
                       <TabsTrigger
                         value="performance"
-                        label="Performance"
-                        icon={BarChartIcon}
+                        label="Feedback"
+                        icon={ListCheckIcon}
                         onClick={() => setSelectedTab("performance")}
                       />
                     )}
@@ -259,6 +282,12 @@ export function AgentDetails({
                         <AgentInfoTab
                           agentConfiguration={agentConfiguration}
                           owner={owner}
+                        />
+                      </TabsContent>
+                      <TabsContent value="insights">
+                        <AgentInsightsTab
+                          owner={owner}
+                          agentConfiguration={agentConfiguration}
                         />
                       </TabsContent>
                       <TabsContent value="triggers">

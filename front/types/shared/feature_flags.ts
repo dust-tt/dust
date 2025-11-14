@@ -112,6 +112,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Salesforce MCP tool (activated by default on most plans, FF to override the plan config)",
     stage: "on_demand",
   },
+  salesloft_tool: {
+    description: "Salesloft MCP tool",
+    stage: "dust_only",
+  },
   salesforce_tool_write: {
     description: "Salesforce MCP tool: write operations (update_object)",
     stage: "on_demand",
@@ -141,6 +145,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Freshservice MCP tool",
     stage: "rolling_out",
   },
+  front_tool: {
+    description:
+      "Front MCP tool for managing support conversations, messages, and customer interactions.",
+    stage: "rolling_out",
+  },
   agent_management_tool: {
     description: "MCP tool for creating and managing agent configurations",
     stage: "dust_only",
@@ -167,10 +176,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable splitting agent responses into multiple Slack messages for Slack (instead of truncation)",
     stage: "dust_only",
   },
-  hootl_webhooks: {
-    description: "Webhooks for Human Out Of The Loop (aka Triggers) / webhooks",
-    stage: "dust_only",
-  },
   slack_bot_mcp: {
     description: "Slack bot MCP server for workspace-level Slack integration",
     stage: "on_demand",
@@ -187,15 +192,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Elevenlabs MCP tool for voice synthesis",
     stage: "on_demand",
   },
-  microsoft_teams_bot: {
-    description: "Microsoft Teams bot connector for workspace integration",
-    stage: "on_demand",
-  },
-  agent_builder_observability: {
-    description:
-      "Observability tab in the Agent Builder (charts powered by Elasticsearch)",
-    stage: "dust_only",
-  },
   legacy_dust_apps: {
     description: "Access to legacy Dust Apps (editor and associated tools)",
     stage: "on_demand",
@@ -209,6 +205,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Use direct LLM call over Dust app run in a conversation.",
     stage: "on_demand",
   },
+  llm_comparison_mode_enabled: {
+    description: "Enable LLM comparison mode.",
+    stage: "on_demand",
+  },
   use_requested_space_ids: {
     description: "Use requested spaces Ids for permissions checking.",
     stage: "dust_only",
@@ -216,6 +216,14 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   mentions_v2: {
     description: "Enable mentions v2, aka mention users",
     stage: "on_demand",
+  },
+  slack_files_write_scope: {
+    description: "Enable files:write scope for Slack bot and MCP server",
+    stage: "on_demand",
+  },
+  notifications: {
+    description: "Enable notifications",
+    stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;
 

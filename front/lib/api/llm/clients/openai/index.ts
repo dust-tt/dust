@@ -7,7 +7,7 @@ import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
   LLMClientMetadata,
   LLMParameters,
-  StreamParameters,
+  LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
 import { handleError } from "@app/lib/api/llm/utils/openai_like/errors";
 import {
@@ -50,16 +50,22 @@ export class OpenAIResponsesLLM extends LLM {
     conversation,
     prompt,
     specifications,
-  }: StreamParameters): AsyncGenerator<LLMEvent> {
+  }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
     try {
+      const reasoning = toReasoning(
+        this.reasoningEffort,
+        this.modelConfig.useNativeLightReasoning
+      );
       const events = await this.client.responses.create({
         model: this.modelId,
         input: toInput(prompt, conversation),
         stream: true,
         temperature: this.temperature ?? undefined,
-        reasoning: toReasoning(this.reasoningEffort),
+        reasoning,
         tools: specifications.map(toTool),
         text: { format: toResponseFormat(this.responseFormat) },
+        // Only models supporting reasoning can do encrypted content for reasoning.
+        include: reasoning !== null ? ["reasoning.encrypted_content"] : [],
       });
 
       yield* streamLLMEvents(events, this.metadata);

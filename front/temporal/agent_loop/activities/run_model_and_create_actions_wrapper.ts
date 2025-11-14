@@ -13,7 +13,7 @@ import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_t
 import { runModelActivity } from "@app/temporal/agent_loop/lib/run_model";
 import type { ModelId } from "@app/types";
 import { MAX_ACTIONS_PER_STEP } from "@app/types/assistant/agent";
-import { isFunctionCallContent } from "@app/types/assistant/agent_message_content";
+import { isAgentFunctionCallContent } from "@app/types/assistant/agent_message_content";
 import type {
   AgentLoopArgsWithTiming,
   AgentLoopExecutionData,
@@ -171,7 +171,7 @@ async function getExistingActionsAndBlobs(
       const [mcpAction] = stepContent.agentMCPActions;
 
       assert(
-        isFunctionCallContent(stepContent.value),
+        isAgentFunctionCallContent(stepContent.value),
         "Unexpected: step content is not a function call"
       );
 

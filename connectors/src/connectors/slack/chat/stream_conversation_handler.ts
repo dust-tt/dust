@@ -5,7 +5,7 @@ import type {
   Result,
   UserMessageType,
 } from "@dust-tt/client";
-import { DustAPI } from "@dust-tt/client";
+import { DustAPI, removeNulls } from "@dust-tt/client";
 import {
   assertNever,
   Err,
@@ -29,12 +29,26 @@ import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_clien
 import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
 import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { annotateCitations } from "@connectors/lib/bot/citations";
 import { makeConversationUrl } from "@connectors/lib/bot/conversation_utils";
 import type { SlackChatBotMessage } from "@connectors/lib/models/slack";
 import { throttleWithRedis } from "@connectors/lib/throttle";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+
+const SLACK_MESSAGE_UPDATE_THROTTLE_MS = 1_000;
+const SLACK_MESSAGE_UPDATE_SLOW_THROTTLE_MS = 5_000;
+const SLACK_MESSAGE_LONG_THRESHOLD_CHARS = 300;
+
+// Dynamic throttling: longer messages get less frequent updates to reduce UX disruption when the content is expanded.
+// Posting an update on an expanded message will collapse it, frequent updates prevent users from reading the content.
+const getThrottleDelay = (textLength: number): number => {
+  if (textLength >= SLACK_MESSAGE_LONG_THRESHOLD_CHARS) {
+    return SLACK_MESSAGE_UPDATE_SLOW_THROTTLE_MS;
+  }
+  return SLACK_MESSAGE_UPDATE_THROTTLE_MS;
+};
 
 export const SlackBlockIdStaticAgentConfigSchema = t.type({
   slackChatBotMessageId: t.number,
@@ -131,10 +145,13 @@ async function streamAgentAnswerToSlack(
 
   let answer = "";
   const actions: AgentActionPublicType[] = [];
-  const throttledPostSlackMessageUpdate = throttle(
+
+  let currentThrottleDelay = SLACK_MESSAGE_UPDATE_THROTTLE_MS;
+  let throttledPostSlackMessageUpdate = throttle(
     postSlackMessageUpdate,
-    1_000
+    currentThrottleDelay
   );
+
   for await (const event of streamRes.value.eventStream) {
     switch (event.type) {
       case "tool_params":
@@ -271,6 +288,17 @@ async function streamAgentAnswerToSlack(
         if (slackContent.length > MAX_SLACK_MESSAGE_LENGTH) {
           break;
         }
+
+        const newThrottleDelay = getThrottleDelay(slackContent.length);
+        if (newThrottleDelay !== currentThrottleDelay) {
+          currentThrottleDelay = newThrottleDelay;
+          throttledPostSlackMessageUpdate.cancel();
+          throttledPostSlackMessageUpdate = throttle(
+            postSlackMessageUpdate,
+            currentThrottleDelay
+          );
+        }
+
         await throttledPostSlackMessageUpdate({
           messageUpdate: {
             text: slackContent,
@@ -296,9 +324,16 @@ async function streamAgentAnswerToSlack(
           finalAnswer,
           actions
         );
-        const filesUploaded: { file: Buffer; filename: string }[] = []; // TODO(2025-10-22 chris): remove this once Slack enables file:write scope
-        // const files = actions.flatMap((action) => action.generatedFiles);
-        // const filesUploaded = await getFilesFromDust(files, dustAPI);
+
+        const authResult = await slackClient.auth.test();
+        let filesUploaded: { file: Buffer; filename: string }[] = [];
+        if (
+          authResult.ok &&
+          authResult.response_metadata?.scopes?.includes("files:write")
+        ) {
+          const files = actions.flatMap((action) => action.generatedFiles);
+          filesUploaded = await getFilesFromDust(files, dustAPI);
+        }
 
         const slackContent = slackifyMarkdown(
           normalizeContentForSlack(formattedContent)
@@ -752,44 +787,43 @@ async function getMessageSplittingFromFeatureFlag(
   }
 }
 
-// async function getFilesFromDust(
-//   files: Array<{
-//     fileId: string;
-//     title: string;
-//     contentType: string;
-//     snippet: string | null;
-//     hidden?: boolean;
-//   }>,
-//   dustAPI: DustAPI
-// ): Promise<{ file: Buffer; filename: string }[]> {
-//   const uploadPromises = files
-//     .filter((file) => !file.hidden) // Skip hidden files
-//     .map(async (file) => {
-//       try {
-//         const fileBuffer = await dustAPI.downloadFile({ fileID: file.fileId });
-//         if (!fileBuffer || fileBuffer.isErr()) {
-//           return null;
-//         }
-//         return {
-//           file: fileBuffer.value,
-//           filename: file.title,
-//         };
-//       } catch (error) {
-//         logger.error(
-//           {
-//             fileId: file.fileId,
-//             title: file.title,
-//             error: error instanceof Error ? error.message : String(error),
-//           },
-//           "Error downloading file from Dust"
-//         );
-//         return null;
-//       }
-//     });
+async function getFilesFromDust(
+  files: Array<{
+    fileId: string;
+    title: string;
+    contentType: string;
+    snippet: string | null;
+    hidden?: boolean;
+  }>,
+  dustAPI: DustAPI
+): Promise<{ file: Buffer; filename: string }[]> {
+  const visibleFiles = files.filter((file) => !file.hidden); // Skip hidden files
+  const uploadResults = await concurrentExecutor(
+    visibleFiles,
+    async (file) => {
+      try {
+        const fileBuffer = await dustAPI.downloadFile({ fileID: file.fileId });
+        if (!fileBuffer || fileBuffer.isErr()) {
+          return null;
+        }
+        return {
+          file: fileBuffer.value,
+          filename: file.title,
+        };
+      } catch (error) {
+        logger.error(
+          {
+            fileId: file.fileId,
+            title: file.title,
+            error: error instanceof Error ? error.message : String(error),
+          },
+          "Error downloading file from Dust"
+        );
+        return null;
+      }
+    },
+    { concurrency: 10 }
+  );
 
-//   const uploadResults = await Promise.all(uploadPromises);
-//   return uploadResults.filter((result) => result !== null) as {
-//     file: Buffer;
-//     filename: string;
-//   }[];
-// }
+  return removeNulls(uploadResults);
+}

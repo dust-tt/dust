@@ -79,12 +79,14 @@ export const google_drive = async ({
         },
       });
       for (const connector of connectors) {
-        await throwOnError(
-          getConnectorManager({
-            connectorId: connector.id,
-            connectorProvider: "google_drive",
-          }).garbageCollect()
-        );
+        if (!connector.pausedAt) {
+          await throwOnError(
+            getConnectorManager({
+              connectorId: connector.id,
+              connectorProvider: "google_drive",
+            }).garbageCollect()
+          );
+        }
       }
       return { success: true };
     }

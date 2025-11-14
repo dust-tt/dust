@@ -1,8 +1,16 @@
+import FirecrawlApp from "@mendable/firecrawl-js";
 import _ from "lodash";
 
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import { assertNever, dustManagedCredentials, Err, Ok } from "@app/types";
+import {
+  assertNever,
+  dustManagedCredentials,
+  Err,
+  normalizeError,
+  Ok,
+  removeNulls,
+} from "@app/types";
 
 const credentials = dustManagedCredentials();
 
@@ -12,6 +20,7 @@ const SERPER_BASE_URL = "https://google.serper.dev";
 export type BaseWebSearchParams = {
   query: string;
   num?: number;
+  page?: number;
 };
 
 export type SerpapiParams = {
@@ -20,12 +29,16 @@ export type SerpapiParams = {
   location?: string;
   output?: "json" | "html";
   api_key?: string;
-  page?: number;
 };
 
 export type SerperParams = {
   provider: "serper";
   api_key: string;
+};
+
+export type FirecrawlParams = {
+  provider: "firecrawl";
+  api_key?: string;
 };
 
 const serpapiDefaultOptions = {
@@ -35,7 +48,8 @@ const serpapiDefaultOptions = {
   num: 10,
 } satisfies Omit<BaseWebSearchParams & SerpapiParams, "query">;
 
-export type SearchParams = BaseWebSearchParams & (SerpapiParams | SerperParams);
+export type SearchParams = BaseWebSearchParams &
+  (SerpapiParams | SerperParams | FirecrawlParams);
 
 export type SearchResultItem = {
   title: string;
@@ -144,8 +158,70 @@ const serperSearch = async (
   return new Err(new Error(`Bad request on Serper: ${res.statusText}`));
 };
 
+const firecrawlSearch = async ({
+  query,
+  num,
+  api_key,
+}: BaseWebSearchParams & FirecrawlParams): Promise<
+  Result<SearchResponse, Error>
+> => {
+  const firecrawlApiKey = api_key ?? credentials.FIRECRAWL_API_KEY;
+
+  if (!firecrawlApiKey) {
+    return new Err(
+      new Error("utils/websearch: a DUST_MANAGED_FIRECRAWL_API_KEY is required")
+    );
+  }
+
+  const fc = new FirecrawlApp({
+    apiKey: firecrawlApiKey,
+  });
+
+  const limit = num ?? serpapiDefaultOptions.num;
+
+  let response;
+  try {
+    response = await fc.search(query, {
+      limit,
+      lang: "en",
+      country: "us",
+      scrapeOptions: { formats: [] },
+    });
+  } catch (error: any) {
+    logger.error({ error }, "Unexpected error on Firecrawl search");
+    return new Err(normalizeError(error));
+  }
+
+  if (!response.success) {
+    logger.error({ error: response.error }, "Bad request on Firecrawl search");
+    return new Err(
+      new Error(
+        `Bad request on Firecrawl search: ${response.error ?? "Unknown error"}`
+      )
+    );
+  }
+
+  const results: SearchResultItem[] = removeNulls(
+    response.data.map((doc) => {
+      const link = doc.metadata?.sourceURL ?? doc.url;
+
+      if (!link) {
+        return;
+      }
+
+      return {
+        title: doc.metadata?.title ?? doc.title ?? doc.url ?? "Untitled result",
+        link,
+        snippet: doc.description ?? "",
+      };
+    })
+  );
+
+  return new Ok(results);
+};
+
 /**
- * Make a google search using SerpAPI or Serper
+ * Make a web search using SerpAPI, Serper or Firecrawl
  * @param {SearchParams} params
  */
 export const webSearch = async (
@@ -161,6 +237,9 @@ export const webSearch = async (
     }
     case "serper": {
       return serperSearch(params);
+    }
+    case "firecrawl": {
+      return firecrawlSearch(params);
     }
     default:
       assertNever(provider);

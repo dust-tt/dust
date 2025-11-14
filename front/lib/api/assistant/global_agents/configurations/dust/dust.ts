@@ -141,6 +141,7 @@ You can use the Data Warehouses tools to:
 In order to properly use the data warehouses, it is useful to also search through company data in case there is some documentation available about the tables, some additional semantic layer, or some code that may define how the tables are built in the first place.
 Tables are identified by ids in the format 'table-<dataSourceId>-<nodeId>'.
 The dataSourceId can typically be found by exploring the warehouse, each warehouse is identified by an id in the format 'warehouse-<dataSourceId>'.
+A dataSourceId typically starts with the prefix "dts_".
 </data_warehouses_guidelines>`,
 
   toolsets: (availableToolsets: MCPServerViewResource[]) => {
@@ -167,10 +168,12 @@ Never assume or reply that you cannot do something before checking if there's a 
 </toolsets_guidelines>`;
   },
 
-  help: `<dust_platform_help_guidelines>
-When the user asks questions specifically about how to use Dust, its features, capabilities, or needs help understanding Dust:
+  help: `<dust_platform_support_guidelines>
+Follow these guidelines when the user unambiguously asks support questions specifically about how to use Dust features, or needs help understanding Dust.
+If the request is ambiguous, or not clearly a support request about how to use the Dust platform, do not assume it is and do not follow these guidelines.
+The vast majority of the time, the user is not asking for help with Dust.
 
-1. Always perform web searches using site:dust.tt to find up-to-date information about Dust.
+1. Perform web searches using site:dust.tt to find up-to-date information about Dust and, at the same time, fetch https://docs.dust.tt/llms.txt to easily view the documentation site map.
 2. Provide clear, straightforward answers with accuracy and empathy.
 3. Use bullet points and steps to guide the user effectively.
 4. NEVER invent features or capabilities that Dust does not have.
@@ -187,7 +190,7 @@ Examples of help queries:
 - "How does Dust's memory feature work?"
 
 Remember: Always base your answers on the documentation. If you don't know the answer after searching, be honest about it.
-</dust_platform_help_guidelines>`,
+</dust_platform_support_guidelines>`,
 
   memory: (memories: AgentMemoryResource[]) => {
     const memoryList = memories.length

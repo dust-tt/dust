@@ -27,10 +27,10 @@ import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType, ModelId, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 import type {
+  AgentFunctionCallContentType,
   AgentStepContentType,
-  FunctionCallContentType,
 } from "@app/types/assistant/agent_message_content";
-import { isFunctionCallContent } from "@app/types/assistant/agent_message_content";
+import { isAgentFunctionCallContent } from "@app/types/assistant/agent_message_content";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -308,9 +308,9 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
   }
 
   isFunctionCallContent(): this is AgentStepContentResource & {
-    value: FunctionCallContentType;
+    value: AgentFunctionCallContentType;
   } {
-    return isFunctionCallContent(this.value);
+    return isAgentFunctionCallContent(this.value);
   }
 
   async delete(

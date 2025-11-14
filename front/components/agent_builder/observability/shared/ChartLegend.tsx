@@ -20,7 +20,7 @@ export function legendFromConstant<K extends string>(
   if (options?.includeVersionMarker) {
     base.push({
       key: "versionMarkers",
-      label: "Version Marker",
+      label: "Version",
       colorClassName: "text-gray-300 dark:text-gray-300-night",
     });
   }
@@ -47,7 +47,9 @@ export function ChartLegend({ items }: ChartLegendProps) {
             className={item.colorClassName}
             rounded={item.key === "versionMarkers" ? "full" : "sm"}
           />
-          <span className="text-sm text-muted-foreground">{item.label}</span>
+          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            {item.label}
+          </span>
         </div>
       ))}
     </div>

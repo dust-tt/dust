@@ -26,7 +26,7 @@ export type ResponseChecker =
   | {
       type: "has_tool_call";
       toolName: string;
-      expectedArguments: string;
+      expectedArguments: Record<string, unknown>;
     }
   | {
       type: "check_json_output";

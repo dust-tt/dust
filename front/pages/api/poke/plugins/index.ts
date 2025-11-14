@@ -71,6 +71,24 @@ async function handler(
       // If the run targets a specific workspace, use a workspace-scoped authenticator.
       if (workspaceId) {
         auth = await Authenticator.fromSuperUserSession(session, workspaceId);
+
+        // Hide plugins during any workspace maintenance.
+        const workspace = auth.workspace();
+        const maintenance = workspace?.metadata?.maintenance;
+        if (maintenance) {
+          // Return a fake plugin explaining why plugins are unavailable.
+          res.status(200).json({
+            plugins: [
+              {
+                id: "maintenance",
+                name: "Plugins are disabled during maintenance",
+                description:
+                  "All plugins are temporarily unavailable while workspace maintenance is in progress.",
+              },
+            ],
+          });
+          return;
+        }
       }
 
       const plugins = pluginManager.getPluginsForResourceType(resourceType);

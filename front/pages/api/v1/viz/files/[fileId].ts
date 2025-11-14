@@ -2,9 +2,11 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { verifyVizAccessToken } from "@app/lib/api/viz/access_tokens";
+import { canAccessFileInConversation } from "@app/lib/api/viz/files";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { frameContentType, isString } from "@app/types";
@@ -190,15 +192,20 @@ async function handler(
     });
   }
 
-  const { useCase, useCaseMetadata } = targetFile;
-  const isSupportedUsecase =
-    useCase === "tool_output" || useCase === "conversation";
+  const hasAccessRes = await canAccessFileInConversation(
+    owner,
+    targetFile,
+    frameConversationId
+  );
 
-  // Verify the file has a supported usecase and belongs to the same conversation as the frame.
-  const canAccessFileThroughFrame =
-    isSupportedUsecase &&
-    useCaseMetadata?.conversationId === frameConversationId;
-  if (!canAccessFileThroughFrame) {
+  if (hasAccessRes.isErr()) {
+    logger.error(
+      {
+        erroor: hasAccessRes.error,
+      },
+      "Error checking file access in conversation"
+    );
+
     return apiError(req, res, {
       status_code: 404,
       api_error: { type: "file_not_found", message: "File not found." },

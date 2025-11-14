@@ -19,10 +19,11 @@ const MAX_EVENTS_BEFORE_CONTINUE_AS_NEW = 4000;
 // Auto-terminates if no events arrive for 5 minutes.
 export async function notionProcessWebhooksWorkflow({
   connectorId,
+  eventQueue = [],
 }: {
   connectorId: ModelId;
+  eventQueue?: NotionWebhookEvent[];
 }) {
-  const eventQueue: NotionWebhookEvent[] = [];
   let processedCount = 0;
 
   setHandler(notionWebhookSignal, (event: NotionWebhookEvent) => {
@@ -48,7 +49,7 @@ export async function notionProcessWebhooksWorkflow({
 
     // After we reach our max, call continueAsNew() to limit history growth.
     if (processedCount > MAX_EVENTS_BEFORE_CONTINUE_AS_NEW) {
-      await continueAsNew({ connectorId });
+      await continueAsNew({ connectorId, eventQueue });
       return;
     }
   }

@@ -640,6 +640,23 @@ export const slack = async ({
         },
       });
 
+      // If the channel already existed with a non-indexed permission (e.g. "write"),
+      // upgrade it to "read_write" so the sync actually indexes content.
+      if (
+        channel.permission !== "read" &&
+        channel.permission !== "read_write"
+      ) {
+        const existing = await SlackChannel.findOne({
+          where: {
+            connectorId: connector.id,
+            slackChannelId: args.channelId,
+          },
+        });
+        if (existing) {
+          await existing.update({ permission: "read_write" });
+        }
+      }
+
       const workflowRes = await launchSlackSyncWorkflow(connector.id, null, [
         channel.slackId,
       ]);

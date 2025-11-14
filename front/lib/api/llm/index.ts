@@ -30,7 +30,7 @@ export async function getLLM(
     temperature,
     reasoningEffort,
     responseFormat,
-    bypassFeatureFlag,
+    bypassFeatureFlag = false,
     context,
   }: LLMParameters
 ): Promise<LLM | null> {
@@ -41,7 +41,7 @@ export async function getLLM(
     return null;
   }
 
-  const hasFeature = bypassFeatureFlag ?? (await hasFeatureFlag(auth));
+  const hasFeature = bypassFeatureFlag || (await hasFeatureFlag(auth));
   if (!hasFeature) {
     return null;
   }

@@ -20,11 +20,8 @@ import React from "react";
 
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import { getConversationRoute, setQueryParam } from "@app/lib/utils/router";
-import type { WorkspaceType } from "@app/types";
-
-import type { RichMention } from "../types";
-import { isRichUserMention } from "../types";
-import { isRichAgentMention } from "../types";
+import type { RichMention, WorkspaceType } from "@app/types";
+import { isRichAgentMention, isRichUserMention } from "@app/types";
 
 interface MentionDropdownProps {
   mention: RichMention;
@@ -38,38 +35,40 @@ interface MentionDropdownProps {
  * - Agent mentions: start a conversation or view details
  * - User mentions: view user profile
  */
-export function MentionDropdown({
-  mention,
-  owner,
-  children,
-}: MentionDropdownProps) {
+export const MentionDropdown = React.forwardRef<
+  HTMLDivElement,
+  MentionDropdownProps
+>(({ mention, owner, children }, ref) => {
   const router = useRouter();
   const { onOpenChange: onOpenChangeAgentModal } = useURLSheet("agentDetails");
+  const { onOpenChange: onOpenChangeUserModal } = useURLSheet("userDetails");
 
   // Agent mention actions.
   if (isRichAgentMention(mention)) {
-    const handleStartConversation = async () => {
+    const handleAgentStartConversation = async () => {
       await router.push(
         getConversationRoute(owner.sId, "new", `agent=${mention.id}`)
       );
     };
 
-    const handleSeeDetails = () => {
+    const handleAgentSeeDetails = () => {
       onOpenChangeAgentModal(true);
       setQueryParam(router, "agentDetails", mention.id);
     };
 
     return (
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
+        <DropdownMenuTrigger asChild>
+          <div ref={ref}>{children}</div>
+        </DropdownMenuTrigger>
         <DropdownMenuContent side="bottom" align="start">
           <DropdownMenuItem
-            onClick={handleStartConversation}
+            onClick={handleAgentStartConversation}
             icon={ChatBubbleBottomCenterTextIcon}
             label={`New conversation with @${mention.label}`}
           />
           <DropdownMenuItem
-            onClick={handleSeeDetails}
+            onClick={handleAgentSeeDetails}
             icon={EyeIcon}
             label={`About @${mention.label}`}
           />
@@ -80,13 +79,21 @@ export function MentionDropdown({
 
   // User mention actions.
   if (isRichUserMention(mention)) {
+    const handleUserSeeDetails = () => {
+      onOpenChangeUserModal(true);
+      setQueryParam(router, "userDetails", mention.id);
+    };
+
     return (
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
+        <DropdownMenuTrigger asChild>
+          <div ref={ref}>{children}</div>
+        </DropdownMenuTrigger>
         <DropdownMenuContent side="bottom" align="start">
           <DropdownMenuItem
+            onClick={handleUserSeeDetails}
             icon={UserIcon}
-            label={`Profile of @${mention.label}: ${mention.description || ""}`}
+            label={`Profile of @${mention.label}${mention.description ? ": " + mention.description : ""}`}
           />
         </DropdownMenuContent>
       </DropdownMenu>
@@ -94,5 +101,7 @@ export function MentionDropdown({
   }
 
   // Unsupported mention type, render children without dropdown.
-  return <>{children}</>;
-}
+  return <div ref={ref}>{children}</div>;
+});
+
+MentionDropdown.displayName = "MentionDropdown";

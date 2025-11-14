@@ -1,7 +1,8 @@
+import { useMemo } from "react";
 import {
-  Area,
-  AreaChart,
   CartesianGrid,
+  Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -14,33 +15,50 @@ import {
   LATENCY_LEGEND,
   LATENCY_PALETTE,
 } from "@app/components/agent_builder/observability/constants";
-import { useObservability } from "@app/components/agent_builder/observability/ObservabilityContext";
+import { useLatencyData } from "@app/components/agent_builder/observability/hooks";
+import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import {
   ChartLegend,
   legendFromConstant,
 } from "@app/components/agent_builder/observability/shared/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
+import { formatTimeSeriesTitle } from "@app/components/agent_builder/observability/shared/tooltipHelpers";
 import { VersionMarkersDots } from "@app/components/agent_builder/observability/shared/VersionMarkers";
 import { padSeriesToTimeRange } from "@app/components/agent_builder/observability/utils";
-import {
-  useAgentLatency,
-  useAgentVersionMarkers,
-} from "@app/lib/swr/assistants";
+import type { LatencyPoint } from "@app/lib/api/assistant/observability/latency";
+import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
+import { useAgentVersionMarkers } from "@app/lib/swr/assistants";
+import { formatShortDate } from "@app/lib/utils/timestamps";
 
-interface LatencyData {
-  messages: number;
-  average: number;
+interface LatencyData extends LatencyPoint {
+  date: string;
 }
 
 function isLatencyData(data: unknown): data is LatencyData {
-  return typeof data === "object" && data !== null && "average" in data;
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    "average" in data &&
+    "median" in data
+  );
+}
+
+function zeroFactory(timestamp: number) {
+  return {
+    timestamp,
+    messages: 0,
+    average: 0,
+    median: 0,
+  };
 }
 
 function LatencyTooltip(
-  props: TooltipContentProps<number, string>
+  props: TooltipContentProps<number, string> & {
+    versionMarkers: AgentVersionMarker[];
+  }
 ): JSX.Element | null {
-  const { active, payload, label } = props;
+  const { active, payload, versionMarkers } = props;
   if (!active || !payload || payload.length === 0) {
     return null;
   }
@@ -49,15 +67,20 @@ function LatencyTooltip(
     return null;
   }
   const row = first.payload;
-  const title = typeof label === "string" ? label : String(label);
+
   return (
     <ChartTooltipCard
-      title={title}
+      title={formatTimeSeriesTitle(row.date, row.timestamp, versionMarkers)}
       rows={[
         {
           label: "Average time",
           value: `${row.average}s`,
           colorClassName: LATENCY_PALETTE.average,
+        },
+        {
+          label: "Median time",
+          value: `${row.median}s`,
+          colorClassName: LATENCY_PALETTE.median,
         },
       ]}
     />
@@ -71,16 +94,18 @@ export function LatencyChart({
   workspaceId: string;
   agentConfigurationId: string;
 }) {
-  const { period, mode } = useObservability();
+  const { period, mode, selectedVersion } = useObservabilityContext();
+
   const {
-    latency: rawData,
-    isLatencyLoading,
-    isLatencyError,
-  } = useAgentLatency({
+    data: rawData,
+    isLoading,
+    errorMessage,
+  } = useLatencyData({
     workspaceId,
     agentConfigurationId,
-    days: period,
-    disabled: !workspaceId || !agentConfigurationId,
+    period,
+    mode,
+    filterVersion: selectedVersion?.version,
   });
 
   const { versionMarkers } = useAgentVersionMarkers({
@@ -90,11 +115,16 @@ export function LatencyChart({
     disabled: !workspaceId || !agentConfigurationId,
   });
 
-  const data = padSeriesToTimeRange(rawData, mode, period, (date) => ({
-    date,
-    messages: 0,
-    average: 0,
-  }));
+  const data = useMemo(() => {
+    if (mode === "timeRange") {
+      return padSeriesToTimeRange(rawData, mode, period, zeroFactory);
+    }
+
+    return rawData.map((data) => ({
+      ...data,
+      date: formatShortDate(data.timestamp),
+    }));
+  }, [rawData, mode, period]);
 
   const legendItems = legendFromConstant(LATENCY_LEGEND, LATENCY_PALETTE, {
     includeVersionMarker: mode === "timeRange" && versionMarkers.length > 0,
@@ -103,14 +133,12 @@ export function LatencyChart({
   return (
     <ChartContainer
       title="Latency"
-      description="Average time to complete output (seconds). Lower is better."
-      isLoading={isLatencyLoading}
-      errorMessage={
-        isLatencyError ? "Failed to load observability data." : undefined
-      }
+      description="Average and median time to complete output. Lower is better."
+      isLoading={isLoading}
+      errorMessage={errorMessage}
     >
       <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-        <AreaChart
+        <LineChart
           data={data}
           margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
         >
@@ -127,20 +155,23 @@ export function LatencyChart({
               <stop offset="95%" stopColor="currentColor" stopOpacity={0.1} />
             </linearGradient>
           </defs>
-          <CartesianGrid vertical={false} className="stroke-border" />
+          <CartesianGrid
+            vertical={false}
+            className="stroke-border dark:stroke-border-night"
+          />
           <XAxis
             dataKey="date"
             type="category"
             scale="point"
             allowDuplicatedCategory={false}
-            className="text-xs text-muted-foreground"
+            className="text-xs text-muted-foreground dark:text-muted-foreground-night"
             tickLine={false}
             axisLine={false}
             tickMargin={8}
             minTickGap={16}
           />
           <YAxis
-            className="text-xs text-muted-foreground"
+            className="text-xs text-muted-foreground dark:text-muted-foreground-night"
             tickLine={false}
             axisLine={false}
             tickMargin={8}
@@ -149,7 +180,9 @@ export function LatencyChart({
             allowDecimals={true}
           />
           <Tooltip
-            content={LatencyTooltip}
+            content={(props: TooltipContentProps<number, string>) => (
+              <LatencyTooltip {...props} versionMarkers={versionMarkers} />
+            )}
             cursor={false}
             wrapperStyle={{ outline: "none" }}
             contentStyle={{
@@ -159,16 +192,25 @@ export function LatencyChart({
               boxShadow: "none",
             }}
           />
-          <Area
+          <Line
             type="monotone"
             dataKey="average"
             name="Average time to complete output"
             className={LATENCY_PALETTE.average}
             fill="url(#fillAverage)"
             stroke="currentColor"
+            dot={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="median"
+            name="Median time to complete output"
+            className={LATENCY_PALETTE.median}
+            stroke="currentColor"
+            dot={false}
           />
           <VersionMarkersDots mode={mode} versionMarkers={versionMarkers} />
-        </AreaChart>
+        </LineChart>
       </ResponsiveContainer>
       <ChartLegend items={legendItems} />
     </ChartContainer>

@@ -1,16 +1,33 @@
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
+import type { PublicPostConversationsRequestBody } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createMocks } from "node-mocks-http";
 import { Readable } from "stream";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { generateVizAccessToken } from "@app/lib/api/viz/access_tokens";
+import { mentionAgent } from "@app/lib/mentions";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
+import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { LightWorkspaceType } from "@app/types";
 import { frameContentType } from "@app/types/files";
 
+import publicConversationsHandler from "../../w/[wId]/assistant/conversations/index";
 import handler from "./[fileId]";
+
+// Mock the rate limiter functions.
+vi.mock("@app/lib/utils/rate_limiter", () => ({
+  rateLimiter: vi.fn().mockResolvedValue(999), // Return high number = no limit
+  getTimeframeSecondsFromLiteral: vi.fn().mockReturnValue(60),
+}));
+
+// Mock seat counting functions directly.
+vi.mock("@app/lib/plans/usage/seats", () => ({
+  countActiveSeatsInWorkspace: vi.fn().mockResolvedValue(100),
+  countActiveSeatsInWorkspaceCached: vi.fn().mockResolvedValue(100),
+}));
 
 describe("/api/v1/viz/files/[fileId] security tests", () => {
   let workspace: LightWorkspaceType;
@@ -529,6 +546,282 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
         type: "workspace_auth_error",
         message: "Invalid or expired access token.",
       },
+    });
+  });
+
+  describe("conversation hierarchy access tests", () => {
+    it("should allow access to files from sub-conversations created by agent handover", async () => {
+      const {
+        req: parentReq,
+        res: parentRes,
+        workspace,
+        key,
+      } = await createPublicApiMockRequest({
+        method: "POST",
+      });
+
+      // Create parent conversation A using API.
+      const parentBody: PublicPostConversationsRequestBody = {
+        title: "Parent Conversation",
+        visibility: "unlisted",
+        depth: 0,
+        message: {
+          content: `${mentionAgent({
+            name: "noop",
+            sId: "noop",
+          })} Hello from parent`,
+          mentions: [{ configurationId: "noop" }],
+          context: {
+            timezone: "UTC",
+            username: "test-user",
+            fullName: "Test User",
+            email: "test@example.com",
+            profilePictureUrl: null,
+            origin: "web",
+          },
+        },
+      };
+
+      parentReq.body = parentBody;
+      parentReq.query.wId = workspace.sId;
+
+      await publicConversationsHandler(parentReq, parentRes);
+
+      expect(parentRes._getStatusCode()).toBe(200);
+      const parentData = parentRes._getJSONData();
+      const parentConversation = parentData.conversation;
+      const parentMessageId = parentData.message.sId;
+
+      const { req: childReq, res: childRes } = await createPublicApiMockRequest(
+        {
+          method: "POST",
+        }
+      );
+
+      // Use a new request to avoid state carry-over. But reuse same workspace and key.
+      childReq.headers = {
+        authorization: "Bearer " + key.secret,
+      };
+      childReq.query.wId = workspace.sId;
+
+      // Create sub-conversation B that references parent message using API.
+      const body: PublicPostConversationsRequestBody = {
+        title: "Child Conversation",
+        visibility: "unlisted",
+        depth: 1,
+        message: {
+          content: `${mentionAgent({
+            name: "noop",
+            sId: "noop",
+          })} Hello from child`,
+          mentions: [{ configurationId: "noop" }],
+          context: {
+            timezone: "UTC",
+            username: "test-user",
+            fullName: "Test User",
+            email: "test@example.com",
+            profilePictureUrl: null,
+            origin: "web",
+            originMessageId: parentMessageId, // This creates the hierarchy!
+          },
+        },
+      };
+
+      childReq.body = body;
+
+      await publicConversationsHandler(childReq, childRes);
+
+      expect(childRes._getStatusCode()).toBe(200);
+      const childData = childRes._getJSONData();
+      const childConversation = childData.conversation;
+
+      // Create frame file in parent conversation A.
+      const frameFile = await FileFactory.create(workspace, null, {
+        contentType: frameContentType,
+        fileName: "frame.html",
+        fileSize: 1000,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: parentConversation.sId },
+      });
+
+      // Create target file in sub-conversation B.
+      const targetFile = await FileFactory.create(workspace, null, {
+        contentType: "text/plain",
+        fileName: "sub-conversation-file.txt",
+        fileSize: 500,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: childConversation.sId },
+      });
+
+      const frameShareInfo = await frameFile.getShareInfo();
+      const fileToken = frameShareInfo?.shareUrl.split("/").at(-1);
+      if (!fileToken) {
+        throw new Error("No file token found");
+      }
+
+      const accessToken = generateVizAccessToken({
+        fileToken,
+        workspaceId: workspace.sId,
+        shareScope: "public",
+      });
+
+      const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+        method: "GET",
+        query: { fileId: targetFile.sId },
+        headers: { authorization: `Bearer ${accessToken}` },
+      });
+
+      vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
+        file: frameFile,
+        content: "<html>Frame content</html>",
+        shareScope: "public",
+      });
+
+      vi.spyOn(FileResource.prototype, "getSharedReadStream").mockReturnValue(
+        Readable.from(["Sub-conversation file content"])
+      );
+
+      await handler(req, res);
+
+      // Should succeed - file from sub-conversation should be accessible
+      expect(res._getStatusCode()).toBe(200);
+    });
+
+    it("should reject access to files from unrelated conversations", async () => {
+      const {
+        req: firstConvReq,
+        res: firstConvRes,
+        workspace,
+        key,
+      } = await createPublicApiMockRequest({
+        method: "POST",
+      });
+
+      // Create conversation A using API.
+      const conversationABody: PublicPostConversationsRequestBody = {
+        title: "Conversation A",
+        visibility: "unlisted",
+        message: {
+          content: `${mentionAgent({
+            name: "noop",
+            sId: "noop",
+          })} Hello from conversation A`,
+          mentions: [{ configurationId: "noop" }],
+          context: {
+            timezone: "UTC",
+            username: "test-user",
+            fullName: "Test User",
+            email: "test@example.com",
+            profilePictureUrl: null,
+            origin: "web",
+          },
+        },
+      };
+
+      firstConvReq.body = conversationABody;
+      firstConvReq.query.wId = workspace.sId;
+
+      await publicConversationsHandler(firstConvReq, firstConvRes);
+
+      expect(firstConvRes._getStatusCode()).toBe(200);
+      const firstConvData = firstConvRes._getJSONData();
+      const conversationA = firstConvData.conversation;
+
+      const { req: conversationBReq, res: conversationBRes } =
+        await createPublicApiMockRequest({
+          method: "POST",
+        });
+
+      // Use a new request to avoid state carry-over. But reuse same workspace and key.
+      conversationBReq.headers = {
+        authorization: "Bearer " + key.secret,
+      };
+      conversationBReq.query.wId = workspace.sId;
+
+      // Create another unrelated conversation B using API.
+      const body: PublicPostConversationsRequestBody = {
+        title: "Conversation B",
+        visibility: "unlisted",
+        depth: 0,
+        message: {
+          content: `${mentionAgent({
+            name: "noop",
+            sId: "noop",
+          })} Hello from conversation B`,
+          mentions: [{ configurationId: "noop" }],
+          context: {
+            timezone: "UTC",
+            username: "test-user",
+            fullName: "Test User",
+            email: "test@example.com",
+            profilePictureUrl: null,
+            origin: "web",
+          },
+        },
+      };
+
+      conversationBReq.body = body;
+
+      await publicConversationsHandler(conversationBReq, conversationBRes);
+
+      expect(conversationBRes._getStatusCode()).toBe(200);
+      const conversationBData = conversationBRes._getJSONData();
+      const conversationB = conversationBData.conversation;
+
+      // Create frame file in conversation A.
+      const frameFile = await FileFactory.create(workspace, null, {
+        contentType: frameContentType,
+        fileName: "frame.html",
+        fileSize: 1000,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: conversationA.sId },
+      });
+
+      // Create target file in unrelated conversation B.
+      const targetFile = await FileFactory.create(workspace, null, {
+        contentType: "text/plain",
+        fileName: "sub-conversation-file.txt",
+        fileSize: 500,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: conversationB.sId },
+      });
+
+      const frameShareInfo = await frameFile.getShareInfo();
+      const fileToken = frameShareInfo?.shareUrl.split("/").at(-1);
+      if (!fileToken) {
+        throw new Error("No file token found");
+      }
+
+      const accessToken = generateVizAccessToken({
+        fileToken,
+        workspaceId: workspace.sId,
+        shareScope: "public",
+      });
+
+      const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+        method: "GET",
+        query: { fileId: targetFile.sId },
+        headers: { authorization: `Bearer ${accessToken}` },
+      });
+
+      vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
+        file: frameFile,
+        content: "<html>Frame content</html>",
+        shareScope: "public",
+      });
+
+      vi.spyOn(FileResource.prototype, "getSharedReadStream").mockReturnValue(
+        Readable.from(["Sub-conversation file content"])
+      );
+
+      await handler(req, res);
+
+      // Should fail - file from unrelated conversation.
+      expect(res._getStatusCode()).toBe(404);
     });
   });
 });

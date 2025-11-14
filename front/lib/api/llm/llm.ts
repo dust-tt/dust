@@ -11,13 +11,22 @@ import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
   LLMClientMetadata,
   LLMParameters,
-  StreamParameters,
+  LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
+import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import type { ModelIdType, ReasoningEffort } from "@app/types";
+import { RunResource } from "@app/lib/resources/run_resource";
+import logger from "@app/logger/logger";
+import type {
+  ModelIdType,
+  ModelProviderIdType,
+  ReasoningEffort,
+  SUPPORTED_MODEL_CONFIGS,
+} from "@app/types";
 
 export abstract class LLM {
   protected modelId: ModelIdType;
+  protected modelConfig: (typeof SUPPORTED_MODEL_CONFIGS)[number];
   protected temperature: number | null;
   protected reasoningEffort: ReasoningEffort | null;
   protected responseFormat: string | null;
@@ -39,9 +48,13 @@ export abstract class LLM {
       reasoningEffort = "none",
       responseFormat = null,
       temperature = AGENT_CREATIVITY_LEVEL_TEMPERATURES.balanced,
-    }: LLMParameters & { clientId: string }
+    }: LLMParameters & { clientId: ModelProviderIdType }
   ) {
     this.modelId = modelId;
+    this.modelConfig = getSupportedModelConfig({
+      modelId: this.modelId,
+      providerId: clientId,
+    });
     this.temperature = temperature;
     this.reasoningEffort = reasoningEffort;
     this.responseFormat = responseFormat;
@@ -61,7 +74,7 @@ export abstract class LLM {
     conversation,
     prompt,
     specifications,
-  }: StreamParameters): AsyncGenerator<LLMEvent> {
+  }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
     if (!this.context) {
       yield* this.internalStream({ conversation, prompt, specifications });
       return;
@@ -82,18 +95,66 @@ export abstract class LLM {
       temperature: this.temperature,
     });
 
+    // TODO(LLM-Router 13/11/2025): Temporary logs, TBRemoved
+    let currentEvent: LLMEvent | null = null;
     try {
       for await (const event of this.internalStream({
         conversation,
         prompt,
         specifications,
       })) {
+        currentEvent = event;
         buffer.addEvent(event);
         yield event;
       }
     } finally {
+      if (currentEvent?.type === "error") {
+        logger.error(
+          {
+            llmEventType: "error",
+            message: currentEvent.content.message,
+            modelId: this.modelId,
+            context: this.context,
+          },
+          "LLM Error"
+        );
+      } else if (currentEvent?.type === "success") {
+        logger.info(
+          {
+            llmEventType: "success",
+            modelId: this.modelId,
+            context: this.context,
+          },
+          "LLM Success"
+        );
+      } else {
+        logger.warn(
+          {
+            llmEventType: "uncategorized",
+            lastEventType: currentEvent?.type,
+            modelId: this.modelId,
+            context: this.context,
+          },
+          "LLM uncategorized"
+        );
+      }
+
       const durationMs = Date.now() - startTime;
       buffer.writeToGCS({ durationMs, startTime }).catch(() => {});
+
+      const run = await RunResource.makeNew({
+        appId: null,
+        dustRunId: this.traceId,
+        runType: "deploy",
+        // Assumption made that this class exclusively uses Dust credentials.
+        useWorkspaceCredentials: false,
+        workspaceId: this.authenticator.getNonNullableWorkspace().id,
+      });
+
+      // Run usage is only populated if the run is successful.
+      if (buffer.runTokenUsage) {
+        await run.recordTokenUsage(buffer.runTokenUsage, this.modelId);
+      }
     }
   }
 
@@ -108,7 +169,7 @@ export abstract class LLM {
     conversation,
     prompt,
     specifications,
-  }: StreamParameters): AsyncGenerator<LLMEvent> {
+  }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
     yield* this.streamWithTracing({
       conversation,
       prompt,
@@ -120,5 +181,5 @@ export abstract class LLM {
     conversation,
     prompt,
     specifications,
-  }: StreamParameters): AsyncGenerator<LLMEvent>;
+  }: LLMStreamParameters): AsyncGenerator<LLMEvent>;
 }

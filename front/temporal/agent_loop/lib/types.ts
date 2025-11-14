@@ -1,10 +1,13 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type { AgentMessageContentParser } from "@app/lib/api/assistant/agent_message_content_parser";
+import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
+import type { Authenticator } from "@app/lib/auth";
 import type { AgentMessage } from "@app/lib/models/assistant/conversation";
 import type {
   AgentConfigurationType,
   AgentMessageType,
   ConversationType,
+  ConversationWithoutContentType,
   ModelConfigurationType,
   ModelConversationTypeMultiActions,
   Ok,
@@ -12,9 +15,9 @@ import type {
   UserMessageType,
 } from "@app/types";
 import type {
-  FunctionCallContentType,
-  ReasoningContentType,
-  TextContentType,
+  AgentFunctionCallContentType,
+  AgentReasoningContentType,
+  AgentTextContentType,
 } from "@app/types/assistant/agent_message_content";
 
 export type Output = {
@@ -24,7 +27,9 @@ export type Output = {
   }>;
   generation: string | null;
   contents: Array<
-    TextContentType | FunctionCallContentType | ReasoningContentType
+    | AgentTextContentType
+    | AgentFunctionCallContentType
+    | AgentReasoningContentType
   >;
 };
 
@@ -50,6 +55,24 @@ export type GetOutputRequestParams = {
     metadata: Record<string, string | number | boolean> | null;
   }) => Promise<void>;
   prompt: string;
+  updateResourceAndPublishEvent: (
+    auth: Authenticator,
+    {
+      event,
+      agentMessageRow,
+      conversation,
+      step,
+      modelInteractionDurationMs,
+      userMessageOrigin,
+    }: {
+      event: AgentMessageEvents;
+      agentMessageRow: AgentMessage;
+      conversation: ConversationWithoutContentType;
+      step: number;
+      modelInteractionDurationMs?: number;
+      userMessageOrigin?: string | null;
+    }
+  ) => Promise<void>;
 };
 
 export type GetOutputResponse = Result<
@@ -57,6 +80,7 @@ export type GetOutputResponse = Result<
     output: Output;
     dustRunId: string;
     nativeChainOfThought: string;
+    timeToFirstEvent?: number;
   },
   { type: "shouldRetryMessage"; message: string } | { type: "shouldReturnNull" }
 >;

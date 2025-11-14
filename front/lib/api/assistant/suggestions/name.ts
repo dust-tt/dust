@@ -10,7 +10,7 @@ import type {
   Result,
   UserMessageTypeModel,
 } from "@app/types";
-import { Err, isStringArray, Ok, safeParseJSON } from "@app/types";
+import { Err, isStringArray, Ok } from "@app/types";
 
 const FUNCTION_NAME = "send_suggestions";
 
@@ -100,7 +100,7 @@ export async function getBuilderNameSuggestions(
   const conversation: ModelConversationTypeMultiActions =
     getConversationContext(inputs);
   const traceContext: LLMTraceContext = {
-    operationType: "name_suggestion",
+    operationType: "agent_builder_name_suggestion",
     userId: auth.user()?.sId,
   };
   const llm = await getLLM(auth, {
@@ -121,29 +121,23 @@ export async function getBuilderNameSuggestions(
 
   for await (const event of events) {
     if (event.type === "tool_call") {
-      const parsedArguments = safeParseJSON(event.content.arguments);
-      if (parsedArguments.isErr()) {
-        return new Err(
-          new Error(
-            `Error parsing suggestions from LLM: ${parsedArguments.error.message}`
-          )
-        );
-      }
+      const args = event.content.arguments;
+
       if (
-        !parsedArguments.value ||
-        !("suggestions" in parsedArguments.value) ||
-        !isStringArray(parsedArguments.value.suggestions)
+        !args ||
+        !("suggestions" in args) ||
+        !isStringArray(args.suggestions)
       ) {
         return new Err(
           new Error(
-            `Error retrieving suggestions from arguments: ${parsedArguments.value}`
+            `Error retrieving suggestions from arguments: ${JSON.stringify(args)}`
           )
         );
       }
 
       const filteredSuggestions = await filterSuggestedNames(
         auth,
-        parsedArguments.value.suggestions
+        args.suggestions
       );
 
       return new Ok({

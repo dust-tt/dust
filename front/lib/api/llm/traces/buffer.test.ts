@@ -47,7 +47,7 @@ class LLMEventFactory {
       content: {
         id: faker.string.uuid(),
         name: faker.hacker.verb(),
-        arguments: JSON.stringify({ query: faker.lorem.sentence() }),
+        arguments: { query: faker.lorem.sentence() },
       },
       metadata: { clientId: "test", modelId: "gpt-4-turbo" },
     };

@@ -55,6 +55,9 @@ pub mod project;
 pub mod run;
 pub mod search_filter;
 pub mod utils;
+pub mod types {
+    pub mod tokenizer;
+}
 pub mod providers {
     pub mod azure_openai;
     pub mod chat_messages;
@@ -151,6 +154,7 @@ pub mod oauth {
         pub mod hubspot;
         pub mod intercom;
         pub mod jira;
+        pub mod linear;
         pub mod mcp;
         pub mod mcp_static;
         pub mod microsoft;

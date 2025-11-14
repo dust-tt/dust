@@ -123,12 +123,14 @@ export const microsoft = async ({
         },
       });
       for (const connector of connectors) {
-        await throwOnError(
-          getConnectorManager({
-            connectorId: connector.id,
-            connectorProvider: "microsoft",
-          }).garbageCollect()
-        );
+        if (!connector.pausedAt) {
+          await throwOnError(
+            getConnectorManager({
+              connectorId: connector.id,
+              connectorProvider: "microsoft",
+            }).garbageCollect()
+          );
+        }
       }
       return { success: true };
     }

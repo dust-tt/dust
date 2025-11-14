@@ -77,3 +77,105 @@ export type AshbyCandidateSearchRequest = z.infer<
 export const AshbyCandidateSearchResponseSchema = z.object({
   results: z.array(AshbyCandidateSchema),
 });
+
+export type AshbyCandidateSearchResponse = z.infer<
+  typeof AshbyCandidateSearchResponseSchema
+>;
+
+export const AshbyApplicationFeedbackListRequestSchema = z.object({
+  applicationId: z.string(),
+});
+
+export type AshbyApplicationFeedbackListRequest = z.infer<
+  typeof AshbyApplicationFeedbackListRequestSchema
+>;
+
+export const AshbyFeedbackSubmissionSchema = z
+  .object({
+    id: z.string(),
+    submittedAt: z.string().optional().nullable(),
+    submittedByUser: z
+      .object({
+        id: z.string(),
+        firstName: z.string(),
+        lastName: z.string(),
+        email: z.string(),
+      })
+      .optional()
+      .nullable(),
+    interviewId: z.string().optional().nullable(),
+    interviewEventId: z.string().optional().nullable(),
+    formDefinition: z
+      .object({
+        sections: z
+          .array(
+            z.object({
+              fields: z.array(
+                z.object({
+                  isRequired: z.boolean(),
+                  field: z.object({
+                    id: z.string(),
+                    type: z.string(),
+                    path: z.string(),
+                    title: z.string(),
+                    humanReadablePath: z.string().optional(),
+                    isNullable: z.boolean(),
+                    selectableValues: z
+                      .array(
+                        z.object({
+                          label: z.string(),
+                          value: z.string(),
+                        })
+                      )
+                      .optional(),
+                  }),
+                })
+              ),
+            })
+          )
+          .optional(),
+      })
+      .passthrough(),
+    submittedValues: z.record(z.unknown()).optional(),
+    feedbackFormDefinitionId: z.string().optional(),
+    applicationId: z.string().optional(),
+    applicationHistoryId: z.string().optional(),
+  })
+  .passthrough();
+
+export type AshbyFeedbackSubmission = z.infer<
+  typeof AshbyFeedbackSubmissionSchema
+>;
+
+export const AshbyApplicationFeedbackListResponseSchema = z.object({
+  results: z.array(AshbyFeedbackSubmissionSchema),
+});
+
+export type AshbyApplicationFeedbackListResponse = z.infer<
+  typeof AshbyApplicationFeedbackListResponseSchema
+>;
+
+export const AshbyCandidateCreateNoteRequestSchema = z.object({
+  candidateId: z.string(),
+  note: z.object({
+    type: z.literal("text/html"),
+    value: z.string(),
+  }),
+});
+
+export type AshbyCandidateCreateNoteRequest = z.infer<
+  typeof AshbyCandidateCreateNoteRequestSchema
+>;
+
+export const AshbyCandidateCreateNoteResponseSchema = z.object({
+  success: z.boolean(),
+  results: z
+    .object({
+      id: z.string(),
+    })
+    .passthrough(),
+});
+
+export type AshbyCandidateCreateNoteResponse = z.infer<
+  typeof AshbyCandidateCreateNoteResponseSchema
+>;
