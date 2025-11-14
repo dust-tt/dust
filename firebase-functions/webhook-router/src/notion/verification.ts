@@ -65,6 +65,16 @@ export function createNotionVerificationMiddleware(
       // Get secrets for Notion signature verification (webhook secret already validated)
       const secrets = await secretManager.getSecrets();
 
+      // Skip verification if signing secret missing or empty.
+      // This is expected when we first set up the webhook and are waiting for
+      // Notion to send the verification_token.
+      if (!secrets.notionSigningSecret || secrets.notionSigningSecret === "") {
+        console.warn(
+          "Notion signing secret is missing or empty, skipping verification. This should only happen during initial setup."
+        );
+        return next();
+      }
+
       // Get the raw body for Notion signature verification.
       const stringBody = await parseExpressRequestRawBody(req);
 
