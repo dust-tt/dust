@@ -145,29 +145,6 @@ export async function* streamLLMEvents({
     switch (candidate.finishReason) {
       case FinishReason.STOP: {
         yield* yieldEvents(events);
-        if (reasoningContentParts) {
-          yield* yieldEvents([
-            {
-              type: "reasoning_generated" as const,
-              content: { text: reasoningContentParts },
-              metadata: {
-                ...metadata,
-                encrypted_content: stateContainer.thinkingSignature,
-              },
-            },
-          ]);
-        }
-        reasoningContentParts = "";
-        if (textContentParts) {
-          yield* yieldEvents([
-            {
-              type: "text_generated" as const,
-              content: { text: textContentParts },
-              metadata,
-            },
-          ]);
-        }
-        textContentParts = "";
         yield tokenUsage(generateContentResponse.usageMetadata, metadata);
         // emit success event after token usage
         yield {
