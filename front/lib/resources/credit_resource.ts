@@ -112,15 +112,6 @@ export class CreditResource extends BaseResource<CreditModel> {
         },
         transaction,
       });
-        by: amountInCents,
-        where: {
-          id: this.id,
-          workspaceId: this.workspaceId,
-          remainingAmount: { [Op.gte]: amountInCents },
-        },
-        transaction,
-      });
-
       if (!affectedCount || affectedCount < 1) {
         return new Err(new Error("Insufficient credit on this line."));
       }
@@ -135,7 +126,10 @@ export class CreditResource extends BaseResource<CreditModel> {
     { transaction }: { transaction?: Transaction }
   ): Promise<Result<undefined | number, Error>> {
     try {
-      await this.model.destroy({ where: { id: this.id, workspaceId: this.workspaceId }, transaction });
+      await this.model.destroy({
+        where: { id: this.id, workspaceId: this.workspaceId },
+        transaction,
+      });
       return new Ok(undefined);
     } catch (err) {
       return new Err(normalizeError(err));
