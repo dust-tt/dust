@@ -2,12 +2,14 @@ import { BarChartIcon, Page } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useState } from "react";
 
+import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ActivityChart } from "@app/components/workspace/ActivityChart";
 import { ActivityReport } from "@app/components/workspace/ActivityReport";
 import { QuickInsights } from "@app/components/workspace/Analytics";
+import { CumulativeCostChart } from "@app/components/workspace/CumulativeCostChart";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useWorkspaceSubscriptions } from "@app/lib/swr/workspaces";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
@@ -168,7 +170,11 @@ export default function Analytics({
               includeInactive={includeInactive}
               onIncludeInactiveChange={setIncludeInactive}
             />
-            <ActivityChart workspaceId={owner.sId} />
+            <ActivityChart
+              workspaceId={owner.sId}
+              period={DEFAULT_PERIOD_DAYS}
+            />
+            <CumulativeCostChart workspaceId={owner.sId} />
           </div>
         </Page.Vertical>
       </AppCenteredLayout>
