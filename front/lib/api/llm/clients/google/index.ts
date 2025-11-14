@@ -14,9 +14,7 @@ import type {
   LLMParameters,
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
-import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import type { SUPPORTED_MODEL_CONFIGS } from "@app/types";
 import { dustManagedCredentials } from "@app/types";
 
 import { handleError } from "./utils/errors";
@@ -25,7 +23,6 @@ const GOOGLE_AI_STUDIO_PROVIDER_ID = "google_ai_studio";
 
 export class GoogleLLM extends LLM {
   private client: GoogleGenAI;
-  private modelConfig: (typeof SUPPORTED_MODEL_CONFIGS)[number];
 
   constructor(
     auth: Authenticator,
@@ -38,11 +35,6 @@ export class GoogleLLM extends LLM {
         "GOOGLE_AI_STUDIO_API_KEY environment variable is required"
       );
     }
-
-    this.modelConfig = getSupportedModelConfig({
-      modelId: this.modelId,
-      providerId: GOOGLE_AI_STUDIO_PROVIDER_ID,
-    });
 
     this.client = new GoogleGenAI({
       apiKey: GOOGLE_AI_STUDIO_API_KEY,

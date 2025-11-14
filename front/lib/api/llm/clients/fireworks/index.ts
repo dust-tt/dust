@@ -54,7 +54,10 @@ export class FireworksLLM extends LLM {
         messages: toMessages(prompt, conversation),
         stream: true,
         temperature: this.temperature ?? undefined,
-        reasoning_effort: toReasoningParam(this.reasoningEffort),
+        reasoning_effort: toReasoningParam(
+          this.reasoningEffort,
+          this.modelConfig.useNativeLightReasoning
+        ),
         ...(tools ? { tools } : {}),
       });
 

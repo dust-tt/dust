@@ -174,25 +174,26 @@ export function toTools(
 export type ReasoningParam = "low" | "medium" | "high";
 
 const REASONING_EFFORT_TO_OPENAI: {
-  [key in ReasoningEffort]: "low" | "medium" | "high" | null;
+  [key in ReasoningEffort]: "low" | "medium" | "high" | undefined;
 } = {
-  none: null,
+  none: undefined,
   light: "low",
   medium: "medium",
   high: "high",
 };
 
 export function toReasoningParam(
-  reasoningEffort: ReasoningEffort | null
+  reasoningEffort: ReasoningEffort | null,
+  useNativeLightReasoning?: boolean
 ): ReasoningParam | undefined {
   if (!reasoningEffort) {
     return undefined;
   }
 
   const effort = REASONING_EFFORT_TO_OPENAI[reasoningEffort];
-  if (!effort) {
-    return undefined;
+  if (reasoningEffort !== "light" || useNativeLightReasoning) {
+    // For light, we might not use native reasoning but Chain of Thought instead
+    return effort;
   }
-
-  return effort;
+  return undefined;
 }

@@ -52,17 +52,20 @@ export class OpenAIResponsesLLM extends LLM {
     specifications,
   }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
     try {
+      const reasoning = toReasoning(
+        this.reasoningEffort,
+        this.modelConfig.useNativeLightReasoning
+      );
       const events = await this.client.responses.create({
         model: this.modelId,
         input: toInput(prompt, conversation),
         stream: true,
         temperature: this.temperature ?? undefined,
-        reasoning: toReasoning(this.reasoningEffort),
+        reasoning,
         tools: specifications.map(toTool),
         text: { format: toResponseFormat(this.responseFormat) },
         // Only models supporting reasoning can do encrypted content for reasoning.
-        include:
-          this.reasoningEffort !== null ? ["reasoning.encrypted_content"] : [],
+        include: reasoning !== null ? ["reasoning.encrypted_content"] : [],
       });
 
       yield* streamLLMEvents(events, this.metadata);
