@@ -1,4 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { marked } from "marked";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
@@ -17,6 +18,18 @@ const FRONT_API_BASE_URL = "https://api2.frontapp.com";
 const MAX_RETRIES = 3;
 const INITIAL_RETRY_DELAY_MS = 1000;
 const MAX_RETRY_DELAY_MS = 10000;
+
+const convertMarkdownToHTML = async (text: string): Promise<string> => {
+  marked.setOptions({
+    breaks: true, // Convert single newlines to <br>
+    gfm: true, // GitHub Flavored Markdown
+  });
+
+  const html = await marked.parse(text);
+
+  // Front may expect specific formatting, so we ensure links open in new tabs
+  return html.replace(/<a href="(.*?)">/g, '<a href="$1" target="_blank">');
+};
 
 interface FrontAPIOptions {
   method: string;
@@ -479,8 +492,11 @@ const createServer = (
               ? `conversations/${conversation_id}/comments`
               : `conversations/${conversation_id}/messages`;
 
+          // Convert markdown to HTML for better formatting
+          const htmlBody = await convertMarkdownToHTML(body);
+
           const requestBody: any = {
-            body,
+            body: htmlBody,
             ...(author_id && { author_id }),
           };
 
@@ -840,18 +856,7 @@ const createServer = (
           }
 
           const channel_id = `alt:address:${channelAddress}`;
-          const htmlBody = body
-            .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-            .replace(/\*(.*?)\*/g, "<em>$1</em>")
-            .replace(/__(.*?)__/g, "<strong>$1</strong>")
-            .replace(/_(.*?)_/g, "<em>$1</em>")
-            .replace(/`(.*?)`/g, "<code>$1</code>")
-            .replace(/~~(.*?)~~/g, "<del>$1</del>")
-            .replace(
-              /(https?:\/\/[^\s]+)/g,
-              '<a href="$1" target="_blank">$1</a>'
-            )
-            .replace(/\r\n|\r|\n/g, "<br>\n");
+          const htmlBody = await convertMarkdownToHTML(body);
 
           await makeFrontAPIRequest({
             method: "POST",
