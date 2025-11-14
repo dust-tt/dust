@@ -52,7 +52,7 @@ export function registerWebSearchTool(
         agentLoopContext,
         enableAlerting: true,
       },
-      async ({ query, page }) => {
+      async ({ query }) => {
         if (!agentLoopContext?.runContext) {
           throw new Error(
             "agentLoopRunContext is required where the tool is called."
@@ -65,9 +65,8 @@ export function registerWebSearchTool(
           agentLoopRunContext.stepContext;
 
         const websearchRes = await webSearch({
-          provider: "serpapi",
+          provider: "firecrawl",
           query,
-          page,
           num: websearchResultCount,
         });
 
