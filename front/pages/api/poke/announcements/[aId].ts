@@ -9,6 +9,7 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { AnnouncementResource } from "@app/lib/resources/announcement_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { isString } from "@app/types";
 import type { AnnouncementContentType } from "@app/types/announcement";
 
 export type GetPokeAnnouncementResponseBody = {
@@ -62,7 +63,7 @@ async function handler(
   }
 
   const { aId } = req.query;
-  if (typeof aId !== "string") {
+  if (!isString(aId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
