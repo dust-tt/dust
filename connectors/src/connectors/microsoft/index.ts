@@ -1,5 +1,5 @@
 import type { ConnectorProvider, Result } from "@dust-tt/client";
-import { assertNever, Err, Ok } from "@dust-tt/client";
+import { assertNever, Err, Ok, removeNulls } from "@dust-tt/client";
 import { Client } from "@microsoft/microsoft-graph-client";
 import type { Site } from "@microsoft/microsoft-graph-types";
 import { decodeJwt } from "jose";
@@ -648,42 +648,34 @@ async function resolveSelectedSites({
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
 
-  const resolvedSites: ResolvedSelectedSite[] = [];
   const seenInternalIds = new Set<string>();
 
-  await concurrentExecutor(
+  const resolvedSites = await concurrentExecutor(
     siteInputsArray,
     async (rawInput) => {
       const input = rawInput.trim();
       if (!input) {
-        return;
+        return null;
       }
 
-      try {
-        const resolved = await fetchSiteForIdentifier(client, input);
-        if (!resolved) {
-          return;
-        }
-
-        if (seenInternalIds.has(resolved.internalId)) {
-          return;
-        }
-
-        seenInternalIds.add(resolved.internalId);
-        resolvedSites.push(resolved);
-      } catch (error) {
-        logger.error(
-          { error, siteIdentifier: input },
-          "Failed to resolve selected Sharepoint site, ignoring"
-        );
+      const resolved = await fetchSiteForIdentifier(client, input);
+      if (!resolved) {
+        return null;
       }
+
+      if (seenInternalIds.has(resolved.internalId)) {
+        return null;
+      }
+
+      seenInternalIds.add(resolved.internalId);
+      return resolved;
     },
     {
       concurrency: 5,
     }
   );
 
-  return resolvedSites;
+  return removeNulls(resolvedSites);
 }
 
 async function fetchSiteForIdentifier(
@@ -699,7 +691,7 @@ async function fetchSiteForIdentifier(
   // - hostname.sharepoint.com:/sites/sitename
   // - hostname.sharepoint.com,{guid},{guid}
   // - alphanumeric site IDs
-  const validIdentifierPattern = /^[a-zA-Z0-9._:\/-]+$/;
+  const validIdentifierPattern = /^[a-zA-Z0-9,._:/-]+$/;
   if (!validIdentifierPattern.test(identifier)) {
     throw new Error("Invalid site identifier format");
   }
@@ -708,7 +700,7 @@ async function fetchSiteForIdentifier(
 
   const site = await clientApiGet(logger, client, endpoint);
   if (!site?.id) {
-    return null;
+    throw new Error("Invalid site identifier: site not found");
   }
 
   const internalId = internalIdFromTypeAndPath({
