@@ -238,7 +238,7 @@ const CommandItem = React.forwardRef<
       className={cn(
         "aria-selected:bg-accent aria-selected:text-accent-foreground relative flex cursor-pointer",
         "items-center rounded-sm px-2 py-1.5 text-sm outline-none",
-        isSelected && "bg-accent text-warning-800",
+        isSelected && "bg-faint dark:bg-faint-night",
         className
       )}
       data-index={index}
