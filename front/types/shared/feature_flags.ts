@@ -8,6 +8,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Fallback to Vertex Anthropic for some Anthropic models",
     stage: "dust_only",
   },
+  dust_edge_global_agent: {
+    description: "Access to dust-edge global agent",
+    stage: "dust_only",
+  },
   notion_private_integration: {
     description: "Setup Notion private integration tokens",
     stage: "on_demand",
