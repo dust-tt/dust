@@ -316,6 +316,7 @@ const UserMessageOriginSchema = FlexibleEnumSchema<
   | "zendesk"
   | "run_agent"
   | "agent_handover"
+  | "agent_circle_back"
   | "excel"
   | "powerpoint"
 >()
