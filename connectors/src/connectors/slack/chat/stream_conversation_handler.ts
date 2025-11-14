@@ -291,7 +291,6 @@ async function streamAgentAnswerToSlack(
           break;
         }
 
-        // Dynamically adjust throttle delay based on message length
         const newThrottleDelay = getThrottleDelay(slackContent.length);
         if (newThrottleDelay !== currentThrottleDelay) {
           currentThrottleDelay = newThrottleDelay;
