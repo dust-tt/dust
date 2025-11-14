@@ -31,7 +31,6 @@ import {
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import groupBy from "lodash/groupBy";
 import moment from "moment";
 import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
