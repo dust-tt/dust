@@ -8,6 +8,7 @@ import { Authenticator } from "@app/lib/auth";
 import { getPublicUploadBucket } from "@app/lib/file_storage";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 

@@ -10,7 +10,10 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import type { AnnouncementContentType } from "@app/types/announcement";
-import { announcementTypeSchema } from "@app/types/announcement";
+import {
+  announcementTypeSchema,
+  CHANGELOG_CATEGORIES,
+} from "@app/types/announcement";
 
 export type GetPokeAnnouncementsResponseBody = {
   announcements: AnnouncementContentType[];
@@ -30,7 +33,10 @@ const PostPokeAnnouncementRequestBodySchema = z.object({
   eventTimezone: z.string().nullable().optional(),
   eventLocation: z.string().nullable().optional(),
   eventUrl: z.string().nullable().optional(),
-  categories: z.array(z.string()).nullable().optional(),
+  categories: z
+    .array(z.enum(CHANGELOG_CATEGORIES))
+    .nullable()
+    .optional(),
   tags: z.array(z.string()).nullable().optional(),
   imageFileId: z.string().nullable().optional(),
 });

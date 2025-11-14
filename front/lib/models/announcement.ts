@@ -178,7 +178,6 @@ AnnouncementBannerDismissalModel.init(
       { fields: ["userId"] },
     ],
     timestamps: false,
-    updatedAt: false,
   }
 );
 

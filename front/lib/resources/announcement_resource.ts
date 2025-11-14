@@ -15,7 +15,7 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelId, Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 import type {
   AnnouncementContentType,
   AnnouncementType,
@@ -166,7 +166,7 @@ export class AnnouncementResource extends BaseResource<AnnouncementModel> {
       });
       return new Ok(undefined);
     } catch (error) {
-      return new Err(error as Error);
+      return new Err(normalizeError(error));
     }
   }
 
@@ -197,7 +197,7 @@ export class AnnouncementResource extends BaseResource<AnnouncementModel> {
       });
       return new Ok(undefined);
     } catch (error) {
-      return new Err(error as Error);
+      return new Err(normalizeError(error));
     }
   }
 
