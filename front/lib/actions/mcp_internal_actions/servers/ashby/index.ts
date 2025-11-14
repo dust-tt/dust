@@ -282,14 +282,14 @@ function createServer(
           }
 
           // We consider the max date across all feedback for the application.
-          for (const feedback of feedbackResult.value.results) {
+          for (const feedback of feedbackResult.value) {
             if (!feedback.submittedAt) {
               continue;
             }
             const submittedAt = new Date(feedback.submittedAt);
             if (!latestApplicationDate || submittedAt > latestApplicationDate) {
               latestApplicationDate = submittedAt;
-              latestApplicationFeedback = feedbackResult.value.results;
+              latestApplicationFeedback = feedbackResult.value;
             }
           }
         }

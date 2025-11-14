@@ -5,6 +5,7 @@ import type {
   AshbyApplicationFeedbackListRequest,
   AshbyCandidateCreateNoteRequest,
   AshbyCandidateSearchRequest,
+  AshbyFeedbackSubmission,
   AshbyReportSynchronousRequest,
 } from "@app/lib/actions/mcp_internal_actions/servers/ashby/types";
 import {
@@ -138,12 +139,19 @@ export class AshbyClient {
     );
   }
 
-  async listApplicationFeedback(request: AshbyApplicationFeedbackListRequest) {
-    return this.postRequest(
+  async listApplicationFeedback(
+    request: AshbyApplicationFeedbackListRequest
+  ): Promise<Result<AshbyFeedbackSubmission[], Error>> {
+    const response = await this.postRequest(
       "applicationFeedback.list",
       request,
       AshbyApplicationFeedbackListResponseSchema
     );
+    if (response.isErr()) {
+      return response;
+    }
+
+    return new Ok(response.value.results);
   }
 
   async createCandidateNote(request: AshbyCandidateCreateNoteRequest) {
