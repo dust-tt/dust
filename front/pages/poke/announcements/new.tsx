@@ -4,7 +4,9 @@ import type { ReactElement } from "react";
 import { AnnouncementForm } from "@app/components/poke/announcements/form";
 import PokeLayout from "@app/components/poke/PokeLayout";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
+import { isString } from "@app/types";
 import type { AnnouncementType } from "@app/types/announcement";
+import { ANNOUNCEMENT_TYPES } from "@app/types/announcement";
 
 export const getServerSideProps = withSuperUserAuthRequirements<object>(
   async () => {
@@ -14,9 +16,23 @@ export const getServerSideProps = withSuperUserAuthRequirements<object>(
   }
 );
 
+function isAnnouncementType(value: string): value is AnnouncementType {
+  return ANNOUNCEMENT_TYPES.some((type) => type === value);
+}
+
+function getAnnouncementTypeFromQuery(
+  value: string | string[] | undefined
+): AnnouncementType | undefined {
+  if (!isString(value)) {
+    return undefined;
+  }
+  return isAnnouncementType(value) ? value : undefined;
+}
+
 export default function NewAnnouncementPage() {
   const router = useRouter();
-  const typeFromQuery = router.query.type as AnnouncementType | undefined;
+  const { type } = router.query;
+  const typeFromQuery = getAnnouncementTypeFromQuery(type);
 
   const handleSubmit = async (data: {
     type: string;
@@ -47,15 +63,15 @@ export default function NewAnnouncementPage() {
         description: data.description,
         content: data.content,
         isPublished: data.status === "published",
-        publishedAt: data.publishedAt || null,
+        publishedAt: data.publishedAt ?? null,
         showInAppBanner: data.showInAppBanner,
-        eventDate: data.eventDate || null,
-        eventTimezone: data.eventTimezone || null,
-        eventLocation: data.eventLocation || null,
-        eventUrl: data.eventUrl || null,
+        eventDate: data.eventDate ?? null,
+        eventTimezone: data.eventTimezone ?? null,
+        eventLocation: data.eventLocation ?? null,
+        eventUrl: data.eventUrl ?? null,
         categories: data.categories ? [data.categories] : null,
         tags: null,
-        imageFileId: data.imageFileId || null,
+        imageFileId: data.imageFileId ?? null,
       }),
     });
 

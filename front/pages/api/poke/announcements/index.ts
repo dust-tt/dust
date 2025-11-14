@@ -4,11 +4,13 @@ import { fromError } from "zod-validation-error";
 
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
+import { getPublicUploadBucket } from "@app/lib/file_storage";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { AnnouncementResource } from "@app/lib/resources/announcement_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { isString } from "@app/types";
 import type { AnnouncementContentType } from "@app/types/announcement";
 import {
   announcementTypeSchema,
@@ -79,15 +81,9 @@ async function handler(
             ? false
             : undefined;
 
-      const limit =
-        typeof req.query.limit === "string"
-          ? parseInt(req.query.limit, 10)
-          : 50;
-
-      const offset =
-        typeof req.query.offset === "string"
-          ? parseInt(req.query.offset, 10)
-          : 0;
+      const { limit: limitParam, offset: offsetParam } = req.query;
+      const limit = isString(limitParam) ? parseInt(limitParam, 10) : 50;
+      const offset = isString(offsetParam) ? parseInt(offsetParam, 10) : 0;
 
       const announcements = await AnnouncementResource.listAll({
         type,
@@ -101,7 +97,10 @@ async function handler(
           const announcement = a.toJSON();
           // Generate image URL from imageFileId
           if (announcement.imageFileId) {
-            announcement.imageUrl = `https://storage.googleapis.com/dust-public-uploads-test/announcements/images/${announcement.imageFileId}`;
+            const publicBucket = getPublicUploadBucket();
+            const storagePath = `announcements/images/${announcement.imageFileId}`;
+            const gcsFile = publicBucket.file(storagePath);
+            announcement.imageUrl = gcsFile.publicUrl();
           }
           return announcement;
         }),
