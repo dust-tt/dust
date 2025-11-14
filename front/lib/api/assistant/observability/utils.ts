@@ -8,14 +8,14 @@ export function buildAgentAnalyticsBaseQuery({
   feedbackNestedQuery,
 }: {
   workspaceId: string;
-  agentId: string;
+  agentId?: string;
   days?: number;
   version?: string;
   feedbackNestedQuery?: estypes.QueryDslQueryContainer;
 }): estypes.QueryDslQueryContainer {
   const filters: estypes.QueryDslQueryContainer[] = [
     { term: { workspace_id: workspaceId } },
-    { term: { agent_id: agentId } },
+    ...(agentId ? [{ term: { agent_id: agentId } }] : []),
   ];
 
   if (days) {

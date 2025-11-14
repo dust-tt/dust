@@ -5,6 +5,7 @@ import { useState } from "react";
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import { ActivityChart } from "@app/components/workspace/ActivityChart";
 import { ActivityReport } from "@app/components/workspace/ActivityReport";
 import { QuickInsights } from "@app/components/workspace/Analytics";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -167,6 +168,7 @@ export default function Analytics({
               includeInactive={includeInactive}
               onIncludeInactiveChange={setIncludeInactive}
             />
+            <ActivityChart workspaceId={owner.sId} />
           </div>
         </Page.Vertical>
       </AppCenteredLayout>
