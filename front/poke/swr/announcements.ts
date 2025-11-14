@@ -15,9 +15,12 @@ export function usePokeAnnouncements({
   disabled?: boolean;
 } = {}) {
   const params = new URLSearchParams();
-  if (type) {params.append("type", type);}
-  if (isPublished !== undefined)
-    {params.append("isPublished", String(isPublished));}
+  if (type) {
+    params.append("type", type);
+  }
+  if (isPublished !== undefined) {
+    params.append("isPublished", String(isPublished));
+  }
 
   const url = `/api/poke/announcements${params.toString() ? `?${params.toString()}` : ""}`;
 
