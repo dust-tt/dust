@@ -29,6 +29,8 @@ export async function getOutputFromLLMStream(
     updateResourceAndPublishEvent,
   }: GetOutputRequestParams & { llm: LLM }
 ): Promise<GetOutputResponse> {
+  const start = Date.now();
+  let timeToFirstEvent: number | undefined = undefined;
   const events = llm.stream({
     conversation: modelConversationRes.value.modelConversation,
     prompt,
@@ -41,6 +43,7 @@ export async function getOutputFromLLMStream(
   let nativeChainOfThought = "";
 
   for await (const event of events) {
+    timeToFirstEvent = Date.now() - start;
     if (event.type === "error") {
       await flushParserTokens();
       return new Err({
@@ -199,5 +202,6 @@ export async function getOutputFromLLMStream(
     },
     nativeChainOfThought,
     dustRunId: llm.getTraceId(),
+    timeToFirstEvent,
   });
 }

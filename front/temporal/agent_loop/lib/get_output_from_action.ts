@@ -35,6 +35,8 @@ export async function getOutputFromAction(
     updateResourceAndPublishEvent,
   }: GetOutputRequestParams
 ): Promise<GetOutputResponse> {
+  const start = Date.now();
+  let timeToFirstEvent: number | undefined = undefined;
   let blockExecutionOutput: Output | null = null;
   let blockExecutionNativeChainOfThought = "";
 
@@ -65,6 +67,19 @@ export async function getOutputFromAction(
   let isGeneration = true;
 
   for await (const event of eventStream) {
+    if (
+      [
+        "tokens",
+        "reasoning_tokens",
+        "reasoning_item",
+        "function_call",
+        "function_call_arguments_tokens",
+        "final",
+      ].includes(event.type)
+    ) {
+      timeToFirstEvent = Date.now() - start;
+    }
+
     if (event.type === "function_call") {
       isGeneration = false;
     }
@@ -254,5 +269,6 @@ export async function getOutputFromAction(
     output: blockExecutionOutput,
     dustRunId: await blockExecutionDustRunId,
     nativeChainOfThought: blockExecutionNativeChainOfThought,
+    timeToFirstEvent,
   });
 }

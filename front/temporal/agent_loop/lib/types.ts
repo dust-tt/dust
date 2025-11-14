@@ -80,6 +80,7 @@ export type GetOutputResponse = Result<
     output: Output;
     dustRunId: string;
     nativeChainOfThought: string;
+    timeToFirstEvent?: number;
   },
   { type: "shouldRetryMessage"; message: string } | { type: "shouldReturnNull" }
 >;

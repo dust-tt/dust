@@ -188,21 +188,15 @@ export async function getOutputFromLLMWithParallelComparisonMode(
   const comparisonResult = compareOutputs(coreResponse, llmResponse);
 
   if (comparisonResult) {
-    const logLevel = comparisonResult.hasCriticalDifferences ? "warn" : "info";
+    const { hasCriticalDifferences, ...restOfComparisonResult } =
+      comparisonResult;
+
+    const logLevel = hasCriticalDifferences ? "warn" : "info";
     localLogger[logLevel](
       {
         conversationId: conversation.sId,
         step,
-        comparison: {
-          summary: comparisonResult.summary,
-          sameActionsCount: comparisonResult.sameActionsCount,
-          sameActionNames: comparisonResult.sameActionNames,
-          sameContentStructure: comparisonResult.sameContentStructure,
-          outputTypeMismatch: comparisonResult.outputTypeMismatch,
-          generationLengthDifferencePercent:
-            comparisonResult.generationLengthDifferencePercent,
-          hasCriticalDifferences: comparisonResult.hasCriticalDifferences,
-        },
+        comparison: restOfComparisonResult,
       },
       `LLM comparison: ${comparisonResult.summary}`
     );
