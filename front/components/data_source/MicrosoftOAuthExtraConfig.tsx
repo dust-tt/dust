@@ -1,5 +1,5 @@
 import { classNames, Input, SliderToggle, TextArea } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { ConnectorOauthExtraConfigProps } from "@app/lib/connector_providers";
 
@@ -8,41 +8,22 @@ export function MicrosoftOAuthExtraConfig({
   setExtraConfig,
   setIsExtraConfigValid,
 }: ConnectorOauthExtraConfigProps) {
-  const initialServicePrincipal =
-    !!extraConfig.client_id ||
-    !!extraConfig.client_secret ||
-    !!extraConfig.tenant_id ||
-    !!extraConfig.selected_sites;
+  const initialServicePrincipal = !!extraConfig.client_id;
 
   const [useServicePrincipal, setUseServicePrincipal] = useState(
     initialServicePrincipal
   );
 
-  const selectedSitesValue = useMemo(() => {
-    const raw = extraConfig.selected_sites;
-    if (!raw) {
-      return "";
-    }
-    if (Array.isArray(raw)) {
-      return raw.join("\n");
-    }
-    return raw;
-  }, [extraConfig.selected_sites]);
+  const selectedSitesValue = extraConfig.selected_sites || "";
 
   useEffect(() => {
     setIsExtraConfigValid(
       !useServicePrincipal ||
         (!!extraConfig.client_id &&
           !!extraConfig.client_secret &&
-          !!extraConfig.tenant_id &&
-          selectedSitesValue.trim().length > 0)
+          !!extraConfig.tenant_id)
     );
-  }, [
-    useServicePrincipal,
-    extraConfig,
-    selectedSitesValue,
-    setIsExtraConfigValid,
-  ]);
+  }, [useServicePrincipal, extraConfig, setIsExtraConfigValid]);
 
   useEffect(() => {
     if (!useServicePrincipal) {
@@ -120,10 +101,18 @@ export function MicrosoftOAuthExtraConfig({
             name="selected_sites"
             value={selectedSitesValue}
             onChange={(e) => {
-              setExtraConfig((prev: Record<string, string>) => ({
-                ...prev,
-                selected_sites: e.target.value,
-              }));
+              if (e.target.value.trim().length === 0) {
+                setExtraConfig((prev: Record<string, string>) => {
+                  const updated = { ...prev };
+                  delete updated.selected_sites;
+                  return updated;
+                });
+              } else {
+                setExtraConfig((prev: Record<string, string>) => ({
+                  ...prev,
+                  selected_sites: e.target.value,
+                }));
+              }
             }}
             minRows={4}
           />

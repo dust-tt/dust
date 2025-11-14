@@ -25,6 +25,7 @@ import {
   getAllPaginatedEntities,
   getDrives,
   getFilesAndFolders,
+  getSites,
   getSubSites,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import type { MicrosoftNodeType } from "@connectors/connectors/microsoft/lib/types";
@@ -42,6 +43,7 @@ import {
   launchMicrosoftIncrementalSyncWorkflow,
 } from "@connectors/connectors/microsoft/temporal/client";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
+import type { SelectedSiteMetadata } from "@connectors/lib/models/microsoft";
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import { syncSucceeded } from "@connectors/lib/sync_status";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
@@ -73,33 +75,25 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     const { client, tenantId, connection } =
       await getMicrosoftConnectionData(connectionId);
 
-    const selectedSiteInputs = extractSelectedSiteInputs(
-      connection.metadata ?? {}
-    );
+    const selectedSitesInput = connection.metadata?.selected_sites;
 
-    if (selectedSiteInputs.length === 0) {
-      throw new Error(
-        "No SharePoint sites configured for Microsoft connector. Please provide the list of sites when setting up the service principal."
-      );
-    }
-
-    const resolvedSites = await resolveSelectedSites({
-      logger,
-      client,
-      siteInputs: selectedSiteInputs,
-    });
-
-    if (resolvedSites.length === 0) {
-      throw new Error(
-        "Unable to resolve any of the provided SharePoint sites. Please verify the identifiers and ensure the service principal has access."
-      );
-    }
+    const resolvedSites = isString(selectedSitesInput)
+      ? await resolveSelectedSites({
+          logger,
+          client,
+          siteInputs: selectedSitesInput,
+        })
+      : [];
 
     const microsoftConfigurationBlob = {
       pdfEnabled: false,
       csvEnabled: false,
       largeFilesEnabled: false,
       tenantId: tenantId ?? null,
+      selectedSites:
+        resolvedSites.length > 0
+          ? mapResolvedSitesToMetadata(resolvedSites)
+          : null,
     };
 
     const connector = await ConnectorResource.makeNew(
@@ -112,11 +106,6 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       },
       microsoftConfigurationBlob
     );
-
-    await persistConnectorMetadataAndRoots({
-      connector,
-      resolvedSites,
-    });
 
     await syncSucceeded(connector.id);
 
@@ -268,56 +257,68 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     }
 
     const { nodeType } = typeAndPathFromInternalId(parentInternalId);
-    const metadata = connector.metadata as ConnectorMetadataWithSites | null;
-    const selectedSiteMetadata = normalizeSelectedSitesMetadata(metadata);
 
     try {
-      if (nodeType === "sites-root" && selectedSiteMetadata.length > 0) {
-        nodes.push(
-          ...selectedSiteMetadata.map((site) => siteMetadataToContentNode(site))
-        );
-      } else {
-        const client = await getMicrosoftClient(connector.connectionId);
-        switch (nodeType) {
-          case "sites-root": {
+      const client = await getMicrosoftClient(connector.connectionId);
+      switch (nodeType) {
+        case "sites-root": {
+          const config =
+            await MicrosoftConfigurationResource.fetchByConnectorId(
+              connector.id
+            );
+          if (!config) {
             throw new Error(
-              "No SharePoint sites configured. Please update the connector configuration."
+              `Connector configuration not found for ${connector.id}`
             );
           }
-          case "site": {
-            const subSites = await getAllPaginatedEntities((nextLink) =>
-              getSubSites(logger, client, parentInternalId, nextLink)
-            );
-            const drives = await getAllPaginatedEntities((nextLink) =>
-              getDrives(logger, client, parentInternalId, nextLink)
-            );
+
+          if (config.selectedSites) {
             nodes.push(
-              ...subSites.map((n) => getSiteAsContentNode(n, parentInternalId)),
-              ...drives.map((n) => getDriveAsContentNode(n, parentInternalId))
+              ...config.selectedSites.map((site) =>
+                siteMetadataToContentNode(site)
+              )
             );
-            break;
+          } else {
+            const sites = await getAllPaginatedEntities((nextLink) =>
+              getSites(logger, client, nextLink)
+            );
+            nodes.push(...sites.map((n) => getSiteAsContentNode(n)));
           }
-          case "drive":
-          case "folder": {
-            const filesAndFolders = await getAllPaginatedEntities((nextLink) =>
-              getFilesAndFolders(logger, client, parentInternalId, nextLink)
-            );
-            const folders = filesAndFolders.filter((n) => n.folder);
-            nodes.push(
-              ...folders.map((n) => getFolderAsContentNode(n, parentInternalId))
-            );
-            break;
-          }
-          case "file":
-          case "page":
-          case "message":
-          case "worksheet":
-            throw new Error(
-              `Unexpected node type ${nodeType} for retrievePermissions`
-            );
-          default: {
-            assertNever(nodeType);
-          }
+          break;
+        }
+        case "site": {
+          const subSites = await getAllPaginatedEntities((nextLink) =>
+            getSubSites(logger, client, parentInternalId, nextLink)
+          );
+          const drives = await getAllPaginatedEntities((nextLink) =>
+            getDrives(logger, client, parentInternalId, nextLink)
+          );
+          nodes.push(
+            ...subSites.map((n) => getSiteAsContentNode(n, parentInternalId)),
+            ...drives.map((n) => getDriveAsContentNode(n, parentInternalId))
+          );
+          break;
+        }
+        case "drive":
+        case "folder": {
+          const filesAndFolders = await getAllPaginatedEntities((nextLink) =>
+            getFilesAndFolders(logger, client, parentInternalId, nextLink)
+          );
+          const folders = filesAndFolders.filter((n) => n.folder);
+          nodes.push(
+            ...folders.map((n) => getFolderAsContentNode(n, parentInternalId))
+          );
+          break;
+        }
+        case "file":
+        case "page":
+        case "message":
+        case "worksheet":
+          throw new Error(
+            `Unexpected node type ${nodeType} for retrievePermissions`
+          );
+        default: {
+          assertNever(nodeType);
         }
       }
 
@@ -373,12 +374,6 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
-    const metadata = connector.metadata as ConnectorMetadataWithSites | null;
-    const selectedSiteMetadata = normalizeSelectedSitesMetadata(metadata);
-    const selectedSiteInternalIds = new Set(
-      selectedSiteMetadata.map((site) => site.internalId)
-    );
-
     const existing = await MicrosoftRootResource.listRootsByConnectorId(
       connector.id
     );
@@ -388,17 +383,6 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
         permissions[internalId] === "none" &&
         existing.some((e) => e.internalId === internalId)
     );
-    if (
-      nodeIdsToDelete.some((internalId) =>
-        selectedSiteInternalIds.has(internalId)
-      )
-    ) {
-      return new Err(
-        new Error(
-          "Site-level selections are managed via the service principal configuration. Update the selected sites list instead of removing them here."
-        )
-      );
-    }
 
     if (nodeIdsToDelete.length > 0) {
       await MicrosoftRootResource.batchDelete({
@@ -413,24 +397,9 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
           permission === "read" &&
           existing.every((e) => e.internalId !== internalId)
       )
-      .map(([internalId]) => {
-        const { nodeType } = typeAndPathFromInternalId(internalId);
-        return { internalId, nodeType };
-      })
-      .filter(({ nodeType }) => {
-        if (selectedSiteInternalIds.size === 0) {
-          return true;
-        }
-        if (nodeType === "site") {
-          throw new Error(
-            "Site-level selections are managed via the service principal configuration. Update the selected sites list to add new sites."
-          );
-        }
-        return true;
-      })
-      .map(({ internalId, nodeType }) => ({
+      .map(([internalId]) => ({
         connectorId: connector.id,
-        nodeType,
+        nodeType: typeAndPathFromInternalId(internalId).nodeType,
         internalId,
       }));
 
@@ -673,35 +642,6 @@ const SITES_ROOT_INTERNAL_ID = internalIdFromTypeAndPath({
   itemAPIPath: "",
 });
 
-function extractSelectedSiteInputs(
-  metadata: Record<string, unknown>
-): string[] {
-  const raw =
-    (metadata.selected_sites as unknown) ??
-    (metadata.selectedSites as unknown) ??
-    null;
-
-  if (!raw) {
-    return [];
-  }
-
-  const toLines = (value: string) =>
-    value
-      .split(/\r?\n/)
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0);
-
-  if (Array.isArray(raw)) {
-    return raw.flatMap((value) => toLines(String(value ?? "")));
-  }
-
-  if (typeof raw === "string") {
-    return toLines(raw);
-  }
-
-  return [];
-}
-
 async function resolveSelectedSites({
   logger,
   client,
@@ -709,12 +649,17 @@ async function resolveSelectedSites({
 }: {
   logger: Logger;
   client: Client;
-  siteInputs: string[];
+  siteInputs: string;
 }): Promise<ResolvedSelectedSite[]> {
+  const siteInputsArray = siteInputs
+    .split(/\r?\n/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+
   const resolvedSites: ResolvedSelectedSite[] = [];
   const seenInternalIds = new Set<string>();
 
-  for (const rawInput of siteInputs) {
+  for (const rawInput of siteInputsArray) {
     const input = rawInput.trim();
     if (!input) {
       continue;
@@ -735,7 +680,7 @@ async function resolveSelectedSites({
     } catch (error) {
       logger.error(
         { error, siteIdentifier: input },
-        "Failed to resolve selected SharePoint site"
+        "Failed to resolve selected SharePoint site, ignoring"
       );
     }
   }
@@ -800,93 +745,29 @@ async function fetchSiteForIdentifier(
   }
 }
 
-async function persistConnectorMetadataAndRoots({
-  connector,
-  resolvedSites,
-}: {
-  connector: ConnectorResource;
-  resolvedSites: ResolvedSelectedSite[];
-}) {
-  const metadata: ConnectorMetadataWithSites = {
-    ...(connector.metadata ?? {}),
-  };
-
-  metadata.selectedSites = resolvedSites.map(({ site, internalId }) => ({
+function mapResolvedSitesToMetadata(
+  resolvedSites: ResolvedSelectedSite[]
+): SelectedSiteMetadata[] {
+  return resolvedSites.map(({ site, internalId }) => ({
     siteId: site.id ?? internalId,
     internalId,
     displayName: site.displayName ?? site.name ?? null,
     webUrl: site.webUrl ?? null,
   }));
-
-  await connector.update({ metadata });
-
-  const existingRoots = await MicrosoftRootResource.listRootsByConnectorId(
-    connector.id
-  );
-  const existingInternalIds = new Set(
-    existingRoots.map((root) => root.internalId)
-  );
-
-  const rootsToCreate = resolvedSites.filter(
-    ({ internalId }) => !existingInternalIds.has(internalId)
-  );
-
-  if (rootsToCreate.length > 0) {
-    await MicrosoftRootResource.batchMakeNew(
-      rootsToCreate.map(({ internalId }) => ({
-        connectorId: connector.id,
-        internalId,
-        nodeType: "site",
-      }))
-    );
-  }
-}
-
-type SelectedSiteMetadata = {
-  siteId: string;
-  internalId: string;
-  displayName?: string | null;
-  webUrl?: string | null;
-};
-
-type ConnectorMetadataWithSites = ConnectorMetadata & {
-  selectedSites?: Array<SelectedSiteMetadata | string>;
-};
-
-function normalizeSelectedSitesMetadata(
-  metadata: ConnectorMetadataWithSites | null | undefined
-): SelectedSiteMetadata[] {
-  if (!metadata?.selectedSites) {
-    return [];
-  }
-
-  if (
-    Array.isArray(metadata.selectedSites) &&
-    metadata.selectedSites.length > 0 &&
-    typeof metadata.selectedSites[0] === "string"
-  ) {
-    return (metadata.selectedSites as string[]).map((internalId) => ({
-      internalId,
-      siteId: internalId,
-      displayName: null,
-      webUrl: null,
-    }));
-  }
-
-  return metadata.selectedSites as SelectedSiteMetadata[];
 }
 
 function siteMetadataToContentNode(
   siteMetadata: SelectedSiteMetadata
 ): ContentNode {
-  const site: Site = {
-    id: siteMetadata.siteId,
-    displayName: siteMetadata.displayName ?? undefined,
-    name: siteMetadata.displayName ?? undefined,
-    webUrl: siteMetadata.webUrl ?? undefined,
-  } as Site;
-
-  return getSiteAsContentNode(site, SITES_ROOT_INTERNAL_ID);
+  return getSiteAsContentNode(
+    {
+      id: siteMetadata.siteId,
+      displayName: siteMetadata.displayName ?? undefined,
+      name: siteMetadata.displayName ?? undefined,
+      webUrl: siteMetadata.webUrl ?? undefined,
+    },
+    SITES_ROOT_INTERNAL_ID
+  );
 }
 
 export function extractTenantIdFromAccessToken(

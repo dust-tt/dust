@@ -26,33 +26,17 @@ export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
       metadata: { workspace_id: string; user_id: string };
     };
   }) {
-    const metadata = connection.metadata ?? {};
-    const hasSelectedSites = (() => {
-      const raw = (metadata as Record<string, unknown>).selected_sites;
-      if (typeof raw === "string") {
-        return raw.trim().length > 0;
-      }
-      if (Array.isArray(raw)) {
-        return raw.some((value) =>
-          typeof value === "string" ? value.trim().length > 0 : value != null
-        );
-      }
-      return false;
-    })();
-
-    const scopes = ["User.Read", "Files.Read.All", "offline_access"];
-    if (!hasSelectedSites) {
-      scopes.splice(1, 0, "Sites.Read.All");
-    }
     if (relatedCredential) {
+      console.log("relatedCredential", relatedCredential);
       return `${config.getClientFacingUrl()}/oauth/microsoft/finalize?provider=microsoft&code=client&state=${connection.connection_id}`;
     } else {
+      console.log("no relatedCredential");
       const qs = querystring.stringify({
         response_type: "code",
         client_id: config.getOAuthMicrosoftClientId(),
         state: connection.connection_id,
         redirect_uri: finalizeUriForProvider("microsoft"),
-        scope: scopes.join(" "),
+        scope: "User.Read Files.Read.All Sites.Read.All offline_access",
       });
       return `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${qs}`;
     }
@@ -67,42 +51,16 @@ export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
   }
 
   isExtraConfigValid(extraConfig: ExtraConfigType) {
-    const useServicePrincipal =
-      !!extraConfig.client_id ||
-      !!extraConfig.client_secret ||
-      !!extraConfig.tenant_id ||
-      !!extraConfig.selected_sites;
+    const useServicePrincipal = !!extraConfig.client_id;
 
     if (!useServicePrincipal) {
       return true;
     }
 
-    const selectedSites = (() => {
-      const raw = extraConfig.selected_sites as unknown;
-      if (typeof raw === "string") {
-        return raw.trim();
-      }
-      if (Array.isArray(raw)) {
-        return raw
-          .map((value: unknown) =>
-            typeof value === "string"
-              ? value.trim()
-              : value !== null && value !== undefined
-                ? String(value).trim()
-                : ""
-          )
-          .filter((value: string) => value.length > 0)
-          .join("\n")
-          .trim();
-      }
-      return "";
-    })();
-
     return (
       !!extraConfig.client_id &&
       !!extraConfig.client_secret &&
-      !!extraConfig.tenant_id &&
-      selectedSites.length > 0
+      !!extraConfig.tenant_id
     );
   }
   async getRelatedCredential(
