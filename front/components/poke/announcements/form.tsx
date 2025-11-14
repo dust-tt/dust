@@ -76,42 +76,40 @@ export function AnnouncementForm({
   const [isSlugEditable, setIsSlugEditable] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(
-    announcement?.imageUrl || null
+    announcement?.imageUrl ?? null
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form: UseFormReturn<AnnouncementFormData> =
     useForm<AnnouncementFormData>({
       defaultValues: {
-        type: announcement?.type || initialType || "changelog",
-        slug: announcement?.slug || "",
-        title: announcement?.title || "",
-        description: announcement?.description || "",
-        content: announcement?.content || "",
+        type: announcement?.type ?? initialType ?? "changelog",
+        slug: announcement?.slug ?? "",
+        title: announcement?.title ?? "",
+        description: announcement?.description ?? "",
+        content: announcement?.content ?? "",
         status: announcement?.isPublished ? "published" : "draft",
         publishedAt: announcement?.publishedAt
           ? new Date(announcement.publishedAt).toISOString().slice(0, 16)
           : new Date().toISOString().slice(0, 16),
-        showInAppBanner: announcement?.showInAppBanner || false,
+        showInAppBanner: announcement?.showInAppBanner ?? false,
         eventDate: announcement?.eventDate
           ? new Date(announcement.eventDate).toISOString().slice(0, 16)
           : "",
-        eventTimezone: announcement?.eventTimezone || "Europe/Paris",
-        eventLocation: announcement?.eventLocation || "",
-        eventUrl: announcement?.eventUrl || "",
-        categories: announcement?.categories?.[0] || "",
+        eventTimezone: announcement?.eventTimezone ?? "Europe/Paris",
+        eventLocation: announcement?.eventLocation ?? "",
+        eventUrl: announcement?.eventUrl ?? "",
+        categories: announcement?.categories?.[0] ?? "",
         tags: "",
-        imageFileId: announcement?.imageFileId || null,
+        imageFileId: announcement?.imageFileId ?? null,
       },
     });
 
   const watchType = form.watch("type");
   const watchTitle = form.watch("title");
-  const watchSlug = form.watch("slug");
 
-  // Update image preview URL when announcement changes
   useEffect(() => {
-    setImagePreviewUrl(announcement?.imageUrl || null);
+    setImagePreviewUrl(announcement?.imageUrl ?? null);
   }, [announcement]);
 
   // Auto-generate slug from title if not manually edited

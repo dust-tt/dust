@@ -33,10 +33,7 @@ const PostPokeAnnouncementRequestBodySchema = z.object({
   eventTimezone: z.string().nullable().optional(),
   eventLocation: z.string().nullable().optional(),
   eventUrl: z.string().nullable().optional(),
-  categories: z
-    .array(z.enum(CHANGELOG_CATEGORIES))
-    .nullable()
-    .optional(),
+  categories: z.array(z.enum(CHANGELOG_CATEGORIES)).nullable().optional(),
   tags: z.array(z.string()).nullable().optional(),
   imageFileId: z.string().nullable().optional(),
 });
@@ -72,11 +69,7 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      // Validate query parameters
-      const typeResult =
-        typeof req.query.type === "string"
-          ? announcementTypeSchema.safeParse(req.query.type)
-          : { success: false as const };
+      const typeResult = announcementTypeSchema.safeParse(req.query.type);
       const type = typeResult.success ? typeResult.data : undefined;
 
       const isPublished =
@@ -117,8 +110,9 @@ async function handler(
     }
 
     case "POST": {
-      const parseResult =
-        PostPokeAnnouncementRequestBodySchema.safeParse(req.body);
+      const parseResult = PostPokeAnnouncementRequestBodySchema.safeParse(
+        req.body
+      );
       if (!parseResult.success) {
         return apiError(req, res, {
           status_code: 400,
