@@ -462,12 +462,12 @@ export async function getActionsWithDetails(
     (action, index) => ({
       action,
       person: action.person?.id
-        ? peopleMap.get(action.person.id) ?? null
+        ? (peopleMap.get(action.person.id) ?? null)
         : null,
       cadence: action.cadence?.id
-        ? cadenceMap.get(action.cadence.id) ?? null
+        ? (cadenceMap.get(action.cadence.id) ?? null)
         : null,
-      step: action.step?.id ? stepMap.get(action.step.id) ?? null : null,
+      step: action.step?.id ? (stepMap.get(action.step.id) ?? null) : null,
       action_details: actionDetailsArray[index] ?? null,
     })
   );

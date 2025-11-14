@@ -143,7 +143,7 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
   for (const agent of agentConfigurations) {
     const actions =
       variant === "full"
-        ? mcpServerActionsConfigurationsPerAgent.get(agent.id) ?? []
+        ? (mcpServerActionsConfigurationsPerAgent.get(agent.id) ?? [])
         : [];
 
     const model = getModelForAgentConfiguration(agent);

@@ -272,7 +272,7 @@ export function useErrorRateData(params: {
       workspaceId,
       agentConfigurationId,
       days: period,
-      version: mode === "version" ? filterVersion ?? undefined : undefined,
+      version: mode === "version" ? (filterVersion ?? undefined) : undefined,
       disabled: !workspaceId || !agentConfigurationId,
     }
   );
@@ -300,7 +300,7 @@ export function useLatencyData(params: {
     workspaceId,
     agentConfigurationId,
     days: period,
-    version: mode === "version" ? filterVersion ?? undefined : undefined,
+    version: mode === "version" ? (filterVersion ?? undefined) : undefined,
     disabled: !workspaceId || !agentConfigurationId,
   });
 
