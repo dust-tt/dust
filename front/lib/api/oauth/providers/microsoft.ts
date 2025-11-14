@@ -12,6 +12,7 @@ import {
 } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
+import { isString } from "@app/types";
 import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
 
 export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
@@ -26,17 +27,21 @@ export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
       metadata: { workspace_id: string; user_id: string };
     };
   }) {
+    const scopes = [
+      "User.Read",
+      "Sites.Read.All",
+      "Files.Read.All",
+      "offline_access",
+    ];
     if (relatedCredential) {
-      console.log("relatedCredential", relatedCredential);
       return `${config.getClientFacingUrl()}/oauth/microsoft/finalize?provider=microsoft&code=client&state=${connection.connection_id}`;
     } else {
-      console.log("no relatedCredential");
       const qs = querystring.stringify({
         response_type: "code",
         client_id: config.getOAuthMicrosoftClientId(),
         state: connection.connection_id,
         redirect_uri: finalizeUriForProvider("microsoft"),
-        scope: "User.Read Files.Read.All Sites.Read.All offline_access",
+        scope: scopes.join(" "),
       });
       return `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${qs}`;
     }
@@ -51,16 +56,13 @@ export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
   }
 
   isExtraConfigValid(extraConfig: ExtraConfigType) {
-    const useServicePrincipal = !!extraConfig.client_id;
-
-    if (!useServicePrincipal) {
-      return true;
-    }
-
     return (
-      !!extraConfig.client_id &&
-      !!extraConfig.client_secret &&
-      !!extraConfig.tenant_id
+      Object.keys(extraConfig).length === 0 ||
+      !!(
+        extraConfig.client_id &&
+        extraConfig.client_secret &&
+        extraConfig.tenant_id
+      )
     );
   }
   async getRelatedCredential(
@@ -99,7 +101,7 @@ export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we filter out the client_secret from the extraConfig.
     const { client_secret, ...restConfig } = extraConfig;
 
-    if (typeof restConfig.selected_sites === "string") {
+    if (isString(restConfig.selected_sites)) {
       restConfig.selected_sites = restConfig.selected_sites
         .split(/\r?\n/)
         .map((s) => s.trim())
