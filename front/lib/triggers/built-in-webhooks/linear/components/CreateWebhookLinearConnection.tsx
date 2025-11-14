@@ -7,7 +7,6 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
   Label,
-  Page,
   PlusIcon,
   Spinner,
 } from "@dust-tt/sparkle";
