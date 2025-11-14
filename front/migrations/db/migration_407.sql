@@ -11,10 +11,10 @@ CREATE TABLE IF NOT EXISTS "credits" (
 );
 
 -- Indexes for frequent queries and existence checks
-CREATE INDEX IF NOT EXISTS "credits_workspaceId_idx"
+CREATE INDEX IF NOT EXISTS "credits_workspace_id"
   ON "credits" ("workspaceId");
 
-CREATE INDEX IF NOT EXISTS "credits_workspaceId_expirationDate_idx"
+CREATE INDEX IF NOT EXISTS "credits_workspace_id_expiration_date"
   ON "credits" ("workspaceId", "expirationDate");
 
 -- Partial index to speed-up lookups of still-usable credits (remainingAmount <> 0)
