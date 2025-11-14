@@ -34,7 +34,9 @@ export async function dataSourceToPokeJSON(
       : null,
     name:
       (workspace ? `${workspace.name}'s ` : "") +
-      getDisplayNameForDataSource(dataSource.toJSON()),
+      (dataSource.connectorProvider
+        ? getDisplayNameForDataSource(dataSource.toJSON())
+        : `folder (${dataSource.name})`),
     type: "Data Source",
     space: spaceToPokeJSON(dataSource.space),
   };
@@ -55,7 +57,9 @@ export async function dataSourceViewToPokeJSON(
       : null,
     name:
       (workspace ? `${workspace.name}'s ` : "") +
-      getDisplayNameForDataSource(dataSourceView.dataSource.toJSON()),
+      (dataSourceView.dataSource.connectorProvider
+        ? getDisplayNameForDataSource(dataSourceView.dataSource.toJSON())
+        : `folder (${dataSourceView.dataSource.name})`),
     type: "Data Source View",
     space: spaceToPokeJSON(dataSourceView.space),
   };
