@@ -37,6 +37,20 @@ import { throttleWithRedis } from "@connectors/lib/throttle";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
+// Throttle configuration for Slack message updates
+const SLACK_MESSAGE_UPDATE_THROTTLE_MS = 1_000; // Base throttle: update every 1s for short messages
+const SLACK_MESSAGE_UPDATE_SLOW_THROTTLE_MS = 5_000; // Slow throttle: update every 5s for long messages
+const SLACK_MESSAGE_LONG_THRESHOLD_CHARS = 700; // Character threshold to switch to slow throttle
+
+// Dynamic throttling: longer messages get less frequent updates to reduce UX disruption
+const getThrottleDelay = (textLength: number): number => {
+  if (textLength < SLACK_MESSAGE_LONG_THRESHOLD_CHARS) {
+    return SLACK_MESSAGE_UPDATE_THROTTLE_MS;
+  } else {
+    return SLACK_MESSAGE_UPDATE_SLOW_THROTTLE_MS;
+  }
+};
+
 export const SlackBlockIdStaticAgentConfigSchema = t.type({
   slackChatBotMessageId: t.number,
   messageTs: t.union([t.string, t.undefined]),
@@ -132,10 +146,13 @@ async function streamAgentAnswerToSlack(
 
   let answer = "";
   const actions: AgentActionPublicType[] = [];
-  const throttledPostSlackMessageUpdate = throttle(
+
+  let currentThrottleDelay = SLACK_MESSAGE_UPDATE_THROTTLE_MS;
+  let throttledPostSlackMessageUpdate = throttle(
     postSlackMessageUpdate,
-    1_000
+    currentThrottleDelay
   );
+
   for await (const event of streamRes.value.eventStream) {
     switch (event.type) {
       case "tool_params":
@@ -272,6 +289,18 @@ async function streamAgentAnswerToSlack(
         if (slackContent.length > MAX_SLACK_MESSAGE_LENGTH) {
           break;
         }
+
+        // Dynamically adjust throttle delay based on message length
+        const newThrottleDelay = getThrottleDelay(slackContent.length);
+        if (newThrottleDelay !== currentThrottleDelay) {
+          currentThrottleDelay = newThrottleDelay;
+          throttledPostSlackMessageUpdate.cancel();
+          throttledPostSlackMessageUpdate = throttle(
+            postSlackMessageUpdate,
+            currentThrottleDelay
+          );
+        }
+
         await throttledPostSlackMessageUpdate({
           messageUpdate: {
             text: slackContent,
