@@ -4,7 +4,7 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
-import { literal,Op } from "sequelize";
+import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -100,25 +100,23 @@ export class CreditResource extends BaseResource<CreditModel> {
     }
     try {
       // Atomic decrement guarded by remainingAmount >= amountInCents to prevent double spending.
-      const [affected] = await this.model.update(
-        {
-          // Assign a literal expression; cast through unknown to satisfy TS without any.
-          remainingAmount: literal(
-            `"remainingAmount" - ${amountInCents}`
-          ) as unknown as number,
+      const decResult = await this.model.decrement("remainingAmount", {
+        by: amountInCents,
+        where: {
+          id: this.id,
+          workspaceId: this.workspaceId,
+          remainingAmount: { [Op.gte]: amountInCents },
         },
-        {
-          where: {
-            id: this.id,
-            // extra guard by workspace for tenant safety
-            workspaceId: this.workspaceId,
-            remainingAmount: { [Op.gte]: amountInCents },
-          },
-          transaction,
-        }
-      );
+        transaction,
+      });
 
-      if (affected !== 1) {
+      const affected = Array.isArray(decResult)
+        ? typeof decResult[1] === "number"
+          ? decResult[1]
+          : decResult.length
+        : 0;
+
+      if (affected < 1) {
         return new Err(new Error("Insufficient credit on this line."));
       }
       return new Ok(undefined);
