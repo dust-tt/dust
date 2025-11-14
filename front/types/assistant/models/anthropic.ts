@@ -66,6 +66,7 @@ export const CLAUDE_4_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   nativeReasoningMetaPrompt: CLAUDE_4_NATIVE_REASONING_META_PROMPT,
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   featureFlag: "claude_4_opus_feature",
+  tokenizer: { type: "tiktoken", base: "anthropic_base" },
 };
 export const CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -87,6 +88,7 @@ export const CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
   nativeReasoningMetaPrompt: CLAUDE_4_NATIVE_REASONING_META_PROMPT,
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
+  tokenizer: { type: "tiktoken", base: "anthropic_base" },
 };
 export const CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -109,6 +111,7 @@ export const CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   nativeReasoningMetaPrompt: CLAUDE_4_NATIVE_REASONING_META_PROMPT,
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   supportsPromptCaching: true,
+  tokenizer: { type: "tiktoken", base: "anthropic_base" },
 };
 export const CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -129,6 +132,7 @@ export const CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   maximumReasoningEffort: "light",
   defaultReasoningEffort: "light",
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
+  tokenizer: { type: "tiktoken", base: "anthropic_base" },
 };
 export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -149,6 +153,7 @@ export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   maximumReasoningEffort: "light",
   defaultReasoningEffort: "light",
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
+  tokenizer: { type: "tiktoken", base: "anthropic_base" },
 };
 export const CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -170,6 +175,7 @@ export const CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
   nativeReasoningMetaPrompt: CLAUDE_4_NATIVE_REASONING_META_PROMPT,
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
+  tokenizer: { type: "tiktoken", base: "anthropic_base" },
 };
 
 /**
@@ -194,6 +200,7 @@ export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   maximumReasoningEffort: "light",
   defaultReasoningEffort: "light",
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
+  tokenizer: { type: "tiktoken", base: "anthropic_base" },
 };
 export const CLAUDE_3_5_SONNET_20240620_DEPRECATED_MODEL_CONFIG: ModelConfigurationType =
   {
@@ -214,6 +221,7 @@ export const CLAUDE_3_5_SONNET_20240620_DEPRECATED_MODEL_CONFIG: ModelConfigurat
     maximumReasoningEffort: "light",
     defaultReasoningEffort: "light",
     tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
+    tokenizer: { type: "tiktoken", base: "anthropic_base" },
   };
 export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -233,6 +241,7 @@ export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   maximumReasoningEffort: "light",
   defaultReasoningEffort: "light",
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
+  tokenizer: { type: "tiktoken", base: "anthropic_base" },
 };
 export const CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -252,4 +261,5 @@ export const CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   maximumReasoningEffort: "light",
   defaultReasoningEffort: "light",
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
+  tokenizer: { type: "tiktoken", base: "anthropic_base" },
 };

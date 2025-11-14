@@ -31,6 +31,7 @@ export const TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_CONFIG: ModelConfigur
     minimumReasoningEffort: "none",
     maximumReasoningEffort: "none",
     defaultReasoningEffort: "none",
+    tokenizer: { type: "tiktoken", base: "o200k_base" },
   };
 export const TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_CONFIG: ModelConfigurationType =
   {
@@ -50,6 +51,7 @@ export const TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_CONFIG: ModelConfigura
     minimumReasoningEffort: "none",
     maximumReasoningEffort: "none",
     defaultReasoningEffort: "none",
+    tokenizer: { type: "tiktoken", base: "o200k_base" },
   };
 export const TOGETHERAI_QWEN_QWQ_32B_PREVIEW_MODEL_CONFIG: ModelConfigurationType =
   {
@@ -69,6 +71,7 @@ export const TOGETHERAI_QWEN_QWQ_32B_PREVIEW_MODEL_CONFIG: ModelConfigurationTyp
     minimumReasoningEffort: "none",
     maximumReasoningEffort: "none",
     defaultReasoningEffort: "none",
+    tokenizer: { type: "tiktoken", base: "o200k_base" },
   };
 export const TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_CONFIG: ModelConfigurationType =
   {
@@ -88,6 +91,7 @@ export const TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_CONFIG: ModelConfigurationType =
     minimumReasoningEffort: "none",
     maximumReasoningEffort: "none",
     defaultReasoningEffort: "none",
+    tokenizer: { type: "tiktoken", base: "o200k_base" },
   };
 export const TOGETHERAI_DEEPSEEK_V3_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "togetherai",
@@ -106,6 +110,7 @@ export const TOGETHERAI_DEEPSEEK_V3_MODEL_CONFIG: ModelConfigurationType = {
   minimumReasoningEffort: "none",
   maximumReasoningEffort: "none",
   defaultReasoningEffort: "none",
+  tokenizer: { type: "tiktoken", base: "o200k_base" },
 };
 export const TOGETHERAI_DEEPSEEK_R1_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "togetherai",
@@ -124,4 +129,5 @@ export const TOGETHERAI_DEEPSEEK_R1_MODEL_CONFIG: ModelConfigurationType = {
   minimumReasoningEffort: "none",
   maximumReasoningEffort: "none",
   defaultReasoningEffort: "none",
+  tokenizer: { type: "tiktoken", base: "o200k_base" },
 };

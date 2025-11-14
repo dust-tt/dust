@@ -32,9 +32,10 @@ import {
   isBrowseScrapeSuccessResponse,
 } from "@app/lib/utils/webbrowse";
 import { webSearch } from "@app/lib/utils/websearch";
-import { Err, GLOBAL_AGENTS_SID, Ok } from "@app/types";
+import { Err, GLOBAL_AGENTS_SID, GPT_4O_MODEL_CONFIG, Ok } from "@app/types";
 
 const BROWSE_MAX_TOKENS_LIMIT = 32_000;
+const DEFAULT_WEBSEARCH_MODEL_CONFIG = GPT_4O_MODEL_CONFIG;
 
 export function registerWebSearchTool(
   auth: Authenticator,
@@ -273,8 +274,9 @@ export function registerWebBrowserTool(
           const contentText = format === "html" ? html : markdown;
 
           const tokensRes = await tokenCountForTexts([contentText ?? ""], {
-            providerId: "openai",
-            modelId: "gpt-4o",
+            providerId: DEFAULT_WEBSEARCH_MODEL_CONFIG.providerId,
+            modelId: DEFAULT_WEBSEARCH_MODEL_CONFIG.modelId,
+            tokenizer: DEFAULT_WEBSEARCH_MODEL_CONFIG.tokenizer,
           });
 
           if (tokensRes.isErr()) {
