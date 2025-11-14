@@ -1,38 +1,24 @@
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 
-import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
+import {
+  CHART_HEIGHT,
+  getSourceColor,
+} from "@app/components/agent_builder/observability/constants";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import { ChartLegend } from "@app/components/agent_builder/observability/shared/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
 import { useAgentContextOrigin } from "@app/lib/swr/assistants";
 
-type SourceDatum = {
-  origin: string;
-  count: number;
-  percent: number;
-};
-
-const SOURCE_COLORS = [
-  "text-pink-300 dark:text-pink-300-night",
-  "text-blue-400 dark:text-blue-400-night",
-  "text-rose-400 dark:text-rose-400-night",
-  "text-amber-400 dark:text-amber-400-night",
-  "text-violet-300 dark:text-violet-300-night",
-  "text-slate-300 dark:text-slate-300-night",
-] as const;
-
-function getSourceColor(index: number) {
-  return SOURCE_COLORS[index % SOURCE_COLORS.length];
+interface SourceChartProps {
+  workspaceId: string;
+  agentConfigurationId: string;
 }
 
 export function SourceChart({
   workspaceId,
   agentConfigurationId,
-}: {
-  workspaceId: string;
-  agentConfigurationId: string;
-}) {
+}: SourceChartProps) {
   const { period, mode, selectedVersion } = useObservabilityContext();
 
   const { contextOrigin, isContextOriginLoading, isContextOriginError } =
@@ -40,23 +26,18 @@ export function SourceChart({
       workspaceId,
       agentConfigurationId,
       days: period,
-      version: mode === "version" ? selectedVersion?.version : undefined,
+      version: selectedVersion?.version,
       disabled:
-        !workspaceId ||
-        !agentConfigurationId ||
-        (mode === "version" && !selectedVersion),
+        !agentConfigurationId || (mode === "version" && !selectedVersion),
     });
 
-  const total = contextOrigin.total ?? 0;
+  const total = contextOrigin.total;
 
-  const data: SourceDatum[] =
-    total === 0
-      ? []
-      : contextOrigin.buckets.map((b) => ({
-          origin: b.origin,
-          count: b.count,
-          percent: Math.round((b.count / total) * 100),
-        }));
+  const data = contextOrigin.buckets.map((b) => ({
+    origin: b.origin,
+    count: b.count,
+    percent: Math.round((b.count / total) * 100),
+  }));
 
   const legendItems = data.map((d, index) => ({
     key: d.origin,
@@ -85,7 +66,7 @@ export function SourceChart({
               if (!active || !payload || payload.length === 0) {
                 return null;
               }
-              const p = payload[0].payload as SourceDatum;
+              const p = payload[0].payload;
               return (
                 <ChartTooltipCard
                   title={p.origin}
