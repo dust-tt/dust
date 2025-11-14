@@ -244,7 +244,9 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       return new Ok(nRes.value);
     }
 
-    const nodes: ContentNode[] = [];
+    const client = await getMicrosoftClient(connector.connectionId);
+    const nodes = [];
+
     const selectedResources = (
       await MicrosoftRootResource.listRootsByConnectorId(connector.id)
     ).map((r) => r.internalId);
@@ -259,7 +261,6 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     const { nodeType } = typeAndPathFromInternalId(parentInternalId);
 
     try {
-      const client = await getMicrosoftClient(connector.connectionId);
       switch (nodeType) {
         case "sites-root": {
           const config =
@@ -605,7 +606,6 @@ export async function getMicrosoftConnectionData(connectionId: string) {
 
   return {
     client,
-    accessToken: tokenData.access_token,
     tenantId: extractTenantIdFromAccessToken(tokenData.access_token),
     connection: tokenData.connection,
   };
@@ -680,7 +680,7 @@ async function resolveSelectedSites({
     } catch (error) {
       logger.error(
         { error, siteIdentifier: input },
-        "Failed to resolve selected SharePoint site, ignoring"
+        "Failed to resolve selected Sharepoint site, ignoring"
       );
     }
   }
@@ -693,56 +693,19 @@ async function fetchSiteForIdentifier(
   client: Client,
   identifier: string
 ): Promise<ResolvedSelectedSite | null> {
-  if (identifier.startsWith("microsoft-")) {
-    try {
-      const { nodeType, itemAPIPath } = typeAndPathFromInternalId(identifier);
-      if (nodeType !== "site") {
-        logger.warn(
-          { identifier, nodeType },
-          "Ignoring non-site internal identifier in selected sites"
-        );
-        return null;
-      }
-      const site = (await clientApiGet(logger, client, itemAPIPath)) as Site;
-      if (!site?.id) {
-        return null;
-      }
-      return {
-        site,
-        internalId: identifier,
-      };
-    } catch (error) {
-      logger.error(
-        { error, identifier },
-        "Failed to resolve SharePoint site from internal identifier"
-      );
-      return null;
-    }
-  }
+  const endpoint = `/sites/${identifier}`;
 
-  const endpoint = identifier.includes(":/")
-    ? `/sites/${identifier}`
-    : `/sites/${identifier}`;
-
-  try {
-    const site = (await clientApiGet(logger, client, endpoint)) as Site;
-    if (!site?.id) {
-      return null;
-    }
-
-    const internalId = internalIdFromTypeAndPath({
-      nodeType: "site",
-      itemAPIPath: `/sites/${site.id}`,
-    });
-
-    return { site, internalId };
-  } catch (error) {
-    logger.error(
-      { error, identifier },
-      "Failed to retrieve SharePoint site using identifier"
-    );
+  const site = await clientApiGet(logger, client, endpoint);
+  if (!site?.id) {
     return null;
   }
+
+  const internalId = internalIdFromTypeAndPath({
+    nodeType: "site",
+    itemAPIPath: `/sites/${site.id}`,
+  });
+
+  return { site, internalId };
 }
 
 function mapResolvedSitesToMetadata(
