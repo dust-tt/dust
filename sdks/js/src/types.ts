@@ -646,6 +646,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "confluence_tool"
   | "deepseek_feature"
   | "deepseek_r1_global_agent_feature"
+  | "dust_edge_global_agent"
   | "dev_mcp_actions"
   | "disable_run_logs"
   | "disallow_agent_creation_to_users"

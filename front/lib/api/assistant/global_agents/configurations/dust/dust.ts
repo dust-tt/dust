@@ -31,12 +31,15 @@ import { timeAgoFrom } from "@app/lib/utils";
 import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
+  ModelConfigurationType,
+  ReasoningEffort,
 } from "@app/types";
 import {
   CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
   GLOBAL_AGENTS_SID,
+  GPT_5_1_MODEL_CONFIG,
   isProviderWhitelisted,
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
@@ -297,7 +300,7 @@ function buildInstructions({
   return parts.join("\n\n");
 }
 
-export function _getDustGlobalAgent(
+function _getDustLikeGlobalAgent(
   auth: Authenticator,
   {
     settings,
@@ -326,34 +329,57 @@ export function _getDustGlobalAgent(
     agentMemoryMCPServerView: MCPServerViewResource | null;
     memories: AgentMemoryResource[];
     availableToolsets: MCPServerViewResource[];
+  },
+  {
+    agentId,
+    name,
+    preferredModelConfiguration,
+    preferredReasoningEffort,
+  }: {
+    agentId: GLOBAL_AGENTS_SID;
+    name: string;
+    preferredModelConfiguration?: ModelConfigurationType | null;
+    preferredReasoningEffort?: ReasoningEffort;
   }
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
 
-  const name = "dust";
   const description = "An agent with context on your company data.";
   const pictureUrl = "https://dust.tt/static/systemavatar/dust_avatar_full.png";
+
+  let isPreferredModel = false;
 
   const modelConfiguration = (() => {
     if (!auth.isUpgraded()) {
       return getSmallWhitelistedModel(owner);
     }
 
-    if (isProviderWhitelisted(owner, "anthropic")) {
-      return CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG;
+    if (preferredModelConfiguration) {
+      if (
+        isProviderWhitelisted(owner, preferredModelConfiguration.providerId)
+      ) {
+        isPreferredModel = true;
+        return preferredModelConfiguration;
+      }
     }
 
     return getLargeWhitelistedModel(owner);
   })();
 
-  const model: AgentModelConfigurationType = modelConfiguration
-    ? {
-        providerId: modelConfiguration.providerId,
-        modelId: modelConfiguration.modelId,
-        temperature: 0.7,
-        reasoningEffort: modelConfiguration.defaultReasoningEffort,
-      }
-    : dummyModelConfiguration;
+  let model: AgentModelConfigurationType;
+  if (modelConfiguration) {
+    model = {
+      providerId: modelConfiguration.providerId,
+      modelId: modelConfiguration.modelId,
+      temperature: 0.7,
+      reasoningEffort:
+        isPreferredModel && preferredReasoningEffort
+          ? preferredReasoningEffort
+          : modelConfiguration.defaultReasoningEffort,
+    };
+  } else {
+    model = dummyModelConfiguration;
+  }
 
   const hasFilesystemTools = dataSourcesFileSystemMCPServerView !== null;
 
@@ -386,7 +412,7 @@ export function _getDustGlobalAgent(
 
   const dustAgent = {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.DUST,
+    sId: agentId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
@@ -415,7 +441,7 @@ export function _getDustGlobalAgent(
       status: "disabled_by_admin",
       actions: [
         ..._getDefaultWebActionsForGlobalAgent({
-          agentId: GLOBAL_AGENTS_SID.DUST,
+          agentId,
           webSearchBrowseMCPServerView,
         }),
       ],
@@ -452,15 +478,15 @@ export function _getDustGlobalAgent(
 
   actions.push(
     ..._getDefaultWebActionsForGlobalAgent({
-      agentId: GLOBAL_AGENTS_SID.DUST,
+      agentId,
       webSearchBrowseMCPServerView,
     }),
     ..._getToolsetsToolsConfiguration({
-      agentId: GLOBAL_AGENTS_SID.DUST,
+      agentId,
       toolsetsMcpServerView: toolsetsMCPServerView,
     }),
     ..._getAgentRouterToolsConfiguration(
-      GLOBAL_AGENTS_SID.DUST,
+      agentId,
       agentRouterMCPServerView,
       autoInternalMCPServerNameToSId({
         name: "agent_router",
@@ -472,7 +498,7 @@ export function _getDustGlobalAgent(
   if (deepDiveMCPServerView) {
     actions.push({
       id: -1,
-      sId: GLOBAL_AGENTS_SID.DUST + "-deep-dive",
+      sId: agentId + "-deep-dive",
       type: "mcp_server_configuration",
       name: "deep_dive" satisfies InternalMCPServerNameType,
       description: `Handoff the query to the @${DEEP_DIVE_NAME} agent`,
@@ -493,7 +519,7 @@ export function _getDustGlobalAgent(
   if (hasAgentMemory) {
     actions.push({
       id: -1,
-      sId: GLOBAL_AGENTS_SID.DUST + "-agent-memory",
+      sId: agentId + "-agent-memory",
       type: "mcp_server_configuration",
       name: "agent_memory" satisfies InternalMCPServerNameType,
       description: "The agent memory tool",
@@ -513,7 +539,7 @@ export function _getDustGlobalAgent(
 
   actions.push(
     ..._getInteractiveContentToolConfiguration({
-      agentId: GLOBAL_AGENTS_SID.DUST,
+      agentId,
       interactiveContentMCPServerView,
     })
   );
@@ -529,4 +555,53 @@ export function _getDustGlobalAgent(
     actions,
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
   };
+}
+
+export function _getDustGlobalAgent(
+  auth: Authenticator,
+  args: {
+    settings: GlobalAgentSettings | null;
+    preFetchedDataSources: PrefetchedDataSourcesType | null;
+    agentRouterMCPServerView: MCPServerViewResource | null;
+    webSearchBrowseMCPServerView: MCPServerViewResource | null;
+    dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
+    toolsetsMCPServerView: MCPServerViewResource | null;
+    deepDiveMCPServerView: MCPServerViewResource | null;
+    interactiveContentMCPServerView: MCPServerViewResource | null;
+    dataWarehousesMCPServerView: MCPServerViewResource | null;
+    agentMemoryMCPServerView: MCPServerViewResource | null;
+    memories: AgentMemoryResource[];
+    availableToolsets: MCPServerViewResource[];
+  }
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST,
+    name: "dust",
+    preferredModelConfiguration: CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
+  });
+}
+
+export function _getDustEdgeGlobalAgent(
+  auth: Authenticator,
+  args: {
+    settings: GlobalAgentSettings | null;
+    preFetchedDataSources: PrefetchedDataSourcesType | null;
+    agentRouterMCPServerView: MCPServerViewResource | null;
+    webSearchBrowseMCPServerView: MCPServerViewResource | null;
+    dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
+    toolsetsMCPServerView: MCPServerViewResource | null;
+    deepDiveMCPServerView: MCPServerViewResource | null;
+    interactiveContentMCPServerView: MCPServerViewResource | null;
+    dataWarehousesMCPServerView: MCPServerViewResource | null;
+    agentMemoryMCPServerView: MCPServerViewResource | null;
+    memories: AgentMemoryResource[];
+    availableToolsets: MCPServerViewResource[];
+  }
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_EDGE,
+    name: "dust-edge",
+    preferredModelConfiguration: GPT_5_1_MODEL_CONFIG,
+    preferredReasoningEffort: "light",
+  });
 }
