@@ -40,7 +40,7 @@ import type { ConnectorResource } from "@connectors/resources/connector_resource
 // Throttle configuration for Slack message updates
 const SLACK_MESSAGE_UPDATE_THROTTLE_MS = 1_000; // Base throttle: update every 1s for short messages
 const SLACK_MESSAGE_UPDATE_SLOW_THROTTLE_MS = 5_000; // Slow throttle: update every 5s for long messages
-const SLACK_MESSAGE_LONG_THRESHOLD_CHARS = 700; // Character threshold to switch to slow throttle
+const SLACK_MESSAGE_LONG_THRESHOLD_CHARS = 300; // Character threshold to switch to slow throttle
 
 // Dynamic throttling: longer messages get less frequent updates to reduce UX disruption
 const getThrottleDelay = (textLength: number): number => {
