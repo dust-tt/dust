@@ -183,7 +183,8 @@ export const INTERNAL_MCP_SERVERS = {
     serverInfo: {
       name: "image_generation",
       version: "1.0.0",
-      description: "Create visual content from text descriptions.",
+      description:
+        "Create or edit visual content from text descriptions and images.",
       icon: "ActionImageIcon",
       authorization: null,
       documentationUrl: null,
