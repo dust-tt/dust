@@ -1,3 +1,7 @@
+import {
+  AnnouncementBannerDismissalModel,
+  AnnouncementModel,
+} from "@app/lib/models/announcement";
 import { ConversationMCPServerViewModel } from "@app/lib/models/assistant/actions/conversation_mcp_server_view";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import {
@@ -177,6 +181,9 @@ async function main() {
 
   await FeatureFlag.sync({ alter: true });
   await KillSwitchModel.sync({ alter: true });
+
+  await AnnouncementModel.sync({ alter: true });
+  await AnnouncementBannerDismissalModel.sync({ alter: true });
 
   await LabsTranscriptsConfigurationModel.sync({ alter: true });
   await LabsTranscriptsHistoryModel.sync({ alter: true });
