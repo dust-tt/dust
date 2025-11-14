@@ -30,7 +30,7 @@ function verifyRequestSignature({
   hmac.update(body);
 
   // Use crypto.timingSafeEqual for timing-safe comparison.
-  const expectedHash = `sha256=${hmac.digest("hex")}`;
+  const expectedHash = hmac.digest("hex");
 
   if (signature.length !== expectedHash.length) {
     throw new ReceiverAuthenticityError(
@@ -83,7 +83,12 @@ export function createNotionVerificationMiddleware(
       // Even though it's documented as "X-Notion-Signature", the actual header name is lowercase in practice.
       const signature = req.headers["x-notion-signature"];
 
-      if (typeof signature !== "string") {
+      // The signature header from Notion includes the "sha256=" prefix.
+      const signaturePrefix = "sha256=";
+      if (
+        typeof signature !== "string" ||
+        !signature.startsWith(signaturePrefix)
+      ) {
         throw new ReceiverAuthenticityError(
           "Notion request signing verification failed. Signature header is invalid."
         );
@@ -91,7 +96,7 @@ export function createNotionVerificationMiddleware(
 
       verifyRequestSignature({
         body: stringBody,
-        signature,
+        signature: signature.slice(signaturePrefix.length),
         signingSecret: secrets.notionSigningSecret,
       });
 
