@@ -109,11 +109,18 @@ makeScript(
     }
 
     for (const connector of connectors) {
-      await backfillConnectorTenant({
-        connector,
-        execute,
-        logger: scriptLogger,
-      });
+      try {
+        await backfillConnectorTenant({
+          connector,
+          execute,
+          logger: scriptLogger,
+        });
+      } catch (error) {
+        scriptLogger.error(
+          { connectorId: connector.id, error },
+          "Error backfilling tenant id"
+        );
+      }
     }
 
     const lastProcessedId = connectors[connectors.length - 1]?.id;
