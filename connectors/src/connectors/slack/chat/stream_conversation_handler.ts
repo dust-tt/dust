@@ -44,11 +44,10 @@ const SLACK_MESSAGE_LONG_THRESHOLD_CHARS = 300; // Character threshold to switch
 
 // Dynamic throttling: longer messages get less frequent updates to reduce UX disruption
 const getThrottleDelay = (textLength: number): number => {
-  if (textLength < SLACK_MESSAGE_LONG_THRESHOLD_CHARS) {
-    return SLACK_MESSAGE_UPDATE_THROTTLE_MS;
-  } else {
+  if (textLength >= SLACK_MESSAGE_LONG_THRESHOLD_CHARS) {
     return SLACK_MESSAGE_UPDATE_SLOW_THROTTLE_MS;
   }
+  return SLACK_MESSAGE_UPDATE_THROTTLE_MS;
 };
 
 export const SlackBlockIdStaticAgentConfigSchema = t.type({
