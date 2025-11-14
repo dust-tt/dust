@@ -1,4 +1,3 @@
-import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import type { ToolNotificationEvent } from "@app/lib/actions/mcp";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -15,6 +14,7 @@ import type {
   ModelId,
   Result,
   UserMessageOrigin,
+  RichMention,
   UserMessageType,
   UserType,
 } from "@app/types";
@@ -65,7 +65,7 @@ export type VirtuosoMessageListContext = {
   user: UserType;
   handleSubmit: (
     input: string,
-    mentions: EditorMention[],
+    mentions: RichMention[],
     contentFragments: ContentFragmentsType
   ) => Promise<Result<undefined, DustError>>;
   conversationId: string;

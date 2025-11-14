@@ -12,7 +12,6 @@ import { AgentBrowserContainer } from "@app/components/assistant/conversation/Ag
 import { useActionValidationContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
-import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
@@ -30,6 +29,7 @@ import { getConversationRoute } from "@app/lib/utils/router";
 import type {
   ContentFragmentsType,
   Result,
+  RichMention,
   SubscriptionType,
   UserType,
   WorkspaceType,
@@ -78,7 +78,7 @@ export function ConversationContainerVirtuoso({
   const handleConversationCreation = useCallback(
     async (
       input: string,
-      mentions: EditorMention[],
+      mentions: RichMention[],
       contentFragments: ContentFragmentsType,
       selectedMCPServerViewIds?: string[]
     ): Promise<Result<undefined, DustError>> => {

@@ -4,11 +4,9 @@ import type { SuggestionKeyDownProps } from "@tiptap/suggestion";
 import type { MutableRefObject } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import type {
-  EditorSuggestion,
-  EditorSuggestions,
-} from "@app/components/assistant/conversation/input_bar/editor/suggestion";
+import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import { filterMentionSuggestions } from "@app/lib/mentions/editor/suggestion";
+import type { RichMention } from "@app/types";
 
 interface CommandFunction {
   (props: { id: string; label: string }): void;
@@ -29,7 +27,7 @@ export type SuggestionProps = {
 export interface MentionDropdownState {
   isOpen: boolean;
   query: string;
-  suggestions: EditorSuggestion[];
+  suggestions: EditorSuggestions["suggestions"];
   selectedIndex: number;
   triggerRect: DOMRect | null;
   isLoading: boolean;
@@ -69,7 +67,7 @@ export const useMentionDropdown = (
   };
 
   const selectSuggestion = useCallback(
-    (suggestion: EditorSuggestion) => {
+    (suggestion: RichMention) => {
       const editor = editorRef.current;
 
       if (editor && rangeRef.current) {
