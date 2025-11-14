@@ -1,26 +1,41 @@
-export type LinearTeam = {
-  id: string;
-  name: string;
-  key: string;
-};
+import { z } from "zod";
 
-export type LinearAdditionalData = {
-  teams: LinearTeam[];
-};
+export const LinearTeamSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  key: z.string(),
+});
 
-export type LinearWebhookMetadata = {
-  webhookIds: Record<string, string>; // teamId -> webhookId
-  teams?: LinearTeam[]; // Keep teams for display purposes.
-};
+export type LinearTeam = z.infer<typeof LinearTeamSchema>;
+
+export const LinearAdditionalDataSchema = z.object({
+  teams: z.array(LinearTeamSchema),
+});
+
+export type LinearAdditionalData = z.infer<typeof LinearAdditionalDataSchema>;
+
+export function isLinearTeam(data: unknown): data is LinearTeam {
+  const result = LinearTeamSchema.safeParse(data);
+  return result.success;
+}
 
 export type LinearWebhookCreateMetadata = {
   teams: LinearTeam[];
 };
 
+export type LinearWebhookMetadata = {
+  webhookIds: Record<string, string>;
+  teams?: LinearTeam[];
+};
+
 export function isLinearWebhookCreateMetadata(
   metadata: Record<string, unknown>
 ): metadata is LinearWebhookCreateMetadata {
-  return Array.isArray(metadata.teams) && metadata.teams.length > 0;
+  return (
+    Array.isArray(metadata.teams) &&
+    metadata.teams.length > 0 &&
+    metadata.teams.every((team: unknown) => isLinearTeam(team))
+  );
 }
 
 export function isLinearWebhookMetadata(

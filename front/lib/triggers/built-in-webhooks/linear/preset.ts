@@ -1,21 +1,18 @@
 import { CreateWebhookLinearConnection } from "@app/lib/triggers/built-in-webhooks/linear/components/CreateWebhookLinearConnection";
 import { WebhookSourceLinearDetails } from "@app/lib/triggers/built-in-webhooks/linear/components/WebhookSourceLinearDetails";
-import {
-  lambdaExample,
-  lambdaSchema,
-} from "@app/lib/triggers/built-in-webhooks/linear/schemas/lambda";
+import { issueSchema } from "@app/lib/triggers/built-in-webhooks/linear/schemas/issue";
 import { LinearWebhookService } from "@app/lib/triggers/built-in-webhooks/linear/service";
 import type {
   PresetWebhook,
   WebhookEvent,
 } from "@app/types/triggers/webhooks_source_preset";
 
-const LINEAR_LAMBDA_EVENT: WebhookEvent = {
-  name: "lambda",
-  value: "lambda",
+const LINEAR_ISSUE_EVENT: WebhookEvent = {
+  name: "issue",
+  value: "Issue",
   description: "Lambda event for Linear webhooks",
-  schema: lambdaSchema,
-  sample: lambdaExample,
+  schema: issueSchema,
+  sample: null,
 };
 
 export const LINEAR_WEBHOOK_PRESET: PresetWebhook<"linear"> = {
@@ -24,7 +21,7 @@ export const LINEAR_WEBHOOK_PRESET: PresetWebhook<"linear"> = {
     type: "headers",
     field: "Linear-Event",
   },
-  events: [LINEAR_LAMBDA_EVENT],
+  events: [LINEAR_ISSUE_EVENT],
   icon: "LinearLogo",
   description: "Receive events from Linear.",
   webhookPageUrl: "https://linear.app/settings/api",

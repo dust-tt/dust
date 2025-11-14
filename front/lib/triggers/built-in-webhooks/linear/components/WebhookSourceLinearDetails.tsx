@@ -1,6 +1,7 @@
 import { Chip, Page } from "@dust-tt/sparkle";
 
 import type { WebhookDetailsComponentProps } from "@app/components/triggers/webhook_preset_components";
+import type { LinearTeam } from "@app/lib/triggers/built-in-webhooks/linear/types";
 import { isLinearWebhookMetadata } from "@app/lib/triggers/built-in-webhooks/linear/types";
 
 export function WebhookSourceLinearDetails({
@@ -27,7 +28,7 @@ export function WebhookSourceLinearDetails({
         <div>
           <div className="mb-2 text-sm font-medium">Teams</div>
           <div className="flex flex-wrap gap-1">
-            {teams.map((team) => (
+            {teams.map((team: LinearTeam) => (
               <Chip
                 key={team.id}
                 label={`${team.name} (${team.key})`}
