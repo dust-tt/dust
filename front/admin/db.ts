@@ -56,6 +56,7 @@ import {
   Provider,
 } from "@app/lib/resources/storage/models/apps";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+import { CreditModel } from "@app/lib/resources/storage/models/credits";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import {
@@ -81,7 +82,6 @@ import {
 } from "@app/lib/resources/storage/models/runs";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
-import { CreditModel } from "@app/lib/resources/storage/models/credits";
 import {
   UserMetadataModel,
   UserModel,
