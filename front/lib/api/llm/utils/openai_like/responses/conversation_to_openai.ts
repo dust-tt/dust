@@ -165,16 +165,21 @@ const REASONING_EFFORT_TO_OPENAI_REASONING: {
 };
 
 export function toReasoning(
-  reasoningEffort: ReasoningEffort | null
+  reasoningEffort: ReasoningEffort | null,
+  useNativeLightReasoning?: boolean
 ): Reasoning | null {
-  if (!reasoningEffort) {
+  if (!reasoningEffort || reasoningEffort === "none") {
     return null;
   }
 
-  return {
-    effort: REASONING_EFFORT_TO_OPENAI_REASONING[reasoningEffort],
-    summary: "auto",
-  };
+  if (reasoningEffort !== "light" || useNativeLightReasoning) {
+    // For light, we might not use native reasoning but Chain of Thought instead
+    return {
+      effort: REASONING_EFFORT_TO_OPENAI_REASONING[reasoningEffort],
+      summary: "auto",
+    };
+  }
+  return null;
 }
 
 export function toResponseFormat(

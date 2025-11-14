@@ -40,11 +40,6 @@ const MAX_FILE_SIZE_FOR_GREP = 20 * 1024 * 1024; // 20MB.
 
 /**
  * MCP server for handling conversation file operations.
- *
- * This server is designed to replace the legacy conversation_include_file action
- * when JIT actions are migrated to use MCP. Currently, JIT actions still use
- * the legacy action system, but this server provides the MCP implementation
- * for future migration.
  */
 
 function createServer(

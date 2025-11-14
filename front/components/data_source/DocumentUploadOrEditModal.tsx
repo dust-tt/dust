@@ -305,7 +305,7 @@ export const DocumentUploadOrEditModal = ({
           sourceUrl:
             prev.sourceUrl.length > 0
               ? prev.sourceUrl
-              : fileBlobs[0].publicUrl ?? "",
+              : (fileBlobs[0].publicUrl ?? ""),
         }));
         setHasChanged(true);
       } catch (error) {

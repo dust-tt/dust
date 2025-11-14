@@ -51,7 +51,10 @@ export class XaiLLM extends LLM {
         input: toInput(prompt, conversation, "system"),
         stream: true,
         temperature: this.temperature,
-        reasoning: toReasoning(this.reasoningEffort),
+        reasoning: toReasoning(
+          this.reasoningEffort,
+          this.modelConfig.useNativeLightReasoning
+        ),
         tools: specifications.map(toTool),
       });
 

@@ -24,7 +24,7 @@ export function ChartContainer({
   statusChip,
   description,
 }: ChartContainerProps) {
-  const message = isLoading ? null : errorMessage ?? emptyMessage;
+  const message = isLoading ? null : (errorMessage ?? emptyMessage);
 
   return (
     <div>

@@ -5,6 +5,7 @@ import {
   FEEDBACK_DISTRIBUTION_PALETTE,
 } from "@app/components/agent_builder/observability/constants";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
+import { normalizeVersionLabel } from "@app/components/agent_builder/observability/shared/tooltipHelpers";
 import type { ToolChartModeType } from "@app/components/agent_builder/observability/types";
 import { isToolChartUsagePayload } from "@app/components/agent_builder/observability/types";
 import { getToolColor } from "@app/components/agent_builder/observability/utils";
@@ -42,7 +43,10 @@ export function ChartsTooltip({
       };
     });
 
-  const title = mode === "step" ? `Step ${String(label)}` : String(label);
+  const title =
+    mode === "step"
+      ? `Step ${String(label)}`
+      : normalizeVersionLabel(String(label));
   return <ChartTooltipCard title={title} rows={rows} />;
 }
 

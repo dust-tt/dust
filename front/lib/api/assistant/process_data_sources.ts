@@ -19,7 +19,7 @@ const EXTRACT_DATA_FUNCTION_NAME = "extract_data";
 const MAP_MAX_ITERATIONS = 32;
 
 const ExtractDataResponseSchema = z.object({
-  data_points: z.array(z.unknown()),
+  data_points: z.array(z.unknown()).optional(),
 });
 
 export type CoreDataSourceSearchCriteria = {
@@ -191,19 +191,23 @@ export async function processDataSources({
         return new Err(res.error);
       }
 
-      const responseValidation = ExtractDataResponseSchema.safeParse(
-        res.value.actions?.[0].arguments
-      );
+      const actionArguments = res.value.actions?.[0]?.arguments;
+      if (!actionArguments) {
+        return new Ok([]);
+      }
+
+      const responseValidation =
+        ExtractDataResponseSchema.safeParse(actionArguments);
 
       if (!responseValidation.success) {
         return new Err(
           new Error(
-            `The model failed to generate valid JSON extracts: ${responseValidation.error.message}`
+            `The model failed to generate valid JSON extracts: ${JSON.stringify(responseValidation.error.issues)}`
           )
         );
       }
 
-      return new Ok(responseValidation.data.data_points);
+      return new Ok(responseValidation.data.data_points ?? []);
     },
     { concurrency: MAP_MAX_ITERATIONS }
   );

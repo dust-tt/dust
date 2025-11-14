@@ -25,6 +25,13 @@ import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import { isRemoteDatabase } from "@app/lib/data_sources";
 import type { DustError } from "@app/lib/error";
+import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
+import {
+  AgentChildAgentConfiguration,
+  AgentMCPServerConfiguration,
+} from "@app/lib/models/assistant/actions/mcp";
+import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
+import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import {
   AgentConfiguration,
   AgentUserRelation,
@@ -1035,6 +1042,59 @@ export async function unsafeHardDeleteAgentConfiguration(
   const workspaceId = auth.getNonNullableWorkspace().id;
 
   await withTransaction(async (t) => {
+    // Clean up MCP server configurations and their children first
+    const mcpConfigs = await AgentMCPServerConfiguration.findAll({
+      where: {
+        agentConfigurationId: agentConfiguration.id,
+        workspaceId,
+      },
+      attributes: ["id"],
+      transaction: t,
+    });
+    if (mcpConfigs.length) {
+      const mcpIds = mcpConfigs.map((c) => c.id);
+
+      await AgentDataSourceConfiguration.destroy({
+        where: {
+          workspaceId,
+          mcpServerConfigurationId: { [Op.in]: mcpIds },
+        },
+        transaction: t,
+      });
+
+      await AgentTablesQueryConfigurationTable.destroy({
+        where: {
+          workspaceId,
+          mcpServerConfigurationId: { [Op.in]: mcpIds },
+        },
+        transaction: t,
+      });
+
+      await AgentReasoningConfiguration.destroy({
+        where: {
+          workspaceId,
+          mcpServerConfigurationId: { [Op.in]: mcpIds },
+        },
+        transaction: t,
+      });
+
+      await AgentChildAgentConfiguration.destroy({
+        where: {
+          workspaceId,
+          mcpServerConfigurationId: { [Op.in]: mcpIds },
+        },
+        transaction: t,
+      });
+
+      await AgentMCPServerConfiguration.destroy({
+        where: {
+          workspaceId,
+          id: { [Op.in]: mcpIds },
+        },
+        transaction: t,
+      });
+    }
+
     await TagAgentModel.destroy({
       where: {
         agentConfigurationId: agentConfiguration.id,

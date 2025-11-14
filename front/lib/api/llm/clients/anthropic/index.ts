@@ -16,14 +16,11 @@ import type {
   LLMParameters,
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
-import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import type { SUPPORTED_MODEL_CONFIGS } from "@app/types";
 import { dustManagedCredentials } from "@app/types";
 
 export class AnthropicLLM extends LLM {
   private client: Anthropic;
-  private modelConfig: (typeof SUPPORTED_MODEL_CONFIGS)[number];
 
   constructor(
     auth: Authenticator,
@@ -34,11 +31,6 @@ export class AnthropicLLM extends LLM {
     if (!ANTHROPIC_API_KEY) {
       throw new Error("ANTHROPIC_API_KEY environment variable is required");
     }
-
-    this.modelConfig = getSupportedModelConfig({
-      modelId: this.modelId,
-      providerId: "anthropic",
-    });
 
     this.client = new Anthropic({
       apiKey: ANTHROPIC_API_KEY,

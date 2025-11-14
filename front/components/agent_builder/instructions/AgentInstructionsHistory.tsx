@@ -96,7 +96,7 @@ export function AgentInstructionsHistory({
       if (isNewRun) {
         const prevInstructions =
           result.length > 0
-            ? result[result.length - 1].config.instructions ?? ""
+            ? (result[result.length - 1].config.instructions ?? "")
             : "";
 
         result.push({

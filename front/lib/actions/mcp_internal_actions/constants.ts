@@ -183,7 +183,8 @@ export const INTERNAL_MCP_SERVERS = {
     serverInfo: {
       name: "image_generation",
       version: "1.0.0",
-      description: "Create visual content from text descriptions.",
+      description:
+        "Create or edit visual content from text descriptions and images.",
       icon: "ActionImageIcon",
       authorization: null,
       documentationUrl: null,
@@ -1243,7 +1244,7 @@ The directive should be used to display a clickable version of the agent name in
     tools_stakes: {
       search_candidates: "never_ask",
       get_report_data: "never_ask",
-      get_latest_interview_feedback: "never_ask",
+      get_interview_feedback: "never_ask",
       create_candidate_note: "high",
     },
     tools_retry_policies: undefined,

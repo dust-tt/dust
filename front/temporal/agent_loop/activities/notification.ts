@@ -64,7 +64,12 @@ export async function conversationUnreadNotificationActivity(
           };
           return {
             name: CONVERSATION_UNREAD_TRIGGER_ID,
-            to: { subscriberId: p.sId },
+            to: {
+              subscriberId: p.sId,
+              email: p.email,
+              firstName: p.firstName ?? undefined,
+              lastName: p.lastName ?? undefined,
+            },
             payload,
           };
         })

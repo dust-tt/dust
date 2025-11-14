@@ -41,6 +41,7 @@ export async function getFileFromConversationAttachment(
       buffer: Buffer;
       filename: string;
       contentType: string;
+      fileResource: FileResource;
     },
     string
   >
@@ -119,6 +120,7 @@ export async function getFileFromConversationAttachment(
     buffer: bufferResult.value,
     filename: sanitizeFilename(attachment.title || `attachment-${fileId}`),
     contentType: attachment.contentType || "application/octet-stream",
+    fileResource,
   });
 }
 
