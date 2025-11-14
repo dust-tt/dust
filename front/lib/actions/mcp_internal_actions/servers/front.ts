@@ -11,6 +11,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustAppSecret } from "@app/lib/models/dust_app_secret";
 import logger from "@app/logger/logger";
 import { decrypt, Err, normalizeError, Ok } from "@app/types";
+import sanitizeHtml from "sanitize-html";
 
 const FRONT_API_BASE_URL = "https://api2.frontapp.com";
 
