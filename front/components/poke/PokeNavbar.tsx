@@ -1,5 +1,6 @@
 import { Button, ChevronRightIcon, Chip, Logo } from "@dust-tt/sparkle";
 import Link from "next/link";
+import type { ComponentProps } from "react";
 import { useEffect, useState } from "react";
 
 import { PokeRegionDropdown } from "@app/components/poke/PokeRegionDropdown";
@@ -12,6 +13,7 @@ import {
 import type { RegionType } from "@app/lib/api/regions/config";
 import { classNames } from "@app/lib/utils";
 import { usePokeSearch } from "@app/poke/swr/search";
+import type { PokeItemBase } from "@app/types";
 import { isDevelopment } from "@app/types";
 
 const MIN_SEARCH_CHARACTERS = 2;
@@ -19,6 +21,23 @@ const MIN_SEARCH_CHARACTERS = 2;
 interface PokeNavbarProps {
   currentRegion?: RegionType;
   regionUrls?: Record<RegionType, string>;
+}
+
+function getPokeItemChipColor(
+  item: PokeItemBase
+): ComponentProps<typeof Chip>["color"] {
+  switch (item.type) {
+    case "Workspace":
+      return "blue";
+    case "Data Source":
+      return "golden";
+    case "Data Source View":
+      return "rose";
+    case "Connector":
+      return "green";
+    default:
+      return "primary";
+  }
 }
 
 function PokeNavbar({ currentRegion, regionUrls }: PokeNavbarProps) {
@@ -137,15 +156,17 @@ export function PokeSearchCommand() {
             </div>
           )}
 
-          {results.map(({ id, link, name, type }, index) => {
+          {results.map((item, index) => {
             const CommandItem = () => (
-              <PokeCommandItem value={name} index={index}>
+              <PokeCommandItem value={item.name} index={index}>
                 <div className="flex w-full items-center justify-between gap-3 px-2 text-foreground dark:text-foreground-night">
                   <div className="flex min-w-0 items-baseline gap-3">
-                    <Chip size="xs">{type}</Chip>
-                    <span className="text-sm font-medium">{name}</span>
+                    <Chip size="xs" color={getPokeItemChipColor(item)}>
+                      {item.type}
+                    </Chip>
+                    <span className="text-sm font-medium">{item.name}</span>
                     <span className="font-mono text-xs text-muted-foreground dark:text-muted-foreground-night">
-                      (id: {id})
+                      (id: {item.id})
                     </span>
                   </div>
                   <ChevronRightIcon className="h-4 w-4 flex-shrink-0" />
@@ -153,8 +174,8 @@ export function PokeSearchCommand() {
               </PokeCommandItem>
             );
 
-            return link ? (
-              <Link href={link} key={id}>
+            return item.link ? (
+              <Link href={item.link} key={item.id}>
                 <CommandItem />
               </Link>
             ) : (

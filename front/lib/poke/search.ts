@@ -63,7 +63,9 @@ async function searchPokeWorkspaces(
   return [];
 }
 
-async function searchConnectorModelId(searchTerm: string) {
+async function searchConnectorModelId(
+  searchTerm: string
+): Promise<PokeItemBase[] | null> {
   const connectorModelId = parseInt(searchTerm, 10);
   if (!isNaN(connectorModelId)) {
     const connectorsAPI = new ConnectorsAPI(
