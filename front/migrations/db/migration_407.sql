@@ -6,7 +6,6 @@ CREATE TABLE IF NOT EXISTS "credits" (
   "expirationDate" TIMESTAMP WITH TIME ZONE,
   "initialAmount" INTEGER NOT NULL CHECK ("initialAmount" >= 0),
   "remainingAmount" INTEGER NOT NULL CHECK ("remainingAmount" >= 0),
-  "remainingAmount" INTEGER NOT NULL,
   "workspaceId" BIGINT NOT NULL REFERENCES "workspaces" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
   PRIMARY KEY ("id")
 );
