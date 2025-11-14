@@ -101,7 +101,7 @@ impl Provider for MicrosoftConnectionProvider {
                     "client_secret": *OAUTH_MICROSOFT_CLIENT_SECRET,
                     "code": code,
                     "redirect_uri": redirect_uri,
-                    "scope": "User.Read Sites.Read.All Directory.Read.All Files.Read.All Team.ReadBasic.All ChannelSettings.Read.All ChannelMessage.Read.All",
+                    "scope": "User.Read Sites.Read.All Files.Read.All Team.ReadBasic.All ChannelSettings.Read.All ChannelMessage.Read.All",
                 }),
             ),
         };
@@ -160,7 +160,7 @@ impl Provider for MicrosoftConnectionProvider {
                         "client_id": *OAUTH_MICROSOFT_CLIENT_ID,
                         "client_secret": *OAUTH_MICROSOFT_CLIENT_SECRET,
                         "refresh_token": refresh_token,
-                        "scope": "User.Read Sites.Read.All Directory.Read.All Files.Read.All Team.ReadBasic.All ChannelSettings.Read.All ChannelMessage.Read.All",
+                        "scope": "User.Read Sites.Read.All Files.Read.All Team.ReadBasic.All ChannelSettings.Read.All ChannelMessage.Read.All",
                     }),
                 )
             }
