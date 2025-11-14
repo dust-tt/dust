@@ -1,6 +1,5 @@
 import {
   Button,
-  CheckBoxWithTextAndDescription,
   Chip,
   DropdownMenu,
   DropdownMenuContent,
@@ -25,7 +24,6 @@ export function CreateWebhookLinearConnection({
   connectionId,
 }: WebhookCreateFormComponentProps) {
   const [selectedTeams, setSelectedTeams] = useState<LinearTeam[]>([]);
-  const [allPublicTeams, setAllPublicTeams] = useState(false);
   const [teamSearchQuery, setTeamSearchQuery] = useState("");
   const [showTeamDropdown, setShowTeamDropdown] = useState(false);
 
@@ -56,17 +54,13 @@ export function CreateWebhookLinearConnection({
 
   // Notify parent component when data changes
   useEffect(() => {
-    const isReady = !!(
-      connectionId &&
-      (selectedTeams.length > 0 || allPublicTeams)
-    );
+    const isReady = !!(connectionId && selectedTeams.length > 0);
 
     if (isReady && onDataToCreateWebhookChange) {
       onDataToCreateWebhookChange({
         connectionId,
         remoteMetadata: {
           teams: selectedTeams,
-          allPublicTeams,
         },
       });
     } else if (onDataToCreateWebhookChange) {
@@ -79,7 +73,6 @@ export function CreateWebhookLinearConnection({
   }, [
     connectionId,
     selectedTeams,
-    allPublicTeams,
     onDataToCreateWebhookChange,
     onReadyToSubmitChange,
   ]);
@@ -101,8 +94,7 @@ export function CreateWebhookLinearConnection({
       <div>
         <Page.H variant="h6">Configure Linear Webhook</Page.H>
         <p className="text-element-700 mt-2 text-sm">
-          Select which teams should trigger webhooks, or enable for all public
-          teams.
+          Select which teams should trigger webhooks.
         </p>
       </div>
 
@@ -118,7 +110,7 @@ export function CreateWebhookLinearConnection({
           <div>
             <Label>
               Teams{" "}
-              {selectedTeams.length === 0 && !allPublicTeams && (
+              {selectedTeams.length === 0 && (
                 <span className="text-warning">*</span>
               )}
             </Label>
@@ -182,24 +174,9 @@ export function CreateWebhookLinearConnection({
             </div>
           </div>
 
-          <div>
-            <Label>Options</Label>
-            <div className="mt-2">
-              <CheckBoxWithTextAndDescription
-                text="All Public Teams"
-                description="Receive events from all public teams in the workspace"
-                checked={allPublicTeams}
-                onCheckedChange={(checked) =>
-                  setAllPublicTeams(checked === true)
-                }
-              />
-            </div>
-          </div>
-
-          {selectedTeams.length === 0 && !allPublicTeams && (
+          {selectedTeams.length === 0 && (
             <p className="dark:text-warning-night mt-1 text-xs text-warning">
-              Please select at least one team or enable "All Public Teams" to
-              create the webhook
+              Please select at least one team to create the webhook
             </p>
           )}
         </div>

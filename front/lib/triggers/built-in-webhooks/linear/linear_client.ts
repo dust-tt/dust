@@ -21,7 +21,6 @@ const LinearWebhookSchema = z.object({
     })
     .nullable()
     .optional(),
-  allPublicTeams: z.boolean().optional(),
 });
 
 const LinearGraphQLResponseSchema = z.object({
@@ -118,12 +117,10 @@ export class LinearClient {
     url,
     resourceTypes,
     teamId,
-    allPublicTeams,
   }: {
     url: string;
     resourceTypes: string[];
-    teamId?: string;
-    allPublicTeams?: boolean;
+    teamId: string;
   }): Promise<Result<LinearWebhookType, Error>> {
     const query = `
       mutation WebhookCreate($input: WebhookCreateInput!) {
@@ -138,7 +135,6 @@ export class LinearClient {
               id
               name
             }
-            allPublicTeams
           }
         }
       }
@@ -148,8 +144,7 @@ export class LinearClient {
       input: {
         url,
         resourceTypes,
-        ...(teamId ? { teamId } : {}),
-        ...(allPublicTeams !== undefined ? { allPublicTeams } : {}),
+        teamId,
       },
     };
 

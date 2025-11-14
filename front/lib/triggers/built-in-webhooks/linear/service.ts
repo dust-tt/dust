@@ -94,48 +94,20 @@ export class LinearWebhookService implements RemoteWebhookService<"linear"> {
     }
 
     const teams = remoteMetadata.teams;
-    const allPublicTeams = remoteMetadata.allPublicTeams ?? false;
 
-    if (teams.length === 0 && !allPublicTeams) {
-      return new Err(
-        new Error(
-          "At least one team must be specified or allPublicTeams must be true"
-        )
-      );
+    if (teams.length === 0) {
+      return new Err(new Error("At least one team must be specified"));
     }
 
     const webhookIds: Record<string, string> = {};
     const errors: string[] = [];
-
-    // If allPublicTeams is true, create a single webhook for all public teams
-    if (allPublicTeams) {
-      try {
-        const createRes = await client.createWebhook({
-          url: webhookUrl,
-          resourceTypes: events,
-          allPublicTeams: true,
-        });
-
-        if (createRes.isErr()) {
-          errors.push(
-            `Failed to create webhook for all public teams: ${createRes.error.message}`
-          );
-        } else {
-          webhookIds["__all_public_teams__"] = createRes.value.id;
-        }
-      } catch (error: any) {
-        errors.push(
-          `Failed to create webhook for all public teams: ${error.message}`
-        );
-      }
-    }
 
     // Create webhooks for individual teams
     for (const team of teams) {
       try {
         const createRes = await client.createWebhook({
           url: webhookUrl,
-          resourceTypes,
+          resourceTypes: events,
           teamId: team.id,
         });
 
@@ -164,7 +136,6 @@ export class LinearWebhookService implements RemoteWebhookService<"linear"> {
       updatedRemoteMetadata: {
         ...remoteMetadata,
         webhookIds,
-        allPublicTeams,
       },
       errors: errors.length > 0 ? errors : undefined,
     });

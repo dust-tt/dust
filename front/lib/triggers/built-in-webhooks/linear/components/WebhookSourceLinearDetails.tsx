@@ -15,7 +15,7 @@ export function WebhookSourceLinearDetails({
     return null;
   }
 
-  const { teams, allPublicTeams } = metadata;
+  const { teams } = metadata;
 
   return (
     <div className="space-y-4">
@@ -23,7 +23,7 @@ export function WebhookSourceLinearDetails({
         <Page.H variant="h6">Webhook Configuration</Page.H>
       </div>
 
-      {teams && teams.length > 0 && (
+      {teams && teams.length > 0 ? (
         <div>
           <div className="mb-2 text-sm font-medium">Teams</div>
           <div className="flex flex-wrap gap-1">
@@ -37,18 +37,9 @@ export function WebhookSourceLinearDetails({
             ))}
           </div>
         </div>
-      )}
-
-      {allPublicTeams && (
-        <div>
-          <div className="mb-2 text-sm font-medium">Scope</div>
-          <Chip label="All Public Teams" size="xs" color="success" />
-        </div>
-      )}
-
-      {!teams?.length && !allPublicTeams && (
+      ) : (
         <div className="text-element-600 text-sm">
-          No specific configuration found
+          No team configuration found
         </div>
       )}
     </div>

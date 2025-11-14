@@ -20,8 +20,10 @@ const LINEAR_LAMBDA_EVENT: WebhookEvent = {
 
 export const LINEAR_WEBHOOK_PRESET: PresetWebhook<"linear"> = {
   name: "Linear",
-  // No event check, there's only one lambda event for now.
-  eventCheck: null,
+  eventCheck: {
+    type: "headers",
+    field: "Linear-Event",
+  },
   events: [LINEAR_LAMBDA_EVENT],
   icon: "LinearLogo",
   description: "Receive events from Linear.",
