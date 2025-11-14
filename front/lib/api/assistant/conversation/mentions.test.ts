@@ -374,7 +374,7 @@ describe("createUserMessages", () => {
       },
     ];
 
-    await createUserMessages({
+    await createUserMessages(auth, {
       mentions,
       message: messageRow,
       owner: workspace,
@@ -416,7 +416,7 @@ describe("createUserMessages", () => {
       },
     ];
 
-    await createUserMessages({
+    await createUserMessages(auth, {
       mentions,
       message: messageRow,
       owner: workspace,
@@ -448,7 +448,7 @@ describe("createUserMessages", () => {
 
     const mentions: MentionType[] = [];
 
-    await createUserMessages({
+    await createUserMessages(auth, {
       mentions,
       message: messageRow,
       owner: workspace,
@@ -484,7 +484,7 @@ describe("createUserMessages", () => {
       } as AgentMention,
     ];
 
-    await createUserMessages({
+    await createUserMessages(auth, {
       mentions,
       message: messageRow,
       owner: workspace,

@@ -10,6 +10,7 @@
  * This is the minimal representation of an agent mention.
  */
 export type AgentMention = {
+  // TODO(mentions v2) add a type here
   configurationId: string;
 };
 
