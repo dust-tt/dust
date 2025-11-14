@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 const LinearTeamSchema = z.object({
   id: z.string(),
@@ -24,7 +24,7 @@ const LinearWebhookSchema = z.object({
 });
 
 const LinearGraphQLResponseSchema = z.object({
-  data: z.record(z.any()),
+  data: z.record(z.any()).nullable(),
   errors: z
     .array(
       z.object({
@@ -45,7 +45,7 @@ export class LinearClient {
   private async graphqlRequest(
     query: string,
     variables?: Record<string, any>
-  ): Promise<Result<Record<string, any>, Error>> {
+  ): Promise<Result<Record<string, any> | null, Error>> {
     try {
       const response = await fetch(this.apiUrl, {
         method: "POST",
@@ -70,17 +70,14 @@ export class LinearClient {
 
       if (result.errors && result.errors.length > 0) {
         return new Err(
-          new Error(
-            `Linear API errors: ${result.errors.map((e) => e.message).join(", ")}`
-          )
+          new Error(result.errors.map((e) => e.message).join(", "))
         );
       }
 
       return new Ok(result.data);
-    } catch (error: any) {
-      return new Err(
-        new Error(`Failed to make Linear API request: ${error.message}`)
-      );
+    } catch (err) {
+      const error = normalizeError(err);
+      return new Err(new Error(error.message));
     }
   }
 
@@ -104,11 +101,12 @@ export class LinearClient {
     }
 
     try {
-      const teams = result.value.teams.nodes.map((team: unknown) =>
+      const teams = result.value?.teams.nodes.map((team: unknown) =>
         LinearTeamSchema.parse(team)
       );
       return new Ok(teams);
-    } catch (error: any) {
+    } catch (err) {
+      const error = normalizeError(err);
       return new Err(new Error(`Failed to parse teams: ${error.message}`));
     }
   }
@@ -154,7 +152,7 @@ export class LinearClient {
       return result;
     }
 
-    if (!result.value.webhookCreate.success) {
+    if (!result.value?.webhookCreate.success) {
       return new Err(new Error("Failed to create webhook"));
     }
 
@@ -163,8 +161,8 @@ export class LinearClient {
         result.value.webhookCreate.webhook
       );
       return new Ok(webhook);
-    } catch (error: any) {
-      return new Err(new Error(`Failed to parse webhook: ${error.message}`));
+    } catch (err) {
+      return new Err(normalizeError(err));
     }
   }
 
@@ -185,7 +183,7 @@ export class LinearClient {
       return result;
     }
 
-    if (!result.value.webhookDelete.success) {
+    if (!result.value?.webhookDelete.success) {
       return new Err(new Error("Failed to delete webhook"));
     }
 
@@ -218,11 +216,12 @@ export class LinearClient {
     }
 
     try {
-      const webhooks = result.value.webhooks.nodes.map((webhook: unknown) =>
+      const webhooks = result.value?.webhooks.nodes.map((webhook: unknown) =>
         LinearWebhookSchema.parse(webhook)
       );
       return new Ok(webhooks);
-    } catch (error: any) {
+    } catch (err) {
+      const error = normalizeError(err);
       return new Err(new Error(`Failed to parse webhooks: ${error.message}`));
     }
   }

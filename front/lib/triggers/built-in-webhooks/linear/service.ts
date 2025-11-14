@@ -104,32 +104,22 @@ export class LinearWebhookService implements RemoteWebhookService<"linear"> {
 
     // Create webhooks for individual teams
     for (const team of teams) {
-      try {
-        const createRes = await client.createWebhook({
-          url: webhookUrl,
-          resourceTypes: events,
-          teamId: team.id,
-        });
+      const createRes = await client.createWebhook({
+        url: webhookUrl,
+        resourceTypes: events,
+        teamId: team.id,
+      });
 
-        if (createRes.isErr()) {
-          errors.push(
-            `Failed to create webhook for team ${team.name}: ${createRes.error.message}`
-          );
-          continue;
-        }
-
-        webhookIds[team.id] = createRes.value.id;
-      } catch (error: any) {
-        errors.push(
-          `Failed to create webhook for team ${team.name}: ${error.message}`
-        );
+      if (createRes.isErr()) {
+        errors.push(`Team "${team.name}": ${createRes.error.message}`);
+        continue;
       }
+
+      webhookIds[team.id] = createRes.value.id;
     }
 
     if (Object.keys(webhookIds).length === 0) {
-      return new Err(
-        new Error(`Failed to create any webhooks. Errors: ${errors.join(", ")}`)
-      );
+      return new Err(new Error(errors.join("; ")));
     }
 
     return new Ok({
@@ -175,27 +165,19 @@ export class LinearWebhookService implements RemoteWebhookService<"linear"> {
 
     for (const [teamKey, webhookId] of Object.entries(webhookIds)) {
       if (typeof webhookId !== "string") {
-        errors.push(`Invalid webhook ID for team ${teamKey}`);
+        errors.push(`Team "${teamKey}": Invalid webhook ID`);
         continue;
       }
 
-      try {
-        const deleteRes = await client.deleteWebhook(webhookId);
+      const deleteRes = await client.deleteWebhook(webhookId);
 
-        if (deleteRes.isErr()) {
-          errors.push(
-            `Failed to delete webhook for team ${teamKey}: ${deleteRes.error.message}`
-          );
-        }
-      } catch (error: any) {
-        errors.push(
-          `Failed to delete webhook for team ${teamKey}: ${error.message}`
-        );
+      if (deleteRes.isErr()) {
+        errors.push(`Team "${teamKey}": ${deleteRes.error.message}`);
       }
     }
 
     if (errors.length > 0) {
-      logger.warn(`Some webhooks failed to delete: ${errors.join(", ")}`);
+      logger.warn({ errors }, "Some Linear webhooks failed to delete");
     }
 
     return new Ok(undefined);

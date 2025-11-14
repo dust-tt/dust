@@ -16,7 +16,7 @@ export class LinearOAuthProvider implements BaseOAuthStrategyProvider {
     connection: OAuthConnectionType;
     useCase: OAuthUseCase;
   }) {
-    const scopes = ["read", "write"];
+    const scopes = ["read", "write", "admin"];
 
     return (
       `https://linear.app/oauth/authorize` +
