@@ -61,43 +61,33 @@ impl Provider for LinearConnectionProvider {
             None => Err(anyhow!("Missing `access_token` in response from Linear"))?,
         };
 
+        // Linear OAuth apps created after Oct 1, 2025 have 24-hour expiring tokens
         let expires_in = match raw_json.get("expires_in") {
             Some(serde_json::Value::Number(n)) => match n.as_u64() {
                 Some(n) => n,
                 None => Err(anyhow!("Invalid `expires_in` in response from Linear"))?,
             },
-            _ => {
-                86400
-            }
+            _ => Err(anyhow!("Missing `expires_in` in response from Linear"))?,
         };
 
         let refresh_token = match raw_json["refresh_token"].as_str() {
-            Some(token) => Some(token.to_string()),
-            None => {
-                None => Err(anyhow!("Missing `refresh_token` in response from Linear"))?,
-            }
+            Some(token) => token.to_string(),
+            None => Err(anyhow!("Missing `refresh_token` in response from Linear"))?,
         };
 
-        let access_token_expiry = if refresh_token.is_some() {
-            // Only set expiry if we have a refresh token
-            Some(utils::now() + (expires_in - PROVIDER_TIMEOUT_SECONDS) * 1000)
-        } else {
-            None
-        };
+        let access_token_expiry = Some(utils::now() + (expires_in - PROVIDER_TIMEOUT_SECONDS) * 1000);
 
         Ok(FinalizeResult {
             redirect_uri: redirect_uri.to_string(),
             code: code.to_string(),
             access_token: access_token.to_string(),
             access_token_expiry,
-            refresh_token,
+            refresh_token: Some(refresh_token),
             raw_json,
             extra_metadata: None,
         })
     }
 
-    // Linear refresh tokens are available for OAuth2 applications created from October 1, 2025 onwards.
-    // Access tokens have a 24-hour validity period for newer apps.
     async fn refresh(
         &self,
         connection: &Connection,
@@ -105,11 +95,7 @@ impl Provider for LinearConnectionProvider {
     ) -> Result<RefreshResult, ProviderError> {
         let refresh_token = match connection.unseal_refresh_token() {
             Ok(Some(token)) => token,
-            Ok(None) => {
-                return Err(ProviderError::ActionNotSupportedError(
-                    "Linear access tokens do not expire for this OAuth app (created before Oct 1, 2025)".to_string(),
-                ));
-            }
+            Ok(None) => Err(anyhow!("Missing refresh_token in Linear connection"))?,
             Err(e) => Err(e)?,
         };
 
@@ -141,13 +127,9 @@ impl Provider for LinearConnectionProvider {
             _ => Err(anyhow!("Missing `expires_in` in response from Linear"))?,
         };
 
-        // Linear returns a new refresh token on each refresh
         let new_refresh_token = match raw_json["refresh_token"].as_str() {
-            Some(token) => Some(token.to_string()),
-            None => {
-                // Keep the old refresh token if a new one is not provided
-                Some(refresh_token)
-            }
+            Some(token) => token.to_string(),
+            None => Err(anyhow!("Missing `refresh_token` in response from Linear"))?,
         };
 
         Ok(RefreshResult {
@@ -155,7 +137,7 @@ impl Provider for LinearConnectionProvider {
             access_token_expiry: Some(
                 utils::now() + (expires_in - PROVIDER_TIMEOUT_SECONDS) * 1000,
             ),
-            refresh_token: new_refresh_token,
+            refresh_token: Some(new_refresh_token),
             raw_json,
         })
     }
