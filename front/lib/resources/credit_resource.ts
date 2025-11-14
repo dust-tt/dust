@@ -98,8 +98,20 @@ export class CreditResource extends BaseResource<CreditModel> {
       return new Err(new Error("Amount to consume must be strictly positive."));
     }
     try {
-      // Atomic decrement guarded by remainingAmount >= amountInCents to prevent double spending.
+      const now = new Date();
       const [, affectedCount] = await this.model.decrement("remainingAmount", {
+        by: amountInCents,
+        where: {
+          id: this.id,
+          workspaceId: this.workspaceId,
+          remainingAmount: { [Op.gte]: amountInCents },
+          [Op.or]: [
+            { expirationDate: null },
+            { expirationDate: { [Op.gt]: now } },
+          ],
+        },
+        transaction,
+      });
         by: amountInCents,
         where: {
           id: this.id,
