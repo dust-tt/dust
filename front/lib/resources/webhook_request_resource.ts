@@ -69,7 +69,8 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     status: WebhookRequestTriggerStatus;
     errorMessage?: string;
   }) {
-    await WebhookRequestTriggerModel.create({
+    // Use upsert as we might be retrying for the same request/trigger combination
+    await WebhookRequestTriggerModel.upsert({
       workspaceId: this.workspaceId,
       webhookRequestId: this.id,
       triggerId: trigger.id,
