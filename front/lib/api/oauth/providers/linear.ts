@@ -17,7 +17,7 @@ export class LinearOAuthProvider implements BaseOAuthStrategyProvider {
     connection: OAuthConnectionType;
     useCase: OAuthUseCase;
   }) {
-    let scopes: string[] = ["read", "write"];
+    const scopes: string[] = ["read", "write"];
     if (useCase === "webhooks") {
       scopes.push("admin");
     }
