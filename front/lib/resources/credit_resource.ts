@@ -52,7 +52,6 @@ export class CreditResource extends BaseResource<CreditModel> {
         ...where,
         workspaceId: auth.getNonNullableWorkspace().id,
       },
-      order: [["createdAt", "DESC"]],
       ...rest,
     });
     return rows.map((r) => new this(this.model, r.get()));

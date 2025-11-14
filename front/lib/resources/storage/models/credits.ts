@@ -53,7 +53,6 @@ CreditModel.init(
       {
         fields: ["workspaceId", "expirationDate"],
         where: { remainingAmount: { [Op.ne]: 0 } },
-        concurrently: true,
       },
     ],
   }
