@@ -57,7 +57,10 @@ export class OpenAIResponsesLLM extends LLM {
         input: toInput(prompt, conversation),
         stream: true,
         temperature: this.temperature ?? undefined,
-        reasoning: toReasoning(this.reasoningEffort),
+        reasoning: toReasoning(
+          this.reasoningEffort,
+          this.modelConfig.useNativeLightReasoning
+        ),
         tools: specifications.map(toTool),
         text: { format: toResponseFormat(this.responseFormat) },
         // Only models supporting reasoning can do encrypted content for reasoning.

@@ -13,13 +13,20 @@ import type {
   LLMParameters,
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
+import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { RunResource } from "@app/lib/resources/run_resource";
 import logger from "@app/logger/logger";
-import type { ModelIdType, ReasoningEffort } from "@app/types";
+import type {
+  ModelIdType,
+  ModelProviderIdType,
+  ReasoningEffort,
+  SUPPORTED_MODEL_CONFIGS,
+} from "@app/types";
 
 export abstract class LLM {
   protected modelId: ModelIdType;
+  protected modelConfig: (typeof SUPPORTED_MODEL_CONFIGS)[number];
   protected temperature: number | null;
   protected reasoningEffort: ReasoningEffort | null;
   protected responseFormat: string | null;
@@ -41,9 +48,13 @@ export abstract class LLM {
       reasoningEffort = "none",
       responseFormat = null,
       temperature = AGENT_CREATIVITY_LEVEL_TEMPERATURES.balanced,
-    }: LLMParameters & { clientId: string }
+    }: LLMParameters & { clientId: ModelProviderIdType }
   ) {
     this.modelId = modelId;
+    this.modelConfig = getSupportedModelConfig({
+      modelId: this.modelId,
+      providerId: clientId,
+    });
     this.temperature = temperature;
     this.reasoningEffort = reasoningEffort;
     this.responseFormat = responseFormat;
