@@ -9,7 +9,8 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
   },
   dust_edge_global_agent: {
-    description: "Access to dust-edge global agent",
+    description:
+      "Access to dust-edge global agent that we use internally to test other models on dust",
     stage: "dust_only",
   },
   notion_private_integration: {
