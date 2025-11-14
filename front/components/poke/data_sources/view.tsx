@@ -481,6 +481,7 @@ function StuckActivitiesDialog({
                       size="xs"
                       className="p-2"
                       label="Workflow"
+                      target="_blank"
                     />
                   }
                 />
@@ -512,6 +513,7 @@ function StuckActivitiesDialog({
                         size="xs"
                         className="p-2"
                         label="Logs"
+                        target="_blank"
                       />
                     }
                   >
