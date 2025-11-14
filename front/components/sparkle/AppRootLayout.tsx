@@ -10,6 +10,7 @@ import { QuickStartGuide } from "@app/components/QuickStartGuide";
 import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import { useBrowserNotification } from "@app/hooks/useBrowserNotification";
 import { useDatadogLogs } from "@app/hooks/useDatadogLogs";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useNovuClient } from "@app/hooks/useNovuClient";
 import { useUser } from "@app/lib/swr/user";
 import { getFaviconPath } from "@app/lib/utils";
@@ -27,6 +28,7 @@ export default function AppRootLayout({
   const { novuClient } = useNovuClient();
   useDatadogLogs();
   const faviconPath = getFaviconPath();
+  const sendNotification = useSendNotification();
 
   useEffect(() => {
     if (typeof window !== "undefined" && user?.sId) {
@@ -58,6 +60,12 @@ export default function AppRootLayout({
       const unsubscribe = await novuClient.on(
         "notifications.notification_received",
         (notification) => {
+          sendNotification({
+            title: notification.result.subject ?? "New notification",
+            description: notification.result.body.replaceAll("\n", " ").trim(),
+            type: "info",
+          });
+
           if (!notification.result.data?.skipPushNotification) {
             notify(notification.result.subject ?? "New notification", {
               body: notification.result.body.replaceAll("\n", " ").trim(),
@@ -102,7 +110,7 @@ export default function AppRootLayout({
         console.error("Failed to setup notifications", { error });
       }
     }
-  }, [notify, novuClient, push]);
+  }, [notify, novuClient, push, sendNotification]);
 
   return (
     <ThemeProvider>
