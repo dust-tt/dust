@@ -1,3 +1,4 @@
+import { isSupportedImageContentType } from "@dust-tt/client";
 import formidable from "formidable";
 import fs from "fs/promises";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -8,9 +9,7 @@ import { getPublicUploadBucket } from "@app/lib/file_storage";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  WithAPIErrorResponse,
-} from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types";
 
 export type PostPokeAnnouncementImageUploadResponseBody = {
   fileId: string;
@@ -94,10 +93,6 @@ async function handler(
     const gcsFile = bucket.file(storagePath);
     await gcsFile.save(fileBuffer, {
       contentType: file.mimetype,
-      metadata: {
-        cacheControl: "public, max-age=31536000",
-      },
-    });
       metadata: {
         cacheControl: "public, max-age=31536000",
       },

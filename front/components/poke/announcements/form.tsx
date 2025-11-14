@@ -17,6 +17,7 @@ import {
   InputField,
   SelectField,
 } from "@app/components/poke/shadcn/ui/form/fields";
+import { slugify } from "@app/types";
 import type {
   AnnouncementContentType,
   AnnouncementType,
@@ -63,19 +64,6 @@ const COMMON_TIMEZONES = [
   "Australia/Sydney",
   "UTC",
 ];
-
-function createAnnouncementSlug(text: string): string {
-  // Simplified slugify that uses dashes (URL-friendly) instead of underscores
-  return text
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, "-")
-    .replace(/[^\w-]+/g, "-")
-    .replace(/--+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
 
 export function AnnouncementForm({
   announcement,
@@ -133,7 +121,7 @@ export function AnnouncementForm({
         .toISOString()
         .slice(0, 10)
         .replace(/-/g, "");
-      const slugifiedTitle = createAnnouncementSlug(watchTitle);
+      const slugifiedTitle = slugify(watchTitle).replace(/_/g, "-");
       form.setValue("slug", `${datePrefix}-${slugifiedTitle}`, {
         shouldValidate: false,
       });

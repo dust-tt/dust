@@ -4,6 +4,7 @@ import { fromError } from "zod-validation-error";
 
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
+import { getPublicUploadBucket } from "@app/lib/file_storage";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { AnnouncementResource } from "@app/lib/resources/announcement_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -71,7 +72,9 @@ async function handler(
     });
   }
 
-  const announcement = await AnnouncementResource.fetchBySId(aId);
+  const publicUploadBucket = getPublicUploadBucket();
+
+  const announcement = await AnnouncementResource.fetchById(aId);
   if (!announcement) {
     return apiError(req, res, {
       status_code: 404,
@@ -87,7 +90,9 @@ async function handler(
       const announcementJSON = announcement.toJSON();
       // Generate image URL from imageFileId
       if (announcementJSON.imageFileId) {
-        announcementJSON.imageUrl = `https://storage.googleapis.com/dust-public-uploads-test/announcements/images/${announcementJSON.imageFileId}`;
+        const storagePath = `announcements/images/${announcementJSON.imageFileId}`;
+        const gcsFile = publicUploadBucket.file(storagePath);
+        announcementJSON.imageUrl = gcsFile.publicUrl();
       }
       return res.status(200).json({
         announcement: announcementJSON,
@@ -95,8 +100,9 @@ async function handler(
     }
 
     case "PATCH": {
-      const parseResult =
-        PatchPokeAnnouncementRequestBodySchema.safeParse(req.body);
+      const parseResult = PatchPokeAnnouncementRequestBodySchema.safeParse(
+        req.body
+      );
       if (!parseResult.success) {
         return apiError(req, res, {
           status_code: 400,
@@ -140,11 +146,21 @@ async function handler(
       }
 
       const updateData: Record<string, unknown> = {};
-      if (slug !== undefined) {updateData.slug = slug;}
-      if (title !== undefined) {updateData.title = title;}
-      if (description !== undefined) {updateData.description = description;}
-      if (content !== undefined) {updateData.content = content;}
-      if (isPublished !== undefined) {updateData.isPublished = isPublished;}
+      if (slug !== undefined) {
+        updateData.slug = slug;
+      }
+      if (title !== undefined) {
+        updateData.title = title;
+      }
+      if (description !== undefined) {
+        updateData.description = description;
+      }
+      if (content !== undefined) {
+        updateData.content = content;
+      }
+      if (isPublished !== undefined) {
+        updateData.isPublished = isPublished;
+      }
       if (publishedAt !== undefined) {
         updateData.publishedAt = publishedAt ? new Date(publishedAt) : null;
       }
@@ -154,12 +170,24 @@ async function handler(
       if (eventDate !== undefined) {
         updateData.eventDate = eventDate ? new Date(eventDate) : null;
       }
-      if (eventTimezone !== undefined) {updateData.eventTimezone = eventTimezone;}
-      if (eventLocation !== undefined) {updateData.eventLocation = eventLocation;}
-      if (eventUrl !== undefined) {updateData.eventUrl = eventUrl;}
-      if (categories !== undefined) {updateData.categories = categories;}
-      if (tags !== undefined) {updateData.tags = tags;}
-      if (imageFileId !== undefined) {updateData.imageFileId = imageFileId;}
+      if (eventTimezone !== undefined) {
+        updateData.eventTimezone = eventTimezone;
+      }
+      if (eventLocation !== undefined) {
+        updateData.eventLocation = eventLocation;
+      }
+      if (eventUrl !== undefined) {
+        updateData.eventUrl = eventUrl;
+      }
+      if (categories !== undefined) {
+        updateData.categories = categories;
+      }
+      if (tags !== undefined) {
+        updateData.tags = tags;
+      }
+      if (imageFileId !== undefined) {
+        updateData.imageFileId = imageFileId;
+      }
 
       const [affectedCount] = await announcement.update(updateData);
       if (affectedCount === 0) {
@@ -173,7 +201,7 @@ async function handler(
       }
 
       // Fetch updated announcement
-      const updatedAnnouncement = await AnnouncementResource.fetchBySId(aId);
+      const updatedAnnouncement = await AnnouncementResource.fetchById(aId);
       if (!updatedAnnouncement) {
         return apiError(req, res, {
           status_code: 404,
@@ -187,7 +215,9 @@ async function handler(
       const updatedAnnouncementJSON = updatedAnnouncement.toJSON();
       // Generate image URL from imageFileId
       if (updatedAnnouncementJSON.imageFileId) {
-        updatedAnnouncementJSON.imageUrl = `https://storage.googleapis.com/dust-public-uploads-test/announcements/images/${updatedAnnouncementJSON.imageFileId}`;
+        const storagePath = `announcements/images/${updatedAnnouncementJSON.imageFileId}`;
+        const gcsFile = publicUploadBucket.file(storagePath);
+        updatedAnnouncementJSON.imageUrl = gcsFile.publicUrl();
       }
 
       return res.status(200).json({
