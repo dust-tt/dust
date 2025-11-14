@@ -56,6 +56,7 @@ import {
   Provider,
 } from "@app/lib/resources/storage/models/apps";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+import { CreditModel } from "@app/lib/resources/storage/models/credits";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import {
@@ -141,6 +142,7 @@ async function main() {
   await Plan.sync({ alter: true });
   await Subscription.sync({ alter: true });
   await TemplateModel.sync({ alter: true });
+  await CreditModel.sync({ alter: true });
 
   await AgentConfiguration.sync({ alter: true });
   await AgentUserRelation.sync({ alter: true });
