@@ -54,7 +54,6 @@ import {
   MicrosoftNodeResource,
   MicrosoftRootResource,
 } from "@connectors/resources/microsoft_resource";
-import type { ConnectorMetadata } from "@connectors/resources/storage/models/connector_model";
 import type {
   ConnectorPermission,
   ContentNode,
@@ -91,6 +90,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       pdfEnabled: false,
       csvEnabled: false,
       largeFilesEnabled: false,
+      tenantId: tenantId ?? null,
     };
 
     const connector = await ConnectorResource.makeNew(
@@ -103,17 +103,6 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       },
       microsoftConfigurationBlob
     );
-
-    if (tenantId) {
-      const metadata: ConnectorMetadata = {
-        ...(connector.metadata ?? {}),
-        tenantId,
-      };
-
-      await connector.update({
-        metadata,
-      });
-    }
 
     await syncSucceeded(connector.id);
 
@@ -137,8 +126,13 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
 
     // Check that we don't switch tenants
     if (connectionId) {
-      const existingMetadata = connector.metadata ?? {};
-      const currentTenantId = existingMetadata.tenantId;
+      const config = await MicrosoftConfigurationResource.fetchByConnectorId(
+        connector.id
+      );
+      if (!config) {
+        throw new Error(`Connector configuration not found`);
+      }
+      const { tenantId: currentTenantId } = config;
       const { tenantId: newTenantId } =
         await getMicrosoftConnectionData(connectionId);
 
@@ -149,6 +143,9 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
             "Cannot change domain of a Microsoft connector"
           )
         );
+      } else if (!currentTenantId && newTenantId) {
+        // Tenant ID was not set, update it
+        await config.update({ tenantId: newTenantId });
       }
 
       await connector.update({ connectionId });
