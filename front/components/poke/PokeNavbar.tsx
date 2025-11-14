@@ -56,6 +56,11 @@ function PokeNavbar({ currentRegion, regionUrls }: PokeNavbarProps) {
           <Button href="/poke/plans" variant="ghost" label="Plans" />
           <Button href="/poke/templates" variant="ghost" label="Templates" />
           <Button href="/poke/plugins" variant="ghost" label="Plugins" />
+          <Button
+            href="/poke/announcements"
+            variant="ghost"
+            label="Announcements"
+          />
           <Button href="/poke/kill" variant="ghost" label="Kill Switches" />
           <Button href="/poke/pokefy" variant="ghost" label="Pokefy URL" />
         </div>
