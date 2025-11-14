@@ -93,8 +93,8 @@ export class LinearWebhookService implements RemoteWebhookService<"linear"> {
       );
     }
 
-    const teams = remoteMetadata.teams || [];
-    const allPublicTeams = remoteMetadata.allPublicTeams || false;
+    const teams = remoteMetadata.teams;
+    const allPublicTeams = remoteMetadata.allPublicTeams ?? false;
 
     if (teams.length === 0 && !allPublicTeams) {
       return new Err(
@@ -107,22 +107,12 @@ export class LinearWebhookService implements RemoteWebhookService<"linear"> {
     const webhookIds: Record<string, string> = {};
     const errors: string[] = [];
 
-    // Default Linear resource types to listen to
-    const resourceTypes = [
-      "Issue",
-      "Comment",
-      "Project",
-      "Cycle",
-      "Label",
-      "Reaction",
-    ];
-
     // If allPublicTeams is true, create a single webhook for all public teams
     if (allPublicTeams) {
       try {
         const createRes = await client.createWebhook({
           url: webhookUrl,
-          resourceTypes,
+          resourceTypes: events,
           allPublicTeams: true,
         });
 
@@ -166,9 +156,7 @@ export class LinearWebhookService implements RemoteWebhookService<"linear"> {
 
     if (Object.keys(webhookIds).length === 0) {
       return new Err(
-        new Error(
-          `Failed to create any webhooks. Errors: ${errors.join(", ")}`
-        )
+        new Error(`Failed to create any webhooks. Errors: ${errors.join(", ")}`)
       );
     }
 

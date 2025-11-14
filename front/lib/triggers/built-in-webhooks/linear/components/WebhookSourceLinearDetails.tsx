@@ -1,7 +1,6 @@
 import { Chip, Page } from "@dust-tt/sparkle";
 
 import type { WebhookDetailsComponentProps } from "@app/components/triggers/webhook_preset_components";
-import type { LinearTeam } from "@app/lib/triggers/built-in-webhooks/linear/types";
 import { isLinearWebhookMetadata } from "@app/lib/triggers/built-in-webhooks/linear/types";
 
 export function WebhookSourceLinearDetails({
