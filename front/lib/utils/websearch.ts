@@ -212,7 +212,7 @@ const firecrawlSearch = async ({
       return {
         title: doc.metadata?.title ?? doc.title ?? doc.url ?? "Untitled result",
         link,
-        snippet: doc.metadata?.description ?? doc.markdown?.slice(0, 300) ?? "",
+        snippet: doc.description ?? "",
       };
     })
   );
