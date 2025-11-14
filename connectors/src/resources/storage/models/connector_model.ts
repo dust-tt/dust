@@ -11,7 +11,6 @@ import type {
 
 export interface ConnectorMetadata {
   rateLimited?: { at: Date } | null;
-  tenantId?: string;
 }
 
 export class ConnectorModel extends BaseModel<ConnectorModel> {
