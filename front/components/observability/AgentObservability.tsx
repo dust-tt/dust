@@ -27,12 +27,13 @@ export function AgentObservability({
   agentConfigurationId,
   isCustomAgent,
 }: AgentObservabilityProps) {
-  const { period } = useObservabilityContext();
+  const { period, mode, selectedVersion } = useObservabilityContext();
 
   const { agentAnalytics, isAgentAnalyticsLoading } = useAgentAnalytics({
     workspaceId,
     agentConfigurationId,
     period,
+    version: mode === "version" ? selectedVersion?.version : undefined,
   });
 
   return (
@@ -57,9 +58,9 @@ export function AgentObservability({
               className="h-24"
               content={
                 <div className="flex flex-col gap-1 text-2xl">
-                  {agentAnalytics?.users ? (
+                  {agentAnalytics?.activeUsers !== undefined ? (
                     <div className="truncate text-foreground dark:text-foreground-night">
-                      {agentAnalytics.users.length}
+                      {agentAnalytics.activeUsers}
                     </div>
                   ) : (
                     "-"
@@ -73,7 +74,7 @@ export function AgentObservability({
               content={
                 <div className="flex flex-row gap-2 text-2xl">
                   {agentAnalytics?.mentions
-                    ? `${agentAnalytics.mentions.messageCount}`
+                    ? `${Math.round(agentAnalytics.mentions.messageCount / agentAnalytics.activeUsers)}`
                     : "-"}
                 </div>
               }
@@ -104,7 +105,7 @@ export function AgentObservability({
         )}
       </TabContentChildSectionLayout>
 
-      <TabContentChildSectionLayout title="Charts">
+      <TabContentChildSectionLayout title="Details">
         <UsageMetricsChart
           workspaceId={workspaceId}
           agentConfigurationId={agentConfigurationId}

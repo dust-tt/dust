@@ -41,6 +41,7 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "gpt-4o-mini"
   | "gpt-4.1-2025-04-14"
   | "gpt-4.1-mini-2025-04-14"
+  | "gpt-5.1"
   | "gpt-5-nano"
   | "gpt-5-mini"
   | "gpt-5"
@@ -50,7 +51,11 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "o3-mini"
   | "o4-mini"
   | "claude-3-5-haiku-20241022"
+  | "claude-3-5-sonnet-20240620"
+  | "claude-3-5-sonnet-20241022"
+  | "claude-3-7-sonnet-20250219"
   | "claude-3-haiku-20240307"
+  | "claude-3-opus-20240229"
   | "claude-4-opus-20250514"
   | "claude-4-sonnet-20250514"
   | "claude-haiku-4-5-20251001"
@@ -631,7 +636,6 @@ export type RetrievalDocumentPublicType = z.infer<
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "advanced_notion_management"
   | "agent_builder_instructions_autocomplete"
-  | "agent_builder_observability"
   | "agent_management_tool"
   | "agent_to_yaml"
   | "anthropic_vertex_fallback"
@@ -657,6 +661,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_trackers"
   | "labs_transcripts"
   | "legacy_dust_apps"
+  | "llm_comparison_mode_enabled"
   | "llm_router_direct_requests"
   | "mentions_v2"
   | "monday_tool"
@@ -683,7 +688,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "use_requested_space_ids"
   | "web_summarization"
   | "xai_feature"
-  | "zendesk_features"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -832,8 +836,8 @@ const LightAgentConfigurationSchema = z.object({
   visualizationEnabled: z.boolean().optional(),
   templateId: z.string().nullable(),
   groupIds: z.array(z.string()).optional(),
-  requestedGroupIds: z.array(z.array(z.string())),
-  requestedSpaceIds: z.array(z.string()),
+  requestedGroupIds: z.array(z.array(z.string())).optional(),
+  requestedSpaceIds: z.array(z.string()).optional(),
 });
 
 export type LightAgentConfigurationType = z.infer<
@@ -2831,6 +2835,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "CommandLineIcon"
   | "ConfluenceLogo"
   | "DriveLogo"
+  | "FathomLogo"
   | "GcalLogo"
   | "GithubLogo"
   | "GitlabLogo"

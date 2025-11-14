@@ -31,6 +31,7 @@ import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -38,10 +39,12 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
-import { getOutputFromAction } from "@app/temporal/agent_loop/lib/get_output_from_action";
-import { getOutputFromLLMStream } from "@app/temporal/agent_loop/lib/get_output_from_llm";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import type { GetOutputResponse } from "@app/temporal/agent_loop/lib/types";
+import {
+  getOutputFromLLM,
+  getOutputFromLLMWithParallelComparisonMode,
+} from "@app/temporal/agent_loop/lib/utils";
 import type { AgentActionsEvent, ModelId } from "@app/types";
 import { assertNever, removeNulls } from "@app/types";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
@@ -430,11 +433,17 @@ export async function runModelActivity(
     getDelimitersConfiguration({ agentConfiguration })
   );
 
+  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+  const isComparisonModeEnabled = featureFlags.includes(
+    "llm_comparison_mode_enabled"
+  );
+
   let getOutputFromActionResponse: GetOutputResponse;
   const traceContext: LLMTraceContext = {
     operationType: "agent_conversation",
-    contextId: agentConfiguration.sId,
+    contextId: conversation.sId,
     userId: auth.user()?.sId,
+    workspaceId: conversation.owner.sId,
   };
   const llm = await getLLM(auth, {
     modelId: model.modelId,
@@ -442,28 +451,12 @@ export async function runModelActivity(
     reasoningEffort: agentConfiguration.model.reasoningEffort,
     responseFormat: agentConfiguration.model.responseFormat,
     context: traceContext,
+    bypassFeatureFlag: isComparisonModeEnabled, // force bypassing feature flag for comparison mode we want to run the new implementation
   });
   const modelInteractionStartDate = performance.now();
 
-  if (llm === null) {
-    getOutputFromActionResponse = await getOutputFromAction(auth, {
-      modelConversationRes,
-      conversation,
-      userMessage,
-      runConfig,
-      specifications,
-      flushParserTokens,
-      contentParser,
-      agentMessageRow,
-      step,
-      agentConfiguration,
-      agentMessage,
-      model,
-      publishAgentError,
-      prompt,
-    });
-  } else {
-    getOutputFromActionResponse = await getOutputFromLLMStream(auth, {
+  if (llm === null || !isComparisonModeEnabled) {
+    getOutputFromActionResponse = await getOutputFromLLM(auth, localLogger, {
       modelConversationRes,
       conversation,
       userMessage,
@@ -479,7 +472,29 @@ export async function runModelActivity(
       publishAgentError,
       prompt,
       llm,
+      updateResourceAndPublishEvent,
     });
+  } else {
+    // This returns the old implementation's response for now
+    getOutputFromActionResponse =
+      await getOutputFromLLMWithParallelComparisonMode(auth, localLogger, {
+        llm,
+        modelConversationRes,
+        conversation,
+        userMessage,
+        runConfig,
+        specifications,
+        flushParserTokens,
+        contentParser,
+        agentMessageRow,
+        step,
+        agentConfiguration,
+        agentMessage,
+        model,
+        publishAgentError,
+        prompt,
+        updateResourceAndPublishEvent,
+      });
   }
 
   const modelInteractionEndDate = performance.now();

@@ -22,6 +22,7 @@ import { ContentFragmentResource } from "@app/lib/resources/content_fragment_res
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { UserResource } from "@app/lib/resources/user_resource";
+import logger from "@app/logger/logger";
 import type {
   AgentMessageType,
   ContentFragmentType,
@@ -311,6 +312,17 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         (a) => a.sId === agentMessage.agentConfigurationId
       );
       if (!agentConfiguration) {
+        logger.error(
+          {
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            conversationSId: message.sId,
+            agentMessageId: agentMessage.id,
+            agentConfigurationId: agentMessage.agentConfigurationId,
+            agentConfigurations,
+          },
+          "Conversation with unavailable agents"
+        );
+
         return new Err(
           new ConversationError("conversation_with_unavailable_agent")
         );
@@ -400,7 +412,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       })();
 
       const parentMessage = message.parentId
-        ? messagesById.get(message.parentId) ?? null
+        ? (messagesById.get(message.parentId) ?? null)
         : null;
 
       let parentAgentMessage: Message | null = null;

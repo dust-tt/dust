@@ -248,7 +248,7 @@ export async function processToolResults(
 
             const fileName = isResourceWithName(block.resource)
               ? block.resource.name
-              : block.resource.uri.split("/").pop() ?? "generated-file";
+              : (block.resource.uri.split("/").pop() ?? "generated-file");
 
             const fileUpsertResult = await processAndStoreFromUrl(auth, {
               url: block.resource.uri,

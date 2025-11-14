@@ -23,6 +23,7 @@ export const GEMINI_2_5_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
   minimumReasoningEffort: "none",
   maximumReasoningEffort: "light",
   defaultReasoningEffort: "light",
+  tokenizer: { type: "tiktoken", base: "cl100k_base" },
 };
 export const GEMINI_2_5_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
@@ -41,6 +42,7 @@ export const GEMINI_2_5_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   minimumReasoningEffort: "none",
   maximumReasoningEffort: "light",
   defaultReasoningEffort: "light",
+  tokenizer: { type: "tiktoken", base: "cl100k_base" },
 };
 export const GEMINI_2_5_PRO_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
@@ -56,7 +58,8 @@ export const GEMINI_2_5_PRO_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: true,
   generationTokensCount: 64_000,
   supportsVision: true,
-  minimumReasoningEffort: "none",
+  minimumReasoningEffort: "light",
   maximumReasoningEffort: "high",
-  defaultReasoningEffort: "none",
+  defaultReasoningEffort: "light",
+  tokenizer: { type: "tiktoken", base: "cl100k_base" },
 };

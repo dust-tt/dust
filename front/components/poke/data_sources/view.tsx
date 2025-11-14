@@ -10,6 +10,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  ExternalLinkIcon,
   MagnifyingGlassIcon,
   ScrollArea,
   ScrollBar,
@@ -166,6 +167,7 @@ export function ViewDataSourceTable({
                           owner={owner}
                           dsId={dataSource.sId}
                           isRunning={isRunning}
+                          temporalWorkspace={temporalWorkspace}
                         />
                       </PokeTableCell>
                     </PokeTableRow>
@@ -336,12 +338,14 @@ interface CheckConnectorStuckProps {
   owner: WorkspaceType;
   dsId: string;
   isRunning: boolean;
+  temporalWorkspace: string;
 }
 
 function CheckConnectorStuck({
   owner,
   dsId,
   isRunning,
+  temporalWorkspace,
 }: CheckConnectorStuckProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<CheckStuckResponseBody | null>(null);
@@ -386,10 +390,11 @@ function CheckConnectorStuck({
 
   return (
     <>
-      <StuckActivitiesModal
+      <StuckActivitiesDialog
         show={showDetailsModal}
         onClose={() => setShowDetailsModal(false)}
         result={result}
+        temporalWorkspace={temporalWorkspace}
       />
       <div className="flex items-center gap-2">
         <Tooltip
@@ -415,17 +420,19 @@ function CheckConnectorStuck({
   );
 }
 
-interface StuckActivitiesModalProps {
+interface StuckActivitiesDialogProps {
   show: boolean;
   onClose: () => void;
   result: CheckStuckResponseBody;
+  temporalWorkspace: string;
 }
 
-function StuckActivitiesModal({
+function StuckActivitiesDialog({
   show,
   onClose,
   result: { workflows },
-}: StuckActivitiesModalProps) {
+  temporalWorkspace,
+}: StuckActivitiesDialogProps) {
   const totalStuckActivities = workflows.reduce(
     (sum, wf) => sum + wf.stuckActivities.length,
     0
@@ -454,13 +461,29 @@ function StuckActivitiesModal({
                 `${totalStuckActivities === 1 ? "activity" : "activities"} ` +
                 `across ${workflows.length} workflow${pluralize(workflows.length)}`
               }
+              className="max-w-full"
             />
             {workflows.map((workflow) => (
               <ContextItem.List key={workflow.workflowId} hasBorder>
                 <ContextItem
-                  title={workflow.workflowId}
+                  title={
+                    <span className="font-mono text-sm">
+                      {workflow.workflowId}
+                    </span>
+                  }
                   visual={null}
                   hasSeparator={false}
+                  action={
+                    <Button
+                      icon={ExternalLinkIcon}
+                      variant="outline"
+                      href={`https://cloud.temporal.io/namespaces/${temporalWorkspace}/workflows/${workflow.workflowId}`}
+                      size="xs"
+                      className="p-2"
+                      label="Workflow"
+                      target="_blank"
+                    />
+                  }
                 />
                 {workflow.stuckActivities.map((activity, idx) => (
                   <ContextItem
@@ -473,6 +496,24 @@ function StuckActivitiesModal({
                         color="warning"
                         label={`${activity.attempt} attempts`}
                         size="xs"
+                      />
+                    }
+                    action={
+                      <Button
+                        icon={ExternalLinkIcon}
+                        variant="outline"
+                        href={
+                          "https://app.datadoghq.eu/logs?query=%40dd.env%3Aprod%20%40dd.service%3Aconnectors-worker" +
+                          `%20%40activityType%3A${encodeURIComponent(activity.activityType)}` +
+                          `%20%40workflowId%3A${encodeURIComponent(workflow.workflowId)}` +
+                          "&agg_m=count&agg_m_source=base&agg_t=count&cols=%40workflowId&" +
+                          "fromUser=true&messageDisplay=inline&refresh_mode=sliding&storage=hot&" +
+                          "stream_sort=time%2Cdesc&viz=stream"
+                        }
+                        size="xs"
+                        className="p-2"
+                        label="Logs"
+                        target="_blank"
                       />
                     }
                   >

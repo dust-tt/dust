@@ -4,6 +4,7 @@ import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import type { ModelIdType } from "@app/types";
 import {
   CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG,
+  CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_OPUS_DEFAULT_MODEL_CONFIG,
@@ -21,7 +22,10 @@ export const ANTHROPIC_MODEL_FAMILIES_CONFIGS: Record<
   }
 > = {
   "non-reasoning": {
-    modelIds: [CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG.modelId],
+    modelIds: [
+      CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.modelId,
+      CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG.modelId,
+    ],
     overwrites: { reasoningEffort: null },
   },
   reasoning: {

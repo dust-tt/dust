@@ -142,8 +142,8 @@ async function areTemporalWorkflowsRunning(
     return {
       isRunning,
       isNotStalled: latests.every(
-        // Check `latest` is less than 4h old.
-        (d) => d && new Date().getTime() - d.getTime() < 4 * 60 * 60 * 1000
+        // Check `latest` is less than 12h old.
+        (d) => d && new Date().getTime() - d.getTime() < 12 * 60 * 60 * 1000
       ),
       details,
     };

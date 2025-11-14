@@ -8,6 +8,7 @@ import type {
   MODEL_PROVIDER_IDS,
   REASONING_EFFORTS,
   SUPPORTED_MODEL_CONFIGS,
+  TokenizerConfig,
   WhitelistableFeature,
 } from "@app/types";
 
@@ -60,6 +61,8 @@ export type ModelConfigurationType = {
 
   featureFlag?: WhitelistableFeature;
   customAssistantFeatureFlag?: WhitelistableFeature;
+
+  tokenizer: TokenizerConfig;
 };
 
 export type ModelConfig = (typeof SUPPORTED_MODEL_CONFIGS)[number];
