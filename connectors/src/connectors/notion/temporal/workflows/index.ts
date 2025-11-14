@@ -24,7 +24,6 @@ export * from "./check_resources_accessibility";
 export * from "./children";
 export * from "./deletion_crawl";
 export * from "./garbage_collection";
-export * from "./process_webhooks";
 export * from "./upsert_database_queue";
 
 export const UPDATE_PARENTS_FIELDS_TIMEOUT_MINUTES = 400;

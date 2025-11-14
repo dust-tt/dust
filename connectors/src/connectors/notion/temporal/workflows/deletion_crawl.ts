@@ -19,7 +19,7 @@ const {
   startToCloseTimeout: "10 minute",
 });
 
-const DELETE_BATCH_SIZE = 100;
+const DELETE_BATCH_SIZE = 50;
 
 /**
  * Signal-based deletion crawl workflow.
@@ -29,11 +29,12 @@ const DELETE_BATCH_SIZE = 100;
  */
 export async function notionDeletionCrawlWorkflow({
   connectorId,
-  resourceQueue = [],
+  continuedQueue = [],
 }: {
   connectorId: ModelId;
-  resourceQueue?: NotionDeletionCrawlSignal[];
+  continuedQueue?: NotionDeletionCrawlSignal[];
 }) {
+  const resourceQueue = structuredClone(continuedQueue);
   const seen = new Set<string>();
   const topLevelWorkflowId = workflowInfo().workflowId;
 
@@ -62,20 +63,16 @@ export async function notionDeletionCrawlWorkflow({
     }
 
     while (resourceQueue.length > 0) {
-      const resource = resourceQueue.shift();
-      if (!resource) {
-        continue;
+      const resources = resourceQueue.splice(0, DELETE_BATCH_SIZE);
+
+      for (const resource of resources) {
+        seen.add(resourceKey(resource.resourceId, resource.resourceType));
       }
-
-      const key = resourceKey(resource.resourceId, resource.resourceType);
-
-      seen.add(key);
 
       // check only direct children + parent
       const discovered = await checkResourceAndQueueRelated({
         connectorId,
-        resourceId: resource.resourceId,
-        resourceType: resource.resourceType,
+        resources,
         workflowId: topLevelWorkflowId,
       });
 
@@ -99,7 +96,7 @@ export async function notionDeletionCrawlWorkflow({
           connectorId,
           workflowId: topLevelWorkflowId,
         });
-        await continueAsNew({ connectorId, resourceQueue });
+        await continueAsNew({ connectorId, continuedQueue: resourceQueue });
         return;
       } else if (seen.size % DELETE_BATCH_SIZE == 0) {
         await batchDeleteResources({
