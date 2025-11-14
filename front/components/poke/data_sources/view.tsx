@@ -10,6 +10,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  ExternalLinkIcon,
   MagnifyingGlassIcon,
   ScrollArea,
   ScrollBar,
@@ -337,6 +338,7 @@ interface CheckConnectorStuckProps {
   owner: WorkspaceType;
   dsId: string;
   isRunning: boolean;
+  temporalWorkspace: string;
 }
 
 function CheckConnectorStuck({
@@ -392,6 +394,7 @@ function CheckConnectorStuck({
         show={showDetailsModal}
         onClose={() => setShowDetailsModal(false)}
         result={result}
+        temporalWorkspace={temporalWorkspace}
       />
       <div className="flex items-center gap-2">
         <Tooltip
@@ -421,12 +424,14 @@ interface StuckActivitiesModalProps {
   show: boolean;
   onClose: () => void;
   result: CheckStuckResponseBody;
+  temporalWorkspace: string;
 }
 
 function StuckActivitiesModal({
   show,
   onClose,
   result: { workflows },
+  temporalWorkspace,
 }: StuckActivitiesModalProps) {
   const totalStuckActivities = workflows.reduce(
     (sum, wf) => sum + wf.stuckActivities.length,
@@ -442,7 +447,7 @@ function StuckActivitiesModal({
         }
       }}
     >
-      <DialogContent size="md">
+      <DialogContent size="lg">
         <DialogHeader>
           <DialogTitle>Stuck Activities Details</DialogTitle>
         </DialogHeader>
@@ -456,13 +461,28 @@ function StuckActivitiesModal({
                 `${totalStuckActivities === 1 ? "activity" : "activities"} ` +
                 `across ${workflows.length} workflow${pluralize(workflows.length)}`
               }
+              className="max-w-full"
             />
             {workflows.map((workflow) => (
               <ContextItem.List key={workflow.workflowId} hasBorder>
                 <ContextItem
-                  title={workflow.workflowId}
+                  title={
+                    <span className="font-mono text-sm">
+                      {workflow.workflowId}
+                    </span>
+                  }
                   visual={null}
                   hasSeparator={false}
+                  action={
+                    <Button
+                      icon={ExternalLinkIcon}
+                      variant="outline"
+                      href={`https://cloud.temporal.io/namespaces/${temporalWorkspace}/workflows/${workflow.workflowId}`}
+                      size="xs"
+                      className="p-2"
+                      label="Workflow"
+                    />
+                  }
                 />
                 {workflow.stuckActivities.map((activity, idx) => (
                   <ContextItem
@@ -475,6 +495,23 @@ function StuckActivitiesModal({
                         color="warning"
                         label={`${activity.attempt} attempts`}
                         size="xs"
+                      />
+                    }
+                    action={
+                      <Button
+                        icon={ExternalLinkIcon}
+                        variant="outline"
+                        href={
+                          "https://app.datadoghq.eu/logs?query=%40dd.env%3Aprod%20%40dd.service%3Aconnectors-worker" +
+                          `%20%40activityType%3A${encodeURIComponent(activity.activityType)}` +
+                          `%20%40workflowId%3A${encodeURIComponent(workflow.workflowId)}` +
+                          "&agg_m=count&agg_m_source=base&agg_t=count&cols=%40workflowId&" +
+                          "fromUser=true&messageDisplay=inline&refresh_mode=sliding&storage=hot&" +
+                          "stream_sort=time%2Cdesc&viz=stream"
+                        }
+                        size="xs"
+                        className="p-2"
+                        label="Logs"
                       />
                     }
                   >
