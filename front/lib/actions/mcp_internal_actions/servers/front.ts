@@ -26,9 +26,15 @@ const convertMarkdownToHTML = async (text: string): Promise<string> => {
   });
 
   const html = await marked.parse(text);
+  
+  // Sanitize HTML to prevent XSS attacks
+  const sanitized = sanitizeHtml(html, {
+    allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]),
+  });
 
   // Front may expect specific formatting, so we ensure links open in new tabs
-  return html.replace(/<a href="(.*?)">/g, '<a href="$1" target="_blank">');
+  return sanitized.replace(/<a href="(.*?)">/g, '<a href="$1" target="_blank">');
+};
 };
 
 interface FrontAPIOptions {
