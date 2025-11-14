@@ -637,11 +637,6 @@ type ResolvedSelectedSite = {
   internalId: string;
 };
 
-const SITES_ROOT_INTERNAL_ID = internalIdFromTypeAndPath({
-  nodeType: "sites-root",
-  itemAPIPath: "",
-});
-
 async function resolveSelectedSites({
   logger,
   client,
@@ -722,15 +717,12 @@ function mapResolvedSitesToMetadata(
 function siteMetadataToContentNode(
   siteMetadata: SelectedSiteMetadata
 ): ContentNode {
-  return getSiteAsContentNode(
-    {
-      id: siteMetadata.siteId,
-      displayName: siteMetadata.displayName ?? undefined,
-      name: siteMetadata.displayName ?? undefined,
-      webUrl: siteMetadata.webUrl ?? undefined,
-    },
-    SITES_ROOT_INTERNAL_ID
-  );
+  return getSiteAsContentNode({
+    id: siteMetadata.siteId,
+    displayName: siteMetadata.displayName ?? undefined,
+    name: siteMetadata.displayName ?? undefined,
+    webUrl: siteMetadata.webUrl ?? undefined,
+  });
 }
 
 export function extractTenantIdFromAccessToken(
