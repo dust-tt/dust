@@ -233,6 +233,7 @@ export const GPT_5_1_MODEL_CONFIG: ModelConfigurationType = {
   supportsResponseFormat: true,
   formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
   toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
+  tokenizer: { type: "tiktoken", base: "r50k_base" },
 };
 export const GPT_5_MINI_NO_REASONING_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
