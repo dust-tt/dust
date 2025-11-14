@@ -21,13 +21,11 @@ import { useValidateAction } from "@app/hooks/useValidateAction";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { useBlockedActions } from "@app/lib/swr/blocked_actions";
+import { useConversations } from "@app/lib/swr/conversations";
 import type {
   ConversationWithoutContentType,
   LightWorkspaceType,
 } from "@app/types";
-import { useConversation, useConversations } from "@app/lib/swr/conversations";
-import { GetConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
-import { FaceSmileIcon } from "@heroicons/react/20/solid";
 
 type BlockedActionQueueItem = {
   messageId: string;
@@ -149,11 +147,6 @@ export function BlockedActionsProvider({
   const conversationId = conversation?.sId || null;
 
   const { blockedActions } = useBlockedActions({
-    conversationId,
-    workspaceId: owner.sId,
-  });
-
-  const { mutateConversation } = useConversation({
     conversationId,
     workspaceId: owner.sId,
   });
