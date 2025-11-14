@@ -52,7 +52,6 @@ export function CreateWebhookLinearConnection({
     [filteredTeams, selectedTeams]
   );
 
-  // Notify parent component when data changes
   useEffect(() => {
     const isReady = !!(connectionId && selectedTeams.length > 0);
 
@@ -91,13 +90,6 @@ export function CreateWebhookLinearConnection({
 
   return (
     <div className="space-y-6">
-      <div>
-        <Page.H variant="h6">Configure Linear Webhook</Page.H>
-        <p className="text-element-700 mt-2 text-sm">
-          Select which teams should trigger webhooks.
-        </p>
-      </div>
-
       {isServiceDataLoading ? (
         <div className="mt-2 flex items-center gap-2 py-2">
           <Spinner size="sm" />
@@ -114,9 +106,6 @@ export function CreateWebhookLinearConnection({
                 <span className="text-warning">*</span>
               )}
             </Label>
-            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              Choose which teams can activate this trigger
-            </p>
             <div className="mt-2 flex flex-col gap-2">
               <div className="flex flex-wrap items-center gap-1">
                 {selectedTeams.map((team) => (
