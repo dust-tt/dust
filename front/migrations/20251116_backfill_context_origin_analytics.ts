@@ -9,7 +9,6 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { ANALYTICS_ALIAS_NAME, getClient } from "@app/lib/api/elasticsearch";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
@@ -34,177 +33,199 @@ async function backfillContextOriginForWorkspace(
     "Starting context_origin backfill for agent analytics"
   );
 
-  const agentMessages = await Message.findAll({
-    where: {
-      workspaceId: workspace.id,
-      agentMessageId: {
-        [Op.ne]: null,
-      },
-      createdAt: {
-        [Op.gte]: since,
-      },
+  const baseWhere = {
+    workspaceId: workspace.id,
+    agentMessageId: {
+      [Op.ne]: null,
     },
-    attributes: ["id", "sId", "version", "parentId"],
-    include: [
-      {
-        model: AgentMessage,
-        as: "agentMessage",
-        required: true,
-      },
-      {
-        model: ConversationModel,
-        as: "conversation",
-        required: true,
-      },
-    ],
-    order: [["createdAt", "ASC"]],
+    createdAt: {
+      [Op.gte]: since,
+    },
+  };
+
+  const totalAgentMessages = await Message.count({
+    where: baseWhere,
   });
 
   logger.info(
     {
       workspaceId: workspace.sId,
-      count: agentMessages.length,
+      count: totalAgentMessages,
     },
     "Found agent messages to process for context_origin"
   );
 
-  if (!agentMessages.length) {
+  if (!totalAgentMessages) {
     return;
-  }
-
-  // Collect all parent message IDs to fetch userContextOrigin in bulk.
-  const parentIds = Array.from(
-    new Set(
-      agentMessages
-        .map((m) => m.parentId)
-        .filter((id): id is number => id !== null && id !== undefined)
-    )
-  );
-
-  if (!parentIds.length) {
-    logger.warn(
-      {
-        workspaceId: workspace.sId,
-      },
-      "No parent messages found for agent messages when backfilling context_origin"
-    );
-    return;
-  }
-
-  const parentMessages = await Message.findAll({
-    where: {
-      id: parentIds,
-      workspaceId: workspace.id,
-    },
-    attributes: ["id"],
-    include: [
-      {
-        model: UserMessage,
-        as: "userMessage",
-        required: true,
-        attributes: ["userContextOrigin"],
-      },
-    ],
-  });
-
-  const originByParentId = new Map<number, string | null>();
-  for (const pm of parentMessages) {
-    const origin = pm.userMessage?.userContextOrigin ?? null;
-    originByParentId.set(pm.id, origin);
   }
 
   const es = await getClient();
 
   let success = 0;
   let failed = 0;
+  let processed = 0;
+  let lastId: number | null = null;
 
-  // Process in batches to keep bulk requests reasonable.
-  await concurrentExecutor(
-    Array.from({ length: Math.ceil(agentMessages.length / BATCH_SIZE) }).map(
-      (_, i) => i
-    ),
-    async (batchIndex) => {
-      const start = batchIndex * BATCH_SIZE;
-      const batch = agentMessages.slice(start, start + BATCH_SIZE);
+  // Stream messages from the database in batches to avoid loading
+  // everything in memory at once. We iterate using the primary key (id)
+  // to paginate.
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const where: any = {
+      ...baseWhere,
+    };
 
-      if (!batch.length) {
-        return;
+    if (lastId !== null) {
+      where.id = {
+        [Op.gt]: lastId,
+      };
+    }
+
+    const agentMessagesBatch = await Message.findAll({
+      where,
+      attributes: ["id", "sId", "version", "parentId"],
+      include: [
+        {
+          model: AgentMessage,
+          as: "agentMessage",
+          required: true,
+        },
+        {
+          model: ConversationModel,
+          as: "conversation",
+          required: true,
+        },
+      ],
+      order: [["id", "ASC"]],
+      limit: BATCH_SIZE,
+    });
+
+    if (!agentMessagesBatch.length) {
+      break;
+    }
+
+    const parentIds = Array.from(
+      new Set(
+        agentMessagesBatch
+          .map((m) => m.parentId)
+          .filter((id): id is number => id !== null && id !== undefined)
+      )
+    );
+
+    if (!parentIds.length) {
+      logger.warn(
+        {
+          workspaceId: workspace.sId,
+        },
+        "No parent messages found for agent messages when backfilling context_origin (batch)"
+      );
+      processed += agentMessagesBatch.length;
+      lastId = agentMessagesBatch[agentMessagesBatch.length - 1].id;
+      continue;
+    }
+
+    const parentMessages = await Message.findAll({
+      where: {
+        id: parentIds,
+        workspaceId: workspace.id,
+      },
+      attributes: ["id"],
+      include: [
+        {
+          model: UserMessage,
+          as: "userMessage",
+          required: true,
+          attributes: ["userContextOrigin"],
+        },
+      ],
+    });
+
+    const originByParentId = new Map<number, string | null>();
+    for (const pm of parentMessages) {
+      const origin = pm.userMessage?.userContextOrigin ?? null;
+      originByParentId.set(pm.id, origin);
+    }
+
+    const body: unknown[] = [];
+
+    for (const msg of agentMessagesBatch) {
+      if (!msg.parentId) {
+        continue;
       }
+      const origin = originByParentId.get(msg.parentId) ?? "unknown";
 
-      if (!execute) {
-        logger.info(
-          {
-            workspaceId: workspace.sId,
-            processed: start + batch.length,
-            total: agentMessages.length,
-          },
-          "Dry run - would backfill context_origin for this batch"
-        );
-        return;
-      }
+      const id = `${workspace.sId}_${msg.sId}_${msg.version.toString()}`;
 
-      const body: unknown[] = [];
-
-      for (const msg of batch) {
-        if (!msg.parentId) {
-          continue;
-        }
-        const origin = originByParentId.get(msg.parentId) ?? "unknown";
-
-        const id = `${workspace.sId}_${msg.sId}_${msg.version.toString()}`;
-
-        body.push({
-          update: {
-            _index: ANALYTICS_ALIAS_NAME,
-            _id: id,
-          },
-        });
-        body.push({
-          doc: {
-            context_origin: origin ?? "unknown",
-          },
-        });
-      }
-
-      if (body.length === 0) {
-        return;
-      }
-
-      const resp = await es.bulk({
-        index: ANALYTICS_ALIAS_NAME,
-        body,
-        refresh: false,
+      body.push({
+        update: {
+          _index: ANALYTICS_ALIAS_NAME,
+          _id: id,
+        },
       });
+      body.push({
+        doc: {
+          context_origin: origin ?? "unknown",
+        },
+      });
+    }
 
-      if (resp.errors) {
-        for (const item of resp.items ?? []) {
-          const update = item.update;
-          if (!update || !update.error) {
-            continue;
-          }
-          failed++;
-          logger.warn(
-            {
-              error: update.error,
-              id: update._id,
-            },
-            "Failed to update context_origin for analytics document"
-          );
-        }
-      }
+    if (!body.length) {
+      processed += agentMessagesBatch.length;
+      lastId = agentMessagesBatch[agentMessagesBatch.length - 1].id;
+      continue;
+    }
 
-      success += batch.length;
+    if (!execute) {
+      processed += agentMessagesBatch.length;
+      lastId = agentMessagesBatch[agentMessagesBatch.length - 1].id;
       logger.info(
         {
           workspaceId: workspace.sId,
-          processed: start + batch.length,
-          total: agentMessages.length,
+          processed,
+          total: totalAgentMessages,
         },
-        "Processed batch for context_origin backfill"
+        "Dry run - would backfill context_origin for this batch"
       );
-    },
-    { concurrency: 5 }
-  );
+      continue;
+    }
+
+    const resp = await es.bulk({
+      index: ANALYTICS_ALIAS_NAME,
+      body,
+      refresh: false,
+    });
+
+    if (resp.errors) {
+      for (const item of resp.items ?? []) {
+        const update = item.update;
+        if (!update || !update.error) {
+          continue;
+        }
+        failed++;
+        logger.warn(
+          {
+            error: update.error,
+            id: update._id,
+          },
+          "Failed to update context_origin for analytics document"
+        );
+      }
+    }
+
+    success += agentMessagesBatch.length;
+    processed += agentMessagesBatch.length;
+
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        processed,
+        total: totalAgentMessages,
+      },
+      "Processed batch for context_origin backfill"
+    );
+
+    lastId = agentMessagesBatch[agentMessagesBatch.length - 1].id;
+  }
 
   logger.info(
     {
