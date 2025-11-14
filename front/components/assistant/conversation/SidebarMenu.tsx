@@ -475,7 +475,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
               className="dd-privacy-mask h-full w-full"
               viewportRef={conversationsNavigationRef}
             >
-              {unreadConversations?.length > 0 && (
+              {unreadConversations.length > 0 && (
                 <div className="bg-background pb-3 dark:bg-background-night">
                   <UnreadConversationList
                     conversations={unreadConversations}
@@ -488,7 +488,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                   />
                 </div>
               )}
-              {conversationsByDate && conversations.length > 0 && (
+              {readConversations.length > 0 && (
                 <>
                   {Object.keys(conversationsByDate).map((dateLabel) => (
                     <ReadConversationList
