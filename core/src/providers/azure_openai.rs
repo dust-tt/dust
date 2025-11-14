@@ -126,7 +126,7 @@ pub struct AzureOpenAILLM {
 impl AzureOpenAILLM {
     pub fn new(deployment_id: String, tokenizer: Option<TokenizerSingleton>) -> Self {
         AzureOpenAILLM {
-            deployment_id: deployment_id.clone(),
+            deployment_id,
             model_id: None,
             endpoint: None,
             api_key: None,
