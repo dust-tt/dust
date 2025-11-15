@@ -81,9 +81,6 @@ pub struct TableBlobPayload {
     pub title: String,
     pub mime_type: String,
     pub provider_visibility: Option<ProviderVisibility>,
-
-    // Rows
-    pub rows: Vec<Row>,
 }
 
 #[derive(Debug, Serialize, Clone, Deserialize)]
@@ -322,23 +319,7 @@ impl Table {
         Ok(())
     }
 
-    pub async fn retrieve_api_blob(
-        &self,
-        databases_store: Box<dyn DatabasesStore + Sync + Send>,
-    ) -> Result<TableBlobPayload> {
-        let rows = match self.table_type()? {
-            TableType::Local => {
-                let local_table = LocalTable::from_table(self.clone())?;
-                let (rows, _) = local_table.list_rows(databases_store, None).await?;
-                rows
-            }
-            TableType::Remote(_) => {
-                // For remote tables, we don't have direct access to rows
-                // Return empty vec since rows will be fetched through DB connection
-                vec![]
-            }
-        };
-
+    pub async fn retrieve_api_blob(&self) -> Result<TableBlobPayload> {
         Ok(TableBlobPayload {
             table_id: self.table_id().to_string(),
             name: self.name().to_string(),
@@ -353,7 +334,6 @@ impl Table {
             title: self.title().to_string(),
             mime_type: self.mime_type().to_string(),
             provider_visibility: self.provider_visibility().clone(),
-            rows,
         })
     }
 }

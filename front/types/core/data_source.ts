@@ -1,5 +1,4 @@
 import type { ProviderVisibility } from "../connectors/connectors_api";
-import type { CoreAPIRow } from "./core_api";
 
 export type QdrantCluster = "cluster-0";
 export const DEFAULT_QDRANT_CLUSTER: QdrantCluster = "cluster-0";
@@ -104,9 +103,6 @@ export type CoreAPITableBlob = {
   title: string;
   mime_type: string;
   provider_visibility?: ProviderVisibility;
-
-  // Rows.
-  rows: CoreAPIRow[];
 };
 
 export type CoreAPILightDocument = {

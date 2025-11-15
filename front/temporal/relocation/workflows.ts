@@ -592,6 +592,10 @@ export async function workspaceRelocateCoreDataSourceResourcesWorkflow({
       fn: workspaceRelocateDataSourceTablesWorkflow,
       workflowId: `workspaceRelocateDataSourceTablesWorkflow`,
     },
+    {
+      fn: workspaceRelocateTableStorageWorkflow,
+      workflowId: `workspaceRelocateTableStorageWorkflow`,
+    },
   ];
 
   await concurrentExecutor(
@@ -786,6 +790,47 @@ export async function workspaceRelocateDataSourceTablesWorkflow({
     pageCursor = nextPageCursor;
     limit = nextLimit;
   } while (pageCursor);
+}
+
+export async function workspaceRelocateTableStorageWorkflow({
+  dataSourceCoreIds,
+  destIds,
+  destRegion,
+  sourceRegion,
+}: RelocationWorkflowBase & {
+  dataSourceCoreIds: DataSourceCoreIds;
+  destIds: CreateDataSourceProjectResult;
+}) {
+  const sourceRegionActivities = getFrontSourceRegionActivities(sourceRegion);
+  const destinationRegionActivities =
+    getFrontDestinationRegionActivities(destRegion);
+
+  // 1) Relocate tables files.
+  const destTablesBucket =
+    await destinationRegionActivities.getDestinationTablesBucket();
+
+  const publicFilesJobName =
+    await sourceRegionActivities.startTransferTableFiles({
+      destBucket: destTablesBucket,
+      destRegion,
+      sourceRegion,
+      dataSourceCoreIds,
+      destIds,
+    });
+
+  // Wait for the file storage transfer to complete.
+  let isPublicFilesTransferComplete = false;
+  while (!isPublicFilesTransferComplete) {
+    isPublicFilesTransferComplete =
+      await sourceRegionActivities.isFileStorageTransferComplete({
+        jobName: publicFilesJobName,
+      });
+
+    if (!isPublicFilesTransferComplete) {
+      // Sleep for 1 minute before checking again.
+      await sleep("1m");
+    }
+  }
 }
 
 export async function workspaceRelocateAppsWorkflow({
