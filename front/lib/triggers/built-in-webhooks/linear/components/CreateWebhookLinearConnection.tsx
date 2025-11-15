@@ -13,6 +13,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 
 import type { WebhookCreateFormComponentProps } from "@app/components/triggers/webhook_preset_components";
+import { useDebounce } from "@app/hooks/useDebounce";
 import { useWebhookServiceData } from "@app/lib/swr/useWebhookServiceData";
 import type { LinearTeam } from "@app/lib/triggers/built-in-webhooks/linear/types";
 
@@ -23,8 +24,12 @@ export function CreateWebhookLinearConnection({
   connectionId,
 }: WebhookCreateFormComponentProps) {
   const [selectedTeams, setSelectedTeams] = useState<LinearTeam[]>([]);
-  const [teamSearchQuery, setTeamSearchQuery] = useState("");
-  const [showTeamDropdown, setShowTeamDropdown] = useState(false);
+
+  const {
+    inputValue: teamSearchQuery,
+    debouncedValue: debouncedTeamSearchQuery,
+    setValue: setTeamSearchQuery,
+  } = useDebounce("", { delay: 300 });
 
   const { serviceData: linearData, isServiceDataLoading } =
     useWebhookServiceData({
@@ -33,23 +38,18 @@ export function CreateWebhookLinearConnection({
       provider: "linear",
     });
 
-  const { linearTeams, filteredTeams } = useMemo(() => {
+  const { linearTeams, teamsInDropdown } = useMemo(() => {
     const linearTeams = linearData?.teams ?? [];
     const filteredTeams = linearTeams.filter((team) =>
       `${team.name} (${team.key})`
         .toLowerCase()
-        .includes(teamSearchQuery.toLowerCase())
+        .includes(debouncedTeamSearchQuery.toLowerCase())
     );
-    return { linearTeams, filteredTeams };
-  }, [linearData, teamSearchQuery]);
-
-  const teamsInDropdown = useMemo(
-    () =>
-      filteredTeams.filter(
-        (team) => !selectedTeams.some((t) => t.id === team.id)
-      ),
-    [filteredTeams, selectedTeams]
-  );
+    const teamsInDropdown = filteredTeams.filter(
+      (team) => !selectedTeams.some((t) => t.id === team.id)
+    );
+    return { linearTeams, teamsInDropdown };
+  }, [linearData, debouncedTeamSearchQuery, selectedTeams]);
 
   useEffect(() => {
     const isReady = !!(connectionId && selectedTeams.length > 0);
@@ -80,7 +80,6 @@ export function CreateWebhookLinearConnection({
       setSelectedTeams([...selectedTeams, team]);
     }
     setTeamSearchQuery("");
-    setShowTeamDropdown(false);
   };
 
   const handleRemoveTeam = (team: LinearTeam) => {
@@ -120,10 +119,7 @@ export function CreateWebhookLinearConnection({
               </div>
               {linearTeams.length > 0 && (
                 <div className="flex">
-                  <DropdownMenu
-                    open={showTeamDropdown}
-                    onOpenChange={setShowTeamDropdown}
-                  >
+                  <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
                         label="Add team"

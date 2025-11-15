@@ -50,7 +50,7 @@ export class LinearClient {
       const response = await fetch(this.apiUrl, {
         method: "POST",
         headers: {
-          Authorization: this.accessToken,
+          Authorization: `Bearer ${this.accessToken}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ query, variables }),
@@ -100,8 +100,12 @@ export class LinearClient {
       return result;
     }
 
+    if (!result.value) {
+      return new Err(new Error("GraphQL response data is null"));
+    }
+
     try {
-      const teams = result.value?.teams.nodes.map((team: unknown) =>
+      const teams = result.value.teams.nodes.map((team: unknown) =>
         LinearTeamSchema.parse(team)
       );
       return new Ok(teams);
@@ -152,7 +156,11 @@ export class LinearClient {
       return result;
     }
 
-    if (!result.value?.webhookCreate.success) {
+    if (!result.value) {
+      return new Err(new Error("GraphQL response data is null"));
+    }
+
+    if (!result.value.webhookCreate.success) {
       return new Err(new Error("Failed to create webhook"));
     }
 
@@ -183,7 +191,11 @@ export class LinearClient {
       return result;
     }
 
-    if (!result.value?.webhookDelete.success) {
+    if (!result.value) {
+      return new Err(new Error("GraphQL response data is null"));
+    }
+
+    if (!result.value.webhookDelete.success) {
       return new Err(new Error("Failed to delete webhook"));
     }
 
@@ -215,8 +227,12 @@ export class LinearClient {
       return result;
     }
 
+    if (!result.value) {
+      return new Err(new Error("GraphQL response data is null"));
+    }
+
     try {
-      const webhooks = result.value?.webhooks.nodes.map((webhook: unknown) =>
+      const webhooks = result.value.webhooks.nodes.map((webhook: unknown) =>
         LinearWebhookSchema.parse(webhook)
       );
       return new Ok(webhooks);

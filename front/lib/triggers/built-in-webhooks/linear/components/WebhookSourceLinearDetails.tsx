@@ -26,7 +26,7 @@ export function WebhookSourceLinearDetails({
 
       {teams && teams.length > 0 ? (
         <div>
-          <div className="mb-2 text-sm font-medium">Teams</div>
+          <span className="mb-2 text-sm font-medium">Teams</span>
           <div className="flex flex-wrap gap-1">
             {teams.map((team: LinearTeam) => (
               <Chip
