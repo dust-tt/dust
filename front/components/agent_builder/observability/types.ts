@@ -23,6 +23,12 @@ export type ToolChartUsagePayload = {
   payload?: ChartDatum;
 };
 
+export type SourceChartDatum = {
+  origin: string;
+  count: number;
+  percent: number;
+};
+
 export function isChartDatum(data: unknown): data is ChartDatum {
   if (typeof data !== "object" || data === null) {
     return false;
