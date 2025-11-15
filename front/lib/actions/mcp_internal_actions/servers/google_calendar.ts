@@ -898,21 +898,23 @@ function formatEventAsText(event: EnrichedGoogleCalendarEvent): string {
       if (start.isAllDay) {
         lines.push(`Date: ${start.eventDayOfWeek}, ${start.date}`);
       } else {
-        const startDate = new Date(start.dateTime!);
-        const timeStr = startDate.toLocaleTimeString("en-US", {
-          hour: "numeric",
-          minute: "2-digit",
-          timeZone: start.timeZone ?? undefined,
-        });
-        const dateStr = startDate.toLocaleDateString("en-US", {
-          month: "long",
-          day: "numeric",
-          year: "numeric",
-          timeZone: start.timeZone ?? undefined,
-        });
-        lines.push(
-          `Start: ${start.eventDayOfWeek}, ${dateStr} at ${timeStr}${start.timeZone ? ` (${start.timeZone})` : ""}`
-        );
+        if (start.dateTime) {
+          const startDate = new Date(start.dateTime);
+          const timeStr = startDate.toLocaleTimeString("en-US", {
+            hour: "numeric",
+            minute: "2-digit",
+            timeZone: start.timeZone ?? undefined,
+          });
+          const dateStr = startDate.toLocaleDateString("en-US", {
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+            timeZone: start.timeZone ?? undefined,
+          });
+          lines.push(
+            `Start: ${start.eventDayOfWeek}, ${dateStr} at ${timeStr}${start.timeZone ? ` (${start.timeZone})` : ""}`
+          );
+        }
       }
     } else {
       lines.push(
@@ -922,26 +924,28 @@ function formatEventAsText(event: EnrichedGoogleCalendarEvent): string {
   }
 
   if (event.end) {
-    const end = event.end as EnrichedGoogleCalendarEventDateTime;
+    const end = event.end;
     if (end.eventDayOfWeek) {
       if (end.isAllDay) {
         lines.push(`End: ${end.eventDayOfWeek}, ${end.date}`);
       } else {
-        const endDate = new Date(end.dateTime!);
-        const timeStr = endDate.toLocaleTimeString("en-US", {
-          hour: "numeric",
-          minute: "2-digit",
-          timeZone: end.timeZone ?? undefined,
-        });
-        const dateStr = endDate.toLocaleDateString("en-US", {
-          month: "long",
-          day: "numeric",
-          year: "numeric",
-          timeZone: end.timeZone ?? undefined,
-        });
-        lines.push(
-          `End: ${end.eventDayOfWeek}, ${dateStr} at ${timeStr}${end.timeZone ? ` (${end.timeZone})` : ""}`
-        );
+        if (end.dateTime) {
+          const endDate = new Date(end.dateTime);
+          const timeStr = endDate.toLocaleTimeString("en-US", {
+            hour: "numeric",
+            minute: "2-digit",
+            timeZone: end.timeZone ?? undefined,
+          });
+          const dateStr = endDate.toLocaleDateString("en-US", {
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+            timeZone: end.timeZone ?? undefined,
+          });
+          lines.push(
+            `End: ${end.eventDayOfWeek}, ${dateStr} at ${timeStr}${end.timeZone ? ` (${end.timeZone})` : ""}`
+          );
+        }
       }
     } else {
       lines.push(
