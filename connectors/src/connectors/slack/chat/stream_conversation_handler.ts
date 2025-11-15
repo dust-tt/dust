@@ -294,7 +294,7 @@ async function streamAgentAnswerToSlack(
         const newThrottleDelay = getThrottleDelay(slackContent.length);
         if (newThrottleDelay !== currentThrottleDelay) {
           currentThrottleDelay = newThrottleDelay;
-          await throttledPostSlackMessageUpdate.flush();
+          throttledPostSlackMessageUpdate.cancel();
           throttledPostSlackMessageUpdate = throttle(
             postSlackMessageUpdate,
             currentThrottleDelay
