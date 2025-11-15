@@ -432,6 +432,48 @@ const PEOPLE: Record<
     linkedIn: "https://www.linkedin.com/in/margheritazama/",
     github: "https://github.com/margherita-ops",
   },
+  apinon: {
+    name: "Alexandre Pinon",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/71273869?s=88&v=4",
+    linkedIn: "https://www.linkedin.com/in/alexandre-pinon-60b5a71b7/",
+    github: "https://github.com/alexandre-pinon",
+  },
+  jdfiquet: {
+    name: "Jean-David Fiquet",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/6445595?s=88&v=4",
+    linkedIn: "https://www.linkedin.com/in/jeandavidfiquet/",
+    github: "https://github.com/id13",
+  },
+  reecebatch: {
+    name: "Reece Batchelor",
+    title: "Talent Acquisition",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U09S9S8PQTX-64b0620a0f35-72",
+    linkedIn: "https://www.linkedin.com/in/reece-a0730213bbd/",
+    github: "https://github.com/reece-batchelor",
+  },
+  nsiegle: {
+    name: "Nic Siegle",
+    title: "Account Executive",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U09SB8Q2DU6-65b85b4b1f83-72",
+    linkedIn: "https://www.linkedin.com/in/nsiegle/",
+    github: "https://github.com/nicdust",
+  },
+  seth: {
+    name: "Seth Mazow",
+    title: "Account Executive",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U09SBL368JC-95d97a17fd2d-72",
+    linkedIn: "https://www.linkedin.com/in/sethmazow/",
+    github: "https://github.com/sethmazow",
+  },
+  bmurray: {
+    name: "Bruno Murray",
+    title: "Customer Success",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U09SGSRG0MA-2329071b8045-72",
+    linkedIn: "https://www.linkedin.com/in/bruno-murray-2539682b9/",
+    github: "https://github.com/bruno-murray",
+  },
 };
 
 const Person = ({ handle }: { handle: string }) => {
