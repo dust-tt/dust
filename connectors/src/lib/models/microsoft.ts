@@ -5,6 +5,13 @@ import type { MicrosoftNodeType } from "@connectors/connectors/microsoft/lib/typ
 import { connectorsSequelize } from "@connectors/resources/storage";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 
+export type SelectedSiteMetadata = {
+  siteId: string;
+  internalId: string;
+  displayName?: string | null;
+  webUrl?: string | null;
+};
+
 export class MicrosoftConfigurationModel extends ConnectorBaseModel<MicrosoftConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -12,6 +19,7 @@ export class MicrosoftConfigurationModel extends ConnectorBaseModel<MicrosoftCon
   declare csvEnabled: boolean;
   declare largeFilesEnabled: boolean;
   declare tenantId: string | null;
+  declare selectedSites: SelectedSiteMetadata[] | null;
 }
 MicrosoftConfigurationModel.init(
   {
@@ -43,6 +51,11 @@ MicrosoftConfigurationModel.init(
     tenantId: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+    selectedSites: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {

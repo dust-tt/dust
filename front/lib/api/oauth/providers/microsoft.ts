@@ -12,6 +12,7 @@ import {
 } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
+import { isString } from "@app/types";
 import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
 
 export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
@@ -99,6 +100,14 @@ export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
   ): Promise<ExtraConfigType> {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we filter out the client_secret from the extraConfig.
     const { client_secret, ...restConfig } = extraConfig;
+
+    if (isString(restConfig.selected_sites)) {
+      restConfig.selected_sites = restConfig.selected_sites
+        .split(/\r?\n/)
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0)
+        .join("\n");
+    }
 
     return restConfig;
   }
