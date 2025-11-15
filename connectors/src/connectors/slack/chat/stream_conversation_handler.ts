@@ -39,7 +39,7 @@ import type { ConnectorResource } from "@connectors/resources/connector_resource
 
 const SLACK_MESSAGE_UPDATE_THROTTLE_MS = 1_000;
 const SLACK_MESSAGE_UPDATE_SLOW_THROTTLE_MS = 5_000;
-const SLACK_MESSAGE_LONG_THRESHOLD_CHARS = 300;
+const SLACK_MESSAGE_LONG_THRESHOLD_CHARS = 400;
 
 // Dynamic throttling: longer messages get less frequent updates to reduce UX disruption when the content is expanded.
 // Posting an update on an expanded message will collapse it, frequent updates prevent users from reading the content.
@@ -294,7 +294,7 @@ async function streamAgentAnswerToSlack(
         const newThrottleDelay = getThrottleDelay(slackContent.length);
         if (newThrottleDelay !== currentThrottleDelay) {
           currentThrottleDelay = newThrottleDelay;
-          throttledPostSlackMessageUpdate.cancel();
+          await throttledPostSlackMessageUpdate.flush();
           throttledPostSlackMessageUpdate = throttle(
             postSlackMessageUpdate,
             currentThrottleDelay
