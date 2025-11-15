@@ -54,7 +54,7 @@ function formatActionAsString(action: SalesloftActionWithDetails): string {
     const personName = [action.person.first_name, action.person.last_name]
       .filter(Boolean)
       .join(" ");
-    parts.push(`\nPerson: ${personName || "Unknown"}`);
+    parts.push(`\nContact: ${personName || "Unknown"}`);
     if (action.person.email_address) {
       parts.push(`  Email: ${action.person.email_address}`);
     }
@@ -91,7 +91,7 @@ function createServer(
 
   server.tool(
     "get_actions",
-    "Get actions with COMPLETE related information for full context. " +
+    "Get actions owned by the current user with complete related information for full context. " +
       "By default, returns only currently due or overdue actions, but can be configured to return all actions. " +
       "Follows Salesloft best practices: " +
       "1. Gets steps (with has_due_actions filter when configured) " +

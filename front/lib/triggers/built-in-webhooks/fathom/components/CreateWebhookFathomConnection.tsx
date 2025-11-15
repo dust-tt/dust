@@ -5,28 +5,28 @@ import { useEffect, useState } from "react";
 import type { WebhookCreateFormComponentProps } from "@app/components/triggers/webhook_preset_components";
 import { RECORDING_TYPE_OPTIONS } from "@app/lib/triggers/built-in-webhooks/fathom/constants";
 
-const CONTENT_OPTIONS = [
-  {
+const CONTENT_OPTIONS = {
+  transcript: {
     key: "include_transcript",
     label: "Include Transcript",
     description: "Include meeting transcript with speaker attribution",
   },
-  {
+  summary: {
     key: "include_summary",
     label: "Include Summary",
     description: "Include AI-generated meeting summary",
   },
-  {
+  actionItems: {
     key: "include_action_items",
     label: "Include Action Items",
     description: "Include extracted action items",
   },
-  {
+  crm: {
     key: "include_crm_matches",
     label: "Include CRM Matches",
     description: "Include linked CRM contacts and companies",
   },
-] as const;
+} as const;
 
 export function CreateWebhookFathomConnection({
   onDataToCreateWebhookChange,
@@ -125,30 +125,30 @@ export function CreateWebhookFathomConnection({
           </p>
           <div className="space-y-2">
             <CheckBoxWithTextAndDescription
-              text={CONTENT_OPTIONS[0].label}
-              description={CONTENT_OPTIONS[0].description}
+              text={CONTENT_OPTIONS.transcript.label}
+              description={CONTENT_OPTIONS.transcript.description}
               checked={includeTranscript}
               onCheckedChange={(checked) =>
                 setIncludeTranscript(checked === true)
               }
             />
             <CheckBoxWithTextAndDescription
-              text={CONTENT_OPTIONS[1].label}
-              description={CONTENT_OPTIONS[1].description}
+              text={CONTENT_OPTIONS.summary.label}
+              description={CONTENT_OPTIONS.summary.description}
               checked={includeSummary}
               onCheckedChange={(checked) => setIncludeSummary(checked === true)}
             />
             <CheckBoxWithTextAndDescription
-              text={CONTENT_OPTIONS[2].label}
-              description={CONTENT_OPTIONS[2].description}
+              text={CONTENT_OPTIONS.actionItems.label}
+              description={CONTENT_OPTIONS.actionItems.description}
               checked={includeActionItems}
               onCheckedChange={(checked) =>
                 setIncludeActionItems(checked === true)
               }
             />
             <CheckBoxWithTextAndDescription
-              text={CONTENT_OPTIONS[3].label}
-              description={CONTENT_OPTIONS[3].description}
+              text={CONTENT_OPTIONS.crm.label}
+              description={CONTENT_OPTIONS.crm.description}
               checked={includeCrmMatches}
               onCheckedChange={(checked) =>
                 setIncludeCrmMatches(checked === true)

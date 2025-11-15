@@ -150,7 +150,6 @@ describe("MentionDropdown", () => {
     await user.click(screen.getByRole("button", { name: "About @Alice" }));
 
     expect(openChangeMock).toHaveBeenCalledWith(true);
-    // setQueryParam(router, "agentDetails", mention.id)
     expect(setQueryParamMock).toHaveBeenCalled();
     const [routerArg, keyArg, valueArg] = setQueryParamMock.mock.calls[0];
     expect(keyArg).toBe("agentDetails");

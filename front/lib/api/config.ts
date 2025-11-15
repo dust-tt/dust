@@ -241,6 +241,9 @@ const config = {
       "DEV_OAUTH_FATHOM_REDIRECT_BASE_URL"
     );
   },
+  getOAuthLinearClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_LINEAR_CLIENT_ID");
+  },
 
   // Text extraction.
   getTextExtractionUrl: (): string => {

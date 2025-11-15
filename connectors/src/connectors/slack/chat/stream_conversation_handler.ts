@@ -37,6 +37,19 @@ import { throttleWithRedis } from "@connectors/lib/throttle";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
+const SLACK_MESSAGE_UPDATE_THROTTLE_MS = 1_000;
+const SLACK_MESSAGE_UPDATE_SLOW_THROTTLE_MS = 5_000;
+const SLACK_MESSAGE_LONG_THRESHOLD_CHARS = 300;
+
+// Dynamic throttling: longer messages get less frequent updates to reduce UX disruption when the content is expanded.
+// Posting an update on an expanded message will collapse it, frequent updates prevent users from reading the content.
+const getThrottleDelay = (textLength: number): number => {
+  if (textLength >= SLACK_MESSAGE_LONG_THRESHOLD_CHARS) {
+    return SLACK_MESSAGE_UPDATE_SLOW_THROTTLE_MS;
+  }
+  return SLACK_MESSAGE_UPDATE_THROTTLE_MS;
+};
+
 export const SlackBlockIdStaticAgentConfigSchema = t.type({
   slackChatBotMessageId: t.number,
   messageTs: t.union([t.string, t.undefined]),
@@ -134,10 +147,13 @@ async function streamAgentAnswerToSlack(
 
   let answer = "";
   const actions: AgentActionPublicType[] = [];
-  const throttledPostSlackMessageUpdate = throttle(
+
+  let currentThrottleDelay = SLACK_MESSAGE_UPDATE_THROTTLE_MS;
+  let throttledPostSlackMessageUpdate = throttle(
     postSlackMessageUpdate,
-    1_000
+    currentThrottleDelay
   );
+
   for await (const event of streamRes.value.eventStream) {
     switch (event.type) {
       case "tool_params":
@@ -274,6 +290,17 @@ async function streamAgentAnswerToSlack(
         if (slackContent.length > MAX_SLACK_MESSAGE_LENGTH) {
           break;
         }
+
+        const newThrottleDelay = getThrottleDelay(slackContent.length);
+        if (newThrottleDelay !== currentThrottleDelay) {
+          currentThrottleDelay = newThrottleDelay;
+          throttledPostSlackMessageUpdate.cancel();
+          throttledPostSlackMessageUpdate = throttle(
+            postSlackMessageUpdate,
+            currentThrottleDelay
+          );
+        }
+
         await throttledPostSlackMessageUpdate({
           messageUpdate: {
             text: slackContent,

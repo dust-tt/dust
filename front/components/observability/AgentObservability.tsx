@@ -74,7 +74,7 @@ export function AgentObservability({
               content={
                 <div className="flex flex-row gap-2 text-2xl">
                   {agentAnalytics?.mentions
-                    ? `${agentAnalytics.mentions.messageCount}`
+                    ? `${Math.round(agentAnalytics.mentions.messageCount / agentAnalytics.activeUsers)}`
                     : "-"}
                 </div>
               }
@@ -105,7 +105,7 @@ export function AgentObservability({
         )}
       </TabContentChildSectionLayout>
 
-      <TabContentChildSectionLayout title="Charts">
+      <TabContentChildSectionLayout title="Details">
         <UsageMetricsChart
           workspaceId={workspaceId}
           agentConfigurationId={agentConfigurationId}

@@ -109,6 +109,7 @@ export async function storeAgentAnalyticsActivity(
     agentAgentMessageRow,
     userModel: userUserMessageRow.user ?? null,
     conversationRow,
+    contextOrigin: userUserMessageRow.userContextOrigin,
   });
 }
 
@@ -117,18 +118,21 @@ export async function storeAgentAnalyticsActivity(
  */
 export async function storeAgentAnalytics(
   auth: Authenticator,
-  {
-    agentMessageRow,
-    agentAgentMessageRow,
-    userModel,
-    conversationRow,
-  }: {
+  params: {
     agentMessageRow: Message;
     agentAgentMessageRow: AgentMessage;
     userModel: UserModel | null;
     conversationRow: ConversationModel;
+    contextOrigin: string | null;
   }
 ): Promise<void> {
+  const {
+    agentMessageRow,
+    agentAgentMessageRow,
+    userModel,
+    conversationRow,
+    contextOrigin,
+  } = params;
   // Only index agent messages if there are no blocked actions awaiting approval.
   const actions = await AgentMCPActionResource.listByAgentMessageIds(auth, [
     agentAgentMessageRow.id,
@@ -158,6 +162,7 @@ export async function storeAgentAnalytics(
     agent_id: agentAgentMessageRow.agentConfigurationId,
     agent_version: agentAgentMessageRow.agentConfigurationVersion.toString(),
     conversation_id: conversationRow.sId,
+    context_origin: contextOrigin,
     latency_ms: agentAgentMessageRow.modelInteractionDurationMs ?? 0,
     message_id: agentMessageRow.sId,
     status: agentAgentMessageRow.status,

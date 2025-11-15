@@ -37,6 +37,7 @@ export interface AgentMessageAnalyticsData extends ElasticsearchBaseDocument {
   agent_version: string;
   conversation_id: string;
   feedbacks: AgentMessageAnalyticsFeedback[];
+  context_origin: string | null;
   latency_ms: number;
   message_id: string;
   status: AgentMessageStatus;

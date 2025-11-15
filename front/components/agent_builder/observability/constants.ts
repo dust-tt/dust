@@ -18,10 +18,12 @@ export const USAGE_METRICS_LEGEND = [
 
 export const LATENCY_PALETTE = {
   average: "text-blue-400 dark:text-blue-400-night",
+  median: "text-violet-300 dark:text-violet-300-night",
 } as const;
 
 export const LATENCY_LEGEND = [
-  { key: "average", label: "Average time to complete output" },
+  { key: "average", label: "Average" },
+  { key: "median", label: "Median" },
 ] as const;
 
 export const CHART_HEIGHT = 260;

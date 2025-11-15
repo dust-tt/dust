@@ -12,7 +12,10 @@ import type { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { AgentConfigurationType } from "@app/types";
 import {
+  CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
+  CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
+  CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
@@ -82,6 +85,124 @@ export function _getClaude3HaikuGlobalAgent({
   };
 }
 
+export function _getClaude3OpusGlobalAgent({
+  auth,
+  settings,
+  webSearchBrowseMCPServerView,
+  interactiveContentMCPServerView,
+}: {
+  auth: Authenticator;
+  settings: GlobalAgentSettings | null;
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
+}): AgentConfigurationType {
+  let status = settings?.status ?? "active";
+  if (!auth.isUpgraded()) {
+    status = "disabled_free_workspace";
+  }
+
+  const sId = GLOBAL_AGENTS_SID.CLAUDE_3_OPUS;
+  const metadata = getGlobalAgentMetadata(sId);
+
+  return {
+    id: -1,
+    sId,
+    version: 0,
+    versionCreatedAt: null,
+    versionAuthorId: null,
+    name: metadata.name,
+    description: metadata.description,
+    instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
+    pictureUrl: metadata.pictureUrl,
+    status,
+    scope: "global",
+    userFavorite: false,
+    model: {
+      providerId: CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.providerId,
+      modelId: CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.modelId,
+      temperature: 0.7,
+      reasoningEffort:
+        CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
+    },
+    actions: [
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentId: sId,
+        webSearchBrowseMCPServerView,
+      }),
+      ..._getInteractiveContentToolConfiguration({
+        agentId: sId,
+        interactiveContentMCPServerView,
+      }),
+    ],
+    maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
+    templateId: null,
+    requestedGroupIds: [],
+    requestedSpaceIds: [],
+    tags: [],
+    canRead: true,
+    canEdit: false,
+  };
+}
+
+export function _getClaude3GlobalAgent({
+  auth,
+  settings,
+  webSearchBrowseMCPServerView,
+  interactiveContentMCPServerView,
+}: {
+  auth: Authenticator;
+  settings: GlobalAgentSettings | null;
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
+}): AgentConfigurationType {
+  let status = settings?.status ?? "active";
+  if (!auth.isUpgraded()) {
+    status = "disabled_free_workspace";
+  }
+
+  const sId = GLOBAL_AGENTS_SID.CLAUDE_3_SONNET;
+  const metadata = getGlobalAgentMetadata(sId);
+
+  return {
+    id: -1,
+    sId,
+    version: 0,
+    versionCreatedAt: null,
+    versionAuthorId: null,
+    name: metadata.name,
+    description: metadata.description,
+    instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
+    pictureUrl: metadata.pictureUrl,
+    status,
+    scope: "global",
+    userFavorite: false,
+    model: {
+      providerId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.providerId,
+      modelId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.modelId,
+      temperature: 0.7,
+      reasoningEffort:
+        CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
+    },
+    actions: [
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentId: sId,
+        webSearchBrowseMCPServerView,
+      }),
+      ..._getInteractiveContentToolConfiguration({
+        agentId: sId,
+        interactiveContentMCPServerView,
+      }),
+    ],
+    maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
+    templateId: null,
+    requestedGroupIds: [],
+    requestedSpaceIds: [],
+    tags: [],
+    canRead: true,
+    canEdit: false,
+  };
+}
+
 export function _getClaude4SonnetGlobalAgent({
   auth,
   settings,
@@ -120,6 +241,65 @@ export function _getClaude4SonnetGlobalAgent({
       temperature: 0.7,
       reasoningEffort:
         CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
+    },
+    actions: [
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentId: sId,
+        webSearchBrowseMCPServerView,
+      }),
+      ..._getInteractiveContentToolConfiguration({
+        agentId: sId,
+        interactiveContentMCPServerView,
+      }),
+    ],
+    maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
+    templateId: null,
+    requestedGroupIds: [],
+    requestedSpaceIds: [],
+    tags: [],
+    canRead: true,
+    canEdit: false,
+  };
+}
+
+export function _getClaude3_7GlobalAgent({
+  auth,
+  settings,
+  webSearchBrowseMCPServerView,
+  interactiveContentMCPServerView,
+}: {
+  auth: Authenticator;
+  settings: GlobalAgentSettings | null;
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
+}): AgentConfigurationType {
+  let status = settings?.status ?? "active";
+  if (!auth.isUpgraded()) {
+    status = "disabled_free_workspace";
+  }
+
+  const sId = GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET;
+  const metadata = getGlobalAgentMetadata(sId);
+
+  return {
+    id: -1,
+    sId,
+    version: 0,
+    versionCreatedAt: null,
+    versionAuthorId: null,
+    name: metadata.name,
+    description: metadata.description,
+    instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
+    pictureUrl: metadata.pictureUrl,
+    status,
+    scope: "global",
+    userFavorite: false,
+    model: {
+      providerId: CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG.providerId,
+      modelId: CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG.modelId,
+      temperature: 0.7,
+      reasoningEffort:
+        CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({

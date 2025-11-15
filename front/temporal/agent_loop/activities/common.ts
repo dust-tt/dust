@@ -8,7 +8,7 @@ import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
 import { TERMINAL_AGENT_MESSAGE_EVENT_TYPES } from "@app/lib/api/assistant/streaming/types";
-import { maybeTrackTokenUsageCost } from "@app/lib/api/public_api_limits";
+import { maybeTrackTokenUsageCost } from "@app/lib/api/programmatic_usage_tracking";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { Authenticator as AuthenticatorClass } from "@app/lib/auth";
 import type { AgentMessage } from "@app/lib/models/assistant/conversation";

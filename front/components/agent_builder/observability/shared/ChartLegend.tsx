@@ -20,7 +20,7 @@ export function legendFromConstant<K extends string>(
   if (options?.includeVersionMarker) {
     base.push({
       key: "versionMarkers",
-      label: "Version Marker",
+      label: "Version",
       colorClassName: "text-gray-300 dark:text-gray-300-night",
     });
   }

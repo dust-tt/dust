@@ -21,6 +21,7 @@ export const MISTRAL_LARGE_MODEL_CONFIG: ModelConfigurationType = {
   minimumReasoningEffort: "none",
   maximumReasoningEffort: "none",
   defaultReasoningEffort: "none",
+  tokenizer: { type: "sentence_piece", base: "model_v2" },
 };
 export const MISTRAL_MEDIUM_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "mistral",
@@ -39,6 +40,7 @@ export const MISTRAL_MEDIUM_MODEL_CONFIG: ModelConfigurationType = {
   minimumReasoningEffort: "none",
   maximumReasoningEffort: "none",
   defaultReasoningEffort: "none",
+  tokenizer: { type: "sentence_piece", base: "model_v2" },
 };
 export const MISTRAL_SMALL_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "mistral",
@@ -57,6 +59,7 @@ export const MISTRAL_SMALL_MODEL_CONFIG: ModelConfigurationType = {
   minimumReasoningEffort: "none",
   maximumReasoningEffort: "none",
   defaultReasoningEffort: "none",
+  tokenizer: { type: "sentence_piece", base: "model_v2" },
 };
 export const MISTRAL_CODESTRAL_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "mistral",
@@ -76,4 +79,5 @@ export const MISTRAL_CODESTRAL_MODEL_CONFIG: ModelConfigurationType = {
   minimumReasoningEffort: "none",
   maximumReasoningEffort: "none",
   defaultReasoningEffort: "none",
+  tokenizer: { type: "sentence_piece", base: "model_v2" },
 };

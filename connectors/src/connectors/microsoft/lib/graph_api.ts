@@ -4,20 +4,20 @@ import type { Client } from "@microsoft/microsoft-graph-client";
 import { GraphError } from "@microsoft/microsoft-graph-client";
 import type {
   BaseItem,
-  Channel,
   ChatMessage,
   Drive,
   Entity,
   ItemReference,
   Organization,
   Site,
-  Team,
   WorkbookRange,
   WorkbookWorksheet,
 } from "@microsoft/microsoft-graph-types";
 
-import type { DriveItem } from "@connectors/connectors/microsoft/lib/types";
-import type { MicrosoftNode } from "@connectors/connectors/microsoft/lib/types";
+import type {
+  DriveItem,
+  MicrosoftNode,
+} from "@connectors/connectors/microsoft/lib/types";
 import { DRIVE_ITEM_EXPANDS_AND_SELECTS } from "@connectors/connectors/microsoft/lib/types";
 import {
   internalIdFromTypeAndPath,
@@ -337,83 +337,6 @@ export async function getWorksheetContent(
   return res;
 }
 
-export async function getTeams(
-  logger: LoggerInterface,
-  client: Client,
-  nextLink?: string
-): Promise<{ results: Team[]; nextLink?: string }> {
-  const res = nextLink
-    ? await clientApiGet(logger, client, nextLink)
-    : await clientApiGet(logger, client, "/me/joinedTeams");
-
-  if ("@odata.nextLink" in res) {
-    return {
-      results: res.value,
-      nextLink: res["@odata.nextLink"],
-    };
-  }
-
-  return { results: res.value };
-}
-
-export async function getChannels(
-  logger: LoggerInterface,
-  client: Client,
-  parentInternalId: string,
-  nextLink?: string
-): Promise<{ results: Channel[]; nextLink?: string }> {
-  const { nodeType, itemAPIPath: parentResourcePath } =
-    typeAndPathFromInternalId(parentInternalId);
-
-  if (nodeType !== "team") {
-    throw new Error(
-      `Invalid node type: ${nodeType} for getChannels, expected team`
-    );
-  }
-
-  const res = nextLink
-    ? await clientApiGet(logger, client, nextLink)
-    : await clientApiGet(logger, client, `${parentResourcePath}/channels`);
-
-  if ("@odata.nextLink" in res) {
-    return {
-      results: res.value,
-      nextLink: res["@odata.nextLink"],
-    };
-  }
-
-  return { results: res.value };
-}
-
-export async function getMessages(
-  logger: LoggerInterface,
-  client: Client,
-  parentInternalId: string,
-  nextLink?: string
-): Promise<{ results: ChatMessage[]; nextLink?: string }> {
-  const { nodeType, itemAPIPath: parentResourcePath } =
-    typeAndPathFromInternalId(parentInternalId);
-
-  if (nodeType !== "channel") {
-    throw new Error(
-      `Invalid node type: ${nodeType} for getMessages, expected channel`
-    );
-  }
-
-  const res = nextLink
-    ? await clientApiGet(logger, client, nextLink)
-    : await clientApiGet(logger, client, parentResourcePath);
-
-  if ("@odata.nextLink" in res) {
-    return {
-      results: res.value,
-      nextLink: res["@odata.nextLink"],
-    };
-  }
-
-  return { results: res.value };
-}
-
 export async function getMessagesFromConversation(
   logger: LoggerInterface,
   client: Client,
@@ -467,10 +390,8 @@ type MicrosoftEntity = {
   folder: DriveItem;
   drive: Drive;
   site: Site;
-  team: Team;
   file: DriveItem;
   page: DriveItem;
-  channel: Channel;
   message: ChatMessage;
   worksheet: WorkbookWorksheet;
 };
@@ -538,8 +459,6 @@ export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
         webUrl: item.webUrl ?? null,
       };
     }
-    case "team":
-    case "channel":
     case "message":
     case "worksheet":
     case "page":

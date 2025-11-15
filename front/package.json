@@ -57,6 +57,8 @@
     "@radix-ui/react-select": "^2.0.0",
     "@radix-ui/react-slot": "^1.0.2",
     "@radix-ui/react-visually-hidden": "^1.1.2",
+    "@react-email/html": "0.0.11",
+    "@react-email/render": "1.4.0",
     "@sendgrid/mail": "^8.0.0",
     "@slack/web-api": "^6.13.0",
     "@tailwindcss/container-queries": "^0.1.1",
