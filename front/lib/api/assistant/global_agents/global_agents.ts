@@ -15,7 +15,10 @@ import {
   _getDustTaskGlobalAgent,
   _getPlanningAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/deep-dive";
-import { _getDustGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
+import {
+  _getDustEdgeGlobalAgent,
+  _getDustGlobalAgent,
+} from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import { _getNoopAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/noop";
 import { _getGeminiProGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/google";
 import {
@@ -344,6 +347,22 @@ function getGlobalAgent({
         availableToolsets,
       });
       break;
+    case GLOBAL_AGENTS_SID.DUST_EDGE:
+      agentConfiguration = _getDustEdgeGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        agentRouterMCPServerView,
+        webSearchBrowseMCPServerView,
+        dataSourcesFileSystemMCPServerView,
+        toolsetsMCPServerView,
+        deepDiveMCPServerView,
+        interactiveContentMCPServerView,
+        dataWarehousesMCPServerView,
+        agentMemoryMCPServerView,
+        memories,
+        availableToolsets,
+      });
+      break;
     case GLOBAL_AGENTS_SID.DEEP_DIVE:
       agentConfiguration = _getDeepDiveGlobalAgent(auth, {
         settings,
@@ -559,13 +578,19 @@ export async function getGlobalAgents(
       (sId) => sId !== GLOBAL_AGENTS_SID.DEEPSEEK_R1
     );
   }
+  if (!flags.includes("dust_edge_global_agent")) {
+    agentsIdsToFetch = agentsIdsToFetch.filter(
+      (sId) => sId !== GLOBAL_AGENTS_SID.DUST_EDGE
+    );
+  }
 
   let memories: AgentMemoryResource[] = [];
   if (
     variant === "full" &&
     agentMemoryMCPServerView &&
     auth.user() &&
-    agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST)
+    (agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST) ||
+      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_EDGE))
   ) {
     memories = await AgentMemoryResource.findByAgentConfigurationIdAndUser(
       auth,
@@ -579,7 +604,8 @@ export async function getGlobalAgents(
   if (
     variant === "full" &&
     toolsetsMCPServerView &&
-    agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST)
+    (agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST) ||
+      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_EDGE))
   ) {
     const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
     availableToolsets = await MCPServerViewResource.listBySpace(

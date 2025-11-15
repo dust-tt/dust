@@ -256,6 +256,14 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         pictureUrl:
           "https://dust.tt/static/systemavatar/intercom_avatar_full.png",
       };
+    case GLOBAL_AGENTS_SID.DUST_EDGE:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_EDGE,
+        name: "dust-edge",
+        description:
+          "Same as dust but on another model to experiment internally.",
+        pictureUrl: "https://dust.tt/static/systemavatar/dust_avatar_full.png",
+      };
     case GLOBAL_AGENTS_SID.DUST:
       return {
         sId: GLOBAL_AGENTS_SID.DUST,
