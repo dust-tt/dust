@@ -63,19 +63,17 @@ export function SourceChart({
             cursor={false}
             wrapperStyle={{ outline: "none" }}
             content={({ active, payload }) => {
-              if (!active || !payload || payload.length === 0) {
+              if (!active || data.length === 0) {
                 return null;
               }
-              const p = payload[0].payload;
-              return (
-                <ChartTooltipCard
-                  title={p.origin}
-                  rows={[
-                    { label: "Messages", value: p.count },
-                    { label: "Share", value: `${p.percent}%` },
-                  ]}
-                />
-              );
+              const rows = data.map((d, index) => ({
+                label: d.origin,
+                value: d.count,
+                percent: d.percent,
+                colorClassName: getSourceColor(index),
+              }));
+
+              return <ChartTooltipCard title="Source breakdown" rows={rows} />;
             }}
             contentStyle={{
               background: "transparent",
