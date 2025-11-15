@@ -37,6 +37,7 @@ import { isNodeCandidate } from "@app/lib/connectors";
 import { getSpaceAccessPriority } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
 import type {
   AgentMention,
@@ -99,6 +100,7 @@ const InputBarContainer = ({
 }: InputBarContainerProps) => {
   const isMobile = useIsMobile();
   const agentSuggestions = useAgentSuggestions(agentConfigurations, owner);
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
     UrlCandidate | NodeCandidate | null
   >(null);
@@ -341,6 +343,7 @@ const InputBarContainer = ({
   const voiceTranscriberService = useVoiceTranscriberService({
     owner,
     fileUploaderService,
+    useRealtimeTranscription: hasFeature("realtime_voice_transcription"),
     onTranscribeComplete: (transcript) => {
       for (const message of transcript) {
         switch (message.type) {

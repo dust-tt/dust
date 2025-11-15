@@ -1,8 +1,17 @@
+import type { RealtimeConnection } from "@elevenlabs/elevenlabs-js";
+import {
+  AudioFormat,
+  CommitStrategy,
+  RealtimeEvents,
+} from "@elevenlabs/elevenlabs-js";
 import formidable from "formidable";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { getElevenLabsClient } from "@app/lib/actions/mcp_internal_actions/servers/elevenlabs/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { findAgentsInMessage } from "@app/lib/utils/find_agents_in_message";
 import { transcribeStream } from "@app/lib/utils/transcribe_service";
 import logger from "@app/logger/logger";
@@ -20,12 +29,208 @@ export const config = {
 
 export type PostTranscribeResponseBody = { text: string };
 
+async function streamRealtimeTranscription(
+  req: NextApiRequest,
+  res: NextApiResponse,
+  auth: Authenticator,
+  sessionId: string,
+  workspaceId: string
+) {
+  try {
+    // Verify session exists in Redis
+    const redis = await getRedisClient({ origin: "transcription_session" });
+    const metadataStr = await redis.get(`session:${sessionId}:metadata`);
+
+    if (!metadataStr) {
+      return apiError(req, res, {
+        status_code: 404,
+        api_error: {
+          type: "internal_server_error",
+          message: "Transcription session not found or expired.",
+        },
+      });
+    }
+
+    const metadata = JSON.parse(metadataStr) as {
+      workspaceId: string;
+      created: number;
+    };
+
+    if (metadata.workspaceId !== workspaceId) {
+      return apiError(req, res, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "Session does not belong to this workspace.",
+        },
+      });
+    }
+
+    // Set up SSE response
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    });
+    res.flushHeaders();
+
+    // Create AbortController for cleanup
+    const controller = new AbortController();
+    const { signal } = controller;
+
+    req.on("close", () => {
+      controller.abort();
+    });
+
+    // Connect to ElevenLabs Scribe Realtime WebSocket
+    const elevenLabs = getElevenLabsClient();
+    const connection = await elevenLabs.speechToText.realtime.connect({
+      modelId: "scribe_realtime_v2",
+      languageCode: "auto",
+      commitStrategy: CommitStrategy.VAD,
+      sampleRate: 16_000,
+      audioFormat: AudioFormat.PCM_16000,
+    });
+
+    let isConnected = false;
+    let processingQueue = true;
+
+    connection.on(RealtimeEvents.OPEN, () => {
+      logger.info({ sessionId }, "[ElevenLabs] Connected to Scribe Realtime");
+      isConnected = true;
+
+      // Start processing audio chunks from Redis
+      processAudioQueue(
+        redis,
+        sessionId,
+        connection,
+        signal,
+        () => processingQueue
+      ).catch((err) => {
+        logger.error(
+          { err, sessionId },
+          "[ElevenLabs] Error processing audio queue"
+        );
+        connection.close();
+      });
+    });
+
+    connection.on(RealtimeEvents.PARTIAL_TRANSCRIPT, (message: any) => {
+      logger.info(
+        { sessionId, message },
+        "[ElevenLabs] Partial transcript received"
+      );
+      res.write(
+        `data: ${JSON.stringify({
+          type: "delta",
+          delta: message.text || "",
+        })}\n\n`
+      );
+      // @ts-expect-error - flush exists but not in types
+      res.flush();
+    });
+
+    connection.on(RealtimeEvents.FINAL_TRANSCRIPT, async (message: any) => {
+      logger.info(
+        { sessionId, message },
+        "[ElevenLabs] Final transcript received"
+      );
+      const fullTranscript = await findAgentsInMessage(
+        auth,
+        message.text || ""
+      );
+
+      res.write(
+        `data: ${JSON.stringify({
+          type: "fullTranscript",
+          fullTranscript,
+        })}\n\n`
+      );
+      // @ts-expect-error - flush exists but not in types
+      res.flush();
+    });
+
+    connection.on(RealtimeEvents.ERROR, (message: any) => {
+      logger.error({ sessionId, message }, "[ElevenLabs] Error received");
+      res.write(
+        `data: ${JSON.stringify({
+          type: "error",
+          error: message.message || "Transcription error",
+        })}\n\n`
+      );
+      // @ts-expect-error - flush exists but not in types
+      res.flush();
+    });
+
+    connection.on(RealtimeEvents.CLOSE, () => {
+      logger.info({ sessionId }, "[ElevenLabs] WebSocket closed");
+      processingQueue = false;
+      res.write("data: done\n\n");
+      // @ts-expect-error - flush exists but not in types
+      res.flush();
+      res.end();
+    });
+
+    connection.on(RealtimeEvents.SESSION_STARTED, () => {
+      logger.info({ sessionId }, "[ElevenLabs] Scribe session started");
+    });
+
+    signal.addEventListener("abort", () => {
+      if (isConnected) {
+        connection.close();
+      }
+      processingQueue = false;
+    });
+  } catch (error) {
+    logger.error(
+      { error, sessionId },
+      "[ElevenLabs] Error in realtime transcription"
+    );
+    return apiError(req, res, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "Failed to start realtime transcription.",
+      },
+    });
+  }
+}
+
+async function processAudioQueue(
+  redis: Awaited<ReturnType<typeof getRedisClient>>,
+  sessionId: string,
+  connection: RealtimeConnection,
+  signal: AbortSignal,
+  isProcessing: () => boolean
+): Promise<void> {
+  const queueKey = `session:${sessionId}:audio`;
+
+  while (isProcessing() && !signal.aborted) {
+    try {
+      // Non-blocking pop with timeout
+      const result = await redis.blPop(queueKey, 0.1);
+
+      if (result) {
+        const audioBase64 = result.element;
+
+        // Send audio to ElevenLabs
+        connection.send({ audioBase64 });
+      }
+    } catch (err) {
+      logger.error({ err, sessionId }, "Error reading from Redis queue");
+      break;
+    }
+  }
+
+  connection.commit();
+}
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<PostTranscribeResponseBody | void>>,
   auth: Authenticator
 ) {
-  const { wId } = req.query;
+  const { wId, sessionId } = req.query;
   if (!wId || typeof wId !== "string") {
     return apiError(req, res, {
       status_code: 400,
@@ -45,6 +250,23 @@ async function handler(
       },
     });
     return;
+  }
+
+  // Check if this is a realtime session request
+  if (sessionId && typeof sessionId === "string") {
+    const owner = auth.getNonNullableWorkspace();
+    const featureFlags = await getFeatureFlags(owner);
+    if (!featureFlags.includes("realtime_voice_transcription")) {
+      return apiError(req, res, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "Real-time voice transcription is not enabled.",
+        },
+      });
+    }
+
+    return streamRealtimeTranscription(req, res, auth, sessionId, wId);
   }
 
   const form = formidable({ multiples: false });

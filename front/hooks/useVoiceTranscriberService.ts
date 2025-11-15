@@ -19,6 +19,7 @@ interface UseVoiceTranscriberServiceParams {
   onTranscribeComplete?: (transcript: AugmentedMessage[]) => void;
   onError?: (error: Error) => void;
   fileUploaderService: FileUploaderService;
+  useRealtimeTranscription?: boolean;
 }
 
 export function useVoiceTranscriberService({
@@ -27,6 +28,7 @@ export function useVoiceTranscriberService({
   onTranscribeComplete,
   onError,
   fileUploaderService,
+  useRealtimeTranscription = false,
 }: UseVoiceTranscriberServiceParams) {
   const [status, setStatus] = useState<
     "idle" | "authorizing_microphone" | "recording" | "transcribing"
@@ -41,6 +43,8 @@ export function useVoiceTranscriberService({
   const analyserRef = useRef<AnalyserNode | null>(null);
   const sourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const realtimeSessionRef = useRef<string | null>(null);
+  const realtimeAbortControllerRef = useRef<AbortController | null>(null);
 
   const sendNotification = useSendNotification();
 
@@ -126,6 +130,9 @@ export function useVoiceTranscriberService({
       stopRecorder(mediaRecorderRef.current);
       stopLevelMetering();
       stopTracks(streamRef.current);
+      if (realtimeAbortControllerRef.current) {
+        realtimeAbortControllerRef.current.abort();
+      }
     };
   }, [stopLevelMetering]);
 
@@ -148,6 +155,78 @@ export function useVoiceTranscriberService({
     };
   }, [status]);
 
+  const startRealtimeSession = useCallback(async () => {
+    try {
+      // Create session
+      const sessionResp = await fetch(
+        `/api/w/${owner.sId}/services/transcribe/session`,
+        {
+          method: "POST",
+        }
+      );
+
+      if (!sessionResp.ok) {
+        throw new Error("Failed to create transcription session");
+      }
+
+      const { sessionId } = (await sessionResp.json()) as { sessionId: string };
+      realtimeSessionRef.current = sessionId;
+
+      // Start listening for transcription results
+      const abortController = new AbortController();
+      realtimeAbortControllerRef.current = abortController;
+
+      const transcribeResp = await fetch(
+        `/api/w/${owner.sId}/services/transcribe?sessionId=${sessionId}`,
+        {
+          method: "POST",
+          signal: abortController.signal,
+        }
+      );
+
+      if (!transcribeResp.ok) {
+        throw new Error("Failed to start transcription stream");
+      }
+
+      const body = transcribeResp.body;
+      if (!body) {
+        throw new Error("Empty transcription response");
+      }
+
+      // Process streaming results in the background
+      void readSSEFromPostRequest({
+        body,
+        onTranscribeDelta,
+        onTranscribeComplete,
+        onError,
+      });
+    } catch (e) {
+      sendNotification({
+        type: "error",
+        title: "Transcription setup failed.",
+        description:
+          e instanceof Error
+            ? e.message
+            : "Failed to start realtime transcription",
+      });
+      throw e;
+    }
+  }, [
+    owner.sId,
+    onTranscribeDelta,
+    onTranscribeComplete,
+    onError,
+    sendNotification,
+  ]);
+
+  const stopRealtimeSession = useCallback(() => {
+    if (realtimeAbortControllerRef.current) {
+      realtimeAbortControllerRef.current.abort();
+      realtimeAbortControllerRef.current = null;
+    }
+    realtimeSessionRef.current = null;
+  }, []);
+
   const startRecording = useCallback(async () => {
     if (status === "recording" || status === "authorizing_microphone") {
       return;
@@ -157,13 +236,23 @@ export function useVoiceTranscriberService({
       const stream = await requestMicrophone();
       streamRef.current = stream;
 
-      const recorder = createRecorder(stream, chunksRef);
+      // If realtime mode, start the session first
+      if (useRealtimeTranscription) {
+        await startRealtimeSession();
+      }
+
+      const recorder = useRealtimeTranscription
+        ? createRealtimeRecorder(stream, realtimeSessionRef.current, owner.sId)
+        : createRecorder(stream, chunksRef);
       mediaRecorderRef.current = recorder;
 
       // Start level metering alongside recording.
       startLevelMetering(stream);
 
-      recorder.start();
+      // Start recording (realtime recorder already started with timeslice)
+      if (!useRealtimeTranscription) {
+        recorder.start();
+      }
 
       setStatus("recording");
     } catch {
@@ -173,7 +262,14 @@ export function useVoiceTranscriberService({
         description: "Please allow microphone access and try again.",
       });
     }
-  }, [sendNotification, startLevelMetering, status]);
+  }, [
+    sendNotification,
+    startLevelMetering,
+    startRealtimeSession,
+    status,
+    useRealtimeTranscription,
+    owner.sId,
+  ]);
 
   const finalizeRecordingTranscribeToInputBar = useCallback(
     async (file: File) => {
@@ -238,13 +334,20 @@ export function useVoiceTranscriberService({
     setStatus("transcribing");
 
     try {
-      const file = buildAudioFile(chunksRef.current);
-      chunksRef.current = [];
-
-      if (file.size <= MAXIMUM_FILE_SIZE_FOR_INPUT_BAR_IN_BYTES) {
-        await finalizeRecordingTranscribeToInputBar(file);
+      // In realtime mode, transcription is already happening
+      // We just need to wait for the final result
+      if (useRealtimeTranscription) {
+        // The realtime session will handle cleanup via stopRealtimeSession
+        // Results are already being streamed to callbacks
       } else {
-        await finalizeRecordingAddAsAttachment(file);
+        const file = buildAudioFile(chunksRef.current);
+        chunksRef.current = [];
+
+        if (file.size <= MAXIMUM_FILE_SIZE_FOR_INPUT_BAR_IN_BYTES) {
+          await finalizeRecordingTranscribeToInputBar(file);
+        } else {
+          await finalizeRecordingAddAsAttachment(file);
+        }
       }
     } catch (e) {
       sendNotification({
@@ -257,12 +360,19 @@ export function useVoiceTranscriberService({
       stopLevelMetering();
       stopTracks(streamRef.current);
       streamRef.current = null;
+
+      // Clean up realtime session if active
+      if (useRealtimeTranscription) {
+        stopRealtimeSession();
+      }
     }
   }, [
     finalizeRecordingTranscribeToInputBar,
     finalizeRecordingAddAsAttachment,
     sendNotification,
     stopLevelMetering,
+    stopRealtimeSession,
+    useRealtimeTranscription,
   ]);
 
   const stopRecording = useCallback(async () => {
@@ -345,6 +455,40 @@ const createRecorder = (
       chunksRef.current.push(e.data);
     }
   };
+  return recorder;
+};
+
+const createRealtimeRecorder = (
+  stream: MediaStream,
+  sessionId: string | null,
+  workspaceId: string
+): MediaRecorder => {
+  const recorder = new MediaRecorder(stream, {
+    mimeType: "audio/webm;codecs=opus",
+    audioBitsPerSecond: 16_000,
+  });
+
+  // Send audio chunks to the backend in real-time
+  recorder.ondataavailable = (e) => {
+    if (e.data && e.data.size > 0 && sessionId) {
+      // Convert blob to array buffer and send to backend
+      void e.data.arrayBuffer().then((arrayBuffer) => {
+        void fetch(`/api/w/${workspaceId}/services/transcribe/session`, {
+          method: "POST",
+          headers: {
+            "X-Session-Id": sessionId,
+          },
+          body: arrayBuffer,
+        }).catch((err) => {
+          console.error("Failed to send audio chunk:", err);
+        });
+      });
+    }
+  };
+
+  // Send chunks every 250ms for near real-time transcription
+  recorder.start(250);
+
   return recorder;
 };
 
