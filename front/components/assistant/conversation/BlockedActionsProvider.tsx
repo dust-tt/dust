@@ -21,6 +21,7 @@ import { useValidateAction } from "@app/hooks/useValidateAction";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { useBlockedActions } from "@app/lib/swr/blocked_actions";
+import { useConversations } from "@app/lib/swr/conversations";
 import type {
   ConversationWithoutContentType,
   LightWorkspaceType,
@@ -176,6 +177,10 @@ export function BlockedActionsProvider({
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
+  const { mutateConversations } = useConversations({
+    workspaceId: owner.sId,
+  });
+
   const { validateAction, isValidating } = useValidateAction({
     owner,
     conversation,
@@ -222,6 +227,16 @@ export function BlockedActionsProvider({
       // Close dialog if no more blocked actions
       setIsDialogOpen(false);
       setCurrentValidationIndex(0);
+
+      // TODO (yuka 14/11/2025): we don't want to make a network request and want to update only cache
+      // to remove the conversation from unread inbox in sidebar menu,
+      // but seems like mutate doesn't work as expected and I cannot disable the network request.
+      // Until we fix it, we only refetch the entire conversations when actionRequired is true,
+      // which happens only when you come back to a conversation since we don't update this value
+      // on frontend side.
+      if (conversation?.actionRequired === true) {
+        void mutateConversations();
+      }
     }
   };
 
