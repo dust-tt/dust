@@ -17,6 +17,7 @@ import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_f
 import { RunResource } from "@app/lib/resources/run_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { UserMessageOrigin } from "@app/types";
 import type {
   AgentLoopArgs,
   AgentMessageRef,
@@ -123,7 +124,7 @@ export async function storeAgentAnalytics(
     agentAgentMessageRow: AgentMessage;
     userModel: UserModel | null;
     conversationRow: ConversationModel;
-    contextOrigin: string | null;
+    contextOrigin: UserMessageOrigin | null;
   }
 ): Promise<void> {
   const {
@@ -157,6 +158,8 @@ export async function storeAgentAnalytics(
     ? getAgentMessageFeedbackAnalytics(agentAgentMessageRow.feedbacks)
     : [];
 
+  const apiKey = auth.key();
+
   // Build the complete analytics document.
   const document: AgentMessageAnalyticsData = {
     agent_id: agentAgentMessageRow.agentConfigurationId,
@@ -173,6 +176,8 @@ export async function storeAgentAnalytics(
     workspace_id: auth.getNonNullableWorkspace().sId,
     feedbacks,
     version: agentMessageRow.version.toString(),
+    isApiKey: !!apiKey,
+    apiKeyName: apiKey?.name,
   };
 
   await storeToElasticsearch(document);
