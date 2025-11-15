@@ -5,12 +5,13 @@ import type {
   Result,
   UserMessageType,
 } from "@dust-tt/client";
-import { DustAPI, removeNulls } from "@dust-tt/client";
 import {
   assertNever,
+  DustAPI,
   Err,
   isMCPServerPersonalAuthRequiredError,
   Ok,
+  removeNulls,
   TOOL_RUNNING_LABEL,
 } from "@dust-tt/client";
 import type { ChatPostMessageResponse, WebClient } from "@slack/web-api";
@@ -39,7 +40,7 @@ import type { ConnectorResource } from "@connectors/resources/connector_resource
 
 const SLACK_MESSAGE_UPDATE_THROTTLE_MS = 1_000;
 const SLACK_MESSAGE_UPDATE_SLOW_THROTTLE_MS = 5_000;
-const SLACK_MESSAGE_LONG_THRESHOLD_CHARS = 300;
+const SLACK_MESSAGE_LONG_THRESHOLD_CHARS = 400;
 
 // Dynamic throttling: longer messages get less frequent updates to reduce UX disruption when the content is expanded.
 // Posting an update on an expanded message will collapse it, frequent updates prevent users from reading the content.
@@ -82,6 +83,7 @@ interface StreamConversationToSlackParams {
   userMessage: UserMessageType;
   slackChatBotMessage: SlackChatBotMessage;
   agentConfigurations: LightAgentConfigurationType[];
+  feedbackVisibleToAuthorOnly: boolean;
 }
 
 export async function streamConversationToSlack(
@@ -124,6 +126,7 @@ async function streamAgentAnswerToSlack(
     agentConfigurations,
     slack,
     connector,
+    feedbackVisibleToAuthorOnly,
   } = conversationData;
 
   const {
@@ -428,7 +431,7 @@ async function streamAgentAnswerToSlack(
             });
           }
         }
-        // Post ephemeral message with feedback buttons and agent selection
+        // Post feedback buttons and agent selection (ephemeral or regular message based on setting)
         if (
           slackUserId &&
           !slackUserInfo.is_bot &&
@@ -450,19 +453,28 @@ async function streamAgentAnswerToSlack(
                 }
               : undefined;
 
-          const ephemeralBlocks = makeAssistantSelectionBlock(
+          const selectionBlocks = makeAssistantSelectionBlock(
             agentConfigurations,
             JSON.stringify(blockId),
             feedbackParams
           );
 
-          await slackClient.chat.postEphemeral({
-            channel: slackChannelId,
-            user: slackUserId,
-            text: "Feedback and agent selection",
-            blocks: ephemeralBlocks,
-            thread_ts: slackMessageTs,
-          });
+          if (feedbackVisibleToAuthorOnly) {
+            await slackClient.chat.postEphemeral({
+              channel: slackChannelId,
+              user: slackUserId,
+              text: "Feedback and agent selection",
+              blocks: selectionBlocks,
+              thread_ts: slackMessageTs,
+            });
+          } else {
+            await slackClient.chat.postMessage({
+              channel: slackChannelId,
+              text: "Feedback and agent selection",
+              blocks: selectionBlocks,
+              thread_ts: slackMessageTs,
+            });
+          }
         }
 
         return new Ok(undefined);

@@ -95,6 +95,8 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         whitelistedDomains: configuration.whitelistedDomains,
         restrictedSpaceAgentsEnabled:
           configuration.restrictedSpaceAgentsEnabled ?? true,
+        feedbackVisibleToAuthorOnly:
+          configuration.feedbackVisibleToAuthorOnly ?? true,
       }
     );
 

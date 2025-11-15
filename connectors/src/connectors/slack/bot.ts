@@ -1136,6 +1136,7 @@ async function answerMessage(
     userMessage,
     slackChatBotMessage,
     agentConfigurations: mostPopularAgentConfigurations,
+    feedbackVisibleToAuthorOnly: slackConfig.feedbackVisibleToAuthorOnly,
   });
 
   // Immediately mark the conversation as read.

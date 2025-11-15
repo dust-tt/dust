@@ -47,6 +47,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     autoReadChannelPatterns,
     whitelistedDomains,
     restrictedSpaceAgentsEnabled,
+    feedbackVisibleToAuthorOnly,
     transaction,
   }: {
     slackTeamId: string;
@@ -54,6 +55,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     autoReadChannelPatterns?: SlackAutoReadPattern[];
     whitelistedDomains?: string[];
     restrictedSpaceAgentsEnabled?: boolean;
+    feedbackVisibleToAuthorOnly?: boolean;
     transaction: Transaction;
   }) {
     const otherSlackConfigurationWithBotEnabled =
@@ -73,6 +75,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
         slackTeamId,
         restrictedSpaceAgentsEnabled: restrictedSpaceAgentsEnabled ?? true,
         whitelistedDomains,
+        feedbackVisibleToAuthorOnly: feedbackVisibleToAuthorOnly ?? true,
       },
       { transaction }
     );
@@ -354,6 +357,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
       botEnabled: this.botEnabled,
       whitelistedDomains: this.whitelistedDomains?.map((d) => d),
       restrictedSpaceAgentsEnabled: this.restrictedSpaceAgentsEnabled,
+      feedbackVisibleToAuthorOnly: this.feedbackVisibleToAuthorOnly,
     };
   }
 }
