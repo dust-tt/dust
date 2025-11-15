@@ -9,6 +9,8 @@ import { GITHUB_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/githu
 import type { GithubAdditionalData } from "@app/lib/triggers/built-in-webhooks/github/types";
 import { JIRA_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/jira/preset";
 import type { JiraAdditionalData } from "@app/lib/triggers/built-in-webhooks/jira/types";
+import { LINEAR_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/linear/preset";
+import type { LinearAdditionalData } from "@app/lib/triggers/built-in-webhooks/linear/types";
 import { ZENDESK_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/zendesk/preset";
 import type { AgentsUsageType } from "@app/types/data_source";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -28,6 +30,7 @@ export const WEBHOOK_PROVIDERS = [
   "fathom",
   "github",
   "jira",
+  "linear",
   "zendesk",
 ] as const;
 
@@ -46,6 +49,7 @@ type WebhookProviderServiceDataMap = {
   fathom: NoAdditionalData;
   github: GithubAdditionalData;
   jira: JiraAdditionalData;
+  linear: LinearAdditionalData;
   zendesk: NoAdditionalData;
 };
 
@@ -56,6 +60,7 @@ export const WEBHOOK_PRESETS = {
   fathom: FATHOM_WEBHOOK_PRESET,
   github: GITHUB_WEBHOOK_PRESET,
   jira: JIRA_WEBHOOK_PRESET,
+  linear: LINEAR_WEBHOOK_PRESET,
   zendesk: ZENDESK_WEBHOOK_PRESET,
 } satisfies {
   [P in WebhookProvider]: PresetWebhook<P>;
