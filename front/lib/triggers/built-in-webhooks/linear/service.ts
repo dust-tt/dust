@@ -8,7 +8,7 @@ import {
 } from "@app/lib/triggers/built-in-webhooks/linear/types";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import { Err, normalizeError, OAuthAPI, Ok } from "@app/types";
+import { Err, OAuthAPI, Ok } from "@app/types";
 import type { RemoteWebhookService } from "@app/types/triggers/remote_webhook_service";
 
 export class LinearWebhookService implements RemoteWebhookService<"linear"> {
