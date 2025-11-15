@@ -39,9 +39,11 @@ export function getRefs() {
 export function citationMetaPrompt(isUsingRunAgent: boolean) {
   return (
     "## CITING DOCUMENTS\n" +
-    "To cite documents or web pages retrieved with a 3-character REFERENCE, " +
-    "use the markdown directive :cite[REFERENCE] " +
+    "Documents and web pages are automatically assigned a 3-character REFERENCE. " +
+    "When referring to a document or a web page, use the markdown directive :cite[REFERENCE] " +
     "(eg :cite[xxx] or :cite[xxx,xxx] but not :cite[xxx][xxx]). " +
+    "After retrieving information from documents or web pages, include citations for " +
+    "all information you are using in your answer. " +
     "Ensure citations are placed as close as possible to the related information." +
     (isUsingRunAgent
       ? " If you use information from a run_agent that is related to a document or a web page, you MUST include the citation markers exactly as they appear."
