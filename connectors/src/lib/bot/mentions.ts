@@ -13,28 +13,24 @@ const MENTION_PATTERN = /(?<!\S)[@+~]([a-zA-Z0-9_-]{1,40})(?=\s|,|\.|$|)/g;
 export function processMentions({
   message,
   activeAgentConfigurations,
-  mentionPattern,
+  mentionCandidates,
 }: {
   message: string;
   activeAgentConfigurations: LightAgentConfigurationType[];
-  mentionPattern: RegExp;
+  mentionCandidates: RegExpMatchArray | [];
 }): Result<
   {
     mention: MentionMatch | undefined;
     processedMessage: string;
-    allMentionCandidates: string[];
   },
   Error
 > {
-  const mentionCandidates = message.match(mentionPattern) || [];
-
   const [mentionCandidate] = mentionCandidates;
 
   if (!mentionCandidate) {
     return new Ok({
       mention: undefined,
       processedMessage: message,
-      allMentionCandidates: mentionCandidates,
     });
   }
 
@@ -79,7 +75,6 @@ export function processMentions({
   return new Ok({
     mention,
     processedMessage,
-    allMentionCandidates: mentionCandidates,
   });
 }
 
@@ -132,19 +127,21 @@ export function processMessageForMention({
   let processedMessage = message;
   let mention: MentionMatch | undefined;
 
+  const mentionCandidates = message.match(MENTION_PATTERN) ?? [];
+
+  if (mentionCandidates.length > 1) {
+    return new Err(new Error("Only one agent at a time can be called."));
+  }
+
   // Extract all mentions from the message
   const mentionResult = processMentions({
     message,
     activeAgentConfigurations,
-    mentionPattern: MENTION_PATTERN,
+    mentionCandidates,
   });
 
   if (mentionResult.isErr()) {
     return new Err(mentionResult.error);
-  }
-
-  if (mentionResult.value.allMentionCandidates.length > 1) {
-    return new Err(new Error("Only one agent at a time can be called."));
   }
 
   mention = mentionResult.value.mention;
