@@ -19,7 +19,6 @@ import {
 import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/types/response/ConversationsRepliesResponse";
 import removeMarkdown from "remove-markdown";
-import jaroWinkler from "talisman/metrics/jaro-winkler";
 
 import {
   makeErrorBlock,
@@ -54,6 +53,7 @@ import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
 import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { makeConversationUrl } from "@connectors/lib/bot/conversation_utils";
+import { processMentions } from "@connectors/lib/bot/mentions";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import { sectionFullText } from "@connectors/lib/data_sources";
 import { ProviderRateLimitError } from "@connectors/lib/error";
@@ -71,7 +71,6 @@ import {
   getHeaderFromGroupIds,
   getHeaderFromUserEmail,
 } from "@connectors/types";
-import { processMentions } from "@connectors/lib/bot/mentions";
 
 const SLACK_RATE_LIMIT_ERROR_MARKDOWN =
   "You have reached a rate limit enforced by Slack. Please try again later (or contact Slack to increase your rate limit on the <https://dust4ai.slack.com/marketplace/A09214D6XQT-dust|Dust App for Slack>).";
@@ -864,7 +863,7 @@ async function answerMessage(
     });
     let agentConfigurationToMention: LightAgentConfigurationType | null = null;
 
-    if (channel && channel.agentConfigurationId) {
+    if (channel?.agentConfigurationId) {
       agentConfigurationToMention =
         activeAgentConfigurations.find(
           (ac) => ac.sId === channel.agentConfigurationId
