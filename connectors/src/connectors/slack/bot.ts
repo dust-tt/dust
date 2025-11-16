@@ -814,23 +814,22 @@ async function answerMessage(
     ) || [];
 
   // First we look at mention override
-  // (eg: a mention coming from the Slack agent picker from slack).
+  // (e.g.: a mention coming from the Slack agent picker from Slack).
   if (mentionOverride) {
     const agentConfig = activeAgentConfigurations.find(
       (ac) => ac.sId === mentionOverride
     );
-    if (agentConfig) {
-      // Removing all previous mentions
-      for (const mc of mentionCandidates) {
-        message = message.replace(mc, "");
-      }
-      mention = {
-        assistantId: agentConfig.sId,
-        assistantName: agentConfig.name,
-      };
-    } else {
+    if (!agentConfig) {
       return new Err(new SlackExternalUserError("Cannot find selected agent."));
     }
+    // Removing all previous mentions.
+    for (const mc of mentionCandidates) {
+      message = message.replace(mc, "");
+    }
+    mention = {
+      assistantId: agentConfig.sId,
+      assistantName: agentConfig.name,
+    };
   }
 
   if (mentionCandidates.length > 1) {
