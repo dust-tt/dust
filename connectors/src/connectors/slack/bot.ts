@@ -852,6 +852,7 @@ async function answerMessage(
   }
 
   mention = mentionResult.value.mention;
+  message = mentionResult.value.processedMessage;
 
   if (!mention) {
     // If no mention is found, we look at channel-based routing rules.
