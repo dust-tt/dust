@@ -81,6 +81,9 @@ const MAX_FILE_SIZE_TO_UPLOAD = 10 * 1024 * 1024; // 10 MB
 
 const DEFAULT_AGENTS = ["dust", "claude-4-sonnet", "gpt-5"];
 
+// Pattern to match +mention and ~mention.
+const SLACK_MENTION_PATTERN = /(?<!\S)[+~]([a-zA-Z0-9_-]{1,40})(?=\s|,|\.|$)/g;
+
 type BotAnswerParams = {
   responseUrl?: string;
   slackTeamId: string;
@@ -809,9 +812,7 @@ async function answerMessage(
 
   // Extract all ~mentions and +mentions
   const mentionCandidates =
-    messageWithoutMarkdown.match(
-      /(?<!\S)[+~]([a-zA-Z0-9_-]{1,40})(?=\s|,|\.|$)/g
-    ) || [];
+    messageWithoutMarkdown.match(SLACK_MENTION_PATTERN) || [];
 
   // First we look at mention override
   // (e.g.: a mention coming from the Slack agent picker from Slack).
