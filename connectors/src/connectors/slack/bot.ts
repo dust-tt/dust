@@ -53,7 +53,6 @@ import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
 import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { makeConversationUrl } from "@connectors/lib/bot/conversation_utils";
-import type { MentionMatch } from "@connectors/lib/bot/mentions";
 import { processMentions } from "@connectors/lib/bot/mentions";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import { sectionFullText } from "@connectors/lib/data_sources";
@@ -809,7 +808,7 @@ async function answerMessage(
   // Remove markdown to extract mentions.
   const messageWithoutMarkdown = removeMarkdown(message);
 
-  let mention: MentionMatch | undefined;
+  let mention: { agentName: string; agentId: string } | undefined;
 
   // Extract all ~mentions and +mentions
   const mentionCandidates =

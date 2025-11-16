@@ -2,7 +2,7 @@ import type { LightAgentConfigurationType, Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import jaroWinkler from "talisman/metrics/jaro-winkler";
 
-export type MentionMatch = {
+type MentionMatch = {
   agentId: string;
   agentName: string;
 };
