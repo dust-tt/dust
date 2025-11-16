@@ -3,8 +3,8 @@ import { Err, Ok } from "@dust-tt/client";
 import jaroWinkler from "talisman/metrics/jaro-winkler";
 
 type MentionMatch = {
-  assistantId: string;
-  assistantName: string;
+  agentId: string;
+  agentName: string;
 };
 
 // Pattern to match @mention, +mention, and ~mention.
@@ -35,8 +35,8 @@ export function processMentions({
   }
 
   let bestCandidate: {
-    assistantId: string;
-    assistantName: string;
+    agentId: string;
+    agentName: string;
     distance: number;
   } | null = null;
 
@@ -50,8 +50,8 @@ export function processMentions({
 
     if (bestCandidate === null || bestCandidate.distance > distance) {
       bestCandidate = {
-        assistantId: agentConfiguration.sId,
-        assistantName: agentConfiguration.name,
+        agentId: agentConfiguration.sId,
+        agentName: agentConfiguration.name,
         distance: distance,
       };
     }
@@ -64,12 +64,12 @@ export function processMentions({
   }
 
   const mention = {
-    assistantId: bestCandidate.assistantId,
-    assistantName: bestCandidate.assistantName,
+    agentId: bestCandidate.agentId,
+    agentName: bestCandidate.agentName,
   };
   const processedMessage = message.replace(
     mentionCandidate,
-    `:mention[${bestCandidate.assistantName}]{sId=${bestCandidate.assistantId}}`
+    `:mention[${bestCandidate.agentName}]{sId=${bestCandidate.agentId}}`
   );
 
   return new Ok({
@@ -164,14 +164,14 @@ export function processMessageForMention({
       return new Err(new Error("No agent has been configured to reply."));
     }
     mention = {
-      assistantId: defaultAssistant.sId,
-      assistantName: defaultAssistant.name,
+      agentId: defaultAssistant.sId,
+      agentName: defaultAssistant.name,
     };
   }
 
   if (!processedMessage.includes(":mention")) {
     // if the message does not contain the mention, we add it as a prefix.
-    processedMessage = `:mention[${mention.assistantName}]{sId=${mention.assistantId}} ${processedMessage}`;
+    processedMessage = `:mention[${mention.agentName}]{sId=${mention.agentId}} ${processedMessage}`;
   }
 
   return new Ok({
