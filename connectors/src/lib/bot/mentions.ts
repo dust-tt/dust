@@ -128,8 +128,7 @@ export function processMessageForMention({
   },
   Error
 > {
-  // Default mention pattern supports @, ~, and + prefixes (covers all platforms)
-  const defaultAgentIds = ["dust", "claude-4-sonnet", "gpt-5"];
+  const defaultFallbackAgentIds = ["dust", "claude-4-sonnet", "gpt-5"];
 
   let processedMessage = message;
   let mention: MentionMatch | undefined;
@@ -157,7 +156,7 @@ export function processMessageForMention({
   if (!mention) {
     // Use default agent if no mention found
     let defaultAssistant: LightAgentConfigurationType | undefined = undefined;
-    for (const agentId of defaultAgentIds) {
+    for (const agentId of defaultFallbackAgentIds) {
       defaultAssistant = activeAgentConfigurations.find(
         (ac) => ac.sId === agentId && ac.status === "active"
       );
