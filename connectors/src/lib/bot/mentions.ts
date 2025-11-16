@@ -7,7 +7,7 @@ type MentionMatch = {
   assistantName: string;
 };
 
-// Pattern to match @mention, +mention, and ~mention
+// Pattern to match @mention, +mention, and ~mention.
 const MENTION_PATTERN = /(?<!\S)[@+~]([a-zA-Z0-9_-]{1,40})(?=\s|,|\.|$|)/g;
 
 export function processMentions({
