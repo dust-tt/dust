@@ -122,7 +122,7 @@ export function processMessageForMention({
   },
   Error
 > {
-  const defaultFallbackAgentIds = ["dust", "claude-4-sonnet", "gpt-5"];
+  const fallbackAgentIds = ["dust", "claude-4-sonnet", "gpt-5"];
 
   let processedMessage = message;
   let mention: MentionMatch | undefined;
@@ -152,7 +152,7 @@ export function processMessageForMention({
   if (!mention) {
     // Use default agent if no mention found
     let defaultAssistant: LightAgentConfigurationType | undefined = undefined;
-    for (const agentId of defaultFallbackAgentIds) {
+    for (const agentId of fallbackAgentIds) {
       defaultAssistant = activeAgentConfigurations.find(
         (ac) => ac.sId === agentId && ac.status === "active"
       );
