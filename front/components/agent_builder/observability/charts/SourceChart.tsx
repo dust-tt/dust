@@ -72,7 +72,7 @@ export function SourceChart({
           <Tooltip
             cursor={false}
             wrapperStyle={{ outline: "none" }}
-            content={({ active, payload }) => {
+            content={({ active }) => {
               if (!active || data.length === 0) {
                 return null;
               }
