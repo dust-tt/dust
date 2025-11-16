@@ -86,7 +86,7 @@ export const USER_MESSAGE_ORIGIN_LABELS: Record<UserMessageOrigin, string> = {
   teams: "Teams",
   triggered: "Triggered",
   triggered_programmatic: "Programmatic trigger",
-  web: "App",
+  web: "Web",
   zapier: "Zapier",
   zendesk: "Zendesk",
   excel: "Excel",
