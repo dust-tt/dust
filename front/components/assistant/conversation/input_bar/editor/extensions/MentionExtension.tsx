@@ -17,7 +17,7 @@ interface MentionExtensionOptions extends MentionOptions {
 }
 
 export const MentionExtension = Mention.extend<MentionExtensionOptions>({
-  addAttributes() {
+  addAttributes(this) {
     return {
       ...this.parent?.(),
       type: {
