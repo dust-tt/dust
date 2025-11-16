@@ -831,27 +831,27 @@ async function answerMessage(
       assistantId: agentConfig.sId,
       assistantName: agentConfig.name,
     };
-  }
+  } else {
+    if (mentionCandidates.length > 1) {
+      return new Err(
+        new SlackExternalUserError(
+          "Only one agent at a time can be called through Slack."
+        )
+      );
+    }
 
-  if (mentionCandidates.length > 1) {
-    return new Err(
-      new SlackExternalUserError(
-        "Only one agent at a time can be called through Slack."
-      )
-    );
-  }
+    const mentionResult = processMentions({
+      message,
+      activeAgentConfigurations,
+      mentionCandidates,
+    });
+    if (mentionResult.isErr()) {
+      return new Err(new SlackExternalUserError(mentionResult.error.message));
+    }
 
-  const mentionResult = processMentions({
-    message,
-    activeAgentConfigurations,
-    mentionCandidates,
-  });
-  if (mentionResult.isErr()) {
-    return new Err(new SlackExternalUserError(mentionResult.error.message));
+    mention = mentionResult.value.mention;
+    message = mentionResult.value.processedMessage;
   }
-
-  mention = mentionResult.value.mention;
-  message = mentionResult.value.processedMessage;
 
   if (!mention) {
     // If no mention is found, we look at channel-based routing rules.
