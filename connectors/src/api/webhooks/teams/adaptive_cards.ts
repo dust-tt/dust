@@ -5,6 +5,7 @@ import type { Activity } from "botbuilder";
 import type { MessageFootnotes } from "@connectors/lib/bot/citations";
 import { convertUrlsToMarkdown } from "@connectors/lib/bot/citations";
 import { makeDustAppUrl } from "@connectors/lib/bot/conversation_utils";
+import type { MentionMatch } from "@connectors/lib/bot/mentions";
 
 const DUST_URL = "https://dust.tt/home";
 
@@ -13,7 +14,7 @@ const DUST_URL = "https://dust.tt/home";
  */
 export function createResponseAdaptiveCard({
   response,
-  assistant,
+  mentionedAgent,
   conversationUrl,
   workspaceId,
   footnotes,
@@ -22,7 +23,7 @@ export function createResponseAdaptiveCard({
   originalMessage,
 }: {
   response: string;
-  assistant: { assistantName: string; assistantId: string };
+  mentionedAgent: MentionMatch;
   conversationUrl: string | null;
   workspaceId: string;
   footnotes?: MessageFootnotes;
@@ -31,7 +32,7 @@ export function createResponseAdaptiveCard({
   originalMessage: string;
 }): Partial<Activity> {
   const currentAgent = agentConfigurations.find(
-    (agent) => agent.sId === assistant.assistantId
+    (agent) => agent.sId === mentionedAgent.agentId
   );
 
   const feedbackActions =
@@ -120,7 +121,7 @@ export function createResponseAdaptiveCard({
       {
         type: "TextBlock",
         text: createFooterText({
-          assistantName: assistant.assistantName,
+          agentName: mentionedAgent.agentName,
           conversationUrl,
           workspaceId,
           isError,
@@ -144,7 +145,7 @@ export function createResponseAdaptiveCard({
           {
             type: "Input.ChoiceSet",
             id: "selectedAgent",
-            value: assistant.assistantName,
+            value: mentionedAgent.agentName,
             choices: agentConfigurations.map((agent) => ({
               title: agent.name,
               value: agent.name,
@@ -202,7 +203,7 @@ export function createStreamingAdaptiveCard({
   response,
 }: {
   response: string;
-  assistantName: string;
+  agentName: string;
   conversationUrl: string | null;
   workspaceId: string;
 }): Partial<Activity> {
@@ -540,28 +541,28 @@ export function createWelcomeAdaptiveCard(): Partial<Activity> {
 }
 
 function createFooterText({
-  assistantName,
+  agentName,
   conversationUrl,
   workspaceId,
   isError = false,
 }: {
-  assistantName?: string;
+  agentName?: string;
   conversationUrl?: string | null;
   workspaceId: string;
   isError?: boolean;
 }): string {
-  const assistantsUrl = makeDustAppUrl(`/w/${workspaceId}/assistant/new`);
+  const agentsUrl = makeDustAppUrl(`/w/${workspaceId}/agent/new`);
 
   let attribution = "";
-  if (assistantName) {
+  if (agentName) {
     if (isError) {
-      attribution = `**${assistantName}** encountered an error | `;
+      attribution = `**${agentName}** encountered an error | `;
     } else {
-      attribution = `Answered by **${assistantName}** | `;
+      attribution = `Answered by **${agentName}** | `;
     }
   }
 
-  const baseLinks = `[Browse agents](${assistantsUrl}) | [Learn more](${DUST_URL})`;
+  const baseLinks = `[Browse agents](${agentsUrl}) | [Learn more](${DUST_URL})`;
 
   return conversationUrl
     ? `${attribution}[Go to full conversation](${conversationUrl}) | ${baseLinks}`

@@ -25,7 +25,6 @@ import {
   MCPAgentMemoryRetrieveActionDetails,
 } from "@app/components/actions/mcp/details/MCPAgentMemoryActionDetails";
 import { MCPBrowseActionDetails } from "@app/components/actions/mcp/details/MCPBrowseActionDetails";
-import { MCPConversationCatFileDetails } from "@app/components/actions/mcp/details/MCPConversationFilesActionDetails";
 import {
   DataSourceNodeContentDetails,
   FilesystemPathDetails,
@@ -42,7 +41,6 @@ import { SearchResultDetails } from "@app/components/actions/mcp/details/MCPTool
 import { MCPToolsetsEnableActionDetails } from "@app/components/actions/mcp/details/MCPToolsetsEnableActionDetails";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import { InternalActionIcons } from "@app/components/resources/resources_icons";
-import { DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME } from "@app/lib/actions/constants";
 import {
   DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME,
   DATA_WAREHOUSES_FIND_TOOL_NAME,
@@ -306,12 +304,6 @@ export function MCPActionDetails({
     }
     if (toolName === DATA_WAREHOUSES_QUERY_TOOL_NAME) {
       return <MCPTablesQueryActionDetails {...toolOutputDetailsProps} />;
-    }
-  }
-
-  if (isInternalMCPServerOfName(mcpServerId, "conversation_files")) {
-    if (toolName === DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME) {
-      return <MCPConversationCatFileDetails {...toolOutputDetailsProps} />;
     }
   }
 
