@@ -29,57 +29,58 @@ export function processMentions({
   const mentionCandidates = message.match(mentionPattern) || [];
 
   const [mentionCandidate] = mentionCandidates;
-  if (mentionCandidate) {
-    let bestCandidate:
-      | {
-          assistantId: string;
-          assistantName: string;
-          distance: number;
-        }
-      | undefined = undefined;
 
-    for (const agentConfiguration of activeAgentConfigurations) {
-      const distance =
-        1 -
-        jaroWinkler(
-          mentionCandidate.slice(1).toLowerCase(),
-          agentConfiguration.name.toLowerCase()
-        );
+  if (!mentionCandidate) {
+    return new Ok({
+      mention: undefined,
+      processedMessage: message,
+      allMentionCandidates: mentionCandidates,
+    });
+  }
 
-      if (bestCandidate === undefined || bestCandidate.distance > distance) {
-        bestCandidate = {
-          assistantId: agentConfiguration.sId,
-          assistantName: agentConfiguration.name,
-          distance: distance,
-        };
+  let bestCandidate:
+    | {
+        assistantId: string;
+        assistantName: string;
+        distance: number;
       }
-    }
+    | undefined = undefined;
 
-    if (bestCandidate) {
-      const mention = {
-        assistantId: bestCandidate.assistantId,
-        assistantName: bestCandidate.assistantName,
+  for (const agentConfiguration of activeAgentConfigurations) {
+    const distance =
+      1 -
+      jaroWinkler(
+        mentionCandidate.slice(1).toLowerCase(),
+        agentConfiguration.name.toLowerCase()
+      );
+
+    if (bestCandidate === undefined || bestCandidate.distance > distance) {
+      bestCandidate = {
+        assistantId: agentConfiguration.sId,
+        assistantName: agentConfiguration.name,
+        distance: distance,
       };
-      const processedMessage = message.replace(
-        mentionCandidate,
-        `:mention[${bestCandidate.assistantName}]{sId=${bestCandidate.assistantId}}`
-      );
-
-      return new Ok({
-        mention,
-        processedMessage,
-        allMentionCandidates: mentionCandidates,
-      });
-    } else {
-      return new Err(
-        new Error(`Assistant ${mentionCandidate} has not been found.`)
-      );
     }
   }
 
+  if (!bestCandidate) {
+    return new Err(
+      new Error(`Assistant ${mentionCandidate} has not been found.`)
+    );
+  }
+
+  const mention = {
+    assistantId: bestCandidate.assistantId,
+    assistantName: bestCandidate.assistantName,
+  };
+  const processedMessage = message.replace(
+    mentionCandidate,
+    `:mention[${bestCandidate.assistantName}]{sId=${bestCandidate.assistantId}}`
+  );
+
   return new Ok({
-    mention: undefined,
-    processedMessage: message,
+    mention,
+    processedMessage,
     allMentionCandidates: mentionCandidates,
   });
 }
