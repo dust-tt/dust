@@ -71,6 +71,7 @@ import {
   getHeaderFromGroupIds,
   getHeaderFromUserEmail,
 } from "@connectors/types";
+import { processMentions } from "@connectors/lib/bot/mentions";
 
 const SLACK_RATE_LIMIT_ERROR_MARKDOWN =
   "You have reached a rate limit enforced by Slack. Please try again later (or contact Slack to increase your rate limit on the <https://dust4ai.slack.com/marketplace/A09214D6XQT-dust|Dust App for Slack>).";
@@ -841,49 +842,16 @@ async function answerMessage(
     );
   }
 
-  const [mentionCandidate] = mentionCandidates;
-  if (!mention && mentionCandidate) {
-    let bestCandidate:
-      | {
-          assistantId: string;
-          assistantName: string;
-          distance: number;
-        }
-      | undefined = undefined;
-    for (const agentConfiguration of activeAgentConfigurations) {
-      const distance =
-        1 -
-        jaroWinkler(
-          mentionCandidate.slice(1).toLowerCase(),
-          agentConfiguration.name.toLowerCase()
-        );
-
-      if (bestCandidate === undefined || bestCandidate.distance > distance) {
-        bestCandidate = {
-          assistantId: agentConfiguration.sId,
-          assistantName: agentConfiguration.name,
-          distance: distance,
-        };
-      }
-    }
-
-    if (bestCandidate) {
-      mention = {
-        assistantId: bestCandidate.assistantId,
-        assistantName: bestCandidate.assistantName,
-      };
-      message = message.replace(
-        mentionCandidate,
-        `:mention[${bestCandidate.assistantName}]{sId=${bestCandidate.assistantId}}`
-      );
-    } else {
-      return new Err(
-        new SlackExternalUserError(
-          `Assistant ${mentionCandidate} has not been found.`
-        )
-      );
-    }
+  const mentionResult = processMentions({
+    message,
+    activeAgentConfigurations,
+    mentionCandidates,
+  });
+  if (mentionResult.isErr()) {
+    return new Err(new SlackExternalUserError(mentionResult.error.message));
   }
+
+  mention = mentionResult.value.mention;
 
   if (!mention) {
     // If no mention is found, we look at channel-based routing rules.
