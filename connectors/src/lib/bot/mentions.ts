@@ -58,7 +58,9 @@ export function processMentions({
   }
 
   if (!bestCandidate) {
-    return new Err(new Error(`Agent ${mentionCandidate} has not been found.`));
+    return new Err(
+      new Error(`Assistant ${mentionCandidate} has not been found.`)
+    );
   }
 
   const mention = {
@@ -149,21 +151,21 @@ export function processMessageForMention({
 
   if (!mention) {
     // Use default agent if no mention found
-    let defaultAgent: LightAgentConfigurationType | undefined = undefined;
+    let defaultAssistant: LightAgentConfigurationType | undefined = undefined;
     for (const agentId of defaultFallbackAgentIds) {
-      defaultAgent = activeAgentConfigurations.find(
+      defaultAssistant = activeAgentConfigurations.find(
         (ac) => ac.sId === agentId && ac.status === "active"
       );
-      if (defaultAgent) {
+      if (defaultAssistant) {
         break;
       }
     }
-    if (!defaultAgent) {
+    if (!defaultAssistant) {
       return new Err(new Error("No agent has been configured to reply."));
     }
     mention = {
-      agentId: defaultAgent.sId,
-      agentName: defaultAgent.name,
+      agentId: defaultAssistant.sId,
+      agentName: defaultAssistant.name,
     };
   }
 
