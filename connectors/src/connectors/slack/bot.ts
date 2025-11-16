@@ -808,7 +808,7 @@ async function answerMessage(
   // Remove markdown to extract mentions.
   const messageWithoutMarkdown = removeMarkdown(message);
 
-  let mention: { agentName: string; agentId: string } | undefined;
+  let mention: { assistantName: string; assistantId: string } | undefined;
 
   // Extract all ~mentions and +mentions
   const mentionCandidates =
@@ -828,8 +828,8 @@ async function answerMessage(
       message = message.replace(mc, "");
     }
     mention = {
-      agentId: agentConfig.sId,
-      agentName: agentConfig.name,
+      assistantId: agentConfig.sId,
+      assistantName: agentConfig.name,
     };
   }
 
@@ -872,8 +872,8 @@ async function answerMessage(
 
     if (agentConfigurationToMention) {
       mention = {
-        agentId: agentConfigurationToMention.sId,
-        agentName: agentConfigurationToMention.name,
+        assistantId: agentConfigurationToMention.sId,
+        assistantName: agentConfigurationToMention.name,
       };
     } else {
       // If no mention is found and no channel-based routing rule is found, we use the default agent.
@@ -895,8 +895,8 @@ async function answerMessage(
         );
       }
       mention = {
-        agentId: defaultAssistant.sId,
-        agentName: defaultAssistant.name,
+        assistantId: defaultAssistant.sId,
+        assistantName: defaultAssistant.name,
       };
     }
   }
@@ -911,14 +911,14 @@ async function answerMessage(
     const isRestrictedRes = await isAgentAccessingRestrictedSpace(
       dustAPI,
       activeAgentConfigurations,
-      mention.agentId
+      mention.assistantId
     );
 
     if (isRestrictedRes.isErr()) {
       logger.error(
         {
           error: isRestrictedRes.error,
-          agentId: mention.agentId,
+          agentId: mention.assistantId,
           connectorId: connector.id,
         },
         "Error determining if agent is from restricted space"
@@ -947,7 +947,7 @@ async function answerMessage(
 
   const mainMessage = await slackClient.chat.postMessage({
     ...makeMessageUpdateBlocksAndText(null, connector.workspaceId, {
-      assistantName: mention.agentName,
+      assistantName: mention.assistantName,
       agentConfigurations: mostPopularAgentConfigurations,
       isThinking: true,
     }),
@@ -991,12 +991,12 @@ async function answerMessage(
 
   if (!message.includes(":mention")) {
     // if the message does not contain the mention, we add it as a prefix.
-    message = `:mention[${mention.agentName}]{sId=${mention.agentId}} ${message}`;
+    message = `:mention[${mention.assistantName}]{sId=${mention.assistantId}} ${message}`;
   }
 
   const messageReqBody: PublicPostMessagesRequestBody = {
     content: message,
-    mentions: [{ configurationId: mention.agentId }],
+    mentions: [{ configurationId: mention.assistantId }],
     context: {
       timezone: slackChatBotMessage.slackTimezone || "Europe/Paris",
       username: slackChatBotMessage.slackUserName,
@@ -1090,7 +1090,7 @@ async function answerMessage(
   }
 
   const streamRes = await streamConversationToSlack(dustAPI, {
-    assistantName: mention.agentName,
+    assistantName: mention.assistantName,
     connector,
     conversation,
     mainMessage,
