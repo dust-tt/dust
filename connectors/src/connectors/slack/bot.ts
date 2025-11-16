@@ -877,16 +877,16 @@ async function answerMessage(
       };
     } else {
       // If no mention is found and no channel-based routing rule is found, we use the default agent.
-      let defaultAssistant: LightAgentConfigurationType | undefined = undefined;
+      let defaultAgent: LightAgentConfigurationType | undefined = undefined;
       for (const agent of DEFAULT_AGENTS) {
-        defaultAssistant = activeAgentConfigurations.find(
+        defaultAgent = activeAgentConfigurations.find(
           (ac) => ac.sId === agent && ac.status === "active"
         );
-        if (defaultAssistant) {
+        if (defaultAgent) {
           break;
         }
       }
-      if (!defaultAssistant) {
+      if (!defaultAgent) {
         return new Err(
           // not actually reachable, gpt-4 cannot be disabled.
           new SlackExternalUserError(
@@ -895,8 +895,8 @@ async function answerMessage(
         );
       }
       mention = {
-        agentId: defaultAssistant.sId,
-        agentName: defaultAssistant.name,
+        agentId: defaultAgent.sId,
+        agentName: defaultAgent.name,
       };
     }
   }
