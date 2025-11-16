@@ -38,13 +38,11 @@ export function processMentions({
     });
   }
 
-  let bestCandidate:
-    | {
-        assistantId: string;
-        assistantName: string;
-        distance: number;
-      }
-    | undefined = undefined;
+  let bestCandidate: {
+    assistantId: string;
+    assistantName: string;
+    distance: number;
+  } | null = null;
 
   for (const agentConfiguration of activeAgentConfigurations) {
     const distance =
@@ -54,7 +52,7 @@ export function processMentions({
         agentConfiguration.name.toLowerCase()
       );
 
-    if (bestCandidate === undefined || bestCandidate.distance > distance) {
+    if (bestCandidate === null || bestCandidate.distance > distance) {
       bestCandidate = {
         assistantId: agentConfiguration.sId,
         assistantName: agentConfiguration.name,
