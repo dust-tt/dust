@@ -2,38 +2,27 @@ import type { LightAgentConfigurationType, Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import jaroWinkler from "talisman/metrics/jaro-winkler";
 
-export interface MentionMatch {
+type MentionMatch = {
   assistantId: string;
   assistantName: string;
-}
+};
 
-export interface ProcessMentionsParams {
+export function processMentions({
+  message,
+  activeAgentConfigurations,
+  mentionPattern,
+}: {
   message: string;
   activeAgentConfigurations: LightAgentConfigurationType[];
   mentionPattern: RegExp;
-}
-
-export interface ProcessMentionsResult {
-  mention: MentionMatch | undefined;
-  processedMessage: string;
-  allMentionCandidates: string[];
-}
-
-export interface ProcessMessageForMentionParams {
-  message: string;
-  activeAgentConfigurations: LightAgentConfigurationType[];
-}
-
-export interface ProcessMessageForMentionResult {
-  mention: MentionMatch;
-  processedMessage: string;
-}
-
-export function processMentions(
-  params: ProcessMentionsParams
-): Result<ProcessMentionsResult, Error> {
-  const { message, activeAgentConfigurations, mentionPattern } = params;
-
+}): Result<
+  {
+    mention: MentionMatch | undefined;
+    processedMessage: string;
+    allMentionCandidates: string[];
+  },
+  Error
+> {
   const mentionCandidates = message.match(mentionPattern) || [];
 
   const [mentionCandidate] = mentionCandidates;
@@ -123,11 +112,19 @@ export function findBestAgentMatch(
   return bestMatch?.agent;
 }
 
-export function processMessageForMention(
-  params: ProcessMessageForMentionParams
-): Result<ProcessMessageForMentionResult, Error> {
-  const { message, activeAgentConfigurations } = params;
-
+export function processMessageForMention({
+  message,
+  activeAgentConfigurations,
+}: {
+  message: string;
+  activeAgentConfigurations: LightAgentConfigurationType[];
+}): Result<
+  {
+    mention: MentionMatch;
+    processedMessage: string;
+  },
+  Error
+> {
   // Default mention pattern supports @, ~, and + prefixes (covers all platforms)
   const mentionPattern = /(?<!\S)[@+~]([a-zA-Z0-9_-]{1,40})(?=\s|,|\.|$|)/g;
   const defaultAgentIds = ["dust", "claude-4-sonnet", "gpt-5"];
