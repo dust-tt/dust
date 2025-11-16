@@ -7,6 +7,9 @@ type MentionMatch = {
   assistantName: string;
 };
 
+// Pattern to match @mention, +mention, and ~mention
+const MENTION_PATTERN = /(?<!\S)[@+~]([a-zA-Z0-9_-]{1,40})(?=\s|,|\.|$|)/g;
+
 export function processMentions({
   message,
   activeAgentConfigurations,
@@ -126,7 +129,6 @@ export function processMessageForMention({
   Error
 > {
   // Default mention pattern supports @, ~, and + prefixes (covers all platforms)
-  const mentionPattern = /(?<!\S)[@+~]([a-zA-Z0-9_-]{1,40})(?=\s|,|\.|$|)/g;
   const defaultAgentIds = ["dust", "claude-4-sonnet", "gpt-5"];
 
   let processedMessage = message;
@@ -136,7 +138,7 @@ export function processMessageForMention({
   const mentionResult = processMentions({
     message,
     activeAgentConfigurations,
-    mentionPattern,
+    mentionPattern: MENTION_PATTERN,
   });
 
   if (mentionResult.isErr()) {
