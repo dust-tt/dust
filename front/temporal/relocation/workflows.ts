@@ -582,19 +582,19 @@ export async function workspaceRelocateCoreDataSourceResourcesWorkflow({
   const resourcesRelocationWorkflows = [
     {
       fn: workspaceRelocateDataSourceDocumentsWorkflow,
-      workflowId: `workspaceRelocateDataSourceDocumentsWorkflow`,
+      workflowId: "workspaceRelocateDataSourceDocumentsWorkflow",
     },
     {
       fn: workspaceRelocateDataSourceFoldersWorkflow,
-      workflowId: `workspaceRelocateDataSourceFoldersWorkflow`,
+      workflowId: "workspaceRelocateDataSourceFoldersWorkflow",
     },
     {
       fn: workspaceRelocateDataSourceTablesWorkflow,
-      workflowId: `workspaceRelocateDataSourceTablesWorkflow`,
+      workflowId: "workspaceRelocateDataSourceTablesWorkflow",
     },
     {
       fn: workspaceRelocateTableStorageWorkflow,
-      workflowId: `workspaceRelocateTableStorageWorkflow`,
+      workflowId: "workspaceRelocateTableStorageWorkflow",
     },
   ];
 
@@ -797,6 +797,7 @@ export async function workspaceRelocateTableStorageWorkflow({
   destIds,
   destRegion,
   sourceRegion,
+  workspaceId,
 }: RelocationWorkflowBase & {
   dataSourceCoreIds: DataSourceCoreIds;
   destIds: CreateDataSourceProjectResult;
@@ -809,24 +810,25 @@ export async function workspaceRelocateTableStorageWorkflow({
   const destTablesBucket =
     await destinationRegionActivities.getDestinationTablesBucket();
 
-  const publicFilesJobName =
-    await sourceRegionActivities.startTransferTableFiles({
+  const tableFilesJobName =
+    await sourceRegionActivities.startTransferCoreTableFiles({
+      dataSourceCoreIds,
       destBucket: destTablesBucket,
+      destIds,
       destRegion,
       sourceRegion,
-      dataSourceCoreIds,
-      destIds,
+      workspaceId,
     });
 
   // Wait for the file storage transfer to complete.
-  let isPublicFilesTransferComplete = false;
-  while (!isPublicFilesTransferComplete) {
-    isPublicFilesTransferComplete =
+  let isTableFilesTransferComplete = false;
+  while (!isTableFilesTransferComplete) {
+    isTableFilesTransferComplete =
       await sourceRegionActivities.isFileStorageTransferComplete({
-        jobName: publicFilesJobName,
+        jobName: tableFilesJobName,
       });
 
-    if (!isPublicFilesTransferComplete) {
+    if (!isTableFilesTransferComplete) {
       // Sleep for 1 minute before checking again.
       await sleep("1m");
     }

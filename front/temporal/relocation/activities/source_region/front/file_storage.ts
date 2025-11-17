@@ -150,40 +150,52 @@ export async function isFileStorageTransferComplete({
   return result.value;
 }
 
-export async function startTransferTableFiles({
+function makeCoreTableDestPath(
+  dataSourceCoreIds: CreateDataSourceProjectResult | DataSourceCoreIds
+): string {
+  const { dustAPIProjectId, dustAPIDataSourceId } = dataSourceCoreIds;
+
+  return `project-${dustAPIProjectId}/${dustAPIDataSourceId}/`;
+}
+
+export async function startTransferCoreTableFiles({
+  dataSourceCoreIds,
   destBucket,
+  destIds,
   destRegion,
   sourceRegion,
-  dataSourceCoreIds,
-  destIds,
+  workspaceId,
 }: {
+  dataSourceCoreIds: DataSourceCoreIds;
   destBucket: string;
+  destIds: CreateDataSourceProjectResult;
   destRegion: RegionType;
   sourceRegion: RegionType;
-  dataSourceCoreIds: DataSourceCoreIds;
-  destIds: CreateDataSourceProjectResult;
+  workspaceId: string;
 }): Promise<string> {
   const storageTransferService = new StorageTransferService();
+
+  const sourcePath = makeCoreTableDestPath(dataSourceCoreIds);
 
   const localLogger = logger.child({
     destBucket,
     destRegion,
-    path: FileResource.getBaseTableStorageForCoreIds(dataSourceCoreIds),
+    path: sourcePath,
     sourceRegion,
+    workspaceId,
   });
 
   localLogger.info("[Storage Transfer] Initiating table files transfer.");
 
   const transferResult = await storageTransferService.createTransferJob({
     destBucket,
-    destPath: FileResource.getBaseTableStorageForCoreIds(destIds),
+    destPath: makeCoreTableDestPath(destIds),
     destRegion,
     sourceBucket: fileStorageConfig.getDustTablesBucket(),
-    sourcePath: FileResource.getBaseTableStorageForCoreIds(dataSourceCoreIds),
+    sourcePath,
     sourceProjectId: config.getGcsSourceProjectId(),
     sourceRegion,
-    // HACK: Using the project ID as workspace ID for logging purposes.
-    workspaceId: dataSourceCoreIds.dustAPIProjectId,
+    workspaceId,
   });
 
   if (transferResult.isErr()) {
