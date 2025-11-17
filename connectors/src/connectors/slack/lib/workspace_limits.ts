@@ -311,24 +311,31 @@ export async function notifyIfSlackUserIsNotAllowed(
   } = slackUserInfo;
   const isGuest = is_restricted || is_ultra_restricted;
   const isExternal = isGuest || isStranger;
+  let isAllowed = false;
+  let externalAuthorization: {
+    authorized: boolean;
+    groupIds: string[];
+  } | null = null;
+
   if (isExternal) {
     // If the external user is allowed, they are allowed with a specific group id.
-    return isExternalUserAllowed(
+    externalAuthorization = await isExternalUserAllowed(
       connector,
       slackClient,
       slackUserInfo,
       slackInfos,
       whitelistedDomains
     );
+    isAllowed = externalAuthorization.authorized;
+  } else {
+    // Handle users that are not Slack external.
+    isAllowed = await isSlackUserAllowed(
+      slackUserInfo,
+      connector,
+      slackClient,
+      slackInfos
+    );
   }
-
-  // Handle users that are not Slack external.
-  const isAllowed = await isSlackUserAllowed(
-    slackUserInfo,
-    connector,
-    slackClient,
-    slackInfos
-  );
 
   if (!isAllowed) {
     logger.info(
@@ -349,5 +356,9 @@ export async function notifyIfSlackUserIsNotAllowed(
   }
 
   // If the user is part of the Dust workspace, they are allowed without any explicit group id.
+  if (isExternal && externalAuthorization) {
+    return externalAuthorization;
+  }
+
   return { authorized: isAllowed, groupIds: [] };
 }
