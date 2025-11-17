@@ -231,23 +231,23 @@ export function BlockedActionsProvider({
       setIsDialogOpen(false);
       setCurrentValidationIndex(0);
 
-      // TODO (yuka 14/11/2025): we don't want to make a network request and want to update only cache
-      // to remove the conversation from unread inbox in sidebar menu,
-      // but seems like mutate doesn't work as expected and I cannot disable the network request.
-      // Until we fix it, we only refetch the entire conversations when actionRequired is true,
-      // which happens only when you come back to a conversation since we don't update this value
-      // on frontend side.
+      // This is to update the unread inbox state in sidebar menu.
+      // We only show the conversation in unread inbox if actionRequired is true (and this happens only when you come back to a conversation
+      // since we don't update this value on frontend side), so we don't have to update the cache if it's not in the unread inbox.
       if (conversation?.actionRequired === true) {
-        void mutateConversations((currentData) => {
-          if (!currentData?.conversations) {
-            return currentData;
-          }
-          return {
-            conversations: currentData.conversations.map((c) =>
-              c.sId === conversationId ? { ...c, actionRequired: false } : c
-            ),
-          };
-        });
+        void mutateConversations(
+          (currentData) => {
+            if (!currentData?.conversations) {
+              return currentData;
+            }
+            return {
+              conversations: currentData.conversations.map((c) =>
+                c.sId === conversationId ? { ...c, actionRequired: false } : c
+              ),
+            };
+          },
+          { revalidate: false }
+        );
       }
     }
   };
