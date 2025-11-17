@@ -59,8 +59,13 @@ export async function conversationUnreadNotificationActivity(
   if (!conversation) {
     logger.warn(
       { conversationId: agentLoopArgs.conversationId },
-      "Conversation not found"
+      "Conversation not found after delay"
     );
+    return;
+  }
+
+  // Skip any sub-conversations.
+  if (conversation.depth > 0) {
     return;
   }
 
