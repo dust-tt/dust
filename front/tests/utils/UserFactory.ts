@@ -4,13 +4,24 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 
 export class UserFactory {
+  static async basic() {
+    return UserResource.makeNew(this.defaultParams(false));
+  }
+
+  static async superUser() {
+    return UserResource.makeNew(this.defaultParams(true));
+  }
+
+  static async withCreatedAt(createdAt: Date) {
+    return UserResource.makeNew(this.defaultParams(false, createdAt));
+  }
+
   private static defaultParams = (
     superUser: boolean = false,
     createdAt: Date = new Date()
   ) => {
     return {
       sId: generateRandomModelSId(),
-      auth0Sub: faker.string.uuid(),
       workOSUserId: faker.string.uuid(),
       provider: "google" as const,
       providerId: faker.string.uuid(),
@@ -28,16 +39,4 @@ export class UserFactory {
       lastLoginAt: new Date(),
     };
   };
-
-  static async basic() {
-    return UserResource.makeNew(this.defaultParams(false));
-  }
-
-  static async superUser() {
-    return UserResource.makeNew(this.defaultParams(true));
-  }
-
-  static async withCreatedAt(createdAt: Date) {
-    return UserResource.makeNew(this.defaultParams(false, createdAt));
-  }
 }

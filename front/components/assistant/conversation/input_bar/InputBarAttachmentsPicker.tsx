@@ -42,6 +42,7 @@ interface InputBarAttachmentsPickerProps {
   attachedNodes: DataSourceViewContentNode[];
   isLoading?: boolean;
   disabled?: boolean;
+  buttonSize?: "xs" | "sm" | "md";
 }
 
 const PAGE_SIZE = 25;
@@ -54,6 +55,7 @@ export const InputBarAttachmentsPicker = ({
   attachedNodes,
   isLoading = false,
   disabled = false,
+  buttonSize = "xs",
 }: InputBarAttachmentsPickerProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const itemsContainerRef = useRef<HTMLDivElement>(null);
@@ -132,7 +134,7 @@ export const InputBarAttachmentsPicker = ({
         <Button
           variant="ghost-secondary"
           icon={AttachmentIcon}
-          size="xs"
+          size={buttonSize}
           disabled={disabled || isLoading}
           onClick={() => setIsOpen(!isOpen)}
         />

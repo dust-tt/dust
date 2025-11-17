@@ -37,10 +37,6 @@ export async function getConversation(
     return new Err(new ConversationError("conversation_not_found"));
   }
 
-  if (!ConversationResource.canAccessConversation(auth, conversation)) {
-    return new Err(new ConversationError("conversation_access_restricted"));
-  }
-
   const messages = await Message.findAll({
     where: {
       conversationId: conversation.id,
@@ -91,7 +87,7 @@ export async function getConversation(
 
   const renderRes = await batchRenderMessages(
     auth,
-    conversation.sId,
+    conversation,
     messages,
     "full"
   );
@@ -132,11 +128,12 @@ export async function getConversation(
     title: conversation.title,
     visibility: conversation.visibility,
     depth: conversation.depth,
-    triggerId: conversation.triggerSId(),
+    triggerId: conversation.triggerSId,
     content,
     actionRequired,
     unread,
-    requestedGroupIds:
-      conversation.getConversationRequestedGroupIdsFromModel(auth),
+    hasError: conversation.hasError,
+    requestedGroupIds: [],
+    requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(auth),
   });
 }

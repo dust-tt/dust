@@ -7,13 +7,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import {
   FIREWORKS_DEEPSEEK_R1_MODEL_ID,
-  GEMINI_1_5_FLASH_LATEST_MODEL_ID,
-  GEMINI_1_5_PRO_LATEST_MODEL_ID,
   GEMINI_2_5_PRO_MODEL_ID,
-  GEMINI_2_FLASH_LITE_PREVIEW_MODEL_ID,
-  GEMINI_2_FLASH_MODEL_ID,
-  GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_ID,
-  GEMINI_2_PRO_PREVIEW_MODEL_ID,
   TOGETHERAI_DEEPSEEK_R1_MODEL_ID,
   TOGETHERAI_DEEPSEEK_V3_MODEL_ID,
   TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_ID,
@@ -198,16 +192,16 @@ async function handler(
             // From https://docs.anthropic.com/en/docs/about-claude/model-deprecations#model-status.
             anthropic_models = [
               // Deprecated models.
-              { id: "claude-2.1" }, // Retired Jul 2025.
               { id: "claude-3-sonnet-20240229" }, // Retired Jul 2025.
               { id: "claude-3-5-sonnet-20240620" }, // Retired Oct 2025.
               { id: "claude-3-5-sonnet-20241022" }, // Retired Oct 2025.
               { id: "claude-3-opus-20240229" }, // Retired Jan 2026.
               { id: "claude-3-7-sonnet-20250219" }, // Retired Feb 2026.
               // Active models.
-              { id: "claude-3-haiku-20240307" },
               { id: "claude-3-5-haiku-20241022" },
+              { id: "claude-3-haiku-20240307" },
               { id: "claude-4-sonnet-20250514" },
+              { id: "claude-haiku-4-5-20251001" },
               { id: "claude-opus-4-20250514" },
               { id: "claude-sonnet-4-5-20250929" },
             ];
@@ -260,15 +254,7 @@ async function handler(
 
         case "google_ai_studio":
           return res.status(200).json({
-            models: [
-              { id: GEMINI_1_5_FLASH_LATEST_MODEL_ID },
-              { id: GEMINI_1_5_PRO_LATEST_MODEL_ID },
-              { id: GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_ID },
-              { id: GEMINI_2_FLASH_MODEL_ID },
-              { id: GEMINI_2_FLASH_LITE_PREVIEW_MODEL_ID },
-              { id: GEMINI_2_PRO_PREVIEW_MODEL_ID },
-              { id: GEMINI_2_5_PRO_MODEL_ID },
-            ],
+            models: [{ id: GEMINI_2_5_PRO_MODEL_ID }],
           });
 
         case "togetherai":

@@ -105,6 +105,10 @@ function setCorsHeaders(
     return undefined;
   }
 
+  // Cannot use helper functions like isDevelopment() in Edge Runtime middleware since they are not
+  // bundled. Must check NODE_ENV directly.
+  const isDevelopment = process.env.NODE_ENV === "development";
+
   // If this is a preflight request checking headers.
   if (request.method === "OPTIONS" && requestHeaders) {
     const requestedHeaders = requestHeaders.split(",").map((h) => h.trim());
@@ -112,7 +116,7 @@ function setCorsHeaders(
       (header) => !isAllowedHeader(header)
     );
 
-    if (hasUnallowedHeader) {
+    if (hasUnallowedHeader && !isDevelopment) {
       return new NextResponse(null, {
         status: 403,
         statusText: "Forbidden: Unauthorized Headers",
@@ -121,10 +125,6 @@ function setCorsHeaders(
   }
 
   // Check if origin is allowed (prod or dev).
-
-  // Cannot use helper functions like isDevelopment() in Edge Runtime middleware since they are not
-  // bundled. Must check NODE_ENV directly.
-  const isDevelopment = process.env.NODE_ENV === "development";
   if (isDevelopment || isAllowedOrigin(origin)) {
     response.headers.set("Access-Control-Allow-Origin", origin);
     response.headers.set("Access-Control-Allow-Credentials", "true");

@@ -13,7 +13,6 @@ const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
 const POSTHOG_INITIALIZED_KEY = "dust-ph-init";
 
 const EXCLUDED_PATHS = [
-  "/subscribe",
   "/poke",
   "/poke/",
   "/sso-enforced",
@@ -92,7 +91,7 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
     }
 
     posthog.init(POSTHOG_KEY, {
-      api_host: "/ingest",
+      api_host: "/subtle1",
       person_profiles: "identified_only",
       defaults: "2025-05-24",
       opt_out_capturing_by_default: !shouldTrack,
@@ -196,6 +195,16 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
     }
 
     const handleRouteChange = () => {
+      const pathname = router.pathname;
+
+      // Don't track pageviews on conversation pages (/conversation/[cId]), but track /conversation/new.
+      const isConversationPage = /\/conversation\/(?!new$)[^/]+$/.test(
+        pathname
+      );
+      if (isConversationPage) {
+        return;
+      }
+
       posthog.capture("$pageview");
     };
 
@@ -203,7 +212,7 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
     return () => {
       router.events.off("routeChangeComplete", handleRouteChange);
     };
-  }, [router.events, shouldTrack]);
+  }, [router.events, router.pathname, shouldTrack]);
 
   if (isTrackablePage && hasAcceptedCookies) {
     return <PostHogProvider client={posthog}>{children}</PostHogProvider>;

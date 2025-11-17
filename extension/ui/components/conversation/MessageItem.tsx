@@ -11,19 +11,21 @@ import type { FeedbackSelectorProps } from "@app/ui/components/conversation/Feed
 import { UserMessage } from "@app/ui/components/conversation/UserMessage";
 import { useSubmitFunction } from "@app/ui/components/utils/useSubmitFunction";
 import type {
+  AgentMessagePublicType,
   ConversationMessageReactionsType,
   LightWorkspaceType,
+  UserMessageType,
 } from "@dust-tt/client";
 import React from "react";
 import { useSWRConfig } from "swr";
 
 interface MessageItemProps {
-  index: number;
   conversationId: string;
   hideReactions: boolean;
   isInModal: boolean;
   isLastMessage: boolean;
   message: MessageWithContentFragmentsType;
+  userAndAgentMessages: (UserMessageType | AgentMessagePublicType)[];
   messageFeedback: AgentMessageFeedbackType | undefined;
   owner: LightWorkspaceType;
   reactions: ConversationMessageReactionsType;
@@ -33,11 +35,11 @@ interface MessageItemProps {
 const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
   function MessageItem(
     {
-      index,
       conversationId,
       messageFeedback,
       isLastMessage,
       message,
+      userAndAgentMessages,
       owner,
       user,
     }: MessageItemProps,
@@ -126,15 +128,12 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
 
       case "agent_message":
         return (
-          <div
-            key={`message-id-${sId}`}
-            ref={ref}
-            className={index !== 0 ? "mt-6 md:mt-10" : undefined}
-          >
+          <div key={`message-id-${sId}`} ref={ref} className="mt-6 md:mt-10">
             <AgentMessage
               conversationId={conversationId}
               isLastMessage={isLastMessage}
               message={message}
+              userAndAgentMessages={userAndAgentMessages}
               messageFeedback={messageFeedbackWithSubmit}
               owner={owner}
               user={user}

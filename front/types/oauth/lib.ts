@@ -9,6 +9,8 @@ export const OAUTH_USE_CASES = [
   "platform_actions",
   "personal_actions",
   "bot",
+  // Get a token to manage webhooks in the provider.
+  "webhooks",
 ] as const;
 
 export type OAuthUseCase = (typeof OAUTH_USE_CASES)[number];
@@ -25,12 +27,15 @@ export function isOAuthUseCase(obj: unknown): obj is OAuthUseCase {
 export const OAUTH_PROVIDERS = [
   "confluence",
   "confluence_tools",
+  "discord",
+  "fathom",
   "freshservice",
   "github",
   "google_drive",
   "gmail",
   "intercom",
   "jira",
+  "linear",
   "monday",
   "notion",
   "slack",
@@ -47,12 +52,15 @@ export const OAUTH_PROVIDERS = [
 export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   confluence: "Confluence",
   confluence_tools: "Confluence Tools",
+  discord: "Discord",
+  fathom: "Fathom",
   freshservice: "Freshservice",
   github: "GitHub",
   gmail: "Gmail",
   google_drive: "Google",
   intercom: "Intercom",
   jira: "Jira",
+  linear: "Linear",
   monday: "Monday",
   notion: "Notion",
   slack: "Slack",
@@ -77,6 +85,7 @@ const SUPPORTED_OAUTH_CREDENTIALS = [
   "authorization_endpoint",
   "freshservice_domain",
   "freshworks_org_url",
+  "zendesk_subdomain",
 ] as const;
 
 export type SupportedOAuthCredentials =
@@ -177,8 +186,20 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
         return result;
       }
       return null;
-    case "hubspot":
     case "zendesk":
+      if (useCase === "personal_actions" || useCase === "platform_actions") {
+        const result: OAuthCredentialInputs = {
+          zendesk_subdomain: {
+            label: "Zendesk account subdomain",
+            value: undefined,
+            helpMessage: "The first part of your Zendesk account URL.",
+            validator: isValidZendeskSubdomain,
+          },
+        };
+        return result;
+      }
+      return null;
+    case "hubspot":
     case "slack":
     case "gong":
     case "microsoft":
@@ -191,7 +212,10 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
     case "google_drive":
     case "intercom":
     case "jira":
+    case "linear":
     case "mcp":
+    case "discord":
+    case "fathom":
       return null;
     case "mcp_static":
       if (useCase === "personal_actions" || useCase === "platform_actions") {

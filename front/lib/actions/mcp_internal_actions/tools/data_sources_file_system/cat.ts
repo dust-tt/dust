@@ -6,10 +6,12 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import { FILESYSTEM_CAT_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { renderNode } from "@app/lib/actions/mcp_internal_actions/rendering";
+import { checkConflictingTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import {
   getAgentDataSourceConfigurations,
-  makeDataSourceViewFilter,
+  makeCoreSearchNodesFilters,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import { ensureAuthorizedDataSourceViews } from "@app/lib/actions/mcp_internal_actions/utils/data_source_views";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
@@ -20,7 +22,11 @@ import { CoreAPI, Err, Ok } from "@app/types";
 const catToolInputSchema = {
   dataSources:
     ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
-  nodeId: z.string().describe("The ID of the node to read."),
+  nodeId: z
+    .string()
+    .describe(
+      "The ID of the node to read. This is not the human-readable node title."
+    ),
   offset: z
     .number()
     .optional()
@@ -47,8 +53,6 @@ export function registerCatTool(
   auth: Authenticator,
   server: McpServer,
   agentLoopContext: AgentLoopContextType | undefined,
-  // TODO(2025-08-28 aubin): determine whether we want to allow an extra description or instead
-  //  encourage putting extra details in the server instructions, which are passed to the instructions.
   { name, extraDescription }: { name: string; extraDescription?: string }
 ) {
   const baseDescription =
@@ -64,7 +68,11 @@ export function registerCatTool(
     catToolInputSchema,
     withToolLogging(
       auth,
-      { toolName: FILESYSTEM_CAT_TOOL_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: FILESYSTEM_CAT_TOOL_NAME,
+        agentLoopContext,
+        enableAlerting: true,
+      },
       async ({ dataSources, nodeId, offset, limit, grep }) => {
         const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
@@ -79,13 +87,29 @@ export function registerCatTool(
         }
         const agentDataSourceConfigurations = fetchResult.value;
 
+        const authRes = await ensureAuthorizedDataSourceViews(
+          auth,
+          agentDataSourceConfigurations.map((c) => c.dataSourceViewId)
+        );
+        if (authRes.isErr()) {
+          return new Err(authRes.error);
+        }
+
+        const conflictingTags = checkConflictingTags(
+          agentDataSourceConfigurations.map(({ filter }) => filter.tags),
+          {}
+        );
+        if (conflictingTags) {
+          return new Err(new MCPError(conflictingTags, { tracked: false }));
+        }
+
         // Search the node using our search api.
         const searchResult = await coreAPI.searchNodes({
           filter: {
             node_ids: [nodeId],
-            data_source_views: makeDataSourceViewFilter(
-              agentDataSourceConfigurations
-            ),
+            data_source_views: makeCoreSearchNodesFilters({
+              agentDataSourceConfigurations,
+            }),
           },
         });
 

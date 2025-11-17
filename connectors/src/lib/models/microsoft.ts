@@ -2,7 +2,7 @@ import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import type { MicrosoftNodeType } from "@connectors/connectors/microsoft/lib/types";
-import { sequelizeConnection } from "@connectors/resources/storage";
+import { connectorsSequelize } from "@connectors/resources/storage";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 
 export class MicrosoftConfigurationModel extends ConnectorBaseModel<MicrosoftConfigurationModel> {
@@ -11,6 +11,7 @@ export class MicrosoftConfigurationModel extends ConnectorBaseModel<MicrosoftCon
   declare pdfEnabled: boolean;
   declare csvEnabled: boolean;
   declare largeFilesEnabled: boolean;
+  declare tenantId: string | null;
 }
 MicrosoftConfigurationModel.init(
   {
@@ -39,19 +40,23 @@ MicrosoftConfigurationModel.init(
       allowNull: false,
       defaultValue: false,
     },
+    tenantId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "microsoft_configurations",
     indexes: [{ fields: ["connectorId"], unique: true }],
     relationship: "hasOne",
   }
 );
 
-// MicrosoftRoot stores the drive/folders/channels selected by the user to sync.
+// MicrosoftRoot stores the sites/drives selected by the user to sync.
 // In order to be able to uniquely identify each node, we store the GET path
-// to the item in the itemApiPath field (e.g. /drives/{drive-id}), except for the toplevel
-// sites-root and teams-root, which are stored as "sites-root" and "teams-root" respectively.
+// to the item in the itemApiPath field (e.g. /drives/{drive-id}), except for the top-level
+// sites-root, which is stored as "sites-root".
 export class MicrosoftRootModel extends ConnectorBaseModel<MicrosoftRootModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -80,7 +85,7 @@ MicrosoftRootModel.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "microsoft_roots",
     indexes: [
       { fields: ["connectorId", "internalId"], unique: true },
@@ -159,12 +164,13 @@ MicrosoftNodeModel.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "microsoft_nodes",
     indexes: [
       { fields: ["internalId", "connectorId"], unique: true },
       { fields: ["connectorId", "nodeType"], unique: false },
       { fields: ["parentInternalId", "connectorId"], concurrently: true },
+      { fields: ["connectorId", "id"], unique: false },
     ],
   }
 );

@@ -1,3 +1,4 @@
+export { ActionCard } from "./ActionCard";
 export { AnimatedText } from "./AnimatedText";
 export { AspectRatio } from "./AspectRatio";
 export {
@@ -16,6 +17,7 @@ export type {
   RegularButtonProps,
 } from "./Button";
 export { Button } from "./Button";
+export { ButtonsSwitch, ButtonsSwitchList } from "./ButtonsSwitch";
 export type { CardProps } from "./Card";
 export { Card, CardActionButton, CardGrid } from "./Card";
 export type { CheckboxProps } from "./Checkbox";
@@ -172,10 +174,9 @@ export {
 } from "./Sheet";
 export { SliderToggle } from "./SliderToggle";
 export { default as Spinner } from "./Spinner";
-export { FlexSplitButton, SplitButton } from "./SplitButton";
+export { FlexSplitButton } from "./SplitButton";
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "./Tabs";
 export { ReadOnlyTextArea, TextArea } from "./TextArea";
-export { ToolCard } from "./ToolCard";
 export {
   Tooltip,
   TooltipContent,

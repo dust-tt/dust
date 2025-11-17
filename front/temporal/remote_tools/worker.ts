@@ -1,13 +1,12 @@
 import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
+import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
 import { getTemporalWorkerConnection } from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
 import * as activities from "@app/temporal/remote_tools/activities";
-
 import { QUEUE_NAME } from "@app/temporal/remote_tools/config";
-import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
 export async function runRemoteToolsSyncWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
@@ -18,9 +17,11 @@ export async function runRemoteToolsSyncWorker() {
     connection,
     namespace,
     interceptors: {
-      activityInbound: [
+      activity: [
         (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger);
+          return {
+            inbound: new ActivityInboundLogInterceptor(ctx, logger),
+          };
         },
       ],
     },

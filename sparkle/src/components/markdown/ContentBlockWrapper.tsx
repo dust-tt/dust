@@ -98,44 +98,54 @@ export function ContentBlockWrapper({
 }: ContentBlockWrapperProps) {
   const [isCopied, copyToClipboard] = useCopyToClipboard();
 
-  const handleCopyToClipboard = useCallback(() => {
-    if (!content) {
-      return;
-    }
-    const rawContent: ClipboardContent =
-      typeof content === "string" ? { "text/plain": content } : content;
+  const handleCopyToClipboard = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!content) {
+        return;
+      }
+      const rawContent: ClipboardContent =
+        typeof content === "string" ? { "text/plain": content } : content;
 
-    // Replace invisible non-breaking spaces with regular spaces.
-    if (rawContent["text/plain"]) {
-      rawContent["text/plain"] = rawContent["text/plain"]
-        .replaceAll("\xa0", " ")
-        .trim();
-    }
+      // Replace invisible non-breaking spaces with regular spaces.
+      if (rawContent["text/plain"]) {
+        rawContent["text/plain"] = rawContent["text/plain"]
+          .replaceAll("\xa0", " ")
+          .trim();
+      }
 
-    const data = new ClipboardItem(
-      Object.entries(rawContent).reduce(
-        (acc, [type, data]) => {
-          acc[type] = new Blob([data], { type });
-          return acc;
-        },
-        {} as Record<string, Blob>
-      )
-    );
-    void copyToClipboard(data);
-  }, [content, copyToClipboard]);
+      const data = new ClipboardItem(
+        Object.entries(rawContent).reduce(
+          (acc, [type, data]) => {
+            acc[type] = new Blob([data], { type });
+            return acc;
+          },
+          {} as Record<string, Blob>
+        )
+      );
+      void copyToClipboard(data);
+    },
+    [content, copyToClipboard]
+  );
 
-  const handleDownload = useCallback(async () => {
-    if (!getContentToDownload) {
-      return;
-    }
-    const { content, filename, type } = await getContentToDownload();
-    const blob = new Blob([content], { type });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${filename}.${contentTypeExtensions[type]}`;
-    a.click();
-  }, [getContentToDownload]);
+  const handleDownload = useCallback(
+    async (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!getContentToDownload) {
+        return;
+      }
+      const { content, filename, type } = await getContentToDownload();
+      const blob = new Blob([content], { type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${filename}.${contentTypeExtensions[type]}`;
+      a.click();
+    },
+    [getContentToDownload]
+  );
 
   return (
     <div

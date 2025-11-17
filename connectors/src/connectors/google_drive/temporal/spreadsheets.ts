@@ -470,18 +470,14 @@ export async function syncSpreadSheet(
           spreadsheet = await getSpreadsheet(file.id);
           break;
         } catch (err) {
-          if (isGAxiosServiceUnavailablError(err)) {
+          if (isGAxiosServiceUnavailableError(err)) {
             throw new ProviderWorkflowError(
               "google_drive",
               "503 - Service Unavailable from Google Sheets",
               "transient_upstream_activity_error",
               err
             );
-          } else if (
-            err instanceof Error &&
-            "code" in err &&
-            err.code === 500
-          ) {
+          } else if (isGAxiosInternalServerError(err)) {
             internalErrorsCount++;
             if (internalErrorsCount > maxInternalErrors) {
               if (Context.current().info.attempt > 20) {
@@ -494,22 +490,27 @@ export async function syncSpreadSheet(
                 };
               }
             } else {
-              // Allow to locally retry the API call.
+              // Allow locally retrying the API call.
               continue;
             }
-          } else if (
-            err instanceof Error &&
-            "code" in err &&
-            err.code === 404
-          ) {
+          } else if (isGAxiosNotFoundError(err)) {
             localLogger.info(
               "[Spreadsheet] Consistently getting 404 Not Found from Google Sheets, skipping further processing."
             );
             return {
               isSupported: false,
             };
+          } else if (isGAxiosBadRequestError(err)) {
+            // We can ignore 400 Bad Request errors as they are not actionable. It's just a malformed content from the spreadsheet, we can't do much
+            localLogger.warn(
+              { err },
+              "[Spreadsheet] Getting 400 Bad Request from Google Sheets, skipping further processing."
+            );
+            return {
+              isSupported: false,
+              skipReason: "google_bad_request_error",
+            };
           }
-
           throw err;
         }
       }
@@ -663,8 +664,20 @@ export async function deleteSpreadsheet(
   }
 }
 
-function isGAxiosServiceUnavailablError(err: unknown): err is Error {
+function isGAxiosServiceUnavailableError(err: unknown): err is Error {
   return err instanceof Error && "code" in err && err.code === 503;
+}
+
+function isGAxiosInternalServerError(err: unknown): err is Error {
+  return err instanceof Error && "code" in err && err.code === 500;
+}
+
+function isGAxiosNotFoundError(err: unknown): err is Error {
+  return err instanceof Error && "code" in err && err.code === 404;
+}
+
+function isGAxiosBadRequestError(err: unknown): err is Error {
+  return err instanceof Error && "code" in err && err.code === 400;
 }
 
 function isStringTooLongError(

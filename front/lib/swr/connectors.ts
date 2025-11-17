@@ -8,7 +8,6 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { GetConnectorResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/connector";
 import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/config/[key]";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/permissions";
 import type {
@@ -112,58 +111,14 @@ export function useConnectorConfig({
   };
 }
 
-export function useConnector({
-  workspaceId,
-  dataSource,
-  disabled,
-}: {
-  workspaceId: string;
-  dataSource: DataSourceType;
-  disabled?: boolean;
-}) {
-  const configFetcher: Fetcher<GetConnectorResponseBody> = fetcher;
-
-  const url = `/api/w/${workspaceId}/data_sources/${dataSource.sId}/connector`;
-
-  const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
-    refreshInterval: (connectorResBody) => {
-      if (connectorResBody?.connector.errorType !== undefined) {
-        // We have an error, no need to auto refresh.
-        return 0;
-      }
-
-      // Relying on absolute time difference here because we are comparing
-      // two non synchronized clocks (front and back). It's obviously not perfect
-      // but it's good enough for our use case.
-      if (
-        connectorResBody &&
-        Math.abs(new Date().getTime() - connectorResBody.connector.updatedAt) <
-          60 * 5 * 1000
-      ) {
-        // Connector object has been updated less than 5 minutes ago, we'll refresh every 3 seconds.
-        return 3000;
-      }
-
-      return 0;
-    },
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    disabled: disabled || !dataSource.connectorId,
-  });
-
-  return {
-    connector: data ? data.connector : null,
-    isConnectorLoading: !error && !data,
-    isConnectorError: error,
-    mutateConnector: mutate,
-  };
-}
-
-export function useToggleSlackChatBot({
+export function useToggleChatBot({
   dataSource,
   owner,
+  botName,
 }: {
   dataSource: DataSourceType | null;
   owner: LightWorkspaceType;
+  botName: string;
 }) {
   const sendNotification = useSendNotification();
 
@@ -178,8 +133,8 @@ export function useToggleSlackChatBot({
     return () => {
       sendNotification({
         type: "error",
-        title: "Failed to Enable Slack Bot",
-        description: "Tried to enable Slack Bot, but no data source was found.",
+        title: `Failed to Enable ${botName}`,
+        description: `Tried to enable ${botName}, but no data source was found.`,
       });
     };
   }
@@ -207,11 +162,11 @@ export function useToggleSlackChatBot({
       sendNotification({
         type: "success",
         title: botEnabled
-          ? "Slack Bot Enabled Successfully"
-          : "Slack Bot Disabled Successfully",
+          ? `${botName} Enabled Successfully`
+          : `${botName} Disabled Successfully`,
         description: botEnabled
-          ? "The Slack bot is now active and ready to use."
-          : "The Slack bot has been disabled.",
+          ? `The ${botName} is now active and ready to use.`
+          : `The ${botName} has been disabled.`,
       });
       return configValue;
     } else {
@@ -219,7 +174,79 @@ export function useToggleSlackChatBot({
 
       sendNotification({
         type: "error",
-        title: "Failed to Enable Slack Bot",
+        title: `Failed to Enable ${botName}`,
+        description: errorData.message,
+      });
+      return null;
+    }
+  };
+
+  return doToggle;
+}
+
+export function useToggleDiscordChatBot({
+  dataSource,
+  owner,
+}: {
+  dataSource: DataSourceType | null;
+  owner: LightWorkspaceType;
+}) {
+  const sendNotification = useSendNotification();
+
+  const { mutateConfig } = useConnectorConfig({
+    owner,
+    dataSource,
+    configKey: "botEnabled",
+    disabled: true,
+  });
+
+  if (!dataSource) {
+    return () => {
+      sendNotification({
+        type: "error",
+        title: "Failed to Enable Discord Bot",
+        description:
+          "Tried to enable Discord Bot, but no data source was found.",
+      });
+    };
+  }
+
+  const doToggle = async (botEnabled: boolean) => {
+    const res = await fetch(
+      `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/botEnabled`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+        body: JSON.stringify({ configValue: botEnabled.toString() }),
+      }
+    );
+
+    if (res.ok) {
+      void mutateConfig();
+
+      const response: GetOrPostManagedDataSourceConfigResponseBody =
+        await res.json();
+
+      const { configValue } = response;
+
+      sendNotification({
+        type: "success",
+        title: botEnabled
+          ? "Discord Bot Enabled Successfully"
+          : "Discord Bot Disabled Successfully",
+        description: botEnabled
+          ? "The Discord bot is now active and ready to use."
+          : "The Discord bot has been disabled.",
+      });
+      return configValue;
+    } else {
+      const errorData = await getErrorFromResponse(res);
+
+      sendNotification({
+        type: "error",
+        title: "Failed to Enable Discord Bot",
         description: errorData.message,
       });
       return null;

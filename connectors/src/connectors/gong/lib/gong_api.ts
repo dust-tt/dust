@@ -67,6 +67,37 @@ export const GongParticipantCodec = t.intersection([
   CatchAllCodec,
 ]);
 
+const GongContextObjectCodec = t.intersection([
+  t.type({
+    objectType: t.string,
+    objectId: t.union([t.string, t.null]),
+    fields: t.array(
+      t.intersection([
+        t.type({
+          name: t.string,
+          value: t.union([
+            t.string,
+            t.number,
+            t.array(t.number),
+            t.array(t.string),
+            t.null,
+          ]),
+        }),
+        CatchAllCodec,
+      ])
+    ),
+  }),
+  CatchAllCodec,
+]);
+
+const GongContextCodec = t.intersection([
+  t.type({
+    system: t.string,
+    objects: t.array(GongContextObjectCodec),
+  }),
+  CatchAllCodec,
+]);
+
 const GongTranscriptMetadataWithoutTrackersCodec = t.intersection([
   t.type({
     metaData: t.intersection([
@@ -95,6 +126,7 @@ const GongTranscriptMetadataWithoutTrackersCodec = t.intersection([
     ]),
     // Parties are not defined on imported calls.
     parties: t.union([t.array(GongParticipantCodec), t.undefined]),
+    context: t.union([t.array(GongContextCodec), t.undefined]),
   }),
   CatchAllCodec,
 ]);
@@ -178,7 +210,8 @@ export class GongClient {
           Array.from(response.headers.entries()).filter(
             ([key]) =>
               key.toLowerCase().startsWith("x-") ||
-              key.toLowerCase().startsWith("rate-")
+              key.toLowerCase().startsWith("rate-") ||
+              key.toLowerCase() === "retry-after"
           )
         );
 
@@ -187,6 +220,7 @@ export class GongClient {
             connectorId: this.connectorId,
             endpoint,
             headers,
+            retryAfter: response.headers.get("Retry-After"),
             provider: "gong",
           },
           "Rate limit hit on Gong API."
@@ -349,10 +383,12 @@ export class GongClient {
     callIds,
     pageCursor = null,
     trackersEnabled = false,
+    accountsEnabled = false,
   }: {
     callIds: string[];
     pageCursor?: string | null;
     trackersEnabled?: boolean;
+    accountsEnabled?: boolean;
   }): Promise<{
     callsMetadata: GongTranscriptMetadata[];
     nextPageCursor: string | null;
@@ -371,6 +407,7 @@ export class GongClient {
         callIds,
       },
       contentSelector: {
+        ...(accountsEnabled ? { context: "Extended" } : {}),
         exposedFields: {
           parties: true,
           ...(trackersEnabled ? { content: { trackers: true } } : {}),
@@ -397,7 +434,7 @@ export class GongClient {
             GongTranscriptMetadataWithoutTrackersCodec
           )
         );
-        // Adding empty trackers to the calls metadata to present a uniformed type.
+        // Adding empty trackers to present a uniformed type.
         return {
           callsMetadata: callsMetadata.calls.map((callMetadata) => ({
             ...callMetadata,

@@ -9,6 +9,7 @@ import type {
   ConversationWithoutContentType,
   WithAPIErrorResponse,
 } from "@app/types";
+import { isString } from "@app/types";
 
 export type PokeListConversations = {
   conversations: ConversationWithoutContentType[];
@@ -24,6 +25,17 @@ async function handler(
     req.query.wId as string
   );
 
+  const { agentId } = req.query;
+  if (!isString(agentId)) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid agent ID.",
+      },
+    });
+  }
+
   if (!auth.isDustSuperUser()) {
     return apiError(req, res, {
       status_code: 404,
@@ -36,13 +48,15 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      // Get conversation IDs for this agent
+      // Get conversation IDs for this agent.
       const conversationIds =
-        await ConversationResource.listConversationWithAgentCreatedBeforeDate({
+        await ConversationResource.listConversationWithAgentCreatedBeforeDate(
           auth,
-          agentConfigurationId: req.query.agentId as string,
-          cutoffDate: new Date(), // Current time to get all conversations
-        });
+          {
+            agentConfigurationId: agentId,
+            cutoffDate: new Date(), // Current time to get all conversations.
+          }
+        );
 
       // Fetch full conversation objects
       const conversationResources = await ConversationResource.fetchByIds(
@@ -59,10 +73,11 @@ async function handler(
           title: c.title,
           visibility: c.visibility,
           depth: c.depth,
-          triggerId: c.triggerSId(),
+          triggerId: c.triggerSId,
           actionRequired: false, // We don't care about actionRequired/unread, so set to false
           unread: false,
-          requestedGroupIds: c.getConversationRequestedGroupIdsFromModel(auth),
+          hasError: c.hasError,
+          requestedSpaceIds: c.getRequestedSpaceIdsFromModel(auth),
         };
       });
 

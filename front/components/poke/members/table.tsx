@@ -27,12 +27,14 @@ function prepareMembersForDisplay(
 }
 
 interface MembersDataTableProps {
+  groupName?: string;
   members: UserTypeWithWorkspaces[];
   owner: WorkspaceType;
   readonly?: boolean;
 }
 
 export function MembersDataTable({
+  groupName,
   members,
   owner,
   readonly,
@@ -98,7 +100,9 @@ export function MembersDataTable({
     <>
       <div className="border-material-200 my-4 flex w-full flex-col rounded-lg border p-4">
         <div className="flex justify-between gap-3">
-          <h2 className="text-md mb-4 font-bold">Members:</h2>
+          <h2 className="text-md mb-4 font-bold">
+            {groupName ? `"${groupName}" Members:` : "Members:"}
+          </h2>
         </div>
         <PokeDataTable
           columns={makeColumnsForMembers({

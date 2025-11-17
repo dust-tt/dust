@@ -10,6 +10,7 @@ import { fileSync } from "tmp";
 import config from "@app/lib/api/config";
 import { parseUploadRequest } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
+import { untrustedFetch } from "@app/lib/egress";
 import type { DustError } from "@app/lib/error";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { transcribeFile } from "@app/lib/utils/transcribe_service";
@@ -23,7 +24,10 @@ import type {
   SupportedImageContentType,
 } from "@app/types";
 import { isSupportedAudioContentType } from "@app/types";
-import { isContentCreationFileContentType, normalizeError } from "@app/types";
+import {
+  isInteractiveContentFileContentType,
+  normalizeError,
+} from "@app/types";
 import {
   assertNever,
   Err,
@@ -38,16 +42,23 @@ import {
 } from "@app/types";
 
 const UPLOAD_DELAY_AFTER_CREATION_MS = 1000 * 60 * 1; // 1 minute.
+const CONVERSATION_IMG_MAX_SIZE_PIXELS = "1538";
+const AVATAR_IMG_MAX_SIZE_PIXELS = "256";
 
-// Upload to public bucket.
-
-const uploadToPublicBucket: ProcessingFunction = async (
+// Images processing functions.
+const resizeAndUploadToPublicBucket: ProcessingFunction = async (
   auth: Authenticator,
   file: FileResource
 ) => {
+  const result = await makeResizeAndUploadImageToFileStorage(
+    AVATAR_IMG_MAX_SIZE_PIXELS
+  )(auth, file);
+  if (result.isErr()) {
+    return result;
+  }
   const readStream = file.getReadStream({
     auth,
-    version: "original",
+    version: "processed",
   });
   const writeStream = file.getWriteStream({
     auth,
@@ -75,19 +86,31 @@ const uploadToPublicBucket: ProcessingFunction = async (
   }
 };
 
-// Images processing.
-
 const createReadableFromUrl = async (url: string): Promise<Readable> => {
-  const response = await fetch(url);
+  const response = await untrustedFetch(url);
   if (!response.ok || !response.body) {
     throw new Error(`Failed to fetch from URL: ${response.statusText}`);
   }
-  return Readable.fromWeb(response.body as any); // Type assertion needed due to Node.js types mismatch
+  return Readable.fromWeb(response.body);
 };
 
-const resizeAndUploadToFileStorage: ProcessingFunction = async (
+const makeResizeAndUploadImageToFileStorage = (maxSize: string) => {
+  return async (auth: Authenticator, file: FileResource) =>
+    resizeAndUploadToFileStorage(auth, file, {
+      ImageHeight: maxSize,
+      ImageWidth: maxSize,
+    });
+};
+
+interface ImageResizeParams {
+  ImageHeight: string;
+  ImageWidth: string;
+}
+
+const resizeAndUploadToFileStorage = async (
   auth: Authenticator,
-  file: FileResource
+  file: FileResource,
+  resizeParams: ImageResizeParams
 ) => {
   /* Skipping sharp() to check if it's the cause of high CPU / memory usage.
   const readStream = file.getReadStream({
@@ -125,21 +148,27 @@ const resizeAndUploadToFileStorage: ProcessingFunction = async (
     ".",
     ""
   );
-  const originalUrl = await file.getSignedUrlForDownload(auth, "original");
   const convertapi = new ConvertAPI(process.env.CONVERTAPI_API_KEY);
 
   let result;
   try {
+    // Upload the original file content directly to ConvertAPI to avoid exposing a signed URL
+    // which could be fetched by the third-party service. This still sends the file contents to
+    // ConvertAPI for conversion but removes the use of a signed download URL.
+    const uploadResult = await convertapi.upload(
+      file.getReadStream({ auth, version: "original" }),
+      `${file.fileName}.${originalFormat}`
+    );
+
     result = await convertapi.convert(
       originalFormat,
       {
-        File: originalUrl,
+        File: uploadResult,
         ScaleProportions: true,
         ImageResolution: "72",
         ScaleImage: "true",
         ScaleIfLarger: "true",
-        ImageHeight: "1538",
-        ImageWidth: "1538",
+        ...resizeParams,
       },
       originalFormat,
       30
@@ -354,22 +383,26 @@ type ProcessingFunction = (
 ) => Promise<Result<undefined, Error>>;
 
 const getProcessingFunction = ({
+  auth,
   contentType,
   useCase,
 }: {
+  auth: Authenticator;
   contentType: AllSupportedFileContentType;
   useCase: FileUseCase;
 }): ProcessingFunction | undefined => {
-  // Content Creation file types are not processed.
-  if (isContentCreationFileContentType(contentType)) {
+  // Interactive Content file types are not processed.
+  if (isInteractiveContentFileContentType(contentType)) {
     return undefined;
   }
 
   if (isSupportedImageContentType(contentType)) {
     if (useCase === "conversation") {
-      return resizeAndUploadToFileStorage;
+      return makeResizeAndUploadImageToFileStorage(
+        CONVERSATION_IMG_MAX_SIZE_PIXELS
+      );
     } else if (useCase === "avatar") {
-      return uploadToPublicBucket;
+      return resizeAndUploadToPublicBucket;
     }
     return undefined;
   }
@@ -398,7 +431,11 @@ const getProcessingFunction = ({
   }
 
   if (isSupportedAudioContentType(contentType)) {
-    if (useCase === "conversation") {
+    if (
+      useCase === "conversation" &&
+      // Only handle voice transcription if the workspace has enabled it.
+      auth.getNonNullableWorkspace().metadata?.allowVoiceTranscription !== false
+    ) {
       return extractTextFromAudioAndUpload;
     }
     return undefined;
@@ -452,6 +489,7 @@ const getProcessingFunction = ({
     case "text/x-groovy":
     case "text/x-perl":
     case "text/x-perl-script":
+    case "message/rfc822":
       if (
         [
           "conversation",
@@ -490,6 +528,7 @@ const getProcessingFunction = ({
 };
 
 export const isUploadSupported = (arg: {
+  auth: Authenticator;
   contentType: SupportedFileContentType;
   useCase: FileUseCase;
 }): boolean => {
@@ -503,7 +542,7 @@ const maybeApplyProcessing: ProcessingFunction = async (
 ) => {
   const start = performance.now();
 
-  const processing = getProcessingFunction(file);
+  const processing = getProcessingFunction({ auth, ...file });
   if (!processing) {
     return new Err(
       new Error(
@@ -649,7 +688,7 @@ export async function processAndStoreFromUrl(
   }
 
   try {
-    const response = await fetch(url);
+    const response = await untrustedFetch(url);
     if (!response.ok) {
       return new Err({
         name: "dust_error",
@@ -697,7 +736,7 @@ export async function processAndStoreFromUrl(
       file,
       content: {
         type: "readable",
-        value: Readable.fromWeb(response.body as any),
+        value: Readable.fromWeb(response.body),
       },
     });
   } catch (error) {

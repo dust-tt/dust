@@ -293,6 +293,7 @@ describe("makeToolsWithStakesAndTimeout", () => {
         update_event: "low",
         delete_event: "low",
         check_availability: "never_ask",
+        get_user_timezones: "never_ask",
       },
       serverTimeoutMs: undefined,
     });

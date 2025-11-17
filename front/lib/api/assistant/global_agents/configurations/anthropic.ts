@@ -4,21 +4,21 @@ import {
   globalAgentWebSearchGuidelines,
 } from "@app/lib/api/assistant/global_agents/guidelines";
 import {
-  _getContentCreationToolConfiguration,
   _getDefaultWebActionsForGlobalAgent,
+  _getInteractiveContentToolConfiguration,
 } from "@app/lib/api/assistant/global_agents/tools";
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { AgentConfigurationType } from "@app/types";
 import {
-  CLAUDE_2_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
+  CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
+  CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
-  CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   GLOBAL_AGENTS_SID,
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
@@ -31,95 +31,14 @@ import {
  * - Add a case in getGlobalAgent with associated function.
  */
 
-export function _getClaudeInstantGlobalAgent({
-  settings,
-}: {
-  settings: GlobalAgentSettings | null;
-}): AgentConfigurationType {
-  const status = settings ? settings.status : "disabled_by_admin";
-  const metadata = getGlobalAgentMetadata(GLOBAL_AGENTS_SID.CLAUDE_INSTANT);
-
-  return {
-    id: -1,
-    sId: GLOBAL_AGENTS_SID.CLAUDE_INSTANT,
-    version: 0,
-    versionCreatedAt: null,
-    versionAuthorId: null,
-    name: metadata.name,
-    description: metadata.description,
-    instructions: globalAgentGuidelines,
-    pictureUrl: metadata.pictureUrl,
-    status,
-    scope: "global",
-    userFavorite: false,
-    model: {
-      providerId: CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG.providerId,
-      modelId: CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG.modelId,
-      temperature: 0.7,
-    },
-    actions: [],
-    maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: true,
-    templateId: null,
-    requestedGroupIds: [],
-    tags: [],
-    canRead: true,
-    canEdit: false,
-  };
-}
-
-export function _getClaude2GlobalAgent({
-  auth,
-  settings,
-}: {
-  auth: Authenticator;
-  settings: GlobalAgentSettings | null;
-}): AgentConfigurationType {
-  let status = settings?.status ?? "disabled_by_admin";
-  if (!auth.isUpgraded()) {
-    status = "disabled_free_workspace";
-  }
-
-  const metadata = getGlobalAgentMetadata(GLOBAL_AGENTS_SID.CLAUDE_2);
-
-  return {
-    id: -1,
-    sId: GLOBAL_AGENTS_SID.CLAUDE_2,
-    version: 0,
-    versionCreatedAt: null,
-    versionAuthorId: null,
-    name: metadata.name,
-    description: metadata.description,
-    instructions: globalAgentGuidelines,
-    pictureUrl: metadata.pictureUrl,
-    status,
-    scope: "global",
-    userFavorite: false,
-    model: {
-      providerId: CLAUDE_2_DEFAULT_MODEL_CONFIG.providerId,
-      modelId: CLAUDE_2_DEFAULT_MODEL_CONFIG.modelId,
-      temperature: 0.7,
-    },
-
-    actions: [],
-    maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: true,
-    templateId: null,
-    requestedGroupIds: [],
-    tags: [],
-    canRead: true,
-    canEdit: false,
-  };
-}
-
 export function _getClaude3HaikuGlobalAgent({
   settings,
   webSearchBrowseMCPServerView,
-  contentCreationMCPServerView,
+  interactiveContentMCPServerView,
 }: {
   settings: GlobalAgentSettings | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
-  contentCreationMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   const status = settings ? settings.status : "disabled_by_admin";
 
@@ -151,15 +70,15 @@ export function _getClaude3HaikuGlobalAgent({
         agentId: sId,
         webSearchBrowseMCPServerView,
       }),
-      ..._getContentCreationToolConfiguration({
+      ..._getInteractiveContentToolConfiguration({
         agentId: sId,
-        contentCreationMCPServerView,
+        interactiveContentMCPServerView,
       }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
+    requestedSpaceIds: [],
     tags: [],
     canRead: true,
     canEdit: false,
@@ -170,12 +89,12 @@ export function _getClaude3OpusGlobalAgent({
   auth,
   settings,
   webSearchBrowseMCPServerView,
-  contentCreationMCPServerView,
+  interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
-  contentCreationMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
@@ -210,15 +129,15 @@ export function _getClaude3OpusGlobalAgent({
         agentId: sId,
         webSearchBrowseMCPServerView,
       }),
-      ..._getContentCreationToolConfiguration({
+      ..._getInteractiveContentToolConfiguration({
         agentId: sId,
-        contentCreationMCPServerView,
+        interactiveContentMCPServerView,
       }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
+    requestedSpaceIds: [],
     tags: [],
     canRead: true,
     canEdit: false,
@@ -229,12 +148,12 @@ export function _getClaude3GlobalAgent({
   auth,
   settings,
   webSearchBrowseMCPServerView,
-  contentCreationMCPServerView,
+  interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
-  contentCreationMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
@@ -269,15 +188,15 @@ export function _getClaude3GlobalAgent({
         agentId: sId,
         webSearchBrowseMCPServerView,
       }),
-      ..._getContentCreationToolConfiguration({
+      ..._getInteractiveContentToolConfiguration({
         agentId: sId,
-        contentCreationMCPServerView,
+        interactiveContentMCPServerView,
       }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
+    requestedSpaceIds: [],
     tags: [],
     canRead: true,
     canEdit: false,
@@ -288,12 +207,12 @@ export function _getClaude4SonnetGlobalAgent({
   auth,
   settings,
   webSearchBrowseMCPServerView,
-  contentCreationMCPServerView,
+  interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
-  contentCreationMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
@@ -328,15 +247,15 @@ export function _getClaude4SonnetGlobalAgent({
         agentId: sId,
         webSearchBrowseMCPServerView,
       }),
-      ..._getContentCreationToolConfiguration({
+      ..._getInteractiveContentToolConfiguration({
         agentId: sId,
-        contentCreationMCPServerView,
+        interactiveContentMCPServerView,
       }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
+    requestedSpaceIds: [],
     tags: [],
     canRead: true,
     canEdit: false,
@@ -347,12 +266,12 @@ export function _getClaude3_7GlobalAgent({
   auth,
   settings,
   webSearchBrowseMCPServerView,
-  contentCreationMCPServerView,
+  interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
-  contentCreationMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
@@ -387,15 +306,135 @@ export function _getClaude3_7GlobalAgent({
         agentId: sId,
         webSearchBrowseMCPServerView,
       }),
-      ..._getContentCreationToolConfiguration({
+      ..._getInteractiveContentToolConfiguration({
         agentId: sId,
-        contentCreationMCPServerView,
+        interactiveContentMCPServerView,
+      }),
+    ],
+    maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
+    templateId: null,
+    requestedGroupIds: [],
+    requestedSpaceIds: [],
+    tags: [],
+    canRead: true,
+    canEdit: false,
+  };
+}
+
+export function _getClaude4_5SonnetGlobalAgent({
+  auth,
+  settings,
+  webSearchBrowseMCPServerView,
+  interactiveContentMCPServerView,
+}: {
+  auth: Authenticator;
+  settings: GlobalAgentSettings | null;
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
+}): AgentConfigurationType {
+  let status = settings?.status ?? "active";
+  if (!auth.isUpgraded()) {
+    status = "disabled_free_workspace";
+  }
+
+  const sId = GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET;
+  const metadata = getGlobalAgentMetadata(sId);
+
+  return {
+    id: -1,
+    sId,
+    version: 0,
+    versionCreatedAt: null,
+    versionAuthorId: null,
+    name: metadata.name,
+    description: metadata.description,
+    instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
+    pictureUrl: metadata.pictureUrl,
+    status,
+    scope: "global",
+    userFavorite: false,
+    model: {
+      providerId: CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.providerId,
+      modelId: CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.modelId,
+      temperature: 0.7,
+      reasoningEffort:
+        CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
+    },
+    actions: [
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentId: sId,
+        webSearchBrowseMCPServerView,
+      }),
+      ..._getInteractiveContentToolConfiguration({
+        agentId: sId,
+        interactiveContentMCPServerView,
       }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
+    requestedSpaceIds: [],
+    tags: [],
+    canRead: true,
+    canEdit: false,
+  };
+}
+
+export function _getClaude4_5HaikuGlobalAgent({
+  auth,
+  settings,
+  webSearchBrowseMCPServerView,
+  interactiveContentMCPServerView,
+}: {
+  auth: Authenticator;
+  settings: GlobalAgentSettings | null;
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
+}): AgentConfigurationType {
+  let status = settings?.status ?? "active";
+  if (!auth.isUpgraded()) {
+    status = "disabled_free_workspace";
+  }
+
+  const sId = GLOBAL_AGENTS_SID.CLAUDE_4_5_HAIKU;
+  const metadata = getGlobalAgentMetadata(sId);
+
+  return {
+    id: -1,
+    sId,
+    version: 0,
+    versionCreatedAt: null,
+    versionAuthorId: null,
+    name: metadata.name,
+    description: metadata.description,
+    instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
+    pictureUrl: metadata.pictureUrl,
+    status,
+    scope: "global",
+    userFavorite: false,
+    model: {
+      providerId: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.providerId,
+      modelId: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.modelId,
+      temperature: 0.7,
+      reasoningEffort:
+        CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
+    },
+    actions: [
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentId: sId,
+        webSearchBrowseMCPServerView,
+      }),
+      ..._getInteractiveContentToolConfiguration({
+        agentId: sId,
+        interactiveContentMCPServerView,
+      }),
+    ],
+    maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
+    visualizationEnabled: false,
+    templateId: null,
+    requestedGroupIds: [],
+    requestedSpaceIds: [],
     tags: [],
     canRead: true,
     canEdit: false,

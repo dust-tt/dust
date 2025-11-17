@@ -1,3 +1,4 @@
+import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import type { ToolNotificationEvent } from "@app/lib/actions/mcp";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
@@ -6,21 +7,28 @@ import type { DustError } from "@app/lib/error";
 import type {
   ContentFragmentsType,
   ContentFragmentType,
+  LightAgentConfigurationType,
   LightAgentMessageType,
   LightAgentMessageWithActionsType,
   LightWorkspaceType,
-  MentionType,
   ModelId,
   Result,
+  RichMention,
+  UserMessageOrigin,
   UserMessageType,
   UserType,
 } from "@app/types";
 import { isLightAgentMessageWithActionsType } from "@app/types";
 import type { AgentMCPActionType } from "@app/types/actions";
 
-type AgentStateClassification = "thinking" | "acting" | "writing" | "done";
+export type AgentStateClassification =
+  | "placeholder"
+  | "thinking"
+  | "acting"
+  | "writing"
+  | "done";
 
-type ActionProgressState = Map<
+export type ActionProgressState = Map<
   ModelId,
   {
     action: AgentMCPActionType;
@@ -57,18 +65,36 @@ export type VirtuosoMessageListContext = {
   user: UserType;
   handleSubmit: (
     input: string,
-    mentions: MentionType[],
+    mentions: RichMention[],
     contentFragments: ContentFragmentsType
   ) => Promise<Result<undefined, DustError>>;
   conversationId: string;
-  isInModal: boolean;
+  agentBuilderContext?: {
+    draftAgent?: LightAgentConfigurationType;
+    isSavingDraftAgent: boolean;
+    actionsToShow: InputBarContainerProps["actions"];
+    resetConversation: () => void;
+  };
   feedbacksByMessageId: Record<string, AgentMessageFeedbackType>;
+};
+
+export const isTriggeredOrigin = (origin?: UserMessageOrigin | null) => {
+  return (
+    origin && (origin === "triggered" || origin === "triggered_programmatic")
+  );
 };
 
 export const isUserMessage = (
   msg: VirtuosoMessage
 ): msg is UserMessageType & { contentFragments: ContentFragmentType[] } =>
   "type" in msg && msg.type === "user_message" && "contentFragments" in msg;
+
+export const isHandoverUserMessage = (
+  msg: VirtuosoMessage
+): msg is UserMessageType & { contentFragments: ContentFragmentType[] } =>
+  "type" in msg &&
+  msg.type === "user_message" &&
+  msg.context.origin === "agent_handover";
 
 export const isMessageTemporayState = (
   msg: VirtuosoMessage
@@ -81,6 +107,9 @@ export const getMessageDate = (msg: VirtuosoMessage): Date =>
   isMessageTemporayState(msg)
     ? new Date(msg.message.created)
     : new Date(msg.created);
+
+export const getMessageRank = (msg: VirtuosoMessage): number =>
+  isMessageTemporayState(msg) ? msg.message.rank : msg.rank;
 
 export const makeInitialMessageStreamState = (
   message: LightAgentMessageType | LightAgentMessageWithActionsType
@@ -98,4 +127,11 @@ export const makeInitialMessageStreamState = (
     },
     useFullChainOfThought: false,
   };
+};
+
+export const areSameRank = (
+  messageA: VirtuosoMessage,
+  messageB: VirtuosoMessage
+) => {
+  return getMessageRank(messageA) === getMessageRank(messageB);
 };

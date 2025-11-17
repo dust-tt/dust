@@ -1,15 +1,16 @@
 use crate::providers::chat_messages::ChatMessage;
 use crate::providers::embedder::{Embedder, EmbedderVector};
 use crate::providers::llm::ChatFunction;
+use crate::providers::llm::TokenizerSingleton;
 use crate::providers::llm::Tokens;
 use crate::providers::llm::{LLMChatGeneration, LLMGeneration, LLMTokenUsage, LLM};
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::{
-    batch_tokenize_async, cl100k_base_singleton, o200k_base_singleton, p50k_base_singleton,
-    r50k_base_singleton, CoreBPE,
+    batch_tokenize_async, cl100k_base_singleton, r50k_base_singleton, CoreBPE,
 };
 use crate::providers::tiktoken::tiktoken::{decode_async, encode_async};
 use crate::run::Credentials;
+use crate::types::tokenizer::{TiktokenTokenizerBase, TokenizerConfig};
 use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -31,7 +32,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::timeout;
-use tracing::{info, warn};
+use tracing::info;
 
 use super::azure_openai::AzureOpenAIEmbedder;
 use super::openai_compatible_helpers::{
@@ -692,15 +693,21 @@ pub struct OpenAILLM {
     host: Option<String>,
     use_eu_endpoint: bool,
     api_key: Option<String>,
+    tokenizer: Option<TokenizerSingleton>,
 }
 
 impl OpenAILLM {
-    pub fn new(id: String) -> Self {
+    pub fn new(id: String, tokenizer: Option<TokenizerSingleton>) -> Self {
         OpenAILLM {
             id,
             host: None,
             use_eu_endpoint: false,
             api_key: None,
+            tokenizer: tokenizer.or_else(|| {
+                TokenizerSingleton::from_config(&TokenizerConfig::Tiktoken {
+                    base: TiktokenTokenizerBase::R50kBase,
+                })
+            }),
         }
     }
 
@@ -718,27 +725,6 @@ impl OpenAILLM {
 
     fn responses_uri(&self) -> Result<Uri> {
         Ok(format!("https://{}/v1/responses", self.host.as_ref().unwrap()).parse::<Uri>()?)
-    }
-
-    fn tokenizer(&self) -> Arc<RwLock<CoreBPE>> {
-        match self.id.as_str() {
-            "code_davinci-002" | "code-cushman-001" => p50k_base_singleton(),
-            "text-davinci-002" | "text-davinci-003" => p50k_base_singleton(),
-            _ => {
-                if self.id.starts_with("gpt-4o")
-                    || self.id.starts_with("gpt-4.1")
-                    || self.id.starts_with("o4")
-                    || self.id.starts_with("o3")
-                    || self.id.starts_with("o1")
-                {
-                    o200k_base_singleton()
-                } else if self.id.starts_with("gpt-3.5-turbo") || self.id.starts_with("gpt-4") {
-                    cl100k_base_singleton()
-                } else {
-                    r50k_base_singleton()
-                }
-            }
-        }
     }
 
     pub fn openai_context_size(model_id: &str) -> usize {
@@ -827,15 +813,27 @@ impl LLM for OpenAILLM {
     }
 
     async fn encode(&self, text: &str) -> Result<Vec<usize>> {
-        encode_async(self.tokenizer(), text).await
+        self.tokenizer
+            .as_ref()
+            .ok_or_else(|| anyhow!("Tokenizer not initialized"))?
+            .encode(text)
+            .await
     }
 
     async fn decode(&self, tokens: Vec<usize>) -> Result<String> {
-        decode_async(self.tokenizer(), tokens).await
+        self.tokenizer
+            .as_ref()
+            .ok_or_else(|| anyhow!("Tokenizer not initialized"))?
+            .decode(tokens)
+            .await
     }
 
     async fn tokenize(&self, texts: Vec<String>) -> Result<Vec<Vec<(usize, String)>>> {
-        batch_tokenize_async(self.tokenizer(), texts).await
+        self.tokenizer
+            .as_ref()
+            .ok_or_else(|| anyhow!("Tokenizer not initialized"))?
+            .tokenize(texts)
+            .await
     }
 
     async fn generate(
@@ -1048,6 +1046,7 @@ impl LLM for OpenAILLM {
                     .prompt_tokens_details
                     .and_then(|details| details.cached_tokens),
                 reasoning_tokens: None,
+                cache_creation_input_tokens: None,
             }),
             provider_request_id: request_id,
         })
@@ -1200,86 +1199,43 @@ impl Embedder for OpenAIEmbedder {
             ));
         }
 
-        let use_eu_endpoint: bool = match credentials.get("OPENAI_USE_EU_ENDPOINT") {
-            Some(use_eu_endpoint_str) => use_eu_endpoint_str == "true",
-            None => false,
-        };
-
-        let open_ai_api_key: Option<String> = match credentials.get("OPENAI_API_KEY") {
-            Some(api_key) => Some(api_key.clone()),
-            None => match tokio::task::spawn_blocking(|| std::env::var("OPENAI_API_KEY")).await? {
-                Ok(key) => Some(key),
-                Err(_) => None,
+        // For the Embedder, we deliberately don't rely on passed credentials, to avoid using
+        // user creds in Dust app scenarios (unlike in LLM scenarios, where we want to use them).
+        // We only use it as a fallback for local development.
+        let raw_openai_key_env = match std::env::var("CORE_DATA_SOURCES_OPENAI_API_KEY") {
+            Ok(v) => v,
+            Err(_) => match credentials.get("OPENAI_API_KEY") {
+                Some(api_key) => api_key.clone(),
+                None => {
+                    return Err(anyhow!(
+                        "CORE_DATA_SOURCES_OPENAI_API_KEY or OPENAI_API_KEY must be set."
+                    ));
+                }
             },
         };
 
-        // This is only for logging purposes.
-        let mut key_source = "";
+        // The env variable can take two forms:
+        // - just the API key (e.g. sk-xxxx)
+        // - the API key followed by a semicolon and a custom host (e.g. sk-xxxx;eu.api.openai.com)
+        let (key_part, host_part) = match raw_openai_key_env.split_once(';') {
+            Some((k, h)) => (k.trim(), h.trim()),
+            None => (raw_openai_key_env.trim(), "api.openai.com"),
+        };
 
-        match use_eu_endpoint {
-            true => match open_ai_api_key {
-                // If use_eu_endpoint is set, we ignore CORE_DATA_SOURCES_OPENAI_API_KEY
-                Some(api_key) => {
-                    self.api_key = Some(api_key.clone());
-                    self.host = Some("eu.api.openai.com".to_string());
-                    key_source = "use_eu_endpoint";
-                }
-                None => Err(anyhow!(
-                    "Credentials or environment variable `OPENAI_API_KEY` is not set."
-                ))?,
-            },
-            false => {
-                // Give priority to `CORE_DATA_SOURCES_OPENAI_API_KEY` env variable
-                match std::env::var("CORE_DATA_SOURCES_OPENAI_API_KEY") {
-                    Ok(key) => {
-                        self.api_key = Some(key);
-                        key_source = "CORE_DATA_SOURCES_OPENAI_API_KEY";
+        self.api_key = Some(key_part.to_string());
+        self.host = Some(host_part.to_string());
 
-                        // This block is only for logging purposes, and can be removed when we stop using CORE_DATA_SOURCES_OPENAI_API_KEY
-                        match open_ai_api_key.as_ref() {
-                            Some(front_key) => {
-                                if let Some(core_key) = self.api_key.as_ref() {
-                                    if front_key != core_key {
-                                        fn last_two(s: &str) -> &str {
-                                            // Being safe in case it's an empty string
-                                            if s.len() <= 2 {
-                                                s
-                                            } else {
-                                                &s[s.len() - 2..]
-                                            }
-                                        }
-                                        warn!(
-                                            front_key = last_two(front_key.as_str()),
-                                            core_key = last_two(core_key.as_str()),
-                                            "CORE_DATA_SOURCES_OPENAI_API_KEY and OPENAI_API_KEY differ; using CORE_DATA_SOURCES_OPENAI_API_KEY."
-                                        );
-                                    }
-                                }
-                            }
-                            None => {
-                                // This tells us that bad things could happen if we were to unset CORE_DATA_SOURCES_OPENAI_API_KEY
-                                warn!("CORE_DATA_SOURCES_OPENAI_API_KEY is set, but OPENAI_API_KEY is not.")
-                            }
-                        }
-                    }
-                    Err(_) => match open_ai_api_key {
-                        Some(api_key) => {
-                            self.api_key = Some(api_key.clone());
-                            key_source = "open_ai_api_key";
-                        }
-                        None => Err(anyhow!(
-                            "Credentials or environment variable `OPENAI_API_KEY` is not set."
-                        ))?,
-                    },
-                }
-                self.host = Some("api.openai.com".to_string());
-            }
+        // Check host validity to protect against SSRF
+        if !self.host.as_ref().unwrap().ends_with(".openai.com") {
+            return Err(anyhow!(
+                "Invalid OpenAI host `{}`: must end with `.openai.com`",
+                self.host.as_ref().unwrap()
+            ));
         }
 
         info!(
             model = self.id,
             openai_host = self.host,
-            key_source,
             "OpenAIEmbedder.initialize"
         );
         Ok(())
@@ -1405,7 +1361,10 @@ impl Provider for OpenAIProvider {
             Err(anyhow!("User aborted OpenAI test."))?;
         }
 
-        let mut llm = self.llm(String::from("text-ada-001"));
+        let tokenizer = TokenizerSingleton::from_config(&TokenizerConfig::Tiktoken {
+            base: TiktokenTokenizerBase::Cl100kBase,
+        });
+        let mut llm = self.llm(String::from("text-ada-001"), tokenizer);
         llm.initialize(Credentials::new()).await?;
 
         let _ = llm
@@ -1429,8 +1388,8 @@ impl Provider for OpenAIProvider {
         Ok(())
     }
 
-    fn llm(&self, id: String) -> Box<dyn LLM + Sync + Send> {
-        Box::new(OpenAILLM::new(id))
+    fn llm(&self, id: String, tokenizer: Option<TokenizerSingleton>) -> Box<dyn LLM + Sync + Send> {
+        Box::new(OpenAILLM::new(id, tokenizer))
     }
 
     fn embedder(&self, id: String) -> Box<dyn Embedder + Sync + Send> {

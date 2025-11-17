@@ -397,6 +397,8 @@ export interface WorkspaceMetadata {
   maintenance?: "relocation" | "relocation-done";
   publicApiLimits?: PublicAPILimitsType;
   allowContentCreationFileSharing?: boolean;
+  allowVoiceTranscription?: boolean;
+  autoCreateSpaceForProvisionedGroups?: boolean;
 }
 
 export async function updateWorkspaceMetadata(

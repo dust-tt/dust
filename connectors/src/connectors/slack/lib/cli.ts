@@ -640,6 +640,23 @@ export const slack = async ({
         },
       });
 
+      // If the channel already existed with a non-indexed permission (e.g. "write"),
+      // upgrade it to "read_write" so the sync actually indexes content.
+      if (
+        channel.permission !== "read" &&
+        channel.permission !== "read_write"
+      ) {
+        const existing = await SlackChannel.findOne({
+          where: {
+            connectorId: connector.id,
+            slackChannelId: args.channelId,
+          },
+        });
+        if (existing) {
+          await existing.update({ permission: "read_write" });
+        }
+      }
+
       const workflowRes = await launchSlackSyncWorkflow(connector.id, null, [
         channel.slackId,
       ]);
@@ -816,6 +833,36 @@ export const slack = async ({
         legacyConnector.id,
         slackBotConnector.id
       );
+
+      return { success: true };
+    }
+
+    case "check-channel": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.channelId) {
+        throw new Error("Missing --channelId argument");
+      }
+
+      const connector = await ConnectorModel.findOne({
+        where: { workspaceId: `${args.wId}`, type: "slack" },
+      });
+      if (!connector) {
+        throw new Error(`Could not find connector for workspace ${args.wId}`);
+      }
+
+      const slackClient = await getSlackClient(connector.id);
+
+      const remoteChannel = await getChannelById(
+        slackClient,
+        connector.id,
+        args.channelId
+      );
+
+      if (!remoteChannel) {
+        throw new Error(`Could not find the channel ${args.channelId}`);
+      }
 
       return { success: true };
     }

@@ -13,10 +13,7 @@ import { useRouter } from "next/router";
 import { useState } from "react";
 import * as React from "react";
 
-import {
-  useConnectorConfig,
-  useToggleSlackChatBot,
-} from "@app/lib/swr/connectors";
+import { useConnectorConfig, useToggleChatBot } from "@app/lib/swr/connectors";
 import type { DataSourceType, PlanType, WorkspaceType } from "@app/types";
 
 export function SlackBotEnableView({
@@ -43,9 +40,10 @@ export function SlackBotEnableView({
   const [loading, setLoading] = useState(false);
   const [showNoSlackBotPopup, setShowNoSlackBotPopup] = useState(false);
 
-  const doToggle = useToggleSlackChatBot({
+  const doToggle = useToggleChatBot({
     dataSource,
     owner,
+    botName: "Slack Bot",
   });
 
   const handleSetBotEnabled = async (botEnabled: boolean) => {

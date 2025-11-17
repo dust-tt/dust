@@ -1,17 +1,22 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import { z } from "zod";
 
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
+import type { Result } from "@app/types";
+import { Err, Ok } from "@app/types";
 
-const createServer = (
+function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer => {
+): McpServer {
   const server = makeInternalMCPServer(AGENT_MEMORY_SERVER_NAME);
 
   const isUserScopedMemory = true;
@@ -78,31 +83,22 @@ const createServer = (
 
   const renderMemory = (
     memory: { lastUpdated: Date; content: string }[]
-  ): {
-    isError: boolean;
-    content: { type: "text"; text: string }[];
-  } => {
+  ): Result<CallToolResult["content"], MCPError> => {
     if (memory.length === 0) {
-      return {
-        isError: false,
-        content: [
-          {
-            type: "text",
-            text: "(memory empty)",
-          },
-        ],
-      };
+      return new Ok([
+        {
+          type: "text" as const,
+          text: "(memory empty)",
+        },
+      ]);
     }
 
-    return {
-      isError: false,
-      content: [
-        {
-          type: "text",
-          text: memory.map((entry, i) => `[${i}] ${entry.content}`).join("\n"),
-        },
-      ],
-    };
+    return new Ok([
+      {
+        type: "text" as const,
+        text: memory.map((entry, i) => `[${i}] ${entry.content}`).join("\n"),
+      },
+    ]);
   };
 
   server.tool(
@@ -112,19 +108,23 @@ const createServer = (
       // shared_across_users:
       //   ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN],
     },
-    async () => {
-      assert(
-        agentLoopContext?.runContext,
-        "agentLoopContext is required to run the memory retrieve tool"
-      );
-      const { agentConfiguration } = agentLoopContext.runContext;
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: "agent_memory", agentLoopContext },
+      async () => {
+        assert(
+          agentLoopContext?.runContext,
+          "agentLoopContext is required to run the memory retrieve tool"
+        );
+        const { agentConfiguration } = agentLoopContext.runContext;
 
-      const memory = await AgentMemoryResource.retrieveMemory(auth, {
-        agentConfiguration,
-        user: user.toJSON(),
-      });
-      return renderMemory(memory);
-    }
+        const memory = await AgentMemoryResource.retrieveMemory(auth, {
+          agentConfiguration,
+          user: user.toJSON(),
+        });
+        return renderMemory(memory);
+      }
+    )
   );
 
   server.tool(
@@ -137,20 +137,29 @@ const createServer = (
         .array(z.string())
         .describe("The array of new memory entries to record."),
     },
-    async ({ entries }) => {
-      assert(
-        agentLoopContext?.runContext,
-        "agentLoopContext is required to run the memory record_entries tool"
-      );
-      const { agentConfiguration } = agentLoopContext.runContext;
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: "agent_memory", agentLoopContext },
+      async ({ entries }) => {
+        assert(
+          agentLoopContext?.runContext,
+          "agentLoopContext is required to run the memory record_entries tool"
+        );
+        const { agentConfiguration } = agentLoopContext.runContext;
 
-      const memory = await AgentMemoryResource.recordEntries(auth, {
-        agentConfiguration,
-        user: user.toJSON(),
-        entries,
-      });
-      return renderMemory(memory);
-    }
+        const result = await AgentMemoryResource.recordEntries(auth, {
+          agentConfiguration,
+          user: user.toJSON(),
+          entries,
+        });
+
+        if (result.isErr()) {
+          return new Err(new MCPError(result.error, { tracked: false }));
+        }
+
+        return renderMemory(result.value);
+      }
+    )
   );
 
   server.tool(
@@ -163,20 +172,24 @@ const createServer = (
         .array(z.number())
         .describe("The indexes of the memory entries to erase."),
     },
-    async ({ indexes }) => {
-      assert(
-        agentLoopContext?.runContext,
-        "agentLoopContext is required to run the memory erase_entries tool"
-      );
-      const { agentConfiguration } = agentLoopContext.runContext;
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: "agent_memory", agentLoopContext },
+      async ({ indexes }) => {
+        assert(
+          agentLoopContext?.runContext,
+          "agentLoopContext is required to run the memory erase_entries tool"
+        );
+        const { agentConfiguration } = agentLoopContext.runContext;
 
-      const memory = await AgentMemoryResource.eraseEntries(auth, {
-        agentConfiguration,
-        user: user.toJSON(),
-        indexes,
-      });
-      return renderMemory(memory);
-    }
+        const memory = await AgentMemoryResource.eraseEntries(auth, {
+          agentConfiguration,
+          user: user.toJSON(),
+          indexes,
+        });
+        return renderMemory(memory);
+      }
+    )
   );
 
   server.tool(
@@ -198,23 +211,78 @@ const createServer = (
         )
         .describe("The array of memory entries to edit."),
     },
-    async ({ edits }) => {
-      assert(
-        agentLoopContext?.runContext,
-        "agentLoopContext is required to run the memory edit_entries tool"
-      );
-      const { agentConfiguration } = agentLoopContext.runContext;
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: "agent_memory", agentLoopContext },
+      async ({ edits }) => {
+        assert(
+          agentLoopContext?.runContext,
+          "agentLoopContext is required to run the memory edit_entries tool"
+        );
+        const { agentConfiguration } = agentLoopContext.runContext;
 
-      const memory = await AgentMemoryResource.editEntries(auth, {
-        agentConfiguration,
-        user: user.toJSON(),
-        edits,
-      });
-      return renderMemory(memory);
-    }
+        const result = await AgentMemoryResource.editEntries(auth, {
+          agentConfiguration,
+          user: user.toJSON(),
+          edits,
+        });
+
+        if (result.isErr()) {
+          return new Err(new MCPError(result.error, { tracked: false }));
+        }
+
+        return renderMemory(result.value);
+      }
+    )
+  );
+
+  server.tool(
+    "compact_memory",
+    `Compact the memory by removing duplicate entries and summarizing long entries${isUserScopedMemory ? " for the current user" : ""}`,
+    {
+      edits: z
+        .array(
+          z.object({
+            index: z
+              .number()
+              .describe("The index of the memory entry to overwrite."),
+            content: z
+              .string()
+              .describe("The new compacted content for the memory entry."),
+          })
+        )
+        .describe("The array of memory entries to compact/edit."),
+    },
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: "agent_memory", agentLoopContext },
+      async ({ edits }) => {
+        assert(
+          agentLoopContext?.runContext,
+          "agentLoopContext is required to run the memory compact_memory tool"
+        );
+        const { agentConfiguration } = agentLoopContext.runContext;
+
+        const result = await AgentMemoryResource.editEntries(auth, {
+          agentConfiguration,
+          user: user.toJSON(),
+          edits,
+        });
+
+        if (result.isErr()) {
+          return new Err(
+            new MCPError(`Cannot compact memory entries. ${result.error}`, {
+              tracked: false,
+            })
+          );
+        }
+
+        return renderMemory(result.value);
+      }
+    )
   );
 
   return server;
-};
+}
 
 export default createServer;

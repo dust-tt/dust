@@ -17,10 +17,16 @@ import { validateJsonSchema } from "@app/lib/utils/json_schemas";
 import type { TimeFrame } from "@app/types";
 import { isTimeFrame } from "@app/types";
 
+export type AdditionalConfigurationValueType =
+  | boolean
+  | number
+  | string
+  | string[];
+
 // Note, in storage, we store the path using "." in the key of the record.
 export type AdditionalConfigurationType = Record<
   string,
-  boolean | number | string | string[]
+  AdditionalConfigurationValueType
 >;
 
 export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPServerConfiguration> {
@@ -178,9 +184,11 @@ AgentMCPServerConfiguration.init(
 AgentConfiguration.hasMany(AgentMCPServerConfiguration, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
   as: "mcpServerConfigurations",
+  onDelete: "RESTRICT",
 });
 AgentMCPServerConfiguration.belongsTo(AgentConfiguration, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
+  onDelete: "RESTRICT",
 });
 
 MCPServerViewModel.hasMany(AgentMCPServerConfiguration, {
@@ -207,6 +215,8 @@ export class AgentMCPActionModel extends WorkspaceAwareModel<AgentMCPActionModel
   declare augmentedInputs: Record<string, unknown>;
   declare toolConfiguration: LightMCPToolConfigurationType;
   declare stepContext: StepContext;
+
+  declare executionDurationMs: number | null;
 
   declare outputItems: NonAttribute<AgentMCPActionOutputItem[]>;
 
@@ -258,6 +268,11 @@ AgentMCPActionModel.init(
       type: DataTypes.JSONB,
       allowNull: false,
       defaultValue: {},
+    },
+    executionDurationMs: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {
@@ -351,9 +366,11 @@ AgentMCPActionOutputItem.init(
     sequelize: frontSequelize,
     indexes: [
       {
+        // TODO(2025-10-29 flav) Remove once index below has been created.
         fields: ["workspaceId"],
         concurrently: true,
       },
+      { fields: ["workspaceId", "id"], concurrently: true },
       {
         fields: ["agentMCPActionId"],
         concurrently: true,

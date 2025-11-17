@@ -7,13 +7,13 @@ import {
 } from "@dust-tt/sparkle";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
-import type { EditorSuggestion } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import { classNames } from "@app/lib/utils";
+import type { RichMention } from "@app/types";
 
 interface MentionDropdownProps {
   mentionDropdownState: {
-    suggestions: EditorSuggestion[];
-    onSelect: (suggestion: EditorSuggestion) => void;
+    suggestions: RichMention[];
+    onSelect: (suggestion: RichMention) => void;
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
     triggerRect?: DOMRect | null;

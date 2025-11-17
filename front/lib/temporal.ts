@@ -105,3 +105,28 @@ export async function getTemporalClientForFrontNamespace() {
 export async function getTemporalClientForConnectorsNamespace() {
   return getTemporalClientForNamespace("connectors");
 }
+
+/**
+ * Checks if there are any running upsert workflows for a specific datasource.
+ * Returns the count of running workflows.
+ */
+export async function checkRunningUpsertWorkflows({
+  workspaceId,
+  dataSourceId,
+}: {
+  workspaceId: string;
+  dataSourceId: string;
+}): Promise<number> {
+  const client = await getTemporalClientForFrontNamespace();
+
+  // Query for all Active upsert workflows for this datasource
+  const query = `WorkflowId STARTS_WITH "upsert-queue-document-${workspaceId}-${dataSourceId}-" AND ExecutionStatus="Running"`;
+  const workflows = client.workflow.list({ query });
+
+  let count = 0;
+  for await (const _workflow of workflows) {
+    count++;
+  }
+
+  return count;
+}

@@ -42,7 +42,11 @@ export function DataSourceViewTable({
     () =>
       spaceDataSourceViews
         .filter((dsv) => {
-          if (dsv.dataSource.connectorProvider === "slack_bot") {
+          const connectorConfig = dsv.dataSource.connectorProvider
+            ? CONNECTOR_CONFIGURATIONS[dsv.dataSource.connectorProvider]
+            : null;
+
+          if (connectorConfig?.isHiddenAsDataSource) {
             return false;
           }
 
@@ -63,8 +67,8 @@ export function DataSourceViewTable({
             : null;
 
           const icon = provider
-            ? connectorProvider?.getLogoComponent(isDark) ??
-              CATEGORY_DETAILS[dsv.category].icon
+            ? (connectorProvider?.getLogoComponent(isDark) ??
+              CATEGORY_DETAILS[dsv.category].icon)
             : FolderIcon;
 
           return {

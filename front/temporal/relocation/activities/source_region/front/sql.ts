@@ -79,6 +79,7 @@ export async function readCoreEntitiesFromSourceRegion({
     raw: true,
   });
 
+  // eslint-disable-next-line dust/no-raw-sql
   const subscriptions = await frontSequelize.query<{ planId: ModelId }>(
     'SELECT * FROM subscriptions WHERE "workspaceId" = :workspaceId',
     {
@@ -88,6 +89,7 @@ export async function readCoreEntitiesFromSourceRegion({
     }
   );
 
+  // eslint-disable-next-line dust/no-raw-sql
   const plans = await frontSequelize.query(
     "SELECT * FROM plans WHERE id IN (:ids)",
     {
@@ -176,6 +178,7 @@ export async function readFrontTableChunk({
 
   const idClause = lastId ? `AND id > ${lastId}` : "";
 
+  // eslint-disable-next-line dust/no-raw-sql
   const rows = await frontSequelize.query<{ id: ModelId }>(
     `SELECT * FROM "${tableName}"
      WHERE "workspaceId" = :workspaceId ${idClause}

@@ -9,12 +9,12 @@ import { FIELD_MAPPINGS } from "@app/lib/actions/mcp_internal_actions/servers/ji
 
 // Helper function to escape JQL values that contain spaces or special characters
 export const escapeJQLValue = (value: string): string => {
-  // JQL special characters that need quoting: space, quotes, backslash, forward slash,
-  const hasSpecialChars = /[\s"'\\/]/.test(value);
+  // JQL reserved characters per official Atlassian docs: space, +, ., ,, ;, ?, |, *, /, %, ^, $, #, @, [, ]
+  const hasSpecialChars = /[\s"'\\/@+.,;?|*%^$#[\]]/.test(value);
 
   // JQL reserved words that need quoting
   const isReservedWord =
-    /^(and|or|not|in|is|was|from|to|on|by|during|before|after|empty|null|order|asc|desc|changed|was|in|not|to|from|by|before|after|on|during)$/i.test(
+    /^(and|or|not|in|is|was|from|to|on|by|during|before|after|empty|null|order|asc|desc|changed)$/i.test(
       value
     );
 

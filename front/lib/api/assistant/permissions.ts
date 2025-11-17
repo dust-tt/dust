@@ -1,45 +1,19 @@
-import { Op } from "sequelize";
-
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { getAvailabilityOfInternalMCPServerById } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { UnsavedMCPServerConfigurationType } from "@app/lib/actions/types/agent";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import type { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
+import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import type {
   CombinedResourcePermissions,
   ContentFragmentInputWithContentNode,
   ModelId,
 } from "@app/types";
 import { assertNever, removeNulls } from "@app/types";
-
-export async function listAgentConfigurationsForGroups(
-  auth: Authenticator,
-  groups: GroupResource[]
-) {
-  return AgentConfiguration.findAll({
-    attributes: ["sId"],
-    where: {
-      workspaceId: auth.getNonNullableWorkspace().id,
-      status: "active",
-      // This checks for PARTIAL matches in group requirements, not exact matches.
-      // Op.contains will match if ANY array in `requestedGroupIds` contains ALL elements of
-      // [groups.map(g => g.id)]
-      // Example: if groups=[1,2]
-      //  - requestedGroupIds=[[1,2,3]] -> MATCH (contains all required elements plus more)
-      //  - requestedGroupIds=[[1,2]] -> MATCH (exact match)
-      //  - requestedGroupIds=[[1]] -> NO MATCH (missing element)
-      requestedGroupIds: {
-        [Op.contains]: [groups.map((g) => g.id)],
-      },
-    },
-  });
-}
 
 export function getDataSourceViewIdsFromActions(
   actions: UnsavedMCPServerConfigurationType[]
@@ -52,15 +26,21 @@ export function getDataSourceViewIdsFromActions(
 
   return removeNulls(
     relevantActions.flatMap((action) => {
+      const dataSourceViewIds = new Set<string>();
+
       if (action.dataSources) {
-        return action.dataSources.map(
-          (dataSource) => dataSource.dataSourceViewId
-        );
-      } else if (action.tables) {
-        return action.tables.map((table) => table.dataSourceViewId);
-      } else {
-        return [];
+        action.dataSources.forEach((dataSource) => {
+          dataSourceViewIds.add(dataSource.dataSourceViewId);
+        });
       }
+
+      if (action.tables) {
+        action.tables.forEach((table) => {
+          dataSourceViewIds.add(table.dataSourceViewId);
+        });
+      }
+
+      return Array.from(dataSourceViewIds);
     })
   );
 }
@@ -76,13 +56,13 @@ export function groupsFromRequestedPermissions(
   );
 }
 
-export async function getAgentConfigurationGroupIdsFromActions(
+export async function getAgentConfigurationRequirementsFromActions(
   auth: Authenticator,
   params: {
     actions: UnsavedMCPServerConfigurationType[];
     ignoreSpaces?: SpaceResource[];
   }
-): Promise<ModelId[][]> {
+): Promise<{ requestedSpaceIds: ModelId[] }> {
   const { actions, ignoreSpaces } = params;
   const ignoreSpaceIds = new Set(ignoreSpaces?.map((space) => space.sId));
 
@@ -91,7 +71,7 @@ export async function getAgentConfigurationGroupIdsFromActions(
     getDataSourceViewIdsFromActions(actions)
   );
   // Map spaceId to its group requirements.
-  const spacePermissions = new Map<string, Set<number>>();
+  const spacePermissions = new Set<string>();
 
   // Collect DataSourceView permissions by space.
   for (const view of dsViews) {
@@ -100,11 +80,7 @@ export async function getAgentConfigurationGroupIdsFromActions(
       continue;
     }
 
-    if (!spacePermissions.has(spaceId)) {
-      spacePermissions.set(spaceId, new Set());
-    }
-    const groups = groupsFromRequestedPermissions(view.requestedPermissions());
-    groups.forEach((g) => spacePermissions.get(spaceId)!.add(g));
+    spacePermissions.add(spaceId);
   }
 
   // Collect MCPServerView permissions by space.
@@ -127,7 +103,9 @@ export async function getAgentConfigurationGroupIdsFromActions(
     // We skip the permissions for internal tools as they are automatically available to all users.
     // This mimic the previous behavior of generic internal tools (search etc..).
     if (view.serverType === "internal") {
-      const availability = getAvailabilityOfInternalMCPServerById(view.sId);
+      const availability = getAvailabilityOfInternalMCPServerById(
+        view.mcpServerId
+      );
       switch (availability) {
         case "auto":
         case "auto_hidden_builder":
@@ -138,11 +116,8 @@ export async function getAgentConfigurationGroupIdsFromActions(
           assertNever(availability);
       }
     }
-    if (!spacePermissions.has(spaceId)) {
-      spacePermissions.set(spaceId, new Set());
-    }
-    const groups = groupsFromRequestedPermissions(view.requestedPermissions());
-    groups.forEach((g) => spacePermissions.get(spaceId)!.add(g));
+
+    spacePermissions.add(spaceId);
   }
 
   // Collect Dust App permissions by space.
@@ -160,20 +135,17 @@ export async function getAgentConfigurationGroupIdsFromActions(
       if (ignoreSpaceIds?.has(spaceId)) {
         continue;
       }
-      if (!spacePermissions.has(spaceId)) {
-        spacePermissions.set(spaceId, new Set());
-      }
-      const groups = groupsFromRequestedPermissions(
-        app.space.requestedPermissions()
-      );
-      groups.forEach((g) => spacePermissions.get(spaceId)!.add(g));
+
+      spacePermissions.add(spaceId);
     }
   }
 
   // Convert Map to array of arrays, filtering out empty sets.
-  return Array.from(spacePermissions.values())
-    .map((set) => Array.from(set))
-    .filter((arr) => arr.length > 0);
+  return {
+    requestedSpaceIds: removeNulls(
+      Array.from(spacePermissions).map(getResourceIdFromSId)
+    ),
+  };
 }
 
 export async function getContentFragmentGroupIds(
@@ -191,4 +163,22 @@ export async function getContentFragmentGroupIds(
   const groups = groupsFromRequestedPermissions(dsView.requestedPermissions());
 
   return [groups].filter((arr) => arr.length > 0);
+}
+
+export async function getContentFragmentSpaceIds(
+  auth: Authenticator,
+  contentFragment: ContentFragmentInputWithContentNode
+): Promise<string> {
+  const dsView = await DataSourceViewResource.fetchById(
+    auth,
+    contentFragment.nodeDataSourceViewId
+  );
+  if (!dsView) {
+    throw new Error(`Unexpected dataSourceView not found`);
+  }
+
+  return SpaceResource.modelIdToSId({
+    id: dsView.space.id,
+    workspaceId: auth.getNonNullableWorkspace().id,
+  });
 }

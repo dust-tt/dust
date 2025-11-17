@@ -19,10 +19,12 @@ export async function launchAgentLoopWorkflow({
   auth,
   agentLoopArgs,
   startStep,
+  waitForCompletion,
 }: {
   auth: Authenticator;
   agentLoopArgs: AgentLoopArgs;
   startStep: number;
+  waitForCompletion?: boolean;
 }): Promise<
   Result<undefined, Error | DustError<"agent_loop_already_running">>
 > {
@@ -45,6 +47,23 @@ export async function launchAgentLoopWorkflow({
     conversationId,
     agentMessageId,
   });
+
+  // Optionally wait for any in-flight workflow with the same id to complete
+  // before attempting to (re)start. This mitigates a race where validation can
+  // re-trigger the loop while the originating run is still finalizing.
+  if (waitForCompletion) {
+    try {
+      const handle = client.workflow.getHandle(workflowId);
+      await handle.result();
+    } catch (error) {
+      // If the workflow doesn't exist or failed, we ignore and proceed to start
+      // a new one. We only care about avoiding the AlreadyStarted race.
+      logger.info(
+        { workflowId, error },
+        "Non-fatal while waiting for prior agent loop completion"
+      );
+    }
+  }
 
   try {
     await client.workflow.start(agentLoopWorkflow, {

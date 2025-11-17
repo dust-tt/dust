@@ -1,10 +1,7 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { Readable } from "stream";
 
-import {
-  makeMCPToolJSONSuccess,
-  makeMCPToolTextError,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import { sanitizeFilename } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
@@ -65,8 +62,8 @@ export async function extractTextFromBuffer(
  *
  * @param mimeType - MIME type of the attachment (e.g., "application/pdf", "image/png")
  * @param filename - Name of the attachment file
- * @param params.extractText - Callback to extract text from the file *
- * @param params.downloadContent - Callback to download the file content
+ * @param extractText - Callback to extract text from the file *
+ * @param downloadContent - Callback to download the file content
  */
 export async function processAttachment({
   mimeType,
@@ -78,13 +75,18 @@ export async function processAttachment({
   filename: string;
   extractText: () => Promise<Result<string, string>>;
   downloadContent: () => Promise<Result<Buffer, string>>;
-}): Promise<CallToolResult> {
+}): Promise<Result<CallToolResult["content"], MCPError>> {
   // Try text extraction for supported file types
   if (isTextExtractionSupportedContentType(mimeType)) {
     const textResult = await extractText();
 
     if (textResult.isOk()) {
-      return makeMCPToolJSONSuccess({ result: textResult.value });
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify(textResult.value, null, 2),
+        },
+      ]);
     }
 
     logger.warn(
@@ -96,8 +98,8 @@ export async function processAttachment({
   const downloadResult = await downloadContent();
 
   if (downloadResult.isErr()) {
-    return makeMCPToolTextError(
-      `Failed to download attachment: ${downloadResult.error}`
+    return new Err(
+      new MCPError(`Failed to download attachment: ${downloadResult.error}`)
     );
   }
 
@@ -105,22 +107,24 @@ export async function processAttachment({
 
   // Return plain text content as text
   if (mimeType.startsWith("text/")) {
-    return makeMCPToolJSONSuccess({ result: buffer.toString("utf-8") });
+    return new Ok([
+      {
+        type: "text" as const,
+        text: JSON.stringify(buffer.toString("utf-8"), null, 2),
+      },
+    ]);
   }
 
   // Return binary files as resource for upload
-  return {
-    isError: false,
-    content: [
-      {
-        type: "resource" as const,
-        resource: {
-          blob: buffer.toString("base64"),
-          text: `Attachment: ${sanitizeFilename(filename)}`,
-          mimeType,
-          uri: "",
-        },
+  return new Ok([
+    {
+      type: "resource" as const,
+      resource: {
+        blob: buffer.toString("base64"),
+        text: `Attachment: ${sanitizeFilename(filename)}`,
+        mimeType,
+        uri: "",
       },
-    ],
-  };
+    },
+  ]);
 }

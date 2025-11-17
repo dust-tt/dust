@@ -8,13 +8,17 @@ import {
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import {
+  DATA_SOURCE_FILESYSTEM_SERVER_INSTRUCTIONS,
   FRESHSERVICE_SERVER_INSTRUCTIONS,
   JIRA_SERVER_INSTRUCTIONS,
   SALESFORCE_SERVER_INSTRUCTIONS,
 } from "@app/lib/actions/mcp_internal_actions/instructions";
-import { CONTENT_CREATION_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/instructions";
+import { INTERACTIVE_CONTENT_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
-import { DUST_DEEP_DESCRIPTION } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
+import {
+  DEEP_DIVE_NAME,
+  DEEP_DIVE_SERVER_INSTRUCTIONS,
+} from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
 import type {
   InternalMCPServerDefinitionType,
   MCPToolRetryPolicyType,
@@ -67,11 +71,12 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "agent_management",
   AGENT_MEMORY_SERVER_NAME,
   "agent_router",
+  "ashby",
   "confluence",
   "conversation_files",
   "data_sources_file_system",
   DATA_WAREHOUSE_SERVER_NAME,
-  "deep_research",
+  "deep_dive",
   "extract_data",
   "file_generation",
   "freshservice",
@@ -80,12 +85,16 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "google_calendar",
   "google_drive",
   "google_sheets",
+  "http_client",
   "hubspot",
   "image_generation",
   "include_data",
-  "content_creation",
+  "interactive_content",
   "slideshow",
   "jira",
+  "microsoft_drive",
+  "microsoft_excel",
+  "microsoft_teams",
   "missing_action_catcher",
   "monday",
   "notion",
@@ -93,17 +102,29 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "outlook_calendar",
   "outlook",
   "primitive_types_debugger",
+  "common_utilities",
   "jit_testing",
   "reasoning",
   "run_agent",
   "run_dust_app",
   "salesforce",
+  "salesloft",
   "slack",
   "slack_bot",
+  "sound_studio",
+  "speech_generator",
   "toolsets",
+  "val_town",
+  "front",
   "web_search_&_browse",
+  "zendesk",
   SEARCH_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
+] as const;
+
+export const INTERNAL_SERVERS_WITH_WEBSEARCH = [
+  "web_search_&_browse",
+  "http_client",
 ] as const;
 
 // Whether the server is available by default in the global space.
@@ -127,6 +148,7 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     tools_stakes: {
       create_issue: "low",
+      comment_on_issue: "low",
       add_issue_to_project: "low",
       get_pull_request: "never_ask",
       list_organization_projects: "never_ask",
@@ -161,7 +183,8 @@ export const INTERNAL_MCP_SERVERS = {
     serverInfo: {
       name: "image_generation",
       version: "1.0.0",
-      description: "Create visual content from text descriptions.",
+      description:
+        "Create or edit visual content from text descriptions and images.",
       icon: "ActionImageIcon",
       authorization: null,
       documentationUrl: null,
@@ -312,7 +335,9 @@ The directive should be used to display a clickable version of the agent name in
     id: 10,
     availability: "auto",
     allowMultipleInstances: true,
-    isRestricted: undefined,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("legacy_dust_apps");
+    },
     isPreview: false,
     tools_stakes: undefined,
     tools_retry_policies: undefined,
@@ -425,6 +450,7 @@ The directive should be used to display a clickable version of the agent name in
       describe_object: "never_ask",
       list_attachments: "never_ask",
       read_attachment: "never_ask",
+      update_object: "high",
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -484,6 +510,7 @@ The directive should be used to display a clickable version of the agent name in
       update_event: "low",
       delete_event: "low",
       check_availability: "never_ask",
+      get_user_timezones: "never_ask",
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -499,7 +526,8 @@ The directive should be used to display a clickable version of the agent name in
       },
       icon: "GcalLogo",
       documentationUrl: "https://docs.dust.tt/docs/google-calendar",
-      instructions: null,
+      instructions:
+        "By default when creating a meeting, (1) set the calling user as the organizer and an attendee (2) check availability for attendees using the check_availability tool (3) use get_user_timezones to check attendee timezones for better scheduling.",
     },
   },
   conversation_files: {
@@ -528,13 +556,23 @@ The directive should be used to display a clickable version of the agent name in
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
+      // Read operations - never ask
       search_messages: "never_ask",
       semantic_search_messages: "never_ask",
       list_users: "never_ask",
       list_public_channels: "never_ask",
+      list_channels: "never_ask",
+      list_joined_channels: "never_ask",
       list_threads: "never_ask",
-      post_message: "low",
+      read_thread_messages: "never_ask",
       get_user: "never_ask",
+      get_channel_details: "never_ask",
+
+      // Write operations - low stakes
+      post_message: "low",
+      schedule_message: "low",
+      add_reaction: "low",
+      remove_reaction: "low",
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -715,26 +753,24 @@ The directive should be used to display a clickable version of the agent name in
       instructions: JIRA_SERVER_INSTRUCTIONS,
     },
   },
-  content_creation: {
+  interactive_content: {
     id: 23,
     availability: "auto",
     allowMultipleInstances: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("interactive_content_server");
-    },
-    isPreview: true,
+    isRestricted: undefined,
+    isPreview: false,
     tools_stakes: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
-      name: "content_creation",
+      name: "interactive_content",
       version: "1.0.0",
       description:
         "Create dashboards, presentations, or any interactive content.",
       authorization: null,
-      icon: "ActionDocumentTextIcon",
+      icon: "ActionFrameIcon",
       documentationUrl: null,
-      instructions: CONTENT_CREATION_INSTRUCTIONS,
+      instructions: INTERACTIVE_CONTENT_INSTRUCTIONS,
     },
   },
   outlook: {
@@ -765,7 +801,7 @@ The directive should be used to display a clickable version of the agent name in
         scope:
           "Mail.ReadWrite Mail.ReadWrite.Shared Contacts.ReadWrite Contacts.ReadWrite.Shared User.Read offline_access" as const,
       },
-      icon: "OutlookLogo",
+      icon: "MicrosoftOutlookLogo",
       documentationUrl: "https://docs.dust.tt/docs/outlook-tool-setup",
       instructions: null,
     },
@@ -798,7 +834,7 @@ The directive should be used to display a clickable version of the agent name in
         scope:
           "Calendars.ReadWrite Calendars.ReadWrite.Shared User.Read MailboxSettings.Read offline_access" as const,
       },
-      icon: "OutlookLogo",
+      icon: "MicrosoftOutlookLogo",
       documentationUrl: "https://docs.dust.tt/docs/outlook-calendar-tool-setup",
       instructions: null,
     },
@@ -915,27 +951,26 @@ The directive should be used to display a clickable version of the agent name in
       instructions: SLIDESHOW_INSTRUCTIONS,
     },
   },
-  deep_research: {
+  deep_dive: {
     id: 29,
     availability: "auto",
-    isRestricted: ({ featureFlags, isDustDeepDisabled }) => {
-      return (
-        !featureFlags.includes("deep_research_as_a_tool") || isDustDeepDisabled
-      );
+    isRestricted: ({ isDeepDiveDisabled }) => {
+      // If the workspace has disable the deep dive agent, the tool is not available.
+      return isDeepDiveDisabled;
     },
     allowMultipleInstances: false,
-    isPreview: true,
+    isPreview: false,
     tools_stakes: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
-      name: "deep_research",
+      name: "deep_dive",
       version: "0.1.0",
-      description: "Handoff the query to the deep research agent.",
+      description: `Hand off complex questions to the @${DEEP_DIVE_NAME} agent for comprehensive analysis across company data, databases, and web sources—thorough analysis that may take several minutes.`,
       authorization: null,
       icon: "ActionAtomIcon",
       documentationUrl: null,
-      instructions: `This tool performs a complete handoff to the dust-deep research agent: ${DUST_DEEP_DESCRIPTION}`,
+      instructions: DEEP_DIVE_SERVER_INSTRUCTIONS,
     },
   },
   slack_bot: {
@@ -997,7 +1032,7 @@ The directive should be used to display a clickable version of the agent name in
       icon: "OpenaiLogo",
       documentationUrl: null,
       instructions: null,
-      requiresSecret: true,
+      developerSecretSelection: "required",
     },
   },
   confluence: {
@@ -1030,6 +1065,227 @@ The directive should be used to display a clickable version of the agent name in
       icon: "ConfluenceLogo",
       documentationUrl: "https://docs.dust.tt/docs/confluence-tool",
       instructions: null,
+    },
+  },
+  speech_generator: {
+    id: 34,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isRestricted: undefined,
+    isPreview: true,
+    tools_stakes: {
+      text_to_speech: "low",
+      text_to_dialogue: "low",
+    },
+    tools_retry_policies: { default: "retry_on_interrupt" },
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "speech_generator",
+      version: "1.0.0",
+      description: "Turn written text into spoken audio or dialog",
+      authorization: null,
+      icon: "ActionMegaphoneIcon",
+      documentationUrl: null,
+      instructions: null,
+    },
+  },
+  microsoft_drive: {
+    id: 35,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: undefined,
+    isPreview: false,
+    tools_stakes: {
+      search_in_files: "never_ask",
+      search_drive_items: "never_ask",
+      update_word_document: "high",
+      get_file_content: "never_ask",
+      upload_file: "high",
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "microsoft_drive",
+      version: "1.0.0",
+      description: "Tools for managing Microsoft files.",
+      authorization: {
+        provider: "microsoft_tools" as const,
+        supported_use_cases: ["personal_actions"] as const,
+        scope:
+          "User.Read Files.ReadWrite.All Sites.Read.All ExternalItem.Read.All offline_access" as const,
+      },
+      icon: "MicrosoftLogo",
+      documentationUrl: "https://docs.dust.tt/docs/microsoft-drive-tool-setup",
+      instructions: null,
+    },
+  },
+  microsoft_teams: {
+    id: 36,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: undefined,
+    isPreview: false,
+    tools_stakes: {
+      search_messages_content: "never_ask",
+      list_teams: "never_ask",
+      list_users: "never_ask",
+      list_channels: "never_ask",
+      list_chats: "never_ask",
+      list_messages: "never_ask",
+      post_message: "low",
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "microsoft_teams",
+      version: "1.0.0",
+      description: "Microsoft Teams for searching and posting messages.",
+      authorization: {
+        provider: "microsoft_tools" as const,
+        supported_use_cases: ["personal_actions"] as const,
+        scope:
+          "User.Read User.ReadBasic.All Team.ReadBasic.All Chat.Read Chat.ReadWrite ChatMessage.Read ChatMessage.Send ChannelMessage.Read.All ChannelMessage.Send offline_access" as const,
+      },
+      icon: "MicrosoftTeamsLogo",
+      documentationUrl: "https://docs.dust.tt/docs/microsoft-teams-tool-setup",
+      instructions: null,
+    },
+  },
+  sound_studio: {
+    id: 37,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isRestricted: undefined,
+    isPreview: true,
+    tools_stakes: {
+      generate_music: "low",
+      generate_sound_effects: "low",
+    },
+    tools_retry_policies: { default: "retry_on_interrupt" },
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "sound_studio",
+      version: "1.0.0",
+      description: "Create music tracks and sound effects",
+      authorization: null,
+      icon: "ActionMegaphoneIcon",
+      documentationUrl: null,
+      instructions: null,
+    },
+  },
+  microsoft_excel: {
+    id: 38,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: undefined,
+    isPreview: false,
+    tools_stakes: {
+      list_excel_files: "never_ask",
+      get_worksheets: "never_ask",
+      read_worksheet: "never_ask",
+      write_worksheet: "high",
+      create_worksheet: "low",
+      clear_range: "high",
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "microsoft_excel",
+      version: "1.0.0",
+      description: "Work with Excel files in SharePoint.",
+      authorization: {
+        provider: "microsoft_tools" as const,
+        supported_use_cases: ["personal_actions"] as const,
+        scope:
+          "User.Read Files.ReadWrite.All Sites.Read.All offline_access" as const,
+      },
+      icon: "MicrosoftExcelLogo",
+      documentationUrl: null,
+      instructions: null,
+    },
+  },
+  http_client: {
+    id: 39,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("http_client_tool");
+    },
+    isPreview: true,
+    tools_stakes: {
+      send_request: "low",
+      websearch: "never_ask",
+      webbrowser: "never_ask",
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "http_client",
+      version: "1.0.0",
+      description:
+        "Make HTTP requests to external APIs with optional Bearer token authentication.",
+      authorization: null,
+      icon: "ActionGlobeAltIcon",
+      documentationUrl: null,
+      instructions: null,
+      developerSecretSelectionDescription:
+        "This is optional. If set, this secret will be used as a default Bearer token (Authorization header) for HTTP requests.",
+      developerSecretSelection: "optional",
+    },
+  },
+  ashby: {
+    id: 40,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("ashby_tool");
+    },
+    isPreview: false,
+    tools_stakes: {
+      search_candidates: "never_ask",
+      get_report_data: "never_ask",
+      get_interview_feedback: "never_ask",
+      create_candidate_note: "high",
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "ashby",
+      version: "1.0.0",
+      description: "Access and manage Ashby ATS data.",
+      authorization: null,
+      // TODO(2025-11-04 aubin): add logo.
+      icon: "GithubLogo",
+      documentationUrl: null,
+      instructions: null,
+      developerSecretSelection: "required",
+    },
+  },
+  salesloft: {
+    id: 41,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("salesloft_tool");
+    },
+    isPreview: true,
+    tools_stakes: {
+      get_current_user: "never_ask",
+      get_cadences: "never_ask",
+      get_tasks: "never_ask",
+      get_actions: "never_ask",
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "salesloft",
+      version: "1.0.0",
+      description: "Access Salesloft cadences, tasks, and actions.",
+      authorization: null,
+      icon: "ActionDocumentTextIcon",
+      documentationUrl: null,
+      instructions: null,
+      developerSecretSelection: "required",
     },
   },
   [SEARCH_SERVER_NAME]: {
@@ -1087,6 +1343,26 @@ The directive should be used to display a clickable version of the agent name in
       description:
         "Demo server showing a basic interaction with various configurable blocks.",
       icon: "ActionEmotionLaughIcon",
+      authorization: null,
+      documentationUrl: null,
+      instructions: null,
+    },
+  },
+  common_utilities: {
+    id: 1017,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isPreview: false,
+    isRestricted: undefined,
+    tools_stakes: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "common_utilities",
+      version: "1.0.0",
+      description:
+        "Miscellaneous helper tools such as random numbers, time retrieval, and timers.",
+      icon: "ActionAtomIcon",
       authorization: null,
       documentationUrl: null,
       instructions: null,
@@ -1171,7 +1447,7 @@ The directive should be used to display a clickable version of the agent name in
       authorization: null,
       icon: "ActionDocumentTextIcon",
       documentationUrl: null,
-      instructions: null,
+      instructions: DATA_SOURCE_FILESYSTEM_SERVER_INSTRUCTIONS,
     },
   },
   agent_management: {
@@ -1235,7 +1511,114 @@ The directive should be used to display a clickable version of the agent name in
       instructions: null,
     },
   },
-  // Using satisfies here instead of : type to avoid typescript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
+  val_town: {
+    id: 1014,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isPreview: false,
+    isRestricted: undefined,
+    tools_stakes: {
+      create_val: "low",
+      get_file_content: "low",
+      delete_file: "low",
+      update_file_content: "low",
+      write_file: "low",
+      create_file: "low",
+      call_http_endpoint: "low",
+      get_val: "never_ask",
+      list_vals: "never_ask",
+      search_vals: "never_ask",
+      list_val_files: "never_ask",
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "val_town",
+      version: "1.0.0",
+      description: "Create and execute vals in Val Town.",
+      authorization: null,
+      icon: "ValTownLogo",
+      documentationUrl: "https://docs.dust.tt/docs/val-town",
+      instructions: null,
+      developerSecretSelection: "required",
+    },
+  },
+  front: {
+    id: 1018,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("front_tool");
+    },
+    isPreview: true,
+    tools_stakes: {
+      search_conversations: "never_ask",
+      get_conversation: "never_ask",
+      get_conversation_messages: "never_ask",
+      get_contact: "never_ask",
+      list_tags: "never_ask",
+      list_teammates: "never_ask",
+      get_customer_history: "never_ask",
+      list_inboxes: "never_ask",
+
+      create_conversation: "low",
+      create_draft: "low",
+      add_tags: "low",
+      add_comment: "low",
+      add_links: "low",
+
+      send_message: "high",
+      update_conversation_status: "high",
+      assign_conversation: "high",
+    },
+    tools_retry_policies: { default: "retry_on_interrupt" },
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "front",
+      version: "1.0.0",
+      description:
+        "Manage support conversations, messages, and customer interactions.",
+      authorization: null,
+      icon: "FrontLogo",
+      documentationUrl: "https://dev.frontapp.com/reference/introduction",
+      instructions:
+        "When handling support tickets:\n" +
+        "- Always check customer history before replying using get_customer_history\n" +
+        "- Auto-tag conversations based on issue type (bug, feature-request, billing)\n" +
+        "- Assign to teammate 'ilias' if T1 cannot resolve after three attempts\n" +
+        "- Use LLM-friendly timeline format for conversation data\n" +
+        "- Include full context (metadata, custom fields) in responses",
+      developerSecretSelection: "required",
+    },
+  },
+  zendesk: {
+    id: 42,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: undefined,
+    isPreview: false,
+    tools_stakes: {
+      get_ticket: "never_ask",
+      search_tickets: "never_ask",
+      draft_reply: "low", // Low because it's a draft.
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "zendesk",
+      version: "1.0.0",
+      description:
+        "Access and manage support tickets, help center, and customer interactions.",
+      authorization: {
+        provider: "zendesk" as const,
+        supported_use_cases: ["platform_actions"] as const,
+      },
+      icon: "ZendeskLogo",
+      documentationUrl: null,
+      instructions: null,
+    },
+  },
+  // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {
   [K in InternalMCPServerNameType]: {
     id: number;
@@ -1245,7 +1628,7 @@ The directive should be used to display a clickable version of the agent name in
       | ((params: {
           plan: PlanType;
           featureFlags: WhitelistableFeature[];
-          isDustDeepDisabled: boolean;
+          isDeepDiveDisabled: boolean;
         }) => boolean)
       | undefined;
     isPreview: boolean;

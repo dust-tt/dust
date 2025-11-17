@@ -148,7 +148,18 @@ export async function buildNotionBreadcrumbs(
  * @throws Error if URL is invalid
  */
 export function pageOrDbIdFromUrl(url: string): string {
-  const u = new URL(url);
+  // If it is already a UUID, return it directly. This allows users to enter
+  // either a full URL or just the ID (e.g. in the Check URL Poke UI).
+  const trimmed = url.trim();
+  if (
+    /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
+      trimmed
+    )
+  ) {
+    return trimmed;
+  }
+
+  const u = new URL(trimmed);
   const last = u.pathname.split("/").pop();
   if (!last) {
     throw new Error(`Unhandled URL (could not get "last"): ${url}`);

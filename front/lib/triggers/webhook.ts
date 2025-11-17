@@ -1,0 +1,309 @@
+import type { IncomingHttpHeaders } from "node:http";
+
+import type { Authenticator } from "@app/lib/auth";
+import type { DustError } from "@app/lib/error";
+import { getWebhookRequestsBucket } from "@app/lib/file_storage";
+import { WebhookRequestModel } from "@app/lib/models/assistant/triggers/webhook_request";
+import type { WebhookRequestTriggerStatus } from "@app/lib/models/assistant/triggers/webhook_request_trigger";
+import { WebhookRequestTriggerModel } from "@app/lib/models/assistant/triggers/webhook_request_trigger";
+import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
+import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
+import { FathomClient } from "@app/lib/triggers/built-in-webhooks/fathom/fathom_client";
+import { launchAgentTriggerWebhookWorkflow } from "@app/lib/triggers/temporal/webhook/client";
+import {
+  getTimeframeSecondsFromLiteral,
+  rateLimiter,
+} from "@app/lib/utils/rate_limiter";
+import { verifySignature } from "@app/lib/webhookSource";
+import logger from "@app/logger/logger";
+import type { Result } from "@app/types";
+import { Err, normalizeError, Ok, removeNulls } from "@app/types";
+import type { TriggerType } from "@app/types/assistant/triggers";
+import type {
+  WebhookProvider,
+  WebhookSourceForAdminType,
+} from "@app/types/triggers/webhooks";
+import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
+
+const WORKSPACE_MESSAGE_LIMIT_MULTIPLIER = 0.5; // 50% of workspace message limit
+
+/**
+ * To avoid storing sensitive information, only these headers are allowed to be stored in GCS.
+ */
+const HEADERS_ALLOWED_LIST = [
+  ...removeNulls(
+    Object.values(WEBHOOK_PRESETS)
+      .filter((preset) => preset.eventCheck?.type === "headers")
+      .map((preset) => preset.eventCheck?.field.toLowerCase())
+  ),
+  // Header used by Fathom.
+  "webhook-signature",
+];
+
+export function checkSignature({
+  headerName,
+  algorithm,
+  secret,
+  headers,
+  body,
+  provider,
+}: {
+  headerName: string | null;
+  algorithm: "sha1" | "sha256" | "sha512" | null;
+  secret: string;
+  headers: Record<string, string>;
+  body: unknown;
+  provider: WebhookProvider | null;
+}): Result<
+  void,
+  Omit<DustError, "code"> & { code: "invalid_signature_error" }
+> {
+  if (provider === "fathom") {
+    const verifyRes = FathomClient.verifyWebhook({
+      secret,
+      headers,
+      body: JSON.stringify(body),
+    });
+
+    if (verifyRes.isErr()) {
+      return new Err({
+        name: "dust_error",
+        code: "invalid_signature_error",
+        message: `Invalid Fathom webhook signature: ${verifyRes.error.message}`,
+      });
+    }
+
+    return new Ok(undefined);
+  }
+
+  if (!headerName || !algorithm) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_signature_error",
+      message:
+        "Missing headerName or algorithm for custom webhook verification",
+    });
+  }
+
+  const signature = headers[headerName.toLowerCase()] as string;
+
+  if (!signature) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_signature_error",
+      message: `Missing signature header: ${headerName}`,
+    });
+  }
+
+  const stringifiedBody = JSON.stringify(body);
+
+  const isValid = verifySignature({
+    signedContent: stringifiedBody,
+    secret: secret,
+    signature,
+    algorithm,
+  });
+
+  if (!isValid) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_signature_error",
+      message: "Invalid webhook signature.",
+    });
+  }
+
+  return new Ok(undefined);
+}
+
+export async function checkWebhookRequestForRateLimit(
+  auth: Authenticator
+): Promise<
+  Result<
+    void,
+    Omit<DustError, "code"> & {
+      code: "rate_limit_error";
+    }
+  >
+> {
+  const plan = auth.getNonNullablePlan();
+  const workspace = auth.getNonNullableWorkspace();
+  const { maxMessages, maxMessagesTimeframe } = plan.limits.assistant;
+
+  // Rate limiting: 50% of workspace message limit
+  if (maxMessages !== -1) {
+    const activeSeats = await countActiveSeatsInWorkspaceCached(workspace.sId);
+    const webhookLimit = Math.ceil(
+      maxMessages * activeSeats * WORKSPACE_MESSAGE_LIMIT_MULTIPLIER
+    ); // 50% of workspace message limit
+
+    const remaining = await rateLimiter({
+      key: `workspace:${workspace.sId}:webhook_triggers:${maxMessagesTimeframe}`,
+      maxPerTimeframe: webhookLimit,
+      timeframeSeconds: getTimeframeSecondsFromLiteral(maxMessagesTimeframe),
+      logger: logger,
+    });
+
+    if (remaining <= 0) {
+      return new Err({
+        name: "dust_error",
+        code: "rate_limit_error",
+        message:
+          "Webhook triggers rate limit exceeded. " +
+          `You can trigger up to ${webhookLimit} webhooks per ` +
+          (maxMessagesTimeframe === "day" ? "day" : "month"),
+      });
+    }
+    return new Ok(undefined);
+  }
+
+  return new Ok(undefined);
+}
+
+export async function processWebhookRequest(
+  auth: Authenticator,
+  {
+    webhookSource,
+    headers,
+    body,
+  }: {
+    webhookSource: WebhookSourceForAdminType;
+    headers: IncomingHttpHeaders;
+    body: unknown;
+  }
+): Promise<Result<void, Error>> {
+  // Store on GCS as a file
+  const content = JSON.stringify({
+    headers: Object.fromEntries(
+      Object.entries(headers).filter(([key]) =>
+        HEADERS_ALLOWED_LIST.includes(key.toLowerCase())
+      )
+    ),
+    body,
+  });
+
+  const bucket = getWebhookRequestsBucket();
+
+  // Store in DB
+  const webhookRequest = await WebhookRequestResource.makeNew({
+    workspaceId: auth.getNonNullableWorkspace().id,
+    webhookSourceId: webhookSource.id,
+    status: "received",
+  });
+
+  const gcsPath = WebhookRequestResource.getGcsPath({
+    workspaceId: auth.getNonNullableWorkspace().sId,
+    webhookSourceId: webhookSource.id,
+    webRequestId: webhookRequest.id,
+  });
+
+  try {
+    // Store in GCS
+    await bucket.uploadRawContentToBucket({
+      content,
+      contentType: "application/json",
+      filePath: gcsPath,
+    });
+
+    await launchAgentTriggerWebhookWorkflow({
+      auth,
+      webhookRequest,
+    });
+  } catch (error: unknown) {
+    const normalizedError = normalizeError(error);
+    await webhookRequest.markAsFailed(normalizedError.message);
+    logger.error(
+      {
+        webhookRequestId: webhookRequest.id,
+        error,
+      },
+      "Failed to launch agent workflow on webhook request"
+    );
+    return new Err(normalizedError);
+  }
+
+  return new Ok(undefined);
+}
+
+export async function fetchRecentWebhookRequestTriggersWithPayload(
+  auth: Authenticator,
+  {
+    trigger,
+    limit = 15,
+  }: {
+    trigger: TriggerType;
+    limit?: number;
+  }
+): Promise<
+  {
+    id: number;
+    timestamp: number;
+    status: WebhookRequestTriggerStatus;
+    payload?: {
+      headers?: Record<string, string | string[]>;
+      body?: unknown;
+    };
+  }[]
+> {
+  const workspace = auth.getNonNullableWorkspace();
+  const webhookRequestTriggers = await WebhookRequestTriggerModel.findAll({
+    where: {
+      workspaceId: workspace.id,
+      triggerId: trigger.id,
+    },
+    include: [
+      {
+        model: WebhookRequestModel,
+        as: "webhookRequest",
+        required: true,
+        attributes: ["id", "createdAt", "webhookSourceId"],
+      },
+    ],
+    order: [["createdAt", "DESC"]],
+    limit,
+  });
+
+  // Fetch payloads from GCS for each request
+  const bucket = getWebhookRequestsBucket();
+  const requests = await Promise.all(
+    webhookRequestTriggers.map(async (wrt) => {
+      let payload:
+        | {
+            headers?: Record<string, string | string[]>;
+            body?: unknown;
+          }
+        | undefined;
+
+      const gcsPath = WebhookRequestResource.getGcsPath({
+        workspaceId: workspace.sId,
+        webhookSourceId: wrt.webhookRequest.webhookSourceId,
+        webRequestId: wrt.webhookRequest.id,
+      });
+
+      try {
+        const file = bucket.file(gcsPath);
+        const [content] = await file.download();
+        if (content) {
+          payload = JSON.parse(content.toString());
+        }
+      } catch (error) {
+        logger.warn(
+          {
+            webhookRequestId: wrt.webhookRequest.id,
+            error: error instanceof Error ? error.message : String(error),
+          },
+          "Failed to fetch webhook request payload from GCS"
+        );
+        // Continue without payload if GCS fetch fails
+      }
+
+      return {
+        id: wrt.webhookRequest.id,
+        timestamp: wrt.webhookRequest.createdAt.getTime(),
+        status: wrt.status,
+        payload,
+      };
+    })
+  );
+
+  return requests;
+}

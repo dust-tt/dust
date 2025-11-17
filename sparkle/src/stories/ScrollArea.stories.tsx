@@ -1,22 +1,26 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import { ScrollBar } from "@sparkle/components/ScrollArea";
-import { ScrollArea, Separator } from "@sparkle/index_with_tw_base";
+import { ScrollArea, ScrollBar } from "@sparkle/components/ScrollArea";
+import { Separator } from "@sparkle/components/Separator";
 
-const meta: Meta<typeof ScrollArea> = {
+const meta = {
   title: "Primitives/ScrollArea",
   component: ScrollArea,
-};
+  parameters: {
+    layout: "centered",
+  },
+  tags: ["autodocs"],
+} satisfies Meta<typeof ScrollArea>;
 
 export default meta;
-type Story = StoryObj<typeof ScrollArea>;
+type Story = StoryObj<typeof meta>;
 
 const tags = Array.from({ length: 50 }).map(
   (_, i, a) => `v1.2.0-beta.${a.length - i}`
 );
 
-export const ScrollAreaDemo: Story = {
+export const ScrollAreaExample: Story = {
   render: () => (
     <div className="s-flex s-flex-row s-gap-6 s-bg-muted s-p-8">
       <div className="s-h-[400px]">

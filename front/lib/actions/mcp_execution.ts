@@ -1,4 +1,5 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { extname } from "path";
 import type { Logger } from "pino";
 
 import {
@@ -47,6 +48,7 @@ import {
   isSupportedFileContentType,
   removeNulls,
   stripNullBytes,
+  toWellFormed,
 } from "@app/types";
 
 export async function processToolNotification(
@@ -171,7 +173,7 @@ export async function processToolResults(
           return {
             content: {
               type: block.type,
-              text: stripNullBytes(block.text),
+              text: toWellFormed(stripNullBytes(block.text)),
             },
             file: null,
           };
@@ -214,7 +216,7 @@ export async function processToolResults(
                 type: block.type,
                 resource: {
                   ...block.resource,
-                  text: stripNullBytes(block.resource.text),
+                  text: toWellFormed(stripNullBytes(block.resource.text)),
                 },
               },
               file,
@@ -225,14 +227,19 @@ export async function processToolResults(
             isSupportedFileContentType(block.resource.mimeType)
           ) {
             if (isBlobResource(block)) {
-              const fileName = isResourceWithName(block)
-                ? block.name
-                : `generated-file-${Date.now()}${extensionsForContentType(block.resource.mimeType as SupportedFileContentType)[0] || ""}`;
+              const extensionFromContentType =
+                extensionsForContentType(
+                  block.resource.mimeType as SupportedFileContentType
+                )[0] || "";
+              const extensionFromURI = extname(block.resource.uri);
+              const fileName = extensionFromURI
+                ? block.resource.uri
+                : `${block.resource.uri}${extensionFromContentType}`;
 
               return handleBase64Upload(auth, {
                 base64Data: block.resource.blob,
                 mimeType: block.resource.mimeType,
-                fileName,
+                fileName: fileName,
                 block,
                 fileUseCase,
                 fileUseCaseMetadata,
@@ -241,7 +248,7 @@ export async function processToolResults(
 
             const fileName = isResourceWithName(block.resource)
               ? block.resource.name
-              : block.resource.uri.split("/").pop() ?? "generated-file";
+              : (block.resource.uri.split("/").pop() ?? "generated-file");
 
             const fileUpsertResult = await processAndStoreFromUrl(auth, {
               url: block.resource.uri,
@@ -273,7 +280,7 @@ export async function processToolResults(
             const text =
               "text" in block.resource &&
               typeof block.resource.text === "string"
-                ? stripNullBytes(block.resource.text)
+                ? toWellFormed(stripNullBytes(block.resource.text))
                 : null;
 
             // If the resource text is too large, we create a file and return a resource block that references the file.

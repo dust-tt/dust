@@ -17,6 +17,7 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ConnectorType } from "@connectors/types";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
 import {
+  DiscordBotConfigurationTypeSchema,
   ioTsParsePayload,
   SlackConfigurationTypeSchema,
   WebCrawlerConfigurationTypeSchema,
@@ -135,6 +136,35 @@ const _createConnectorAPIHandler = async (
         break;
       }
 
+      case "discord_bot": {
+        const configurationRes = ioTsParsePayload(
+          configuration,
+          DiscordBotConfigurationTypeSchema
+        );
+        if (configurationRes.isErr()) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: `Invalid request body: ${configurationRes.error}`,
+            },
+          });
+        }
+        connectorRes = await createConnector({
+          connectorProvider: req.params.connector_provider,
+          params: {
+            dataSourceConfig: {
+              workspaceId,
+              workspaceAPIKey,
+              dataSourceId,
+            },
+            connectionId,
+            configuration: configurationRes.value,
+          },
+        });
+        break;
+      }
+
       case "github":
       case "notion":
       case "confluence":
@@ -144,6 +174,7 @@ const _createConnectorAPIHandler = async (
       case "bigquery":
       case "zendesk":
       case "microsoft":
+      case "microsoft_bot":
       case "salesforce":
       case "gong": {
         connectorRes = await createConnector({

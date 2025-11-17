@@ -1,5 +1,5 @@
 import Placeholder from "@tiptap/extension-placeholder";
-import type { Editor, JSONContent } from "@tiptap/react";
+import type { Editor } from "@tiptap/react";
 import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import type { SuggestionKeyDownProps } from "@tiptap/suggestion";
@@ -19,64 +19,14 @@ import type { SuggestionProps } from "@app/components/assistant/conversation/inp
 import { mentionPluginKey } from "@app/components/assistant/conversation/input_bar/editor/useMentionDropdown";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
+import { extractFromEditorJSON } from "@app/lib/mentions";
 import { isMobile } from "@app/lib/utils";
+import type { RichMention } from "@app/types";
 import type { WorkspaceType } from "@app/types";
 
 import { URLStorageExtension } from "./extensions/URLStorageExtension";
 
-export interface EditorMention {
-  id: string;
-  label: string;
-  description?: string;
-}
-
 const DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD = 16000;
-
-function getTextAndMentionsFromNode(node?: JSONContent) {
-  let textContent = "";
-  let mentions: EditorMention[] = [];
-
-  if (!node) {
-    return { mentions, text: textContent };
-  }
-
-  // Check if the node is of type 'text' and concatenate its text.
-  if (node.type === "text") {
-    textContent += node.text;
-  }
-
-  // If the node is a 'mention', concatenate the mention label and add to mentions array.
-  if (node.type === "mention") {
-    // TODO: We should not expose `sId` here.
-    textContent += `:mention[${node.attrs?.label}]{sId=${node.attrs?.id}}`;
-    mentions.push({
-      id: node.attrs?.id,
-      label: node.attrs?.label,
-    });
-  }
-
-  // If the node is a 'hardBreak' or a 'paragraph', add a newline character.
-  if (node.type && ["hardBreak", "paragraph"].includes(node.type)) {
-    textContent += "\n";
-  }
-
-  if (node.type === "pastedAttachment") {
-    const title = node.attrs?.title ?? "";
-    const fileId = node.attrs?.fileId ?? "";
-    textContent += `:pasted_attachment[${title}]{fileId=${fileId}}`;
-  }
-
-  // If the node has content, recursively get text and mentions from each child node
-  if (node.content) {
-    node.content.forEach((childNode) => {
-      const childResult = getTextAndMentionsFromNode(childNode);
-      textContent += childResult.text;
-      mentions = mentions.concat(childResult.mentions);
-    });
-  }
-
-  return { text: textContent, mentions: mentions };
-}
 
 function isLongTextPaste(text: string, maxCharThreshold?: number) {
   const maxChars = maxCharThreshold ?? DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD;
@@ -101,13 +51,17 @@ const useEditorService = (editor: Editor | null) => {
       },
       // Insert mention helper function.
       insertMention: ({
+        type,
         id,
         label,
         description,
+        pictureUrl,
       }: {
+        type: "agent" | "user";
         id: string;
         label: string;
         description?: string;
+        pictureUrl?: string;
       }) => {
         const shouldAddSpaceBeforeMention =
           !editor?.isEmpty &&
@@ -118,14 +72,14 @@ const useEditorService = (editor: Editor | null) => {
           .insertContent(shouldAddSpaceBeforeMention ? " " : "") // Add an extra space before the mention.
           .insertContent({
             type: "mention",
-            attrs: { id, label, description },
+            attrs: { type, id, label, description, pictureUrl },
           })
           .insertContent(" ") // Add an extra space after the mention.
           .run();
       },
 
       resetWithMentions: (
-        mentions: EditorMention[],
+        mentions: RichMention[],
         disableAutoFocus: boolean
       ) => {
         const chainCommands = editor?.chain();
@@ -162,9 +116,7 @@ const useEditorService = (editor: Editor | null) => {
       },
 
       getTextAndMentions() {
-        const { mentions, text } = getTextAndMentionsFromNode(
-          editor?.getJSON()
-        );
+        const { mentions, text } = extractFromEditorJSON(editor?.getJSON());
 
         return {
           mentions,
@@ -186,9 +138,11 @@ const useEditorService = (editor: Editor | null) => {
         };
       },
 
-      hasMention(mention: EditorMention) {
+      hasMention(mention: RichMention) {
         const { mentions } = this.getTextAndMentions();
-        return mentions.some((m) => m.id === mention.id);
+        return mentions.some(
+          (m) => m.id === mention.id && m.type === mention.type
+        );
       },
 
       getTrimmedText() {
@@ -247,6 +201,7 @@ export interface CustomEditorProps {
     to: number;
   }) => void;
   longTextPasteCharsThreshold?: number;
+  onInlineText?: (fileId: string, textContent: string) => void;
 }
 
 const useCustomEditor = ({
@@ -258,6 +213,7 @@ const useCustomEditor = ({
   owner,
   onLongTextPaste,
   longTextPasteCharsThreshold,
+  onInlineText,
 }: CustomEditorProps) => {
   const extensions = [
     StarterKit.configure({
@@ -284,7 +240,9 @@ const useCustomEditor = ({
     }),
     MarkdownStyleExtension,
     ParagraphExtension,
-    PastedAttachmentExtension,
+    PastedAttachmentExtension.configure({
+      onInlineText,
+    }),
     URLStorageExtension,
   ];
   if (onUrlDetected) {
@@ -328,72 +286,77 @@ const useCustomEditor = ({
     }
   }, [suggestions, editor]);
 
-  // setting after as we need the editor to be initialized
-  editor?.setOptions({
-    editorProps: {
-      handleKeyDown: (view, event) => {
-        const submitMessageKey = localStorage.getItem("submitMessageKey");
-        const isCmdEnterForSubmission =
-          isSubmitMessageKey(submitMessageKey) &&
-          submitMessageKey === "cmd+enter";
-        const isEnterForSubmission = !isCmdEnterForSubmission;
-
-        // Check if this is a submission key combination based on user preferences
-        const isSubmissionKey =
-          (isEnterForSubmission &&
-            event.key === "Enter" &&
-            !event.shiftKey &&
-            !event.ctrlKey &&
-            !event.metaKey &&
-            !event.altKey) ||
-          (isCmdEnterForSubmission && event.key === "Enter" && event.metaKey);
-
-        if (isSubmissionKey) {
-          const mentionPluginState = mentionPluginKey.getState(view.state);
-          // Let the mention extension handle the event if its dropdown is currently opened.
-          if (mentionPluginState?.active) {
-            return false;
-          }
-
-          // On mobile, we want to let the user go to the next line and not immediately send
-          if (isMobile(navigator)) {
-            return false;
-          }
-
-          // Prevent the default Enter key behavior
-          event.preventDefault();
-
-          const clearEditor = () => {
-            editor.commands.clearContent();
-          };
-
-          const setLoading = (loading: boolean) => {
-            if (loading) {
-              editor?.view.dom.classList.add("loading-text");
-            } else {
-              editor?.view.dom.classList.remove("loading-text");
-            }
-            return editor?.setEditable(!loading);
-          };
-
-          onEnterKeyDown(
-            editor.isEmpty,
-            editorService.getMarkdownAndMentions(),
-            clearEditor,
-            setLoading
-          );
-
-          // Return true to indicate that this key event has been handled.
-          return true;
-        }
-
-        // Return false to let other keydown handlers or TipTap's default behavior process the event.
-        return false;
-      },
-    },
-  });
-
   const editorService = useEditorService(editor);
+
+  // Set keydown handler after editor is initialized to avoid synchronous updates during render.
+  useEffect(() => {
+    if (!editor) {
+      return;
+    }
+    editor.setOptions({
+      editorProps: {
+        handleKeyDown: (view, event) => {
+          const submitMessageKey = localStorage.getItem("submitMessageKey");
+          const isCmdEnterForSubmission =
+            isSubmitMessageKey(submitMessageKey) &&
+            submitMessageKey === "cmd+enter";
+          const isEnterForSubmission = !isCmdEnterForSubmission;
+
+          // Check if this is a submission key combination based on user preferences
+          const isSubmissionKey =
+            (isEnterForSubmission &&
+              event.key === "Enter" &&
+              !event.shiftKey &&
+              !event.ctrlKey &&
+              !event.metaKey &&
+              !event.altKey) ||
+            (isCmdEnterForSubmission && event.key === "Enter" && event.metaKey);
+
+          if (isSubmissionKey) {
+            const mentionPluginState = mentionPluginKey.getState(view.state);
+            // Let the mention extension handle the event if its dropdown is currently opened.
+            if (mentionPluginState?.active) {
+              return false;
+            }
+
+            // On mobile, we want to let the user go to the next line and not immediately send
+            if (isMobile(navigator)) {
+              return false;
+            }
+
+            // Prevent the default Enter key behavior
+            event.preventDefault();
+
+            const clearEditor = () => {
+              editor.commands.clearContent();
+            };
+
+            const setLoading = (loading: boolean) => {
+              if (loading) {
+                editor?.view.dom.classList.add("loading-text");
+              } else {
+                editor?.view.dom.classList.remove("loading-text");
+              }
+              return editor?.setEditable(!loading);
+            };
+
+            onEnterKeyDown(
+              editor.isEmpty,
+              editorService.getMarkdownAndMentions(),
+              clearEditor,
+              setLoading
+            );
+
+            // Return true to indicate that this key event has been handled.
+            return true;
+          }
+
+          // Return false to let other keydown handlers or TipTap's default behavior process the event.
+          return false;
+        },
+      },
+    });
+  }, [editor, editorService, onEnterKeyDown]);
 
   // Expose the editor instance and the editor service.
   return {

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 
 interface AgentHandleProps {
-  assistant: {
+  agent: {
     sId: string;
     name: string;
   };
@@ -12,7 +12,7 @@ interface AgentHandleProps {
 }
 
 export function AgentHandle({
-  assistant,
+  agent,
   canMention = true,
   isDisabled = false,
 }: AgentHandleProps) {
@@ -20,11 +20,11 @@ export function AgentHandle({
 
   const href = {
     pathname: router.pathname,
-    query: { ...router.query, agentDetails: assistant.sId },
+    query: { ...router.query, agentDetails: agent.sId },
   };
 
   if (!canMention) {
-    return <span>@{assistant.name}</span>;
+    return <span>{agent.name}</span>;
   }
 
   return (
@@ -32,11 +32,11 @@ export function AgentHandle({
       href={href}
       shallow
       className={cn(
-        "cursor-pointer transition duration-200 hover:text-highlight active:text-highlight-600",
+        "max-w-[14rem] cursor-pointer truncate transition duration-200 hover:text-highlight active:text-highlight-600 sm:max-w-fit",
         isDisabled && "text-gray-600 text-opacity-75"
       )}
     >
-      @{assistant.name}
+      {agent.name}
     </Link>
   );
 }

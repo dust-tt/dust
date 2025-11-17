@@ -10,14 +10,15 @@ import React, {
   useState,
 } from "react";
 
-import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
+import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { MentionDropdown } from "@app/components/assistant/conversation/input_bar/editor/MentionDropdown";
-import useAssistantSuggestions from "@app/components/assistant/conversation/input_bar/editor/useAssistantSuggestions";
+import useAgentSuggestions from "@app/components/assistant/conversation/input_bar/editor/useAgentSuggestions";
 import type { CustomEditorProps } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useCustomEditor from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
-import useHandleMentions from "@app/components/assistant/conversation/input_bar/editor/useHandleMentions";
+import useHandleAgentMentions from "@app/components/assistant/conversation/input_bar/editor/useHandleAgentMentions";
 import { useMentionDropdown } from "@app/components/assistant/conversation/input_bar/editor/useMentionDropdown";
 import useUrlHandler from "@app/components/assistant/conversation/input_bar/editor/useUrlHandler";
+import useUserSuggestions from "@app/components/assistant/conversation/input_bar/editor/useUserSuggestions";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import {
@@ -51,8 +52,8 @@ import { getSupportedFileExtensions } from "@app/types";
 export const INPUT_BAR_ACTIONS = [
   "tools",
   "attachment",
-  "assistants-list",
-  "assistants-list-with-actions",
+  "agents-list",
+  "agents-list-with-actions",
   "voice",
   "fullscreen",
 ] as const;
@@ -60,11 +61,11 @@ export const INPUT_BAR_ACTIONS = [
 export type InputBarAction = (typeof INPUT_BAR_ACTIONS)[number];
 
 export interface InputBarContainerProps {
-  allAssistants: LightAgentConfigurationType[];
+  allAgents: LightAgentConfigurationType[];
   agentConfigurations: LightAgentConfigurationType[];
   onEnterKeyDown: CustomEditorProps["onEnterKeyDown"];
   owner: WorkspaceType;
-  selectedAssistant: AgentMention | null;
+  selectedAgent: AgentMention | null;
   stickyMentions?: AgentMention[];
   actions: InputBarAction[];
   disableAutoFocus: boolean;
@@ -80,11 +81,11 @@ export interface InputBarContainerProps {
 }
 
 const InputBarContainer = ({
-  allAssistants,
+  allAgents,
   agentConfigurations,
   onEnterKeyDown,
   owner,
-  selectedAssistant,
+  selectedAgent,
   stickyMentions,
   actions,
   disableAutoFocus,
@@ -99,8 +100,35 @@ const InputBarContainer = ({
   selectedMCPServerViews,
 }: InputBarContainerProps) => {
   const isMobile = useIsMobile();
-  const featureFlags = useFeatureFlags({ workspaceId: owner.sId });
-  const suggestions = useAssistantSuggestions(agentConfigurations, owner);
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const userMentionsEnabled = hasFeature("mentions_v2");
+
+  // Fetch agent and user suggestions.
+  const agentSuggestions = useAgentSuggestions(owner, agentConfigurations);
+  const userSuggestions = useUserSuggestions(owner, userMentionsEnabled);
+  // Combine agent and user suggestions for the editor.
+  const combinedSuggestions = useMemo(
+    () => ({
+      suggestions: [
+        ...agentSuggestions.suggestions,
+        ...userSuggestions.suggestions,
+      ],
+      fallbackSuggestions: [
+        ...agentSuggestions.fallbackSuggestions,
+        ...userSuggestions.fallbackSuggestions,
+      ],
+      isLoading: agentSuggestions.isLoading || userSuggestions.isLoading,
+    }),
+    [
+      agentSuggestions.suggestions,
+      userSuggestions.suggestions,
+      agentSuggestions.fallbackSuggestions,
+      userSuggestions.fallbackSuggestions,
+      agentSuggestions.isLoading,
+      userSuggestions.isLoading,
+    ]
+  );
+
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
     UrlCandidate | NodeCandidate | null
   >(null);
@@ -150,11 +178,13 @@ const InputBarContainer = ({
       title,
       from,
       to,
+      textContent,
     }: {
       fileId: string;
       title: string;
       from: number;
       to: number;
+      textContent: string;
     }) => {
       const editorInstance = editorRef.current;
       if (!editorInstance) {
@@ -174,8 +204,8 @@ const InputBarContainer = ({
         ...(needsLeadingSpace ? [{ type: "text", text: " " }] : []),
         {
           type: "pastedAttachment",
-          attrs: { fileId, title },
-          text: `:pasted_attachment[${title}]{fileId=${fileId}}`,
+          attrs: { fileId, title, textContent },
+          text: `:pasted_content[${title}]{pastedId=${fileId}}`,
         },
         { type: "text", text: " " },
       ];
@@ -208,16 +238,70 @@ const InputBarContainer = ({
     setNodeOrUrlCandidate(null);
   };
 
-  // Pass the editor ref to the mention dropdown hook
-  const mentionDropdown = useMentionDropdown(suggestions, editorRef);
+  const sendNotification = useSendNotification();
+
+  const handleInlineText = useCallback(
+    async (fileId: string, textContent: string) => {
+      const editorInstance = editorRef.current;
+      if (!editorInstance) {
+        return;
+      }
+
+      try {
+        // Find the pasted attachment node to get its position
+        let nodePos: number | null = null;
+        editorInstance.state.doc.descendants((node, pos) => {
+          if (
+            node.type.name === "pastedAttachment" &&
+            node.attrs?.fileId === fileId
+          ) {
+            nodePos = pos;
+            return false;
+          }
+          return true;
+        });
+
+        if (nodePos === null) {
+          return;
+        }
+
+        // Replace the chip with the text content
+        const node = editorInstance.state.doc.nodeAt(nodePos);
+        if (node) {
+          editorInstance
+            .chain()
+            .focus()
+            .deleteRange({ from: nodePos, to: nodePos + node.nodeSize })
+            .insertContentAt(nodePos, textContent)
+            .run();
+        }
+
+        // Remove the file from the uploader service
+        fileUploaderService.removeFile(fileId);
+      } catch (e) {
+        sendNotification({
+          type: "error",
+          title: "Failed to inline text",
+          description: normalizeError(e).message,
+        });
+      }
+    },
+    [editorRef, fileUploaderService, sendNotification]
+  );
+
+  const agentMentionDropdown = useMentionDropdown(
+    combinedSuggestions,
+    editorRef
+  );
 
   const { editor, editorService } = useCustomEditor({
-    suggestions,
+    suggestions: combinedSuggestions,
     onEnterKeyDown,
     disableAutoFocus,
     onUrlDetected: handleUrlDetected,
-    suggestionHandler: mentionDropdown.getSuggestionHandler(),
+    suggestionHandler: agentMentionDropdown.getSuggestionHandler(),
     owner,
+    onInlineText: handleInlineText,
     onLongTextPaste: async ({ text, from, to }) => {
       let filename = "";
       let inserted = false;
@@ -232,6 +316,7 @@ const InputBarContainer = ({
           title: displayName,
           from,
           to,
+          textContent: text,
         });
 
         const file = new File([text], filename, {
@@ -293,6 +378,7 @@ const InputBarContainer = ({
             break;
           case "mention":
             editorService.insertMention({
+              type: "agent",
               id: message.id,
               label: message.name,
             });
@@ -301,6 +387,13 @@ const InputBarContainer = ({
             assertNever(message);
         }
       }
+    },
+    onError: (error) => {
+      sendNotification({
+        type: "error",
+        title: "Failed to transcribe voice",
+        description: normalizeError(error).message,
+      });
     },
   });
 
@@ -327,8 +420,6 @@ const InputBarContainer = ({
     () => Object.fromEntries(spaces?.map((space) => [space.sId, space]) || []),
     [spaces]
   );
-
-  const sendNotification = useSendNotification();
 
   const { searchResultNodes, isSearchLoading } = useSpacesSearch(
     isNodeCandidate(nodeOrUrlCandidate)
@@ -407,22 +498,27 @@ const InputBarContainer = ({
     sendNotification,
   ]);
 
-  // When input bar animation is requested it means the new button was clicked (removing focus from
+  // When input bar animation is requested, it means the new button was clicked (removing focus from
   // the input bar), we grab it back.
   const { animate } = useContext(InputBarContext);
   useEffect(() => {
     if (animate) {
-      editorService.focusEnd();
+      // Schedule focus to avoid flushing during render lifecycle.
+      queueMicrotask(() => editorService.focusEnd());
     }
   }, [animate, editorService]);
 
-  useHandleMentions(
+  useHandleAgentMentions(
     editorService,
     agentConfigurations,
     stickyMentions,
-    selectedAssistant,
+    selectedAgent,
     disableAutoFocus
   );
+
+  const buttonSize = useMemo(() => {
+    return isMobile ? "sm" : "xs";
+  }, [isMobile]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -508,6 +604,7 @@ const InputBarContainer = ({
                     onNodeUnselect={onNodeUnselect}
                     attachedNodes={attachedNodes}
                     disabled={disableTextInput}
+                    buttonSize={buttonSize}
                   />
                 </>
               )}
@@ -518,24 +615,27 @@ const InputBarContainer = ({
                   onSelect={onMCPServerViewSelect}
                   onDeselect={onMCPServerViewDeselect}
                   disabled={disableTextInput}
+                  buttonSize={buttonSize}
                 />
               )}
-              {(actions.includes("assistants-list") ||
-                actions.includes("assistants-list-with-actions")) && (
-                <AssistantPicker
+              {(actions.includes("agents-list") ||
+                actions.includes("agents-list-with-actions")) && (
+                <AgentPicker
                   owner={owner}
-                  size="xs"
+                  size={buttonSize}
                   onItemClick={(c) => {
                     editorService.insertMention({
+                      type: "agent",
                       id: c.sId,
                       label: c.name,
                       description: c.description,
+                      pictureUrl: c.pictureUrl,
                     });
                   }}
-                  assistants={allAssistants}
+                  agents={allAgents}
                   showDropdownArrow={false}
                   showFooterButtons={actions.includes(
-                    "assistants-list-with-actions"
+                    "agents-list-with-actions"
                   )}
                   disabled={disableTextInput}
                 />
@@ -543,15 +643,16 @@ const InputBarContainer = ({
             </div>
             <div className="grow" />
             <div className="flex items-center gap-2 md:gap-1">
-              {featureFlags.hasFeature("simple_audio_transcription") &&
+              {owner.metadata?.allowVoiceTranscription !== false &&
                 actions.includes("voice") && (
                   <VoicePicker
                     voiceTranscriberService={voiceTranscriberService}
                     disabled={disableTextInput}
+                    buttonSize={buttonSize}
                   />
                 )}
               <Button
-                size="xs"
+                size={buttonSize}
                 isLoading={
                   disableSendButton &&
                   voiceTranscriberService.status !== "transcribing"
@@ -590,7 +691,7 @@ const InputBarContainer = ({
         </div>
       </div>
 
-      <MentionDropdown mentionDropdownState={mentionDropdown} />
+      <MentionDropdown mentionDropdownState={agentMentionDropdown} />
     </div>
   );
 };

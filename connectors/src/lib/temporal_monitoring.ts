@@ -157,6 +157,7 @@ export class ActivityInboundLogInterceptor
           )}s`,
           type: err.type, // "transient_upstream_activity_error"
           nextRetryDelay: err.retryAfterMs,
+          cause: err,
         });
       }
 

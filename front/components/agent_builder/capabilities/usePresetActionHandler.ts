@@ -106,7 +106,7 @@ export function usePresetActionHandler({
 
     if (isKnowledgeTemplateAction(presetActionToAdd)) {
       setKnowledgeAction({
-        action: { ...action, canBeConfigured: false },
+        action: { ...action, configurationRequired: true },
         index: null,
         presetData: presetActionToAdd,
       });

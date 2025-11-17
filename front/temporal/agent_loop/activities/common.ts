@@ -7,55 +7,103 @@ import {
 import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
-import { maybeTrackTokenUsageCost } from "@app/lib/api/public_api_limits";
+import { TERMINAL_AGENT_MESSAGE_EVENT_TYPES } from "@app/lib/api/assistant/streaming/types";
+import { maybeTrackTokenUsageCost } from "@app/lib/api/programmatic_usage_tracking";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { Authenticator as AuthenticatorClass } from "@app/lib/auth";
 import type { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
-import type { ConversationWithoutContentType } from "@app/types";
+import type {
+  ConversationWithoutContentType,
+  ToolErrorEvent,
+} from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { getAgentLoopData } from "@app/types/assistant/agent_run";
 
+export async function markAgentMessageAsFailed(
+  agentMessageRow: AgentMessage,
+  error: ToolErrorEvent["error"],
+  runIds?: string[]
+): Promise<void> {
+  await agentMessageRow.update({
+    completedAt: new Date(),
+    errorCode: error.code,
+    errorMessage: error.message,
+    errorMetadata: error.metadata,
+    status: "failed",
+    ...(runIds && { runIds }),
+  });
+}
+
 // Process database operations for agent events before publishing to Redis.
 async function processEventForDatabase(
-  event: AgentMessageEvents,
-  agentMessageRow: AgentMessage,
-  step: number
+  auth: Authenticator,
+  {
+    event,
+    agentMessageRow,
+    step,
+    conversation,
+    modelInteractionDurationMs,
+  }: {
+    event: AgentMessageEvents;
+    agentMessageRow: AgentMessage;
+    step: number;
+    conversation: ConversationWithoutContentType;
+    modelInteractionDurationMs?: number;
+  }
 ): Promise<void> {
+  // If we have a model interaction duration, store it.
+  if (modelInteractionDurationMs) {
+    await agentMessageRow.update({
+      modelInteractionDurationMs:
+        (agentMessageRow.modelInteractionDurationMs ?? 0) +
+        Math.round(modelInteractionDurationMs),
+    });
+  }
+
   switch (event.type) {
     case "agent_error":
-    case "tool_error":
-      // Store error in database.
-      await agentMessageRow.update({
-        status: "failed",
-        errorCode: event.error.code,
-        errorMessage: event.error.message,
-        errorMetadata: event.error.metadata,
-        completedAt: new Date(),
+      // Store error in database with runIds from the failed LLM call.
+      await markAgentMessageAsFailed(
+        agentMessageRow,
+        event.error,
+        event.runIds
+      );
+
+      // Mark the conversation as errored.
+      await ConversationResource.markHasError(auth, {
+        conversation,
       });
 
-      if (event.type === "agent_error") {
-        await AgentStepContentResource.createNewVersion({
-          workspaceId: agentMessageRow.workspaceId,
-          agentMessageId: agentMessageRow.id,
-          step,
-          index: 0, // Errors are the only content for this step
+      await AgentStepContentResource.createNewVersion({
+        workspaceId: agentMessageRow.workspaceId,
+        agentMessageId: agentMessageRow.id,
+        step,
+        index: 0, // Errors are the only content for this step
+        type: "error",
+        value: {
           type: "error",
           value: {
-            type: "error",
-            value: {
-              code: event.error.code,
-              message: event.error.message,
-              metadata: {
-                ...event.error.metadata,
-                category: event.error.metadata?.category ?? "",
-              },
+            code: event.error.code,
+            message: event.error.message,
+            metadata: {
+              ...event.error.metadata,
+              category: event.error.metadata?.category ?? "",
             },
           },
-        });
-      }
+        },
+      });
+      break;
+
+    case "tool_error":
+      await markAgentMessageAsFailed(agentMessageRow, event.error);
+
+      // Mark the conversation as errored.
+      await ConversationResource.markHasError(auth, {
+        conversation,
+      });
       break;
 
     case "agent_generation_cancelled":
@@ -90,14 +138,8 @@ async function processEventForUnreadState(
     conversation,
   }: { event: AgentMessageEvents; conversation: ConversationWithoutContentType }
 ) {
-  const agentMessageDoneEventTypes: AgentMessageEvents["type"][] = [
-    "agent_message_success",
-    "agent_generation_cancelled",
-    "agent_error",
-    "tool_error",
-  ];
   // If the event is a done event, we want to mark the conversation as unread for all participants.
-  if (agentMessageDoneEventTypes.includes(event.type)) {
+  if (TERMINAL_AGENT_MESSAGE_EVENT_TYPES.includes(event.type)) {
     // No excluded user because the message is created by the agent.
     await ConversationResource.markAsUnreadForOtherParticipants(auth, {
       conversation,
@@ -112,6 +154,10 @@ async function processEventForUnreadState(
         configurationId: event.configurationId,
         conversationId: conversation.sId,
         messageId: event.messageId,
+        status:
+          event.type === "agent_error" || event.type === "tool_error"
+            ? "error"
+            : "success",
       },
     });
   }
@@ -120,11 +166,17 @@ async function processEventForUnreadState(
 // Process potential token usage tracking for agent events before publishing to Redis.
 async function processEventForTokenUsageTracking(
   auth: Authenticator,
-  { event }: { event: AgentMessageEvents }
+  {
+    event,
+    userMessageOrigin,
+  }: { event: AgentMessageEvents; userMessageOrigin?: string | null }
 ) {
   if (event.type === "agent_message_success") {
     const { runIds } = event;
-    await maybeTrackTokenUsageCost(auth, { dustRunIds: runIds });
+    await maybeTrackTokenUsageCost(auth, {
+      dustRunIds: runIds,
+      userMessageOrigin,
+    });
   }
 }
 
@@ -135,18 +187,28 @@ export async function updateResourceAndPublishEvent(
     agentMessageRow,
     conversation,
     step,
+    modelInteractionDurationMs,
+    userMessageOrigin,
   }: {
     event: AgentMessageEvents;
     agentMessageRow: AgentMessage;
     conversation: ConversationWithoutContentType;
     step: number;
+    modelInteractionDurationMs?: number;
+    userMessageOrigin?: string | null;
   }
 ): Promise<void> {
   // Processing of events before publishing to Redis.
   await Promise.all([
-    processEventForDatabase(event, agentMessageRow, step),
+    processEventForDatabase(auth, {
+      event,
+      agentMessageRow,
+      step,
+      conversation,
+      modelInteractionDurationMs,
+    }),
     processEventForUnreadState(auth, { event, conversation }),
-    processEventForTokenUsageTracking(auth, { event }),
+    processEventForTokenUsageTracking(auth, { event, userMessageOrigin }),
   ]);
 
   await publishConversationRelatedEvent({
@@ -179,6 +241,10 @@ export async function notifyWorkflowError(
       conversationId
     );
   if (conversationRes.isErr()) {
+    if (conversationRes.error.type === "conversation_not_found") {
+      return;
+    }
+
     throw new Error(`Conversation not found: ${conversationId}`);
   }
   const conversation = conversationRes.value;
@@ -209,6 +275,8 @@ export async function notifyWorkflowError(
         errorName: error.name || "UnknownError",
       },
     },
+    // Workflow errors occur outside of LLM execution, so use existing runIds from DB
+    runIds: messageRow.agentMessage.runIds ?? [],
   };
 
   await updateResourceAndPublishEvent(auth, {

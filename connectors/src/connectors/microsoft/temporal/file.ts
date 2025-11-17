@@ -1,7 +1,7 @@
 import type { Result } from "@dust-tt/client";
 import axios from "axios";
 
-import { getClient } from "@connectors/connectors/microsoft";
+import { getMicrosoftClient } from "@connectors/connectors/microsoft";
 import {
   getDriveItemInternalId,
   getItem,
@@ -135,7 +135,7 @@ export async function syncOneFile({
   localLogger.info("Syncing file");
   await heartbeat();
 
-  const client = await getClient(connector.connectionId);
+  const client = await getMicrosoftClient(connector.connectionId);
   const { itemAPIPath } = typeAndPathFromInternalId(documentId);
 
   let url = file["@microsoft.graph.downloadUrl"];

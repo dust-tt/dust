@@ -21,8 +21,12 @@ const {
   startToCloseTimeout: "5 minutes",
 });
 
+const { syncTeamOnlyActivity } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "10 minutes",
+});
+
 const {
-  syncTeamOnlyActivity,
+  getTeamIdsToSyncActivity,
   getNextConversationBatchToSyncActivity,
   syncConversationBatchActivity,
   getNextOldConversationsBatchToDeleteActivity,
@@ -85,13 +89,14 @@ export async function intercomSyncWorkflow({
     }
   );
 
-  // If we got no signal, then we're on the hourly execution
-  // We will only refresh the Help Center data as Conversations have webhooks
-  if (
+  const isHourlyExecution =
     uniqueHelpCenterIds.size === 0 &&
     uniqueTeamIds.size === 0 &&
-    !hasUpdatedSelectAllConvos
-  ) {
+    !hasUpdatedSelectAllConvos;
+
+  // If we got no signal, then we're on the hourly execution
+  // We will only refresh the Help Center data as Conversations have webhooks
+  if (isHourlyExecution) {
     const helpCenterIds = await getHelpCenterIdsToSyncActivity(connectorId);
     helpCenterIds.forEach((i) => uniqueHelpCenterIds.add(i));
   }
@@ -137,6 +142,25 @@ export async function intercomSyncWorkflow({
     }
   }
 
+  if (isHourlyExecution) {
+    // sync all conversations of the last hour for all teams
+    const teamIds = await getTeamIdsToSyncActivity({ connectorId });
+
+    for (const teamId of teamIds) {
+      await executeChild(intercomHourlyConversationSyncWorkflow, {
+        workflowId: `${workflowId}-team-${teamId}`,
+        searchAttributes: parentSearchAttributes,
+        args: [
+          {
+            connectorId,
+            teamId,
+            currentSyncMs,
+          },
+        ],
+      });
+    }
+  }
+
   // Async operations allow Temporal's event loop to process signals.
   // If a signal arrives during an async operation, it will update the set before the next iteration.
   while (uniqueTeamIds.size > 0) {
@@ -146,6 +170,7 @@ export async function intercomSyncWorkflow({
       if (!uniqueTeamIds.has(teamId)) {
         continue;
       }
+
       // Async operation yielding control to the Temporal runtime.
       await executeChild(intercomTeamFullSyncWorkflow, {
         workflowId: `${workflowId}-team-${teamId}`,
@@ -277,6 +302,43 @@ export async function intercomTeamFullSyncWorkflow({
         connectorId,
         teamId,
         cursor,
+      });
+
+    await syncConversationBatchActivity({
+      connectorId,
+      teamId,
+      conversationIds,
+      currentSyncMs,
+    });
+
+    cursor = nextPageCursor;
+  } while (cursor);
+}
+
+/**
+ * Sync Workflow for a Conversations of the last hour.
+ * Launched by the IntercomSyncWorkflow, it will sync a given Conversations of the last hour.
+ * We sync a Team by fetching the conversations attached to this team.
+ */
+export async function intercomHourlyConversationSyncWorkflow({
+  connectorId,
+  teamId,
+  currentSyncMs,
+}: {
+  connectorId: ModelId;
+  teamId: string;
+  currentSyncMs: number;
+}) {
+  let cursor = null;
+
+  // We loop over the conversations to sync them all, by batch of INTERCOM_CONVO_BATCH_SIZE.
+  do {
+    const { conversationIds, nextPageCursor } =
+      await getNextConversationBatchToSyncActivity({
+        connectorId,
+        teamId,
+        cursor,
+        lastHourOnly: true,
       });
 
     await syncConversationBatchActivity({

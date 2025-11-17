@@ -25,7 +25,7 @@ import type {
   MultiActionPreset,
   TemplateActionPreset,
 } from "@app/types";
-import { asDisplayName } from "@app/types";
+import { asDisplayName, asDisplayToolName } from "@app/types";
 
 export const getServerTypeAndIdFromSId = (
   mcpServerId: string
@@ -151,7 +151,7 @@ export function getMcpServerDisplayName(
 ) {
   // Unreleased internal servers are displayed with a suffix in the UI.
   const res = getInternalMCPServerNameAndWorkspaceId(server.sId);
-  let displayName = asDisplayName(server.name);
+  let displayName = asDisplayToolName(server.name);
 
   if (res.isOk()) {
     const isCustomName = action?.name && action.name !== server.name;

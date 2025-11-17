@@ -13,7 +13,6 @@ import {
   INTERVAL_BETWEEN_SYNCS_MS,
   MAX_CONCURRENT_CHILD_WORKFLOWS,
   MAX_SEARCH_PAGE_INDEX,
-  PROCESS_ALL_DISCOVERED_RESOURCES,
   SYNC_PERIOD_DURATION_MS,
 } from "@connectors/connectors/notion/temporal/config";
 import { performUpserts } from "@connectors/connectors/notion/temporal/workflows/upserts";
@@ -23,7 +22,9 @@ import type { ModelId } from "@connectors/types";
 export * from "./admins";
 export * from "./check_resources_accessibility";
 export * from "./children";
+export * from "./deletion_crawl";
 export * from "./garbage_collection";
+export * from "./process_webhooks";
 export * from "./upsert_database_queue";
 
 export const UPDATE_PARENTS_FIELDS_TIMEOUT_MINUTES = 400;
@@ -38,6 +39,10 @@ const {
   getDiscoveredResourcesFromCache,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minute",
+});
+
+const { drainDocumentUpsertQueue } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "1 minute",
 });
 
 const {
@@ -172,40 +177,46 @@ export async function notionSyncWorkflow({
   // wait for all child workflows to finish
   await Promise.all(promises);
 
-  if (isInitialSync) {
-    // These are resources (pages/DBs) that we didn't get from the search API but that are
-    // child/parent pages/DBs of other pages that we did get from the search API. We upsert those as
-    // well.
-    let discoveredResources: {
-      pageIds: string[];
-      databaseIds: string[];
-    } | null;
-    do {
-      discoveredResources = await getDiscoveredResourcesFromCache({
+  // These are resources (pages/DBs) that we didn't get from the search API but that are
+  // child/parent pages/DBs of other pages that we did get from the search API. We upsert those as
+  // well.
+  let discoveredResources: { pageIds: string[]; databaseIds: string[] } | null;
+  do {
+    discoveredResources = await getDiscoveredResourcesFromCache({
+      connectorId,
+      topLevelWorkflowId,
+    });
+    if (discoveredResources) {
+      await performUpserts({
         connectorId,
+        pageIds: discoveredResources.pageIds,
+        databaseIds: discoveredResources.databaseIds,
+        runTimestamp,
+        pageIndex: null,
+        isBatchSync: isInitialSync,
+        queue: childWorkflowQueue,
+        childWorkflowsNameSuffix: "discovered",
         topLevelWorkflowId,
+        // Force resync to ensure DBs are processed immediately, which then allows discovery
+        // of their child pages (effectively doing a crawl).
+        forceResync: true,
       });
-      if (discoveredResources) {
-        await performUpserts({
-          connectorId,
-          pageIds: discoveredResources.pageIds,
-          databaseIds: discoveredResources.databaseIds,
-          runTimestamp,
-          pageIndex: null,
-          isBatchSync: isInitialSync,
-          queue: childWorkflowQueue,
-          childWorkflowsNameSuffix: "discovered",
-          topLevelWorkflowId,
-          forceResync,
-        });
-      }
-    } while (discoveredResources && PROCESS_ALL_DISCOVERED_RESOURCES);
-  }
+    }
+  } while (discoveredResources);
+
+  // Drain the upsert queue before updating parents to ensure all document upserts are complete
+  await executeChild(notionDrainDocumentUpsertQueueWorkflow, {
+    workflowId: `${topLevelWorkflowId}-drain-upsert-queue`,
+    args: [{ connectorId }],
+  });
 
   // Compute parents after all documents are added/updated
   await executeChild(notionUpdateAllParentsFieldsWorkflow, {
     workflowId: `${topLevelWorkflowId}-update-parents-fields`,
     args: [{ connectorId }],
+    searchAttributes: {
+      connectorId: [connectorId],
+    },
   });
 
   await saveSuccessSync(connectorId);
@@ -218,6 +229,34 @@ export async function notionSyncWorkflow({
     startFromTs: lastSyncedPeriodTs,
     forceResync: false,
   });
+}
+
+export async function notionDrainDocumentUpsertQueueWorkflow({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}) {
+  const startTime = Date.now();
+  const timeoutMs = 60 * 60 * 1000; // 1 hour
+
+  // This sleep is to ensure that any activities that were just scheduled have time to start before our first check
+  await sleep(1000);
+
+  while (Date.now() - startTime < timeoutMs) {
+    // Call the activity which polls up to 5 times (5 seconds max)
+    const isDrained = await drainDocumentUpsertQueue({ connectorId });
+
+    if (isDrained) {
+      return;
+    }
+
+    // Queue not yet drained, sleep for 5 seconds before trying again
+    await sleep(5000);
+  }
+
+  throw new Error(
+    `Timeout (1 hour) waiting for upsert queue to drain for connector ${connectorId}`
+  );
 }
 
 export async function notionUpdateAllParentsFieldsWorkflow({

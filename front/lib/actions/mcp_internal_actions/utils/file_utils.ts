@@ -13,8 +13,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import {
   isAgentMessageType,
-  isContentCreationFileContentType,
   isContentFragmentType,
+  isInteractiveContentFileContentType,
   normalizeError,
 } from "@app/types";
 
@@ -41,6 +41,7 @@ export async function getFileFromConversationAttachment(
       buffer: Buffer;
       filename: string;
       contentType: string;
+      fileResource: FileResource;
     },
     string
   >
@@ -70,7 +71,7 @@ export async function getFileFromConversationAttachment(
       const generatedFiles = m.actions.flatMap((a) => a.generatedFiles);
 
       for (const f of generatedFiles) {
-        if (isContentCreationFileContentType(f.contentType)) {
+        if (isInteractiveContentFileContentType(f.contentType)) {
           continue;
         }
 
@@ -119,6 +120,7 @@ export async function getFileFromConversationAttachment(
     buffer: bufferResult.value,
     filename: sanitizeFilename(attachment.title || `attachment-${fileId}`),
     contentType: attachment.contentType || "application/octet-stream",
+    fileResource,
   });
 }
 

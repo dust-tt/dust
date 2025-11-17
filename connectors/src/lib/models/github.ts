@@ -1,7 +1,7 @@
 import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { sequelizeConnection } from "@connectors/resources/storage";
+import { connectorsSequelize } from "@connectors/resources/storage";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 
 export class GithubConnectorState extends ConnectorBaseModel<GithubConnectorState> {
@@ -39,7 +39,7 @@ GithubConnectorState.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "github_connector_states",
     indexes: [
       { fields: ["connectorId"], unique: true },
@@ -84,7 +84,7 @@ GithubIssue.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     indexes: [
       { fields: ["repoId", "issueNumber", "connectorId"], unique: true },
       { fields: ["connectorId"] },
@@ -123,7 +123,7 @@ GithubDiscussion.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     indexes: [
       { fields: ["repoId", "discussionNumber", "connectorId"], unique: true },
       { fields: ["connectorId"] },
@@ -197,7 +197,7 @@ GithubCodeRepository.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     indexes: [{ fields: ["connectorId", "repoId"], unique: true }],
     modelName: "github_code_repositories",
   }
@@ -271,7 +271,7 @@ GithubCodeFile.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     indexes: [
       { fields: ["connectorId", "repoId", "documentId"], unique: true },
       { fields: ["connectorId", "repoId", "lastSeenAt"] },
@@ -337,7 +337,7 @@ GithubCodeDirectory.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     indexes: [
       { fields: ["connectorId", "repoId", "internalId"], unique: true },
       { fields: ["connectorId", "repoId", "lastSeenAt"] },

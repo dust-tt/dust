@@ -39,19 +39,19 @@ async function handler(
     });
   }
 
+  if (!dataSource.canAdministrate(auth)) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "data_source_auth_error",
+        message:
+          "You do not have permission to access this data source's settings.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "POST":
-      if (!auth.isBuilder()) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "data_source_auth_error",
-            message:
-              "Only the users that are `builders` for the current workspace can update a data source.",
-          },
-        });
-      }
-
       if (
         !req.body ||
         typeof req.body.assistantDefaultSelected !== "boolean" ||

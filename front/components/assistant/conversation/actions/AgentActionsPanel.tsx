@@ -6,7 +6,7 @@ import { AgentActionsPanelHeader } from "@app/components/assistant/conversation/
 import { AgentActionSummary } from "@app/components/assistant/conversation/actions/AgentActionsPanelSummary";
 import { PanelAgentStep } from "@app/components/assistant/conversation/actions/PanelAgentStep";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
+import { useAgentMessageStreamLegacy } from "@app/hooks/useAgentMessageStreamLegacy";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import { useConversationMessage } from "@app/lib/swr/conversations";
 import type {
@@ -41,7 +41,7 @@ function AgentActionsPanelContent({
   const [currentStreamingStep, setCurrentStreamingStep] = useState(1);
 
   const { messageStreamState, shouldStream, isFreshMountWithContent } =
-    useAgentMessageStream({
+    useAgentMessageStreamLegacy({
       message: getLightAgentMessageFromAgentMessage(fullAgentMessage),
       conversationId: conversation?.sId ?? null,
       owner,

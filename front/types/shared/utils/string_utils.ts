@@ -127,7 +127,7 @@ const SPECIAL_CASES = {
   hubspot: "HubSpot",
   mcp: "MCP",
   // TODO(cc): remove this once we have settled on a name.
-  "content creation": "Frame",
+  "interactive content": "Frame",
 };
 
 // Create a single regex pattern for all special cases
@@ -136,11 +136,7 @@ const SPECIAL_CASES_PATTERN = new RegExp(
   "g"
 );
 
-export function asDisplayName(name?: string | null) {
-  if (!name) {
-    return "";
-  }
-
+function formatAsDisplayName(name: string): string {
   return slugify(name)
     .replace(/_/g, " ")
     .replace(
@@ -148,4 +144,74 @@ export function asDisplayName(name?: string | null) {
       (match) => SPECIAL_CASES[match as keyof typeof SPECIAL_CASES]
     )
     .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+export function asDisplayToolName(name?: string | null) {
+  if (!name) {
+    return "";
+  }
+
+  if (name === "interactive_content") {
+    return "Create Frames";
+  }
+
+  if (name === "image_generation") {
+    return "Create / Update Images";
+  }
+
+  if (name === "file_generation") {
+    return "Create Files";
+  }
+
+  if (name === "slideshow") {
+    return "Create Slideshows";
+  }
+
+  if (name === "deep_dive") {
+    return `Go deep`;
+  }
+
+  return formatAsDisplayName(name);
+}
+
+export function asDisplayName(name?: string | null) {
+  if (!name) {
+    return "";
+  }
+
+  return formatAsDisplayName(name);
+}
+
+// Replace lone surrogates (actual Unicode surrogates, not escaped ones) with placeholder
+// High surrogates: \uD800-\uDBFF
+// Low surrogates: \uDC00-\uDFFF
+export function toWellFormed(content: string): string {
+  const placeholder = "\uFFFD";
+  let result = "";
+
+  for (let i = 0; i < content.length; i++) {
+    const char = content[i];
+    const charCode = content.charCodeAt(i);
+
+    // Check for high surrogate
+    if (charCode >= 0xd800 && charCode <= 0xdbff) {
+      // Check if it's followed by a low surrogate to form a valid pair
+      if (i + 1 < content.length) {
+        const nextCharCode = content.charCodeAt(i + 1);
+        if (nextCharCode >= 0xdc00 && nextCharCode <= 0xdfff) {
+          // Valid surrogate pair, keep both characters
+          result += char + content[i + 1];
+          i++; // Skip the next character as we've processed it
+          continue;
+        }
+      }
+      result += placeholder;
+    } else if (charCode >= 0xdc00 && charCode <= 0xdfff) {
+      result += placeholder;
+    } else {
+      result += char;
+    }
+  }
+
+  return result;
 }

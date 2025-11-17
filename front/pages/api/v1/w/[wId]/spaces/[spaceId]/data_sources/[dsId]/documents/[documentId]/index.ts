@@ -12,7 +12,6 @@ import apiConfig from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
 import { computeWorkspaceOverallSizeCached } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes";
 import { runDocumentUpsertHooks } from "@app/lib/document_upsert_hooks/hooks";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
@@ -649,16 +648,8 @@ async function handler(
           },
         });
       } else {
-        // Fetch the feature flags for the owner of the run.
-        const keyWorkspaceFlags = await getFeatureFlags(
-          auth.getNonNullableWorkspace()
-        );
-
-        // Temporary flag to help test EU OpenAI in specific workspaces.
-        const useOpenAIEUKeyFlag =
-          keyWorkspaceFlags.includes("use_openai_eu_key");
         // Data source operations are performed with our credentials.
-        const credentials = dustManagedCredentials({ useOpenAIEUKeyFlag });
+        const credentials = dustManagedCredentials();
 
         // Create document with the Dust internal API.
         const upsertRes = await coreAPI.upsertDataSourceDocument({

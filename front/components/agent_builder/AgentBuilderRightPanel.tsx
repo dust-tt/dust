@@ -1,6 +1,7 @@
 import {
   BarChartIcon,
   Button,
+  ListCheckIcon,
   MagicIcon,
   ScrollArea,
   SidebarRightCloseIcon,
@@ -13,12 +14,20 @@ import {
 import React, { useState } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import { AgentBuilderObservability } from "@app/components/agent_builder/AgentBuilderObservability";
 import { AgentBuilderPerformance } from "@app/components/agent_builder/AgentBuilderPerformance";
 import { AgentBuilderPreview } from "@app/components/agent_builder/AgentBuilderPreview";
 import { AgentBuilderTemplate } from "@app/components/agent_builder/AgentBuilderTemplate";
+import { ObservabilityProvider } from "@app/components/agent_builder/observability/ObservabilityContext";
+import { EmptyPlaceholder } from "@app/components/agent_builder/observability/shared/EmptyPlaceholder";
+import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
 import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
 
-type AgentBuilderRightPanelTabType = "testing" | "performance" | "template";
+type AgentBuilderRightPanelTabType =
+  | "testing"
+  | "feedback"
+  | "template"
+  | "insights";
 
 interface PanelHeaderProps {
   isPreviewPanelOpen: boolean;
@@ -56,10 +65,16 @@ function PanelHeader({
                   onClick={() => onTabChange("testing")}
                 />
                 <TabsTrigger
-                  value="performance"
-                  label="Performance"
+                  value="insights"
+                  label="Insights"
                   icon={BarChartIcon}
-                  onClick={() => onTabChange("performance")}
+                  onClick={() => onTabChange("insights")}
+                />
+                <TabsTrigger
+                  value="feedback"
+                  label="Feedback"
+                  icon={ListCheckIcon}
+                  onClick={() => onTabChange("feedback")}
                 />
                 {hasTemplate && (
                   <TabsTrigger
@@ -107,8 +122,15 @@ function CollapsedTabs({ onTabSelect, hasTemplate }: CollapsedTabsProps) {
         icon={BarChartIcon}
         variant="ghost"
         size="sm"
-        tooltip="Performance"
-        onClick={() => onTabSelect("performance")}
+        tooltip="Insights"
+        onClick={() => onTabSelect("insights")}
+      />
+      <Button
+        icon={ListCheckIcon}
+        variant="ghost"
+        size="sm"
+        tooltip="Feedback"
+        onClick={() => onTabSelect("feedback")}
       />
       {hasTemplate && (
         <Button
@@ -143,17 +165,40 @@ function ExpandedContent({
         />
       )}
       {selectedTab === "testing" && (
-        <div className="min-h-0 flex-1 px-1">
+        <div className="min-h-0 flex-1">
           <AgentBuilderPreview />
         </div>
       )}
-      {selectedTab === "performance" && (
-        <div className="flex-1 overflow-y-auto p-4">
-          <AgentBuilderPerformance
-            agentConfigurationSId={agentConfigurationSId}
-          />
-        </div>
-      )}
+      <ObservabilityProvider>
+        {selectedTab === "insights" &&
+          (agentConfigurationSId ? (
+            <AgentBuilderObservability
+              agentConfigurationSId={agentConfigurationSId ?? ""}
+            />
+          ) : (
+            <TabContentLayout title="Insights">
+              <EmptyPlaceholder
+                icon={BarChartIcon}
+                title="Waiting for data"
+                description="Use your agent or share it with your team to see feedback data."
+              />
+            </TabContentLayout>
+          ))}
+        {selectedTab === "feedback" &&
+          (agentConfigurationSId ? (
+            <AgentBuilderPerformance
+              agentConfigurationSId={agentConfigurationSId}
+            />
+          ) : (
+            <TabContentLayout title="Feedback">
+              <EmptyPlaceholder
+                icon={ListCheckIcon}
+                title="Waiting for feedback"
+                description="When users give feedback on responses, you'll see it here."
+              />
+            </TabContentLayout>
+          ))}
+      </ObservabilityProvider>
     </div>
   );
 }
@@ -189,14 +234,16 @@ export function AgentBuilderRightPanel({
   };
 
   return (
-    <div className="mx-4 flex h-full flex-col">
-      <PanelHeader
-        isPreviewPanelOpen={isPreviewPanelOpen}
-        selectedTab={selectedTab}
-        onTogglePanel={handleTogglePanel}
-        onTabChange={handleTabChange}
-        hasTemplate={hasTemplate}
-      />
+    <div className="flex h-full flex-col">
+      <div className="mx-4">
+        <PanelHeader
+          isPreviewPanelOpen={isPreviewPanelOpen}
+          selectedTab={selectedTab}
+          onTogglePanel={handleTogglePanel}
+          onTabChange={handleTabChange}
+          hasTemplate={hasTemplate}
+        />
+      </div>
       {isPreviewPanelOpen ? (
         <ExpandedContent
           selectedTab={selectedTab}

@@ -9,7 +9,7 @@ import {
 import type { InMemoryWithAuthTransport } from "@app/lib/actions/mcp_internal_actions/in_memory_with_auth_transport";
 import { getInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/servers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { isDustDeepDisabledByAdmin } from "@app/lib/api/assistant/global_agents/configurations/dust/utils";
+import { isDeepDiveDisabledByAdmin } from "@app/lib/api/assistant/global_agents/configurations/dust/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 
@@ -23,12 +23,12 @@ export const isEnabledForWorkspace = async (
   if (mcpServer.isRestricted) {
     const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
     const plan = auth.getNonNullablePlan();
-    const isDustDeepDisabled = await isDustDeepDisabledByAdmin(auth);
+    const isDeepDiveDisabled = await isDeepDiveDisabledByAdmin(auth);
 
     return !mcpServer.isRestricted({
       plan,
       featureFlags,
-      isDustDeepDisabled,
+      isDeepDiveDisabled,
     });
   }
 

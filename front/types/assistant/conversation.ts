@@ -1,9 +1,13 @@
 import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
+import type {
+  AllSupportedWithDustSpecificFileContentType,
+  ContentFragmentType,
+  MentionType,
+  ModelId,
+} from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 
-import type { ContentFragmentType } from "../content_fragment";
-import type { ModelId } from "../shared/model_id";
 import type { UserType, WorkspaceType } from "../user";
 import type {
   AgentConfigurationStatus,
@@ -12,21 +16,7 @@ import type {
 } from "./agent";
 import type { AgentContentItemType } from "./agent_message_content";
 
-/**
- * Mentions
- */
-
-export type AgentMention = {
-  configurationId: string;
-};
-
-export type MentionType = AgentMention;
-
 export type MessageVisibility = "visible" | "deleted";
-
-export function isAgentMention(arg: MentionType): arg is AgentMention {
-  return (arg as AgentMention).configurationId !== undefined;
-}
 
 export type ConversationMessageReactions = {
   messageId: string;
@@ -72,14 +62,46 @@ export type UserMessageOrigin =
   | "n8n"
   | "raycast"
   | "slack"
+  | "teams"
   | "triggered"
+  | "triggered_programmatic"
   | "web"
   | "zapier"
   | "zendesk"
   | "excel"
   | "powerpoint"
   | "run_agent"
-  | "agent_handover";
+  | "agent_handover"
+  | "transcript";
+
+export const USER_MESSAGE_ORIGIN_LABELS: Record<UserMessageOrigin, string> = {
+  "github-copilot-chat": "GitHub Copilot Chat",
+  agent_handover: "Agent handover",
+  api: "API",
+  email: "Email",
+  excel: "Excel",
+  extension: "Chrome extension",
+  gsheet: "Google Sheets",
+  make: "Make",
+  n8n: "n8n",
+  powerpoint: "PowerPoint",
+  raycast: "Raycast",
+  run_agent: "Agent run",
+  slack: "Slack",
+  teams: "Teams",
+  transcript: "Transcript",
+  triggered_programmatic: "Programmatic trigger",
+  triggered: "Triggered",
+  web: "Web",
+  zapier: "Zapier",
+  zendesk: "Zendesk",
+};
+
+export function isUserMessageOrigin(
+  origin?: string | null
+): origin is UserMessageOrigin {
+  return !!origin && origin in USER_MESSAGE_ORIGIN_LABELS;
+}
 
 export type UserMessageContext = {
   username: string;
@@ -89,7 +111,7 @@ export type UserMessageContext = {
   profilePictureUrl: string | null;
   origin?: UserMessageOrigin | null;
   originMessageId?: string | null;
-  lastTriggerRunAt?: Date | null;
+  lastTriggerRunAt?: number | null;
   clientSideMCPServerIds?: string[];
   selectedMCPServerViewIds?: string[];
 };
@@ -128,7 +150,7 @@ export interface CitationType {
   href?: string;
   title: string;
   provider: string;
-  faviconUrl?: string;
+  contentType: AllSupportedWithDustSpecificFileContentType;
 }
 
 /**
@@ -146,6 +168,7 @@ export type BaseAgentMessageType = {
   created: number;
   completedTs: number | null;
   parentMessageId: string | null;
+  parentAgentMessageId: string | null; // If handover, this is the agent message that summoned this agent.
   status: AgentMessageStatus;
   content: string | null;
   chainOfThought: string | null;
@@ -170,6 +193,7 @@ export type AgentMessageType = BaseAgentMessageType & {
   }>;
   contents: Array<{ step: number; content: AgentContentItemType }>;
   parsedContents: Record<number, Array<ParsedContentItem>>;
+  modelInteractionDurationMs: number | null;
 };
 
 export type LightAgentMessageType = BaseAgentMessageType & {
@@ -179,7 +203,6 @@ export type LightAgentMessageType = BaseAgentMessageType & {
     pictureUrl: string;
     status: AgentConfigurationStatus;
     canRead: boolean;
-    requestedGroupIds: string[][];
   };
   citations: Record<string, CitationType>;
   generatedFiles: Omit<ActionGeneratedFileType, "snippet">[];
@@ -223,13 +246,12 @@ export type ConversationWithoutContentType = {
   updated?: number;
   unread: boolean;
   actionRequired: boolean;
-  owner: WorkspaceType;
+  hasError: boolean;
   sId: string;
   title: string | null;
-  visibility: ConversationVisibility;
-  depth: number;
-  triggerId: string | null;
-  requestedGroupIds: string[][];
+
+  // Ideally, this property should be moved to the ConversationType.
+  requestedSpaceIds: string[];
 };
 
 /**
@@ -237,6 +259,9 @@ export type ConversationWithoutContentType = {
  * messages).
  */
 export type ConversationType = ConversationWithoutContentType & {
+  owner: WorkspaceType;
+  visibility: ConversationVisibility;
+  depth: number;
   content: (UserMessageType[] | AgentMessageType[] | ContentFragmentType[])[];
 };
 

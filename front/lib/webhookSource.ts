@@ -9,8 +9,9 @@ import {
   isInternalAllowedIcon,
 } from "@app/components/resources/resources_icons";
 import type {
+  WebhookSourceForAdminType,
   WebhookSourceSignatureAlgorithm,
-  WebhookSourceWithViews,
+  WebhookSourceWithViewsType,
 } from "@app/types/triggers/webhooks";
 
 export const DEFAULT_WEBHOOK_ICON: InternalAllowedIconType =
@@ -31,16 +32,17 @@ export const normalizeWebhookIcon = (
 };
 
 export const filterWebhookSource = (
-  webhookSource: WebhookSourceWithViews,
+  webhookSource: WebhookSourceWithViewsType,
   filterValue: string
 ) => {
   {
     return (
       webhookSource.name.toLowerCase().includes(filterValue.toLowerCase()) ||
-      webhookSource.views.some(
-        (view) =>
-          view?.customName !== null &&
-          view?.customName.toLowerCase().includes(filterValue.toLowerCase())
+      webhookSource.views.some((view) =>
+        view?.customName.toLowerCase().includes(filterValue.toLowerCase())
+      ) ||
+      (webhookSource.provider?.toLowerCase() ?? "custom").includes(
+        filterValue.toLowerCase()
       )
     );
   }
@@ -76,4 +78,16 @@ export const verifySignature = ({
   } catch (e) {
     return false;
   }
+};
+
+export const buildWebhookUrl = ({
+  apiBaseUrl,
+  workspaceId,
+  webhookSource,
+}: {
+  apiBaseUrl: string;
+  workspaceId: string;
+  webhookSource: WebhookSourceForAdminType;
+}): string => {
+  return `${apiBaseUrl}/api/v1/w/${workspaceId}/triggers/hooks/${webhookSource.sId}/${webhookSource.urlSecret}`;
 };

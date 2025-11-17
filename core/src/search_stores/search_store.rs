@@ -17,10 +17,13 @@ use serde_json::json;
 use tracing::{error, info};
 use url::Url;
 
-use crate::data_sources::data_source::{DataSourceESDocumentWithStats, Document};
 use crate::data_sources::folder::Folder;
 use crate::data_sources::node::NodeESDocument;
 use crate::databases::table::Table;
+use crate::{
+    data_sources::data_source::{DataSourceESDocumentWithStats, Document},
+    search_filter::TagsFilter,
+};
 use crate::{
     data_sources::{
         data_source::{DataSource, DATA_SOURCE_INDEX_NAME},
@@ -99,6 +102,10 @@ pub struct DatasourceViewFilter {
     view_filter: Vec<String>,
     #[serde(default = "default_search_scope")]
     search_scope: SearchScopeType,
+    #[serde(default)]
+    filter: Option<Vec<String>>,
+    #[serde(default)]
+    tags: Option<TagsFilter>,
 }
 
 fn default_search_scope() -> SearchScopeType {
@@ -805,10 +812,37 @@ impl ElasticsearchSearchStore {
                 let mut bool_query =
                     Query::bool().filter(Query::term("data_source_id", f.data_source_id));
 
-                // Only add parents filter if the index supports it.
-                if index_name == DATA_SOURCE_NODE_INDEX_NAME && !f.view_filter.is_empty() {
+                if index_name != DATA_SOURCE_NODE_INDEX_NAME {
+                    return Some(Query::Bool(bool_query));
+                }
+
+                // Permission filter
+                if !f.view_filter.is_empty() {
                     counter.add(1);
-                    bool_query = bool_query.filter(Query::terms("parents", f.view_filter));
+                    bool_query = bool_query.filter(Query::terms("parents", f.view_filter.clone()));
+                }
+
+                // Selection filter
+                if let Some(ref filter) = f.filter {
+                    if !filter.is_empty() {
+                        counter.add(1);
+                        bool_query = bool_query.filter(Query::terms("parents", filter.clone()));
+                    }
+                }
+
+                if let Some(tags) = &f.tags {
+                    if let Some(included_tags) = &tags.is_in {
+                        if !included_tags.is_empty() {
+                            counter.add(1);
+                            bool_query = bool_query.filter(Query::terms("tags", included_tags));
+                        }
+                    }
+                    if let Some(excluded_tags) = &tags.is_not {
+                        if !excluded_tags.is_empty() {
+                            counter.add(1);
+                            bool_query = bool_query.must_not(Query::terms("tags", excluded_tags));
+                        }
+                    }
                 }
 
                 Some(Query::Bool(bool_query))

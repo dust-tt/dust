@@ -1,10 +1,11 @@
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
+import type { WorkOSOrganizationType } from "@dust-tt/client";
 import * as t from "io-ts";
-import { WorkOSOrganizationType } from "@dust-tt/client";
 
 import type {
   EmbeddingProviderIdType,
   ModelProviderIdType,
-} from "./assistant/assistant";
+} from "./assistant/models/types";
 import type { MembershipOriginType } from "./memberships";
 import type { ModelId } from "./shared/model_id";
 import { assertNever } from "./shared/utils/assert_never";

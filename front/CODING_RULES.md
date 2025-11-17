@@ -360,8 +360,8 @@ class ConversationModel extends Model { }
 
 If possible, internal MCP servers should fit in one file. The name of the file must match the
 name of the server. If having only one file is not possible, they should be placed into a folder
-that contains a file `server.ts` from where the `createServer` function that creates the server
-will be exported.
+that contains a file `index.ts` from where the `createServer` function that creates the server
+will be default exported.
 
 ### [MCP2] Tool output typing
 

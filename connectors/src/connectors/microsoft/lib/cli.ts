@@ -4,7 +4,7 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 
 import { getConnectorManager } from "@connectors/connectors";
-import { getClient } from "@connectors/connectors/microsoft";
+import { getMicrosoftClient } from "@connectors/connectors/microsoft";
 import {
   getItem,
   getParentReferenceInternalId,
@@ -123,12 +123,14 @@ export const microsoft = async ({
         },
       });
       for (const connector of connectors) {
-        await throwOnError(
-          getConnectorManager({
-            connectorId: connector.id,
-            connectorProvider: "microsoft",
-          }).garbageCollect()
-        );
+        if (!connector.pausedAt) {
+          await throwOnError(
+            getConnectorManager({
+              connectorId: connector.id,
+              connectorProvider: "microsoft",
+            }).garbageCollect()
+          );
+        }
       }
       return { success: true };
     }
@@ -142,7 +144,7 @@ export const microsoft = async ({
         args.internalId
       );
       const logger = getActivityLogger(connector);
-      const client = await getClient(connector.connectionId);
+      const client = await getMicrosoftClient(connector.connectionId);
       const driveItem = (await getItem(
         logger,
         client,
@@ -253,7 +255,7 @@ export const microsoft = async ({
       const internalIds = parseInternalIds(idsFile, internalId);
 
       // Get node from MS Graph API.
-      const client = await getClient(connector.connectionId);
+      const client = await getMicrosoftClient(connector.connectionId);
 
       for (const internalId of internalIds) {
         const node = await MicrosoftNodeResource.fetchByInternalId(
@@ -392,7 +394,7 @@ export const microsoft = async ({
 
       const internalIds = parseInternalIds(idsFile, internalId);
 
-      const client = await getClient(connector.connectionId);
+      const client = await getMicrosoftClient(connector.connectionId);
 
       for (const internalId of internalIds) {
         const { nodeType, itemAPIPath } = typeAndPathFromInternalId(internalId);

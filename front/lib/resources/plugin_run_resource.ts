@@ -22,7 +22,7 @@ import type {
   PluginResourceTarget,
   Result,
 } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import { Err, normalizeError, Ok, safeParseJSON } from "@app/types";
 import type { PluginRunType } from "@app/types/poke/plugins";
 
 import type { UserResource } from "./user_resource";
@@ -168,6 +168,8 @@ export class PluginRunResource extends BaseResource<PluginRunModel> {
   }
 
   toJSON(): PluginRunType {
+    // The value in DB is truncated to POKE_PLUGIN_RUN_MAX_ARGS_LENGTH so may not be a valid JSON.
+    const parsedArgsResult = this.args ? safeParseJSON(this.args) : new Ok({});
     return {
       createdAt: this.createdAt.getTime(),
       author: this.author,
@@ -175,7 +177,9 @@ export class PluginRunResource extends BaseResource<PluginRunModel> {
       status: this.status,
       resourceType: this.resourceType,
       resourceId: this.resourceId,
-      args: this.args ? JSON.parse(this.args) : {},
+      args: parsedArgsResult.isOk()
+        ? (parsedArgsResult.value ?? {})
+        : { rawContent: this.args },
     };
   }
 

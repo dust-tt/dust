@@ -17,15 +17,21 @@ interface MentionExtensionOptions extends MentionOptions {
 }
 
 export const MentionExtension = Mention.extend<MentionExtensionOptions>({
-  addOptions() {
-    return {
-      ...this.parent?.(),
-    };
-  },
-
   addAttributes() {
     return {
       ...this.parent?.(),
+      type: {
+        default: "agent",
+        parseHTML: (element) => element.getAttribute("data-type"),
+        renderHTML: (attributes) => {
+          if (!attributes.type) {
+            return {};
+          }
+          return {
+            "data-type": attributes.type,
+          };
+        },
+      },
       description: {
         default: null,
         parseHTML: (element) => element.getAttribute("data-description"),
@@ -38,6 +44,18 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
           };
         },
       },
+      pictureUrl: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("data-picture-url"),
+        renderHTML: (attributes) => {
+          if (!attributes.pictureUrl) {
+            return {};
+          }
+          return {
+            "data-picture-url": attributes.pictureUrl,
+          };
+        },
+      },
     };
   },
 
@@ -46,9 +64,11 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
       <MentionComponent
         node={{
           attrs: props.node.attrs as {
+            type: "agent" | "user";
             id: string;
             label: string;
             description?: string;
+            pictureUrl?: string;
           },
         }}
         owner={this.options.owner}
@@ -59,7 +79,7 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
   addPasteRules() {
     const pasteRule = nodePasteRule({
       find: (text) => {
-        // Note The suggestions object should be available from the MentionStorage extension but it might takes some time to load.
+        // Note: the `suggestions` object should be available from the MentionStorage extension but it might takes some time to load.
         const suggestions: EditorSuggestions =
           this.editor.storage.MentionStorage.suggestions;
 
@@ -80,9 +100,11 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
                 text: match[1],
                 replaceWith: suggestion.label,
                 data: {
+                  type: suggestion.type,
                   id: suggestion.id,
                   label: suggestion.label,
                   description: suggestion.description,
+                  pictureUrl: suggestion.pictureUrl,
                 },
               };
             });
@@ -92,12 +114,20 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
       },
       type: this.type,
       getAttributes: (match: {
-        data: { label: string; id: string; description: string };
+        data: {
+          type: "agent" | "user";
+          label: string;
+          id: string;
+          description: string;
+          pictureUrl: string;
+        };
       }) => {
         return {
+          type: match.data.type,
           label: match.data.label,
           id: match.data.id,
           description: match.data.description,
+          pictureUrl: match.data.pictureUrl,
         };
       },
     });

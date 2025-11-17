@@ -2,7 +2,7 @@ import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import type { TablesErrorType } from "@connectors/lib/error";
-import { sequelizeConnection } from "@connectors/resources/storage";
+import { connectorsSequelize } from "@connectors/resources/storage";
 import type { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 
@@ -43,7 +43,7 @@ GoogleDriveConfig.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "google_drive_configs",
     indexes: [{ fields: ["connectorId"], unique: true }],
     relationship: "hasOne",
@@ -75,7 +75,7 @@ GoogleDriveFolders.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "google_drive_folders",
     indexes: [{ fields: ["connectorId", "folderId"], unique: true }],
   }
@@ -143,7 +143,7 @@ GoogleDriveFiles.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "google_drive_files",
     indexes: [
       { fields: ["connectorId", "driveFileId"], unique: true },
@@ -191,7 +191,7 @@ GoogleDriveSheet.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "google_drive_sheets",
     indexes: [
       { fields: ["connectorId", "driveFileId", "driveSheetId"], unique: true },
@@ -234,7 +234,7 @@ GoogleDriveSyncToken.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "google_drive_sync_tokens",
     indexes: [{ fields: ["connectorId", "driveId"], unique: true }],
   }

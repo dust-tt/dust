@@ -261,7 +261,7 @@ const SYSTEM_SPACE_ITEMS: {
     label: "Triggers",
     visual: BoltIcon,
     category: "triggers",
-    flag: "hootl_webhooks",
+    flag: null,
   },
 ];
 
@@ -861,7 +861,7 @@ const SpaceTriggersSubMenu = ({
         <Tree isLoading={isWebhookSourceViewsLoading}>
           {webhookSourceViews.map((webhookView) => (
             <SpaceTriggerItem
-              label={webhookView.customName ?? webhookView.webhookSource.name}
+              label={webhookView.customName}
               icon={webhookView.icon}
               key={webhookView.sId}
             />

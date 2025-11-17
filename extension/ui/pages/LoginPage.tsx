@@ -62,25 +62,28 @@ export const LoginPage = () => {
           "dark:bg-background-night dark:text-foreground-night"
         )}
       >
-        <div className="flex flex-1 flex-col items-center justify-center gap-8">
+        <div className="flex flex-1 flex-col items-center justify-center gap-4">
           <div className="flex flex-col items-center text-center space-y-9 max-w-[400px]">
             <Link to="https://dust.tt" target="_blank">
-              <DustLogo className="h-12 w-48" />
+              <DustLogo className="h-8 w-36" />
             </Link>
-            <Page.SectionHeader title="Get more done, faster, with the power of your agents at your fingertips." />
+          </div>
+          <div className="text-center max-w-[400px]">
+            <Page.H variant="h4">
+              Get more done, faster, with the power of your agents at your
+              fingertips.
+            </Page.H>
           </div>
           {authError && authError.code === "user_not_found" && (
-            <>
-              <div className="text-center">
-                Please sign up on the web to start using Dust extension.
-              </div>
-            </>
+            <div className="text-md text-center">
+              Please sign up on the web to start using Dust extension.
+            </div>
           )}
           {authError && authError.code !== "user_not_found" && (
-            <div className="text-center">{authError.message}</div>
+            <div className="text-md text-center">{authError.message}</div>
           )}
 
-          <div className="text-center gap-2 flex">
+          <div className="text-center m-1 gap-2 flex">
             {authError && authError.code === "user_not_found" && (
               <Link to="https://dust.tt/home">
                 <Button
@@ -93,7 +96,7 @@ export const LoginPage = () => {
                       "_blank"
                     );
                   }}
-                  size="md"
+                  size="sm"
                 />
               </Link>
             )}
@@ -104,7 +107,7 @@ export const LoginPage = () => {
               label="Sign in"
               onClick={() => handleLogin()}
               disabled={isLoading}
-              size="md"
+              size="sm"
             />
           </div>
         </div>
@@ -133,7 +136,7 @@ export const LoginPage = () => {
         )}
       >
         <div className="flex h-full w-full flex-col items-center justify-center gap-4 text-center">
-          <Page.SectionHeader title="Almost there" />
+          <Page.SectionHeader title="Almost there!" />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button

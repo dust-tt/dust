@@ -1,7 +1,5 @@
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
 import {
-  ActionGlobeAltIcon,
-  Avatar,
   Button,
   InformationCircleIcon,
   LockIcon,
@@ -14,15 +12,19 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import _ from "lodash";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 
 import { ConfirmContext } from "@app/components/Confirm";
-import type { CreateWebhookSourceFormData } from "@app/components/triggers/CreateWebhookSourceForm";
+import { getIcon } from "@app/components/resources/resources_icons";
+import type {
+  CreateWebhookSourceFormData,
+  RemoteProviderData,
+} from "@app/components/triggers/CreateWebhookSourceForm";
 import {
   CreateWebhookSourceFormContent,
   CreateWebhookSourceSchema,
-  validateCustomHeadersFromString,
 } from "@app/components/triggers/CreateWebhookSourceForm";
 import type { WebhookSourceFormValues } from "@app/components/triggers/forms/webhookSourceFormSchema";
 import {
@@ -32,6 +34,7 @@ import {
 } from "@app/components/triggers/forms/webhookSourceFormSchema";
 import { WebhookSourceDetailsInfo } from "@app/components/triggers/WebhookSourceDetailsInfo";
 import { WebhookSourceDetailsSharing } from "@app/components/triggers/WebhookSourceDetailsSharing";
+import { WebhookSourceViewIcon } from "@app/components/triggers/WebhookSourceViewIcon";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import {
@@ -39,20 +42,22 @@ import {
   useDeleteWebhookSource,
   useWebhookSourcesWithViews,
 } from "@app/lib/swr/webhook_source";
+import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { LightWorkspaceType, RequireAtLeastOne } from "@app/types";
+import { asDisplayName } from "@app/types";
 import type {
-  WebhookSourceKind,
-  WebhookSourceWithSystemView,
+  WebhookProvider,
+  WebhookSourceWithSystemViewType,
 } from "@app/types/triggers/webhooks";
-import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
+import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
-export type WebhookSourceSheetMode = { kind: WebhookSourceKind } & (
+export type WebhookSourceSheetMode = { provider: WebhookProvider | null } & (
   | { type: "create" }
   | {
       type: "edit";
       webhookSource: RequireAtLeastOne<
-        WebhookSourceWithSystemView,
+        WebhookSourceWithSystemViewType,
         "systemView"
       >;
     }
@@ -144,6 +149,10 @@ function WebhookSourceSheetContent({
   >(mode.type);
   const [selectedTab, setSelectedTab] = useState<string>("info");
   const [isSaving, setIsSaving] = useState(false);
+  const [remoteProviderData, setRemoteProviderData] =
+    useState<RemoteProviderData | null>(null);
+  const [connectionId, setConnectionId] = useState<string | null>(null);
+  const [isPresetReadyToSubmit, setIsPresetReadyToSubmit] = useState(true);
 
   const { spaces } = useSpacesAsAdmin({
     workspaceId: owner.sId,
@@ -181,14 +190,17 @@ function WebhookSourceSheetContent({
   // Create form
   const createFormDefaultValues = useMemo<CreateWebhookSourceFormData>(
     () => ({
-      name: "",
+      name: `${asDisplayName(mode.provider)} Source`,
       secret: "",
       autoGenerate: true,
       signatureHeader: "",
-      signatureAlgorithm: "sha256",
-      customHeaders: null,
+      signatureAlgorithm: "sha256" as const,
+      provider: mode.provider,
+      subscribedEvents: mode.provider
+        ? WEBHOOK_PRESETS[mode.provider].events.map((e) => e.value)
+        : [],
     }),
-    []
+    [mode.provider]
   );
 
   const createForm = useForm<CreateWebhookSourceFormData>({
@@ -230,15 +242,19 @@ function WebhookSourceSheetContent({
   }, [editForm.formState.isDirty, setIsDirty]);
 
   const onCreateSubmit = useCallback(
-    async (data: CreateWebhookSourceFormData) => {
-      const parsedCustomHeaders = validateCustomHeadersFromString(
-        data.customHeaders
-      );
-
+    async (
+      data: CreateWebhookSourceFormData,
+      connectionId?: string,
+      remoteMetadata?: RemoteProviderData
+    ) => {
       const apiData = {
         ...data,
-        customHeaders: parsedCustomHeaders?.parsed ?? null,
         includeGlobal: true,
+        ...(remoteMetadata ? { remoteMetadata } : {}),
+        ...(connectionId ? { connectionId } : {}),
+        icon: normalizeWebhookIcon(
+          data.provider ? WEBHOOK_PRESETS[data.provider].icon : null
+        ),
       };
 
       await createWebhookSource(apiData);
@@ -316,13 +332,13 @@ function WebhookSourceSheetContent({
         try {
           const diff = diffWebhookSourceForm(editDefaults, values);
 
-          if (diff.name) {
+          if (diff.requestBody) {
             const response = await fetch(
               `/api/w/${owner.sId}/webhook_sources/views/${systemView.sId}`,
               {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: diff.name }),
+                body: JSON.stringify(diff.requestBody),
               }
             );
             if (!response.ok) {
@@ -418,16 +434,38 @@ function WebhookSourceSheetContent({
       return;
     }
 
+    const agents = _.uniq(
+      webhookSourcesWithViews
+        .filter((source) => source.sId === webhookSource.sId)
+        .map((source) => source.usage?.agents ?? [])
+        .flat()
+        .map((agent) => `@${agent.name}`)
+    );
+
     const confirmed = await confirm({
-      title: "Confirm Removal",
+      title: `Are you sure you want to remove ${webhookSource.name}?`,
       message: (
-        <div>
-          Are you sure you want to remove{" "}
-          <span className="font-semibold">{webhookSource.name}</span>?
+        <>
+          {agents.length === 1 && (
+            <div>
+              <span className="font-semibold">{agents[0]}</span> is using this
+              webhook source.
+              <br />
+              The associated trigger(s) will be automatically removed from it.
+            </div>
+          )}
+          {agents.length > 1 && (
+            <div>
+              <span className="font-semibold">{agents.join(", ")}</span> are
+              using this webhook source.
+              <br />
+              The associated trigger(s) will be automatically removed from them.
+            </div>
+          )}
           <div className="mt-2 font-semibold">
             This action cannot be undone.
           </div>
-        </div>
+        </>
       ),
       validateLabel: "Remove",
       validateVariant: "warning",
@@ -441,7 +479,13 @@ function WebhookSourceSheetContent({
     if (deleted) {
       onClose();
     }
-  }, [confirm, webhookSource, deleteWebhookSource, onClose]);
+  }, [
+    confirm,
+    webhookSourcesWithViews,
+    webhookSource,
+    deleteWebhookSource,
+    onClose,
+  ]);
 
   const footerButtons = useMemo(() => {
     if (currentPageId === "create") {
@@ -454,9 +498,15 @@ function WebhookSourceSheetContent({
         rightButton: {
           label: createForm.formState.isSubmitting ? "Saving..." : "Save",
           variant: "primary",
-          disabled: createForm.formState.isSubmitting,
+          disabled: createForm.formState.isSubmitting || !isPresetReadyToSubmit,
           onClick: () => {
-            void createForm.handleSubmit(onCreateSubmit)();
+            void createForm.handleSubmit((data) =>
+              onCreateSubmit(
+                data,
+                connectionId ?? undefined,
+                remoteProviderData ?? undefined
+              )
+            )();
           },
         },
       };
@@ -492,29 +542,52 @@ function WebhookSourceSheetContent({
     onCancel,
     onCreateSubmit,
     onEditSave,
+    isPresetReadyToSubmit,
+    remoteProviderData,
+    connectionId,
   ]);
 
   const pages: MultiPageSheetPage[] = useMemo(
     () => [
       {
         id: "create",
-        title: `Create ${WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[mode.kind].name} Webhook Source`,
+        title: `New ${mode.provider ? WEBHOOK_PRESETS[mode.provider].name : "Custom"} Trigger`,
         description: "",
-        icon: WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[mode.kind].icon,
+        icon: getIcon(
+          normalizeWebhookIcon(
+            mode.provider ? WEBHOOK_PRESETS[mode.provider].icon : null
+          )
+        ),
         content: (
           <FormProvider {...createForm}>
             <div className="space-y-4">
-              <CreateWebhookSourceFormContent form={createForm} />
+              <CreateWebhookSourceFormContent
+                form={createForm}
+                provider={mode.provider}
+                owner={owner}
+                onRemoteProviderDataChange={(data) => {
+                  setRemoteProviderData(data?.remoteMetadata ?? null);
+                  setConnectionId(data?.connectionId ?? null);
+                }}
+                onPresetReadyToSubmitChange={setIsPresetReadyToSubmit}
+              />
             </div>
           </FormProvider>
         ),
       },
       {
         id: "edit",
-        title:
-          systemView?.customName ?? webhookSource?.name ?? "Webhook Source",
+        title: systemView
+          ? systemView.customName
+          : (webhookSource?.name ?? "Webhook Source"),
         description: "Webhook source for triggering assistants.",
-        icon: () => <Avatar icon={ActionGlobeAltIcon} size="md" />,
+        icon: systemView
+          ? () => <WebhookSourceViewIcon webhookSourceView={systemView} />
+          : getIcon(
+              normalizeWebhookIcon(
+                mode.provider ? WEBHOOK_PRESETS[mode.provider].icon : null
+              )
+            ),
         content:
           systemView && webhookSource ? (
             <FormProvider {...editForm}>

@@ -3,7 +3,7 @@ import { DataTypes, literal } from "sequelize";
 
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
-import type { TriggerModel } from "@app/lib/models/assistant/triggers/triggers";
+import { TriggerModel } from "@app/lib/models/assistant/triggers/triggers";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { UserModel } from "@app/lib/resources/storage/models/user";
@@ -25,8 +25,9 @@ export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
   declare visibility: CreationOptional<ConversationVisibility>;
   declare depth: CreationOptional<number>;
   declare triggerId: ForeignKey<TriggerModel["id"]> | null;
+  declare hasError: CreationOptional<boolean>;
 
-  declare requestedGroupIds: number[][];
+  declare requestedSpaceIds: number[];
 }
 
 ConversationModel.init(
@@ -59,37 +60,49 @@ ConversationModel.init(
       allowNull: false,
       defaultValue: 0,
     },
-    requestedGroupIds: {
-      type: DataTypes.ARRAY(DataTypes.ARRAY(DataTypes.BIGINT)),
+    requestedSpaceIds: {
+      type: DataTypes.ARRAY(DataTypes.BIGINT),
       allowNull: false,
       defaultValue: [],
     },
-    triggerId: {
-      type: DataTypes.BIGINT,
-      allowNull: true,
-      defaultValue: null,
+    hasError: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
   },
   {
     modelName: "conversation",
     indexes: [
-      // TODO(WORKSPACE_ID_ISOLATION 2025-05-12): Remove index
-      {
-        unique: true,
-        fields: ["sId"],
-      },
-      {
-        fields: ["workspaceId"],
-        name: "conversations_wId_idx",
-      },
       {
         unique: true,
         fields: ["workspaceId", "sId"],
+      },
+      {
+        fields: ["workspaceId", "triggerId"],
       },
     ],
     sequelize: frontSequelize,
   }
 );
+
+ConversationModel.belongsTo(TriggerModel, {
+  as: "trigger",
+  foreignKey: {
+    name: "triggerId",
+    allowNull: true,
+  },
+  onDelete: "SET NULL",
+});
+
+TriggerModel.hasMany(ConversationModel, {
+  as: "conversations",
+  foreignKey: {
+    name: "triggerId",
+    allowNull: true,
+  },
+  onDelete: "SET NULL",
+});
 
 export class ConversationParticipantModel extends WorkspaceAwareModel<ConversationParticipantModel> {
   declare createdAt: CreationOptional<Date>;
@@ -137,25 +150,12 @@ ConversationParticipantModel.init(
     sequelize: frontSequelize,
     indexes: [
       {
-        fields: ["userId"],
-      },
-      // TODO(WORKSPACE_ID_ISOLATION 2025-05-12): Remove index
-      {
-        fields: ["userId", "conversationId"],
-        unique: true,
-      },
-      {
         fields: ["workspaceId", "userId", "conversationId"],
         unique: true,
       },
       {
-        fields: ["conversationId"],
-        concurrently: true,
-      },
-      // TODO(WORKSPACE_ID_ISOLATION 2025-05-12): Remove index
-      {
-        fields: ["userId", "action"],
-        concurrently: true,
+        fields: ["workspaceId", "conversationId"],
+        unique: true,
       },
       {
         fields: ["workspaceId", "userId", "action"],
@@ -199,6 +199,8 @@ export class UserMessage extends WorkspaceAwareModel<UserMessage> {
   declare userContextLastTriggerRunAt: Date | null;
 
   declare userId: ForeignKey<UserModel["id"]> | null;
+
+  declare user?: NonAttribute<UserModel>;
 }
 
 UserMessage.init(
@@ -311,6 +313,7 @@ export class AgentMessage extends WorkspaceAwareModel<AgentMessage> {
   declare message?: NonAttribute<Message>;
   declare feedbacks?: NonAttribute<AgentMessageFeedback[]>;
 
+  declare modelInteractionDurationMs: number | null;
   declare completedAt: Date | null;
 }
 
@@ -382,6 +385,11 @@ AgentMessage.init(
       allowNull: false,
       defaultValue: 0,
     },
+    modelInteractionDurationMs: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
+    },
     completedAt: {
       type: DataTypes.DATE,
       allowNull: true,
@@ -391,7 +399,11 @@ AgentMessage.init(
   {
     modelName: "agent_message",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["workspaceId"], concurrently: true }],
+    indexes: [
+      { fields: ["workspaceId"], concurrently: true },
+      // Index for agent-based data retention queries.
+      { fields: ["workspaceId", "agentConfigurationId"], concurrently: true },
+    ],
   }
 );
 
@@ -404,6 +416,7 @@ export class AgentMessageFeedback extends WorkspaceAwareModel<AgentMessageFeedba
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
   declare userId: ForeignKey<UserModel["id"]>;
   declare isConversationShared: boolean;
+  declare dismissed: boolean;
 
   declare thumbDirection: AgentMessageFeedbackDirection;
   declare content: string | null;
@@ -441,6 +454,11 @@ AgentMessageFeedback.init(
       allowNull: true,
     },
     isConversationShared: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    dismissed: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
@@ -579,6 +597,11 @@ Message.init(
       {
         fields: ["workspaceId", "conversationId", "sId"],
       },
+      // Index for data retention workflow - optimizes GROUP BY with MAX(createdAt).
+      {
+        fields: ["workspaceId", "conversationId", "createdAt"],
+        concurrently: true,
+      },
     ],
     hooks: {
       beforeValidate: (message) => {
@@ -712,7 +735,11 @@ export class Mention extends WorkspaceAwareModel<Mention> {
   declare updatedAt: CreationOptional<Date>;
 
   declare messageId: ForeignKey<Message["id"]>;
+
+  // a Mention is either an agent mention xor a user mention
   declare agentConfigurationId: string | null; // Not a relation as global agents are not in the DB
+  declare userId: ForeignKey<UserModel["id"]> | null;
+  declare user: NonAttribute<UserModel> | null;
 
   declare message: NonAttribute<Message>;
 }
@@ -732,6 +759,14 @@ Mention.init(
     agentConfigurationId: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+    userId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+      references: {
+        model: UserModel,
+        key: "id",
+      },
     },
   },
   {
@@ -753,6 +788,18 @@ Mention.init(
         fields: ["workspaceId", "agentConfigurationId", "createdAt"],
       },
     ],
+    hooks: {
+      beforeValidate: (mention) => {
+        if (
+          Number(!!mention.userId) + Number(!!mention.agentConfigurationId) !==
+          1
+        ) {
+          throw new Error(
+            "Exactly one of userId, agentConfigurationId must be non-null"
+          );
+        }
+      },
+    },
   }
 );
 
@@ -762,4 +809,7 @@ Message.hasMany(Mention, {
 });
 Mention.belongsTo(Message, {
   foreignKey: { name: "messageId", allowNull: false },
+});
+Mention.belongsTo(UserModel, {
+  foreignKey: { name: "userId", allowNull: true },
 });

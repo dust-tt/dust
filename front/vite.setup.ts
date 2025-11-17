@@ -13,6 +13,15 @@ beforeEach(async (c) => {
 
   // Mock Redis
   vi.mock("@app/lib/api/redis", () => ({
+    getRedisClient: vi.fn().mockResolvedValue({
+      get: vi.fn(),
+      set: vi.fn(),
+      ttl: vi.fn(),
+      zAdd: vi.fn(),
+      expire: vi.fn(),
+      zRange: vi.fn(),
+      hGetAll: vi.fn().mockResolvedValue([]),
+    }),
     runOnRedis: vi
       .fn()
       .mockImplementation(

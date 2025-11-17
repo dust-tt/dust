@@ -4,25 +4,34 @@ import type { ModelIdType as BaseModelIdType } from "@app/types";
 type PricingEntry = {
   input: number;
   output: number;
+  // Optional cached-token pricing (USD per million tokens). For now unused.
+  cache_creation_input_tokens?: number;
+  cache_read_input_tokens?: number;
 };
 
 // Pricing (in USD) per million of tokens for current models.
 // This record must contain all BaseModelIdType values.
 const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
-  // https://platform.openai.com/docs/models/gpt-5
+  // https://openai.com/api/pricing
+  "gpt-5.1": {
+    input: 1.25,
+    output: 10.0,
+    cache_read_input_tokens: 0.125,
+  },
   "gpt-5": {
     input: 1.25,
     output: 10.0,
+    cache_read_input_tokens: 0.125,
   },
-  // https://platform.openai.com/docs/models/gpt-5-mini
   "gpt-5-mini": {
     input: 0.25,
     output: 2.0,
+    cache_read_input_tokens: 0.025,
   },
-  // https://platform.openai.com/docs/models/gpt-5-nano
   "gpt-5-nano": {
     input: 0.05,
     output: 0.4,
+    cache_read_input_tokens: 0.005,
   },
   "gpt-4-turbo": {
     input: 10.0,
@@ -43,6 +52,7 @@ const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
   "gpt-4o-2024-08-06": {
     input: 2.5,
     output: 10.0,
+    cache_read_input_tokens: 1.25,
   },
   o1: {
     input: 15.0,
@@ -51,6 +61,7 @@ const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
   "o1-mini": {
     input: 3.0,
     output: 12.0,
+    cache_read_input_tokens: 1.5,
   },
   o3: {
     input: 15.0,
@@ -75,46 +86,62 @@ const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
   "claude-4-opus-20250514": {
     input: 15.0,
     output: 75.0,
+    cache_creation_input_tokens: 18.75,
+    cache_read_input_tokens: 1.5,
   },
   "claude-4-sonnet-20250514": {
     input: 3.0,
     output: 15.0,
+    cache_creation_input_tokens: 3.75,
+    cache_read_input_tokens: 0.3,
   },
   "claude-sonnet-4-5-20250929": {
     input: 3.0,
     output: 15.0,
+    cache_creation_input_tokens: 3.75,
+    cache_read_input_tokens: 0.3,
   },
   "claude-3-opus-20240229": {
     input: 15.0,
     output: 75.0,
+    cache_creation_input_tokens: 18.75,
+    cache_read_input_tokens: 1.5,
   },
   "claude-3-5-sonnet-20240620": {
     input: 3.0,
     output: 15.0,
+    cache_creation_input_tokens: 3.75,
+    cache_read_input_tokens: 0.3,
   },
   "claude-3-5-sonnet-20241022": {
     input: 3.0,
     output: 15.0,
+    cache_creation_input_tokens: 3.75,
+    cache_read_input_tokens: 0.3,
   },
   "claude-3-7-sonnet-20250219": {
     input: 3.0,
     output: 15.0,
+    cache_creation_input_tokens: 3.75,
+    cache_read_input_tokens: 0.3,
   },
   "claude-3-haiku-20240307": {
     input: 0.25,
     output: 1.25,
+    cache_creation_input_tokens: 0.3,
+    cache_read_input_tokens: 0.03,
   },
   "claude-3-5-haiku-20241022": {
     input: 1.0,
     output: 5.0,
+    cache_creation_input_tokens: 1.25,
+    cache_read_input_tokens: 0.1,
   },
-  "claude-2.1": {
-    input: 8.0,
-    output: 24.0,
-  },
-  "claude-instant-1.2": {
-    input: 0.8,
-    output: 2.4,
+  "claude-haiku-4-5-20251001": {
+    input: 1.0,
+    output: 5.0,
+    cache_creation_input_tokens: 1.25,
+    cache_read_input_tokens: 0.1,
   },
   "mistral-large-latest": {
     input: 2.0,
@@ -132,34 +159,6 @@ const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
     input: 0.9,
     output: 2.8,
   },
-  "gemini-1.5-pro-latest": {
-    input: 3.5,
-    output: 10.5,
-  },
-  "gemini-1.5-flash-latest": {
-    input: 0.35,
-    output: 1.05,
-  },
-  "gemini-2.0-flash-lite": {
-    input: 0.075,
-    output: 0.3,
-  },
-  "gemini-2.0-flash": {
-    input: 0.15,
-    output: 0.6,
-  },
-  "gemini-2.0-flash-lite-preview-02-05": {
-    input: 0.075,
-    output: 0.3,
-  },
-  "gemini-2.5-pro-preview-03-25": {
-    input: 1.25,
-    output: 15.0,
-  },
-  "gemini-2.0-pro-exp-02-05": {
-    input: 1.25,
-    output: 15.0,
-  },
   "gemini-2.5-flash": {
     input: 0.15,
     output: 0.6,
@@ -171,14 +170,6 @@ const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
   "gemini-2.5-pro": {
     input: 1.25,
     output: 15.0,
-  },
-  "gemini-2.0-flash-thinking-exp-01-21": {
-    input: 0.15,
-    output: 0.6,
-  },
-  "gemini-2.0-flash-exp": {
-    input: 0.15,
-    output: 0.6,
   },
   "meta-llama/Llama-3.3-70B-Instruct-Turbo": {
     input: 0.88,
@@ -212,9 +203,9 @@ const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
     input: 0.55,
     output: 2.19,
   },
-  "accounts/fireworks/models/deepseek-r1": {
-    input: 8.0,
-    output: 8.0,
+  "accounts/fireworks/models/deepseek-r1-0528": {
+    input: 1.35,
+    output: 5.4,
   },
   "accounts/fireworks/models/kimi-k2-instruct": {
     input: 0.4,
@@ -228,17 +219,17 @@ const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
     input: 0.2,
     output: 1.0,
   },
-  "grok-3-fast-latest": {
-    input: 2.0,
-    output: 10.0,
-  },
-  "grok-3-mini-fast-latest": {
-    input: 0.2,
-    output: 1.0,
-  },
   "grok-4-latest": {
     input: 2.0,
-    output: 10.0,
+    output: 15.0,
+  },
+  "grok-4-fast-non-reasoning-latest": {
+    input: 0.2,
+    output: 0.5,
+  },
+  "grok-4-fast-reasoning-latest": {
+    input: 0.2,
+    output: 0.5,
   },
   noop: {
     input: 0,
@@ -320,10 +311,6 @@ const LEGACY_MODEL_PRICING: Record<string, PricingEntry> = {
   "o1-mini-2024-09-12": {
     input: 3.0,
     output: 12.0,
-  },
-  "claude-2.0": {
-    input: 8.0,
-    output: 24.0,
   },
   "claude-3-sonnet-20240229": {
     input: 3.0,
@@ -409,14 +396,26 @@ const DEFAULT_PRICING = MODEL_PRICING[DEFAULT_PRICING_MODEL_ID];
 
 /**
  * Calculate the cost in USD for token usage.
+ * Note: promptTokens currently includes cached read and cache write tokens for some providers.
+ * To avoid double counting, price all promptTokens at base input rate, then adjust with deltas.
  */
 function calculateTokenUsageCostForUsage(usage: RunUsageType): number {
   const pricing = MODEL_PRICING[usage.modelId] ?? DEFAULT_PRICING;
 
-  return (
-    (usage.promptTokens / 1_000_000) * pricing.input +
-    (usage.completionTokens / 1_000_000) * pricing.output
-  );
+  const cachedReadTokens = usage.cachedTokens ?? 0;
+  const cacheWriteTokens = usage.cacheCreationTokens ?? 0;
+
+  const cachedReadRate = pricing.cache_read_input_tokens ?? pricing.input;
+  const cacheWriteRate = pricing.cache_creation_input_tokens ?? pricing.input;
+
+  const basePromptCost = (usage.promptTokens / 1_000_000) * pricing.input;
+  const cachedReadDelta =
+    (cachedReadTokens / 1_000_000) * (cachedReadRate - pricing.input);
+  const cacheWriteDelta =
+    (cacheWriteTokens / 1_000_000) * (cacheWriteRate - pricing.input);
+  const outputCost = (usage.completionTokens / 1_000_000) * pricing.output;
+
+  return basePromptCost + cachedReadDelta + cacheWriteDelta + outputCost;
 }
 
 export function calculateTokenUsageCost(usages: RunUsageType[]): number {

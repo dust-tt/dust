@@ -3,14 +3,13 @@ import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conve
 import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type {
   ConversationType,
   ConversationWithoutContentType,
   Result,
   UserType,
 } from "@app/types";
-import { ConversationError, Err, normalizeError, Ok } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 /**
  * We retrieve the feedbacks for a whole conversation, not just a single message.
@@ -18,6 +17,7 @@ import { ConversationError, Err, normalizeError, Ok } from "@app/types";
 
 export type AgentMessageFeedbackType = {
   id: number;
+  sId: string;
   messageId: string;
   agentMessageId: number;
   userId: number;
@@ -27,6 +27,7 @@ export type AgentMessageFeedbackType = {
   agentConfigurationId: string;
   agentConfigurationVersion: number;
   isConversationShared: boolean;
+  dismissed: boolean;
 };
 
 export type FeedbackUserInfo = {
@@ -47,10 +48,6 @@ export async function getConversationFeedbacksForUser(
   auth: Authenticator,
   conversation: ConversationType | ConversationWithoutContentType
 ) {
-  if (!ConversationResource.canAccessConversation(auth, conversation)) {
-    return new Err(new ConversationError("conversation_access_restricted"));
-  }
-
   const feedbacksRes =
     await AgentMessageFeedbackResource.getConversationFeedbacksForUser(
       auth,
@@ -124,6 +121,7 @@ export async function upsertMessageFeedback(
       thumbDirection,
       content,
       isConversationShared: isConversationShared ?? false,
+      dismissed: false,
     });
   } catch (e) {
     return new Err(normalizeError(e));
@@ -147,13 +145,6 @@ export async function deleteMessageFeedback(
     user: UserType;
   }
 ) {
-  if (!ConversationResource.canAccessConversation(auth, conversation)) {
-    return new Err({
-      type: "conversation_access_restricted",
-      message: "You don't have access to this conversation.",
-    });
-  }
-
   const feedbackWithContext =
     await AgentMessageFeedbackResource.getFeedbackWithConversationContext({
       auth,
@@ -186,11 +177,13 @@ export async function getAgentFeedbacks({
   agentConfigurationId,
   withMetadata,
   paginationParams,
+  filter = "active",
 }: {
   auth: Authenticator;
   withMetadata: boolean;
   agentConfigurationId: string;
   paginationParams: PaginationParams;
+  filter?: "active" | "all";
 }): Promise<
   Result<
     (AgentMessageFeedbackType | AgentMessageFeedbackWithMetadataType)[],
@@ -214,6 +207,7 @@ export async function getAgentFeedbacks({
         workspace: owner,
         agentConfiguration,
         paginationParams,
+        filter,
       }
     );
 

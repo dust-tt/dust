@@ -6,11 +6,11 @@ import {
 } from "@app/lib/actions/constants";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import type { DataSourceViewType } from "@app/types";
-import type { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type { DataSourceViewType, GLOBAL_AGENTS_SID } from "@app/types";
 
 export type PrefetchedDataSourcesType = {
   dataSourceViews: (DataSourceViewType & { isInGlobalSpace: boolean })[];
@@ -131,27 +131,76 @@ export function _getAgentRouterToolsConfiguration(
   ];
 }
 
-export function _getContentCreationToolConfiguration({
+export function _getInteractiveContentToolConfiguration({
   agentId,
-  contentCreationMCPServerView,
+  interactiveContentMCPServerView,
 }: {
   agentId: GLOBAL_AGENTS_SID;
-  contentCreationMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
 }): ServerSideMCPServerConfigurationType[] {
-  if (!contentCreationMCPServerView) {
+  if (!interactiveContentMCPServerView) {
     return [];
   }
 
   return [
     {
       id: -1,
-      sId: agentId + "-content-creation",
+      sId: agentId + "-interactive-content",
       type: "mcp_server_configuration",
-      name: "content_creation",
-      description: "Create & update Content Creation files.",
-      mcpServerViewId: contentCreationMCPServerView.sId,
-      internalMCPServerId: contentCreationMCPServerView.internalMCPServerId,
+      name: "interactive_content",
+      description: "Create & update Interactive Content files.",
+      mcpServerViewId: interactiveContentMCPServerView.sId,
+      internalMCPServerId: interactiveContentMCPServerView.internalMCPServerId,
       dataSources: null,
+      tables: null,
+      childAgentId: null,
+      reasoningModel: null,
+      additionalConfiguration: {},
+      timeFrame: null,
+      dustAppConfiguration: null,
+      jsonSchema: null,
+      secretName: null,
+    },
+  ];
+}
+
+export function _getFeedbackAnalyzerIncludeDataToolConfiguration({
+  agentId,
+  includeDataMCPServerView,
+}: {
+  agentId: GLOBAL_AGENTS_SID;
+  includeDataMCPServerView: MCPServerViewResource | null;
+}): ServerSideMCPServerConfigurationType[] {
+  if (!includeDataMCPServerView) {
+    return [];
+  }
+
+  return [
+    {
+      id: -1,
+      sId: agentId + "-include_data",
+      type: "mcp_server_configuration",
+      name: "include_data",
+      description:
+        "Interactive Content file to be used as a template for creating feedback report frames",
+      mcpServerViewId: includeDataMCPServerView.sId,
+      internalMCPServerId: includeDataMCPServerView.internalMCPServerId,
+      dataSources: [
+        {
+          dataSourceViewId:
+            config.getDustAppsInteractiveContentDatasourceViewId(),
+          filter: {
+            parents: {
+              in: [
+                config.getDustAppsInteractiveContentFeedbackAnalysisTemplateFileName(),
+              ],
+              not: [],
+            },
+            tags: null,
+          },
+          workspaceId: config.getDustAppsWorkspaceId(),
+        },
+      ],
       tables: null,
       childAgentId: null,
       reasoningModel: null,

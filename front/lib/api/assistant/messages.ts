@@ -8,7 +8,7 @@ import {
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { PaginationParams } from "@app/lib/api/pagination";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import {
   AgentMessage,
@@ -21,8 +21,11 @@ import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import { UserResource } from "@app/lib/resources/user_resource";
+import logger from "@app/logger/logger";
 import type {
+  AgentMention,
   AgentMessageType,
   ContentFragmentType,
   ConversationWithoutContentType,
@@ -33,19 +36,20 @@ import type {
   MessageType,
   ModelId,
   Result,
+  UserMention,
   UserMessageType,
 } from "@app/types";
 import { ConversationError, Err, Ok, removeNulls } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
   AgentContentItemType,
-  ReasoningContentType,
-  TextContentType,
+  AgentReasoningContentType,
+  AgentTextContentType,
 } from "@app/types/assistant/agent_message_content";
 import {
-  isFunctionCallContent,
-  isReasoningContent,
-  isTextContent,
+  isAgentFunctionCallContent,
+  isAgentReasoningContent,
+  isAgentTextContent,
 } from "@app/types/assistant/agent_message_content";
 import type { ParsedContentItem } from "@app/types/assistant/conversation";
 
@@ -79,7 +83,7 @@ export async function generateParsedContents(
       parsedContents[step] = [];
     }
 
-    if (isReasoningContent(c.content)) {
+    if (isAgentReasoningContent(c.content)) {
       const reasoning = c.content.value.reasoning;
       if (reasoning && reasoning.trim()) {
         parsedContents[step].push({ kind: "reasoning", content: reasoning });
@@ -87,7 +91,7 @@ export async function generateParsedContents(
       continue;
     }
 
-    if (isTextContent(c.content)) {
+    if (isAgentTextContent(c.content)) {
       const contentParser = new AgentMessageContentParser(
         agentConfiguration,
         messageId,
@@ -106,7 +110,7 @@ export async function generateParsedContents(
       continue;
     }
 
-    if (isFunctionCallContent(c.content)) {
+    if (isAgentFunctionCallContent(c.content)) {
       const functionCallId = c.content.value.id;
       const matchingAction = actionsByCallId.get(functionCallId);
 
@@ -167,6 +171,11 @@ async function batchRenderUserMessages(
         workspaceId: auth.getNonNullableWorkspace().id,
         messageId: userMessages.map((m) => m.id),
       },
+      include: {
+        model: UserModel,
+        as: "user",
+        attributes: ["sId"],
+      },
     }),
     userIds.length === 0
       ? []
@@ -181,10 +190,9 @@ async function batchRenderUserMessages(
     }
     const userMessage = message.userMessage;
     const messageMentions = mentions.filter((m) => m.messageId === message.id);
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    const user = users.find((u) => u.id === userMessage.userId) || null;
+    const user = users.find((u) => u.id === userMessage.userId) ?? null;
 
-    const m = {
+    return {
       id: message.id,
       sId: message.sId,
       type: "user_message",
@@ -198,9 +206,15 @@ async function batchRenderUserMessages(
             if (m.agentConfigurationId) {
               return {
                 configurationId: m.agentConfigurationId,
-              };
+              } satisfies AgentMention;
             }
-            throw new Error("Mention Must Be An Agent: Unreachable.");
+            if (m.user) {
+              return {
+                type: "user",
+                userId: m.user.sId,
+              } satisfies UserMention;
+            }
+            throw new Error("Mention Must Be An Agent or User: Unreachable.");
           })
         : [],
       content: userMessage.content,
@@ -213,10 +227,10 @@ async function batchRenderUserMessages(
         origin: userMessage.userContextOrigin,
         originMessageId: userMessage.userContextOriginMessageId,
         clientSideMCPServerIds: userMessage.clientSideMCPServerIds,
-        lastTriggerRunAt: userMessage.userContextLastTriggerRunAt,
+        lastTriggerRunAt:
+          userMessage.userContextLastTriggerRunAt?.getTime() ?? null,
       },
     } satisfies UserMessageType;
-    return m;
   });
 }
 
@@ -287,6 +301,10 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       {} as Record<string, AgentStepContentResource[]>
     );
 
+  // Create maps for efficient lookups
+  const messagesBySId = new Map(messages.map((m) => [m.sId, m]));
+  const messagesById = new Map(messages.map((m) => [m.id, m]));
+
   // The only async part here is the content parsing, but it's "fake async" as the content parsing is not doing
   // any IO or network. We need it to be async as we want to re-use the async generators for the content parsing.
   const renderedMessages = await Promise.all(
@@ -306,6 +324,17 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         (a) => a.sId === agentMessage.agentConfigurationId
       );
       if (!agentConfiguration) {
+        logger.error(
+          {
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            conversationSId: message.sId,
+            agentMessageId: agentMessage.id,
+            agentConfigurationId: agentMessage.agentConfigurationId,
+            agentConfigurations,
+          },
+          "Conversation with unavailable agents"
+        );
+
         return new Err(
           new ConversationError("conversation_with_unavailable_agent")
         );
@@ -343,8 +372,10 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         agentStepContents
       );
 
-      const textContents: Array<{ step: number; content: TextContentType }> =
-        [];
+      const textContents: Array<{
+        step: number;
+        content: AgentTextContentType;
+      }> = [];
       for (const content of agentStepContents) {
         if (content.content.type === "text_content") {
           textContents.push({ step: content.step, content: content.content });
@@ -353,7 +384,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
 
       const reasoningContents: Array<{
         step: number;
-        content: ReasoningContentType;
+        content: AgentReasoningContentType;
       }> = [];
       for (const content of agentStepContents) {
         if (content.content.type === "reasoning") {
@@ -392,6 +423,23 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         }
       })();
 
+      const parentMessage = message.parentId
+        ? (messagesById.get(message.parentId) ?? null)
+        : null;
+
+      let parentAgentMessage: Message | null = null;
+      if (
+        parentMessage &&
+        parentMessage?.userMessage &&
+        parentMessage.userMessage.userContextOrigin === "agent_handover" &&
+        parentMessage.userMessage.userContextOriginMessageId
+      ) {
+        parentAgentMessage =
+          messagesBySId.get(
+            parentMessage.userMessage.userContextOriginMessageId
+          ) ?? null;
+      }
+
       const m = {
         id: message.id,
         agentMessageId: agentMessage.id,
@@ -402,8 +450,8 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         visibility: message.visibility,
         version: message.version,
         rank: message.rank,
-        parentMessageId:
-          messages.find((m) => m.id === message.parentId)?.sId ?? null,
+        parentMessageId: parentMessage?.sId ?? null,
+        parentAgentMessageId: parentAgentMessage?.sId ?? null,
         status: agentMessage.status,
         actions,
         content,
@@ -417,6 +465,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         error,
         configuration: agentConfiguration,
         skipToolsValidation: agentMessage.skipToolsValidation,
+        modelInteractionDurationMs: agentMessage.modelInteractionDurationMs,
       } satisfies AgentMessageType;
 
       if (viewType === "full") {
@@ -584,7 +633,7 @@ type RenderMessageVariant = "light" | "full";
 
 export async function batchRenderMessages<V extends RenderMessageVariant>(
   auth: Authenticator,
-  conversationId: string,
+  conversation: ConversationResource,
   messages: Message[],
   viewType: V
 ): Promise<
@@ -596,7 +645,7 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
   const [userMessages, agentMessagesRes, contentFragments] = await Promise.all([
     batchRenderUserMessages(auth, messages),
     batchRenderAgentMessages(auth, messages, viewType),
-    batchRenderContentFragment(auth, conversationId, messages),
+    batchRenderContentFragment(auth, conversation.sId, messages),
   ]);
 
   if (agentMessagesRes.isErr()) {
@@ -604,10 +653,6 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
   }
 
   const agentMessages = agentMessagesRes.value;
-
-  if (agentMessages.some((m) => !canReadMessage(auth, m))) {
-    return new Err(new ConversationError("conversation_access_restricted"));
-  }
 
   const renderedMessages = [
     ...userMessages,
@@ -647,7 +692,7 @@ export async function fetchConversationMessages(
 
   const renderedMessagesRes = await batchRenderMessages(
     auth,
-    conversationId,
+    conversation,
     messages,
     "light"
   );
@@ -663,17 +708,6 @@ export async function fetchConversationMessages(
     lastValue: renderedMessages.at(0)?.rank ?? null,
     messages: renderedMessages,
   });
-}
-
-export function canReadMessage(
-  auth: Authenticator,
-  message: AgentMessageType | LightAgentMessageType
-) {
-  return auth.canRead(
-    Authenticator.createResourcePermissionsFromGroupIds(
-      message.configuration.requestedGroupIds
-    )
-  );
 }
 
 export async function fetchMessageInConversation(

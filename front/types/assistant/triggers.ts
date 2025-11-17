@@ -11,6 +11,8 @@ export type ScheduleConfig = {
 
 export type WebhookConfig = {
   includePayload: boolean;
+  event?: string;
+  filter?: string;
 };
 
 export type TriggerConfigurationType = ScheduleConfig | WebhookConfig;
@@ -23,7 +25,12 @@ export type TriggerConfiguration =
   | {
       kind: "webhook";
       configuration: WebhookConfig;
+      executionPerDayLimitOverride: number | null;
+      webhookSourceViewSId: string | null;
+      executionMode: TriggerExecutionMode | null;
     };
+
+export const DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT = 42;
 
 export type TriggerType = {
   id: ModelId;
@@ -33,8 +40,8 @@ export type TriggerType = {
   editor: UserType["id"];
   customPrompt: string | null;
   enabled: boolean;
-  webhookSourceViewSId?: string | null;
   createdAt: number;
+  naturalLanguageDescription: string | null;
 } & TriggerConfiguration;
 
 export type TriggerKind = TriggerType["kind"];
@@ -43,9 +50,13 @@ export function isValidTriggerKind(kind: string): kind is TriggerKind {
   return ["schedule", "webhook"].includes(kind);
 }
 
+export type TriggerExecutionMode = "fair_use" | "programmatic";
+
 export type WebhookTriggerType = TriggerType & {
   kind: "webhook";
   webhookSourceViewSId: string;
+  executionMode: TriggerExecutionMode | null;
+  executionPerDayLimitOverride: number | null;
 };
 
 export type ScheduleTriggerType = TriggerType & {
@@ -70,24 +81,35 @@ const ScheduleConfigSchema = t.type({
   timezone: t.string,
 });
 
-const WebhookConfigSchema = t.type({
-  includePayload: t.boolean,
-});
+const WebhookConfigSchema = t.intersection([
+  t.type({
+    includePayload: t.boolean,
+  }),
+  t.partial({
+    event: t.string,
+    filter: t.string,
+  }),
+]);
 
 export const TriggerSchema = t.union([
   t.type({
+    enabled: t.boolean,
     name: t.string,
     kind: t.literal("schedule"),
     customPrompt: t.string,
+    naturalLanguageDescription: t.union([t.string, t.null]),
     configuration: ScheduleConfigSchema,
     editor: t.union([t.number, t.undefined]),
   }),
   t.type({
+    enabled: t.boolean,
     name: t.string,
     kind: t.literal("webhook"),
     customPrompt: t.string,
+    naturalLanguageDescription: t.union([t.string, t.null]),
     configuration: WebhookConfigSchema,
     webhookSourceViewSId: t.string,
+    executionPerDayLimitOverride: t.number,
     editor: t.union([t.number, t.undefined]),
   }),
 ]);

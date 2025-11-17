@@ -81,8 +81,8 @@ const LegalMenuConfig: MenuConfig = {
     },
     {
       title: "Privacy Policy",
-      href: "/platform-privacy",
-      isExternal: true,
+      href: "/home/platform-privacy",
+      isExternal: false,
     },
     {
       title: "Website Privacy Policy",
@@ -212,6 +212,10 @@ const ProductMenuConfig: MenuConfig = {
     {
       title: "Chrome Extension",
       href: "/home/chrome-extension",
+    },
+    {
+      title: "Frames",
+      href: "/home/frames",
     },
   ],
 };
@@ -462,6 +466,10 @@ export const menuConfig: DocsConfig = {
           isExternal: true,
         },
         {
+          title: "Brand resources",
+          href: "/home/brand-resources",
+        },
+        {
           title: "Support",
           href: "/home/support",
         },
@@ -507,8 +515,8 @@ export const menuConfig: DocsConfig = {
         },
         {
           title: "Privacy Policy",
-          href: "/platform-privacy",
-          isExternal: true,
+          href: "/home/platform-privacy",
+          isExternal: false,
         },
         {
           title: "Trust Center",

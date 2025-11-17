@@ -6,7 +6,6 @@ import {
   Checkbox,
   ContactsRobotIcon,
   DocumentIcon,
-  DotIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -17,8 +16,6 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  ExclamationCircleIcon,
-  Icon,
   Label,
   ListCheckIcon,
   MagicIcon,
@@ -47,13 +44,13 @@ import {
 } from "react";
 import { useInView } from "react-intersection-observer";
 
-import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conversation/constant";
 import {
   ConversationMenu,
   useConversationMenu,
 } from "@app/components/assistant/conversation/ConversationMenu";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
+import { InAppBanner } from "@app/components/assistant/conversation/InAppBanner";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -66,11 +63,14 @@ import {
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { removeDiacritics, subFilter } from "@app/lib/utils";
-import { getAgentBuilderRoute, getAgentRoute } from "@app/lib/utils/router";
+import {
+  getAgentBuilderRoute,
+  getConversationRoute,
+} from "@app/lib/utils/router";
 import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
 import { isBuilder } from "@app/types";
 
-type AssistantSidebarMenuProps = {
+type AgentSidebarMenuProps = {
   owner: WorkspaceType;
 };
 
@@ -82,7 +82,7 @@ type GroupLabel =
   | "Last 12 Months"
   | "Older";
 
-export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
+export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   const router = useRouter();
   const { conversationsNavigationRef } = useConversationsNavigation();
 
@@ -320,12 +320,11 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
     setSidebarOpen(false);
     const { cId } = router.query;
     const isNewConversation =
-      router.pathname === "/w/[wId]/agent/[cId]" &&
+      router.pathname === "/w/[wId]/conversation/[cId]" &&
       typeof cId === "string" &&
       cId === "new";
     if (isNewConversation) {
       setAnimate(true);
-      document.getElementById(CONVERSATION_VIEW_SCROLL_LAYOUT)?.scrollTo(0, 0);
     }
   }, [setSidebarOpen, router, setAnimate]);
 
@@ -369,7 +368,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                 />
                 <Button
                   label="New"
-                  href={getAgentRoute(owner.sId)}
+                  href={getConversationRoute(owner.sId)}
                   icon={ChatBubbleBottomCenterTextIcon}
                   className="shrink"
                   tooltip="Create a new conversation"
@@ -389,7 +388,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                             label="New agent"
                           />
                           <DropdownMenuPortal>
-                            <DropdownMenuSubContent>
+                            <DropdownMenuSubContent className="pointer-events-auto">
                               <DropdownMenuItem
                                 href={getAgentBuilderRoute(owner.sId, "new")}
                                 icon={DocumentIcon}
@@ -442,7 +441,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                               label="Edit agent"
                             />
                             <DropdownMenuPortal>
-                              <DropdownMenuSubContent>
+                              <DropdownMenuSubContent className="pointer-events-auto">
                                 <DropdownMenuSearchbar
                                   ref={agentsSearchInputRef}
                                   name="search"
@@ -540,6 +539,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                 </>
               )}
             </NavigationList>
+            <InAppBanner />
           </div>
         </div>
       </div>
@@ -582,6 +582,21 @@ const RenderConversations = ({
   );
 };
 
+function getConversationDotStatus(
+  conversation: ConversationWithoutContentType
+): "blocked" | "unread" | "idle" {
+  if (conversation.actionRequired) {
+    return "blocked";
+  }
+  if (conversation.hasError) {
+    return "blocked";
+  }
+  if (conversation.unread) {
+    return "unread";
+  }
+  return "idle";
+}
+
 const RenderConversation = ({
   conversation,
   isMultiSelect,
@@ -612,10 +627,6 @@ const RenderConversation = ({
       ? "New Conversation"
       : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`);
 
-  const UnreadIcon = () => (
-    <Icon visual={DotIcon} className="-ml-1 -mr-2 text-highlight" />
-  );
-
   return (
     <>
       {isMultiSelect ? (
@@ -636,13 +647,7 @@ const RenderConversation = ({
       ) : (
         <NavigationListItem
           selected={router.query.cId === conversation.sId}
-          icon={
-            conversation.actionRequired
-              ? ExclamationCircleIcon
-              : conversation.unread
-                ? UnreadIcon
-                : undefined
-          }
+          status={getConversationDotStatus(conversation)}
           label={conversationLabel}
           moreMenu={
             <ConversationMenu
@@ -665,7 +670,7 @@ const RenderConversation = ({
               await new Promise((resolve) => setTimeout(resolve, 600));
             }
             await router.push(
-              getAgentRoute(owner.sId, conversation.sId),
+              getConversationRoute(owner.sId, conversation.sId),
               undefined,
               {
                 shallow: true,

@@ -5,6 +5,7 @@ import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 import { getTemporalAgentWorkerConnection } from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
+import { launchAgentMessageAnalyticsActivity } from "@app/temporal/agent_loop/activities/analytics";
 import {
   finalizeCancellationActivity,
   notifyWorkflowError,
@@ -15,6 +16,7 @@ import {
   logAgentLoopPhaseStartActivity,
   logAgentLoopStepCompletionActivity,
 } from "@app/temporal/agent_loop/activities/instrumentation";
+import { conversationUnreadNotificationActivity } from "@app/temporal/agent_loop/activities/notification";
 import { publishDeferredEventsActivity } from "@app/temporal/agent_loop/activities/publish_deferred_events";
 import { runModelAndCreateActionsActivity } from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
@@ -29,12 +31,14 @@ export async function runAgentLoopWorker() {
   const worker = await Worker.create({
     workflowsPath: require.resolve("./workflows"),
     activities: {
+      conversationUnreadNotificationActivity,
       ensureConversationTitleActivity,
+      finalizeCancellationActivity,
+      launchAgentMessageAnalyticsActivity,
       logAgentLoopPhaseCompletionActivity,
       logAgentLoopPhaseStartActivity,
       logAgentLoopStepCompletionActivity,
       notifyWorkflowError,
-      finalizeCancellationActivity,
       publishDeferredEventsActivity,
       runModelAndCreateActionsActivity,
       runToolActivity,
@@ -47,9 +51,11 @@ export async function runAgentLoopWorker() {
     // See https://docs.temporal.io/encyclopedia/detecting-activity-failures#throttling
     maxHeartbeatThrottleInterval: "20 seconds",
     interceptors: {
-      activityInbound: [
+      activity: [
         (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger);
+          return {
+            inbound: new ActivityInboundLogInterceptor(ctx, logger),
+          };
         },
       ],
     },

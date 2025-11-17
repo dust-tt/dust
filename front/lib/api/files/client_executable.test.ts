@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
-  CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
-  EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
-  REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
-} from "@app/lib/actions/mcp_internal_actions/servers/content_creation/types";
+  CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+  EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+  REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/types";
 import {
   getEditAndRenameActionsToApply,
   getFileActionsByType,
@@ -14,16 +14,9 @@ import {
 import type { AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
 import { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
 
-// Mock the AgentMCPActionOutputItem.findAll method
-vi.mock("@app/lib/models/assistant/actions/mcp", () => ({
-  AgentMCPActionOutputItem: {
-    findAll: vi.fn(),
-  },
-}));
-
-const mockAgentMCPActionOutputItemFindAll = vi.mocked(
-  AgentMCPActionOutputItem.findAll
-);
+const mockAgentMCPActionOutputItemFindAll = vi
+  .spyOn(AgentMCPActionOutputItem, "findAll")
+  .mockImplementation(() => Promise.resolve([]));
 
 const createEditAction = (
   id: string,
@@ -38,7 +31,7 @@ const createEditAction = (
     agentMessageId,
     createdAt,
     toolConfiguration: {
-      originalName: EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
+      originalName: EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
     },
     augmentedInputs: {
       old_string: oldString,
@@ -58,7 +51,7 @@ const createRevertAction = (
     agentMessageId,
     createdAt,
     toolConfiguration: {
-      originalName: REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
+      originalName: REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
     },
     augmentedInputs: {
       ...(fileId && { file_id: fileId }),
@@ -71,7 +64,7 @@ const createCreateFileAction = (content: string) =>
     agentMessageId: "msg1",
     createdAt: new Date(1000),
     toolConfiguration: {
-      originalName: CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
+      originalName: CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
     },
     augmentedInputs: {
       content,

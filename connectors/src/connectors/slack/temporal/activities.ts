@@ -102,7 +102,9 @@ export async function syncChannel(
     throw new Error(`Connector ${connectorId} not found`);
   }
 
-  const slackClient = await getSlackClient(connectorId);
+  const slackClient = await getSlackClient(connectorId, {
+    rejectOnRateLimit: false,
+  });
 
   const remoteChannel = await withSlackErrorHandling(() =>
     getChannelById(slackClient, connectorId, channelId)
@@ -301,7 +303,9 @@ export async function getMessagesForChannel(
   limit = 100,
   nextCursor?: string
 ): Promise<ConversationsHistoryResponse> {
-  const slackClient = await getSlackClient(connectorId);
+  const slackClient = await getSlackClient(connectorId, {
+    rejectOnRateLimit: false,
+  });
 
   reportSlackUsage({
     connectorId,
@@ -772,7 +776,9 @@ export async function syncThread(
     throw new Error(`Connector ${connectorId} not found`);
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const slackClient = await getSlackClient(connectorId);
+  const slackClient = await getSlackClient(connectorId, {
+    rejectOnRateLimit: false,
+  });
 
   let allMessages: MessageElement[] = [];
 
@@ -1195,6 +1201,14 @@ export async function attemptChannelJoinActivity(
   connectorId: ModelId,
   channelId: string
 ) {
+  logger.info(
+    {
+      connectorId,
+      channelId,
+    },
+    "Attempting to join channel"
+  );
+
   const res = await joinChannel(connectorId, channelId);
 
   if (res.isErr()) {
@@ -1268,7 +1282,7 @@ export async function migrateChannelsFromLegacyBotToNewBotActivity(
 export async function autoReadChannelActivity(
   connectorId: ModelId,
   channelId: string
-): Promise<void> {
+): Promise<boolean> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
@@ -1313,7 +1327,16 @@ export async function autoReadChannelActivity(
   );
 
   if (matchingPatterns.length === 0) {
-    return;
+    logger.info(
+      {
+        connectorId,
+        channelId,
+        channelName,
+        autoReadChannelPatterns,
+      },
+      "Channel does not match any auto-read patterns, skipping."
+    );
+    return false;
   }
 
   const provider = connector.type as "slack" | "slack_bot";
@@ -1340,7 +1363,7 @@ export async function autoReadChannelActivity(
 
   // For slack_bot context, only do the basic channel setup without data source operations
   if (provider === "slack_bot") {
-    return;
+    return true;
   }
 
   // Slack context: perform full data source operations
@@ -1436,4 +1459,6 @@ export async function autoReadChannelActivity(
   if (firstError && firstError.isErr()) {
     throw firstError.error;
   }
+
+  return true;
 }

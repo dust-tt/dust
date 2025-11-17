@@ -1,21 +1,21 @@
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import {
-  _getClaude2GlobalAgent,
   _getClaude3_7GlobalAgent,
   _getClaude3GlobalAgent,
   _getClaude3HaikuGlobalAgent,
   _getClaude3OpusGlobalAgent,
+  _getClaude4_5HaikuGlobalAgent,
+  _getClaude4_5SonnetGlobalAgent,
   _getClaude4SonnetGlobalAgent,
-  _getClaudeInstantGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/anthropic";
 import { _getDeepSeekR1GlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/deepseek";
-import { _getDustGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import {
   _getBrowserSummaryAgent,
-  _getDustDeepGlobalAgent,
+  _getDeepDiveGlobalAgent,
   _getDustTaskGlobalAgent,
   _getPlanningAgent,
-} from "@app/lib/api/assistant/global_agents/configurations/dust/dust-deep";
+} from "@app/lib/api/assistant/global_agents/configurations/dust/deep-dive";
+import { _getDustGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import { _getNoopAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/noop";
 import { _getGeminiProGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/google";
 import {
@@ -52,15 +52,17 @@ import { getDataSourcesAndWorkspaceIdForGlobalAgents } from "@app/lib/api/assist
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
+import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import type {
   AgentConfigurationType,
   AgentFetchVariant,
   GlobalAgentStatus,
 } from "@app/types";
-import { isDevelopment } from "@app/types";
 import {
   GLOBAL_AGENTS_SID,
+  isDevelopment,
   isGlobalAgentId,
   isProviderWhitelisted,
 } from "@app/types";
@@ -75,12 +77,15 @@ function getGlobalAgent({
   webSearchBrowseMCPServerView,
   searchMCPServerView,
   dataSourcesFileSystemMCPServerView,
-  contentCreationMCPServerView,
+  interactiveContentMCPServerView,
   runAgentMCPServerView,
   toolsetsMCPServerView,
   dataWarehousesMCPServerView,
   slideshowMCPServerView,
-  deepResearchMCPServerView,
+  deepDiveMCPServerView,
+  agentMemoryMCPServerView,
+  memories,
+  availableToolsets,
 }: {
   auth: Authenticator;
   sId: string | number;
@@ -91,30 +96,20 @@ function getGlobalAgent({
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
   searchMCPServerView: MCPServerViewResource | null;
   dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
-  contentCreationMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
   runAgentMCPServerView: MCPServerViewResource | null;
   toolsetsMCPServerView: MCPServerViewResource | null;
   dataWarehousesMCPServerView: MCPServerViewResource | null;
   slideshowMCPServerView: MCPServerViewResource | null;
-  deepResearchMCPServerView: MCPServerViewResource | null;
+  deepDiveMCPServerView: MCPServerViewResource | null;
+  agentMemoryMCPServerView: MCPServerViewResource | null;
+  memories: AgentMemoryResource[];
+  availableToolsets: MCPServerViewResource[];
 }): AgentConfigurationType | null {
   const settings =
     globalAgentSettings.find((settings) => settings.agentId === sId) ?? null;
 
   let agentConfiguration: AgentConfigurationType | null = null;
-
-  // We use only default selected global datasources for all global agents except `@dust-deep` and
-  // `@dust-task`
-  // We use all global datasources for `@dust-deep` and `@dust-task`
-  const defaultSelectedPrefetchedDataSources: PrefetchedDataSourcesType | null =
-    !preFetchedDataSources
-      ? null
-      : {
-          dataSourceViews: preFetchedDataSources.dataSourceViews.filter(
-            (dsv) => dsv.dataSource.assistantDefaultSelected
-          ),
-          workspaceId: preFetchedDataSources.workspaceId,
-        };
 
   switch (sId) {
     case GLOBAL_AGENTS_SID.HELPER:
@@ -124,14 +119,14 @@ function getGlobalAgent({
         agentRouterMCPServerView,
         webSearchBrowseMCPServerView,
         searchMCPServerView,
-        contentCreationMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.GPT35_TURBO:
       agentConfiguration = _getGPT35TurboGlobalAgent({
         settings,
         webSearchBrowseMCPServerView,
-        contentCreationMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.GPT4:
@@ -139,7 +134,7 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
-        contentCreationMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.GPT5:
@@ -147,7 +142,7 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
-        contentCreationMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.GPT5_NANO:
@@ -155,7 +150,7 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
-        contentCreationMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.GPT5_MINI:
@@ -163,7 +158,7 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
-        contentCreationMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.GPT5_THINKING:
@@ -171,7 +166,7 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
-        contentCreationMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.O1:
@@ -179,7 +174,7 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
-        contentCreationMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.O1_MINI:
@@ -190,7 +185,7 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
-        contentCreationMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.O3_MINI:
@@ -198,7 +193,7 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
-        contentCreationMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.O3:
@@ -206,12 +201,23 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
-        contentCreationMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
-    case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
-      agentConfiguration = _getClaudeInstantGlobalAgent({
+    case GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET:
+      agentConfiguration = _getClaude4_5SonnetGlobalAgent({
+        auth,
         settings,
+        webSearchBrowseMCPServerView,
+        interactiveContentMCPServerView,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.CLAUDE_4_5_HAIKU:
+      agentConfiguration = _getClaude4_5HaikuGlobalAgent({
+        auth,
+        settings,
+        webSearchBrowseMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_4_SONNET:
@@ -219,7 +225,7 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
-        contentCreationMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_3_OPUS:
@@ -227,7 +233,7 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
-        contentCreationMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_3_SONNET:
@@ -235,14 +241,14 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
-        contentCreationMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU:
       agentConfiguration = _getClaude3HaikuGlobalAgent({
         settings,
         webSearchBrowseMCPServerView,
-        contentCreationMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET:
@@ -250,13 +256,7 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
-        contentCreationMCPServerView,
-      });
-      break;
-    case GLOBAL_AGENTS_SID.CLAUDE_2:
-      agentConfiguration = _getClaude2GlobalAgent({
-        auth,
-        settings,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.MISTRAL_LARGE:
@@ -264,7 +264,7 @@ function getGlobalAgent({
         settings,
         auth,
         webSearchBrowseMCPServerView,
-        contentCreationMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.MISTRAL_MEDIUM:
@@ -272,14 +272,14 @@ function getGlobalAgent({
         settings,
         auth,
         webSearchBrowseMCPServerView,
-        contentCreationMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.MISTRAL_SMALL:
       agentConfiguration = _getMistralSmallGlobalAgent({
         settings,
         webSearchBrowseMCPServerView,
-        contentCreationMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.GEMINI_PRO:
@@ -287,7 +287,7 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
-        contentCreationMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.DEEPSEEK_R1:
@@ -296,56 +296,61 @@ function getGlobalAgent({
     case GLOBAL_AGENTS_SID.SLACK:
       agentConfiguration = _getSlackGlobalAgent(auth, {
         settings,
-        preFetchedDataSources: defaultSelectedPrefetchedDataSources,
+        preFetchedDataSources,
         searchMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.GOOGLE_DRIVE:
       agentConfiguration = _getGoogleDriveGlobalAgent(auth, {
         settings,
-        preFetchedDataSources: defaultSelectedPrefetchedDataSources,
+        preFetchedDataSources,
         searchMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.NOTION:
       agentConfiguration = _getNotionGlobalAgent(auth, {
         settings,
-        preFetchedDataSources: defaultSelectedPrefetchedDataSources,
+        preFetchedDataSources,
         searchMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.GITHUB:
       agentConfiguration = _getGithubGlobalAgent(auth, {
         settings,
-        preFetchedDataSources: defaultSelectedPrefetchedDataSources,
+        preFetchedDataSources,
         searchMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.INTERCOM:
       agentConfiguration = _getIntercomGlobalAgent(auth, {
         settings,
-        preFetchedDataSources: defaultSelectedPrefetchedDataSources,
+        preFetchedDataSources,
         searchMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST:
       agentConfiguration = _getDustGlobalAgent(auth, {
         settings,
-        preFetchedDataSources: defaultSelectedPrefetchedDataSources,
+        preFetchedDataSources,
         agentRouterMCPServerView,
         webSearchBrowseMCPServerView,
-        searchMCPServerView,
-        deepResearchMCPServerView,
-        contentCreationMCPServerView,
+        dataSourcesFileSystemMCPServerView,
+        toolsetsMCPServerView,
+        deepDiveMCPServerView,
+        interactiveContentMCPServerView,
+        dataWarehousesMCPServerView,
+        agentMemoryMCPServerView,
+        memories,
+        availableToolsets,
       });
       break;
-    case GLOBAL_AGENTS_SID.DUST_DEEP:
-      agentConfiguration = _getDustDeepGlobalAgent(auth, {
+    case GLOBAL_AGENTS_SID.DEEP_DIVE:
+      agentConfiguration = _getDeepDiveGlobalAgent(auth, {
         settings,
         preFetchedDataSources,
         webSearchBrowseMCPServerView,
         dataSourcesFileSystemMCPServerView,
-        contentCreationMCPServerView,
+        interactiveContentMCPServerView,
         runAgentMCPServerView,
         dataWarehousesMCPServerView,
         toolsetsMCPServerView,
@@ -382,18 +387,22 @@ function getGlobalAgent({
       return null;
   }
 
+  // TODO(2025-10-20 flav): Remove once SDK JS does not rely on it anymore.
+  if (agentConfiguration) {
+    agentConfiguration.visualizationEnabled = false;
+  }
+
   return agentConfiguration;
 }
 
 // This is the list of global agents that we want to support in past conversations but we don't want
 // to be accessible to users moving forward.
 const RETIRED_GLOBAL_AGENTS_SID = [
-  GLOBAL_AGENTS_SID.CLAUDE_2,
+  GLOBAL_AGENTS_SID.CLAUDE_4_SONNET,
   GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET,
   GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU,
   GLOBAL_AGENTS_SID.CLAUDE_3_OPUS,
   GLOBAL_AGENTS_SID.CLAUDE_3_SONNET,
-  GLOBAL_AGENTS_SID.CLAUDE_INSTANT,
   GLOBAL_AGENTS_SID.GITHUB,
   GLOBAL_AGENTS_SID.GOOGLE_DRIVE,
   GLOBAL_AGENTS_SID.GPT35_TURBO,
@@ -402,8 +411,9 @@ const RETIRED_GLOBAL_AGENTS_SID = [
   GLOBAL_AGENTS_SID.MISTRAL_SMALL,
   GLOBAL_AGENTS_SID.NOTION,
   GLOBAL_AGENTS_SID.O1_MINI,
+  GLOBAL_AGENTS_SID.GPT4,
   GLOBAL_AGENTS_SID.SLACK,
-  // Hidden helper sub-agent, only invoked via run_agent by dust-deep
+  // Hidden helper sub-agent, only invoked via run_agent by deep-dive
   GLOBAL_AGENTS_SID.DUST_TASK,
   GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY,
   GLOBAL_AGENTS_SID.DUST_PLANNING,
@@ -437,12 +447,13 @@ export async function getGlobalAgents(
     webSearchBrowseMCPServerView,
     searchMCPServerView,
     dataSourcesFileSystemMCPServerView,
-    contentCreationMCPServerView,
+    interactiveContentMCPServerView,
     runAgentMCPServerView,
     toolsetsMCPServerView,
     dataWarehousesMCPServerView,
     slideshowMCPServerView,
-    deepResearchMCPServerView,
+    deepDiveMCPServerView,
+    agentMemoryMCPServerView,
   ] = await Promise.all([
     variant === "full"
       ? getDataSourcesAndWorkspaceIdForGlobalAgents(auth)
@@ -478,7 +489,7 @@ export async function getGlobalAgents(
     variant === "full"
       ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
           auth,
-          "content_creation"
+          "interactive_content"
         )
       : null,
     variant === "full"
@@ -508,7 +519,13 @@ export async function getGlobalAgents(
     variant === "full"
       ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
           auth,
-          "deep_research"
+          "deep_dive"
+        )
+      : null,
+    variant === "full"
+      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "agent_memory"
         )
       : null,
   ]);
@@ -543,9 +560,31 @@ export async function getGlobalAgents(
     );
   }
 
-  if (!flags.includes("research_agent")) {
-    agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.DUST_DEEP
+  let memories: AgentMemoryResource[] = [];
+  if (
+    variant === "full" &&
+    agentMemoryMCPServerView &&
+    auth.user() &&
+    agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST)
+  ) {
+    memories = await AgentMemoryResource.findByAgentConfigurationIdAndUser(
+      auth,
+      {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      }
+    );
+  }
+
+  let availableToolsets: MCPServerViewResource[] = [];
+  if (
+    variant === "full" &&
+    toolsetsMCPServerView &&
+    agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST)
+  ) {
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+    availableToolsets = await MCPServerViewResource.listBySpace(
+      auth,
+      globalSpace
     );
   }
 
@@ -562,12 +601,15 @@ export async function getGlobalAgents(
       webSearchBrowseMCPServerView,
       searchMCPServerView,
       dataSourcesFileSystemMCPServerView,
-      contentCreationMCPServerView,
+      interactiveContentMCPServerView,
       runAgentMCPServerView,
       toolsetsMCPServerView,
       dataWarehousesMCPServerView,
       slideshowMCPServerView,
-      deepResearchMCPServerView,
+      deepDiveMCPServerView,
+      agentMemoryMCPServerView,
+      memories,
+      availableToolsets,
     })
   );
 

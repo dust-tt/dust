@@ -91,10 +91,6 @@ export const H3 = createHeadingComponent("h3");
 export const H4 = createHeadingComponent("h4");
 export const H5 = createHeadingComponent("h5");
 
-export const Span = ({ children, className = "" }: ContentProps) => (
-  <span className={classNames(className, "font-sans")}>{children}</span>
-);
-
 const pClasses = {
   xxs: "copy-xs",
   xs: "copy-sm",

@@ -1,7 +1,7 @@
 import type { Transaction } from "sequelize";
 import { Sequelize } from "sequelize";
 
-import { sequelizeConnection } from "@connectors/resources/storage";
+import { connectorsSequelize } from "@connectors/resources/storage";
 
 function getCurrentTransaction(): Transaction | null {
   // We use CLS in tests to isolate tests in separate transactions.
@@ -32,5 +32,5 @@ export async function withTransaction<T>(
     );
   }
 
-  return sequelizeConnection.transaction(fn);
+  return connectorsSequelize.transaction(fn);
 }

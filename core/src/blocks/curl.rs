@@ -70,13 +70,6 @@ impl Curl {
     }
 }
 
-#[derive(Serialize, Deserialize)]
-struct CurlResult {
-    status: u16,
-    body: Option<serde_json::Value>,
-    error: Option<String>,
-}
-
 #[async_trait]
 impl Block for Curl {
     fn block_type(&self) -> BlockType {

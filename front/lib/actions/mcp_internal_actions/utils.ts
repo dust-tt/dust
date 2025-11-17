@@ -5,10 +5,6 @@ import {
   isAgentPauseOutputResourceType,
 } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type {
-  CallToolResult,
-  TextContent,
-} from "@modelcontextprotocol/sdk/types.js";
 
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
@@ -20,7 +16,7 @@ import type {
   ToolEarlyExitEvent,
   ToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
-import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -44,21 +40,6 @@ export function makeInternalMCPServer(
   return new McpServer(serverInfo, {
     instructions,
   });
-}
-
-export function makeMCPToolTextError(text: string): {
-  isError: true;
-  content: [TextContent];
-} {
-  return {
-    isError: true,
-    content: [
-      {
-        type: "text",
-        text,
-      },
-    ],
-  };
 }
 
 export function makePersonalAuthenticationError(
@@ -104,44 +85,6 @@ export function makeMCPToolExit({
     ],
   };
 }
-
-export function makeMCPToolTextSuccess({
-  message,
-  result,
-}: {
-  message: string;
-  result?: string;
-}): CallToolResult {
-  if (!result) {
-    return {
-      isError: false,
-      content: [{ type: "text", text: message }],
-    };
-  }
-  return {
-    isError: false,
-    content: [
-      { type: "text", text: message },
-      { type: "text", text: result },
-    ],
-  };
-}
-
-export const makeMCPToolJSONSuccess = ({
-  message,
-  result,
-}: {
-  message?: string;
-  result: object | string;
-}): CallToolResult => {
-  return {
-    isError: false,
-    content: [
-      ...(message ? [{ type: "text" as const, text: message }] : []),
-      { type: "text" as const, text: JSON.stringify(result, null, 2) },
-    ],
-  };
-};
 
 export async function getExitOrPauseEvents({
   outputItems,
@@ -238,6 +181,6 @@ export function isJITMCPServerView(view: MCPServerViewType): boolean {
   return (
     !isInternalMCPServerOfName(view.server.sId, AGENT_MEMORY_SERVER_NAME) &&
     // Only tools that do not require any configuration can be enabled directly in a conversation.
-    getMCPServerToolsConfigurations(view).configurable !== "required"
+    getMCPServerRequirements(view).noRequirement
   );
 }

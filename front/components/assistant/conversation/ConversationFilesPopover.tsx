@@ -1,7 +1,6 @@
 import {
   Button,
   CitationGrid,
-  DocumentIcon,
   FolderIcon,
   FolderOpenIcon,
   PopoverContent,
@@ -12,17 +11,16 @@ import {
 } from "@dust-tt/sparkle";
 import React from "react";
 
-import {
-  AgentMessageContentCreationGeneratedFiles,
-  DefaultAgentMessageGeneratedFiles,
-} from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
+import { AgentMessageInteractiveContentGeneratedFiles } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
+import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
+import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import { useConversationFiles } from "@app/lib/swr/conversations";
 import type {
   AllSupportedFileContentType,
   LightWorkspaceType,
 } from "@app/types";
-import { clientExecutableContentType } from "@app/types";
+import { frameContentType, isInteractiveContentContentType } from "@app/types";
 
 interface FileGroup {
   contentType: AllSupportedFileContentType | "other";
@@ -33,7 +31,7 @@ interface FileGroup {
 
 // Configuration for content types that get their own groups.
 const GROUPED_CONTENT_TYPES = {
-  [clientExecutableContentType]: "Frame",
+  [frameContentType]: "Frames",
   "application/json": "JSON",
   "text/csv": "Tables",
   "text/plain": "Text",
@@ -95,38 +93,47 @@ function groupFilesByContentType(
 interface FileRendererProps {
   files: ActionGeneratedFileType[];
   owner: LightWorkspaceType;
+  conversationId: string;
 }
 
-function FileRenderer({ files, owner }: FileRendererProps) {
-  return (
-    <CitationGrid variant="grid" className="md:grid-cols-3">
-      {files.map((file) => (
-        <DefaultAgentMessageGeneratedFiles
-          key={file.fileId}
-          document={{
-            href: `/api/w/${owner.sId}/files/${file.fileId}`,
-            icon: <DocumentIcon />,
-            title: file.title,
-          }}
-          index={-1}
+const FileRenderer = ({ files, owner, conversationId }: FileRendererProps) => (
+  <CitationGrid variant="grid" className="md:grid-cols-3">
+    {files.map((file, index) => {
+      const attachmentCitation = markdownCitationToAttachmentCitation({
+        href: `/api/w/${owner.sId}/files/${file.fileId}`,
+        title: file.title,
+        contentType: file.contentType,
+        fileId: file.fileId,
+      });
+
+      return (
+        <AttachmentCitation
+          key={index}
+          attachmentCitation={attachmentCitation}
+          owner={owner}
+          conversationId={conversationId}
         />
-      ))}
-    </CitationGrid>
-  );
-}
+      );
+    })}
+  </CitationGrid>
+);
 
 interface FileGroupSectionProps {
   group: FileGroup;
   onFileClick: () => void;
   owner: LightWorkspaceType;
+  conversationId: string;
 }
 
-function FileGroupSection({
+const FileGroupSection = ({
   group,
   onFileClick,
   owner,
-}: FileGroupSectionProps) {
-  const isContentCreation = group.contentType === clientExecutableContentType;
+  conversationId,
+}: FileGroupSectionProps) => {
+  const isInteractiveContent = isInteractiveContentContentType(
+    group.contentType
+  );
 
   return (
     <div className="space-y-2">
@@ -134,27 +141,28 @@ function FileGroupSection({
         {group.title}
       </div>
       <div>
-        {isContentCreation ? (
-          <AgentMessageContentCreationGeneratedFiles
+        {isInteractiveContent ? (
+          <AgentMessageInteractiveContentGeneratedFiles
             files={group.files}
             variant="grid"
             onClick={onFileClick}
           />
         ) : (
-          <FileRenderer files={group.files} owner={owner} />
+          <FileRenderer
+            files={group.files}
+            owner={owner}
+            conversationId={conversationId}
+          />
         )}
       </div>
     </div>
   );
-}
+};
 
 function EmptyFilesState() {
   return (
-    <div className="flex flex-col gap-2 py-4 text-center">
-      <div className="text-md font-semibold text-primary dark:text-primary-night">
-        Nothing generated yet
-      </div>
-      <div className="text-sm text-muted-foreground">
+    <div className="flex flex-col gap-1">
+      <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
         Files generated in this conversation will appear here.
       </div>
     </div>
@@ -162,14 +170,14 @@ function EmptyFilesState() {
 }
 
 interface ConversationFilesPopoverProps {
-  conversationId: string | null;
+  conversationId: string;
   owner: LightWorkspaceType;
 }
 
-export function ConversationFilesPopover({
+export const ConversationFilesPopover = ({
   conversationId,
   owner,
-}: ConversationFilesPopoverProps) {
+}: ConversationFilesPopoverProps) => {
   const [isOpen, setIsOpen] = React.useState(false);
   const [shouldDisableConversationFiles, setShouldDisableConversationFiles] =
     React.useState(true);
@@ -224,8 +232,8 @@ export function ConversationFilesPopover({
           }
         }}
       >
-        <ScrollArea className="flex flex-col gap-3">
-          <div className="heading-lg text-primary dark:text-primary-night">
+        <ScrollArea className="flex max-h-[80vh] flex-col gap-3">
+          <div className="heading-base mb-2 text-primary dark:text-primary-night">
             Generated Content
           </div>
 
@@ -243,6 +251,7 @@ export function ConversationFilesPopover({
                   group={group}
                   owner={owner}
                   onFileClick={handleFileClick}
+                  conversationId={conversationId}
                 />
               ))}
             </div>
@@ -251,4 +260,4 @@ export function ConversationFilesPopover({
       </PopoverContent>
     </PopoverRoot>
   );
-}
+};

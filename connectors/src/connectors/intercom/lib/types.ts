@@ -52,6 +52,7 @@ export type IntercomConversationType = {
   created_at: number;
   updated_at: number;
   title: string | null;
+  state: string;
   admin_assignee_id: number | null;
   team_assignee_id: number | null; // it says string in the API doc but it's actually a number
   open: boolean;
@@ -69,6 +70,24 @@ export type IntercomConversationType = {
     subject: string;
     body: string;
     author: IntercomAuthor;
+  };
+  statistics?: {
+    last_close_at?: number;
+  };
+  conversation_parts?: {
+    type: "conversation_part.list";
+    conversation_parts: ConversationPartType[];
+    total_count: number;
+  };
+};
+
+export type IntercomFetchConversationsResponseType = {
+  conversations: IntercomConversationType[];
+  pages: {
+    next?: {
+      page: number;
+      starting_after: string;
+    };
   };
 };
 

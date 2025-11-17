@@ -13,12 +13,6 @@ class MyDocument extends Document {
             <script src="https://unpkg.com/react-scan/dist/auto.global.js" />
           )}
           <base href={process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL} />
-          <link rel="preconnect" href="https://fonts.googleapis.com" />
-          <link
-            rel="preconnect"
-            href="https://fonts.gstatic.com"
-            crossOrigin="anonymous"
-          />
           {process.env.NEXT_PUBLIC_ENABLE_BOT_CRAWLING !== "true" && (
             <meta name="robots" content="noindex" />
           )}
@@ -73,6 +67,16 @@ class MyDocument extends Document {
                  sessionReplaySampleRate: 5,
                  defaultPrivacyLevel: 'mask-user-input',
                  beforeSend: function (event) {
+                    // This error is benign, happens often in the wild but has 0 effect on the user.
+                    // See: https://github.com/DataDog/browser-sdk/issues/1616.
+                    if (
+                      event.message &&
+                      event.message.includes(
+                        "ResizeObserver loop completed with undelivered notifications"
+                      )
+                    ) {
+                      return false;
+                    }
                    if (event.type === "action" && event.action && event.action.target && event.action.type === "click") {
                      if (event._dd && event._dd.action && event._dd.action.name_source === "text_content") {
                        var elSelector = event._dd.action.target && event._dd.action.target.selector;

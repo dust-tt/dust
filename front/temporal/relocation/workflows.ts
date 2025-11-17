@@ -204,6 +204,7 @@ export async function workspaceRelocateFrontTableWorkflow({
         tableName,
         sourceRegion,
         destRegion,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         limit: limit || CHUNK_SIZE,
       });
 
@@ -581,15 +582,19 @@ export async function workspaceRelocateCoreDataSourceResourcesWorkflow({
   const resourcesRelocationWorkflows = [
     {
       fn: workspaceRelocateDataSourceDocumentsWorkflow,
-      workflowId: `workspaceRelocateDataSourceDocumentsWorkflow`,
+      workflowId: "workspaceRelocateDataSourceDocumentsWorkflow",
     },
     {
       fn: workspaceRelocateDataSourceFoldersWorkflow,
-      workflowId: `workspaceRelocateDataSourceFoldersWorkflow`,
+      workflowId: "workspaceRelocateDataSourceFoldersWorkflow",
     },
     {
       fn: workspaceRelocateDataSourceTablesWorkflow,
-      workflowId: `workspaceRelocateDataSourceTablesWorkflow`,
+      workflowId: "workspaceRelocateDataSourceTablesWorkflow",
+    },
+    {
+      fn: workspaceRelocateTableStorageWorkflow,
+      workflowId: "workspaceRelocateTableStorageWorkflow",
     },
   ];
 
@@ -652,6 +657,7 @@ export async function workspaceRelocateDataSourceDocumentsWorkflow({
         dataSourceCoreIds,
         sourceRegion,
         workspaceId,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         limit: limit || CORE_API_LIST_NODES_BATCH_SIZE,
       });
 
@@ -764,6 +770,7 @@ export async function workspaceRelocateDataSourceTablesWorkflow({
         dataSourceCoreIds,
         sourceRegion,
         workspaceId,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         limit: limit || CORE_API_LIST_TABLES_BATCH_SIZE,
       });
     if (dataPath) {
@@ -783,6 +790,49 @@ export async function workspaceRelocateDataSourceTablesWorkflow({
     pageCursor = nextPageCursor;
     limit = nextLimit;
   } while (pageCursor);
+}
+
+export async function workspaceRelocateTableStorageWorkflow({
+  dataSourceCoreIds,
+  destIds,
+  destRegion,
+  sourceRegion,
+  workspaceId,
+}: RelocationWorkflowBase & {
+  dataSourceCoreIds: DataSourceCoreIds;
+  destIds: CreateDataSourceProjectResult;
+}) {
+  const sourceRegionActivities = getFrontSourceRegionActivities(sourceRegion);
+  const destinationRegionActivities =
+    getFrontDestinationRegionActivities(destRegion);
+
+  // 1) Relocate tables files.
+  const destTablesBucket =
+    await destinationRegionActivities.getDestinationTablesBucket();
+
+  const tableFilesJobName =
+    await sourceRegionActivities.startTransferCoreTableFiles({
+      dataSourceCoreIds,
+      destBucket: destTablesBucket,
+      destIds,
+      destRegion,
+      sourceRegion,
+      workspaceId,
+    });
+
+  // Wait for the file storage transfer to complete.
+  let isTableFilesTransferComplete = false;
+  while (!isTableFilesTransferComplete) {
+    isTableFilesTransferComplete =
+      await sourceRegionActivities.isFileStorageTransferComplete({
+        jobName: tableFilesJobName,
+      });
+
+    if (!isTableFilesTransferComplete) {
+      // Sleep for 1 minute before checking again.
+      await sleep("1m");
+    }
+  }
 }
 
 export async function workspaceRelocateAppsWorkflow({

@@ -12,10 +12,10 @@ import {
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
-import type { PokeItemBase } from "@app/types";
-import type { ConnectorType } from "@app/types";
-import { ConnectorsAPI } from "@app/types";
+import type { ConnectorType, PokeItemBase } from "@app/types";
+import { asDisplayName, ConnectorsAPI } from "@app/types";
 
 async function searchPokeWorkspaces(
   searchTerm: string
@@ -25,20 +25,22 @@ async function searchPokeWorkspaces(
     return [
       {
         id: workspaceInfos.id,
-        name: `Workspace (${workspaceInfos.name})`,
+        name: workspaceInfos.name,
         link: `${config.getClientFacingUrl()}/poke/${workspaceInfos.sId}`,
+        type: "Workspace",
       },
     ];
   }
 
-  const workspaceModelId = parseInt(searchTerm);
+  const workspaceModelId = parseInt(searchTerm, 10);
   if (!isNaN(workspaceModelId)) {
     const workspaces = await unsafeGetWorkspacesByModelId([workspaceModelId]);
     if (workspaces.length > 0) {
       return workspaces.map((w) => ({
         id: w.id,
-        name: `Workspace (${w.name})`,
+        name: w.name,
         link: `${config.getClientFacingUrl()}/poke/${w.sId}`,
+        type: "Workspace",
       }));
     }
   }
@@ -50,8 +52,9 @@ async function searchPokeWorkspaces(
       return [
         {
           id: workspaceByOrgId.id,
-          name: `Workspace (${workspaceByOrgId.name})`,
+          name: workspaceByOrgId.name,
           link: `${config.getClientFacingUrl()}/poke/${workspaceByOrgId.sId}`,
+          type: "Workspace",
         },
       ];
     }
@@ -60,10 +63,10 @@ async function searchPokeWorkspaces(
   return [];
 }
 
-async function searchPokeConnectors(
+async function searchConnectorModelId(
   searchTerm: string
-): Promise<PokeItemBase[]> {
-  const connectorModelId = parseInt(searchTerm);
+): Promise<PokeItemBase[] | null> {
+  const connectorModelId = parseInt(searchTerm, 10);
   if (!isNaN(connectorModelId)) {
     const connectorsAPI = new ConnectorsAPI(
       config.getConnectorsAPIConfig(),
@@ -76,13 +79,41 @@ async function searchPokeConnectors(
         connectionId: null,
       };
 
+      const workspace = await WorkspaceResource.fetchById(
+        connector.workspaceId
+      );
+      if (!workspace) {
+        return null;
+      }
+
       return [
         {
-          id: parseInt(connector.id),
-          name: "Connector",
+          id: parseInt(connector.id, 10),
+          name: `${workspace.name}'s ${asDisplayName(connector.type)}`,
           link: `${config.getClientFacingUrl()}/poke/${connector.workspaceId}/data_sources/${connector.dataSourceId}`,
+          type: "Connector",
         },
       ];
+    }
+  }
+  return null;
+}
+
+async function searchPokeConnectors(
+  searchTerm: string
+): Promise<PokeItemBase[]> {
+  const searchResult = await searchConnectorModelId(searchTerm);
+  if (searchResult) {
+    return searchResult;
+  }
+
+  // Support embedded sId in formats like "XXX-YYY-sID" or "XXX-YYY-sID-OTHERSTUFFWITHNUMBERS".
+  // useful for logs that are in datadog
+  const hyphenParts = searchTerm.split("-");
+  if (hyphenParts.length >= 3) {
+    const searchResult = await searchConnectorModelId(hyphenParts[2]);
+    if (searchResult) {
+      return searchResult;
     }
   }
 
@@ -99,14 +130,12 @@ export async function searchPokeResources(
   }
 
   // Fallback to handle resources without the cool sId format.
-  const resources = (
+  return (
     await Promise.all([
       searchPokeWorkspaces(searchTerm),
       searchPokeConnectors(searchTerm),
     ])
   ).flat();
-
-  return resources;
 }
 
 async function searchPokeResourcesBySId(

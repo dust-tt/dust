@@ -1,11 +1,16 @@
 import type { PublicFrameResponseBodyType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { isSessionWithUserFromWorkspace } from "@app/lib/api/auth_wrappers";
+import { getAuthForSharedEndpointWorkspaceMembersOnly } from "@app/lib/api/auth_wrappers";
+import config from "@app/lib/api/config";
+import { generateVizAccessToken } from "@app/lib/api/viz/access_tokens";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { apiError } from "@app/logger/withlogging";
+import { getConversationRoute } from "@app/lib/utils/router";
+import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { frameContentType } from "@app/types";
 
 /**
  * @ignoreswagger
@@ -51,7 +56,6 @@ async function handler(
   const workspace = await WorkspaceResource.fetchByModelId(
     result.file.workspaceId
   );
-
   if (!workspace) {
     return apiError(req, res, {
       status_code: 404,
@@ -62,15 +66,15 @@ async function handler(
     });
   }
 
-  const { file, content: fileContent, shareScope } = result;
+  const { file, shareScope } = result;
 
-  // Only allow conversation Content Creation files.
-  if (!file.isContentCreation) {
+  // Only allow conversation Frame files.
+  if (!file.isInteractiveContent || file.contentType !== frameContentType) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Only Frame files can be shared publicly.",
+        message: "Only Frame can be shared publicly.",
       },
     });
   }
@@ -86,14 +90,29 @@ async function handler(
     });
   }
 
+  // If file is shared publicly, ensure workspace allows it.
+  if (
+    shareScope === "public" &&
+    !workspace.canShareInteractiveContentPublicly
+  ) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "file_not_found",
+        message: "File not found.",
+      },
+    });
+  }
+
+  const auth = await getAuthForSharedEndpointWorkspaceMembersOnly(
+    req,
+    res,
+    workspace.sId
+  );
+
   // For workspace sharing, check authentication.
   if (shareScope === "workspace") {
-    const isWorkspaceUser = await isSessionWithUserFromWorkspace(
-      req,
-      res,
-      workspace.sId
-    );
-    if (!isWorkspaceUser) {
+    if (!auth) {
       return apiError(req, res, {
         status_code: 404,
         api_error: {
@@ -104,10 +123,44 @@ async function handler(
     }
   }
 
+  const conversationId = file.useCaseMetadata?.conversationId;
+  const user = auth && auth.user();
+
+  let isParticipant = false;
+
+  if (user && conversationId) {
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+
+    if (user && conversationResource) {
+      isParticipant =
+        await conversationResource.isConversationParticipant(user);
+    }
+  }
+
+  // Generate access token for viz rendering.
+  const accessToken = generateVizAccessToken({
+    fileToken: token,
+    userId: user?.sId,
+    shareScope,
+    workspaceId: workspace.sId,
+  });
+
   res.status(200).json({
-    content: fileContent,
+    accessToken,
     file: file.toJSON(),
+    // Only return the conversation URL if the user is a participant of the conversation.
+    conversationUrl: isParticipant
+      ? getConversationRoute(
+          workspace.sId,
+          conversationId,
+          undefined,
+          config.getClientFacingUrl()
+        )
+      : null,
   });
 }
 
-export default handler;
+export default withLogging(handler);

@@ -52,6 +52,7 @@ export { default as ActionFlightTakeoffIcon } from "./FlightTakeoff";
 export { default as ActionFolderIcon } from "./Folder";
 export { default as ActionFolderAddIcon } from "./FolderAdd";
 export { default as ActionFolderOpenIcon } from "./FolderOpen";
+export { default as ActionFrameIcon } from "./Frame";
 export { default as ActionFullscreenIcon } from "./Fullscreen";
 export { default as ActionFullscreenExitIcon } from "./FullscreenExit";
 export { default as ActionGamepadIcon } from "./Gamepad";

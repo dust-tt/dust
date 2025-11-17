@@ -45,6 +45,12 @@ export type ContentNodeAttachmentType = BaseConversationAttachmentType & {
   nodeId: string;
   nodeDataSourceViewId: string;
   nodeType: ContentNodeType;
+  sourceUrl: string | null;
+};
+
+export type LargePasteType = {
+  fileId: string;
+  title: string;
 };
 
 export type ConversationAttachmentType =
@@ -131,6 +137,7 @@ export function getAttachmentFromContentNodeContentFragment(
     contentFragmentId: cf.contentFragmentId,
     nodeId: cf.nodeId,
     nodeType: cf.nodeType,
+    sourceUrl: cf.sourceUrl,
   };
 }
 
@@ -210,6 +217,16 @@ export function getAttachmentFromToolOutput({
   };
 }
 
+export function renderLargePasteXml({
+  largePaste,
+  content,
+}: {
+  largePaste: LargePasteType;
+  content: string;
+}): string {
+  return `<pastedContent name="${largePaste.title}">${content}</pastedContent>`;
+}
+
 export function renderAttachmentXml({
   attachment,
   content = null,
@@ -226,6 +243,10 @@ export function renderAttachmentXml({
     `isQueryable="${attachment.isQueryable}"`,
     `isSearchable="${attachment.isSearchable}"`,
   ];
+
+  if (isContentNodeAttachmentType(attachment) && attachment.sourceUrl) {
+    params.push(`sourceUrl="${attachment.sourceUrl}"`);
+  }
 
   let tag = `<attachment ${params.join(" ")}`;
 

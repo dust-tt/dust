@@ -12,6 +12,7 @@ import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentMessageType,
   ConversationType,
+  UserMessageOrigin,
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import {
@@ -26,6 +27,12 @@ export type AgentLoopArgs = {
   conversationTitle: string | null;
   userMessageId: string;
   userMessageVersion: number;
+  userMessageOrigin?: UserMessageOrigin | null;
+};
+
+export type AgentMessageRef = {
+  agentMessageId: string;
+  conversationId: string;
 };
 
 export type AgentLoopExecutionData = {
@@ -55,9 +62,7 @@ export async function getAgentLoopData(
   } = agentLoopArgs;
   const conversationRes = await getConversation(auth, conversationId);
   if (conversationRes.isErr()) {
-    return new Err(
-      new Error(`Conversation not found: ${conversationRes.error.message}`)
-    );
+    return conversationRes;
   }
 
   const conversation = conversationRes.value;

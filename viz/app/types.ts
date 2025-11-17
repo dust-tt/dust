@@ -18,7 +18,7 @@ interface DownloadFileRequestParams {
 interface setErrorMessageParams {
   errorMessage: string;
   fileId: string;
-  isContentCreation: boolean;
+  isInteractiveContent: boolean;
 }
 
 // Define a mapped type to extend the base with specific parameters.

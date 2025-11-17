@@ -1,7 +1,7 @@
-import { sequelizeConnection } from "@connectors/resources/storage";
+import { connectorsSequelize } from "@connectors/resources/storage";
 
 async function main() {
-  await sequelizeConnection.query(`
+  await connectorsSequelize.query(`
         DROP INDEX IF EXISTS "uq_notion_block_id_conn_id_page_id";
         DROP INDEX IF EXISTS "notion_connector_page_cache_entries_notion_page_id_connector_id";
         DROP INDEX IF EXISTS "uq_notion_to_check_notion_id_conn_id";

@@ -18,7 +18,7 @@ export function AssistantFavorites({ user }: AssistantFavoritesProps) {
   const { setSelectedAssistant } = useContext(InputBarContext);
   const handleAssistantClick = useCallback(
     (agentId: string) => {
-      const scrollContainer = document.getElementById("assistant-input-header");
+      const scrollContainer = document.getElementById("agent-input-header");
       if (!scrollContainer) {
         console.error("Scroll container not found");
         return;

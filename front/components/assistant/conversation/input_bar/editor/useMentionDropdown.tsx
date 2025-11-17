@@ -1,13 +1,12 @@
 import { PluginKey } from "@tiptap/pm/state";
 import type { Editor } from "@tiptap/react";
 import type { SuggestionKeyDownProps } from "@tiptap/suggestion";
+import type { MutableRefObject } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import type {
-  EditorSuggestion,
-  EditorSuggestions,
-} from "@app/components/assistant/conversation/input_bar/editor/suggestion";
-import { filterSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
+import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
+import { filterMentionSuggestions } from "@app/lib/mentions/editor/suggestion";
+import type { RichMention } from "@app/types";
 
 interface CommandFunction {
   (props: { id: string; label: string }): void;
@@ -28,7 +27,7 @@ export type SuggestionProps = {
 export interface MentionDropdownState {
   isOpen: boolean;
   query: string;
-  suggestions: EditorSuggestion[];
+  suggestions: EditorSuggestions["suggestions"];
   selectedIndex: number;
   triggerRect: DOMRect | null;
   isLoading: boolean;
@@ -38,7 +37,7 @@ export const mentionPluginKey = new PluginKey("mention-suggestion");
 
 export const useMentionDropdown = (
   editorSuggestions: EditorSuggestions,
-  editorRef: React.MutableRefObject<Editor | null>
+  editorRef: MutableRefObject<Editor | null>
 ) => {
   const [state, setState] = useState<MentionDropdownState>({
     isOpen: false,
@@ -55,7 +54,7 @@ export const useMentionDropdown = (
   // Store the current suggestion range for text replacement
   const rangeRef = useRef<Range | null>(null);
 
-  // Use refs to store current state for the onKeyDown handler to avoid stale closure
+  // Use refs to store the current state for the onKeyDown handler to avoid stale closure
   const currentStateRef = useRef(state);
   currentStateRef.current = state;
 
@@ -68,7 +67,7 @@ export const useMentionDropdown = (
   };
 
   const selectSuggestion = useCallback(
-    (suggestion: EditorSuggestion) => {
+    (suggestion: RichMention) => {
       const editor = editorRef.current;
 
       if (editor && rangeRef.current) {
@@ -80,9 +79,11 @@ export const useMentionDropdown = (
           .insertContent({
             type: "mention",
             attrs: {
+              type: suggestion.type,
               id: suggestion.id,
               label: suggestion.label,
               description: suggestion.description,
+              pictureUrl: suggestion.pictureUrl,
             },
           })
           .insertContent(" ") // Add space after mention
@@ -145,7 +146,7 @@ export const useMentionDropdown = (
 
   // Single source of truth: filter suggestions whenever data or query changes
   useEffect(() => {
-    const filteredSuggestions = filterSuggestions(
+    const filteredSuggestions = filterMentionSuggestions(
       state.query,
       editorSuggestions.suggestions,
       editorSuggestions.fallbackSuggestions

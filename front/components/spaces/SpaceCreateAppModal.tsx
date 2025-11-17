@@ -36,45 +36,33 @@ export const SpaceCreateAppModal = ({
   const router = useRouter();
   const sendNotification = useSendNotification();
 
-  const [name, setName] = useState<string | null>(null);
-  const [description, setDescription] = useState<string | null>(null);
+  const [name, setName] = useState<string>("");
+  const [description, setDescription] = useState<string>("");
 
-  const [errors, setErrors] = useState<{
-    name: string | null;
-    description: string | null;
-  }>({
-    name: null,
-    description: null,
-  });
+  const [nameError, setNameError] = useState<string | null>(null);
 
   const { apps, mutateApps } = useApps({ owner, space });
 
+  const validateName = (value: string): string | null => {
+    if (value.trim() === "") {
+      return null; // No error when empty
+    }
+    if (!value.match(APP_NAME_REGEXP)) {
+      return "Name must be only contain letters, numbers, and the characters `_-` and be less than 64 characters.";
+    }
+    if (value.length > 64) {
+      return "Name must be less or equal to 64 characters.";
+    }
+    if (apps.find((app) => app.name === value)) {
+      return "An App with this name already exists.";
+    }
+    return null;
+  };
+
   const onSave = async () => {
-    let nameError: string | null = null;
-    let descriptionError: string | null = null;
-
-    if (!name || name.trim() === "") {
-      nameError = "Name is required.";
-    } else if (!name.match(APP_NAME_REGEXP)) {
-      nameError =
-        "Name must be only contain letters, numbers, and the characters `_-` and be less than 64 characters.";
-    } else if (name.length > 64) {
-      nameError = "Name must be less or equal to 64 characters.";
-    } else if (apps.find((app) => app.name === name)) {
-      nameError = "An App with this name already exists.";
-    }
-
-    if (!description || description.trim() === "") {
-      descriptionError =
-        "A description is required for your app to be selectable in the Agent Builder.";
-    }
-
-    setErrors({
-      name: nameError,
-      description: descriptionError,
-    });
-
-    if (name && description && !nameError && !descriptionError) {
+    // Validation is already done in onChange handlers and Save button disabled logic
+    // Only proceed if all validations pass (button wouldn't be enabled otherwise)
+    if (name.trim() && description.trim() && !nameError) {
       const res = await fetch(`/api/w/${owner.sId}/spaces/${space.sId}/apps`, {
         method: "POST",
         headers: {
@@ -132,12 +120,11 @@ export const SpaceCreateAppModal = ({
                 name="name"
                 value={name}
                 onChange={(e) => {
-                  setName(e.target.value);
-                  if (errors.name) {
-                    setErrors({ ...errors, name: null });
-                  }
+                  const value = e.target.value;
+                  setName(value);
+                  setNameError(validateName(value));
                 }}
-                message={errors.name}
+                message={nameError}
                 messageStatus="error"
               />
               <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
@@ -151,15 +138,10 @@ export const SpaceCreateAppModal = ({
               <TextArea
                 placeholder="This description guides agents in understanding how to use
                 your app effectively and determines its relevance in responding to user inquiries."
-                value={description ?? ""}
+                value={description}
                 onChange={(e) => {
                   setDescription(e.target.value);
-                  if (errors.description) {
-                    setErrors({ ...errors, description: null });
-                  }
                 }}
-                error={errors.description}
-                showErrorLabel
               />
             </div>
           </div>
@@ -172,7 +154,10 @@ export const SpaceCreateAppModal = ({
           rightButtonProps={{
             label: "Save",
             onClick: onSave,
-            disabled: !(name !== null || description !== null),
+            disabled:
+              name.trim() === "" ||
+              description.trim() === "" ||
+              nameError !== null,
           }}
         />
       </SheetContent>

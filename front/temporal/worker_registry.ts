@@ -1,11 +1,12 @@
+import { runAgentTriggerWorker } from "@app/lib/triggers/temporal/common/worker";
+import { runAgentTriggerWebhookWorker } from "@app/lib/triggers/temporal/webhook/worker";
 import { runPokeWorker } from "@app/poke/temporal/worker";
 import { runAgentLoopWorker } from "@app/temporal/agent_loop/worker";
-import { runAgentScheduleWorker } from "@app/temporal/agent_schedule/worker";
+import { runAnalyticsWorker } from "@app/temporal/analytics_queue/worker";
 import { runDataRetentionWorker } from "@app/temporal/data_retention/worker";
 import { runHardDeleteWorker } from "@app/temporal/hard_delete/worker";
 import { runLabsTranscriptsWorker } from "@app/temporal/labs/transcripts/worker";
 import { runMentionsCountWorker } from "@app/temporal/mentions_count_queue/worker";
-import { runPermissionsWorker } from "@app/temporal/permissions_queue/worker";
 import { runProductionChecksWorker } from "@app/temporal/production_checks/worker";
 import { runRelocationWorker } from "@app/temporal/relocation/worker";
 import { runRemoteToolsSyncWorker } from "@app/temporal/remote_tools/worker";
@@ -22,12 +23,13 @@ import { runWorkOSEventsWorker } from "@app/temporal/workos_events_queue/worker"
 export type WorkerName =
   | "agent_loop"
   | "agent_schedule"
+  | "agent_trigger_webhook"
+  | "analytics_queue"
   | "data_retention"
   | "document_tracker"
   | "hard_delete"
   | "labs"
   | "mentions_count"
-  | "permissions_queue"
   | "poke"
   | "production_checks"
   | "relocation"
@@ -41,13 +43,14 @@ export type WorkerName =
 
 export const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   agent_loop: runAgentLoopWorker,
-  agent_schedule: runAgentScheduleWorker,
+  agent_schedule: runAgentTriggerWorker,
+  agent_trigger_webhook: runAgentTriggerWebhookWorker,
+  analytics_queue: runAnalyticsWorker,
   data_retention: runDataRetentionWorker,
   document_tracker: runTrackerWorker,
   hard_delete: runHardDeleteWorker,
   labs: runLabsTranscriptsWorker,
   mentions_count: runMentionsCountWorker,
-  permissions_queue: runPermissionsWorker,
   poke: runPokeWorker,
   production_checks: runProductionChecksWorker,
   relocation: runRelocationWorker,

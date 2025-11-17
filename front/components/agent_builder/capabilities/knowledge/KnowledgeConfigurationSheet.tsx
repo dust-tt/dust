@@ -17,7 +17,6 @@ import {
   useWatch,
 } from "react-hook-form";
 
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { DataSourceBuilderSelector } from "@app/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector";
 import { transformTreeToSelectionConfigurations } from "@app/components/agent_builder/capabilities/knowledge/transformations";
 import {
@@ -61,9 +60,8 @@ import {
   ADVANCED_SEARCH_SWITCH,
   SEARCH_SERVER_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { TemplateActionPreset } from "@app/types";
 
 import { KnowledgeFooter } from "./KnowledgeFooter";
@@ -155,7 +153,10 @@ function KnowledgeConfigurationSheetForm({
 
   const handleSave = (formData: CapabilityFormData) => {
     const { description, configuration, mcpServerView } = formData;
-    const toolsConfigurations = getMCPServerToolsConfigurations(mcpServerView);
+    const {
+      requiresDataSourceConfiguration,
+      requiresDataWarehouseConfiguration,
+    } = getMCPServerRequirements(mcpServerView);
 
     // Transform the tree structure to selection configurations
     const dataSourceConfigurations = transformTreeToSelectionConfigurations(
@@ -164,9 +165,7 @@ function KnowledgeConfigurationSheetForm({
     );
 
     const datasource =
-      toolsConfigurations.dataSourceConfiguration ??
-      toolsConfigurations.dataWarehouseConfiguration ??
-      false
+      requiresDataSourceConfiguration || requiresDataWarehouseConfiguration
         ? { dataSourceConfigurations: dataSourceConfigurations }
         : { tablesConfigurations: dataSourceConfigurations };
 
@@ -254,12 +253,10 @@ function KnowledgeConfigurationSheetContent({
   getAgentInstructions,
   isEditing,
 }: KnowledgeConfigurationSheetContentProps) {
-  const { owner } = useAgentBuilderContext();
   const { currentPageId, setSheetPageId } = useKnowledgePageContext();
   const { setValue, getValues, setFocus } =
     useFormContext<CapabilityFormData>();
   const [isAdvancedSettingsOpen, setAdvancedSettingsOpen] = useState(false);
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
   const mcpServerView = useWatch<CapabilityFormData, "mcpServerView">({
     name: "mcpServerView",
@@ -283,8 +280,8 @@ function KnowledgeConfigurationSheetContent({
     return null;
   }, [mcpServerView]);
 
-  const toolsConfigurations = useMemo(() => {
-    return getMCPServerToolsConfigurations(mcpServerView);
+  const requirements = useMemo(() => {
+    return getMCPServerRequirements(mcpServerView);
   }, [mcpServerView]);
 
   // Focus NameSection input when navigating to CONFIGURATION page
@@ -361,10 +358,10 @@ function KnowledgeConfigurationSheetContent({
   const pages: MultiPageSheetPage[] = [
     {
       id: CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION,
-      title: toolsConfigurations.tableConfiguration
+      title: requirements.requiresTableConfiguration
         ? "Select Tables"
         : "Select Data Sources",
-      description: toolsConfigurations.tableConfiguration
+      description: requirements.requiresTableConfiguration
         ? "Choose the tables to query for your processing method"
         : "Choose the data sources to include in your knowledge base",
       icon: undefined,
@@ -393,11 +390,11 @@ function KnowledgeConfigurationSheetContent({
             triggerValidationOnChange={true}
           />
 
-          {toolsConfigurations.mayRequireTimeFrameConfiguration && (
+          {requirements.mayRequireTimeFrameConfiguration && (
             <TimeFrameSection actionType="extract" />
           )}
 
-          {toolsConfigurations.mayRequireJsonSchemaConfiguration && (
+          {requirements.mayRequireJsonSchemaConfiguration && (
             <JsonSchemaSection getAgentInstructions={getAgentInstructions} />
           )}
 
@@ -410,8 +407,7 @@ function KnowledgeConfigurationSheetContent({
 
           {/* Advanced Settings collapsible section */}
           {mcpServerView?.serverType === "internal" &&
-            mcpServerView.server.name === SEARCH_SERVER_NAME &&
-            hasFeature("advanced_search") && (
+            mcpServerView.server.name === SEARCH_SERVER_NAME && (
               <Collapsible
                 open={isAdvancedSettingsOpen}
                 onOpenChange={setAdvancedSettingsOpen}
@@ -423,8 +419,8 @@ function KnowledgeConfigurationSheetContent({
                 </CollapsibleTrigger>
                 <CollapsibleContent className="m-1">
                   <CustomCheckboxSection
-                    title="Advanced Search Mode"
-                    description="Enable advanced search capabilities with enhanced discovery and filtering options for more precise results."
+                    title="Enable exploratory search mode"
+                    description="Allow the agent to navigate the selected Data Sources like a filesystem (list folders, browse files, explore hierarchies). Best for complex tasks with large datasets where thoroughness matters more than speed."
                     targetMCPServerName={SEARCH_SERVER_NAME}
                     selectedMCPServerView={mcpServerView ?? undefined}
                     configurationKey={ADVANCED_SEARCH_SWITCH}

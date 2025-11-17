@@ -3,12 +3,12 @@ import { makeScript } from "scripts/helpers";
 import { QUEUE_NAME } from "@connectors/connectors/notion/temporal/config";
 import { upsertPageWorkflow } from "@connectors/connectors/notion/temporal/workflows/admins";
 import { getTemporalClient } from "@connectors/lib/temporal";
-import { sequelizeConnection } from "@connectors/resources/storage";
+import { connectorsSequelize } from "@connectors/resources/storage";
 
 makeScript({}, async (execute, logger) => {
   const client = await getTemporalClient();
 
-  const [rows] = await sequelizeConnection.query(`
+  const [rows] = await connectorsSequelize.query(`
       SELECT "connectorId", "notionPageId" as "pageId" 
       FROM notion_pages 
       WHERE "lastUpsertedTs" is null 

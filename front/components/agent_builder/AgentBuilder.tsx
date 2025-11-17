@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import set from "lodash/set";
 import { useRouter } from "next/router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -32,7 +32,6 @@ import {
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type { AssistantBuilderMCPConfigurationWithId } from "@app/components/assistant_builder/types";
-import { getDataVisualizationActionConfiguration } from "@app/components/assistant_builder/types";
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
@@ -45,18 +44,12 @@ import { useEditors } from "@app/lib/swr/editors";
 import { emptyArray } from "@app/lib/swr/swr";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { LightAgentConfigurationType } from "@app/types";
-import { isBuilder, removeNulls } from "@app/types";
-import { normalizeError } from "@app/types";
+import { isBuilder, normalizeError, removeNulls } from "@app/types";
 
 function processActionsFromStorage(
-  actions: AssistantBuilderMCPConfigurationWithId[],
-  visualizationEnabled: boolean
+  actions: AssistantBuilderMCPConfigurationWithId[]
 ): AgentBuilderAction[] {
-  const visualizationAction = visualizationEnabled
-    ? [getDataVisualizationActionConfiguration()]
-    : [];
   return [
-    ...visualizationAction,
     ...actions.map((action) => {
       if (action.type === "MCP") {
         return {
@@ -139,11 +132,8 @@ export default function AgentBuilder({
   }, [supportedDataSourceViews]);
 
   const processedActions = useMemo(() => {
-    return processActionsFromStorage(
-      actions ?? emptyArray(),
-      agentConfiguration?.visualizationEnabled ?? false
-    );
-  }, [actions, agentConfiguration?.visualizationEnabled]);
+    return processActionsFromStorage(actions ?? emptyArray());
+  }, [actions]);
 
   const agentSlackChannels = useMemo(() => {
     if (!agentConfiguration || !slackChannelsLinkedWithAgent.length) {
@@ -161,36 +151,54 @@ export default function AgentBuilder({
       }));
   }, [agentConfiguration, slackChannelsLinkedWithAgent]);
 
-  const formValues = useMemo((): AgentBuilderFormData => {
-    let baseValues: AgentBuilderFormData;
-
+  // This defaultValues should be computed only with data from backend.
+  // Any other values we are fetching on client side should be updated inside
+  // the useEffect below.
+  const defaultValues = useMemo(() => {
     if (duplicateAgentId && agentConfiguration) {
       // Handle agent duplication case
-      baseValues = transformDuplicateAgentToFormData(agentConfiguration, user);
-    } else if (agentConfiguration) {
-      baseValues = transformAgentConfigurationToFormData(agentConfiguration);
-    } else if (assistantTemplate) {
-      baseValues = transformTemplateToFormData(assistantTemplate, user);
-    } else {
-      baseValues = getDefaultAgentFormData(user);
+      return transformDuplicateAgentToFormData(agentConfiguration, user);
     }
 
-    return {
-      ...baseValues,
+    if (agentConfiguration) {
+      return transformAgentConfigurationToFormData(agentConfiguration);
+    }
+
+    if (assistantTemplate) {
+      return transformTemplateToFormData(assistantTemplate, user, owner);
+    }
+
+    return getDefaultAgentFormData({
+      owner,
+      user,
+    });
+  }, [agentConfiguration, duplicateAgentId, assistantTemplate, user, owner]);
+
+  const form = useForm<AgentBuilderFormData>({
+    resolver: zodResolver(agentBuilderFormSchema),
+    defaultValues,
+    resetOptions: {
+      keepDirtyValues: true,
+      keepErrors: true,
+    },
+  });
+
+  useEffect(() => {
+    const currentValues = form.getValues();
+
+    form.reset({
+      ...currentValues,
       actions: processedActions,
       triggersToCreate: duplicateAgentId
         ? triggers.map((trigger) => ({
             ...trigger,
             editor: user.id,
           }))
-        : emptyArray(),
-      triggersToUpdate: duplicateAgentId
-        ? emptyArray()
-        : triggers ?? emptyArray(),
+        : [],
+      triggersToUpdate: duplicateAgentId ? [] : triggers,
       triggersToDelete: [],
-
       agentSettings: {
-        ...baseValues.agentSettings,
+        ...currentValues.agentSettings,
         slackProvider,
         editors: duplicateAgentId
           ? [user]
@@ -200,27 +208,20 @@ export default function AgentBuilder({
             : [user],
         slackChannels: agentSlackChannels,
       },
-    };
+    });
   }, [
-    agentConfiguration,
-    assistantTemplate,
-    user,
-    duplicateAgentId,
+    triggers,
+    isTriggersLoading,
+    isActionsLoading,
     processedActions,
+    form,
+    duplicateAgentId,
+    user,
     slackProvider,
     editors,
-    triggers,
+    agentConfiguration,
     agentSlackChannels,
   ]);
-
-  const form = useForm<AgentBuilderFormData>({
-    resolver: zodResolver(agentBuilderFormSchema),
-    values: formValues,
-    resetOptions: {
-      keepDirtyValues: true,
-      keepErrors: true,
-    },
-  });
 
   const { showDialog, ...dialogProps } = useAwaitableDialog({
     owner,
@@ -377,7 +378,7 @@ export default function AgentBuilder({
 
   return (
     <AgentBuilderFormContext.Provider value={form}>
-      <FormProvider form={form}>
+      <FormProvider form={form} asForm={false}>
         <PersonalConnectionRequiredDialog
           owner={owner}
           mcpServerViewsWithPersonalConnections={

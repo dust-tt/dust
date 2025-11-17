@@ -7,15 +7,15 @@ import {
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
-import { useFormContext } from "react-hook-form";
+import { useFormContext, useWatch } from "react-hook-form";
 
 import type { WebhookSourceFormValues } from "@app/components/triggers/forms/webhookSourceFormSchema";
 import type { LightWorkspaceType } from "@app/types";
 import type { SpaceType } from "@app/types/space";
-import type { WebhookSourceWithViews } from "@app/types/triggers/webhooks";
+import type { WebhookSourceWithViewsType } from "@app/types/triggers/webhooks";
 
 type WebhookSourceDetailsSharingProps = {
-  webhookSource: WebhookSourceWithViews;
+  webhookSource: WebhookSourceWithViewsType;
   owner: LightWorkspaceType;
   spaces: SpaceType[];
 };
@@ -52,7 +52,10 @@ export function WebhookSourceDetailsSharing({
 }: WebhookSourceDetailsSharingProps) {
   const [filter, setFilter] = useState("");
   const form = useFormContext<WebhookSourceFormValues>();
-  const sharingSettings = form.watch("sharingSettings") || {};
+  const sharingSettings = useWatch({
+    control: form.control,
+    name: "sharingSettings",
+  });
 
   const globalSpace = spaces.find((space) => space.kind === "global");
   const availableSpaces = spaces.filter((s) => s.kind === "regular");
@@ -105,7 +108,7 @@ export function WebhookSourceDetailsSharing({
     <div className="flex flex-col gap-2">
       <div className="mb-2 flex w-full flex-col gap-y-2 pt-2">
         <div className="flex w-full items-center justify-between overflow-visible">
-          <Page.SectionHeader title="Available to all Spaces" />
+          <Page.SectionHeader title="Available to all workspace members" />
           <SliderToggle
             selected={!isRestricted}
             onClick={(e) => {

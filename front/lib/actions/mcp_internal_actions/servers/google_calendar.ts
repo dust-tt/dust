@@ -1,16 +1,20 @@
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import assert from "assert";
+import { randomUUID } from "crypto";
 import { google } from "googleapis";
 import { z } from "zod";
 
-import {
-  makeInternalMCPServer,
-  makeMCPToolJSONSuccess,
-  makeMCPToolTextError,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { MCPError } from "@app/lib/actions/mcp_errors";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { Authenticator } from "@app/lib/auth";
+import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+
+// We use a single tool name for monitoring given the high granularity (can be revisited).
+const GOOGLE_CALENDAR_TOOL_NAME = "google_calendar";
 
 interface GoogleCalendarEventDateTime {
   date?: string;
@@ -78,6 +82,34 @@ interface GoogleCalendarEvent {
     title?: string;
   };
   eventType?: string;
+  conferenceData?: {
+    createRequest?: {
+      requestId?: string;
+      conferenceSolutionKey?: {
+        type?: string;
+      };
+    };
+    entryPoints?: Array<{
+      entryPointType?: string;
+      uri?: string;
+      label?: string;
+      pin?: string;
+      accessCode?: string;
+      meetingCode?: string;
+      passcode?: string;
+      password?: string;
+    }>;
+    conferenceSolution?: {
+      key?: {
+        type?: string;
+      };
+      name?: string;
+      iconUri?: string;
+    };
+    conferenceId?: string;
+    signature?: string;
+    notes?: string;
+  };
 }
 
 interface EnrichedGoogleCalendarEvent
@@ -86,7 +118,10 @@ interface EnrichedGoogleCalendarEvent
   end?: EnrichedGoogleCalendarEventDateTime;
 }
 
-const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
+function createServer(
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+): McpServer {
   const server = makeInternalMCPServer("google_calendar");
 
   async function getCalendarClient(authInfo?: AuthInfo) {
@@ -113,28 +148,37 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
         .optional()
         .describe("Maximum number of calendars to return (max 250)."),
     },
-    async ({ pageToken, maxResults }, { authInfo }) => {
-      const calendar = await getCalendarClient(authInfo);
-      assert(
-        calendar,
-        "Calendar client could not be created - it should never happen"
-      );
-
-      try {
-        const res = await calendar.calendarList.list({
-          pageToken,
-          maxResults: maxResults ? Math.min(maxResults, 250) : undefined,
-        });
-        return makeMCPToolJSONSuccess({
-          message: "Calendars listed successfully",
-          result: res.data,
-        });
-      } catch (err) {
-        return makeMCPToolTextError(
-          normalizeError(err).message || "Failed to list calendars"
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: GOOGLE_CALENDAR_TOOL_NAME,
+        agentLoopContext,
+      },
+      async ({ pageToken, maxResults }, { authInfo }) => {
+        const calendar = await getCalendarClient(authInfo);
+        assert(
+          calendar,
+          "Calendar client could not be created - it should never happen"
         );
+
+        try {
+          const res = await calendar.calendarList.list({
+            pageToken,
+            maxResults: maxResults ? Math.min(maxResults, 250) : undefined,
+          });
+          return new Ok([
+            { type: "text" as const, text: "Calendars listed successfully" },
+            { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+          ]);
+        } catch (err) {
+          return new Err(
+            new MCPError(
+              normalizeError(err).message || "Failed to list calendars"
+            )
+          );
+        }
       }
-    }
+    )
   );
 
   server.tool(
@@ -163,66 +207,59 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
         .describe("Maximum number of events to return (max 2500)."),
       pageToken: z.string().optional().describe("Page token for pagination."),
     },
-    async (
-      { calendarId = "primary", q, timeMin, timeMax, maxResults, pageToken },
-      { authInfo }
-    ) => {
-      const calendar = await getCalendarClient(authInfo);
-      assert(
-        calendar,
-        "Calendar client could not be created - it should never happen"
-      );
-
-      try {
-        const res = await calendar.events.list({
-          calendarId,
-          q,
-          timeMin,
-          timeMax,
-          maxResults: maxResults ? Math.min(maxResults, 2500) : undefined,
-          pageToken,
-          singleEvents: true,
-        });
-
-        const userTimezone = getUserTimezone();
-
-        // Return only essential event fields for context efficiency
-        const enrichedData = {
-          ...res.data,
-          items: res.data.items
-            ? res.data.items.map((event) => {
-                const enriched = isGoogleCalendarEvent(event)
-                  ? enrichEventWithDayOfWeek(event, userTimezone)
-                  : event;
-                return {
-                  id: enriched.id,
-                  summary: enriched.summary,
-                  description: enriched.description,
-                  location: enriched.location,
-                  start: enriched.start,
-                  end: enriched.end,
-                  attendees: enriched.attendees?.map((a) => ({
-                    email: a.email,
-                    displayName: a.displayName,
-                    responseStatus: a.responseStatus,
-                  })),
-                  htmlLink: enriched.htmlLink,
-                  status: enriched.status,
-                };
-              })
-            : undefined,
-        };
-
-        return makeMCPToolJSONSuccess({
-          message: "Events listed successfully",
-          result: enrichedData,
-        });
-      } catch (err) {
-        return makeMCPToolTextError(
-          normalizeError(err).message || "Failed to list/search events"
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: GOOGLE_CALENDAR_TOOL_NAME,
+        agentLoopContext,
+      },
+      async (
+        { calendarId = "primary", q, timeMin, timeMax, maxResults, pageToken },
+        { authInfo }
+      ) => {
+        const calendar = await getCalendarClient(authInfo);
+        assert(
+          calendar,
+          "Calendar client could not be created - it should never happen"
         );
+
+        try {
+          const res = await calendar.events.list({
+            calendarId,
+            q,
+            timeMin,
+            timeMax,
+            maxResults: maxResults ? Math.min(maxResults, 2500) : undefined,
+            pageToken,
+            singleEvents: true,
+          });
+
+          const userTimezone = getUserTimezone();
+
+          // Enrich events with day of week and format as text
+          const enrichedEvents: EnrichedGoogleCalendarEvent[] = res.data.items
+            ? res.data.items
+                .filter(isGoogleCalendarEvent)
+                .map((event) => enrichEventWithDayOfWeek(event, userTimezone))
+            : [];
+
+          const eventCount = enrichedEvents.length;
+          const summaryText = `Found ${eventCount} event${eventCount !== 1 ? "s" : ""}${res.data.nextPageToken ? " (more available)" : ""}`;
+          const formattedText = formatEventsListAsText(
+            enrichedEvents,
+            summaryText
+          );
+
+          return new Ok([{ type: "text" as const, text: formattedText }]);
+        } catch (err) {
+          return new Err(
+            new MCPError(
+              normalizeError(err).message || "Failed to list/search events"
+            )
+          );
+        }
       }
-    }
+    )
   );
 
   server.tool(
@@ -235,34 +272,46 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
         .describe("The calendar ID (default: 'primary')."),
       eventId: z.string().describe("The ID of the event to retrieve."),
     },
-    async ({ calendarId = "primary", eventId }, { authInfo }) => {
-      const calendar = await getCalendarClient(authInfo);
-      assert(
-        calendar,
-        "Calendar client could not be created - it should never happen"
-      );
-
-      try {
-        const res = await calendar.events.get({
-          calendarId,
-          eventId,
-        });
-
-        const userTimezone = getUserTimezone();
-        const enrichedEvent = isGoogleCalendarEvent(res.data)
-          ? enrichEventWithDayOfWeek(res.data, userTimezone)
-          : res.data;
-
-        return makeMCPToolJSONSuccess({
-          message: "Event fetched successfully",
-          result: enrichedEvent,
-        });
-      } catch (err) {
-        return makeMCPToolTextError(
-          normalizeError(err).message || "Failed to get event"
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: GOOGLE_CALENDAR_TOOL_NAME,
+        agentLoopContext,
+      },
+      async ({ calendarId = "primary", eventId }, { authInfo }) => {
+        const calendar = await getCalendarClient(authInfo);
+        assert(
+          calendar,
+          "Calendar client could not be created - it should never happen"
         );
+
+        try {
+          const res = await calendar.events.get({
+            calendarId,
+            eventId,
+          });
+
+          const userTimezone = getUserTimezone();
+          const enrichedEvent = isGoogleCalendarEvent(res.data)
+            ? enrichEventWithDayOfWeek(res.data, userTimezone)
+            : null;
+
+          if (!enrichedEvent) {
+            return new Err(
+              new MCPError("Invalid event data returned from API")
+            );
+          }
+
+          const formattedText = formatEventAsText(enrichedEvent);
+
+          return new Ok([{ type: "text" as const, text: formattedText }]);
+        } catch (err) {
+          return new Err(
+            new MCPError(normalizeError(err).message || "Failed to get event")
+          );
+        }
       }
-    }
+    )
   );
 
   server.tool(
@@ -287,70 +336,116 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
         .describe("List of attendee email addresses."),
       location: z.string().optional().describe("Location of the event."),
       colorId: z.string().optional().describe("Color ID for the event."),
+      createConference: z
+        .boolean()
+        .default(true)
+        .describe(
+          "Whether to create a conference (Google Meet) for the event. Defaults to true."
+        ),
     },
-    async (
+    withToolLogging(
+      auth,
       {
-        calendarId = "primary",
-        summary,
-        description,
-        start,
-        end,
-        attendees,
-        location,
-        colorId,
+        toolNameForMonitoring: GOOGLE_CALENDAR_TOOL_NAME,
+        agentLoopContext,
       },
-      { authInfo }
-    ) => {
-      const calendar = await getCalendarClient(authInfo);
-      assert(
-        calendar,
-        "Calendar client could not be created - it should never happen"
-      );
-
-      try {
-        const event: {
-          summary: string;
-          description?: string;
-          start: { dateTime: string };
-          end: { dateTime: string };
-          attendees?: { email: string }[];
-          location?: string;
-          colorId?: string;
-        } = {
+      async (
+        {
+          calendarId = "primary",
           summary,
           description,
           start,
           end,
-        };
-        if (attendees) {
-          event.attendees = attendees.map((email: string) => ({ email }));
-        }
-        if (location) {
-          event.location = location;
-        }
-        if (colorId) {
-          event.colorId = colorId;
-        }
-        const res = await calendar.events.insert({
-          calendarId,
-          requestBody: event,
-        });
-
-        const userTimezone = getUserTimezone();
-        const enrichedEvent = isGoogleCalendarEvent(res.data)
-          ? enrichEventWithDayOfWeek(res.data, userTimezone)
-          : res.data;
-
-        return makeMCPToolJSONSuccess({
-          message: "Event created successfully",
-          result: enrichedEvent,
-        });
-      } catch (err) {
-        return makeMCPToolTextError(
-          normalizeError(err).message || "Failed to create event"
+          attendees,
+          location,
+          colorId,
+          createConference = true,
+        },
+        { authInfo }
+      ) => {
+        const calendar = await getCalendarClient(authInfo);
+        assert(
+          calendar,
+          "Calendar client could not be created - it should never happen"
         );
+
+        try {
+          const event: {
+            summary: string;
+            description?: string;
+            start: { dateTime: string };
+            end: { dateTime: string };
+            attendees?: { email: string }[];
+            location?: string;
+            colorId?: string;
+            conferenceData?: {
+              createRequest: {
+                requestId: string;
+                conferenceSolutionKey: {
+                  type: string;
+                };
+              };
+            };
+          } = {
+            summary,
+            description,
+            start,
+            end,
+          };
+          if (attendees) {
+            event.attendees = attendees.map((email: string) => ({ email }));
+          }
+          if (location) {
+            event.location = location;
+          }
+          if (colorId) {
+            event.colorId = colorId;
+          }
+          if (createConference) {
+            const requestId = `conference-${randomUUID()}`;
+            event.conferenceData = {
+              createRequest: {
+                requestId,
+                conferenceSolutionKey: {
+                  type: "hangoutsMeet",
+                },
+              },
+            };
+          }
+          const res = await calendar.events.insert({
+            calendarId,
+            requestBody: event,
+            conferenceDataVersion: 1,
+          });
+
+          const userTimezone = getUserTimezone();
+          const enrichedEvent = isGoogleCalendarEvent(res.data)
+            ? enrichEventWithDayOfWeek(res.data, userTimezone)
+            : null;
+
+          if (!enrichedEvent) {
+            return new Err(
+              new MCPError("Invalid event data returned from API")
+            );
+          }
+
+          const formattedText = formatEventAsText(enrichedEvent);
+
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `Event created successfully\n\n${formattedText}`,
+            },
+          ]);
+        } catch (err) {
+          return new Err(
+            new MCPError(
+              normalizeError(err).message || "Failed to create event"
+            )
+          );
+        }
       }
-    }
+    )
   );
 
   server.tool(
@@ -378,79 +473,127 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
         .describe("List of attendee email addresses."),
       location: z.string().optional().describe("Location of the event."),
       colorId: z.string().optional().describe("Color ID for the event."),
+      createConference: z
+        .boolean()
+        .optional()
+        .describe(
+          "Whether to create a conference (Google Meet) for the event. If not provided, existing conference settings are preserved."
+        ),
     },
-    async (
+    withToolLogging(
+      auth,
       {
-        calendarId = "primary",
-        eventId,
-        summary,
-        description,
-        start,
-        end,
-        attendees,
-        location,
-        colorId,
+        toolNameForMonitoring: GOOGLE_CALENDAR_TOOL_NAME,
+        agentLoopContext,
       },
-      { authInfo }
-    ) => {
-      const calendar = await getCalendarClient(authInfo);
-      assert(
-        calendar,
-        "Calendar client could not be created - it should never happen"
-      );
-
-      try {
-        const event: {
-          summary?: string;
-          description?: string;
-          start?: { dateTime: string };
-          end?: { dateTime: string };
-          attendees?: { email: string }[];
-          location?: string;
-          colorId?: string;
-        } = {};
-        if (summary) {
-          event.summary = summary;
-        }
-        if (description) {
-          event.description = description;
-        }
-        if (start) {
-          event.start = start;
-        }
-        if (end) {
-          event.end = end;
-        }
-        if (attendees) {
-          event.attendees = attendees.map((email: string) => ({ email }));
-        }
-        if (location) {
-          event.location = location;
-        }
-        if (colorId) {
-          event.colorId = colorId;
-        }
-        const res = await calendar.events.patch({
-          calendarId,
+      async (
+        {
+          calendarId = "primary",
           eventId,
-          requestBody: event,
-        });
-
-        const userTimezone = getUserTimezone();
-        const enrichedEvent = isGoogleCalendarEvent(res.data)
-          ? enrichEventWithDayOfWeek(res.data, userTimezone)
-          : res.data;
-
-        return makeMCPToolJSONSuccess({
-          message: "Event updated successfully",
-          result: enrichedEvent,
-        });
-      } catch (err) {
-        return makeMCPToolTextError(
-          normalizeError(err).message || "Failed to update event"
+          summary,
+          description,
+          start,
+          end,
+          attendees,
+          location,
+          colorId,
+          createConference,
+        },
+        { authInfo }
+      ) => {
+        const calendar = await getCalendarClient(authInfo);
+        assert(
+          calendar,
+          "Calendar client could not be created - it should never happen"
         );
+
+        try {
+          const event: {
+            summary?: string;
+            description?: string;
+            start?: { dateTime: string };
+            end?: { dateTime: string };
+            attendees?: { email: string }[];
+            location?: string;
+            colorId?: string;
+            conferenceData?: {
+              createRequest: {
+                requestId: string;
+                conferenceSolutionKey: {
+                  type: string;
+                };
+              };
+            };
+          } = {};
+          if (summary) {
+            event.summary = summary;
+          }
+          if (description) {
+            event.description = description;
+          }
+          if (start) {
+            event.start = start;
+          }
+          if (end) {
+            event.end = end;
+          }
+          if (attendees) {
+            event.attendees = attendees.map((email: string) => ({ email }));
+          }
+          if (location) {
+            event.location = location;
+          }
+          if (colorId) {
+            event.colorId = colorId;
+          }
+          if (createConference !== undefined) {
+            if (createConference) {
+              const requestId = `conference-${randomUUID()}`;
+              event.conferenceData = {
+                createRequest: {
+                  requestId,
+                  conferenceSolutionKey: {
+                    type: "hangoutsMeet",
+                  },
+                },
+              };
+            }
+          }
+          const res = await calendar.events.patch({
+            calendarId,
+            eventId,
+            requestBody: event,
+            conferenceDataVersion: 1,
+          });
+
+          const userTimezone = getUserTimezone();
+          const enrichedEvent = isGoogleCalendarEvent(res.data)
+            ? enrichEventWithDayOfWeek(res.data, userTimezone)
+            : null;
+
+          if (!enrichedEvent) {
+            return new Err(
+              new MCPError("Invalid event data returned from API")
+            );
+          }
+
+          const formattedText = formatEventAsText(enrichedEvent);
+
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `Event updated successfully\n\n${formattedText}`,
+            },
+          ]);
+        } catch (err) {
+          return new Err(
+            new MCPError(
+              normalizeError(err).message || "Failed to update event"
+            )
+          );
+        }
       }
-    }
+    )
   );
 
   server.tool(
@@ -463,28 +606,36 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
         .describe("The calendar ID (default: 'primary')."),
       eventId: z.string().describe("The ID of the event to delete."),
     },
-    async ({ calendarId = "primary", eventId }, { authInfo }) => {
-      const calendar = await getCalendarClient(authInfo);
-      assert(
-        calendar,
-        "Calendar client could not be created - it should never happen"
-      );
-
-      try {
-        await calendar.events.delete({
-          calendarId,
-          eventId,
-        });
-        return makeMCPToolJSONSuccess({
-          message: "Event deleted successfully",
-          result: "",
-        });
-      } catch (err) {
-        return makeMCPToolTextError(
-          normalizeError(err).message || "Failed to delete event"
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: GOOGLE_CALENDAR_TOOL_NAME,
+        agentLoopContext,
+      },
+      async ({ calendarId = "primary", eventId }, { authInfo }) => {
+        const calendar = await getCalendarClient(authInfo);
+        assert(
+          calendar,
+          "Calendar client could not be created - it should never happen"
         );
+
+        try {
+          await calendar.events.delete({
+            calendarId,
+            eventId,
+          });
+          return new Ok([
+            { type: "text" as const, text: "Event deleted successfully" },
+          ]);
+        } catch (err) {
+          return new Err(
+            new MCPError(
+              normalizeError(err).message || "Failed to delete event"
+            )
+          );
+        }
       }
-    }
+    )
   );
 
   server.tool(
@@ -507,42 +658,139 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
           "Time zone used in the response. Optional. The default is UTC."
         ),
     },
-    async ({ email, startTime, endTime, timeZone }, { authInfo }) => {
-      const calendar = await getCalendarClient(authInfo);
-      assert(
-        calendar,
-        "Calendar client could not be created - it should never happen"
-      );
-
-      try {
-        const res = await calendar.freebusy.query({
-          requestBody: {
-            timeMin: startTime,
-            timeMax: endTime,
-            timeZone,
-            items: [{ id: email }],
-          },
-        });
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        const busySlots = res.data.calendars?.[email]?.busy || [];
-        const available = busySlots.length === 0;
-        return makeMCPToolJSONSuccess({
-          result: {
-            available,
-            busySlots: busySlots.map((slot) => ({
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-              start: slot.start || "",
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-              end: slot.end || "",
-            })),
-          },
-        });
-      } catch (err) {
-        return makeMCPToolTextError(
-          normalizeError(err).message || "Failed to check calendar availability"
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: GOOGLE_CALENDAR_TOOL_NAME,
+        agentLoopContext,
+      },
+      async ({ email, startTime, endTime, timeZone }, { authInfo }) => {
+        const calendar = await getCalendarClient(authInfo);
+        assert(
+          calendar,
+          "Calendar client could not be created - it should never happen"
         );
+
+        try {
+          const res = await calendar.freebusy.query({
+            requestBody: {
+              timeMin: startTime,
+              timeMax: endTime,
+              timeZone,
+              items: [{ id: email }],
+            },
+          });
+
+          const calendarData = res.data.calendars?.[email];
+          for (const error of calendarData?.errors ?? []) {
+            if (error.reason === "notFound") {
+              return new Err(
+                new MCPError(
+                  `Calendar not found for email: ${email}. The calendar may not exist or you may not have access to it.`
+                )
+              );
+            }
+            return new Err(
+              new MCPError(
+                `Error checking calendar availability for ${email}: ${error.reason}`
+              )
+            );
+          }
+
+          const busySlots = calendarData?.busy ?? [];
+          const available = busySlots.length === 0;
+          return new Ok([
+            {
+              type: "text" as const,
+              text: JSON.stringify(
+                {
+                  available,
+                  busySlots: busySlots.map((slot) => ({
+                    start: slot.start ?? "",
+
+                    end: slot.end ?? "",
+                  })),
+                },
+                null,
+                2
+              ),
+            },
+          ]);
+        } catch (err) {
+          return new Err(
+            new MCPError(
+              normalizeError(err).message ||
+                "Failed to check calendar availability"
+            )
+          );
+        }
       }
-    }
+    )
+  );
+
+  server.tool(
+    "get_user_timezones",
+    "Get timezone information for multiple users by attempting to access their calendars. Only works for calendars shared with you.",
+    {
+      emails: z
+        .array(z.string())
+        .max(50, "Maximum 50 email addresses allowed")
+        .describe("Array of email addresses to get timezone information for"),
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: GOOGLE_CALENDAR_TOOL_NAME,
+        agentLoopContext,
+      },
+      async ({ emails }, { authInfo }) => {
+        const calendar = await getCalendarClient(authInfo);
+        assert(
+          calendar,
+          "Calendar client could not be created - it should never happen"
+        );
+
+        const results = [];
+
+        for (const email of emails) {
+          try {
+            const res = await calendar.calendars.get({ calendarId: email });
+            results.push({
+              email,
+              timeZone: res.data.timeZone,
+              calendarAccessible: true,
+            });
+          } catch (err) {
+            results.push({
+              email,
+              timeZone: null,
+              calendarAccessible: false,
+              error: normalizeError(err).message,
+            });
+          }
+        }
+
+        return new Ok([
+          {
+            type: "text" as const,
+            text: "User timezone information retrieved",
+          },
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                attendees: results,
+                accessibleCount: results.filter((r) => r.calendarAccessible)
+                  .length,
+                totalCount: results.length,
+              },
+              null,
+              2
+            ),
+          },
+        ]);
+      }
+    )
   );
 
   function getUserTimezone(): string | null {
@@ -577,7 +825,7 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
   }
 
   return server;
-};
+}
 
 // Type guard to safely convert googleapis event to our interface
 function isGoogleCalendarEvent(event: any): event is GoogleCalendarEvent {
@@ -635,6 +883,133 @@ function enrichEventWithDayOfWeek(
   }
 
   return enrichedEvent;
+}
+
+function formatEventAsText(event: EnrichedGoogleCalendarEvent): string {
+  const lines: string[] = [];
+
+  if (event.summary) {
+    lines.push(`Title: ${event.summary}`);
+  }
+
+  if (event.start) {
+    const start = event.start;
+    if (start.eventDayOfWeek) {
+      if (start.isAllDay) {
+        lines.push(`Date: ${start.eventDayOfWeek}, ${start.date}`);
+      } else {
+        if (start.dateTime) {
+          const startDate = new Date(start.dateTime);
+          const timeStr = startDate.toLocaleTimeString("en-US", {
+            hour: "numeric",
+            minute: "2-digit",
+            timeZone: start.timeZone ?? undefined,
+          });
+          const dateStr = startDate.toLocaleDateString("en-US", {
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+            timeZone: start.timeZone ?? undefined,
+          });
+          lines.push(
+            `Start: ${start.eventDayOfWeek}, ${dateStr} at ${timeStr}${start.timeZone ? ` (${start.timeZone})` : ""}`
+          );
+        }
+      }
+    } else {
+      lines.push(
+        `Start: ${start.dateTime ?? start.date}${start.timeZone ? ` (${start.timeZone})` : ""}`
+      );
+    }
+  }
+
+  if (event.end) {
+    const end = event.end;
+    if (end.eventDayOfWeek) {
+      if (end.isAllDay) {
+        lines.push(`End: ${end.eventDayOfWeek}, ${end.date}`);
+      } else {
+        if (end.dateTime) {
+          const endDate = new Date(end.dateTime);
+          const timeStr = endDate.toLocaleTimeString("en-US", {
+            hour: "numeric",
+            minute: "2-digit",
+            timeZone: end.timeZone ?? undefined,
+          });
+          const dateStr = endDate.toLocaleDateString("en-US", {
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+            timeZone: end.timeZone ?? undefined,
+          });
+          lines.push(
+            `End: ${end.eventDayOfWeek}, ${dateStr} at ${timeStr}${end.timeZone ? ` (${end.timeZone})` : ""}`
+          );
+        }
+      }
+    } else {
+      lines.push(
+        `End: ${end.dateTime ?? end.date}${end.timeZone ? ` (${end.timeZone})` : ""}`
+      );
+    }
+  }
+
+  if (event.location) {
+    lines.push(`Location: ${event.location}`);
+  }
+
+  if (event.description) {
+    lines.push(`Description: ${event.description}`);
+  }
+
+  if (event.attendees && event.attendees.length > 0) {
+    const attendeeList = event.attendees
+      .map((a) => {
+        const name = a.displayName ?? a.email ?? "Unknown";
+        const status = a.responseStatus ? ` (${a.responseStatus})` : "";
+        return `${name}${status}`;
+      })
+      .join(", ");
+    lines.push(`Attendees: ${attendeeList}`);
+  }
+
+  if (event.status) {
+    lines.push(`Status: ${event.status}`);
+  }
+
+  if (event.htmlLink) {
+    lines.push(`Link: ${event.htmlLink}`);
+  }
+
+  if (event.id) {
+    lines.push(`Event ID: ${event.id}`);
+  }
+
+  return lines.join("\n");
+}
+
+function formatEventsListAsText(
+  events: EnrichedGoogleCalendarEvent[],
+  summary?: string
+): string {
+  if (events.length === 0) {
+    return summary ? `${summary}\n\nNo events found.` : "No events found.";
+  }
+
+  const lines: string[] = [];
+  if (summary) {
+    lines.push(summary);
+    lines.push("");
+  }
+
+  events.forEach((event, index) => {
+    if (index > 0) {
+      lines.push("\n---\n");
+    }
+    lines.push(formatEventAsText(event));
+  });
+
+  return lines.join("\n");
 }
 
 export default createServer;

@@ -12,16 +12,19 @@ import { DustError } from "@app/lib/error";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { TriggerSubscriberModel } from "@app/lib/models/assistant/triggers/trigger_subscriber";
 import { TriggerModel } from "@app/lib/models/assistant/triggers/triggers";
+import { WebhookRequestModel } from "@app/lib/models/assistant/triggers/webhook_request";
+import { WebhookRequestTriggerModel } from "@app/lib/models/assistant/triggers/webhook_request_trigger";
+import { WebhookSourcesViewModel } from "@app/lib/models/assistant/triggers/webhook_sources_view";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
-  createOrUpdateAgentScheduleWorkflow,
-  deleteAgentScheduleWorkflow,
-} from "@app/temporal/agent_schedule/client";
+  createOrUpdateAgentSchedule,
+  deleteTriggerSchedule,
+} from "@app/lib/triggers/temporal/schedule/client";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { ModelId, Result } from "@app/types";
 import {
   assertNever,
@@ -61,9 +64,12 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     });
 
     const resource = new this(TriggerModel, trigger.get());
-    const r = await resource.upsertTemporalWorkflow(auth);
-    if (r.isErr()) {
-      return r;
+
+    if (resource.enabled) {
+      const r = await resource.upsertTemporalWorkflow(auth);
+      if (r.isErr()) {
+        return r;
+      }
     }
 
     return new Ok(resource);
@@ -188,7 +194,13 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }
 
     await trigger.update(blob, transaction);
-    const r = await trigger.upsertTemporalWorkflow(auth);
+
+    let r = null;
+    if (trigger.enabled) {
+      r = await trigger.upsertTemporalWorkflow(auth);
+    } else {
+      r = await trigger.removeTemporalWorkflow(auth);
+    }
     if (r.isErr()) {
       return r;
     }
@@ -208,6 +220,40 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }
 
     try {
+      if (this.kind === "webhook" && this.webhookSourceViewId) {
+        const webhookSourceView = await WebhookSourcesViewModel.findOne({
+          where: {
+            id: this.webhookSourceViewId,
+            workspaceId: owner.id,
+          },
+        });
+
+        if (!webhookSourceView) {
+          return new Err(new Error("Webhook source view not found"));
+        }
+
+        const webhookRequests = await WebhookRequestModel.findAll({
+          where: {
+            workspaceId: owner.id,
+            webhookSourceId: webhookSourceView.webhookSourceId,
+          },
+        });
+
+        await WebhookRequestTriggerModel.destroy({
+          where: {
+            workspaceId: owner.id,
+            webhookRequestId: {
+              [Op.in]: webhookRequests.map((w) => w.id),
+            },
+          },
+        });
+        await WebhookRequestModel.destroy({
+          where: {
+            id: { [Op.in]: webhookRequests.map((w) => w.id) },
+          },
+        });
+      }
+
       await TriggerSubscriberModel.destroy({
         where: {
           workspaceId: auth.getNonNullableWorkspace().id,
@@ -253,6 +299,38 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       return new Err(
         new Error(
           `Failed to delete ${r.filter((res) => res.isErr()).length} some triggers`
+        )
+      );
+    }
+    return new Ok(undefined);
+  }
+
+  static async deleteAllForUser(
+    auth: Authenticator
+  ): Promise<Result<undefined, Error>> {
+    const triggers = await this.listByUserEditor(auth);
+    if (triggers.length === 0) {
+      return new Ok(undefined);
+    }
+
+    const r = await concurrentExecutor(
+      triggers,
+      async (trigger) => {
+        try {
+          return await trigger.delete(auth);
+        } catch (error) {
+          return new Err(normalizeError(error));
+        }
+      },
+      {
+        concurrency: 10,
+      }
+    );
+
+    if (r.find((res) => res.isErr())) {
+      return new Err(
+        new Error(
+          `Failed to delete ${r.filter((res) => res.isErr()).length} triggers`
         )
       );
     }
@@ -395,7 +473,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   async upsertTemporalWorkflow(auth: Authenticator) {
     switch (this.kind) {
       case "schedule":
-        return createOrUpdateAgentScheduleWorkflow({
+        return createOrUpdateAgentSchedule({
           auth,
           trigger: this,
         });
@@ -411,7 +489,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   ): Promise<Result<void, Error>> {
     switch (this.kind) {
       case "schedule":
-        return deleteAgentScheduleWorkflow({
+        return deleteTriggerSchedule({
           workspaceId: auth.getNonNullableWorkspace().sId,
           trigger: this,
         });
@@ -473,15 +551,13 @@ export class TriggerResource extends BaseResource<TriggerModel> {
 
   async addToSubscribers(
     auth: Authenticator
-  ): Promise<
-    Result<
-      undefined,
-      DustError<"unauthorized" | "internal_error" | "internal_error">
-    >
-  > {
+  ): Promise<Result<undefined, DustError<"unauthorized" | "internal_error">>> {
     if (auth.getNonNullableWorkspace().id !== this.workspaceId) {
       return new Err(
-        new DustError("unauthorized", "User do not have access to this trigger")
+        new DustError(
+          "unauthorized",
+          "User does not have access to this trigger"
+        )
       );
     }
 
@@ -491,17 +567,26 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       );
     }
 
-    try {
-      await TriggerSubscriberModel.create({
+    const existing = await TriggerSubscriberModel.findOne({
+      where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         triggerId: this.id,
         userId: auth.getNonNullableUser().id,
-      });
-
-      return new Ok(undefined);
-    } catch (error) {
-      return new Err(new DustError("internal_error", errorToString(error)));
+      },
+    });
+    if (existing) {
+      return new Err(
+        new DustError("internal_error", "User is already a subscriber")
+      );
     }
+
+    await TriggerSubscriberModel.create({
+      workspaceId: auth.getNonNullableWorkspace().id,
+      triggerId: this.id,
+      userId: auth.getNonNullableUser().id,
+    });
+
+    return new Ok(undefined);
   }
 
   async removeFromSubscribers(
@@ -509,7 +594,10 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   ): Promise<Result<undefined, DustError<"unauthorized" | "internal_error">>> {
     if (auth.getNonNullableWorkspace().id !== this.workspaceId) {
       return new Err(
-        new DustError("unauthorized", "User do not have access to this trigger")
+        new DustError(
+          "unauthorized",
+          "User does not have access to this trigger"
+        )
       );
     }
 
@@ -535,7 +623,10 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   > {
     if (auth.getNonNullableWorkspace().id !== this.workspaceId) {
       return new Err(
-        new DustError("unauthorized", "User do not have access to this trigger")
+        new DustError(
+          "unauthorized",
+          "User does not have access to this trigger"
+        )
       );
     }
 
@@ -606,6 +697,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       editor: this.editor,
       customPrompt: this.customPrompt,
       enabled: this.enabled,
+      naturalLanguageDescription: this.naturalLanguageDescription,
       createdAt: this.createdAt.getTime(),
     };
 
@@ -614,6 +706,8 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         ...base,
         kind: "webhook" as const,
         configuration: this.configuration as WebhookConfig,
+        executionPerDayLimitOverride: this.executionPerDayLimitOverride,
+        executionMode: this.executionMode,
         webhookSourceViewSId: this.webhookSourceViewId
           ? makeSId("webhook_sources_view", {
               id: this.webhookSourceViewId,

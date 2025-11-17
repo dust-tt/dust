@@ -30,10 +30,12 @@ import {
   webhookIntercomAPIHandler,
   webhookIntercomUninstallAPIHandler,
 } from "@connectors/api/webhooks/webhook_intercom";
+import { webhookNotionAPIHandler } from "@connectors/api/webhooks/webhook_notion";
 import { webhookSlackAPIHandler } from "@connectors/api/webhooks/webhook_slack";
 import { webhookSlackBotAPIHandler } from "@connectors/api/webhooks/webhook_slack_bot";
 import { webhookSlackBotInteractionsAPIHandler } from "@connectors/api/webhooks/webhook_slack_bot_interaction";
 import { webhookSlackInteractionsAPIHandler } from "@connectors/api/webhooks/webhook_slack_interaction";
+import { webhookTeamsAPIHandler } from "@connectors/api/webhooks/webhook_teams";
 import logger from "@connectors/logger/logger";
 import { authMiddleware } from "@connectors/middleware/auth";
 import { rateLimiter, setupGlobalErrorHandler } from "@connectors/types";
@@ -78,7 +80,7 @@ export function startServer(port: number) {
         const clientIp = req.ip;
         const remainingRequests = await rateLimiter({
           key: `rate_limit:${clientIp}`,
-          maxPerTimeframe: 1000,
+          maxPerTimeframe: req.path.endsWith("/notion") ? 3000 : 1000,
           timeframeSeconds: 60,
           logger: logger,
         });
@@ -165,6 +167,11 @@ export function startServer(port: number) {
     webhookIntercomUninstallAPIHandler
   );
   app.post(
+    "/webhooks/:webhooks_secret/notion",
+    bodyParser.raw({ type: "application/json" }),
+    webhookNotionAPIHandler
+  );
+  app.post(
     "/webhooks/:webhooks_secret/firecrawl",
     bodyParser.raw({ type: "application/json" }),
     webhookFirecrawlAPIHandler
@@ -173,6 +180,11 @@ export function startServer(port: number) {
     "/webhooks/:webhooks_secret/discord/app",
     bodyParser.raw({ type: "application/json" }),
     webhookDiscordAppHandler
+  );
+
+  app.post(
+    "/webhooks/:webhook_secret/microsoft_teams_bot",
+    webhookTeamsAPIHandler
   );
 
   // /configuration/ is the new configration method, replacing the old /config/ method

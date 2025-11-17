@@ -6,11 +6,19 @@ import { UserIcon } from "@sparkle/icons/app";
 import { getEmojiAndBackgroundFromUrl } from "@sparkle/lib/avatar/utils";
 import { cn } from "@sparkle/lib/utils";
 
-const AVATAR_SIZES = ["xs", "sm", "md", "lg", "xl", "2xl", "auto"] as const;
-type AvatarSizeType = (typeof AVATAR_SIZES)[number];
+export const AVATAR_SIZES = [
+  "xs",
+  "sm",
+  "md",
+  "lg",
+  "xl",
+  "2xl",
+  "auto",
+] as const;
+export type AvatarSizeType = (typeof AVATAR_SIZES)[number];
 
-const AVATAR_VARIANTS = ["default", "clickable", "disabled"] as const;
-type AvatarVariantType = (typeof AVATAR_VARIANTS)[number];
+export const AVATAR_VARIANTS = ["default", "clickable", "disabled"] as const;
+export type AvatarVariantType = (typeof AVATAR_VARIANTS)[number];
 
 const avatarVariants = cva(
   "s-flex s-flex-shrink-0 s-items-center s-justify-center s-overflow-hidden",
@@ -173,13 +181,15 @@ export function Avatar({
   icon,
   iconColor = "s-text-foreground",
 }: AvatarProps) {
+  const normalizedVisual = visual === "" ? null : visual;
   const emojiInfos =
-    typeof visual === "string" && getEmojiAndBackgroundFromUrl(visual);
+    typeof normalizedVisual === "string" &&
+    getEmojiAndBackgroundFromUrl(normalizedVisual);
   const backgroundColorToUse = emojiInfos
     ? emojiInfos.backgroundColor
     : backgroundColor;
   const emojiToUse = emojiInfos ? emojiInfos.skinEmoji : emoji;
-  const visualToUse = emojiInfos ? null : visual;
+  const visualToUse = emojiInfos ? null : normalizedVisual;
 
   const variant: AvatarVariantType = disabled
     ? "disabled"

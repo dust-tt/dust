@@ -5,6 +5,8 @@ import {
   MarkdownSerializer,
 } from "prosemirror-markdown";
 
+import { serializeMention } from "@app/lib/mentions";
+
 function buildNodeSerializers(schema: Schema) {
   // Start with default serializers.
   const map = { ...defaultMarkdownSerializer.nodes };
@@ -36,7 +38,22 @@ function buildNodeSerializers(schema: Schema) {
   };
 
   map.mention = (state: MarkdownSerializerState, node: ProseMirrorNode) => {
-    state.write(`:mention[${node.attrs?.label}]{sId=${node.attrs?.id}}`);
+    if (node.attrs.type) {
+      state.write(
+        serializeMention({
+          description: node.attrs.description,
+          label: node.attrs.label,
+          name: node.attrs.name,
+          pictureUrl: node.attrs.pictureUrl,
+          id: node.attrs.id,
+          type: node.attrs.type,
+        })
+      );
+    } else {
+      state.write(
+        serializeMention({ name: node.attrs.label, sId: node.attrs.id })
+      );
+    }
   };
 
   map.dataSourceLink = (
@@ -51,7 +68,7 @@ function buildNodeSerializers(schema: Schema) {
     node: ProseMirrorNode
   ) => {
     state.write(
-      `:pasted_attachment[${node.attrs.title}]{fileId=${node.attrs.fileId}}`
+      `:pasted_content[${node.attrs.title}]{pastedId=${node.attrs.fileId}}`
     );
   };
 

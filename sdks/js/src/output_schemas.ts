@@ -212,28 +212,6 @@ export const isSearchResultResourceType = (
   );
 };
 
-// Data source inclusion outputs, query and results
-export const IncludeQueryResourceSchema = z.object({
-  mimeType: z.literal(
-    INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_INCLUDE_QUERY
-  ),
-  text: z.string(),
-  uri: z.literal(""),
-});
-
-export type IncludeQueryResourceType = z.infer<
-  typeof IncludeQueryResourceSchema
->;
-
-export const isIncludeQueryResourceType = (
-  outputBlock: CallToolResult["content"][number]
-): outputBlock is { type: "resource"; resource: IncludeQueryResourceType } => {
-  return (
-    outputBlock.type === "resource" &&
-    IncludeQueryResourceSchema.safeParse(outputBlock.resource).success
-  );
-};
-
 export const WarningResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.WARNING),
   warningTitle: z.string(),
@@ -516,22 +494,22 @@ export function isImageProgressOutput(
 
 // Canvas file.
 
-export const NotificationContentCreationFileContentSchema = z.object({
-  type: z.literal("content_creation_file"),
+export const NotificationInteractiveContentFileContentSchema = z.object({
+  type: z.literal("interactive_content_file"),
   fileId: z.string(),
   mimeType: z.string(),
   title: z.string(),
   updatedAt: z.string(),
 });
 
-type ContentCreationFileContentOutput = z.infer<
-  typeof NotificationContentCreationFileContentSchema
+type InteractiveContentFileContentOutput = z.infer<
+  typeof NotificationInteractiveContentFileContentSchema
 >;
 
-export function isContentCreationFileContentOutput(
+export function isInteractiveContentFileContentOutput(
   output: ProgressNotificationOutput
-): output is ContentCreationFileContentOutput {
-  return output !== undefined && output.type === "content_creation_file";
+): output is InteractiveContentFileContentOutput {
+  return output !== undefined && output.type === "interactive_content_file";
 }
 
 const NotificationStoreResourceContentSchema = z.object({
@@ -574,7 +552,7 @@ export function isStoreResourceProgressOutput(
 
 export const ProgressNotificationOutputSchema = z
   .union([
-    NotificationContentCreationFileContentSchema,
+    NotificationInteractiveContentFileContentSchema,
     NotificationImageContentSchema,
     NotificationRunAgentContentSchema,
     NotificationStoreResourceContentSchema,

@@ -38,12 +38,28 @@ const whitelistedCommands = [
     command: "update-orphaned-resources-parents",
   },
   {
+    majorCommand: "notion",
+    command: "api-request",
+  },
+  {
     majorCommand: "slack",
     command: "whitelist-bot",
   },
   {
     majorCommand: "slack",
+    command: "skip-channel",
+  },
+  {
+    majorCommand: "slack",
+    command: "unskip-channel",
+  },
+  {
+    majorCommand: "slack",
     command: "run-auto-join",
+  },
+  {
+    majorCommand: "slack",
+    command: "check-channel",
   },
   {
     majorCommand: "connectors",
@@ -68,6 +84,10 @@ const whitelistedCommands = [
   {
     majorCommand: "confluence",
     command: "check-page-exists",
+  },
+  {
+    majorCommand: "google_drive",
+    command: "upsert-file",
   },
 ];
 

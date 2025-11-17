@@ -18,6 +18,10 @@ import {
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import datadogLogger from "@app/logger/datadogLogger";
 import type {
+  PatchTriggersRequestBody,
+  PostTriggersRequestBody,
+} from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/triggers";
+import type {
   GetContentNodesOrChildrenRequestBodyType,
   GetDataSourceViewContentNodes,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/content-nodes";
@@ -42,14 +46,12 @@ function processDataSourceConfigurations(
     dataSourceViewId: config.dataSourceView.sId,
     workspaceId: owner.sId,
     filter: {
-      parents: config.isSelectAll
-        ? null
-        : {
-            in: config.selectedResources.map((resource) => resource.internalId),
-            not: config.excludedResources.map(
-              (resource) => resource.internalId
-            ),
-          },
+      parents: {
+        in: config.isSelectAll
+          ? null
+          : config.selectedResources.map((resource) => resource.internalId),
+        not: config.excludedResources.map((resource) => resource.internalId),
+      },
       tags: config.tagsFilter
         ? {
             in: config.tagsFilter.in,
@@ -277,17 +279,28 @@ async function processTriggers({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          triggers: formData.triggersToUpdate.map((trigger) => ({
-            sId: trigger.sId,
-            name: trigger.name,
-            customPrompt: trigger.customPrompt,
-            configuration: trigger.configuration,
-            kind: trigger.kind,
-            webhookSourceViewSId:
-              trigger.kind === "webhook"
-                ? trigger.webhookSourceViewSId
-                : undefined,
-          })),
+          triggers: formData.triggersToUpdate.map((trigger) => {
+            const baseData = {
+              sId: trigger.sId,
+              name: trigger.name,
+              enabled: trigger.enabled,
+              customPrompt: trigger.customPrompt,
+              naturalLanguageDescription: trigger.naturalLanguageDescription,
+              configuration: trigger.configuration,
+              kind: trigger.kind,
+            };
+
+            if (trigger.kind === "webhook") {
+              return {
+                ...baseData,
+                executionPerDayLimitOverride:
+                  trigger.executionPerDayLimitOverride,
+                webhookSourceViewSId: trigger.webhookSourceViewSId,
+              } as PatchTriggersRequestBody["triggers"][number];
+            }
+
+            return baseData as PatchTriggersRequestBody["triggers"][number];
+          }),
         }),
       }
     );
@@ -317,16 +330,27 @@ async function processTriggers({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          triggers: formData.triggersToCreate.map((trigger) => ({
-            name: trigger.name,
-            customPrompt: trigger.customPrompt,
-            configuration: trigger.configuration,
-            kind: trigger.kind,
-            webhookSourceViewSId:
-              trigger.kind === "webhook"
-                ? trigger.webhookSourceViewSId
-                : undefined,
-          })),
+          triggers: formData.triggersToCreate.map((trigger) => {
+            const baseData = {
+              name: trigger.name,
+              enabled: trigger.enabled,
+              customPrompt: trigger.customPrompt,
+              naturalLanguageDescription: trigger.naturalLanguageDescription,
+              configuration: trigger.configuration,
+              kind: trigger.kind,
+            };
+
+            if (trigger.kind === "webhook") {
+              return {
+                ...baseData,
+                executionPerDayLimitOverride:
+                  trigger.executionPerDayLimitOverride,
+                webhookSourceViewSId: trigger.webhookSourceViewSId,
+              } as PostTriggersRequestBody["triggers"][number];
+            }
+
+            return baseData as PostTriggersRequestBody["triggers"][number];
+          }),
         }),
       }
     );
@@ -448,9 +472,6 @@ export async function submitAgentBuilderForm({
         responseFormat: formData.generationSettings.responseFormat,
       },
       actions: processedActions,
-      visualizationEnabled: formData.actions.some(
-        (action) => action.type === "DATA_VISUALIZATION"
-      ),
       templateId: null,
       tags: formData.agentSettings.tags,
       editors: formData.agentSettings.editors.map((editor) => ({
@@ -519,8 +540,14 @@ export async function submitAgentBuilderForm({
         object: "create_agent",
         action: TRACKING_ACTIONS.SUBMIT,
         extra: {
+          agent_id: agentConfiguration.sId,
           scope: formData.agentSettings.scope,
           has_actions: processedActions.length > 0,
+          action_count: processedActions.length,
+          action_names: processedActions.map((a) => a.name).join(","),
+          has_instructions: !!formData.instructions,
+          model_id: formData.generationSettings.modelSettings.modelId,
+          model_provider: formData.generationSettings.modelSettings.providerId,
         },
       });
     }

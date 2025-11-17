@@ -398,28 +398,55 @@ export async function joinChannelWorkflow(
   }
 
   try {
-    if (useCase === "auto-read") {
-      await getSlackActivities().autoReadChannelActivity(
-        connectorId,
-        channelId
-      );
+    switch (useCase) {
+      case "auto-read": {
+        const shouldJoin = await getSlackActivities().autoReadChannelActivity(
+          connectorId,
+          channelId
+        );
 
-      return { success: true };
+        if (shouldJoin) {
+          const joinSuccess =
+            await getSlackActivities().attemptChannelJoinActivity(
+              connectorId,
+              channelId
+            );
+
+          if (!joinSuccess) {
+            return {
+              success: false,
+              error: "Channel is archived or could not be joined",
+            };
+          }
+        }
+
+        return { success: true };
+      }
+
+      case "join-only": {
+        const joinSuccess =
+          await getSlackActivities().attemptChannelJoinActivity(
+            connectorId,
+            channelId
+          );
+
+        if (!joinSuccess) {
+          return {
+            success: false,
+            error: "Channel is archived or could not be joined",
+          };
+        }
+
+        return { success: true };
+      }
+
+      default:
+        // Unreachable.
+        return {
+          success: false,
+          error: `Unknown use case: ${useCase}`,
+        };
     }
-
-    const joinSuccess = await getSlackActivities().attemptChannelJoinActivity(
-      connectorId,
-      channelId
-    );
-
-    if (!joinSuccess) {
-      return {
-        success: false,
-        error: "Channel is archived or could not be joined",
-      };
-    }
-
-    return { success: true };
   } catch (error) {
     return {
       success: false,

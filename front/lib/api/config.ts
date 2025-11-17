@@ -53,6 +53,12 @@ const config = {
   getSendgridApiKey: (): string => {
     return EnvironmentConfig.getEnvVariable("SENDGRID_API_KEY");
   },
+  getSupportEmailAddress: (): { name: string; email: string } => {
+    return {
+      name: "Dust team",
+      email: "support@dust.tt",
+    };
+  },
   getInvitationEmailTemplate: (): string => {
     return EnvironmentConfig.getEnvVariable(
       "SENDGRID_INVITATION_EMAIL_TEMPLATE_ID"
@@ -116,6 +122,9 @@ const config = {
         EnvironmentConfig.getOptionalEnvVariable("NODE_ENV") || "development",
     };
   },
+  getVizJwtSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("VIZ_JWT_SECRET");
+  },
   getOAuthAPIConfig: (): { url: string; apiKey: string | null } => {
     return {
       url: EnvironmentConfig.getEnvVariable("OAUTH_API"),
@@ -133,6 +142,16 @@ const config = {
       "DUST_APPS_HELPER_DATASOURCE_VIEW_ID"
     );
   },
+  getDustAppsInteractiveContentDatasourceViewId: (): string => {
+    return EnvironmentConfig.getEnvVariable(
+      "DUST_APPS_INTERACTIVE_CONTENT_DATASOURCE_VIEW_ID"
+    );
+  },
+  getDustAppsInteractiveContentFeedbackAnalysisTemplateFileName: (): string => {
+    return EnvironmentConfig.getEnvVariable(
+      "DUST_APPS_INTERACTIVE_CONTENT_FEEDBACK_ANALYSIS_TEMPLATE_FILE_NAME"
+    );
+  },
   getRegionResolverSecret: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("REGION_RESOLVER_SECRET");
   },
@@ -148,6 +167,11 @@ const config = {
   getOAuthGithubAppPersonalActions: (): string => {
     return EnvironmentConfig.getEnvVariable(
       "OAUTH_GITHUB_APP_PLATFORM_ACTIONS_CLIENT_ID"
+    );
+  },
+  getOAuthGithubAppWebhooks: (): string => {
+    return EnvironmentConfig.getEnvVariable(
+      "OAUTH_GITHUB_APP_WEBHOOKS_CLIENT_ID"
     );
   },
   getOAuthNotionClientId: (): string => {
@@ -205,6 +229,20 @@ const config = {
   },
   getOAuthMondayClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_MONDAY_CLIENT_ID");
+  },
+  getOAuthDiscordClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_DISCORD_CLIENT_ID");
+  },
+  getOAuthFathomClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_FATHOM_CLIENT_ID");
+  },
+  getDevOAuthFathomRedirectBaseUrl: (): string => {
+    return EnvironmentConfig.getEnvVariable(
+      "DEV_OAUTH_FATHOM_REDIRECT_BASE_URL"
+    );
+  },
+  getOAuthLinearClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_LINEAR_CLIENT_ID");
   },
 
   // Text extraction.
@@ -274,6 +312,17 @@ const config = {
     return EnvironmentConfig.getOptionalEnvVariable(
       "UNTRUSTED_EGRESS_PROXY_PORT"
     );
+  },
+  getElasticsearchConfig: (): {
+    url: string;
+    username: string;
+    password: string;
+  } => {
+    return {
+      url: EnvironmentConfig.getEnvVariable("ELASTICSEARCH_URL"),
+      username: EnvironmentConfig.getEnvVariable("ELASTICSEARCH_USERNAME"),
+      password: EnvironmentConfig.getEnvVariable("ELASTICSEARCH_PASSWORD"),
+    };
   },
 };
 

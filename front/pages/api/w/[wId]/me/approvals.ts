@@ -5,6 +5,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -52,9 +53,12 @@ async function handler(
         );
 
         if (serverType === "internal") {
+          const systemSpace =
+            await SpaceResource.fetchWorkspaceSystemSpace(auth);
           const server = await InternalMCPServerInMemoryResource.fetchById(
             auth,
-            validation.mcpServerId
+            validation.mcpServerId,
+            systemSpace
           );
           // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           serverName = server?.toJSON().name || "Unknown Internal Server";

@@ -35,7 +35,10 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import { getWorkspaceFirstAdmin } from "@app/lib/workspace";
+import {
+  getWorkspaceFirstAdmin,
+  renderLightWorkspaceType,
+} from "@app/lib/workspace";
 import { checkWorkspaceActivity } from "@app/lib/workspace_usage";
 import logger from "@app/logger/logger";
 import type {
@@ -206,6 +209,29 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       res.get(),
       renderPlanFromModel({ plan: res.plan })
     );
+  }
+
+  static async internalFetchWorkspacesWithFreeEndedSubscriptions(): Promise<{
+    workspaces: LightWorkspaceType[];
+  }> {
+    const freeEndedSubscriptions = await Subscription.findAll({
+      where: {
+        status: "active",
+        stripeSubscriptionId: null,
+        endDate: {
+          [Op.lt]: new Date(),
+        },
+      },
+      include: [WorkspaceModel],
+    });
+
+    const workspaces = freeEndedSubscriptions.map((s) =>
+      renderLightWorkspaceType({ workspace: s.workspace })
+    );
+
+    return {
+      workspaces,
+    };
   }
 
   /**
@@ -729,7 +755,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
    * @param workspaceId The ID of the workspace
    * @returns The active subscription that was ended, or null if none existed
    */
-  private static async endActiveSubscription(
+  static async endActiveSubscription(
     workspace: LightWorkspaceType
   ): Promise<Subscription | null> {
     const now = new Date();

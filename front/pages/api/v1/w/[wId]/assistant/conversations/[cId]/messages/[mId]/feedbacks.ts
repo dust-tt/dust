@@ -16,6 +16,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
+import { launchAgentMessageFeedbackWorkflow } from "@app/temporal/analytics_queue/client";
 import type { WithAPIErrorResponse } from "@app/types";
 import { getUserEmailFromHeaders } from "@app/types/user";
 
@@ -249,6 +250,14 @@ async function handler(
           },
         });
       }
+
+      await launchAgentMessageFeedbackWorkflow(auth, {
+        message: {
+          conversationId: conversation.sId,
+          agentMessageId: messageId,
+        },
+      });
+
       res.status(200).json({ success: true });
       return;
 
@@ -257,6 +266,13 @@ async function handler(
         messageId,
         conversation,
         user,
+      });
+
+      await launchAgentMessageFeedbackWorkflow(auth, {
+        message: {
+          conversationId: conversation.sId,
+          agentMessageId: messageId,
+        },
       });
 
       if (deleted) {

@@ -5,7 +5,7 @@ import {
   getMCPApprovalStateFromUserApprovalState,
   isMCPApproveExecutionEvent,
 } from "@app/lib/actions/mcp";
-import { setUserAlwaysApprovedTool } from "@app/lib/actions/utils";
+import { setUserAlwaysApprovedTool } from "@app/lib/actions/tool_status";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
@@ -73,6 +73,8 @@ export async function validateAction(
     messageId: string;
   }
 ): Promise<Result<void, DustError>> {
+  const owner = auth.getNonNullableWorkspace();
+  const user = auth.user();
   const { sId: conversationId, title: conversationTitle } = conversation;
 
   logger.info(
@@ -81,6 +83,8 @@ export async function validateAction(
       messageId,
       approvalState,
       conversationId,
+      workspaceId: owner.sId,
+      userId: user?.sId,
     },
     "Tool validation request"
   );
@@ -126,15 +130,12 @@ export async function validateAction(
     getMCPApprovalStateFromUserApprovalState(approvalState)
   );
 
-  if (approvalState === "always_approved") {
-    const user = auth.user();
-    if (user) {
-      await setUserAlwaysApprovedTool({
-        user,
-        mcpServerId: action.toolConfiguration.toolServerId,
-        functionCallName: action.functionCallName,
-      });
-    }
+  if (approvalState === "always_approved" && user) {
+    await setUserAlwaysApprovedTool({
+      user,
+      mcpServerId: action.toolConfiguration.toolServerId,
+      functionCallName: action.functionCallName,
+    });
   }
 
   if (updatedCount === 0) {
@@ -143,6 +144,8 @@ export async function validateAction(
         actionId,
         messageId,
         approvalState,
+        workspaceId: owner.sId,
+        userId: user?.sId,
       },
       "Action already approved or rejected"
     );
@@ -158,6 +161,26 @@ export async function validateAction(
       : false;
   }, getMessageChannelId(messageId));
 
+  // We only launch the agent loop if there are no remaining blocked actions.
+  const blockedActions =
+    await AgentMCPActionResource.listBlockedActionsForConversation(
+      auth,
+      conversationId
+    );
+
+  // Harmless very rare race condition here where 2 validations get
+  // blockedActions.length === 0. launchAgentLoopWorkflow will be called twice,
+  // but only one will succeed.
+  if (blockedActions.length > 0) {
+    logger.info(
+      {
+        blockedActions,
+      },
+      "Skipping agent loop launch because there are remaining blocked actions"
+    );
+    return new Ok(undefined);
+  }
+
   await launchAgentLoopWorkflow({
     auth,
     agentLoopArgs: {
@@ -170,6 +193,11 @@ export async function validateAction(
     },
     // Resume from the step where the action was created.
     startStep: agentStepContent.step,
+    // Wait for completion of the agent loop workflow that triggered the
+    // validation. This avoids race conditions where validation re-triggers the
+    // agent loop before it completes, and thus throws a workflow already
+    // started error.
+    waitForCompletion: true,
   });
 
   logger.info(

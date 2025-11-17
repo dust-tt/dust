@@ -14,13 +14,15 @@ export async function runDataRetentionWorker() {
     workflowsPath: require.resolve("./workflows"),
     activities,
     taskQueue: QUEUE_NAME,
-    maxConcurrentActivityTaskExecutions: 8,
+    maxConcurrentActivityTaskExecutions: 4,
     connection,
     namespace,
     interceptors: {
-      activityInbound: [
+      activity: [
         (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger);
+          return {
+            inbound: new ActivityInboundLogInterceptor(ctx, logger),
+          };
         },
       ],
     },

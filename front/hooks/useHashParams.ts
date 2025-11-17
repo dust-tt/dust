@@ -144,5 +144,6 @@ export const useHashParam = (
     [defaultValue, key]
   );
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   return [innerValue.val || defaultValue, setValue];
 };

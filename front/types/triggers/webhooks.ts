@@ -1,15 +1,17 @@
-import type { Icon } from "@dust-tt/sparkle";
-import { ActionGlobeAltIcon } from "@dust-tt/sparkle";
 import { z } from "zod";
 
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,
 } from "@app/components/resources/resources_icons";
+import { FATHOM_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/fathom/preset";
+import { GITHUB_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/github/preset";
+import type { GithubAdditionalData } from "@app/lib/triggers/built-in-webhooks/github/types";
+import { JIRA_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/jira/preset";
+import type { JiraAdditionalData } from "@app/lib/triggers/built-in-webhooks/jira/types";
+import { ZENDESK_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/zendesk/preset";
 import type { AgentsUsageType } from "@app/types/data_source";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
-import { GITHUB_WEBHOOK_PRESET } from "@app/types/triggers/github_webhook_source_presets";
 import type { PresetWebhook } from "@app/types/triggers/webhooks_source_preset";
 import type { EditedByUser } from "@app/types/user";
 
@@ -22,90 +24,113 @@ export const WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS = [
 export type WebhookSourceSignatureAlgorithm =
   (typeof WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS)[number];
 
-export const WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP: Record<
-  Exclude<WebhookSourceKind, "custom">,
-  PresetWebhook
-> & {
-  custom: {
-    name: string;
-    icon: typeof Icon;
-    featureFlag?: WhitelistableFeature;
-  };
-} = {
+export const WEBHOOK_PROVIDERS = [
+  "fathom",
+  "github",
+  "jira",
+  "zendesk",
+] as const;
+
+export type WebhookProvider = (typeof WEBHOOK_PROVIDERS)[number];
+
+export function isWebhookProvider(
+  provider: string
+): provider is WebhookProvider {
+  return WEBHOOK_PROVIDERS.includes(provider as WebhookProvider);
+}
+
+export const NoAdditionalDataSchema = z.object({});
+export type NoAdditionalData = z.infer<typeof NoAdditionalDataSchema>;
+
+type WebhookProviderServiceDataMap = {
+  fathom: NoAdditionalData;
+  github: GithubAdditionalData;
+  jira: JiraAdditionalData;
+  zendesk: NoAdditionalData;
+};
+
+export type WebhookServiceDataForProvider<P extends WebhookProvider> =
+  WebhookProviderServiceDataMap[P];
+
+export const WEBHOOK_PRESETS = {
+  fathom: FATHOM_WEBHOOK_PRESET,
   github: GITHUB_WEBHOOK_PRESET,
-  custom: { name: "Custom", icon: ActionGlobeAltIcon },
-} as const;
-
-export const WEBHOOK_SOURCE_KIND = ["custom", "github"] as const;
-
-export type WebhookSourceKind = (typeof WEBHOOK_SOURCE_KIND)[number];
+  jira: JIRA_WEBHOOK_PRESET,
+  zendesk: ZENDESK_WEBHOOK_PRESET,
+} satisfies {
+  [P in WebhookProvider]: PresetWebhook<P>;
+};
 
 export type WebhookSourceType = {
   id: ModelId;
   sId: string;
   name: string;
-  urlSecret: string;
-  kind: WebhookSourceKind;
-  secret: string | null;
-  signatureHeader: string | null;
-  signatureAlgorithm: WebhookSourceSignatureAlgorithm | null;
-  customHeaders: Record<string, string> | null;
+  provider: WebhookProvider | null;
   createdAt: number;
   updatedAt: number;
   subscribedEvents: string[];
 };
 
-export type WebhookSourceViewType = {
+export type WebhookSourceForAdminType = WebhookSourceType & {
+  urlSecret: string;
+  secret: string | null;
+  signatureHeader: string | null;
+  signatureAlgorithm: WebhookSourceSignatureAlgorithm | null;
+  remoteMetadata: Record<string, any> | null;
+  oauthConnectionId: string | null;
+};
+
+type BaseWebhookSourceViewType = {
   id: ModelId;
   sId: string;
-  customName: string | null;
+  customName: string;
   description: string;
   icon: InternalAllowedIconType | CustomResourceIconType;
+  provider: WebhookProvider | null;
+  subscribedEvents: string[];
   createdAt: number;
   updatedAt: number;
   spaceId: string;
-  webhookSource: WebhookSourceType;
   editedByUser: EditedByUser | null;
 };
 
-export type WebhookSourceWithViews = WebhookSourceType & {
-  views: WebhookSourceViewType[];
+export type WebhookSourceViewType = BaseWebhookSourceViewType & {
+  webhookSource: WebhookSourceType;
 };
 
-export type WebhookSourceWithSystemView = WebhookSourceWithViews & {
-  systemView: WebhookSourceViewType | null;
+export type WebhookSourceViewForAdminType = BaseWebhookSourceViewType & {
+  webhookSource: WebhookSourceForAdminType;
 };
 
-export type WebhookSourceWithViewsAndUsage = WebhookSourceWithViews & {
+export type WebhookSourceWithViewsType = WebhookSourceForAdminType & {
+  views: WebhookSourceViewForAdminType[];
+};
+
+export type WebhookSourceWithSystemViewType = WebhookSourceWithViewsType & {
+  systemView: WebhookSourceViewForAdminType | null;
+};
+
+export type WebhookSourceWithViewsAndUsageType = WebhookSourceWithViewsType & {
   usage: AgentsUsageType | null;
 };
 
-export type WebhookSourceWithSystemViewAndUsage =
-  WebhookSourceWithSystemView & {
+export type WebhookSourceWithSystemViewAndUsageType =
+  WebhookSourceWithSystemViewType & {
     usage: AgentsUsageType | null;
   };
 
-export type PostWebhookSourcesBody = z.infer<typeof PostWebhookSourcesSchema>;
-
-export const PostWebhookSourcesSchema = z.object({
+export const WebhookSourcesSchema = z.object({
   name: z.string().min(1, "Name is required"),
   // Secret can be omitted or empty when auto-generated server-side.
   secret: z.string().nullable(),
   signatureHeader: z.string(),
   signatureAlgorithm: z.enum(WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS),
-  customHeaders: z.record(z.string(), z.string()).nullable(),
   includeGlobal: z.boolean().optional(),
-});
-
-export type PatchWebhookSourceViewBody = z.infer<
-  typeof patchWebhookSourceViewBodySchema
->;
-
-export const patchWebhookSourceViewBodySchema = z.object({
-  name: z.string().min(1, "Name is required."),
-  description: z
-    .string()
-    .max(4000, "Description must be at most 4000 characters.")
-    .optional(),
+  subscribedEvents: z.array(z.string()).default([]),
+  provider: z.enum(WEBHOOK_PROVIDERS).nullable(),
+  // Optional fields for creating remote webhooks
+  connectionId: z.string().optional(),
+  remoteMetadata: z.record(z.any()).optional(),
   icon: z.string().optional(),
+  description: z.string().optional(),
 });

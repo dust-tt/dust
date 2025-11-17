@@ -1,24 +1,20 @@
 import {
   Chip,
-  Citation,
-  CitationIcons,
-  CitationTitle,
   CodeBlock,
   CollapsibleComponent,
   ContentBlockWrapper,
   ContentMessage,
   FaviconIcon,
-  Icon,
   InformationCircleIcon,
   Markdown,
   PaginatedCitationsGrid,
   Tooltip,
 } from "@dust-tt/sparkle";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { useCallback } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
-import { useSendNotification } from "@app/hooks/useNotification";
+import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
+import { toolGeneratedFileToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import type {
   ReasoningSuccessOutputType,
   SqlQueryOutputType,
@@ -28,12 +24,9 @@ import type {
 import {
   isDataSourceNodeContentType,
   isDataSourceNodeListType,
-  isIncludeQueryResourceType,
   isIncludeResultResourceType,
-  isSearchQueryResourceType,
   isSearchResultResourceType,
   isWarningResourceType,
-  isWebsearchQueryResourceType,
   isWebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getDocumentIcon } from "@app/lib/content_nodes";
@@ -110,105 +103,42 @@ export function SqlQueryBlock({ resource }: SqlQueryBlockProps) {
 
 interface ToolGeneratedFileDetailsProps {
   resource: ToolGeneratedFileType;
-  icon: React.ComponentType<{ className?: string }>;
   owner: LightWorkspaceType;
 }
 
 export function ToolGeneratedFileDetails({
   resource,
-  icon,
   owner,
 }: ToolGeneratedFileDetailsProps) {
-  const sendNotification = useSendNotification();
-
-  const handleDownload = useCallback(() => {
-    try {
-      const downloadUrl = `/api/w/${owner.sId}/files/${resource.fileId}?action=download`;
-      // Open the download URL in a new tab/window. Otherwise we get a CORS error due to the redirection
-      // to cloud storage.
-      window.open(downloadUrl, "_blank");
-    } catch (error) {
-      console.error("Download failed:", error);
-      sendNotification({
-        title: "Download Failed",
-        type: "error",
-        description: "An error occurred while opening the download link.",
-      });
-    }
-  }, [resource.fileId, sendNotification, owner.sId]);
-
+  const file = {
+    ...resource,
+    sourceUrl: `/api/w/${owner.sId}/files/${resource.fileId}`,
+  };
   return (
-    <>
-      <div>
-        <Citation
-          className="w-48 min-w-48 max-w-48"
-          containerClassName="my-2"
-          onClick={handleDownload}
-          tooltip={resource.title}
-        >
-          <CitationIcons>
-            <Icon visual={icon} />
-          </CitationIcons>
-          <CitationTitle>{resource.title}</CitationTitle>
-        </Citation>
-      </div>
-      {resource.snippet && (
-        <CollapsibleComponent
-          rootProps={{ defaultOpen: false }}
-          triggerChildren={
-            <span className="text-sm font-semibold text-muted-foreground dark:text-muted-foreground-night">
-              Preview
-            </span>
-          }
-          contentChildren={
-            <div className="py-2">
-              <CodeBlock
-                className="language-csv max-h-60 overflow-y-auto"
-                wrapLongLines={true}
-              >
-                {resource.snippet}
-              </CodeBlock>
-            </div>
-          }
-        />
-      )}
-    </>
+    <AttachmentCitation
+      attachmentCitation={toolGeneratedFileToAttachmentCitation(file)}
+      owner={owner}
+      conversationId={null}
+    />
   );
 }
 
 interface SearchResultProps {
   actionName: string;
-  defaultQuery?: string;
   visual: React.ComponentType<{ className?: string }>;
   actionOutput: CallToolResult["content"] | null;
   viewType: "conversation" | "sidebar";
+  query: string | null;
 }
 
 export function SearchResultDetails({
   actionName,
-  defaultQuery,
   visual,
   viewType,
   actionOutput,
+  query,
 }: SearchResultProps) {
-  const query =
-    actionOutput
-      ?.map((r) => {
-        if (
-          isSearchQueryResourceType(r) ||
-          isWebsearchQueryResourceType(r) ||
-          isIncludeQueryResourceType(r)
-        ) {
-          return r.resource.text.trim();
-        }
-        return null;
-      })
-      .filter(Boolean)
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      .join("\n") ||
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    defaultQuery ||
-    "No query provided";
+  const displayQuery = query ?? "No query provided";
 
   const warning = actionOutput
     ?.filter(isWarningResourceType)
@@ -230,7 +160,7 @@ export function SearchResultDetails({
             {
               description: r.resource.text,
               title: r.resource.title,
-              icon: <FaviconIcon websiteUrl={r.resource.uri} size="sm" />,
+              icon: <FaviconIcon websiteUrl={r.resource.uri} />,
               href: r.resource.uri,
             },
           ];
@@ -288,7 +218,7 @@ export function SearchResultDetails({
     >
       {viewType === "conversation" ? (
         <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-          {query}
+          {displayQuery}
         </div>
       ) : (
         <div className="flex flex-col gap-4 pl-6 pt-4">
@@ -297,7 +227,7 @@ export function SearchResultDetails({
               Query
             </span>
             <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-              {query}
+              {displayQuery}
             </div>
             {warning && (
               <Tooltip
@@ -309,7 +239,7 @@ export function SearchResultDetails({
           {actionOutput && viewType === "sidebar" && (
             <div>
               <CollapsibleComponent
-                rootProps={{ defaultOpen: true }}
+                rootProps={{ defaultOpen: false }}
                 triggerChildren={
                   <span className="text-sm font-bold text-foreground dark:text-foreground-night">
                     Results

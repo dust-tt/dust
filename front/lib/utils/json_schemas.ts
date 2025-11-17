@@ -215,6 +215,24 @@ export function getValueAtPath(
 }
 
 /**
+ * Singleton AJV instance to avoid expensive instantiation on every validation.
+ * Creating new AJV instances is costly as we call it frequently (e.g., in MCP tool validation loops).
+ *
+ * AJV internally caches compiled schemas using the schema object as a Map key,
+ * so reusing the same instance provides automatic caching benefits.
+ */
+let ajvInstance: Ajv | null = null;
+
+function getAjvInstance(): Ajv {
+  if (!ajvInstance) {
+    ajvInstance = new Ajv();
+    addFormats(ajvInstance); // Adds "date", "date-time", "time", "email" and many other common formats.
+  }
+
+  return ajvInstance;
+}
+
+/**
  * Validates a generic JSON schema as per the JSON schema specification.
  * Less strict than the JsonSchemaSchema zod schema.
  */
@@ -228,8 +246,8 @@ export function validateJsonSchema(value: object | string | null | undefined): {
 
   try {
     const parsed = typeof value !== "object" ? JSON.parse(value) : value;
-    const ajv = new Ajv();
-    addFormats(ajv); // Adds "date", "date-time", "time", "email" and many other common formats.
+    const ajv = getAjvInstance();
+
     ajv.compile(parsed); // Throws an error if the schema is invalid
     return { isValid: true };
   } catch (e) {

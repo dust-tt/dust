@@ -7,6 +7,7 @@ import {
   finalizeUriForProvider,
   getStringFromQuery,
 } from "@app/lib/api/oauth/utils";
+import { config as regionsConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
@@ -30,9 +31,13 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
         case "personal_actions":
           return {
             user_scopes: [
+              "channels:history",
               "channels:read",
               "chat:write",
+              "groups:history",
               "groups:read",
+              "im:history",
+              "mpim:history",
               "reactions:read",
               "reactions:write",
               "search:read.private",
@@ -91,14 +96,26 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
             scopes.push("reactions:read", "reactions:write");
           }
 
+          // TODO: This is temporary until our Slack app scope is approved.
+          const currentRegion = regionsConfig.getCurrentRegion();
+          if (
+            currentRegion === "europe-west1" &&
+            extraConfig?.slack_files_write_scope_feature_flag === "true"
+          ) {
+            scopes.push("files:write");
+          }
+
           return {
             user_scopes: [],
             bot_scopes: scopes,
           };
         case "labs_transcripts":
           assert(
-            "Unreachable provider `labs_transcripts` in SlackOAuthProvider"
+            "Unreachable useCase `labs_transcripts` in SlackOAuthProvider"
           );
+          return { user_scopes: [], bot_scopes: [] };
+        case "webhooks":
+          assert("Unreachable useCase `webhooks` in SlackOAuthProvider");
           return { user_scopes: [], bot_scopes: [] };
         default:
           assertNever(useCase);
@@ -120,8 +137,11 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
           return config.getOAuthSlackBotClientId();
         case "labs_transcripts":
           assert(
-            "Unreachable provider `labs_transcripts` in SlackOAuthProvider"
+            "Unreachable useCase `labs_transcripts` in SlackOAuthProvider"
           );
+          return "";
+        case "webhooks":
+          assert("Unreachable useCase `webhooks` in SlackOAuthProvider");
           return "";
         default:
           assertNever(useCase);
@@ -217,6 +237,10 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
       const config = { ...extraConfig };
       if (feature_flags.includes("slack_bot_mcp")) {
         config.slack_bot_mcp_feature_flag = "true";
+      }
+      // TODO: This is temporary until our Slack app scope is approved.
+      if (feature_flags.includes("slack_files_write_scope")) {
+        config.slack_files_write_scope_feature_flag = "true";
       }
       return config;
     }

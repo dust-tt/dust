@@ -72,53 +72,49 @@ async function handler(
     });
   }
 
+  const dataSource = await DataSourceResource.fetchById(auth, dsId);
+  if (!dataSource) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: `Could not find data source with id ${dsId}`,
+      },
+    });
+  }
+
+  if (!dataSource.canWrite(auth)) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "data_source_auth_error",
+        message: "You are not authorized to upsert to this data source.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "POST": {
-      let dataSourceToUse: DataSourceResource | null = null;
-
-      const dataSource = await DataSourceResource.fetchById(auth, dsId);
-      if (!dataSource) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "data_source_not_found",
-            message: `Could not find data source with id ${dsId}`,
-          },
-        });
-      }
-      dataSourceToUse = dataSource;
-
-      if (!dataSourceToUse.canWrite(auth)) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "data_source_auth_error",
-            message: "You are not authorized to upsert to this data source.",
-          },
-        });
-      }
-
-      const rUpsert = await processAndUpsertToDataSource(
-        auth,
-        dataSourceToUse,
-        { file, upsertArgs: upsertArgs }
-      );
+      const rUpsert = await processAndUpsertToDataSource(auth, dataSource, {
+        file,
+        upsertArgs: upsertArgs,
+      });
       if (rUpsert.isErr()) {
         let status_code: number;
         let type: APIErrorType;
 
         switch (rUpsert.error.code) {
+          case "connection_not_found":
+          case "file_not_found":
           case "file_not_ready":
+          case "invalid_content_error":
+          case "invalid_csv_and_file":
+          case "invalid_csv_content":
           case "invalid_file":
-          case "title_too_long":
           case "invalid_url":
           case "missing_csv":
-          case "invalid_csv_content":
-          case "invalid_csv_and_file":
-          case "invalid_content_error":
-          case "connection_not_found":
           case "table_not_found":
-          case "file_not_found":
+          case "title_too_long":
             status_code = 400;
             type = "invalid_request_error";
             break;

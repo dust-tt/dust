@@ -121,11 +121,13 @@ export async function sendInvitations({
       });
     }
 
+    const errorMessage =
+      data?.error?.message || "Failed to invite new members to workspace";
+
     sendNotification({
       type: "error",
       title: "Invite failed",
-      description:
-        "Failed to invite new members to workspace: " + res.statusText,
+      description: errorMessage,
     });
   } else {
     const result: PostInvitationResponseBody = await res.json();

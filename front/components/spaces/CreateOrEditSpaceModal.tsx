@@ -117,6 +117,7 @@ export function CreateOrEditSpaceModal({
   const { spaceInfo, mutateSpaceInfo } = useSpaceInfo({
     workspaceId: owner.sId,
     spaceId: space?.sId ?? null,
+    includeAllMembers: true, // Always include all members so we can see suspended ones when switching modes
   });
 
   const { groups } = useGroups({
@@ -155,7 +156,7 @@ export function CreateOrEditSpaceModal({
 
       const isRestricted = spaceInfo
         ? spaceInfo.isRestricted
-        : defaultRestricted ?? false;
+        : (defaultRestricted ?? false);
       setIsRestricted(isRestricted);
 
       let initialMembers: UserType[] = [];

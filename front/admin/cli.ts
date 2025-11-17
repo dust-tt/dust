@@ -3,7 +3,7 @@ import parseArgs from "minimist";
 import path from "path";
 
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
+import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { getTextRepresentationFromMessages } from "@app/lib/api/assistant/utils";
 import { default as config } from "@app/lib/api/config";
 import {
@@ -23,8 +23,10 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { tokenCountForTexts } from "@app/lib/tokenization";
+import { launchAgentTriggerWebhookWorkflow } from "@app/lib/triggers/temporal/webhook/client";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import {
@@ -181,7 +183,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
     default:
       console.log(`Unknown workspace command: ${command}`);
       console.log(
-        "Possible values: `find`, `create`, `set-limits`, `upgrade`, `downgrade`"
+        "Possible values: `create`, `upgrade`, `downgrade`, `pause-connectors`, `unpause-connectors`"
       );
   }
 };
@@ -623,6 +625,80 @@ async function apikeys(command: string, args: parseArgs.ParsedArgs) {
   }
 }
 
+async function trigger(command: string, args: parseArgs.ParsedArgs) {
+  switch (command) {
+    case "replay-failed-webhooks": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+
+      const execute = !!args.execute;
+
+      if (!execute) {
+        logger.info(
+          "[DRY RUN] Use --execute to actually replay the webhooks. Running in dry-run mode."
+        );
+      }
+
+      const auth = await Authenticator.internalAdminForWorkspace(args.wId);
+
+      const failedWebhooks = await WebhookRequestResource.listByStatus(auth, {
+        status: "failed",
+      });
+
+      if (failedWebhooks.length === 0) {
+        logger.info("No failed webhook requests found.");
+        return;
+      }
+
+      logger.info(
+        { count: failedWebhooks.length },
+        `Found ${failedWebhooks.length} failed webhook requests.`
+      );
+
+      for (const webhookRequest of failedWebhooks) {
+        if (execute) {
+          await launchAgentTriggerWebhookWorkflow({
+            auth,
+            webhookRequest,
+          });
+          logger.info(
+            {
+              webhookRequestId: webhookRequest.id,
+              webhookSourceId: webhookRequest.webhookSourceId,
+              errorMessage: webhookRequest.errorMessage,
+              createdAt: webhookRequest.createdAt,
+            },
+            "Webhook workflow launched successfully."
+          );
+        } else {
+          logger.info(
+            {
+              webhookRequestId: webhookRequest.id,
+              webhookSourceId: webhookRequest.webhookSourceId,
+              errorMessage: webhookRequest.errorMessage,
+              createdAt: webhookRequest.createdAt,
+            },
+            "[DRY RUN] Would launch workflow for this webhook request."
+          );
+        }
+      }
+
+      logger.info(
+        {
+          total: failedWebhooks.length,
+        },
+        "Webhook replay completed."
+      );
+
+      return;
+    }
+
+    default:
+      console.log(`Unknown trigger command: ${command}`);
+  }
+}
+
 export const CLI_OBJECT_TYPES = [
   "workspace",
   "user",
@@ -632,6 +708,7 @@ export const CLI_OBJECT_TYPES = [
   "registry",
   "production-check",
   "api-key",
+  "trigger",
 ] as const;
 
 export type CliObjectType = (typeof CLI_OBJECT_TYPES)[number];
@@ -679,6 +756,8 @@ const main = async () => {
       return productionCheck(command, argv);
     case "api-key":
       return apikeys(command, argv);
+    case "trigger":
+      return trigger(command, argv);
     default:
       assertNever(objectType);
   }

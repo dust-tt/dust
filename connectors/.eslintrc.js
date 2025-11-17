@@ -4,7 +4,7 @@ module.exports = {
     "eslint:recommended",
     "plugin:@typescript-eslint/recommended",
   ],
-  plugins: ["import", "simple-import-sort"],
+  plugins: ["import", "simple-import-sort", "eslint-plugin-unused-imports"],
   rules: {
     curly: ["error", "all"],
     "simple-import-sort/imports": [
@@ -29,6 +29,7 @@ module.exports = {
         ],
       },
     ],
+    "unused-imports/no-unused-imports": "error",
     "simple-import-sort/exports": "error",
     "@typescript-eslint/consistent-type-imports": "error",
     "import/consistent-type-specifier-style": ["error", "prefer-top-level"],
@@ -41,6 +42,7 @@ module.exports = {
     ],
     "@typescript-eslint/no-unused-vars": "error",
     "@typescript-eslint/return-await": ["error", "in-try-catch"],
+    "no-unused-expressions": "error",
   },
   overrides: [
     {

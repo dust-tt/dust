@@ -17,9 +17,13 @@ export class RemoteMCPServerFactory {
       tools?: MCPToolType[];
     } = {}
   ) {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const cachedName = options.name || "Test Server" + faker.number.int(1000);
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const url = options.url || `https://${faker.internet.domainName()}`;
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const cachedDescription = options.description || `${name} description`;
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const tools: MCPToolType[] = options.tools || [
       { name: "tool", description: "Tool description", inputSchema: undefined },
     ];

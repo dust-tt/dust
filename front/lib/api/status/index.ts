@@ -2,7 +2,19 @@ import config from "@app/lib/api/config";
 import { getUnresolvedIncidents } from "@app/lib/api/status/status_page";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import { isDevelopment } from "@app/types";
-async function getProvidersStatus() {
+
+interface AppStatusComponent {
+  description: string;
+  link: string;
+  name: string;
+}
+
+export interface AppStatus {
+  dustStatus: AppStatusComponent | null;
+  providersStatus: AppStatusComponent | null;
+}
+
+async function getProvidersStatus(): Promise<AppStatusComponent | null> {
   if (isDevelopment()) {
     return null;
   }
@@ -26,7 +38,7 @@ async function getProvidersStatus() {
   return null;
 }
 
-async function getDustStatus() {
+async function getDustStatus(): Promise<AppStatusComponent | null> {
   if (isDevelopment()) {
     return null;
   }

@@ -1,4 +1,10 @@
 {
+  "icons": {
+    "16": "images/dust32green.png",
+    "32": "images/dust32green.png",
+    "48": "images/dust32green.png",
+    "128": "images/dust32green.png"
+  },
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://browser-intake-datadoghq.eu ws://localhost:* http://localhost:3000 data:"
   },

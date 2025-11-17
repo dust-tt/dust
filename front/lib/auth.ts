@@ -55,14 +55,21 @@ const { ACTIVATE_ALL_FEATURES_DEV = false } = process.env;
 
 const DUST_INTERNAL_EMAIL_REGEXP = /^[^@]+@dust\.tt$/;
 
-export type PublicAPIAuthMethod = "api_key" | "access_token";
+export type AuthMethodType =
+  | "system_api_key"
+  | "api_key"
+  | "oauth"
+  | "session"
+  | "internal";
 
-export const getAuthType = (token: string): PublicAPIAuthMethod => {
-  return token.startsWith(SECRET_KEY_PREFIX) ? "api_key" : "access_token";
+// Any token which do not start with sk- is considered an OAuth token.
+export const isOAuthToken = (token: string): boolean => {
+  return !token.startsWith(SECRET_KEY_PREFIX);
 };
 
 export interface AuthenticatorType {
-  workspaceId: string | null;
+  authMethod?: AuthMethodType;
+  workspaceId: string;
   userId: string | null;
   role: RoleType;
   groupIds: string[];
@@ -84,6 +91,7 @@ export class Authenticator {
   _user: UserResource | null;
   _groups: GroupResource[];
   _workspace: WorkspaceResource | null;
+  _authMethod?: AuthMethodType;
 
   // Should only be called from the static methods below.
   constructor({
@@ -91,6 +99,7 @@ export class Authenticator {
     user,
     role,
     groups,
+    authMethod,
     subscription,
     key,
   }: {
@@ -98,6 +107,7 @@ export class Authenticator {
     user?: UserResource | null;
     role: RoleType;
     groups: GroupResource[];
+    authMethod?: AuthMethodType;
     subscription?: SubscriptionResource | null;
     key?: KeyAuthType;
   }) {
@@ -109,6 +119,7 @@ export class Authenticator {
     this._role = role;
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     this._subscription = subscription || null;
+    this._authMethod = authMethod;
     this._key = key;
     if (user) {
       tracer.setUser({
@@ -203,6 +214,7 @@ export class Authenticator {
       }
 
       return new Authenticator({
+        authMethod: "session",
         workspace,
         user,
         role,
@@ -259,6 +271,7 @@ export class Authenticator {
     }
 
     return new Authenticator({
+      authMethod: "session",
       workspace,
       user,
       role: user?.isDustSuperUser ? "admin" : "none",
@@ -304,6 +317,7 @@ export class Authenticator {
     }
 
     return new Authenticator({
+      authMethod: "internal",
       workspace,
       user,
       role,
@@ -354,6 +368,7 @@ export class Authenticator {
 
     return new Ok(
       new Authenticator({
+        authMethod: "oauth",
         workspace,
         groups,
         user,
@@ -444,6 +459,7 @@ export class Authenticator {
 
     return {
       workspaceAuth: new Authenticator({
+        authMethod: key.isSystem ? "system_api_key" : "api_key",
         // If the key is associated with the workspace, we associate the groups.
         groups: isKeyWorkspace ? allGroups : [],
         key: key.toAuthJSON(),
@@ -452,6 +468,7 @@ export class Authenticator {
         workspace,
       }),
       keyAuth: new Authenticator({
+        authMethod: key.isSystem ? "system_api_key" : "api_key",
         groups: allGroups,
         key: key.toAuthJSON(),
         role: "builder",
@@ -499,6 +516,7 @@ export class Authenticator {
     );
 
     return new Authenticator({
+      authMethod: "internal",
       groups,
       role: "builder",
       subscription: null,
@@ -530,6 +548,7 @@ export class Authenticator {
     ]);
 
     return new Authenticator({
+      authMethod: "internal",
       workspace,
       role: "builder",
       groups: globalGroup ? [globalGroup] : [],
@@ -568,6 +587,7 @@ export class Authenticator {
     ]);
 
     return new Authenticator({
+      authMethod: "internal",
       workspace,
       role: "admin",
       groups,
@@ -633,6 +653,7 @@ export class Authenticator {
     });
 
     return new Authenticator({
+      authMethod: auth.authMethod(),
       key: auth._key,
       // We limit scope to a user role.
       role: "user",
@@ -665,6 +686,10 @@ export class Authenticator {
 
   isKey(): boolean {
     return !!this._key;
+  }
+
+  authMethod(): AuthMethodType | undefined {
+    return this._authMethod;
   }
 
   workspace(): WorkspaceType | null {
@@ -877,8 +902,11 @@ export class Authenticator {
   }
 
   toJSON(): AuthenticatorType {
+    assert(this._workspace, "Workspace is required to serialize Authenticator");
+
     return {
-      workspaceId: this._workspace?.sId ?? null,
+      authMethod: this._authMethod,
+      workspaceId: this._workspace.sId,
       userId: this._user?.sId ?? null,
       role: this._role,
       groupIds: this._groups.map((g) => g.sId),
@@ -920,6 +948,7 @@ export class Authenticator {
       // escalation is confined to the internal bootstrap step and does not
       // leak outside of this scope.
       const tempAuth = new Authenticator({
+        authMethod: authType.authMethod,
         workspace,
         user,
         role: "admin",
@@ -948,6 +977,7 @@ export class Authenticator {
     }
 
     return new Authenticator({
+      authMethod: authType.authMethod,
       workspace,
       user,
       role: authType.role,
@@ -1134,7 +1164,9 @@ export async function prodAPICredentialsForOwner(
 }
 
 export const getFeatureFlags = memoizer.sync({
-  load: async (workspace: WorkspaceType): Promise<WhitelistableFeature[]> => {
+  load: async (
+    workspace: LightWorkspaceType
+  ): Promise<WhitelistableFeature[]> => {
     if (ACTIVATE_ALL_FEATURES_DEV && isDevelopment()) {
       return [...WHITELISTABLE_FEATURES];
     } else {
@@ -1145,7 +1177,7 @@ export const getFeatureFlags = memoizer.sync({
     }
   },
 
-  hash: function (workspace: WorkspaceType) {
+  hash: function (workspace: LightWorkspaceType) {
     return `feature_flags_${workspace.id}`;
   },
 

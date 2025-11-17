@@ -69,13 +69,29 @@ MCPServerConnection.init(
     sequelize: frontSequelize,
     modelName: "mcp_server_connection",
     indexes: [
+      // TODO(2025-10-27 flav) Delete once new indexes have been created.
       {
         fields: ["workspaceId", "internalMCPServerId"],
         concurrently: true,
       },
+      // TODO(2025-10-27 flav) Delete once new indexes have been created.
       {
         fields: ["workspaceId", "remoteMCPServerId"],
         concurrently: true,
+      },
+      {
+        fields: ["workspaceId", "connectionType", "userId"],
+        concurrently: true,
+      },
+      {
+        fields: ["workspaceId", "serverType", "remoteMCPServerId"],
+        concurrently: true,
+        name: "idx_workspace_server_remote",
+      },
+      {
+        fields: ["workspaceId", "serverType", "internalMCPServerId"],
+        concurrently: true,
+        name: "idx_workspace_server_internal",
       },
     ],
     hooks: {

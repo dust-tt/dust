@@ -12,7 +12,6 @@ core-api-keys.json
 oauth-api-keys.json
 /extension/build/
 **/.claude/settings.local.json
-CLAUDE.md
 **/.yalc
 yalc.lock
 front/public/sitemap.xml
@@ -20,3 +19,5 @@ front/public/robots.txt
 mprocs.log
 tsconfig.tsbuildinfo
 front/.npm-cache
+CLAUDE.md
+AGENTS.md

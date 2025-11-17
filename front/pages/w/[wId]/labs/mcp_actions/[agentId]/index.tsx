@@ -15,7 +15,7 @@ import type { InferGetServerSidePropsType } from "next";
 import { useCallback } from "react";
 
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
-import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
@@ -23,7 +23,7 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useMCPActions } from "@app/lib/swr/mcp_actions";
-import { getAgentRoute } from "@app/lib/utils/router";
+import { getConversationRoute } from "@app/lib/utils/router";
 import type {
   LightAgentConfigurationType,
   SubscriptionType,
@@ -148,7 +148,7 @@ export default function AgentMCPActions({
     messageId: string
   ) => {
     if (conversationId && messageId) {
-      window.open(getAgentRoute(owner.sId, conversationId), "_blank");
+      window.open(getConversationRoute(owner.sId, conversationId), "_blank");
     }
   };
 
@@ -158,7 +158,7 @@ export default function AgentMCPActions({
         subscription={subscription}
         owner={owner}
         pageTitle={`Dust - MCP Actions for ${agent.name}`}
-        navChildren={<AssistantSidebarMenu owner={owner} />}
+        navChildren={<AgentSidebarMenu owner={owner} />}
       >
         <div className="mb-4">
           <Breadcrumbs items={items} />

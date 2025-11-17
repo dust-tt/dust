@@ -11,7 +11,6 @@ import { getMembers } from "@app/lib/api/workspace";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { spaceToPokeJSON } from "@app/lib/poke/utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import type { UserResource } from "@app/lib/resources/user_resource";
 import type {
   LightWorkspaceType,
   PokeSpaceType,
@@ -20,7 +19,7 @@ import type {
 } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
-  members: UserTypeWithWorkspaces[];
+  members: Record<string, UserTypeWithWorkspaces[]>;
   owner: LightWorkspaceType;
   space: PokeSpaceType;
 }>(async (context, auth) => {
@@ -40,31 +39,35 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     };
   }
 
-  const users: UserResource[] = [];
-  for (const group of space.groups) {
-    const groupMembers = await group.getActiveMembers(auth);
+  const members: Record<string, UserTypeWithWorkspaces[]> = {};
 
-    users.push(...groupMembers);
-  }
+  const allGroups = space.groups.filter((g) =>
+    space.managementMode === "manual"
+      ? g.kind === "regular"
+      : g.kind === "provisioned"
+  );
 
   const memberships = await getMembers(auth);
 
-  const userWithWorkspaces = users.reduce<UserTypeWithWorkspaces[]>(
-    (acc, user) => {
-      const member = memberships.members.find((m) => m.sId === user.sId);
+  for (const group of allGroups) {
+    const groupMembers = await group.getActiveMembers(auth);
+    members[group.name] = groupMembers.reduce<UserTypeWithWorkspaces[]>(
+      (acc, user) => {
+        const member = memberships.members.find((m) => m.sId === user.sId);
 
-      if (member) {
-        acc.push(member);
-      }
+        if (member) {
+          acc.push(member);
+        }
 
-      return acc;
-    },
-    []
-  );
+        return acc;
+      },
+      []
+    );
+  }
 
   return {
     props: {
-      members: userWithWorkspaces,
+      members,
       owner,
       space: spaceToPokeJSON(space),
     },
@@ -87,7 +90,15 @@ export default function SpacePage({
       <div className="flex flex-row gap-x-6">
         <ViewSpaceViewTable space={space} />
         <div className="flex grow flex-col">
-          <MembersDataTable members={members} owner={owner} readonly />
+          {Object.entries(members).map(([groupName, groupMembers]) => (
+            <MembersDataTable
+              key={groupName}
+              groupName={groupName}
+              members={groupMembers}
+              owner={owner}
+              readonly
+            />
+          ))}
           <PluginList
             pluginResourceTarget={{
               resourceId: space.sId,

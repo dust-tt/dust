@@ -82,6 +82,14 @@ export default function LandingLayout({
     [setCookie]
   );
 
+  // If you come back to the public site (e.g. pricing page) with browser's back button from the app,
+  // you can have dark theme so we need to remove them manually
+  useEffect(() => {
+    document.documentElement.classList.remove("dark");
+    document.documentElement.classList.remove("s-dark");
+    document.body.classList.remove("bg-background-night");
+  }, []);
+
   useEffect(() => {
     if (cookieValue !== undefined) {
       setShowCookieBanner(false);
@@ -223,39 +231,42 @@ const CookieBanner = ({
   return (
     <div
       className={classNames(
-        "fixed bottom-0 left-0 z-30 flex w-full flex-col items-center justify-between gap-4 border-t border-border bg-blue-100 p-6 shadow-2xl md:flex-row",
+        "fixed bottom-0 left-0 z-30 flex w-full flex-col items-center justify-between gap-6 border-t border-slate-700 bg-slate-900/90 p-8 shadow-2xl backdrop-blur-sm md:flex-row md:gap-8",
         "s-transition-opacity s-duration-300 s-ease-in-out",
         isVisible ? "s-opacity-100" : "s-opacity-0",
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         className || ""
       )}
     >
-      <div className="text-sm font-normal text-foreground md:text-base">
-        We use{" "}
-        <A variant="primary">
-          <Link
-            href="https://dust-tt.notion.site/Cookie-Policy-ec63a7fb72104a7babff1bf413e2c1ec"
-            target="_blank"
+      <div className="flex max-w-2xl flex-col gap-2">
+        <div className="text-base font-medium text-white md:text-lg">
+          We use cookies
+        </div>
+        <div className="text-sm font-normal text-slate-300 md:text-base">
+          By clicking "Accept All Cookies", you agree to the storing of cookies
+          on your device to enhance site navigation, analyze site usage, and
+          assist in our marketing efforts. You can also{" "}
+          <button
+            className="text-slate-400 underline transition-colors hover:text-slate-200"
+            onClick={() => {
+              setIsVisible(false);
+              onClickRefuse();
+            }}
           >
-            cookies
-          </Link>
-        </A>{" "}
-        to improve your experience on our site.
+            reject non-essential cookies
+          </button>
+          . View our{" "}
+          <A variant="primary" href="/home/platform-privacy">
+            Privacy Policy
+          </A>{" "}
+          for more information.
+        </div>
       </div>
-      <div className="flex gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          label="Reject All"
-          onClick={() => {
-            setIsVisible(false);
-            onClickRefuse();
-          }}
-        />
+      <div className="flex shrink-0 gap-3">
         <Button
           variant="highlight"
-          size="sm"
-          label="Accept All"
+          size="md"
+          label="Accept All Cookies"
           onClick={() => {
             setIsVisible(false);
             onClickAccept();
@@ -361,6 +372,7 @@ const Header = () => {
 
 interface PublicWebsiteLogoProps {
   size?: "default" | "small";
+  utmParam?: string;
 }
 
 const logoVariants = cva("", {
@@ -377,11 +389,12 @@ const logoVariants = cva("", {
 
 export const PublicWebsiteLogo = ({
   size = "default",
+  utmParam,
 }: PublicWebsiteLogoProps) => {
   const className = logoVariants({ size });
 
   return (
-    <Link href="/">
+    <Link href={`/${utmParam ? `?${utmParam}` : ""}`}>
       <Hover3D className={`relative ${className}`}>
         <Div3D depth={0} className={className}>
           <DustLogoLayer1 className={className} />

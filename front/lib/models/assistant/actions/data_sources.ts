@@ -97,13 +97,6 @@ AgentDataSourceConfiguration.init(
     sequelize: frontSequelize,
     hooks: {
       beforeValidate: (dsConfig: AgentDataSourceConfiguration) => {
-        // Checking parents.
-        if (
-          (dsConfig.parentsIn === null) !==
-          (dsConfig.parentsNotIn === null)
-        ) {
-          throw new Error("Parents must be both set or both null");
-        }
         // Checking tags.
         if ((dsConfig.tagsIn === null) !== (dsConfig.tagsNotIn === null)) {
           throw new Error("Tags must be both set or both null");

@@ -28,6 +28,7 @@ import {
   createSchedule,
   deleteSchedule,
   pauseSchedule,
+  scheduleExists,
   triggerSchedule,
 } from "@connectors/lib/temporal_schedules";
 import mainLogger from "@connectors/logger/logger";
@@ -42,6 +43,8 @@ const TRANSCRIPTS_FOLDER_TITLE = "Transcripts";
 const RETENTION_PERIOD_CONFIG_KEY = "gongRetentionPeriodDays";
 
 const TRACKERS_CONFIG_KEY = "gongTrackersEnabled";
+
+const ACCOUNTS_CONFIG_KEY = "gongAccountsEnabled";
 
 // This function generates a connector-wise unique schedule ID for the Gong sync.
 // The IDs of the workflows spawned by this schedule will follow the pattern:
@@ -82,6 +85,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       {
         baseUrl: baseUrlRes.value,
         trackersEnabled: false,
+        accountsEnabled: false,
       }
     );
 
@@ -95,7 +99,18 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       mimeType: INTERNAL_MIME_TYPES.GONG.TRANSCRIPT_FOLDER,
     });
 
-    const result = await createSchedule({
+    const result = await this.createGongSchedule(connector);
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    return new Ok(connector.id.toString());
+  }
+
+  private static async createGongSchedule(
+    connector: ConnectorResource
+  ): Promise<Result<string, Error>> {
+    return createSchedule({
       connector,
       action: {
         type: "startWorkflow",
@@ -113,11 +128,6 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       policies: SCHEDULE_POLICIES,
       spec: SCHEDULE_SPEC,
     });
-    if (result.isErr()) {
-      throw result.error;
-    }
-
-    return new Ok(connector.id.toString());
   }
 
   async update({
@@ -155,11 +165,6 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       // If connector was previously paused, unpause it.
       if (connector.isPaused()) {
         await this.unpauseAndResume();
-
-        await triggerSchedule({
-          connector,
-          scheduleId: makeGongSyncScheduleId(connector),
-        });
       }
     }
 
@@ -211,14 +216,32 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
     const connector = await fetchGongConnector({
       connectorId: this.connectorId,
     });
-    const result = await triggerSchedule({
-      connector,
-      scheduleId: makeGongSyncScheduleId(connector),
+
+    const scheduleId = makeGongSyncScheduleId(connector);
+
+    const scheduleExistsResult = await scheduleExists({
+      scheduleId,
     });
-    if (result.isErr()) {
-      throw result.error;
+
+    if (!scheduleExistsResult) {
+      const creationRes =
+        await GongConnectorManager.createGongSchedule(connector);
+
+      if (creationRes.isOk()) {
+        return new Ok(undefined);
+      } else {
+        return new Err(creationRes.error);
+      }
+    } else {
+      const result = await triggerSchedule({
+        connector,
+        scheduleId,
+      });
+      if (result.isErr()) {
+        throw result.error;
+      }
+      return new Ok(undefined);
     }
-    return new Ok(undefined);
   }
 
   async sync({
@@ -294,6 +317,8 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
         return new Ok(configuration.retentionPeriodDays?.toString() || null);
       case TRACKERS_CONFIG_KEY:
         return new Ok(configuration.trackersEnabled.toString());
+      case ACCOUNTS_CONFIG_KEY:
+        return new Ok(configuration.accountsEnabled.toString());
       default:
         return new Err(new Error(`Invalid config key ${configKey}`));
     }
@@ -345,6 +370,11 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       }
       case TRACKERS_CONFIG_KEY: {
         await configuration.setTrackersEnabled(configValue === "true");
+
+        return new Ok(undefined);
+      }
+      case ACCOUNTS_CONFIG_KEY: {
+        await configuration.setAccountsEnabled(configValue === "true");
 
         return new Ok(undefined);
       }

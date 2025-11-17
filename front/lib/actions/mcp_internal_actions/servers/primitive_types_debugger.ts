@@ -4,8 +4,15 @@ import { z } from "zod";
 
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { Authenticator } from "@app/lib/auth";
+import { Ok } from "@app/types";
 
-function createServer(): McpServer {
+function createServer(
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+): McpServer {
   const server = makeInternalMCPServer("primitive_types_debugger");
 
   server.tool(
@@ -14,16 +21,18 @@ function createServer(): McpServer {
     {
       query: z.string(),
     },
-    async ({ query }) => {
-      return {
-        content: [
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: "tool_without_user_config", agentLoopContext },
+      async ({ query }) => {
+        return new Ok([
           {
             type: "text",
             text: `Found the following configuration: ${query}.`,
           },
-        ],
-      };
-    }
+        ]);
+      }
+    )
   );
 
   server.tool(
@@ -98,17 +107,18 @@ function createServer(): McpServer {
         })
         .describe("Indicate the choices the agent can select from"),
     },
-    async (params) => {
-      return {
-        isError: false,
-        content: [
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: "pass_through", agentLoopContext },
+      async (params) => {
+        return new Ok([
           {
             type: "text",
             text: `Found the following configuration: ${JSON.stringify(params)}.`,
           },
-        ],
-      };
-    }
+        ]);
+      }
+    )
   );
 
   return server;

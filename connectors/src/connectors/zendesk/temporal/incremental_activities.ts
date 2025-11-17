@@ -1,5 +1,6 @@
 import assert from "assert";
 
+import { clearOrganizationCache } from "@connectors/connectors/zendesk/lib/in_memory_cache";
 import { syncArticle } from "@connectors/connectors/zendesk/lib/sync_article";
 import {
   deleteTicket,
@@ -8,17 +9,7 @@ import {
 } from "@connectors/connectors/zendesk/lib/sync_ticket";
 import type { ZendeskFetchedTicketComment } from "@connectors/connectors/zendesk/lib/types";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
-import {
-  fetchZendeskCategory,
-  fetchZendeskSection,
-  fetchZendeskUser,
-  getOrganizationTagMapForTickets,
-  getZendeskBrandSubdomain,
-  listRecentlyUpdatedArticles,
-  listZendeskTicketComments,
-  listZendeskTickets,
-  listZendeskUsers,
-} from "@connectors/connectors/zendesk/lib/zendesk_api";
+import { ZendeskClient } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
@@ -114,32 +105,33 @@ export async function syncZendeskArticleUpdateBatchActivity({
   const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
     connector.connectionId
   );
-  const brandSubdomain = await getZendeskBrandSubdomain({
-    connectorId,
+
+  const zendeskClient = await ZendeskClient.createClient(
+    accessToken,
+    connectorId
+  );
+
+  const brandSubdomain = await zendeskClient.getBrandSubdomain({
     brandId,
     subdomain,
-    accessToken,
   });
 
-  const { articles, hasMore, endTime } = await listRecentlyUpdatedArticles({
-    subdomain,
-    brandSubdomain,
-    accessToken,
-    startTime,
-  });
+  const { articles, hasMore, endTime } =
+    await zendeskClient.listRecentlyUpdatedArticles({
+      brandSubdomain,
+      startTime,
+    });
 
   await concurrentExecutor(
     articles,
     async (article) => {
-      const section = await fetchZendeskSection({
-        accessToken,
+      const section = await zendeskClient.fetchSection({
         brandSubdomain,
         sectionId: article.section_id,
       });
       const user = configuration.hideCustomerDetails
         ? null
-        : await fetchZendeskUser({
-            accessToken,
+        : await zendeskClient.fetchUser({
             brandSubdomain,
             userId: article.author_id,
           });
@@ -153,8 +145,7 @@ export async function syncZendeskArticleUpdateBatchActivity({
         /// fetching and adding the category to the db if it is newly created, and the Help Center is selected
         if (!category && hasHelpCenterPermissions) {
           const { category_id: categoryId } = section;
-          const fetchedCategory = await fetchZendeskCategory({
-            accessToken,
+          const fetchedCategory = await zendeskClient.fetchCategory({
             brandSubdomain,
             categoryId,
           });
@@ -251,15 +242,18 @@ export async function syncZendeskTicketUpdateBatchActivity({
   const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
     connector.connectionId
   );
-  const brandSubdomain = await getZendeskBrandSubdomain({
-    connectorId,
+
+  const zendeskClient = await ZendeskClient.createClient(
+    accessToken,
+    connectorId
+  );
+
+  const brandSubdomain = await zendeskClient.getBrandSubdomain({
     brandId,
     subdomain,
-    accessToken,
   });
 
-  const { tickets, hasMore, nextLink } = await listZendeskTickets(
-    accessToken,
+  const { tickets, hasMore, nextLink } = await zendeskClient.listTickets(
     url ? { url } : { brandSubdomain, startTime }
   );
 
@@ -267,8 +261,7 @@ export async function syncZendeskTicketUpdateBatchActivity({
   await concurrentExecutor(
     tickets,
     async (ticket) => {
-      const comments = await listZendeskTicketComments({
-        accessToken,
+      const comments = await zendeskClient.listTicketComments({
         brandSubdomain,
         ticketId: ticket.id,
       });
@@ -287,8 +280,7 @@ export async function syncZendeskTicketUpdateBatchActivity({
   // Also guarantees that user information is not included in the ticket content.
   const users = configuration.hideCustomerDetails
     ? []
-    : await listZendeskUsers({
-        accessToken,
+    : await zendeskClient.listUsers({
         brandSubdomain,
         userIds: [
           ...new Set(
@@ -301,10 +293,10 @@ export async function syncZendeskTicketUpdateBatchActivity({
 
   let organizationTagsMap = new Map<number, string[]>();
   if (configuration.enforcesOrganizationTagConstraint()) {
-    organizationTagsMap = await getOrganizationTagMapForTickets(tickets, {
-      accessToken,
-      brandSubdomain,
-    });
+    organizationTagsMap = await zendeskClient.getOrganizationTagMapForTickets(
+      tickets,
+      { brandSubdomain }
+    );
   }
 
   await concurrentExecutor(
@@ -359,5 +351,9 @@ export async function syncZendeskTicketUpdateBatchActivity({
     },
     { concurrency: 10 }
   );
+
+  if (!hasMore) {
+    clearOrganizationCache({ brandSubdomain });
+  }
   return { hasMore, nextLink };
 }

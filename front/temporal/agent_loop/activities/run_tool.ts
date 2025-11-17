@@ -1,3 +1,4 @@
+import { Context } from "@temporalio/activity";
 import assert from "assert";
 
 import { runToolWithStreaming } from "@app/lib/api/mcp/run_tool";
@@ -6,11 +7,12 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import logger from "@app/logger/logger";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import type { ToolExecutionResult } from "@app/temporal/agent_loop/lib/deferred_events";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import type { ModelId } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever, ConversationError } from "@app/types";
 import type { AgentLoopArgsWithTiming } from "@app/types/assistant/agent_run";
 import { getAgentLoopData } from "@app/types/assistant/agent_run";
 
@@ -33,6 +35,20 @@ export async function runToolActivity(
 
   const runAgentDataRes = await getAgentLoopData(authType, runAgentArgs);
   if (runAgentDataRes.isErr()) {
+    // If the conversation is not found, we cannot run the tool and should stop execution here.
+    if (
+      runAgentDataRes.error instanceof ConversationError &&
+      runAgentDataRes.error.type === "conversation_not_found"
+    ) {
+      logger.warn(
+        {
+          actionId,
+          runIds,
+        },
+        "conversation_not_found while running tool, stopping execution"
+      );
+      return { deferredEvents };
+    }
     throw runAgentDataRes.error;
   }
 
@@ -62,12 +78,20 @@ export async function runToolActivity(
   );
   assert(action, "Action not found");
 
-  const eventStream = runToolWithStreaming(auth, {
-    action,
-    agentConfiguration,
-    agentMessage,
-    conversation,
-  });
+  const abortSignal = Context.current().cancellationSignal;
+
+  const eventStream = runToolWithStreaming(
+    auth,
+    {
+      action,
+      agentConfiguration,
+      agentMessage,
+      conversation,
+    },
+    {
+      signal: abortSignal,
+    }
+  );
 
   for await (const event of eventStream) {
     switch (event.type) {
@@ -94,8 +118,9 @@ export async function runToolActivity(
 
         return { deferredEvents };
       case "tool_early_exit":
-        if (!event.isError && event.text) {
-          // Post message content
+        if (!event.isError && event.text && !agentMessage.content) {
+          // Save and post the tool's text content only if the execution stopped
+          // before any text was generated.
           await AgentStepContentResource.createNewVersion({
             workspaceId: conversation.owner.id,
             agentMessageId: agentMessage.agentMessageId,
@@ -133,7 +158,8 @@ export async function runToolActivity(
                 messageId: agentMessage.sId,
                 message: {
                   ...agentMessage,
-                  content: (agentMessage.content ?? "") + "\n\n" + event.text,
+                  content: agentMessage.content,
+                  completedTs: event.created,
                 },
                 runIds: runIds ?? [],
               },
@@ -147,6 +173,7 @@ export async function runToolActivity(
 
       case "tool_personal_auth_required":
       case "tool_approve_execution":
+        // Update and publish deferred events for these types.
         // Defer personal auth events to be sent after all tools complete.
         deferredEvents.push({
           event,

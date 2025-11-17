@@ -1,5 +1,5 @@
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { getAgentRoute } from "@app/lib/utils/router";
+import { getConversationRoute } from "@app/lib/utils/router";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<object>(
   async (context, auth) => {
@@ -11,7 +11,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<object>(
 
     return {
       redirect: {
-        destination: getAgentRoute(context.query.wId as string),
+        destination: getConversationRoute(context.query.wId as string),
         permanent: false,
       },
     };

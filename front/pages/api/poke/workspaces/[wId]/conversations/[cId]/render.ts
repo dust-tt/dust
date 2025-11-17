@@ -6,10 +6,10 @@ import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mc
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
-import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
@@ -177,6 +177,7 @@ async function handler(
         created: Date.now(),
         completedTs: null,
         parentMessageId: null,
+        parentAgentMessageId: null,
         status: "created",
         content: null,
         chainOfThought: null,
@@ -191,6 +192,7 @@ async function handler(
         rawContents: [],
         contents: [],
         parsedContents: {},
+        modelInteractionDurationMs: null,
       };
 
       const { serverToolsAndInstructions, error: mcpToolsListingError } =
@@ -210,11 +212,7 @@ async function handler(
       );
 
       let fallbackPrompt = "You are a conversational agent";
-      if (
-        agentConfiguration.actions.length ||
-        agentConfiguration.visualizationEnabled ||
-        availableActions.length > 0
-      ) {
+      if (agentConfiguration.actions.length || availableActions.length > 0) {
         fallbackPrompt += " with access to tool use.";
       } else {
         fallbackPrompt += ".";

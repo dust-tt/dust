@@ -83,8 +83,11 @@ export async function upsertTableActivity(
     tableDescription: upsertQueueItem.tableDescription,
     tableId: upsertQueueItem.tableId,
     tableTimestamp: upsertQueueItem.tableTimestamp ?? null,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     tableTags: upsertQueueItem.tableTags || [],
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     tableParentId: upsertQueueItem.tableParentId || null,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     tableParents: upsertQueueItem.tableParents || [],
     fileId: upsertQueueItem.fileId ?? null,
     truncate: upsertQueueItem.truncate,
@@ -99,6 +102,7 @@ export async function upsertTableActivity(
         error: tableRes.error,
         latencyMs: Date.now() - upsertTimestamp,
         delaySinceEnqueueMs: Date.now() - enqueueTimestamp,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         csvSize: upsertQueueItem.csv?.length || 0,
       },
       "[UpsertQueue] Failed table upsert"
@@ -123,6 +127,7 @@ export async function upsertTableActivity(
     {
       latencyMs: Date.now() - upsertTimestamp,
       delaySinceEnqueueMs: Date.now() - enqueueTimestamp,
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       csvSize: upsertQueueItem.csv?.length || 0,
     },
     "[UpsertQueue] Successful table upsert"

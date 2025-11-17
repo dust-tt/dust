@@ -8,8 +8,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { updateWorkOSOrganizationName } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
-import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse, WorkspaceType } from "@app/types";
 import { EmbeddingProviderCodec, ModelProviderIdCodec } from "@app/types";
@@ -48,6 +47,10 @@ const WorkspaceInteractiveContentSharingUpdateBodySchema = t.type({
   allowContentCreationFileSharing: t.boolean,
 });
 
+const WorkspaceVoiceTranscriptionUpdateBodySchema = t.type({
+  allowVoiceTranscription: t.boolean,
+});
+
 const PostWorkspaceRequestBodySchema = t.union([
   WorkspaceAllowedDomainUpdateBodySchema,
   WorkspaceNameUpdateBodySchema,
@@ -55,6 +58,7 @@ const PostWorkspaceRequestBodySchema = t.union([
   WorkspaceProvidersUpdateBodySchema,
   WorkspaceWorkOSUpdateBodySchema,
   WorkspaceInteractiveContentSharingUpdateBodySchema,
+  WorkspaceVoiceTranscriptionUpdateBodySchema,
 ]);
 
 async function handler(
@@ -96,11 +100,8 @@ async function handler(
       }
       const { right: body } = bodyValidation;
 
-      // TODO: move to WorkspaceResource.
-      const w = await WorkspaceModel.findOne({
-        where: { id: owner.id },
-      });
-      if (!w) {
+      const workspace = await WorkspaceResource.fetchByModelId(owner.id);
+      if (!workspace) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
@@ -111,7 +112,7 @@ async function handler(
       }
 
       if ("name" in body) {
-        await w.update({
+        await workspace.updateWorkspaceSettings({
           name: escape(body.name),
         });
         owner.name = body.name;
@@ -127,7 +128,7 @@ async function handler(
           });
         }
       } else if ("ssoEnforced" in body) {
-        await w.update({
+        await workspace.updateWorkspaceSettings({
           ssoEnforced: body.ssoEnforced,
         });
 
@@ -136,14 +137,14 @@ async function handler(
         "whiteListedProviders" in body &&
         "defaultEmbeddingProvider" in body
       ) {
-        await w.update({
+        await workspace.updateWorkspaceSettings({
           whiteListedProviders: body.whiteListedProviders,
           defaultEmbeddingProvider: body.defaultEmbeddingProvider,
         });
         owner.whiteListedProviders = body.whiteListedProviders;
-        owner.defaultEmbeddingProvider = w.defaultEmbeddingProvider;
+        owner.defaultEmbeddingProvider = workspace.defaultEmbeddingProvider;
       } else if ("workOSOrganizationId" in body) {
-        await w.update({
+        await workspace.updateWorkspaceSettings({
           workOSOrganizationId: body.workOSOrganizationId,
         });
         owner.workOSOrganizationId = body.workOSOrganizationId;
@@ -153,32 +154,33 @@ async function handler(
           ...previousMetadata,
           allowContentCreationFileSharing: body.allowContentCreationFileSharing,
         };
-        await w.update({ metadata: newMetadata });
+        await workspace.updateWorkspaceSettings({ metadata: newMetadata });
         owner.metadata = newMetadata;
 
         // if public sharing is disabled, downgrade share scope of all public files to workspace
         if (!body.allowContentCreationFileSharing) {
           await FileResource.revokePublicSharingInWorkspace(auth);
         }
+      } else if ("allowVoiceTranscription" in body) {
+        const previousMetadata = owner.metadata ?? {};
+        const newMetadata = {
+          ...previousMetadata,
+          allowVoiceTranscription: body.allowVoiceTranscription,
+        };
+        await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+        owner.metadata = newMetadata;
       } else {
         const { domain, domainAutoJoinEnabled } = body;
-        const [affectedCount] = await WorkspaceHasDomainModel.update(
-          {
-            domainAutoJoinEnabled,
-          },
-          {
-            where: {
-              workspaceId: w.id,
-              ...(domain ? { domain } : {}),
-            },
-          }
-        );
-        if (affectedCount === 0) {
+        const updateResult = await workspace.updateDomainAutoJoinEnabled({
+          domainAutoJoinEnabled,
+          domain,
+        });
+        if (updateResult.isErr()) {
           return apiError(req, res, {
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
-              message: "The workspace does not have any verified domain.",
+              message: updateResult.error.message,
             },
           });
         }

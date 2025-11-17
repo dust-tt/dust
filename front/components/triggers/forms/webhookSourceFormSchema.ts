@@ -1,9 +1,12 @@
 import { z } from "zod";
 
+import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 
 export type WebhookSourceFormValues = {
   name: string;
+  description: string;
+  icon: string;
   sharingSettings: Record<string, boolean>;
 };
 
@@ -12,7 +15,7 @@ export function getWebhookSourceFormDefaults(
   webhookSourceWithViews?: { views: Array<{ spaceId: string }> },
   spaces?: Array<{ sId: string; kind: string }>
 ): WebhookSourceFormValues {
-  const name = view.customName ?? view.webhookSource.name;
+  const name = view.customName;
 
   const sharingSettings: Record<string, boolean> = {};
 
@@ -39,6 +42,8 @@ export function getWebhookSourceFormDefaults(
 
   return {
     name,
+    description: view.description ?? "",
+    icon: normalizeWebhookIcon(view.icon),
     sharingSettings,
   };
 }
@@ -46,12 +51,18 @@ export function getWebhookSourceFormDefaults(
 export function getWebhookSourceFormSchema() {
   return z.object({
     name: z.string().min(1, "Name is required."),
+    description: z.string(),
+    icon: z.string(),
     sharingSettings: z.record(z.boolean()),
   });
 }
 
 type FormDiffType = {
-  name?: string;
+  requestBody?: {
+    name: string;
+    description?: string;
+    icon?: string;
+  };
   sharingChanges?: Array<{
     spaceId: string;
     action: "add" | "remove";
@@ -64,8 +75,28 @@ export function diffWebhookSourceForm(
 ): FormDiffType {
   const out: FormDiffType = {};
 
-  if (current.name !== initial.name) {
-    out.name = current.name;
+  const hasNameChange = current.name !== initial.name;
+  const hasDescriptionChange = current.description !== initial.description;
+  const hasIconChange = current.icon !== initial.icon;
+
+  if (hasNameChange || hasDescriptionChange || hasIconChange) {
+    const requestBody: {
+      name: string;
+      description?: string;
+      icon?: string;
+    } = {
+      name: current.name,
+    };
+
+    if (hasDescriptionChange) {
+      requestBody.description = current.description;
+    }
+
+    if (hasIconChange) {
+      requestBody.icon = current.icon;
+    }
+
+    out.requestBody = requestBody;
   }
 
   const sharingChanges: typeof out.sharingChanges = [];

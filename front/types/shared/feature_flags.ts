@@ -12,11 +12,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Setup Notion private integration tokens",
     stage: "on_demand",
   },
-  advanced_search: {
-    description:
-      "Activates the advanced search option: browse selected data like a file system",
-    stage: "on_demand",
-  },
   agent_to_yaml: {
     description: "Export and Import agents to/from YAML format",
     stage: "dust_only",
@@ -25,13 +20,13 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Autocomplete feature for agent builder instructions (wip)",
     stage: "dust_only",
   },
+  ashby_tool: {
+    description: "Ashby tool for ATS integration",
+    stage: "dust_only",
+  },
   claude_4_opus_feature: {
     description: "Access to Claude 4 Opus model in the agent builder",
     stage: "on_demand",
-  },
-  co_edition: {
-    description: "Collaborative editing features",
-    stage: "dust_only",
   },
   confluence_tool: {
     description: "Confluence MCP tool",
@@ -59,11 +54,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Prevent users from creating agents, allowing only admins and builders",
     stage: "on_demand",
   },
-  interactive_content_server: {
-    description:
-      "Content Creation MCP server - gives access to the new visualization layout",
-    stage: "on_demand",
-  },
   google_ai_studio_experimental_models_feature: {
     description: "Access to experimental Google AI Studio models",
     stage: "on_demand",
@@ -71,6 +61,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   google_sheets_tool: {
     description: "Google Sheets MCP tool",
     stage: "rolling_out",
+  },
+  http_client_tool: {
+    description: "HTTP Client MCP tool for making external API requests",
+    stage: "on_demand",
   },
   index_private_slack_channel: {
     description: "Allow indexing of private Slack channels",
@@ -118,6 +112,14 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Salesforce MCP tool (activated by default on most plans, FF to override the plan config)",
     stage: "on_demand",
   },
+  salesloft_tool: {
+    description: "Salesloft MCP tool",
+    stage: "dust_only",
+  },
+  salesforce_tool_write: {
+    description: "Salesforce MCP tool: write operations (update_object)",
+    stage: "on_demand",
+  },
   show_debug_tools: {
     description: "Display debug tools in the interface",
     stage: "dust_only",
@@ -143,16 +145,13 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Freshservice MCP tool",
     stage: "rolling_out",
   },
+  front_tool: {
+    description:
+      "Front MCP tool for managing support conversations, messages, and customer interactions.",
+    stage: "rolling_out",
+  },
   agent_management_tool: {
     description: "MCP tool for creating and managing agent configurations",
-    stage: "dust_only",
-  },
-  research_agent: {
-    description: "Activate @research agent.",
-    stage: "dust_only",
-  },
-  deep_research_as_a_tool: {
-    description: "Activate deep research as a tool",
     stage: "dust_only",
   },
   hootl_subscriptions: {
@@ -168,10 +167,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enhanced default agent feature for Slack channels - auto-respond to all messages in channel",
     stage: "on_demand",
   },
-  simple_audio_transcription: {
-    description: "Simple Audio transcription feature",
-    stage: "dust_only",
-  },
   slideshow: {
     description: "Slideshow MCP tool",
     stage: "dust_only",
@@ -181,14 +176,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable splitting agent responses into multiple Slack messages for Slack (instead of truncation)",
     stage: "dust_only",
   },
-  hootl_webhooks: {
-    description: "Webhooks for Human Out Of The Loop (aka Triggers) / webhooks",
-    stage: "dust_only",
-  },
-  use_openai_eu_key: {
-    description: "Use OpenAI EU API key instead of the default OpenAI API key",
-    stage: "on_demand",
-  },
   slack_bot_mcp: {
     description: "Slack bot MCP server for workspace-level Slack integration",
     stage: "on_demand",
@@ -197,13 +184,46 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Slack semantic search feature",
     stage: "on_demand",
   },
-  virtualized_conversations: {
-    description: "Use virtualized conversations display",
-    stage: "dust_only",
-  },
   web_summarization: {
     description: "AI-powered web page summarization in the web browser tool",
     stage: "on_demand",
+  },
+  elevenlabs_tool: {
+    description: "Elevenlabs MCP tool for voice synthesis",
+    stage: "on_demand",
+  },
+  legacy_dust_apps: {
+    description: "Access to legacy Dust Apps (editor and associated tools)",
+    stage: "on_demand",
+  },
+  discord_bot: {
+    description:
+      "Discord bot integration for workspace-level Discord integration",
+    stage: "dust_only",
+  },
+  llm_router_direct_requests: {
+    description: "Use direct LLM call over Dust app run in a conversation.",
+    stage: "on_demand",
+  },
+  llm_comparison_mode_enabled: {
+    description: "Enable LLM comparison mode.",
+    stage: "on_demand",
+  },
+  use_requested_space_ids: {
+    description: "Use requested spaces Ids for permissions checking.",
+    stage: "dust_only",
+  },
+  mentions_v2: {
+    description: "Enable mentions v2, aka mention users",
+    stage: "on_demand",
+  },
+  slack_files_write_scope: {
+    description: "Enable files:write scope for Slack bot and MCP server",
+    stage: "on_demand",
+  },
+  notifications: {
+    description: "Enable notifications",
+    stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;
 

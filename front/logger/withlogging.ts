@@ -1,5 +1,9 @@
 import tracer from "dd-trace";
-import type { NextApiRequest, NextApiResponse } from "next";
+import type {
+  GetServerSidePropsContext,
+  NextApiRequest,
+  NextApiResponse,
+} from "next";
 
 import { getSession } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -12,7 +16,7 @@ import type {
   ResourceLogJSON,
 } from "@app/lib/resources/base_resource";
 import type { APIErrorWithStatusCode, WithAPIErrorResponse } from "@app/types";
-import { normalizeError } from "@app/types";
+import { isString, normalizeError } from "@app/types";
 
 import logger from "./logger";
 import { statsDClient } from "./statsDClient";
@@ -22,6 +26,16 @@ export type RequestContext = {
 };
 
 const EMPTY_LOG_CONTEXT = Object.freeze({});
+
+function getClientIp(
+  req: GetServerSidePropsContext["req"] | NextApiRequest
+): string | undefined {
+  const { "x-forwarded-for": forwarded } = req.headers;
+
+  return isString(forwarded)
+    ? forwarded.split(",")[0].trim()
+    : req.socket.remoteAddress;
+}
 
 // Make the elements undefined temporarily avoid updating all NextApiRequest to NextApiRequestWithContext.
 export interface NextApiRequestWithContext extends NextApiRequest {
@@ -65,10 +79,11 @@ export function withLogging<T>(
         ddtraceNextRequestSpan.setOperationName("next.request.streaming");
       }
     }
+    const clientIp = getClientIp(req);
     const now = new Date();
 
     const session = await getSession(req, res);
-    const sessionId = session?.sessionId || "unknown";
+    const sessionId = session?.sessionId ?? "unknown";
 
     // Use freeze to make sure we cannot update `req.logContext` down the callstack
     req.logContext = EMPTY_LOG_CONTEXT;
@@ -113,11 +128,12 @@ export function withLogging<T>(
       const error = normalizeError(err);
       logger.error(
         {
-          commitHash,
-          extensionVersion,
+          clientIp,
           cliVersion,
+          commitHash,
           durationMs: elapsed,
           error: err,
+          extensionVersion,
           method: req.method,
           route,
           sessionId,
@@ -172,10 +188,11 @@ export function withLogging<T>(
 
     logger.info(
       {
-        commitHash,
-        extensionVersion,
+        clientIp,
         cliVersion,
+        commitHash,
         durationMs: elapsed,
+        extensionVersion,
         method: req.method,
         route,
         sessionId,
@@ -198,9 +215,9 @@ export function apiError<T>(
 ): void {
   const callstack = new Error().stack;
   const errorAttrs = {
-    message: (error && error.message) || apiError.api_error.message,
+    message: (error && error.message) ?? apiError.api_error.message,
     kind: apiError.api_error.type,
-    stack: (error && error.stack) || callstack,
+    stack: (error && error.stack) ?? callstack,
   };
   logger.error(
     {
@@ -246,6 +263,7 @@ export function withGetServerSidePropsLogging<
 ): CustomGetServerSideProps<T, any, any, RequireUserPrivilege> {
   return async (context, auth, session) => {
     const now = new Date();
+    const clientIp = getClientIp(context.req);
 
     let route = context.resolvedUrl.split("?")[0];
     for (const key in context.params) {
@@ -288,6 +306,7 @@ export function withGetServerSidePropsLogging<
           url: context.resolvedUrl,
           route,
           durationMs: elapsed,
+          clientIp,
         },
         "Processed getServerSideProps"
       );
@@ -303,6 +322,7 @@ export function withGetServerSidePropsLogging<
           durationMs: elapsed,
           url: context.resolvedUrl,
           route,
+          clientIp,
           error: {
             message: error.message,
             stack: error.stack,

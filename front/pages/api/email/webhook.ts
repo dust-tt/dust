@@ -14,7 +14,7 @@ import {
   userAndWorkspacesFromEmail,
 } from "@app/lib/api/assistant/email_trigger";
 import { Authenticator } from "@app/lib/auth";
-import { getAgentRoute } from "@app/lib/utils/router";
+import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { Result, WithAPIErrorResponse } from "@app/types";
@@ -262,7 +262,7 @@ async function handler(
             agentConfiguration: answer.agentConfiguration,
             htmlContent: `<div><div>${
               answer.html
-            }</div><br/><a href="${getAgentRoute(auth.workspace()?.sId ?? "", conversation.sId, DUST_CLIENT_FACING_URL)}">Open in Dust</a></div>`,
+            }</div><br/><a href="${getConversationRoute(workspace.sId, conversation.sId, undefined, DUST_CLIENT_FACING_URL)}">Open in Dust</a></div>`,
           });
         });
       }

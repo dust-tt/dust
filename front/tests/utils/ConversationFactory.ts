@@ -10,33 +10,52 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import type { UserResource } from "@app/lib/resources/user_resource";
-import type { ConversationType, ModelId, WorkspaceType } from "@app/types";
+import type {
+  ConversationType,
+  ConversationVisibility,
+  ModelId,
+  UserMessageOrigin,
+  UserMessageType,
+  WorkspaceType,
+} from "@app/types";
 
 export class ConversationFactory {
-  static async create({
-    auth,
-    agentConfigurationId,
-    messagesCreatedAt,
-    conversationCreatedAt,
-    t,
-  }: {
-    auth: Authenticator;
-    agentConfigurationId: string;
-    messagesCreatedAt: Date[];
-    conversationCreatedAt?: Date;
-    t?: Transaction;
-  }): Promise<ConversationType> {
+  static async create(
+    auth: Authenticator,
+    {
+      agentConfigurationId,
+      messagesCreatedAt,
+      conversationCreatedAt,
+      requestedSpaceIds,
+      visibility = "unlisted",
+      t,
+    }: {
+      agentConfigurationId: string;
+      messagesCreatedAt: Date[];
+      conversationCreatedAt?: Date;
+      requestedSpaceIds?: ModelId[];
+      visibility?: ConversationVisibility;
+      t?: Transaction;
+    }
+  ): Promise<ConversationType> {
     const user = auth.getNonNullableUser();
     const workspace = auth.getNonNullableWorkspace();
 
     const conversation = await createConversation(auth, {
       title: "Test Conversation",
-      visibility: "unlisted",
+      visibility,
     });
 
     if (conversationCreatedAt) {
       await ConversationModel.update(
         { createdAt: conversationCreatedAt },
+        { where: { id: conversation.id } }
+      );
+    }
+
+    if (requestedSpaceIds && requestedSpaceIds.length > 0) {
+      await ConversationModel.update(
+        { requestedSpaceIds },
         { where: { id: conversation.id } }
       );
     }
@@ -63,6 +82,71 @@ export class ConversationFactory {
     }
 
     return conversation;
+  }
+
+  /**
+   * Creates a test user message
+   */
+  static async createUserMessage({
+    auth,
+    workspace,
+    conversation,
+    content,
+    origin = "web",
+    originMessageId,
+  }: {
+    auth: Authenticator;
+    workspace: WorkspaceType;
+    conversation: ConversationType;
+    content: string;
+    origin?: UserMessageOrigin;
+    originMessageId?: string;
+  }): Promise<{ messageRow: Message; userMessage: UserMessageType }> {
+    const userMessageRow = await UserMessage.create({
+      userId: auth.getNonNullableUser().id,
+      workspaceId: workspace.id,
+      content,
+      userContextUsername: "testuser",
+      userContextTimezone: "UTC",
+      userContextFullName: "Test User",
+      userContextEmail: "test@example.com",
+      userContextProfilePictureUrl: null,
+      userContextOrigin: origin,
+      clientSideMCPServerIds: [],
+    });
+
+    const messageRow = await Message.create({
+      sId: generateRandomModelSId(),
+      rank: 0,
+      conversationId: conversation.id,
+      parentId: null,
+      userMessageId: userMessageRow.id,
+      workspaceId: workspace.id,
+    });
+
+    const userMessage: UserMessageType = {
+      id: messageRow.id,
+      created: userMessageRow.createdAt.getTime(),
+      sId: messageRow.sId,
+      type: "user_message",
+      visibility: "visible",
+      version: 0,
+      user: auth.getNonNullableUser().toJSON(),
+      mentions: [],
+      content: userMessageRow.content,
+      context: {
+        username: userMessageRow.userContextUsername,
+        timezone: userMessageRow.userContextTimezone,
+        fullName: userMessageRow.userContextFullName,
+        email: userMessageRow.userContextEmail,
+        profilePictureUrl: userMessageRow.userContextProfilePictureUrl,
+        origin: userMessageRow.userContextOrigin,
+        ...(originMessageId && { originMessageId }),
+      },
+      rank: messageRow.rank,
+    };
+
+    return { messageRow, userMessage };
   }
 }
 

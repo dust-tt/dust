@@ -12,6 +12,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
@@ -22,7 +23,6 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import { launchUpdateSpacePermissionsWorkflow } from "@app/temporal/permissions_queue/client";
 import type {
   CombinedResourcePermissions,
   GroupPermission,
@@ -31,7 +31,7 @@ import type {
   SpaceKind,
   SpaceType,
 } from "@app/types";
-import { Err, GLOBAL_SPACE_NAME, Ok } from "@app/types";
+import { Err, GLOBAL_SPACE_NAME, Ok, removeNulls } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -328,17 +328,33 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     sId: string,
     { includeDeleted }: { includeDeleted?: boolean } = {}
   ): Promise<SpaceResource | null> {
-    const spaceModelId = getResourceIdFromSId(sId);
-    if (!spaceModelId) {
-      return null;
-    }
+    const [space] = await this.fetchByIds(auth, [sId], { includeDeleted });
+    return space ?? null;
+  }
 
-    const [space] = await this.baseFetch(auth, {
-      where: { id: spaceModelId },
+  static async fetchByIds(
+    auth: Authenticator,
+    ids: string[],
+    { includeDeleted }: { includeDeleted?: boolean } = {}
+  ): Promise<SpaceResource[]> {
+    return this.baseFetch(auth, {
+      where: {
+        id: removeNulls(ids.map(getResourceIdFromSId)),
+      },
       includeDeleted,
     });
+  }
 
-    return space;
+  static async fetchByModelIds(auth: Authenticator, ids: ModelId[]) {
+    const spaces = await this.baseFetch(auth, {
+      where: {
+        id: {
+          [Op.in]: ids,
+        },
+      },
+    });
+
+    return spaces ?? [];
   }
 
   static async isNameAvailable(
@@ -378,6 +394,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     await concurrentExecutor(
       this.groups,
       async (group) => {
+        // Provisioned groups are not tied to any space, we don't delete them.
+        if (group.kind === "provisioned") {
+          return;
+        }
         // As the model allows it, ensure the group is not associated with any other space.
         const count = await GroupSpaceModel.count({
           where: {
@@ -482,7 +502,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     const [defaultSpaceGroup] = regularGroups;
 
     const wasRestricted = this.groups.every((g) => !g.isGlobal());
-    const hasRestrictionChanged = wasRestricted !== isRestricted;
 
     const groupRes = await GroupResource.fetchWorkspaceGlobalGroup(auth);
     if (groupRes.isErr()) {
@@ -501,7 +520,22 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           await this.removeGroup(globalGroup);
         }
 
+        const previousManagementMode = this.managementMode;
         await this.update({ managementMode }, t);
+
+        // Handle member status updates based on management mode changes
+        if (previousManagementMode !== managementMode) {
+          if (managementMode === "group") {
+            // When switching to group mode, suspend all active members of the default group
+            await this.suspendDefaultGroupMembers(auth, t);
+          } else if (
+            managementMode === "manual" &&
+            previousManagementMode === "group"
+          ) {
+            // When switching from group to manual mode, restore suspended members
+            await this.restoreDefaultGroupMembers(auth, t);
+          }
+        }
 
         if (managementMode === "manual") {
           const memberIds = params.memberIds;
@@ -582,12 +616,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
             transaction: t,
           });
         }
-      }
-
-      // If the restriction has changed, start a workflow to update all associated resource
-      // permissions.
-      if (hasRestrictionChanged) {
-        await launchUpdateSpacePermissionsWorkflow(auth, this);
       }
 
       return new Ok(undefined);
@@ -795,7 +823,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     const groupFilter =
       this.managementMode === "manual"
         ? (group: GroupResource) => !group.isProvisioned()
-        : (group: GroupResource) => group.isProvisioned();
+        : () => true;
 
     // Open space.
     // Currently only using global group for simplicity.
@@ -898,6 +926,54 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   // Serialization.
+
+  /**
+   * Suspends all active members of the default group when switching to group management mode
+   */
+  private async suspendDefaultGroupMembers(
+    auth: Authenticator,
+    transaction?: Transaction
+  ): Promise<void> {
+    const defaultSpaceGroup = this.getDefaultSpaceGroup();
+
+    await GroupMembershipModel.update(
+      { status: "suspended" },
+      {
+        where: {
+          groupId: defaultSpaceGroup.id,
+          workspaceId: this.workspaceId,
+          status: "active",
+          startAt: { [Op.lte]: new Date() },
+          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+        },
+        transaction,
+      }
+    );
+  }
+
+  /**
+   * Restores all suspended members of the default group when switching to manual management mode
+   */
+  private async restoreDefaultGroupMembers(
+    auth: Authenticator,
+    transaction?: Transaction
+  ): Promise<void> {
+    const defaultSpaceGroup = this.getDefaultSpaceGroup();
+
+    await GroupMembershipModel.update(
+      { status: "active" },
+      {
+        where: {
+          groupId: defaultSpaceGroup.id,
+          workspaceId: this.workspaceId,
+          status: "suspended",
+          startAt: { [Op.lte]: new Date() },
+          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+        },
+        transaction,
+      }
+    );
+  }
 
   toJSON(): SpaceType {
     return {

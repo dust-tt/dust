@@ -12,7 +12,7 @@ import {
 } from "@connectors/lib/models/google_drive";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import { sequelizeConnection } from "@connectors/resources/storage";
+import { connectorsSequelize } from "@connectors/resources/storage";
 
 const { LIVE } = process.env;
 
@@ -29,7 +29,7 @@ async function main() {
   ORDER BY folders."updatedAt" DESC;
 `;
 
-  const results = await sequelizeConnection.query(query, {
+  const results = await connectorsSequelize.query(query, {
     type: QueryTypes.SELECT,
   });
 

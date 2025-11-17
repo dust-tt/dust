@@ -196,8 +196,8 @@ describe("POST /api/w/[wId]/members/[uId]", () => {
   });
 
   describe("method validation", () => {
-    it("should return 405 for non-POST methods", async () => {
-      const methods = ["GET", "PUT", "DELETE", "PATCH"] as const;
+    it("should return 405 for unsupported methods", async () => {
+      const methods = ["PUT", "DELETE", "PATCH"] as const;
 
       for (const method of methods) {
         const { req, res, user } = await createPrivateApiMockRequest({
@@ -213,6 +213,126 @@ describe("POST /api/w/[wId]/members/[uId]", () => {
         const data = res._getJSONData();
         expect(data.error.type).toBe("method_not_supported_error");
       }
+    });
+  });
+
+  describe("GET /api/w/[wId]/members/[uId]", () => {
+    const allowedAttributes = new Set([
+      "id",
+      "username",
+      "email",
+      "firstName",
+      "lastName",
+      "fullName",
+      "image",
+      "revoked",
+      "role",
+    ]);
+
+    it("should return 200 when admin requests own data", async () => {
+      const { req, res, user } = await createPrivateApiMockRequest({
+        method: "GET",
+        role: "admin",
+      });
+
+      req.query.uId = user.sId;
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(200);
+      const data = res._getJSONData();
+      expect(data.member).toBeDefined();
+
+      // data.member should only contain allowed attributes
+      expect(allowedAttributes).toStrictEqual(
+        new Set(Object.keys(data.member))
+      );
+      expect(data.member.id).toBe(user.sId);
+      expect(data.member.role).toBe("admin");
+    });
+
+    it("should return 200 when user requests own data", async () => {
+      const { req, res, user } = await createPrivateApiMockRequest({
+        method: "GET",
+        role: "user",
+      });
+
+      req.query.uId = user.sId;
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(200);
+      const data = res._getJSONData();
+      // data.member should only contain allowed attributes
+      expect(allowedAttributes).toStrictEqual(
+        new Set(Object.keys(data.member))
+      );
+      expect(data.member.id).toBe(user.sId);
+      expect(data.member.role).toBe("user");
+    });
+
+    it("should return 200 when admin requests another user's data", async () => {
+      const { req, res, workspace } = await createPrivateApiMockRequest({
+        method: "GET",
+        role: "admin",
+      });
+
+      const targetUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, targetUser, {
+        role: "builder",
+      });
+
+      req.query.uId = targetUser.sId;
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(200);
+      const data = res._getJSONData();
+      // data.member should only contain allowed attributes
+      expect(allowedAttributes).toStrictEqual(
+        new Set(Object.keys(data.member))
+      );
+      expect(data.member.id).toBe(targetUser.sId);
+      expect(data.member.role).toBe("builder");
+    });
+
+    it("should return 200 when non-admin user requests another user's data", async () => {
+      const { req, res, workspace } = await createPrivateApiMockRequest({
+        method: "GET",
+        role: "user",
+      });
+
+      const targetUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, targetUser, {
+        role: "user",
+      });
+
+      req.query.uId = targetUser.sId;
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(200);
+      const data = res._getJSONData();
+      // data.member should only contain allowed attributes
+      expect(allowedAttributes).toStrictEqual(
+        new Set(Object.keys(data.member))
+      );
+      expect(data.member.id).toBe(targetUser.sId);
+    });
+
+    it("should return 404 when user is not found", async () => {
+      const { req, res } = await createPrivateApiMockRequest({
+        method: "GET",
+        role: "admin",
+      });
+
+      req.query.uId = "nonexistent-user-id";
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(404);
+      const data = res._getJSONData();
+      expect(data.error.type).toBe("workspace_user_not_found");
     });
   });
 });

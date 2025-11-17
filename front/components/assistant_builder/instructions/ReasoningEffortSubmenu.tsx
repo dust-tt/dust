@@ -7,14 +7,14 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo } from "react";
 
-import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
+import type { AgentBuilderState } from "@app/components/assistant_builder/types";
 import { getSupportedModelConfig } from "@app/lib/assistant";
-import { asDisplayName, REASONING_EFFORT_IDS } from "@app/types";
+import { asDisplayName, REASONING_EFFORTS } from "@app/types";
 
 interface ReasoningEffortSubmenuProps {
-  generationSettings: AssistantBuilderState["generationSettings"];
+  generationSettings: AgentBuilderState["generationSettings"];
   setGenerationSettings: (
-    settings: AssistantBuilderState["generationSettings"]
+    settings: AgentBuilderState["generationSettings"]
   ) => void;
 }
 
@@ -33,12 +33,11 @@ export function ReasoningEffortSubmenu({
 
   useEffect(() => {
     if (modelConfig && reasoningEffort) {
-      const reasoningEffortIndex =
-        REASONING_EFFORT_IDS.indexOf(reasoningEffort);
-      const minIndex = REASONING_EFFORT_IDS.indexOf(
+      const reasoningEffortIndex = REASONING_EFFORTS.indexOf(reasoningEffort);
+      const minIndex = REASONING_EFFORTS.indexOf(
         modelConfig.minimumReasoningEffort
       );
-      const maxIndex = REASONING_EFFORT_IDS.indexOf(
+      const maxIndex = REASONING_EFFORTS.indexOf(
         modelConfig.maximumReasoningEffort
       );
 
@@ -55,13 +54,13 @@ export function ReasoningEffortSubmenu({
     return null;
   }
 
-  const minIndex = REASONING_EFFORT_IDS.indexOf(
+  const minIndex = REASONING_EFFORTS.indexOf(
     modelConfig.minimumReasoningEffort
   );
-  const maxIndex = REASONING_EFFORT_IDS.indexOf(
+  const maxIndex = REASONING_EFFORTS.indexOf(
     modelConfig.maximumReasoningEffort
   );
-  const availableOptions = REASONING_EFFORT_IDS.slice(minIndex, maxIndex + 1);
+  const availableOptions = REASONING_EFFORTS.slice(minIndex, maxIndex + 1);
 
   if (availableOptions.length <= 1) {
     return null;

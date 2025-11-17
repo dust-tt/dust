@@ -76,7 +76,10 @@ const buttonVariants = cva(
           "hover:s-border-primary-150 dark:hover:s-border-border-night",
           "active:s-bg-primary-300 dark:active:s-bg-primary-900",
           "disabled:s-text-primary-muted dark:disabled:s-text-primary-muted-night",
-          "disabled:s-border-primary-100 dark:disabled:s-border-primary-100-night"
+          "disabled:s-border-primary-100 dark:disabled:s-border-primary-100-night",
+          "disabled:hover:s-bg-background dark:disabled:hover:s-bg-background-night",
+          "disabled:hover:s-border-primary-100 dark:disabled:hover:s-border-primary-100-night",
+          "disabled:hover:s-text-primary-muted dark:disabled:hover:s-text-primary-muted-night"
         ),
         ghost: cn(
           "s-border",
@@ -86,7 +89,10 @@ const buttonVariants = cva(
           "hover:s-text-primary-900 dark:hover:s-text-white",
           "hover:s-border-border-dark dark:hover:s-border-border-night",
           "active:s-bg-primary-300 dark:active:s-bg-primary-900",
-          "disabled:s-text-primary-400 dark:disabled:s-text-primary-400-night"
+          "disabled:s-text-primary-400 dark:disabled:s-text-primary-400-night",
+          "disabled:hover:s-bg-transparent dark:disabled:hover:s-bg-transparent",
+          "disabled:hover:s-border-border/0 dark:disabled:hover:s-border-border-night/0",
+          "disabled:hover:s-text-primary-400 dark:disabled:hover:s-text-primary-400-night"
         ),
         "ghost-secondary": cn(
           "s-border",
@@ -96,7 +102,10 @@ const buttonVariants = cva(
           "hover:s-text-primary-900 dark:hover:s-text-primary-900-night",
           "hover:s-border-border-dark dark:hover:s-border-border-night",
           "active:s-bg-primary-300 dark:active:s-bg-primary-900",
-          "disabled:s-text-primary-400 dark:disabled:s-text-primary-400-night"
+          "disabled:s-text-primary-400 dark:disabled:s-text-primary-400-night",
+          "disabled:hover:s-bg-transparent dark:disabled:hover:s-bg-transparent",
+          "disabled:hover:s-border-border/0 dark:disabled:hover:s-border-border-night/0",
+          "disabled:hover:s-text-primary-400 dark:disabled:hover:s-text-primary-400-night"
         ),
       },
       size: {
