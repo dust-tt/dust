@@ -128,14 +128,19 @@ export function CreateWebhookLinearConnection({
                         size="sm"
                       />
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-80" align="start">
-                      <DropdownMenuSearchbar
-                        name="team"
-                        placeholder="Search teams..."
-                        value={teamSearchQuery}
-                        onChange={setTeamSearchQuery}
-                      />
-                      <div className="max-h-64 overflow-y-auto">
+                    <DropdownMenuContent
+                      dropdownHeaders={
+                        <DropdownMenuSearchbar
+                          name="team"
+                          placeholder="Search teams..."
+                          value={teamSearchQuery}
+                          onChange={setTeamSearchQuery}
+                        />
+                      }
+                      className="w-80"
+                      align="start"
+                    >
+                      <div className="max-h-64">
                         {teamsInDropdown.length > 0 ? (
                           teamsInDropdown.map((team) => (
                             <DropdownMenuItem
