@@ -32,7 +32,7 @@ import {
   retrieveModjoTranscriptContent,
   retrieveModjoTranscripts,
 } from "@app/temporal/labs/transcripts/utils/modjo";
-import type { AgentMessageType } from "@app/types";
+import type { AgentMessageType, UserMessageContext } from "@app/types";
 import {
   assertNever,
   dustManagedCredentials,
@@ -555,13 +555,13 @@ export async function processTranscriptActivity(
       visibility: "unlisted",
     });
 
-    const baseContext = {
+    const baseContext: UserMessageContext = {
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
       username: user.username,
       fullName: user.fullName(),
       email: user.email,
       profilePictureUrl: user.imageUrl,
-      origin: null,
+      origin: "transcript",
     };
 
     const cfRes = await toFileContentFragment(auth, {
