@@ -302,7 +302,7 @@ export function AgentBrowser({
         .sort((a, b) => {
           return (
             compareForFuzzySort(
-              assistantSearch,
+              assistantSearch.toLowerCase(),
               getAgentSearchString(a),
               getAgentSearchString(b)
             ) ||
