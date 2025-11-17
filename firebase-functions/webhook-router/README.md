@@ -150,7 +150,7 @@ export NOTION_SIGNING_SECRET="your-notion-signing-secret"
 
 ### Notion Endpoint
 
-- `POST /:webhookSecret/notion` - Teams messages
+- `POST /:webhookSecret/notion` - Notion events
 
 ## Development
 
