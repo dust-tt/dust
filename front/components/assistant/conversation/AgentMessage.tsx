@@ -54,6 +54,10 @@ import {
 import { getImgPlugin, imgDirective } from "@app/components/markdown/Image";
 import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
 import {
+  getToolSetupPlugin,
+  toolDirective,
+} from "@app/components/markdown/tool/tool";
+import {
   getVisualizationPlugin,
   sanitizeVisualizationContent,
   visualizationDirective,
@@ -603,6 +607,7 @@ function AgentMessageContent({
       // Warning: we can't rename easily `mention` to agent_mention, because the messages DB contains this name
       mention: getAgentMentionPlugin(owner),
       dustimg: getImgPlugin(owner),
+      toolSetup: getToolSetupPlugin(owner),
     }),
     [owner, conversationId, sId, agentConfiguration.sId]
   );
@@ -613,6 +618,7 @@ function AgentMessageContent({
       getCiteDirective(),
       visualizationDirective,
       imgDirective,
+      toolDirective,
     ],
     []
   );
