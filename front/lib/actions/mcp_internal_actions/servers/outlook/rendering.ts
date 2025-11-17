@@ -195,7 +195,7 @@ export function renderOutlookEventList(
   ];
 
   for (const event of events) {
-    lines.push("\n---\n");
+    lines.push("\n---");
     lines.push(renderOutlookEvent(event, userTimezone));
   }
 
