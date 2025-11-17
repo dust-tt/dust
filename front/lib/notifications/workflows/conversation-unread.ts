@@ -6,7 +6,12 @@ import { Authenticator } from "@app/lib/auth";
 import { renderEmail } from "@app/lib/notifications/email-templates/default";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
-import { isContentFragmentType, isUserMessageType } from "@app/types";
+import type { UserMessageOrigin } from "@app/types";
+import {
+  assertNever,
+  isContentFragmentType,
+  isUserMessageType,
+} from "@app/types";
 
 const ConversationUnreadPayloadSchema = z.object({
   workspaceId: z.string(),
@@ -18,6 +23,39 @@ const ConversationUnreadPayloadSchema = z.object({
 export type ConversationUnreadPayloadType = z.infer<
   typeof ConversationUnreadPayloadSchema
 >;
+
+export const shouldSendNotification = (
+  userMessageOrigin?: UserMessageOrigin | null
+): boolean => {
+  switch (userMessageOrigin) {
+    case "web":
+    case "agent_handover":
+    case "extension":
+      return true;
+    case "api":
+    case "email":
+    case "excel":
+    case "github-copilot-chat":
+    case "gsheet":
+    case "make":
+    case "n8n":
+    case "powerpoint":
+    case "raycast":
+    case "run_agent":
+    case "slack":
+    case "teams":
+    case "transcript":
+    case "triggered_programmatic":
+    case "triggered":
+    case "zapier":
+    case "zendesk":
+    case undefined:
+    case null:
+      return false;
+    default:
+      assertNever(userMessageOrigin);
+  }
+};
 
 export const CONVERSATION_UNREAD_TRIGGER_ID = "conversation-unread";
 

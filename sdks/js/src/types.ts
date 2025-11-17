@@ -299,25 +299,26 @@ export function isSupportedAudioContentType(
 }
 
 const UserMessageOriginSchema = FlexibleEnumSchema<
+  | "agent_handover"
   | "api"
   | "email"
+  | "excel"
   | "extension"
   | "github-copilot-chat"
   | "gsheet"
   | "make"
   | "n8n"
+  | "powerpoint"
   | "raycast"
+  | "run_agent"
   | "slack"
   | "teams"
-  | "triggered"
+  | "transcript"
   | "triggered_programmatic"
+  | "triggered"
   | "web"
   | "zapier"
   | "zendesk"
-  | "run_agent"
-  | "agent_handover"
-  | "excel"
-  | "powerpoint"
 >()
   .or(z.null())
   .or(z.undefined());
@@ -922,6 +923,7 @@ export type UploadedContentFragmentType = {
 };
 
 const AgentMentionSchema = z.object({
+  //TODO(rcs): add a mentionType: "agent", but it requires some refactoring
   configurationId: z.string(),
 });
 

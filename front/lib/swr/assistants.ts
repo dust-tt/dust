@@ -22,6 +22,7 @@ import type { GetErrorRateResponse } from "@app/pages/api/w/[wId]/assistant/agen
 import type { GetFeedbackDistributionResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/feedback-distribution";
 import type { GetLatencyResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/latency";
 import type { GetAgentOverviewResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/overview";
+import type { GetContextOriginResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/source";
 import type { GetToolExecutionResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/tool-execution";
 import type { GetToolStepIndexResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/tool-step-index";
 import type { GetUsageMetricsResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/usage-metrics";
@@ -811,6 +812,37 @@ export function useAgentUsageMetrics({
     isUsageMetricsLoading: !error && !data && !disabled,
     isUsageMetricsError: error,
     isUsageMetricsValidating: isValidating,
+  };
+}
+
+export function useAgentContextOrigin(params: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  days?: number;
+  version?: string;
+  disabled?: boolean;
+}) {
+  const {
+    workspaceId,
+    agentConfigurationId,
+    days = DEFAULT_PERIOD_DAYS,
+    version,
+    disabled,
+  } = params;
+  const fetcherFn: Fetcher<GetContextOriginResponse> = fetcher;
+  const versionParam = version ? `&version=${encodeURIComponent(version)}` : "";
+  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/source?days=${days}${versionParam}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    contextOrigin: data ?? { total: 0, buckets: emptyArray() },
+    isContextOriginLoading: !error && !data && !disabled,
+    isContextOriginError: error,
+    isContextOriginValidating: isValidating,
   };
 }
 

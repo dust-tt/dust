@@ -18,6 +18,7 @@ export class SlackConfigurationModel extends ConnectorBaseModel<SlackConfigurati
   // Whitelisted domains are in the format "domain:group_id".
   declare whitelistedDomains?: readonly string[];
   declare autoReadChannelPatterns: SlackAutoReadPattern[];
+  declare feedbackVisibleToAuthorOnly: boolean;
 }
 
 SlackConfigurationModel.init(
@@ -51,6 +52,11 @@ SlackConfigurationModel.init(
       defaultValue: [],
     },
     restrictedSpaceAgentsEnabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
+    feedbackVisibleToAuthorOnly: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: true,

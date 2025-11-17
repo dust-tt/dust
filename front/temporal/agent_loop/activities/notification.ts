@@ -2,10 +2,14 @@ import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { getNovuClient } from "@app/lib/notifications";
 import type { ConversationUnreadPayloadType } from "@app/lib/notifications/workflows/conversation-unread";
-import { CONVERSATION_UNREAD_TRIGGER_ID } from "@app/lib/notifications/workflows/conversation-unread";
+import {
+  CONVERSATION_UNREAD_TRIGGER_ID,
+  shouldSendNotification,
+} from "@app/lib/notifications/workflows/conversation-unread";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import { NOTIFICATION_DELAY_MS } from "@app/temporal/agent_loop/workflows";
+import { isUserMessageOrigin } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 
 /**
@@ -22,6 +26,18 @@ export async function conversationUnreadNotificationActivity(
       { authType },
       "Failed to construct authenticator from auth type"
     );
+    return;
+  }
+  if (!isUserMessageOrigin(agentLoopArgs.userMessageOrigin)) {
+    logger.info(
+      { userMessageOrigin: agentLoopArgs.userMessageOrigin },
+      "User message origin is not a valid origin."
+    );
+    return;
+  }
+
+  // Check if the user message origin is valid for sending notifications.
+  if (!shouldSendNotification(agentLoopArgs.userMessageOrigin)) {
     return;
   }
 

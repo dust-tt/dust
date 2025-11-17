@@ -17,6 +17,9 @@ export const CONFIG = {
   // Microsoft Bot environment secrets.
   MICROSOFT_BOT_ID_SECRET: process.env.MICROSOFT_BOT_ID_SECRET,
 
+  // Notion environment secrets.
+  NOTION_SIGNING_SECRET: process.env.NOTION_SIGNING_SECRET,
+
   // Endpoints.
   US_CONNECTOR_URL: "https://connectors.dust.tt",
   EU_CONNECTOR_URL: "https://eu.connectors.dust.tt",
@@ -29,6 +32,9 @@ export const CONFIG = {
 
   // Microsoft Bot related secrets.
   MICROSOFT_BOT_ID_SECRET_NAME: "MICROSOFT_BOT_ID_SECRET",
+
+  // Notion related secrets.
+  NOTION_SIGNING_SECRET_NAME: "NOTION_SIGNING_SECRET",
 } as const;
 
 // Runtime getters for Firebase params.

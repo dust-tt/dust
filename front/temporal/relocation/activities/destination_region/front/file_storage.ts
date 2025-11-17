@@ -12,3 +12,7 @@ export async function getDestinationPublicBucket() {
 export async function getDestinationPrivateBucket() {
   return fileStorageConfig.getGcsPrivateUploadsBucket();
 }
+
+export async function getDestinationTablesBucket() {
+  return fileStorageConfig.getDustTablesBucket();
+}
