@@ -70,9 +70,11 @@ export function MentionDisplay({
     }
 
     return (
-      <MentionDropdown mention={mention} owner={owner}>
-        <MentionTrigger mention={mention} />
-      </MentionDropdown>
+      <div className="inline-flex">
+        <MentionDropdown mention={mention} owner={owner}>
+          <MentionTrigger mention={mention} />
+        </MentionDropdown>
+      </div>
     );
   }
 
