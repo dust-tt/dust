@@ -1,4 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { marked } from "marked";
+import sanitizeHtml from "sanitize-html";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
@@ -17,6 +19,26 @@ const FRONT_API_BASE_URL = "https://api2.frontapp.com";
 const MAX_RETRIES = 3;
 const INITIAL_RETRY_DELAY_MS = 1000;
 const MAX_RETRY_DELAY_MS = 10000;
+
+const convertMarkdownToHTML = async (text: string): Promise<string> => {
+  marked.setOptions({
+    breaks: true, // Convert single newlines to <br>
+    gfm: true, // GitHub Flavored Markdown
+  });
+
+  const html = await marked.parse(text);
+
+  // Sanitize HTML to prevent XSS attacks
+  const sanitized = sanitizeHtml(html, {
+    allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]),
+  });
+
+  // Front may expect specific formatting, so we ensure links open in new tabs
+  return sanitized.replace(
+    /<a href="(.*?)">/g,
+    '<a href="$1" target="_blank">'
+  );
+};
 
 interface FrontAPIOptions {
   method: string;
@@ -479,8 +501,11 @@ const createServer = (
               ? `conversations/${conversation_id}/comments`
               : `conversations/${conversation_id}/messages`;
 
+          // Convert markdown to HTML for better formatting
+          const htmlBody = await convertMarkdownToHTML(body);
+
           const requestBody: any = {
-            body,
+            body: htmlBody,
             ...(author_id && { author_id }),
           };
 
@@ -839,29 +864,15 @@ const createServer = (
             );
           }
 
-          // Use the channel address as a resource alias (format: alt:address:EMAIL)
-          // The API will validate if the channel exists
           const channel_id = `alt:address:${channelAddress}`;
-
-          // Normalize newlines: convert all newline types to \n, then ensure
-          // single newlines become double newlines for proper markdown paragraph breaks.
-          // This preserves line breaks in the Front draft editor.
-          const normalizedBody = body
-            .replace(/\r\n/g, "\n")
-            .replace(/\r/g, "\n")
-            .replace(/\n(?!\n)/g, "\n\n")
-            // Collapse 3+ consecutive newlines to double newlines
-            .replace(/\n{3,}/g, "\n\n")
-            // Remove leading and trailing newlines
-            .replace(/^\n+/, "")
-            .replace(/\n+$/, "");
+          const htmlBody = await convertMarkdownToHTML(body);
 
           await makeFrontAPIRequest({
             method: "POST",
             endpoint: `conversations/${conversation_id}/drafts`,
             apiToken,
             body: {
-              body: normalizedBody,
+              body: htmlBody,
               mode: "shared",
               channel_id,
               ...(author_id && { author_id }),

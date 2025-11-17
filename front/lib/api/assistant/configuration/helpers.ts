@@ -143,7 +143,7 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
   for (const agent of agentConfigurations) {
     const actions =
       variant === "full"
-        ? mcpServerActionsConfigurationsPerAgent.get(agent.id) ?? []
+        ? (mcpServerActionsConfigurationsPerAgent.get(agent.id) ?? [])
         : [];
 
     const model = getModelForAgentConfiguration(agent);
@@ -173,15 +173,7 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
         : null,
       // TODO(2025-10-20 flav): Remove once SDK JS does not rely on it anymore.
       visualizationEnabled: false,
-      // TODO(2025-10-17 thomas): Remove requestedGroupIds.
-      requestedGroupIds: agent.requestedGroupIds.map((groups) =>
-        groups.map((id) =>
-          GroupResource.modelIdToSId({
-            id,
-            workspaceId: auth.getNonNullableWorkspace().id,
-          })
-        )
-      ),
+      requestedGroupIds: [],
       requestedSpaceIds: agent.requestedSpaceIds.map((spaceId) =>
         SpaceResource.modelIdToSId({
           id: spaceId,

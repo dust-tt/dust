@@ -100,7 +100,7 @@ export async function getBuilderNameSuggestions(
   const conversation: ModelConversationTypeMultiActions =
     getConversationContext(inputs);
   const traceContext: LLMTraceContext = {
-    operationType: "name_suggestion",
+    operationType: "agent_builder_name_suggestion",
     userId: auth.user()?.sId,
   };
   const llm = await getLLM(auth, {

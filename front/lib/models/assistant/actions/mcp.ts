@@ -184,9 +184,11 @@ AgentMCPServerConfiguration.init(
 AgentConfiguration.hasMany(AgentMCPServerConfiguration, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
   as: "mcpServerConfigurations",
+  onDelete: "RESTRICT",
 });
 AgentMCPServerConfiguration.belongsTo(AgentConfiguration, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
+  onDelete: "RESTRICT",
 });
 
 MCPServerViewModel.hasMany(AgentMCPServerConfiguration, {

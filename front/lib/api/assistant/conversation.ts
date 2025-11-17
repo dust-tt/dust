@@ -1,5 +1,5 @@
 import assert from "assert";
-import _, { isEqual, sortBy } from "lodash";
+import _ from "lodash";
 import type { Transaction } from "sequelize";
 
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
@@ -9,11 +9,11 @@ import {
 } from "@app/lib/api/assistant/configuration/agent";
 import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
-import { createAgentMessages } from "@app/lib/api/assistant/conversation/mentions";
 import {
-  getContentFragmentGroupIds,
-  getContentFragmentSpaceIds,
-} from "@app/lib/api/assistant/permissions";
+  createAgentMessages,
+  createUserMentions,
+} from "@app/lib/api/assistant/conversation/mentions";
+import { getContentFragmentSpaceIds } from "@app/lib/api/assistant/permissions";
 import {
   makeAgentMentionsRateLimitKeyForWorkspace,
   makeMessageRateLimitKeyForWorkspace,
@@ -35,7 +35,6 @@ import {
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import {
@@ -44,7 +43,7 @@ import {
 } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
-import { isEmailValid, normalizeArrays } from "@app/lib/utils";
+import { isEmailValid } from "@app/lib/utils";
 import {
   getTimeframeSecondsFromLiteral,
   rateLimiter,
@@ -52,7 +51,6 @@ import {
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
-import type { MentionType } from "@app/types";
 import type {
   AgentMessageType,
   APIErrorWithStatusCode,
@@ -64,6 +62,7 @@ import type {
   ConversationVisibility,
   ConversationWithoutContentType,
   LightAgentConfigurationType,
+  MentionType,
   ModelId,
   PlanType,
   Result,
@@ -112,7 +111,6 @@ export async function createConversation(
     visibility,
     depth,
     triggerId,
-    requestedGroupIds: [],
     requestedSpaceIds: [],
   });
 
@@ -128,7 +126,6 @@ export async function createConversation(
     actionRequired: false,
     hasError: false,
     visibility: conversation.visibility,
-    requestedGroupIds: conversation.getRequestedGroupIdsFromModel(auth),
     requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(auth),
   };
 }
@@ -288,33 +285,6 @@ export async function getLastUserMessage(
     );
   }
   return new Ok(content);
-}
-
-export async function getUserMessageFromParentMessageId({
-  workspaceId,
-  conversationId,
-  parentMessageId,
-}: {
-  workspaceId: ModelId;
-  conversationId: ModelId;
-  parentMessageId: string;
-}): Promise<UserMessage | null> {
-  const message = await Message.findOne({
-    where: {
-      workspaceId,
-      conversationId,
-      sId: parentMessageId,
-    },
-    include: [
-      {
-        model: UserMessage,
-        as: "userMessage",
-      },
-    ],
-    attributes: ["id"],
-  });
-
-  return message?.userMessage ?? null;
 }
 
 /**
@@ -603,6 +573,13 @@ export async function postUserMessage(
         excludedUser: user?.toJSON(),
       });
 
+      await createUserMentions(auth, {
+        mentions,
+        message: m,
+        owner,
+        transaction: t,
+      });
+
       const agentMessagesResult = await createAgentMessages({
         mentions,
         agentConfigurations,
@@ -615,7 +592,7 @@ export async function postUserMessage(
         userMessage,
       });
 
-      await updateConversationRequestedGroupIds(auth, {
+      await updateConversationRequirements(auth, {
         agents: agentMessagesResult.map(({ m }) => m.configuration),
         conversation,
         t,
@@ -946,6 +923,13 @@ export async function editUserMessage(
           transaction: t,
         })) ?? -1) + 1;
 
+      await createUserMentions(auth, {
+        mentions,
+        message: m,
+        owner,
+        transaction: t,
+      });
+
       const agentMessagesResult = await createAgentMessages({
         mentions,
         agentConfigurations,
@@ -958,7 +942,7 @@ export async function editUserMessage(
         userMessage,
       });
 
-      await updateConversationRequestedGroupIds(auth, {
+      await updateConversationRequirements(auth, {
         agents: agentMessagesResult.map(({ m }) => m.configuration),
         conversation,
         t,
@@ -1124,7 +1108,7 @@ export async function retryAgentMessage(
         }
       );
 
-      await updateConversationRequestedGroupIds(auth, {
+      await updateConversationRequirements(auth, {
         agents: [message.configuration],
         conversation,
         t,
@@ -1326,7 +1310,7 @@ export async function postNewContentFragment(
     );
 
     if (isContentFragmentInputWithContentNode(cf)) {
-      await updateConversationRequestedGroupIds(auth, {
+      await updateConversationRequirements(auth, {
         contentFragment: cf,
         conversation,
         t,
@@ -1428,19 +1412,17 @@ async function isMessagesLimitReached({
 }
 
 /**
- * TODO(2025-10-17 thomas): Remove groups requirements, only handle requiredSpaces
- *
- * Update the conversation requestedGroupIds based on the mentioned agents. This function is purely
+ * Update the conversation requestedSpaceIds based on the mentioned agents. This function is purely
  * additive - requirements are never removed.
  *
- * Each agent's requestedGroupIds represents a set of requirements that must be satisfied. When an
+ * Each agent's requestedSpaceIds represents a set of requirements that must be satisfied. When an
  * agent is mentioned in a conversation, its requirements are added to the conversation's
  * requirements.
  *
  * - Within each requirement (sub-array), groups are combined with OR logic.
  * - Different requirements (different sub-arrays) are combined with AND logic.
  */
-export async function updateConversationRequestedGroupIds(
+export async function updateConversationRequirements(
   auth: Authenticator,
   {
     agents,
@@ -1454,27 +1436,11 @@ export async function updateConversationRequestedGroupIds(
     t: Transaction;
   }
 ): Promise<void> {
-  let newGroupsRequirements: string[][] = [];
   let newSpaceRequirements: string[] = [];
   if (agents) {
-    newGroupsRequirements = agents.flatMap((agent) => agent.requestedGroupIds);
     newSpaceRequirements = agents.flatMap((agent) => agent.requestedSpaceIds);
   }
   if (contentFragment) {
-    const rawRequestedGroupIds = await getContentFragmentGroupIds(
-      auth,
-      contentFragment
-    );
-    const requestedGroupIds = rawRequestedGroupIds.map((gs) =>
-      gs.map((gId) =>
-        GroupResource.modelIdToSId({
-          id: gId,
-          workspaceId: auth.getNonNullableWorkspace().id,
-        })
-      )
-    );
-    newGroupsRequirements.push(...requestedGroupIds);
-
     const requestedSpaceId = await getContentFragmentSpaceIds(
       auth,
       contentFragment
@@ -1483,43 +1449,20 @@ export async function updateConversationRequestedGroupIds(
     newSpaceRequirements.push(requestedSpaceId);
   }
 
-  // Remove duplicates and sort each requirement.
-  newGroupsRequirements = _.uniqWith(
-    newGroupsRequirements.map((r) => sortBy(r)),
-    isEqual
-  );
-
   newSpaceRequirements = _.uniq(newSpaceRequirements);
 
-  const currentGroupsRequirements = conversation.requestedGroupIds;
   const currentSpaceRequirements = conversation.requestedSpaceIds;
-
-  // Check if each new requirement already exists in current requirements.
-  const areAllGroupRequirementsPresent = newGroupsRequirements.every((newReq) =>
-    currentGroupsRequirements.some(
-      // newReq was sorted, so we need to sort currentReq as well.
-      (currentReq) => isEqual(newReq, sortBy(currentReq))
-    )
-  );
 
   const areAllSpaceRequirementsPresent = newSpaceRequirements.every((newReq) =>
     currentSpaceRequirements.includes(newReq)
   );
 
   // Early return if all new requirements are already present.
-  if (areAllGroupRequirementsPresent && areAllSpaceRequirementsPresent) {
+  if (areAllSpaceRequirementsPresent) {
     return;
   }
 
   // Get missing requirements.
-  const groupRequirementsToAdd = newGroupsRequirements.filter(
-    (newReq) =>
-      !currentGroupsRequirements.some((currentReq) =>
-        // newReq was sorted, so we need to sort currentReq as well.
-        isEqual(newReq, sortBy(currentReq))
-      )
-  );
-
   const spaceRequirementsToAdd = newSpaceRequirements.filter(
     (newReq) => !currentSpaceRequirements.includes(newReq)
   );
@@ -1537,20 +1480,14 @@ export async function updateConversationRequestedGroupIds(
     return sIdToModelId.get(sId)!;
   };
 
-  const allGroupsRequirements = [
-    ...currentGroupsRequirements.map((req) => sortBy(req.map(getModelId))),
-    ...groupRequirementsToAdd.map((req) => sortBy(req.map(getModelId))),
-  ];
-
   const allSpaceRequirements = [
     ...currentSpaceRequirements.map(getModelId),
     ...spaceRequirementsToAdd.map(getModelId),
   ];
 
-  await ConversationResource.updateRequestedGroupIds(
+  await ConversationResource.updateRequirements(
     auth,
     conversation.sId,
-    normalizeArrays(allGroupsRequirements),
     allSpaceRequirements,
     t
   );

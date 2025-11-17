@@ -74,7 +74,7 @@ export function formValuesToWebhookTriggerData({
     name: webhook.name.trim(),
     customPrompt: webhook.customPrompt?.trim() ?? null,
     naturalLanguageDescription: webhookSourceView?.provider
-      ? webhook.naturalDescription?.trim() ?? null
+      ? (webhook.naturalDescription?.trim() ?? null)
       : null,
     kind: "webhook",
     provider: webhookSourceView?.provider ?? undefined,
@@ -85,11 +85,11 @@ export function formValuesToWebhookTriggerData({
     },
     webhookSourceViewSId: webhook.webhookSourceViewSId ?? undefined,
     editor:
-      editTrigger?.kind === "webhook" ? editTrigger.editor : user.id ?? null,
+      editTrigger?.kind === "webhook" ? editTrigger.editor : (user.id ?? null),
     editorName:
       editTrigger?.kind === "webhook"
         ? editTrigger.editorName
-        : user.fullName ?? undefined,
+        : (user.fullName ?? undefined),
     executionPerDayLimitOverride: webhook.executionPerDayLimitOverride,
     executionMode: webhook.executionMode,
   };

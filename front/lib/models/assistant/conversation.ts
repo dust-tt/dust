@@ -27,7 +27,6 @@ export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
   declare triggerId: ForeignKey<TriggerModel["id"]> | null;
   declare hasError: CreationOptional<boolean>;
 
-  declare requestedGroupIds: number[][];
   declare requestedSpaceIds: number[];
 }
 
@@ -60,11 +59,6 @@ ConversationModel.init(
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0,
-    },
-    requestedGroupIds: {
-      type: DataTypes.ARRAY(DataTypes.ARRAY(DataTypes.BIGINT)),
-      allowNull: false,
-      defaultValue: [],
     },
     requestedSpaceIds: {
       type: DataTypes.ARRAY(DataTypes.BIGINT),
@@ -745,6 +739,7 @@ export class Mention extends WorkspaceAwareModel<Mention> {
   // a Mention is either an agent mention xor a user mention
   declare agentConfigurationId: string | null; // Not a relation as global agents are not in the DB
   declare userId: ForeignKey<UserModel["id"]> | null;
+  declare user: NonAttribute<UserModel> | null;
 
   declare message: NonAttribute<Message>;
 }

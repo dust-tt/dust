@@ -15,19 +15,20 @@ export function toThinkingConfig(
   if (!reasoningEffort || reasoningEffort === "none") {
     return undefined;
   }
-  if (reasoningEffort === "light") {
-    // For "light", we may not use thinking config but chain of thought from prompt.
-    if (useNativeLightReasoning) {
-      return {
-        type: "enabled",
-        budget_tokens: 1024, // Minimum budget.
-      };
-    } else {
-      return undefined;
-    }
+  if (reasoningEffort !== "light") {
+    return {
+      type: "enabled",
+      budget_tokens: CLAUDE_4_THINKING_BUDGET_TOKENS[reasoningEffort],
+    };
   }
-  return {
-    type: "enabled",
-    budget_tokens: CLAUDE_4_THINKING_BUDGET_TOKENS[reasoningEffort],
-  };
+
+  // For "light", we may not use thinking config but chain of thought from prompt.
+  if (useNativeLightReasoning) {
+    return {
+      type: "enabled",
+      budget_tokens: 1024, // Minimum budget.
+    };
+  }
+
+  return undefined;
 }

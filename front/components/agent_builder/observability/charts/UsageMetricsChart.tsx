@@ -21,10 +21,10 @@ import {
   legendFromConstant,
 } from "@app/components/agent_builder/observability/shared/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
+import { formatTimeSeriesTitle } from "@app/components/agent_builder/observability/shared/tooltipHelpers";
 import { VersionMarkersDots } from "@app/components/agent_builder/observability/shared/VersionMarkers";
 import {
   filterTimeSeriesByVersionWindow,
-  findVersionMarkerForDate,
   padSeriesToTimeRange,
 } from "@app/components/agent_builder/observability/utils";
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
@@ -34,7 +34,7 @@ import {
 } from "@app/lib/swr/assistants";
 
 interface UsageMetricsData {
-  date: string;
+  timestamp: number;
   messages: number;
   conversations: number;
   activeUsers: number;
@@ -50,12 +50,21 @@ function isUsageMetricsData(data: unknown): data is UsageMetricsData {
   );
 }
 
+function zeroFactory(timestamp: number) {
+  return {
+    timestamp,
+    messages: 0,
+    conversations: 0,
+    activeUsers: 0,
+  };
+}
+
 function UsageMetricsTooltip(
   props: TooltipContentProps<number, string> & {
     versionMarkers: AgentVersionMarker[];
   }
 ): JSX.Element | null {
-  const { active, payload, label, versionMarkers } = props;
+  const { active, payload, versionMarkers } = props;
   if (!active || !payload || payload.length === 0) {
     return null;
   }
@@ -66,14 +75,10 @@ function UsageMetricsTooltip(
   }
 
   const row = first.payload;
-  const title = typeof label === "string" ? label : String(label);
-
-  const versionMarker = findVersionMarkerForDate(row.date, versionMarkers);
-  const version = versionMarker ? ` - v${versionMarker.version}` : "";
 
   return (
     <ChartTooltipCard
-      title={`${title}${version}`}
+      title={formatTimeSeriesTitle(row.date, row.timestamp, versionMarkers)}
       rows={[
         {
           label: "Messages",
@@ -137,13 +142,13 @@ export function UsageMetricsChart({
     filteredData,
     mode,
     period,
-    (date) => ({ date, messages: 0, conversations: 0, activeUsers: 0 })
+    zeroFactory
   );
 
   return (
     <ChartContainer
-      title="Usage Metrics"
-      description="Daily totals of messages, conversations, and active users."
+      title="Activity"
+      description="Messages, conversations, and active users."
       isLoading={isUsageMetricsLoading}
       errorMessage={
         isUsageMetricsError ? "Failed to load observability data." : undefined
@@ -229,7 +234,11 @@ export function UsageMetricsChart({
           />
           {/* Areas for each usage metric */}
           <Line
-            type="monotone"
+            type={
+              mode === "version" || period === 7 || period === 14
+                ? "linear"
+                : "monotone"
+            }
             dataKey="messages"
             name="Messages"
             className={USAGE_METRICS_PALETTE.messages}
@@ -237,7 +246,11 @@ export function UsageMetricsChart({
             dot={false}
           />
           <Line
-            type="monotone"
+            type={
+              mode === "version" || period === 7 || period === 14
+                ? "linear"
+                : "monotone"
+            }
             dataKey="conversations"
             name="Conversations"
             className={USAGE_METRICS_PALETTE.conversations}
@@ -245,7 +258,11 @@ export function UsageMetricsChart({
             dot={false}
           />
           <Line
-            type="monotone"
+            type={
+              mode === "version" || period === 7 || period === 14
+                ? "linear"
+                : "monotone"
+            }
             dataKey="activeUsers"
             name="Active users"
             className={USAGE_METRICS_PALETTE.activeUsers}

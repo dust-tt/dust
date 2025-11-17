@@ -10,6 +10,7 @@
  * This is the minimal representation of an agent mention.
  */
 export type AgentMention = {
+  // TODO(mentions v2) add a type here
   configurationId: string;
 };
 
@@ -23,7 +24,8 @@ export type UserMention = {
 
 /**
  * Union type of all supported mention types.
- * Currently only agent mentions are supported in the API layer.
+ * Agent mentions are always supported.
+ * User mentions are supported when the mentions_v2 feature flag is enabled.
  */
 export type MentionType = AgentMention | UserMention;
 
@@ -104,7 +106,13 @@ export function toMentionType(rich: RichMention): MentionType {
     };
   }
 
-  // Future: handle user mentions
+  if (rich.type === "user") {
+    return {
+      type: "user",
+      userId: rich.id,
+    };
+  }
+
   throw new Error(`Unsupported mention type: ${rich.type}`);
 }
 

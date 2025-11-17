@@ -232,7 +232,7 @@ export const ConversationFilesPopover = ({
           }
         }}
       >
-        <ScrollArea className="flex flex-col gap-3">
+        <ScrollArea className="flex max-h-[80vh] flex-col gap-3">
           <div className="heading-base mb-2 text-primary dark:text-primary-night">
             Generated Content
           </div>

@@ -29,11 +29,7 @@ export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
     const scopes = [
       "User.Read",
       "Sites.Read.All",
-      "Directory.Read.All",
       "Files.Read.All",
-      "Team.ReadBasic.All",
-      "ChannelSettings.Read.All",
-      "ChannelMessage.Read.All",
       "offline_access",
     ];
     if (relatedCredential) {

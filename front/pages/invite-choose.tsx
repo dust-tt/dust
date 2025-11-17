@@ -15,16 +15,7 @@ import {
 } from "@app/lib/iam/session";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { useUser } from "@app/lib/swr/user";
-
-type PendingInvitationOption = {
-  invitationId: number;
-  invitationSid: string;
-  token: string;
-  workspaceName: string;
-  workspaceSid: string;
-  initialRole: string;
-  createdAt: number;
-};
+import type { PendingInvitationOption } from "@app/types/membership_invitation";
 
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   userFirstName: string;
@@ -38,20 +29,20 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   }
 
   const invitationsResources =
-    await MembershipInvitationResource.listPendingForEmail(user.email);
+    await MembershipInvitationResource.listPendingForEmail({
+      email: user.email,
+    });
 
   const invitations = invitationsResources.map((invitation) => {
     const workspace = invitation.workspace;
 
     return {
-      invitationId: invitation.id,
-      invitationSid: invitation.sId,
-      token: getMembershipInvitationToken(invitation.id),
+      token: getMembershipInvitationToken(invitation.toJSON()),
       workspaceName: workspace.name,
-      workspaceSid: workspace.sId,
       initialRole: invitation.initialRole,
       createdAt: invitation.createdAt.getTime(),
-    } satisfies PendingInvitationOption;
+      isExpired: invitation.isExpired(),
+    };
   });
 
   return {
@@ -68,7 +59,7 @@ export default function InviteChoosePage({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { user } = useUser();
 
-  const handleInvitationSelection = useCallback(async (token: string) => {
+  const handleInvitationSelection = useCallback((token: string) => {
     if (typeof window !== "undefined") {
       window.location.assign(
         `/api/login?inviteToken=${encodeURIComponent(token)}`
@@ -103,7 +94,7 @@ export default function InviteChoosePage({
               <div className="flex flex-col gap-3">
                 {invitations.map((invitation) => (
                   <div
-                    key={invitation.invitationSid}
+                    key={invitation.workspaceName}
                     className="border-border-light bg-wash dark:bg-wash-dark flex items-center justify-between gap-4 rounded-xl border p-4 shadow-sm dark:border-border-night"
                   >
                     <div className="flex flex-col gap-1">

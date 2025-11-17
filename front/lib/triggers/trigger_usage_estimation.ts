@@ -105,27 +105,29 @@ export async function computeFilteredWebhookTriggerForecast(
 
       if (event && webhookSource.provider) {
         const preset = WEBHOOK_PRESETS[webhookSource.provider];
-        const { type, field } = preset.eventCheck;
+        if (preset.eventCheck) {
+          const { type, field } = preset.eventCheck;
 
-        let receivedEventValue: string | undefined;
-        switch (type) {
-          case "headers":
-            if (!payload.headers) {
-              return;
-            }
-            receivedEventValue = payload.headers[field.toLowerCase()];
-            break;
-          case "body":
-            if (!payload.body) {
-              return;
-            }
-            receivedEventValue = payload.body[field.toLowerCase()];
-            break;
-        }
+          let receivedEventValue: string | undefined;
+          switch (type) {
+            case "headers":
+              if (!payload.headers) {
+                return;
+              }
+              receivedEventValue = payload.headers[field.toLowerCase()];
+              break;
+            case "body":
+              if (!payload.body) {
+                return;
+              }
+              receivedEventValue = payload.body[field.toLowerCase()];
+              break;
+          }
 
-        // If event doesn't match, skip this request.
-        if (receivedEventValue?.toLowerCase() !== event.toLowerCase()) {
-          return;
+          // If event doesn't match, skip this request.
+          if (receivedEventValue?.toLowerCase() !== event.toLowerCase()) {
+            return;
+          }
         }
       }
 

@@ -1,8 +1,9 @@
 import { ReferenceLine } from "recharts";
 
 import type { ObservabilityMode } from "@app/components/agent_builder/observability/ObservabilityContext";
+import { formatShortDate } from "@app/lib/utils/timestamps";
 
-type Marker = { timestamp: string };
+type Marker = { timestamp: number };
 
 interface MarkerDotLabelProps {
   viewBox?: { x: number; y: number; width: number; height: number };
@@ -41,20 +42,20 @@ export function VersionMarkersDots({
     return null;
   }
 
-  return (
-    <>
-      {versionMarkers.map((m) => (
-        <ReferenceLine
-          key={m.timestamp}
-          x={m.timestamp}
-          className="text-gray-300 dark:text-gray-300-night"
-          stroke="currentColor"
-          strokeDasharray="5 5"
-          strokeWidth={1}
-          ifOverflow="extendDomain"
-          label={<MarkerDotLabel />}
-        />
-      ))}
-    </>
-  );
+  return versionMarkers.map((m) => {
+    const formattedDate = formatShortDate(m.timestamp);
+
+    return (
+      <ReferenceLine
+        key={formattedDate}
+        x={formattedDate}
+        className="text-gray-300 dark:text-gray-300-night"
+        stroke="currentColor"
+        strokeDasharray="5 5"
+        strokeWidth={1}
+        ifOverflow="extendDomain"
+        label={<MarkerDotLabel />}
+      />
+    );
+  });
 }

@@ -1,17 +1,13 @@
 import type { estypes } from "@elastic/elasticsearch";
 
-import {
-  bucketsToArray,
-  formatUTCDateFromMillis,
-  searchAnalytics,
-} from "@app/lib/api/elasticsearch";
+import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
 const DEFAULT_METRIC_VALUE = 0;
 
 export type ErrorRatePoint = {
-  date: string;
+  timestamp: number;
   total: number;
   failed: number;
   errorRate: number;
@@ -62,14 +58,13 @@ export async function fetchErrorRate(
   const points: ErrorRatePoint[] = buckets
     .filter((b) => b.doc_count > 0)
     .map((b) => {
-      const date = formatUTCDateFromMillis(b.key);
       const total = b.doc_count ?? DEFAULT_METRIC_VALUE;
       const failed = b.failed_messages?.doc_count ?? DEFAULT_METRIC_VALUE;
       const errorRate =
         total > 0 ? Math.round((failed / total) * 10000) / 100 : 0;
 
       return {
-        date,
+        timestamp: b.key,
         total,
         failed,
         errorRate,

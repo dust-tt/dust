@@ -156,7 +156,7 @@ export function CreateOrEditSpaceModal({
 
       const isRestricted = spaceInfo
         ? spaceInfo.isRestricted
-        : defaultRestricted ?? false;
+        : (defaultRestricted ?? false);
       setIsRestricted(isRestricted);
 
       let initialMembers: UserType[] = [];

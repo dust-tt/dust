@@ -23,7 +23,6 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import { launchUpdateSpacePermissionsWorkflow } from "@app/temporal/permissions_queue/client";
 import type {
   CombinedResourcePermissions,
   GroupPermission,
@@ -503,7 +502,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     const [defaultSpaceGroup] = regularGroups;
 
     const wasRestricted = this.groups.every((g) => !g.isGlobal());
-    const hasRestrictionChanged = wasRestricted !== isRestricted;
 
     const groupRes = await GroupResource.fetchWorkspaceGlobalGroup(auth);
     if (groupRes.isErr()) {
@@ -618,12 +616,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
             transaction: t,
           });
         }
-      }
-
-      // If the restriction has changed, start a workflow to update all associated resource
-      // permissions.
-      if (hasRestrictionChanged) {
-        await launchUpdateSpacePermissionsWorkflow(auth, this);
       }
 
       return new Ok(undefined);

@@ -97,7 +97,23 @@ export const TriggerCard = ({
     >
       <div className="flex w-full flex-col gap-2 text-sm">
         <div className="flex w-full items-center gap-2 font-medium text-foreground dark:text-foreground-night">
-          <Avatar visual={getTriggerIcon(trigger)} size="xs" />
+          <Avatar
+            visual={
+              webhookSourceView?.provider
+                ? (() => {
+                    const IconComponent = getIcon(
+                      normalizeWebhookIcon(
+                        WEBHOOK_PRESETS[webhookSourceView.provider].icon
+                      )
+                    );
+                    return (
+                      <IconComponent className="h-4 w-4 text-foreground" />
+                    );
+                  })()
+                : getTriggerIcon(trigger)
+            }
+            size="xs"
+          />
           <span className="truncate">{trigger.name}</span>
         </div>
         <span className="text-muted-foreground dark:text-muted-foreground-night">

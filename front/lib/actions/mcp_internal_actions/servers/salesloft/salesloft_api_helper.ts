@@ -1,11 +1,13 @@
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import { normalizeError } from "@app/types";
+import type { Result } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 const SALESLOFT_API_BASE_URL = "https://api.salesloft.com/v2";
 
 interface SalesloftUser {
   id: number;
+  guid: string;
   email: string;
   first_name: string;
   last_name: string;
@@ -65,13 +67,6 @@ interface SalesloftAction {
   } | null;
 }
 
-interface SalesloftTask {
-  id: number;
-  subject: string | null;
-  due_date: string | null;
-  current_state: string | null;
-}
-
 interface SalesloftActionDetails {
   [key: string]: unknown;
 }
@@ -81,8 +76,6 @@ export interface SalesloftActionWithDetails {
   person: SalesloftPerson | null;
   cadence: SalesloftCadence | null;
   step: SalesloftStep | null;
-  task: SalesloftTask | null;
-  user: SalesloftUser | null;
   action_details: SalesloftActionDetails | null;
 }
 
@@ -179,7 +172,7 @@ async function getAllPages<T>(
   let currentPage = 1;
   const perPage = 100;
   let hasMorePages = true;
-  const maxPages = 1000;
+  const maxPages = 5;
   let pagesFetched = 0;
 
   while (hasMorePages && pagesFetched < maxPages) {
@@ -226,36 +219,6 @@ async function getAllPages<T>(
   }
 
   return allResults;
-}
-
-export async function getCurrentUser(
-  accessToken: string
-): Promise<SalesloftUser> {
-  const url = new URL(`${SALESLOFT_API_BASE_URL}/me`);
-  const response = await fetch(url.toString(), {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    await handleSalesloftError(response, errorText);
-  }
-
-  const userData = await response.json();
-
-  if (!userData?.id) {
-    throw new Error("Invalid user data returned from Salesloft API");
-  }
-
-  return {
-    id: userData.id,
-    email: userData.email,
-    first_name: userData.first_name,
-    last_name: userData.last_name,
-  };
 }
 
 async function getCadencesByIds(
@@ -310,52 +273,26 @@ async function getPeopleByIds(
   return peopleMap;
 }
 
-async function getTasksByIds(
+export async function getUserByEmail(
   accessToken: string,
-  taskIds: number[]
-): Promise<Map<number, SalesloftTask>> {
-  if (taskIds.length === 0) {
-    return new Map();
+  email: string
+): Promise<SalesloftUser | null> {
+  const users = await getAllPages<SalesloftUser>(accessToken, "/users", {
+    emails: email,
+  });
+
+  if (users.length === 0) {
+    return null;
   }
 
-  const tasks = await getAllPages<SalesloftTask>(accessToken, "/tasks", {});
-
-  const taskMap = new Map<number, SalesloftTask>();
-  for (const task of tasks) {
-    if (taskIds.includes(task.id)) {
-      taskMap.set(task.id, {
-        id: task.id,
-        subject: task.subject,
-        due_date: task.due_date,
-        current_state: task.current_state,
-      });
-    }
-  }
-  return taskMap;
-}
-
-async function getUsersByIds(
-  accessToken: string,
-  userIds: number[]
-): Promise<Map<number, SalesloftUser>> {
-  if (userIds.length === 0) {
-    return new Map();
-  }
-
-  const users = await getAllPages<SalesloftUser>(accessToken, "/users", {});
-
-  const userMap = new Map<number, SalesloftUser>();
-  for (const user of users) {
-    if (userIds.includes(user.id)) {
-      userMap.set(user.id, {
-        id: user.id,
-        email: user.email,
-        first_name: user.first_name,
-        last_name: user.last_name,
-      });
-    }
-  }
-  return userMap;
+  const user = users[0];
+  return {
+    id: user.id,
+    guid: user.guid,
+    email: user.email,
+    first_name: user.first_name,
+    last_name: user.last_name,
+  };
 }
 
 async function getActionDetails(
@@ -397,50 +334,40 @@ async function getActionDetails(
   }
 }
 
-export async function getSteps(
+export async function getStepsByIds(
   accessToken: string,
-  userId?: number,
-  options?: {
-    cadenceId?: number;
-    hasDueActions?: boolean;
+  stepIds: number[]
+): Promise<Map<number, SalesloftStep>> {
+  if (stepIds.length === 0) {
+    return new Map();
   }
-): Promise<SalesloftStep[]> {
-  const params: Record<string, string | number | boolean> = {};
-  if (userId) {
-    params.user_id = userId;
+
+  const steps = await getAllPages<SalesloftStep>(accessToken, "/steps", {});
+
+  const stepMap = new Map<number, SalesloftStep>();
+  for (const step of steps) {
+    stepMap.set(step.id, {
+      id: step.id,
+      cadence_id: step.cadence_id,
+      name: step.name,
+      step_number: step.step_number,
+      type: step.type,
+    });
   }
-  if (options?.cadenceId) {
-    params.cadence_id = options.cadenceId;
-  }
-  if (options?.hasDueActions) {
-    params.has_due_actions = true;
-  }
-  const steps = await getAllPages<SalesloftStep>(accessToken, "/steps", params);
-  return steps.map((step) => ({
-    id: step.id,
-    cadence_id: step.cadence_id,
-    name: step.name,
-    step_number: step.step_number,
-    type: step.type,
-  }));
+  return stepMap;
 }
 
 export async function getActions(
   accessToken: string,
-  userId?: number,
+  userGuid: string,
   options?: {
-    stepId?: number;
     dueOnLte?: string;
     cadenceId?: number;
   }
 ): Promise<SalesloftAction[]> {
-  const params: Record<string, string | number> = {};
-  if (userId) {
-    params.user_id = userId;
-  }
-  if (options?.stepId) {
-    params.step_id = options.stepId;
-  }
+  const params: Record<string, string | number> = {
+    user_guid: userGuid,
+  };
   if (options?.dueOnLte) {
     params["due_on[lte]"] = options.dueOnLte;
   }
@@ -469,42 +396,39 @@ export async function getActions(
 
 export async function getActionsWithDetails(
   accessToken: string,
-  options?: {
-    includeDueActionsOnly?: boolean;
+  options: {
+    includeDueActionsOnly: boolean;
+    userEmail: string;
   }
-): Promise<SalesloftActionWithDetails[]> {
-  const user = await getCurrentUser(accessToken);
-
-  const steps = await getSteps(accessToken, user.id, {
-    hasDueActions: options?.includeDueActionsOnly,
-  });
-
-  if (steps.length === 0) {
-    return [];
+): Promise<Result<SalesloftActionWithDetails[], Error>> {
+  const user = await getUserByEmail(accessToken, options.userEmail);
+  if (!user) {
+    return new Err(
+      new Error(`User not found with email: ${options.userEmail}`)
+    );
   }
 
-  const cadenceIds = [...new Set(steps.map((step) => step.cadence_id))];
-
-  const cadenceMap = await getCadencesByIds(accessToken, cadenceIds);
-
-  const dueOnLte = options?.includeDueActionsOnly
-    ? new Date().toISOString()
-    : undefined;
-
-  const actionArrays = await concurrentExecutor(
-    steps,
-    async (step) =>
-      getActions(accessToken, user.id, {
-        stepId: step.id,
-        dueOnLte,
-      }),
-    { concurrency: 10 }
+  const allActions = await getActions(
+    accessToken,
+    user.guid,
+    options.includeDueActionsOnly
+      ? { dueOnLte: new Date().toISOString() }
+      : undefined
   );
-  const allActions = actionArrays.flat();
 
   if (allActions.length === 0) {
-    return [];
+    return new Ok([]);
   }
+
+  const cadenceIds = [
+    ...new Set(
+      allActions
+        .map((action) => action.cadence?.id ?? null)
+        .filter((id): id is number => id !== null)
+    ),
+  ];
+
+  const cadenceMap = await getCadencesByIds(accessToken, cadenceIds);
 
   const personIds = [
     ...new Set(
@@ -514,32 +438,16 @@ export async function getActionsWithDetails(
     ),
   ];
 
-  const taskIds = [
-    ...new Set(
-      allActions
-        .map((action) => action.task?.id ?? null)
-        .filter((id): id is number => id !== null)
-    ),
-  ];
-
-  const userIds = [
-    ...new Set(
-      allActions
-        .map((action) => action.user?.id ?? null)
-        .filter((id): id is number => id !== null)
-    ),
-  ];
-
   const peopleMap = await getPeopleByIds(accessToken, personIds);
 
-  const taskMap = await getTasksByIds(accessToken, taskIds);
-
-  const userMap = await getUsersByIds(accessToken, userIds);
-
-  const stepMap = new Map<number, SalesloftStep>();
-  for (const step of steps) {
-    stepMap.set(step.id, step);
-  }
+  const stepIds = [
+    ...new Set(
+      allActions
+        .map((action) => action.step?.id ?? null)
+        .filter((id): id is number => id !== null)
+    ),
+  ];
+  const stepMap = await getStepsByIds(accessToken, stepIds);
 
   const actionDetailsArray = await concurrentExecutor(
     allActions,
@@ -554,17 +462,15 @@ export async function getActionsWithDetails(
     (action, index) => ({
       action,
       person: action.person?.id
-        ? peopleMap.get(action.person.id) ?? null
+        ? (peopleMap.get(action.person.id) ?? null)
         : null,
       cadence: action.cadence?.id
-        ? cadenceMap.get(action.cadence.id) ?? null
+        ? (cadenceMap.get(action.cadence.id) ?? null)
         : null,
-      step: action.step?.id ? stepMap.get(action.step.id) ?? null : null,
-      task: action.task?.id ? taskMap.get(action.task.id) ?? null : null,
-      user: action.user?.id ? userMap.get(action.user.id) ?? null : null,
+      step: action.step?.id ? (stepMap.get(action.step.id) ?? null) : null,
       action_details: actionDetailsArray[index] ?? null,
     })
   );
 
-  return actionsWithDetails;
+  return new Ok(actionsWithDetails);
 }

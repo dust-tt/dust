@@ -66,6 +66,11 @@ procs:
     shell: "source ~/.nvm/nvm.sh && nvm install && npm install && npm run storybook"
     autostart: false
 
+  viz:
+    cwd: "<CONFIG_DIR>/../viz"
+    shell: "source ~/.nvm/nvm.sh && nvm install && npm install && npm run dev"
+    autostart: false
+
   extension:
     cwd: "<CONFIG_DIR>/../extension"
     shell: "source ~/.nvm/nvm.sh && nvm install && npm install && npm run dev:chrome"

@@ -22,6 +22,7 @@ export const FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG: ModelConfigurationType = {
   minimumReasoningEffort: "none",
   maximumReasoningEffort: "none",
   defaultReasoningEffort: "none",
+  tokenizer: { type: "tiktoken", base: "o200k_base" },
 };
 export const FIREWORKS_KIMI_K2_INSTRUCT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "fireworks",
@@ -40,4 +41,5 @@ export const FIREWORKS_KIMI_K2_INSTRUCT_MODEL_CONFIG: ModelConfigurationType = {
   minimumReasoningEffort: "light",
   maximumReasoningEffort: "light",
   defaultReasoningEffort: "light",
+  tokenizer: { type: "tiktoken", base: "o200k_base" },
 };

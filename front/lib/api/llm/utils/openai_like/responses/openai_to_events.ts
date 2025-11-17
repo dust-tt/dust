@@ -98,7 +98,6 @@ function itemToEvents(
       return item.content.map((responseOutput) =>
         responseOutputToEvent(responseOutput, metadata)
       );
-    // TODO(LLM-Router 2025-10-29): Check tool call validity when parsing events
     case "function_call": {
       return [
         {
@@ -195,6 +194,13 @@ function toEvents({
       return [reasoningDelta(event.delta, metadata)];
     case "response.completed":
       return responseCompleted(event.response, metadata);
+    case "response.reasoning_summary_part.added": {
+      if (event.summary_index === 0) {
+        return [];
+      }
+
+      return [reasoningDelta("\n\n", metadata)];
+    }
     default:
       return [];
   }

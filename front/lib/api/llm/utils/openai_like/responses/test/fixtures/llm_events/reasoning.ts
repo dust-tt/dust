@@ -22,6 +22,16 @@ export const reasoningLLMEvents = [
   {
     type: "reasoning_delta",
     content: {
+      delta: "\n\n",
+    },
+    metadata: {
+      clientId: "openai_responses",
+      modelId: "gpt-5",
+    },
+  },
+  {
+    type: "reasoning_delta",
+    content: {
       delta: "**Solving the Quadratic**\n\nTo solve ",
     },
     metadata: {
