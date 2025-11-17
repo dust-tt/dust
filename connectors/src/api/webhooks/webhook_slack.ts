@@ -100,6 +100,8 @@ const _webhookSlackAPIHandler = async (
           channelType: event.channel_type,
           channelName: event.channel,
         },
+        teamId,
+        channelName: event.channel,
       },
       "Processing webhook event"
     );
@@ -189,6 +191,8 @@ const _webhookSlackAPIHandler = async (
                     {
                       connectorId: c.connectorId,
                       slackChannelId: channel,
+                      teamId,
+                      channelName: channel,
                     },
                     "Skipping webhook: Slack channel not yet in DB"
                   );
@@ -201,6 +205,8 @@ const _webhookSlackAPIHandler = async (
                       connectorId: c.connectorId,
                       slackChannelId: channel,
                       skipReason: slackChannel.skipReason,
+                      teamId,
+                      channelName: slackChannel.slackChannelName,
                     },
                     `Ignoring message because channel is skipped: ${slackChannel.skipReason}`
                   );
@@ -213,6 +219,8 @@ const _webhookSlackAPIHandler = async (
                       connectorId: c.connectorId,
                       slackChannelId: channel,
                       permission: slackChannel.permission,
+                      teamId,
+                      channelName: slackChannel.slackChannelName,
                     },
                     "Ignoring message because channel permission is not read or read_write"
                   );
@@ -228,6 +236,8 @@ const _webhookSlackAPIHandler = async (
                     {
                       connectorId: c.connectorId,
                       slackChannelId: channel,
+                      teamId,
+                      channelName: slackChannel.slackChannelName,
                     },
                     "Skipping webhook: Connector not found"
                   );
@@ -257,6 +267,8 @@ const _webhookSlackAPIHandler = async (
                       slackChannelId: channel,
                       workspaceId: dataSourceConfig.workspaceId,
                       error: spacesRes.error.message,
+                      teamId,
+                      channelName: slackChannel.slackChannelName,
                     },
                     "Skipping webhook: workspace is unavailable (likely in maintenance)"
                   );
@@ -274,6 +286,8 @@ const _webhookSlackAPIHandler = async (
                 {
                   channel,
                   slackTeamId: teamId,
+                  teamId,
+                  channelName: channel,
                 },
                 "No active configurations for channel"
               );
@@ -307,6 +321,8 @@ const _webhookSlackAPIHandler = async (
                         connector,
                         slackChannelId: channel,
                         slackTeamId: c.slackTeamId,
+                        teamId: c.slackTeamId,
+                        channelName: slackChannelName,
                         message: `Connector ${c.connectorId} not found`,
                       });
                       return;
@@ -346,6 +362,8 @@ const _webhookSlackAPIHandler = async (
                     oldName: event.old_name,
                     newName: event.name,
                     slackTeamId: teamId,
+                    teamId,
+                    channelName: event.name,
                   },
                   "Successfully processed Slack channel rename"
                 );
@@ -365,6 +383,8 @@ const _webhookSlackAPIHandler = async (
                 logger.info(
                   {
                     event,
+                    teamId,
+                    channelName: event.channel,
                   },
                   "Ignoring message_deleted event without deleted_ts"
                 );
@@ -465,6 +485,8 @@ const _webhookSlackAPIHandler = async (
                 thread_ts: event.thread_ts,
                 user: event.user,
                 slackTeamId: teamId,
+                teamId,
+                channelName: event.channel,
               },
               `Successfully processed Slack Webhook`
             );
@@ -490,15 +512,17 @@ const _webhookSlackAPIHandler = async (
             } else {
               return res.status(200).send();
             }
-          } else {
-            logger.error(
-              {
-                eventChannel: event.channel,
-              },
-              "Invalid channel object"
-            );
-            return apiError(req, res, {
-              api_error: {
+            } else {
+              logger.error(
+                {
+                  eventChannel: event.channel,
+                  teamId,
+                  channelName: event.channel,
+                },
+                "Invalid channel object"
+              );
+              return apiError(req, res, {
+                api_error: {
                 type: "unexpected_response_format",
                 message: `Invalid channel object: ${event.channel} `,
               },
@@ -608,6 +632,8 @@ const _webhookSlackAPIHandler = async (
             logger.info(
               {
                 type: event.type,
+                teamId,
+                channelName: event.channel,
               },
               `Successfully processed Slack Webhook`
             );

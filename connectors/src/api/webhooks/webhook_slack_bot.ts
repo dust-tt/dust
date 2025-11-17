@@ -100,6 +100,8 @@ const _webhookSlackBotAPIHandler = async (
           channelType: event.channel_type,
           channelName: event.channel,
         },
+        teamId,
+        channelName: event.channel,
       },
       "Processing webhook event"
     );
@@ -190,6 +192,8 @@ const _webhookSlackBotAPIHandler = async (
                       agentConfigurationId: channel.agentConfigurationId,
                       autoRespondWithoutMention:
                         channel.autoRespondWithoutMention,
+                      teamId,
+                      channelName: channel.slackChannelName,
                     },
                     "Found enhanced default agent for channel - processing message"
                   );
@@ -235,6 +239,8 @@ const _webhookSlackBotAPIHandler = async (
             logger.error(
               {
                 eventChannel: event.channel,
+                teamId,
+                channelName: event.channel,
               },
               "Invalid channel object"
             );
@@ -255,6 +261,8 @@ const _webhookSlackBotAPIHandler = async (
                 channelType: event.channel_type,
                 channelName: event.channel,
               },
+              teamId,
+              channelName: event.channel,
             },
             "Webhook event type not supported"
           );
