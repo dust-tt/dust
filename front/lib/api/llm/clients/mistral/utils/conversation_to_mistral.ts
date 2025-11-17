@@ -20,6 +20,20 @@ import type {
   AgentTextContentType,
 } from "@app/types/assistant/agent_message_content";
 
+export function sanitizeToolCallId(id: string): string {
+  // Replace anything not a-zA-Z-0-9 with 0 as mistral enforces that but function_call_id can
+  // come from other providers. Also enforces length 9.
+  let s = id.replace(/[^a-zA-Z0-9]/g, "0");
+
+  if (s.length > 9) {
+    s = s.slice(0, 9);
+  }
+  if (s.length < 9) {
+    s = s.padStart(9, "0");
+  }
+  return s;
+}
+
 function removeReferenceKeys(obj: any): any {
   if (obj === null || typeof obj !== "object") {
     return obj;
@@ -84,7 +98,7 @@ function toAssistantMessage(
       (c): c is AgentFunctionCallContentType => c.type === "function_call"
     )
     .map((fc) => ({
-      id: fc.value.id,
+      id: sanitizeToolCallId(fc.value.id),
       function: {
         name: fc.value.name,
         arguments: fc.value.arguments,
@@ -131,7 +145,7 @@ export function toMessage(
             role: "tool",
             content: message.content,
             name: message.name,
-            toolCallId: message.function_call_id,
+            toolCallId: sanitizeToolCallId(message.function_call_id),
           };
         }
 
@@ -142,7 +156,7 @@ export function toMessage(
           role: "tool",
           content: JSON.stringify(cleanedContent),
           name: message.name,
-          toolCallId: message.function_call_id,
+          toolCallId: sanitizeToolCallId(message.function_call_id),
         };
       }
 
@@ -153,7 +167,7 @@ export function toMessage(
             ? message.content
             : message.content.map(toContentChunk),
         name: message.name,
-        toolCallId: message.function_call_id,
+        toolCallId: sanitizeToolCallId(message.function_call_id),
       };
     }
     case "assistant": {
