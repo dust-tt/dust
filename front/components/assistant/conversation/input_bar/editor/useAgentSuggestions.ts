@@ -22,8 +22,8 @@ function makeEditorSuggestionAgents(
 }
 
 const useAgentSuggestions = (
-  inListAgentConfigurations: LightAgentConfigurationType[],
-  owner: WorkspaceType
+  owner: WorkspaceType,
+  inListAgentConfigurations: LightAgentConfigurationType[]
 ) => {
   // We use this specific hook because this component is involved in the new conversation page.
   const { agentConfigurations, isLoading } = useUnifiedAgentConfigurations({
