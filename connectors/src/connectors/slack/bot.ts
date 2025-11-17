@@ -82,8 +82,8 @@ const MAX_FILE_SIZE_TO_UPLOAD = 10 * 1024 * 1024; // 10 MB
 
 const DEFAULT_AGENTS = ["dust", "claude-4-sonnet", "gpt-5"];
 
-// Pattern to match +mention and ~mention.
-const SLACK_MENTION_PATTERN = /(?<!\S)[+~]([a-zA-Z0-9_-]{1,40})(?=\s|,|\.|$)/g;
+// Pattern to match +mention or ~mention at the beginning of the string (whitespaces allowed).
+const SLACK_MENTION_PATTERN = /^\s*([+~][a-zA-Z0-9_-]{1,40})(?=\s|,|\.|$)/;
 
 type BotAnswerParams = {
   responseUrl?: string;
@@ -789,15 +789,22 @@ async function answerMessage(
 
   // Slack sends the message with user ids when someone is mentioned (bot or user).
   // Here we remove the bot id from the message and we replace user ids by their display names.
-  // Example: <@U01J9JZQZ8Z> What is the command to upgrade a workspace in production (cc
-  // <@U91J1JEQZ1A>) ?
-  // becomes: What is the command to upgrade a workspace in production (cc @julien) ?
+  // Example:
+  //   <@U01J9JZQZ8Z> What is the command to upgrade a workspace in production (cc <@U91J1JEQZ1A>)?
+  // becomes:
+  //   What is the command to upgrade a workspace in production (cc @julien)?
   const matches = message.match(/<@[A-Z-0-9]+>/g);
+  let textAfterBotMention: string | null = null;
+
   if (matches) {
     const mySlackUser = await getBotUserIdMemoized(slackClient, connector.id);
     for (const m of matches) {
       const userId = m.replace(/<|@|>/g, "");
       if (userId === mySlackUser) {
+        const botMentionIndex = message.indexOf(m);
+        if (botMentionIndex !== -1) {
+          textAfterBotMention = message.slice(botMentionIndex + m.length);
+        }
         message = message.replace(m, "");
       } else {
         const userName = await getUserName(userId, connector.id, slackClient);
@@ -806,14 +813,37 @@ async function answerMessage(
     }
   }
 
-  // Remove markdown to extract mentions.
-  const messageWithoutMarkdown = removeMarkdown(message);
-
   let mention: MentionMatch | undefined;
 
-  // Extract all ~mentions and +mentions
-  const mentionCandidates =
-    messageWithoutMarkdown.match(SLACK_MENTION_PATTERN) || [];
+  // Extract all ~mentions and +mentions that appear right after the bot mention.
+  let mentionCandidates: RegExpMatchArray | [] = [];
+  if (textAfterBotMention !== null) {
+    const textAfterBotMentionWithoutMarkdown =
+      removeMarkdown(textAfterBotMention);
+
+    const firstMatch = textAfterBotMentionWithoutMarkdown.match(
+      SLACK_MENTION_PATTERN
+    );
+
+    if (firstMatch?.[1]) {
+      mentionCandidates = [firstMatch[1]];
+
+      // If the user tagged multiple agents, we need to show a custom message since we only support one agent at a time
+      // and they will expect all agents to answer.
+      const afterFirst = textAfterBotMentionWithoutMarkdown.slice(
+        firstMatch[0].length
+      );
+      const secondMatch = afterFirst.match(SLACK_MENTION_PATTERN);
+
+      if (secondMatch) {
+        return new Err(
+          new SlackExternalUserError(
+            "Only one agent at a time can be called through Slack."
+          )
+        );
+      }
+    }
+  }
 
   // First we look at mention override
   // (e.g.: a mention coming from the Slack agent picker from Slack).
@@ -833,14 +863,6 @@ async function answerMessage(
       agentName: agentConfig.name,
     };
   } else {
-    if (mentionCandidates.length > 1) {
-      return new Err(
-        new SlackExternalUserError(
-          "Only one agent at a time can be called through Slack."
-        )
-      );
-    }
-
     const mentionResult = processMentions({
       message,
       activeAgentConfigurations,
