@@ -271,7 +271,7 @@ export class Authenticator {
     }
 
     return new Authenticator({
-      authType: "session",
+      authMethod: "session",
       workspace,
       user,
       role: user?.isDustSuperUser ? "admin" : "none",
