@@ -804,6 +804,9 @@ async function answerMessage(
         const botMentionIndex = message.indexOf(m);
         if (botMentionIndex !== -1) {
           textAfterBotMention = message.slice(botMentionIndex + m.length);
+        } else {
+          // There is no bot mention when calling the bot in a DM.
+          textAfterBotMention = message;
         }
         message = message.replace(m, "");
       } else {
