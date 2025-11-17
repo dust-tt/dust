@@ -8,7 +8,7 @@ import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapp
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import { isTextContent } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 
-const MAX_SNIPPET_LENGTH = 200;
+const MAX_PREVIEW_LINES = 10;
 
 export function MCPConversationCatFileDetails({
   toolOutput,
@@ -27,13 +27,18 @@ export function MCPConversationCatFileDetails({
             : "Read conversation file"
         }
         visual={DocumentIcon}
-      />
+      >
+        <></>
+      </ActionDetailsWrapper>
     );
   }
 
-  const snippet =
-    content.length > MAX_SNIPPET_LENGTH
-      ? content.slice(0, MAX_SNIPPET_LENGTH) + "..."
+  // Skip the first line with the XML tag.
+  const lines = content.split("\n").slice(1);
+  const truncatedContent =
+    lines.length > MAX_PREVIEW_LINES
+      ? lines.join("\n") +
+        `\n... (${lines.length - MAX_PREVIEW_LINES} more lines)`
       : content;
 
   return (
@@ -61,7 +66,7 @@ export function MCPConversationCatFileDetails({
                   className="language-text max-h-32 overflow-y-auto"
                   wrapLongLines={true}
                 >
-                  {snippet}
+                  {truncatedContent}
                 </CodeBlock>
               </div>
             }
