@@ -26,6 +26,7 @@ export interface RemoteWebhookService<
     Result<
       {
         updatedRemoteMetadata: Record<string, unknown>;
+        secret?: string;
         errors?: string[];
       },
       Error

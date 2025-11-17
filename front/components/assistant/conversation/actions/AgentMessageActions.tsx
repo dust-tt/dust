@@ -70,7 +70,7 @@ export function AgentMessageActions({
   }, [agentMessage, currentPanel, data, openPanel]);
 
   const lastNotification = lastAction
-    ? actionProgress.get(lastAction.id)?.progress ?? null
+    ? (actionProgress.get(lastAction.id)?.progress ?? null)
     : null;
 
   const showMessageBreakdownButton =

@@ -30,10 +30,10 @@ export function ProcessingConfiguration({
   const [assistantSelected, setAssistantSelected] =
     useState<LightAgentConfigurationType | null>(
       transcriptsConfiguration.agentConfigurationId
-        ? agents.find(
+        ? (agents.find(
             (agent) =>
               agent.sId === transcriptsConfiguration.agentConfigurationId
-          ) ?? null
+          ) ?? null)
         : null
     );
 
@@ -79,10 +79,10 @@ export function ProcessingConfiguration({
   useEffect(() => {
     setAssistantSelected(
       transcriptsConfiguration.agentConfigurationId
-        ? agents.find(
+        ? (agents.find(
             (agent) =>
               agent.sId === transcriptsConfiguration.agentConfigurationId
-          ) ?? null
+          ) ?? null)
         : null
     );
   }, [agents, transcriptsConfiguration.agentConfigurationId]);

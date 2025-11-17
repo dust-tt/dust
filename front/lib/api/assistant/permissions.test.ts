@@ -21,7 +21,6 @@ describe("getAgentConfigurationRequirementsFromActions", () => {
       }
     );
 
-    expect(result.requestedGroupIds).toEqual([]);
     expect(result.requestedSpaceIds).toEqual([]);
   });
 
@@ -108,15 +107,6 @@ describe("getAgentConfigurationRequirementsFromActions", () => {
 
     // Should include space IDs from both spaces
     expect(result.requestedSpaceIds).toHaveLength(2);
-    expect(result.requestedGroupIds).toHaveLength(2);
-
-    expect(result.requestedGroupIds.flat()).toContain(globalGroup.id);
-    expect(result.requestedGroupIds.flat()).toContain(
-      regularSpace.groups.map((g) => g.id)[0]
-    );
-    expect(result.requestedGroupIds.flat()).toContain(
-      regularSpace.groups.map((g) => g.id)[0]
-    );
   });
 
   it("should handle actions with MCP server views from different spaces", async () => {
@@ -192,10 +182,6 @@ describe("getAgentConfigurationRequirementsFromActions", () => {
     expect(result.requestedSpaceIds).toHaveLength(2);
     expect(result.requestedSpaceIds).toContain(globalSpace.id);
     expect(result.requestedSpaceIds).toContain(restrictedSpace.id);
-
-    // Should include group requirements from restricted space
-    expect(result.requestedGroupIds).toHaveLength(2);
-    expect(result.requestedGroupIds[0]).toContain(globalGroup.id);
   });
 
   it("should handle ignoreSpaces parameter correctly", async () => {
@@ -351,10 +337,6 @@ describe("getAgentConfigurationRequirementsFromActions", () => {
     expect(result.requestedSpaceIds).toHaveLength(2);
     expect(result.requestedSpaceIds).toContain(dsSpace.id);
     expect(result.requestedSpaceIds).toContain(mcpSpace.id);
-
-    // Should include group requirements from both spaces
-    expect(result.requestedGroupIds).toHaveLength(2);
-    expect(result.requestedGroupIds[0]).toContain(globalGroup.id);
   });
 
   it("should handle internal MCP servers with auto availability correctly", async () => {
@@ -419,7 +401,6 @@ describe("getAgentConfigurationRequirementsFromActions", () => {
 
     // Should NOT include any spaces or groups since auto tools are automatically available
     expect(autoOnlyResult.requestedSpaceIds).toHaveLength(0);
-    expect(autoOnlyResult.requestedGroupIds).toHaveLength(0);
 
     // Test 2: Mixed action with both auto and regular server
     const mixedActions: ServerSideMCPServerConfigurationType[] = [

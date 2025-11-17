@@ -2,6 +2,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import { formatValidationErrors } from "io-ts-reporters";
 
+import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types";
@@ -22,7 +23,7 @@ const WorkspaceTagSuggestionsResponseSchema = t.type({
   ]),
 });
 
-const specifications = [
+const specifications: AgentActionSpecification[] = [
   {
     name: SEND_TAGS_FUNCTION_NAME,
     description: "Send tagging plan for the assistant",
@@ -147,12 +148,19 @@ export async function getWorkspaceTagSuggestions(
         messages: [
           {
             role: "user",
-            content: "Please suggest tags.",
+            content: [{ type: "text", text: "Please suggest tags." }],
+            name: "",
           },
         ],
       },
       prompt: instructionsWithAgents,
       specifications,
+    },
+    {
+      context: {
+        operationType: "workspace_tags_suggestion",
+        userId: auth.user()?.sId,
+      },
     }
   );
 

@@ -56,6 +56,7 @@ import { default as tablesQueryServerV2 } from "@app/lib/actions/mcp_internal_ac
 import { default as toolsetsServer } from "@app/lib/actions/mcp_internal_actions/servers/toolsets";
 import { default as valtownServer } from "@app/lib/actions/mcp_internal_actions/servers/valtown";
 import { default as webtoolsServer } from "@app/lib/actions/mcp_internal_actions/servers/webtools";
+import { default as zendeskServer } from "@app/lib/actions/mcp_internal_actions/servers/zendesk";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   isLightServerSideMCPToolConfiguration,
@@ -205,6 +206,8 @@ export async function getInternalMCPServer(
       return httpClientServer(auth, agentLoopContext);
     case "front":
       return frontServer(auth, agentLoopContext);
+    case "zendesk":
+      return zendeskServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }

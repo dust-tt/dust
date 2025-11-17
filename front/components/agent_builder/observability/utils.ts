@@ -4,8 +4,9 @@ import {
 } from "@app/components/agent_builder/observability/constants";
 import type { ObservabilityMode } from "@app/components/agent_builder/observability/ObservabilityContext";
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
+import { formatShortDate } from "@app/lib/utils/timestamps";
 
-export type VersionMarker = { version: string; timestamp: string };
+export type VersionMarker = { version: string; timestamp: number };
 
 export type ValuesPayload = { values: Record<string, number> };
 
@@ -59,10 +60,18 @@ export function findVersionMarkerForDate(
   return null;
 }
 
-// Filters a generic time-series of points with a `date` string to the
+const truncateToMidnightUTC = (timestamp: number): number => {
+  const date = new Date(timestamp);
+  date.setUTCHours(0, 0, 0, 0);
+  return date.getTime();
+};
+
+// Filters a generic time-series of points with a `timestamp` number to the
 // selected version window determined by version markers. If no selection or
 // markers are provided, returns the original points.
-export function filterTimeSeriesByVersionWindow<T extends { date: string }>(
+export function filterTimeSeriesByVersionWindow<
+  T extends { timestamp: number },
+>(
   points: T[] | undefined,
   mode: ObservabilityMode,
   selectedVersion: AgentVersionMarker | null,
@@ -84,15 +93,18 @@ export function filterTimeSeriesByVersionWindow<T extends { date: string }>(
     return pts;
   }
 
-  const start = new Date(versionMarkers[idx].timestamp).getTime();
+  // The timestamp of version markers is createdAt, meaning that it's precise time like `1760256757215` Sun Oct 12 2025 10:12:37,
+  // so when we compare with point time (which usually comes at midnight time like `1761782400000` since we aggregate the data of the day), we could drop some data
+  // if we don't truncate to midnight UTC.
+  const start = truncateToMidnightUTC(versionMarkers[idx].timestamp);
   const end =
     idx + 1 < versionMarkers.length
-      ? new Date(versionMarkers[idx + 1].timestamp).getTime()
+      ? truncateToMidnightUTC(versionMarkers[idx + 1].timestamp)
       : undefined;
 
   return pts.filter((p) => {
-    const t = new Date(p.date).getTime();
-    return t >= start && (end === undefined || t < end);
+    const pointTime = truncateToMidnightUTC(p.timestamp);
+    return pointTime >= start && (end === undefined || pointTime < end);
   });
 }
 
@@ -138,28 +150,39 @@ export function getTimeRangeBounds(periodDays: number): [string, string] {
 
 // Pads a time-series with zero-value points at the selected time-range bounds
 // so the X axis spans the full range even when there's no data.
-export function padSeriesToTimeRange<T extends { date: string }>(
+export function padSeriesToTimeRange<T extends { timestamp: number }>(
   points: T[] | undefined,
   mode: ObservabilityMode,
   periodDays: number,
-  zeroFactory: (date: string) => T
-): T[] {
+  zeroFactory: (timestamp: number) => T
+) {
   const pts = points ?? [];
   if (mode !== "timeRange") {
-    return pts;
+    const formattedPts = pts.map((pt) => ({
+      ...pt,
+      date: formatShortDate(pt.timestamp),
+    }));
+    return formattedPts;
   }
-  const [startDate, endDate] = getTimeRangeBounds(periodDays);
-  const byDate = new Map<string, T>(pts.map((p) => [p.date, p]));
 
+  const [startDate, endDate] = getTimeRangeBounds(periodDays);
   const startTime = new Date(startDate + "T00:00:00Z").getTime();
   const endTime = new Date(endDate + "T00:00:00Z").getTime();
+
+  const byTimestamp = new Map<number, T>(pts.map((p) => [p.timestamp, p]));
+
   const dayMs = 24 * 60 * 60 * 1000;
   const numDays = Math.floor((endTime - startTime) / dayMs) + 1;
 
-  const out: T[] = [];
+  const out = [];
   for (let i = 0; i < numDays; i++) {
-    const date = formatUTCDateString(new Date(startTime + i * dayMs));
-    out.push(byDate.get(date) ?? zeroFactory(date));
+    const timestamp = startTime + i * dayMs;
+    const point = byTimestamp.get(timestamp) ?? zeroFactory(timestamp);
+    const formattedPoint = {
+      ...point,
+      date: formatShortDate(point.timestamp),
+    };
+    out.push(formattedPoint);
   }
   return out;
 }

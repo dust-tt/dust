@@ -1,7 +1,6 @@
 import { faker } from "@faker-js/faker";
 
 import { TemplateResource } from "@app/lib/resources/template_resource";
-import { CLAUDE_3_5_HAIKU_20241022_MODEL_ID } from "@app/types";
 
 export class TemplateFactory {
   private static defaultParams = () => {
@@ -12,7 +11,7 @@ export class TemplateFactory {
       handle: faker.person.firstName(),
       presetTemperature: "balanced" as const,
       presetProviderId: "anthropic" as const,
-      presetModelId: CLAUDE_3_5_HAIKU_20241022_MODEL_ID,
+      presetModelId: "claude-3-opus-20240229" as const,
       presetActions: [],
       tags: [],
       timeFrameDuration: null,

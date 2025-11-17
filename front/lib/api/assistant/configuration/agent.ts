@@ -25,6 +25,13 @@ import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import { isRemoteDatabase } from "@app/lib/data_sources";
 import type { DustError } from "@app/lib/error";
+import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
+import {
+  AgentChildAgentConfiguration,
+  AgentMCPServerConfiguration,
+} from "@app/lib/models/assistant/actions/mcp";
+import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
+import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import {
   AgentConfiguration,
   AgentUserRelation,
@@ -44,7 +51,6 @@ import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { normalizeArrays } from "@app/lib/utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type {
@@ -322,7 +328,6 @@ export async function createAgentConfiguration(
     model,
     agentConfigurationId,
     templateId,
-    requestedGroupIds,
     requestedSpaceIds,
     tags,
     editors,
@@ -336,7 +341,6 @@ export async function createAgentConfiguration(
     model: AgentModelConfigurationType;
     agentConfigurationId?: string;
     templateId: string | null;
-    requestedGroupIds: number[][];
     requestedSpaceIds: number[];
     tags: TagType[];
     editors: UserType[];
@@ -436,8 +440,6 @@ export async function createAgentConfiguration(
           workspaceId: owner.id,
           authorId: user.id,
           templateId: template?.id,
-          // TODO(2025-10-17 thomas): Remove requestedGroupIds.
-          requestedGroupIds: normalizeArrays(requestedGroupIds),
           requestedSpaceIds: requestedSpaceIds,
           responseFormat: model.responseFormat,
         },
@@ -565,12 +567,7 @@ export async function createAgentConfiguration(
       status: agent.status,
       maxStepsPerRun: agent.maxStepsPerRun,
       templateId: template?.sId ?? null,
-      // TODO(2025-10-17 thomas): Remove requestedGroupIds.
-      requestedGroupIds: agent.requestedGroupIds.map((groups) =>
-        groups.map((id) =>
-          GroupResource.modelIdToSId({ id, workspaceId: owner.id })
-        )
-      ),
+      requestedGroupIds: [],
       requestedSpaceIds: agent.requestedSpaceIds.map((spaceId) =>
         SpaceResource.modelIdToSId({ id: spaceId, workspaceId: owner.id })
       ),
@@ -673,8 +670,6 @@ export async function createGenericAgentConfiguration(
     scope: "hidden", // Unpublished
     model,
     templateId: null,
-    // TODO(2025-10-17 thomas): Remove requestedGroupIds.
-    requestedGroupIds: [],
     requestedSpaceIds: [],
     tags: [],
     editors: [user.toJSON()], // Only the current user as editor
@@ -1046,23 +1041,83 @@ export async function unsafeHardDeleteAgentConfiguration(
 ): Promise<void> {
   const workspaceId = auth.getNonNullableWorkspace().id;
 
-  await TagAgentModel.destroy({
-    where: {
-      agentConfigurationId: agentConfiguration.id,
-      workspaceId,
-    },
-  });
-  await GroupAgentModel.destroy({
-    where: {
-      agentConfigurationId: agentConfiguration.id,
-      workspaceId,
-    },
-  });
-  await AgentConfiguration.destroy({
-    where: {
-      id: agentConfiguration.id,
-      workspaceId,
-    },
+  await withTransaction(async (t) => {
+    // Clean up MCP server configurations and their children first
+    const mcpConfigs = await AgentMCPServerConfiguration.findAll({
+      where: {
+        agentConfigurationId: agentConfiguration.id,
+        workspaceId,
+      },
+      attributes: ["id"],
+      transaction: t,
+    });
+    if (mcpConfigs.length) {
+      const mcpIds = mcpConfigs.map((c) => c.id);
+
+      await AgentDataSourceConfiguration.destroy({
+        where: {
+          workspaceId,
+          mcpServerConfigurationId: { [Op.in]: mcpIds },
+        },
+        transaction: t,
+      });
+
+      await AgentTablesQueryConfigurationTable.destroy({
+        where: {
+          workspaceId,
+          mcpServerConfigurationId: { [Op.in]: mcpIds },
+        },
+        transaction: t,
+      });
+
+      await AgentReasoningConfiguration.destroy({
+        where: {
+          workspaceId,
+          mcpServerConfigurationId: { [Op.in]: mcpIds },
+        },
+        transaction: t,
+      });
+
+      await AgentChildAgentConfiguration.destroy({
+        where: {
+          workspaceId,
+          mcpServerConfigurationId: { [Op.in]: mcpIds },
+        },
+        transaction: t,
+      });
+
+      await AgentMCPServerConfiguration.destroy({
+        where: {
+          workspaceId,
+          id: { [Op.in]: mcpIds },
+        },
+        transaction: t,
+      });
+    }
+
+    await TagAgentModel.destroy({
+      where: {
+        agentConfigurationId: agentConfiguration.id,
+        workspaceId,
+      },
+      transaction: t,
+    });
+
+    await GroupAgentModel.destroy({
+      where: {
+        agentConfigurationId: agentConfiguration.id,
+        workspaceId,
+      },
+      transaction: t,
+    });
+
+    await AgentConfiguration.destroy({
+      where: {
+        id: agentConfiguration.id,
+        workspaceId,
+      },
+      transaction: t,
+    });
   });
 }
 
@@ -1159,19 +1214,17 @@ export async function updateAgentConfigurationScope(
   return new Ok(undefined);
 }
 
-// TODO(2025-10-17 thomas): Update name, remove requestedGroupIds.
-export async function updateAgentRequestedGroupIds(
+export async function updateAgentRequirements(
   auth: Authenticator,
-  params: { agentId: string; newGroupIds: number[][]; newSpaceIds: number[] },
+  params: { agentId: string; newSpaceIds: number[] },
   options?: { transaction?: Transaction }
 ): Promise<Result<boolean, Error>> {
-  const { agentId, newGroupIds, newSpaceIds } = params;
+  const { agentId, newSpaceIds } = params;
 
   const owner = auth.getNonNullableWorkspace();
 
   const updated = await AgentConfiguration.update(
     {
-      requestedGroupIds: normalizeArrays(newGroupIds),
       requestedSpaceIds: newSpaceIds,
     },
     {

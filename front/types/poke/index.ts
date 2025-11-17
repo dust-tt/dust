@@ -15,10 +15,18 @@ import type { GroupType } from "../groups";
 import type { ModelId } from "../shared/model_id";
 import type { SpaceType } from "../space";
 
+type PokeItemType =
+  | "Workspace"
+  | "Data Source"
+  | "Data Source View"
+  | "Connector"
+  | "MCP Server View";
+
 export interface PokeItemBase {
   id: ModelId;
   link: string | null;
   name: string;
+  type: PokeItemType;
 }
 
 export type PokeSpaceType = SpaceType & {

@@ -1,6 +1,8 @@
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import { FILESYSTEM_FIND_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { renderSearchResults } from "@app/lib/actions/mcp_internal_actions/rendering";
 import {
   extractDataSourceIdFromNodeId,
@@ -11,14 +13,77 @@ import {
   getAgentDataSourceConfigurations,
   makeCoreSearchNodesFilters,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
-import type { DataSourceFilesystemFindInputType } from "@app/lib/actions/mcp_internal_actions/types";
+import type {
+  DataSourceFilesystemFindInputType,
+  TagsInputType,
+} from "@app/lib/actions/mcp_internal_actions/types";
+import {
+  DataSourceFilesystemFindInputSchema,
+  TagsInputSchema,
+} from "@app/lib/actions/mcp_internal_actions/types";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { CoreAPI, Err, Ok } from "@app/types";
 
-export async function findCallback(
+export function registerFindTool(
+  auth: Authenticator,
+  server: McpServer,
+  agentLoopContext: AgentLoopContextType | undefined,
+  {
+    name,
+    extraDescription,
+    areTagsDynamic,
+  }: { name: string; extraDescription?: string; areTagsDynamic?: boolean }
+) {
+  const baseDescription =
+    "Find content based on their title starting from a specific node. Can be used to find specific " +
+    "nodes by searching for their titles. The query title can be omitted to list all nodes " +
+    "starting from a specific node. This is like using 'find' in Unix.";
+  const toolDescription = extraDescription
+    ? baseDescription + "\n" + extraDescription
+    : baseDescription;
+
+  if (areTagsDynamic) {
+    server.tool(
+      name,
+      toolDescription,
+      {
+        ...DataSourceFilesystemFindInputSchema.shape,
+        ...TagsInputSchema.shape,
+      },
+      withToolLogging(
+        auth,
+        {
+          toolNameForMonitoring: FILESYSTEM_FIND_TOOL_NAME,
+          agentLoopContext,
+          enableAlerting: true,
+        },
+        async (params) => findCallback(auth, params)
+      )
+    );
+  } else {
+    server.tool(
+      name,
+      toolDescription,
+      DataSourceFilesystemFindInputSchema.shape,
+      withToolLogging(
+        auth,
+        {
+          toolNameForMonitoring: FILESYSTEM_FIND_TOOL_NAME,
+          agentLoopContext,
+          enableAlerting: true,
+        },
+        async (params) => findCallback(auth, params)
+      )
+    );
+  }
+}
+
+async function findCallback(
   auth: Authenticator,
   {
     query,
@@ -27,8 +92,9 @@ export async function findCallback(
     nextPageCursor,
     rootNodeId,
     mimeTypes,
-  }: DataSourceFilesystemFindInputType,
-  { tagsIn, tagsNot }: { tagsIn?: string[]; tagsNot?: string[] } = {}
+    tagsIn,
+    tagsNot,
+  }: DataSourceFilesystemFindInputType & TagsInputType
 ): Promise<Result<CallToolResult["content"], MCPError>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
@@ -57,9 +123,9 @@ export async function findCallback(
   // are searched. It is not straightforward to guess which data source it
   // belongs to, this is why irrelevant data sources are not directly
   // filtered out.
-  let viewFilter = makeCoreSearchNodesFilters(agentDataSourceConfigurations, {
-    tagsIn,
-    tagsNot,
+  let viewFilter = makeCoreSearchNodesFilters({
+    agentDataSourceConfigurations,
+    additionalDynamicTags: { tagsIn, tagsNot },
   });
 
   if (dataSourceNodeId) {

@@ -11,15 +11,24 @@ import type {
 export interface LLMTraceContext {
   /** Type of operation that triggered the LLM call */
   operationType:
+    | "agent_builder_description_suggestion"
+    | "agent_builder_emoji_suggestion"
+    | "agent_builder_instruction_suggestion"
+    | "agent_builder_name_suggestion"
+    | "agent_builder_tags_suggestion"
     | "agent_conversation"
-    | "builder_suggestion"
-    | "agent_preview"
-    | "name_suggestion"
-    | "other";
+    | "agent_suggestion"
+    | "conversation_title_suggestion"
+    | "process_data_sources"
+    | "process_schema_generator"
+    | "trigger_cron_timezone_generator"
+    | "trigger_webhook_filter_generator"
+    | "voice_agent_finder"
+    | "workspace_tags_suggestion";
 
-  /** Context-specific identifier (e.g., agentConfigId, userId, etc.) */
+  /** Context-specific identifier (e.g., agentConfigId, conversationId, etc.) */
   contextId?: string;
-
+  workspaceId?: string;
   /** User who triggered the operation */
   userId?: string;
 }

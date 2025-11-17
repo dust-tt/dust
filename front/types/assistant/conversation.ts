@@ -1,9 +1,11 @@
 import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
-import type { AllSupportedWithDustSpecificFileContentType } from "@app/types";
-import type { ContentFragmentType } from "@app/types";
-import type { ModelId } from "@app/types";
-import type { MentionType } from "@app/types";
+import type {
+  AllSupportedWithDustSpecificFileContentType,
+  ContentFragmentType,
+  MentionType,
+  ModelId,
+} from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 
 import type { UserType, WorkspaceType } from "../user";
@@ -70,6 +72,34 @@ export type UserMessageOrigin =
   | "powerpoint"
   | "run_agent"
   | "agent_handover";
+
+export const USER_MESSAGE_ORIGIN_LABELS: Record<UserMessageOrigin, string> = {
+  api: "API",
+  email: "Email",
+  extension: "Chrome extension",
+  "github-copilot-chat": "GitHub Copilot Chat",
+  gsheet: "Google Sheets",
+  make: "Make",
+  n8n: "n8n",
+  raycast: "Raycast",
+  slack: "Slack",
+  teams: "Teams",
+  triggered: "Triggered",
+  triggered_programmatic: "Programmatic trigger",
+  web: "Web",
+  zapier: "Zapier",
+  zendesk: "Zendesk",
+  excel: "Excel",
+  powerpoint: "PowerPoint",
+  run_agent: "Agent run",
+  agent_handover: "Agent handover",
+};
+
+export function isUserMessageOrigin(
+  origin: string
+): origin is UserMessageOrigin {
+  return origin in USER_MESSAGE_ORIGIN_LABELS;
+}
 
 export type UserMessageContext = {
   username: string;
@@ -171,8 +201,6 @@ export type LightAgentMessageType = BaseAgentMessageType & {
     pictureUrl: string;
     status: AgentConfigurationStatus;
     canRead: boolean;
-    requestedGroupIds: string[][];
-    requestedSpaceIds: string[];
   };
   citations: Record<string, CitationType>;
   generatedFiles: Omit<ActionGeneratedFileType, "snippet">[];
@@ -220,8 +248,7 @@ export type ConversationWithoutContentType = {
   sId: string;
   title: string | null;
 
-  // Ideally, theses 2 properties should be moved to the ConversationType.
-  requestedGroupIds: string[][];
+  // Ideally, this property should be moved to the ConversationType.
   requestedSpaceIds: string[];
 };
 

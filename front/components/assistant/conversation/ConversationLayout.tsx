@@ -19,6 +19,7 @@ import { GenerationContextProvider } from "@app/components/assistant/conversatio
 import { InputBarProvider } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
+import { MemberDetails } from "@app/components/assistant/details/MemberDetails";
 import { WelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuide";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { ErrorBoundary } from "@app/components/error_boundary/ErrorBoundary";
@@ -86,6 +87,7 @@ const ConversationLayoutContent = ({
 }: ConversationLayoutContentProps) => {
   const router = useRouter();
   const { onOpenChange: onOpenChangeAgentModal } = useURLSheet("agentDetails");
+  const { onOpenChange: onOpenChangeUserModal } = useURLSheet("userDetails");
   const { activeConversationId } = useConversationsNavigation();
   const { conversation, conversationError } = useConversation({
     conversationId: activeConversationId,
@@ -99,6 +101,14 @@ const ConversationLayoutContent = ({
     }
     return null;
   }, [router.query.agentDetails]);
+
+  const userSId = useMemo(() => {
+    const sid = router.query.userDetails ?? [];
+    if (isString(sid)) {
+      return sid;
+    }
+    return null;
+  }, [router.query.userDetails]);
 
   // Logic for the welcome tour guide. We display it if the welcome query param is set to true.
   const { startConversationRef, spaceMenuButtonRef, createAgentButtonRef } =
@@ -134,6 +144,12 @@ const ConversationLayoutContent = ({
             user={user}
             agentId={agentSId}
             onClose={() => onOpenChangeAgentModal(false)}
+          />
+
+          <MemberDetails
+            owner={owner}
+            userId={userSId}
+            onClose={() => onOpenChangeUserModal(false)}
           />
 
           <ConversationSidePanelProvider>

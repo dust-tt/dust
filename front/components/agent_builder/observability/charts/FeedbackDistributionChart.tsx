@@ -29,10 +29,20 @@ import {
   useAgentFeedbackDistribution,
   useAgentVersionMarkers,
 } from "@app/lib/swr/assistants";
+import { formatShortDate } from "@app/lib/utils/timestamps";
 
 interface FeedbackDistributionChartProps {
   workspaceId: string;
   agentConfigurationId: string;
+}
+
+function zeroFactory(timestamp: number) {
+  return {
+    timestamp,
+    date: formatShortDate(timestamp),
+    positive: 0,
+    negative: 0,
+  };
 }
 
 export function FeedbackDistributionChart({
@@ -72,11 +82,7 @@ export function FeedbackDistributionChart({
     versionMarkers
   );
 
-  const data = padSeriesToTimeRange(filteredData, mode, period, (date) => ({
-    date,
-    positive: 0,
-    negative: 0,
-  }));
+  const data = padSeriesToTimeRange(filteredData, mode, period, zeroFactory);
 
   return (
     <ChartContainer

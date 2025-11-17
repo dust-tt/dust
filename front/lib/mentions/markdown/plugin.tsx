@@ -11,7 +11,7 @@ import type { WorkspaceType } from "@app/types";
 
 import { MentionDisplay } from "../ui/MentionDisplay";
 
-/**
+/*
  * Remark directive plugin for parsing mention directives.
  *
  * Transforms `:mention[name]{sId=xxx}` into a custom HTML element
@@ -69,4 +69,62 @@ export function getAgentMentionPlugin(owner: WorkspaceType) {
   };
 
   return AgentMentionPlugin;
+}
+
+/*
+ * Remark directive plugin for parsing user mention directives.
+ *
+ * Transforms `:mention_user[name]{sId=xxx}` into a custom HTML element
+ * that can be rendered by the mention component.
+ *
+ */
+export function userMentionDirective() {
+  return (tree: any) => {
+    visit(tree, ["textDirective"], (node) => {
+      if (node.name === "mention_user" && node.children[0]) {
+        const data = node.data || (node.data = {});
+        data.hName = "mention_user";
+        data.hProperties = {
+          userSId: node.attributes.sId,
+          userName: node.children[0].value,
+        };
+      }
+    });
+  };
+}
+
+/**
+ * Creates a React component plugin for rendering user mentions in markdown.
+ *
+ * This function returns a component that can be used as a custom component
+ * in ReactMarkdown to render the mention HTML elements.
+ *
+ * @param owner - The workspace context for mention interactions
+ * @returns A React component for rendering mentions
+ */
+export function getUserMentionPlugin(owner: WorkspaceType) {
+  const UserMentionPlugin = ({
+    userName,
+    userSId,
+  }: {
+    userName: string;
+    userSId: string;
+  }) => {
+    return (
+      <MentionDisplay
+        mention={{
+          id: userSId,
+          label: userName,
+          type: "user",
+          pictureUrl: "",
+          description: "",
+        }}
+        interactive
+        owner={owner}
+        showTooltip={false}
+      />
+    );
+  };
+
+  return UserMentionPlugin;
 }

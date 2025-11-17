@@ -1,19 +1,14 @@
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
-import { getUserMessageFromParentMessageId } from "@app/lib/api/assistant/conversation";
 import type { Authenticator } from "@app/lib/auth";
-import { UserResource } from "@app/lib/resources/user_resource";
-import type {
-  AgentMessageType,
-  ConversationWithoutContentType,
-} from "@app/types";
+import type { UserResource } from "@app/lib/resources/user_resource";
+import type { AgentMessageType } from "@app/types";
 import { assertNever } from "@app/types";
 
 export async function getExecutionStatusFromConfig(
   auth: Authenticator,
   actionConfiguration: MCPToolConfigurationType,
-  agentMessage: AgentMessageType,
-  conversationWithoutContent: ConversationWithoutContentType
+  agentMessage: AgentMessageType
 ): Promise<{
   stake?: MCPToolStakeLevelType;
   status: "ready_allowed_implicitly" | "blocked_validation_required";
@@ -35,37 +30,18 @@ export async function getExecutionStatusFromConfig(
     case "never_ask":
       return { status: "ready_allowed_implicitly" };
     case "low": {
-      let user = auth.user();
-      const workspace = auth.workspace();
-
       // The user may not be populated, notably when using the public API.
-      if (!user && workspace && agentMessage.parentMessageId) {
-        const userMessage = await getUserMessageFromParentMessageId({
-          workspaceId: workspace.id,
-          conversationId: conversationWithoutContent.id,
-          parentMessageId: agentMessage.parentMessageId,
-        });
+      const user = auth.user();
 
-        const email = userMessage?.userContextEmail ?? null;
-
-        if (email) {
-          const users = await UserResource.listUserWithExactEmails(workspace, [
-            email,
-          ]);
-
-          user = users[0] ?? null;
-        }
-      }
-
-      if (
-        user &&
-        (await hasUserAlwaysApprovedTool({
+      if (user) {
+        const userHasAlwaysApproved = await hasUserAlwaysApprovedTool({
           user,
           mcpServerId: actionConfiguration.toolServerId,
           functionCallName: actionConfiguration.name,
-        }))
-      ) {
-        return { status: "ready_allowed_implicitly" };
+        });
+        if (userHasAlwaysApproved) {
+          return { status: "ready_allowed_implicitly" };
+        }
       }
       return { status: "blocked_validation_required" };
     }

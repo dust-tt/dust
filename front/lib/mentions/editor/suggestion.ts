@@ -35,19 +35,6 @@ export function compareAgentSuggestionsForSort(
   return compareAgentsForSort(toSortable(a), toSortable(b));
 }
 
-/**
- * Filters agent suggestions based on a query, with fallback support.
- *
- * When the query is empty, returns suggestions in their pre-defined order.
- * When the query is non-empty, filters and sorts both primary and fallback
- * suggestions, prioritizing results from the user's list.
- *
- * @param query - The search query string
- * @param suggestions - Primary suggestions (e.g., user's favorite agents)
- * @param fallbackSuggestions - Fallback suggestions (e.g., all available agents)
- * @returns Filtered and sorted suggestions, up to SUGGESTION_DISPLAY_LIMIT
- */
-
 function filterAndSortEditorSuggestionAgents(
   lowerCaseQuery: string,
   suggestions: EditorSuggestionAgent[]

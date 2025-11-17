@@ -2,14 +2,14 @@ import type {
   JiraProjectType,
   JiraResourceType,
   JiraWebhookType,
-} from "@app/lib/triggers/built-in-webhooks/jira/jira_api_types";
+} from "@app/lib/triggers/built-in-webhooks/jira/types";
 import {
   JiraCreateWebhookResponseSchema,
   JiraProjectsResponseSchema,
   JiraResourceSchema,
   JiraWebhooksResponseSchema,
   validateJiraApiResponse,
-} from "@app/lib/triggers/built-in-webhooks/jira/jira_api_types";
+} from "@app/lib/triggers/built-in-webhooks/jira/types";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 

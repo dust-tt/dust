@@ -17,6 +17,7 @@ export function getNotionWorkflowId(
     | "sync"
     | "garbage-collector"
     | "process-database-upsert-queue"
+    | "deletion-crawl"
     | "process-webhooks"
 ) {
   let wfName = `workflow-notion-${connectorId}`;
@@ -24,6 +25,8 @@ export function getNotionWorkflowId(
     wfName += "-garbage-collector";
   } else if (workflowType === "process-database-upsert-queue") {
     wfName += "-process-database-upsert-queue";
+  } else if (workflowType === "deletion-crawl") {
+    wfName += "-deletion-crawl";
   } else if (workflowType === "process-webhooks") {
     wfName += "-process-webhooks";
   }
