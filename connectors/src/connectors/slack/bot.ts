@@ -816,7 +816,7 @@ async function answerMessage(
   let mention: MentionMatch | undefined;
 
   // Extract all ~mentions and +mentions that appear right after the bot mention.
-  let mentionCandidates: RegExpMatchArray | [] = [];
+  let mentionCandidate: string | null = null;
   if (textAfterBotMention !== null) {
     const textAfterBotMentionWithoutMarkdown =
       removeMarkdown(textAfterBotMention);
@@ -826,7 +826,7 @@ async function answerMessage(
     );
 
     if (firstMatch?.[1]) {
-      mentionCandidates = [firstMatch[1]];
+      mentionCandidate = firstMatch[1] ?? null;
 
       // If the user tagged multiple agents, we need to show a custom message since we only support one agent at a time
       // and they will expect all agents to answer.
@@ -855,8 +855,8 @@ async function answerMessage(
       return new Err(new SlackExternalUserError("Cannot find selected agent."));
     }
     // Removing all previous mentions.
-    for (const mc of mentionCandidates) {
-      message = message.replace(mc, "");
+    if (mentionCandidate) {
+      message = message.replace(mentionCandidate, "");
     }
     mention = {
       agentId: agentConfig.sId,
@@ -866,7 +866,7 @@ async function answerMessage(
     const mentionResult = processMentions({
       message,
       activeAgentConfigurations,
-      mentionCandidates,
+      mentionCandidate,
     });
     if (mentionResult.isErr()) {
       return new Err(new SlackExternalUserError(mentionResult.error.message));
