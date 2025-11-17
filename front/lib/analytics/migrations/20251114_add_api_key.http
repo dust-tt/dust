@@ -4,7 +4,7 @@ PUT /front.agent_message_analytics_2/_mapping
     "apiKeyName": {
       "type": "text"
     },
-    "authType": {
+    "authMethod": {
       "type": "text"
     }
   }
