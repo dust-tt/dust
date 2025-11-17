@@ -1,9 +1,10 @@
 import { Paragraph } from "@tiptap/extension-paragraph";
 
 export const ParagraphExtension = Paragraph.extend({
-  addKeyboardShortcuts(this) {
+  addKeyboardShortcuts() {
     return {
       ...this.parent?.(),
+
       "Shift-Enter": () => {
         // Chain is what Tiptap does by default for Enter:
         // - newlineInCode: insert line breaks in code blocks
