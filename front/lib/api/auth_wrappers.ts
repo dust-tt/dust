@@ -6,7 +6,6 @@ import { getUserFromWorkOSToken, verifyWorkOSToken } from "@app/lib/api/workos";
 import {
   Authenticator,
   getAPIKey,
-  getAuthTypeFromToken,
   getBearerToken,
   getSession,
   isOAuthToken,
