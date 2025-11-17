@@ -70,8 +70,9 @@ class MyDocument extends Document {
                     // This error is benign, happens often in the wild but has 0 effect on the user.
                     // See: https://github.com/DataDog/browser-sdk/issues/1616.
                     if (
-                      event.message &&
-                      event.message.includes(
+                    event.type === "error" &&
+                      event.error.message &&
+                      event.error.message.includes(
                         "ResizeObserver loop completed with undelivered notifications"
                       )
                     ) {
