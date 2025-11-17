@@ -98,6 +98,7 @@ export function SourceChart({
             nameKey="origin"
             innerRadius="60%"
             outerRadius="80%"
+            minAngle={4}
             paddingAngle={3}
             strokeWidth={0}
           >
