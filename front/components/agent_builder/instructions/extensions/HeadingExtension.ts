@@ -1,10 +1,17 @@
 import { markdownHeaderClasses } from "@dust-tt/sparkle";
 import { mergeAttributes } from "@tiptap/core";
 import { Heading } from "@tiptap/extension-heading";
+import type { Node } from "@tiptap/pm/model";
 
 export const HeadingExtension = Heading.extend({
   levels: [1, 2, 3, 4, 5, 6],
-  renderHTML({ node, HTMLAttributes }) {
+  renderHTML({
+    node,
+    HTMLAttributes,
+  }: {
+    node: Node;
+    HTMLAttributes: Record<string, any>;
+  }) {
     const level = this.options.levels.includes(node.attrs.level)
       ? node.attrs.level
       : this.options.levels[0];
