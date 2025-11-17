@@ -176,7 +176,6 @@ export async function storeAgentAnalytics(
     workspace_id: auth.getNonNullableWorkspace().sId,
     feedbacks,
     version: agentMessageRow.version.toString(),
-    isApiKey: !!apiKey,
     authType: auth.authType(),
     apiKeyName: apiKey?.name,
   };
