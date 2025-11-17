@@ -48,10 +48,7 @@ export function ToolUsageChart({
     agentConfigurationId,
     period,
     mode: toolMode,
-    filterVersion:
-      mode === "version" && toolMode === "version"
-        ? selectedVersion?.version
-        : undefined,
+    filterVersion: mode === "version" ? selectedVersion?.version : undefined,
   });
 
   const legendItems = useMemo(
@@ -141,7 +138,7 @@ export function ToolUsageChart({
             selectedVersion &&
             chartData.length > 0 && (
               <ReferenceLine
-                x={`v${selectedVersion}`}
+                x={`v${selectedVersion.version}`}
                 stroke="hsl(var(--primary))"
                 strokeDasharray="5 5"
                 strokeWidth={2}

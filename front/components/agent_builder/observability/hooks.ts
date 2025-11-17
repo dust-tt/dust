@@ -200,12 +200,14 @@ export function useToolUsageData(params: {
     workspaceId,
     agentConfigurationId,
     days: period,
+    version: filterVersion ?? undefined,
     disabled: mode !== "version",
   });
   const step = useAgentToolStepIndex({
     workspaceId,
     agentConfigurationId,
     days: period,
+    version: filterVersion ?? undefined,
     disabled: mode !== "step",
   });
 
@@ -213,7 +215,7 @@ export function useToolUsageData(params: {
     case "version": {
       const rawData = exec.toolExecutionByVersion;
       let normalizedData = normalizeVersionData(rawData);
-      if (filterVersion) {
+      if (filterVersion != null) {
         const vv = `v${filterVersion}`;
         normalizedData = normalizedData.filter((d) => d.label === vv);
       }

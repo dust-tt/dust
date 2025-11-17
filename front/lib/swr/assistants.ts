@@ -964,15 +964,18 @@ export function useAgentToolExecution({
   workspaceId,
   agentConfigurationId,
   days = DEFAULT_PERIOD_DAYS,
+  version,
   disabled,
 }: {
   workspaceId: string;
   agentConfigurationId: string;
   days?: number;
+  version?: string;
   disabled?: boolean;
 }) {
   const fetcherFn: Fetcher<GetToolExecutionResponse> = fetcher;
-  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/tool-execution?days=${days}`;
+  const versionParam = version ? `&version=${encodeURIComponent(version)}` : "";
+  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/tool-execution?days=${days}${versionParam}`;
 
   const { data, error, isValidating } = useSWRWithDefaults(
     disabled ? null : key,
@@ -991,15 +994,18 @@ export function useAgentToolStepIndex({
   workspaceId,
   agentConfigurationId,
   days = DEFAULT_PERIOD_DAYS,
+  version,
   disabled,
 }: {
   workspaceId: string;
   agentConfigurationId: string;
   days?: number;
+  version?: string;
   disabled?: boolean;
 }) {
   const fetcherFn: Fetcher<GetToolStepIndexResponse> = fetcher;
-  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/tool-step-index?days=${days}`;
+  const versionParam = version ? `&version=${encodeURIComponent(version)}` : "";
+  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/tool-step-index?days=${days}${versionParam}`;
 
   const { data, error, isValidating } = useSWRWithDefaults(
     disabled ? null : key,
