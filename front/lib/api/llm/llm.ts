@@ -112,7 +112,7 @@ export abstract class LLM {
         logger.error(
           {
             llmEventType: "error",
-            message: currentEvent.content.message,
+            error: currentEvent.content.message,
             modelId: this.modelId,
             context: this.context,
             traceId: this.traceId,
