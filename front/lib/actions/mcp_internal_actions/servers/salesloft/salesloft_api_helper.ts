@@ -25,6 +25,19 @@ interface SalesloftPerson {
   last_name: string | null;
   email_address: string | null;
   phone: string | null;
+  linkedin_url: string | null;
+  title: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  person_company_name: string | null;
+  person_company_website: string | null;
+  do_not_contact: boolean | null;
+  twitter_handle: string | null;
+  job_seniority: string | null;
+  job_function: string | null;
+  untouched: boolean | null;
+  hot_lead: boolean | null;
 }
 
 interface SalesloftStep {
@@ -267,6 +280,19 @@ async function getPeopleByIds(
         last_name: person.last_name,
         email_address: person.email_address,
         phone: person.phone,
+        linkedin_url: person.linkedin_url,
+        title: person.title,
+        city: person.city,
+        state: person.state,
+        country: person.country,
+        person_company_name: person.person_company_name,
+        person_company_website: person.person_company_website,
+        do_not_contact: person.do_not_contact,
+        twitter_handle: person.twitter_handle,
+        job_seniority: person.job_seniority,
+        job_function: person.job_function,
+        untouched: person.untouched,
+        hot_lead: person.hot_lead,
       });
     }
   }

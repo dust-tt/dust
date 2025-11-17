@@ -54,13 +54,59 @@ function formatActionAsString(action: SalesloftActionWithDetails): string {
     const personName = [action.person.first_name, action.person.last_name]
       .filter(Boolean)
       .join(" ");
-    parts.push(`\nContact: ${personName || "Unknown"}`);
-    if (action.person.email_address) {
-      parts.push(`  Email: ${action.person.email_address}`);
-    }
-    if (action.person.phone) {
-      parts.push(`  Phone: ${action.person.phone}`);
-    }
+    parts.push(`\nPerson: ${personName || "Unknown"}`);
+
+    const personFields = [
+      { label: "Email", value: action.person.email_address },
+      { label: "Phone", value: action.person.phone },
+      { label: "Title", value: action.person.title },
+      { label: "Company", value: action.person.person_company_name },
+      { label: "Company Website", value: action.person.person_company_website },
+      {
+        label: "Location",
+        value:
+          [action.person.city, action.person.state, action.person.country]
+            .filter(Boolean)
+            .join(", ") || null,
+      },
+      { label: "LinkedIn", value: action.person.linkedin_url },
+      { label: "Twitter", value: action.person.twitter_handle },
+      { label: "Job Seniority", value: action.person.job_seniority },
+      { label: "Job Function", value: action.person.job_function },
+      {
+        label: "Do Not Contact",
+        value:
+          action.person.do_not_contact !== null
+            ? action.person.do_not_contact
+              ? "Yes"
+              : "No"
+            : null,
+      },
+      {
+        label: "Untouched",
+        value:
+          action.person.untouched !== null
+            ? action.person.untouched
+              ? "Yes"
+              : "No"
+            : null,
+      },
+      {
+        label: "Hot Lead",
+        value:
+          action.person.hot_lead !== null
+            ? action.person.hot_lead
+              ? "Yes"
+              : "No"
+            : null,
+      },
+    ];
+
+    personFields.forEach(({ label, value }) => {
+      if (value) {
+        parts.push(`  ${label}: ${value}`);
+      }
+    });
   }
 
   if (action.cadence) {
