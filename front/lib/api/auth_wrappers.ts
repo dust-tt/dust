@@ -6,7 +6,7 @@ import { getUserFromWorkOSToken, verifyWorkOSToken } from "@app/lib/api/workos";
 import {
   Authenticator,
   getAPIKey,
-  getAuthType,
+  getAuthTypeFromToken,
   getBearerToken,
   getSession,
 } from "@app/lib/auth";
@@ -276,11 +276,11 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
         });
       }
       const token = bearerTokenRes.value;
-      const authMethod = getAuthType(token);
+      const authMethod = getAuthTypeFromToken(token);
 
       // Authentification with  token.
       // Straightforward since the token is attached to the user.
-      if (authMethod === "access_token") {
+      if (authMethod === "oauth") {
         try {
           const authRes = await handleWorkOSAuth(req, res, token, wId);
           if (authRes.isErr()) {
@@ -489,9 +489,9 @@ export function withTokenAuthentication<T>(
         });
       }
       const bearerToken = bearerTokenRes.value;
-      const authMethod = getAuthType(bearerToken);
+      const authMethod = getAuthTypeFromToken(bearerToken);
 
-      if (authMethod !== "access_token") {
+      if (authMethod !== "oauth") {
         return apiError(req, res, {
           status_code: 401,
           api_error: {

@@ -177,6 +177,7 @@ export async function storeAgentAnalytics(
     feedbacks,
     version: agentMessageRow.version.toString(),
     isApiKey: !!apiKey,
+    authType: auth.authType(),
     apiKeyName: apiKey?.name,
   };
 
