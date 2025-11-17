@@ -179,6 +179,9 @@ export function BlockedActionsProvider({
 
   const { mutateConversations } = useConversations({
     workspaceId: owner.sId,
+    options: {
+      disabled: true,
+    },
   });
 
   const { validateAction, isValidating } = useValidateAction({
@@ -235,7 +238,16 @@ export function BlockedActionsProvider({
       // which happens only when you come back to a conversation since we don't update this value
       // on frontend side.
       if (conversation?.actionRequired === true) {
-        void mutateConversations();
+        void mutateConversations((currentData) => {
+          if (!currentData?.conversations) {
+            return currentData;
+          }
+          return {
+            conversations: currentData.conversations.map((c) =>
+              c.sId === conversationId ? { ...c, actionRequired: false } : c
+            ),
+          };
+        });
       }
     }
   };
