@@ -8,7 +8,7 @@
 import React from "react";
 import { visit } from "unist-util-visit";
 
-import { ToolCard } from "@app/components/markdown/tool/ToolCard";
+import { ToolSetupCard } from "@app/components/markdown/tool/ToolSetupCard";
 import { isInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { WorkspaceType } from "@app/types";
 
@@ -21,9 +21,9 @@ import type { WorkspaceType } from "@app/types";
 export function toolDirective() {
   return (tree: any) => {
     visit(tree, ["textDirective"], (node) => {
-      if (node.name === "tool" && node.children[0]) {
+      if (node.name === "toolSetup" && node.children[0]) {
         const data = node.data || (node.data = {});
-        data.hName = "tool";
+        data.hName = "toolSetup";
         data.hProperties = {
           toolId: node.attributes.sId,
           toolName: node.children[0].value,
@@ -42,8 +42,8 @@ export function toolDirective() {
  * @param owner - The workspace context for tool interactions
  * @returns A React component for rendering tool cards
  */
-export function getToolPlugin(owner: WorkspaceType) {
-  const ToolPlugin = ({
+export function getToolSetupPlugin(owner: WorkspaceType) {
+  const ToolSetupPlugin = ({
     toolName,
     toolId,
   }: {
@@ -53,8 +53,8 @@ export function getToolPlugin(owner: WorkspaceType) {
     if (!toolId || !isInternalMCPServerName(toolId)) {
       return null;
     }
-    return <ToolCard toolName={toolName} toolId={toolId} owner={owner} />;
+    return <ToolSetupCard toolName={toolName} toolId={toolId} owner={owner} />;
   };
 
-  return ToolPlugin;
+  return ToolSetupPlugin;
 }

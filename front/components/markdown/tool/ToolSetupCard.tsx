@@ -21,13 +21,13 @@ import { useSpaces, useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import type { WorkspaceType } from "@app/types";
 import { asDisplayToolName } from "@app/types";
 
-interface ToolCardProps {
+interface ToolSetupCardProps {
   toolName: string;
   toolId: InternalMCPServerNameType;
   owner: WorkspaceType;
 }
 
-export function ToolCard({ toolName, toolId, owner }: ToolCardProps) {
+export function ToolSetupCard({ toolName, toolId, owner }: ToolSetupCardProps) {
   const [isActivating, setIsActivating] = useState(false);
   const [isSetupSheetOpen, setIsSetupSheetOpen] = useState(false);
   const isAdmin = owner.role === "admin";
