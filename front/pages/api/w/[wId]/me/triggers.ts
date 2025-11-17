@@ -35,7 +35,7 @@ async function handler(
   // Get triggers where user is editor or subscriber concurrently
   const [editorTriggers, subscriberTriggers] = await Promise.all([
     TriggerResource.listByUserEditor(auth, auth.getNonNullableUser()),
-    TriggerResource.listByUserSubscriber(auth),
+    TriggerResource.listByUserSubscriber(auth, auth.getNonNullableUser()),
   ]);
 
   const editorTriggersWithAgentInfo = await concurrentExecutor(
