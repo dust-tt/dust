@@ -131,7 +131,7 @@ export function renderOutlookEvent(
         : enrichedEvent.body.content;
 
     if (bodyContent.trim()) {
-      lines.push(`Description: ${bodyContent}`);
+      lines.push(`Description: ${bodyContent.trim()}`);
     }
   }
 
