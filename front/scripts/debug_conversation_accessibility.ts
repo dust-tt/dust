@@ -1,5 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { makeScript } from "@app/scripts/helpers";
 
 makeScript(
@@ -32,55 +33,118 @@ makeScript(
       return;
     }
 
-    logger.info("Debugging conversation accessibility...", {
-      workspaceId,
-      userId,
-      conversationId,
-    });
-
     // Create Authenticator from workspace and user
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       userId,
       workspaceId
     );
 
-    // Fetch the conversation
+    // Step 1: Check if conversation exists (bypass permissions)
+    logger.info("STEP 1: Checking if conversation exists...");
+    const conversationWithoutPermCheck = await ConversationResource.fetchById(
+      auth,
+      conversationId,
+      { dangerouslySkipPermissionFiltering: true }
+    );
+
+    if (!conversationWithoutPermCheck) {
+      logger.error(
+        "✗ Conversation not found in this workspace (or doesn't exist)"
+      );
+      logger.info("");
+      logger.info("Summary:", {
+        conversationExists: false,
+        userHasAccess: false,
+        reason: "Conversation not found",
+      });
+      return;
+    }
+
+    logger.info("✓ Conversation exists", {
+      conversationId: conversationWithoutPermCheck.sId,
+      visibility: conversationWithoutPermCheck.visibility,
+      requestedSpaceIds: conversationWithoutPermCheck.requestedSpaceIds,
+      requiredSpacesCount:
+        conversationWithoutPermCheck.requestedSpaceIds.length,
+    });
+    logger.info("");
+
+    // Step 2: Check if user has access (with permission filtering)
+    logger.info("STEP 2: Checking user access (with permission filtering)...");
     const conversation = await ConversationResource.fetchById(
       auth,
       conversationId
     );
 
-    if (!conversation) {
-      logger.error("Conversation not found", { conversationId });
+    if (conversation) {
+      logger.info("✓ USER HAS ACCESS TO CONVERSATION", {
+        conversationExists: true,
+        userHasAccess: true,
+        visibility: conversation.visibility,
+        requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(auth),
+      });
       return;
     }
 
-    logger.info("Conversation found", {
-      conversationId: conversation.sId,
-      visibility: conversation.visibility,
-      requestedGroupIds:
-        conversation.getConversationRequestedGroupIdsFromModel(auth),
-    });
+    logger.error("✗ USER CANNOT ACCESS CONVERSATION");
 
-    // Check accessibility
-    const canAccess = ConversationResource.canAccessConversation(
-      auth,
-      conversation
-    );
+    // Step 3: Debug why access is denied
+    logger.info("STEP 3: Debugging access denial...");
 
-    logger.info("Accessibility check result", {
-      canAccess,
-    });
+    const requestedSpaceIds = conversationWithoutPermCheck.requestedSpaceIds;
+    const visibility = conversationWithoutPermCheck.visibility;
 
-    if (!canAccess) {
-      logger.info("Access denied. Debugging information:");
-      logger.info({
-        userGroupIds: auth.groups().map((g) => g.sId),
-        conversationRequestedGroupIds:
-          conversation.getConversationRequestedGroupIdsFromModel(auth),
-      });
-    } else {
-      logger.info("Access granted!");
+    // Check visibility first
+    if (visibility === "deleted") {
+      logger.info("Issue: Conversation visibility is 'deleted'");
+      logger.info("  → Deleted conversations are not accessible");
     }
+
+    logger.info("Space requirements:", {
+      requiredSpacesCount: requestedSpaceIds.length,
+      requestedSpaceIds: requestedSpaceIds,
+    });
+
+    // Fetch and analyze spaces
+    logger.info("Fetching space details...");
+    const spaces = await SpaceResource.fetchByModelIds(auth, requestedSpaceIds);
+
+    const foundIds = new Set(spaces.map((s) => s.id));
+    const missingIds = requestedSpaceIds.filter((id) => !foundIds.has(id));
+
+    if (missingIds.length > 0) {
+      logger.error("Missing spaces:", {
+        missingCount: missingIds.length,
+        missingSpaceIds: missingIds,
+      });
+      logger.info("  → These spaces are either deleted or user has no access");
+    }
+
+    logger.info("Space details:");
+    for (const space of spaces) {
+      const status = space.deletedAt ? "DELETED" : "ACTIVE";
+      logger.info(`  [${space.sId}] ${space.name}`, {
+        kind: space.kind,
+        status: status,
+        deletedAt: space.deletedAt || null,
+      });
+    }
+
+    logger.info("SUMMARY");
+    logger.info({
+      conversationExists: true,
+      userHasAccess: false,
+      visibility: visibility,
+      requiredSpacesCount: requestedSpaceIds.length,
+      accessibleSpacesCount: spaces.length,
+      missingSpacesCount: missingIds.length,
+      reason:
+        missingIds.length > 0
+          ? `Missing ${missingIds.length} required space(s)`
+          : visibility === "deleted"
+            ? "Conversation is deleted"
+            : "Check space access permissions",
+      missingSpaceIds: missingIds.length > 0 ? missingIds : undefined,
+    });
   }
 );
