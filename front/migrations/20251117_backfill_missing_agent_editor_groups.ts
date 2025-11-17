@@ -1,4 +1,3 @@
-import assert from "assert";
 import _ from "lodash";
 import type { Logger } from "pino";
 import { Op } from "sequelize";
@@ -7,35 +6,21 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { GroupAgentModel } from "@app/lib/models/assistant/group_agent";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
-import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types";
-import { AGENT_GROUP_PREFIX } from "@app/types";
 
 async function backfillMissingEditorGroupForAgent(
   auth: Authenticator,
   agentConfigs: AgentConfiguration[],
+  currentConfig: AgentConfiguration,
   workspace: LightWorkspaceType,
   execute: boolean,
   logger: Logger
 ): Promise<void> {
-  const activeAgentConfigs = agentConfigs.filter(
-    (config) => config.status === "active"
-  );
-
-  if (activeAgentConfigs.length === 0) {
-    return;
-  }
-
-  const currentConfig =
-    _.maxBy(activeAgentConfigs, "version") ?? activeAgentConfigs[0];
-
   logger.info(
     { agent: currentConfig.sId, version: currentConfig.version },
     "Processing agent for missing editor group backfill"
@@ -49,160 +34,87 @@ async function backfillMissingEditorGroupForAgent(
     attributes: ["groupId", "agentConfigurationId"],
   });
 
-  const groupSet = new Set(
-    groupAgentRelationships.map((relationship) => relationship.groupId)
+  const groupIds = Array.from(
+    new Set(groupAgentRelationships.map((relationship) => relationship.groupId))
   );
 
-  if (groupSet.size > 1) {
+  if (groupIds.length === 0) {
+    logger.info(
+      { agent: currentConfig.sId },
+      "No preexisting editor group found for agent; skipping"
+    );
+    return;
+  }
+
+  if (groupIds.length > 1) {
     logger.warn(
-      { agent: currentConfig.sId, groupCount: groupSet.size },
-      "Skipping agent: multiple groups associated with configurations"
+      { agent: currentConfig.sId, groupCount: groupIds.length },
+      "Multiple groups associated with agent versions; skipping"
     );
     return;
   }
-
-  const activeGroupAgentRelationships = groupAgentRelationships.filter(
-    (relationship) => relationship.agentConfigurationId === currentConfig.id
-  );
-
-  let groupModel: GroupModel | null = null;
-
-  if (groupSet.size === 1) {
-    const [groupId] = Array.from(groupSet);
-    groupModel = await GroupModel.findByPk(groupId);
-
-    if (!groupModel) {
-      logger.warn(
-        { agent: currentConfig.sId, groupId },
-        "Associated group not found, will create a new editor group"
-      );
-    }
-  }
-
-  const hadEditorGroupBefore =
-    !!groupModel &&
-    groupModel.kind === "agent_editors" &&
-    activeGroupAgentRelationships.length > 0;
-
-  // If the active configuration already has a proper editor group, there is nothing to do.
-  if (hadEditorGroupBefore) {
-    logger.info(
-      { agent: currentConfig.sId },
-      "Active agent already has an editor group, skipping"
-    );
-    return;
-  }
-
-  let editorGroup: GroupResource | null = null;
-
-  if (groupModel) {
-    // Reuse existing group, normalizing its kind if needed.
-    if (groupModel.kind !== "agent_editors") {
-      logger.info(
-        { agent: currentConfig.sId, groupId: groupModel.id },
-        "Updating group kind to agent_editors for agent"
-      );
-      if (execute) {
-        await groupModel.update({
-          kind: "agent_editors",
-        });
-      } else {
-        groupModel.kind = "agent_editors";
-      }
-    }
-
-    editorGroup = new GroupResource(GroupModel, groupModel.get());
-  } else {
-    logger.info(
-      { agent: currentConfig.sId },
-      "Creating editor group for agent with no associated group"
-    );
-
-    if (!execute) {
-      // In dry-run mode, only log what would happen.
-      return;
-    }
-
-    editorGroup = await GroupResource.makeNew({
-      workspaceId: workspace.id,
-      name: `${AGENT_GROUP_PREFIX} ${currentConfig.name} (${currentConfig.sId})`,
-      kind: "agent_editors",
-    });
-  }
-
-  assert(editorGroup, "Editor group should be defined at this point");
 
   const hasActiveAssociation = groupAgentRelationships.some(
     (relationship) =>
       relationship.agentConfigurationId === currentConfig.id &&
-      relationship.groupId === editorGroup?.id
+      relationship.groupId === groupIds[0]
   );
 
-  if (execute && !hasActiveAssociation) {
-    await GroupAgentModel.create({
-      groupId: editorGroup.id,
-      agentConfigurationId: currentConfig.id,
-      workspaceId: workspace.id,
+  if (hasActiveAssociation) {
+    logger.info(
+      { agent: currentConfig.sId },
+      "Active agent configuration already linked to editor group; skipping"
+    );
+    return;
+  }
+
+  const groupId = groupIds[0];
+  const editorGroup = await GroupResource.fetchByModelId(groupId);
+
+  if (!editorGroup) {
+    logger.warn(
+      { agent: currentConfig.sId, groupId },
+      "Preexisting group referenced by versions not found; skipping"
+    );
+    return;
+  }
+
+  if (execute) {
+    const result = await editorGroup.addGroupToAgentConfiguration({
+      auth,
+      agentConfiguration: currentConfig,
     });
+
+    if (result.isErr()) {
+      logger.error(
+        {
+          agent: currentConfig.sId,
+          groupId: editorGroup.id,
+          agentConfigurationId: currentConfig.id,
+          error: result.error,
+        },
+        "Failed to link editor group to active agent configuration"
+      );
+      throw result.error;
+    }
+
     logger.info(
       {
         agent: currentConfig.sId,
         groupId: editorGroup.id,
         agentConfigurationId: currentConfig.id,
       },
-      "Linked editor group to active agent configuration"
+      "Linked preexisting editor group to active agent configuration"
     );
-  }
-
-  // Ensure the editor of the current version is a member of the editor group.
-  const users = await UserResource.fetchByModelIds([currentConfig.authorId]);
-  const [author] = users;
-
-  if (!author) {
-    logger.warn(
-      { agent: currentConfig.sId, authorId: currentConfig.authorId },
-      "Author for active agent configuration not found, skipping membership backfill"
-    );
-    return;
-  }
-
-  const { memberships } = await MembershipResource.getActiveMemberships({
-    users: [author],
-    workspace,
-  });
-
-  const isAuthorMember = memberships.some(
-    (membership) => membership.userId === author.id
-  );
-
-  if (!isAuthorMember) {
-    logger.warn(
+  } else {
+    logger.info(
       {
         agent: currentConfig.sId,
-        authorId: currentConfig.authorId,
+        groupId: editorGroup.id,
+        agentConfigurationId: currentConfig.id,
       },
-      "Author is not an active member of the workspace, skipping membership backfill"
+      "Dry-run: would link editor group to active agent configuration"
     );
-    return;
-  }
-
-  if (execute) {
-    const result = await editorGroup.addMembers(auth, [author.toJSON()]);
-    if (result.isErr()) {
-      if (result.error.code === "user_already_member") {
-        logger.info(
-          { agent: currentConfig.sId, authorId: author.id },
-          "Author already member of editor group"
-        );
-      } else {
-        throw result.error;
-      }
-    } else {
-      logger.info(
-        { agent: currentConfig.sId, authorId: author.id },
-        "Added current version editor as member of editor group"
-      );
-    }
   }
 }
 
@@ -230,8 +142,7 @@ const migrateWorkspaceMissingEditorGroups = async (
   });
 
   const activeAgentsWithoutGroup = activeAgents.filter(
-    (agent: any) =>
-      !agent.agentGroupLinks || agent.agentGroupLinks.length === 0
+    (agent: any) => !agent.agentGroupLinks || agent.agentGroupLinks.length === 0
   );
 
   if (activeAgentsWithoutGroup.length === 0) {
@@ -244,6 +155,8 @@ const migrateWorkspaceMissingEditorGroups = async (
   const agentSIdsNeedingBackfill = _.uniq(
     activeAgentsWithoutGroup.map((agent) => agent.sId)
   );
+
+  const activeAgentsBySid = _.keyBy(activeAgentsWithoutGroup, "sId");
 
   // For those agents, load all non-draft versions so we can reuse an existing
   // editor group if one is already associated with any version.
@@ -275,14 +188,26 @@ const migrateWorkspaceMissingEditorGroups = async (
 
   await concurrentExecutor(
     groupedAgents,
-    (agentConfigs) =>
-      backfillMissingEditorGroupForAgent(
+    async (agentConfigs) => {
+      const currentConfig = activeAgentsBySid[agentConfigs[0].sId];
+
+      if (!currentConfig) {
+        logger.warn(
+          { agent: agentConfigs[0].sId },
+          "Active configuration not found for agent when backfilling; skipping"
+        );
+        return;
+      }
+
+      await backfillMissingEditorGroupForAgent(
         auth,
         agentConfigs,
+        currentConfig,
         workspace,
         execute,
         logger
-      ),
+      );
+    },
     { concurrency: 4 }
   );
 
@@ -311,11 +236,7 @@ makeScript(
     } else {
       await runOnAllWorkspaces(
         async (workspace) => {
-          await migrateWorkspaceMissingEditorGroups(
-            execute,
-            logger,
-            workspace
-          );
+          await migrateWorkspaceMissingEditorGroups(execute, logger, workspace);
         },
         { concurrency: 4 }
       );
