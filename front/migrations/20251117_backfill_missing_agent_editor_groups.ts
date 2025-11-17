@@ -34,11 +34,7 @@ async function backfillMissingEditorGroupForAgent(
     attributes: ["groupId", "agentConfigurationId"],
   });
 
-  const groupIds = Array.from(
-    new Set(groupAgentRelationships.map((relationship) => relationship.groupId))
-  );
-
-  if (groupIds.length === 0) {
+  if (groupAgentRelationships.length === 0) {
     logger.info(
       { agent: currentConfig.sId },
       "No preexisting editor group found for agent; skipping"
@@ -46,13 +42,9 @@ async function backfillMissingEditorGroupForAgent(
     return;
   }
 
-  if (groupIds.length > 1) {
-    logger.warn(
-      { agent: currentConfig.sId, groupCount: groupIds.length },
-      "Multiple groups associated with agent versions; skipping"
-    );
-    return;
-  }
+  const groupIds = Array.from(
+    new Set(groupAgentRelationships.map((relationship) => relationship.groupId))
+  );
 
   const hasActiveAssociation = groupAgentRelationships.some(
     (relationship) =>
@@ -68,12 +60,46 @@ async function backfillMissingEditorGroupForAgent(
     return;
   }
 
-  const groupId = groupIds[0];
-  const editorGroup = await GroupResource.fetchByModelId(groupId);
+  // Among all groups associated with any non-draft version, prefer the editor
+  // group linked to the highest version.
+  const agentConfigsById = _.keyBy(agentConfigs, "id");
+
+  const candidateGroup = groupAgentRelationships
+    .map((relationship) => {
+      const config = agentConfigsById[relationship.agentConfigurationId];
+      return config
+        ? {
+            groupId: relationship.groupId,
+            configVersion: config.version,
+          }
+        : null;
+    })
+    .filter((v): v is { groupId: number; configVersion: number } => v !== null)
+    .reduce<{
+      groupId: number;
+      configVersion: number;
+    } | null>((best, current) => {
+      if (!best || current.configVersion > best.configVersion) {
+        return current;
+      }
+      return best;
+    }, null);
+
+  if (!candidateGroup) {
+    logger.info(
+      { agent: currentConfig.sId },
+      "No suitable preexisting editor group candidate found; skipping"
+    );
+    return;
+  }
+
+  const editorGroup = await GroupResource.fetchByModelId(
+    candidateGroup.groupId
+  );
 
   if (!editorGroup) {
     logger.warn(
-      { agent: currentConfig.sId, groupId },
+      { agent: currentConfig.sId, groupId: candidateGroup.groupId },
       "Preexisting group referenced by versions not found; skipping"
     );
     return;
@@ -146,9 +172,6 @@ const migrateWorkspaceMissingEditorGroups = async (
   );
 
   if (activeAgentsWithoutGroup.length === 0) {
-    logger.info(
-      `No active agents missing editor groups on workspace ${workspace.sId}`
-    );
     return;
   }
 
@@ -189,15 +212,18 @@ const migrateWorkspaceMissingEditorGroups = async (
   await concurrentExecutor(
     groupedAgents,
     async (agentConfigs) => {
-      const currentConfig = activeAgentsBySid[agentConfigs[0].sId];
+      const agentSid = agentConfigs[0].sId;
+      const currentConfig = activeAgentsBySid[agentSid];
 
       if (!currentConfig) {
         logger.warn(
-          { agent: agentConfigs[0].sId },
+          { agent: agentSid },
           "Active configuration not found for agent when backfilling; skipping"
         );
         return;
       }
+
+      const agentLogger = logger.child({ agentId: agentSid });
 
       await backfillMissingEditorGroupForAgent(
         auth,
@@ -205,7 +231,7 @@ const migrateWorkspaceMissingEditorGroups = async (
         currentConfig,
         workspace,
         execute,
-        logger
+        agentLogger
       );
     },
     { concurrency: 4 }
