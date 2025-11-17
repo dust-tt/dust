@@ -19,7 +19,6 @@ import {
 import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/types/response/ConversationsRepliesResponse";
 import removeMarkdown from "remove-markdown";
-import jaroWinkler from "talisman/metrics/jaro-winkler";
 
 import {
   makeErrorBlock,
@@ -54,6 +53,7 @@ import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
 import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { makeConversationUrl } from "@connectors/lib/bot/conversation_utils";
+import { processMentions } from "@connectors/lib/bot/mentions";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import { sectionFullText } from "@connectors/lib/data_sources";
 import { ProviderRateLimitError } from "@connectors/lib/error";
@@ -80,6 +80,9 @@ const SLACK_ERROR_TEXT =
 const MAX_FILE_SIZE_TO_UPLOAD = 10 * 1024 * 1024; // 10 MB
 
 const DEFAULT_AGENTS = ["dust", "claude-4-sonnet", "gpt-5"];
+
+// Pattern to match +mention and ~mention.
+const SLACK_MENTION_PATTERN = /(?<!\S)[+~]([a-zA-Z0-9_-]{1,40})(?=\s|,|\.|$)/g;
 
 type BotAnswerParams = {
   responseUrl?: string;
@@ -809,80 +812,45 @@ async function answerMessage(
 
   // Extract all ~mentions and +mentions
   const mentionCandidates =
-    messageWithoutMarkdown.match(
-      /(?<!\S)[+~]([a-zA-Z0-9_-]{1,40})(?=\s|,|\.|$)/g
-    ) || [];
+    messageWithoutMarkdown.match(SLACK_MENTION_PATTERN) || [];
 
   // First we look at mention override
-  // (eg: a mention coming from the Slack agent picker from slack).
+  // (e.g.: a mention coming from the Slack agent picker from Slack).
   if (mentionOverride) {
     const agentConfig = activeAgentConfigurations.find(
       (ac) => ac.sId === mentionOverride
     );
-    if (agentConfig) {
-      // Removing all previous mentions
-      for (const mc of mentionCandidates) {
-        message = message.replace(mc, "");
-      }
-      mention = {
-        assistantId: agentConfig.sId,
-        assistantName: agentConfig.name,
-      };
-    } else {
+    if (!agentConfig) {
       return new Err(new SlackExternalUserError("Cannot find selected agent."));
     }
-  }
-
-  if (mentionCandidates.length > 1) {
-    return new Err(
-      new SlackExternalUserError(
-        "Only one agent at a time can be called through Slack."
-      )
-    );
-  }
-
-  const [mentionCandidate] = mentionCandidates;
-  if (!mention && mentionCandidate) {
-    let bestCandidate:
-      | {
-          assistantId: string;
-          assistantName: string;
-          distance: number;
-        }
-      | undefined = undefined;
-    for (const agentConfiguration of activeAgentConfigurations) {
-      const distance =
-        1 -
-        jaroWinkler(
-          mentionCandidate.slice(1).toLowerCase(),
-          agentConfiguration.name.toLowerCase()
-        );
-
-      if (bestCandidate === undefined || bestCandidate.distance > distance) {
-        bestCandidate = {
-          assistantId: agentConfiguration.sId,
-          assistantName: agentConfiguration.name,
-          distance: distance,
-        };
-      }
+    // Removing all previous mentions.
+    for (const mc of mentionCandidates) {
+      message = message.replace(mc, "");
     }
-
-    if (bestCandidate) {
-      mention = {
-        assistantId: bestCandidate.assistantId,
-        assistantName: bestCandidate.assistantName,
-      };
-      message = message.replace(
-        mentionCandidate,
-        `:mention[${bestCandidate.assistantName}]{sId=${bestCandidate.assistantId}}`
-      );
-    } else {
+    mention = {
+      assistantId: agentConfig.sId,
+      assistantName: agentConfig.name,
+    };
+  } else {
+    if (mentionCandidates.length > 1) {
       return new Err(
         new SlackExternalUserError(
-          `Assistant ${mentionCandidate} has not been found.`
+          "Only one agent at a time can be called through Slack."
         )
       );
     }
+
+    const mentionResult = processMentions({
+      message,
+      activeAgentConfigurations,
+      mentionCandidates,
+    });
+    if (mentionResult.isErr()) {
+      return new Err(new SlackExternalUserError(mentionResult.error.message));
+    }
+
+    mention = mentionResult.value.mention;
+    message = mentionResult.value.processedMessage;
   }
 
   if (!mention) {
@@ -895,7 +863,7 @@ async function answerMessage(
     });
     let agentConfigurationToMention: LightAgentConfigurationType | null = null;
 
-    if (channel && channel.agentConfigurationId) {
+    if (channel?.agentConfigurationId) {
       agentConfigurationToMention =
         activeAgentConfigurations.find(
           (ac) => ac.sId === channel.agentConfigurationId

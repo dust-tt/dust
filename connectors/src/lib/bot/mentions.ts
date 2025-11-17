@@ -2,93 +2,79 @@ import type { LightAgentConfigurationType, Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import jaroWinkler from "talisman/metrics/jaro-winkler";
 
-export interface MentionMatch {
+type MentionMatch = {
   assistantId: string;
   assistantName: string;
-}
+};
 
-export interface ProcessMentionsParams {
+// Pattern to match @mention, +mention, and ~mention.
+const MENTION_PATTERN = /(?<!\S)[@+~]([a-zA-Z0-9_-]{1,40})(?=\s|,|\.|$|)/g;
+
+export function processMentions({
+  message,
+  activeAgentConfigurations,
+  mentionCandidates,
+}: {
   message: string;
   activeAgentConfigurations: LightAgentConfigurationType[];
-  mentionPattern: RegExp;
-}
-
-export interface ProcessMentionsResult {
-  mention: MentionMatch | undefined;
-  processedMessage: string;
-  allMentionCandidates: string[];
-}
-
-export interface ProcessMessageForMentionParams {
-  message: string;
-  activeAgentConfigurations: LightAgentConfigurationType[];
-}
-
-export interface ProcessMessageForMentionResult {
-  mention: MentionMatch;
-  processedMessage: string;
-}
-
-export function processMentions(
-  params: ProcessMentionsParams
-): Result<ProcessMentionsResult, Error> {
-  const { message, activeAgentConfigurations, mentionPattern } = params;
-
-  const mentionCandidates = message.match(mentionPattern) || [];
-
+  mentionCandidates: RegExpMatchArray | [];
+}): Result<
+  {
+    mention: MentionMatch | undefined;
+    processedMessage: string;
+  },
+  Error
+> {
   const [mentionCandidate] = mentionCandidates;
-  if (mentionCandidate) {
-    let bestCandidate:
-      | {
-          assistantId: string;
-          assistantName: string;
-          distance: number;
-        }
-      | undefined = undefined;
 
-    for (const agentConfiguration of activeAgentConfigurations) {
-      const distance =
-        1 -
-        jaroWinkler(
-          mentionCandidate.slice(1).toLowerCase(),
-          agentConfiguration.name.toLowerCase()
-        );
+  if (!mentionCandidate) {
+    return new Ok({
+      mention: undefined,
+      processedMessage: message,
+    });
+  }
 
-      if (bestCandidate === undefined || bestCandidate.distance > distance) {
-        bestCandidate = {
-          assistantId: agentConfiguration.sId,
-          assistantName: agentConfiguration.name,
-          distance: distance,
-        };
-      }
-    }
+  let bestCandidate: {
+    assistantId: string;
+    assistantName: string;
+    distance: number;
+  } | null = null;
 
-    if (bestCandidate) {
-      const mention = {
-        assistantId: bestCandidate.assistantId,
-        assistantName: bestCandidate.assistantName,
+  for (const agentConfiguration of activeAgentConfigurations) {
+    const distance =
+      1 -
+      jaroWinkler(
+        mentionCandidate.slice(1).toLowerCase(),
+        agentConfiguration.name.toLowerCase()
+      );
+
+    if (bestCandidate === null || bestCandidate.distance > distance) {
+      bestCandidate = {
+        assistantId: agentConfiguration.sId,
+        assistantName: agentConfiguration.name,
+        distance: distance,
       };
-      const processedMessage = message.replace(
-        mentionCandidate,
-        `:mention[${bestCandidate.assistantName}]{sId=${bestCandidate.assistantId}}`
-      );
-
-      return new Ok({
-        mention,
-        processedMessage,
-        allMentionCandidates: mentionCandidates,
-      });
-    } else {
-      return new Err(
-        new Error(`Assistant ${mentionCandidate} has not been found.`)
-      );
     }
   }
 
+  if (!bestCandidate) {
+    return new Err(
+      new Error(`Assistant ${mentionCandidate} has not been found.`)
+    );
+  }
+
+  const mention = {
+    assistantId: bestCandidate.assistantId,
+    assistantName: bestCandidate.assistantName,
+  };
+  const processedMessage = message.replace(
+    mentionCandidate,
+    `:mention[${bestCandidate.assistantName}]{sId=${bestCandidate.assistantId}}`
+  );
+
   return new Ok({
-    mention: undefined,
-    processedMessage: message,
-    allMentionCandidates: mentionCandidates,
+    mention,
+    processedMessage,
   });
 }
 
@@ -123,31 +109,39 @@ export function findBestAgentMatch(
   return bestMatch?.agent;
 }
 
-export function processMessageForMention(
-  params: ProcessMessageForMentionParams
-): Result<ProcessMessageForMentionResult, Error> {
-  const { message, activeAgentConfigurations } = params;
-
-  // Default mention pattern supports @, ~, and + prefixes (covers all platforms)
-  const mentionPattern = /(?<!\S)[@+~]([a-zA-Z0-9_-]{1,40})(?=\s|,|\.|$|)/g;
-  const defaultAgentIds = ["dust", "claude-4-sonnet", "gpt-5"];
+export function processMessageForMention({
+  message,
+  activeAgentConfigurations,
+}: {
+  message: string;
+  activeAgentConfigurations: LightAgentConfigurationType[];
+}): Result<
+  {
+    mention: MentionMatch;
+    processedMessage: string;
+  },
+  Error
+> {
+  const fallbackAgentIds = ["dust", "claude-4-sonnet", "gpt-5"];
 
   let processedMessage = message;
   let mention: MentionMatch | undefined;
+
+  const mentionCandidates = message.match(MENTION_PATTERN) ?? [];
+
+  if (mentionCandidates.length > 1) {
+    return new Err(new Error("Only one agent at a time can be called."));
+  }
 
   // Extract all mentions from the message
   const mentionResult = processMentions({
     message,
     activeAgentConfigurations,
-    mentionPattern,
+    mentionCandidates,
   });
 
   if (mentionResult.isErr()) {
     return new Err(mentionResult.error);
-  }
-
-  if (mentionResult.value.allMentionCandidates.length > 1) {
-    return new Err(new Error("Only one agent at a time can be called."));
   }
 
   mention = mentionResult.value.mention;
@@ -158,7 +152,7 @@ export function processMessageForMention(
   if (!mention) {
     // Use default agent if no mention found
     let defaultAssistant: LightAgentConfigurationType | undefined = undefined;
-    for (const agentId of defaultAgentIds) {
+    for (const agentId of fallbackAgentIds) {
       defaultAssistant = activeAgentConfigurations.find(
         (ac) => ac.sId === agentId && ac.status === "active"
       );
