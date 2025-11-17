@@ -62,10 +62,7 @@ export function MCPConversationCatFileDetails({
             }
             contentChildren={
               <div className="py-2">
-                <CodeBlock
-                  className="language-text max-h-32 overflow-y-auto"
-                  wrapLongLines={true}
-                >
+                <CodeBlock className="language-text max-h-32 overflow-y-auto">
                   {truncatedContent}
                 </CodeBlock>
               </div>
