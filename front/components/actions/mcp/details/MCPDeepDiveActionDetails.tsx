@@ -6,15 +6,15 @@ import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import {
-  agentMentionDirective,
-  getAgentMentionPlugin,
-} from "@app/components/markdown/AgentMentionBlock";
-import {
   CiteBlock,
   getCiteDirective,
 } from "@app/components/markdown/CiteBlock";
 import { isAgentPauseOutputResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { DEEP_DIVE_AVATAR_URL } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
+import {
+  agentMentionDirective,
+  getAgentMentionPlugin,
+} from "@app/lib/mentions";
 export function MCPDeepDiveActionDetails({
   owner,
   toolOutput,

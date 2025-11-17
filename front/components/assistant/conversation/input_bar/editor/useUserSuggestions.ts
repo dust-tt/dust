@@ -1,15 +1,18 @@
 import { useMemo } from "react";
 
-import type { EditorSuggestionUser } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import { useSearchMembers } from "@app/lib/swr/memberships";
-import type { UserTypeWithWorkspace, WorkspaceType } from "@app/types";
+import type {
+  RichUserMention,
+  UserTypeWithWorkspace,
+  WorkspaceType,
+} from "@app/types";
 
 /**
  * Converts UserTypeWithWorkspace to EditorSuggestionUser format.
  */
 function makeEditorSuggestionUsers(
   users: UserTypeWithWorkspace[]
-): EditorSuggestionUser[] {
+): RichUserMention[] {
   return users.map((user) => ({
     type: "user",
     id: user.sId,

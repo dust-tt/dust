@@ -2,7 +2,6 @@ import _ from "lodash";
 import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
-import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import { InputBarAttachments } from "@app/components/assistant/conversation/input_bar/InputBarAttachments";
 import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import InputBarContainer, {
@@ -25,6 +24,7 @@ import type {
   DataSourceViewContentNode,
   LightAgentConfigurationType,
   Result,
+  RichMention,
   WorkspaceType,
 } from "@app/types";
 import { compareAgentsForSort, isEqualNode, isGlobalAgentId } from "@app/types";
@@ -35,7 +35,7 @@ interface InputBarProps {
   owner: WorkspaceType;
   onSubmit: (
     input: string,
-    mentions: EditorMention[],
+    mentions: RichMention[],
     contentFragments: ContentFragmentsType,
     selectedMCPServerViewIds?: string[]
   ) => Promise<Result<undefined, DustError>>;
