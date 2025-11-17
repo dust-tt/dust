@@ -126,7 +126,7 @@ makeScript(
       logger.info(`  [${space.sId}] ${space.name}`, {
         kind: space.kind,
         status: status,
-        deletedAt: space.deletedAt || null,
+        deleted: !!space.deletedAt,
       });
     }
 
