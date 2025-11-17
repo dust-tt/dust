@@ -17,7 +17,6 @@ import React, {
 
 import { AgentInputBar } from "@app/components/assistant/conversation/AgentInputBar";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
-import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import {
   createPlaceholderAgentMessage,
   createPlaceholderUserMessage,
@@ -61,6 +60,7 @@ import type {
   ConversationTitleEvent,
   LightMessageType,
   Result,
+  RichMention,
   UserMention,
   UserMessageNewEvent,
   UserType,
@@ -416,7 +416,7 @@ export const ConversationViewer = ({
   const handleSubmit = useCallback(
     async (
       input: string,
-      mentions: EditorMention[],
+      mentions: RichMention[],
       contentFragments: ContentFragmentsType
     ): Promise<Result<undefined, DustError>> => {
       if (!ref?.current) {

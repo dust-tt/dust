@@ -79,9 +79,11 @@ export async function* streamLLMEvents({
           metadata,
         };
         // Yield aggregated text before tool calls
-        yield* yieldEvents([textGeneratedEvent]);
-        yield* yieldEvents(events);
+        yield* yieldEvents(
+          textGeneratedEvent.content.text.length > 0 ? [textGeneratedEvent] : []
+        );
         textDelta = "";
+        yield* yieldEvents(events);
         break;
       }
       case CompletionResponseStreamChoiceFinishReason.Length: {
@@ -126,7 +128,9 @@ export async function* streamLLMEvents({
           metadata,
         };
         textDelta = "";
-        yield* yieldEvents([textGeneratedEvent]);
+        yield* yieldEvents(
+          textGeneratedEvent.content.text.length > 0 ? [textGeneratedEvent] : []
+        );
         break;
       }
       default: {
@@ -233,13 +237,15 @@ function toStreamEvents({
   metadata: LLMClientMetadata;
 }): LLMEvent[] {
   if (isString(content)) {
-    return [
-      {
-        type: "text_delta",
-        content: { delta: content },
-        metadata,
-      },
-    ];
+    return content.length > 0
+      ? [
+          {
+            type: "text_delta",
+            content: { delta: content },
+            metadata,
+          },
+        ]
+      : [];
   }
 
   return compact(
@@ -261,11 +267,13 @@ function contentChunkToLLMEvent({
 }): LLMEvent | null {
   switch (chunk.type) {
     case "text": {
-      return {
-        type: "text_delta",
-        content: { delta: chunk.text },
-        metadata,
-      };
+      return chunk.text.length > 0
+        ? {
+            type: "text_delta",
+            content: { delta: chunk.text },
+            metadata,
+          }
+        : null;
     }
     default:
       // Only support text for now
