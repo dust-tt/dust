@@ -213,11 +213,48 @@ const migrateWorkspaceMissingEditorGroups = async (
 ) => {
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
+  // First, find active agent configurations that currently have no editor group associated.
+  const activeAgents = await AgentConfiguration.findAll({
+    where: {
+      workspaceId: workspace.id,
+      status: "active",
+    },
+    include: [
+      {
+        model: GroupAgentModel,
+        as: "agentGroupLinks",
+        required: false,
+        attributes: ["groupId"],
+      },
+    ],
+  });
+
+  const activeAgentsWithoutGroup = activeAgents.filter(
+    (agent: any) =>
+      !agent.agentGroupLinks || agent.agentGroupLinks.length === 0
+  );
+
+  if (activeAgentsWithoutGroup.length === 0) {
+    logger.info(
+      `No active agents missing editor groups on workspace ${workspace.sId}`
+    );
+    return;
+  }
+
+  const agentSIdsNeedingBackfill = _.uniq(
+    activeAgentsWithoutGroup.map((agent) => agent.sId)
+  );
+
+  // For those agents, load all non-draft versions so we can reuse an existing
+  // editor group if one is already associated with any version.
   const agents = await AgentConfiguration.findAll({
     where: {
       workspaceId: workspace.id,
       status: {
         [Op.not]: "draft",
+      },
+      sId: {
+        [Op.in]: agentSIdsNeedingBackfill,
       },
     },
   });
@@ -229,7 +266,11 @@ const migrateWorkspaceMissingEditorGroups = async (
   const groupedAgents = Object.values(_.groupBy(agents, "sId"));
 
   logger.info(
-    `Found ${groupedAgents.length} agents to inspect on workspace ${workspace.sId}`
+    {
+      workspaceId: workspace.sId,
+      count: groupedAgents.length,
+    },
+    "Found agents with active versions missing editor groups"
   );
 
   await concurrentExecutor(
@@ -283,4 +324,3 @@ makeScript(
     logger.info("Missing agent editors group backfill completed");
   }
 );
-
