@@ -7,7 +7,7 @@ import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/uti
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
-import { Err, Ok } from "@app/types";
+import { Err, Ok, pluralize } from "@app/types";
 
 const OUTLOOK_CALENDAR_TOOL_NAME = "outlook_calendar";
 
@@ -188,6 +188,13 @@ function createServer(
 
         return new Ok([
           { type: "text" as const, text: "Events searched successfully" },
+          {
+            type: "text" as const,
+            text:
+              result.events.length > 0
+                ? `Found ${result.events.length} event${pluralize(result.events.length)}`
+                : "No events found",
+          },
           { type: "text" as const, text: JSON.stringify(result, null, 2) },
         ]);
       }
