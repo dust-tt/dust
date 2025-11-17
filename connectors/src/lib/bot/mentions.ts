@@ -13,11 +13,11 @@ const MENTION_PATTERN = /(?<!\S)[@+~]([a-zA-Z0-9_-]{1,40})(?=\s|,|\.|$|)/g;
 export function processMentions({
   message,
   activeAgentConfigurations,
-  mentionCandidates,
+  mentionCandidate,
 }: {
   message: string;
   activeAgentConfigurations: LightAgentConfigurationType[];
-  mentionCandidates: RegExpMatchArray | [];
+  mentionCandidate: string | null;
 }): Result<
   {
     mention: MentionMatch | undefined;
@@ -25,8 +25,6 @@ export function processMentions({
   },
   Error
 > {
-  const [mentionCandidate] = mentionCandidates;
-
   if (!mentionCandidate) {
     return new Ok({
       mention: undefined,
@@ -135,7 +133,7 @@ export function processMessageForMention({
   const mentionResult = processMentions({
     message,
     activeAgentConfigurations,
-    mentionCandidates,
+    mentionCandidate: mentionCandidates[0] ?? null,
   });
 
   if (mentionResult.isErr()) {
