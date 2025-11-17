@@ -1,8 +1,11 @@
 import assert from "assert";
 import { tracer } from "dd-trace";
 
-import type { AssistantBuilderMCPConfiguration } from "@app/components/assistant_builder/types";
-import { getDefaultMCPServerActionConfiguration } from "@app/components/assistant_builder/types";
+import type {
+  AssistantBuilderMCPConfiguration,
+  AssistantBuilderMCPConfigurationWithId,
+} from "@app/components/agent_builder/types";
+import { getDefaultMCPServerActionConfiguration } from "@app/components/agent_builder/types";
 import { REASONING_MODEL_CONFIGS } from "@app/components/providers/types";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
@@ -103,7 +106,7 @@ async function getMCPServerActionConfiguration(
   action: MCPServerConfigurationType,
   dataSourceViews: DataSourceViewResource[],
   mcpServerView?: MCPServerViewType
-): Promise<AssistantBuilderMCPConfiguration> {
+): Promise<AssistantBuilderMCPConfigurationWithId> {
   assert(isServerSideMCPServerConfiguration(action));
 
   const builderAction = getDefaultMCPServerActionConfiguration(mcpServerView);
@@ -164,7 +167,7 @@ async function getMCPServerActionConfiguration(
     action.additionalConfiguration;
   builderAction.configuration.secretName = action.secretName;
 
-  return builderAction;
+  return { ...builderAction, id: action.sId };
 }
 
 async function renderDataSourcesConfigurations(
@@ -375,3 +378,4 @@ async function renderTableDataSourcesConfigurations(
     {}
   );
 }
+

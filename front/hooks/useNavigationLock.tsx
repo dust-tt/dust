@@ -70,3 +70,4 @@ export function useNavigationLock(
     };
   }, [isEnabled, warningData, confirm, router]);
 }
+

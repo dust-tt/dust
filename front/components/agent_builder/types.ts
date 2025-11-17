@@ -1,4 +1,5 @@
 import type { Icon } from "@dust-tt/sparkle";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 import uniqueId from "lodash/uniqueId";
 import { z } from "zod";
 
@@ -12,7 +13,14 @@ import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { WhitelistableFeature } from "@app/types";
+import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
+import type {
+  DataSourceViewSelectionConfigurations,
+  DustAppRunConfigurationType,
+  ReasoningModelConfigurationType,
+  TimeFrame,
+  WhitelistableFeature,
+} from "@app/types";
 
 type AgentBuilderFormData = z.infer<typeof agentBuilderFormSchema>;
 
@@ -206,4 +214,65 @@ export interface ActionSpecification {
   dropDownIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
   cardIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
   flag: WhitelistableFeature | null;
+}
+
+// MCP configuration types used by the agent builder.
+export type AssistantBuilderMCPServerConfiguration = {
+  mcpServerViewId: string;
+  dataSourceConfigurations: DataSourceViewSelectionConfigurations | null;
+  tablesConfigurations: DataSourceViewSelectionConfigurations | null;
+  childAgentId: string | null;
+  reasoningModel: ReasoningModelConfigurationType | null;
+  timeFrame: TimeFrame | null;
+  additionalConfiguration: AdditionalConfigurationType;
+  dustAppConfiguration: DustAppRunConfigurationType | null;
+  jsonSchema: JSONSchema | null;
+  _jsonSchemaString: string | null;
+  secretName: string | null;
+};
+
+export type AssistantBuilderMCPConfiguration = {
+  type: "MCP";
+  configuration: AssistantBuilderMCPServerConfiguration;
+  name: string;
+  description: string;
+  configurationRequired?: boolean;
+};
+
+export type AssistantBuilderMCPConfigurationWithId =
+  AssistantBuilderMCPConfiguration & {
+    id: string;
+  };
+
+export function getDefaultMCPServerActionConfiguration(
+  mcpServerView?: MCPServerViewType
+): AssistantBuilderMCPConfiguration {
+  const requirements = getMCPServerRequirements(mcpServerView);
+
+  return {
+    type: "MCP",
+    configuration: {
+      mcpServerViewId: mcpServerView?.sId ?? "not-a-valid-sId",
+      dataSourceConfigurations: null,
+      tablesConfigurations: null,
+      childAgentId: null,
+      reasoningModel: null,
+      timeFrame: null,
+      additionalConfiguration: {},
+      dustAppConfiguration: null,
+      jsonSchema: null,
+      _jsonSchemaString: null,
+      secretName: null,
+    },
+    name: mcpServerView?.name ?? mcpServerView?.server.name ?? "",
+    description:
+      requirements.requiresDataSourceConfiguration ||
+      requirements.requiresDataWarehouseConfiguration ||
+      requirements.requiresTableConfiguration
+        ? ""
+        : mcpServerView
+          ? getMcpServerViewDescription(mcpServerView)
+          : "",
+    configurationRequired: !requirements.noRequirement,
+  };
 }

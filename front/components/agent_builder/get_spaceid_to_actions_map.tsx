@@ -1,5 +1,7 @@
-import type { AgentBuilderAction } from "@app/components/agent_builder/types";
-import type { AssistantBuilderMCPConfigurationWithId } from "@app/components/assistant_builder/types";
+import type {
+  AgentBuilderAction,
+  AssistantBuilderMCPConfigurationWithId,
+} from "@app/components/agent_builder/types";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { assertNever } from "@app/types";
 

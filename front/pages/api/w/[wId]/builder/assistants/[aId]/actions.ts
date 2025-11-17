@@ -3,8 +3,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import {
   buildInitialActions,
   getAccessibleSourcesAndAppsForActions,
-} from "@app/components/assistant_builder/server_side_props_helpers";
-import type { AssistantBuilderMCPConfiguration } from "@app/components/assistant_builder/types";
+} from "@app/lib/agent_builder/server_side_props_helpers";
+import type { AssistantBuilderMCPConfiguration } from "@app/components/agent_builder/types";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";

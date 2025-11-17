@@ -12,7 +12,7 @@ import { useWatch } from "react-hook-form";
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
-import { TagSearchSection } from "@app/components/assistant_builder/tags/TagSearchSection";
+import { TagSearchSection } from "@app/components/data_source_view/TagSearchSection";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import { ADVANCED_SEARCH_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {

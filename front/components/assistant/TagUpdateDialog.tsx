@@ -2,45 +2,37 @@ import {
   Dialog,
   DialogContainer,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
   Input,
   Label,
 } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
-import { useCreateTag } from "@app/lib/swr/tags";
+import { useUpdateTag } from "@app/lib/swr/tags";
 import type { WorkspaceType } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
-export const MAX_TAG_LENGTH = 100;
+import { MAX_TAG_LENGTH } from "./TagCreationDialog";
 
-export const TagCreationDialog = ({
+export const EditTagDialog = ({
   owner,
+  tag,
   isOpen,
   setIsOpen,
-  onTagCreated,
 }: {
   owner: WorkspaceType;
+  tag: TagType;
   isOpen: boolean;
-  setIsOpen: (isOpen: boolean) => void;
-  onTagCreated: (tag: TagType) => void;
+  setIsOpen: (open: boolean) => void;
 }) => {
-  const [name, setName] = useState("");
-  const { createTag } = useCreateTag({ owner });
+  const [name, setName] = useState(() => tag.name);
+  const { updateTag } = useUpdateTag({ owner, tagId: tag.sId });
 
-  useEffect(() => {
-    if (isOpen) {
-      setName("");
-    }
-  }, [isOpen]);
-
-  const handleCreateTag = async () => {
-    const tag = await createTag(name);
+  const handleUpdateTag = async () => {
+    await updateTag({ name, kind: tag.kind });
     if (tag) {
-      onTagCreated(tag);
       setIsOpen(false);
     }
   };
@@ -49,10 +41,7 @@ export const TagCreationDialog = ({
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent size="lg">
         <DialogHeader>
-          <DialogTitle>Add tag</DialogTitle>
-          <DialogDescription>
-            Create a new tag for your assistant
-          </DialogDescription>
+          <DialogTitle>Edit tag</DialogTitle>
         </DialogHeader>
         <DialogContainer>
           <div className="space-y-2">
@@ -69,7 +58,7 @@ export const TagCreationDialog = ({
                   }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && name.length > 0) {
-                      void handleCreateTag();
+                      void handleUpdateTag();
                     }
                   }}
                   autoFocus
@@ -86,7 +75,7 @@ export const TagCreationDialog = ({
           rightButtonProps={{
             label: "Save",
             variant: "primary",
-            onClick: handleCreateTag,
+            onClick: handleUpdateTag,
             disabled: name.length === 0,
           }}
         />
@@ -94,3 +83,4 @@ export const TagCreationDialog = ({
     </Dialog>
   );
 };
+

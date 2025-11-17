@@ -1,6 +1,6 @@
 import { ToolsIcon } from "@dust-tt/sparkle";
 
-import type { ActionSpecification } from "@app/components/assistant_builder/types";
+import type { ActionSpecification } from "@app/components/agent_builder/types";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { StepContext } from "@app/lib/actions/types";
 import {

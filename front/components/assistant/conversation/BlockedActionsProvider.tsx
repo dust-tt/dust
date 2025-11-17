@@ -15,7 +15,7 @@ import {
 } from "react";
 
 import { ToolValidationDialogPage } from "@app/components/assistant/conversation/blocked_actions/ToolValidationDialogPage";
-import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
+import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { useValidateAction } from "@app/hooks/useValidateAction";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
