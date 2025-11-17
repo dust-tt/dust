@@ -804,9 +804,6 @@ async function answerMessage(
         const botMentionIndex = message.indexOf(m);
         if (botMentionIndex !== -1) {
           textAfterBotMention = message.slice(botMentionIndex + m.length);
-        } else {
-          // There is no bot mention when calling the bot in a DM.
-          textAfterBotMention = message;
         }
         message = message.replace(m, "");
       } else {
@@ -820,31 +817,32 @@ async function answerMessage(
 
   // Extract all ~mentions and +mentions that appear right after the bot mention.
   let mentionCandidate: string | null = null;
-  if (textAfterBotMention !== null) {
-    const textAfterBotMentionWithoutMarkdown =
-      removeMarkdown(textAfterBotMention);
+  // There is no bot mention when calling the bot in a DM.
+  // In this case we consider the entire message.
+  textAfterBotMention ??= message;
+  const textAfterBotMentionWithoutMarkdown =
+    removeMarkdown(textAfterBotMention);
 
-    const firstMatch = textAfterBotMentionWithoutMarkdown.match(
-      SLACK_MENTION_PATTERN
+  const firstMatch = textAfterBotMentionWithoutMarkdown.match(
+    SLACK_MENTION_PATTERN
+  );
+
+  if (firstMatch?.[1]) {
+    mentionCandidate = firstMatch[1] ?? null;
+
+    // If the user tagged multiple agents, we need to show a custom message since we only support one agent at a time
+    // and they will expect all agents to answer.
+    const afterFirst = textAfterBotMentionWithoutMarkdown.slice(
+      firstMatch[0].length
     );
+    const secondMatch = afterFirst.match(SLACK_MENTION_PATTERN);
 
-    if (firstMatch?.[1]) {
-      mentionCandidate = firstMatch[1] ?? null;
-
-      // If the user tagged multiple agents, we need to show a custom message since we only support one agent at a time
-      // and they will expect all agents to answer.
-      const afterFirst = textAfterBotMentionWithoutMarkdown.slice(
-        firstMatch[0].length
+    if (secondMatch) {
+      return new Err(
+        new SlackExternalUserError(
+          "Only one agent at a time can be called through Slack."
+        )
       );
-      const secondMatch = afterFirst.match(SLACK_MENTION_PATTERN);
-
-      if (secondMatch) {
-        return new Err(
-          new SlackExternalUserError(
-            "Only one agent at a time can be called through Slack."
-          )
-        );
-      }
     }
   }
 
