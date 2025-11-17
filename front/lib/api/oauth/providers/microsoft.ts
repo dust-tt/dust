@@ -27,15 +27,16 @@ export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
       metadata: { workspace_id: string; user_id: string };
     };
   }) {
-    const scopes = [
-      "User.Read",
-      "Sites.Read.All",
-      "Files.Read.All",
-      "offline_access",
-    ];
     if (relatedCredential) {
       return `${config.getClientFacingUrl()}/oauth/microsoft/finalize?provider=microsoft&code=client&state=${connection.connection_id}`;
     } else {
+      const scopes = [
+        "User.Read",
+        "Sites.Read.All",
+        "Files.Read.All",
+        "offline_access",
+      ];
+
       const qs = querystring.stringify({
         response_type: "code",
         client_id: config.getOAuthMicrosoftClientId(),

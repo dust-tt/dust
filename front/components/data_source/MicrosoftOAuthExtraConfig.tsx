@@ -91,7 +91,7 @@ export function MicrosoftOAuthExtraConfig({
         />
         <div className="flex flex-col gap-1">
           <div className="text-sm font-medium text-slate-700">
-            Selected SharePoint sites (one per line)
+            Selected SharePoint sites Dust will have access to (one per line).
           </div>
           <TextArea
             placeholder={
@@ -118,7 +118,8 @@ export function MicrosoftOAuthExtraConfig({
           />
           <div className="text-xs text-slate-500">
             Provide the SharePoint site identifiers assigned to the service
-            principal. Enter one identifier per line.
+            principal. Enter one identifier per line. This is not required if
+            your Service Principal has access to all sites.
           </div>
         </div>
       </div>

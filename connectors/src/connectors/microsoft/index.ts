@@ -1,5 +1,11 @@
 import type { ConnectorProvider, Result } from "@dust-tt/client";
-import { assertNever, Err, Ok, removeNulls } from "@dust-tt/client";
+import {
+  assertNever,
+  Err,
+  normalizeError,
+  Ok,
+  removeNulls,
+} from "@dust-tt/client";
 import { Client } from "@microsoft/microsoft-graph-client";
 import type { Site } from "@microsoft/microsoft-graph-types";
 import { decodeJwt } from "jose";
@@ -77,12 +83,25 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
 
     const { selected_sites } = connection.metadata || {};
 
-    const resolvedSites = isString(selected_sites)
-      ? await resolveSelectedSites({
+    let resolvedSites: ResolvedSelectedSite[] = [];
+    try {
+      if (selected_sites && isString(selected_sites)) {
+        resolvedSites = await resolveSelectedSites({
           client,
           siteInputs: selected_sites,
-        })
-      : [];
+        });
+      } else {
+        // Sanity checks - check connectivity and permissions. User should be able to access the sites list.
+        await getSites(logger, client);
+      }
+    } catch (err) {
+      return new Err(
+        new ConnectorManagerError(
+          "INVALID_CONFIGURATION",
+          normalizeError(err).message
+        )
+      );
+    }
 
     const microsoftConfigurationBlob = {
       pdfEnabled: false,
@@ -659,9 +678,6 @@ async function resolveSelectedSites({
       }
 
       const resolved = await fetchSiteForIdentifier(client, input);
-      if (!resolved) {
-        return null;
-      }
 
       if (seenInternalIds.has(resolved.internalId)) {
         return null;
@@ -681,7 +697,7 @@ async function resolveSelectedSites({
 async function fetchSiteForIdentifier(
   client: Client,
   identifier: string
-): Promise<ResolvedSelectedSite | null> {
+): Promise<ResolvedSelectedSite> {
   // Validate identifier to prevent path traversal and API endpoint injection
   if (!identifier || identifier.includes("..") || identifier.includes("//")) {
     throw new Error("Invalid site identifier: path traversal detected");
