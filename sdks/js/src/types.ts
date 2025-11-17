@@ -679,6 +679,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "salesloft_tool"
   | "show_debug_tools"
   | "slack_bot_mcp"
+  | "slack_connector_creation_enabled"
   | "slack_enhanced_default_agent"
   | "slack_files_write_scope"
   | "slack_message_splitting"

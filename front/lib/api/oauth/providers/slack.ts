@@ -2,7 +2,10 @@ import assert from "assert";
 import type { ParsedUrlQuery } from "querystring";
 
 import config from "@app/lib/api/config";
-import type { BaseOAuthStrategyProvider } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
+import type {
+  BaseOAuthStrategyProvider,
+  RelatedCredential,
+} from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
 import {
   finalizeUriForProvider,
   getStringFromQuery,
@@ -13,17 +16,25 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import logger from "@app/logger/logger";
 import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
-import { assertNever, Err, OAuthAPI, Ok } from "@app/types";
+import {
+  assertNever,
+  Err,
+  OAuthAPI,
+  Ok,
+  SlackCredentialsStrictSchema,
+} from "@app/types";
 import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
 
 export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
   setupUri({
     connection,
     useCase,
+    clientId,
     extraConfig,
   }: {
     connection: OAuthConnectionType;
     useCase: OAuthUseCase;
+    clientId?: string;
     extraConfig?: ExtraConfigType;
   }) {
     const { user_scopes, bot_scopes } = (() => {
@@ -125,12 +136,13 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
     // To simplify the implementation, we don't support both user and bot scopes at the same time.
     assert(!(user_scopes.length !== 0 && bot_scopes.length !== 0));
 
-    const clientId = (() => {
+    const slackClientId = (() => {
       switch (useCase) {
         case "personal_actions":
           return config.getOAuthSlackToolsClientId();
         case "connection": {
-          return config.getOAuthSlackClientId();
+          // Only apply custom credentials logic for connection use case.
+          return clientId ?? config.getOAuthSlackClientId();
         }
         case "bot":
         case "platform_actions":
@@ -150,7 +162,7 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
 
     return (
       `https://slack.com/oauth/v2/authorize?` +
-      `client_id=${clientId}` +
+      `client_id=${slackClientId}` +
       (bot_scopes.length > 0
         ? `&scope=${encodeURIComponent(bot_scopes.join(" "))}`
         : "") +
@@ -243,17 +255,64 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
         config.slack_files_write_scope_feature_flag = "true";
       }
       return config;
+    } else if (useCase === "connection") {
+      // we filter out the secrets from the extraConfig.
+      const {
+        client_secret: _,
+        signing_secret: __,
+        ...extraConfigWithoutClientSecret
+      } = extraConfig;
+      return extraConfigWithoutClientSecret;
     }
 
     return extraConfig;
   }
 
-  isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {
-    if (useCase === "personal_actions") {
-      return (
-        Object.keys(extraConfig).length === 1 && "mcp_server_id" in extraConfig
-      );
+  async getRelatedCredential(
+    _auth: Authenticator,
+    {
+      extraConfig,
+      workspaceId,
+      userId,
+      useCase,
+    }: {
+      extraConfig: ExtraConfigType;
+      workspaceId: string;
+      userId: string;
+      useCase: OAuthUseCase;
     }
+  ): Promise<RelatedCredential | undefined> {
+    // Only apply custom credentials logic for connection use case.
+    if (useCase !== "connection") {
+      return undefined;
+    }
+
+    const { client_id, client_secret, signing_secret } = extraConfig;
+
+    // Return undefined if custom credentials are not provided (backward compatibility with default app).
+    if (!client_id || !client_secret || !signing_secret) {
+      return undefined;
+    }
+
+    return {
+      content: {
+        client_id,
+        client_secret,
+        signing_secret,
+      },
+      metadata: { workspace_id: workspaceId, user_id: userId },
+    };
+  }
+
+  isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {
+    const extraConfigKeys = Object.keys(extraConfig);
+    if (useCase === "personal_actions") {
+      return extraConfigKeys.length === 1 && "mcp_server_id" in extraConfig;
+    }
+    if (useCase === "connection") {
+      return SlackCredentialsStrictSchema.safeParse(extraConfig).success;
+    }
+
     return Object.keys(extraConfig).length === 0;
   }
 

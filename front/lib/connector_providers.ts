@@ -26,6 +26,7 @@ import { GongOptionComponent } from "@app/components/data_source/gong/GongOption
 import { IntercomConfigView } from "@app/components/data_source/IntercomConfigView";
 import { MicrosoftOAuthExtraConfig } from "@app/components/data_source/MicrosoftOAuthExtraConfig";
 import { SalesforceOauthExtraConfig } from "@app/components/data_source/salesforce/SalesforceOAuthExtractConfig";
+import { SlackOAuthExtraConfig } from "@app/components/data_source/slack/SlackOAuthExtraConfig";
 import { SlackBotEnableView } from "@app/components/data_source/SlackBotEnableView";
 import { ZendeskConfigView } from "@app/components/data_source/ZendeskConfigView";
 import { ZendeskOAuthExtraConfig } from "@app/components/data_source/ZendeskOAuthExtraConfig";
@@ -204,7 +205,8 @@ export const CONNECTOR_CONFIGURATIONS: Record<
   slack: {
     name: "Slack",
     connectorProvider: "slack",
-    status: "built",
+    status: "rolling_out",
+    rollingOutFlag: "slack_connector_creation_enabled",
     // TODO(slack 2025-06-19): Hide the Slack connector until we publish the new app.
     hide: true,
     description:
@@ -217,6 +219,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return SlackLogo;
     },
     optionsComponent: SlackBotEnableView,
+    oauthExtraConfigComponent: SlackOAuthExtraConfig,
     isNested: false,
     isTitleFilterEnabled: true,
     permissions: {

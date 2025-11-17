@@ -184,6 +184,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Slack semantic search feature",
     stage: "on_demand",
   },
+  slack_connector_creation_enabled: {
+    description: "Enabled Slack connector creation on workspace.",
+    stage: "on_demand",
+  },
   web_summarization: {
     description: "AI-powered web page summarization in the web browser tool",
     stage: "on_demand",
