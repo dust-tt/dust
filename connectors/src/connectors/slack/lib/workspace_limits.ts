@@ -312,8 +312,10 @@ export async function notifyIfSlackUserIsNotAllowed(
   const isGuest = is_restricted || is_ultra_restricted;
   const isExternal = isGuest || isStranger;
   let isAllowed = false;
-  let externalAuthorization: { authorized: boolean; groupIds: string[] } | null =
-    null;
+  let externalAuthorization: {
+    authorized: boolean;
+    groupIds: string[];
+  } | null = null;
 
   if (isExternal) {
     // If the external user is allowed, they are allowed with a specific group id.
