@@ -86,10 +86,10 @@ https://us-central1-dust-infra.cloudfunctions.net/webhookRouter/YOUR_WEBHOOK_SEC
 **Custom Domain (via Firebase Hosting):**
 
 ```
-https://webhook.dust.tt/YOUR_WEBHOOK_SECRET/slack/events
-https://webhook.dust.tt/YOUR_WEBHOOK_SECRET/slack/interactions
-https://webhook.dust.tt/YOUR_WEBHOOK_SECRET/microsoft/teams/messages
-https://webhook.dust.tt/YOUR_WEBHOOK_SECRET/notion
+https://webhook-router.dust.tt/YOUR_WEBHOOK_SECRET/slack/events
+https://webhook-router.dust.tt/YOUR_WEBHOOK_SECRET/slack/interactions
+https://webhook-router.dust.tt/YOUR_WEBHOOK_SECRET/microsoft/teams/messages
+https://webhook-router.dust.tt/YOUR_WEBHOOK_SECRET/notion
 ```
 
 ## Architecture
