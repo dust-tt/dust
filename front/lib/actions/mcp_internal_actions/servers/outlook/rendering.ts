@@ -68,6 +68,7 @@ export function renderOutlookEvent(
   const enrichedEvent = enrichEventWithDayOfWeek(event, userTimezone);
   const lines: string[] = [];
 
+  lines.push(`# ${enrichedEvent.subject ?? "Untitled event"}`);
   if (enrichedEvent.subject) {
     lines.push(`Title: ${enrichedEvent.subject}`);
   }
@@ -131,7 +132,7 @@ export function renderOutlookEvent(
         : enrichedEvent.body.content;
 
     if (bodyContent.trim()) {
-      lines.push(`Description: ${bodyContent.trim()}`);
+      lines.push(`## Description\n${bodyContent.trim()}`);
     }
   }
 
