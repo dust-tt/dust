@@ -111,6 +111,7 @@ export async function getBuilderEmojiSuggestions(
       context: {
         operationType: "agent_builder_emoji_suggestion",
         userId: auth.user()?.sId,
+        workspaceId: auth.getNonNullableWorkspace().sId,
       },
     }
   );

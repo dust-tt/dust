@@ -127,6 +127,7 @@ export async function getBuilderTagSuggestions(
       context: {
         operationType: "agent_builder_tags_suggestion",
         userId: auth.user()?.sId,
+        workspaceId: auth.getNonNullableWorkspace().sId,
       },
     }
   );

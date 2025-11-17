@@ -84,6 +84,7 @@ export async function getCronTimezoneGeneration(
       context: {
         operationType: "trigger_cron_timezone_generator",
         userId: auth.user()?.sId,
+        workspaceId: owner.sId,
       },
     }
   );

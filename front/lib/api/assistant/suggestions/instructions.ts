@@ -127,6 +127,7 @@ export async function getBuilderInstructionsSuggestions(
       context: {
         operationType: "agent_builder_instruction_suggestion",
         userId: auth.user()?.sId,
+        workspaceId: auth.getNonNullableWorkspace().sId,
       },
     }
   );

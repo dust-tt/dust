@@ -310,6 +310,7 @@ export async function getWebhookFilterGeneration(
       context: {
         operationType: "trigger_webhook_filter_generator",
         userId: auth.user()?.sId,
+        workspaceId: owner.sId,
       },
     }
   );

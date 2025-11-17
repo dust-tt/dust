@@ -160,6 +160,7 @@ export async function getWorkspaceTagSuggestions(
       context: {
         operationType: "workspace_tags_suggestion",
         userId: auth.user()?.sId,
+        workspaceId: owner.sId,
       },
     }
   );
