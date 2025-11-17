@@ -9,6 +9,7 @@ import {
   getAuthTypeFromToken,
   getBearerToken,
   getSession,
+  isOAuthToken,
 } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import type { UserResource } from "@app/lib/resources/user_resource";
@@ -276,11 +277,10 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
         });
       }
       const token = bearerTokenRes.value;
-      const authMethod = getAuthTypeFromToken(token);
 
       // Authentification with  token.
       // Straightforward since the token is attached to the user.
-      if (authMethod === "oauth") {
+      if (isOAuthToken(token)) {
         try {
           const authRes = await handleWorkOSAuth(req, res, token, wId);
           if (authRes.isErr()) {
@@ -489,9 +489,8 @@ export function withTokenAuthentication<T>(
         });
       }
       const bearerToken = bearerTokenRes.value;
-      const authMethod = getAuthTypeFromToken(bearerToken);
 
-      if (authMethod !== "oauth") {
+      if (!isOAuthToken(bearerToken)) {
         return apiError(req, res, {
           status_code: 401,
           api_error: {

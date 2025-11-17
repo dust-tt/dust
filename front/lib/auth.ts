@@ -55,12 +55,16 @@ const { ACTIVATE_ALL_FEATURES_DEV = false } = process.env;
 
 const DUST_INTERNAL_EMAIL_REGEXP = /^[^@]+@dust\.tt$/;
 
-export type PublicAPIAuthMethod = "api_key" | "oauth";
+export type AuthMethod =
+  | "system_api_key"
+  | "api_key"
+  | "oauth"
+  | "session"
+  | "internal";
 
-export type AuthMethod = PublicAPIAuthMethod | "session" | "internal";
-
-export const getAuthTypeFromToken = (token: string): PublicAPIAuthMethod => {
-  return token.startsWith(SECRET_KEY_PREFIX) ? "api_key" : "oauth";
+// Any token which do not start with sk- is considered an OAuth token.
+export const isOAuthToken = (token: string): boolean => {
+  return !token.startsWith(SECRET_KEY_PREFIX);
 };
 
 export interface AuthenticatorType {
@@ -455,7 +459,7 @@ export class Authenticator {
 
     return {
       workspaceAuth: new Authenticator({
-        authType: "api_key",
+        authType: key.isSystem ? "system_api_key" : "api_key",
         // If the key is associated with the workspace, we associate the groups.
         groups: isKeyWorkspace ? allGroups : [],
         key: key.toAuthJSON(),
@@ -464,7 +468,7 @@ export class Authenticator {
         workspace,
       }),
       keyAuth: new Authenticator({
-        authType: "api_key",
+        authType: key.isSystem ? "system_api_key" : "api_key",
         groups: allGroups,
         key: key.toAuthJSON(),
         role: "builder",
