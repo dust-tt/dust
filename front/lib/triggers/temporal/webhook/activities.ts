@@ -46,14 +46,14 @@ async function validateEventSubscription({
 }): Promise<
   Result<
     {
-      shouldProcess: boolean;
+      skipReason: string | null;
       receivedEventValue: string | null;
     },
     Error
   >
 > {
   if (!provider) {
-    return new Ok({ shouldProcess: true, receivedEventValue: null });
+    return new Ok({ skipReason: null, receivedEventValue: null });
   }
 
   const {
@@ -63,7 +63,7 @@ async function validateEventSubscription({
   } = WEBHOOK_PRESETS[provider];
 
   if (!eventCheck) {
-    return new Ok({ shouldProcess: true, receivedEventValue: null });
+    return new Ok({ skipReason: null, receivedEventValue: null });
   }
 
   const { type, field } = eventCheck;
@@ -105,7 +105,7 @@ async function validateEventSubscription({
       },
       "Webhook event is blacklisted, ignoring."
     );
-    return new Ok({ shouldProcess: false, receivedEventValue });
+    return new Ok({ skipReason: "blacklisted", receivedEventValue });
   }
 
   if (
@@ -126,7 +126,7 @@ async function validateEventSubscription({
     return new Err(new TriggerNonRetryableError(errorMessage));
   }
 
-  return new Ok({ shouldProcess: true, receivedEventValue });
+  return new Ok({ skipReason: null, receivedEventValue });
 }
 
 export async function runTriggerWebhookActivity({
@@ -135,7 +135,10 @@ export async function runTriggerWebhookActivity({
 }: {
   workspaceId: string;
   webhookRequestId: number;
-}) {
+}): Promise<{
+  success: boolean;
+  message: string;
+}> {
   const auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
 
   const webhookRequest = await WebhookRequestResource.fetchByModelIdWithAuth(
@@ -219,7 +222,11 @@ export async function runTriggerWebhookActivity({
       const { message: errorMessage } = signatureCheckResult.error;
       await webhookRequest.markAsFailed(errorMessage);
       logger.error({ workspaceId, webhookRequestId }, errorMessage);
-      throw new TriggerNonRetryableError(errorMessage);
+
+      return {
+        success: false,
+        message: errorMessage,
+      };
     }
   }
 
@@ -237,10 +244,13 @@ export async function runTriggerWebhookActivity({
     throw eventValidationResult.error;
   }
 
-  const { shouldProcess, receivedEventValue } = eventValidationResult.value;
+  const { skipReason, receivedEventValue } = eventValidationResult.value;
 
-  if (!shouldProcess) {
-    return;
+  if (skipReason) {
+    return {
+      success: true,
+      message: `Skipped, reason: ${skipReason}`,
+    };
   }
 
   // Fetch all triggers based on the webhook source id.
@@ -287,7 +297,7 @@ export async function runTriggerWebhookActivity({
      * - for fair use execution mode, check global rate limits
      * - for programmatic usage mode, check public API limits
      */
-    let workspaceRateLimitErrorMessage: string | undefined = undefined;
+    let workspaceRateLimitErrorMessage: string | null = null;
     if (!trigger.executionMode || trigger.executionMode === "fair_use") {
       const globalRateLimitRes = await checkWebhookRequestForRateLimit(auth);
       if (globalRateLimitRes.isErr()) {
@@ -301,7 +311,7 @@ export async function runTriggerWebhookActivity({
       }
     }
 
-    if (workspaceRateLimitErrorMessage !== undefined) {
+    if (workspaceRateLimitErrorMessage !== null) {
       await webhookRequest.markRelatedTrigger({
         trigger,
         status: "rate_limited",
@@ -317,7 +327,11 @@ export async function runTriggerWebhookActivity({
         { workspaceId, webhookRequestId },
         workspaceRateLimitErrorMessage
       );
-      throw new TriggerNonRetryableError(workspaceRateLimitErrorMessage);
+
+      return {
+        success: false,
+        message: workspaceRateLimitErrorMessage,
+      };
     }
 
     const specificRateLimiterRes = await checkTriggerForExecutionPerDayLimit(
@@ -384,7 +398,10 @@ export async function runTriggerWebhookActivity({
   // If no triggers match after filtering, return early without launching workflows.
   if (filteredTriggers.length === 0) {
     await webhookRequest.markAsProcessed();
-    return;
+    return {
+      success: true,
+      message: "No triggers matched the event.",
+    };
   }
 
   // Check if any of the triggers requires the payload.
@@ -476,6 +493,11 @@ export async function runTriggerWebhookActivity({
 
   // Finally, mark the webhook request as processed.
   await webhookRequest.markAsProcessed();
+
+  return {
+    success: true,
+    message: "Webhook request processed successfully.",
+  };
 }
 
 export async function webhookCleanupActivity() {
