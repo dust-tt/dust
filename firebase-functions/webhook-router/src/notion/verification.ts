@@ -69,7 +69,10 @@ export function createNotionVerificationMiddleware(
       // Skip verification if signing secret missing or empty.
       // This is expected when we first set up the webhook and are waiting for
       // Notion to send the verification_token.
-      if (!secrets.notionSigningSecret || secrets.notionSigningSecret === "") {
+      if (
+        !secrets.notionSigningSecret ||
+        secrets.notionSigningSecret.trim() === ""
+      ) {
         console.warn(
           "Notion signing secret is missing or empty, skipping verification. This should only happen during initial setup."
         );
