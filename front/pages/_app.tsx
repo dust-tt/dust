@@ -31,19 +31,6 @@ if (DATADOG_CLIENT_TOKEN) {
     site: "datadoghq.eu",
     forwardErrorsToLogs: true,
     sessionSampleRate: 100,
-    beforeSend: (event) => {
-      // This error is benign, happens often in the wild but has 0 effect on the user.
-      // See: https://github.com/DataDog/browser-sdk/issues/1616.
-      if (
-        event.message &&
-        event.message.includes(
-          "ResizeObserver loop completed with undelivered notifications"
-        )
-      ) {
-        return false;
-      }
-      return true;
-    },
   });
 }
 
