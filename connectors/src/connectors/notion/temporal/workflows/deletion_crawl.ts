@@ -44,16 +44,15 @@ export async function notionDeletionCrawlWorkflow({
     topLevelWorkflowId,
   });
 
-  const resourceKey = (resourceId: string, resourceType: string) =>
-    `${resourceType}:${resourceId}`;
-  const hasBeenSeen = (resourceId: string, resourceType: string): boolean => {
-    return seen.has(resourceKey(resourceId, resourceType));
+  const pushIfNotSeen = (signal: NotionDeletionCrawlSignal) => {
+    if (!seen.has(signal.resourceId)) {
+      resourceQueue.push(signal);
+      seen.add(signal.resourceId);
+    }
   };
 
   setHandler(notionDeletionCrawlSignal, (signal: NotionDeletionCrawlSignal) => {
-    if (!hasBeenSeen(signal.resourceId, signal.resourceType)) {
-      resourceQueue.push(signal);
-    }
+    pushIfNotSeen(signal);
   });
 
   for (;;) {
@@ -65,10 +64,6 @@ export async function notionDeletionCrawlWorkflow({
     while (resourceQueue.length > 0) {
       const resources = resourceQueue.splice(0, DELETE_BATCH_SIZE);
 
-      for (const resource of resources) {
-        seen.add(resourceKey(resource.resourceId, resource.resourceType));
-      }
-
       // check only direct children + parent
       const discovered = await checkResourceAndQueueRelated({
         connectorId,
@@ -77,18 +72,11 @@ export async function notionDeletionCrawlWorkflow({
       });
 
       for (const pageId of discovered.pageIds) {
-        if (!hasBeenSeen(pageId, "page")) {
-          resourceQueue.push({ resourceId: pageId, resourceType: "page" });
-        }
+        pushIfNotSeen({ resourceId: pageId, resourceType: "page" });
       }
 
       for (const databaseId of discovered.databaseIds) {
-        if (!hasBeenSeen(databaseId, "database")) {
-          resourceQueue.push({
-            resourceId: databaseId,
-            resourceType: "database",
-          });
-        }
+        pushIfNotSeen({ resourceId: databaseId, resourceType: "database" });
       }
 
       if (workflowInfo().continueAsNewSuggested) {
