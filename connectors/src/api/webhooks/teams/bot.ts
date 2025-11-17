@@ -12,12 +12,13 @@ import type { Activity, TurnContext } from "botbuilder";
 import removeMarkdown from "remove-markdown";
 
 import { processFileAttachments } from "@connectors/api/webhooks/teams/content_fragments";
-import { getMicrosoftClient } from "@connectors/connectors/microsoft/index";
+import { getMicrosoftClient } from "@connectors/connectors/microsoft";
 import { getMessagesFromConversation } from "@connectors/connectors/microsoft/lib/graph_api";
 import { apiConfig } from "@connectors/lib/api/config";
 import type { MessageFootnotes } from "@connectors/lib/bot/citations";
 import { annotateCitations } from "@connectors/lib/bot/citations";
 import { makeConversationUrl } from "@connectors/lib/bot/conversation_utils";
+import type { MentionMatch } from "@connectors/lib/bot/mentions";
 import { processMessageForMention } from "@connectors/lib/bot/mentions";
 import { MicrosoftBotMessage } from "@connectors/lib/models/microsoft_bot";
 import { getActionName } from "@connectors/lib/tools_utils";
@@ -152,7 +153,7 @@ export async function botAnswerMessage(
 
   const messageReqBody: PublicPostMessagesRequestBody = {
     content: message,
-    mentions: [{ configurationId: mention.assistantId }],
+    mentions: [{ configurationId: mention.agentId }],
     context: {
       timezone: "UTC", // Teams doesn't provide timezone info easily
       username: displayName,
@@ -282,7 +283,7 @@ export async function botAnswerMessage(
 
   const finalCard = createResponseAdaptiveCard({
     response: formattedContent,
-    assistant: mention,
+    mentionedAgent: mention,
     conversationUrl: makeConversationUrl(
       connector.workspaceId,
       conversation.sId
@@ -313,7 +314,7 @@ async function streamAgentResponse({
   dustAPI: DustAPI;
   conversation: ConversationPublicType;
   userMessage: UserMessageType;
-  mention: { assistantName: string; assistantId: string };
+  mention: MentionMatch;
   connector: ConnectorResource;
   agentActivityId: string;
   localLogger: Logger;
@@ -389,7 +390,7 @@ async function streamAgentResponse({
 
             const streamingCard = createStreamingAdaptiveCard({
               response: formattedContent,
-              assistantName: mention.assistantName,
+              agentName: mention.agentName,
               conversationUrl: null,
               workspaceId: connector.workspaceId,
             });
@@ -411,7 +412,7 @@ async function streamAgentResponse({
         const action = getActionName(event.action);
         const streamingCard = createStreamingAdaptiveCard({
           response: action,
-          assistantName: mention.assistantName,
+          agentName: mention.agentName,
           conversationUrl: null,
           workspaceId: connector.workspaceId,
         });
