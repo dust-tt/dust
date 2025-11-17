@@ -781,12 +781,10 @@ async function handleDeleteWorkOSUser(
     throw membershipRevokeResult.error;
   }
 
-  const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
-    user.sId,
-    workspace.sId
+  const deleteTriggerResult = await TriggerResource.deleteAllForUser(
+    auth,
+    user
   );
-
-  const deleteTriggerResult = await TriggerResource.deleteAllForUser(userAuth);
   if (deleteTriggerResult.isErr()) {
     logger.error(
       {
