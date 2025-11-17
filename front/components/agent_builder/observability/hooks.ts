@@ -200,12 +200,14 @@ export function useToolUsageData(params: {
     workspaceId,
     agentConfigurationId,
     days: period,
+    version: filterVersion ?? undefined,
     disabled: mode !== "version",
   });
   const step = useAgentToolStepIndex({
     workspaceId,
     agentConfigurationId,
     days: period,
+    version: filterVersion ?? undefined,
     disabled: mode !== "step",
   });
 

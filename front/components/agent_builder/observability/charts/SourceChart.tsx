@@ -30,9 +30,14 @@ export function SourceChart({
       workspaceId,
       agentConfigurationId,
       days: period,
-      version: selectedVersion?.version,
+      version:
+        mode === "version" && selectedVersion
+          ? selectedVersion.version
+          : undefined,
       disabled:
-        !agentConfigurationId || (mode === "version" && !selectedVersion),
+        !workspaceId ||
+        !agentConfigurationId ||
+        (mode === "version" && !selectedVersion),
     });
 
   const total = contextOrigin.total;
