@@ -67,6 +67,16 @@ class MyDocument extends Document {
                  sessionReplaySampleRate: 5,
                  defaultPrivacyLevel: 'mask-user-input',
                  beforeSend: function (event) {
+                    // This error is benign, happens often in the wild but has 0 effect on the user.
+                    // See: https://github.com/DataDog/browser-sdk/issues/1616.
+                    if (
+                      event.message &&
+                      event.message.includes(
+                        "ResizeObserver loop completed with undelivered notifications"
+                      )
+                    ) {
+                      return false;
+                    }
                    if (event.type === "action" && event.action && event.action.target && event.action.type === "click") {
                      if (event._dd && event._dd.action && event._dd.action.name_source === "text_content") {
                        var elSelector = event._dd.action.target && event._dd.action.target.selector;
