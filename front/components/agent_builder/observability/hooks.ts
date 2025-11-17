@@ -215,7 +215,7 @@ export function useToolUsageData(params: {
     case "version": {
       const rawData = exec.toolExecutionByVersion;
       let normalizedData = normalizeVersionData(rawData);
-      if (filterVersion != null) {
+      if (filterVersion) {
         const vv = `v${filterVersion}`;
         normalizedData = normalizedData.filter((d) => d.label === vv);
       }
