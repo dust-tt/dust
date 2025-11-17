@@ -183,6 +183,7 @@ export async function processDataSources({
           context: {
             operationType: "process_data_sources",
             userId: auth.user()?.sId,
+            workspaceId: auth.getNonNullableWorkspace().sId,
           },
         }
       );

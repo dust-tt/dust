@@ -75,6 +75,7 @@ export async function getBuilderDescriptionSuggestions(
       context: {
         operationType: "agent_builder_description_suggestion",
         userId: auth.user()?.sId,
+        workspaceId: auth.getNonNullableWorkspace().sId,
       },
     }
   );
