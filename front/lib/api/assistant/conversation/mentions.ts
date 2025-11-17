@@ -1,5 +1,7 @@
 import type { Transaction } from "sequelize";
 
+import { getUserForWorkspace } from "@app/lib/api/user";
+import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMessage,
   Mention,
@@ -16,29 +18,36 @@ import type {
 } from "@app/types";
 import { isAgentMention, isUserMention } from "@app/types";
 
-export const createUserMessages = async ({
-  mentions,
-  message,
-  owner,
-  transaction,
-}: {
-  mentions: MentionType[];
-  message: Message;
-  owner: WorkspaceType;
-  transaction: Transaction;
-}) => {
+export const createUserMentions = async (
+  auth: Authenticator,
+  {
+    mentions,
+    message,
+    owner,
+    transaction,
+  }: {
+    mentions: MentionType[];
+    message: Message;
+    owner: WorkspaceType;
+    transaction: Transaction;
+  }
+) => {
   // Store user mentions in the database
   await Promise.all(
-    mentions.filter(isUserMention).map((mention) =>
-      Mention.create(
-        {
-          messageId: message.id,
-          userId: parseInt(mention.userId, 10),
-          workspaceId: owner.id,
-        },
-        { transaction }
-      )
-    )
+    mentions.filter(isUserMention).map(async (mention) => {
+      // check if the user exists in the workspace before creating the mention
+      const user = await getUserForWorkspace(auth, { userId: mention.userId });
+      if (user) {
+        await Mention.create(
+          {
+            messageId: message.id,
+            userId: user.id,
+            workspaceId: owner.id,
+          },
+          { transaction }
+        );
+      }
+    })
   );
 };
 

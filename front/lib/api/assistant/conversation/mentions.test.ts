@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import {
   createAgentMessages,
-  createUserMessages,
+  createUserMentions,
 } from "@app/lib/api/assistant/conversation/mentions";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessage, Mention } from "@app/lib/models/assistant/conversation";
@@ -338,7 +338,7 @@ describe("createAgentMessages", () => {
   });
 });
 
-describe("createUserMessages", () => {
+describe("createUserMentions", () => {
   let workspace: WorkspaceType;
   let auth: Authenticator;
   let conversation: ConversationType;
@@ -370,11 +370,11 @@ describe("createUserMessages", () => {
     const mentions: MentionType[] = [
       {
         type: "user",
-        userId: mentionedUser.id.toString(),
+        userId: mentionedUser.sId.toString(),
       },
     ];
 
-    await createUserMessages({
+    await createUserMentions(auth, {
       mentions,
       message: messageRow,
       owner: workspace,
@@ -408,15 +408,15 @@ describe("createUserMessages", () => {
     const mentions: MentionType[] = [
       {
         type: "user",
-        userId: user1.id.toString(),
+        userId: user1.sId.toString(),
       },
       {
         type: "user",
-        userId: user2.id.toString(),
+        userId: user2.sId.toString(),
       },
     ];
 
-    await createUserMessages({
+    await createUserMentions(auth, {
       mentions,
       message: messageRow,
       owner: workspace,
@@ -448,7 +448,7 @@ describe("createUserMessages", () => {
 
     const mentions: MentionType[] = [];
 
-    await createUserMessages({
+    await createUserMentions(auth, {
       mentions,
       message: messageRow,
       owner: workspace,
@@ -477,14 +477,14 @@ describe("createUserMessages", () => {
     const mentions: MentionType[] = [
       {
         type: "user",
-        userId: mentionedUser.id.toString(),
+        userId: mentionedUser.sId.toString(),
       },
       {
         configurationId: "some-agent-id",
       } as AgentMention,
     ];
 
-    await createUserMessages({
+    await createUserMentions(auth, {
       mentions,
       message: messageRow,
       owner: workspace,
