@@ -56,6 +56,7 @@ async function handler(
       const schemaRes = await getBuilderJsonSchemaGenerator(auth, {
         instructions: bodyRes.value.instructions,
         modelId: model.modelId,
+        providerId: model.providerId,
       });
 
       if (schemaRes.isErr()) {
