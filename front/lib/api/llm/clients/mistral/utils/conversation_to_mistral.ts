@@ -13,12 +13,44 @@ import type {
   Content,
   ModelMessageTypeMultiActionsWithoutContentFragment,
 } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever, safeParseJSON } from "@app/types";
 import type {
   AgentFunctionCallContentType,
   AgentReasoningContentType,
   AgentTextContentType,
 } from "@app/types/assistant/agent_message_content";
+
+export function sanitizeToolCallId(id: string): string {
+  // Replace anything not a-zA-Z-0-9 with 0 as mistral enforces that but function_call_id can
+  // come from other providers. Also enforces length 9.
+  let s = id.replace(/[^a-zA-Z0-9]/g, "0");
+
+  if (s.length > 9) {
+    s = s.slice(0, 9);
+  }
+  if (s.length < 9) {
+    s = s.padStart(9, "0");
+  }
+  return s;
+}
+
+function removeReferenceKeys(obj: any): any {
+  if (obj === null || typeof obj !== "object") {
+    return obj;
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map(removeReferenceKeys);
+  }
+
+  const result: any = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (key !== "reference") {
+      result[key] = removeReferenceKeys(value);
+    }
+  }
+  return result;
+}
 
 function toContentChunk(
   content: Content | AgentTextContentType | AgentReasoningContentType
@@ -66,7 +98,7 @@ function toAssistantMessage(
       (c): c is AgentFunctionCallContentType => c.type === "function_call"
     )
     .map((fc) => ({
-      id: fc.value.id,
+      id: sanitizeToolCallId(fc.value.id),
       function: {
         name: fc.value.name,
         arguments: fc.value.arguments,
@@ -103,6 +135,31 @@ export function toMessage(
       };
     }
     case "function": {
+      if (typeof message.content === "string") {
+        const parsedContentRes = safeParseJSON(message.content);
+        if (
+          parsedContentRes.isErr() ||
+          message.name !== "web_search_browse__websearch"
+        ) {
+          return {
+            role: "tool",
+            content: message.content,
+            name: message.name,
+            toolCallId: sanitizeToolCallId(message.function_call_id),
+          };
+        }
+
+        // There is a conflict with Mistral web search tool that is supposed to send back reference ids as number
+        // But we send to mistral string references which makes the Mistral client invalidate the event it send back
+        const cleanedContent = removeReferenceKeys(parsedContentRes.value);
+        return {
+          role: "tool",
+          content: JSON.stringify(cleanedContent),
+          name: message.name,
+          toolCallId: sanitizeToolCallId(message.function_call_id),
+        };
+      }
+
       return {
         role: "tool",
         content:
@@ -110,7 +167,7 @@ export function toMessage(
             ? message.content
             : message.content.map(toContentChunk),
         name: message.name,
-        toolCallId: message.function_call_id,
+        toolCallId: sanitizeToolCallId(message.function_call_id),
       };
     }
     case "assistant": {

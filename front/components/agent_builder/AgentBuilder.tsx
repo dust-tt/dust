@@ -378,7 +378,7 @@ export default function AgentBuilder({
 
   return (
     <AgentBuilderFormContext.Provider value={form}>
-      <FormProvider form={form}>
+      <FormProvider form={form} asForm={false}>
         <PersonalConnectionRequiredDialog
           owner={owner}
           mcpServerViewsWithPersonalConnections={

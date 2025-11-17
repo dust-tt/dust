@@ -10,11 +10,13 @@ use crate::providers::anthropic::types::{
 use crate::providers::chat_messages::{AssistantChatMessage, ChatMessage};
 use crate::providers::embedder::{Embedder, EmbedderVector};
 use crate::providers::llm::ChatFunction;
+use crate::providers::llm::TokenizerSingleton;
 use crate::providers::llm::{LLMChatGeneration, LLMGeneration, LLMTokenUsage, LLM};
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::anthropic_base_singleton;
 use crate::providers::tiktoken::tiktoken::{batch_tokenize_async, decode_async, encode_async};
 use crate::run::Credentials;
+use crate::types::tokenizer::{TiktokenTokenizerBase, TokenizerConfig};
 use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -31,28 +33,37 @@ pub struct AnthropicLLM {
     api_key: Option<String>,
     backend: Box<dyn AnthropicBackend + Send + Sync>,
     user_id: Option<String>,
+    tokenizer: Option<TokenizerSingleton>,
 }
 
 fn get_max_tokens(model_id: &str) -> u64 {
-    if model_id.starts_with("claude-4-sonnet")
+    if model_id.starts_with("claude-3-7-sonnet")
+        || model_id.starts_with("claude-4-sonnet")
         || model_id.starts_with("claude-sonnet-4-")
         || model_id.starts_with("claude-haiku-4-5-")
     {
         64000
     } else if model_id.starts_with("claude-4-opus") {
         32000
+    } else if model_id.starts_with("claude-3-5-sonnet") {
+        8192
     } else {
         4096
     }
 }
 
 impl AnthropicLLM {
-    pub fn new(id: String) -> Self {
+    pub fn new(id: String, tokenizer: Option<TokenizerSingleton>) -> Self {
         Self {
             id,
             api_key: None,
             user_id: None,
             backend: Box::new(DirectAnthropicBackend::new()),
+            tokenizer: tokenizer.or_else(|| {
+                TokenizerSingleton::from_config(&TokenizerConfig::Tiktoken {
+                    base: TiktokenTokenizerBase::AnthropicBase,
+                })
+            }),
         }
     }
 
@@ -346,15 +357,27 @@ impl LLM for AnthropicLLM {
     }
 
     async fn encode(&self, text: &str) -> Result<Vec<usize>> {
-        encode_async(anthropic_base_singleton(), text).await
+        self.tokenizer
+            .as_ref()
+            .ok_or_else(|| anyhow!("Tokenizer not initialized"))?
+            .encode(text)
+            .await
     }
 
     async fn decode(&self, tokens: Vec<usize>) -> Result<String> {
-        decode_async(anthropic_base_singleton(), tokens).await
+        self.tokenizer
+            .as_ref()
+            .ok_or_else(|| anyhow!("Tokenizer not initialized"))?
+            .decode(tokens)
+            .await
     }
 
     async fn tokenize(&self, texts: Vec<String>) -> Result<Vec<Vec<(usize, String)>>> {
-        batch_tokenize_async(anthropic_base_singleton(), texts).await
+        self.tokenizer
+            .as_ref()
+            .ok_or_else(|| anyhow!("Tokenizer not initialized"))?
+            .tokenize(texts)
+            .await
     }
 
     async fn chat(
@@ -643,7 +666,10 @@ impl Provider for AnthropicProvider {
             Err(anyhow!("User aborted Anthropic test."))?;
         }
 
-        let mut llm = self.llm(String::from("claude-4.5-haiku"));
+        let tokenizer = TokenizerSingleton::from_config(&TokenizerConfig::Tiktoken {
+            base: TiktokenTokenizerBase::AnthropicBase,
+        });
+        let mut llm = self.llm(String::from("claude-4.5-haiku"), tokenizer);
         llm.initialize(Credentials::new()).await?;
 
         let llm_generation = llm
@@ -674,8 +700,8 @@ impl Provider for AnthropicProvider {
         Ok(())
     }
 
-    fn llm(&self, id: String) -> Box<dyn LLM + Sync + Send> {
-        Box::new(AnthropicLLM::new(id))
+    fn llm(&self, id: String, tokenizer: Option<TokenizerSingleton>) -> Box<dyn LLM + Sync + Send> {
+        Box::new(AnthropicLLM::new(id, tokenizer))
     }
 
     fn embedder(&self, id: String) -> Box<dyn Embedder + Sync + Send> {

@@ -12,12 +12,9 @@
 // Format utilities
 export {
   extractFromEditorJSON,
-  // TODO(rcs): remove this indirection
-  serializeMention as mentionAgent,
   mentionFormat,
   parseMentions,
-  // TODO(rcs): remove this indirection
-  replaceMentionsWithAt as replaceMentionsByAt,
+  serializeMention,
 } from "./format";
 
 // UI components
@@ -27,6 +24,7 @@ export { MentionDropdown } from "./ui/MentionDropdown";
 // Editor utilities
 export {
   filterAgentSuggestions,
+  filterUserSuggestions,
   mentionSuggestions,
 } from "./editor/suggestion";
 export { editorMentionUtils } from "./editor/utils";
@@ -35,4 +33,6 @@ export { editorMentionUtils } from "./editor/utils";
 export {
   agentMentionDirective,
   getAgentMentionPlugin,
+  getUserMentionPlugin,
+  userMentionDirective,
 } from "./markdown/plugin";

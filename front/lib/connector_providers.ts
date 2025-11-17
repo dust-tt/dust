@@ -84,6 +84,7 @@ export type ConnectorProviderConfiguration = {
   ) => React.JSX.Element;
   guideLink: string | null;
   selectLabel?: string; // Show in the permissions modal, above the content node tree, note that a connector might not allow to select anything
+  emptyNodeLabel?: string;
   isNested: boolean;
   isTitleFilterEnabled?: boolean;
   isResourceSelectionDisabled?: boolean; // Whether the user cannot select distinct resources (everything is synced).
@@ -333,6 +334,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     mismatchError: `You cannot select another Microsoft account.\nPlease contact us at support@dust.tt if you initially selected a wrong account.`,
     guideLink: "https://docs.dust.tt/docs/microsoft-connection",
     selectLabel: "Select folders and files",
+    emptyNodeLabel: "Select the folder to enable file synchronization.",
     getLogoComponent: () => {
       return MicrosoftLogo;
     },

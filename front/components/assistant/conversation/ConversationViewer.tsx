@@ -17,7 +17,6 @@ import React, {
 
 import { AgentInputBar } from "@app/components/assistant/conversation/AgentInputBar";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
-import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import {
   createPlaceholderAgentMessage,
   createPlaceholderUserMessage,
@@ -53,6 +52,7 @@ import {
 import { classNames } from "@app/lib/utils";
 import type {
   AgentGenerationCancelledEvent,
+  AgentMention,
   AgentMessageDoneEvent,
   AgentMessageNewEvent,
   ContentFragmentsType,
@@ -60,10 +60,13 @@ import type {
   ConversationTitleEvent,
   LightMessageType,
   Result,
+  RichMention,
+  UserMention,
   UserMessageNewEvent,
   UserType,
   WorkspaceType,
 } from "@app/types";
+import { assertNever } from "@app/types";
 import { Err, isContentFragmentType, isUserMessageType, Ok } from "@app/types";
 
 const DEFAULT_PAGE_LIMIT = 50;
@@ -152,14 +155,19 @@ export const ConversationViewer = ({
 
   // Setup the initial list data when the conversation is loaded.
   useEffect(() => {
-    if (!initialListData && messages.length > 0) {
+    // We also wait in case of revalidation because otherwise we might use stale data from the swr cache.
+    // Consider this scenario:
+    // Load a conversation A, send a message, answer is streaming (streaming events have a short TTL).
+    // Switch to conversation B, wait till A is done streaming, then switch back to A.
+    // Without waiting for revalidation, we would use whatever data was in the swr cache and see the last message as "streaming" (old data, no more streaming events).
+    if (!initialListData && messages.length > 0 && !isValidating) {
       const messagesToRender = convertLightMessageTypeToVirtuosoMessages(
         messages.flatMap((m) => m.messages)
       );
 
       setInitialListData(messagesToRender);
     }
-  }, [initialListData, messages, setInitialListData]);
+  }, [initialListData, messages, setInitialListData, isValidating]);
 
   // This is to handle we just fetched more messages by scrolling up.
   useEffect(() => {
@@ -408,7 +416,7 @@ export const ConversationViewer = ({
   const handleSubmit = useCallback(
     async (
       input: string,
-      mentions: EditorMention[],
+      mentions: RichMention[],
       contentFragments: ContentFragmentsType
     ): Promise<Result<undefined, DustError>> => {
       if (!ref?.current) {
@@ -420,7 +428,23 @@ export const ConversationViewer = ({
       }
       const messageData = {
         input,
-        mentions: mentions.map((mention) => ({ configurationId: mention.id })),
+        mentions: mentions.map((mention) => {
+          switch (mention.type) {
+            case "agent": {
+              return {
+                configurationId: mention.id,
+              } satisfies AgentMention;
+            }
+            case "user": {
+              return {
+                type: "user",
+                userId: mention.id,
+              } satisfies UserMention;
+            }
+            default:
+              assertNever(mention.type);
+          }
+        }),
         contentFragments,
       };
 

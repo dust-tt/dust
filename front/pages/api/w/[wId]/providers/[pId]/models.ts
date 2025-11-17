@@ -191,6 +191,12 @@ async function handler(
           } else {
             // From https://docs.anthropic.com/en/docs/about-claude/model-deprecations#model-status.
             anthropic_models = [
+              // Deprecated models.
+              { id: "claude-3-sonnet-20240229" }, // Retired Jul 2025.
+              { id: "claude-3-5-sonnet-20240620" }, // Retired Oct 2025.
+              { id: "claude-3-5-sonnet-20241022" }, // Retired Oct 2025.
+              { id: "claude-3-opus-20240229" }, // Retired Jan 2026.
+              { id: "claude-3-7-sonnet-20250219" }, // Retired Feb 2026.
               // Active models.
               { id: "claude-3-5-haiku-20241022" },
               { id: "claude-3-haiku-20240307" },

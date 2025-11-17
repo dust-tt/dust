@@ -134,26 +134,15 @@ export function toInput(
 }
 
 export function toTool(tool: AgentActionSpecification): FunctionTool {
-  const properties = tool.inputSchema.properties ?? {};
-  const parameters: {
-    type: "object";
-    properties: Record<string, unknown>;
-    required: string[];
-    additionalProperties: boolean;
-  } = {
-    type: "object",
-    properties,
-    // OpenAI requires all properties to be marked as required
-    required: Object.keys(properties),
-    additionalProperties: false,
-  };
-
   return {
     type: "function",
-    strict: true,
+    // If not set to false, OpenAI requires all properties to be required,
+    // and all additionalProperties to be false.
+    // This does not fit with many tools that enable permissive filter properties.
+    strict: false,
     name: tool.name,
     description: tool.description,
-    parameters,
+    parameters: { type: "object", ...tool.inputSchema },
   };
 }
 
@@ -167,16 +156,21 @@ const REASONING_EFFORT_TO_OPENAI_REASONING: {
 };
 
 export function toReasoning(
-  reasoningEffort: ReasoningEffort | null
+  reasoningEffort: ReasoningEffort | null,
+  useNativeLightReasoning?: boolean
 ): Reasoning | null {
-  if (!reasoningEffort) {
+  if (!reasoningEffort || reasoningEffort === "none") {
     return null;
   }
 
-  return {
-    effort: REASONING_EFFORT_TO_OPENAI_REASONING[reasoningEffort],
-    summary: "auto",
-  };
+  if (reasoningEffort !== "light" || useNativeLightReasoning) {
+    // For light, we might not use native reasoning but Chain of Thought instead
+    return {
+      effort: REASONING_EFFORT_TO_OPENAI_REASONING[reasoningEffort],
+      summary: "auto",
+    };
+  }
+  return null;
 }
 
 export function toResponseFormat(

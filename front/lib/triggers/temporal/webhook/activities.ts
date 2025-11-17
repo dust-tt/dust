@@ -1,5 +1,5 @@
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
-import { hasReachedPublicAPILimits } from "@app/lib/api/public_api_limits";
+import { hasReachedPublicAPILimits } from "@app/lib/api/programmatic_usage_tracking";
 import { Authenticator } from "@app/lib/auth";
 import { getWebhookRequestsBucket } from "@app/lib/file_storage";
 import { matchPayload, parseMatcherExpression } from "@app/lib/matcher";
@@ -18,13 +18,116 @@ import {
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
-import type { ContentFragmentInputWithFileIdType } from "@app/types";
-import { assertNever, errorToString } from "@app/types";
+import type { ContentFragmentInputWithFileIdType, Result } from "@app/types";
+import { assertNever, Err, errorToString, isString, Ok } from "@app/types";
 import type { WebhookTriggerType } from "@app/types/assistant/triggers";
 import { isWebhookTrigger } from "@app/types/assistant/triggers";
+import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
 class TriggerNonRetryableError extends Error {}
+
+async function validateEventSubscription({
+  provider,
+  subscribedEvents,
+  headers,
+  body,
+  webhookRequest,
+  workspaceId,
+  webhookRequestId,
+}: {
+  provider: WebhookProvider | null;
+  subscribedEvents: string[];
+  headers: Record<string, string>;
+  body: Record<string, unknown>;
+  webhookRequest: WebhookRequestResource;
+  workspaceId: string;
+  webhookRequestId: number;
+}): Promise<
+  Result<
+    {
+      skipReason: string | null;
+      receivedEventValue: string | null;
+    },
+    Error
+  >
+> {
+  if (!provider) {
+    return new Ok({ skipReason: null, receivedEventValue: null });
+  }
+
+  const {
+    eventCheck,
+    event_blacklist: blacklist,
+    events,
+  } = WEBHOOK_PRESETS[provider];
+
+  if (!eventCheck) {
+    return new Ok({ skipReason: null, receivedEventValue: null });
+  }
+
+  const { type, field } = eventCheck;
+
+  let receivedEventValue: string | null = null;
+  switch (type) {
+    case "headers":
+      receivedEventValue = headers[field.toLowerCase()];
+      break;
+    case "body":
+      const bodyField = body[field];
+      receivedEventValue = isString(bodyField) ? bodyField : null;
+      break;
+    default:
+      assertNever(type);
+  }
+
+  if (!receivedEventValue) {
+    const errorMessage = `Unable to determine webhook event from ${type}.`;
+    await webhookRequest.markAsFailed(errorMessage);
+    logger.error(
+      {
+        workspaceId,
+        webhookRequestId,
+      },
+      errorMessage
+    );
+    return new Err(new TriggerNonRetryableError(errorMessage));
+  }
+
+  if (blacklist && blacklist.includes(receivedEventValue)) {
+    await webhookRequest.markAsProcessed();
+    logger.info(
+      {
+        workspaceId,
+        webhookRequestId,
+        provider,
+        eventValue: receivedEventValue,
+      },
+      "Webhook event is blacklisted, ignoring."
+    );
+    return new Ok({ skipReason: "blacklisted", receivedEventValue });
+  }
+
+  if (
+    !events.map((e) => e.value).includes(receivedEventValue) ||
+    !subscribedEvents.includes(receivedEventValue)
+  ) {
+    const errorMessage =
+      "Webhook event not subscribed or not in preset. Potential cause: the events selection was manually modified on the service.";
+    await webhookRequest.markAsFailed(errorMessage);
+    logger.error(
+      {
+        workspaceId,
+        webhookRequestId,
+        eventValue: receivedEventValue,
+      },
+      errorMessage
+    );
+    return new Err(new TriggerNonRetryableError(errorMessage));
+  }
+
+  return new Ok({ skipReason: null, receivedEventValue });
+}
 
 export async function runTriggerWebhookActivity({
   workspaceId,
@@ -32,7 +135,10 @@ export async function runTriggerWebhookActivity({
 }: {
   workspaceId: string;
   webhookRequestId: number;
-}) {
+}): Promise<{
+  success: boolean;
+  message: string;
+}> {
   const auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
 
   const webhookRequest = await WebhookRequestResource.fetchByModelIdWithAuth(
@@ -68,7 +174,7 @@ export async function runTriggerWebhookActivity({
 
   // Fetch the file from GCS
   let headers: Record<string, string>;
-  let body: any;
+  let body: Record<string, unknown>;
   try {
     const bucket = getWebhookRequestsBucket();
     const file = bucket.file(
@@ -116,76 +222,35 @@ export async function runTriggerWebhookActivity({
       const { message: errorMessage } = signatureCheckResult.error;
       await webhookRequest.markAsFailed(errorMessage);
       logger.error({ workspaceId, webhookRequestId }, errorMessage);
-      throw new TriggerNonRetryableError(errorMessage);
+
+      return {
+        success: false,
+        message: errorMessage,
+      };
     }
   }
 
-  // Filter out non-subscribed events
-  let receivedEventValue: string | undefined;
-  if (provider) {
-    const {
-      eventCheck,
-      event_blacklist: blacklist,
-      events,
-    } = WEBHOOK_PRESETS[provider];
+  const eventValidationResult = await validateEventSubscription({
+    provider,
+    subscribedEvents,
+    headers,
+    body,
+    webhookRequest,
+    workspaceId,
+    webhookRequestId,
+  });
 
-    if (eventCheck) {
-      const { type, field } = eventCheck;
+  if (eventValidationResult.isErr()) {
+    throw eventValidationResult.error;
+  }
 
-      // Node http module behavior is to lowercase all headers keys
-      switch (type) {
-        case "headers":
-          receivedEventValue = headers[field.toLowerCase()];
-          break;
-        case "body":
-          receivedEventValue = body[field];
-          break;
-        default:
-          assertNever(type);
-      }
+  const { skipReason, receivedEventValue } = eventValidationResult.value;
 
-      if (!receivedEventValue) {
-        const errorMessage = `Unable to determine webhook event from ${type}.`;
-        await webhookRequest.markAsFailed(errorMessage);
-        logger.error({ workspaceId, webhookRequestId }, errorMessage);
-        throw new TriggerNonRetryableError(errorMessage);
-      }
-
-      if (blacklist && blacklist.includes(receivedEventValue)) {
-        // Silently ignore blacklisted events
-        await webhookRequest.markAsProcessed();
-        logger.info(
-          {
-            workspaceId,
-            webhookRequestId,
-            provider,
-            eventValue: receivedEventValue,
-          },
-          "Webhook event is blacklisted, ignoring."
-        );
-        return;
-      }
-
-      if (
-        // Event not in preset
-        !events.map((event) => event.value).includes(receivedEventValue) ||
-        // Event not subscribed
-        !subscribedEvents.includes(receivedEventValue)
-      ) {
-        const errorMessage =
-          "Webhook event not subscribed or not in preset. Potential cause: the events selection was manually modified on the service.";
-        await webhookRequest.markAsFailed(errorMessage);
-        logger.error(
-          {
-            workspaceId,
-            webhookRequestId,
-            eventValue: receivedEventValue,
-          },
-          errorMessage
-        );
-        throw new TriggerNonRetryableError(errorMessage);
-      }
-    }
+  if (skipReason) {
+    return {
+      success: true,
+      message: `Skipped, reason: ${skipReason}`,
+    };
   }
 
   // Fetch all triggers based on the webhook source id.
@@ -232,7 +297,7 @@ export async function runTriggerWebhookActivity({
      * - for fair use execution mode, check global rate limits
      * - for programmatic usage mode, check public API limits
      */
-    let workspaceRateLimitErrorMessage: string | undefined = undefined;
+    let workspaceRateLimitErrorMessage: string | null = null;
     if (!trigger.executionMode || trigger.executionMode === "fair_use") {
       const globalRateLimitRes = await checkWebhookRequestForRateLimit(auth);
       if (globalRateLimitRes.isErr()) {
@@ -246,7 +311,7 @@ export async function runTriggerWebhookActivity({
       }
     }
 
-    if (workspaceRateLimitErrorMessage !== undefined) {
+    if (workspaceRateLimitErrorMessage !== null) {
       await webhookRequest.markRelatedTrigger({
         trigger,
         status: "rate_limited",
@@ -262,7 +327,11 @@ export async function runTriggerWebhookActivity({
         { workspaceId, webhookRequestId },
         workspaceRateLimitErrorMessage
       );
-      throw new TriggerNonRetryableError(workspaceRateLimitErrorMessage);
+
+      return {
+        success: false,
+        message: workspaceRateLimitErrorMessage,
+      };
     }
 
     const specificRateLimiterRes = await checkTriggerForExecutionPerDayLimit(
@@ -329,7 +398,10 @@ export async function runTriggerWebhookActivity({
   // If no triggers match after filtering, return early without launching workflows.
   if (filteredTriggers.length === 0) {
     await webhookRequest.markAsProcessed();
-    return;
+    return {
+      success: true,
+      message: "No triggers matched the event.",
+    };
   }
 
   // Check if any of the triggers requires the payload.
@@ -421,6 +493,11 @@ export async function runTriggerWebhookActivity({
 
   // Finally, mark the webhook request as processed.
   await webhookRequest.markAsProcessed();
+
+  return {
+    success: true,
+    message: "Webhook request processed successfully.",
+  };
 }
 
 export async function webhookCleanupActivity() {

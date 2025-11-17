@@ -1,3 +1,4 @@
+import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types";
@@ -6,7 +7,7 @@ import { Err, getSmallWhitelistedModel, Ok } from "@app/types";
 const SET_SCHEDULE_FUNCTION_NAME = "set_schedule";
 const SET_TIMEZONE_FUNCTION_NAME = "set_tz";
 
-const specifications = [
+const specifications: AgentActionSpecification[] = [
   {
     name: SET_SCHEDULE_FUNCTION_NAME,
     description: "Setup a schedule for triggering an assistant",
@@ -63,7 +64,8 @@ export async function getCronTimezoneGeneration(
         messages: [
           {
             role: "user",
-            content: JSON.stringify(inputs),
+            content: [{ type: "text", text: JSON.stringify(inputs) }],
+            name: "",
           },
         ],
       },
@@ -74,8 +76,16 @@ export async function getCronTimezoneGeneration(
         "For the timezone generation (set_tz):\n" +
         "You must interpret the description, get the requested timezone from the user, and call set_tz with the timezone as an argument.\n" +
         "If no timezone is specified in the naturalDescription, return the defaultTimezone.\n" +
-        "ALWAYS use IANA Timezone such as Europe/Paris, or America/New_York.",
+        "ALWAYS use IANA Timezone such as Europe/Paris, or America/New_York.\n" +
+        "ALWAYS call both tools",
       specifications,
+    },
+    {
+      context: {
+        operationType: "trigger_cron_timezone_generator",
+        userId: auth.user()?.sId,
+        workspaceId: owner.sId,
+      },
     }
   );
 

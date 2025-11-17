@@ -71,7 +71,37 @@ export type UserMessageOrigin =
   | "excel"
   | "powerpoint"
   | "run_agent"
-  | "agent_handover";
+  | "agent_handover"
+  | "transcript";
+
+export const USER_MESSAGE_ORIGIN_LABELS: Record<UserMessageOrigin, string> = {
+  "github-copilot-chat": "GitHub Copilot Chat",
+  agent_handover: "Agent handover",
+  api: "API",
+  email: "Email",
+  excel: "Excel",
+  extension: "Chrome extension",
+  gsheet: "Google Sheets",
+  make: "Make",
+  n8n: "n8n",
+  powerpoint: "PowerPoint",
+  raycast: "Raycast",
+  run_agent: "Agent run",
+  slack: "Slack",
+  teams: "Teams",
+  transcript: "Transcript",
+  triggered_programmatic: "Programmatic trigger",
+  triggered: "Triggered",
+  web: "Web",
+  zapier: "Zapier",
+  zendesk: "Zendesk",
+};
+
+export function isUserMessageOrigin(
+  origin?: string | null
+): origin is UserMessageOrigin {
+  return !!origin && origin in USER_MESSAGE_ORIGIN_LABELS;
+}
 
 export type UserMessageContext = {
   username: string;

@@ -1,8 +1,10 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import { SEARCH_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
@@ -19,7 +21,15 @@ import {
   getCoreSearchArgs,
   makeCoreSearchNodesFilters,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
-import type { SearchWithNodesInputType } from "@app/lib/actions/mcp_internal_actions/types";
+import type {
+  SearchWithNodesInputType,
+  TagsInputType,
+} from "@app/lib/actions/mcp_internal_actions/types";
+import {
+  SearchWithNodesInputSchema,
+  TagsInputSchema,
+} from "@app/lib/actions/mcp_internal_actions/types";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
@@ -39,11 +49,70 @@ import {
   timeFrameFromNow,
 } from "@app/types";
 
-export async function searchCallback(
+export function registerSearchTool(
+  auth: Authenticator,
+  server: McpServer,
+  agentLoopContext: AgentLoopContextType | undefined,
+  {
+    name,
+    extraDescription,
+    areTagsDynamic,
+  }: { name: string; extraDescription?: string; areTagsDynamic?: boolean }
+) {
+  const baseDescription =
+    "Perform a semantic search within the folders and files designated by `nodeIds`. All " +
+    "children of the designated nodes will be searched.";
+  const toolDescription = extraDescription
+    ? baseDescription + "\n" + extraDescription
+    : baseDescription;
+
+  if (areTagsDynamic) {
+    server.tool(
+      name,
+      toolDescription,
+      {
+        ...SearchWithNodesInputSchema.shape,
+        ...TagsInputSchema.shape,
+      },
+      withToolLogging(
+        auth,
+        {
+          toolNameForMonitoring: SEARCH_TOOL_NAME,
+          agentLoopContext,
+          enableAlerting: true,
+        },
+        async (params) => searchCallback(auth, agentLoopContext, params)
+      )
+    );
+  } else {
+    server.tool(
+      name,
+      toolDescription,
+      SearchWithNodesInputSchema.shape,
+      withToolLogging(
+        auth,
+        {
+          toolNameForMonitoring: SEARCH_TOOL_NAME,
+          agentLoopContext,
+          enableAlerting: true,
+        },
+        async (params) => searchCallback(auth, agentLoopContext, params)
+      )
+    );
+  }
+}
+
+async function searchCallback(
   auth: Authenticator,
   agentLoopContext: AgentLoopContextType | undefined,
-  { nodeIds, dataSources, query, relativeTimeFrame }: SearchWithNodesInputType,
-  { tagsIn, tagsNot }: { tagsIn?: string[]; tagsNot?: string[] } = {}
+  {
+    nodeIds,
+    dataSources,
+    query,
+    relativeTimeFrame,
+    tagsIn,
+    tagsNot,
+  }: SearchWithNodesInputType & TagsInputType
 ): Promise<Result<CallToolResult["content"], MCPError>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const credentials = dustManagedCredentials();
@@ -235,10 +304,10 @@ export async function searchCallback(
     const searchResult = await coreAPI.searchNodes({
       filter: {
         node_ids: searchNodeIds,
-        data_source_views: makeCoreSearchNodesFilters(
+        data_source_views: makeCoreSearchNodesFilters({
           agentDataSourceConfigurations,
-          { tagsIn, tagsNot }
-        ),
+          additionalDynamicTags: { tagsIn, tagsNot },
+        }),
       },
       options: {
         limit: searchNodeIds.length,

@@ -5,12 +5,13 @@ import type {
   Result,
   UserMessageType,
 } from "@dust-tt/client";
-import { DustAPI, removeNulls } from "@dust-tt/client";
 import {
   assertNever,
+  DustAPI,
   Err,
   isMCPServerPersonalAuthRequiredError,
   Ok,
+  removeNulls,
   TOOL_RUNNING_LABEL,
 } from "@dust-tt/client";
 import type { ChatPostMessageResponse, WebClient } from "@slack/web-api";
@@ -36,6 +37,19 @@ import type { SlackChatBotMessage } from "@connectors/lib/models/slack";
 import { throttleWithRedis } from "@connectors/lib/throttle";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+
+const SLACK_MESSAGE_UPDATE_THROTTLE_MS = 1_000;
+const SLACK_MESSAGE_UPDATE_SLOW_THROTTLE_MS = 5_000;
+const SLACK_MESSAGE_LONG_THRESHOLD_CHARS = 400;
+
+// Dynamic throttling: longer messages get less frequent updates to reduce UX disruption when the content is expanded.
+// Posting an update on an expanded message will collapse it, frequent updates prevent users from reading the content.
+const getThrottleDelay = (textLength: number): number => {
+  if (textLength >= SLACK_MESSAGE_LONG_THRESHOLD_CHARS) {
+    return SLACK_MESSAGE_UPDATE_SLOW_THROTTLE_MS;
+  }
+  return SLACK_MESSAGE_UPDATE_THROTTLE_MS;
+};
 
 export const SlackBlockIdStaticAgentConfigSchema = t.type({
   slackChatBotMessageId: t.number,
@@ -69,6 +83,7 @@ interface StreamConversationToSlackParams {
   userMessage: UserMessageType;
   slackChatBotMessage: SlackChatBotMessage;
   agentConfigurations: LightAgentConfigurationType[];
+  feedbackVisibleToAuthorOnly: boolean;
 }
 
 export async function streamConversationToSlack(
@@ -111,6 +126,7 @@ async function streamAgentAnswerToSlack(
     agentConfigurations,
     slack,
     connector,
+    feedbackVisibleToAuthorOnly,
   } = conversationData;
 
   const {
@@ -132,10 +148,13 @@ async function streamAgentAnswerToSlack(
 
   let answer = "";
   const actions: AgentActionPublicType[] = [];
-  const throttledPostSlackMessageUpdate = throttle(
+
+  let currentThrottleDelay = SLACK_MESSAGE_UPDATE_THROTTLE_MS;
+  let throttledPostSlackMessageUpdate = throttle(
     postSlackMessageUpdate,
-    1_000
+    currentThrottleDelay
   );
+
   for await (const event of streamRes.value.eventStream) {
     switch (event.type) {
       case "tool_params":
@@ -272,6 +291,17 @@ async function streamAgentAnswerToSlack(
         if (slackContent.length > MAX_SLACK_MESSAGE_LENGTH) {
           break;
         }
+
+        const newThrottleDelay = getThrottleDelay(slackContent.length);
+        if (newThrottleDelay !== currentThrottleDelay) {
+          currentThrottleDelay = newThrottleDelay;
+          throttledPostSlackMessageUpdate.cancel();
+          throttledPostSlackMessageUpdate = throttle(
+            postSlackMessageUpdate,
+            currentThrottleDelay
+          );
+        }
+
         await throttledPostSlackMessageUpdate({
           messageUpdate: {
             text: slackContent,
@@ -401,7 +431,7 @@ async function streamAgentAnswerToSlack(
             });
           }
         }
-        // Post ephemeral message with feedback buttons and agent selection
+        // Post feedback buttons and agent selection (ephemeral or regular message based on setting)
         if (
           slackUserId &&
           !slackUserInfo.is_bot &&
@@ -423,19 +453,28 @@ async function streamAgentAnswerToSlack(
                 }
               : undefined;
 
-          const ephemeralBlocks = makeAssistantSelectionBlock(
+          const selectionBlocks = makeAssistantSelectionBlock(
             agentConfigurations,
             JSON.stringify(blockId),
             feedbackParams
           );
 
-          await slackClient.chat.postEphemeral({
-            channel: slackChannelId,
-            user: slackUserId,
-            text: "Feedback and agent selection",
-            blocks: ephemeralBlocks,
-            thread_ts: slackMessageTs,
-          });
+          if (feedbackVisibleToAuthorOnly) {
+            await slackClient.chat.postEphemeral({
+              channel: slackChannelId,
+              user: slackUserId,
+              text: "Feedback and agent selection",
+              blocks: selectionBlocks,
+              thread_ts: slackMessageTs,
+            });
+          } else {
+            await slackClient.chat.postMessage({
+              channel: slackChannelId,
+              text: "Feedback and agent selection",
+              blocks: selectionBlocks,
+              thread_ts: slackMessageTs,
+            });
+          }
         }
 
         return new Ok(undefined);

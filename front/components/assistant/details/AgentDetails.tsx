@@ -86,7 +86,7 @@ export function AgentDetails({
   owner,
   user,
 }: AgentDetailsProps) {
-  const { featureFlags, hasFeature } = useFeatureFlags({
+  const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
   });
 
@@ -137,8 +137,7 @@ export function AgentDetails({
     agentId != null &&
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     (agentConfiguration?.canEdit || isAdmin(owner)) &&
-    !isGlobalAgent &&
-    hasFeature("agent_builder_observability");
+    !isGlobalAgent;
 
   const DescriptionSection = () => (
     <div className="flex flex-col gap-5">
@@ -154,8 +153,7 @@ export function AgentDetails({
             <div>
               <Chip
                 color={SCOPE_INFO[agentConfiguration.scope].color}
-                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                icon={SCOPE_INFO[agentConfiguration.scope].icon || undefined}
+                icon={SCOPE_INFO[agentConfiguration.scope].icon ?? undefined}
               >
                 {SCOPE_INFO[agentConfiguration.scope].label}
               </Chip>

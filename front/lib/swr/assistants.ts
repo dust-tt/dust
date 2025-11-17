@@ -22,12 +22,14 @@ import type { GetErrorRateResponse } from "@app/pages/api/w/[wId]/assistant/agen
 import type { GetFeedbackDistributionResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/feedback-distribution";
 import type { GetLatencyResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/latency";
 import type { GetAgentOverviewResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/overview";
+import type { GetContextOriginResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/source";
 import type { GetToolExecutionResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/tool-execution";
 import type { GetToolStepIndexResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/tool-step-index";
 import type { GetUsageMetricsResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/usage-metrics";
 import type { GetVersionMarkersResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/version-markers";
 import type { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/usage";
 import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api/w/[wId]/assistant/builder/slack/channels_linked_with_agent";
+import type { GetMemberResponseBody } from "@app/pages/api/w/[wId]/members/[uId]";
 import type { PostAgentUserFavoriteRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_favorite";
 import type {
   AgentConfigurationType,
@@ -813,6 +815,37 @@ export function useAgentUsageMetrics({
   };
 }
 
+export function useAgentContextOrigin(params: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  days?: number;
+  version?: string;
+  disabled?: boolean;
+}) {
+  const {
+    workspaceId,
+    agentConfigurationId,
+    days = DEFAULT_PERIOD_DAYS,
+    version,
+    disabled,
+  } = params;
+  const fetcherFn: Fetcher<GetContextOriginResponse> = fetcher;
+  const versionParam = version ? `&version=${encodeURIComponent(version)}` : "";
+  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/source?days=${days}${versionParam}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    contextOrigin: data ?? { total: 0, buckets: emptyArray() },
+    isContextOriginLoading: !error && !data && !disabled,
+    isContextOriginError: error,
+    isContextOriginValidating: isValidating,
+  };
+}
+
 export function useAgentLatency({
   workspaceId,
   agentConfigurationId,
@@ -931,15 +964,18 @@ export function useAgentToolExecution({
   workspaceId,
   agentConfigurationId,
   days = DEFAULT_PERIOD_DAYS,
+  version,
   disabled,
 }: {
   workspaceId: string;
   agentConfigurationId: string;
   days?: number;
+  version?: string;
   disabled?: boolean;
 }) {
   const fetcherFn: Fetcher<GetToolExecutionResponse> = fetcher;
-  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/tool-execution?days=${days}`;
+  const versionParam = version ? `&version=${encodeURIComponent(version)}` : "";
+  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/tool-execution?days=${days}${versionParam}`;
 
   const { data, error, isValidating } = useSWRWithDefaults(
     disabled ? null : key,
@@ -958,15 +994,18 @@ export function useAgentToolStepIndex({
   workspaceId,
   agentConfigurationId,
   days = DEFAULT_PERIOD_DAYS,
+  version,
   disabled,
 }: {
   workspaceId: string;
   agentConfigurationId: string;
   days?: number;
+  version?: string;
   disabled?: boolean;
 }) {
   const fetcherFn: Fetcher<GetToolStepIndexResponse> = fetcher;
-  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/tool-step-index?days=${days}`;
+  const versionParam = version ? `&version=${encodeURIComponent(version)}` : "";
+  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/tool-step-index?days=${days}${versionParam}`;
 
   const { data, error, isValidating } = useSWRWithDefaults(
     disabled ? null : key,
@@ -978,5 +1017,28 @@ export function useAgentToolStepIndex({
     isToolStepIndexLoading: !error && !data && !disabled,
     isToolStepIndexError: error,
     isToolStepIndexValidating: isValidating,
+  };
+}
+
+export function useMemberDetails({
+  workspaceId,
+  userId,
+}: {
+  workspaceId: string;
+  userId: string | null;
+}) {
+  const userConfigurationFetcher: Fetcher<GetMemberResponseBody> = fetcher;
+
+  const { data, error, mutate, isValidating } = useSWRWithDefaults(
+    userId ? `/api/w/${workspaceId}/members/${userId}` : null,
+    userConfigurationFetcher
+  );
+
+  return {
+    userDetails: data?.member,
+    isUserDetailsLoading: !error && !data && !!userId,
+    isUserDetailsError: error,
+    isUserConfigurationValidating: isValidating,
+    mutateUserConfiguration: mutate,
   };
 }

@@ -21,10 +21,10 @@ import {
   legendFromConstant,
 } from "@app/components/agent_builder/observability/shared/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
+import { formatTimeSeriesTitle } from "@app/components/agent_builder/observability/shared/tooltipHelpers";
 import { VersionMarkersDots } from "@app/components/agent_builder/observability/shared/VersionMarkers";
 import {
   filterTimeSeriesByVersionWindow,
-  findVersionMarkerForDate,
   padSeriesToTimeRange,
 } from "@app/components/agent_builder/observability/utils";
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
@@ -76,12 +76,9 @@ function UsageMetricsTooltip(
 
   const row = first.payload;
 
-  const versionMarker = findVersionMarkerForDate(row.timestamp, versionMarkers);
-  const version = versionMarker ? ` - v${versionMarker.version}` : "";
-
   return (
     <ChartTooltipCard
-      title={`${row.date}${version}`}
+      title={formatTimeSeriesTitle(row.date, row.timestamp, versionMarkers)}
       rows={[
         {
           label: "Messages",
@@ -150,8 +147,8 @@ export function UsageMetricsChart({
 
   return (
     <ChartContainer
-      title="Usage Metrics"
-      description="Daily totals of messages, conversations, and active users."
+      title="Activity"
+      description="Messages, conversations, and active users."
       isLoading={isUsageMetricsLoading}
       errorMessage={
         isUsageMetricsError ? "Failed to load observability data." : undefined
@@ -237,7 +234,11 @@ export function UsageMetricsChart({
           />
           {/* Areas for each usage metric */}
           <Line
-            type="monotone"
+            type={
+              mode === "version" || period === 7 || period === 14
+                ? "linear"
+                : "monotone"
+            }
             dataKey="messages"
             name="Messages"
             className={USAGE_METRICS_PALETTE.messages}
@@ -245,7 +246,11 @@ export function UsageMetricsChart({
             dot={false}
           />
           <Line
-            type="monotone"
+            type={
+              mode === "version" || period === 7 || period === 14
+                ? "linear"
+                : "monotone"
+            }
             dataKey="conversations"
             name="Conversations"
             className={USAGE_METRICS_PALETTE.conversations}
@@ -253,7 +258,11 @@ export function UsageMetricsChart({
             dot={false}
           />
           <Line
-            type="monotone"
+            type={
+              mode === "version" || period === 7 || period === 14
+                ? "linear"
+                : "monotone"
+            }
             dataKey="activeUsers"
             name="Active users"
             className={USAGE_METRICS_PALETTE.activeUsers}

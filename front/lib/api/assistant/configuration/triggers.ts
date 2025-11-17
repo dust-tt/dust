@@ -1,10 +1,7 @@
-import { runActionStreamed } from "@app/lib/actions/server";
 import { getCronTimezoneGeneration } from "@app/lib/api/assistant/configuration/triggers/cron_timezone";
 import type { Authenticator } from "@app/lib/auth";
-import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import type { Result } from "@app/types";
-import { Err, getLargeWhitelistedModel, Ok } from "@app/types";
-import type { WebhookEvent } from "@app/types/triggers/webhooks_source_preset";
+import { Err, Ok } from "@app/types";
 
 function isValidIANATimezone(timezone: string): boolean {
   // Get the list of all supported IANA timezones
@@ -22,9 +19,6 @@ export const INVALID_TIMEZONE_MESSAGE =
   'Unable to generate the schedule, timezone returned by the model don\'t follow the IANA standard (i.e "Europe/Paris"). Please try rephrasing.';
 export const TOO_FREQUENT_MESSAGE =
   "Unable to generate a schedule: it can't be more frequent than hourly. Please try rephrasing.";
-
-export const WEBHOOK_FILTER_GENERIC_ERROR_MESSAGE =
-  "Unable to generate a filter. Please try rephrasing.";
 
 const CRON_REGEXP =
   /^((((\d+,)+\d+|(\d+(\/|-|#)\d+)|\d+L?|\*(\/\d+)?|L(-\d+)?|\?|[A-Z]{3}(-[A-Z]{3})?) ?){5,7})|(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|(@every (\d+(ns|us|µs|ms|s|m|h))+)$/;
@@ -58,82 +52,4 @@ export async function generateCronRule(
   }
 
   return new Ok({ cron: cronRule, timezone });
-}
-
-export async function generateWebhookFilter(
-  auth: Authenticator,
-  {
-    naturalDescription,
-    event,
-  }: {
-    naturalDescription: string;
-    event: WebhookEvent;
-  }
-): Promise<Result<{ filter: string }, Error>> {
-  const owner = auth.getNonNullableWorkspace();
-
-  const model = getLargeWhitelistedModel(owner);
-  if (!model) {
-    return new Err(
-      new Error("Failed to find a whitelisted model to generate filter")
-    );
-  }
-
-  const config = cloneBaseConfig(
-    getDustProdAction("assistant-builder-webhook-filter-generator").config
-  );
-
-  config.CREATE_FILTER.provider_id = model.providerId;
-  config.CREATE_FILTER.model_id = model.modelId;
-
-  const res = await runActionStreamed(
-    auth,
-    "assistant-builder-webhook-filter-generator",
-    config,
-    [
-      {
-        naturalDescription,
-        expectedPayloadDescription: event.schema,
-        eventSample: event.sample,
-      },
-    ],
-    {
-      workspaceId: auth.getNonNullableWorkspace().sId,
-    }
-  );
-
-  if (res.isErr()) {
-    return new Err(new Error(`Error generating filter: ${res.error}`));
-  }
-
-  const { eventStream } = res.value;
-  let filter: string | null = null;
-
-  for await (const event of eventStream) {
-    if (event.type === "error") {
-      return new Err(
-        new Error(`Error generating filter: ${event.content.message}`)
-      );
-    }
-
-    if (event.type === "block_execution") {
-      const e = event.content.execution[0][0];
-      if (e.error) {
-        return new Err(new Error(`Error generating filter: ${e.error}`));
-      }
-
-      if (event.content.block_name === "OUTPUT" && e.value) {
-        const v = e.value as any;
-        if (v.filter) {
-          filter = v.filter;
-        }
-      }
-    }
-  }
-
-  if (!filter) {
-    return new Err(new Error(WEBHOOK_FILTER_GENERIC_ERROR_MESSAGE));
-  }
-
-  return new Ok({ filter });
 }

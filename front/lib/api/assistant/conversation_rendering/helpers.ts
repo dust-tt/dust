@@ -7,7 +7,7 @@ import { isTextContent } from "@app/lib/actions/mcp_internal_actions/output_sche
 import { rewriteContentForModel } from "@app/lib/actions/mcp_utils";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import { replaceMentionsByAt } from "@app/lib/mentions";
+import { replaceMentionsWithAt } from "@app/lib/mentions/format";
 import { renderLightContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
 import logger from "@app/logger/logger";
 import type {
@@ -215,7 +215,7 @@ export async function getSteps(
  * Renders a user message with metadata
  */
 export function renderUserMessage(m: UserMessageType): UserMessageTypeModel {
-  const content = replaceMentionsByAt(m.content);
+  const content = replaceMentionsWithAt(m.content);
 
   const metadataItems: string[] = [];
 

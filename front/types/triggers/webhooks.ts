@@ -4,12 +4,12 @@ import type {
   CustomResourceIconType,
   InternalAllowedIconType,
 } from "@app/components/resources/resources_icons";
-import { FATHOM_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/fathom/fathom_webhook_source_presets";
-import type { GithubAdditionalData } from "@app/lib/triggers/built-in-webhooks/github/github_service_types";
-import { GITHUB_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/github/github_webhook_source_presets";
-import type { JiraAdditionalData } from "@app/lib/triggers/built-in-webhooks/jira/jira_api_types";
-import { JIRA_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/jira/jira_webhook_source_presets";
-import { ZENDESK_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/zendesk/zendesk_webhook_source_presets";
+import { FATHOM_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/fathom/preset";
+import { GITHUB_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/github/preset";
+import type { GithubAdditionalData } from "@app/lib/triggers/built-in-webhooks/github/types";
+import { JIRA_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/jira/preset";
+import type { JiraAdditionalData } from "@app/lib/triggers/built-in-webhooks/jira/types";
+import { ZENDESK_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/zendesk/preset";
 import type { AgentsUsageType } from "@app/types/data_source";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { PresetWebhook } from "@app/types/triggers/webhooks_source_preset";

@@ -7,7 +7,7 @@ import { handleGenericError } from "@app/lib/api/llm/types/errors";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
   LLMParameters,
-  StreamParameters,
+  LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
 import {
   toMessages,
@@ -44,7 +44,7 @@ export class FireworksLLM extends LLM {
     conversation,
     prompt,
     specifications,
-  }: StreamParameters): AsyncGenerator<LLMEvent> {
+  }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
     try {
       const tools =
         specifications.length > 0 ? toTools(specifications) : undefined;
@@ -54,7 +54,10 @@ export class FireworksLLM extends LLM {
         messages: toMessages(prompt, conversation),
         stream: true,
         temperature: this.temperature ?? undefined,
-        reasoning_effort: toReasoningParam(this.reasoningEffort),
+        reasoning_effort: toReasoningParam(
+          this.reasoningEffort,
+          this.modelConfig.useNativeLightReasoning
+        ),
         ...(tools ? { tools } : {}),
       });
 
