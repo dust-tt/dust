@@ -1015,6 +1015,125 @@ export async function completeGarbageCollectionRun(
   });
 }
 
+export async function deletionCrawlAddSignalsToRedis({
+  connectorId,
+  workflowId,
+  signals,
+}: {
+  connectorId: ModelId;
+  workflowId: string;
+  signals: NotionDeletionCrawlSignal[];
+}) {
+  if (signals.length === 0) {
+    return;
+  }
+
+  const redisKey = redisDeletionCrawlKey(connectorId, workflowId);
+  const redisCli = await redisClient({ origin: "notion_gc" });
+
+  // Filter out signals that are already in the seen set
+  const signalsToAdd: NotionDeletionCrawlSignal[] = [];
+  const idsToAddToSeen: string[] = [];
+
+  for (const signal of signals) {
+    const isSeen = await redisCli.sIsMember(
+      `${redisKey}-seen`,
+      signal.resourceId
+    );
+    if (!isSeen) {
+      signalsToAdd.push(signal);
+      idsToAddToSeen.push(signal.resourceId);
+    }
+  }
+
+  if (signalsToAdd.length === 0) {
+    return;
+  }
+
+  // Add to seen set
+  await redisCli.sAdd(`${redisKey}-seen`, idsToAddToSeen);
+
+  // Add to queue (push to left, pop from right for FIFO)
+  await redisCli.lPush(
+    `${redisKey}-queue`,
+    signalsToAdd.map((item) => JSON.stringify(item))
+  );
+}
+
+export async function batchDiscoverDeletions({
+  connectorId,
+  workflowId,
+  batchSize,
+}: {
+  connectorId: ModelId;
+  workflowId: string;
+  batchSize: number;
+}): Promise<{
+  hasMore: boolean;
+}> {
+  const redisKey = redisDeletionCrawlKey(connectorId, workflowId);
+  const redisCli = await redisClient({ origin: "notion_gc" });
+
+  for (let i = 0; i < batchSize; i++) {
+    const item = await redisCli.rPop(`${redisKey}-queue`);
+    if (!item) {
+      break;
+    }
+    const { resourceId, resourceType } = JSON.parse(item);
+    const discovered = await checkResourceAndDiscoverRelated({
+      connectorId,
+      resourceId,
+      resourceType,
+      workflowId,
+    });
+
+    const newSignals: NotionDeletionCrawlSignal[] = [];
+
+    for (const pageId of discovered.pageIds) {
+      const isSeen = await redisCli.sIsMember(`${redisKey}-seen`, pageId);
+      if (!isSeen) {
+        newSignals.push({ resourceId: pageId, resourceType: "page" });
+      }
+    }
+
+    for (const databaseId of discovered.databaseIds) {
+      const isSeen = await redisCli.sIsMember(`${redisKey}-seen`, databaseId);
+      if (!isSeen) {
+        newSignals.push({ resourceId: databaseId, resourceType: "database" });
+      }
+    }
+
+    if (newSignals.length > 0) {
+      await redisCli.sAdd(
+        `${redisKey}-seen`,
+        newSignals.map((s) => s.resourceId)
+      );
+      await redisCli.lPush(
+        `${redisKey}-queue`,
+        newSignals.map((item) => JSON.stringify(item))
+      );
+    }
+  }
+
+  const queueLength = await redisCli.lLen(`${redisKey}-queue`);
+  const hasMore = queueLength > 0;
+  return { hasMore };
+}
+
+export async function completeDeletionCrawlRun({
+  connectorId,
+  workflowId,
+}: {
+  connectorId: ModelId;
+  workflowId: string;
+}) {
+  const redisKey = redisDeletionCrawlKey(connectorId, workflowId);
+  const redisCli = await redisClient({ origin: "notion_gc" });
+
+  // Delete both Redis keys (seen Set and queue List)
+  await redisCli.del([`${redisKey}-seen`, `${redisKey}-queue`]);
+}
+
 export async function deletePageOrDatabaseIfArchived({
   connectorId,
   objectId,
@@ -2753,6 +2872,13 @@ function redisGarbageCollectorKey(connectorId: ModelId): string {
   return `notion-garbage-collector-${connectorId}`;
 }
 
+function redisDeletionCrawlKey(
+  connectorId: ModelId,
+  workflowId: string
+): string {
+  return `notion-deletion-crawl-${connectorId}-${workflowId}`;
+}
+
 export async function upsertDatabaseStructuredDataFromCache({
   databaseId,
   connectorId,
@@ -3530,13 +3656,15 @@ export async function checkResourceAccessibility({
  *
  * Returns newly discovered resources (parent + children) that should be checked.
  */
-export async function checkResourceAndQueueRelated({
+export async function checkResourceAndDiscoverRelated({
   connectorId,
-  resources,
+  resourceId,
+  resourceType,
   workflowId,
 }: {
   connectorId: ModelId;
-  resources: NotionDeletionCrawlSignal[];
+  resourceId: string;
+  resourceType: "page" | "database";
   workflowId: string;
 }): Promise<{
   pageIds: string[];
@@ -3550,99 +3678,93 @@ export async function checkResourceAndQueueRelated({
   const discoveredPages: string[] = [];
   const discoveredDatabases: string[] = [];
   const notionAccessToken = await getNotionAccessToken(connector.id);
-  for (const resource of resources) {
-    const { resourceId, resourceType } = resource;
-    const localLogger = logger.child({
-      connectorId: connector.id,
-      dataSourceId: connector.dataSourceId,
-      workspaceId: connector.workspaceId,
+  const localLogger = logger.child({
+    connectorId: connector.id,
+    dataSourceId: connector.dataSourceId,
+    workspaceId: connector.workspaceId,
+    resourceId,
+    resourceType,
+    workflowId,
+  });
+
+  // Check if resource still exists in Notion
+  let isAccessible = false;
+  try {
+    isAccessible = await isAccessibleAndUnarchived(
+      notionAccessToken,
       resourceId,
       resourceType,
+      localLogger
+    );
+  } catch (e) {
+    // If we get an error (e.g., rate limit, server error), rethrow to retry
+    localLogger.error({ error: e }, "Error checking resource accessibility");
+    throw e;
+  }
+
+  if (!isAccessible) {
+    // Resource is deleted/archived - add to workflow cache
+    localLogger.info(
+      "Resource not accessible, adding to deletion cache and checking parent/children"
+    );
+
+    // Add to cache (will be batch deleted later)
+    await NotionConnectorResourcesToCheckCacheEntry.upsert({
+      notionId: resourceId,
+      resourceType,
+      connectorId,
       workflowId,
     });
 
-    // Check if resource still exists in Notion
-    let isAccessible = false;
-    try {
-      isAccessible = await isAccessibleAndUnarchived(
-        notionAccessToken,
-        resourceId,
-        resourceType,
-        localLogger
-      );
-    } catch (e) {
-      // If we get an error (e.g., rate limit, server error), rethrow to retry
-      localLogger.error({ error: e }, "Error checking resource accessibility");
-      throw e;
-    }
+    // Get the resource from DB to find parent and children
+    let parentId: string | undefined;
+    let parentType: string | undefined;
 
-    if (!isAccessible) {
-      // Resource is deleted/archived - add to workflow cache
-      localLogger.info(
-        "Resource not accessible, adding to deletion cache and checking parent/children"
-      );
-
-      // Add to cache (will be batch deleted later)
-      await NotionConnectorResourcesToCheckCacheEntry.upsert({
-        notionId: resourceId,
-        resourceType,
-        connectorId,
-        workflowId,
-      });
-
-      // Get the resource from DB to find parent and children
-      let parentId: string | undefined;
-      let parentType: string | undefined;
-
-      if (resourceType === "page") {
-        const page = await getNotionPageFromConnectorsDb(
-          connectorId,
-          resourceId
-        );
-        if (page) {
-          parentId = page.parentId || undefined;
-          parentType = page.parentType || undefined;
-        }
-      } else {
-        const database = await getNotionDatabaseFromConnectorsDb(
-          connectorId,
-          resourceId
-        );
-        if (database) {
-          parentId = database.parentId || undefined;
-          parentType = database.parentType || undefined;
-        }
+    if (resourceType === "page") {
+      const page = await getNotionPageFromConnectorsDb(connectorId, resourceId);
+      if (page) {
+        parentId = page.parentId || undefined;
+        parentType = page.parentType || undefined;
       }
-
-      // Collect parent (if not workspace)
-      if (parentId && parentType && parentType !== "workspace") {
-        const parentResourceType: "page" | "database" =
-          parentType === "database" ? "database" : "page";
-
-        if (parentResourceType === "page") {
-          discoveredPages.push(parentId);
-        } else {
-          discoveredDatabases.push(parentId);
-        }
-      }
-
-      // Get and collect children
-      const pageChildren = await getPageChildrenOf(connectorId, resourceId);
-      const databaseChildren = await getDatabaseChildrenOf(
+    } else {
+      const database = await getNotionDatabaseFromConnectorsDb(
         connectorId,
         resourceId
       );
-
-      for (const child of pageChildren) {
-        discoveredPages.push(child.notionPageId);
+      if (database) {
+        parentId = database.parentId || undefined;
+        parentType = database.parentType || undefined;
       }
-
-      for (const child of databaseChildren) {
-        discoveredDatabases.push(child.notionDatabaseId);
-      }
-    } else {
-      localLogger.info("Resource still accessible, skipping");
     }
+
+    // Collect parent (if not workspace)
+    if (parentId && parentType && parentType !== "workspace") {
+      const parentResourceType: "page" | "database" =
+        parentType === "database" ? "database" : "page";
+
+      if (parentResourceType === "page") {
+        discoveredPages.push(parentId);
+      } else {
+        discoveredDatabases.push(parentId);
+      }
+    }
+
+    // Get and collect children
+    const pageChildren = await getPageChildrenOf(connectorId, resourceId);
+    const databaseChildren = await getDatabaseChildrenOf(
+      connectorId,
+      resourceId
+    );
+
+    for (const child of pageChildren) {
+      discoveredPages.push(child.notionPageId);
+    }
+
+    for (const child of databaseChildren) {
+      discoveredDatabases.push(child.notionDatabaseId);
+    }
+  } else {
+    localLogger.info("Resource still accessible, skipping");
   }
 
   return { pageIds: discoveredPages, databaseIds: discoveredDatabases };
