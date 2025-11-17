@@ -229,15 +229,15 @@ export const slack = async ({
         }
       }
 
-      const connector = await ConnectorModel.findOne({
-        where: {
-          workspaceId: `${args.wId}`,
-          type: "slack",
-        },
-      });
+      const connector = await ConnectorResource.findByWorkspaceIdAndType(
+        `${args.wId}`,
+        "slack_bot"
+      );
 
       if (!connector) {
-        throw new Error(`Could not find connector for workspace ${args.wId}`);
+        throw new Error(
+          `Could not find Slack bot connector for workspace ${args.wId}`
+        );
       }
 
       const whitelistedDomainsArray = whitelistedDomains.split(",");
