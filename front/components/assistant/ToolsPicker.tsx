@@ -265,41 +265,45 @@ export function ToolsPicker({
             </div>
           )}
 
-          {isAdmin && uninstalledServers.length > 0 && (
+          {isAdmin && !isServerViewsLoading && (
             <>
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel label="Available to install" />
-              {uninstalledServers.map((server) => (
-                <DropdownMenuItem
-                  key={`tools-to-install-${server.sId}`}
-                  icon={() => getAvatar(server)}
-                  label={asDisplayName(server.name)}
-                  description={server.description}
-                  truncateText
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    setSetupSheetServer(server);
-                    setIsOpen(false);
-                  }}
-                />
-              ))}
-            </>
-          )}
-          {isAdmin && systemSpace && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                icon={() => <Icon visual={ToolsIcon} size="xs" />}
-                label="Manage Tools"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  void router.push(
-                    `/w/${owner.sId}/spaces/${systemSpace.sId}/categories/actions`
-                  );
-                }}
-              />
+              {uninstalledServers.length > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel label="Available to install" />
+                  {uninstalledServers.map((server) => (
+                    <DropdownMenuItem
+                      key={`tools-to-install-${server.sId}`}
+                      icon={() => getAvatar(server)}
+                      label={asDisplayName(server.name)}
+                      description={server.description}
+                      truncateText
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        setSetupSheetServer(server);
+                        setIsOpen(false);
+                      }}
+                    />
+                  ))}
+                </>
+              )}
+              {systemSpace && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    icon={() => <Icon visual={ToolsIcon} size="xs" />}
+                    label="Manage Tools"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      void router.push(
+                        `/w/${owner.sId}/spaces/${systemSpace.sId}/categories/actions`
+                      );
+                    }}
+                  />
+                </>
+              )}
             </>
           )}
         </DropdownMenuContent>
