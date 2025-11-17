@@ -18,16 +18,23 @@ export function getGroupConversationsByUnreadAndActionRequired(
 ) {
   return conversations.reduce(
     (acc, conversation) => {
-      if (conversation.unread || conversation.actionRequired) {
+      if (conversation.unread) {
         acc.unreadConversations.push(conversation);
+      } else if (conversation.actionRequired) {
+        acc.actionRequiredConversations.push(conversation);
       } else {
         acc.readConversations.push(conversation);
       }
       return acc;
     },
-    { readConversations: [], unreadConversations: [] } as {
+    {
+      readConversations: [],
+      unreadConversations: [],
+      actionRequiredConversations: [],
+    } as {
       readConversations: ConversationWithoutContentType[];
       unreadConversations: ConversationWithoutContentType[];
+      actionRequiredConversations: ConversationWithoutContentType[];
     }
   );
 }

@@ -57,6 +57,7 @@ import {
   getGroupConversationsByUnreadAndActionRequired,
 } from "@app/components/assistant/conversation/utils";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
+import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
@@ -120,7 +121,11 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     workspaceId: owner.sId,
   });
 
-  const { readConversations, unreadConversations } = useMemo(() => {
+  const {
+    readConversations,
+    unreadConversations,
+    actionRequiredConversations,
+  } = useMemo(() => {
     return getGroupConversationsByUnreadAndActionRequired(conversations);
   }, [conversations]);
 
@@ -252,6 +257,10 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   const { ref, inView, entry } = useInView({
     root: conversationsNavigationRef.current,
     threshold: 0,
+  });
+
+  const { markAllAsRead, isMarkingAllAsRead } = useMarkAllConversationsAsRead({
+    owner,
   });
 
   useEffect(() => {
@@ -475,12 +484,16 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
               className="dd-privacy-mask h-full w-full"
               viewportRef={conversationsNavigationRef}
             >
-              {unreadConversations.length > 0 && (
+              {(unreadConversations.length > 0 ||
+                actionRequiredConversations.length > 0) && (
                 <div className="bg-background pb-3 dark:bg-background-night">
-                  <UnreadConversationList
-                    conversations={unreadConversations}
-                    dateLabel={`Unread (${unreadConversations.length})`}
+                  <InboxConversationList
+                    unreadConversations={unreadConversations}
+                    actionRequiredConversations={actionRequiredConversations}
+                    dateLabel={`Inbox (${unreadConversations.length + actionRequiredConversations.length})`}
                     isMultiSelect={isMultiSelect}
+                    isMarkingAllAsRead={isMarkingAllAsRead}
+                    onMarkAllAsRead={markAllAsRead}
                     selectedConversations={selectedConversations}
                     toggleConversationSelection={toggleConversationSelection}
                     router={router}
@@ -491,7 +504,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
               {readConversations.length > 0 && (
                 <>
                   {Object.keys(conversationsByDate).map((dateLabel) => (
-                    <ReadConversationList
+                    <ConversationList
                       key={dateLabel}
                       conversations={
                         conversationsByDate[dateLabel as GroupLabel]
@@ -524,22 +537,29 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   );
 }
 
-// TODO (yuka: 14/11/2025): Add action buttons to mark all as read and dismiss
-const UnreadConversationList = ({
-  conversations,
-  dateLabel,
-  isMultiSelect,
-  ...props
-}: {
-  conversations: ConversationWithoutContentType[];
+interface InboxConversationListProps {
+  unreadConversations: ConversationWithoutContentType[];
+  actionRequiredConversations: ConversationWithoutContentType[];
   dateLabel: string;
   isMultiSelect: boolean;
+  isMarkingAllAsRead: boolean;
+  onMarkAllAsRead: (conversations: ConversationWithoutContentType[]) => void;
   selectedConversations: ConversationWithoutContentType[];
   toggleConversationSelection: (c: ConversationWithoutContentType) => void;
   router: NextRouter;
   owner: WorkspaceType;
-}) => {
-  if (!conversations.length) {
+}
+
+const InboxConversationList = ({
+  unreadConversations,
+  actionRequiredConversations,
+  dateLabel,
+  isMultiSelect,
+  isMarkingAllAsRead,
+  onMarkAllAsRead,
+  ...props
+}: InboxConversationListProps) => {
+  if (!unreadConversations.length && !actionRequiredConversations.length) {
     return null;
   }
 
@@ -550,20 +570,36 @@ const UnreadConversationList = ({
           label={dateLabel}
           className="bg-background dark:bg-background-night"
         />
+        {!isMultiSelect &&
+          onMarkAllAsRead &&
+          unreadConversations.length > 0 && (
+            <div className="flex">
+              <Button
+                size="xs"
+                variant="ghost"
+                label={`Mark as read`}
+                onClick={() => onMarkAllAsRead(unreadConversations)}
+                isLoading={isMarkingAllAsRead}
+                className="mt-2 text-muted-foreground dark:text-muted-foreground-night"
+              />
+            </div>
+          )}
       </div>
-      {conversations.map((conversation) => (
-        <ConversationListItem
-          key={conversation.sId}
-          conversation={conversation}
-          isMultiSelect={isMultiSelect}
-          {...props}
-        />
-      ))}
+      {[...unreadConversations, ...actionRequiredConversations].map(
+        (conversation) => (
+          <ConversationListItem
+            key={conversation.sId}
+            conversation={conversation}
+            isMultiSelect={isMultiSelect}
+            {...props}
+          />
+        )
+      )}
     </div>
   );
 };
 
-const ReadConversationList = ({
+const ConversationList = ({
   conversations,
   dateLabel,
   ...props
