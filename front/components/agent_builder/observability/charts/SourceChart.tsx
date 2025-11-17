@@ -8,11 +8,8 @@ import { useObservabilityContext } from "@app/components/agent_builder/observabi
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import { ChartLegend } from "@app/components/agent_builder/observability/shared/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
+import { buildSourceChartData } from "@app/components/agent_builder/observability/utils";
 import { useAgentContextOrigin } from "@app/lib/swr/assistants";
-import {
-  isUserMessageOrigin,
-  USER_MESSAGE_ORIGIN_LABELS,
-} from "@app/types/assistant/conversation";
 
 interface SourceChartProps {
   workspaceId: string;
@@ -37,21 +34,11 @@ export function SourceChart({
 
   const total = contextOrigin.total;
 
-  const data = contextOrigin.buckets.map((b) => {
-    const label = isUserMessageOrigin(b.origin)
-      ? USER_MESSAGE_ORIGIN_LABELS[b.origin]
-      : b.origin;
-    return {
-      origin: b.origin,
-      label,
-      count: b.count,
-      percent: Math.round((b.count / total) * 100),
-    };
-  });
+  const data = buildSourceChartData(contextOrigin.buckets, total);
 
   const legendItems = data.map((d, index) => ({
     key: d.origin,
-    label: d.label,
+    label: d.origin,
     colorClassName: getSourceColor(index),
   }));
 
@@ -77,7 +64,7 @@ export function SourceChart({
                 return null;
               }
               const rows = data.map((d, index) => ({
-                label: d.label,
+                label: d.origin,
                 value: d.count,
                 percent: d.percent,
                 colorClassName: getSourceColor(index),
