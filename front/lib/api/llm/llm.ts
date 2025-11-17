@@ -115,6 +115,7 @@ export abstract class LLM {
             message: currentEvent.content.message,
             modelId: this.modelId,
             context: this.context,
+            traceId: this.traceId,
           },
           "LLM Error"
         );
@@ -124,6 +125,7 @@ export abstract class LLM {
             llmEventType: "success",
             modelId: this.modelId,
             context: this.context,
+            traceId: this.traceId,
           },
           "LLM Success"
         );
@@ -134,6 +136,7 @@ export abstract class LLM {
             lastEventType: currentEvent?.type,
             modelId: this.modelId,
             context: this.context,
+            traceId: this.traceId,
           },
           "LLM uncategorized"
         );
