@@ -9,7 +9,7 @@ import { datadogLogs } from "@datadog/browser-logs";
 import type { NextPage } from "next";
 import type { AppProps } from "next/app";
 
-// Initialize Langfuse instrumentation (server-side only)
+// Initialize Langfuse instrumentation (server-side only).
 if (typeof window === "undefined") {
   import("@app/lib/api/instrumentation/init")
     .then(({ initializeLangfuseInstrumentation }) => {

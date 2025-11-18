@@ -90,7 +90,11 @@ export abstract class LLM {
     );
 
     generation.updateTrace({
-      tags: [`workspaceId:${this.authenticator.getNonNullableWorkspace().sId}`],
+      tags: [
+        `dustTraceId:${this.traceId}`,
+        `operationType:${this.context.operationType}`,
+        `workspaceId:${this.authenticator.getNonNullableWorkspace().sId}`,
+      ],
       userId: this.authenticator.user()?.sId,
     });
 

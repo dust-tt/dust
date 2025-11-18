@@ -2,6 +2,7 @@ import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
 import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
+import { initializeLangfuseInstrumentation } from "@app/lib/api/instrumentation/init";
 import { getTemporalAgentWorkerConnection } from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
@@ -21,7 +22,6 @@ import { publishDeferredEventsActivity } from "@app/temporal/agent_loop/activiti
 import { runModelAndCreateActionsActivity } from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
 import { QUEUE_NAME } from "@app/temporal/agent_loop/config";
-import { initializeLangfuseInstrumentation } from "@app/lib/api/instrumentation/init";
 
 // We need to give the worker some time to finish the current activity before shutting down.
 const SHUTDOWN_GRACE_TIME = "2 minutes";
@@ -74,7 +74,7 @@ export async function runAgentLoopWorker() {
     },
   });
 
-  // TODO(2025-11-12 INSTRUMENTATION): Drain instrumentaion data before shutdown.
+  // TODO(2025-11-12 INSTRUMENTATION): Drain Langfuse data before shutdown.
   process.on("SIGTERM", () => worker.shutdown());
 
   // Initialize LLMs instrumentation for the worker.
