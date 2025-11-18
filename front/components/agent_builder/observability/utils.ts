@@ -1,15 +1,13 @@
 import {
+  isUserMessageOrigin,
   OTHER_TOOLS_LABEL,
   TOOL_COLORS,
+  USER_MESSAGE_ORIGIN_LABELS,
 } from "@app/components/agent_builder/observability/constants";
 import type { ObservabilityMode } from "@app/components/agent_builder/observability/ObservabilityContext";
 import type { SourceChartDatum } from "@app/components/agent_builder/observability/types";
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 import { formatShortDate } from "@app/lib/utils/timestamps";
-import {
-  isUserMessageOrigin,
-  USER_MESSAGE_ORIGIN_LABELS,
-} from "@app/types/assistant/conversation";
 
 export type VersionMarker = { version: string; timestamp: number };
 
@@ -33,7 +31,7 @@ export function buildSourceChartData(
   const aggregatedByLabel = buckets.reduce(
     (acc, b) => {
       const label = isUserMessageOrigin(b.origin)
-        ? USER_MESSAGE_ORIGIN_LABELS[b.origin]
+        ? USER_MESSAGE_ORIGIN_LABELS[b.origin].label
         : b.origin;
 
       if (!acc[label]) {

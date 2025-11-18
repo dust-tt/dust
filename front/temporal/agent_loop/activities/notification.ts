@@ -1,3 +1,4 @@
+import { isUserMessageOrigin } from "@app/components/agent_builder/observability/constants";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { getNovuClient } from "@app/lib/notifications";
@@ -9,7 +10,6 @@ import {
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import { NOTIFICATION_DELAY_MS } from "@app/temporal/agent_loop/workflows";
-import { isUserMessageOrigin } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 
 /**
