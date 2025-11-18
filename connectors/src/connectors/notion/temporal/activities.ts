@@ -750,9 +750,9 @@ export async function deletePage({
     return;
   }
 
-  logger.info(pageId, "deletePage: Deleting page");
+  logger.info({ pageId }, "deletePage: Deleting page");
   await deleteDataSourceDocument(dataSourceConfig, `notion-${pageId}`);
-  logger.info(pageId, "deletePage: Deleted page");
+  logger.info({ pageId }, "deletePage: Deleted page");
 
   const notionPage = await NotionPage.findOne({
     where: {
