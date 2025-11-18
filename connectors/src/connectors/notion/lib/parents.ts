@@ -154,7 +154,7 @@ export async function updateAllParentsFields(
       connectorId,
       pageIdsToUpdateCount: pageAndDatabaseIdsToUpdate.size,
     },
-    "updateAllParentsFields: Updating parents field for pages and databases"
+    "notionUpdateAllParentsFields: Updating parents field for pages and databases"
   );
 
   // Update everybody's parents field. Use of a memoization key to control
@@ -171,6 +171,14 @@ export async function updateAllParentsFields(
           [],
           false,
           memoizationKey
+        );
+        logger.info(
+          {
+            connectorId,
+            pageOrDbId,
+            parents: pageOrDbIds,
+          },
+          "notionUpdateAllParentsFields: Fetched parents"
         );
 
         const parents = pageOrDbIds.map((id) => nodeIdFromNotionId(id));
