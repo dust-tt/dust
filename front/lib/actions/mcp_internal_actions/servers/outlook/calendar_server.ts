@@ -637,62 +637,13 @@ function createServer(
           return new Err(new MCPError(result.error));
         }
 
-        const blockingStatuses = [
-          "busy",
-          "tentative",
-          "oof",
-          "workingElsewhere",
-        ];
-        const blockingEvents = result.events.filter((event) => {
-          if (event.isCancelled) {
-            return false;
-          }
-          return blockingStatuses.includes(event.showAs ?? "busy");
-        });
+        const formattedText = formatAvailabilityCheck(
+          result.events,
+          startTime,
+          endTime
+        );
 
-        const available = blockingEvents.length === 0;
-
-        const lines: string[] = [];
-        if (available) {
-          lines.push("User is AVAILABLE during this time period");
-          lines.push("");
-          lines.push(`Period: ${startTime} to ${endTime}`);
-          if (result.events.length > 0) {
-            const freeEvents = result.events.filter(
-              (e) => !e.isCancelled && (e.showAs === "free" || !e.showAs)
-            );
-            if (freeEvents.length > 0) {
-              lines.push("");
-              lines.push(
-                `Note: There ${freeEvents.length === 1 ? "is" : "are"} ${freeEvents.length} event${pluralize(freeEvents.length)} during this period marked as 'free'`
-              );
-            }
-          }
-        } else {
-          lines.push("User is NOT AVAILABLE during this time period");
-          lines.push("");
-          lines.push(`Period: ${startTime} to ${endTime}`);
-          lines.push(
-            `Blocking events: ${blockingEvents.length} event${pluralize(blockingEvents.length)}`
-          );
-          lines.push("");
-          lines.push("Conflicting events:");
-          lines.push("");
-          blockingEvents.forEach((event, index) => {
-            if (index > 0) {
-              lines.push("");
-            }
-            lines.push(
-              `${index + 1}. ${event.subject || "(No title)"} - ${event.showAs ?? "busy"}`
-            );
-            lines.push(`   ${event.start.dateTime} to ${event.end.dateTime}`);
-            if (event.location?.displayName) {
-              lines.push(`   Location: ${event.location.displayName}`);
-            }
-          });
-        }
-
-        return new Ok([{ type: "text" as const, text: lines.join("\n") }]);
+        return new Ok([{ type: "text" as const, text: formattedText }]);
       }
     )
   );
