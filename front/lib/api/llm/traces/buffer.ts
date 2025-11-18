@@ -261,18 +261,7 @@ export class LLMTraceBuffer {
         timestamp: endTimestamp,
       };
     } else {
-      const processedEvents = this.getProcessedEvents();
-
-      trace.output = {
-        content: processedEvents.content,
-        finishReason: processedEvents.finishReason,
-        reasoning: processedEvents.reasoning || undefined,
-        tokenUsage: processedEvents.tokenUsage,
-        toolCalls:
-          processedEvents.toolCalls.length > 0
-            ? processedEvents.toolCalls
-            : undefined,
-      };
+      trace.output = this.currentOutput;
     }
 
     if (this.truncated) {
@@ -298,6 +287,25 @@ export class LLMTraceBuffer {
 
   get runTokenUsage(): TokenUsage | undefined {
     return this.tokenUsage;
+  }
+
+  get currentOutput(): LLMTraceOutput {
+    const processedEvents = this.getProcessedEvents();
+
+    return {
+      content: processedEvents.content,
+      finishReason: processedEvents.finishReason,
+      reasoning: processedEvents.reasoning || undefined,
+      tokenUsage: processedEvents.tokenUsage,
+      toolCalls:
+        processedEvents.toolCalls.length > 0
+          ? processedEvents.toolCalls
+          : undefined,
+    };
+  }
+
+  get error(): EventError | undefined {
+    return this.endingError;
   }
 
   /**

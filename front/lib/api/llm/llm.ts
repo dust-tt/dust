@@ -1,3 +1,4 @@
+import { startObservation } from "@langfuse/tracing";
 import { randomUUID } from "crypto";
 
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/components/agent_builder/types";
@@ -83,6 +84,34 @@ export abstract class LLM {
     const workspaceId = this.authenticator.getNonNullableWorkspace().sId;
     const buffer = new LLMTraceBuffer(this.traceId, workspaceId, this.context);
 
+    const generation = startObservation(
+      "llm-completion",
+      {
+        input: [{ role: "system", content: prompt }, ...conversation.messages],
+        model: this.modelId,
+        modelParameters: {
+          reasoningEffort: this.reasoningEffort ?? "",
+          responseFormat: this.responseFormat ?? "",
+          temperature: this.temperature ?? "",
+        },
+        metadata: {
+          tools: specifications.map((spec) => spec.name),
+        },
+      },
+      { asType: "generation" }
+    );
+
+    generation.updateTrace({
+      tags: [
+        `operationType:${this.context.operationType}`,
+        `workspaceId:${this.authenticator.getNonNullableWorkspace().sId}`,
+      ],
+      metadata: {
+        dustTraceId: this.traceId,
+      },
+      userId: this.authenticator.user()?.sId,
+    });
+
     const startTime = Date.now();
 
     buffer.setInput({
@@ -105,10 +134,15 @@ export abstract class LLM {
       })) {
         currentEvent = event;
         buffer.addEvent(event);
+
         yield event;
       }
     } finally {
       if (currentEvent?.type === "error") {
+        generation.updateTrace({
+          tags: ["isError:true", `errorType:${currentEvent.content.type}`],
+        });
+
         logger.error(
           {
             llmEventType: "error",
@@ -144,6 +178,38 @@ export abstract class LLM {
 
       const durationMs = Date.now() - startTime;
       buffer.writeToGCS({ durationMs, startTime }).catch(() => {});
+
+      const { tokenUsage, ...rest } = buffer.currentOutput;
+
+      generation.update({
+        output: { ...rest },
+      });
+
+      if (tokenUsage) {
+        generation.update({
+          usageDetails: {
+            input: tokenUsage.inputTokens,
+            output: tokenUsage.outputTokens,
+            total: tokenUsage.totalTokens,
+            cache_read_input_tokens: tokenUsage.cachedTokens ?? 0,
+            cache_creation_input_tokens: tokenUsage.cacheCreationTokens ?? 0,
+            reasoning_tokens: tokenUsage.reasoningTokens ?? 0,
+          },
+        });
+      }
+
+      if (buffer.error) {
+        generation.update({
+          level: "ERROR",
+          statusMessage: buffer.error.message,
+          metadata: {
+            errorType: buffer.error.type,
+            errorMessage: buffer.error.message,
+          },
+        });
+      }
+
+      generation.end();
 
       const run = await RunResource.makeNew({
         appId: null,

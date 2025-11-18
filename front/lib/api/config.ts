@@ -324,6 +324,21 @@ const config = {
       password: EnvironmentConfig.getEnvVariable("ELASTICSEARCH_PASSWORD"),
     };
   },
+  isLangfuseEnabled: (): boolean => {
+    const isEnabled =
+      EnvironmentConfig.getOptionalEnvVariable(
+        "LANGFUSE_ENABLED"
+      )?.toLowerCase() === "true";
+
+    if (isEnabled) {
+      // If enabled, ensure that all keys are present.
+      EnvironmentConfig.getEnvVariable("LANGFUSE_PUBLIC_KEY");
+      EnvironmentConfig.getEnvVariable("LANGFUSE_SECRET_KEY");
+      EnvironmentConfig.getOptionalEnvVariable("LANGFUSE_BASE_URL");
+    }
+
+    return isEnabled;
+  },
 };
 
 export default config;

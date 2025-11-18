@@ -2,6 +2,7 @@ import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
 import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
+import { initializeLangfuseInstrumentation } from "@app/lib/api/instrumentation/init";
 import { getTemporalAgentWorkerConnection } from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
@@ -73,7 +74,11 @@ export async function runAgentLoopWorker() {
     },
   });
 
+  // TODO(2025-11-12 INSTRUMENTATION): Drain Langfuse data before shutdown.
   process.on("SIGTERM", () => worker.shutdown());
+
+  // Initialize LLMs instrumentation for the worker.
+  initializeLangfuseInstrumentation();
 
   try {
     await worker.run(); // this resolves after shutdown completes
