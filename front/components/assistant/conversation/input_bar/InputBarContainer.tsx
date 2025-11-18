@@ -11,12 +11,10 @@ import React, {
 } from "react";
 
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
-import { MentionDropdown } from "@app/components/assistant/conversation/input_bar/editor/MentionDropdown";
 import useAgentSuggestions from "@app/components/assistant/conversation/input_bar/editor/useAgentSuggestions";
 import type { CustomEditorProps } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useCustomEditor from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useHandleAgentMentions from "@app/components/assistant/conversation/input_bar/editor/useHandleAgentMentions";
-import { useMentionDropdown } from "@app/components/assistant/conversation/input_bar/editor/useMentionDropdown";
 import useUrlHandler from "@app/components/assistant/conversation/input_bar/editor/useUrlHandler";
 import useUserSuggestions from "@app/components/assistant/conversation/input_bar/editor/useUserSuggestions";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
@@ -289,17 +287,11 @@ const InputBarContainer = ({
     [editorRef, fileUploaderService, sendNotification]
   );
 
-  const agentMentionDropdown = useMentionDropdown(
-    combinedSuggestions,
-    editorRef
-  );
-
   const { editor, editorService } = useCustomEditor({
     suggestions: combinedSuggestions,
     onEnterKeyDown,
     disableAutoFocus,
     onUrlDetected: handleUrlDetected,
-    suggestionHandler: agentMentionDropdown.getSuggestionHandler(),
     owner,
     onInlineText: handleInlineText,
     onLongTextPaste: async ({ text, from, to }) => {
@@ -690,8 +682,6 @@ const InputBarContainer = ({
           </div>
         </div>
       </div>
-
-      <MentionDropdown mentionDropdownState={agentMentionDropdown} />
     </div>
   );
 };

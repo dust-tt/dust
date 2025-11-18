@@ -2,7 +2,6 @@ import { Placeholder } from "@tiptap/extensions";
 import type { Editor } from "@tiptap/react";
 import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
-import type { SuggestionKeyDownProps } from "@tiptap/suggestion";
 import { useEffect, useMemo } from "react";
 
 import { cleanupPastedHTML } from "@app/components/assistant/conversation/input_bar/editor/cleanupPastedHTML";
@@ -14,9 +13,11 @@ import { MentionStorageExtension } from "@app/components/assistant/conversation/
 import { PastedAttachmentExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/PastedAttachmentExtension";
 import { URLDetectionExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/URLDetectionExtension";
 import { createMarkdownSerializer } from "@app/components/assistant/conversation/input_bar/editor/markdownSerializer";
+import {
+  createMentionSuggestion,
+  mentionPluginKey,
+} from "@app/components/assistant/conversation/input_bar/editor/mentionSuggestion";
 import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
-import type { SuggestionProps } from "@app/components/assistant/conversation/input_bar/editor/useMentionDropdown";
-import { mentionPluginKey } from "@app/components/assistant/conversation/input_bar/editor/useMentionDropdown";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { extractFromEditorJSON } from "@app/lib/mentions/format";
@@ -185,14 +186,6 @@ export interface CustomEditorProps {
   suggestions: EditorSuggestions;
   disableAutoFocus: boolean;
   onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
-  suggestionHandler: {
-    render: () => {
-      onKeyDown: (props: SuggestionKeyDownProps) => boolean;
-      onStart: (props: SuggestionProps) => void;
-      onExit: () => void;
-      onUpdate: (props: SuggestionProps) => void;
-    };
-  };
   owner: WorkspaceType;
   // If provided, large pasted text will be routed to this callback along with selection bounds
   onLongTextPaste?: (payload: {
@@ -209,7 +202,6 @@ const useCustomEditor = ({
   suggestions,
   disableAutoFocus,
   onUrlDetected,
-  suggestionHandler,
   owner,
   onLongTextPaste,
   longTextPasteCharsThreshold,
@@ -229,9 +221,7 @@ const useCustomEditor = ({
         class:
           "min-w-0 px-0 py-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-highlight-500 font-semibold",
       },
-      // Ensure queries can contain spaces (e.g., @Sales Team → decomposes to
-      // text and keeps the dropdown active over the full label).
-      suggestion: { ...suggestionHandler, allowSpaces: true },
+      suggestion: createMentionSuggestion(),
     }),
     Placeholder.configure({
       placeholder: "Ask an @agent a question, or get some @help",
