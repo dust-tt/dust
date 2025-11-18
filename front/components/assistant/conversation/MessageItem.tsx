@@ -133,16 +133,14 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
         <div
           key={`message-id-${sId}`}
           ref={ref}
-          className={classNames(
-            "mx-auto min-w-60",
-            "pt-6 md:pt-10",
-            "max-w-3xl"
-          )}
+          className={classNames("mx-auto min-w-60", "max-w-3xl", "mb-4")}
         >
           {isUserMessage(data) && (
             <UserMessage
               citations={citations}
               conversationId={context.conversationId}
+              currentUser={context.user}
+              textFullWidth={!!context.agentBuilderContext}
               isLastMessage={!nextData}
               message={data}
               owner={context.owner}
