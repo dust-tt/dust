@@ -47,7 +47,7 @@ import {
   DATABASE_PROCESSING_INTERVAL_MS,
   DATABASE_TO_CSV_MAX_SIZE,
 } from "@connectors/connectors/notion/temporal/config";
-import type { NotionWebhookEvent } from "@connectors/connectors/notion/temporal/signals";
+import type { NotionDeletionCrawlSignal } from "@connectors/connectors/notion/temporal/signals";
 import { connectorsConfig } from "@connectors/connectors/shared/config";
 import {
   dataSourceConfigFromConnector,
@@ -84,7 +84,6 @@ import {
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
-import { statsDClient } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type {
   DataSourceConfig,
@@ -1014,6 +1013,125 @@ export async function completeGarbageCollectionRun(
   await notionConnectorState.update({
     lastGarbageCollectionFinishTime: new Date(),
   });
+}
+
+export async function deletionCrawlAddSignalsToRedis({
+  connectorId,
+  workflowId,
+  signals,
+}: {
+  connectorId: ModelId;
+  workflowId: string;
+  signals: NotionDeletionCrawlSignal[];
+}) {
+  if (signals.length === 0) {
+    return;
+  }
+
+  const redisKey = redisDeletionCrawlKey(connectorId, workflowId);
+  const redisCli = await redisClient({ origin: "notion_gc" });
+
+  // Filter out signals that are already in the seen set
+  const signalsToAdd: NotionDeletionCrawlSignal[] = [];
+  const idsToAddToSeen: string[] = [];
+
+  for (const signal of signals) {
+    const isSeen = await redisCli.sIsMember(
+      `${redisKey}-seen`,
+      signal.resourceId
+    );
+    if (!isSeen) {
+      signalsToAdd.push(signal);
+      idsToAddToSeen.push(signal.resourceId);
+    }
+  }
+
+  if (signalsToAdd.length === 0) {
+    return;
+  }
+
+  // Add to seen set
+  await redisCli.sAdd(`${redisKey}-seen`, idsToAddToSeen);
+
+  // Add to queue (push to left, pop from right for FIFO)
+  await redisCli.lPush(
+    `${redisKey}-queue`,
+    signalsToAdd.map((item) => JSON.stringify(item))
+  );
+}
+
+export async function batchDiscoverDeletions({
+  connectorId,
+  workflowId,
+  batchSize,
+}: {
+  connectorId: ModelId;
+  workflowId: string;
+  batchSize: number;
+}): Promise<{
+  hasMore: boolean;
+}> {
+  const redisKey = redisDeletionCrawlKey(connectorId, workflowId);
+  const redisCli = await redisClient({ origin: "notion_gc" });
+
+  for (let i = 0; i < batchSize; i++) {
+    const item = await redisCli.rPop(`${redisKey}-queue`);
+    if (!item) {
+      break;
+    }
+    const { resourceId, resourceType } = JSON.parse(item);
+    const discovered = await checkResourceAndDiscoverRelated({
+      connectorId,
+      resourceId,
+      resourceType,
+      workflowId,
+    });
+
+    const newSignals: NotionDeletionCrawlSignal[] = [];
+
+    for (const pageId of discovered.pageIds) {
+      const isSeen = await redisCli.sIsMember(`${redisKey}-seen`, pageId);
+      if (!isSeen) {
+        newSignals.push({ resourceId: pageId, resourceType: "page" });
+      }
+    }
+
+    for (const databaseId of discovered.databaseIds) {
+      const isSeen = await redisCli.sIsMember(`${redisKey}-seen`, databaseId);
+      if (!isSeen) {
+        newSignals.push({ resourceId: databaseId, resourceType: "database" });
+      }
+    }
+
+    if (newSignals.length > 0) {
+      await redisCli.sAdd(
+        `${redisKey}-seen`,
+        newSignals.map((s) => s.resourceId)
+      );
+      await redisCli.lPush(
+        `${redisKey}-queue`,
+        newSignals.map((item) => JSON.stringify(item))
+      );
+    }
+  }
+
+  const queueLength = await redisCli.lLen(`${redisKey}-queue`);
+  const hasMore = queueLength > 0;
+  return { hasMore };
+}
+
+export async function completeDeletionCrawlRun({
+  connectorId,
+  workflowId,
+}: {
+  connectorId: ModelId;
+  workflowId: string;
+}) {
+  const redisKey = redisDeletionCrawlKey(connectorId, workflowId);
+  const redisCli = await redisClient({ origin: "notion_gc" });
+
+  // Delete both Redis keys (seen Set and queue List)
+  await redisCli.del([`${redisKey}-seen`, `${redisKey}-queue`]);
 }
 
 export async function deletePageOrDatabaseIfArchived({
@@ -2754,6 +2872,13 @@ function redisGarbageCollectorKey(connectorId: ModelId): string {
   return `notion-garbage-collector-${connectorId}`;
 }
 
+function redisDeletionCrawlKey(
+  connectorId: ModelId,
+  workflowId: string
+): string {
+  return `notion-deletion-crawl-${connectorId}-${workflowId}`;
+}
+
 export async function upsertDatabaseStructuredDataFromCache({
   databaseId,
   connectorId,
@@ -3525,99 +3650,13 @@ export async function checkResourceAccessibility({
   }
 }
 
-export async function processWebhookEventActivity({
-  connectorId,
-  event,
-}: {
-  connectorId: ModelId;
-  event: NotionWebhookEvent;
-}) {
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
-  }
-
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const loggerArgs = {
-    workspaceId: dataSourceConfig.workspaceId,
-    connectorId,
-    provider: "notion",
-    dataSourceId: dataSourceConfig.dataSourceId,
-  };
-
-  logger.info(
-    {
-      ...loggerArgs,
-      eventType: event.type,
-      entityId: event.entity_id,
-    },
-    "Processing Notion webhook event"
-  );
-  statsDClient.increment("notion.webhook_events", 1, [`type:${event.type}`]);
-
-  // Handle deletion/archive events by triggering deletion crawl
-  if (event.type === "page.deleted") {
-    logger.info(
-      {
-        ...loggerArgs,
-        eventType: event.type,
-        entityId: event.entity_id,
-      },
-      "Page deleted/archived, triggering deletion crawl"
-    );
-    const result = await sendDeletionCrawlSignal(
-      connectorId,
-      event.entity_id,
-      "page"
-    );
-    if (result.isErr()) {
-      logger.error(
-        {
-          ...loggerArgs,
-          eventType: event.type,
-          entityId: event.entity_id,
-          error: result.error,
-        },
-        "Failed to send deletion crawl signal for page"
-      );
-      throw result.error;
-    }
-  } else if (event.type === "database.deleted") {
-    logger.info(
-      {
-        ...loggerArgs,
-        eventType: event.type,
-        entityId: event.entity_id,
-      },
-      "Database deleted/archived, triggering deletion crawl"
-    );
-    const result = await sendDeletionCrawlSignal(
-      connectorId,
-      event.entity_id,
-      "database"
-    );
-    if (result.isErr()) {
-      logger.error(
-        {
-          ...loggerArgs,
-          eventType: event.type,
-          entityId: event.entity_id,
-          error: result.error,
-        },
-        "Failed to send deletion crawl signal for database"
-      );
-      throw result.error;
-    }
-  }
-}
-
 /**
  * Check if a resource exists in Notion API, and if not, add it to the workflow cache
  * for batch deletion. Also marks parent and children for deletion crawl.
  *
  * Returns newly discovered resources (parent + children) that should be checked.
  */
-export async function checkResourceAndQueueRelated({
+export async function checkResourceAndDiscoverRelated({
   connectorId,
   resourceId,
   resourceType,
@@ -3636,6 +3675,8 @@ export async function checkResourceAndQueueRelated({
     throw new Error("Could not find connector");
   }
 
+  const discoveredPages: string[] = [];
+  const discoveredDatabases: string[] = [];
   const notionAccessToken = await getNotionAccessToken(connector.id);
   const localLogger = logger.child({
     connectorId: connector.id,
@@ -3660,9 +3701,6 @@ export async function checkResourceAndQueueRelated({
     localLogger.error({ error: e }, "Error checking resource accessibility");
     throw e;
   }
-
-  const discoveredPages: string[] = [];
-  const discoveredDatabases: string[] = [];
 
   if (!isAccessible) {
     // Resource is deleted/archived - add to workflow cache
