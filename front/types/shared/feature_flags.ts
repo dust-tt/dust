@@ -198,6 +198,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Slack semantic search feature",
     stage: "on_demand",
   },
+  slab_mcp: {
+    description: "Slab MCP server",
+    stage: "on_demand",
+  },
   web_summarization: {
     description: "AI-powered web page summarization in the web browser tool",
     stage: "on_demand",

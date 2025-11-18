@@ -27,7 +27,10 @@ import type {
 } from "@app/components/resources/resources_icons";
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
+import {
+  getMcpServerDisplayName,
+  supportsBearerTokenConfiguration,
+} from "@app/lib/actions/mcp_helper";
 import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
@@ -255,6 +258,38 @@ export function CreateMCPServerDialog({
         return;
       }
       server = createRes.value.server;
+
+      // Save manual auth credentials if this server supports manual auth
+      if (
+        supportsBearerTokenConfiguration(internalMCPServer) &&
+        (sharedSecret ?? customHeaders.length > 0)
+      ) {
+        const sanitizedHeaders = sanitizeHeadersArray(customHeaders);
+        const credentialRes = await fetch(
+          `/api/w/${owner.sId}/mcp/${server.sId}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              sharedSecret: sharedSecret ?? null,
+              customHeaders:
+                sanitizedHeaders.length > 0 ? sanitizedHeaders : null,
+            }),
+          }
+        );
+
+        if (!credentialRes.ok) {
+          const body = await credentialRes.json();
+          sendNotification({
+            type: "error",
+            title: "Failed to save credentials",
+            description: body.error?.message || "Failed to save credentials",
+          });
+          setExternalIsLoading(false);
+          setIsLoading(false);
+          return;
+        }
+      }
     }
 
     if (remoteServerUrl) {
@@ -345,7 +380,29 @@ export function CreateMCPServerDialog({
         </DialogHeader>
         <DialogContainer>
           <div className="space-y-4">
-            {!internalMCPServer &&
+            {internalMCPServer && (
+            <div className="mb-4">
+              <p className="text-sm text-muted-foreground">
+                {internalMCPServer.description}
+                {internalMCPServer.documentationUrl && (
+                  <>
+                    {" "}
+                    <a
+                      href={internalMCPServer.documentationUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      See {getMcpServerDisplayName(internalMCPServer)}{" "}
+                      documentation.
+                    </a>
+                  </>
+                )}
+              </p>
+            </div>
+          )}
+
+          {!internalMCPServer &&
               (!authorization || authorization.provider === "mcp_static") && (
                 <>
                   {defaultServerConfig && (
@@ -531,6 +588,64 @@ export function CreateMCPServerDialog({
               />
             )}
 
+          {internalMCPServer &&
+            !authorization &&
+            supportsBearerTokenConfiguration(internalMCPServer) && (
+              <>
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Label htmlFor="bearerToken">
+                      Bearer Token (Authorization)
+                    </Label>
+                    <Tooltip
+                      trigger={
+                        <Icon
+                          visual={InformationCircleIcon}
+                          size="xs"
+                          className="text-gray-400"
+                        />
+                      }
+                      label="This will be sent alongside the request as a Bearer token in the Authorization header."
+                    />
+                  </div>
+                  <Input
+                    id="bearerToken"
+                    placeholder="Paste the Bearer Token here"
+                    value={sharedSecret ?? ""}
+                    onChange={(e) => setSharedSecret(e.target.value)}
+                    isError={!sharedSecret}
+                    message={
+                      !sharedSecret ? "Bearer token is required" : undefined
+                    }
+                  />
+                </div>
+              </>
+            )}
+
+          {!defaultServerConfig && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Label htmlFor="customHeaders">Use custom headers</Label>
+                  <Tooltip
+                    trigger={
+                      <Icon
+                        visual={InformationCircleIcon}
+                        size="xs"
+                        className="text-gray-400"
+                      />
+                    }
+                    label="Custom headers can be added for advanced networking such as firewalls."
+                  />
+                </div>
+                <SliderToggle
+                  disabled={false}
+                  selected={useCustomHeaders}
+                  onClick={() => setUseCustomHeaders(!useCustomHeaders)}
+                />
+              </div>
+            </div>
+          )}
             {!defaultServerConfig && !internalMCPServer && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -586,6 +701,10 @@ export function CreateMCPServerDialog({
               !isOAuthFormValid ||
               (authorization && !useCase) ||
               (defaultServerConfig?.authMethod === "bearer" && !sharedSecret) ||
+                (internalMCPServer &&
+                  !authorization &&
+                  supportsBearerTokenConfiguration(internalMCPServer) &&
+                  !sharedSecret) ||
               (!internalMCPServer && !validateUrl(remoteServerUrl).valid) ||
               isLoading,
             /* eslint-enable @typescript-eslint/prefer-nullish-coalescing */

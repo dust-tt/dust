@@ -20,7 +20,10 @@ import {
   MCPServerPersonalAuthenticationRequiredError,
 } from "@app/lib/actions/mcp_authentication";
 import { MCPServerNotFoundError } from "@app/lib/actions/mcp_errors";
-import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
+import {
+  doesInternalMCPServerSupportBearerToken,
+  getServerTypeAndIdFromSId,
+} from "@app/lib/actions/mcp_helper";
 import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
 import { InMemoryWithAuthTransport } from "@app/lib/actions/mcp_internal_actions/in_memory_with_auth_transport";
@@ -37,6 +40,7 @@ import type {
 import type { Authenticator } from "@app/lib/auth";
 import { getUntrustedEgressAgent } from "@app/lib/egress";
 import { isWorkspaceUsingStaticIP } from "@app/lib/misc";
+import { InternalMCPServerCredentialResource } from "@app/lib/resources/internal_mcp_server_credentials_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import logger from "@app/logger/logger";
 import type { MCPOAuthUseCase, OAuthProvider, Result } from "@app/types";
@@ -177,12 +181,43 @@ export const connectToMCPServer = async (
 
           // For internal servers, to avoid any unnecessary work, we only try to fetch the token if we are trying to run a tool.
           if (agentLoopContext?.runContext) {
-            const metadata = await extractMetadataFromServerVersion(
+            let bearerTokenApplied = false;
+            const bearerTokenCredentials =
+              doesInternalMCPServerSupportBearerToken(params.mcpServerId)
+                ? await InternalMCPServerCredentialResource.fetchByInternalMCPServerId(
+                    auth,
+                    params.mcpServerId
+                  )
+                : null;
+
+            if (
+              bearerTokenCredentials &&
+              (bearerTokenCredentials.sharedSecret ??
+                bearerTokenCredentials.customHeaders)
+            ) {
+              const authInfo: AuthInfo = {
+                token: bearerTokenCredentials.sharedSecret ?? "",
+                expiresAt: undefined,
+                clientId: "",
+                scopes: [],
+                extra: {
+                  customHeaders:
+                    bearerTokenCredentials.customHeaders ?? undefined,
+                  connectionType: "workspace",
+                },
+              };
+
+              client.setAuthInfo(authInfo);
+              server.setAuthInfo(authInfo);
+              bearerTokenApplied = !!bearerTokenCredentials.sharedSecret;
+            }
+
+            const metadata = extractMetadataFromServerVersion(
               mcpClient.getServerVersion()
             );
 
             // The server requires authentication.
-            if (metadata.authorization) {
+            if (metadata.authorization && !bearerTokenApplied) {
               if (!params.oAuthUseCase) {
                 throw new Error(
                   "Internal server requires authentication but no use case was provided - Should never happen"

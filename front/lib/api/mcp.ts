@@ -81,14 +81,14 @@ export type MCPServerType = {
   documentationUrl: string | null;
   developerSecretSelection?: DeveloperSecretSelectionType | null;
   developerSecretSelectionDescription?: string;
+  sharedSecret?: string | null;
+  customHeaders?: Record<string, string> | null;
 };
 
 export type RemoteMCPServerType = MCPServerType & {
   url?: string;
-  sharedSecret?: string | null;
   lastSyncAt?: Date | null;
   lastError?: string | null;
-  customHeaders?: Record<string, string> | null;
   icon: CustomResourceIconType | InternalAllowedIconType;
   // Always manual and allow multiple instances.
   availability: "manual";
