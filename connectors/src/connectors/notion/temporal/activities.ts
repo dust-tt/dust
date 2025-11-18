@@ -750,8 +750,10 @@ export async function deletePage({
     return;
   }
 
-  logger.info("Deleting page.");
+  logger.info({ pageId }, "deletePage: Deleting page");
   await deleteDataSourceDocument(dataSourceConfig, `notion-${pageId}`);
+  logger.info({ pageId }, "deletePage: Deleted page");
+
   const notionPage = await NotionPage.findOne({
     where: {
       connectorId,
@@ -768,7 +770,21 @@ export async function deletePage({
     if (parentDatabase) {
       const tableId = `notion-${parentDatabase.notionDatabaseId}`;
       const rowId = `notion-${notionPage.notionPageId}`;
+      logger.info(
+        {
+          databaseId: parentDatabase.notionDatabaseId,
+          pageId,
+        },
+        "deletePage: Deleting table row"
+      );
       await deleteDataSourceTableRow({ dataSourceConfig, tableId, rowId });
+      logger.info(
+        {
+          databaseId: parentDatabase.notionDatabaseId,
+          pageId,
+        },
+        "deletePage: Deleted table row"
+      );
     }
   }
   await notionPage?.destroy();

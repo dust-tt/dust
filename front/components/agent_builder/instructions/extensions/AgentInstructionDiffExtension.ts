@@ -1,5 +1,6 @@
 import type { JSONContent } from "@tiptap/core";
 import { Extension } from "@tiptap/core";
+import type { Change } from "diff";
 import { diffWords } from "diff";
 
 import { AdditionMark, DeletionMark } from "./AgentDiffMarks";
@@ -13,6 +14,18 @@ declare module "@tiptap/core" {
     agentInstructionDiff: {
       applyDiff: (oldContent: string, newContent: string) => ReturnType;
       exitDiff: () => ReturnType;
+    };
+  }
+
+  interface Storage {
+    agentInstructionDiff: {
+      originalContent: JSONContent | null;
+      isDiffMode: boolean;
+      diffStats: {
+        addedWordCount: number;
+        removedWordCount: number;
+      };
+      diffParts: Change[];
     };
   }
 }

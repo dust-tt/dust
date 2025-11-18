@@ -275,11 +275,16 @@ export const AddConnectionMenu = ({
           },
         });
       } else {
-        const responseText = await res.text();
+        const error = await res.json();
+        const errorMessage =
+          error?.error?.connectors_error?.message ??
+          error?.error?.message ??
+          undefined;
+
         sendNotification({
           type: "error",
           title: `Failed to enable connection (${provider})`,
-          description: `Got: ${responseText}`,
+          description: errorMessage,
         });
       }
     } catch (e) {
