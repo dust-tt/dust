@@ -1,6 +1,8 @@
 import type { Result } from "@dust-tt/client";
 import { DustAPI, Err, Ok } from "@dust-tt/client";
 
+import { jwtDecode, JwtPayload } from "jwt-decode";
+
 import AuthService from "./authService.js";
 import TokenStorage from "./tokenStorage.js";
 
@@ -56,11 +58,38 @@ export const getDustClient = async (): Promise<
     },
     {
       apiKey: async () => {
-        const token = await AuthService.getValidAccessToken();
-        if (token.isErr()) {
-          return null;
+        // For long-lived connections like MCP EventSource, we need more aggressive token refresh logic
+        // to prevent 401 errors during long CLI sessions. Check if the token expires in less than 4
+        // minutes and refresh if so.
+        const accessToken = await TokenStorage.getAccessToken();
+
+        // API keys don't expire.
+        if (accessToken?.startsWith("sk-")) {
+          return accessToken;
         }
-        return token.value || "";
+
+        // Check token expiration.
+        if (accessToken) {
+          let decoded: JwtPayload | null = null;
+          try {
+            decoded = jwtDecode<{ exp: number }>(accessToken);
+          } catch (error) {
+            // If we can't decode, fall through to refresh.
+          }
+
+          const currentTime = Math.floor(Date.now() / 1000);
+          const timeUntilExpiry = (decoded?.exp ?? 0) - currentTime;
+
+          // If token expires in more than 4 minutes, use it. This threshold matches the SDK's
+          // proactive refresh interval to ensure tokens are refreshed before they expire.
+          if (timeUntilExpiry > 4 * 60) {
+            return accessToken;
+          }
+        }
+
+        // Token is expiring soon or invalid - force refresh.
+        const freshToken = await AuthService.getFreshAccessToken();
+        return freshToken || "";
       },
       workspaceId: (await TokenStorage.getWorkspaceId()) ?? "me",
       extraHeaders: {
