@@ -773,11 +773,7 @@ export async function executeReadThreadMessages(
 
   try {
     // Resolve channel name to channel ID (supports both public and private channels).
-    const channelId = await resolveChannelId(
-      channel,
-      accessToken,
-      mcpServerId
-    );
+    const channelId = await resolveChannelId(channel, accessToken, mcpServerId);
 
     if (!channelId) {
       return new Err(
