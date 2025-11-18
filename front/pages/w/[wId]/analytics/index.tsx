@@ -7,13 +7,13 @@ import { subNavigationAdmin } from "@app/components/navigation/config";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ActivityReport } from "@app/components/workspace/ActivityReport";
-import { DailyCostChart } from "@app/components/workspace/DailyCostChart";
 import { QuickInsights } from "@app/components/workspace/Analytics";
 import { CumulativeCostChart } from "@app/components/workspace/CumulativeCostChart";
+import { DailyCostChart } from "@app/components/workspace/DailyCostChart";
+import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useWorkspaceSubscriptions } from "@app/lib/swr/workspaces";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
-import { getFeatureFlags } from "@app/lib/auth";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
