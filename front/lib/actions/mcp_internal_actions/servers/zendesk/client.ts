@@ -89,6 +89,7 @@ class ZendeskClient {
     if (!parseResult.success) {
       logger.error(
         {
+          endpoint,
           error: parseResult.error.message,
         },
         "[Zendesk] Invalid API response format"
