@@ -277,6 +277,7 @@ const useCustomEditor = ({
         return false;
       },
     },
+    immediatelyRender: false,
   });
 
   // Sync the extension's MentionStorage suggestions whenever the local suggestions state updates.
