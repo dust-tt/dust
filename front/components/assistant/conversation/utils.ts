@@ -20,11 +20,15 @@ export function getGroupConversationsByUnreadAndActionRequired(
     (acc, conversation) => {
       if (conversation.unread) {
         acc.unreadConversations.push(conversation);
-      } else if (conversation.actionRequired) {
-        acc.actionRequiredConversations.push(conversation);
-      } else {
-        acc.readConversations.push(conversation);
+        return acc;
       }
+
+      if (conversation.actionRequired) {
+        acc.actionRequiredConversations.push(conversation);
+        return acc;
+      }
+
+      acc.readConversations.push(conversation);
       return acc;
     },
     {
