@@ -41,8 +41,9 @@ export function isSlackTokenRevoked(error: unknown): boolean {
   return (
     typeof error === "object" &&
     error !== null &&
-    (error as any).message &&
-    (error as any).message.toString().includes("token_revoked")
+    "message" in error &&
+    typeof error.message === "string" &&
+    error.message.includes("token_revoked")
   );
 }
 

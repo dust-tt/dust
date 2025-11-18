@@ -301,8 +301,9 @@ async function buildSlackSearchQuery(
     // For Slack search API, we need to use channel names, not IDs.
     // First, resolve channel names/IDs to get the actual channel objects.
     const slackClient = await getSlackClient(accessToken);
-    const resolvedChannels = await Promise.all(
-      channels.map(async (channel) => {
+    const resolvedChannels = await concurrentExecutor(
+      channels,
+      async (channel) => {
         const channelId = await resolveChannelId(
           channel,
           accessToken,
@@ -324,7 +325,8 @@ async function buildSlackSearchQuery(
           // If we can't get channel info, skip this channel.
         }
         return null;
-      })
+      },
+      { concurrency: 3 }
     );
 
     // Build query with channel names (not IDs).
@@ -517,8 +519,9 @@ async function createServer(
               );
 
               // Resolve channel/user names for display
-              const resolvedMatches = await Promise.all(
-                matches.map(async (match) => {
+              const resolvedMatches = await concurrentExecutor(
+                matches,
+                async (match) => {
                   const channelIdOrName = match.channel_name ?? "Unknown";
                   const displayName =
                     channelIdOrName === "Unknown"
@@ -529,7 +532,8 @@ async function createServer(
                         );
 
                   return { match, displayName };
-                })
+                },
+                { concurrency: 3 }
               );
 
               const results = buildSearchResults<{
@@ -698,11 +702,13 @@ async function createServer(
               };
 
               // Resolve all matches with user names for DMs.
-              const resolvedMatches = await Promise.all(
-                matches.map(async (match) => ({
+              const resolvedMatches = await concurrentExecutor(
+                matches,
+                async (match) => ({
                   match,
                   text: await getTextFromMatch(match),
-                }))
+                }),
+                { concurrency: 3 }
               );
 
               const results = buildSearchResults<{
