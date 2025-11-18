@@ -11,7 +11,7 @@ import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/uti
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
-import { Err, Ok, pluralize } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 const OUTLOOK_CALENDAR_TOOL_NAME = "outlook_calendar";
 
