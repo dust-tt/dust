@@ -19,7 +19,13 @@ export const ZendeskTicketSchema = z
     custom_fields: z.array(
       z.object({
         id: z.number(),
-        value: z.union([z.string(), z.number(), z.boolean(), z.null()]),
+        value: z.union([
+          z.string(),
+          z.number(),
+          z.boolean(),
+          z.null(),
+          z.array(z.string()),
+        ]),
       })
     ),
     via: z
