@@ -202,3 +202,63 @@ export function renderOutlookEventList(
 
   return lines.join("\n");
 }
+
+export function renderAvailabilityCheck(
+  allEvents: OutlookEvent[],
+  startTime: string,
+  endTime: string
+): string {
+  // Possible values for showAs are free, tentative, busy, oof, workingElsewhere, unknown.
+  // cf. https://learn.microsoft.com/fr-fr/graph/api/resources/event?view=graph-rest-1.0
+  const blockingStatuses = ["busy", "tentative", "oof"];
+  const blockingEvents = allEvents.filter((event) => {
+    if (event.isCancelled) {
+      return false;
+    }
+    return blockingStatuses.includes(event.showAs ?? "busy");
+  });
+
+  const available = blockingEvents.length === 0;
+
+  const lines: string[] = [];
+  if (available) {
+    lines.push("User is AVAILABLE during this time period");
+    lines.push("");
+    lines.push(`Period: ${startTime} to ${endTime}`);
+    if (allEvents.length > 0) {
+      const freeEvents = allEvents.filter(
+        (e) => !e.isCancelled && (e.showAs === "free" || !e.showAs)
+      );
+      if (freeEvents.length > 0) {
+        lines.push("");
+        lines.push(
+          `Note: There ${freeEvents.length === 1 ? "is" : "are"} ${freeEvents.length} event${pluralize(freeEvents.length)} during this period marked as 'free'`
+        );
+      }
+    }
+  } else {
+    lines.push("User is NOT AVAILABLE during this time period");
+    lines.push("");
+    lines.push(`Period: ${startTime} to ${endTime}`);
+    lines.push(
+      `Blocking events: ${blockingEvents.length} event${pluralize(blockingEvents.length)}`
+    );
+    lines.push("");
+    lines.push("Conflicting events:");
+    lines.push("");
+    blockingEvents.forEach((event, index) => {
+      if (index > 0) {
+        lines.push("");
+      }
+      lines.push(
+        `${index + 1}. ${event.subject ?? "(No title)"} - ${event.showAs ?? "busy"}`
+      );
+      lines.push(`   ${event.start.dateTime} to ${event.end.dateTime}`);
+      if (event.location?.displayName) {
+        lines.push(`   Location: ${event.location.displayName}`);
+      }
+    });
+  }
+
+  return lines.join("\n");
+}
