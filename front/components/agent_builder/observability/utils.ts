@@ -6,9 +6,9 @@ import {
 } from "@app/components/agent_builder/observability/constants";
 import type { ObservabilityMode } from "@app/components/agent_builder/observability/ObservabilityContext";
 import type { SourceChartDatum } from "@app/components/agent_builder/observability/types";
-import type { UserMessageOrigin } from "@app/types";
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 import { formatShortDate } from "@app/lib/utils/timestamps";
+import type { UserMessageOrigin } from "@app/types";
 
 export type VersionMarker = { version: string; timestamp: number };
 
