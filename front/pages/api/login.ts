@@ -184,11 +184,11 @@ async function handler(
     return;
   }
 
-  await user.recordLoginActivity();
-
   const redirectOptions: Parameters<typeof buildPostLoginUrl>[1] = {
     welcome: user.lastLoginAt === null,
   };
+
+  await user.recordLoginActivity();
 
   if (targetWorkspace && targetFlow === "joined") {
     // For users joining a workspace from trying to access a conversation, we redirect to this
