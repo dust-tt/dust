@@ -74,9 +74,9 @@ export function AgentObservability({
               className="h-24"
               content={
                 <div className="flex flex-row gap-2 text-2xl">
-                  {agentAnalytics?.mentions
+                  {agentAnalytics?.mentions && agentAnalytics.activeUsers > 0
                     ? `${Math.round(agentAnalytics.mentions.messageCount / agentAnalytics.activeUsers)}`
-                    : "-"}
+                    : 0}
                 </div>
               }
             />
