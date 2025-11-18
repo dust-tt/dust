@@ -6,8 +6,10 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { InternalMCPServerCredentialResource } from "@app/lib/resources/internal_mcp_server_credentials_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { SpaceKind, WithAPIErrorResponse } from "@app/types";
 
@@ -69,14 +71,38 @@ async function handler(
         auth,
         space
       );
+      const serverViewsWithCredentials = await concurrentExecutor(
+        mcpServerViews,
+        async (view) => {
+          const viewJSON = view.toJSON();
+          if (viewJSON.serverType === "internal") {
+            const credentials =
+              await InternalMCPServerCredentialResource.fetchByInternalMCPServerId(
+                auth,
+                view.mcpServerId
+              );
+            const credentialJSON = credentials?.toJSON();
+            if (credentialJSON) {
+              return {
+                ...viewJSON,
+                server: {
+                  ...viewJSON.server,
+                  sharedSecret: credentialJSON.sharedSecret ?? null,
+                  customHeaders: credentialJSON.customHeaders ?? null,
+                },
+              };
+            }
+          }
+          return viewJSON;
+        },
+        { concurrency: 10 }
+      );
       return res.status(200).json({
         success: true,
-        serverViews: mcpServerViews
-          .map((mcpServerView) => mcpServerView.toJSON())
-          .filter(
-            (s) =>
-              availability === "all" || s.server.availability === availability
-          ),
+        serverViews: serverViewsWithCredentials.filter(
+          (s) =>
+            availability === "all" || s.server.availability === availability
+        ),
       });
     }
     case "POST": {
@@ -138,9 +164,30 @@ async function handler(
         space,
       });
 
+      const viewJSON = mcpServerView.toJSON();
+      let serverView = viewJSON;
+      if (viewJSON.serverType === "internal") {
+        const credentials =
+          await InternalMCPServerCredentialResource.fetchByInternalMCPServerId(
+            auth,
+            mcpServerView.mcpServerId
+          );
+        const credentialJSON = credentials?.toJSON();
+        if (credentialJSON) {
+          serverView = {
+            ...viewJSON,
+            server: {
+              ...viewJSON.server,
+              sharedSecret: credentialJSON.sharedSecret ?? null,
+              customHeaders: credentialJSON.customHeaders ?? null,
+            },
+          };
+        }
+      }
+
       return res.status(200).json({
         success: true,
-        serverView: mcpServerView.toJSON(),
+        serverView,
       });
     }
   }

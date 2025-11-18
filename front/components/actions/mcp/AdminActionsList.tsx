@@ -19,6 +19,7 @@ import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
   mcpServersSortingFn,
+  supportsBearerTokenConfiguration,
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
@@ -145,7 +146,10 @@ export const AdminActionsList = ({
   };
 
   const onCreateInternalMCPServer = async (mcpServer: MCPServerType) => {
-    if (mcpServer.authorization) {
+    if (
+      mcpServer.authorization ??
+      supportsBearerTokenConfiguration(mcpServer)
+    ) {
       setInternalMCPServerToCreate(mcpServer);
       setDefaultServerConfig(undefined);
       setIsCreateOpen(true);
