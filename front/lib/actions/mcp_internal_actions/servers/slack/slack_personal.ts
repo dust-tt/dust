@@ -32,7 +32,6 @@ import { SLACK_SEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { cacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { TimeFrame } from "@app/types";
 import {
@@ -224,25 +223,33 @@ function makeQueryResource(
 }
 
 // Common Zod parameter schema parts shared by search tools.
-const buildCommonSearchParams = () => ({
+const buildCommonSearchParams = (forSemanticSearch: boolean = false) => ({
   channels: z
     .string()
     .array()
     .optional()
-    .describe("Narrow the search to specific channels (optional)"),
+    .describe(
+      forSemanticSearch
+        ? "Narrow the search to specific channels (optional). ONLY use if the user EXPLICITLY requests searching in specific channels. Leave empty otherwise for better semantic search results."
+        : "Narrow the search to specific channels (optional)"
+    ),
   usersFrom: z
     .string()
     .array()
     .optional()
     .describe(
-      "Narrow the search to messages wrote by specific users ids (optional)"
+      forSemanticSearch
+        ? "Narrow the search to messages written by specific user IDs (optional). ONLY use if the user EXPLICITLY requests messages from specific users (e.g., 'messages from John'). Leave empty otherwise for better semantic search results, as this adds keyword filters that reduce semantic search effectiveness."
+        : "Narrow the search to messages wrote by specific users ids (optional)"
     ),
   usersTo: z
     .string()
     .array()
     .optional()
     .describe(
-      "Narrow the search to direct messages sent to specific user IDs (optional)"
+      forSemanticSearch
+        ? "Narrow the search to direct messages sent to specific user IDs (optional). ONLY use if the user EXPLICITLY requests DMs to specific users (e.g., 'my DMs to Sarah'). Leave empty otherwise for better semantic search results, as this adds keyword filters that reduce semantic search effectiveness."
+        : "Narrow the search to direct messages sent to specific user IDs (optional)"
     ),
   relativeTimeFrame: z
     .string()
@@ -292,7 +299,9 @@ async function buildSlackSearchQuery(
           accessToken,
           mcpServerId
         );
-        if (!channelId) return null;
+        if (!channelId) {
+          return null;
+        }
 
         // Get channel info to retrieve the channel name.
         try {
@@ -341,18 +350,9 @@ function isSlackTokenRevoked(error: unknown): boolean {
 // 'disconnected' is expected when we don't have a Slack connection yet.
 type SlackAIStatus = "enabled" | "disabled" | "disconnected";
 
-const SLACK_AI_STATUS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-
-type GetSlackAIEnablementStatusArgs = {
-  mcpServerId: string;
-  accessToken: string;
-};
-
-const _getSlackAIEnablementStatus = async ({
-  accessToken,
-}: {
-  accessToken: string;
-}): Promise<SlackAIStatus> => {
+async function getSlackAIEnablementStatus(
+  accessToken: string
+): Promise<SlackAIStatus> {
   try {
     const assistantSearchInfo = await fetch(
       "https://slack.com/api/assistant.search.info",
@@ -379,17 +379,7 @@ const _getSlackAIEnablementStatus = async ({
   } catch (e) {
     return "disconnected";
   }
-};
-
-// Cache the result as this involves a call to the Slack API.
-// We use a hash of the access token as the cache key to avoid storing sensitive information directly.
-const getCachedSlackAIEnablementStatus = cacheWithRedis(
-  _getSlackAIEnablementStatus,
-  ({ mcpServerId }: GetSlackAIEnablementStatusArgs) => mcpServerId,
-  {
-    ttlMs: SLACK_AI_STATUS_CACHE_TTL_MS,
-  }
-);
+}
 
 async function createServer(
   auth: Authenticator,
@@ -404,10 +394,7 @@ async function createServer(
   });
 
   const slackAIStatus: SlackAIStatus = c
-    ? await getCachedSlackAIEnablementStatus({
-        mcpServerId,
-        accessToken: c.access_token,
-      })
+    ? await getSlackAIEnablementStatus(c.access_token)
     : "disconnected";
 
   localLogger.info(
@@ -419,7 +406,7 @@ async function createServer(
     "Slack MCP server initialized"
   );
 
-  // If we're not connected to Slack, we arbitrarily include the first search tool, just so there is one.
+  // If we're not connected to Slack, we arbitrarily include the first search tool, just so there is one
   // in the list. As soon as we're connected, it will show the correct one.
   if (slackAIStatus === "disabled" || slackAIStatus === "disconnected") {
     server.tool(
@@ -443,13 +430,7 @@ async function createServer(
           agentLoopContext,
         },
         async (
-          {
-            keywords,
-            usersFrom,
-            usersTo,
-            relativeTimeFrame,
-            channels,
-          },
+          { keywords, usersFrom, usersTo, relativeTimeFrame, channels },
           { authInfo }
         ) => {
           if (!agentLoopContext?.runContext) {
@@ -539,7 +520,10 @@ async function createServer(
 
                   // If channel_name looks like a user ID (starts with U), resolve to user name
                   if (displayName.match(/^U[A-Z0-9]+$/)) {
-                    const userName = await resolveUserDisplayName(displayName, accessToken);
+                    const userName = await resolveUserDisplayName(
+                      displayName,
+                      accessToken
+                    );
                     displayName = userName ? `@${userName}` : `@${displayName}`;
                   } else if (displayName !== "Unknown") {
                     displayName = `#${displayName}`;
@@ -551,16 +535,16 @@ async function createServer(
                 })
               );
 
-              const results = buildSearchResults<{ match: SlackSearchMatch; displayName: string }>(
-                resolvedMatches,
-                refs,
-                {
-                  permalink: (item) => item.match.permalink,
-                  text: (item) => `${item.displayName}, ${item.match.content ?? ""}`,
-                  id: (item) => item.match.message_ts ?? "",
-                  content: (item) => item.match.content ?? "",
-                }
-              );
+              const results = buildSearchResults<{
+                match: SlackSearchMatch;
+                displayName: string;
+              }>(resolvedMatches, refs, {
+                permalink: (item) => item.match.permalink,
+                text: (item) =>
+                  `${item.displayName}, ${item.match.content ?? ""}`,
+                id: (item) => item.match.message_ts ?? "",
+                content: (item) => item.match.content ?? "",
+              });
 
               return new Ok([
                 ...results.map((result) => ({
@@ -600,7 +584,7 @@ async function createServer(
           .describe(
             "A query to retrieve relevant messages based on the user request and conversation context. For it to be treated as semantic search, make sure it begins with a question word such as what, where, how, etc, and ends with a question mark. If the user asks to limit to certain channels, don't make them part of this query. Instead, use the `channels` parameter to limit the search to specific channels. But only do this if the user explicitly asks for it, otherwise, the search will be more effective if you don't limit it to specific channels."
           ),
-        ...buildCommonSearchParams(),
+        ...buildCommonSearchParams(true),
       },
       withToolLogging(
         auth,
@@ -609,13 +593,7 @@ async function createServer(
           agentLoopContext,
         },
         async (
-          {
-            query,
-            usersFrom,
-            usersTo,
-            relativeTimeFrame,
-            channels,
-          },
+          { query, usersFrom, usersTo, relativeTimeFrame, channels },
           { authInfo }
         ) => {
           if (!agentLoopContext?.runContext) {
@@ -712,16 +690,12 @@ async function createServer(
               const results = buildSearchResults<{
                 match: SlackSearchMatch;
                 text: string;
-              }>(
-                resolvedMatches,
-                refs,
-                {
-                  permalink: ({ match }) => match.permalink,
-                  text: ({ text }) => text,
-                  id: ({ match }) => match.message_ts ?? "",
-                  content: ({ match }) => match.content ?? "",
-                }
-              );
+              }>(resolvedMatches, refs, {
+                permalink: ({ match }) => match.permalink,
+                text: ({ text }) => text,
+                id: ({ match }) => match.message_ts ?? "",
+                content: ({ match }) => match.content ?? "",
+              });
 
               return new Ok([
                 ...results.map((result) => ({
@@ -1136,11 +1110,26 @@ async function createServer(
           });
 
           if (!response.ok) {
+            // Log detailed error information for debugging
+            localLogger.error(
+              {
+                error: response.error,
+                channelId,
+                channel,
+                responseMetadata: response.response_metadata,
+                needed: response.needed,
+                provided: response.provided,
+              },
+              "Failed to list threads - conversations.history error"
+            );
+
             // Provide specific error message for missing_scope
             if (response.error === "missing_scope") {
               return new Err(
                 new MCPError(
-                  "Missing permission to access this channel. Please reconnect your Slack account in the connections settings to grant the required permissions."
+                  `Missing permission to access this channel (${channelId}). ` +
+                    `Required scope: ${response.needed ?? "unknown"}. ` +
+                    `Please reconnect your Slack account in the connections settings to grant the required permissions.`
                 )
               );
             }
@@ -1167,13 +1156,7 @@ async function createServer(
               },
               {
                 type: "resource" as const,
-                resource: makeQueryResource(
-                  [],
-                  timeFrame,
-                  [channel],
-                  [],
-                  []
-                ),
+                resource: makeQueryResource([], timeFrame, [channel], [], []),
               },
             ]);
           } else {
@@ -1199,7 +1182,9 @@ async function createServer(
                   channelInfo.channel.name,
                   accessToken
                 );
-                displayName = userName ? `@${userName}` : `@${channelInfo.channel.name}`;
+                displayName = userName
+                  ? `@${userName}`
+                  : `@${channelInfo.channel.name}`;
               } else if (channelInfo.channel.name) {
                 // Regular channel
                 displayName = `#${channelInfo.channel.name}`;
@@ -1229,13 +1214,7 @@ async function createServer(
               })),
               {
                 type: "resource" as const,
-                resource: makeQueryResource(
-                  [],
-                  timeFrame,
-                  [channel],
-                  [],
-                  []
-                ),
+                resource: makeQueryResource([], timeFrame, [channel], [], []),
               },
             ]);
           }
@@ -1243,6 +1222,24 @@ async function createServer(
           if (isSlackTokenRevoked(error)) {
             return new Ok(makePersonalAuthenticationError("slack").content);
           }
+
+          // Log the full error for debugging
+          localLogger.error(
+            {
+              error,
+              errorMessage:
+                error instanceof Error ? error.message : String(error),
+              errorStack: error instanceof Error ? error.stack : undefined,
+              channel,
+              channelId: await resolveChannelId(
+                channel,
+                accessToken,
+                mcpServerId
+              ).catch(() => "failed-to-resolve"),
+            },
+            "Error listing threads - caught exception"
+          );
+
           return new Err(new MCPError(`Error listing threads: ${error}`));
         }
       }
