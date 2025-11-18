@@ -70,6 +70,7 @@ export async function getBuilderDescriptionSuggestions(
         "The assistant has been given instructions by the user. Based on the provided " +
         "instructions suggest a short description of the assistant.",
       specifications,
+      forceToolCall: FUNCTION_NAME,
     },
     {
       context: {

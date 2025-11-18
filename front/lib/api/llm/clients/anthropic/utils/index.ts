@@ -1,5 +1,9 @@
-import type { ThinkingConfigParam } from "@anthropic-ai/sdk/resources/messages.mjs";
+import type {
+  ThinkingConfigParam,
+  ToolChoice,
+} from "@anthropic-ai/sdk/resources/messages.mjs";
 
+import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type { ReasoningEffort } from "@app/types";
 import { assertNever } from "@app/types";
 
@@ -39,4 +43,16 @@ export function toThinkingConfig(
     default:
       assertNever(reasoningEffort);
   }
+}
+
+export function toToolChoiceParam(
+  specifications: AgentActionSpecification[],
+  forceToolCall: string | undefined
+): ToolChoice {
+  return forceToolCall && specifications.some((s) => s.name === forceToolCall)
+    ? {
+        type: "tool" as const,
+        name: forceToolCall,
+      }
+    : { type: "auto" };
 }

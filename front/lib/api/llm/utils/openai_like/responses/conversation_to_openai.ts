@@ -6,6 +6,7 @@ import type {
   ResponseInput,
   ResponseInputContent,
   ResponseInputItem,
+  ToolChoiceFunction,
 } from "openai/resources/responses/responses";
 import type {
   Reasoning,
@@ -195,6 +196,18 @@ export function toReasoning(
     effort: reasoningConfigMapping[reasoningEffort],
     summary: "auto",
   };
+}
+
+export function toToolOption(
+  specifications: AgentActionSpecification[],
+  forceToolCall: string | undefined
+): ToolChoiceFunction | "auto" {
+  return forceToolCall && specifications.some((s) => s.name === forceToolCall)
+    ? {
+        type: "function" as const,
+        name: forceToolCall,
+      }
+    : "auto";
 }
 
 export function toResponseFormat(

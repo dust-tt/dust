@@ -7,7 +7,10 @@ import {
   toTool,
 } from "@app/lib/api/llm/clients/google/utils/conversation_to_google";
 import { streamLLMEvents } from "@app/lib/api/llm/clients/google/utils/google_to_events";
-import { toThinkingConfig } from "@app/lib/api/llm/clients/google/utils/to_thinking";
+import {
+  toThinkingConfig,
+  toToolConfigParam,
+} from "@app/lib/api/llm/clients/google/utils/to_thinking";
 import { LLM } from "@app/lib/api/llm/llm";
 import { handleGenericError } from "@app/lib/api/llm/types/errors";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
@@ -46,6 +49,7 @@ export class GoogleLLM extends LLM {
     conversation,
     prompt,
     specifications,
+    forceToolCall,
   }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
     try {
       const contents = await Promise.all(
@@ -67,6 +71,7 @@ export class GoogleLLM extends LLM {
               reasoningEffort: this.reasoningEffort,
               useNativeLightReasoning: this.modelConfig.useNativeLightReasoning,
             }),
+            toolConfig: toToolConfigParam(specifications, forceToolCall),
           },
         });
 

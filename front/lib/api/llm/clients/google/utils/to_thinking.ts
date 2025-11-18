@@ -1,5 +1,7 @@
-import type { ThinkingConfig } from "@google/genai";
+import type { ThinkingConfig, ToolConfig } from "@google/genai";
+import { FunctionCallingConfigMode } from "@google/genai";
 
+import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type { GoogleAIStudioWhitelistedModelId } from "@app/lib/api/llm/clients/google/types";
 import { GOOGLE_AI_STUDIO_MODEL_CONFIGS } from "@app/lib/api/llm/clients/google/types";
 import type { ReasoningEffort } from "@app/types";
@@ -49,4 +51,18 @@ export function toThinkingConfig({
     default:
       assertNever(reasoningEffort);
   }
+}
+
+export function toToolConfigParam(
+  specifications: AgentActionSpecification[],
+  forceToolCall: string | undefined
+): ToolConfig | undefined {
+  return forceToolCall && specifications.some((s) => s.name === forceToolCall)
+    ? {
+        functionCallingConfig: {
+          allowedFunctionNames: [forceToolCall],
+          mode: FunctionCallingConfigMode.ANY,
+        },
+      }
+    : undefined;
 }
