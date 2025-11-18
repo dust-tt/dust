@@ -184,21 +184,27 @@ async function handler(
     return;
   }
 
+  const redirectOptions: Parameters<typeof buildPostLoginUrl>[1] = {
+    welcome: user.lastLoginAt === null,
+  };
+
   await user.recordLoginActivity();
 
   if (targetWorkspace && targetFlow === "joined") {
     // For users joining a workspace from trying to access a conversation, we redirect to this
     // conversation after signing in.
-    if (req.query.join === "true" && req.query.cId) {
-      res.redirect(`/w/${targetWorkspace.sId}/welcome?cId=${req.query.cId}`);
-      return;
+    if (req.query.join === "true" && typeof req.query.cId === "string") {
+      redirectOptions.conversationId = req.query.cId;
     }
-    res.redirect(`/w/${targetWorkspace.sId}/welcome`);
+    res.redirect(buildPostLoginUrl(targetWorkspace.sId, redirectOptions));
     return;
   }
 
   res.redirect(
-    `/w/${targetWorkspace ? targetWorkspace.sId : u.workspaces[0].sId}`
+    buildPostLoginUrl(
+      targetWorkspace?.sId ?? u.workspaces[0].sId,
+      redirectOptions
+    )
   );
 
   return;
@@ -206,3 +212,20 @@ async function handler(
 
 // Note from seb: Should it be withSessionAuthentication?
 export default withLogging(handler);
+
+const buildPostLoginUrl = (
+  workspaceId: string,
+  options?: {
+    welcome?: boolean;
+    conversationId?: string;
+  }
+) => {
+  let path = `/w/${workspaceId}`;
+  if (options?.welcome) {
+    path += "/welcome";
+  }
+  if (options?.conversationId) {
+    path += `?cId=${options.conversationId}`;
+  }
+  return path;
+};
