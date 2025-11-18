@@ -362,10 +362,6 @@ export const ConversationViewer = ({
             // Debounce the call as we might receive multiple events for the same conversation (as we replay the events).
             void debouncedMarkAsRead(event.conversationId, false);
 
-            // Mutate the messages to be sure that the swr cache is updated.
-            // Fixes an issue where the last message of a conversation is "thinking" and not "done" the first time you switch back and forth to a conversation.
-            void mutateMessages();
-
             // Update the conversation hasError state in the local cache without making a network request.
             void mutateConversations(
               (currentData) => {
@@ -531,7 +527,21 @@ export const ConversationViewer = ({
           : m
       );
 
-      await mutateConversations();
+      void mutateConversations(
+        (currentData) => {
+          if (!currentData?.conversations) {
+            return currentData;
+          }
+          return {
+            conversations: currentData.conversations.map((c) =>
+              c.sId === conversationId
+                ? { ...c, updated: new Date().getTime() }
+                : c
+            ),
+          };
+        },
+        { revalidate: false }
+      );
 
       return new Ok(undefined);
     },
@@ -539,9 +549,9 @@ export const ConversationViewer = ({
       user,
       owner,
       conversationId,
-      mutateConversations,
       setPlanLimitReached,
       sendNotification,
+      mutateConversations,
     ]
   );
 
