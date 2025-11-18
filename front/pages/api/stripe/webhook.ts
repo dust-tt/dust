@@ -21,6 +21,7 @@ import {
   isCreditPurchaseInvoice,
 } from "@app/lib/plans/stripe";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
+import { CreditResource } from "@app/lib/resources/credit_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -327,7 +328,6 @@ async function handler(
             // the warnings and create an alert if this log appears in all regions
             return res.status(200).json({ success: true });
           }
-
           // Handle credit purchase activation for Pro subscriptions.
           // (Enterprise subscriptions activate credits optimistically, so we skip them here.)
           const creditPurchaseResult =
@@ -347,7 +347,8 @@ async function handler(
             );
           }
 
-          // We don't want credit purchase invoice being paid clearing customer's sub's payment_failed_since
+          // We don't want credit purchase invoice being paid,
+          // to clear customer's sub's payment_failed_since
           if (!isCreditPurchaseInvoice(invoice)) {
             await subscription.update({ paymentFailingSince: null });
           }
