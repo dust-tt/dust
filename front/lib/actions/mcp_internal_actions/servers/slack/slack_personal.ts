@@ -19,8 +19,8 @@ import {
   executeReadThreadMessages,
   executeScheduleMessage,
   getSlackClient,
+  resolveChannelDisplayName,
   resolveChannelId,
-  resolveUserDisplayName,
 } from "@app/lib/actions/mcp_internal_actions/servers/slack/helpers";
 import {
   makeInternalMCPServer,
@@ -32,7 +32,6 @@ import { SLACK_SEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import logger from "@app/logger/logger";
 import type { TimeFrame } from "@app/types";
 import {
   Err,
@@ -41,8 +40,6 @@ import {
   stripNullBytes,
   timeFrameFromNow,
 } from "@app/types";
-
-const localLogger = logger.child({ module: "mcp_slack_personal" });
 
 export type SlackSearchMatch = {
   author_name?: string;
@@ -122,11 +119,6 @@ export const slackSearch = async (
   } catch (error) {
     // Fallback to standard search.messages API if assistant.search.context fails.
     // This typically happens when Slack AI is not enabled (local env) or the token doesn't have the required permissions.
-    localLogger.info(
-      { error },
-      "Failed to use assistant.search.context, falling back to search.messages"
-    );
-
     const slackClient = await getSlackClient(accessToken);
 
     const response = await slackClient.search.messages({
@@ -197,7 +189,8 @@ function makeQueryResource(
   relativeTimeFrame: TimeFrame | null,
   channels?: string[],
   usersFrom?: string[],
-  usersTo?: string[]
+  usersTo?: string[],
+  usersMentioned?: string[]
 ): SearchQueryResourceType {
   const timeFrameAsString =
     renderRelativeTimeFrameForToolOutput(relativeTimeFrame);
@@ -213,6 +206,9 @@ function makeQueryResource(
   }
   if (usersTo && usersTo.length > 0) {
     text += ` to users: ${usersTo.join(", ")}`;
+  }
+  if (usersMentioned && usersMentioned.length > 0) {
+    text += ` mentioning users: ${usersMentioned.join(", ")}`;
   }
 
   return {
@@ -251,6 +247,15 @@ const buildCommonSearchParams = (forSemanticSearch: boolean = false) => ({
         ? "Narrow the search to direct messages sent to specific user IDs (optional). ONLY use if the user EXPLICITLY requests DMs to specific users (e.g., 'my DMs to Sarah'). Leave empty otherwise for better semantic search results, as this adds keyword filters that reduce semantic search effectiveness."
         : "Narrow the search to direct messages sent to specific user IDs (optional)"
     ),
+  usersMentioned: z
+    .string()
+    .array()
+    .optional()
+    .describe(
+      forSemanticSearch
+        ? "Narrow the search to messages that mention specific user IDs (optional). ONLY use if the user EXPLICITLY requests messages mentioning specific users (e.g., 'messages mentioning @John'). Leave empty otherwise for better semantic search results, as this adds keyword filters that reduce semantic search effectiveness."
+        : "Narrow the search to messages that mention specific user IDs (optional)"
+    ),
   relativeTimeFrame: z
     .string()
     .regex(/^(all|\d+[hdwmy])$/)
@@ -271,6 +276,7 @@ async function buildSlackSearchQuery(
     channels,
     usersFrom,
     usersTo,
+    usersMentioned,
     accessToken,
     mcpServerId,
   }: {
@@ -278,6 +284,7 @@ async function buildSlackSearchQuery(
     channels?: string[];
     usersFrom?: string[];
     usersTo?: string[];
+    usersMentioned?: string[];
     accessToken: string;
     mcpServerId: string;
   }
@@ -334,6 +341,9 @@ async function buildSlackSearchQuery(
   }
   if (usersTo && usersTo.length > 0) {
     query = `${query} ${usersTo.map((user) => `to:${user}`).join(" ")}`;
+  }
+  if (usersMentioned && usersMentioned.length > 0) {
+    query = `${query} ${usersMentioned.map((user) => `@${user}`).join(" ")}`;
   }
   return query;
 }
@@ -397,15 +407,6 @@ async function createServer(
     ? await getSlackAIEnablementStatus(c.access_token)
     : "disconnected";
 
-  localLogger.info(
-    {
-      mcpServerId,
-      workspaceId: auth.getNonNullableWorkspace().sId,
-      slackAIStatus,
-    },
-    "Slack MCP server initialized"
-  );
-
   // If we're not connected to Slack, we arbitrarily include the first search tool, just so there is one
   // in the list. As soon as we're connected, it will show the correct one.
   if (slackAIStatus === "disabled" || slackAIStatus === "disconnected") {
@@ -430,7 +431,14 @@ async function createServer(
           agentLoopContext,
         },
         async (
-          { keywords, usersFrom, usersTo, relativeTimeFrame, channels },
+          {
+            keywords,
+            usersFrom,
+            usersTo,
+            usersMentioned,
+            relativeTimeFrame,
+            channels,
+          },
           { authInfo }
         ) => {
           if (!agentLoopContext?.runContext) {
@@ -466,6 +474,7 @@ async function createServer(
                   channels,
                   usersFrom,
                   usersTo,
+                  usersMentioned,
                   accessToken,
                   mcpServerId,
                 });
@@ -500,7 +509,8 @@ async function createServer(
                     timeFrame,
                     channels,
                     usersFrom,
-                    usersTo
+                    usersTo,
+                    usersMentioned
                   ),
                 },
               ]);
@@ -516,20 +526,14 @@ async function createServer(
               // Resolve channel/user names for display
               const resolvedMatches = await Promise.all(
                 matches.map(async (match) => {
-                  let displayName = match.channel_name ?? "Unknown";
-
-                  // If channel_name looks like a user ID (starts with U), resolve to user name
-                  if (displayName.match(/^U[A-Z0-9]+$/)) {
-                    const userName = await resolveUserDisplayName(
-                      displayName,
-                      accessToken
-                    );
-                    displayName = userName ? `@${userName}` : `@${displayName}`;
-                  } else if (displayName !== "Unknown") {
-                    displayName = `#${displayName}`;
-                  } else {
-                    displayName = "#Unknown";
-                  }
+                  const channelIdOrName = match.channel_name ?? "Unknown";
+                  const displayName =
+                    channelIdOrName === "Unknown"
+                      ? "#Unknown"
+                      : await resolveChannelDisplayName(
+                          channelIdOrName,
+                          accessToken
+                        );
 
                   return { match, displayName };
                 })
@@ -558,7 +562,8 @@ async function createServer(
                     timeFrame,
                     channels,
                     usersFrom,
-                    usersTo
+                    usersTo,
+                    usersMentioned
                   ),
                 },
               ]);
@@ -593,7 +598,14 @@ async function createServer(
           agentLoopContext,
         },
         async (
-          { query, usersFrom, usersTo, relativeTimeFrame, channels },
+          {
+            query,
+            usersFrom,
+            usersTo,
+            usersMentioned,
+            relativeTimeFrame,
+            channels,
+          },
           { authInfo }
         ) => {
           if (!agentLoopContext?.runContext) {
@@ -615,6 +627,7 @@ async function createServer(
               channels,
               usersFrom,
               usersTo,
+              usersMentioned,
               accessToken,
               mcpServerId,
             });
@@ -631,7 +644,8 @@ async function createServer(
                     timeFrame,
                     channels,
                     usersFrom,
-                    usersTo
+                    usersTo,
+                    usersMentioned
                   ),
                 },
               ]);
@@ -648,22 +662,18 @@ async function createServer(
                 // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 const author = match.author_name || "Unknown";
                 // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                let channel = match.channel_name || "Unknown";
+                const channelIdOrName = match.channel_name || "Unknown";
                 // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 let content = match.content || "";
 
-                // If channel looks like a user ID (starts with U), resolve to user name.
-                if (channel.match(/^U[A-Z0-9]+$/)) {
-                  const userName = await resolveUserDisplayName(
-                    channel,
-                    accessToken
-                  );
-                  channel = userName ? `@${userName}` : `@${channel}`;
-                } else if (channel !== "Unknown") {
-                  channel = `#${channel}`;
-                } else {
-                  channel = "#Unknown";
-                }
+                // Resolve channel/user ID to display name
+                const channel =
+                  channelIdOrName === "Unknown"
+                    ? "#Unknown"
+                    : await resolveChannelDisplayName(
+                        channelIdOrName,
+                        accessToken
+                      );
 
                 // assistant.search.context wraps search words in \uE000 and \uE001.
                 // which display as squares in the UI, so we strip them out.
@@ -709,7 +719,8 @@ async function createServer(
                     timeFrame,
                     channels,
                     usersFrom,
-                    usersTo
+                    usersTo,
+                    usersMentioned
                   ),
                 },
               ]);
@@ -1110,19 +1121,6 @@ async function createServer(
           });
 
           if (!response.ok) {
-            // Log detailed error information for debugging
-            localLogger.error(
-              {
-                error: response.error,
-                channelId,
-                channel,
-                responseMetadata: response.response_metadata,
-                needed: response.needed,
-                provided: response.provided,
-              },
-              "Failed to list threads - conversations.history error"
-            );
-
             // Provide specific error message for missing_scope
             if (response.error === "missing_scope") {
               return new Err(
@@ -1156,7 +1154,14 @@ async function createServer(
               },
               {
                 type: "resource" as const,
-                resource: makeQueryResource([], timeFrame, [channel], [], []),
+                resource: makeQueryResource(
+                  [],
+                  timeFrame,
+                  [channel],
+                  [],
+                  [],
+                  []
+                ),
               },
             ]);
           } else {
@@ -1167,33 +1172,11 @@ async function createServer(
               citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
             );
 
-            // Get channel info to display channel name in results.
-            const channelInfo = await slackClient.conversations.info({
-              channel: channelId,
-            });
-
-            // Determine display name based on channel type
-            let displayName: string;
-            if (channelInfo.ok && channelInfo.channel) {
-              // For DMs, channelId starts with "D" and channel.name contains the user ID
-              if (channelId.startsWith("D") && channelInfo.channel.name) {
-                // It's a DM, channel.name is the user ID - resolve to user name
-                const userName = await resolveUserDisplayName(
-                  channelInfo.channel.name,
-                  accessToken
-                );
-                displayName = userName
-                  ? `@${userName}`
-                  : `@${channelInfo.channel.name}`;
-              } else if (channelInfo.channel.name) {
-                // Regular channel
-                displayName = `#${channelInfo.channel.name}`;
-              } else {
-                displayName = `#${channel}`;
-              }
-            } else {
-              displayName = `#${channel}`;
-            }
+            // Resolve channel ID to display name
+            const displayName = await resolveChannelDisplayName(
+              channelId,
+              accessToken
+            );
 
             const results = buildSearchResults<{
               text?: string;
@@ -1214,7 +1197,14 @@ async function createServer(
               })),
               {
                 type: "resource" as const,
-                resource: makeQueryResource([], timeFrame, [channel], [], []),
+                resource: makeQueryResource(
+                  [],
+                  timeFrame,
+                  [channel],
+                  [],
+                  [],
+                  []
+                ),
               },
             ]);
           }
@@ -1222,23 +1212,6 @@ async function createServer(
           if (isSlackTokenRevoked(error)) {
             return new Ok(makePersonalAuthenticationError("slack").content);
           }
-
-          // Log the full error for debugging
-          localLogger.error(
-            {
-              error,
-              errorMessage:
-                error instanceof Error ? error.message : String(error),
-              errorStack: error instanceof Error ? error.stack : undefined,
-              channel,
-              channelId: await resolveChannelId(
-                channel,
-                accessToken,
-                mcpServerId
-              ).catch(() => "failed-to-resolve"),
-            },
-            "Error listing threads - caught exception"
-          );
 
           return new Err(new MCPError(`Error listing threads: ${error}`));
         }

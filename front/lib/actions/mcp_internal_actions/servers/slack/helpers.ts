@@ -734,6 +734,70 @@ export async function resolveUserDisplayName(
   return null;
 }
 
+/**
+ * Resolves a channel ID or name to a human-readable display name.
+ * Handles DMs (direct messages), regular channels, and fallback cases.
+ *
+ * @param channelIdOrName - Channel ID (C..., D..., G...) or channel name
+ * @param accessToken - Slack access token
+ * @returns Display name with appropriate prefix (@username for DMs, #channel-name for channels)
+ */
+export async function resolveChannelDisplayName(
+  channelIdOrName: string,
+  accessToken: string
+): Promise<string> {
+  const slackClient = await getSlackClient(accessToken);
+
+  try {
+    // If it looks like a channel ID (starts with C, D, or G), get channel info
+    if (channelIdOrName.match(/^[CDG][A-Z0-9]+$/)) {
+      const channelInfo = await slackClient.conversations.info({
+        channel: channelIdOrName,
+      });
+
+      if (channelInfo.ok && channelInfo.channel) {
+        // For DMs, channelId starts with "D" and channel.name contains the user ID
+        if (channelIdOrName.startsWith("D") && channelInfo.channel.name) {
+          const userName = await resolveUserDisplayName(
+            channelInfo.channel.name,
+            accessToken
+          );
+          return userName ? `@${userName}` : `@${channelInfo.channel.name}`;
+        }
+
+        // For regular channels (public/private)
+        if (channelInfo.channel.name) {
+          return `#${channelInfo.channel.name}`;
+        }
+      }
+    }
+
+    // If it looks like a user ID (starts with U), resolve to user name
+    if (channelIdOrName.match(/^U[A-Z0-9]+$/)) {
+      const userName = await resolveUserDisplayName(
+        channelIdOrName,
+        accessToken
+      );
+      return userName ? `@${userName}` : `@${channelIdOrName}`;
+    }
+
+    // If it's already a channel name (not an ID), just prefix with #
+    if (!channelIdOrName.match(/^[A-Z0-9]+$/)) {
+      return `#${channelIdOrName}`;
+    }
+
+    // Fallback: treat as channel name
+    return `#${channelIdOrName}`;
+  } catch (error) {
+    // On error, return a fallback value
+    // If it looks like a user ID, prefix with @, otherwise with #
+    if (channelIdOrName.match(/^[UD][A-Z0-9]+$/)) {
+      return `@${channelIdOrName}`;
+    }
+    return `#${channelIdOrName}`;
+  }
+}
+
 // Helper function to resolve channel name or ID to channel ID.
 // Supports public channels, private channels, and DMs.
 export async function resolveChannelId(
