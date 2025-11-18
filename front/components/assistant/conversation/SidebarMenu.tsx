@@ -568,6 +568,13 @@ const InboxConversationList = ({
   const shouldShowMarkAllAsReadButton =
     unreadConversations.length > 0 && !isMultiSelect && onMarkAllAsRead;
 
+  const sortedInboxConversations = [
+    ...unreadConversations,
+    ...actionRequiredConversations,
+  ].sort((a, b) => {
+    return (b.updated ?? b.created) - (a.updated ?? b.created);
+  });
+
   return (
     <div className="px-3">
       <div className="sticky top-0 z-10 flex items-center justify-between overflow-auto bg-background dark:bg-background-night">
@@ -588,16 +595,14 @@ const InboxConversationList = ({
           </div>
         )}
       </div>
-      {[...unreadConversations, ...actionRequiredConversations].map(
-        (conversation) => (
-          <ConversationListItem
-            key={conversation.sId}
-            conversation={conversation}
-            isMultiSelect={isMultiSelect}
-            {...props}
-          />
-        )
-      )}
+      {sortedInboxConversations.map((conversation) => (
+        <ConversationListItem
+          key={conversation.sId}
+          conversation={conversation}
+          isMultiSelect={isMultiSelect}
+          {...props}
+        />
+      ))}
     </div>
   );
 };
