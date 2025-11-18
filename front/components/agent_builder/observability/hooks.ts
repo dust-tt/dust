@@ -17,7 +17,6 @@ import {
   useAgentToolExecution,
   useAgentToolStepIndex,
 } from "@app/lib/swr/assistants";
-import type { LatencyPoint } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/latency";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 type ToolUsageResult = {
@@ -45,6 +44,13 @@ type ErrorRateDataResult = {
   }[];
   isLoading: boolean;
   errorMessage: string | undefined;
+};
+
+export type LatencyPoint = {
+  timestamp: number;
+  count: number;
+  avgLatencyMs: number;
+  percentilesLatencyMs: number;
 };
 
 type LatencyDataResult = {

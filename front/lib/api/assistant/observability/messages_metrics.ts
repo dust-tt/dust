@@ -10,7 +10,7 @@ const DEFAULT_SELECTED_METRICS = [
   "conversations",
   "activeUsers",
   "costCents",
-] as const satisfies readonly (keyof UsageMetricsPoint)[];
+] as const satisfies readonly (keyof MessageMetricsPoint)[];
 
 type BaseMetricsPoint = {
   timestamp: number;
@@ -27,7 +27,7 @@ type Metrics = {
   errorRate: number;
 };
 
-export type UsageMetricsPoint = BaseMetricsPoint & Metrics;
+export type MessageMetricsPoint = BaseMetricsPoint & Metrics;
 
 export type MetricName = keyof Metrics;
 
@@ -114,7 +114,7 @@ export function parseMetricsFromBucket<K extends readonly MetricName[]>(
   bucket: MetricsBucket,
   metrics: K
 ): BaseMetricsPoint & Pick<Metrics, K[number]> {
-  const point: Partial<UsageMetricsPoint> = {
+  const point: Partial<MessageMetricsPoint> = {
     timestamp: bucket.key,
     count: bucket.doc_count ?? DEFAULT_METRIC_VALUE,
   };

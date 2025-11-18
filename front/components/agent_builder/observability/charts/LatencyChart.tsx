@@ -14,6 +14,7 @@ import {
   LATENCY_LEGEND,
   LATENCY_PALETTE,
 } from "@app/components/agent_builder/observability/constants";
+import type { LatencyPoint } from "@app/components/agent_builder/observability/hooks";
 import { useLatencyData } from "@app/components/agent_builder/observability/hooks";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
@@ -25,7 +26,6 @@ import { padSeriesToTimeRange } from "@app/components/agent_builder/observabilit
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 import { useAgentVersionMarkers } from "@app/lib/swr/assistants";
 import { formatShortDate } from "@app/lib/utils/timestamps";
-import type { LatencyPoint } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/latency";
 
 interface LatencyData extends LatencyPoint {
   date: string;

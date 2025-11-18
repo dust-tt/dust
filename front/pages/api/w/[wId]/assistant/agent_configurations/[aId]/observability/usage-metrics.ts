@@ -3,7 +3,10 @@ import { z } from "zod";
 
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import type { UsageMetricsInterval } from "@app/lib/api/assistant/observability/messages_metrics";
+import type {
+  MessageMetricsPoint,
+  UsageMetricsInterval,
+} from "@app/lib/api/assistant/observability/messages_metrics";
 import { fetchMessageMetrics } from "@app/lib/api/assistant/observability/messages_metrics";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -16,16 +19,12 @@ const QuerySchema = z.object({
   interval: z.enum(["day", "week"]).optional(),
 });
 
-export type UsageMetricsPoint = {
-  timestamp: number;
-  count: number;
-  conversations: number;
-  activeUsers: number;
-};
-
 export type GetUsageMetricsResponse = {
   interval: UsageMetricsInterval;
-  points: UsageMetricsPoint[];
+  points: Pick<
+    MessageMetricsPoint,
+    "timestamp" | "count" | "conversations" | "activeUsers"
+  >[];
 };
 
 async function handler(

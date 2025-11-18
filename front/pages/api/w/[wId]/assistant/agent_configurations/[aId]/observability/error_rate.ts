@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import type { MessageMetricsPoint } from "@app/lib/api/assistant/observability/messages_metrics";
 import { fetchMessageMetrics } from "@app/lib/api/assistant/observability/messages_metrics";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -15,15 +16,11 @@ const QuerySchema = z.object({
   version: z.string().optional(),
 });
 
-export type ErrorRatePoint = {
-  timestamp: number;
-  count: number;
-  failedMessages: number;
-  errorRate: number;
-};
-
 export type GetErrorRateResponse = {
-  points: ErrorRatePoint[];
+  points: Pick<
+    MessageMetricsPoint,
+    "timestamp" | "count" | "failedMessages" | "errorRate"
+  >[];
 };
 
 async function handler(
