@@ -21,6 +21,8 @@ import {
   getSlackClient,
   resolveChannelDisplayName,
   resolveChannelId,
+  resolveUserDisplayName,
+  resolveUsername,
 } from "@app/lib/actions/mcp_internal_actions/servers/slack/helpers";
 import {
   makeInternalMCPServer,
@@ -336,14 +338,45 @@ async function buildSlackSearchQuery(
       query = `${query} ${channelQueries}`;
     }
   }
+  // Resolve user IDs to usernames for search queries.
   if (usersFrom && usersFrom.length > 0) {
-    query = `${query} ${usersFrom.map((user) => `from:${user}`).join(" ")}`;
+    const resolvedUsersFrom = await Promise.all(
+      usersFrom.map(async (user) => {
+        // If it looks like a user ID (starts with U), resolve it to username
+        if (user.match(/^U[A-Z0-9]+$/)) {
+          const username = await resolveUsername(user, accessToken);
+          return username ?? user;
+        }
+        return user;
+      })
+    );
+    query = `${query} ${resolvedUsersFrom.map((user) => `from:@${user}`).join(" ")}`;
   }
   if (usersTo && usersTo.length > 0) {
-    query = `${query} ${usersTo.map((user) => `to:${user}`).join(" ")}`;
+    const resolvedUsersTo = await Promise.all(
+      usersTo.map(async (user) => {
+        // If it looks like a user ID (starts with U), resolve it to username
+        if (user.match(/^U[A-Z0-9]+$/)) {
+          const username = await resolveUsername(user, accessToken);
+          return username ?? user;
+        }
+        return user;
+      })
+    );
+    query = `${query} ${resolvedUsersTo.map((user) => `to:@${user}`).join(" ")}`;
   }
   if (usersMentioned && usersMentioned.length > 0) {
-    query = `${query} ${usersMentioned.map((user) => `@${user}`).join(" ")}`;
+    const resolvedUsersMentioned = await Promise.all(
+      usersMentioned.map(async (user) => {
+        // If it looks like a user ID (starts with U), resolve it to username
+        if (user.match(/^U[A-Z0-9]+$/)) {
+          const username = await resolveUsername(user, accessToken);
+          return username ?? user;
+        }
+        return user;
+      })
+    );
+    query = `${query} ${resolvedUsersMentioned.map((user) => `@${user}`).join(" ")}`;
   }
   return query;
 }
@@ -660,20 +693,35 @@ async function createServer(
 
               const getTextFromMatch = async (match: SlackSearchMatch) => {
                 // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                const author = match.author_name || "Unknown";
+                const authorIdOrName = match.author_name || "Unknown";
                 // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 const channelIdOrName = match.channel_name || "Unknown";
                 // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 let content = match.content || "";
 
-                // Resolve channel/user ID to display name
-                const channel =
-                  channelIdOrName === "Unknown"
-                    ? "#Unknown"
-                    : await resolveChannelDisplayName(
-                        channelIdOrName,
+                // Resolve author user ID to display name
+                const author =
+                  authorIdOrName === "Unknown"
+                    ? "Unknown"
+                    : (await resolveUserDisplayName(
+                        authorIdOrName,
                         accessToken
-                      );
+                      )) ?? authorIdOrName;
+
+                // Resolve channel/user ID to display name
+                let channel: string;
+                if (channelIdOrName === "Unknown") {
+                  channel = "#Unknown";
+                } else if (channelIdOrName.startsWith("D")) {
+                  // DM: channel ID starts with "D" → hardcode "a DM"
+                  channel = "a DM";
+                } else {
+                  // Regular channel: resolve the name
+                  channel = await resolveChannelDisplayName(
+                    channelIdOrName,
+                    accessToken
+                  );
+                }
 
                 // assistant.search.context wraps search words in \uE000 and \uE001.
                 // which display as squares in the UI, so we strip them out.

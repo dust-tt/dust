@@ -734,6 +734,28 @@ export async function resolveUserDisplayName(
   return null;
 }
 
+// Helper function to resolve user ID to username (handle).
+// Returns the user's username (@handle), or null if not found.
+// This is used for Slack search queries (from:@username, to:@username).
+export async function resolveUsername(
+  userId: string,
+  accessToken: string
+): Promise<string | null> {
+  const slackClient = await getSlackClient(accessToken);
+
+  try {
+    const response = await slackClient.users.info({ user: userId });
+    if (response.ok && response.user?.name) {
+      // Return the username (name field is the @handle)
+      return response.user.name;
+    }
+  } catch (error) {
+    // Return null if we can't resolve the user
+  }
+
+  return null;
+}
+
 /**
  * Resolves a channel ID or name to a human-readable display name.
  * Handles DMs (direct messages), regular channels, and fallback cases.
