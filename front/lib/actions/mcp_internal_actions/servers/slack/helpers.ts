@@ -721,9 +721,9 @@ export async function resolveUserDisplayName(
     if (response.ok && response.user) {
       // Prefer display_name, fallback to real_name, then to name
       return (
-        response.user.profile?.display_name ||
-        response.user.real_name ||
-        response.user.name ||
+        response.user.profile?.display_name ??
+        response.user.real_name ??
+        response.user.name ??
         null
       );
     }
@@ -806,7 +806,10 @@ export async function resolveChannelId(
   mcpServerId: string
 ): Promise<string | null> {
   const slackClient = await getSlackClient(accessToken);
-  const searchString = channelNameOrId.trim().replace(/^#/, "").replace(/^@/, "");
+  const searchString = channelNameOrId
+    .trim()
+    .replace(/^#/, "")
+    .replace(/^@/, "");
 
   // If searchString looks like a Slack channel/DM ID (starts with C, G, or D), try direct lookup first.
   if (searchString.match(/^[CGD][A-Z0-9]+$/)) {
