@@ -19,8 +19,6 @@ const COMMIT_HASH = process.env.NEXT_PUBLIC_COMMIT_HASH;
 
 import { PostHogTracker } from "@app/components/app/PostHogTracker";
 import RootLayout from "@app/components/app/RootLayout";
-import logger from "@app/logger/logger";
-import { normalizeError } from "@app/types";
 
 if (DATADOG_CLIENT_TOKEN) {
   datadogLogs.init({
