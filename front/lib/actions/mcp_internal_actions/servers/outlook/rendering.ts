@@ -1,5 +1,16 @@
+import DOMPurify from "isomorphic-dompurify";
+
 import type { OutlookEvent } from "@app/lib/actions/mcp_internal_actions/servers/outlook/outlook_api_helper";
 import { pluralize } from "@app/types";
+
+const OUTLOOK_EVENT_BODY_SANITIZE_CONFIG = {
+  ALLOWED_TAGS: [],
+  KEEP_CONTENT: true,
+
+  // These tags get COMPLETELY removed (tag + content inside)
+  FORBID_TAGS: ["style", "script"],
+  FORBID_ATTR: ["style"],
+};
 
 interface EnrichedOutlookEventDateTime {
   dateTime: string;
@@ -11,21 +22,6 @@ interface EnrichedOutlookEventDateTime {
 interface EnrichedOutlookEvent extends Omit<OutlookEvent, "start" | "end"> {
   start: EnrichedOutlookEventDateTime;
   end: EnrichedOutlookEventDateTime;
-}
-
-function stripHtmlTags(html: string): string {
-  return html
-    .replace(/<style[^>]*>.*?<\/style>/g, "")
-    .replace(/<script[^>]*>.*?<\/script>/g, "")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\n\s*\n\s*\n/g, "\n\n")
-    .trim();
 }
 
 function enrichEventWithDayOfWeek(
@@ -128,7 +124,10 @@ export function renderOutlookEvent(
   if (enrichedEvent.body?.content) {
     const bodyContent =
       enrichedEvent.body.contentType === "html"
-        ? stripHtmlTags(enrichedEvent.body.content)
+        ? DOMPurify.sanitize(
+            enrichedEvent.body.content,
+            OUTLOOK_EVENT_BODY_SANITIZE_CONFIG
+          )
         : enrichedEvent.body.content;
 
     if (bodyContent.trim()) {
