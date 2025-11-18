@@ -1,5 +1,6 @@
 import {
   BoltIcon,
+  classNames,
   ConversationMessage,
   Icon,
   Markdown,
@@ -35,22 +36,26 @@ import {
   userMentionDirective,
 } from "@app/lib/mentions/markdown/plugin";
 import { formatTimestring } from "@app/lib/utils/timestamps";
-import type { UserMessageType, WorkspaceType } from "@app/types";
+import type { UserMessageType, UserType, WorkspaceType } from "@app/types";
 
 interface UserMessageProps {
   citations?: React.ReactElement[];
   conversationId: string;
+  currentUser: UserType;
   isLastMessage: boolean;
   message: UserMessageType;
   owner: WorkspaceType;
+  textFullWidth?: boolean;
 }
 
 export function UserMessage({
   citations,
   conversationId,
+  currentUser,
   isLastMessage,
   message,
   owner,
+  textFullWidth = false,
 }: UserMessageProps) {
   const additionalMarkdownComponents: Components = useMemo(
     () => ({
@@ -89,9 +94,11 @@ export function UserMessage({
     );
   }, [message.mentions.length, isLastMessage, methods.data]);
 
+  const isCurrentUser = message.user?.sId === currentUser.sId;
+
   return (
     <div className="flex flex-grow flex-col">
-      <div className="min-w-60 max-w-full self-end">
+      <div className={classNames("min-w-60 max-w-full", isCurrentUser ? "self-end" : "self-start")}>
         <ConversationMessage
           // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           pictureUrl={message.context.profilePictureUrl || message.user?.image}
@@ -106,7 +113,9 @@ export function UserMessage({
             )
           }
           type="user"
+          isCurrentUser={isCurrentUser}
           citations={citations}
+          textFullWidth={textFullWidth}
         >
           <Markdown
             content={message.content}

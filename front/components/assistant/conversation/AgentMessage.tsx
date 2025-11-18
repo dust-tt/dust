@@ -537,7 +537,20 @@ export function AgentMessage({
     <ConversationMessage
       pictureUrl={agentConfiguration.pictureUrl}
       name={agentConfiguration.name}
-      buttons={buttons.length > 0 ? buttons : undefined}
+      buttons={
+        buttons.length > 0
+          ? [
+              <div
+                className="flex gap-0.5 rounded-xl border border-solid border-border"
+                key="buttons"
+              >
+                {buttons.map((button) => (
+                  <span key={button.key}>{button}</span>
+                ))}
+              </div>,
+            ]
+          : undefined
+      }
       avatarBusy={agentMessageToRender.status === "created"}
       isDisabled={isArchived}
       renderName={renderName}

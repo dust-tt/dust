@@ -48,8 +48,8 @@ export { ContextItem } from "./ContextItem";
 export {
   ConversationContainer,
   ConversationMessage,
+  ConversationMessageAvatar,
   ConversationMessageContent,
-  ConversationMessageHeader,
 } from "./ConversationMessage";
 export { Counter } from "./Counter";
 export type { DataTableMoreButtonProps, MenuItem } from "./DataTable";
