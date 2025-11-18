@@ -163,7 +163,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   ) {
     assert(
       auth.isAdmin() || auth.user()?.id === user.id,
-      "Triggers can only be listed by admins or by their editor."
+      "Triggers can only be listed by admins or by the subscribed user."
     );
 
     const workspace = auth.getNonNullableWorkspace();
