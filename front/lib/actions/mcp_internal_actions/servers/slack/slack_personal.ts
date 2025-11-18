@@ -19,10 +19,10 @@ import {
   executeReadThreadMessages,
   executeScheduleMessage,
   getSlackClient,
+  isSlackTokenRevoked,
   resolveChannelDisplayName,
   resolveChannelId,
   resolveUserDisplayName,
-  resolveUsername,
 } from "@app/lib/actions/mcp_internal_actions/servers/slack/helpers";
 import {
   makeInternalMCPServer,
@@ -338,56 +338,16 @@ async function buildSlackSearchQuery(
       query = `${query} ${channelQueries}`;
     }
   }
-  // Resolve user IDs to usernames for search queries.
   if (usersFrom && usersFrom.length > 0) {
-    const resolvedUsersFrom = await Promise.all(
-      usersFrom.map(async (user) => {
-        // If it looks like a user ID (starts with U), resolve it to username
-        if (user.match(/^U[A-Z0-9]+$/)) {
-          const username = await resolveUsername(user, accessToken);
-          return username ?? user;
-        }
-        return user;
-      })
-    );
-    query = `${query} ${resolvedUsersFrom.map((user) => `from:@${user}`).join(" ")}`;
+    query = `${query} ${usersFrom.map((user) => `from:@${user}`).join(" ")}`;
   }
   if (usersTo && usersTo.length > 0) {
-    const resolvedUsersTo = await Promise.all(
-      usersTo.map(async (user) => {
-        // If it looks like a user ID (starts with U), resolve it to username
-        if (user.match(/^U[A-Z0-9]+$/)) {
-          const username = await resolveUsername(user, accessToken);
-          return username ?? user;
-        }
-        return user;
-      })
-    );
-    query = `${query} ${resolvedUsersTo.map((user) => `to:@${user}`).join(" ")}`;
+    query = `${query} ${usersTo.map((user) => `to:@${user}`).join(" ")}`;
   }
   if (usersMentioned && usersMentioned.length > 0) {
-    const resolvedUsersMentioned = await Promise.all(
-      usersMentioned.map(async (user) => {
-        // If it looks like a user ID (starts with U), resolve it to username
-        if (user.match(/^U[A-Z0-9]+$/)) {
-          const username = await resolveUsername(user, accessToken);
-          return username ?? user;
-        }
-        return user;
-      })
-    );
-    query = `${query} ${resolvedUsersMentioned.map((user) => `@${user}`).join(" ")}`;
+    query = `${query} ${usersMentioned.map((user) => `@${user}`).join(" ")}`;
   }
   return query;
-}
-
-function isSlackTokenRevoked(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    (error as any).message &&
-    (error as any).message.toString().includes("token_revoked")
-  );
 }
 
 // 'disconnected' is expected when we don't have a Slack connection yet.
@@ -1318,7 +1278,8 @@ async function createServer(
           cursor,
           oldest,
           latest,
-          accessToken
+          accessToken,
+          mcpServerId
         );
       }
     )
