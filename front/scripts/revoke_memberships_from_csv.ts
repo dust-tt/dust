@@ -3,6 +3,7 @@ import { readFileSync } from "fs";
 
 import { revokeAndTrackMembership } from "@app/lib/api/membership";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
+import { Authenticator } from "@app/lib/auth";
 import { UserResource } from "@app/lib/resources/user_resource";
 
 import type { ArgumentSpecs } from "./helpers";
@@ -24,6 +25,8 @@ const argumentSpecs: ArgumentSpecs = {
 makeScript(
   argumentSpecs,
   async ({ csvPath, workspaceId, execute }, scriptLogger) => {
+    const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+
     // Read and parse CSV file
     const fileContent = readFileSync(csvPath, "utf-8");
     const records = parse(fileContent, {
@@ -56,7 +59,7 @@ makeScript(
       }
 
       if (execute) {
-        const result = await revokeAndTrackMembership(workspace, user);
+        const result = await revokeAndTrackMembership(auth, user);
         if (result.isOk()) {
           scriptLogger.info(
             { email, role: result.value.role },

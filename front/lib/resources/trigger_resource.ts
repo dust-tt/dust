@@ -25,7 +25,7 @@ import {
   deleteTriggerSchedule,
 } from "@app/lib/triggers/temporal/schedule/client";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { ModelId, Result } from "@app/types";
+import type { ModelId, Result, UserType } from "@app/types";
 import {
   assertNever,
   Err,
@@ -140,8 +140,14 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     });
   }
 
-  static async listByUserEditor(auth: Authenticator) {
-    const user = auth.getNonNullableUser();
+  static async listByUserEditor(
+    auth: Authenticator,
+    user: UserResource | UserType
+  ) {
+    // Either have to be an admin or the user itself.
+    if (!auth.isAdmin() && auth.user()?.id !== user.id) {
+      return [];
+    }
 
     return this.baseFetch(auth, {
       where: {
@@ -150,9 +156,16 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     });
   }
 
-  static async listByUserSubscriber(auth: Authenticator) {
+  static async listByUserSubscriber(
+    auth: Authenticator,
+    user: UserResource | UserType
+  ) {
+    // Either have to be an admin or the user itself.
+    if (!auth.isAdmin() && auth.user()?.id !== user.id) {
+      return [];
+    }
+
     const workspace = auth.getNonNullableWorkspace();
-    const user = auth.getNonNullableUser();
 
     const res = await this.model.findAll({
       where: {
@@ -284,21 +297,17 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     const r = await concurrentExecutor(
       triggers,
       async (trigger) => {
-        try {
-          return await trigger.delete(auth);
-        } catch (error) {
-          return new Err(normalizeError(error));
-        }
+        return trigger.delete(auth);
       },
       {
-        concurrency: 10,
+        concurrency: 4,
       }
     );
 
-    if (r.find((res) => res.isErr())) {
+    if (r.some((res) => res.isErr())) {
       return new Err(
         new Error(
-          `Failed to delete ${r.filter((res) => res.isErr()).length} some triggers`
+          `Failed to delete ${r.filter((res) => res.isErr()).length} triggers`
         )
       );
     }
@@ -306,9 +315,11 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   }
 
   static async deleteAllForUser(
-    auth: Authenticator
+    auth: Authenticator,
+    user: UserResource | UserType
   ): Promise<Result<undefined, Error>> {
-    const triggers = await this.listByUserEditor(auth);
+    const triggers = await this.listByUserEditor(auth, user);
+
     if (triggers.length === 0) {
       return new Ok(undefined);
     }
@@ -316,18 +327,14 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     const r = await concurrentExecutor(
       triggers,
       async (trigger) => {
-        try {
-          return await trigger.delete(auth);
-        } catch (error) {
-          return new Err(normalizeError(error));
-        }
+        return trigger.delete(auth);
       },
       {
-        concurrency: 10,
+        concurrency: 4,
       }
     );
 
-    if (r.find((res) => res.isErr())) {
+    if (r.some((res) => res.isErr())) {
       return new Err(
         new Error(
           `Failed to delete ${r.filter((res) => res.isErr()).length} triggers`

@@ -122,7 +122,7 @@ async function handler(
 
       // TODO(@fontanierh): use DELETE for revoking membership
       if (req.body.role === "revoked") {
-        const revokeResult = await revokeAndTrackMembership(owner, user);
+        const revokeResult = await revokeAndTrackMembership(auth, user);
 
         if (revokeResult.isErr()) {
           switch (revokeResult.error.type) {
