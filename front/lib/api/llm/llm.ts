@@ -103,10 +103,12 @@ export abstract class LLM {
 
     generation.updateTrace({
       tags: [
-        `dust-trace-id:${this.traceId}`,
-        `operation-type:${this.context.operationType}`,
-        `workspace-id:${this.authenticator.getNonNullableWorkspace().sId}`,
+        `operationType:${this.context.operationType}`,
+        `workspaceId:${this.authenticator.getNonNullableWorkspace().sId}`,
       ],
+      metadata: {
+        dustTraceId: this.traceId,
+      },
       userId: this.authenticator.user()?.sId,
     });
 
@@ -138,7 +140,7 @@ export abstract class LLM {
     } finally {
       if (currentEvent?.type === "error") {
         generation.updateTrace({
-          tags: ["is-error:true", `error-type:${currentEvent.content.type}`],
+          tags: ["isError:true", `errorType:${currentEvent.content.type}`],
         });
 
         logger.error(
