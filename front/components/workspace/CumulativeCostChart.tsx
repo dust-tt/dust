@@ -131,90 +131,74 @@ export function CumulativeCostChart({ workspaceId }: CumulativeCostChartProps) {
   let chartData: any[] = [];
   let groups: string[] = [];
   const groupColorMap = new Map<string, number>();
+  let legendItems: { key: string; label: string; colorClassName: string }[] =
+    [];
 
   if (cumulativeCostData) {
-    if (!cumulativeCostData.groupBy) {
-      chartData = cumulativeCostData.points.map((point) => {
-        const date = new Date(point.timestamp);
-        return {
-          date: date.toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-          }),
-          cumulativeCostCents: point.cumulativeCostCents,
-          totalInitialCreditsCents: point.totalInitialCreditsCents,
-        };
+    // Extract all unique group names (excluding "total" for ungrouped view)
+    const groupSet = new Set<string>();
+    cumulativeCostData.points.forEach((point) => {
+      point.groups.forEach((g) => {
+        groupSet.add(g.name);
       });
-    } else {
-      // Grouped data - need to merge all time points
-      const timePointsMap: Record<
-        number,
-        { date: string; [key: string]: any }
-      > = {};
-      const allTimestamps = new Set<number>();
+    });
 
-      // Collect all unique timestamps across all groups and credit data
-      for (const groupData of Object.values(cumulativeCostData.groups)) {
-        for (const point of groupData.points) {
-          allTimestamps.add(point.timestamp);
-        }
-      }
-
-      // Initialize all time points with credit data
-      for (const timestamp of Array.from(allTimestamps).sort()) {
-        const date = new Date(timestamp);
-        // Get credit data from any group (it's the same across all groups)
-        const anyGroupData = Object.values(cumulativeCostData.groups)[0];
-        const pointWithCredits = anyGroupData?.points.find(
-          (p) => p.timestamp === timestamp
-        );
-
-        timePointsMap[timestamp] = {
-          date: date.toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-          }),
-          timestamp,
-          totalInitialCreditsCents:
-            pointWithCredits?.totalInitialCreditsCents ?? 0,
-        };
-      }
-
-      // Fill in data for each group, carrying forward cumulative values
-      for (const [, groupData] of Object.entries(cumulativeCostData.groups)) {
-        const groupPointsMap = new Map(
-          groupData.points.map((p) => [p.timestamp, p.cumulativeCostCents])
-        );
-
-        let lastCumulativeCost = 0;
-        for (const timestamp of Array.from(allTimestamps).sort()) {
-          const cumulativeCost = groupPointsMap.get(timestamp);
-          if (cumulativeCost !== undefined) {
-            lastCumulativeCost = cumulativeCost;
-          }
-          timePointsMap[timestamp][groupData.name] = lastCumulativeCost;
-        }
-      }
-
-      chartData = Object.values(timePointsMap).sort(
-        (a, b) => a.timestamp - b.timestamp
+    // For grouped view, order groups with "Others" at the end
+    if (cumulativeCostData.groupBy) {
+      const regularGroups = Array.from(groupSet).filter(
+        (name) => name !== "Others"
       );
-
-      // Get group names, with "Others" at the end
-      const groupEntries = Object.entries(cumulativeCostData.groups);
-      const regularGroups = groupEntries
-        .filter(([key]) => key !== "others")
-        .map(([, data]) => data.name);
-      const othersGroup = groupEntries
-        .filter(([key]) => key === "others")
-        .map(([, data]) => data.name);
-      groups = [...regularGroups, ...othersGroup];
-
-      // Build color map for tooltips
-      groups.forEach((groupName, index) => {
-        groupColorMap.set(groupName, index);
-      });
+      const othersGroups = Array.from(groupSet).filter(
+        (name) => name === "Others"
+      );
+      groups = [...regularGroups, ...othersGroups];
+    } else {
+      groups = Array.from(groupSet);
     }
+
+    // Build color map for tooltips and legend items
+    groups.forEach((groupName, index) => {
+      groupColorMap.set(groupName, index);
+      legendItems.push({
+        key: groupName,
+        label: groupName,
+        colorClassName: getSourceColor(index),
+      });
+    });
+
+    // Add Total Credits to legend
+    legendItems.push({
+      key: "totalCredits",
+      label: "Total Credits",
+      colorClassName: "text-green-500",
+    });
+
+    // Transform points into chart data
+    chartData = cumulativeCostData.points.map((point) => {
+      const date = new Date(point.timestamp);
+      const dataPoint: any = {
+        date: date.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        }),
+        timestamp: point.timestamp,
+        totalInitialCreditsCents: point.totalInitialCreditsCents,
+      };
+
+      // Add each group's cumulative cost to the data point
+      // Keep undefined values as-is so Recharts doesn't render those points
+      point.groups.forEach((g) => {
+        if (cumulativeCostData.groupBy) {
+          // For grouped view, use group name as key
+          dataPoint[g.name] = g.cumulativeCostCents;
+        } else {
+          // For non-grouped view, use a standard key
+          dataPoint.cumulativeCostCents = g.cumulativeCostCents;
+        }
+      });
+
+      return dataPoint;
+    });
   }
 
   return (
@@ -260,6 +244,7 @@ export function CumulativeCostChart({ workspaceId }: CumulativeCostChartProps) {
         </DropdownMenu>
       }
       height={CHART_HEIGHT}
+      legendItems={groupBy ? legendItems : undefined}
       isAllowFullScreen
     >
       {!groupBy ? (
@@ -300,7 +285,6 @@ export function CumulativeCostChart({ workspaceId }: CumulativeCostChartProps) {
               boxShadow: "none",
             }}
           />
-          <Legend wrapperStyle={{ fontSize: "12px", paddingTop: "10px" }} />
           <Line
             type="monotone"
             dataKey="cumulativeCostCents"
@@ -359,7 +343,6 @@ export function CumulativeCostChart({ workspaceId }: CumulativeCostChartProps) {
               boxShadow: "none",
             }}
           />
-          <Legend wrapperStyle={{ fontSize: "12px", paddingTop: "10px" }} />
           <Line
             type="monotone"
             dataKey="totalInitialCreditsCents"

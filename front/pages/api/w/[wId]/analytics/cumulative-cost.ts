@@ -26,26 +26,20 @@ const QuerySchema = z.object({
 
 export type WorkspaceCumulativeCostPoint = {
   timestamp: number;
-  cumulativeCostCents: number;
-  costCents: number;
+  groups: {
+    group: string;
+    name: string;
+    costCents: number;
+    cumulativeCostCents?: number;
+  }[];
   totalInitialCreditsCents: number;
   totalRemainingCreditsCents: number;
 };
 
-export type GetWorkspaceCumulativeCostResponse =
-  | {
-      groupBy: undefined;
-      points: WorkspaceCumulativeCostPoint[];
-    }
-  | {
-      groupBy: "agent" | "origin";
-      groups: {
-        [key: string]: {
-          name: string;
-          points: WorkspaceCumulativeCostPoint[];
-        };
-      };
-    };
+export type GetWorkspaceCumulativeCostResponse = {
+  groupBy: "agent" | "origin" | undefined;
+  points: WorkspaceCumulativeCostPoint[];
+};
 
 // Reuse the MetricsBucket type from messages_metrics to ensure compatibility
 type DailyBucket = MetricsBucket;
@@ -121,6 +115,14 @@ function calculateCreditTotalsPerTimestamp(
   return creditTotalsMap;
 }
 
+function getDatesInRange(startOfMonth: Date, now: Date): number[] {
+  const dates = [];
+  for (let date = startOfMonth; date <= now; date.setDate(date.getDate() + 1)) {
+    dates.push(date.getTime());
+  }
+  return dates;
+}
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
@@ -144,10 +146,18 @@ async function handler(
       }
 
       const groupBy = q.data.groupBy;
+      const now = new Date();
 
       // Calculate the start of the current month
-      const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const startOfMonth = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
+      );
+      const endOfMonth = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)
+      );
+
+      const timestamps = getDatesInRange(startOfMonth, endOfMonth);
+      const startDate = new Date(timestamps[0]);
 
       // Build query for the current month
       const baseQuery = {
@@ -157,7 +167,7 @@ async function handler(
             {
               range: {
                 timestamp: {
-                  gte: startOfMonth.toISOString(),
+                  gte: startDate.toISOString(),
                 },
               },
             },
@@ -165,6 +175,16 @@ async function handler(
         },
       };
 
+      // Fetch all credits for the workspace
+      const credits = await CreditResource.listActive(auth, startDate);
+
+      // Calculate credit totals for each timestamp
+      const creditTotalsMap = calculateCreditTotalsPerTimestamp(
+        credits,
+        timestamps
+      );
+      const groupNames: Record<string, string> = {};
+      const groupValues: Record<string, Map<number, number>> = {};
       if (!groupBy) {
         // Fetch usage metrics
         const usageMetricsResult = await fetchMessageMetrics(baseQuery, "day", [
@@ -181,177 +201,143 @@ async function handler(
           });
         }
 
-        // Fetch all credits for the workspace
-        const credits = await CreditResource.listActive(auth, startOfMonth);
+        groupNames["total"] = "Total";
+        groupValues["total"] = new Map<number, number>();
+        usageMetricsResult.value.forEach((point) => {
+          groupValues["total"]?.set(point.timestamp, point.costCents);
+        });
+      } else {
+        // Grouped view (agent or origin)
+        const groupField = groupBy === "agent" ? "agent_id" : "context_origin";
 
-        // Calculate credit totals for each timestamp
-        const timestamps = usageMetricsResult.value.map((p) => p.timestamp);
-        const creditTotalsMap = calculateCreditTotalsPerTimestamp(
-          credits,
-          timestamps
+        // Use the extracted helper to build metric aggregates
+        const metricAggregates = buildMetricAggregates(["costCents"]);
+
+        const result = await searchAnalytics<never, GroupedAggs>(baseQuery, {
+          aggregations: {
+            by_group: {
+              terms: {
+                field: groupField,
+                size: 10, // Fetch slightly more than 5 to have candidates for "Others"
+                missing: "unknown",
+                // Sort by total cost across all days (descending)
+                order: { total_cost: "desc" },
+              },
+              aggs: {
+                // Total cost aggregation for sorting (sum across all documents in this group)
+                total_cost: {
+                  sum: { field: "tokens.cost_cents" },
+                },
+                // Daily breakdown
+                by_day: {
+                  date_histogram: {
+                    field: "timestamp",
+                    calendar_interval: "day",
+                  },
+                  aggs: metricAggregates,
+                },
+              },
+            },
+          },
+          size: 0,
+        });
+
+        if (result.isErr()) {
+          return apiError(req, res, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: `Failed to retrieve grouped cumulative cost: ${result.error.message}`,
+            },
+          });
+        }
+
+        const groupBuckets = bucketsToArray(
+          result.value.aggregations?.by_group?.buckets
         );
 
-        // Calculate cumulative cost and add credit data
-        let cumulativeCostCents = 0;
-        const points = usageMetricsResult.value.map((point) => {
-          cumulativeCostCents += point.costCents;
+        // Fetch agent names if grouping by agent
+        const agentNames: Record<string, string> = {};
+        if (groupBy === "agent") {
+          const agentIds = groupBuckets.map((b) => b.key);
+          const agents = await AgentConfiguration.findAll({
+            where: {
+              sId: agentIds,
+            },
+            attributes: ["sId", "name"],
+          });
+          agents.forEach((agent) => {
+            agentNames[agent.sId] = agent.name;
+          });
+        }
+
+        // ES already sorted by total cost, just parse and split into top 5 vs others
+        const groupsWithParsedPoints = groupBuckets.map((groupBucket) => {
+          // Parse each bucket once and store the results
           return {
-            ...point,
-            cumulativeCostCents,
-            ...(creditTotalsMap.get(point.timestamp) ?? {
-              totalInitialCreditsCents: 0,
-              totalRemainingCreditsCents: 0,
-            }),
+            groupKey: groupBucket.key,
+            points: bucketsToArray(groupBucket.by_day?.buckets).map((bucket) =>
+              parseMetricsFromBucket(bucket, ["costCents"])
+            ),
           };
         });
 
-        return res.status(200).json({
-          groupBy: undefined,
-          points,
-        });
-      }
+        // Group top 5 and aggregate others using extracted helper
+        const allGroupsToProcess = groupTopNAndAggregateOthers(
+          groupsWithParsedPoints,
+          5,
+          "costCents"
+        );
 
-      // Grouped view (agent or origin)
-      const groupField = groupBy === "agent" ? "agent_id" : "context_origin";
-
-      // Use the extracted helper to build metric aggregates
-      const metricAggregates = buildMetricAggregates(["costCents"]);
-
-      const result = await searchAnalytics<never, GroupedAggs>(baseQuery, {
-        aggregations: {
-          by_group: {
-            terms: {
-              field: groupField,
-              size: 10, // Fetch slightly more than 5 to have candidates for "Others"
-              missing: "unknown",
-              // Sort by total cost across all days (descending)
-              order: { total_cost: "desc" },
-            },
-            aggs: {
-              // Total cost aggregation for sorting (sum across all documents in this group)
-              total_cost: {
-                sum: { field: "tokens.cost_cents" },
-              },
-              // Daily breakdown
-              by_day: {
-                date_histogram: {
-                  field: "timestamp",
-                  calendar_interval: "day",
-                },
-                aggs: metricAggregates,
-              },
-            },
-          },
-        },
-        size: 0,
-      });
-
-      if (result.isErr()) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: `Failed to retrieve grouped cumulative cost: ${result.error.message}`,
-          },
-        });
-      }
-
-      const groupBuckets = bucketsToArray(
-        result.value.aggregations?.by_group?.buckets
-      );
-
-      // Fetch agent names if grouping by agent
-      const agentNames: Record<string, string> = {};
-      if (groupBy === "agent") {
-        const agentIds = groupBuckets.map((b) => b.key);
-        const agents = await AgentConfiguration.findAll({
-          where: {
-            sId: agentIds,
-          },
-          attributes: ["sId", "name"],
-        });
-        agents.forEach((agent) => {
-          agentNames[agent.sId] = agent.name;
-        });
-      }
-
-      // Fetch all credits for the workspace
-      const credits = await CreditResource.listActive(auth, startOfMonth);
-
-      // Collect all unique timestamps across all groups
-      const allTimestamps = new Set<number>();
-      groupBuckets.forEach((groupBucket) => {
-        const dailyBuckets = bucketsToArray(groupBucket.by_day?.buckets);
-        dailyBuckets.forEach((bucket) => {
-          allTimestamps.add(bucket.key);
-        });
-      });
-
-      // Calculate credit totals for all timestamps
-      const creditTotalsMap = calculateCreditTotalsPerTimestamp(
-        credits,
-        Array.from(allTimestamps)
-      );
-
-      // ES already sorted by total cost, just parse and split into top 5 vs others
-      const groupsWithParsedPoints = groupBuckets.map((groupBucket) => {
-        // Parse each bucket once and store the results
-        return {
-          groupKey: groupBucket.key,
-          points: bucketsToArray(groupBucket.by_day?.buckets).map((bucket) =>
-            parseMetricsFromBucket(bucket, ["costCents"])
-          ),
-        };
-      });
-
-      // Group top 5 and aggregate others using extracted helper
-      const allGroupsToProcess = groupTopNAndAggregateOthers(
-        groupsWithParsedPoints,
-        5,
-        "costCents"
-      );
-
-      // Process all groups (top 5 + "Others") with single loop
-      const groups: {
-        [key: string]: {
-          name: string;
-          points: WorkspaceCumulativeCostPoint[];
-        };
-      } = {};
-
-      for (const { groupKey, points } of allGroupsToProcess) {
-        // Determine group name
-        let groupName: string;
-        if (groupKey === "others") {
-          groupName = "Others";
-        } else if (groupKey === "unknown") {
-          groupName = "Unknown";
-        } else if (groupBy === "agent") {
-          groupName = agentNames[groupKey] || groupKey;
-        } else {
-          groupName = groupKey;
+        // Process all groups (top 5 + "Others") with single loop
+        for (const { groupKey, points } of allGroupsToProcess) {
+          // Determine group name
+          if (groupKey === "others") {
+            groupNames["others"] = "Others";
+          } else if (groupKey === "unknown") {
+            groupNames["unknown"] = "Unknown";
+          } else if (groupBy === "agent") {
+            groupNames[groupKey] = agentNames[groupKey] || groupKey;
+          } else {
+            groupNames[groupKey] = groupKey;
+          }
+          groupValues[groupKey] = new Map(
+            points.map((point) => [point.timestamp, point.costCents])
+          );
         }
-
-        let cumulativeCostCents = 0;
-        groups[groupKey] = {
-          name: groupName,
-          points: points.map((point) => {
-            cumulativeCostCents += point.costCents;
-            return {
-              ...point,
-              cumulativeCostCents,
-              ...(creditTotalsMap.get(point.timestamp) ?? {
-                totalInitialCreditsCents: 0,
-                totalRemainingCreditsCents: 0,
-              }),
-            };
-          }),
-        };
       }
+
+      const cumulativeCostCents: Record<string, number> = {};
+      Object.keys(groupValues).forEach((group) => {
+        cumulativeCostCents[group] = 0;
+      });
+
+      const points = timestamps.map((timestamp) => {
+        const groups = Object.entries(groupValues).map(([group, costMap]) => {
+          const cost = costMap?.get(timestamp);
+          const cumulativeCost = cumulativeCostCents[group] ?? 0;
+          cumulativeCostCents[group] = cumulativeCost + (cost ?? 0);
+          return {
+            group,
+            name: groupNames[group],
+            costCents: cost ?? 0,
+            cumulativeCostCents:
+              timestamp <= now.getTime() ? cumulativeCost : undefined,
+          };
+        });
+
+        const credit = creditTotalsMap.get(timestamp);
+        return {
+          timestamp,
+          groups,
+          totalInitialCreditsCents: credit?.totalInitialCreditsCents ?? 0,
+          totalRemainingCreditsCents: credit?.totalRemainingCreditsCents ?? 0,
+        };
+      });
 
       return res.status(200).json({
         groupBy,
-        groups,
+        points,
       });
     }
     default:
