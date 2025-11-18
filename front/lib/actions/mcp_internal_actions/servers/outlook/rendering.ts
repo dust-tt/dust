@@ -15,8 +15,8 @@ interface EnrichedOutlookEvent extends Omit<OutlookEvent, "start" | "end"> {
 
 function stripHtmlTags(html: string): string {
   return html
-    .replace(/<style[^>]*>.*?<\/style>/gis, "")
-    .replace(/<script[^>]*>.*?<\/script>/gis, "")
+    .replace(/<style[^>]*>.*?<\/style>/g, "")
+    .replace(/<script[^>]*>.*?<\/script>/g, "")
     .replace(/<[^>]+>/g, "")
     .replace(/&nbsp;/g, " ")
     .replace(/&amp;/g, "&")
