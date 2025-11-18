@@ -56,6 +56,7 @@ interface MessageUsageQueryResult {
 }
 
 type UserUsageQueryResult = {
+  userId: string;
   userName: string;
   userEmail: string;
   messageCount: number;
@@ -511,6 +512,7 @@ export async function getUserUsageData(
       const userId = membership.userId.toString();
 
       userUsage.push({
+        userId,
         userName: user.name || email,
         userEmail: email,
         messageCount: 0,
