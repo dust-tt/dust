@@ -92,12 +92,15 @@ export function ToolsPicker({
     disabled: !isOpen || !isAdmin,
   });
 
-  const { serverViews, isLoading: isServerViewsLoading } =
-    useMCPServerViewsFromSpaces(
-      owner,
-      globalSpaces,
-      { disabled: !isOpen } // We don't want to fetch the server views when the picker is closed.
-    );
+  const {
+    serverViews,
+    isLoading: isServerViewsLoading,
+    mutateServerViews,
+  } = useMCPServerViewsFromSpaces(
+    owner,
+    globalSpaces,
+    { disabled: !isOpen } // We don't want to fetch the server views when the picker is closed.
+  );
 
   const selectedMCPServerViewIds = useMemo(
     () => selectedMCPServerViews.map((v) => v.sId),
@@ -313,7 +316,25 @@ export function ToolsPicker({
         <CreateMCPServerSheet
           owner={owner}
           internalMCPServer={setupSheetServer}
-          setMCPServerToShow={() => {
+          setMCPServerToShow={async (createdServer) => {
+            const updatedData = await mutateServerViews();
+            const newServerView = updatedData?.serverViews?.find(
+              (v: MCPServerViewType) => v.server.name === createdServer.name
+            );
+            if (newServerView) {
+              trackEvent({
+                area: TRACKING_AREAS.TOOLS,
+                object: "tool_select",
+                action: TRACKING_ACTIONS.SELECT,
+                extra: {
+                  tool_id: newServerView.sId,
+                  tool_name: newServerView.server.name,
+                  from_setup: true,
+                },
+              });
+              onSelect(newServerView);
+            }
+
             setSetupSheetServer(null);
           }}
           setIsLoading={() => {}}
