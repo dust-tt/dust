@@ -102,4 +102,3 @@ export async function expandFoldersToTables(
 
   return tablesArrays.flat();
 }
-

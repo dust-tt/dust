@@ -217,7 +217,7 @@ export interface ActionSpecification {
 }
 
 // MCP configuration types used by the agent builder.
-export type AssistantBuilderMCPServerConfiguration = {
+export type AgentBuilderMCPServerConfiguration = {
   mcpServerViewId: string;
   dataSourceConfigurations: DataSourceViewSelectionConfigurations | null;
   tablesConfigurations: DataSourceViewSelectionConfigurations | null;
@@ -231,22 +231,22 @@ export type AssistantBuilderMCPServerConfiguration = {
   secretName: string | null;
 };
 
-export type AssistantBuilderMCPConfiguration = {
+export type AgentBuilderMCPConfiguration = {
   type: "MCP";
-  configuration: AssistantBuilderMCPServerConfiguration;
+  configuration: AgentBuilderMCPServerConfiguration;
   name: string;
   description: string;
   configurationRequired?: boolean;
 };
 
-export type AssistantBuilderMCPConfigurationWithId =
-  AssistantBuilderMCPConfiguration & {
+export type AgentBuilderMCPConfigurationWithId =
+  AgentBuilderMCPConfiguration & {
     id: string;
   };
 
 export function getDefaultMCPServerActionConfiguration(
   mcpServerView?: MCPServerViewType
-): AssistantBuilderMCPConfiguration {
+): AgentBuilderMCPConfiguration {
   const requirements = getMCPServerRequirements(mcpServerView);
 
   return {
