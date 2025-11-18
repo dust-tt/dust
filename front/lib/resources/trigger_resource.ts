@@ -144,6 +144,11 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     auth: Authenticator,
     user: UserResource | UserType
   ) {
+    // Either have to be an admin or the user itself.
+    if (!auth.isAdmin() && auth.user()?.id !== user.id) {
+      return [];
+    }
+
     return this.baseFetch(auth, {
       where: {
         editor: user.id,
@@ -155,6 +160,11 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     auth: Authenticator,
     user: UserResource | UserType
   ) {
+    // Either have to be an admin or the user itself.
+    if (!auth.isAdmin() && auth.user()?.id !== user.id) {
+      return [];
+    }
+
     const workspace = auth.getNonNullableWorkspace();
 
     const res = await this.model.findAll({
