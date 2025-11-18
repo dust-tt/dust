@@ -10,7 +10,6 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
-  Legend,
   Line,
   LineChart,
   Tooltip,
@@ -131,7 +130,7 @@ export function CumulativeCostChart({ workspaceId }: CumulativeCostChartProps) {
   let chartData: any[] = [];
   let groups: string[] = [];
   const groupColorMap = new Map<string, number>();
-  let legendItems: { key: string; label: string; colorClassName: string }[] =
+  const legendItems: { key: string; label: string; colorClassName: string }[] =
     [];
 
   if (cumulativeCostData) {
