@@ -24,6 +24,18 @@ interface EnrichedOutlookEvent extends Omit<OutlookEvent, "start" | "end"> {
   end: EnrichedOutlookEventDateTime;
 }
 
+function decodeHtmlEntities(text: string): string {
+  return text
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#x27;/g, "'")
+    .replace(/&apos;/g, "'");
+}
+
 function enrichEventWithDayOfWeek(
   event: OutlookEvent,
   userTimezone?: string
@@ -124,9 +136,11 @@ export function renderOutlookEvent(
   if (enrichedEvent.body?.content) {
     const bodyContent =
       enrichedEvent.body.contentType === "html"
-        ? DOMPurify.sanitize(
-            enrichedEvent.body.content,
-            OUTLOOK_EVENT_BODY_SANITIZE_CONFIG
+        ? decodeHtmlEntities(
+            DOMPurify.sanitize(
+              enrichedEvent.body.content,
+              OUTLOOK_EVENT_BODY_SANITIZE_CONFIG
+            )
           )
         : enrichedEvent.body.content;
 
