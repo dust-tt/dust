@@ -135,6 +135,60 @@ export function formatUTCDateFromMillis(ms: number): string {
 }
 
 /**
+ * Groups data by keeping top N groups and aggregating the rest into "Others".
+ * The input must already be sorted by the desired criteria.
+ *
+ * @param groups - Array of groups with parsed points, already sorted by priority (e.g., by total cost)
+ * @param topN - Number of top groups to keep individually (default: 5)
+ * @param valueKey - Key of the numeric value to aggregate (e.g., "costCents")
+ * @returns Array with top N groups + optional "others" group
+ */
+export function groupTopNAndAggregateOthers<
+  T extends { timestamp: number; [key: string]: number },
+>(
+  groups: Array<{ groupKey: string; points: T[] }>,
+  topN: number = 5,
+  valueKey: keyof T
+): Array<{ groupKey: string; points: T[] }> {
+  // Keep top N groups
+  const topGroups = groups.slice(0, topN);
+  const otherGroups = groups.slice(topN);
+
+  // If no groups beyond topN, return as-is
+  if (otherGroups.length === 0) {
+    return topGroups;
+  }
+
+  // Aggregate all "other" groups into a single entry
+  const aggregatedByTimestamp: Record<number, number> = {};
+
+  for (const { points } of otherGroups) {
+    for (const point of points) {
+      const value = point[valueKey] as number;
+      aggregatedByTimestamp[point.timestamp] =
+        (aggregatedByTimestamp[point.timestamp] || 0) + value;
+    }
+  }
+
+  // Convert to sorted array matching the parsedPoints structure
+  const aggregatedParsedPoints = Object.keys(aggregatedByTimestamp)
+    .map(Number)
+    .sort((a, b) => a - b)
+    .map((timestamp) => ({
+      timestamp,
+      [valueKey]: aggregatedByTimestamp[timestamp],
+    })) as T[];
+
+  return [
+    ...topGroups,
+    {
+      groupKey: "others",
+      points: aggregatedParsedPoints,
+    },
+  ];
+}
+
+/**
  * High-level analytics-specific interface.
  * This interface enforces proper usage and makes it harder to accidentally
  * query other Elasticsearch indexes from the front service.

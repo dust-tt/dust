@@ -1,8 +1,11 @@
 import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 
+import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetWorkspaceResponseBody } from "@app/pages/api/w/[wId]";
+import type { GetWorkspaceCumulativeCostResponse } from "@app/pages/api/w/[wId]/analytics/cumulative-cost";
+import type { GetWorkspaceUsageMetricsResponse } from "@app/pages/api/w/[wId]/analytics/usage";
 import type { GetWorkspaceFeatureFlagsResponseType } from "@app/pages/api/w/[wId]/feature-flags";
 import type { GetSubscriptionsResponseBody } from "@app/pages/api/w/[wId]/subscriptions";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
@@ -145,5 +148,57 @@ export function useFeatureFlags({
     isFeatureFlagsLoading: !error && !data,
     isFeatureFlagsError: error,
     hasFeature,
+  };
+}
+
+export function useWorspaceUsageMetrics({
+  workspaceId,
+  days = DEFAULT_PERIOD_DAYS,
+  interval = "day",
+  disabled,
+}: {
+  workspaceId: string;
+  days?: number;
+  interval?: "day" | "week";
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetWorkspaceUsageMetricsResponse> = fetcher;
+  const key = `/api/w/${workspaceId}/analytics/usage?days=${days}&interval=${interval}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    usageMetrics: data?.points ?? emptyArray(),
+    isUsageMetricsLoading: !error && !data && !disabled,
+    isUsageMetricsError: error,
+    isUsageMetricsValidating: isValidating,
+  };
+}
+
+export function useWorkspaceCumulativeCost({
+  workspaceId,
+  groupBy,
+  disabled,
+}: {
+  workspaceId: string;
+  groupBy?: "agent" | "origin";
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetWorkspaceCumulativeCostResponse> = fetcher;
+  const key = `/api/w/${workspaceId}/analytics/cumulative-cost${groupBy ? `?groupBy=${groupBy}` : ""}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    cumulativeCostData: data,
+    isCumulativeCostLoading: !error && !data && !disabled,
+    isCumulativeCostError: error,
+    isCumulativeCostValidating: isValidating,
   };
 }

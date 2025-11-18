@@ -28,6 +28,12 @@ export const LATENCY_LEGEND = [
   { key: "median", label: "Median" },
 ] as const;
 
+export const COST_PALETTE = {
+  costCents: "text-blue-400 dark:text-blue-400-night",
+} as const;
+
+export const COST_LEGEND = [{ key: "costCents", label: "Cost" }] as const;
+
 export const CHART_HEIGHT = 260;
 
 export const TOOL_COLORS = [
