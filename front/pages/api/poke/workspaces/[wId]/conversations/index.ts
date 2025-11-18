@@ -68,6 +68,7 @@ async function handler(
         return {
           id: c.id,
           created: c.createdAt.getTime(),
+          updated: c.updatedAt.getTime(),
           sId: c.sId,
           owner: auth.getNonNullableWorkspace(),
           title: c.title,
