@@ -19,7 +19,7 @@ import { InputBarContext } from "@app/components/assistant/conversation/input_ba
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { serializeMention } from "@app/lib/mentions";
+import { serializeMention } from "@app/lib/mentions/format";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type {
   AgentMention,

@@ -13,7 +13,7 @@ import { DEEP_DIVE_NAME } from "@app/lib/api/assistant/global_agents/configurati
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
-import { serializeMention } from "@app/lib/mentions";
+import { serializeMention } from "@app/lib/mentions/format";
 import logger from "@app/logger/logger";
 import {
   Err,

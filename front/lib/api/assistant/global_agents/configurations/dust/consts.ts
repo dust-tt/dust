@@ -1,4 +1,4 @@
-import { serializeMention } from "@app/lib/mentions";
+import { serializeMention } from "@app/lib/mentions/format";
 import { GLOBAL_AGENTS_SID } from "@app/types";
 
 export const DEEP_DIVE_NAME = "deep-dive";

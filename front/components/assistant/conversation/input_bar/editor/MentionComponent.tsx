@@ -1,7 +1,7 @@
 import { NodeViewWrapper } from "@tiptap/react";
 import React from "react";
 
-import { MentionDisplay } from "@app/lib/mentions";
+import { MentionDisplay } from "@app/lib/mentions/ui/MentionDisplay";
 import type { WorkspaceType } from "@app/types";
 
 interface MentionComponentProps {

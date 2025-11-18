@@ -65,11 +65,3 @@ export function resetWithMentions(
 
   editor.commands.setContent(content);
 }
-
-/**
- * Editor utilities for mention handling.
- */
-export const editorMentionUtils = {
-  insertMention,
-  resetWithMentions,
-};
