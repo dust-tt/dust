@@ -186,30 +186,25 @@ async function handler(
 
   await user.recordLoginActivity();
 
-  const isFirstLogin = user.lastLoginAt === null;
+  const redirectOptions: Parameters<typeof buildPostLoginUrl>[1] = {
+    welcome: user.lastLoginAt === null,
+  };
 
   if (targetWorkspace && targetFlow === "joined") {
     // For users joining a workspace from trying to access a conversation, we redirect to this
     // conversation after signing in.
     if (req.query.join === "true" && typeof req.query.cId === "string") {
-      res.redirect(
-        buildPostLoginUrl(targetWorkspace.sId, {
-          welcome: isFirstLogin,
-          conversationId: req.query.cId,
-        })
-      );
-      return;
+      redirectOptions.conversationId = req.query.cId;
     }
-    res.redirect(
-      buildPostLoginUrl(targetWorkspace.sId, { welcome: isFirstLogin })
-    );
+    res.redirect(buildPostLoginUrl(targetWorkspace.sId, redirectOptions));
     return;
   }
 
   res.redirect(
-    buildPostLoginUrl(targetWorkspace?.sId ?? u.workspaces[0].sId, {
-      welcome: isFirstLogin,
-    })
+    buildPostLoginUrl(
+      targetWorkspace?.sId ?? u.workspaces[0].sId,
+      redirectOptions
+    )
   );
 
   return;
