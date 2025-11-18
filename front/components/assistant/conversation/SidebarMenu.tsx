@@ -129,6 +129,9 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     return getGroupConversationsByUnreadAndActionRequired(conversations);
   }, [conversations]);
 
+  const shouldDisplayInbox =
+    unreadConversations.length > 0 || actionRequiredConversations.length > 0;
+
   const [isMultiSelect, setIsMultiSelect] = useState(false);
   const [selectedConversations, setSelectedConversations] = useState<
     ConversationWithoutContentType[]
@@ -484,8 +487,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
               className="dd-privacy-mask h-full w-full"
               viewportRef={conversationsNavigationRef}
             >
-              {(unreadConversations.length > 0 ||
-                actionRequiredConversations.length > 0) && (
+              {shouldDisplayInbox && (
                 <div className="bg-background pb-3 dark:bg-background-night">
                   <InboxConversationList
                     unreadConversations={unreadConversations}
@@ -563,6 +565,9 @@ const InboxConversationList = ({
     return null;
   }
 
+  const shouldShowMarkAllAsReadButton =
+    unreadConversations.length > 0 && !isMultiSelect && onMarkAllAsRead;
+
   return (
     <div className="px-3">
       <div className="sticky top-0 z-10 flex items-center justify-between overflow-auto bg-background dark:bg-background-night">
@@ -570,20 +575,18 @@ const InboxConversationList = ({
           label={dateLabel}
           className="bg-background dark:bg-background-night"
         />
-        {!isMultiSelect &&
-          onMarkAllAsRead &&
-          unreadConversations.length > 0 && (
-            <div className="flex">
-              <Button
-                size="xs"
-                variant="ghost"
-                label={`Mark as read`}
-                onClick={() => onMarkAllAsRead(unreadConversations)}
-                isLoading={isMarkingAllAsRead}
-                className="mt-2 text-muted-foreground dark:text-muted-foreground-night"
-              />
-            </div>
-          )}
+        {shouldShowMarkAllAsReadButton && (
+          <div className="flex">
+            <Button
+              size="xs"
+              variant="ghost"
+              label={`Mark as read`}
+              onClick={() => onMarkAllAsRead(unreadConversations)}
+              isLoading={isMarkingAllAsRead}
+              className="mt-2 text-muted-foreground dark:text-muted-foreground-night"
+            />
+          </div>
+        )}
       </div>
       {[...unreadConversations, ...actionRequiredConversations].map(
         (conversation) => (

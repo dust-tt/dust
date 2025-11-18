@@ -34,10 +34,7 @@ export function useMarkAllConversationsAsRead({
           await markAsRead(conversation.sId, true);
           successCount += 1;
         } catch (error) {
-          console.error(
-            `Error marking conversation ${conversation.sId} as read:`,
-            error
-          );
+          // do nothing
         } finally {
           setIsMarkingAllAsRead(false);
         }
