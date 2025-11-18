@@ -1566,10 +1566,10 @@ The directive should be used to display a clickable version of the agent name in
       add_tags: "low",
       add_comment: "low",
       add_links: "low",
+      update_conversation_status: "low",
+      assign_conversation: "low",
 
       send_message: "high",
-      update_conversation_status: "high",
-      assign_conversation: "high",
     },
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
