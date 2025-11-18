@@ -34,7 +34,7 @@ function ConversationAccessRestricted() {
       title="Permission Required"
       message={[
         "This conversation contains protected information.",
-        "Request access to view it.",
+        "You don't have permission to view it.",
       ]}
     />
   );
