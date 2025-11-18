@@ -225,6 +225,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable notifications",
     stage: "dust_only",
   },
+  jit_tool_setup: {
+    description: "Enable setup flow of new tools in JIT tool dropdown",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";

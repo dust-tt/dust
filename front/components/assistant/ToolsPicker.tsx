@@ -29,6 +29,7 @@ import {
   useMCPServerViewsFromSpaces,
 } from "@app/lib/swr/mcp_servers";
 import { useSpaces, useSystemSpace } from "@app/lib/swr/spaces";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
   trackEvent,
   TRACKING_ACTIONS,
@@ -80,6 +81,7 @@ export function ToolsPicker({
   const [setupSheetServer, setSetupSheetServer] =
     useState<MCPServerType | null>(null);
 
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const { spaces } = useSpaces({ workspaceId: owner.sId, disabled: !isOpen });
   const globalSpaces = useMemo(
     () => spaces.filter((s) => s.kind === "global"),
@@ -268,7 +270,7 @@ export function ToolsPicker({
             </div>
           )}
 
-          {isAdmin && !isServerViewsLoading && (
+          {isAdmin && !isServerViewsLoading && hasFeature("jit_tool_setup") && (
             <>
               {uninstalledServers.length > 0 && (
                 <>
