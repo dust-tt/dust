@@ -11,12 +11,10 @@ import React, {
 } from "react";
 
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
-import useAgentSuggestions from "@app/components/assistant/conversation/input_bar/editor/useAgentSuggestions";
 import type { CustomEditorProps } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useCustomEditor from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useHandleAgentMentions from "@app/components/assistant/conversation/input_bar/editor/useHandleAgentMentions";
 import useUrlHandler from "@app/components/assistant/conversation/input_bar/editor/useUrlHandler";
-import useUserSuggestions from "@app/components/assistant/conversation/input_bar/editor/useUserSuggestions";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import {
@@ -36,7 +34,6 @@ import { isNodeCandidate } from "@app/lib/connectors";
 import { getSpaceAccessPriority } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
 import type {
   AgentMention,
@@ -63,6 +60,7 @@ export interface InputBarContainerProps {
   agentConfigurations: LightAgentConfigurationType[];
   onEnterKeyDown: CustomEditorProps["onEnterKeyDown"];
   owner: WorkspaceType;
+  conversationId: string | null;
   selectedAgent: AgentMention | null;
   stickyMentions?: AgentMention[];
   actions: InputBarAction[];
@@ -83,6 +81,7 @@ const InputBarContainer = ({
   agentConfigurations,
   onEnterKeyDown,
   owner,
+  conversationId,
   selectedAgent,
   stickyMentions,
   actions,
@@ -98,34 +97,6 @@ const InputBarContainer = ({
   selectedMCPServerViews,
 }: InputBarContainerProps) => {
   const isMobile = useIsMobile();
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-  const userMentionsEnabled = hasFeature("mentions_v2");
-
-  // Fetch agent and user suggestions.
-  const agentSuggestions = useAgentSuggestions(owner, agentConfigurations);
-  const userSuggestions = useUserSuggestions(owner, userMentionsEnabled);
-  // Combine agent and user suggestions for the editor.
-  const combinedSuggestions = useMemo(
-    () => ({
-      suggestions: [
-        ...agentSuggestions.suggestions,
-        ...userSuggestions.suggestions,
-      ],
-      fallbackSuggestions: [
-        ...agentSuggestions.fallbackSuggestions,
-        ...userSuggestions.fallbackSuggestions,
-      ],
-      isLoading: agentSuggestions.isLoading || userSuggestions.isLoading,
-    }),
-    [
-      agentSuggestions.suggestions,
-      userSuggestions.suggestions,
-      agentSuggestions.fallbackSuggestions,
-      userSuggestions.fallbackSuggestions,
-      agentSuggestions.isLoading,
-      userSuggestions.isLoading,
-    ]
-  );
 
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
     UrlCandidate | NodeCandidate | null
@@ -288,11 +259,11 @@ const InputBarContainer = ({
   );
 
   const { editor, editorService } = useCustomEditor({
-    suggestions: combinedSuggestions,
     onEnterKeyDown,
     disableAutoFocus,
     onUrlDetected: handleUrlDetected,
     owner,
+    conversationId,
     onInlineText: handleInlineText,
     onLongTextPaste: async ({ text, from, to }) => {
       let filename = "";
