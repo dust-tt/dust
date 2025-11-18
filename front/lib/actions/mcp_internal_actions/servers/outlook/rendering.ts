@@ -203,7 +203,7 @@ export function renderOutlookEventList(
   return lines.join("\n");
 }
 
-export function formatAvailabilityCheck(
+export function renderAvailabilityCheck(
   allEvents: OutlookEvent[],
   startTime: string,
   endTime: string
