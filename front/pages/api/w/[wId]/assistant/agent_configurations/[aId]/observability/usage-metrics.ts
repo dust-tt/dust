@@ -4,10 +4,10 @@ import { z } from "zod";
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type {
+  MessageMetricsPoint,
   UsageMetricsInterval,
-  UsageMetricsPoint,
-} from "@app/lib/api/assistant/observability/usage_metrics";
-import { fetchUsageMetrics } from "@app/lib/api/assistant/observability/usage_metrics";
+} from "@app/lib/api/assistant/observability/messages_metrics";
+import { fetchMessageMetrics } from "@app/lib/api/assistant/observability/messages_metrics";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -21,7 +21,10 @@ const QuerySchema = z.object({
 
 export type GetUsageMetricsResponse = {
   interval: UsageMetricsInterval;
-  points: UsageMetricsPoint[];
+  points: Pick<
+    MessageMetricsPoint,
+    "timestamp" | "count" | "conversations" | "activeUsers"
+  >[];
 };
 
 async function handler(
@@ -88,7 +91,11 @@ async function handler(
         days,
       });
 
-      const usageMetricsResult = await fetchUsageMetrics(baseQuery, interval);
+      const usageMetricsResult = await fetchMessageMetrics(
+        baseQuery,
+        interval,
+        ["conversations", "activeUsers"] as const
+      );
 
       if (usageMetricsResult.isErr()) {
         const e = usageMetricsResult.error;

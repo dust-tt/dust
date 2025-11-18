@@ -9,7 +9,6 @@ import type {
   ToolChartUsageDatum,
 } from "@app/components/agent_builder/observability/types";
 import { selectTopTools } from "@app/components/agent_builder/observability/utils";
-import type { LatencyPoint } from "@app/lib/api/assistant/observability/latency";
 import type { ToolExecutionByVersion } from "@app/lib/api/assistant/observability/tool_execution";
 import type { ToolStepIndexByStep } from "@app/lib/api/assistant/observability/tool_step_index";
 import {
@@ -39,12 +38,19 @@ type ToolDataItem = {
 type ErrorRateDataResult = {
   data: {
     timestamp: number;
-    total: number;
-    failed: number;
+    count: number;
+    failedMessages: number;
     errorRate: number;
   }[];
   isLoading: boolean;
   errorMessage: string | undefined;
+};
+
+export type LatencyPoint = {
+  timestamp: number;
+  count: number;
+  avgLatencyMs: number;
+  percentilesLatencyMs: number;
 };
 
 type LatencyDataResult = {
