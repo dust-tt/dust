@@ -297,7 +297,9 @@ export async function validateTables(
   const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
   if (!dataSource) {
     return new Err(
-      new MCPError(`Data source not found for ID: ${dataSourceId}`)
+      new MCPError(`Data source not found for ID: ${dataSourceId}`, {
+        tracked: false,
+      })
     );
   }
 
