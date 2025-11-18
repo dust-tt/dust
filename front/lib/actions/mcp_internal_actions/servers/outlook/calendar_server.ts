@@ -4,6 +4,7 @@ import { z } from "zod";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import * as OutlookApi from "@app/lib/actions/mcp_internal_actions/servers/outlook/outlook_api_helper";
 import {
+  renderAvailabilityCheck,
   renderOutlookEvent,
   renderOutlookEventList,
 } from "@app/lib/actions/mcp_internal_actions/servers/outlook/rendering";
@@ -637,7 +638,7 @@ function createServer(
           return new Err(new MCPError(result.error));
         }
 
-        const formattedText = formatAvailabilityCheck(
+        const formattedText = renderAvailabilityCheck(
           result.events,
           startTime,
           endTime
