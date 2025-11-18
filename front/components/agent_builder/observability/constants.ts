@@ -18,10 +18,12 @@ export const USAGE_METRICS_LEGEND = [
 
 export const LATENCY_PALETTE = {
   average: "text-blue-400 dark:text-blue-400-night",
+  median: "text-violet-300 dark:text-violet-300-night",
 } as const;
 
 export const LATENCY_LEGEND = [
-  { key: "average", label: "Average time to complete output" },
+  { key: "average", label: "Average" },
+  { key: "median", label: "Median" },
 ] as const;
 
 export const CHART_HEIGHT = 260;
@@ -47,3 +49,16 @@ export const FEEDBACK_DISTRIBUTION_LEGEND = [
   { key: "positive", label: "Positive" },
   { key: "negative", label: "Negative" },
 ] as const;
+
+const SOURCE_COLORS = [
+  "text-pink-300 dark:text-pink-300-night",
+  "text-blue-400 dark:text-blue-400-night",
+  "text-rose-400 dark:text-rose-400-night",
+  "text-amber-400 dark:text-amber-400-night",
+  "text-violet-300 dark:text-violet-300-night",
+  "text-slate-300 dark:text-slate-300-night",
+] as const;
+
+export function getSourceColor(index: number) {
+  return SOURCE_COLORS[index % SOURCE_COLORS.length];
+}

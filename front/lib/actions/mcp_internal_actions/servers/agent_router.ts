@@ -11,7 +11,7 @@ import { getSuggestedAgentsForContent } from "@app/lib/api/assistant/agent_sugge
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
-import { mentionAgent } from "@app/lib/mentions";
+import { serializeMention } from "@app/lib/mentions";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types";
 import { Err, Ok } from "@app/types";
@@ -69,7 +69,7 @@ function createServer(
         const formattedAgents = agents.map((agent) => {
           return {
             name: agent.name,
-            mention: mentionAgent(agent),
+            mention: serializeMention(agent),
             description: agent.description,
           };
         });
@@ -130,12 +130,7 @@ function createServer(
         if (getAgentsRes.isErr()) {
           return new Err(new MCPError("Error fetching agent configurations"));
         }
-        const agents = getAgentsRes.value.map((agent) => ({
-          ...agent,
-          tags: [],
-          canRead: true,
-          canEdit: false,
-        })) as LightAgentConfigurationType[];
+        const agents = getAgentsRes.value as LightAgentConfigurationType[];
 
         const suggestedAgentsRes = await getSuggestedAgentsForContent(auth, {
           agents,
@@ -161,7 +156,7 @@ function createServer(
                 : instructions;
 
             return {
-              mention: mentionAgent(agent),
+              mention: serializeMention(agent),
               description: agent.description,
               instructions: truncatedInstructions,
             };

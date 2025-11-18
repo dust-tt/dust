@@ -209,6 +209,13 @@ const functionCallLLMEvents = [
     metadata,
   },
   {
+    type: "text_generated",
+    content: {
+      text: "Hi !",
+    },
+    metadata,
+  },
+  {
     type: "tool_call",
     content: {
       id: "DdHr7L197",
@@ -218,17 +225,12 @@ const functionCallLLMEvents = [
     metadata,
   },
   {
-    type: "text_generated",
-    content: {
-      text: "Hi !",
-    },
-    metadata,
-  },
-  {
     type: "token_usage",
     content: {
+      cachedTokens: undefined,
       inputTokens: 1766,
       outputTokens: 128,
+      reasoningTokens: undefined,
       totalTokens: 1894,
     },
     metadata,
@@ -237,18 +239,18 @@ const functionCallLLMEvents = [
     type: "success",
     aggregated: [
       {
+        type: "text_generated",
+        content: {
+          text: "Hi !",
+        },
+        metadata,
+      },
+      {
         type: "tool_call",
         content: {
           id: "DdHr7L197",
           name: "web_search_browse__websearch",
           arguments: { query: "Paris France weather forecast October 23 2025" },
-        },
-        metadata,
-      },
-      {
-        type: "text_generated",
-        content: {
-          text: "Hi !",
         },
         metadata,
       },

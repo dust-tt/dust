@@ -2,13 +2,16 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { ZendeskClient } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/client";
-import { renderTicket } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/rendering";
+import { getZendeskClient } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/client";
+import {
+  renderTicket,
+  renderTicketMetrics,
+} from "@app/lib/actions/mcp_internal_actions/servers/zendesk/rendering";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
-import { Err, isString, Ok } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 const ZENDESK_TOOL_NAME = "zendesk";
 
@@ -21,13 +24,20 @@ function createServer(
   server.tool(
     "get_ticket",
     "Retrieve a Zendesk ticket by its ID. Returns the ticket details including subject, " +
-      "description, status, priority, assignee, and other metadata.",
+      "description, status, priority, assignee, and other metadata. Optionally include ticket metrics " +
+      "such as resolution times, wait times, and reply counts.",
     {
       ticketId: z
         .number()
         .int()
         .positive()
         .describe("The ID of the Zendesk ticket to retrieve."),
+      includeMetrics: z
+        .boolean()
+        .optional()
+        .describe(
+          "Whether to include ticket metrics (resolution times, wait times, reopens, replies, etc.). Defaults to false."
+        ),
     },
     withToolLogging(
       auth,
@@ -35,36 +45,39 @@ function createServer(
         toolNameForMonitoring: ZENDESK_TOOL_NAME,
         agentLoopContext,
       },
-      async ({ ticketId }, { authInfo }) => {
-        const accessToken = authInfo?.token;
-        if (!accessToken) {
+      async ({ ticketId, includeMetrics }, { authInfo }) => {
+        const clientResult = getZendeskClient(authInfo);
+        if (clientResult.isErr()) {
+          return clientResult;
+        }
+        const client = clientResult.value;
+
+        const ticketResult = await client.getTicket(ticketId);
+
+        if (ticketResult.isErr()) {
           return new Err(
             new MCPError(
-              "No access token found. Please connect your Zendesk account."
+              `Failed to retrieve ticket: ${ticketResult.error.message}`
             )
           );
         }
 
-        const subdomain = authInfo?.extra?.zendesk_subdomain;
-        if (!isString(subdomain)) {
-          return new Err(
-            new MCPError(
-              "Zendesk subdomain not found in connection metadata. Please reconnect your Zendesk account."
-            )
-          );
+        const ticket = ticketResult.value;
+        let ticketText = renderTicket(ticket);
+
+        if (includeMetrics) {
+          const metricsResult = await client.getTicketMetrics(ticketId);
+
+          if (metricsResult.isErr()) {
+            return new Err(
+              new MCPError(
+                `Failed to retrieve ticket metrics: ${metricsResult.error.message}`
+              )
+            );
+          }
+
+          ticketText += "\n" + renderTicketMetrics(metricsResult.value);
         }
-
-        const client = new ZendeskClient(subdomain, accessToken);
-        const result = await client.getTicket(ticketId);
-
-        if (result.isErr()) {
-          return new Err(
-            new MCPError(`Failed to retrieve ticket: ${result.error.message}`)
-          );
-        }
-
-        const ticket = result.value;
-        const ticketText = renderTicket(ticket);
 
         return new Ok([
           {
@@ -108,25 +121,12 @@ function createServer(
         agentLoopContext,
       },
       async ({ query, sortBy, sortOrder }, { authInfo }) => {
-        const accessToken = authInfo?.token;
-        if (!accessToken) {
-          return new Err(
-            new MCPError(
-              "No access token found. Please connect your Zendesk account."
-            )
-          );
+        const clientResult = getZendeskClient(authInfo);
+        if (clientResult.isErr()) {
+          return clientResult;
         }
+        const client = clientResult.value;
 
-        const subdomain = authInfo?.extra?.zendesk_subdomain;
-        if (!isString(subdomain)) {
-          return new Err(
-            new MCPError(
-              "Zendesk subdomain not found in connection metadata. Please reconnect your Zendesk account."
-            )
-          );
-        }
-
-        const client = new ZendeskClient(subdomain, accessToken);
         const result = await client.searchTickets(query, sortBy, sortOrder);
 
         if (result.isErr()) {
@@ -160,6 +160,50 @@ function createServer(
           {
             type: "text" as const,
             text: `Found ${count} ticket(s):\n\n${ticketsText}${paginationInfo}`,
+          },
+        ]);
+      }
+    )
+  );
+
+  server.tool(
+    "draft_reply",
+    "Draft a reply to a Zendesk ticket. Creates a private comment (not visible to the end user) " +
+      "that can be edited before being published. This is useful for preparing responses before " +
+      "making them public.",
+    {
+      ticketId: z
+        .number()
+        .int()
+        .positive()
+        .describe("The ID of the Zendesk ticket to reply to."),
+      body: z.string().describe("The content of the draft reply."),
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: ZENDESK_TOOL_NAME,
+        agentLoopContext,
+      },
+      async ({ ticketId, body }, { authInfo }) => {
+        const clientResult = getZendeskClient(authInfo);
+        if (clientResult.isErr()) {
+          return clientResult;
+        }
+        const client = clientResult.value;
+
+        const result = await client.draftReply(ticketId, body);
+
+        if (result.isErr()) {
+          return new Err(
+            new MCPError(`Failed to draft reply: ${result.error.message}`)
+          );
+        }
+
+        return new Ok([
+          {
+            type: "text" as const,
+            text: `Draft reply successfully added to ticket ${ticketId}. The comment is private and not visible to the end user.`,
           },
         ]);
       }

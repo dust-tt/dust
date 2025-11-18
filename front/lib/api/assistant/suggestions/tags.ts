@@ -1,12 +1,17 @@
+import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { SuggestionResults } from "@app/lib/api/assistant/suggestions/types";
 import type { Authenticator } from "@app/lib/auth";
-import type { BuilderSuggestionInputType, Result } from "@app/types";
+import type {
+  BuilderSuggestionInputType,
+  ModelConversationTypeMultiActions,
+  Result,
+} from "@app/types";
 import { Err, GPT_4_1_MINI_MODEL_ID, Ok } from "@app/types";
 
 const FUNCTION_NAME = "send_suggestions";
 
-const specifications = [
+const specifications: AgentActionSpecification[] = [
   {
     name: FUNCTION_NAME,
     description: "Send suggestions of tags for the agent",
@@ -27,7 +32,9 @@ const specifications = [
   },
 ];
 
-function getConversationContext(inputs: BuilderSuggestionInputType) {
+function getConversationContext(
+  inputs: BuilderSuggestionInputType
+): ModelConversationTypeMultiActions {
   const instructions = "instructions" in inputs ? inputs.instructions : "";
   const description = "description" in inputs ? inputs.description : "";
   const tags = "tags" in inputs ? inputs.tags : [];
@@ -50,7 +57,13 @@ function getConversationContext(inputs: BuilderSuggestionInputType) {
     messages: [
       {
         role: "user",
-        content: initialPrompt + descriptionText + instructionsText + tagsText,
+        content: [
+          {
+            type: "text",
+            text: initialPrompt + descriptionText + instructionsText + tagsText,
+          },
+        ],
+        name: "",
       },
     ],
   };
@@ -109,6 +122,13 @@ export async function getBuilderTagSuggestions(
       conversation: getConversationContext(inputs),
       prompt: auth.isAdmin() && isAdminInput ? ADMIN_PROMPT : USER_PROMPT,
       specifications,
+    },
+    {
+      context: {
+        operationType: "agent_builder_tags_suggestion",
+        userId: auth.user()?.sId,
+        workspaceId: auth.getNonNullableWorkspace().sId,
+      },
     }
   );
 

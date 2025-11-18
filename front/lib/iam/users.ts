@@ -351,10 +351,7 @@ export async function mergeUserIdentities({
   }
 
   if (revokeSecondaryUser) {
-    await revokeAndTrackMembership(
-      auth.getNonNullableWorkspace(),
-      secondaryUser
-    );
+    await revokeAndTrackMembership(auth, secondaryUser);
   }
 
   return new Ok({

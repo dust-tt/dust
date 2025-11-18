@@ -3,6 +3,10 @@ import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import * as OutlookApi from "@app/lib/actions/mcp_internal_actions/servers/outlook/outlook_api_helper";
+import {
+  renderOutlookEvent,
+  renderOutlookEventList,
+} from "@app/lib/actions/mcp_internal_actions/servers/outlook/rendering";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -186,9 +190,16 @@ function createServer(
           return new Err(new MCPError(result.error));
         }
 
+        const formattedText = renderOutlookEventList(result.events, {
+          userTimezone,
+          hasMore: result.nextLink !== undefined,
+        });
+
         return new Ok([
-          { type: "text" as const, text: "Events searched successfully" },
-          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+          {
+            type: "text" as const,
+            text: formattedText,
+          },
         ]);
       }
     )
@@ -234,10 +245,9 @@ function createServer(
           return new Err(new MCPError(result.error));
         }
 
-        return new Ok([
-          { type: "text" as const, text: "Event fetched successfully" },
-          { type: "text" as const, text: JSON.stringify(result, null, 2) },
-        ]);
+        const formattedText = renderOutlookEvent(result, userTimezone);
+
+        return new Ok([{ type: "text" as const, text: formattedText }]);
       }
     )
   );
@@ -343,9 +353,13 @@ function createServer(
           return new Err(new MCPError(result.error));
         }
 
+        const formattedText = renderOutlookEvent(result, userTimezone);
+
         return new Ok([
-          { type: "text" as const, text: "Event created successfully" },
-          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+          {
+            type: "text" as const,
+            text: `Event created successfully\n\n${formattedText}`,
+          },
         ]);
       }
     )
@@ -446,9 +460,13 @@ function createServer(
           return new Err(new MCPError(result.error));
         }
 
+        const formattedText = renderOutlookEvent(result, userTimezone);
+
         return new Ok([
-          { type: "text" as const, text: "Event updated successfully" },
-          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+          {
+            type: "text" as const,
+            text: `Event updated successfully\n\n${formattedText}`,
+          },
         ]);
       }
     )

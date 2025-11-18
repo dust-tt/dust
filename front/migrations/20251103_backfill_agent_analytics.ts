@@ -28,7 +28,7 @@ async function backfillAgentAnalytics(
     dangerouslyRequestAllGroups: true,
   });
 
-  // Get all agent messages from the last 30 days for this workspace
+  // Get all agent messages from the last 90 days for this workspace
   const ninetyDaysAgo = subDays(new Date(), 90);
 
   logger.info(
@@ -39,7 +39,8 @@ async function backfillAgentAnalytics(
     "Starting agent analytics backfill"
   );
 
-  const allAgentMessages = await Message.findAll({
+  // First, count total messages to process
+  const totalCount = await Message.count({
     where: {
       workspaceId: workspace.id,
       agentMessageId: {
@@ -51,25 +52,6 @@ async function backfillAgentAnalytics(
     },
     include: [
       {
-        model: AgentMessage,
-        as: "agentMessage",
-        required: true,
-        include: [
-          {
-            model: AgentMessageFeedback,
-            as: "feedbacks",
-            required: false,
-            include: [
-              {
-                model: UserModel,
-                as: "user",
-                required: false,
-              },
-            ],
-          },
-        ],
-      },
-      {
         model: ConversationModel,
         as: "conversation",
         required: true,
@@ -78,113 +60,194 @@ async function backfillAgentAnalytics(
         },
       },
     ],
-    order: [["createdAt", "ASC"]],
   });
 
   logger.info(
     {
       workspaceId: workspace.sId,
-      count: allAgentMessages.length,
+      count: totalCount,
     },
     "Found agent messages to process"
   );
 
   let successCount = 0;
   let errorCount = 0;
+  let processedCount = 0;
 
-  if (execute) {
-    await concurrentExecutor(
-      allAgentMessages,
-      async (agentMessageRow) => {
-        try {
-          // Find the parent user message
-          if (!agentMessageRow.parentId) {
-            logger.warn(
-              {
-                messageId: agentMessageRow.sId,
-                workspaceId: workspace.sId,
-              },
-              "Skipping agent message without parent user message"
-            );
-            return;
-          }
+  // Process in batches to avoid OOM
+  const BATCH_SIZE = 5000;
+  let offset = 0;
 
-          const userMessageRow = await Message.findOne({
-            where: {
-              id: agentMessageRow.parentId,
-              workspaceId: workspace.id,
-            },
-            include: [
-              {
-                model: UserMessage,
-                as: "userMessage",
-                required: true,
-                include: [
-                  {
-                    model: UserModel,
-                    as: "user",
-                    required: false,
-                  },
-                ],
-              },
-            ],
-          });
-
-          // Find the parent user message
-          if (!userMessageRow) {
-            logger.warn(
-              {
-                messageId: agentMessageRow.sId,
-                workspaceId: workspace.sId,
-              },
-              "Skipping agent message without parent user message"
-            );
-            return;
-          }
-
-          const {
-            agentMessage: agentAgentMessageRow,
-            conversation: conversationRow,
-          } = agentMessageRow;
-
-          if (!agentAgentMessageRow || !conversationRow) {
-            throw new Error("Agent message or conversation not found");
-          }
-
-          const { userMessage: userUserMessageRow } = userMessageRow;
-
-          if (!userUserMessageRow) {
-            throw new Error("User message not found");
-          }
-
-          // Store the analytics
-          await storeAgentAnalytics(auth, {
-            agentMessageRow,
-            agentAgentMessageRow,
-            userModel: userUserMessageRow.user ?? null,
-            conversationRow,
-          });
-
-          successCount++;
-        } catch (err) {
-          errorCount++;
-          logger.error(
-            {
-              messageId: agentMessageRow.sId,
-              workspaceId: workspace.sId,
-              error: err,
-            },
-            "Failed to store agent analytics"
-          );
-        }
-      },
-      { concurrency: 10 }
-    );
-  } else {
+  while (offset < totalCount) {
     logger.info(
       {
         workspaceId: workspace.sId,
-        totalProcessed: allAgentMessages.length,
+        offset,
+        totalCount,
+        progress: `${Math.round((offset / totalCount) * 100)}%`,
+      },
+      "Processing batch"
+    );
+
+    const agentMessagesBatch = await Message.findAll({
+      where: {
+        workspaceId: workspace.id,
+        agentMessageId: {
+          [Op.ne]: null,
+        },
+        createdAt: {
+          [Op.gte]: ninetyDaysAgo,
+        },
+      },
+      include: [
+        {
+          model: AgentMessage,
+          as: "agentMessage",
+          required: true,
+          include: [
+            {
+              model: AgentMessageFeedback,
+              as: "feedbacks",
+              required: false,
+              include: [
+                {
+                  model: UserModel,
+                  as: "user",
+                  required: false,
+                },
+              ],
+            },
+          ],
+        },
+        {
+          model: ConversationModel,
+          as: "conversation",
+          required: true,
+          where: {
+            visibility: ["unlisted", "workspace"],
+          },
+        },
+      ],
+      order: [["createdAt", "ASC"]],
+      limit: BATCH_SIZE,
+      offset: offset,
+    });
+
+    if (agentMessagesBatch.length === 0) {
+      break;
+    }
+
+    if (execute) {
+      await concurrentExecutor(
+        agentMessagesBatch,
+        async (agentMessageRow) => {
+          try {
+            // Find the parent user message
+            if (!agentMessageRow.parentId) {
+              logger.warn(
+                {
+                  messageId: agentMessageRow.sId,
+                  workspaceId: workspace.sId,
+                },
+                "Skipping agent message without parent user message"
+              );
+              return;
+            }
+
+            const userMessageRow = await Message.findOne({
+              where: {
+                id: agentMessageRow.parentId,
+                workspaceId: workspace.id,
+              },
+              include: [
+                {
+                  model: UserMessage,
+                  as: "userMessage",
+                  required: true,
+                  include: [
+                    {
+                      model: UserModel,
+                      as: "user",
+                      required: false,
+                    },
+                  ],
+                },
+              ],
+            });
+
+            // Find the parent user message
+            if (!userMessageRow) {
+              logger.warn(
+                {
+                  messageId: agentMessageRow.sId,
+                  workspaceId: workspace.sId,
+                },
+                "Skipping agent message without parent user message"
+              );
+              return;
+            }
+
+            const {
+              agentMessage: agentAgentMessageRow,
+              conversation: conversationRow,
+            } = agentMessageRow;
+
+            if (!agentAgentMessageRow || !conversationRow) {
+              throw new Error("Agent message or conversation not found");
+            }
+
+            const { userMessage: userUserMessageRow } = userMessageRow;
+
+            if (!userUserMessageRow) {
+              throw new Error("User message not found");
+            }
+
+            // Store the analytics
+            await storeAgentAnalytics(auth, {
+              agentMessageRow,
+              agentAgentMessageRow,
+              userModel: userUserMessageRow.user ?? null,
+              conversationRow,
+              contextOrigin: userUserMessageRow.userContextOrigin ?? null,
+            });
+
+            successCount++;
+          } catch (err) {
+            errorCount++;
+            logger.error(
+              {
+                messageId: agentMessageRow.sId,
+                workspaceId: workspace.sId,
+                error: err,
+              },
+              "Failed to store agent analytics"
+            );
+          }
+        },
+        { concurrency: 10 }
+      );
+    }
+
+    processedCount += agentMessagesBatch.length;
+    offset += BATCH_SIZE;
+
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        processedCount,
+        totalCount,
+        successCount,
+        errorCount,
+      },
+      "Batch completed"
+    );
+  }
+
+  if (!execute) {
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        totalProcessed: totalCount,
       },
       "Would process these messages (dry run)"
     );
@@ -195,7 +258,7 @@ async function backfillAgentAnalytics(
       workspaceId: workspace.sId,
       successCount,
       errorCount,
-      totalProcessed: allAgentMessages.length,
+      totalProcessed: processedCount,
     },
     "Completed agent analytics backfill for workspace"
   );

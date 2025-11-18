@@ -26,14 +26,11 @@ export const DRIVE_ITEM_EXPANDS_AND_SELECTS =
 
 export const MICROSOFT_NODE_TYPES = [
   "sites-root",
-  "teams-root",
   "site",
-  "team",
   "drive",
   "folder",
   "file",
   "page",
-  "channel",
   "message",
   "worksheet",
 ] as const;

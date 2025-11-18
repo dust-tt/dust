@@ -1,12 +1,12 @@
 import type {
   GenerateContentResponse,
   GenerateContentResponseUsageMetadata,
-  Part,
 } from "@google/genai";
 import { FinishReason } from "@google/genai";
 import assert from "assert";
 import { hash as blake3 } from "blake3";
 import crypto from "crypto";
+import flatMap from "lodash/flatMap";
 
 import { SuccessAggregate } from "@app/lib/api/llm/types/aggregates";
 import type { LLMEvent, TokenUsageEvent } from "@app/lib/api/llm/types/events";
@@ -68,8 +68,72 @@ export async function* streamLLMEvents({
       "Candidate either finishReason or content parts are required"
     );
 
-    const events = (content?.parts ?? []).map((part) =>
-      partToLLMEvent({ part, metadata }, stateContainer)
+    const events = flatMap(
+      (content?.parts ?? []).map((part) => {
+        if (part.functionCall) {
+          const {
+            // Google does not necessarily return an id, so we generate one if missing
+            functionCall: { id = `fc_${newId().slice(0, 9)}`, name, args },
+          } = part;
+
+          assert(
+            id && name && args,
+            `Function call must have name and arguments, ${JSON.stringify({ id, name, args })} found instead`
+          );
+
+          const returnedEvents: LLMEvent[] = [];
+
+          if (reasoningContentParts) {
+            returnedEvents.push({
+              type: "reasoning_generated" as const,
+              content: { text: reasoningContentParts },
+              metadata: {
+                ...metadata,
+                encrypted_content: stateContainer.thinkingSignature,
+              },
+            });
+
+            reasoningContentParts = "";
+          }
+
+          if (textContentParts) {
+            returnedEvents.push({
+              type: "text_generated" as const,
+              content: { text: textContentParts },
+              metadata,
+            });
+
+            textContentParts = "";
+          }
+
+          returnedEvents.push({
+            type: "tool_call",
+            content: {
+              id,
+              name,
+              arguments: args,
+            },
+            metadata,
+          });
+
+          return returnedEvents;
+        }
+
+        if (part.text) {
+          const { text, thought, thoughtSignature } = part;
+          return [
+            textPartToEvent(
+              {
+                part: { text, thought, thoughtSignature },
+                metadata,
+              },
+              stateContainer
+            ),
+          ];
+        }
+
+        throw new Error("Unhandled part type in Google GenAI response");
+      })
     );
 
     // Passthrough, keep streaming
@@ -188,51 +252,4 @@ function textPartToEvent(
     content: { delta: text },
     metadata: { ...metadata, encrypted_content: thoughtSignature },
   };
-}
-
-function partToLLMEvent(
-  {
-    part,
-    metadata,
-  }: {
-    part: Part;
-    metadata: LLMClientMetadata;
-  },
-  stateContainer: StateContainer
-): LLMEvent {
-  // Exactly one "structuring" field within a Part should be set
-  if (part.text) {
-    const { text, thought, thoughtSignature } = part;
-    return textPartToEvent(
-      {
-        part: { text, thought, thoughtSignature },
-        metadata,
-      },
-      stateContainer
-    );
-  }
-
-  if (part.functionCall) {
-    const {
-      // Google does not necessarily return an id, so we generate one if missing
-      functionCall: { id = `fc_${newId().slice(0, 9)}`, name, args },
-    } = part;
-
-    assert(
-      id && name && args,
-      `Function call must have name and arguments, ${JSON.stringify({ id, name, args })} found instead`
-    );
-
-    return {
-      type: "tool_call",
-      content: {
-        id,
-        name,
-        arguments: args,
-      },
-      metadata,
-    };
-  }
-
-  throw new Error("Unhandled part type in Google GenAI response");
 }

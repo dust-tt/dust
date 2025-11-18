@@ -192,11 +192,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Elevenlabs MCP tool for voice synthesis",
     stage: "on_demand",
   },
-  agent_builder_observability: {
-    description:
-      "Observability tab in the Agent Builder (charts powered by Elasticsearch)",
-    stage: "dust_only",
-  },
   legacy_dust_apps: {
     description: "Access to legacy Dust Apps (editor and associated tools)",
     stage: "on_demand",
@@ -208,6 +203,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   llm_router_direct_requests: {
     description: "Use direct LLM call over Dust app run in a conversation.",
+    stage: "on_demand",
+  },
+  llm_comparison_mode_enabled: {
+    description: "Enable LLM comparison mode.",
     stage: "on_demand",
   },
   use_requested_space_ids: {
@@ -225,10 +224,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   notifications: {
     description: "Enable notifications",
     stage: "dust_only",
-  },
-  zendesk_features: {
-    description: "Zendesk MCP tool and webhook triggers",
-    stage: "rolling_out",
   },
 } as const satisfies Record<string, FeatureFlag>;
 

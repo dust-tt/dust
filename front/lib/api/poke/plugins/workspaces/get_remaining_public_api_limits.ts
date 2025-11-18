@@ -4,7 +4,7 @@ import { createPlugin } from "@app/lib/api/poke/types";
 import {
   getRemainingCredits,
   resetCredits,
-} from "@app/lib/api/public_api_limits";
+} from "@app/lib/api/programmatic_usage_tracking";
 import { getWorkspacePublicAPILimits } from "@app/lib/api/workspace";
 import { Ok } from "@app/types";
 

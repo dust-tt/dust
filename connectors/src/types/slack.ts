@@ -23,6 +23,7 @@ export const SlackConfigurationTypeSchema = t.type({
   whitelistedDomains: t.union([t.array(t.string), t.undefined]),
   autoReadChannelPatterns: SlackAutoReadPatternsSchema,
   restrictedSpaceAgentsEnabled: t.union([t.boolean, t.undefined]),
+  feedbackVisibleToAuthorOnly: t.union([t.boolean, t.undefined]),
 });
 
 export type SlackConfigurationType = t.TypeOf<

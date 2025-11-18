@@ -154,6 +154,5 @@ export const mentionFormat = {
   serialize: serializeMention,
   parse: parseMentions,
   replaceWithAt: replaceMentionsWithAt,
-  extractFromEditorJSON,
   regex: AGENT_MENTION_REGEX,
 };

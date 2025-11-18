@@ -1,13 +1,16 @@
 import { useMemo } from "react";
 
-import type { EditorSuggestionAgent } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
-import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
+import type {
+  LightAgentConfigurationType,
+  RichAgentMention,
+  WorkspaceType,
+} from "@app/types";
 import { compareAgentsForSort } from "@app/types";
 
 function makeEditorSuggestionAgents(
   agentConfigurations: LightAgentConfigurationType[]
-): EditorSuggestionAgent[] {
+): RichAgentMention[] {
   return agentConfigurations
     .filter((a) => a.status === "active")
     .sort(compareAgentsForSort)
@@ -22,8 +25,8 @@ function makeEditorSuggestionAgents(
 }
 
 const useAgentSuggestions = (
-  inListAgentConfigurations: LightAgentConfigurationType[],
-  owner: WorkspaceType
+  owner: WorkspaceType,
+  inListAgentConfigurations: LightAgentConfigurationType[]
 ) => {
   // We use this specific hook because this component is involved in the new conversation page.
   const { agentConfigurations, isLoading } = useUnifiedAgentConfigurations({

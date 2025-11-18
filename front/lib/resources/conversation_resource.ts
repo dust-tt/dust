@@ -397,12 +397,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok({
       id: conversation.id,
       created: conversation.createdAt.getTime(),
+      updated: conversation.updatedAt.getTime(),
       sId: conversation.sId,
       title: conversation.title,
       triggerId: conversation.triggerSId,
       actionRequired,
       unread,
       hasError: conversation.hasError,
+      requestedGroupIds: [],
       requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(auth),
     });
   }
@@ -516,12 +518,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         return {
           id: c.id,
           created: c.createdAt.getTime(),
+          updated: c.updatedAt.getTime(),
           sId: c.sId,
           title: c.title,
           triggerId: triggerId,
           actionRequired,
           unread,
           hasError: c.hasError,
+          requestedGroupIds: [],
           requestedSpaceIds: c.getRequestedSpaceIdsFromModel(auth),
         };
       })
@@ -573,6 +577,29 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
 
     return new Ok(updated);
+  }
+
+  static async markAsUpdated(
+    auth: Authenticator,
+    {
+      conversation,
+      t,
+    }: { conversation: ConversationWithoutContentType; t?: Transaction }
+  ): Promise<Result<number, Error>> {
+    const updated = await ConversationModel.update(
+      {
+        id: col("id"), // no real change
+      },
+      {
+        where: {
+          id: conversation.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+        transaction: t,
+      }
+    );
+
+    return new Ok(updated[0]);
   }
 
   static async markAsUnreadForOtherParticipants(
@@ -1074,12 +1101,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const participation = this.userParticipation ?? {
       actionRequired: false,
       unread: false,
-      updated: this.updatedAt.getTime(),
     };
 
     return {
       actionRequired: participation.actionRequired,
       created: this.createdAt.getTime(),
+      updated: this.updatedAt.getTime(),
       hasError: this.hasError,
       id: this.id,
       // TODO(REQUESTED_SPACE_IDS 2025-10-24): Stop exposing this once all logic is centralized
@@ -1093,7 +1120,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       sId: this.sId,
       title: this.title,
       unread: participation.unread,
-      updated: participation.updated,
     };
   }
 }

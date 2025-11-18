@@ -7,6 +7,7 @@ const SALESLOFT_API_BASE_URL = "https://api.salesloft.com/v2";
 
 interface SalesloftUser {
   id: number;
+  guid: string;
   email: string;
   first_name: string;
   last_name: string;
@@ -24,6 +25,19 @@ interface SalesloftPerson {
   last_name: string | null;
   email_address: string | null;
   phone: string | null;
+  linkedin_url: string | null;
+  title: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  person_company_name: string | null;
+  person_company_website: string | null;
+  do_not_contact: boolean | null;
+  twitter_handle: string | null;
+  job_seniority: string | null;
+  job_function: string | null;
+  untouched: boolean | null;
+  hot_lead: boolean | null;
 }
 
 interface SalesloftStep {
@@ -266,6 +280,19 @@ async function getPeopleByIds(
         last_name: person.last_name,
         email_address: person.email_address,
         phone: person.phone,
+        linkedin_url: person.linkedin_url,
+        title: person.title,
+        city: person.city,
+        state: person.state,
+        country: person.country,
+        person_company_name: person.person_company_name,
+        person_company_website: person.person_company_website,
+        do_not_contact: person.do_not_contact,
+        twitter_handle: person.twitter_handle,
+        job_seniority: person.job_seniority,
+        job_function: person.job_function,
+        untouched: person.untouched,
+        hot_lead: person.hot_lead,
       });
     }
   }
@@ -277,7 +304,7 @@ export async function getUserByEmail(
   email: string
 ): Promise<SalesloftUser | null> {
   const users = await getAllPages<SalesloftUser>(accessToken, "/users", {
-    email_address: email,
+    emails: email,
   });
 
   if (users.length === 0) {
@@ -287,6 +314,7 @@ export async function getUserByEmail(
   const user = users[0];
   return {
     id: user.id,
+    guid: user.guid,
     email: user.email,
     first_name: user.first_name,
     last_name: user.last_name,
@@ -332,50 +360,40 @@ async function getActionDetails(
   }
 }
 
-export async function getSteps(
+export async function getStepsByIds(
   accessToken: string,
-  userId?: number,
-  options?: {
-    cadenceId?: number;
-    hasDueActions?: boolean;
+  stepIds: number[]
+): Promise<Map<number, SalesloftStep>> {
+  if (stepIds.length === 0) {
+    return new Map();
   }
-): Promise<SalesloftStep[]> {
-  const params: Record<string, string | number | boolean> = {};
-  if (userId) {
-    params.user_id = userId;
+
+  const steps = await getAllPages<SalesloftStep>(accessToken, "/steps", {});
+
+  const stepMap = new Map<number, SalesloftStep>();
+  for (const step of steps) {
+    stepMap.set(step.id, {
+      id: step.id,
+      cadence_id: step.cadence_id,
+      name: step.name,
+      step_number: step.step_number,
+      type: step.type,
+    });
   }
-  if (options?.cadenceId) {
-    params.cadence_id = options.cadenceId;
-  }
-  if (options?.hasDueActions) {
-    params.has_due_actions = true;
-  }
-  const steps = await getAllPages<SalesloftStep>(accessToken, "/steps", params);
-  return steps.map((step) => ({
-    id: step.id,
-    cadence_id: step.cadence_id,
-    name: step.name,
-    step_number: step.step_number,
-    type: step.type,
-  }));
+  return stepMap;
 }
 
 export async function getActions(
   accessToken: string,
-  userId?: number,
+  userGuid: string,
   options?: {
-    stepId?: number;
     dueOnLte?: string;
     cadenceId?: number;
   }
 ): Promise<SalesloftAction[]> {
-  const params: Record<string, string | number> = {};
-  if (userId) {
-    params.user_id = userId;
-  }
-  if (options?.stepId) {
-    params.step_id = options.stepId;
-  }
+  const params: Record<string, string | number> = {
+    user_guid: userGuid,
+  };
   if (options?.dueOnLte) {
     params["due_on[lte]"] = options.dueOnLte;
   }
@@ -415,38 +433,28 @@ export async function getActionsWithDetails(
       new Error(`User not found with email: ${options.userEmail}`)
     );
   }
-  const userId = user.id;
 
-  const steps = await getSteps(accessToken, userId, {
-    hasDueActions: options.includeDueActionsOnly,
-  });
-
-  if (steps.length === 0) {
-    return new Ok([]);
-  }
-
-  const cadenceIds = [...new Set(steps.map((step) => step.cadence_id))];
-
-  const cadenceMap = await getCadencesByIds(accessToken, cadenceIds);
-
-  const dueOnLte = options?.includeDueActionsOnly
-    ? new Date().toISOString()
-    : undefined;
-
-  const actionArrays = await concurrentExecutor(
-    steps,
-    async (step) =>
-      getActions(accessToken, userId, {
-        stepId: step.id,
-        dueOnLte,
-      }),
-    { concurrency: 10 }
+  const allActions = await getActions(
+    accessToken,
+    user.guid,
+    options.includeDueActionsOnly
+      ? { dueOnLte: new Date().toISOString() }
+      : undefined
   );
-  const allActions = actionArrays.flat();
 
   if (allActions.length === 0) {
     return new Ok([]);
   }
+
+  const cadenceIds = [
+    ...new Set(
+      allActions
+        .map((action) => action.cadence?.id ?? null)
+        .filter((id): id is number => id !== null)
+    ),
+  ];
+
+  const cadenceMap = await getCadencesByIds(accessToken, cadenceIds);
 
   const personIds = [
     ...new Set(
@@ -458,10 +466,14 @@ export async function getActionsWithDetails(
 
   const peopleMap = await getPeopleByIds(accessToken, personIds);
 
-  const stepMap = new Map<number, SalesloftStep>();
-  for (const step of steps) {
-    stepMap.set(step.id, step);
-  }
+  const stepIds = [
+    ...new Set(
+      allActions
+        .map((action) => action.step?.id ?? null)
+        .filter((id): id is number => id !== null)
+    ),
+  ];
+  const stepMap = await getStepsByIds(accessToken, stepIds);
 
   const actionDetailsArray = await concurrentExecutor(
     allActions,
@@ -476,12 +488,12 @@ export async function getActionsWithDetails(
     (action, index) => ({
       action,
       person: action.person?.id
-        ? peopleMap.get(action.person.id) ?? null
+        ? (peopleMap.get(action.person.id) ?? null)
         : null,
       cadence: action.cadence?.id
-        ? cadenceMap.get(action.cadence.id) ?? null
+        ? (cadenceMap.get(action.cadence.id) ?? null)
         : null,
-      step: action.step?.id ? stepMap.get(action.step.id) ?? null : null,
+      step: action.step?.id ? (stepMap.get(action.step.id) ?? null) : null,
       action_details: actionDetailsArray[index] ?? null,
     })
   );

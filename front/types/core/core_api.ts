@@ -35,6 +35,7 @@ import type { LoggerInterface } from "@app/types/shared/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { errorToString } from "@app/types/shared/utils/error_utils";
+import type { TokenizerConfig } from "@app/types/tokenizer";
 import type { LightWorkspaceType } from "@app/types/user";
 
 export const MAX_CHUNK_SIZE = 512;
@@ -1444,10 +1445,12 @@ export class CoreAPI {
     text,
     modelId,
     providerId,
+    tokenizer,
   }: {
     text: string;
     modelId: string;
     providerId: string;
+    tokenizer: TokenizerConfig;
   }): Promise<CoreAPIResponse<{ tokens: CoreAPITokenType[] }>> {
     const credentials = dustManagedCredentials();
     const response = await this._fetchWithError(`${this._url}/tokenize`, {
@@ -1461,6 +1464,7 @@ export class CoreAPI {
         model_id: modelId,
         provider_id: providerId,
         credentials,
+        tokenizer,
       }),
     });
 
@@ -1498,20 +1502,14 @@ export class CoreAPI {
     texts,
     modelId,
     providerId,
+    tokenizer,
   }: {
     texts: string[];
     modelId: string;
     providerId: string;
+    tokenizer: TokenizerConfig;
   }): Promise<CoreAPIResponse<{ counts: number[] }>> {
     const credentials = dustManagedCredentials();
-    this._logger.info(
-      {
-        textsLength: texts.length,
-        modelId,
-        providerId,
-      },
-      "Calling core API tokenizer batch count endpoint"
-    );
 
     const response = await this._fetchWithError(
       `${this._url}/tokenize/batch/count`,
@@ -1524,6 +1522,7 @@ export class CoreAPI {
         body: JSON.stringify({
           texts,
           model_id: modelId,
+          tokenizer,
           provider_id: providerId,
           credentials,
         }),

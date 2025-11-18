@@ -13,6 +13,7 @@ import type { WithAPIErrorResponse } from "@app/types";
 
 const QuerySchema = z.object({
   days: z.coerce.number().positive().optional(),
+  version: z.string().optional(),
 });
 
 export type GetToolExecutionResponse = {
@@ -73,12 +74,14 @@ async function handler(
       }
 
       const days = q.data.days ?? DEFAULT_PERIOD_DAYS;
+      const version = q.data.version;
       const owner = auth.getNonNullableWorkspace();
 
       const baseQuery = buildAgentAnalyticsBaseQuery({
         workspaceId: owner.sId,
         agentId: assistant.sId,
         days,
+        version,
       });
 
       const toolExecutionResult = await fetchToolExecutionMetrics(baseQuery);

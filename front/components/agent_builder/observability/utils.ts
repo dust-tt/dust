@@ -3,12 +3,19 @@ import {
   TOOL_COLORS,
 } from "@app/components/agent_builder/observability/constants";
 import type { ObservabilityMode } from "@app/components/agent_builder/observability/ObservabilityContext";
+import type { SourceChartDatum } from "@app/components/agent_builder/observability/types";
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 import { formatShortDate } from "@app/lib/utils/timestamps";
+import {
+  isUserMessageOrigin,
+  USER_MESSAGE_ORIGIN_LABELS,
+} from "@app/types/assistant/conversation";
 
 export type VersionMarker = { version: string; timestamp: number };
 
 export type ValuesPayload = { values: Record<string, number> };
+
+export type SourceBucket = { origin: string; count: number };
 
 export function getToolColor(toolName: string, topTools: string[]): string {
   if (toolName === OTHER_TOOLS_LABEL) {
@@ -17,6 +24,33 @@ export function getToolColor(toolName: string, topTools: string[]): string {
 
   const idx = topTools.indexOf(toolName);
   return TOOL_COLORS[(idx >= 0 ? idx : 0) % TOOL_COLORS.length];
+}
+
+export function buildSourceChartData(
+  buckets: SourceBucket[],
+  total: number
+): SourceChartDatum[] {
+  const aggregatedByLabel = buckets.reduce(
+    (acc, b) => {
+      const label = isUserMessageOrigin(b.origin)
+        ? USER_MESSAGE_ORIGIN_LABELS[b.origin]
+        : b.origin;
+
+      if (!acc[label]) {
+        acc[label] = { origin: label, count: 0 };
+      }
+
+      acc[label].count += b.count;
+      return acc;
+    },
+    {} as Record<string, SourceBucket>
+  );
+
+  return Object.values(aggregatedByLabel).map((d) => ({
+    origin: d.origin,
+    count: d.count,
+    percent: total > 0 ? Math.round((d.count / total) * 100) : 0,
+  }));
 }
 
 // Returns the top N tools from a pre-aggregated count map

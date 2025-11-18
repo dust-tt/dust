@@ -5,7 +5,7 @@ import {
   MarkdownSerializer,
 } from "prosemirror-markdown";
 
-import { mentionAgent } from "@app/lib/mentions";
+import { serializeMention } from "@app/lib/mentions";
 
 function buildNodeSerializers(schema: Schema) {
   // Start with default serializers.
@@ -38,7 +38,22 @@ function buildNodeSerializers(schema: Schema) {
   };
 
   map.mention = (state: MarkdownSerializerState, node: ProseMirrorNode) => {
-    state.write(mentionAgent({ name: node.attrs.label, sId: node.attrs.id }));
+    if (node.attrs.type) {
+      state.write(
+        serializeMention({
+          description: node.attrs.description,
+          label: node.attrs.label,
+          name: node.attrs.name,
+          pictureUrl: node.attrs.pictureUrl,
+          id: node.attrs.id,
+          type: node.attrs.type,
+        })
+      );
+    } else {
+      state.write(
+        serializeMention({ name: node.attrs.label, sId: node.attrs.id })
+      );
+    }
   };
 
   map.dataSourceLink = (

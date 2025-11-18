@@ -16,8 +16,10 @@ import { Op } from "sequelize";
 import { nodeIdFromNotionId } from "@connectors/connectors/notion";
 import { getNotionAccessToken } from "@connectors/connectors/notion/lib/access_token";
 import {
+  getDatabaseChildrenOf,
   getNotionDatabaseFromConnectorsDb,
   getNotionPageFromConnectorsDb,
+  getPageChildrenOf,
   upsertNotionDatabaseInConnectorsDb,
   upsertNotionPageInConnectorsDb,
 } from "@connectors/connectors/notion/lib/connectors_db_helpers";
@@ -40,11 +42,12 @@ import {
   updateAllParentsFields,
 } from "@connectors/connectors/notion/lib/parents";
 import { getTagsForPage } from "@connectors/connectors/notion/lib/tags";
+import { sendDeletionCrawlSignal } from "@connectors/connectors/notion/temporal/client";
 import {
   DATABASE_PROCESSING_INTERVAL_MS,
   DATABASE_TO_CSV_MAX_SIZE,
 } from "@connectors/connectors/notion/temporal/config";
-import type { NotionWebhookEvent } from "@connectors/connectors/notion/temporal/signals";
+import type { NotionDeletionCrawlSignal } from "@connectors/connectors/notion/temporal/signals";
 import { connectorsConfig } from "@connectors/connectors/shared/config";
 import {
   dataSourceConfigFromConnector,
@@ -81,7 +84,6 @@ import {
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
-import { statsDClient } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type {
   DataSourceConfig,
@@ -1013,6 +1015,125 @@ export async function completeGarbageCollectionRun(
   });
 }
 
+export async function deletionCrawlAddSignalsToRedis({
+  connectorId,
+  workflowId,
+  signals,
+}: {
+  connectorId: ModelId;
+  workflowId: string;
+  signals: NotionDeletionCrawlSignal[];
+}) {
+  if (signals.length === 0) {
+    return;
+  }
+
+  const redisKey = redisDeletionCrawlKey(connectorId, workflowId);
+  const redisCli = await redisClient({ origin: "notion_gc" });
+
+  // Filter out signals that are already in the seen set
+  const signalsToAdd: NotionDeletionCrawlSignal[] = [];
+  const idsToAddToSeen: string[] = [];
+
+  for (const signal of signals) {
+    const isSeen = await redisCli.sIsMember(
+      `${redisKey}-seen`,
+      signal.resourceId
+    );
+    if (!isSeen) {
+      signalsToAdd.push(signal);
+      idsToAddToSeen.push(signal.resourceId);
+    }
+  }
+
+  if (signalsToAdd.length === 0) {
+    return;
+  }
+
+  // Add to seen set
+  await redisCli.sAdd(`${redisKey}-seen`, idsToAddToSeen);
+
+  // Add to queue (push to left, pop from right for FIFO)
+  await redisCli.lPush(
+    `${redisKey}-queue`,
+    signalsToAdd.map((item) => JSON.stringify(item))
+  );
+}
+
+export async function batchDiscoverDeletions({
+  connectorId,
+  workflowId,
+  batchSize,
+}: {
+  connectorId: ModelId;
+  workflowId: string;
+  batchSize: number;
+}): Promise<{
+  hasMore: boolean;
+}> {
+  const redisKey = redisDeletionCrawlKey(connectorId, workflowId);
+  const redisCli = await redisClient({ origin: "notion_gc" });
+
+  for (let i = 0; i < batchSize; i++) {
+    const item = await redisCli.rPop(`${redisKey}-queue`);
+    if (!item) {
+      break;
+    }
+    const { resourceId, resourceType } = JSON.parse(item);
+    const discovered = await checkResourceAndDiscoverRelated({
+      connectorId,
+      resourceId,
+      resourceType,
+      workflowId,
+    });
+
+    const newSignals: NotionDeletionCrawlSignal[] = [];
+
+    for (const pageId of discovered.pageIds) {
+      const isSeen = await redisCli.sIsMember(`${redisKey}-seen`, pageId);
+      if (!isSeen) {
+        newSignals.push({ resourceId: pageId, resourceType: "page" });
+      }
+    }
+
+    for (const databaseId of discovered.databaseIds) {
+      const isSeen = await redisCli.sIsMember(`${redisKey}-seen`, databaseId);
+      if (!isSeen) {
+        newSignals.push({ resourceId: databaseId, resourceType: "database" });
+      }
+    }
+
+    if (newSignals.length > 0) {
+      await redisCli.sAdd(
+        `${redisKey}-seen`,
+        newSignals.map((s) => s.resourceId)
+      );
+      await redisCli.lPush(
+        `${redisKey}-queue`,
+        newSignals.map((item) => JSON.stringify(item))
+      );
+    }
+  }
+
+  const queueLength = await redisCli.lLen(`${redisKey}-queue`);
+  const hasMore = queueLength > 0;
+  return { hasMore };
+}
+
+export async function completeDeletionCrawlRun({
+  connectorId,
+  workflowId,
+}: {
+  connectorId: ModelId;
+  workflowId: string;
+}) {
+  const redisKey = redisDeletionCrawlKey(connectorId, workflowId);
+  const redisCli = await redisClient({ origin: "notion_gc" });
+
+  // Delete both Redis keys (seen Set and queue List)
+  await redisCli.del([`${redisKey}-seen`, `${redisKey}-queue`]);
+}
+
 export async function deletePageOrDatabaseIfArchived({
   connectorId,
   objectId,
@@ -1028,7 +1149,6 @@ export async function deletePageOrDatabaseIfArchived({
   if (!connector) {
     throw new Error("Could not find connector");
   }
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const accessToken = await getNotionAccessToken(connector.id);
 
   const localLogger = logger.child({
@@ -1072,22 +1192,29 @@ export async function deletePageOrDatabaseIfArchived({
   );
 
   if (!resourceIsAccessible) {
-    if (objectType === "page") {
-      await deletePage({
-        connectorId,
-        dataSourceConfig,
-        pageId: objectId,
-        logger: localLogger,
-      });
+    // Send signal to deletion crawl workflow
+    // The deletion crawl workflow will handle the actual deletion after checking parent/children
+    const result = await sendDeletionCrawlSignal(
+      connectorId,
+      objectId,
+      objectType
+    );
+    if (result.isErr()) {
+      localLogger.error(
+        {
+          objectType,
+          error: result.error,
+        },
+        `Failed to send deletion crawl signal (archived/inaccessible)`
+      );
+      throw result.error;
     }
-    if (objectType === "database") {
-      await deleteDatabase({
-        connectorId,
-        dataSourceConfig,
-        databaseId: objectId,
-        logger: localLogger,
-      });
-    }
+    localLogger.info(
+      {
+        objectType,
+      },
+      `Sent deletion crawl signal (archived/inaccessible)`
+    );
   }
 }
 
@@ -2428,18 +2555,6 @@ export async function clearWorkflowCache({
     },
     "notionClearConnectorCacheActivity: Clearing cache."
   );
-  await NotionConnectorPageCacheEntry.destroy({
-    where: {
-      connectorId: connector.id,
-      workflowId: topLevelWorkflowId,
-    },
-  });
-  await NotionConnectorBlockCacheEntry.destroy({
-    where: {
-      connectorId: connector.id,
-      workflowId: topLevelWorkflowId,
-    },
-  });
   await NotionConnectorResourcesToCheckCacheEntry.destroy({
     where: {
       connectorId: connector.id,
@@ -2755,6 +2870,13 @@ async function renderPageSection({
 
 function redisGarbageCollectorKey(connectorId: ModelId): string {
   return `notion-garbage-collector-${connectorId}`;
+}
+
+function redisDeletionCrawlKey(
+  connectorId: ModelId,
+  workflowId: string
+): string {
+  return `notion-deletion-crawl-${connectorId}-${workflowId}`;
 }
 
 export async function upsertDatabaseStructuredDataFromCache({
@@ -3528,34 +3650,225 @@ export async function checkResourceAccessibility({
   }
 }
 
-export async function processWebhookEventActivity({
+/**
+ * Check if a resource exists in Notion API, and if not, add it to the workflow cache
+ * for batch deletion. Also marks parent and children for deletion crawl.
+ *
+ * Returns newly discovered resources (parent + children) that should be checked.
+ */
+export async function checkResourceAndDiscoverRelated({
   connectorId,
-  event,
+  resourceId,
+  resourceType,
+  workflowId,
 }: {
   connectorId: ModelId;
-  event: NotionWebhookEvent;
-}) {
+  resourceId: string;
+  resourceType: "page" | "database";
+  workflowId: string;
+}): Promise<{
+  pageIds: string[];
+  databaseIds: string[];
+}> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
-    throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
+    throw new Error("Could not find connector");
+  }
+
+  const discoveredPages: string[] = [];
+  const discoveredDatabases: string[] = [];
+  const notionAccessToken = await getNotionAccessToken(connector.id);
+  const localLogger = logger.child({
+    connectorId: connector.id,
+    dataSourceId: connector.dataSourceId,
+    workspaceId: connector.workspaceId,
+    resourceId,
+    resourceType,
+    workflowId,
+  });
+
+  // Check if resource still exists in Notion
+  let isAccessible = false;
+  try {
+    isAccessible = await isAccessibleAndUnarchived(
+      notionAccessToken,
+      resourceId,
+      resourceType,
+      localLogger
+    );
+  } catch (e) {
+    // If we get an error (e.g., rate limit, server error), rethrow to retry
+    localLogger.error({ error: e }, "Error checking resource accessibility");
+    throw e;
+  }
+
+  if (!isAccessible) {
+    // Resource is deleted/archived - add to workflow cache
+    localLogger.info(
+      "Resource not accessible, adding to deletion cache and checking parent/children"
+    );
+
+    // Add to cache (will be batch deleted later)
+    await NotionConnectorResourcesToCheckCacheEntry.upsert({
+      notionId: resourceId,
+      resourceType,
+      connectorId,
+      workflowId,
+    });
+
+    // Get the resource from DB to find parent and children
+    let parentId: string | undefined;
+    let parentType: string | undefined;
+
+    if (resourceType === "page") {
+      const page = await getNotionPageFromConnectorsDb(connectorId, resourceId);
+      if (page) {
+        parentId = page.parentId || undefined;
+        parentType = page.parentType || undefined;
+      }
+    } else {
+      const database = await getNotionDatabaseFromConnectorsDb(
+        connectorId,
+        resourceId
+      );
+      if (database) {
+        parentId = database.parentId || undefined;
+        parentType = database.parentType || undefined;
+      }
+    }
+
+    // Collect parent (if not workspace)
+    if (parentId && parentType && parentType !== "workspace") {
+      const parentResourceType: "page" | "database" =
+        parentType === "database" ? "database" : "page";
+
+      if (parentResourceType === "page") {
+        discoveredPages.push(parentId);
+      } else {
+        discoveredDatabases.push(parentId);
+      }
+    }
+
+    // Get and collect children
+    const pageChildren = await getPageChildrenOf(connectorId, resourceId);
+    const databaseChildren = await getDatabaseChildrenOf(
+      connectorId,
+      resourceId
+    );
+
+    for (const child of pageChildren) {
+      discoveredPages.push(child.notionPageId);
+    }
+
+    for (const child of databaseChildren) {
+      discoveredDatabases.push(child.notionDatabaseId);
+    }
+  } else {
+    localLogger.info("Resource still accessible, skipping");
+  }
+
+  return { pageIds: discoveredPages, databaseIds: discoveredDatabases };
+}
+
+/**
+ * Get all resources marked for deletion in the workflow cache.
+ */
+export async function getResourcesToDeleteFromCache({
+  connectorId,
+  workflowId,
+}: {
+  connectorId: ModelId;
+  workflowId: string;
+}): Promise<{ pageIds: string[]; databaseIds: string[] }> {
+  const entries = await NotionConnectorResourcesToCheckCacheEntry.findAll({
+    where: {
+      connectorId,
+      workflowId,
+    },
+  });
+
+  const pageIds = entries
+    .filter((e) => e.resourceType === "page")
+    .map((e) => e.notionId);
+  const databaseIds = entries
+    .filter((e) => e.resourceType === "database")
+    .map((e) => e.notionId);
+
+  return { pageIds, databaseIds };
+}
+
+/**
+ * Batch delete all resources in the workflow cache from Core and connectors DB.
+ * Also updates lastDeletionCrawlTs on the resources.
+ */
+export async function batchDeleteResources({
+  connectorId,
+  workflowId,
+}: {
+  connectorId: ModelId;
+  workflowId: string;
+}): Promise<{ deletedPages: number; deletedDatabases: number }> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("Could not find connector");
   }
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const loggerArgs = {
-    workspaceId: dataSourceConfig.workspaceId,
-    connectorId,
-    provider: "notion",
-    dataSourceId: dataSourceConfig.dataSourceId,
-  };
+  const localLogger = logger.child({
+    connectorId: connector.id,
+    dataSourceId: connector.dataSourceId,
+    workspaceId: connector.workspaceId,
+    workflowId,
+  });
 
-  // TODO: Implement the actual processing logic based on event type
-  logger.info(
-    {
-      ...loggerArgs,
-      eventType: event.type,
-      entityId: event.entity_id,
-    },
-    "Processing Notion webhook event"
+  const { pageIds, databaseIds } = await getResourcesToDeleteFromCache({
+    connectorId,
+    workflowId,
+  });
+
+  localLogger.info(
+    { pagesToDelete: pageIds.length, databasesToDelete: databaseIds.length },
+    "Batch deleting resources from cache"
   );
-  statsDClient.increment("notion.webhook_events", 1, [`type:${event.type}`]);
+
+  // Delete pages
+  for (const pageId of pageIds) {
+    await deletePage({
+      connectorId,
+      dataSourceConfig,
+      pageId,
+      logger: localLogger,
+    });
+    await NotionConnectorResourcesToCheckCacheEntry.destroy({
+      where: {
+        resourceType: "page",
+        notionId: pageId,
+        connectorId,
+        workflowId,
+      },
+    });
+  }
+
+  // Delete databases
+  for (const databaseId of databaseIds) {
+    await deleteDatabase({
+      connectorId,
+      dataSourceConfig,
+      databaseId,
+      logger: localLogger,
+    });
+    await NotionConnectorResourcesToCheckCacheEntry.destroy({
+      where: {
+        resourceType: "database",
+        notionId: databaseId,
+        connectorId,
+        workflowId,
+      },
+    });
+  }
+
+  return {
+    deletedPages: pageIds.length,
+    deletedDatabases: databaseIds.length,
+  };
 }

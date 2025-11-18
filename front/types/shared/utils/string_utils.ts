@@ -156,7 +156,7 @@ export function asDisplayToolName(name?: string | null) {
   }
 
   if (name === "image_generation") {
-    return "Create Images";
+    return "Create / Update Images";
   }
 
   if (name === "file_generation") {

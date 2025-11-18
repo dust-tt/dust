@@ -178,7 +178,7 @@ export class PluginRunResource extends BaseResource<PluginRunModel> {
       resourceType: this.resourceType,
       resourceId: this.resourceId,
       args: parsedArgsResult.isOk()
-        ? parsedArgsResult.value ?? {}
+        ? (parsedArgsResult.value ?? {})
         : { rawContent: this.args },
     };
   }

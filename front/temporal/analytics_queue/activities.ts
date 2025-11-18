@@ -17,6 +17,7 @@ import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_f
 import { RunResource } from "@app/lib/resources/run_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { UserMessageOrigin } from "@app/types";
 import type {
   AgentLoopArgs,
   AgentMessageRef,
@@ -109,6 +110,7 @@ export async function storeAgentAnalyticsActivity(
     agentAgentMessageRow,
     userModel: userUserMessageRow.user ?? null,
     conversationRow,
+    contextOrigin: userUserMessageRow.userContextOrigin,
   });
 }
 
@@ -117,18 +119,21 @@ export async function storeAgentAnalyticsActivity(
  */
 export async function storeAgentAnalytics(
   auth: Authenticator,
-  {
-    agentMessageRow,
-    agentAgentMessageRow,
-    userModel,
-    conversationRow,
-  }: {
+  params: {
     agentMessageRow: Message;
     agentAgentMessageRow: AgentMessage;
     userModel: UserModel | null;
     conversationRow: ConversationModel;
+    contextOrigin: UserMessageOrigin | null;
   }
 ): Promise<void> {
+  const {
+    agentMessageRow,
+    agentAgentMessageRow,
+    userModel,
+    conversationRow,
+    contextOrigin,
+  } = params;
   // Only index agent messages if there are no blocked actions awaiting approval.
   const actions = await AgentMCPActionResource.listByAgentMessageIds(auth, [
     agentAgentMessageRow.id,
@@ -153,11 +158,14 @@ export async function storeAgentAnalytics(
     ? getAgentMessageFeedbackAnalytics(agentAgentMessageRow.feedbacks)
     : [];
 
+  const apiKey = auth.key();
+
   // Build the complete analytics document.
   const document: AgentMessageAnalyticsData = {
     agent_id: agentAgentMessageRow.agentConfigurationId,
     agent_version: agentAgentMessageRow.agentConfigurationVersion.toString(),
     conversation_id: conversationRow.sId,
+    context_origin: contextOrigin,
     latency_ms: agentAgentMessageRow.modelInteractionDurationMs ?? 0,
     message_id: agentMessageRow.sId,
     status: agentAgentMessageRow.status,
@@ -168,6 +176,8 @@ export async function storeAgentAnalytics(
     workspace_id: auth.getNonNullableWorkspace().sId,
     feedbacks,
     version: agentMessageRow.version.toString(),
+    authMethod: auth.authMethod(),
+    apiKeyName: apiKey?.name,
   };
 
   await storeToElasticsearch(document);

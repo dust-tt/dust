@@ -2,10 +2,15 @@ import type { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
+  AshbyApplicationFeedbackListRequest,
+  AshbyCandidateCreateNoteRequest,
   AshbyCandidateSearchRequest,
+  AshbyFeedbackSubmission,
   AshbyReportSynchronousRequest,
 } from "@app/lib/actions/mcp_internal_actions/servers/ashby/types";
 import {
+  AshbyApplicationFeedbackListResponseSchema,
+  AshbyCandidateCreateNoteResponseSchema,
   AshbyCandidateSearchResponseSchema,
   AshbyReportSynchronousResponseSchema,
 } from "@app/lib/actions/mcp_internal_actions/servers/ashby/types";
@@ -19,10 +24,10 @@ import { decrypt, Err, Ok } from "@app/types";
 
 const ASHBY_API_BASE_URL = "https://api.ashbyhq.com";
 
-export async function getAshbyApiKey(
+export async function getAshbyClient(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): Promise<Result<string, MCPError>> {
+): Promise<Result<AshbyClient, MCPError>> {
   const toolConfig = agentLoopContext?.runContext?.toolConfiguration;
   if (
     !toolConfig ||
@@ -60,7 +65,7 @@ export async function getAshbyApiKey(
     );
   }
 
-  return new Ok(apiKey);
+  return new Ok(new AshbyClient(apiKey));
 }
 
 export class AshbyClient {
@@ -131,6 +136,29 @@ export class AshbyClient {
       "candidate.search",
       request,
       AshbyCandidateSearchResponseSchema
+    );
+  }
+
+  async listApplicationFeedback(
+    request: AshbyApplicationFeedbackListRequest
+  ): Promise<Result<AshbyFeedbackSubmission[], Error>> {
+    const response = await this.postRequest(
+      "applicationFeedback.list",
+      request,
+      AshbyApplicationFeedbackListResponseSchema
+    );
+    if (response.isErr()) {
+      return response;
+    }
+
+    return new Ok(response.value.results);
+  }
+
+  async createCandidateNote(request: AshbyCandidateCreateNoteRequest) {
+    return this.postRequest(
+      "candidate.createNote",
+      request,
+      AshbyCandidateCreateNoteResponseSchema
     );
   }
 }

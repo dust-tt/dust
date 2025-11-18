@@ -199,7 +199,7 @@ export default function WorkspaceAssistants({
         )
         .sort((a, b) => {
           return compareForFuzzySort(
-            assistantSearch,
+            assistantSearch.toLowerCase(),
             getAgentSearchString(a),
             getAgentSearchString(b)
           );

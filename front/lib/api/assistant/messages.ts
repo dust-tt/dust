@@ -21,8 +21,11 @@ import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import { UserResource } from "@app/lib/resources/user_resource";
+import logger from "@app/logger/logger";
 import type {
+  AgentMention,
   AgentMessageType,
   ContentFragmentType,
   ConversationWithoutContentType,
@@ -33,6 +36,7 @@ import type {
   MessageType,
   ModelId,
   Result,
+  UserMention,
   UserMessageType,
 } from "@app/types";
 import { ConversationError, Err, Ok, removeNulls } from "@app/types";
@@ -167,6 +171,11 @@ async function batchRenderUserMessages(
         workspaceId: auth.getNonNullableWorkspace().id,
         messageId: userMessages.map((m) => m.id),
       },
+      include: {
+        model: UserModel,
+        as: "user",
+        attributes: ["sId"],
+      },
     }),
     userIds.length === 0
       ? []
@@ -181,10 +190,9 @@ async function batchRenderUserMessages(
     }
     const userMessage = message.userMessage;
     const messageMentions = mentions.filter((m) => m.messageId === message.id);
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    const user = users.find((u) => u.id === userMessage.userId) || null;
+    const user = users.find((u) => u.id === userMessage.userId) ?? null;
 
-    const m = {
+    return {
       id: message.id,
       sId: message.sId,
       type: "user_message",
@@ -198,9 +206,15 @@ async function batchRenderUserMessages(
             if (m.agentConfigurationId) {
               return {
                 configurationId: m.agentConfigurationId,
-              };
+              } satisfies AgentMention;
             }
-            throw new Error("Mention Must Be An Agent: Unreachable.");
+            if (m.user) {
+              return {
+                type: "user",
+                userId: m.user.sId,
+              } satisfies UserMention;
+            }
+            throw new Error("Mention Must Be An Agent or User: Unreachable.");
           })
         : [],
       content: userMessage.content,
@@ -217,7 +231,6 @@ async function batchRenderUserMessages(
           userMessage.userContextLastTriggerRunAt?.getTime() ?? null,
       },
     } satisfies UserMessageType;
-    return m;
   });
 }
 
@@ -311,6 +324,17 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         (a) => a.sId === agentMessage.agentConfigurationId
       );
       if (!agentConfiguration) {
+        logger.error(
+          {
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            conversationSId: message.sId,
+            agentMessageId: agentMessage.id,
+            agentConfigurationId: agentMessage.agentConfigurationId,
+            agentConfigurations,
+          },
+          "Conversation with unavailable agents"
+        );
+
         return new Err(
           new ConversationError("conversation_with_unavailable_agent")
         );
@@ -400,7 +424,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       })();
 
       const parentMessage = message.parentId
-        ? messagesById.get(message.parentId) ?? null
+        ? (messagesById.get(message.parentId) ?? null)
         : null;
 
       let parentAgentMessage: Message | null = null;

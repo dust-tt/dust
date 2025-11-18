@@ -96,14 +96,13 @@ export async function performUpserts({
     }
   }
 
+  // In forceResync mode, syncResultPageDatabaseChildWorkflow directly calls upsertDatabaseInCore,
+  // which triggers a lot of activities. In that scenario, it's best to process one database at a time.
+  const batchSize = forceResync ? 1 : MAX_PAGE_IDS_PER_CHILD_WORKFLOW;
   if (databaseIds.length) {
-    for (
-      let i = 0;
-      i < databaseIds.length;
-      i += MAX_PAGE_IDS_PER_CHILD_WORKFLOW
-    ) {
-      const batch = databaseIds.slice(i, i + MAX_PAGE_IDS_PER_CHILD_WORKFLOW);
-      const batchIndex = Math.floor(i / MAX_PAGE_IDS_PER_CHILD_WORKFLOW);
+    for (let i = 0; i < databaseIds.length; i += batchSize) {
+      const batch = databaseIds.slice(i, i + batchSize);
+      const batchIndex = Math.floor(i / batchSize);
       let workflowId =
         pageIndex !== null
           ? `${topLevelWorkflowId}-result-page-${pageIndex}-databases-${batchIndex}`

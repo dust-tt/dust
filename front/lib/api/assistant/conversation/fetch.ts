@@ -123,6 +123,7 @@ export async function getConversation(
   return new Ok({
     id: conversation.id,
     created: conversation.createdAt.getTime(),
+    updated: conversation.updatedAt.getTime(),
     sId: conversation.sId,
     owner,
     title: conversation.title,
@@ -133,6 +134,7 @@ export async function getConversation(
     actionRequired,
     unread,
     hasError: conversation.hasError,
+    requestedGroupIds: [],
     requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(auth),
   });
 }
