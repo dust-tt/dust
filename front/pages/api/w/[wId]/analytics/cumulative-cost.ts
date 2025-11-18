@@ -315,8 +315,9 @@ async function handler(
       const points = timestamps.map((timestamp) => {
         const groups = Object.entries(groupValues).map(([group, costMap]) => {
           const cost = costMap?.get(timestamp);
-          const cumulativeCost = cumulativeCostCents[group] ?? 0;
-          cumulativeCostCents[group] = cumulativeCost + (cost ?? 0);
+          const cumulativeCost =
+            (cumulativeCostCents[group] ?? 0) + (cost ?? 0);
+          cumulativeCostCents[group] = cumulativeCost;
           return {
             group,
             name: groupNames[group],
