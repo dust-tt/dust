@@ -751,8 +751,12 @@ export async function deletePage({
   }
 
   logger.info({ pageId }, "deletePage: Deleting page");
+  const now = Date.now();
   await deleteDataSourceDocument(dataSourceConfig, `notion-${pageId}`);
-  logger.info({ pageId }, "deletePage: Deleted page");
+  logger.info(
+    { pageId, duration: Date.now() - now },
+    "deletePage: Deleted page"
+  );
 
   const notionPage = await NotionPage.findOne({
     where: {
@@ -777,11 +781,13 @@ export async function deletePage({
         },
         "deletePage: Deleting table row"
       );
+      const now = Date.now();
       await deleteDataSourceTableRow({ dataSourceConfig, tableId, rowId });
       logger.info(
         {
           databaseId: parentDatabase.notionDatabaseId,
           pageId,
+          duration: Date.now() - now,
         },
         "deletePage: Deleted table row"
       );
