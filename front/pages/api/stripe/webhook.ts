@@ -17,8 +17,10 @@ import {
   assertStripeSubscriptionIsValid,
   createCustomerPortalSession,
   getStripeClient,
+  isEnterpriseSubscription,
 } from "@app/lib/plans/stripe";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
+import { CreditResource } from "@app/lib/resources/credit_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -65,7 +67,7 @@ async function handler(
       // Collect raw body using stream pipeline
       let rawBody = Buffer.from("");
       const collector = new Writable({
-        write(chunk, encoding, callback) {
+        write(chunk, _encoding, callback) {
           rawBody = Buffer.concat([rawBody, chunk]);
           callback();
         },
@@ -328,6 +330,72 @@ async function handler(
             return res.status(200).json({ success: true });
           }
           await subscription.update({ paymentFailingSince: null });
+
+          // Handle credit purchase top-up for Pro subscriptions
+          // (Enterprise subscriptions add credits optimistically, so we skip them here)
+          if (
+            invoice.metadata?.credit_purchase === "true" &&
+            invoice.metadata?.credit_amount_cents
+          ) {
+            const workspace = subscription.workspace;
+            const creditAmountCents = parseInt(
+              invoice.metadata.credit_amount_cents,
+              10
+            );
+
+            if (!isNaN(creditAmountCents) && creditAmountCents > 0) {
+              // Check if this is NOT an Enterprise subscription to avoid double top-up
+              const stripe = getStripeClient();
+              const stripeSubscription = await stripe.subscriptions.retrieve(
+                invoice.subscription
+              );
+              const isEnterprise = isEnterpriseSubscription(stripeSubscription);
+
+              if (!isEnterprise) {
+                // Pro accounts - top-up existing credit record (created with 0/0 amounts in purchase API)
+                const auth = await Authenticator.internalAdminForWorkspace(
+                  workspace.sId
+                );
+
+                const topUpResult = await CreditResource.topUp({
+                  auth,
+                  invoiceOrLineItemId: invoice.id,
+                  amountCents: creditAmountCents,
+                });
+
+                if (topUpResult.isOk()) {
+                  logger.info(
+                    {
+                      workspaceId: workspace.sId,
+                      creditAmountCents,
+                      invoiceId: invoice.id,
+                      creditId: topUpResult.value.id,
+                      expirationDate: topUpResult.value.expirationDate,
+                    },
+                    "[Stripe Webhook] Credit topped up for Pro subscription credit purchase"
+                  );
+                } else {
+                  logger.info(
+                    {
+                      workspaceId: workspace.sId,
+                      invoiceId: invoice.id,
+                      error: topUpResult.error.message,
+                    },
+                    "[Stripe Webhook] Credit not topped up (likely already processed or not found)"
+                  );
+                }
+              } else {
+                logger.info(
+                  {
+                    workspaceId: workspace.sId,
+                    invoiceId: invoice.id,
+                  },
+                  "[Stripe Webhook] Skipping credit top-up for Enterprise (already added optimistically)"
+                );
+              }
+            }
+          }
+
           break;
         case "invoice.payment_failed":
           // Occurs when payment failed or the user does not have a valid payment method.

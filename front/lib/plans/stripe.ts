@@ -38,6 +38,13 @@ export function getProPlanStripeProductId(owner: WorkspaceType) {
       : prodProPlanProductId;
 }
 
+export function getCreditPurchasePriceId() {
+  const devCreditPurchasePriceId = "price_1SUoyQDKd2JRwZF6FBHIGbwC";
+  const prodCreditPurchasePriceId = "price_prod_credit_purchase_TODO";
+
+  return isDevelopment() ? devCreditPurchasePriceId : prodCreditPurchasePriceId;
+}
+
 export const getStripeClient = () => {
   return new Stripe(config.getStripeSecretKey(), {
     apiVersion: "2023-10-16",
@@ -527,4 +534,112 @@ export async function reportActiveSeats(
     stripeSubscriptionItem,
     activeSeats
   );
+}
+
+/**
+ * Attaches a credit purchase as an invoice item to a subscription.
+ * The item will be included in the next regular subscription invoice.
+ * Returns the invoice item ID for idempotency tracking.
+ */
+export async function attachCreditPurchaseToSubscription({
+  stripeSubscriptionId,
+  amountCents,
+}: {
+  stripeSubscriptionId: string;
+  amountCents: number;
+}): Promise<Result<string, { error_message: string }>> {
+  const stripe = getStripeClient();
+
+  try {
+    // Get the subscription to find the customer
+    const subscription =
+      await stripe.subscriptions.retrieve(stripeSubscriptionId);
+    const customerId =
+      typeof subscription.customer === "string"
+        ? subscription.customer
+        : subscription.customer.id;
+
+    // Convert cents to dollars for description
+    const amountDollars = amountCents / 100;
+
+    // Create invoice item that will be charged in the next subscription invoice
+    const invoiceItem = await stripe.invoiceItems.create({
+      customer: customerId,
+      price: getCreditPurchasePriceId(),
+      quantity: amountCents,
+      description: `Programmatic usage credit: $${amountDollars.toFixed(2)}`,
+      subscription: stripeSubscriptionId,
+    });
+
+    return new Ok(invoiceItem.id);
+  } catch (error) {
+    return new Err({
+      error_message: "Failed to attach credit purchase to subscription",
+    });
+  }
+}
+
+/**
+ * Creates and pays a one-off invoice for credit purchase.
+ * The invoice is created, finalized, and immediately charged.
+ */
+export async function createAndPayCreditPurchaseInvoice({
+  stripeSubscriptionId,
+  amountCents,
+}: {
+  stripeSubscriptionId: string;
+  amountCents: number;
+}): Promise<Result<Stripe.Invoice, { error_message: string }>> {
+  const stripe = getStripeClient();
+
+  try {
+    // Get the subscription to find the customer
+    const subscription =
+      await stripe.subscriptions.retrieve(stripeSubscriptionId);
+    const customerId =
+      typeof subscription.customer === "string"
+        ? subscription.customer
+        : subscription.customer.id;
+
+    // Convert cents to dollars for description
+    const amountDollars = amountCents / 100;
+
+    const invoiceParams: Stripe.InvoiceCreateParams = {
+      customer: customerId,
+      subscription: stripeSubscriptionId,
+      collection_method: "charge_automatically",
+      metadata: {
+        credit_purchase: "true",
+        credit_amount_cents: amountCents.toString(),
+      },
+      auto_advance: false,
+    };
+
+    const invoice = await stripe.invoices.create(invoiceParams);
+
+    await stripe.invoiceItems.create({
+      customer: customerId,
+      invoice: invoice.id,
+      price: getCreditPurchasePriceId(),
+      quantity: amountCents,
+      description: `Programmatic usage credit: $${amountDollars.toFixed(2)}`,
+    });
+
+    const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
+
+    // Pay the invoice immediately
+    try {
+      await stripe.invoices.pay(finalizedInvoice.id);
+    } catch (paymentError) {
+      return new Err({
+        error_message: "Invoice created but payment failed",
+      });
+    }
+
+    return new Ok(finalizedInvoice);
+  } catch (error) {
+    return new Err({
+      error_message: "Failed to create and pay credit purchase invoice",
+    });
+  }
 }
