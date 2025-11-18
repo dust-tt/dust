@@ -582,6 +582,121 @@ function createServer(
     )
   );
 
+  server.tool(
+    "check_self_availability",
+    "Check if the current user is available during a specific time period by analyzing " +
+      "their calendar events. An event is considered blocking if its showAs status is 'busy', " +
+      "'tentative', 'oof' (out of office), or 'workingElsewhere'.",
+    {
+      calendarId: z
+        .string()
+        .optional()
+        .describe(
+          "The calendar ID. If not provided, uses the user's default calendar."
+        ),
+      startTime: z
+        .string()
+        .describe(
+          "ISO 8601 start time to check availability (e.g., 2024-03-20T10:00:00Z)"
+        ),
+      endTime: z
+        .string()
+        .describe(
+          "ISO 8601 end time to check availability (e.g., 2024-03-20T18:00:00Z)"
+        ),
+      userTimezone: z
+        .string()
+        .optional()
+        .describe(
+          "User's timezone (e.g., 'America/New_York'). Call get_user_timezone first to get this value for proper timezone handling."
+        ),
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME,
+        agentLoopContext,
+      },
+      async (
+        { calendarId, startTime, endTime, userTimezone },
+        { authInfo }
+      ) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("Authentication required"));
+        }
+
+        const result = await OutlookApi.listEvents(accessToken, {
+          calendarId,
+          startTime,
+          endTime,
+          userTimezone,
+        });
+
+        if ("error" in result) {
+          return new Err(new MCPError(result.error));
+        }
+
+        const blockingStatuses = [
+          "busy",
+          "tentative",
+          "oof",
+          "workingElsewhere",
+        ];
+        const blockingEvents = result.events.filter((event) => {
+          if (event.isCancelled) {
+            return false;
+          }
+          return blockingStatuses.includes(event.showAs ?? "busy");
+        });
+
+        const available = blockingEvents.length === 0;
+
+        const lines: string[] = [];
+        if (available) {
+          lines.push("User is AVAILABLE during this time period");
+          lines.push("");
+          lines.push(`Period: ${startTime} to ${endTime}`);
+          if (result.events.length > 0) {
+            const freeEvents = result.events.filter(
+              (e) => !e.isCancelled && (e.showAs === "free" || !e.showAs)
+            );
+            if (freeEvents.length > 0) {
+              lines.push("");
+              lines.push(
+                `Note: There ${freeEvents.length === 1 ? "is" : "are"} ${freeEvents.length} event${pluralize(freeEvents.length)} during this period marked as 'free'`
+              );
+            }
+          }
+        } else {
+          lines.push("User is NOT AVAILABLE during this time period");
+          lines.push("");
+          lines.push(`Period: ${startTime} to ${endTime}`);
+          lines.push(
+            `Blocking events: ${blockingEvents.length} event${pluralize(blockingEvents.length)}`
+          );
+          lines.push("");
+          lines.push("Conflicting events:");
+          lines.push("");
+          blockingEvents.forEach((event, index) => {
+            if (index > 0) {
+              lines.push("");
+            }
+            lines.push(
+              `${index + 1}. ${event.subject || "(No title)"} - ${event.showAs ?? "busy"}`
+            );
+            lines.push(`   ${event.start.dateTime} to ${event.end.dateTime}`);
+            if (event.location?.displayName) {
+              lines.push(`   Location: ${event.location.displayName}`);
+            }
+          });
+        }
+
+        return new Ok([{ type: "text" as const, text: lines.join("\n") }]);
+      }
+    )
+  );
+
   return server;
 }
 
