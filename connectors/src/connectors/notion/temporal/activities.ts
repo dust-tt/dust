@@ -770,9 +770,21 @@ export async function deletePage({
     if (parentDatabase) {
       const tableId = `notion-${parentDatabase.notionDatabaseId}`;
       const rowId = `notion-${notionPage.notionPageId}`;
-      logger.info(tableId, rowId, "deletePage: Deleting table row");
+      logger.info(
+        {
+          databaseId: parentDatabase.notionDatabaseId,
+          pageId,
+        },
+        "deletePage: Deleting table row"
+      );
       await deleteDataSourceTableRow({ dataSourceConfig, tableId, rowId });
-      logger.info(tableId, rowId, "deletePage: Deleted table row");
+      logger.info(
+        {
+          databaseId: parentDatabase.notionDatabaseId,
+          pageId,
+        },
+        "deletePage: Deleted table row"
+      );
     }
   }
   await notionPage?.destroy();
