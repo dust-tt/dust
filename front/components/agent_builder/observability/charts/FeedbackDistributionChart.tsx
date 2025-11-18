@@ -15,9 +15,7 @@ import {
 } from "@app/components/agent_builder/observability/constants";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
-import {
-  legendFromConstant,
-} from "@app/components/agent_builder/observability/shared/ChartLegend";
+import { legendFromConstant } from "@app/components/agent_builder/observability/shared/ChartLegend";
 import { VersionMarkersDots } from "@app/components/agent_builder/observability/shared/VersionMarkers";
 import {
   filterTimeSeriesByVersionWindow,

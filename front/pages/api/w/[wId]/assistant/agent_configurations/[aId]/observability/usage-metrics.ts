@@ -92,10 +92,11 @@ async function handler(
         days,
       });
 
-      const usageMetricsResult = await fetchMessageMetrics(baseQuery, interval, [
-        "conversations",
-        "activeUsers",
-      ] as const);
+      const usageMetricsResult = await fetchMessageMetrics(
+        baseQuery,
+        interval,
+        ["conversations", "activeUsers"] as const
+      );
 
       if (usageMetricsResult.isErr()) {
         const e = usageMetricsResult.error;
