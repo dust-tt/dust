@@ -28,7 +28,7 @@ import {
   getAgentMentionPlugin,
   getUserMentionPlugin,
   userMentionDirective,
-} from "@app/lib/mentions";
+} from "@app/lib/mentions/markdown/plugin";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type { UserMessageType, WorkspaceType } from "@app/types";
 

@@ -5,7 +5,7 @@ import {
   MarkdownSerializer,
 } from "prosemirror-markdown";
 
-import { serializeMention } from "@app/lib/mentions";
+import { serializeMention } from "@app/lib/mentions/format";
 
 function buildNodeSerializers(schema: Schema) {
   // Start with default serializers.

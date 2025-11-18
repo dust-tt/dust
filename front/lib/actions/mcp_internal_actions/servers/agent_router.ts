@@ -11,7 +11,7 @@ import { getSuggestedAgentsForContent } from "@app/lib/api/assistant/agent_sugge
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
-import { serializeMention } from "@app/lib/mentions";
+import { serializeMention } from "@app/lib/mentions/format";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types";
 import { Err, Ok } from "@app/types";

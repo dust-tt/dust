@@ -6,7 +6,7 @@ import { Readable } from "stream";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { generateVizAccessToken } from "@app/lib/api/viz/access_tokens";
-import { serializeMention } from "@app/lib/mentions";
+import { serializeMention } from "@app/lib/mentions/format";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";

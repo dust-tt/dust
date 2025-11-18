@@ -19,7 +19,7 @@ import type { SuggestionProps } from "@app/components/assistant/conversation/inp
 import { mentionPluginKey } from "@app/components/assistant/conversation/input_bar/editor/useMentionDropdown";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
-import { extractFromEditorJSON } from "@app/lib/mentions";
+import { extractFromEditorJSON } from "@app/lib/mentions/format";
 import { isMobile } from "@app/lib/utils";
 import type { RichMention } from "@app/types";
 import type { WorkspaceType } from "@app/types";

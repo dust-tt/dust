@@ -38,7 +38,7 @@ import {
 import {
   agentMentionDirective,
   getAgentMentionPlugin,
-} from "@app/lib/mentions";
+} from "@app/lib/mentions/markdown/plugin";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useMCPServerViews } from "@app/lib/swr/mcp_servers";
 import { useSpaces } from "@app/lib/swr/spaces";

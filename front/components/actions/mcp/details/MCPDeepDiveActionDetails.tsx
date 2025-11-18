@@ -14,7 +14,8 @@ import { DEEP_DIVE_AVATAR_URL } from "@app/lib/api/assistant/global_agents/confi
 import {
   agentMentionDirective,
   getAgentMentionPlugin,
-} from "@app/lib/mentions";
+} from "@app/lib/mentions/markdown/plugin";
+
 export function MCPDeepDiveActionDetails({
   owner,
   toolOutput,

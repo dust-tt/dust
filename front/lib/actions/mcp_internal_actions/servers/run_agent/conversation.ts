@@ -13,7 +13,7 @@ import {
   isFileAttachmentType,
 } from "@app/lib/api/assistant/conversation/attachments";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
-import { serializeMention } from "@app/lib/mentions";
+import { serializeMention } from "@app/lib/mentions/format";
 import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
