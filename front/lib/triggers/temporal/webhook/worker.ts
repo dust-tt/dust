@@ -15,7 +15,7 @@ export async function runAgentTriggerWebhookWorker() {
     workflowsPath: require.resolve("./workflows"),
     activities,
     taskQueue: QUEUE_NAME,
-    maxConcurrentActivityTaskExecutions: 2,
+    maxConcurrentActivityTaskExecutions: 4,
     connection,
     namespace,
     interceptors: {
