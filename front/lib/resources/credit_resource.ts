@@ -42,6 +42,71 @@ export class CreditResource extends BaseResource<CreditModel> {
     return new this(this.model, credit.get());
   }
 
+  // Top-up a credit by updating amounts from 0/0 to the specified amount.
+  // Sets expiration date to 1 year from now.
+  // Only updates if current amounts are 0/0 (idempotency for webhook processing).
+  static async topUp({
+    auth,
+    invoiceOrLineItemId,
+    amountCents,
+    transaction,
+  }: {
+    auth: Authenticator;
+    invoiceOrLineItemId: string;
+    amountCents: number;
+    transaction?: Transaction;
+  }): Promise<Result<CreditResource, Error>> {
+    try {
+      const workspaceId = auth.getNonNullableWorkspace().id;
+
+      // Calculate expiration date: 1 year from now
+      const expirationDate = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+
+      // Update only if current amounts are 0/0 (ensures idempotency)
+      const [affectedCount] = await this.model.update(
+        {
+          initialAmount: amountCents,
+          remainingAmount: amountCents,
+          expirationDate,
+        },
+        {
+          where: {
+            workspaceId,
+            invoiceOrLineItemId,
+            initialAmount: 0,
+            remainingAmount: 0,
+          },
+          transaction,
+        }
+      );
+
+      if (!affectedCount || affectedCount < 1) {
+        return new Err(
+          new Error(
+            "Credit not found or already topped up (initialAmount/remainingAmount not 0/0)"
+          )
+        );
+      }
+
+      // Fetch the updated credit
+      const credit = await this.model.findOne({
+        where: {
+          workspaceId,
+          invoiceOrLineItemId,
+        },
+        transaction,
+      });
+
+      if (!credit) {
+        return new Err(new Error("Credit not found after top-up"));
+      }
+
+      return new Ok(new this(this.model, credit.get()));
+    } catch (err) {
+      return new Err(normalizeError(err));
+    }
+  }
+
   private static async baseFetch(
     auth: Authenticator,
     options?: ResourceFindOptions<CreditModel>

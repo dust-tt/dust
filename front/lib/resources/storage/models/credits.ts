@@ -15,6 +15,7 @@ export class CreditModel extends WorkspaceAwareModel<CreditModel> {
   declare expirationDate: Date | null;
   declare initialAmount: number; // in cents
   declare remainingAmount: number; // in cents
+  declare invoiceOrLineItemId: string | null; // Stripe invoice ID or line item ID for idempotency
 }
 
 CreditModel.init(
@@ -42,6 +43,11 @@ CreditModel.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    invoiceOrLineItemId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
   },
   {
     modelName: "credit",
@@ -55,6 +61,13 @@ CreditModel.init(
         fields: ["workspaceId", "expirationDate"],
         name: "credits_nonzero_remaining_idx",
         where: { remainingAmount: { [Op.ne]: 0 } },
+      },
+      // Unique constraint on (workspaceId, invoiceOrLineItemId) to prevent duplicate credit purchases
+      {
+        fields: ["workspaceId", "invoiceOrLineItemId"],
+        unique: true,
+        name: "credits_workspace_invoice_unique_idx",
+        where: { invoiceOrLineItemId: { [Op.ne]: null } },
       },
     ],
   }
