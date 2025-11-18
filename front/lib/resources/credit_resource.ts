@@ -61,14 +61,13 @@ export class CreditResource extends BaseResource<CreditModel> {
     return this.baseFetch(auth);
   }
 
-  static async listActive(auth: Authenticator) {
-    const now = new Date();
+  static async listActive(auth: Authenticator, fromDate: Date = new Date()) {
     return this.baseFetch(auth, {
       where: {
         remainingAmount: { [Op.gt]: 0 },
         [Op.or]: [
           { expirationDate: null },
-          { expirationDate: { [Op.gt]: now } },
+          { expirationDate: { [Op.gt]: fromDate } },
         ],
       },
     });
