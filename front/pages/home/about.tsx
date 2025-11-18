@@ -111,7 +111,7 @@ const PEOPLE: Record<
   },
   albandum: {
     name: "Alban Dumouilla",
-    title: "Acceleration Engineer",
+    title: "Product Growth",
     image: "https://avatars.githubusercontent.com/u/1189312?v=4",
     github: "https://github.com/albandum",
     linkedIn: "https://www.linkedin.com/in/albandumouilla",
@@ -202,7 +202,7 @@ const PEOPLE: Record<
   },
   frank: {
     name: "Frank Aloia",
-    title: "Acceleration Engineer",
+    title: "Forward Deployed Engineer",
     image: "https://avatars.githubusercontent.com/u/201725577",
     github: "https://github.com/frankaloia",
     linkedIn: "https://www.linkedin.com/in/frank-aloia-39907a12b/",
@@ -223,7 +223,7 @@ const PEOPLE: Record<
   },
   stephen: {
     name: "Stephen Bronnec",
-    title: "Acceleration Engineer",
+    title: "Forward Deployed Engineer",
     image: "https://avatars.githubusercontent.com/u/11921176?v=4",
     github: "https://github.com/FlagBenett",
     linkedIn: "https://www.linkedin.com/in/stephen-bronnec-3033a02b/",
@@ -377,7 +377,7 @@ const PEOPLE: Record<
   },
   leandre: {
     name: "Leandre Le Bizec",
-    title: "Acceleration Engineer",
+    title: "Forward Deployed Engineer",
     image: "https://avatars.githubusercontent.com/u/95234460?v=4",
     linkedIn: "https://www.linkedin.com/in/leandre-lebizec/",
     github: "https://github.com/LeandreLeBizec",
