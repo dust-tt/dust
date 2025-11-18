@@ -87,7 +87,7 @@ export abstract class LLM {
     const generation = startObservation(
       "llm-completion",
       {
-        input: conversation.messages,
+        input: [{ role: "system", content: prompt }, ...conversation.messages],
         model: this.modelId,
         modelParameters: {
           reasoningEffort: this.reasoningEffort ?? "",
@@ -103,9 +103,9 @@ export abstract class LLM {
 
     generation.updateTrace({
       tags: [
-        `dustTraceId:${this.traceId}`,
-        `operationType:${this.context.operationType}`,
-        `workspaceId:${this.authenticator.getNonNullableWorkspace().sId}`,
+        `dust-trace-id:${this.traceId}`,
+        `operation-type:${this.context.operationType}`,
+        `workspace-id:${this.authenticator.getNonNullableWorkspace().sId}`,
       ],
       userId: this.authenticator.user()?.sId,
     });
@@ -137,6 +137,10 @@ export abstract class LLM {
       }
     } finally {
       if (currentEvent?.type === "error") {
+        generation.updateTrace({
+          tags: ["is-error:true", `error-type:${currentEvent.content.type}`],
+        });
+
         logger.error(
           {
             llmEventType: "error",
