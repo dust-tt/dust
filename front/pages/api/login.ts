@@ -198,7 +198,7 @@ async function handler(
   }
 
   res.redirect(
-    `/w/${targetWorkspace ? targetWorkspace.sId : u.workspaces[0].sId}`
+    `/w/${targetWorkspace ? targetWorkspace.sId : u.workspaces[0].sId}/welcome`
   );
 
   return;
