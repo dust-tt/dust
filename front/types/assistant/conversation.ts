@@ -243,7 +243,7 @@ export type ConversationVisibility = "unlisted" | "deleted" | "test";
 export type ConversationWithoutContentType = {
   id: ModelId;
   created: number;
-  updated?: number;
+  updated: number;
   unread: boolean;
   actionRequired: boolean;
   hasError: boolean;
