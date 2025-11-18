@@ -176,8 +176,8 @@ export async function storeAgentAnalytics(
     workspace_id: auth.getNonNullableWorkspace().sId,
     feedbacks,
     version: agentMessageRow.version.toString(),
-    authMethod: auth.authMethod(),
-    apiKeyName: apiKey?.name,
+    auth_method: auth.authMethod(),
+    api_key_name: apiKey?.name,
   };
 
   await storeToElasticsearch(document);
