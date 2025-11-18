@@ -802,7 +802,7 @@ async function answerMessage(
       const userId = m.replace(/<|@|>/g, "");
       if (userId === mySlackUser) {
         const botMentionIndex = message.indexOf(m);
-        if (botMentionIndex !== -1) {
+        if (botMentionIndex !== -1 && !textAfterBotMention) {
           textAfterBotMention = message.slice(botMentionIndex + m.length);
         }
         message = message.replace(m, "");
@@ -817,8 +817,7 @@ async function answerMessage(
 
   // Extract all ~mentions and +mentions that appear right after the bot mention.
   let mentionCandidate: string | null = null;
-  // There is no bot mention when calling the bot in a DM.
-  // In this case we consider the entire message.
+  // There may be no bot mention (e.g., when DMing the bot).
   textAfterBotMention ??= message;
   const textAfterBotMentionWithoutMarkdown =
     removeMarkdown(textAfterBotMention);
