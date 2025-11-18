@@ -6,8 +6,11 @@ export const GARBAGE_COLLECT_QUEUE_NAME = `notion-gc-queue-v${GC_WORKFLOW_VERSIO
 // Notion's "last edited" timestamp is precise to the minute
 export const SYNC_PERIOD_DURATION_MS = 60_000;
 
-// How long to wait before checking for new pages again
-export const INTERVAL_BETWEEN_GC_SYNCS_MS = 60_000; // 1 minute
+// How long to wait before running the incremental sync again
+export const INTERVAL_BETWEEN_SYNCS_MS = 60_000; // 1 minute
+
+// How long to wait before running the GC sync again
+export const INTERVAL_BETWEEN_GC_SYNCS_MS = 1000 * 60 * 60; // 1 hour
 
 export const MAX_CONCURRENT_CHILD_WORKFLOWS = 1;
 export const MAX_PAGE_IDS_PER_CHILD_WORKFLOW = 64;
