@@ -13,7 +13,7 @@ import {
   ToolsIcon,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { CreateMCPServerSheet } from "@app/components/actions/mcp/CreateMCPServerSheet";
 import {
@@ -80,9 +80,19 @@ export function ToolsPicker({
   const [isOpen, setIsOpen] = useState(false);
   const [setupSheetServer, setSetupSheetServer] =
     useState<MCPServerType | null>(null);
+  const [isSettingUpServer, setIsSettingUpServer] = useState(false);
+  const [pendingServerToAdd, setPendingServerToAdd] =
+    useState<MCPServerType | null>(null);
 
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-  const { spaces } = useSpaces({ workspaceId: owner.sId, disabled: !isOpen });
+
+  const shouldKeepHooksActive =
+    isOpen || isSettingUpServer || !!pendingServerToAdd;
+
+  const { spaces } = useSpaces({
+    workspaceId: owner.sId,
+    disabled: !shouldKeepHooksActive,
+  });
   const globalSpaces = useMemo(
     () => spaces.filter((s) => s.kind === "global"),
     [spaces]
@@ -98,16 +108,39 @@ export function ToolsPicker({
     serverViews,
     isLoading: isServerViewsLoading,
     mutateServerViews,
-  } = useMCPServerViewsFromSpaces(
-    owner,
-    globalSpaces,
-    { disabled: !isOpen } // We don't want to fetch the server views when the picker is closed.
-  );
+  } = useMCPServerViewsFromSpaces(owner, globalSpaces, {
+    disabled: !shouldKeepHooksActive,
+  });
 
   const selectedMCPServerViewIds = useMemo(
     () => selectedMCPServerViews.map((v) => v.sId),
     [selectedMCPServerViews]
   );
+
+  // Fallback: add server to conversation when it appears in serverViews.
+  useEffect(() => {
+    if (pendingServerToAdd) {
+      const newServerView = serverViews.find(
+        (v) => v.server.name === pendingServerToAdd.name
+      );
+
+      if (newServerView) {
+        trackEvent({
+          area: TRACKING_AREAS.TOOLS,
+          object: "tool_select",
+          action: TRACKING_ACTIONS.SELECT,
+          extra: {
+            tool_id: newServerView.sId,
+            tool_name: newServerView.server.name,
+            from_setup: true,
+          },
+        });
+        onSelect(newServerView);
+        setPendingServerToAdd(null);
+        setIsSettingUpServer(false);
+      }
+    }
+  }, [serverViews, pendingServerToAdd, onSelect]);
 
   const { filteredServerViews, filteredServerViewsUnselected } = useMemo(() => {
     const filteredServerViews = serverViews.filter(
@@ -287,6 +320,7 @@ export function ToolsPicker({
                         e.stopPropagation();
                         e.preventDefault();
                         setSetupSheetServer(server);
+                        setIsSettingUpServer(true);
                         setIsOpen(false);
                       }}
                     />
@@ -320,9 +354,11 @@ export function ToolsPicker({
           internalMCPServer={setupSheetServer}
           setMCPServerToShow={async (createdServer) => {
             const updatedData = await mutateServerViews();
+
             const newServerView = updatedData?.serverViews?.find(
               (v: MCPServerViewType) => v.server.name === createdServer.name
             );
+
             if (newServerView) {
               trackEvent({
                 area: TRACKING_AREAS.TOOLS,
@@ -335,6 +371,9 @@ export function ToolsPicker({
                 },
               });
               onSelect(newServerView);
+              setIsSettingUpServer(false);
+            } else {
+              setPendingServerToAdd(createdServer);
             }
 
             setSetupSheetServer(null);
@@ -344,6 +383,8 @@ export function ToolsPicker({
           setIsOpen={(isOpen) => {
             if (!isOpen) {
               setSetupSheetServer(null);
+              setPendingServerToAdd(null);
+              setIsSettingUpServer(false);
             }
           }}
         />
