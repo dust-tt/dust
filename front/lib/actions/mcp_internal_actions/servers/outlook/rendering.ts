@@ -210,7 +210,7 @@ export function renderAvailabilityCheck(
 ): string {
   // Possible values for showAs are free, tentative, busy, oof, workingElsewhere, unknown.
   // cf. https://learn.microsoft.com/fr-fr/graph/api/resources/event?view=graph-rest-1.0
-  const blockingStatuses = ["busy", "tentative", "oof", "workingElsewhere"];
+  const blockingStatuses = ["busy", "tentative", "oof"];
   const blockingEvents = allEvents.filter((event) => {
     if (event.isCancelled) {
       return false;
