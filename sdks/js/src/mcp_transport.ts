@@ -8,6 +8,9 @@ const logger = console;
 
 const HEARTBEAT_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes.
 const RECONNECT_DELAY_MS = 5 * 1000; // 5 seconds.
+// Refresh EventSource connection every 1 minutes to ensure OAuth tokens are refreshed before they
+// expire (typical token lifetime is 5 minutes).
+const TOKEN_REFRESH_INTERVAL_MS = 60 * 1000;
 
 /**
  * Custom transport implementation for MCP
@@ -19,7 +22,11 @@ export class DustMcpServerTransport implements Transport {
   private eventSource: EventSource | null = null;
   private lastEventId: string | null = null;
   private heartbeatTimer: NodeJS.Timeout | null = null;
+  private tokenRefreshTimer: NodeJS.Timeout | null = null;
   private serverId: string | null = null;
+  // Track which connection instance is currently active to prevent errors from old connections
+  // triggering unnecessary reconnection attempts.
+  private connectionId: number = 0;
 
   // Required by Transport interface.
   public onmessage?: (message: JSONRPCMessage) => void;
@@ -85,6 +92,28 @@ export class DustMcpServerTransport implements Transport {
   }
 
   /**
+   * Setup proactive token refresh to prevent 401 errors during long-lived EventSource connections.
+   * This refreshes the connection before the auth token expires.
+   */
+  private setupTokenRefresh(): void {
+    // Clear any existing token refresh timer.
+    if (this.tokenRefreshTimer) {
+      clearInterval(this.tokenRefreshTimer);
+    }
+
+    // Set up a token refresh timer (every TOKEN_REFRESH_INTERVAL_MS).
+    this.tokenRefreshTimer = setInterval(async () => {
+      // Only reconnect if we have an active connection. This prevents creating duplicate connections
+      // when the EventSource is already in a connecting or closed state.
+      if (this.eventSource && this.eventSource.readyState === 1) {
+        // Reconnect with fresh token. The CLI's apiKey callback will automatically force a token
+        // refresh since the SDK's 4-minute interval triggers the CLI's <4-minute threshold.
+        await this.connectToRequestsStream();
+      }
+    }, TOKEN_REFRESH_INTERVAL_MS);
+  }
+
+  /**
    * Start the transport and connect to the SSE endpoint
    * This method is required by the Transport interface
    */
@@ -98,6 +127,9 @@ export class DustMcpServerTransport implements Transport {
 
       // Connect to the workspace-scoped requests endpoint.
       await this.connectToRequestsStream();
+
+      // Setup proactive token refresh to prevent 401 errors.
+      this.setupTokenRefresh();
 
       this.logInfo("MCP transport started successfully");
     } catch (error) {
@@ -118,10 +150,26 @@ export class DustMcpServerTransport implements Transport {
 
     // Close any existing connection.
     if (this.eventSource) {
-      this.eventSource.close();
+      // Remove all event listeners to prevent old connection from interfering with the new one.
+      const oldEventSource = this.eventSource;
+      oldEventSource.onopen = null;
+      oldEventSource.onmessage = null;
+      oldEventSource.onerror = null;
+
+      // Close the connection.
+      oldEventSource.close();
       this.eventSource = null;
+
+      // Give the server a moment to process the closure to avoid duplicate connection errors.
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
 
+    // Increment connection ID for tracking.
+    this.connectionId++;
+    const currentConnectionId = this.connectionId;
+
+    // Get connection details with fresh auth headers. The CLI's apiKey callback will automatically
+    // refresh tokens if the current token expires in less than 4 minutes.
     const connectionResult = await this.dustAPI.getMCPRequestsConnectionDetails(
       {
         serverId: this.serverId,
@@ -177,19 +225,22 @@ export class DustMcpServerTransport implements Transport {
       }
     };
 
-    this.eventSource.onerror = (error) => {
+    this.eventSource.onerror = (error: any) => {
       this.logError("Error in MCP EventSource connection:", error);
       this.onerror?.(new Error(`SSE connection error: ${error}`));
 
-      // Attempt to reconnect after a delay.
-      setTimeout(() => {
-        if (this.eventSource) {
-          this.logInfo("Attempting to reconnect to SSE...");
-          void this.connectToRequestsStream().catch((reconnectError) => {
-            this.logError("Failed to reconnect:", reconnectError);
-          });
-        }
-      }, RECONNECT_DELAY_MS); // Wait before reconnecting.
+      // Only reconnect if this is still the active connection. This prevents old connections that are
+      // being replaced from triggering reconnection attempts.
+      if (this.connectionId === currentConnectionId) {
+        // Attempt to reconnect after a delay.
+        setTimeout(() => {
+          if (this.eventSource && this.connectionId === currentConnectionId) {
+            void this.connectToRequestsStream().catch((reconnectError) => {
+              this.logError("Failed to reconnect:", reconnectError);
+            });
+          }
+        }, RECONNECT_DELAY_MS);
+      }
     };
 
     this.eventSource.onopen = () => {
@@ -235,6 +286,12 @@ export class DustMcpServerTransport implements Transport {
     if (this.heartbeatTimer) {
       clearInterval(this.heartbeatTimer);
       this.heartbeatTimer = null;
+    }
+
+    // Clear token refresh timer.
+    if (this.tokenRefreshTimer) {
+      clearInterval(this.tokenRefreshTimer);
+      this.tokenRefreshTimer = null;
     }
 
     // Close SSE connection.
