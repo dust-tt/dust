@@ -45,6 +45,7 @@ export type FetchConversationOptions = {
   includeDeleted?: boolean;
   includeTest?: boolean;
   dangerouslySkipPermissionFiltering?: boolean;
+  alertIfNoAccessible?: boolean;
 };
 
 interface UserParticipation {
@@ -153,6 +154,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         )
       )
     );
+
+    if (
+      fetchConversationOptions?.alertIfNoAccessible &&
+      spaceBasedAccessible.length !== validConversations.length
+    ) {
+      throw new ConversationError("conversation_access_restricted");
+    }
 
     return spaceBasedAccessible;
   }
@@ -374,21 +382,16 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   static async fetchConversationWithoutContent(
     auth: Authenticator,
     sId: string,
-    options?: FetchConversationOptions & {
-      dangerouslySkipPermissionFiltering?: boolean;
-    }
+    options?: FetchConversationOptions
   ): Promise<Result<ConversationWithoutContentType, ConversationError>> {
-    const conversation = await this.fetchById(auth, sId, {
-      includeDeleted: options?.includeDeleted,
-      dangerouslySkipPermissionFiltering:
-        options?.dangerouslySkipPermissionFiltering,
-    });
+    try {
+      const conversation = await this.fetchById(auth, sId, options);
 
-    if (!conversation) {
-      return new Err(new ConversationError("conversation_not_found"));
-    }
+      if (!conversation) {
+        return new Err(new ConversationError("conversation_not_found"));
+      }
 
-    const { actionRequired, unread } =
+      const { actionRequired, unread } =
       await ConversationResource.getActionRequiredAndUnreadForUser(
         auth,
         conversation.id
@@ -407,6 +410,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       requestedGroupIds: [],
       requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(auth),
     });
+    } catch (error) {
+      return new Err(error as ConversationError);
+    }
   }
 
   private static async update(

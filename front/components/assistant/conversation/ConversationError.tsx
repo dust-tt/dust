@@ -9,7 +9,7 @@ interface ConversationErrorProps {
 }
 
 export function ConversationErrorDisplay({ error }: ConversationErrorProps) {
-  const errorMessageRes = safeParseJSON(error.message);
+  const errorMessageRes = safeParseJSON(JSON.stringify(error));
 
   if (errorMessageRes.isErr() || !isAPIErrorResponse(errorMessageRes.value)) {
     return <ConversationGenericError />;
