@@ -28,7 +28,7 @@ export function legendFromConstant<K extends string>(
   return base;
 }
 
-interface LegendItem {
+export interface LegendItem {
   key: string;
   label: string;
   colorClassName: string;
