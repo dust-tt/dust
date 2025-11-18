@@ -8,9 +8,9 @@ const logger = console;
 
 const HEARTBEAT_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes.
 const RECONNECT_DELAY_MS = 5 * 1000; // 5 seconds.
-// Refresh EventSource connection every 1 minutes to ensure OAuth tokens are refreshed before they
+// Refresh EventSource connection every 4 minutes to ensure OAuth tokens are refreshed before they
 // expire (typical token lifetime is 5 minutes).
-const TOKEN_REFRESH_INTERVAL_MS = 60 * 1000;
+const TOKEN_REFRESH_INTERVAL_MS = 4 * 60 * 1000;
 
 /**
  * Custom transport implementation for MCP
@@ -225,7 +225,7 @@ export class DustMcpServerTransport implements Transport {
       }
     };
 
-    this.eventSource.onerror = (error: any) => {
+    this.eventSource.onerror = (error: unknown) => {
       this.logError("Error in MCP EventSource connection:", error);
       this.onerror?.(new Error(`SSE connection error: ${error}`));
 
