@@ -2,8 +2,8 @@ import assert from "assert";
 import { tracer } from "dd-trace";
 
 import type {
-  AssistantBuilderMCPConfiguration,
-  AssistantBuilderMCPConfigurationWithId,
+  AgentBuilderMCPConfiguration,
+  AgentBuilderMCPConfigurationWithId,
 } from "@app/components/agent_builder/types";
 import { getDefaultMCPServerActionConfiguration } from "@app/components/agent_builder/types";
 import { REASONING_MODEL_CONFIGS } from "@app/components/providers/types";
@@ -61,8 +61,8 @@ export async function buildInitialActions({
   dataSourceViews: DataSourceViewResource[];
   configuration: AgentConfigurationType | TemplateAgentConfigurationType;
   mcpServerViews?: MCPServerViewType[];
-}): Promise<AssistantBuilderMCPConfiguration[]> {
-  const builderActions: AssistantBuilderMCPConfiguration[] = [];
+}): Promise<AgentBuilderMCPConfiguration[]> {
+  const builderActions: AgentBuilderMCPConfiguration[] = [];
 
   for (const action of configuration.actions) {
     assert(
@@ -82,7 +82,7 @@ export async function buildInitialActions({
     if (builderAction) {
       // TODO(durable agents, 2025-06-24): remove this once we have a proper
       // type for the builder action. Namely, initializeBuilderAction return
-      // type should be AssistantBuilderMCPConfiguration.
+      // type should be AgentBuilderMCPConfiguration.
       assert(
         builderAction.type === "MCP",
         "Builder action is not a MCP server configuration"
@@ -106,7 +106,7 @@ async function getMCPServerActionConfiguration(
   action: MCPServerConfigurationType,
   dataSourceViews: DataSourceViewResource[],
   mcpServerView?: MCPServerViewType
-): Promise<AssistantBuilderMCPConfigurationWithId> {
+): Promise<AgentBuilderMCPConfigurationWithId> {
   assert(isServerSideMCPServerConfiguration(action));
 
   const builderAction = getDefaultMCPServerActionConfiguration(mcpServerView);

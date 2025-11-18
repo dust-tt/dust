@@ -16,7 +16,7 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
-import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
+import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { GetErrorRateResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/error_rate";
 import type { GetFeedbackDistributionResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/feedback-distribution";
@@ -62,8 +62,7 @@ export function useAssistantTemplate({
 }: {
   templateId: string | null;
 }) {
-  const assistantTemplateFetcher: Fetcher<FetchAssistantTemplateResponse> =
-    fetcher;
+  const assistantTemplateFetcher: Fetcher<FetchAgentTemplateResponse> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
     templateId !== null ? `/api/templates/${templateId}` : null,

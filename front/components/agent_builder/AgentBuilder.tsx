@@ -31,7 +31,7 @@ import {
 } from "@app/components/agent_builder/transformAgentConfiguration";
 import type {
   AgentBuilderAction,
-  AssistantBuilderMCPConfigurationWithId,
+  AgentBuilderMCPConfigurationWithId,
 } from "@app/components/agent_builder/types";
 import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
@@ -49,7 +49,7 @@ import type { LightAgentConfigurationType } from "@app/types";
 import { isBuilder, normalizeError, removeNulls } from "@app/types";
 
 function processActionsFromStorage(
-  actions: AssistantBuilderMCPConfigurationWithId[]
+  actions: AgentBuilderMCPConfigurationWithId[]
 ): AgentBuilderAction[] {
   return [
     ...actions.map((action) => {
