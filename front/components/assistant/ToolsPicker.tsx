@@ -1,10 +1,10 @@
 import {
   BoltIcon,
   Button,
+  Chip,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -181,6 +181,15 @@ export function ToolsPicker({
     );
   }, [availableMCPServers, serverViews]);
 
+  const displayToolsToInstall = useMemo(() => {
+    return (
+      isAdmin &&
+      !isServerViewsLoading &&
+      hasFeature("jit_tool_setup") &&
+      uninstalledServers.length > 0
+    );
+  }, [isAdmin, isServerViewsLoading, hasFeature, uninstalledServers]);
+
   return (
     <>
       <DropdownMenu
@@ -211,45 +220,63 @@ export function ToolsPicker({
           align="start"
           dropdownHeaders={
             <>
-              <DropdownMenuSearchbar
-                autoFocus
-                name="search-tools"
-                placeholder="Search Tools"
-                value={searchText}
-                onChange={setSearchText}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && filteredServerViews.length > 0) {
-                    const isSelected = selectedMCPServerViewIds.includes(
-                      filteredServerViews[0].sId
-                    );
-                    if (isSelected) {
-                      trackEvent({
-                        area: TRACKING_AREAS.TOOLS,
-                        object: "tool_deselect",
-                        action: TRACKING_ACTIONS.SELECT,
-                        extra: {
-                          tool_id: filteredServerViews[0].sId,
-                          tool_name: filteredServerViews[0].server.name,
-                        },
-                      });
-                      onDeselect(filteredServerViews[0]);
-                    } else {
-                      trackEvent({
-                        area: TRACKING_AREAS.TOOLS,
-                        object: "tool_select",
-                        action: TRACKING_ACTIONS.SELECT,
-                        extra: {
-                          tool_id: filteredServerViews[0].sId,
-                          tool_name: filteredServerViews[0].server.name,
-                        },
-                      });
-                      onSelect(filteredServerViews[0]);
-                    }
-                    setSearchText("");
-                    setIsOpen(false);
-                  }
-                }}
-              />
+              <div className="flex items-center">
+                <div className="flex-1">
+                  <DropdownMenuSearchbar
+                    autoFocus
+                    name="search-tools"
+                    placeholder="Search Tools"
+                    value={searchText}
+                    onChange={setSearchText}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && filteredServerViews.length > 0) {
+                        const isSelected = selectedMCPServerViewIds.includes(
+                          filteredServerViews[0].sId
+                        );
+                        if (isSelected) {
+                          trackEvent({
+                            area: TRACKING_AREAS.TOOLS,
+                            object: "tool_deselect",
+                            action: TRACKING_ACTIONS.SELECT,
+                            extra: {
+                              tool_id: filteredServerViews[0].sId,
+                              tool_name: filteredServerViews[0].server.name,
+                            },
+                          });
+                          onDeselect(filteredServerViews[0]);
+                        } else {
+                          trackEvent({
+                            area: TRACKING_AREAS.TOOLS,
+                            object: "tool_select",
+                            action: TRACKING_ACTIONS.SELECT,
+                            extra: {
+                              tool_id: filteredServerViews[0].sId,
+                              tool_name: filteredServerViews[0].server.name,
+                            },
+                          });
+                          onSelect(filteredServerViews[0]);
+                        }
+                        setSearchText("");
+                        setIsOpen(false);
+                      }
+                    }}
+                  />
+                </div>
+                {systemSpace && (
+                  <Button
+                    icon={ToolsIcon}
+                    variant="outline"
+                    label="Manage"
+                    onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      void router.push(
+                        `/w/${owner.sId}/spaces/${systemSpace.sId}/categories/actions`
+                      );
+                    }}
+                  />
+                )}
+              </div>
               <DropdownMenuSeparator />
             </>
           }
@@ -303,46 +330,27 @@ export function ToolsPicker({
             </div>
           )}
 
-          {isAdmin && !isServerViewsLoading && hasFeature("jit_tool_setup") && (
+          {displayToolsToInstall && (
             <>
-              {uninstalledServers.length > 0 && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel label="Available to install" />
-                  {uninstalledServers.map((server) => (
-                    <DropdownMenuItem
-                      key={`tools-to-install-${server.sId}`}
-                      icon={() => getAvatar(server)}
-                      label={asDisplayName(server.name)}
-                      description={server.description}
-                      truncateText
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        setSetupSheetServer(server);
-                        setIsSettingUpServer(true);
-                        setIsOpen(false);
-                      }}
-                    />
-                  ))}
-                </>
-              )}
-              {systemSpace && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    icon={() => <Icon visual={ToolsIcon} size="xs" />}
-                    label="Manage Tools"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      void router.push(
-                        `/w/${owner.sId}/spaces/${systemSpace.sId}/categories/actions`
-                      );
-                    }}
-                  />
-                </>
-              )}
+              {uninstalledServers.map((server) => (
+                <DropdownMenuItem
+                  key={`tools-to-install-${server.sId}`}
+                  icon={() => getAvatar(server)}
+                  label={asDisplayName(server.name)}
+                  description={server.description}
+                  truncateText
+                  endComponent={
+                    <Chip size="xs" color="golden" label="Activate" />
+                  }
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    setSetupSheetServer(server);
+                    setIsSettingUpServer(true);
+                    setIsOpen(false);
+                  }}
+                />
+              ))}
             </>
           )}
         </DropdownMenuContent>
