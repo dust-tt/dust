@@ -5,7 +5,6 @@ import {
   BarChart,
   CartesianGrid,
   ReferenceLine,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
@@ -17,7 +16,6 @@ import { CHART_HEIGHT } from "@app/components/agent_builder/observability/consta
 import { useToolUsageData } from "@app/components/agent_builder/observability/hooks";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
-import { ChartLegend } from "@app/components/agent_builder/observability/shared/ChartLegend";
 import { RoundedTopBarShape } from "@app/components/agent_builder/observability/shared/ChartShapes";
 import type {
   ChartDatum,
@@ -89,78 +87,77 @@ export function ToolUsageChart({
           />
         </ButtonsSwitchList>
       }
+      height={CHART_HEIGHT}
+      legendItems={legendItems}
     >
-      <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-        <BarChart
-          data={chartData}
-          margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
-        >
-          <CartesianGrid
-            vertical={false}
-            className="stroke-border dark:stroke-border-night"
-          />
-          <XAxis
-            dataKey="label"
-            className="text-xs text-muted-foreground dark:text-muted-foreground-night"
-            tickLine={false}
-            axisLine={false}
-            tickMargin={8}
-            label={{
-              value: xAxisLabel,
-              position: "insideBottom",
-              offset: -8,
-              style: { textAnchor: "middle" },
-            }}
-          />
-          <YAxis
-            className="text-xs text-muted-foreground dark:text-muted-foreground-night"
-            tickLine={false}
-            axisLine={false}
-            tickMargin={8}
-            domain={[0, 100]}
-            ticks={[0, 20, 40, 60, 80, 100]}
-            tickFormatter={(value) => `${value}%`}
-            allowDecimals={false}
-          />
-          <Tooltip
-            cursor={false}
-            content={renderToolUsageTooltip}
-            wrapperStyle={{ outline: "none" }}
-            contentStyle={{
-              background: "transparent",
-              border: "none",
-              padding: 0,
-              boxShadow: "none",
-            }}
-          />
-          {mode === "version" &&
-            toolMode === "version" &&
-            selectedVersion &&
-            chartData.length > 0 && (
-              <ReferenceLine
-                x={`v${selectedVersion.version}`}
-                stroke="hsl(var(--primary))"
-                strokeDasharray="5 5"
-                strokeWidth={2}
-                ifOverflow="extendDomain"
-              />
-            )}
-          {topTools.map((toolName) => (
-            <Bar
-              key={toolName}
-              dataKey={(row: ChartDatum) => row.values[toolName]?.percent ?? 0}
-              stackId="a"
-              fill="currentColor"
-              className={getToolColor(toolName, topTools)}
-              name={toolName}
-              shape={
-                <RoundedTopBarShape toolName={toolName} stackOrder={topTools} />
-              }
+      <BarChart
+        data={chartData}
+        margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
+      >
+        <CartesianGrid
+          vertical={false}
+          className="stroke-border dark:stroke-border-night"
+        />
+        <XAxis
+          dataKey="label"
+          className="text-xs text-muted-foreground dark:text-muted-foreground-night"
+          tickLine={false}
+          axisLine={false}
+          tickMargin={8}
+          label={{
+            value: xAxisLabel,
+            position: "insideBottom",
+            offset: -8,
+            style: { textAnchor: "middle" },
+          }}
+        />
+        <YAxis
+          className="text-xs text-muted-foreground dark:text-muted-foreground-night"
+          tickLine={false}
+          axisLine={false}
+          tickMargin={8}
+          domain={[0, 100]}
+          ticks={[0, 20, 40, 60, 80, 100]}
+          tickFormatter={(value) => `${value}%`}
+          allowDecimals={false}
+        />
+        <Tooltip
+          cursor={false}
+          content={renderToolUsageTooltip}
+          wrapperStyle={{ outline: "none" }}
+          contentStyle={{
+            background: "transparent",
+            border: "none",
+            padding: 0,
+            boxShadow: "none",
+          }}
+        />
+        {mode === "version" &&
+          toolMode === "version" &&
+          selectedVersion &&
+          chartData.length > 0 && (
+            <ReferenceLine
+              x={`v${selectedVersion.version}`}
+              stroke="hsl(var(--primary))"
+              strokeDasharray="5 5"
+              strokeWidth={2}
+              ifOverflow="extendDomain"
             />
-          ))}
-        </BarChart>
-      </ResponsiveContainer>
-      <ChartLegend items={legendItems} />
+          )}
+        {topTools.map((toolName) => (
+          <Bar
+            key={toolName}
+            dataKey={(row: ChartDatum) => row.values[toolName]?.percent ?? 0}
+            stackId="a"
+            fill="currentColor"
+            className={getToolColor(toolName, topTools)}
+            name={toolName}
+            shape={
+              <RoundedTopBarShape toolName={toolName} stackOrder={topTools} />
+            }
+          />
+        ))}
+      </BarChart>
     </ChartContainer>
   );
 }
