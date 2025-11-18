@@ -9,6 +9,7 @@ export function extractFileIds(code: string): string[] {
     const ast = parse(code, {
       sourceType: "module",
       plugins: ["jsx", "typescript"],
+      strictMode: false,
     });
 
     traverse(ast, {
