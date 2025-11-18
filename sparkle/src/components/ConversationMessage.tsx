@@ -17,7 +17,7 @@ export const ConversationContainer = React.forwardRef<
       )}
       {...props}
     >
-      <div className="s-flex s-w-full s-max-w-3xl s-flex-col s-gap-6 s-p-2 @sm/conversation:s-gap-8 @md/conversation:s-gap-10">
+      <div className="s-flex s-w-full s-max-w-3xl s-flex-col s-gap-1 s-p-2 @sm/conversation:s-gap-1 @md/conversation:s-gap-4">
         {children}
       </div>
     </div>
@@ -33,8 +33,10 @@ interface ConversationMessageProps
   buttons?: React.ReactElement<typeof Button>[];
   children?: React.ReactNode;
   citations?: React.ReactElement[];
+  isCurrentUser?: boolean;
   isDisabled?: boolean;
   name?: string;
+  textFullWidth?: boolean;
   timestamp?: string;
   completionStatus?: React.ReactNode;
   pictureUrl?: string | React.ReactNode | null;
@@ -45,22 +47,38 @@ interface ConversationMessageProps
 
 export type ConversationMessageType = "user" | "agent";
 
-const messageVariants = cva("s-flex s-w-full s-flex-col s-rounded-2xl", {
+const wrapperVariants = cva("s-group/message s-min-w-60 s-max-w-full", {
+  variants: {
+    messageType: {
+      agent: "s-pr-0",
+      me: "s-self-end s-pl-8",
+      user: "s-self-start s-pr-8", 
+    },
+  },
+  defaultVariants: {
+    messageType: "agent",
+  },
+});
+const messageVariants = cva("s-flex s-rounded-2xl", {
   variants: {
     type: {
-      user: "s-bg-muted-background dark:s-bg-muted-background-night s-px-5 s-py-4 s-gap-2",
-      agent: "s-w-full s-gap-3",
+      agent: "s-w-full s-gap-3 s-p-4",
+      user: "s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-py-4 s-gap-2 s-w-fit",
+    },
+    textFullWidth: {
+      true: "s-flex-col",
     },
   },
   defaultVariants: {
     type: "agent",
+    textFullWidth: false,
   },
 });
 
-const buttonsVariants = cva("s-flex s-justify-start s-gap-2 s-pt-2", {
+const buttonsVariants = cva("s-flex s-justify-start s-gap-2", {
   variants: {
     type: {
-      user: "s-justify-end",
+      user: "s-pt-2 s-justify-end",
       agent: "s-justify-start",
     },
   },
@@ -82,8 +100,10 @@ export const ConversationMessage = React.forwardRef<
       buttons,
       children,
       citations,
+      isCurrentUser = true,
       isDisabled = false,
       name,
+      textFullWidth = false,
       timestamp,
       completionStatus,
       pictureUrl,
@@ -95,20 +115,51 @@ export const ConversationMessage = React.forwardRef<
     },
     ref
   ) => {
+    let messageType: "agent" | "me" | "user" = "agent";
+    if (type === "agent") {
+      messageType = "agent";
+    } else if (type === "user") {
+      messageType = isCurrentUser ? "me" : "user";
+    }
+    if (!textFullWidth) {
+      return (
+        <div ref={ref} className={cn(wrapperVariants({ messageType }))}>
+          <div className={cn(messageVariants({ type, className }))} {...props}>
+            <ConversationMessageAvatar
+              avatarUrl={pictureUrl}
+              name={name}
+              isBusy={avatarBusy}
+              type={type}
+              isDisabled={isDisabled}
+            />
+            <div className="s-flex s-flex-col s-gap-3 s-w-full">
+              <ConversationMessageTitle name={name} timestamp={timestamp} infoChip={infoChip} completionStatus={completionStatus} renderName={renderName} />
+              <ConversationMessageContent citations={citations} type={type}>
+                {children}
+              </ConversationMessageContent>
+              {buttons && (
+                <div className={cn(buttonsVariants({ type, className }))}>
+                  {buttons}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
     return (
-      <div ref={ref} className="s-group/message">
-        <div className={cn(messageVariants({ type, className }))} {...props}>
-          <ConversationMessageHeader
-            avatarUrl={pictureUrl}
-            name={name}
-            timestamp={timestamp}
-            completionStatus={completionStatus}
-            isBusy={avatarBusy}
-            isDisabled={isDisabled}
-            renderName={renderName}
-            infoChip={infoChip}
-          />
-
+      <div ref={ref} className={cn(wrapperVariants({ messageType }))}>
+        <div className={cn(messageVariants({ type, textFullWidth, className }))} {...props}>
+          <div className="s-inline-flex s-items-center s-gap-2">
+            <ConversationMessageAvatar
+              avatarUrl={pictureUrl}
+              name={name}
+              isBusy={avatarBusy}
+              isDisabled={isDisabled}
+              type={type}
+            />
+            <ConversationMessageTitle name={name} timestamp={timestamp} infoChip={infoChip} completionStatus={completionStatus} renderName={renderName} />
+          </div>
           <ConversationMessageContent citations={citations} type={type}>
             {children}
           </ConversationMessageContent>
@@ -130,6 +181,7 @@ interface ConversationMessageContentProps
   children: React.ReactNode;
   citations?: React.ReactElement[];
   type: ConversationMessageType;
+  infoChip?: React.ReactNode;
 }
 
 export const ConversationMessageContent = React.forwardRef<
@@ -140,7 +192,7 @@ export const ConversationMessageContent = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        "s-flex s-flex-col s-gap-3 @sm/conversation:s-gap-4",
+        "s-flex s-flex-col s-gap-1",
         className
       )}
       {...props}
@@ -157,21 +209,18 @@ export const ConversationMessageContent = React.forwardRef<
 
 ConversationMessageContent.displayName = "ConversationMessageContent";
 
-interface ConversationMessageHeaderProps
+interface ConversationMessageAvatarProps
   extends React.HTMLAttributes<HTMLDivElement> {
   avatarUrl?: string | React.ReactNode;
   isBusy?: boolean;
   isDisabled?: boolean;
   name?: string;
-  timestamp?: string;
-  completionStatus?: React.ReactNode;
-  infoChip?: React.ReactNode;
-  renderName: (name: string | null) => React.ReactNode;
+  type: ConversationMessageType;
 }
 
-export const ConversationMessageHeader = React.forwardRef<
+export const ConversationMessageAvatar = React.forwardRef<
   HTMLDivElement,
-  ConversationMessageHeaderProps
+  ConversationMessageAvatarProps
 >(
   (
     {
@@ -179,11 +228,8 @@ export const ConversationMessageHeader = React.forwardRef<
       isBusy,
       isDisabled,
       name = "",
-      timestamp,
-      infoChip,
-      completionStatus,
-      renderName,
       className,
+      type,
       ...props
     },
     ref
@@ -192,7 +238,7 @@ export const ConversationMessageHeader = React.forwardRef<
       <div
         ref={ref}
         className={cn(
-          "s-flex s-items-center s-gap-2 s-p-1 @sm/conversation:s-p-0",
+          "s-flex s-gap-2 s-p-1 @sm/conversation:s-p-0",
           className
         )}
         {...props}
@@ -203,6 +249,7 @@ export const ConversationMessageHeader = React.forwardRef<
           visual={avatarUrl}
           busy={isBusy}
           disabled={isDisabled}
+          isRounded={type === "user"}
           size="xs"
         />
         <Avatar
@@ -211,21 +258,51 @@ export const ConversationMessageHeader = React.forwardRef<
           visual={avatarUrl}
           busy={isBusy}
           disabled={isDisabled}
+          isRounded={type === "user"}
           size="sm"
         />
-        <div className="s-inline-flex s-w-full s-justify-between s-gap-0.5">
-          <div className="s-inline-flex s-items-baseline s-gap-2 s-text-foreground dark:s-text-foreground-night">
-            <span className="s-heading-sm">{renderName(name)}</span>
-            <span className="s-heading-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-              {timestamp}
-            </span>
-            {infoChip && infoChip}
-          </div>
-          {completionStatus ?? null}
-        </div>
       </div>
     );
   }
 );
 
-ConversationMessageHeader.displayName = "ConversationMessageHeader";
+ConversationMessageAvatar.displayName = "ConversationMessageAvatar";
+
+interface ConversationMessageTitleProps
+  extends React.HTMLAttributes<HTMLDivElement> {
+  name?: string;
+  timestamp?: string;
+  infoChip?: React.ReactNode;
+  completionStatus?: React.ReactNode;
+  renderName: (name: string | null) => React.ReactNode;
+}
+
+export const ConversationMessageTitle = React.forwardRef<
+  HTMLDivElement,
+  ConversationMessageTitleProps
+>(
+  (
+    {
+      name = "",
+      timestamp,
+      infoChip,
+      completionStatus,
+      renderName,
+    }
+  ) => {
+    return (
+      <div className="s-inline-flex s-w-full s-justify-between s-gap-0.5">
+        <div className="s-inline-flex s-items-baseline s-gap-2 s-text-foreground dark:s-text-foreground-night">
+          <span className="s-heading-sm">{renderName(name)}</span>
+          <span className="s-heading-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+            {timestamp}
+          </span>
+          {infoChip && infoChip}
+        </div>
+        {completionStatus ?? null}
+      </div>
+    );
+  }
+);
+
+ConversationMessageTitle.displayName = "ConversationMessageTitle";

@@ -60,18 +60,20 @@ export const ConversationExample = () => {
             name="@agent"
             pictureUrl="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
             buttons={[
-              <Button
-                icon={HandThumbUpIcon}
-                onClick={() => {}}
-                size="xs"
-                variant={"outline"}
-              />,
-              <Button
-                icon={HandThumbDownIcon}
-                onClick={() => {}}
-                size="xs"
-                variant={"outline"}
-              />,
+              <div className="s-flex s-gap-0.5 s-border s-border-solid s-border-border s-rounded-xl">
+                <Button
+                  icon={HandThumbUpIcon}
+                  onClick={() => {}}
+                  size="xs"
+                  variant={"ghost"}
+                />
+                <Button
+                  icon={HandThumbDownIcon}
+                  onClick={() => {}}
+                  size="xs"
+                  variant={"ghost"}
+                />
+              </div>
             ]}
             citations={[
               <Citation href="https://www.google.com">
@@ -115,6 +117,15 @@ export const ConversationExample = () => {
             )}
           >
             This is a message with a disabled agent
+          </ConversationMessage>
+
+          <ConversationMessage
+            type="user"
+            name="Alice"
+            isCurrentUser={false}
+            pictureUrl="https://dust.tt/static/droidavatar/Droid_Lime_1.jpg"
+          >
+            Hello, how are you?
           </ConversationMessage>
         </ConversationContainer>
       </div>
@@ -282,3 +293,53 @@ Operates on a simple value exchange - provides unlimited affection in return for
 **Limitations:**
 Occasional system crashes when presented with empty food bowl. Single whisker may cause slight navigation errors when squeezing through spaces designed for two-whiskered models.
 `;
+
+
+export const ConversationAgentBuilderExample = () => {
+  return (
+    <>
+      <div className="s-flex s-w-full s-justify-center s-gap-6">
+        <ConversationContainer>
+          <ConversationMessage
+            type="user"
+            name="Edouard"
+            timestamp="14:30"
+            textFullWidth
+            pictureUrl="https://dust.tt/static/droidavatar/Droid_Lime_1.jpg"
+          >
+            In the invitation email to members sent by their companies, I'm
+            trying to write a description of dust. I want it convey that: Dust
+            is the place where they can use AI for productivity Dust is where
+            they can find answers on the knwledge of the company Make 10
+            proposals of short text
+          </ConversationMessage>
+
+          <ConversationMessage
+            type="user"
+            name="Alice"
+            timestamp="15:30"
+            isCurrentUser={false}
+            textFullWidth
+            pictureUrl="https://dust.tt/static/droidavatar/Droid_Lime_1.jpg"
+          >
+            Hello, how are you?
+          </ConversationMessage>
+          <ConversationMessage
+            type="user"
+            name="Alice"
+            timestamp="15:30"
+            isCurrentUser={false}
+            textFullWidth
+            pictureUrl="https://dust.tt/static/droidavatar/Droid_Lime_1.jpg"
+          >
+            In the invitation email to members sent by their companies, I'm
+            trying to write a description of dust. I want it convey that: Dust
+            is the place where they can use AI for productivity Dust is where
+            they can find answers on the knwledge of the company Make 10
+            proposals of short text
+          </ConversationMessage>
+        </ConversationContainer>
+      </div>
+    </>
+  );
+};
