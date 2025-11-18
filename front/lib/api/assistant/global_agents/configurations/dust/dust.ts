@@ -146,6 +146,14 @@ A dataSourceId typically starts with the prefix "dts_".
 
   toolsets: (availableToolsets: MCPServerViewResource[]) => {
     const toolsetsList = availableToolsets
+      // Sort by display name to ensure consistent order for LLM cache optimization.
+      .sort((a, b) => {
+        const aView = a.toJSON();
+        const bView = b.toJSON();
+        return getMcpServerViewDisplayName(aView).localeCompare(
+          getMcpServerViewDisplayName(bView)
+        );
+      })
       .map((toolset) => {
         const mcpServerView = toolset.toJSON();
         const sId = mcpServerView.sId;
