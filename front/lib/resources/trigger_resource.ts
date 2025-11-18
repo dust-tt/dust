@@ -1,3 +1,4 @@
+import assert from "assert";
 import type {
   Attributes,
   CreationAttributes,
@@ -144,10 +145,10 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     auth: Authenticator,
     user: UserResource | UserType
   ) {
-    // Either have to be an admin or the user itself.
-    if (!auth.isAdmin() && auth.user()?.id !== user.id) {
-      return [];
-    }
+    assert(
+      auth.isAdmin() || auth.user()?.id === user.id,
+      "Triggers can only be listed by admins or by their editor."
+    );
 
     return this.baseFetch(auth, {
       where: {
@@ -160,10 +161,10 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     auth: Authenticator,
     user: UserResource | UserType
   ) {
-    // Either have to be an admin or the user itself.
-    if (!auth.isAdmin() && auth.user()?.id !== user.id) {
-      return [];
-    }
+    assert(
+      auth.isAdmin() || auth.user()?.id === user.id,
+      "Triggers can only be listed by admins or by the subscribed user."
+    );
 
     const workspace = auth.getNonNullableWorkspace();
 
