@@ -50,6 +50,7 @@ import type {
   SpaceType,
   UserType,
 } from "@app/types";
+import type { SpaceCategoryInfo } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 
 type MembersManagementType = "manual" | "group";
 
@@ -173,6 +174,7 @@ export function CreateOrEditSpaceModal({
     groups,
     isOpen,
     planAllowsSCIM,
+    setSpaceName,
     spaceInfo,
     user,
     space,
@@ -191,10 +193,16 @@ export function CreateOrEditSpaceModal({
       setManagementType("manual");
       setIsDeleting(false);
       setIsSaving(false);
+      setIsDirty(false);
     }, 500);
   }, [onClose]);
 
   const onSave = useCallback(async () => {
+    const trimmedName = spaceName.trim();
+    if (!trimmedName) {
+      return;
+    }
+
     setIsSaving(true);
 
     if (space) {
@@ -204,20 +212,20 @@ export function CreateOrEditSpaceModal({
             isRestricted: true,
             groupIds: selectedGroups.map((group) => group.sId),
             managementMode: "group",
-            name: spaceName,
+            name: trimmedName,
           });
         } else {
           await doUpdate(space, {
             isRestricted: true,
             memberIds: selectedMembers.map((vm) => vm.sId),
             managementMode: "manual",
-            name: spaceName,
+            name: trimmedName,
           });
         }
       } else {
         await doUpdate(space, {
           isRestricted: false,
-          name: spaceName,
+          name: trimmedName,
         });
       }
 
@@ -229,14 +237,14 @@ export function CreateOrEditSpaceModal({
       if (isRestricted) {
         if (planAllowsSCIM && managementType === "group") {
           createdSpace = await doCreate({
-            name: spaceName,
+            name: trimmedName,
             isRestricted: true,
             groupIds: selectedGroups.map((group) => group.sId),
             managementMode: "group",
           });
         } else {
           createdSpace = await doCreate({
-            name: spaceName,
+            name: trimmedName,
             isRestricted: true,
             memberIds: selectedMembers.map((vm) => vm.sId),
             managementMode: "manual",
@@ -244,7 +252,7 @@ export function CreateOrEditSpaceModal({
         }
       } else {
         createdSpace = await doCreate({
-          name: spaceName,
+          name: trimmedName,
           isRestricted: false,
         });
       }
@@ -363,13 +371,19 @@ export function CreateOrEditSpaceModal({
   }, [
     isRestricted,
     managementType,
-    selectedMembers,
-    selectedGroups,
+    selectedMembers.length,
+    selectedGroups.length,
     spaceInfo,
     isDirty,
     spaceName,
   ]);
   const isManual = !planAllowsSCIM || managementType === "manual";
+
+  const handleNameChange = useCallback((value: string) => {
+    setSpaceName(value);
+    setIsDirty(true);
+  }, []);
+
   return (
     <Sheet open={isOpen} onOpenChange={handleClose}>
       <SheetContent trapFocusScope={false} size="lg">
@@ -378,210 +392,57 @@ export function CreateOrEditSpaceModal({
         </SheetHeader>
         <SheetContainer>
           <div className="flex w-full flex-col gap-y-4">
-            <div className="flex w-full flex-col gap-y-4">
-              <Page.SectionHeader title="Name" />
-              <Input
-                placeholder="Space's name"
-                value={spaceName}
-                name="spaceName"
-                message="Space name must be unique"
-                messageStatus="info"
-                onChange={(e) => {
-                  setSpaceName(e.target.value);
-                  setIsDirty(true);
-                }}
-              />
-            </div>
-            {isAdmin && space && space.kind === "regular" && (
-              <>
-                <ConfirmDeleteSpaceDialog
-                  spaceInfoByCategory={spaceInfo?.categories}
-                  space={space}
-                  handleDelete={onDelete}
-                  isDeleting={isDeleting}
-                />
-                <Separator />
-              </>
-            )}
-            <div className="flex w-full items-center justify-between overflow-visible">
-              <Page.SectionHeader title="Restricted Access" />
-              <SliderToggle
-                selected={isRestricted}
-                onClick={() => {
-                  const newRestricted = !isRestricted;
-                  setIsRestricted(newRestricted);
-                  setIsDirty(true);
+            <SpaceNameSection
+              spaceName={spaceName}
+              onChange={handleNameChange}
+            />
+            <SpaceDeleteSection
+              isAdmin={isAdmin}
+              space={space}
+              spaceInfoByCategory={spaceInfo?.categories}
+              onDelete={onDelete}
+              isDeleting={isDeleting}
+            />
+            <RestrictedAccessHeader
+              isRestricted={isRestricted}
+              onToggle={() => {
+                const newRestricted = !isRestricted;
+                setIsRestricted(newRestricted);
+                setIsDirty(true);
 
-                  // Auto-add current user when enabling restricted access for new spaces
-                  if (
-                    newRestricted &&
-                    !space &&
-                    user &&
-                    selectedMembers.length === 0
-                  ) {
-                    setSelectedMembers([user, ...selectedMembers]);
-                  }
-                }}
-              />
-            </div>
-            {isRestricted ? (
-              <span>Restricted access is active.</span>
-            ) : (
-              <span>
-                Restricted access is disabled. The space is accessible to
-                everyone in the workspace.
-              </span>
-            )}
-
-            {isRestricted && (
-              <>
-                {planAllowsSCIM ? (
-                  <div className="flex flex-row items-center justify-between">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="outline"
-                          isSelect
-                          label={
-                            managementType === "manual"
-                              ? "Manual access"
-                              : "Provisioned group access"
-                          }
-                        />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuItem
-                          label="Manual access"
-                          onClick={() => {
-                            if (isMembersManagementType("manual")) {
-                              void handleManagementTypeChange("manual");
-                            }
-                          }}
-                        />
-                        <DropdownMenuItem
-                          label="Provisioned group access"
-                          onClick={() => {
-                            if (isMembersManagementType("group")) {
-                              void handleManagementTypeChange("group");
-                            }
-                          }}
-                        />
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                    {isManual && selectedMembers.length > 0 && (
-                      <SearchMembersDropdown
-                        owner={owner}
-                        selectedMembers={selectedMembers}
-                        onMembersUpdated={(members) => {
-                          setSelectedMembers(members);
-                          setIsDirty(true);
-                        }}
-                      />
-                    )}
-                    {!isManual && selectedGroups.length > 0 && (
-                      <SearchGroupsDropdown
-                        owner={owner}
-                        selectedGroups={selectedGroups}
-                        onGroupsUpdated={(groups) => {
-                          setSelectedGroups(groups);
-                          setIsDirty(true);
-                        }}
-                      />
-                    )}
-                  </div>
-                ) : (
-                  isManual &&
-                  selectedMembers.length > 0 && (
-                    <div className="flex w-full justify-end">
-                      <SearchMembersDropdown
-                        owner={owner}
-                        selectedMembers={selectedMembers}
-                        onMembersUpdated={(members) => {
-                          setSelectedMembers(members);
-                          setIsDirty(true);
-                        }}
-                      />
-                    </div>
-                  )
-                )}
-
-                {isManual && selectedMembers.length === 0 && (
-                  <EmptyCTA
-                    action={
-                      <SearchMembersDropdown
-                        owner={owner}
-                        selectedMembers={selectedMembers}
-                        onMembersUpdated={(members) => {
-                          setSelectedMembers(members);
-                          setIsDirty(true);
-                        }}
-                      />
-                    }
-                    message="Add members to the space"
-                  />
-                )}
-                {!isManual && selectedGroups.length === 0 && (
-                  <EmptyCTA
-                    action={
-                      <SearchGroupsDropdown
-                        owner={owner}
-                        selectedGroups={selectedGroups}
-                        onGroupsUpdated={(groups) => {
-                          setSelectedGroups(groups);
-                          setIsDirty(true);
-                        }}
-                      />
-                    }
-                    message="Add groups to the space"
-                  />
-                )}
-
-                {isManual && selectedMembers.length > 0 && (
-                  <>
-                    <SearchInput
-                      name="search"
-                      placeholder="Search (email)"
-                      value={searchSelectedMembers}
-                      onChange={(s) => {
-                        setSearchSelectedMembers(s);
-                      }}
-                    />
-                    <ScrollArea className="h-full">
-                      <MembersTable
-                        onMembersUpdated={(members) => {
-                          setSelectedMembers(members);
-                          setIsDirty(true);
-                        }}
-                        selectedMembers={selectedMembers}
-                        searchSelectedMembers={searchSelectedMembers}
-                      />
-                    </ScrollArea>
-                  </>
-                )}
-                {!isManual && selectedGroups.length > 0 && (
-                  <>
-                    <SearchInput
-                      name="search"
-                      placeholder={"Search groups"}
-                      value={searchSelectedMembers}
-                      onChange={(s) => {
-                        setSearchSelectedMembers(s);
-                      }}
-                    />
-                    <ScrollArea className="h-full">
-                      <GroupsTable
-                        onGroupsUpdated={(groups) => {
-                          setSelectedGroups(groups);
-                          setIsDirty(true);
-                        }}
-                        selectedGroups={selectedGroups}
-                        searchSelectedGroups={searchSelectedMembers}
-                      />
-                    </ScrollArea>
-                  </>
-                )}
-              </>
-            )}
+                // Auto-add current user when enabling restricted access for new spaces.
+                if (
+                  newRestricted &&
+                  !space &&
+                  user &&
+                  selectedMembers.length === 0
+                ) {
+                  setSelectedMembers([user, ...selectedMembers]);
+                }
+              }}
+            />
+            <RestrictedAccessBody
+              isRestricted={isRestricted}
+              isManual={isManual}
+              planAllowsSCIM={planAllowsSCIM}
+              managementType={managementType}
+              owner={owner}
+              selectedMembers={selectedMembers}
+              selectedGroups={selectedGroups}
+              searchSelectedMembers={searchSelectedMembers}
+              onSearchChange={setSearchSelectedMembers}
+              onManagementTypeChange={(value) => {
+                void handleManagementTypeChange(value);
+              }}
+              onMembersUpdated={(members) => {
+                setSelectedMembers(members);
+                setIsDirty(true);
+              }}
+              onGroupsUpdated={(groups) => {
+                setSelectedGroups(groups);
+                setIsDirty(true);
+              }}
+            />
           </div>
         </SheetContainer>
         <SheetFooter
@@ -598,6 +459,247 @@ export function CreateOrEditSpaceModal({
         />
       </SheetContent>
     </Sheet>
+  );
+}
+
+interface SpaceNameSectionProps {
+  spaceName: string;
+  onChange: (value: string) => void;
+}
+
+function SpaceNameSection({ spaceName, onChange }: SpaceNameSectionProps) {
+  return (
+    <div className="flex w-full flex-col gap-y-4">
+      <Page.SectionHeader title="Name" />
+      <Input
+        placeholder="Space's name"
+        value={spaceName}
+        name="spaceName"
+        message="Space name must be unique"
+        messageStatus="info"
+        onChange={(e) => {
+          onChange(e.target.value);
+        }}
+      />
+    </div>
+  );
+}
+
+interface SpaceDeleteSectionProps {
+  isAdmin: boolean;
+  space?: SpaceType;
+  spaceInfoByCategory: { [key: string]: SpaceCategoryInfo } | undefined;
+  onDelete: () => void;
+  isDeleting: boolean;
+}
+
+function SpaceDeleteSection({
+  isAdmin,
+  space,
+  spaceInfoByCategory,
+  onDelete,
+  isDeleting,
+}: SpaceDeleteSectionProps) {
+  if (!isAdmin || !space || space.kind !== "regular") {
+    return null;
+  }
+
+  return (
+    <>
+      <ConfirmDeleteSpaceDialog
+        spaceInfoByCategory={spaceInfoByCategory}
+        space={space}
+        handleDelete={onDelete}
+        isDeleting={isDeleting}
+      />
+      <Separator />
+    </>
+  );
+}
+
+interface RestrictedAccessHeaderProps {
+  isRestricted: boolean;
+  onToggle: () => void;
+}
+
+function RestrictedAccessHeader({
+  isRestricted,
+  onToggle,
+}: RestrictedAccessHeaderProps) {
+  return (
+    <>
+      <div className="flex w-full items-center justify-between overflow-visible">
+        <Page.SectionHeader title="Restricted Access" />
+        <SliderToggle selected={isRestricted} onClick={onToggle} />
+      </div>
+      {isRestricted ? (
+        <span>Restricted access is active.</span>
+      ) : (
+        <span>
+          Restricted access is disabled. The space is accessible to everyone in
+          the workspace.
+        </span>
+      )}
+    </>
+  );
+}
+
+interface RestrictedAccessBodyProps {
+  isRestricted: boolean;
+  isManual: boolean;
+  planAllowsSCIM: boolean;
+  managementType: MembersManagementType;
+  owner: LightWorkspaceType;
+  selectedMembers: UserType[];
+  selectedGroups: GroupType[];
+  searchSelectedMembers: string;
+  onSearchChange: (value: string) => void;
+  onManagementTypeChange: (value: string) => void;
+  onMembersUpdated: (members: UserType[]) => void;
+  onGroupsUpdated: (groups: GroupType[]) => void;
+}
+
+function RestrictedAccessBody({
+  isRestricted,
+  isManual,
+  planAllowsSCIM,
+  managementType,
+  owner,
+  selectedMembers,
+  selectedGroups,
+  searchSelectedMembers,
+  onSearchChange,
+  onManagementTypeChange,
+  onMembersUpdated,
+  onGroupsUpdated,
+}: RestrictedAccessBodyProps) {
+  if (!isRestricted) {
+    return null;
+  }
+
+  return (
+    <>
+      {planAllowsSCIM ? (
+        <div className="flex flex-row items-center justify-between">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                isSelect
+                label={
+                  managementType === "manual"
+                    ? "Manual access"
+                    : "Provisioned group access"
+                }
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem
+                label="Manual access"
+                onClick={() => {
+                  if (isMembersManagementType("manual")) {
+                    onManagementTypeChange("manual");
+                  }
+                }}
+              />
+              <DropdownMenuItem
+                label="Provisioned group access"
+                onClick={() => {
+                  if (isMembersManagementType("group")) {
+                    onManagementTypeChange("group");
+                  }
+                }}
+              />
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {isManual && selectedMembers.length > 0 && (
+            <SearchMembersDropdown
+              owner={owner}
+              selectedMembers={selectedMembers}
+              onMembersUpdated={onMembersUpdated}
+            />
+          )}
+          {!isManual && selectedGroups.length > 0 && (
+            <SearchGroupsDropdown
+              owner={owner}
+              selectedGroups={selectedGroups}
+              onGroupsUpdated={onGroupsUpdated}
+            />
+          )}
+        </div>
+      ) : (
+        isManual &&
+        selectedMembers.length > 0 && (
+          <div className="flex w-full justify-end">
+            <SearchMembersDropdown
+              owner={owner}
+              selectedMembers={selectedMembers}
+              onMembersUpdated={onMembersUpdated}
+            />
+          </div>
+        )
+      )}
+
+      {isManual && selectedMembers.length === 0 && (
+        <EmptyCTA
+          action={
+            <SearchMembersDropdown
+              owner={owner}
+              selectedMembers={selectedMembers}
+              onMembersUpdated={onMembersUpdated}
+            />
+          }
+          message="Add members to the space"
+        />
+      )}
+      {!isManual && selectedGroups.length === 0 && (
+        <EmptyCTA
+          action={
+            <SearchGroupsDropdown
+              owner={owner}
+              selectedGroups={selectedGroups}
+              onGroupsUpdated={onGroupsUpdated}
+            />
+          }
+          message="Add groups to the space"
+        />
+      )}
+
+      {isManual && selectedMembers.length > 0 && (
+        <>
+          <SearchInput
+            name="search"
+            placeholder="Search (email)"
+            value={searchSelectedMembers}
+            onChange={onSearchChange}
+          />
+          <ScrollArea className="h-full">
+            <MembersTable
+              onMembersUpdated={onMembersUpdated}
+              selectedMembers={selectedMembers}
+              searchSelectedMembers={searchSelectedMembers}
+            />
+          </ScrollArea>
+        </>
+      )}
+      {!isManual && selectedGroups.length > 0 && (
+        <>
+          <SearchInput
+            name="search"
+            placeholder={"Search groups"}
+            value={searchSelectedMembers}
+            onChange={onSearchChange}
+          />
+          <ScrollArea className="h-full">
+            <GroupsTable
+              onGroupsUpdated={onGroupsUpdated}
+              selectedGroups={selectedGroups}
+              searchSelectedGroups={searchSelectedMembers}
+            />
+          </ScrollArea>
+        </>
+      )}
+    </>
   );
 }
 
