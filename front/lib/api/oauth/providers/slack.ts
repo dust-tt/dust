@@ -38,8 +38,6 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
               "groups:read",
               "im:history",
               "mpim:history",
-              "reactions:read",
-              "reactions:write",
               "search:read.private",
               "search:read.public",
               "search:read",
