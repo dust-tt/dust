@@ -243,16 +243,16 @@ const _webhookIntercomUninstallAPIHandler = async (
   // Mark the connector as errored so that the user is notified.
   await syncFailed(connector.id, "oauth_token_revoked");
 
-  logger.info(
-    {
-      workspaceId: connector.workspaceId,
-      connectorId: connector.id,
-      provider: "intercom",
-      dataSourceId: connector.dataSourceId,
-      intercomWorkspaceId,
-    },
-    "Errored connector from uninstall webhook"
-  );
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const loggerArgs = {
+    workspaceId: dataSourceConfig.workspaceId,
+    connectorId: connector.id,
+    provider: "intercom",
+    dataSourceId: dataSourceConfig.dataSourceId,
+    intercomWorkspaceId,
+  };
+
+  logger.info(loggerArgs, "Errored connector from uninstall webhook");
 
   return res.status(200).end();
 };
