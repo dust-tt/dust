@@ -81,12 +81,12 @@ const _webhookIntercomAPIHandler = async (
   }
 
   // Find IntercomWorkspace
-  const intercomWorkspace = await IntercomWorkspaceModel.findOne({
+  const intercomWorskpace = await IntercomWorkspaceModel.findOne({
     where: {
       intercomWorkspaceId,
     },
   });
-  if (!intercomWorkspace) {
+  if (!intercomWorskpace) {
     logger.error(
       {
         event,
@@ -98,7 +98,7 @@ const _webhookIntercomAPIHandler = async (
 
   // Find Connector
   const connector = await ConnectorResource.fetchById(
-    intercomWorkspace.connectorId
+    intercomWorskpace.connectorId
   );
 
   if (!connector || connector.type !== "intercom") {
@@ -122,7 +122,7 @@ const _webhookIntercomAPIHandler = async (
   }
 
   const isSelectedAllConvos =
-    intercomWorkspace.syncAllConversations === "activated";
+    intercomWorskpace.syncAllConversations === "activated";
 
   if (!isSelectedAllConvos) {
     if (!conversation.team_assignee_id) {
@@ -198,12 +198,12 @@ const _webhookIntercomUninstallAPIHandler = async (
     return res.status(200).end();
   }
 
-  const intercomWorkspace = await IntercomWorkspaceModel.findOne({
+  const intercomWorskpace = await IntercomWorkspaceModel.findOne({
     where: {
       intercomWorkspaceId,
     },
   });
-  if (!intercomWorkspace) {
+  if (!intercomWorskpace) {
     logger.error(
       {
         event,
@@ -215,7 +215,7 @@ const _webhookIntercomUninstallAPIHandler = async (
 
   // Find Connector
   const connector = await ConnectorResource.fetchById(
-    intercomWorkspace.connectorId
+    intercomWorskpace.connectorId
   );
   if (!connector || connector.type !== "intercom") {
     logger.error(
