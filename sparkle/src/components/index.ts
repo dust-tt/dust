@@ -17,6 +17,8 @@ export type {
   RegularButtonProps,
 } from "./Button";
 export { Button } from "./Button";
+export type { ButtonGroupProps } from "./ButtonGroup";
+export { ButtonGroup } from "./ButtonGroup";
 export { ButtonsSwitch, ButtonsSwitchList } from "./ButtonsSwitch";
 export type { CardProps } from "./Card";
 export { Card, CardActionButton, CardGrid } from "./Card";
