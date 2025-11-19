@@ -53,10 +53,8 @@ const TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH = 40_000;
 const TEMPORAL_WORKFLOW_MAX_HISTORY_SIZE_MB = 40;
 
 /**
- * Full Sync Workflow for Intercom - Signal-driven only.
- * This workflow is triggered by signals when permissions are updated (setPermissions, sync, setConfigurationKey).
+ * This workflow is triggered by signals when permissions are updated or when a full sync is triggered.
  * It processes help centers, teams, and "all conversations" based on the signals received.
- * No cron schedule - this is purely reactive to permission changes.
  */
 export async function intercomFullSyncWorkflow({
   connectorId,
@@ -116,7 +114,7 @@ export async function intercomFullSyncWorkflow({
       });
 
       // Async operation yielding control to the Temporal runtime.
-      await executeChild(intercomHelpCenterSyncWorklow, {
+      await executeChild(intercomHelpCenterFullSyncWorkflow, {
         workflowId: `${workflowId}-help-center-${helpCenterId}`,
         searchAttributes: parentSearchAttributes,
         args: [
@@ -176,19 +174,10 @@ export async function intercomFullSyncWorkflow({
     });
   }
 
-  await intercomOldConversationsCleanup({
-    connectorId,
-  });
-
   await saveIntercomConnectorSuccessSync({ connectorId });
 }
 
-/**
- * Scheduled Help Center Sync Workflow.
- * Runs on a Temporal Schedule (daily) to sync all help centers with permissions.
- * No signals - purely time-driven.
- */
-export async function intercomScheduledHelpCenterSyncWorkflow({
+export async function intercomHelpCenterSyncWorkflow({
   connectorId,
 }: {
   connectorId: ModelId;
@@ -211,7 +200,7 @@ export async function intercomScheduledHelpCenterSyncWorkflow({
   const currentSyncMs = new Date().getTime();
 
   for (const helpCenterId of helpCenterIds) {
-    await executeChild(intercomHelpCenterSyncWorklow, {
+    await executeChild(intercomHelpCenterFullSyncWorkflow, {
       workflowId: `${workflowId}-help-center-${helpCenterId}`,
       searchAttributes: parentSearchAttributes,
       args: [
@@ -229,42 +218,44 @@ export async function intercomScheduledHelpCenterSyncWorkflow({
   await saveIntercomConnectorSuccessSync({ connectorId });
 }
 
-/**
- * Scheduled Conversation Sync Workflow.
- * Runs on a Temporal Schedule (every 20 minutes) to sync conversations for all teams.
- * No signals - purely time-driven. Catches anything webhooks miss.
- */
-export async function intercomScheduledConversationSyncWorkflow({
+export async function intercomConversationSyncWorkflow({
   connectorId,
 }: {
   connectorId: ModelId;
 }) {
   await saveIntercomConnectorStartSync({ connectorId });
 
-  // Add folder node for teams
+  // Add folder node for teams.
   await upsertIntercomTeamsFolderActivity({
     connectorId,
   });
 
   const teamIds = await getTeamIdsToSyncActivity({ connectorId });
 
-  const { workflowId, searchAttributes: parentSearchAttributes } =
-    workflowInfo();
-
   const currentSyncMs = new Date().getTime();
 
   for (const teamId of teamIds) {
-    await executeChild(intercomHourlyConversationSyncWorkflow, {
-      workflowId: `${workflowId}-team-${teamId}`,
-      searchAttributes: parentSearchAttributes,
-      args: [
-        {
+    let cursor = null;
+
+    // We loop over the conversations to sync them all, by batch of INTERCOM_CONVO_BATCH_SIZE.
+    do {
+      const { conversationIds, nextPageCursor } =
+        await getNextConversationBatchToSyncActivity({
           connectorId,
           teamId,
-          currentSyncMs,
-        },
-      ],
-    });
+          cursor,
+          lastHourOnly: true,
+        });
+
+      await syncConversationBatchActivity({
+        connectorId,
+        teamId,
+        conversationIds,
+        currentSyncMs,
+      });
+
+      cursor = nextPageCursor;
+    } while (cursor);
   }
 
   await intercomOldConversationsCleanup({
@@ -276,10 +267,10 @@ export async function intercomScheduledConversationSyncWorkflow({
 
 /**
  * Sync Workflow for a Help Center.
- * Launched by the IntercomSyncWorkflow, it will sync a given help center.
+ * Launched by the IntercomFullSyncWorkflow, it will sync a given help center.
  * We sync a HelpCenter by fetching all the Collections and Articles.
  */
-export async function intercomHelpCenterSyncWorklow({
+export async function intercomHelpCenterFullSyncWorkflow({
   connectorId,
   helpCenterId,
   currentSyncMs,
@@ -332,7 +323,7 @@ export async function intercomHelpCenterSyncWorklow({
 
 /**
  * Sync Workflow for a Team.
- * Launched by the IntercomSyncWorkflow, it will sync a given Team.
+ * Launched by the IntercomFullSyncWorkflow, it will sync a given Team.
  * We sync a Team by fetching the conversations attached to this team.
  */
 export async function intercomTeamFullSyncWorkflow({
@@ -380,45 +371,9 @@ export async function intercomTeamFullSyncWorkflow({
 }
 
 /**
- * Sync Workflow for a Conversations of the last hour.
- * Launched by the IntercomSyncWorkflow, it will sync a given Conversations of the last hour.
- * We sync a Team by fetching the conversations attached to this team.
- */
-export async function intercomHourlyConversationSyncWorkflow({
-  connectorId,
-  teamId,
-  currentSyncMs,
-}: {
-  connectorId: ModelId;
-  teamId: string;
-  currentSyncMs: number;
-}) {
-  let cursor = null;
-
-  // We loop over the conversations to sync them all, by batch of INTERCOM_CONVO_BATCH_SIZE.
-  do {
-    const { conversationIds, nextPageCursor } =
-      await getNextConversationBatchToSyncActivity({
-        connectorId,
-        teamId,
-        cursor,
-        lastHourOnly: true,
-      });
-
-    await syncConversationBatchActivity({
-      connectorId,
-      teamId,
-      conversationIds,
-      currentSyncMs,
-    });
-
-    cursor = nextPageCursor;
-  } while (cursor);
-}
-
-/**
- * Sync Workflow for a All Conversations.
- * Launched by the IntercomSyncWorkflow if a signal is received (meaning the admin updated the permissions and ticked or unticked the "All Conversations" checkbox).
+ * Sync Workflow for All Conversations.
+ * Launched by the IntercomFullSyncWorkflow if a signal is received, meaning the admin updated the permissions and
+ * ticked or unticked the "All Conversations" checkbox.
  */
 export async function intercomAllConversationsSyncWorkflow({
   connectorId,
@@ -505,8 +460,6 @@ export async function intercomAllConversationsSyncWorkflow({
 
 /**
  * Cleaning Workflow to remove old convos.
- * Launched by the IntercomSyncWorkflow, it will sync a given Team.
- * We sync a Team by fetching the conversations attached to this team.
  */
 export async function intercomOldConversationsCleanup({
   connectorId,

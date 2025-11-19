@@ -11,8 +11,8 @@ import type { IntercomUpdateSignal } from "@connectors/connectors/intercom/tempo
 import { intercomUpdatesSignal } from "@connectors/connectors/intercom/temporal/signals";
 import {
   intercomFullSyncWorkflow,
-  intercomScheduledConversationSyncWorkflow,
-  intercomScheduledHelpCenterSyncWorkflow,
+  intercomConversationSyncWorkflow,
+  intercomHelpCenterSyncWorkflow,
 } from "@connectors/connectors/intercom/temporal/workflows";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import {
@@ -147,7 +147,7 @@ export async function launchIntercomScheduledWorkflows(
     connector,
     action: {
       type: "startWorkflow",
-      workflowType: intercomScheduledHelpCenterSyncWorkflow,
+      workflowType: intercomHelpCenterSyncWorkflow,
       args: [{ connectorId: connector.id }],
       taskQueue: QUEUE_NAME,
     },
@@ -173,7 +173,7 @@ export async function launchIntercomScheduledWorkflows(
     connector,
     action: {
       type: "startWorkflow",
-      workflowType: intercomScheduledConversationSyncWorkflow,
+      workflowType: intercomConversationSyncWorkflow,
       args: [
         {
           connectorId: connector.id,
