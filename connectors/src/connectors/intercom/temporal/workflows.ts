@@ -52,7 +52,7 @@ const {
 const TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH = 40_000;
 const TEMPORAL_WORKFLOW_MAX_HISTORY_SIZE_MB = 40;
 
-// We sync conversations over the last 30 minutes, which is 1.5 times the frequency of the schedule.
+// We sync conversations over the last 30 minutes, a bit more than the schedule frequency to allow for some overlap.
 const CONVERSATION_SYNC_WINDOW_MINUTES = 30;
 
 /**
