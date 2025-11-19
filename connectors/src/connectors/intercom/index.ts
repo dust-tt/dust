@@ -23,8 +23,10 @@ import {
   isInternalIdForAllTeams,
 } from "@connectors/connectors/intercom/lib/utils";
 import {
-  launchIntercomSyncWorkflow,
-  stopIntercomSyncWorkflow,
+  launchIntercomFullSyncWorkflow,
+  launchIntercomScheduledWorkflows,
+  stopIntercomFullSyncWorkflow,
+  stopIntercomScheduledWorkflows,
 } from "@connectors/connectors/intercom/temporal/client";
 import type {
   CreateConnectorErrorCode,
@@ -49,8 +51,8 @@ import type {
   ConnectorPermission,
   ContentNode,
   ContentNodesViewType,
+  DataSourceConfig,
 } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
 
 export class IntercomConnectorManager extends BaseConnectorManager<null> {
   readonly provider: ConnectorProvider = "intercom";
@@ -95,20 +97,18 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       intercomConfigurationBlob
     );
 
-    const workflowStarted = await launchIntercomSyncWorkflow({
-      connectorId: connector.id,
-    });
+    const schedulesStarted = await launchIntercomScheduledWorkflows(connector);
 
-    if (workflowStarted.isErr()) {
+    if (schedulesStarted.isErr()) {
       await connector.delete();
       logger.error(
         {
           workspaceId: dataSourceConfig.workspaceId,
-          error: workflowStarted.error,
+          error: schedulesStarted.error,
         },
-        "[Intercom] Error creating connector Could not launch sync workflow."
+        "[Intercom] Error creating connector Could not launch scheduled workflows."
       );
-      throw workflowStarted.error;
+      throw schedulesStarted.error;
     }
 
     return new Ok(connector.id.toString());
@@ -227,9 +227,19 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
   }
 
   async stop(): Promise<Result<undefined, Error>> {
-    const res = await stopIntercomSyncWorkflow(this.connectorId);
-    if (res.isErr()) {
-      return res;
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      return new Err(new Error("Connector not found"));
+    }
+
+    const schedulesRes = await stopIntercomScheduledWorkflows(connector);
+    if (schedulesRes.isErr()) {
+      return schedulesRes;
+    }
+
+    const fullSyncRes = await stopIntercomFullSyncWorkflow(this.connectorId);
+    if (fullSyncRes.isErr()) {
+      return fullSyncRes;
     }
 
     return new Ok(undefined);
@@ -245,6 +255,11 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("Connector not found"));
     }
 
+    const schedulesRes = await launchIntercomScheduledWorkflows(connector);
+    if (schedulesRes.isErr()) {
+      return schedulesRes;
+    }
+
     const dataSourceConfig = dataSourceConfigFromConnector(connector);
     const teamsIds = await IntercomTeamModel.findAll({
       where: {
@@ -254,7 +269,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
     });
     const toBeSignaledTeamIds = teamsIds.map((team) => team.teamId);
     try {
-      await launchIntercomSyncWorkflow({
+      await launchIntercomFullSyncWorkflow({
         connectorId: this.connectorId,
         teamIds: toBeSignaledTeamIds,
       });
@@ -265,7 +280,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
           dataSourceId: dataSourceConfig.dataSourceId,
           error: e,
         },
-        "Error launching Intercom sync workflow."
+        "Error launching Intercom full sync workflow."
       );
     }
 
@@ -300,7 +315,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
     );
     const toBeSignaledTeamIds = teamsIds.map((team) => team.teamId);
 
-    const sendSignalToWorkflowResult = await launchIntercomSyncWorkflow({
+    const sendSignalToWorkflowResult = await launchIntercomFullSyncWorkflow({
       connectorId: this.connectorId,
       helpCenterIds: toBeSignaledHelpCenterIds,
       teamIds: toBeSignaledTeamIds,
@@ -514,12 +529,15 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
         toBeSignaledTeamIds.size > 0 ||
         toBeSignaledSelectAllConversations
       ) {
-        const sendSignalToWorkflowResult = await launchIntercomSyncWorkflow({
-          connectorId: this.connectorId,
-          helpCenterIds: [...toBeSignaledHelpCenterIds],
-          teamIds: [...toBeSignaledTeamIds],
-          hasUpdatedSelectAllConversations: toBeSignaledSelectAllConversations,
-        });
+        const sendSignalToWorkflowResult = await launchIntercomFullSyncWorkflow(
+          {
+            connectorId: this.connectorId,
+            helpCenterIds: [...toBeSignaledHelpCenterIds],
+            teamIds: [...toBeSignaledTeamIds],
+            hasUpdatedSelectAllConversations:
+              toBeSignaledSelectAllConversations,
+          }
+        );
         if (sendSignalToWorkflowResult.isErr()) {
           return new Err(sendSignalToWorkflowResult.error);
         }
@@ -578,7 +596,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
           attributes: ["teamId"],
         });
         const toBeSignaledTeamIds = teamsIds.map((team) => team.teamId);
-        const r = await launchIntercomSyncWorkflow({
+        const r = await launchIntercomFullSyncWorkflow({
           connectorId: this.connectorId,
           teamIds: toBeSignaledTeamIds,
           forceResync: true,

@@ -53,12 +53,12 @@ const TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH = 40_000;
 const TEMPORAL_WORKFLOW_MAX_HISTORY_SIZE_MB = 40;
 
 /**
- * Sync Workflow for Intercom.
- * This workflow is responsible for syncing all the help centers for a given connector.
- * Launched on a cron schedule every hour, it will sync all the help centers that are in DB.
- * If a signal is received, it will sync the help centers that were modified.
+ * Full Sync Workflow for Intercom - Signal-driven only.
+ * This workflow is triggered by signals when permissions are updated (setPermissions, sync, setConfigurationKey).
+ * It processes help centers, teams, and "all conversations" based on the signals received.
+ * No cron schedule - this is purely reactive to permission changes.
  */
-export async function intercomSyncWorkflow({
+export async function intercomFullSyncWorkflow({
   connectorId,
 }: {
   connectorId: ModelId;
@@ -92,18 +92,6 @@ export async function intercomSyncWorkflow({
       });
     }
   );
-
-  const isHourlyExecution =
-    uniqueHelpCenterIds.size === 0 &&
-    uniqueTeamIds.size === 0 &&
-    !hasUpdatedSelectAllConvos;
-
-  // If we got no signal, then we're on the hourly execution
-  // We will only refresh the Help Center data as Conversations have webhooks
-  if (isHourlyExecution) {
-    const helpCenterIds = await getHelpCenterIdsToSyncActivity(connectorId);
-    helpCenterIds.forEach((i) => uniqueHelpCenterIds.add(i));
-  }
 
   const {
     workflowId,
@@ -146,25 +134,6 @@ export async function intercomSyncWorkflow({
     }
   }
 
-  if (isHourlyExecution) {
-    // sync all conversations of the last hour for all teams
-    const teamIds = await getTeamIdsToSyncActivity({ connectorId });
-
-    for (const teamId of teamIds) {
-      await executeChild(intercomHourlyConversationSyncWorkflow, {
-        workflowId: `${workflowId}-team-${teamId}`,
-        searchAttributes: parentSearchAttributes,
-        args: [
-          {
-            connectorId,
-            teamId,
-            currentSyncMs,
-          },
-        ],
-      });
-    }
-  }
-
   // Async operations allow Temporal's event loop to process signals.
   // If a signal arrives during an async operation, it will update the set before the next iteration.
   while (uniqueTeamIds.size > 0) {
@@ -204,6 +173,97 @@ export async function intercomSyncWorkflow({
         },
       ],
       memo,
+    });
+  }
+
+  await intercomOldConversationsCleanup({
+    connectorId,
+  });
+
+  await saveIntercomConnectorSuccessSync({ connectorId });
+}
+
+/**
+ * Scheduled Help Center Sync Workflow.
+ * Runs on a Temporal Schedule (daily) to sync all help centers with permissions.
+ * No signals - purely time-driven.
+ */
+export async function intercomScheduledHelpCenterSyncWorkflow({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}) {
+  await saveIntercomConnectorStartSync({ connectorId });
+
+  // Add folder node for teams
+  await upsertIntercomTeamsFolderActivity({
+    connectorId,
+  });
+
+  const helpCenterIds = await getHelpCenterIdsToSyncActivity(connectorId);
+
+  const {
+    workflowId,
+    searchAttributes: parentSearchAttributes,
+    memo,
+  } = workflowInfo();
+
+  const currentSyncMs = new Date().getTime();
+
+  for (const helpCenterId of helpCenterIds) {
+    await executeChild(intercomHelpCenterSyncWorklow, {
+      workflowId: `${workflowId}-help-center-${helpCenterId}`,
+      searchAttributes: parentSearchAttributes,
+      args: [
+        {
+          connectorId,
+          helpCenterId,
+          currentSyncMs,
+          forceResync: false,
+        },
+      ],
+      memo,
+    });
+  }
+
+  await saveIntercomConnectorSuccessSync({ connectorId });
+}
+
+/**
+ * Scheduled Conversation Sync Workflow.
+ * Runs on a Temporal Schedule (every 20 minutes) to sync conversations for all teams.
+ * No signals - purely time-driven. Catches anything webhooks miss.
+ */
+export async function intercomScheduledConversationSyncWorkflow({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}) {
+  await saveIntercomConnectorStartSync({ connectorId });
+
+  // Add folder node for teams
+  await upsertIntercomTeamsFolderActivity({
+    connectorId,
+  });
+
+  const teamIds = await getTeamIdsToSyncActivity({ connectorId });
+
+  const { workflowId, searchAttributes: parentSearchAttributes } =
+    workflowInfo();
+
+  const currentSyncMs = new Date().getTime();
+
+  for (const teamId of teamIds) {
+    await executeChild(intercomHourlyConversationSyncWorkflow, {
+      workflowId: `${workflowId}-team-${teamId}`,
+      searchAttributes: parentSearchAttributes,
+      args: [
+        {
+          connectorId,
+          teamId,
+          currentSyncMs,
+        },
+      ],
     });
   }
 
