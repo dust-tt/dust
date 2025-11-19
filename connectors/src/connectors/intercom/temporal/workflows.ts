@@ -161,7 +161,7 @@ export async function intercomFullSyncWorkflow({
   }
 
   if (hasUpdatedSelectAllConvos) {
-    await executeChild(intercomAllConversationsSyncWorkflow, {
+    await executeChild(intercomAllConversationsFullSyncWorkflow, {
       workflowId: `${workflowId}-all-conversations`,
       searchAttributes: parentSearchAttributes,
       args: [
@@ -258,7 +258,7 @@ export async function intercomConversationSyncWorkflow({
     } while (cursor);
   }
 
-  await intercomOldConversationsCleanup({
+  await intercomOutdatedConversationsCleanup({
     connectorId,
   });
 
@@ -375,7 +375,7 @@ export async function intercomTeamFullSyncWorkflow({
  * Launched by the IntercomFullSyncWorkflow if a signal is received, meaning the admin updated the permissions and
  * ticked or unticked the "All Conversations" checkbox.
  */
-export async function intercomAllConversationsSyncWorkflow({
+export async function intercomAllConversationsFullSyncWorkflow({
   connectorId,
   currentSyncMs,
   initialCursor = null,
@@ -422,7 +422,7 @@ export async function intercomAllConversationsSyncWorkflow({
             workflowInfo().historySize >
               TEMPORAL_WORKFLOW_MAX_HISTORY_SIZE_MB * 1024 * 1024)
         ) {
-          await continueAsNew<typeof intercomAllConversationsSyncWorkflow>({
+          await continueAsNew<typeof intercomAllConversationsFullSyncWorkflow>({
             connectorId,
             currentSyncMs,
             initialCursor: cursor,
@@ -461,7 +461,7 @@ export async function intercomAllConversationsSyncWorkflow({
 /**
  * Cleaning Workflow to remove old convos.
  */
-export async function intercomOldConversationsCleanup({
+export async function intercomOutdatedConversationsCleanup({
   connectorId,
 }: {
   connectorId: ModelId;
