@@ -36,6 +36,17 @@ export const getSlackClient = async (accessToken?: string) => {
   });
 };
 
+// Check if an error is a Slack token revocation error.
+export function isSlackTokenRevoked(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof error.message === "string" &&
+    error.message.includes("token_revoked")
+  );
+}
+
 type GetPublicChannelsArgs = {
   mcpServerId: string;
   slackClient: WebClient;
@@ -104,42 +115,15 @@ export function cleanUserPayload(user: Member): MinimalUserInfo {
 }
 
 export const getPublicChannels = async ({
+  mcpServerId,
   slackClient,
 }: GetPublicChannelsArgs): Promise<ChannelWithIdAndName[]> => {
-  const channels: Channel[] = [];
-
-  let cursor: string | undefined = undefined;
-  do {
-    const response = await slackClient.conversations.list({
-      cursor,
-      limit: SLACK_API_PAGE_SIZE,
-      exclude_archived: true,
-      types: "public_channel",
-    });
-    if (!response.ok) {
-      throw new Error("Failed to list public channels");
-    }
-    channels.push(...(response.channels ?? []));
-    cursor = response.response_metadata?.next_cursor;
-
-    // We can't handle a huge list of channels, and even if we could, it would be unusable.
-    // in the UI. So we arbitrarily cap it to MAX_CHANNELS_LIMIT channels.
-    if (channels.length >= MAX_CHANNELS_LIMIT) {
-      logger.warn(
-        `Channel list truncated after reaching over ${MAX_CHANNELS_LIMIT} channels.`
-      );
-      break;
-    }
-  } while (cursor);
-
-  return channels
-    .filter((c) => !!c.id && !!c.name)
-    .map((c) => ({
-      ...c,
-      id: c.id!,
-      name: c.name!,
-    }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  return getChannels({
+    mcpServerId,
+    slackClient,
+    types: "public_channel",
+    memberOnly: false,
+  });
 };
 
 export const getChannels = async ({
@@ -301,46 +285,17 @@ export async function executePostMessage(
       );
     }
 
-    // Resolve channel id - optimize by trying conversations.info first if it looks like an ID.
-    const searchString = to.trim().replace(/^#/, "");
-    let channelId: string | undefined;
-
-    // If searchString looks like a Slack channel ID (starts with C or G), try direct lookup first.
-    if (searchString.match(/^[CG][A-Z0-9]+$/)) {
-      try {
-        const infoResp = await slackClient.conversations.info({
-          channel: searchString,
-        });
-        if (infoResp.ok && infoResp.channel?.id) {
-          channelId = infoResp.channel.id;
-        }
-      } catch (error) {
-        // Fall through to list-based search.
-      }
-    }
-
-    // If not found via direct lookup, search through cached channels list.
+    // Resolve channel name/ID to channel ID (supports public, private, and DMs).
+    const channelId = await resolveChannelId(to, accessToken, mcpServerId);
     if (!channelId) {
-      const conversationsList = await getCachedPublicChannels({
-        mcpServerId,
-        slackClient,
-      });
-      const channel = conversationsList.find(
-        (c) =>
-          c.name?.toLowerCase() === searchString.toLowerCase() ||
-          c.id?.toLowerCase() === searchString.toLowerCase()
+      return new Err(
+        new MCPError(
+          `Unable to resolve channel id for "${to}". Please use a channel id or a valid channel name.`,
+          {
+            tracked: false,
+          }
+        )
       );
-      if (!channel) {
-        return new Err(
-          new MCPError(
-            `Unable to resolve channel id for "${to}". Please use a channel id or a valid channel name.`,
-            {
-              tracked: false,
-            }
-          )
-        );
-      }
-      channelId = channel.id;
     }
 
     const signedUrl = await file.getSignedUrlForDownload(auth, "original");
@@ -591,59 +546,22 @@ export async function executeListPublicChannels(
     slackClient,
   });
 
-  if (nameFilter) {
-    const normalizedNameFilter = removeDiacritics(nameFilter.toLowerCase());
-    const filteredChannels = channels.filter(
-      (channel) =>
-        removeDiacritics(channel.name?.toLowerCase() ?? "").includes(
-          normalizedNameFilter
-        ) ||
-        removeDiacritics(channel.topic?.value?.toLowerCase() ?? "").includes(
-          normalizedNameFilter
-        )
-    );
-
-    // Early return if we found a channel.
-    if (filteredChannels.length > 0) {
-      return new Ok([
-        {
-          type: "text" as const,
-          text: `The workspace has ${filteredChannels.length} channels containing "${nameFilter}"`,
-        },
-        {
-          type: "text" as const,
-          text: JSON.stringify(
-            filteredChannels.map(cleanChannelPayload),
-            null,
-            2
-          ),
-        },
-      ]);
-    }
-  }
-  if (nameFilter) {
-    return new Ok([
-      {
-        type: "text" as const,
-        text: `The workspace has ${channels.length} channels but none containing "${nameFilter}"`,
-      },
-      {
-        type: "text" as const,
-        text: JSON.stringify(channels.map(cleanChannelPayload), null, 2),
-      },
-    ]);
-  }
-
-  return new Ok([
-    {
-      type: "text" as const,
-      text: `The workspace has ${channels.length} channels`,
-    },
-    {
-      type: "text" as const,
-      text: JSON.stringify(channels.map(cleanChannelPayload), null, 2),
-    },
-  ]);
+  return buildFilteredListResponse<ChannelWithIdAndName, MinimalChannelInfo>(
+    channels,
+    nameFilter,
+    (channel, normalizedFilter) =>
+      removeDiacritics(channel.name?.toLowerCase() ?? "").includes(
+        normalizedFilter
+      ) ||
+      removeDiacritics(channel.topic?.value?.toLowerCase() ?? "").includes(
+        normalizedFilter
+      ),
+    (count, hasFilter, filterText) =>
+      hasFilter
+        ? `The workspace has ${count} channels containing "${filterText}"`
+        : `The workspace has ${count} channels`,
+    cleanChannelPayload
+  );
 }
 
 export async function executeListChannels(
@@ -708,6 +626,140 @@ export async function executeListJoinedChannels(
   );
 }
 
+// Helper function to resolve user ID to display name.
+// Returns the user's display name or real name, or null if not found.
+export async function resolveUserDisplayName(
+  userId: string,
+  accessToken: string
+): Promise<string | null> {
+  const slackClient = await getSlackClient(accessToken);
+
+  try {
+    const response = await slackClient.users.info({ user: userId });
+    if (response.ok && response.user) {
+      // Prefer display_name, fallback to real_name, then to name
+      return (
+        response.user.profile?.display_name ??
+        response.user.real_name ??
+        response.user.name ??
+        null
+      );
+    }
+  } catch (error) {
+    // Return null if we can't resolve the user
+  }
+
+  return null;
+}
+
+/**
+ * Resolves a channel ID or name to a human-readable display name.
+ * Handles DMs (direct messages), regular channels, and fallback cases.
+ *
+ * @param channelIdOrName - Channel ID (C..., D..., G...) or channel name
+ * @param accessToken - Slack access token
+ * @returns Display name with appropriate prefix (@username for DMs, #channel-name for channels)
+ */
+export async function resolveChannelDisplayName(
+  channelIdOrName: string,
+  accessToken: string
+): Promise<string> {
+  const slackClient = await getSlackClient(accessToken);
+
+  try {
+    // If it looks like a channel ID (starts with C, D, or G), get channel info
+    if (channelIdOrName.match(/^[CDG][A-Z0-9]+$/)) {
+      const channelInfo = await slackClient.conversations.info({
+        channel: channelIdOrName,
+      });
+
+      if (channelInfo.ok && channelInfo.channel) {
+        // For DMs, channelId starts with "D" and channel.name contains the user ID
+        if (channelIdOrName.startsWith("D") && channelInfo.channel.name) {
+          const userName = await resolveUserDisplayName(
+            channelInfo.channel.name,
+            accessToken
+          );
+          return userName ? `@${userName}` : `@${channelInfo.channel.name}`;
+        }
+
+        // For regular channels (public/private)
+        if (channelInfo.channel.name) {
+          return `#${channelInfo.channel.name}`;
+        }
+      }
+    }
+
+    // If it looks like a user ID (starts with U), resolve to user name
+    if (channelIdOrName.match(/^U[A-Z0-9]+$/)) {
+      const userName = await resolveUserDisplayName(
+        channelIdOrName,
+        accessToken
+      );
+      return userName ? `@${userName}` : `@${channelIdOrName}`;
+    }
+
+    // If it's already a channel name (not an ID), just prefix with #
+    if (!channelIdOrName.match(/^[A-Z0-9]+$/)) {
+      return `#${channelIdOrName}`;
+    }
+
+    // Fallback: treat as channel name
+    return `#${channelIdOrName}`;
+  } catch (error) {
+    // On error, return a fallback value
+    // If it looks like a user ID, prefix with @, otherwise with #
+    if (channelIdOrName.match(/^[UD][A-Z0-9]+$/)) {
+      return `@${channelIdOrName}`;
+    }
+    return `#${channelIdOrName}`;
+  }
+}
+
+// Helper function to resolve channel name or ID to channel ID used by read thread.
+// Supports public channels, private channels, and DMs.
+export async function resolveChannelId(
+  channelNameOrId: string,
+  accessToken: string,
+  mcpServerId: string
+): Promise<string | null> {
+  const slackClient = await getSlackClient(accessToken);
+  const searchString = channelNameOrId
+    .trim()
+    .replace(/^#/, "")
+    .replace(/^@/, "");
+
+  // If searchString looks like a Slack channel/DM ID (starts with C, G, or D), try direct lookup first.
+  if (searchString.match(/^[CGD][A-Z0-9]+$/)) {
+    try {
+      const infoResp = await slackClient.conversations.info({
+        channel: searchString,
+      });
+      if (infoResp.ok && infoResp.channel?.id) {
+        return infoResp.channel.id;
+      }
+    } catch (error) {
+      // Fall through to name-based search.
+    }
+  }
+
+  // Search by name in public channels, private channels, and DMs.
+  const channels = await getChannels({
+    mcpServerId,
+    slackClient,
+    types: "public_channel,private_channel,im,mpim",
+    memberOnly: false,
+  });
+
+  const channel = channels.find(
+    (c) =>
+      c.name?.toLowerCase() === searchString.toLowerCase() ||
+      c.id?.toLowerCase() === searchString.toLowerCase()
+  );
+
+  return channel?.id ?? null;
+}
+
 export async function executeReadThreadMessages(
   channel: string,
   threadTs: string,
@@ -715,13 +767,25 @@ export async function executeReadThreadMessages(
   cursor: string | undefined,
   oldest: string | undefined,
   latest: string | undefined,
-  accessToken: string
+  accessToken: string,
+  mcpServerId: string
 ) {
   const slackClient = await getSlackClient(accessToken);
 
   try {
+    // Resolve channel name to channel ID (supports both public and private channels).
+    const channelId = await resolveChannelId(channel, accessToken, mcpServerId);
+
+    if (!channelId) {
+      return new Err(
+        new MCPError(
+          `Unable to find channel "${channel}". Make sure the channel exists and you have access to it.`
+        )
+      );
+    }
+
     const response = await slackClient.conversations.replies({
-      channel: channel,
+      channel: channelId,
       ts: threadTs,
       limit: limit
         ? Math.min(limit, MAX_THREAD_MESSAGES)
