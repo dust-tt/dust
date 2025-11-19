@@ -136,6 +136,7 @@ function assistantContentToPart(
           name: content.value.name,
           args: parseToolArguments(content.value.arguments, content.value.name),
         },
+        thoughtSignature: content.value.metadata?.thoughtSignature,
       };
     }
     default:

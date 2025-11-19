@@ -1,6 +1,7 @@
 import { ApiError, GoogleGenAI } from "@google/genai";
 
 import type { GoogleAIStudioWhitelistedModelId } from "@app/lib/api/llm/clients/google/types";
+import { overwriteLLMParameters } from "@app/lib/api/llm/clients/google/types";
 import {
   toContent,
   toTool,
@@ -19,8 +20,6 @@ import { dustManagedCredentials } from "@app/types";
 
 import { handleError } from "./utils/errors";
 
-const GOOGLE_AI_STUDIO_PROVIDER_ID = "google_ai_studio";
-
 export class GoogleLLM extends LLM {
   private client: GoogleGenAI;
 
@@ -28,7 +27,7 @@ export class GoogleLLM extends LLM {
     auth: Authenticator,
     llmParameters: LLMParameters & { modelId: GoogleAIStudioWhitelistedModelId }
   ) {
-    super(auth, { ...llmParameters, clientId: GOOGLE_AI_STUDIO_PROVIDER_ID });
+    super(auth, overwriteLLMParameters(llmParameters));
     const { GOOGLE_AI_STUDIO_API_KEY } = dustManagedCredentials();
     if (!GOOGLE_AI_STUDIO_API_KEY) {
       throw new Error(
