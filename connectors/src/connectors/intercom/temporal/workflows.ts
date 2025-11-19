@@ -261,6 +261,29 @@ export async function intercomConversationSyncWorkflow({
     } while (cursor);
   }
 
+  const syncAllConvosStatus = await getSyncAllConversationsStatusActivity({
+    connectorId,
+  });
+  if (syncAllConvosStatus === "activated") {
+    let cursor = null;
+    do {
+      const { conversationIds, nextPageCursor } =
+        await getNextConversationBatchToSyncActivity({
+          connectorId,
+          cursor,
+          closedAfterTimeWindowMinutes: CONVERSATION_SYNC_WINDOW_MINUTES,
+        });
+
+      await syncConversationBatchActivity({
+        connectorId,
+        conversationIds,
+        currentSyncMs,
+      });
+
+      cursor = nextPageCursor;
+    } while (cursor);
+  }
+
   await intercomOutdatedConversationsCleanup({
     connectorId,
   });
