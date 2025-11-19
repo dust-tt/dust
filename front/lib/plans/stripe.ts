@@ -583,7 +583,7 @@ export async function attachCreditPurchaseToSubscription({
  * Creates and pays a one-off invoice for credit purchase.
  * The invoice is created, finalized, and immediately charged.
  */
-export async function makeCreditPurchaseInvoice({
+export async function makeAndPayCreditPurchaseInvoice({
   stripeSubscriptionId,
   amountCents,
 }: {
@@ -626,6 +626,16 @@ export async function makeCreditPurchaseInvoice({
     });
 
     const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
+
+    // Pay the invoice immediately.
+    try {
+      await stripe.invoices.pay(finalizedInvoice.id);
+    } catch (paymentError) {
+      return new Err({
+        error_message: `Invoice created but payment failed: ${normalizeError(paymentError).message}`,
+      });
+    }
+
     return new Ok(finalizedInvoice);
   } catch (error) {
     return new Err({

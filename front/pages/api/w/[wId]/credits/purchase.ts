@@ -10,7 +10,7 @@ import {
   attachCreditPurchaseToSubscription,
   getStripeClient,
   isEnterpriseSubscription,
-  makeCreditPurchaseInvoice,
+  makeAndPayCreditPurchaseInvoice,
 } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import logger from "@app/logger/logger";
@@ -191,7 +191,7 @@ async function handler(
           });
         } else {
           // For Pro: create and pay one-off invoice.
-          const invoiceResult = await makeCreditPurchaseInvoice({
+          const invoiceResult = await makeAndPayCreditPurchaseInvoice({
             stripeSubscriptionId: subscription.stripeSubscriptionId,
             amountCents,
           });
