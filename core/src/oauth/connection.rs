@@ -1,4 +1,5 @@
 use crate::oauth::{
+    credential::CredentialProvider,
     encryption::{seal_str, unseal_str},
     providers::{
         confluence::ConfluenceConnectionProvider,
@@ -61,6 +62,8 @@ pub enum ConnectionErrorCode {
     ProviderAccessTokenRefreshError,
     // Invalid Metadata
     InvalidMetadataError,
+    // Invalid Credential
+    InvalidCredentialError,
     // Internal Errors
     InternalError,
 }
@@ -913,5 +916,62 @@ impl Connection {
                 }
             }
         }
+    }
+
+    pub async fn update_related_credential_id(
+        &mut self,
+        store: Box<dyn OAuthStore + Sync + Send>,
+        related_credential_id: String,
+    ) -> Result<(), ConnectionError> {
+        match store.retrieve_credential(&related_credential_id).await {
+            Err(e) => {
+                error!(error = ?e, "Failed to retrieve credential");
+                return Err(ConnectionError {
+                    code: ConnectionErrorCode::InternalError,
+                    message: "Failed to retrieve credential".to_string(),
+                });
+            }
+            Ok(None) => {
+                return Err(ConnectionError {
+                    code: ConnectionErrorCode::InvalidCredentialError,
+                    message: format!("Credential with id {} not found", related_credential_id),
+                });
+            }
+            Ok(Some(credential)) => {
+                let connection_provider_as_credential = CredentialProvider::from(self.provider);
+
+                if credential.provider() != connection_provider_as_credential {
+                    return Err(ConnectionError {
+                        code: ConnectionErrorCode::InvalidCredentialError,
+                        message: format!(
+                            "Credential provider ({}) does not match connection provider ({})",
+                            credential.provider(),
+                            connection_provider_as_credential
+                        ),
+                    });
+                }
+                // Credential exists and provider matches, proceed with update
+            }
+        }
+
+        self.related_credential_id = Some(related_credential_id);
+
+        store
+            .update_connection_related_credential_id(self)
+            .await
+            .map_err(|e| {
+                error!(error = ?e, "Failed to update related_credential_id");
+                ConnectionError {
+                    code: ConnectionErrorCode::InternalError,
+                    message: "Failed to update related_credential_id".to_string(),
+                }
+            })?;
+
+        info!(
+            connection_id = self.connection_id(),
+            "Successfully updated related_credential_id"
+        );
+
+        Ok(())
     }
 }
