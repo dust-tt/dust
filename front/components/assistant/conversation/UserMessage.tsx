@@ -31,12 +31,12 @@ import {
   userMentionDirective,
 } from "@app/lib/mentions/markdown/plugin";
 import { formatTimestring } from "@app/lib/utils/timestamps";
-import type { UserMessageType, UserType, WorkspaceType } from "@app/types";
+import type { UserMessageType, WorkspaceType } from "@app/types";
 
 interface UserMessageProps {
   citations?: React.ReactElement[];
   conversationId: string;
-  currentUser: UserType;
+  currentUserId: string;
   isLastMessage: boolean;
   message: UserMessageType;
   owner: WorkspaceType;
@@ -45,7 +45,7 @@ interface UserMessageProps {
 export function UserMessage({
   citations,
   conversationId,
-  currentUser,
+  currentUserId,
   isLastMessage,
   message,
   owner,
@@ -77,7 +77,7 @@ export function UserMessage({
     return <div>{name}</div>;
   }, []);
 
-  const isCurrentUser = message.user?.sId === currentUser.sId;
+  const isCurrentUser = message.user?.sId === currentUserId;
 
   return (
     <div className="flex flex-grow flex-col">

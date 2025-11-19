@@ -36,7 +36,7 @@ function MentionTrigger({ mention }: MentionTriggerProps) {
     <span
       className={cn(
         "inline-block cursor-pointer font-semibold",
-        mention.type === "agent" ? "text-highlight-500" : "text-success-500"
+        mention.type === "user" ? "text-success-500" : "text-highlight-500"
       )}
     >
       @{mention.label}
