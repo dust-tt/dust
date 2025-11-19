@@ -141,7 +141,7 @@ export async function stopIntercomSchedulesAndWorkflows(
           workflowId,
           error: e,
         },
-        "[Intercom] Failed stopping full sync workflow."
+        "[Intercom] Failed to stop full sync workflow."
       );
       return new Err(normalizeError(e));
     }
