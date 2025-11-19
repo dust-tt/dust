@@ -26,7 +26,7 @@ vi.mock("@dust-tt/sparkle", () => {
     TooltipRoot: Root,
     TooltipTrigger: Trigger,
     TooltipContent: Content,
-    cn: (classes: string[]) => classes.join(" "),
+    cn: (...classes: string[]) => classes.join(" "),
   };
 });
 
