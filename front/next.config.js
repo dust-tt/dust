@@ -39,6 +39,9 @@ const config = {
   transpilePackages: ["@uiw/react-textarea-code-editor"],
   // As of Next 14.2.3 swc minification creates a bug in the generated client side files.
   swcMinify: false,
+  reactCompiler: {
+    target: '18',
+  },
   onDemandEntries: {
     // Keep dev-compiled pages around longer to avoid re-compiles on nav
     maxInactiveAge: 1000 * 60 * 60, // 1 hour
