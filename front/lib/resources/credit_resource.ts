@@ -13,6 +13,11 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok, removeNulls } from "@app/types";
+import {
+  CREDIT_EXPIRATION_DAYS,
+  CREDIT_TYPES,
+  isCreditType,
+} from "@app/types/credits";
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -21,16 +26,25 @@ export interface CreditResource extends ReadonlyAttributesType<CreditModel> {}
 export class CreditResource extends BaseResource<CreditModel> {
   static model: ModelStatic<CreditModel> = CreditModel;
 
-  constructor(model: ModelStatic<CreditModel>, blob: Attributes<CreditModel>) {
+  constructor(_model: ModelStatic<CreditModel>, blob: Attributes<CreditModel>) {
     super(CreditModel, blob);
   }
 
   // Create a new credit line for a workspace.
+  // Note: initialAmount is immutable after creation.
+  // The credit is not consumable until start() is called (startDate is set).
   static async makeNew(
     auth: Authenticator,
     blob: CreationAttributes<CreditModel>,
     { transaction }: { transaction?: Transaction } = {}
   ) {
+    // Validate type field using type guard
+    if (!blob.type || !isCreditType(blob.type)) {
+      throw new Error(
+        `Invalid credit type: ${blob.type}. Must be one of: ${CREDIT_TYPES.join(", ")}`
+      );
+    }
+
     const credit = await this.model.create(
       {
         ...blob,
@@ -42,66 +56,44 @@ export class CreditResource extends BaseResource<CreditModel> {
     return new this(this.model, credit.get());
   }
 
-  // Top-up a credit by updating amounts from 0/0 to the specified amount.
-  // Sets expiration date to 1 year from now.
-  // Only updates if current amounts are 0/0 (idempotency for webhook processing).
-  static async topUp({
-    auth,
-    invoiceOrLineItemId,
-    amountCents,
-    transaction,
-  }: {
-    auth: Authenticator;
-    invoiceOrLineItemId: string;
-    amountCents: number;
-    transaction?: Transaction;
-  }): Promise<Result<CreditResource, Error>> {
+  /**
+   * Start a credit by setting startDate and expirationDate.
+   * This makes the credit active and consumable.
+   * Idempotent: only updates if startDate is null, returns success if already started.
+   *
+   * @param startDate - When the credit becomes active (default: now)
+   * @param expirationDate - When the credit expires (default: now + CREDIT_EXPIRATION_DAYS)
+   * @param transaction - Optional database transaction
+   * @returns Result with undefined on success or an error
+   */
+  async start(
+    startDate?: Date,
+    expirationDate?: Date,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<Result<undefined, Error>> {
     try {
-      const workspaceId = auth.getNonNullableWorkspace().id;
+      const effectiveStartDate = startDate ?? new Date();
+      const effectiveExpirationDate =
+        expirationDate ??
+        new Date(Date.now() + CREDIT_EXPIRATION_DAYS * 24 * 60 * 60 * 1000);
 
-      // Calculate expiration date: 1 year from now
-      const expirationDate = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
-
-      // Update only if current amounts are 0/0 (ensures idempotency)
-      const [affectedCount] = await this.model.update(
+      // Update only if startDate is null (ensures idempotency)
+      await this.model.update(
         {
-          initialAmount: amountCents,
-          remainingAmount: amountCents,
-          expirationDate,
+          startDate: effectiveStartDate,
+          expirationDate: effectiveExpirationDate,
         },
         {
           where: {
-            workspaceId,
-            invoiceOrLineItemId,
-            initialAmount: 0,
-            remainingAmount: 0,
+            id: this.id,
+            workspaceId: this.workspaceId,
+            startDate: null,
           },
           transaction,
         }
       );
 
-      if (!affectedCount || affectedCount < 1) {
-        return new Err(
-          new Error(
-            "Credit not found or already topped up (initialAmount/remainingAmount not 0/0)"
-          )
-        );
-      }
-
-      // Fetch the updated credit
-      const credit = await this.model.findOne({
-        where: {
-          workspaceId,
-          invoiceOrLineItemId,
-        },
-        transaction,
-      });
-
-      if (!credit) {
-        return new Err(new Error("Credit not found after top-up"));
-      }
-
-      return new Ok(new this(this.model, credit.get()));
+      return new Ok(undefined);
     } catch (err) {
       return new Err(normalizeError(err));
     }
@@ -131,6 +123,9 @@ export class CreditResource extends BaseResource<CreditModel> {
     return this.baseFetch(auth, {
       where: {
         remainingAmount: { [Op.gt]: 0 },
+        // Credit must be started (startDate not null and <= now)
+        startDate: { [Op.ne]: null, [Op.lte]: now },
+        // Credit must not be expired
         [Op.or]: [
           { expirationDate: null },
           { expirationDate: { [Op.gt]: now } },
@@ -169,6 +164,9 @@ export class CreditResource extends BaseResource<CreditModel> {
           id: this.id,
           workspaceId: this.workspaceId,
           remainingAmount: { [Op.gte]: amountInCents },
+          // Credit must be started (startDate not null and <= now)
+          startDate: { [Op.ne]: null, [Op.lte]: now },
+          // Credit must not be expired
           [Op.or]: [
             { expirationDate: null },
             { expirationDate: { [Op.gt]: now } },
@@ -177,7 +175,11 @@ export class CreditResource extends BaseResource<CreditModel> {
         transaction,
       });
       if (!affectedCount || affectedCount < 1) {
-        return new Err(new Error("Insufficient credit on this line."));
+        return new Err(
+          new Error(
+            "Insufficient credit on this line, or credit not yet started/already expired."
+          )
+        );
       }
       return new Ok(undefined);
     } catch (e) {
@@ -204,10 +206,13 @@ export class CreditResource extends BaseResource<CreditModel> {
     return {
       id: this.id,
       workspaceId: this.workspaceId,
+      type: this.type,
       remainingAmount: this.remainingAmount,
+      startDate: this.startDate ? this.startDate.toISOString() : null,
       expirationDate: this.expirationDate
         ? this.expirationDate.toISOString()
         : null,
+      invoiceOrLineItemId: this.invoiceOrLineItemId,
     };
   }
 }

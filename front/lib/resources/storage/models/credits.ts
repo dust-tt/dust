@@ -3,6 +3,8 @@ import { DataTypes, Op } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { CreditType } from "@app/types/credits";
+import { CREDIT_TYPES } from "@app/types/credits";
 
 /**
  * CreditModel stores consumable monetary credits for programmatic API usage.
@@ -12,8 +14,10 @@ export class CreditModel extends WorkspaceAwareModel<CreditModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
+  declare type: CreditType;
+  declare startDate: Date | null; // When credit becomes active (null = not yet paid/active)
   declare expirationDate: Date | null;
-  declare initialAmount: number; // in cents
+  declare initialAmount: number; // in cents (immutable)
   declare remainingAmount: number; // in cents
   declare invoiceOrLineItemId: string | null; // Stripe invoice ID or line item ID for idempotency
 }
@@ -29,6 +33,18 @@ CreditModel.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    type: {
+      type: DataTypes.STRING(16),
+      allowNull: false,
+      validate: {
+        isIn: [CREDIT_TYPES],
+      },
+    },
+    startDate: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
     },
     expirationDate: {
       type: DataTypes.DATE,
@@ -68,6 +84,11 @@ CreditModel.init(
         unique: true,
         name: "credits_workspace_invoice_unique_idx",
         where: { invoiceOrLineItemId: { [Op.ne]: null } },
+      },
+      // Composite index for efficient queries on active credits
+      {
+        fields: ["workspaceId", "startDate", "expirationDate"],
+        name: "credits_workspace_start_expiration_idx",
       },
     ],
   }
