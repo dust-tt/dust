@@ -55,7 +55,7 @@ const TEMPORAL_WORKFLOW_MAX_HISTORY_SIZE_MB = 40;
 /**
  * Sync Workflow for Intercom.
  * This workflow is responsible for syncing all the help centers for a given connector.
- * Lauched on a cron schedule every hour, it will sync all the help centers that are in DB.
+ * Launched on a cron schedule every hour, it will sync all the help centers that are in DB.
  * If a signal is received, it will sync the help centers that were modified.
  */
 export async function intercomSyncWorkflow({
