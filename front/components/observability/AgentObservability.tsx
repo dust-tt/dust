@@ -1,5 +1,7 @@
 import {
+  Button,
   CardGrid,
+  ContentMessage,
   HandThumbDownIcon,
   HandThumbUpIcon,
   Separator,
@@ -15,7 +17,10 @@ import { useObservabilityContext } from "@app/components/agent_builder/observabi
 import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
 import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
 import { SharedObservabilityFilterSelector } from "@app/components/observability/SharedObservabilityFilterSelector";
-import { useAgentAnalytics } from "@app/lib/swr/assistants";
+import {
+  useAgentAnalytics,
+  useAgentObservabilitySummary,
+} from "@app/lib/swr/assistants";
 
 interface AgentObservabilityProps {
   workspaceId: string;
@@ -30,6 +35,8 @@ export function AgentObservability({
 }: AgentObservabilityProps) {
   const { period, mode, selectedVersion } = useObservabilityContext();
 
+  const isTimeRangeMode = mode === "timeRange";
+
   const { agentAnalytics, isAgentAnalyticsLoading } = useAgentAnalytics({
     workspaceId,
     agentConfigurationId,
@@ -42,6 +49,18 @@ export function AgentObservability({
     agentAnalytics.activeUsers > 0 &&
     agentAnalytics.mentions.messageCount > 0;
 
+  const {
+    summaryText,
+    isSummaryLoading,
+    isSummaryError,
+    refetchSummary,
+  } = useAgentObservabilitySummary({
+    workspaceId,
+    agentConfigurationId,
+    days: period,
+    disabled: !isTimeRangeMode,
+  });
+
   return (
     <TabContentLayout
       title="Insights"
@@ -53,6 +72,47 @@ export function AgentObservability({
       }
     >
       <TabContentChildSectionLayout title="Overview">
+        {isTimeRangeMode && (
+          <div className="mb-4">
+            <ContentMessage
+              title="Summary"
+              variant="primary"
+              size="lg"
+              className="w-full"
+            >
+              {isSummaryLoading ? (
+                <div className="flex items-center gap-2">
+                  <Spinner size="xs" />
+                  <span>Generating summary for this time range…</span>
+                </div>
+              ) : isSummaryError ? (
+                <div className="flex flex-col gap-2">
+                  <span>
+                    We couldn&apos;t generate a summary for this time range.
+                  </span>
+                  <div>
+                    <Button
+                      label="Try again"
+                      size="xs"
+                      variant="outline"
+                      onClick={() => {
+                        void refetchSummary();
+                      }}
+                    />
+                  </div>
+                </div>
+              ) : summaryText ? (
+                <p>{summaryText}</p>
+              ) : (
+                <p>
+                  There is not enough activity in this time range to generate a
+                  summary yet.
+                </p>
+              )}
+            </ContentMessage>
+          </div>
+        )}
+
         {isAgentAnalyticsLoading ? (
           <div className="w-full p-6">
             <Spinner />

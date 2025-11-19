@@ -22,6 +22,7 @@ import type { GetErrorRateResponse } from "@app/pages/api/w/[wId]/assistant/agen
 import type { GetFeedbackDistributionResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/feedback-distribution";
 import type { GetLatencyResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/latency";
 import type { GetAgentOverviewResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/overview";
+import type { GetAgentSummaryResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/summary";
 import type { GetContextOriginResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/source";
 import type { GetToolExecutionResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/tool-execution";
 import type { GetToolStepIndexResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/tool-step-index";
@@ -445,6 +446,34 @@ export function useAgentAnalytics({
     agentAnalytics: data ? data : null,
     isAgentAnalyticsLoading: !error && !data && !disabled,
     isAgentAnalyticsError: error,
+  };
+}
+
+export function useAgentObservabilitySummary({
+  workspaceId,
+  agentConfigurationId,
+  days = DEFAULT_PERIOD_DAYS,
+  disabled,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  days?: number;
+  disabled?: boolean;
+}) {
+  const summaryFetcher: Fetcher<GetAgentSummaryResponseBody> = fetcher;
+  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/summary?days=${days}`;
+
+  const { data, error, isValidating, mutate } = useSWRWithDefaults(
+    disabled ? null : key,
+    summaryFetcher
+  );
+
+  return {
+    summaryText: data?.summaryText ?? null,
+    isSummaryLoading: !error && !data && !disabled,
+    isSummaryError: error,
+    isSummaryValidating: isValidating,
+    refetchSummary: mutate,
   };
 }
 
