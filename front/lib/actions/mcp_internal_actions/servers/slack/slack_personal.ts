@@ -1043,7 +1043,7 @@ async function createServer(
         const timeFrame = parseTimeFrame(relativeTimeFrame);
 
         try {
-          // Resolve channel name to channel ID (supports public, private channels, and DMs)
+          // Resolve channel name to channel ID (supports public, private channels, and DMs).
           const channelId = await resolveChannelId(
             channel,
             accessToken,
@@ -1082,12 +1082,12 @@ async function createServer(
 
           const rawMessages = response.messages ?? [];
 
-          // Filter to only keep messages that have threads (reply_count > 0)
+          // Filter to only keep messages that have threads (reply_count > 0).
           const threadsOnly = rawMessages.filter(
             (msg) => msg.reply_count && msg.reply_count > 0
           );
 
-          // Keep only the top SLACK_SEARCH_ACTION_NUM_RESULTS threads
+          // Keep only the top SLACK_SEARCH_ACTION_NUM_RESULTS threads.
           const matches = threadsOnly.slice(0, SLACK_SEARCH_ACTION_NUM_RESULTS);
 
           if (matches.length === 0) {
@@ -1103,7 +1103,7 @@ async function createServer(
             ]);
           }
 
-          // Get channel info to display channel name in results
+          // Get channel info to display channel name in results.
           const channelInfo = await slackClient.conversations.info({
             channel: channelId,
           });
