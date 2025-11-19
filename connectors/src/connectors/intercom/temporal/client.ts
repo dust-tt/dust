@@ -115,7 +115,7 @@ export async function stopIntercomWorkflows(
   });
 
   if (helpCenterResult.isErr()) {
-    return new Err(helpCenterResult.error);
+    return helpCenterResult;
   }
 
   const conversationResult = await deleteSchedule({
@@ -124,7 +124,7 @@ export async function stopIntercomWorkflows(
   });
 
   if (conversationResult.isErr()) {
-    return new Err(conversationResult.error);
+    return conversationResult;
   }
 
   const client = await getTemporalClient();
@@ -176,7 +176,7 @@ export async function launchIntercomScheduledWorkflows(
   });
 
   if (helpCenterResult.isErr()) {
-    return new Err(helpCenterResult.error);
+    return helpCenterResult;
   }
 
   const conversationResult = await createSchedule({
@@ -206,9 +206,8 @@ export async function launchIntercomScheduledWorkflows(
   });
 
   if (conversationResult.isErr()) {
-    return new Err(conversationResult.error);
+    return conversationResult;
   }
 
   return new Ok(undefined);
 }
-

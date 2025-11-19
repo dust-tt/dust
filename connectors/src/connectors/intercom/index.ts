@@ -316,7 +316,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       forceResync: true,
     });
     if (sendSignalToWorkflowResult.isErr()) {
-      return new Err(sendSignalToWorkflowResult.error);
+      return sendSignalToWorkflowResult;
     }
     return new Ok(connector.id.toString());
   }
@@ -533,7 +533,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
           }
         );
         if (sendSignalToWorkflowResult.isErr()) {
-          return new Err(sendSignalToWorkflowResult.error);
+          return sendSignalToWorkflowResult;
         }
       }
 
