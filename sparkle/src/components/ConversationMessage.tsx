@@ -50,8 +50,8 @@ const wrapperVariants = cva("s-flex s-flex-col s-min-w-60 s-w-full s-@container"
   variants: {
     messageType: {
       agent: "s-pr-0",
-      me: "s-items-end s-pl-8",
-      user: "s-items-start s-pr-8", 
+      me: "s-items-end s-pl-9",
+      user: "s-items-start s-pr-9", 
     },
   },
   defaultVariants: {
@@ -142,7 +142,7 @@ export const ConversationMessage = React.forwardRef<
             isDisabled={isDisabled}
           />
 
-          <div className="s-flex s-flex-col s-gap-3 s-w-full">
+          <div className="s-flex s-flex-col s-gap-1 s-w-full">
             <div className="s-hidden @sm:s-block">
               <ConversationMessageTitle name={name} timestamp={timestamp} infoChip={infoChip} completionStatus={completionStatus} renderName={renderName} />
             </div>
@@ -227,7 +227,7 @@ export const ConversationMessageAvatar = React.forwardRef<
       <div
         ref={ref}
         className={cn(
-          "s-flex s-gap-2 s-p-1 @sm/conversation:s-p-0",
+          "s-flex s-gap-2 @sm/conversation:s-p-0",
           className
         )}
         {...props}
