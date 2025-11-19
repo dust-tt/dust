@@ -306,9 +306,11 @@ function isSlackTokenRevoked(error: unknown): boolean {
 // 'disconnected' is expected when we don't have a Slack connection yet.
 type SlackAIStatus = "enabled" | "disabled" | "disconnected";
 
-async function getSlackAIEnablementStatus(
-  accessToken: string
-): Promise<SlackAIStatus> {
+async function getSlackAIEnablementStatus({
+  accessToken,
+}: {
+  accessToken: string;
+}): Promise<SlackAIStatus> {
   try {
     // Use assistant.search.info to detect if Slack AI is enabled at workspace level
     // This endpoint requires search:read.public scope and returns is_ai_search_enabled boolean
@@ -355,7 +357,7 @@ async function createServer(
   });
 
   const slackAIStatus: SlackAIStatus = c
-    ? await getSlackAIEnablementStatus(c.access_token)
+    ? await getSlackAIEnablementStatus({ accessToken: c.access_token })
     : "disconnected";
 
   localLogger.info(
