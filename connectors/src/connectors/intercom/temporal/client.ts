@@ -158,7 +158,11 @@ export async function launchIntercomSchedules(
     action: {
       type: "startWorkflow",
       workflowType: intercomHelpCenterSyncWorkflow,
-      args: [{ connectorId: connector.id }],
+      args: [
+        {
+          connectorId: connector.id,
+        },
+      ],
       taskQueue: QUEUE_NAME,
     },
     scheduleId: makeIntercomHelpCenterScheduleId(connector),
