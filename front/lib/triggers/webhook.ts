@@ -25,7 +25,7 @@ import { verifySignature } from "@app/lib/webhookSource";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import type { ContentFragmentInputWithFileIdType, Result } from "@app/types";
-import { assertNever, Err, isString, Ok, removeNulls } from "@app/types";
+import { assertNever, Err, isString, normalizeError, Ok } from "@app/types";
 import type {
   TriggerType,
   WebhookTriggerType,
@@ -35,8 +35,6 @@ import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
 const WORKSPACE_MESSAGE_LIMIT_MULTIPLIER = 0.5; // 50% of workspace message limit
-
-class WebhookNonRetryableError extends Error {}
 
 async function validateEventSubscription({
   provider,
@@ -77,7 +75,7 @@ async function validateEventSubscription({
       },
       errorMessage
     );
-    return new Err(new WebhookNonRetryableError(errorMessage));
+    return new Err(normalizeError(errorMessage));
   }
 
   const {
@@ -115,7 +113,7 @@ async function validateEventSubscription({
       },
       errorMessage
     );
-    return new Err(new WebhookNonRetryableError(errorMessage));
+    return new Err(normalizeError(errorMessage));
   }
 
   if (blacklist && blacklist.includes(receivedEventValue)) {
@@ -147,7 +145,7 @@ async function validateEventSubscription({
       },
       errorMessage
     );
-    return new Err(new WebhookNonRetryableError(errorMessage));
+    return new Err(normalizeError(errorMessage));
   }
 
   return new Ok({ skipReason: null, receivedEventValue });
@@ -417,8 +415,10 @@ async function launchTriggersWorkflows({
           workspaceId
         );
         if (trigger.configuration.includePayload && !contentFragment) {
-          throw new WebhookNonRetryableError(
-            "One of the triggers requires the payload, but the contentFragment is missing. It should never happen as the content fragment is created if any of the triggers requires the payload."
+          return new Err(
+            normalizeError(
+              "One of the triggers requires the payload, but the contentFragment is missing. It should never happen as the content fragment is created if any of the triggers requires the payload."
+            )
           );
         }
 
@@ -584,10 +584,7 @@ export async function processWebhookRequest({
   webhookSource: WebhookSourceResource;
   headers: Record<string, string>;
   body: Record<string, unknown>;
-}): Promise<{
-  success: boolean;
-  message: string;
-}> {
+}): Promise<Result<string, Error>> {
   const workspaceId = auth.getNonNullableWorkspace().sId;
   const webhookRequestId = webhookRequest.id;
 
@@ -600,10 +597,7 @@ export async function processWebhookRequest({
   });
 
   if (signatureValidationResult.isErr()) {
-    return {
-      success: false,
-      message: signatureValidationResult.error.message,
-    };
+    return signatureValidationResult;
   }
 
   // Validate event subscription
@@ -618,16 +612,13 @@ export async function processWebhookRequest({
   });
 
   if (eventValidationResult.isErr()) {
-    throw eventValidationResult.error;
+    return eventValidationResult;
   }
 
   const { skipReason, receivedEventValue } = eventValidationResult.value;
 
   if (skipReason) {
-    return {
-      success: true,
-      message: `Skipped, reason: ${skipReason}`,
-    };
+    return new Ok(`Skipped, reason: ${skipReason}`);
   }
 
   // Fetch and filter triggers
@@ -642,10 +633,7 @@ export async function processWebhookRequest({
   // If no triggers match after filtering, return early without launching workflows.
   if (filteredTriggers.length === 0) {
     await webhookRequest.markAsProcessed();
-    return {
-      success: true,
-      message: "No triggers matched the event.",
-    };
+    return new Ok("No triggers matched the event.");
   }
 
   // Check if any of the triggers requires the payload and create content fragment if needed
@@ -665,7 +653,7 @@ export async function processWebhookRequest({
       const errorMessage = contentFragmentRes.error.message;
       await webhookRequest.markAsFailed(errorMessage);
       logger.error({ workspaceId, webhookRequestId }, errorMessage);
-      throw new WebhookNonRetryableError(errorMessage);
+      return new Err(normalizeError(errorMessage));
     }
 
     contentFragment = contentFragmentRes.value;
@@ -682,10 +670,7 @@ export async function processWebhookRequest({
   // Finally, mark the webhook request as processed
   await webhookRequest.markAsProcessed();
 
-  return {
-    success: true,
-    message: "Webhook request processed successfully.",
-  };
+  return new Ok("Webhook request processed successfully.");
 }
 
 export async function fetchRecentWebhookRequestTriggersWithPayload(

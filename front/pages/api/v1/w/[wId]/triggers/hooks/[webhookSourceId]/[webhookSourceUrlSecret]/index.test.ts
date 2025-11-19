@@ -1,11 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { Authenticator } from "@app/lib/auth";
+import * as webhooksLib from "@app/lib/triggers/webhook";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WebhookSourceFactory } from "@app/tests/utils/WebhookSourceFactory";
-
-import * as webhooksLib from "@app/lib/triggers/webhook";
 
 // Shallowly mock file content fragment creation to avoid touching storage.
 vi.mock("@app/lib/api/assistant/conversation/content_fragment", () => ({
