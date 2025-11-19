@@ -86,12 +86,12 @@ export function ToolsPicker({
 
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
-  const shouldKeepHooksActive =
+  const shouldFetchToolsData =
     isOpen || isSettingUpServer || !!pendingServerToAdd;
 
   const { spaces } = useSpaces({
     workspaceId: owner.sId,
-    disabled: !shouldKeepHooksActive,
+    disabled: !shouldFetchToolsData,
   });
   const globalSpaces = useMemo(
     () => spaces.filter((s) => s.kind === "global"),
@@ -109,7 +109,7 @@ export function ToolsPicker({
     isLoading: isServerViewsLoading,
     mutateServerViews,
   } = useMCPServerViewsFromSpaces(owner, globalSpaces, {
-    disabled: !shouldKeepHooksActive,
+    disabled: !shouldFetchToolsData,
   });
 
   const selectedMCPServerViewIds = useMemo(
@@ -166,7 +166,7 @@ export function ToolsPicker({
   const { availableMCPServers, isAvailableMCPServersLoading } =
     useAvailableMCPServers({
       owner,
-      disabled: !shouldKeepHooksActive,
+      disabled: !shouldFetchToolsData,
     });
 
   const isDataReady = !isServerViewsLoading && !isAvailableMCPServersLoading;
@@ -175,7 +175,12 @@ export function ToolsPicker({
   // - We filter by manual availability to show only servers that need install step, and by search text if present.
   // - We don't compute uninstalled servers until BOTH data sources have loaded to prevent flicker.
   const filteredUninstalledServers = useMemo(() => {
-    if (!hasFeature("jit_tool_setup") || !isAdmin || !isDataReady) {
+    if (
+      !hasFeature("jit_tool_setup") ||
+      !isAdmin ||
+      !isDataReady ||
+      !shouldFetchToolsData
+    ) {
       return [];
     }
 
@@ -363,8 +368,16 @@ export function ToolsPicker({
                 id="tools-picker-no-selected"
                 icon={() => <Icon visual={BoltIcon} size="xs" />}
                 className="italic"
-                label="No more tools to select"
-                description="All available tools are already selected"
+                label={
+                  searchText.length > 0
+                    ? "No result"
+                    : "No more tools to select"
+                }
+                description={
+                  searchText.length > 0
+                    ? "No tools found matching your search."
+                    : "All available tools are already selected."
+                }
                 disabled
               />
             )}
