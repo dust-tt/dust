@@ -37,6 +37,11 @@ export function AgentObservability({
     version: mode === "version" ? selectedVersion?.version : undefined,
   });
 
+  const shouldShowMessagesPerActiveUser =
+    agentAnalytics?.mentions &&
+    agentAnalytics.activeUsers > 0 &&
+    agentAnalytics.mentions.messageCount > 0;
+
   return (
     <TabContentLayout
       title="Insights"
@@ -74,9 +79,12 @@ export function AgentObservability({
               className="h-24"
               content={
                 <div className="flex flex-row gap-2 text-2xl">
-                  {agentAnalytics?.mentions && agentAnalytics.activeUsers > 0
-                    ? `${Math.round(agentAnalytics.mentions.messageCount / agentAnalytics.activeUsers)}`
-                    : 0}
+                  {shouldShowMessagesPerActiveUser
+                    ? `${Math.round(
+                        agentAnalytics.mentions.messageCount /
+                          agentAnalytics.activeUsers
+                      )}`
+                    : "-"}
                 </div>
               }
             />
