@@ -233,7 +233,7 @@ async function handler(
     body,
   });
 
-  if (!result.success) {
+  if (result.isErr()) {
     statsDClient.increment("webhook_error.count", 1, [
       `provider:${provider}`,
       `workspace_id:${workspace.sId}`,
@@ -243,7 +243,7 @@ async function handler(
       status_code: 500,
       api_error: {
         type: "webhook_processing_error",
-        message: result.message,
+        message: result.error.message,
       },
     });
   }
