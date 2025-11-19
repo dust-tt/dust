@@ -133,7 +133,7 @@ export function FeedbackSelector({
     <div ref={containerRef} className="flex items-center">
       <PopoverRoot open={isPopoverOpen}>
         <PopoverTrigger asChild>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-0.5">
             <Button
               tooltip="I found this helpful"
               variant={feedback?.thumb === "up" ? "primary" : "ghost-secondary"}

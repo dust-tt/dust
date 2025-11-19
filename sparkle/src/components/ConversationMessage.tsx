@@ -154,7 +154,12 @@ export const ConversationMessage = React.forwardRef<
             isDisabled={isDisabled}
           />
 
-          <div className="s-flex s-w-full s-flex-col s-gap-1">
+          <div
+            className={cn(
+              "s-flex s-w-full s-flex-col",
+              type === "user" ? "s-gap-1" : "s-gap-3"
+            )}
+          >
             <div className="s-heading-sm s-hidden @sm:s-block">
               <ConversationMessageTitle
                 name={name}
