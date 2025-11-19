@@ -82,5 +82,6 @@ export const GEMINI_3_PRO_MODEL_CONFIG: ModelConfigurationType = {
   maximumReasoningEffort: "high",
   defaultReasoningEffort: "light",
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
+  useNativeLightReasoning: true,
   featureFlag: "google_ai_studio_experimental_models_feature",
 };
