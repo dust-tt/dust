@@ -18,7 +18,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { Err, isDevelopment, Ok } from "@app/types";
+import { Err, isDevelopment, normalizeError, Ok } from "@app/types";
 
 export function getProPlanStripeProductId(owner: WorkspaceType) {
   const isBusiness = owner.metadata?.isBusiness;
@@ -551,7 +551,7 @@ export async function attachCreditPurchaseToSubscription({
   const stripe = getStripeClient();
 
   try {
-    // Get the subscription to find the customer
+    // Get the subscription to find the customer.
     const subscription =
       await stripe.subscriptions.retrieve(stripeSubscriptionId);
     const customerId =
@@ -559,10 +559,10 @@ export async function attachCreditPurchaseToSubscription({
         ? subscription.customer
         : subscription.customer.id;
 
-    // Convert cents to dollars for description
+    // Convert cents to dollars for description.
     const amountDollars = amountCents / 100;
 
-    // Create invoice item that will be charged in the next subscription invoice
+    // Create invoice item that will be charged in the next subscription invoice.
     const invoiceItem = await stripe.invoiceItems.create({
       customer: customerId,
       price: getCreditPurchasePriceId(),
@@ -574,7 +574,7 @@ export async function attachCreditPurchaseToSubscription({
     return new Ok(invoiceItem.id);
   } catch (error) {
     return new Err({
-      error_message: "Failed to attach credit purchase to subscription",
+      error_message: `Failed to attach credit purchase to subscription: ${normalizeError(error).message}`,
     });
   }
 }
@@ -583,7 +583,7 @@ export async function attachCreditPurchaseToSubscription({
  * Creates and pays a one-off invoice for credit purchase.
  * The invoice is created, finalized, and immediately charged.
  */
-export async function createAndPayCreditPurchaseInvoice({
+export async function makeCreditPurchaseInvoice({
   stripeSubscriptionId,
   amountCents,
 }: {
@@ -593,7 +593,7 @@ export async function createAndPayCreditPurchaseInvoice({
   const stripe = getStripeClient();
 
   try {
-    // Get the subscription to find the customer
+    // Get the subscription to find the customer.
     const subscription =
       await stripe.subscriptions.retrieve(stripeSubscriptionId);
     const customerId =
@@ -601,7 +601,7 @@ export async function createAndPayCreditPurchaseInvoice({
         ? subscription.customer
         : subscription.customer.id;
 
-    // Convert cents to dollars for description
+    // Convert cents to dollars for description.
     const amountDollars = amountCents / 100;
 
     const invoiceParams: Stripe.InvoiceCreateParams = {
@@ -626,20 +626,10 @@ export async function createAndPayCreditPurchaseInvoice({
     });
 
     const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
-
-    // Pay the invoice immediately
-    try {
-      await stripe.invoices.pay(finalizedInvoice.id);
-    } catch (paymentError) {
-      return new Err({
-        error_message: "Invoice created but payment failed",
-      });
-    }
-
     return new Ok(finalizedInvoice);
   } catch (error) {
     return new Err({
-      error_message: "Failed to create and pay credit purchase invoice",
+      error_message: `Failed to create and pay credit purchase invoice: ${normalizeError(error).message}`,
     });
   }
 }

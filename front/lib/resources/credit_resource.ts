@@ -149,6 +149,18 @@ export class CreditResource extends BaseResource<CreditModel> {
     return row ?? null;
   }
 
+  static async fetchByInvoiceOrLineItemId(
+    auth: Authenticator,
+    invoiceOrLineItemId: string
+  ) {
+    const [row] = await this.baseFetch(auth, {
+      where: {
+        invoiceOrLineItemId,
+      },
+    });
+    return row ?? null;
+  }
+
   async consume(
     amountInCents: number,
     { transaction }: { transaction?: Transaction } = {}

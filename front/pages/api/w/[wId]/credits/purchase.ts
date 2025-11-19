@@ -8,15 +8,15 @@ import type { Authenticator } from "@app/lib/auth";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import {
   attachCreditPurchaseToSubscription,
-  createAndPayCreditPurchaseInvoice,
   getStripeClient,
   isEnterpriseSubscription,
+  makeCreditPurchaseInvoice,
 } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { isDevelopment } from "@app/types";
+import { isDevelopment, normalizeError } from "@app/types";
 
 export const PostCreditPurchaseRequestBody = t.type({
   amountDollars: t.number,
@@ -33,7 +33,7 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<PostCreditPurchaseResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
-  // Only admins can purchase credits
+  // Only admins can purchase credits.
   if (!auth.isAdmin()) {
     return apiError(req, res, {
       status_code: 403,
@@ -45,7 +45,7 @@ async function handler(
     });
   }
 
-  // Check feature flag
+  // Check feature flag.
   const workspace = auth.getNonNullableWorkspace();
   const featureFlag =
     (await FeatureFlag.findOne({
@@ -81,7 +81,7 @@ async function handler(
 
       const { amountDollars } = bodyValidation.right;
 
-      // Validate amount is positive
+      // Validate amount is positive.
       if (amountDollars <= 0) {
         return apiError(req, res, {
           status_code: 400,
@@ -92,7 +92,7 @@ async function handler(
         });
       }
 
-      // Get active subscription
+      // Get active subscription.
       const subscription = auth.subscription();
       if (!subscription || !subscription.stripeSubscriptionId) {
         return apiError(req, res, {
@@ -106,19 +106,19 @@ async function handler(
       }
 
       try {
-        // Get Stripe subscription to determine if Enterprise
+        // Get Stripe subscription to determine if Enterprise.
         const stripe = getStripeClient();
         const stripeSubscription = await stripe.subscriptions.retrieve(
           subscription.stripeSubscriptionId
         );
         const isEnterprise = isEnterpriseSubscription(stripeSubscription);
 
-        // Convert dollars to cents for internal storage
+        // Convert dollars to cents for internal storage.
         const amountCents = Math.round(amountDollars * 100);
 
-        // Orchestrate credit purchase based on subscription type
+        // Orchestrate credit purchase based on subscription type.
         if (isEnterprise) {
-          // For Enterprise: attach invoice item to subscription
+          // For Enterprise: attach invoice item to subscription.
           const attachResult = await attachCreditPurchaseToSubscription({
             stripeSubscriptionId: subscription.stripeSubscriptionId,
             amountCents,
@@ -144,28 +144,25 @@ async function handler(
 
           const invoiceItemId = attachResult.value;
 
-          // Create placeholder credit with 0/0 amounts
-          await CreditResource.makeNew(auth, {
-            initialAmount: 0,
-            remainingAmount: 0,
+          // Create credit with full amount.
+          const credit = await CreditResource.makeNew(auth, {
+            type: "committed",
+            initialAmount: amountCents,
+            remainingAmount: amountCents,
             invoiceOrLineItemId: invoiceItemId,
           });
 
-          // Immediately top-up with full amount and set expiration
-          const topUpResult = await CreditResource.topUp({
-            auth,
-            invoiceOrLineItemId: invoiceItemId,
-            amountCents,
-          });
+          // Activate the credit immediately.
+          const startResult = await credit.start();
 
-          if (topUpResult.isErr()) {
+          if (startResult.isErr()) {
             logger.error(
               {
-                error: topUpResult.error.message,
+                error: startResult.error.message,
                 workspaceId: workspace.sId,
                 invoiceItemId,
               },
-              "Failed to top-up credit after creating placeholder"
+              "Failed to start credit after creation"
             );
             return apiError(req, res, {
               status_code: 500,
@@ -182,9 +179,9 @@ async function handler(
               amountCents,
               amountDollars,
               invoiceItemId,
-              expirationDate: topUpResult.value.expirationDate,
+              expirationDate: credit.expirationDate,
             },
-            "Credit purchase attached to subscription, credits topped up with expiration"
+            "Credit purchase attached to subscription and activated"
           );
 
           return res.status(200).json({
@@ -193,8 +190,8 @@ async function handler(
             invoiceId: null,
           });
         } else {
-          // For Pro: create and pay one-off invoice
-          const invoiceResult = await createAndPayCreditPurchaseInvoice({
+          // For Pro: create and pay one-off invoice.
+          const invoiceResult = await makeCreditPurchaseInvoice({
             stripeSubscriptionId: subscription.stripeSubscriptionId,
             amountCents,
           });
@@ -206,7 +203,7 @@ async function handler(
                 workspaceId: workspace.sId,
                 amountDollars,
               },
-              "Failed to create and pay credit purchase invoice"
+              "Failed to make credit purchase invoice"
             );
             return apiError(req, res, {
               status_code: 500,
@@ -219,10 +216,11 @@ async function handler(
 
           const invoice = invoiceResult.value;
 
-          // Create credit record with 0/0 amounts (will be updated via webhook when paid)
+          // Create credit record with full amount (will be activated via webhook when paid).
           await CreditResource.makeNew(auth, {
-            initialAmount: 0,
-            remainingAmount: 0,
+            type: "committed",
+            initialAmount: amountCents,
+            remainingAmount: amountCents,
             invoiceOrLineItemId: invoice.id,
           });
 
@@ -233,7 +231,7 @@ async function handler(
               amountDollars,
               invoiceId: invoice.id,
             },
-            "Credit purchase invoice created and paid, placeholder credit created, amounts will be updated via webhook"
+            "Credit purchase invoice created, credit will be started via webhook"
           );
 
           return res.status(200).json({
@@ -245,7 +243,7 @@ async function handler(
       } catch (error) {
         logger.error(
           {
-            error,
+            error: normalizeError(error),
             workspaceId: workspace.sId,
             amountDollars,
           },

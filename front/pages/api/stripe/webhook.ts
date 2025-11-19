@@ -331,8 +331,8 @@ async function handler(
           }
           await subscription.update({ paymentFailingSince: null });
 
-          // Handle credit purchase top-up for Pro subscriptions
-          // (Enterprise subscriptions add credits optimistically, so we skip them here)
+          // Handle credit purchase activation for Pro subscriptions.
+          // (Enterprise subscriptions activate credits optimistically, so we skip them here.)
           if (
             invoice.metadata?.credit_purchase === "true" &&
             invoice.metadata?.credit_amount_cents
@@ -344,7 +344,7 @@ async function handler(
             );
 
             if (!isNaN(creditAmountCents) && creditAmountCents > 0) {
-              // Check if this is NOT an Enterprise subscription to avoid double top-up
+              // Check if this is NOT an Enterprise subscription to avoid double activation.
               const stripe = getStripeClient();
               const stripeSubscription = await stripe.subscriptions.retrieve(
                 invoice.subscription
@@ -352,36 +352,38 @@ async function handler(
               const isEnterprise = isEnterpriseSubscription(stripeSubscription);
 
               if (!isEnterprise) {
-                // Pro accounts - top-up existing credit record (created with 0/0 amounts in purchase API)
+                // Pro accounts - activate existing credit record (created in purchase API).
                 const auth = await Authenticator.internalAdminForWorkspace(
                   workspace.sId
                 );
 
-                const topUpResult = await CreditResource.topUp({
+                const credit = await CreditResource.fetchByInvoiceOrLineItemId(
                   auth,
-                  invoiceOrLineItemId: invoice.id,
-                  amountCents: creditAmountCents,
-                });
+                  invoice.id
+                );
 
-                if (topUpResult.isOk()) {
-                  logger.info(
-                    {
-                      workspaceId: workspace.sId,
-                      creditAmountCents,
-                      invoiceId: invoice.id,
-                      creditId: topUpResult.value.id,
-                      expirationDate: topUpResult.value.expirationDate,
-                    },
-                    "[Stripe Webhook] Credit topped up for Pro subscription credit purchase"
-                  );
+                if (credit) {
+                  const startResult = await credit.start();
+
+                  if (startResult.isErr()) {
+                    logger.error(
+                      {
+                        workspaceId: workspace.sId,
+                        creditAmountCents,
+                        invoiceId: invoice.id,
+                        creditId: credit.id,
+                        expirationDate: credit.expirationDate,
+                      },
+                      "[Stripe Webhook] Error starting credit"
+                    );
+                  }
                 } else {
-                  logger.info(
+                  logger.warn(
                     {
                       workspaceId: workspace.sId,
                       invoiceId: invoice.id,
-                      error: topUpResult.error.message,
                     },
-                    "[Stripe Webhook] Credit not topped up (likely already processed or not found)"
+                    "[Stripe Webhook] Credit not found for invoice"
                   );
                 }
               } else {
@@ -390,7 +392,7 @@ async function handler(
                     workspaceId: workspace.sId,
                     invoiceId: invoice.id,
                   },
-                  "[Stripe Webhook] Skipping credit top-up for Enterprise (already added optimistically)"
+                  "[Stripe Webhook] Skipping credit activation for Enterprise (already activated optimistically)"
                 );
               }
             }
