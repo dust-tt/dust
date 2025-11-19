@@ -56,7 +56,7 @@ export async function launchIntercomFullSyncWorkflow({
     );
   }
 
-  const workflowId = getIntercomFullSyncWorkflowId(connectorId);
+  const workflowId = getIntercomFullSyncWorkflowId(connector);
   const signaledHelpCenterIds: IntercomUpdateSignal[] = helpCenterIds.map(
     (helpCenterId) => ({
       type: "help_center",
@@ -128,7 +128,7 @@ export async function stopIntercomSchedulesAndWorkflows(
   }
 
   const client = await getTemporalClient();
-  const workflowId = getIntercomFullSyncWorkflowId(connector.id);
+  const workflowId = getIntercomFullSyncWorkflowId(connector);
 
   try {
     const handle: WorkflowHandle<typeof intercomFullSyncWorkflow> =
