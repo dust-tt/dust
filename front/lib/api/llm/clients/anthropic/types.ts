@@ -3,42 +3,42 @@ import flatMap from "lodash/flatMap";
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import type { ModelIdType } from "@app/types";
 import {
-  CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG,
-  CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
-  CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
-  CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
-  CLAUDE_4_OPUS_DEFAULT_MODEL_CONFIG,
-  CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
+  CLAUDE_3_5_HAIKU_20241022_MODEL_ID,
+  CLAUDE_3_OPUS_2024029_MODEL_ID,
+  CLAUDE_4_5_HAIKU_20251001_MODEL_ID,
+  CLAUDE_4_5_SONNET_20250929_MODEL_ID,
+  CLAUDE_4_OPUS_20250514_MODEL_ID,
+  CLAUDE_4_SONNET_20250514_MODEL_ID,
 } from "@app/types";
 
 export const ANTHROPIC_MODEL_FAMILIES = ["non-reasoning", "reasoning"] as const;
 export type AnthropicModelFamily = (typeof ANTHROPIC_MODEL_FAMILIES)[number];
 
-export const ANTHROPIC_MODEL_FAMILIES_CONFIGS: Record<
-  AnthropicModelFamily,
-  {
-    modelIds: ModelIdType[];
-    overwrites: Partial<LLMParameters>;
-  }
-> = {
+export const ANTHROPIC_MODEL_FAMILIES_CONFIGS = {
   "non-reasoning": {
     modelIds: [
-      CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.modelId,
-      CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG.modelId,
+      CLAUDE_3_OPUS_2024029_MODEL_ID,
+      CLAUDE_3_5_HAIKU_20241022_MODEL_ID,
     ],
     overwrites: { reasoningEffort: null },
   },
   reasoning: {
     modelIds: [
-      CLAUDE_4_OPUS_DEFAULT_MODEL_CONFIG.modelId,
-      CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.modelId,
-      CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.modelId,
-      CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.modelId,
+      CLAUDE_4_OPUS_20250514_MODEL_ID,
+      CLAUDE_4_SONNET_20250514_MODEL_ID,
+      CLAUDE_4_5_SONNET_20250929_MODEL_ID,
+      CLAUDE_4_5_HAIKU_20251001_MODEL_ID,
     ],
     // Thinking isn’t compatible with temperature: `temperature` may only be set to 1 when thinking is enabled.
     overwrites: { temperature: 1 },
   },
-};
+} as const satisfies Record<
+  AnthropicModelFamily,
+  {
+    modelIds: ModelIdType[];
+    overwrites: Partial<LLMParameters>;
+  }
+>;
 
 export type AnthropicWhitelistedModelId = {
   [K in AnthropicModelFamily]: (typeof ANTHROPIC_MODEL_FAMILIES_CONFIGS)[K]["modelIds"][number];
@@ -60,7 +60,7 @@ export function getAnthropicModelFamilyFromModelId(
   modelId: AnthropicWhitelistedModelId
 ): AnthropicModelFamily {
   const family = ANTHROPIC_MODEL_FAMILIES.find((family) =>
-    ANTHROPIC_MODEL_FAMILIES_CONFIGS[family].modelIds.includes(modelId)
+    new Set(ANTHROPIC_MODEL_FAMILIES_CONFIGS[family].modelIds).has(modelId)
   );
   if (!family) {
     throw new Error(
