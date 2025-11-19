@@ -45,6 +45,7 @@ import { RunResource } from "@app/lib/resources/run_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
 import { Provider } from "@app/lib/resources/storage/models/apps";
+import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import {
   LabsTranscriptsConfigurationModel,
   LabsTranscriptsHistoryModel,
@@ -590,6 +591,9 @@ export async function deleteWorkspaceActivity({
   await FileResource.deleteAllForWorkspace(auth);
   await RunResource.deleteAllForWorkspace(auth);
   await MembershipResource.deleteAllForWorkspace(auth);
+  await GroupMembershipModel.destroy({
+    where: { workspaceId: workspace.id },
+  });
   await WorkspaceHasDomainModel.destroy({
     where: { workspaceId: workspace.id },
   });
