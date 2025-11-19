@@ -69,6 +69,7 @@ export function renderTicket(
         ticketFieldsResult.value.map((f) => [f.id, f.title])
       );
       const fieldsWithNames: string[] = [];
+      let fieldsAreMissing = false;
 
       for (const field of ticket.custom_fields) {
         if (field.value !== null && field.value !== "") {
@@ -78,6 +79,8 @@ export function renderTicket(
               ? field.value.join(", ")
               : String(field.value);
             fieldsWithNames.push(`- ${fieldName}: ${valueStr}`);
+          } else {
+            fieldsAreMissing = true;
           }
         }
       }
@@ -85,6 +88,10 @@ export function renderTicket(
       if (fieldsWithNames.length > 0) {
         lines.push("\nCustom Fields:");
         lines.push(...fieldsWithNames);
+      }
+
+      if (fieldsAreMissing) {
+        lines.push("\nNote: Some custom fields could not be displayed.");
       }
     }
   }
