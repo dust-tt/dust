@@ -1,9 +1,9 @@
-import * as t from "io-ts";
+import { z } from "zod";
 
-export const DiscordBotConfigurationTypeSchema = t.type({
-  botEnabled: t.boolean,
+export const DiscordBotConfigurationTypeSchema = z.object({
+  botEnabled: z.boolean(),
 });
 
-export type DiscordBotConfigurationType = t.TypeOf<
+export type DiscordBotConfigurationType = z.infer<
   typeof DiscordBotConfigurationTypeSchema
 >;
