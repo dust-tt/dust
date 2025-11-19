@@ -1,5 +1,6 @@
 import type { estypes } from "@elastic/elasticsearch";
 
+import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
 import {
@@ -30,6 +31,8 @@ const SUMMARY_METRICS = [
   "failedMessages",
   "errorRate",
 ] as const satisfies readonly (keyof MessageMetricsPoint)[];
+
+const SUMMARY_SPECIFICATIONS: AgentActionSpecification[] = [];
 
 function hasAnyActivity(
   overview: Awaited<ReturnType<typeof fetchAgentOverview>>["value"],
@@ -149,6 +152,7 @@ export async function generateAgentObservabilitySummary({
     {
       conversation,
       prompt,
+      specifications: SUMMARY_SPECIFICATIONS,
     },
     {
       context: {
@@ -175,4 +179,3 @@ export async function generateAgentObservabilitySummary({
 
   return new Ok({ summaryText });
 }
-
