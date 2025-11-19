@@ -8,11 +8,11 @@ export function getIntercomFullSyncWorkflowId(connectorId: ModelId) {
 export function makeIntercomHelpCenterScheduleId(
   connector: ConnectorResource
 ): string {
-  return `intercom-help-center-schedule-${connector.id}`;
+  return `intercom-help-center-sync-${connector.id}`;
 }
 
 export function makeIntercomConversationScheduleId(
   connector: ConnectorResource
 ): string {
-  return `intercom-conversation-schedule-${connector.id}`;
+  return `intercom-conversation-sync-${connector.id}`;
 }
