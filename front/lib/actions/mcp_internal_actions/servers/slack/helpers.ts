@@ -26,8 +26,9 @@ export function isSlackMissingScope(error: unknown): boolean {
   return (
     typeof error === "object" &&
     error !== null &&
-    (error as any).message &&
-    (error as any).message.toString().includes("missing_scope")
+    "message" in error &&
+    typeof error.message === "string" &&
+    error.message.includes("missing_scope")
   );
 }
 
@@ -797,7 +798,7 @@ export async function executeReadThreadMessages(
     });
 
     if (!response.ok) {
-      // Trigger authentication flow for missing_scope
+      // Trigger authentication flow for missing_scope.
       if (response.error === "missing_scope") {
         return new Ok(makePersonalAuthenticationError("slack").content);
       }

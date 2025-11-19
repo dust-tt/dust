@@ -301,8 +301,9 @@ function isSlackTokenRevoked(error: unknown): boolean {
   return (
     typeof error === "object" &&
     error !== null &&
-    (error as any).message &&
-    (error as any).message.toString().includes("token_revoked")
+    "message" in error &&
+    typeof error.message === "string" &&
+    error.message.includes("token_revoked")
   );
 }
 
@@ -1057,12 +1058,12 @@ async function createServer(
             );
           }
 
-          // Calculate timestamp for timeFrame filtering
+          // Calculate timestamp for timeFrame filtering.
           const oldest = timeFrame
             ? (timeFrameFromNow(timeFrame) / 1000).toString()
             : undefined;
 
-          // Use conversations.history to get messages, which works for public, private channels, and DMs
+          // Use conversations.history to get messages, which works for public, private channels, and DMs.
           const response = await slackClient.conversations.history({
             channel: channelId,
             oldest,
@@ -1070,7 +1071,7 @@ async function createServer(
           });
 
           if (!response.ok) {
-            // Trigger authentication flow for missing_scope
+            // Trigger authentication flow for missing_scope.
             if (response.error === "missing_scope") {
               return new Ok(makePersonalAuthenticationError("slack").content);
             }
@@ -1107,12 +1108,12 @@ async function createServer(
             channel: channelId,
           });
 
-          // Determine display name based on channel type
+          // Determine display name based on channel type.
           let displayName: string;
           if (channelInfo.ok && channelInfo.channel) {
-            // For DMs, channelId starts with "D"
+            // For DMs, channelId starts with "D".
             if (channelId.startsWith("D")) {
-              // For DMs, use the channel parameter as display name (user ID or name)
+              // For DMs, use the channel parameter as display name (user ID or name).
               displayName = channel.startsWith("@") ? channel : `@${channel}`;
             } else if (channelInfo.channel.name) {
               displayName = `#${channelInfo.channel.name}`;
