@@ -3,6 +3,7 @@ import type {
   ZendeskTicketField,
   ZendeskTicketMetrics,
 } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/types";
+import type { Result } from "@app/types";
 
 function apiUrlToDocumentUrl(apiUrl: string): string {
   return apiUrl.replace("/api/v2", "").replace(".json", "");
@@ -10,7 +11,7 @@ function apiUrlToDocumentUrl(apiUrl: string): string {
 
 export function renderTicket(
   ticket: ZendeskTicket,
-  ticketFields?: ZendeskTicketField[]
+  ticketFieldsResult: Result<ZendeskTicketField[], Error>
 ): string {
   const lines = [
     `ID: ${ticket.id}`,
@@ -59,24 +60,32 @@ export function renderTicket(
   lines.push(`Updated: ${new Date(ticket.updated_at).toISOString()}`);
 
   if (ticket.custom_fields && ticket.custom_fields.length > 0) {
-    const fieldMap = new Map(ticketFields?.map((f) => [f.id, f.title]) ?? []);
-    const fieldsWithNames: string[] = [];
+    if (ticketFieldsResult.isErr()) {
+      lines.push(
+        "\nNote: Custom field names could not be retrieved. Only field IDs would be shown if displayed."
+      );
+    } else {
+      const fieldMap = new Map(
+        ticketFieldsResult.value.map((f) => [f.id, f.title])
+      );
+      const fieldsWithNames: string[] = [];
 
-    for (const field of ticket.custom_fields) {
-      if (field.value !== null && field.value !== "") {
-        const fieldName = fieldMap.get(field.id);
-        if (fieldName) {
-          const valueStr = Array.isArray(field.value)
-            ? field.value.join(", ")
-            : String(field.value);
-          fieldsWithNames.push(`${fieldName}: ${valueStr}`);
+      for (const field of ticket.custom_fields) {
+        if (field.value !== null && field.value !== "") {
+          const fieldName = fieldMap.get(field.id);
+          if (fieldName) {
+            const valueStr = Array.isArray(field.value)
+              ? field.value.join(", ")
+              : String(field.value);
+            fieldsWithNames.push(`- ${fieldName}: ${valueStr}`);
+          }
         }
       }
-    }
 
-    if (fieldsWithNames.length > 0) {
-      lines.push("\nCustom Fields:");
-      lines.push(...fieldsWithNames);
+      if (fieldsWithNames.length > 0) {
+        lines.push("\nCustom Fields:");
+        lines.push(...fieldsWithNames);
+      }
     }
   }
 

@@ -69,12 +69,8 @@ function createServer(
 
         const fieldIds = getUniqueCustomFieldIds(ticket);
         const ticketFieldsResult = await client.getTicketFieldsByIds(fieldIds);
-        const ticketFields = ticketFieldsResult.isOk()
-          ? ticketFieldsResult.value
-          : undefined;
-        // TODO: add disclaimer to tool result saying that we were not able to pull the custom fields.
 
-        let ticketText = renderTicket(ticket, ticketFields);
+        let ticketText = renderTicket(ticket, ticketFieldsResult);
 
         if (includeMetrics) {
           const metricsResult = await client.getTicketMetrics(ticketId);
@@ -110,7 +106,7 @@ function createServer(
       query: z
         .string()
         .describe(
-          "The search query using Zendesk query syntax. Examples: 'status:open', 'priority:high " +
+          "The search query using Zendesk query syntax. Examples: 'status:open', 'priority:high' " +
             "status:pending', 'assignee:123', 'tags:bug tags:critical'." +
             "Do not include 'type:ticket' as it is automatically added."
         ),
@@ -159,15 +155,10 @@ function createServer(
 
         const fieldIds = getUniqueCustomFieldIds(results);
         const ticketFieldsResult = await client.getTicketFieldsByIds(fieldIds);
-        const ticketFields = ticketFieldsResult.isOk()
-          ? ticketFieldsResult.value
-          : undefined;
-
-        // TODO: same todo as above.
 
         const ticketsText = results
           .map((ticket) => {
-            return ["---", renderTicket(ticket, ticketFields)].join("\n");
+            return ["---", renderTicket(ticket, ticketFieldsResult)].join("\n");
           })
           .join("\n\n");
 
