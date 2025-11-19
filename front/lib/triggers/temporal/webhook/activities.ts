@@ -56,6 +56,19 @@ async function validateEventSubscription({
     return new Ok({ skipReason: null, receivedEventValue: null });
   }
 
+  if (!WEBHOOK_PRESETS[provider]) {
+    const errorMessage = `No webhook preset found for provider: ${provider}.`;
+    await webhookRequest.markAsFailed(errorMessage);
+    logger.error(
+      {
+        workspaceId,
+        webhookRequestId,
+      },
+      errorMessage
+    );
+    return new Err(new TriggerNonRetryableError(errorMessage));
+  }
+
   const {
     eventCheck,
     event_blacklist: blacklist,
