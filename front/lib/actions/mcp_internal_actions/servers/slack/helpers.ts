@@ -197,6 +197,47 @@ export const getCachedPublicChannels = cacheWithRedis(
   }
 );
 
+// Helper function to resolve channel name or ID to channel ID.
+// Supports public channels, private channels, and DMs.
+export async function resolveChannelId(
+  channelNameOrId: string,
+  accessToken: string,
+  mcpServerId: string
+): Promise<string | null> {
+  const slackClient = await getSlackClient(accessToken);
+  const searchString = channelNameOrId.trim().replace(/^#/, "").replace(/^@/, "");
+
+  // If searchString looks like a Slack channel/DM ID (starts with C, G, or D), try direct lookup first.
+  if (searchString.match(/^[CGD][A-Z0-9]+$/)) {
+    try {
+      const infoResp = await slackClient.conversations.info({
+        channel: searchString,
+      });
+      if (infoResp.ok && infoResp.channel?.id) {
+        return infoResp.channel.id;
+      }
+    } catch (error) {
+      // Fall through to name-based search.
+    }
+  }
+
+  // Search by name in public channels, private channels, and DMs.
+  const channels = await getChannels({
+    mcpServerId,
+    slackClient,
+    types: "public_channel,private_channel,im,mpim",
+    memberOnly: false,
+  });
+
+  const channel = channels.find(
+    (c) =>
+      c.name?.toLowerCase() === searchString.toLowerCase() ||
+      c.id?.toLowerCase() === searchString.toLowerCase()
+  );
+
+  return channel?.id ?? null;
+}
+
 // Helper function to build filtered list responses.
 function buildFilteredListResponse<T, U = T>(
   items: T[],
@@ -715,13 +756,24 @@ export async function executeReadThreadMessages(
   cursor: string | undefined,
   oldest: string | undefined,
   latest: string | undefined,
-  accessToken: string
+  accessToken: string,
+  mcpServerId: string
 ) {
   const slackClient = await getSlackClient(accessToken);
 
   try {
+    // Resolve channel name/ID to channel ID (supports public/private channels and DMs).
+    const channelId = await resolveChannelId(channel, accessToken, mcpServerId);
+    if (!channelId) {
+      return new Err(
+        new MCPError(
+          `Unable to resolve channel id for "${channel}". Please use a valid channel name, channel id, or user id.`
+        )
+      );
+    }
+
     const response = await slackClient.conversations.replies({
-      channel: channel,
+      channel: channelId,
       ts: threadTs,
       limit: limit
         ? Math.min(limit, MAX_THREAD_MESSAGES)

@@ -1000,9 +1000,9 @@ async function createServer(
 
   server.tool(
     "list_threads",
-    "List threads for a given channel. Returns thread headers with timestamps (ts field). Use read_thread_messages with the ts field to read the full thread content.",
+    "List threads for a given channel, private channel, or DM. Returns thread headers with timestamps (ts field). Use read_thread_messages with the ts field to read the full thread content.",
     {
-      channel: z.string().describe("The channel name to list threads for."),
+      channel: z.string().describe("The channel name, channel ID, or user ID to list threads for. Supports public channels, private channels, and DMs."),
       relativeTimeFrame: z
         .string()
         .regex(/^(all|\d+[hdwmy])$/)
@@ -1131,11 +1131,11 @@ async function createServer(
 
   server.tool(
     "read_thread_messages",
-    "Read all messages in a specific thread. Use list_threads first to find thread timestamps (ts field).",
+    "Read all messages in a specific thread from public channels, private channels, or DMs. Use list_threads first to find thread timestamps (ts field).",
     {
       channel: z
         .string()
-        .describe("Channel name or ID where the thread is located"),
+        .describe("Channel name, channel ID, or user ID where the thread is located. Supports public channels, private channels, and DMs."),
       threadTs: z
         .string()
         .describe(
@@ -1180,7 +1180,8 @@ async function createServer(
           cursor,
           oldest,
           latest,
-          accessToken
+          accessToken,
+          mcpServerId
         );
       }
     )
