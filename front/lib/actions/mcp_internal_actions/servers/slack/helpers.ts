@@ -4,6 +4,7 @@ import type { Member } from "@slack/web-api/dist/response/UsersListResponse";
 import slackifyMarkdown from "slackify-markdown";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import { makePersonalAuthenticationError } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -20,6 +21,15 @@ export const MAX_CHANNELS_LIMIT = 500;
 export const MAX_THREAD_MESSAGES = 200;
 export const DEFAULT_THREAD_MESSAGES = 20;
 export const CHANNEL_CACHE_TTL_MS = 60 * 10 * 1000; // 10 minutes
+
+function isSlackMissingScope(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as any).message &&
+    (error as any).message.toString().includes("missing_scope")
+  );
+}
 
 export const getSlackClient = async (accessToken?: string) => {
   if (!accessToken) {
@@ -787,6 +797,10 @@ export async function executeReadThreadMessages(
     });
 
     if (!response.ok) {
+      // Trigger authentication flow for missing_scope
+      if (response.error === "missing_scope") {
+        return new Ok(makePersonalAuthenticationError("slack").content);
+      }
       return new Err(new MCPError("Failed to read thread messages"));
     }
 
@@ -836,6 +850,9 @@ export async function executeReadThreadMessages(
       },
     ]);
   } catch (error) {
+    if (isSlackMissingScope(error)) {
+      return new Ok(makePersonalAuthenticationError("slack").content);
+    }
     return new Err(new MCPError(`Error reading thread messages: ${error}`));
   }
 }
