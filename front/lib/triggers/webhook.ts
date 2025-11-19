@@ -387,7 +387,7 @@ async function launchTriggersWorkflows({
   contentFragment,
   workspaceId,
 }: {
-  triggers: Array<import("@app/types/assistant/triggers").WebhookTriggerType>;
+  triggers: Array<WebhookTriggerType>;
   webhookRequest: WebhookRequestResource;
   contentFragment: ContentFragmentInputWithFileIdType | undefined;
   workspaceId: string;
