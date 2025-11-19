@@ -8,7 +8,7 @@ import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ActivityReport } from "@app/components/workspace/ActivityReport";
 import { QuickInsights } from "@app/components/workspace/Analytics";
-import { CumulativeCostChart } from "@app/components/workspace/CumulativeCostChart";
+import { ProgrammaticCostChart } from "@app/components/workspace/ProgrammaticCostChart";
 import { DailyCostChart } from "@app/components/workspace/DailyCostChart";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -184,7 +184,7 @@ export default function Analytics({
                   workspaceId={owner.sId}
                   period={DEFAULT_PERIOD_DAYS}
                 />
-                <CumulativeCostChart workspaceId={owner.sId} />
+                <ProgrammaticCostChart workspaceId={owner.sId} />
               </>
             )}
           </div>

@@ -24,21 +24,21 @@ const QuerySchema = z.object({
   groupBy: z.enum(["agent", "origin"]).optional(),
 });
 
-export type WorkspaceCumulativeCostPoint = {
+export type WorkspaceProgrammaticCostPoint = {
   timestamp: number;
   groups: {
-    group: string;
-    name: string;
+    groupKey: string;
+    groupLabel: string;
     costCents: number;
-    cumulativeCostCents?: number;
+    programmaticCostCents?: number;
   }[];
   totalInitialCreditsCents: number;
   totalRemainingCreditsCents: number;
 };
 
-export type GetWorkspaceCumulativeCostResponse = {
+export type GetWorkspaceProgrammaticCostResponse = {
   groupBy: "agent" | "origin" | undefined;
-  points: WorkspaceCumulativeCostPoint[];
+  points: WorkspaceProgrammaticCostPoint[];
 };
 
 // Reuse the MetricsBucket type from messages_metrics to ensure compatibility
@@ -126,7 +126,7 @@ function getDatesInRange(startOfMonth: Date, now: Date): number[] {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorResponse<GetWorkspaceCumulativeCostResponse>
+    WithAPIErrorResponse<GetWorkspaceProgrammaticCostResponse>
   >,
   auth: Authenticator
 ): Promise<void> {
@@ -184,7 +184,7 @@ async function handler(
         credits,
         timestamps
       );
-      const groupNames: Record<string, string> = {};
+      const groupLabels: Record<string, string> = {};
       const groupValues: Record<string, Map<number, number>> = {};
       if (!groupBy) {
         // Fetch usage metrics
@@ -202,7 +202,7 @@ async function handler(
           });
         }
 
-        groupNames["total"] = "Total";
+        groupLabels["total"] = "Total";
         groupValues["total"] = new Map<number, number>();
         usageMetricsResult.value.forEach((point) => {
           groupValues["total"]?.set(point.timestamp, point.costCents);
@@ -294,13 +294,13 @@ async function handler(
         for (const { groupKey, points } of allGroupsToProcess) {
           // Determine group name
           if (groupKey === "others") {
-            groupNames["others"] = "Others";
+            groupLabels["others"] = "Others";
           } else if (groupKey === "unknown") {
-            groupNames["unknown"] = "Unknown";
+            groupLabels["unknown"] = "Unknown";
           } else if (groupBy === "agent") {
-            groupNames[groupKey] = agentNames[groupKey] || groupKey;
+            groupLabels[groupKey] = agentNames[groupKey] || groupKey;
           } else {
-            groupNames[groupKey] = groupKey;
+            groupLabels[groupKey] = groupKey;
           }
           groupValues[groupKey] = new Map(
             points.map((point) => [point.timestamp, point.costCents])
@@ -308,25 +308,27 @@ async function handler(
         }
       }
 
-      const cumulativeCostCents: Record<string, number> = {};
+      const programmaticCostCents: Record<string, number> = {};
       Object.keys(groupValues).forEach((group) => {
-        cumulativeCostCents[group] = 0;
+        programmaticCostCents[group] = 0;
       });
 
       const points = timestamps.map((timestamp) => {
-        const groups = Object.entries(groupValues).map(([group, costMap]) => {
-          const cost = costMap?.get(timestamp);
-          const cumulativeCost =
-            (cumulativeCostCents[group] ?? 0) + (cost ?? 0);
-          cumulativeCostCents[group] = cumulativeCost;
-          return {
-            group,
-            name: groupNames[group],
-            costCents: cost ?? 0,
-            cumulativeCostCents:
-              timestamp <= now.getTime() ? cumulativeCost : undefined,
-          };
-        });
+        const groups = Object.entries(groupValues).map(
+          ([groupKey, costMap]) => {
+            const cost = costMap?.get(timestamp);
+            const programmaticCost =
+              (programmaticCostCents[groupKey] ?? 0) + (cost ?? 0);
+            programmaticCostCents[groupKey] = programmaticCost;
+            return {
+              groupKey,
+              groupLabel: groupLabels[groupKey],
+              costCents: cost ?? 0,
+              programmaticCostCents:
+                timestamp <= now.getTime() ? programmaticCost : undefined,
+            };
+          }
+        );
 
         const credit = creditTotalsMap.get(timestamp);
         return {

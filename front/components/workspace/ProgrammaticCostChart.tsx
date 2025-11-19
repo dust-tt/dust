@@ -29,9 +29,9 @@ import {
   getToolColor,
   isUserMessageOrigin,
 } from "@app/components/agent_builder/observability/utils";
-import { useWorkspaceCumulativeCost } from "@app/lib/swr/workspaces";
+import { useWorkspaceProgrammaticCost } from "@app/lib/swr/workspaces";
 
-interface CumulativeCostChartProps {
+interface ProgrammaticCostChartProps {
   workspaceId: string;
 }
 
@@ -41,7 +41,7 @@ type ChartDataPoint = {
   date: string;
   timestamp: number;
   totalInitialCreditsCents: number;
-  cumulativeCostCents?: number;
+  programmaticCostCents?: number;
   [key: string]: string | number | undefined;
 };
 
@@ -74,7 +74,7 @@ function GlobalTooltip(
       rows={[
         {
           label: "Cumulative Cost",
-          value: `$${(data.cumulativeCostCents / 100).toFixed(2)}`,
+          value: `$${(data.programmaticCostCents / 100).toFixed(2)}`,
           colorClassName: "text-blue-500",
         },
         {
@@ -143,16 +143,21 @@ function GroupedTooltip(
   return <ChartTooltipCard title={data.date} rows={rows} />;
 }
 
-export function CumulativeCostChart({ workspaceId }: CumulativeCostChartProps) {
+export function ProgrammaticCostChart({
+  workspaceId,
+}: ProgrammaticCostChartProps) {
   const [groupBy, setGroupBy] = useState<"agent" | "origin" | undefined>(
     undefined
   );
 
-  const { cumulativeCostData, isCumulativeCostLoading, isCumulativeCostError } =
-    useWorkspaceCumulativeCost({
-      workspaceId,
-      groupBy,
-    });
+  const {
+    programmaticCostData,
+    isProgrammaticCostLoading,
+    isProgrammaticCostError,
+  } = useWorkspaceProgrammaticCost({
+    workspaceId,
+    groupBy,
+  });
 
   // Get current month name
   const currentMonth = new Date().toLocaleDateString("en-US", {
@@ -166,17 +171,17 @@ export function CumulativeCostChart({ workspaceId }: CumulativeCostChartProps) {
   const legendItems: { key: string; label: string; colorClassName: string }[] =
     [];
 
-  if (cumulativeCostData) {
+  if (programmaticCostData) {
     // Extract all unique group names (excluding "total" for ungrouped view)
     const groupSet = new Set<string>();
-    cumulativeCostData.points.forEach((point) => {
+    programmaticCostData.points.forEach((point) => {
       point.groups.forEach((g) => {
-        groupSet.add(g.name);
+        groupSet.add(g.groupLabel);
       });
     });
 
     // For grouped view, order groups with "Others" at the end
-    if (cumulativeCostData.groupBy) {
+    if (programmaticCostData.groupBy) {
       const regularGroups = Array.from(groupSet).filter(
         (name) => name !== "Others"
       );
@@ -192,11 +197,11 @@ export function CumulativeCostChart({ workspaceId }: CumulativeCostChartProps) {
     groups.forEach((groupName) => {
       let colorClassName: string;
       if (
-        cumulativeCostData.groupBy === "origin" &&
+        programmaticCostData.groupBy === "origin" &&
         isUserMessageOrigin(groupName)
       ) {
         colorClassName = getSourceColor(groupName, "text");
-      } else if (cumulativeCostData.groupBy === "agent") {
+      } else if (programmaticCostData.groupBy === "agent") {
         colorClassName = getToolColor(groupName, groups, "text");
       } else {
         colorClassName = "text-green-500";
@@ -222,7 +227,7 @@ export function CumulativeCostChart({ workspaceId }: CumulativeCostChartProps) {
     });
 
     // Transform points into chart data
-    chartData = cumulativeCostData.points.map((point) => {
+    chartData = programmaticCostData.points.map((point) => {
       const date = new Date(point.timestamp);
       const dataPoint: ChartDataPoint = {
         date: date.toLocaleDateString("en-US", {
@@ -236,12 +241,12 @@ export function CumulativeCostChart({ workspaceId }: CumulativeCostChartProps) {
       // Add each group's cumulative cost to the data point
       // Keep undefined values as-is so Recharts doesn't render those points
       point.groups.forEach((g) => {
-        if (cumulativeCostData.groupBy) {
+        if (programmaticCostData.groupBy) {
           // For grouped view, use group name as key
-          dataPoint[g.name] = g.cumulativeCostCents;
+          dataPoint[g.groupLabel] = g.programmaticCostCents;
         } else {
           // For non-grouped view, use a standard key
-          dataPoint.cumulativeCostCents = g.cumulativeCostCents;
+          dataPoint.programmaticCostCents = g.programmaticCostCents;
         }
       });
 
@@ -253,9 +258,9 @@ export function CumulativeCostChart({ workspaceId }: CumulativeCostChartProps) {
     <ChartContainer
       title={`Cumulative Cost - ${currentMonth}`}
       description="Total cost accumulated since the start of the month."
-      isLoading={isCumulativeCostLoading}
+      isLoading={isProgrammaticCostLoading}
       errorMessage={
-        isCumulativeCostError
+        isProgrammaticCostError
           ? "Failed to load cumulative cost data."
           : undefined
       }
@@ -335,7 +340,7 @@ export function CumulativeCostChart({ workspaceId }: CumulativeCostChartProps) {
           />
           <Line
             type="monotone"
-            dataKey="cumulativeCostCents"
+            dataKey="programmaticCostCents"
             name="Cumulative Cost"
             stroke="#3b82f6"
             strokeWidth={2}

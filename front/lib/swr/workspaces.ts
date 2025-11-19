@@ -4,7 +4,7 @@ import type { Fetcher } from "swr";
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetWorkspaceResponseBody } from "@app/pages/api/w/[wId]";
-import type { GetWorkspaceCumulativeCostResponse } from "@app/pages/api/w/[wId]/analytics/programmatic-cost";
+import type { GetWorkspaceProgrammaticCostResponse } from "@app/pages/api/w/[wId]/analytics/programmatic-cost";
 import type { GetWorkspaceUsageMetricsResponse } from "@app/pages/api/w/[wId]/analytics/usage";
 import type { GetWorkspaceFeatureFlagsResponseType } from "@app/pages/api/w/[wId]/feature-flags";
 import type { GetSubscriptionsResponseBody } from "@app/pages/api/w/[wId]/subscriptions";
@@ -178,7 +178,7 @@ export function useWorkspaceUsageMetrics({
   };
 }
 
-export function useWorkspaceCumulativeCost({
+export function useWorkspaceProgrammaticCost({
   workspaceId,
   groupBy,
   disabled,
@@ -187,7 +187,7 @@ export function useWorkspaceCumulativeCost({
   groupBy?: "agent" | "origin";
   disabled?: boolean;
 }) {
-  const fetcherFn: Fetcher<GetWorkspaceCumulativeCostResponse> = fetcher;
+  const fetcherFn: Fetcher<GetWorkspaceProgrammaticCostResponse> = fetcher;
   const key = `/api/w/${workspaceId}/analytics/programmatic-cost${groupBy ? `?groupBy=${groupBy}` : ""}`;
 
   const { data, error, isValidating } = useSWRWithDefaults(
@@ -196,9 +196,9 @@ export function useWorkspaceCumulativeCost({
   );
 
   return {
-    cumulativeCostData: data,
-    isCumulativeCostLoading: !error && !data && !disabled,
-    isCumulativeCostError: error,
-    isCumulativeCostValidating: isValidating,
+    programmaticCostData: data,
+    isProgrammaticCostLoading: !error && !data && !disabled,
+    isProgrammaticCostError: error,
+    isProgrammaticCostValidating: isValidating,
   };
 }
