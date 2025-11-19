@@ -2,7 +2,10 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { getZendeskClient } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/client";
+import {
+  getUniqueCustomFieldIds,
+  getZendeskClient,
+} from "@app/lib/actions/mcp_internal_actions/servers/zendesk/client";
 import {
   renderTicket,
   renderTicketMetrics,
@@ -63,7 +66,15 @@ function createServer(
         }
 
         const ticket = ticketResult.value;
-        let ticketText = renderTicket(ticket);
+
+        const fieldIds = getUniqueCustomFieldIds(ticket);
+        const ticketFieldsResult = await client.getTicketFieldsByIds(fieldIds);
+        const ticketFields = ticketFieldsResult.isOk()
+          ? ticketFieldsResult.value
+          : undefined;
+        // TODO: add disclaimer to tool result saying that we were not able to pull the custom fields.
+
+        let ticketText = renderTicket(ticket, ticketFields);
 
         if (includeMetrics) {
           const metricsResult = await client.getTicketMetrics(ticketId);
@@ -101,7 +112,7 @@ function createServer(
         .describe(
           "The search query using Zendesk query syntax. Examples: 'status:open', 'priority:high " +
             "status:pending', 'assignee:123', 'tags:bug tags:critical'." +
-            "Do not include 'type:ticket'  as it is automatically added."
+            "Do not include 'type:ticket' as it is automatically added."
         ),
       sortBy: z
         .enum(["updated_at", "created_at", "priority", "status", "ticket_type"])
@@ -146,9 +157,17 @@ function createServer(
           ]);
         }
 
+        const fieldIds = getUniqueCustomFieldIds(results);
+        const ticketFieldsResult = await client.getTicketFieldsByIds(fieldIds);
+        const ticketFields = ticketFieldsResult.isOk()
+          ? ticketFieldsResult.value
+          : undefined;
+
+        // TODO: same todo as above.
+
         const ticketsText = results
           .map((ticket) => {
-            return ["---", renderTicket(ticket)].join("\n");
+            return ["---", renderTicket(ticket, ticketFields)].join("\n");
           })
           .join("\n\n");
 

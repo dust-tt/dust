@@ -1,5 +1,6 @@
 import type {
   ZendeskTicket,
+  ZendeskTicketField,
   ZendeskTicketMetrics,
 } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/types";
 
@@ -7,7 +8,10 @@ function apiUrlToDocumentUrl(apiUrl: string): string {
   return apiUrl.replace("/api/v2", "").replace(".json", "");
 }
 
-export function renderTicket(ticket: ZendeskTicket): string {
+export function renderTicket(
+  ticket: ZendeskTicket,
+  ticketFields?: ZendeskTicketField[]
+): string {
   const lines = [
     `ID: ${ticket.id}`,
     `URL: ${apiUrlToDocumentUrl(ticket.url)}`,
@@ -54,12 +58,25 @@ export function renderTicket(ticket: ZendeskTicket): string {
   lines.push(`\nCreated: ${new Date(ticket.created_at).toISOString()}`);
   lines.push(`Updated: ${new Date(ticket.updated_at).toISOString()}`);
 
-  if (ticket.custom_fields) {
-    lines.push("\nCustom Fields:");
+  if (ticket.custom_fields && ticket.custom_fields.length > 0) {
+    const fieldMap = new Map(ticketFields?.map((f) => [f.id, f.title]) ?? []);
+    const fieldsWithNames: string[] = [];
+
     for (const field of ticket.custom_fields) {
-      if (field.value && typeof field.value !== "boolean") {
-        lines.push(`${field.value}`);
+      if (field.value !== null && field.value !== "") {
+        const fieldName = fieldMap.get(field.id);
+        if (fieldName) {
+          const valueStr = Array.isArray(field.value)
+            ? field.value.join(", ")
+            : String(field.value);
+          fieldsWithNames.push(`${fieldName}: ${valueStr}`);
+        }
       }
+    }
+
+    if (fieldsWithNames.length > 0) {
+      lines.push("\nCustom Fields:");
+      lines.push(...fieldsWithNames);
     }
   }
 
