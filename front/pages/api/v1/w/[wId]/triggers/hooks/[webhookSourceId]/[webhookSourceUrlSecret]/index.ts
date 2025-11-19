@@ -206,31 +206,6 @@ async function handler(
       contentType: "application/json",
       filePath: gcsPath,
     });
-
-    const result = await processWebhookRequest({
-      auth,
-      webhookRequest,
-      webhookSource,
-      headers: headersRecord,
-      body,
-    });
-
-    if (!result.success) {
-      statsDClient.increment("webhook_error.count", 1, [
-        `provider:${provider}`,
-        `workspace_id:${workspace.sId}`,
-      ]);
-
-      return apiError(req, res, {
-        status_code: 500,
-        api_error: {
-          type: "webhook_processing_error",
-          message: result.message,
-        },
-      });
-    }
-
-    return res.status(200).json({ success: true });
   } catch (error: unknown) {
     await webhookRequest.markAsFailed(
       error instanceof Error ? error.message : String(error)
@@ -249,6 +224,31 @@ async function handler(
       },
     });
   }
+
+  const result = await processWebhookRequest({
+    auth,
+    webhookRequest,
+    webhookSource,
+    headers: headersRecord,
+    body,
+  });
+
+  if (!result.success) {
+    statsDClient.increment("webhook_error.count", 1, [
+      `provider:${provider}`,
+      `workspace_id:${workspace.sId}`,
+    ]);
+
+    return apiError(req, res, {
+      status_code: 500,
+      api_error: {
+        type: "webhook_processing_error",
+        message: result.message,
+      },
+    });
+  }
+
+  return res.status(200).json({ success: true });
 }
 
 export default withLogging(handler);
