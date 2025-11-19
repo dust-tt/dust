@@ -105,7 +105,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
           workspaceId: dataSourceConfig.workspaceId,
           error: schedulesStarted.error,
         },
-        "[Intercom] Error creating connector Could not launch scheduled workflows."
+        "[Intercom] Error creating connector, could not launch scheduled workflows."
       );
       throw schedulesStarted.error;
     }
