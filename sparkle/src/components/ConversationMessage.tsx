@@ -12,7 +12,7 @@ export const ConversationContainer = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        "s-flex s-h-full s-w-full s-flex-col s-items-center s-@container/conversation",
+        "s-flex s-h-full s-w-full s-flex-col s-items-center",
         className
       )}
       {...props}
@@ -36,7 +36,6 @@ interface ConversationMessageProps
   isCurrentUser?: boolean;
   isDisabled?: boolean;
   name?: string;
-  textFullWidth?: boolean;
   timestamp?: string;
   completionStatus?: React.ReactNode;
   pictureUrl?: string | React.ReactNode | null;
@@ -47,12 +46,12 @@ interface ConversationMessageProps
 
 export type ConversationMessageType = "user" | "agent";
 
-const wrapperVariants = cva("s-group/message s-min-w-60 s-max-w-full", {
+const wrapperVariants = cva("s-flex s-flex-col s-min-w-60 s-w-full s-@container", {
   variants: {
     messageType: {
       agent: "s-pr-0",
-      me: "s-self-end s-pl-8",
-      user: "s-self-start s-pr-8", 
+      me: "s-items-end s-pl-8",
+      user: "s-items-start s-pr-8", 
     },
   },
   defaultVariants: {
@@ -63,15 +62,11 @@ const messageVariants = cva("s-flex s-rounded-2xl", {
   variants: {
     type: {
       agent: "s-w-full s-gap-3 s-p-4",
-      user: "s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-py-4 s-gap-2 s-w-fit",
-    },
-    textFullWidth: {
-      true: "s-flex-col",
+      user: "s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-py-4 s-gap-2",
     },
   },
   defaultVariants: {
     type: "agent",
-    textFullWidth: false,
   },
 });
 
@@ -103,7 +98,6 @@ export const ConversationMessage = React.forwardRef<
       isCurrentUser = true,
       isDisabled = false,
       name,
-      textFullWidth = false,
       timestamp,
       completionStatus,
       pictureUrl,
@@ -121,36 +115,14 @@ export const ConversationMessage = React.forwardRef<
     } else if (type === "user") {
       messageType = isCurrentUser ? "me" : "user";
     }
-    if (!textFullWidth) {
-      return (
-        <div ref={ref} className={cn(wrapperVariants({ messageType }))}>
-          <div className={cn(messageVariants({ type, className }))} {...props}>
-            <ConversationMessageAvatar
-              avatarUrl={pictureUrl}
-              name={name}
-              isBusy={avatarBusy}
-              type={type}
-              isDisabled={isDisabled}
-            />
-            <div className="s-flex s-flex-col s-gap-3 s-w-full">
-              <ConversationMessageTitle name={name} timestamp={timestamp} infoChip={infoChip} completionStatus={completionStatus} renderName={renderName} />
-              <ConversationMessageContent citations={citations} type={type}>
-                {children}
-              </ConversationMessageContent>
-              {buttons && (
-                <div className={cn(buttonsVariants({ type, className }))}>
-                  {buttons}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      );
-    }
+
     return (
       <div ref={ref} className={cn(wrapperVariants({ messageType }))}>
-        <div className={cn(messageVariants({ type, textFullWidth, className }))} {...props}>
-          <div className="s-inline-flex s-items-center s-gap-2">
+        <div className={cn(
+          messageVariants({ type, className }),
+          "s-flex-col @sm:s-flex-row"
+        )} {...props}>
+          <div className="s-inline-flex s-items-center s-gap-2 @sm:s-hidden">
             <ConversationMessageAvatar
               avatarUrl={pictureUrl}
               name={name}
@@ -160,15 +132,32 @@ export const ConversationMessage = React.forwardRef<
             />
             <ConversationMessageTitle name={name} timestamp={timestamp} infoChip={infoChip} completionStatus={completionStatus} renderName={renderName} />
           </div>
-          <ConversationMessageContent citations={citations} type={type}>
-            {children}
-          </ConversationMessageContent>
-        </div>
-        {buttons && (
-          <div className={cn(buttonsVariants({ type, className }))}>
-            {buttons}
+
+          <ConversationMessageAvatar
+            className="s-hidden @sm:s-flex"
+            avatarUrl={pictureUrl}
+            name={name}
+            isBusy={avatarBusy}
+            type={type}
+            isDisabled={isDisabled}
+          />
+
+          <div className="s-flex s-flex-col s-gap-3 s-w-full">
+            <div className="s-hidden @sm:s-block">
+              <ConversationMessageTitle name={name} timestamp={timestamp} infoChip={infoChip} completionStatus={completionStatus} renderName={renderName} />
+            </div>
+
+            <ConversationMessageContent citations={citations} type={type}>
+              {children}
+            </ConversationMessageContent>
+
+            {buttons && (
+              <div className={cn(buttonsVariants({ type, className }))}>
+                {buttons}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     );
   }
