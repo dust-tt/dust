@@ -106,7 +106,7 @@ export async function launchIntercomFullSyncWorkflow({
   return new Ok(workflowId);
 }
 
-export async function stopIntercomWorkflows(
+export async function stopIntercomSchedulesAndWorkflows(
   connector: ConnectorResource
 ): Promise<Result<void, Error>> {
   const helpCenterResult = await deleteSchedule({

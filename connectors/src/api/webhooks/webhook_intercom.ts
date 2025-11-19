@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 
 import type { IntercomConversationWithPartsType } from "@connectors/connectors/intercom/lib/types";
-import { stopIntercomWorkflows } from "@connectors/connectors/intercom/temporal/client";
+import { stopIntercomSchedulesAndWorkflows } from "@connectors/connectors/intercom/temporal/client";
 import { syncConversation } from "@connectors/connectors/intercom/temporal/sync_conversation";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
@@ -228,7 +228,7 @@ const _webhookIntercomUninstallAPIHandler = async (
   }
 
   // Stop the underlying sync workflows to avoid churning.
-  const stopRes = await stopIntercomWorkflows(connector);
+  const stopRes = await stopIntercomSchedulesAndWorkflows(connector);
   if (stopRes.isErr()) {
     logger.error(
       {
