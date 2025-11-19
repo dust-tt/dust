@@ -18,7 +18,8 @@ export class CreditModel extends WorkspaceAwareModel<CreditModel> {
   // When credit becomes active (null = not yet paid/active).
   declare startDate: Date | null;
   declare expirationDate: Date | null;
-  declare initialAmount: number; // in cents (immutable)
+  // Amount in cents (immutable after creation).
+  declare initialAmount: number;
   declare remainingAmount: number; // in cents
   // Stripe invoice ID or line item ID for idempotency.
   declare invoiceOrLineItemId: string | null;
