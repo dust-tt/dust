@@ -16,7 +16,6 @@ import logger from "@connectors/logger/logger";
 /**
  * Utility function to call the Intercom API.
  * It centralizes calling the API and handling global errors.
- *
  * Returns null in case of 404 errors.
  */
 async function queryIntercomAPI({
@@ -327,7 +326,7 @@ export async function fetchIntercomConversations({
   cursor: string | null;
   pageSize?: number;
   state?: string;
-}): Promise<IntercomFetchConversationsResponseType | null> {
+}): Promise<IntercomFetchConversationsResponseType> {
   const minCreatedAtDate = new Date(
     Date.now() - slidingWindow * 24 * 60 * 60 * 1000
   );
@@ -390,6 +389,12 @@ export async function fetchIntercomConversations({
         },
       },
     });
+
+  if (!response || !response.conversations) {
+    // response might be null in case of 404
+    // conversations might not be defined if there is no conversations
+    return { conversations: [], pages: {} };
+  }
 
   return response;
 }

@@ -614,10 +614,6 @@ export async function getNextConversationBatchToSyncActivity({
     });
   }
 
-  if (!result || !result.conversations) {
-    return { conversationIds: [], nextPageCursor: null };
-  }
-
   const conversationIds = result.conversations.map((c) => c.id);
   const nextPageCursor = result.pages.next
     ? result.pages.next.starting_after

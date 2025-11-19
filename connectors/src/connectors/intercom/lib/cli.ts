@@ -272,17 +272,13 @@ export const intercom = async ({
           state: args.state,
         });
 
-        if (!response || !response.conversations) {
-          hasMore = false;
-        } else {
-          conversations.push(...response.conversations);
-          totalCount += response.conversations.length;
+        conversations.push(...response.conversations);
+        totalCount += response.conversations.length;
 
-          if (response.pages.next) {
-            cursor = response.pages.next.starting_after;
-          } else {
-            hasMore = false;
-          }
+        if (response.pages.next) {
+          cursor = response.pages.next.starting_after;
+        } else {
+          hasMore = false;
         }
       }
 
