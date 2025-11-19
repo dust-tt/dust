@@ -50,17 +50,13 @@ export function AgentObservability({
     agentAnalytics.activeUsers > 0 &&
     agentAnalytics.mentions.messageCount > 0;
 
-  const {
-    summaryText,
-    isSummaryLoading,
-    isSummaryError,
-    refetchSummary,
-  } = useAgentObservabilitySummary({
-    workspaceId,
-    agentConfigurationId,
-    days: period,
-    disabled: !isTimeRangeMode,
-  });
+  const { summaryText, isSummaryLoading, isSummaryError, refetchSummary } =
+    useAgentObservabilitySummary({
+      workspaceId,
+      agentConfigurationId,
+      days: period,
+      disabled: !isTimeRangeMode,
+    });
 
   return (
     <TabContentLayout
@@ -76,7 +72,7 @@ export function AgentObservability({
         {isTimeRangeMode && (
           <div className="mb-4">
             {isSummaryLoading ? (
-              <div className="rounded-lg border border-border bg-card p-4 dark:border-border-night">
+              <div className="bg-card rounded-lg border border-border p-4 dark:border-border-night">
                 <div className="mb-2 flex items-center justify-between">
                   <LoadingBlock className="h-5 w-24" />
                 </div>

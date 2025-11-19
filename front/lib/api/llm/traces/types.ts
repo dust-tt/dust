@@ -1,9 +1,5 @@
 import type { TokenUsage, ToolCall } from "@app/lib/api/llm/types/events";
-import type {
-  ModelConversationTypeMultiActions,
-  ModelIdType,
-  ReasoningEffort,
-} from "@app/types";
+import type { ModelConversationTypeMultiActions, ModelIdType, ReasoningEffort } from "@app/types";
 
 /**
  * Context information for LLM operations to aid in debugging and discovery
@@ -24,7 +20,8 @@ export interface LLMTraceContext {
     | "trigger_cron_timezone_generator"
     | "trigger_webhook_filter_generator"
     | "voice_agent_finder"
-    | "workspace_tags_suggestion";
+    | "workspace_tags_suggestion"
+    | "agent_observability_summary";
 
   /** Context-specific identifier (e.g., agentConfigId, conversationId, etc.) */
   contextId?: string;

@@ -2,11 +2,10 @@ import type { estypes } from "@elastic/elasticsearch";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
+import type { MessageMetricsPoint } from "@app/lib/api/assistant/observability/messages_metrics";
+import { fetchMessageMetrics } from "@app/lib/api/assistant/observability/messages_metrics";
+import type { AgentOverview } from "@app/lib/api/assistant/observability/overview";
 import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
-import {
-  fetchMessageMetrics,
-  type MessageMetricsPoint,
-} from "@app/lib/api/assistant/observability/messages_metrics";
 import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types";
 import { Err, GPT_4_1_MINI_MODEL_ID, Ok } from "@app/types";
@@ -25,7 +24,6 @@ export type AgentObservabilitySummaryResult = {
 const SUMMARY_METRICS = [
   "conversations",
   "activeUsers",
-  "costCents",
   "avgLatencyMs",
   "percentilesLatencyMs",
   "failedMessages",
@@ -35,7 +33,7 @@ const SUMMARY_METRICS = [
 const SUMMARY_SPECIFICATIONS: AgentActionSpecification[] = [];
 
 function hasAnyActivity(
-  overview: Awaited<ReturnType<typeof fetchAgentOverview>>["value"],
+  overview: AgentOverview,
   points: Pick<
     MessageMetricsPoint,
     (typeof SUMMARY_METRICS)[number] | "timestamp"
@@ -53,7 +51,6 @@ function hasAnyActivity(
     (p) =>
       (p.conversations ?? 0) > 0 ||
       (p.activeUsers ?? 0) > 0 ||
-      (p.costCents ?? 0) > 0 ||
       (p.failedMessages ?? 0) > 0
   );
 }
@@ -109,7 +106,6 @@ export async function generateAgentObservabilitySummary({
       timestamp: p.timestamp,
       conversations: p.conversations,
       activeUsers: p.activeUsers,
-      costCents: p.costCents,
       avgLatencyMs: p.avgLatencyMs,
       p50LatencyMs: p.percentilesLatencyMs,
       failedMessages: p.failedMessages,
@@ -166,16 +162,11 @@ export async function generateAgentObservabilitySummary({
     return new Err(res.error);
   }
 
-  const raw = res.value.generation?.trim() ?? "";
-  if (!raw) {
+  const summaryText = res.value.generation?.trim() ?? "";
+  if (!summaryText) {
     return new Err(
       new Error("LLM did not return any text for observability summary.")
     );
   }
-
-  // Keep summary relatively short to avoid overflowing the UI.
-  const summaryText =
-    raw.length > 1_000 ? `${raw.slice(0, 1_000).trim()}…` : raw;
-
   return new Ok({ summaryText });
 }

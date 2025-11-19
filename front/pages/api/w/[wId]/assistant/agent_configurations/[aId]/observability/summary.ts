@@ -23,6 +23,8 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<GetAgentSummaryResponseBody>>,
   auth: Authenticator
 ) {
+  const owner = auth.getNonNullableWorkspace();
+
   if (typeof req.query.aId !== "string") {
     return apiError(req, res, {
       status_code: 400,
@@ -72,7 +74,6 @@ async function handler(
       }
 
       const days = q.data.days ?? DEFAULT_PERIOD_DAYS;
-      const owner = auth.getNonNullableWorkspace();
 
       const baseQuery = buildAgentAnalyticsBaseQuery({
         workspaceId: owner.sId,
@@ -114,4 +115,3 @@ async function handler(
 }
 
 export default withSessionAuthenticationForWorkspace(handler);
-
