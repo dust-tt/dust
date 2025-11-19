@@ -2,14 +2,12 @@ import { BarChartIcon, Page } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useState } from "react";
 
-import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ActivityReport } from "@app/components/workspace/ActivityReport";
 import { QuickInsights } from "@app/components/workspace/Analytics";
 import { ProgrammaticCostChart } from "@app/components/workspace/ProgrammaticCostChart";
-import { DailyCostChart } from "@app/components/workspace/DailyCostChart";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useWorkspaceSubscriptions } from "@app/lib/swr/workspaces";
@@ -178,16 +176,12 @@ export default function Analytics({
               includeInactive={includeInactive}
               onIncludeInactiveChange={setIncludeInactive}
             />
-            {hasProgrammaticUsageMetrics && (
-              <>
-                <DailyCostChart
-                  workspaceId={owner.sId}
-                  period={DEFAULT_PERIOD_DAYS}
-                />
-                <ProgrammaticCostChart workspaceId={owner.sId} />
-              </>
-            )}
           </div>
+          {hasProgrammaticUsageMetrics && (
+            <div className="grid w-full grid-cols-1 gap-4">
+              <ProgrammaticCostChart workspaceId={owner.sId} />
+            </div>
+          )}
         </Page.Vertical>
       </AppCenteredLayout>
     </>
