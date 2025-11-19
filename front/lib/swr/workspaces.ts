@@ -4,7 +4,7 @@ import type { Fetcher } from "swr";
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetWorkspaceResponseBody } from "@app/pages/api/w/[wId]";
-import type { GetWorkspaceCumulativeCostResponse } from "@app/pages/api/w/[wId]/analytics/cumulative-cost";
+import type { GetWorkspaceCumulativeCostResponse } from "@app/pages/api/w/[wId]/analytics/programmatic-cost";
 import type { GetWorkspaceUsageMetricsResponse } from "@app/pages/api/w/[wId]/analytics/usage";
 import type { GetWorkspaceFeatureFlagsResponseType } from "@app/pages/api/w/[wId]/feature-flags";
 import type { GetSubscriptionsResponseBody } from "@app/pages/api/w/[wId]/subscriptions";
@@ -188,7 +188,7 @@ export function useWorkspaceCumulativeCost({
   disabled?: boolean;
 }) {
   const fetcherFn: Fetcher<GetWorkspaceCumulativeCostResponse> = fetcher;
-  const key = `/api/w/${workspaceId}/analytics/cumulative-cost${groupBy ? `?groupBy=${groupBy}` : ""}`;
+  const key = `/api/w/${workspaceId}/analytics/programmatic-cost${groupBy ? `?groupBy=${groupBy}` : ""}`;
 
   const { data, error, isValidating } = useSWRWithDefaults(
     disabled ? null : key,
