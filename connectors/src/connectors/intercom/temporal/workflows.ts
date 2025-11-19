@@ -52,6 +52,9 @@ const {
 const TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH = 40_000;
 const TEMPORAL_WORKFLOW_MAX_HISTORY_SIZE_MB = 40;
 
+// We sync conversations over the last 30 minutes, which is 1.5 times the frequency of the schedule.
+const CONVERSATION_SYNC_WINDOW_MINUTES = 30;
+
 /**
  * This workflow is triggered by signals when permissions are updated or when a full sync is triggered.
  * It processes help centers, teams, and "all conversations" based on the signals received.
@@ -244,7 +247,7 @@ export async function intercomConversationSyncWorkflow({
           connectorId,
           teamId,
           cursor,
-          lastHourOnly: true,
+          closedAfterTimeWindowMinutes: CONVERSATION_SYNC_WINDOW_MINUTES,
         });
 
       await syncConversationBatchActivity({
