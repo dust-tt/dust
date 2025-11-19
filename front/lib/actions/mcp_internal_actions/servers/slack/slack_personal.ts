@@ -1002,7 +1002,11 @@ async function createServer(
     "list_threads",
     "List threads for a given channel, private channel, or DM. Returns thread headers with timestamps (ts field). Use read_thread_messages with the ts field to read the full thread content.",
     {
-      channel: z.string().describe("The channel name, channel ID, or user ID to list threads for. Supports public channels, private channels, and DMs."),
+      channel: z
+        .string()
+        .describe(
+          "The channel name, channel ID, or user ID to list threads for. Supports public channels, private channels, and DMs."
+        ),
       relativeTimeFrame: z
         .string()
         .regex(/^(all|\d+[hdwmy])$/)
@@ -1135,7 +1139,9 @@ async function createServer(
     {
       channel: z
         .string()
-        .describe("Channel name, channel ID, or user ID where the thread is located. Supports public channels, private channels, and DMs."),
+        .describe(
+          "Channel name, channel ID, or user ID where the thread is located. Supports public channels, private channels, and DMs."
+        ),
       threadTs: z
         .string()
         .describe(
