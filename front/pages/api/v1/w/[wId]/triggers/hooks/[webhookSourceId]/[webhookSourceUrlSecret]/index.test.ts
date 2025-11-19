@@ -5,6 +5,8 @@ import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WebhookSourceFactory } from "@app/tests/utils/WebhookSourceFactory";
 
+import * as webhooksLib from "@app/lib/triggers/webhook";
+
 // Shallowly mock file content fragment creation to avoid touching storage.
 vi.mock("@app/lib/api/assistant/conversation/content_fragment", () => ({
   toFileContentFragment: vi.fn(async () => ({
@@ -31,8 +33,8 @@ vi.mock("@app/lib/triggers/temporal/common/client", () => ({
   })),
 }));
 
-vi.mock("@app/lib/triggers/webhook", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@app/lib/triggers/webhook")>();
+vi.mock("@app/lib/triggers/webhook", async () => {
+  const actual = webhooksLib;
   return {
     ...actual,
     processWebhookRequestFully: vi.fn(async () => ({

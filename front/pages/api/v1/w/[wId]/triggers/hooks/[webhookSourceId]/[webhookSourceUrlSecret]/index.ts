@@ -6,7 +6,7 @@ import { getWebhookRequestsBucket } from "@app/lib/file_storage";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { processWebhookRequestFully } from "@app/lib/triggers/webhook";
+import { processWebhookRequest } from "@app/lib/triggers/webhook";
 import { statsDClient } from "@app/logger/statsDClient";
 import type { NextApiRequestWithContext } from "@app/logger/withlogging";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -207,8 +207,7 @@ async function handler(
       filePath: gcsPath,
     });
 
-    // Process the webhook request directly (no Temporal workflow)
-    const result = await processWebhookRequestFully({
+    const result = await processWebhookRequest({
       auth,
       webhookRequest,
       webhookSource,

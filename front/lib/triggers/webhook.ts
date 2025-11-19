@@ -11,7 +11,7 @@ import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
-import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
+import type { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { FathomClient } from "@app/lib/triggers/built-in-webhooks/fathom/fathom_client";
 import { checkTriggerForExecutionPerDayLimit } from "@app/lib/triggers/common";
@@ -25,36 +25,16 @@ import { verifySignature } from "@app/lib/webhookSource";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import type { ContentFragmentInputWithFileIdType, Result } from "@app/types";
-import {
-  assertNever,
-  Err,
-  errorToString,
-  isString,
-  Ok,
-  removeNulls,
-} from "@app/types";
-import type { TriggerType } from "@app/types/assistant/triggers";
-import { isWebhookTrigger } from "@app/types/assistant/triggers";
+import { assertNever, Err, isString, Ok, removeNulls } from "@app/types";
 import type {
-  WebhookProvider,
-  WebhookSourceForAdminType,
-} from "@app/types/triggers/webhooks";
+  TriggerType,
+  WebhookTriggerType,
+} from "@app/types/assistant/triggers";
+import { isWebhookTrigger } from "@app/types/assistant/triggers";
+import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
 const WORKSPACE_MESSAGE_LIMIT_MULTIPLIER = 0.5; // 50% of workspace message limit
-
-/**
- * To avoid storing sensitive information, only these headers are allowed to be stored in GCS.
- */
-const HEADERS_ALLOWED_LIST = [
-  ...removeNulls(
-    Object.values(WEBHOOK_PRESETS)
-      .filter((preset) => preset.eventCheck?.type === "headers")
-      .map((preset) => preset.eventCheck?.field.toLowerCase())
-  ),
-  // Header used by Fathom.
-  "webhook-signature",
-];
 
 class WebhookNonRetryableError extends Error {}
 
@@ -228,7 +208,7 @@ async function fetchAndFilterTriggers({
   webhookRequest: WebhookRequestResource;
   receivedEventValue: string | null;
   body: Record<string, unknown>;
-}): Promise<Array<import("@app/types/assistant/triggers").WebhookTriggerType>> {
+}): Promise<Array<WebhookTriggerType>> {
   const { provider } = webhookSource;
   const workspaceId = auth.getNonNullableWorkspace().sId;
   const webhookRequestId = webhookRequest.id;
@@ -592,8 +572,7 @@ export async function checkWebhookRequestForRateLimit(
   return new Ok(undefined);
 }
 
-
-export async function processWebhookRequestFully({
+export async function processWebhookRequest({
   auth,
   webhookRequest,
   webhookSource,

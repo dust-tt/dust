@@ -28,7 +28,7 @@ import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resou
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { tokenCountForTexts } from "@app/lib/tokenization";
-import { processWebhookRequestFully } from "@app/lib/triggers/webhook";
+import { processWebhookRequest } from "@app/lib/triggers/webhook";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import {
@@ -704,7 +704,7 @@ async function trigger(command: string, args: parseArgs.ParsedArgs) {
             continue;
           }
 
-          await processWebhookRequestFully({
+          await processWebhookRequest({
             auth,
             webhookRequest,
             webhookSource,
