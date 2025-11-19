@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
+import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { fetchMessageMetrics } from "@app/lib/api/assistant/observability/messages_metrics";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -12,7 +13,6 @@ const QuerySchema = z.object({
   days: z.coerce.number().positive().optional(),
   interval: z.enum(["day", "week"]).optional(),
 });
-export const DEFAULT_PERIOD_DAYS = 30;
 
 export type GetWorkspaceUsageMetricsResponse = {
   points: {
