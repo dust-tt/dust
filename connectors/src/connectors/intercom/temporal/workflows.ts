@@ -293,7 +293,7 @@ export async function intercomConversationSyncWorkflow({
     } while (cursor);
   }
 
-  await intercomOutdatedConversationsCleanup({
+  await cleanupOutdatedConversations({
     connectorId,
   });
 
@@ -490,10 +490,7 @@ export async function intercomAllConversationsFullSyncWorkflow({
   }
 }
 
-/**
- * Cleaning Workflow to remove old convos.
- */
-export async function intercomOutdatedConversationsCleanup({
+async function cleanupOutdatedConversations({
   connectorId,
 }: {
   connectorId: ModelId;
