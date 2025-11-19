@@ -21,7 +21,8 @@ export function useBrowserNotification(): UseBrowserNotificationApi {
         return;
       }
 
-      const show = () => {
+      // If permission is already granted, show the notification.
+      if (Notification.permission === "granted") {
         try {
           const n = new Notification(title, options);
 
@@ -36,22 +37,9 @@ export function useBrowserNotification(): UseBrowserNotificationApi {
         } catch (_) {
           // Silently ignore errors to avoid noisy logs as per logging policy.
         }
-      };
-
-      // If permission is already granted, show the notification immediately.
-      if (Notification.permission === "granted") {
-        show();
         return;
       }
 
-      // If the permission is not denied, request it once and show if granted.
-      if (Notification.permission !== "denied") {
-        void Notification.requestPermission().then((permission) => {
-          if (permission === "granted") {
-            show();
-          }
-        });
-      }
       // If denied, do nothing.
     },
     []
