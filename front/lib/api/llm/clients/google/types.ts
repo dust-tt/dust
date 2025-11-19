@@ -6,10 +6,14 @@ import {
   GEMINI_2_5_FLASH_LITE_MODEL_ID,
   GEMINI_2_5_FLASH_MODEL_ID,
   GEMINI_2_5_PRO_MODEL_ID,
+  GEMINI_3_PRO_MODEL_ID,
 } from "@app/types";
 
 const GOOGLE_AI_STUDIO_PROVIDER_ID = "google_ai_studio";
-export const GOOGLE_AI_STUDIO_MODEL_FAMILIES = ["gemini-2"] as const;
+export const GOOGLE_AI_STUDIO_MODEL_FAMILIES = [
+  "gemini-2",
+  "gemini-3",
+] as const;
 export type GoogleAIStudioModelFamily =
   (typeof GOOGLE_AI_STUDIO_MODEL_FAMILIES)[number];
 
@@ -21,6 +25,13 @@ export const GOOGLE_AI_STUDIO_MODEL_FAMILY_CONFIGS = {
       GEMINI_2_5_PRO_MODEL_ID,
     ],
     overwrites: {},
+  },
+  "gemini-3": {
+    modelIds: [GEMINI_3_PRO_MODEL_ID],
+    overwrites: {
+      // Not required but strongly recommended by Google for Gemini 3
+      temperature: 1,
+    },
   },
 } as const satisfies Record<
   GoogleAIStudioModelFamily,

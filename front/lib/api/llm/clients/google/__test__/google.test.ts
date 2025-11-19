@@ -27,6 +27,12 @@ const GOOGLE_MODEL_FAMILY_TO_TEST_CONFIGS: Record<
     { reasoningEffort: "medium", temperature: 1 },
     { reasoningEffort: "high" },
   ],
+  "gemini-3": [
+    { reasoningEffort: "none" },
+    { reasoningEffort: "light", temperature: 0 },
+    { reasoningEffort: "medium", temperature: 1 },
+    { reasoningEffort: "high" },
+  ],
 };
 
 // Inject Dust managed Google AI Studio credentials for testing

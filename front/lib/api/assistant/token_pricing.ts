@@ -159,6 +159,11 @@ const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
     input: 0.9,
     output: 2.8,
   },
+  // Conservative: pricing is 2/12 for first 200k tokens
+  "gemini-3-pro-preview": {
+    input: 4,
+    output: 18,
+  },
   "gemini-2.5-flash": {
     input: 0.15,
     output: 0.6,
