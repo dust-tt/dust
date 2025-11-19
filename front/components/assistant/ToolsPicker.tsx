@@ -163,32 +163,48 @@ export function ToolsPicker({
     };
   }, [serverViews, searchText, selectedMCPServerViewIds]);
 
-  const { availableMCPServers } = useAvailableMCPServers({
-    owner,
-  });
+  const { availableMCPServers, isAvailableMCPServersLoading } =
+    useAvailableMCPServers({
+      owner,
+      disabled: !shouldKeepHooksActive,
+    });
 
-  // We compare by name, not sId, because names are shared between multiple instances of the same MCP server (sIds are not).
-  // We filter by manual availability to show only servers that need install step.
-  const uninstalledServers = useMemo(() => {
-    if (!availableMCPServers || !serverViews) {
+  const isDataReady = !isServerViewsLoading && !isAvailableMCPServersLoading;
+
+  // - We compare by name, not sId, because names are shared between multiple instances of the same MCP server (sIds are not).
+  // - We filter by manual availability to show only servers that need install step, and by search text if present.
+  // - We don't compute uninstalled servers until BOTH data sources have loaded to prevent flicker.
+  const filteredUninstalledServers = useMemo(() => {
+    if (!hasFeature("jit_tool_setup") || !isAdmin || !isDataReady) {
       return [];
     }
+
     const installedServerNames = new Set(serverViews.map((v) => v.server.name));
-    return availableMCPServers.filter(
+    const uninstalled = availableMCPServers.filter(
       (server) =>
         !installedServerNames.has(server.name) &&
         server.availability === "manual"
     );
-  }, [availableMCPServers, serverViews]);
 
-  const displayToolsToInstall = useMemo(() => {
-    return (
-      isAdmin &&
-      !isServerViewsLoading &&
-      hasFeature("jit_tool_setup") &&
-      uninstalledServers.length > 0
+    if (searchText.length === 0) {
+      return uninstalled;
+    }
+
+    return uninstalled.filter(
+      (server) =>
+        asDisplayName(server.name)
+          .toLowerCase()
+          .includes(searchText.toLowerCase()) ||
+        server.description.toLowerCase().includes(searchText.toLowerCase())
     );
-  }, [isAdmin, isServerViewsLoading, hasFeature, uninstalledServers]);
+  }, [
+    hasFeature,
+    isAdmin,
+    isDataReady,
+    availableMCPServers,
+    serverViews,
+    searchText,
+  ]);
 
   return (
     <>
@@ -281,7 +297,9 @@ export function ToolsPicker({
             </>
           }
         >
-          {filteredServerViews.length > 0 ? (
+          {!isDataReady && <ToolsPickerLoading />}
+
+          {isDataReady && filteredServerViews.length > 0 && (
             <>
               {filteredServerViewsUnselected
                 .sort(mcpServerViewSortingFn)
@@ -311,28 +329,12 @@ export function ToolsPicker({
                     />
                   );
                 })}
-              {filteredServerViewsUnselected.length === 0 && (
-                <DropdownMenuItem
-                  id="tools-picker-no-selected"
-                  icon={() => <Icon visual={BoltIcon} size="xs" />}
-                  className="italic"
-                  label="No more tools to select"
-                  description="All available tools are already selected"
-                  disabled
-                />
-              )}
             </>
-          ) : isServerViewsLoading ? (
-            <ToolsPickerLoading />
-          ) : (
-            <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
-              No results found
-            </div>
           )}
 
-          {displayToolsToInstall && (
+          {isDataReady && filteredUninstalledServers.length > 0 && (
             <>
-              {uninstalledServers.map((server) => (
+              {filteredUninstalledServers.map((server) => (
                 <DropdownMenuItem
                   key={`tools-to-install-${server.sId}`}
                   icon={() => getAvatar(server)}
@@ -353,6 +355,19 @@ export function ToolsPicker({
               ))}
             </>
           )}
+
+          {isDataReady &&
+            filteredServerViewsUnselected.length === 0 &&
+            filteredUninstalledServers.length === 0 && (
+              <DropdownMenuItem
+                id="tools-picker-no-selected"
+                icon={() => <Icon visual={BoltIcon} size="xs" />}
+                className="italic"
+                label="No more tools to select"
+                description="All available tools are already selected"
+                disabled
+              />
+            )}
         </DropdownMenuContent>
       </DropdownMenu>
 
