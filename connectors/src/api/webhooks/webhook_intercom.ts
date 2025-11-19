@@ -23,12 +23,12 @@ const logger = mainLogger.child(
   }
 );
 
-type IntercomWebhookResBody = WithConnectorsAPIErrorReponse<null>;
+type IntercombWebhookResBody = WithConnectorsAPIErrorReponse<null>;
 
 const _webhookIntercomAPIHandler = async (
   req: Request<
     Record<string, string>,
-    IntercomWebhookResBody,
+    IntercombWebhookResBody,
     {
       topic?: string;
       type: "notification_event";
@@ -38,7 +38,7 @@ const _webhookIntercomAPIHandler = async (
       };
     }
   >,
-  res: Response<IntercomWebhookResBody>
+  res: Response<IntercombWebhookResBody>
 ) => {
   const event = req.body;
   logger.info(
@@ -177,12 +177,12 @@ export const webhookIntercomAPIHandler = withLogging(
 const _webhookIntercomUninstallAPIHandler = async (
   req: Request<
     Record<string, string>,
-    IntercomWebhookResBody,
+    IntercombWebhookResBody,
     {
       app_id: string; // That's the Intercom workspace id
     }
   >,
-  res: Response<IntercomWebhookResBody>
+  res: Response<IntercombWebhookResBody>
 ) => {
   const event = req.body;
   logger.info({ event }, "Received Intercom uninstall webhook");
