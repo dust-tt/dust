@@ -305,20 +305,16 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       attributes: ["teamId"],
     });
 
-    const toBeSignaledHelpCenterIds = helpCentersIds.map(
-      (hc) => hc.helpCenterId
-    );
-    const toBeSignaledTeamIds = teamsIds.map((team) => team.teamId);
-
     const sendSignalToWorkflowResult = await launchIntercomFullSyncWorkflow({
       connectorId: this.connectorId,
-      helpCenterIds: toBeSignaledHelpCenterIds,
-      teamIds: toBeSignaledTeamIds,
+      helpCenterIds: helpCentersIds.map((hc) => hc.helpCenterId),
+      teamIds: teamsIds.map((team) => team.teamId),
       forceResync: true,
     });
     if (sendSignalToWorkflowResult.isErr()) {
       return sendSignalToWorkflowResult;
     }
+
     return new Ok(connector.id.toString());
   }
 
