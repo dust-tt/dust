@@ -291,9 +291,17 @@ export async function intercomConversationSyncWorkflow({
     } while (cursor);
   }
 
-  await intercomOutdatedConversationsCleanup({
-    connectorId,
-  });
+  // Cleanup old conversations.
+  let conversationIds = [];
+  do {
+    conversationIds = await getNextOldConversationsBatchToDeleteActivity({
+      connectorId,
+    });
+    await deleteConversationBatchActivity({
+      connectorId,
+      conversationIds,
+    });
+  } while (conversationIds.length > 0);
 
   await saveIntercomConnectorSuccessSync({ connectorId });
 }
@@ -486,24 +494,4 @@ export async function intercomAllConversationsFullSyncWorkflow({
       });
       break;
   }
-}
-
-/**
- * Cleaning Workflow to remove old convos.
- */
-export async function intercomOutdatedConversationsCleanup({
-  connectorId,
-}: {
-  connectorId: ModelId;
-}) {
-  let conversationIds = [];
-  do {
-    conversationIds = await getNextOldConversationsBatchToDeleteActivity({
-      connectorId,
-    });
-    await deleteConversationBatchActivity({
-      connectorId,
-      conversationIds,
-    });
-  } while (conversationIds.length > 0);
 }
