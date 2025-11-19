@@ -173,7 +173,7 @@ async function handler(
             status_code: 500,
             api_error: {
               type: "internal_server_error",
-              message: `Failed to retrieve cumulative cost: ${usageMetricsResult.error.message}`,
+              message: `Failed to retrieve programmatic cost: ${usageMetricsResult.error.message}`,
             },
           });
         }
@@ -224,7 +224,7 @@ async function handler(
             status_code: 500,
             api_error: {
               type: "internal_server_error",
-              message: `Failed to retrieve grouped cumulative cost: ${result.error.message}`,
+              message: `Failed to retrieve grouped programmatic cost: ${result.error.message}`,
             },
           });
         }

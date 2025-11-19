@@ -218,12 +218,12 @@ export function ProgrammaticCostChart({
 
   return (
     <ChartContainer
-      title={`Cumulative Cost - ${currentMonth}`}
+      title={`Programmatic Cost - ${currentMonth}`}
       description="Total cost accumulated since the start of the month."
       isLoading={isProgrammaticCostLoading}
       errorMessage={
         isProgrammaticCostError
-          ? "Failed to load cumulative cost data."
+          ? "Failed to load programmatic cost data."
           : undefined
       }
       emptyMessage={
