@@ -20,7 +20,8 @@ export class CreditModel extends WorkspaceAwareModel<CreditModel> {
   declare expirationDate: Date | null;
   declare initialAmount: number; // in cents (immutable)
   declare remainingAmount: number; // in cents
-  declare invoiceOrLineItemId: string | null; // Stripe invoice ID or line item ID for idempotency
+  // Stripe invoice ID or line item ID for idempotency.
+  declare invoiceOrLineItemId: string | null;
 }
 
 CreditModel.init(
