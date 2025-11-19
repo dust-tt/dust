@@ -1,15 +1,14 @@
 import {
+  isUserMessageOrigin,
   OTHER_TOOLS_LABEL,
   TOOL_COLORS,
+  USER_MESSAGE_ORIGIN_LABELS,
 } from "@app/components/agent_builder/observability/constants";
 import type { ObservabilityMode } from "@app/components/agent_builder/observability/ObservabilityContext";
 import type { SourceChartDatum } from "@app/components/agent_builder/observability/types";
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 import { formatShortDate } from "@app/lib/utils/timestamps";
-import {
-  isUserMessageOrigin,
-  USER_MESSAGE_ORIGIN_LABELS,
-} from "@app/types/assistant/conversation";
+import type { UserMessageOrigin } from "@app/types";
 
 export type VersionMarker = { version: string; timestamp: number };
 
@@ -30,26 +29,22 @@ export function buildSourceChartData(
   buckets: SourceBucket[],
   total: number
 ): SourceChartDatum[] {
-  const aggregatedByLabel = buckets.reduce(
-    (acc, b) => {
-      const label = isUserMessageOrigin(b.origin)
-        ? USER_MESSAGE_ORIGIN_LABELS[b.origin]
-        : b.origin;
-
-      if (!acc[label]) {
-        acc[label] = { origin: label, count: 0 };
-      }
-
-      acc[label].count += b.count;
+  const aggregatedByOrigin = buckets.reduce((acc, b) => {
+    if (!isUserMessageOrigin(b.origin)) {
       return acc;
-    },
-    {} as Record<string, SourceBucket>
-  );
+    }
 
-  return Object.values(aggregatedByLabel).map((d) => ({
-    origin: d.origin,
-    count: d.count,
-    percent: total > 0 ? Math.round((d.count / total) * 100) : 0,
+    const origin: UserMessageOrigin = b.origin;
+    const current = acc.get(origin) ?? 0;
+    acc.set(origin, current + b.count);
+    return acc;
+  }, new Map<UserMessageOrigin, number>());
+
+  return Array.from(aggregatedByOrigin.entries()).map(([origin, count]) => ({
+    origin,
+    label: USER_MESSAGE_ORIGIN_LABELS[origin].label,
+    count,
+    percent: total > 0 ? Math.round((count / total) * 100) : 0,
   }));
 }
 

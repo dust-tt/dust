@@ -40,10 +40,10 @@ export function SourceChart({
 
   const data = buildSourceChartData(contextOrigin.buckets, total);
 
-  const legendItems = data.map((d, index) => ({
-    key: d.origin,
-    label: d.origin,
-    colorClassName: getSourceColor(index),
+  const legendItems = data.map((d) => ({
+    key: d.label,
+    label: d.label,
+    colorClassName: getSourceColor(d.origin),
   }));
 
   return (
@@ -68,13 +68,12 @@ export function SourceChart({
             if (!active || data.length === 0) {
               return null;
             }
-            const rows = data.map((d, index) => ({
+            const rows = data.map((d) => ({
               label: d.origin,
               value: d.count,
               percent: d.percent,
-              colorClassName: getSourceColor(index),
+              colorClassName: getSourceColor(d.origin),
             }));
-
             return <ChartTooltipCard title="Source breakdown" rows={rows} />;
           }}
           contentStyle={{
@@ -94,10 +93,10 @@ export function SourceChart({
           paddingAngle={3}
           strokeWidth={0}
         >
-          {data.map((entry, index) => (
+          {data.map((entry) => (
             <Cell
               key={entry.origin}
-              className={getSourceColor(index)}
+              className={getSourceColor(entry.origin)}
               fill="currentColor"
             />
           ))}

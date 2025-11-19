@@ -1,3 +1,5 @@
+import type { UserMessageOrigin } from "@app/types";
+
 const TOOL_CHART_MODES = ["version", "step"] as const;
 
 export type ToolChartModeType = (typeof TOOL_CHART_MODES)[number];
@@ -24,9 +26,10 @@ export type ToolChartUsagePayload = {
 };
 
 export type SourceChartDatum = {
-  origin: string;
+  origin: UserMessageOrigin;
   count: number;
   percent: number;
+  label: string;
 };
 
 export function isChartDatum(data: unknown): data is ChartDatum {
