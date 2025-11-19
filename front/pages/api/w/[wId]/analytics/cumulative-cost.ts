@@ -145,10 +145,11 @@ async function handler(
         });
       }
 
-      const groupBy = q.data.groupBy;
+      const { groupBy } = q.data;
+
       const now = new Date();
 
-      // Calculate the start of the current month
+      // TODO: Calculate the start of the current month - should match the billing period
       const startOfMonth = new Date(
         Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
       );
