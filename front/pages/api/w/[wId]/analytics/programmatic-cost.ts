@@ -73,39 +73,16 @@ function calculateCreditTotalsPerTimestamp(
     { totalInitialCreditsCents: number; totalRemainingCreditsCents: number }
   >();
 
+  const totalInitialCreditsCents = credits.reduce(
+    (sum, credit) => sum + credit.initialAmount,
+    0
+  );
+  const totalRemainingCreditsCents = credits.reduce(
+    (sum, credit) => sum + credit.remainingAmount,
+    0
+  );
+
   for (const timestamp of timestamps) {
-    const dayDate = new Date(timestamp);
-    const dayEnd = new Date(dayDate);
-    dayEnd.setUTCHours(23, 59, 59, 999);
-
-    // Find all credits that were active on this day
-    const activeCredits = credits.filter((credit) => {
-      const createdAt = credit.createdAt;
-      const expirationDate = credit.expirationDate;
-
-      // Credit must be created before or on this day
-      if (createdAt > dayEnd) {
-        return false;
-      }
-
-      // Credit must not have expired before this day
-      if (expirationDate && expirationDate <= dayDate) {
-        return false;
-      }
-
-      return true;
-    });
-
-    // Sum up the amounts
-    const totalInitialCreditsCents = activeCredits.reduce(
-      (sum, credit) => sum + credit.initialAmount,
-      0
-    );
-    const totalRemainingCreditsCents = activeCredits.reduce(
-      (sum, credit) => sum + credit.remainingAmount,
-      0
-    );
-
     creditTotalsMap.set(timestamp, {
       totalInitialCreditsCents,
       totalRemainingCreditsCents,
@@ -177,7 +154,7 @@ async function handler(
       };
 
       // Fetch all credits for the workspace
-      const credits = await CreditResource.listActive(auth, startDate);
+      const credits = await CreditResource.listActive(auth);
 
       // Calculate credit totals for each timestamp
       const creditTotalsMap = calculateCreditTotalsPerTimestamp(
