@@ -51,40 +51,23 @@ const GROUP_BY_OPTIONS: {
 }[] = [
   { value: "global", label: "Global" },
   { value: "agent", label: "By Agent" },
-  { value: "origin", label: "By Origin" },
+  { value: "origin", label: "By Source" },
 ];
 
-// Custom tooltip for global view
-function GlobalTooltip(
-  props: TooltipContentProps<number, string>
-): JSX.Element | null {
-  const { active, payload } = props;
-  if (!active || !payload || payload.length === 0) {
-    return null;
+function getColorClassName(
+  groupBy: "agent" | "origin" | undefined,
+  groupName: string,
+  groups: string[]
+): string {
+  if (groupBy === "origin" && isUserMessageOrigin(groupName)) {
+    return getSourceColor(groupName, "text");
+  } else if (groupBy === "agent") {
+    return getToolColor(groupName, groups, "text");
+  } else if (!groupBy) {
+    return "text-blue-500";
+  } else {
+    return "text-green-500";
   }
-
-  const data = payload[0]?.payload;
-  if (!data) {
-    return null;
-  }
-
-  return (
-    <ChartTooltipCard
-      title={data.date}
-      rows={[
-        {
-          label: "Cumulative Cost",
-          value: `$${(data.programmaticCostCents / 100).toFixed(2)}`,
-          colorClassName: "text-blue-500",
-        },
-        {
-          label: "Total Credits",
-          value: `$${(data.totalInitialCreditsCents / 100).toFixed(2)}`,
-          colorClassName: "text-green-500",
-        },
-      ]}
-    />
-  );
 }
 
 // Custom tooltip for grouped view
@@ -117,14 +100,7 @@ function GroupedTooltip(
         label = USER_MESSAGE_ORIGIN_LABELS[groupName].label;
       }
 
-      let colorClassName: string;
-      if (groupBy === "origin" && isUserMessageOrigin(groupName)) {
-        colorClassName = getSourceColor(groupName, "text");
-      } else if (groupBy === "agent") {
-        colorClassName = getToolColor(groupName, groups, "text");
-      } else {
-        colorClassName = "text-green-500";
-      }
+      const colorClassName = getColorClassName(groupBy, groupName, groups);
 
       return {
         label,
@@ -181,7 +157,7 @@ export function ProgrammaticCostChart({
     });
 
     // For grouped view, order groups with "Others" at the end
-    if (programmaticCostData.groupBy) {
+    if (groupBy) {
       const regularGroups = Array.from(groupSet).filter(
         (name) => name !== "Others"
       );
@@ -195,17 +171,7 @@ export function ProgrammaticCostChart({
 
     // Build color map for tooltips and legend items
     groups.forEach((groupName) => {
-      let colorClassName: string;
-      if (
-        programmaticCostData.groupBy === "origin" &&
-        isUserMessageOrigin(groupName)
-      ) {
-        colorClassName = getSourceColor(groupName, "text");
-      } else if (programmaticCostData.groupBy === "agent") {
-        colorClassName = getToolColor(groupName, groups, "text");
-      } else {
-        colorClassName = "text-green-500";
-      }
+      const colorClassName = getColorClassName(groupBy, groupName, groups);
 
       let label = groupName;
       if (groupBy === "origin" && isUserMessageOrigin(groupName)) {
@@ -241,18 +207,14 @@ export function ProgrammaticCostChart({
       // Add each group's cumulative cost to the data point
       // Keep undefined values as-is so Recharts doesn't render those points
       point.groups.forEach((g) => {
-        if (programmaticCostData.groupBy) {
-          // For grouped view, use group name as key
-          dataPoint[g.groupLabel] = g.programmaticCostCents;
-        } else {
-          // For non-grouped view, use a standard key
-          dataPoint.programmaticCostCents = g.programmaticCostCents;
-        }
+        dataPoint[g.groupLabel] = g.programmaticCostCents;
       });
 
       return dataPoint;
     });
   }
+
+  const ChartComponent = groupBy ? AreaChart : LineChart;
 
   return (
     <ChartContainer
@@ -297,141 +259,87 @@ export function ProgrammaticCostChart({
         </DropdownMenu>
       }
       height={CHART_HEIGHT}
-      legendItems={groupBy ? legendItems : undefined}
+      legendItems={legendItems}
       isAllowFullScreen
     >
-      {!groupBy ? (
-        <LineChart
-          data={chartData}
-          margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
-        >
-          <CartesianGrid
-            vertical={false}
-            className="stroke-border dark:stroke-border-night"
-          />
-          <XAxis
-            dataKey="date"
-            type="category"
-            scale="point"
-            allowDuplicatedCategory={false}
-            className="text-xs text-muted-foreground dark:text-muted-foreground-night"
-            tickLine={false}
-            axisLine={false}
-            tickMargin={8}
-            minTickGap={16}
-          />
-          <YAxis
-            className="text-xs text-muted-foreground dark:text-muted-foreground-night"
-            tickLine={false}
-            axisLine={false}
-            tickMargin={8}
-            tickFormatter={(value) => `$${(value / 100).toFixed(0)}`}
-          />
-          <Tooltip
-            content={GlobalTooltip}
-            cursor={false}
-            wrapperStyle={{ outline: "none" }}
-            contentStyle={{
-              background: "transparent",
-              border: "none",
-              padding: 0,
-              boxShadow: "none",
-            }}
-          />
-          <Line
-            type="monotone"
-            dataKey="programmaticCostCents"
-            name="Cumulative Cost"
-            stroke="#3b82f6"
-            strokeWidth={2}
-            dot={{ fill: "#3b82f6", r: 3 }}
-            activeDot={{ r: 5 }}
-          />
-          <Line
-            type="monotone"
-            dataKey="totalInitialCreditsCents"
-            name="Total Credits"
-            stroke="#10b981"
-            strokeWidth={2}
-            strokeDasharray="5 5"
-            dot={false}
-            activeDot={{ r: 5 }}
-          />
-        </LineChart>
-      ) : (
-        <AreaChart
-          data={chartData}
-          margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
-        >
-          <CartesianGrid
-            vertical={false}
-            className="stroke-border dark:stroke-border-night"
-          />
-          <XAxis
-            dataKey="date"
-            type="category"
-            className="text-xs text-muted-foreground dark:text-muted-foreground-night"
-            tickLine={false}
-            axisLine={false}
-            tickMargin={8}
-            minTickGap={16}
-          />
-          <YAxis
-            className="text-xs text-muted-foreground dark:text-muted-foreground-night"
-            tickLine={false}
-            axisLine={false}
-            tickMargin={8}
-            tickFormatter={(value) => `$${(value / 100).toFixed(0)}`}
-          />
-          <Tooltip
-            content={(props: TooltipContentProps<number, string>) =>
-              GroupedTooltip(props, groupBy, groups)
-            }
-            cursor={false}
-            wrapperStyle={{ outline: "none" }}
-            contentStyle={{
-              background: "transparent",
-              border: "none",
-              padding: 0,
-              boxShadow: "none",
-            }}
-          />
-          <Line
-            type="monotone"
-            dataKey="totalInitialCreditsCents"
-            name="Total Credits"
-            stroke="#10b981"
-            strokeWidth={2}
-            strokeDasharray="5 5"
-            dot={false}
-            activeDot={{ r: 5 }}
-          />
-          {groups.map((groupName) => {
-            let colorClassName: string;
-            if (groupBy === "origin" && isUserMessageOrigin(groupName)) {
-              colorClassName = getSourceColor(groupName, "text");
-            } else if (groupBy === "agent") {
-              colorClassName = getToolColor(groupName, groups, "text");
-            } else {
-              colorClassName = "text-green-500";
-            }
+      <ChartComponent
+        data={chartData}
+        margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
+      >
+        <CartesianGrid
+          vertical={false}
+          className="stroke-border dark:stroke-border-night"
+        />
+        <XAxis
+          dataKey="date"
+          type="category"
+          className="text-xs text-muted-foreground dark:text-muted-foreground-night"
+          tickLine={false}
+          axisLine={false}
+          tickMargin={8}
+          minTickGap={16}
+        />
+        <YAxis
+          className="text-xs text-muted-foreground dark:text-muted-foreground-night"
+          tickLine={false}
+          axisLine={false}
+          tickMargin={8}
+          tickFormatter={(value) => `$${(value / 100).toFixed(0)}`}
+        />
+        <Tooltip
+          content={(props: TooltipContentProps<number, string>) =>
+            GroupedTooltip(props, groupBy, groups)
+          }
+          cursor={false}
+          wrapperStyle={{ outline: "none" }}
+          contentStyle={{
+            background: "transparent",
+            border: "none",
+            padding: 0,
+            boxShadow: "none",
+          }}
+        />
+        <Line
+          type="monotone"
+          dataKey="totalInitialCreditsCents"
+          name="Total Credits"
+          stroke="currentColor"
+          strokeWidth={2}
+          className="text-green-500"
+          strokeDasharray="5 5"
+          dot={false}
+          activeDot={{ r: 5 }}
+        />
+        {groups.map((groupName) => {
+          const colorClassName = getColorClassName(groupBy, groupName, groups);
 
-            return (
-              <Area
-                key={groupName}
-                type="monotone"
-                dataKey={groupName}
-                stackId="cost"
-                stroke="currentColor"
-                fill="currentColor"
-                fillOpacity={0.6}
-                strokeWidth={2}
-                className={colorClassName}
-              />
-            );
-          })}
-        </AreaChart>
-      )}
+          return groupBy ? (
+            <Area
+              key={groupName}
+              type="monotone"
+              dataKey={groupName}
+              stackId="cost"
+              stroke="currentColor"
+              fill="currentColor"
+              fillOpacity={0.6}
+              strokeWidth={2}
+              className={colorClassName}
+            />
+          ) : (
+            <Line
+              key={groupName}
+              type="monotone"
+              className={colorClassName}
+              dataKey={groupName}
+              name={groupName}
+              stroke="currentColor"
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: 5 }}
+            />
+          );
+        })}
+      </ChartComponent>
     </ChartContainer>
   );
 }

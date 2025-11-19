@@ -37,7 +37,6 @@ export type WorkspaceProgrammaticCostPoint = {
 };
 
 export type GetWorkspaceProgrammaticCostResponse = {
-  groupBy: "agent" | "origin" | undefined;
   points: WorkspaceProgrammaticCostPoint[];
 };
 
@@ -179,7 +178,7 @@ async function handler(
           });
         }
 
-        groupLabels["total"] = "Total";
+        groupLabels["total"] = "Cumulative Cost";
         groupValues["total"] = new Map<number, number>();
         usageMetricsResult.value.forEach((point) => {
           groupValues["total"]?.set(point.timestamp, point.costCents);
@@ -317,7 +316,6 @@ async function handler(
       });
 
       return res.status(200).json({
-        groupBy,
         points,
       });
     }
