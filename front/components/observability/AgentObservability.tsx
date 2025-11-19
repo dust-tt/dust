@@ -4,6 +4,7 @@ import {
   ContentMessage,
   HandThumbDownIcon,
   HandThumbUpIcon,
+  LoadingBlock,
   Separator,
   Spinner,
   ValueCard,
@@ -74,42 +75,50 @@ export function AgentObservability({
       <TabContentChildSectionLayout title="Overview">
         {isTimeRangeMode && (
           <div className="mb-4">
-            <ContentMessage
-              title="Summary"
-              variant="primary"
-              size="lg"
-              className="w-full"
-            >
-              {isSummaryLoading ? (
-                <div className="flex items-center gap-2">
-                  <Spinner size="xs" />
-                  <span>Generating summary for this time range…</span>
+            {isSummaryLoading ? (
+              <div className="rounded-lg border border-border bg-card p-4 dark:border-border-night">
+                <div className="mb-2 flex items-center justify-between">
+                  <LoadingBlock className="h-5 w-24" />
                 </div>
-              ) : isSummaryError ? (
-                <div className="flex flex-col gap-2">
-                  <span>
-                    We couldn&apos;t generate a summary for this time range.
-                  </span>
-                  <div>
-                    <Button
-                      label="Try again"
-                      size="xs"
-                      variant="outline"
-                      onClick={() => {
-                        void refetchSummary();
-                      }}
-                    />
+                <div className="space-y-2">
+                  <LoadingBlock className="h-4 w-full" />
+                  <LoadingBlock className="h-4 w-11/12" />
+                  <LoadingBlock className="h-4 w-10/12" />
+                </div>
+              </div>
+            ) : (
+              <ContentMessage
+                title="Summary"
+                variant="primary"
+                size="lg"
+                className="w-full"
+              >
+                {isSummaryError ? (
+                  <div className="flex flex-col gap-2">
+                    <span>
+                      We couldn&apos;t generate a summary for this time range.
+                    </span>
+                    <div>
+                      <Button
+                        label="Try again"
+                        size="xs"
+                        variant="outline"
+                        onClick={() => {
+                          void refetchSummary();
+                        }}
+                      />
+                    </div>
                   </div>
-                </div>
-              ) : summaryText ? (
-                <p>{summaryText}</p>
-              ) : (
-                <p>
-                  There is not enough activity in this time range to generate a
-                  summary yet.
-                </p>
-              )}
-            </ContentMessage>
+                ) : summaryText ? (
+                  <p>{summaryText}</p>
+                ) : (
+                  <p>
+                    There is not enough activity in this time range to generate
+                    a summary yet.
+                  </p>
+                )}
+              </ContentMessage>
+            )}
           </div>
         )}
 
