@@ -35,6 +35,7 @@ import {
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
 import { ConversationViewerEmptyState } from "@app/components/assistant/ConversationViewerEmptyState";
+import { useEnableBrowserNotification } from "@app/hooks/useEnableBrowserNotification";
 import { useEventSource } from "@app/hooks/useEventSource";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
@@ -70,6 +71,9 @@ import { assertNever } from "@app/types";
 import { Err, isContentFragmentType, isUserMessageType, Ok } from "@app/types";
 
 const DEFAULT_PAGE_LIMIT = 50;
+
+// A conversation must be unread and older than that to enable the suggestion of enabling notifications.
+const DELAY_BEFORE_SUGGESTING_PUSH_NOTIFICATION_ACTIVATION = 60 * 60 * 1000; // 1 hour
 
 interface ConversationViewerProps {
   conversationId: string;
@@ -121,6 +125,24 @@ export const ConversationViewer = ({
     conversation,
     workspaceId: owner.sId,
   });
+
+  const { askForPermission } = useEnableBrowserNotification();
+
+  const shouldShowPushNotificationActivation = useMemo(() => {
+    if (!conversation?.sId || !conversation.unread) {
+      return false;
+    }
+
+    const delay = new Date().getTime() - conversation.updated;
+
+    return delay > DELAY_BEFORE_SUGGESTING_PUSH_NOTIFICATION_ACTIVATION;
+  }, [conversation?.sId, conversation?.unread, conversation?.updated]);
+
+  useEffect(() => {
+    if (shouldShowPushNotificationActivation) {
+      void askForPermission();
+    }
+  }, [shouldShowPushNotificationActivation, askForPermission]);
 
   const { mutateConversations } = useConversations({
     workspaceId: owner.sId,
