@@ -6,6 +6,7 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   downloadSalesforceContent,
   extractTextFromSalesforceAttachment,
+  formatRecords,
   getAllSalesforceAttachments,
 } from "@app/lib/actions/mcp_internal_actions/servers/salesforce/salesforce_api_helper";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
@@ -57,9 +58,26 @@ function createServer(
 
         const result = await conn.query(query);
 
+        const formattedRecords = formatRecords(result.records);
+
+        const summaryParts = [
+          `Query returned ${result.totalSize ?? result.records.length} record(s).`,
+        ];
+
+        if (!result.done) {
+          summaryParts.push(
+            "More records are available. Refine the query or paginate to retrieve remaining records."
+          );
+        }
+
+        const summary = summaryParts.join(" ");
+
         return new Ok([
-          { type: "text" as const, text: "Operation completed successfully" },
-          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+          { type: "text" as const, text: summary },
+          {
+            type: "text" as const,
+            text: formattedRecords,
+          },
         ]);
       }
     )
