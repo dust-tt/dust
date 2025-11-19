@@ -210,6 +210,7 @@ export async function searchAnalytics<
 ): Promise<
   Result<estypes.SearchResponse<TDocument, TAggregations>, ElasticsearchError>
 > {
+  console.log("query", JSON.stringify(query, null, 2));
   return esSearch<TDocument, TAggregations>({
     index: ANALYTICS_ALIAS_NAME,
     query,

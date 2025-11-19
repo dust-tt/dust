@@ -1,3 +1,4 @@
+import type { estypes } from "@elastic/elasticsearch";
 import moment from "moment-timezone";
 import type { RedisClientType } from "redis";
 
@@ -8,7 +9,19 @@ import type { Authenticator } from "@app/lib/auth";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType, UserMessageOrigin } from "@app/types";
+
+export const PROGRAMMATIC_USAGE_ORIGINS: UserMessageOrigin[] = [
+  "api",
+  "gsheet",
+  "make",
+  "n8n",
+  "triggered_programmatic",
+  "zapier",
+  "zendesk",
+  "excel",
+  "powerpoint",
+];
 
 // Programmatic usage tracking: keep Redis key name for backward compatibility.
 const PROGRAMMATIC_USAGE_REMAINING_CREDITS_KEY = "public_api_remaining_credits";
@@ -20,7 +33,7 @@ function getRedisKey(workspace: LightWorkspaceType): string {
 
 function shouldTrackTokenUsageCosts(
   auth: Authenticator,
-  { userMessageOrigin }: { userMessageOrigin?: string | null } = {}
+  { userMessageOrigin }: { userMessageOrigin?: UserMessageOrigin | null } = {}
 ): boolean {
   const workspace = auth.getNonNullableWorkspace();
   const limits = getWorkspacePublicAPILimits(workspace);
@@ -30,17 +43,45 @@ function shouldTrackTokenUsageCosts(
     return false;
   }
 
-  // Track for API keys.
-  if (auth.isKey() && !auth.isSystemKey()) {
-    return true;
-  }
-
-  // Track for programmatic webhook triggers.
-  if (userMessageOrigin === "triggered_programmatic") {
+  // Track for API keys, listed programmatic origins or unspecified user message origins.
+  // This must be in sync with the getShouldTrackTokenUsageCostsESFilter function.
+  if (
+    auth.authMethod() === "api_key" ||
+    !userMessageOrigin ||
+    PROGRAMMATIC_USAGE_ORIGINS.includes(userMessageOrigin)
+  ) {
     return true;
   }
 
   return false;
+}
+
+export function getShouldTrackTokenUsageCostsESFilter(
+  auth: Authenticator
+): estypes.QueryDslQueryContainer {
+  const workspace = auth.getNonNullableWorkspace();
+
+  // Track for API keys, listed programmatic origins or unspecified user message origins.
+  // This must be in sync with the shouldTrackTokenUsageCosts function.
+  const shouldClauses: estypes.QueryDslQueryContainer[] = [
+    { term: { auth_method: "api_key" } },
+    { bool: { must_not: { exists: { field: "context_origin" } } } },
+    { terms: { context_origin: PROGRAMMATIC_USAGE_ORIGINS } },
+  ];
+
+  return {
+    bool: {
+      filter: [
+        { term: { workspace_id: workspace.sId } },
+        {
+          bool: {
+            should: shouldClauses,
+            minimum_should_match: 1,
+          },
+        },
+      ],
+    },
+  };
 }
 
 export async function hasReachedPublicAPILimits(
@@ -141,7 +182,7 @@ export async function maybeTrackTokenUsageCost(
   {
     dustRunIds,
     userMessageOrigin,
-  }: { dustRunIds: string[]; userMessageOrigin?: string | null }
+  }: { dustRunIds: string[]; userMessageOrigin?: UserMessageOrigin | null }
 ) {
   if (!shouldTrackTokenUsageCosts(auth, { userMessageOrigin })) {
     return;
