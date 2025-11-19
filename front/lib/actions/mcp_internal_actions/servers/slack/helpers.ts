@@ -20,6 +20,7 @@ export const SLACK_API_PAGE_SIZE = 100;
 export const MAX_CHANNELS_LIMIT = 500;
 export const MAX_THREAD_MESSAGES = 200;
 export const DEFAULT_THREAD_MESSAGES = 20;
+export const SLACK_THREAD_LISTING_LIMIT = 100;
 export const CHANNEL_CACHE_TTL_MS = 60 * 10 * 1000; // 10 minutes
 
 export function isSlackMissingScope(error: unknown): boolean {
@@ -210,11 +211,15 @@ export const getCachedPublicChannels = cacheWithRedis(
 
 // Helper function to resolve channel name or ID to channel ID.
 // Supports public channels, private channels, and DMs.
-export async function resolveChannelId(
-  channelNameOrId: string,
-  accessToken: string,
-  mcpServerId: string
-): Promise<string | null> {
+export async function resolveChannelId({
+  channelNameOrId,
+  accessToken,
+  mcpServerId,
+}: {
+  channelNameOrId: string;
+  accessToken: string;
+  mcpServerId: string;
+}): Promise<string | null> {
   const slackClient = await getSlackClient(accessToken);
   const searchString = channelNameOrId
     .trim()
@@ -250,6 +255,90 @@ export async function resolveChannelId(
   );
 
   return channel?.id ?? null;
+}
+
+// Helper function to resolve user ID to display name.
+// Returns the user's display name or real name, or null if not found.
+export async function resolveUserDisplayName(
+  userId: string,
+  accessToken: string
+): Promise<string | null> {
+  const slackClient = await getSlackClient(accessToken);
+
+  try {
+    const response = await slackClient.users.info({ user: userId });
+    if (response.ok && response.user) {
+      // Prefer display_name, fallback to real_name, then to name.
+      return (
+        response.user.profile?.display_name ??
+        response.user.real_name ??
+        response.user.name ??
+        null
+      );
+    }
+  } catch (error) {
+    // Return null if we can't resolve the user.
+  }
+
+  return null;
+}
+
+// Resolves a channel ID or name to a human-readable display name.
+// Handles DMs (direct messages), regular channels, and fallback cases.
+export async function resolveChannelDisplayName(
+  channelIdOrName: string,
+  accessToken: string
+): Promise<string> {
+  const slackClient = await getSlackClient(accessToken);
+
+  try {
+    // If it looks like a channel ID (starts with C, D, or G), get channel info.
+    if (channelIdOrName.match(/^[CDG][A-Z0-9]+$/)) {
+      const channelInfo = await slackClient.conversations.info({
+        channel: channelIdOrName,
+      });
+
+      if (channelInfo.ok && channelInfo.channel) {
+        // For DMs, channelId starts with "D" and channel.name contains the user ID.
+        if (channelIdOrName.startsWith("D") && channelInfo.channel.name) {
+          const userName = await resolveUserDisplayName(
+            channelInfo.channel.name,
+            accessToken
+          );
+          return userName ? `@${userName}` : `@${channelInfo.channel.name}`;
+        }
+
+        // For regular channels (public/private).
+        if (channelInfo.channel.name) {
+          return `#${channelInfo.channel.name}`;
+        }
+      }
+    }
+
+    // If it looks like a user ID (starts with U), resolve to user name.
+    if (channelIdOrName.match(/^U[A-Z0-9]+$/)) {
+      const userName = await resolveUserDisplayName(
+        channelIdOrName,
+        accessToken
+      );
+      return userName ? `@${userName}` : `@${channelIdOrName}`;
+    }
+
+    // If it's already a channel name (not an ID), just prefix with #.
+    if (!channelIdOrName.match(/^[A-Z0-9]+$/)) {
+      return `#${channelIdOrName}`;
+    }
+
+    // Fallback: treat as channel name.
+    return `#${channelIdOrName}`;
+  } catch (error) {
+    // On error, return a fallback value.
+    // If it looks like a user ID, prefix with @, otherwise with #.
+    if (channelIdOrName.match(/^[UD][A-Z0-9]+$/)) {
+      return `@${channelIdOrName}`;
+    }
+    return `#${channelIdOrName}`;
+  }
 }
 
 // Helper function to build filtered list responses.
@@ -777,7 +866,11 @@ export async function executeReadThreadMessages(
 
   try {
     // Resolve channel name/ID to channel ID (supports public/private channels and DMs).
-    const channelId = await resolveChannelId(channel, accessToken, mcpServerId);
+    const channelId = await resolveChannelId({
+      channelNameOrId: channel,
+      accessToken,
+      mcpServerId,
+    });
     if (!channelId) {
       return new Err(
         new MCPError(

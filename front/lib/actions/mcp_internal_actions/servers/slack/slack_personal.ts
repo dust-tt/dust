@@ -20,7 +20,9 @@ import {
   executeScheduleMessage,
   getSlackClient,
   isSlackMissingScope,
+  resolveChannelDisplayName,
   resolveChannelId,
+  SLACK_THREAD_LISTING_LIMIT,
 } from "@app/lib/actions/mcp_internal_actions/servers/slack/helpers";
 import {
   makeInternalMCPServer,
@@ -1042,116 +1044,14 @@ async function createServer(
 
         const timeFrame = parseTimeFrame(relativeTimeFrame);
 
+        // Resolve channel name to channel ID (supports public, private channels, and DMs).
+        let channelId: string | null;
         try {
-          // Resolve channel name to channel ID (supports public, private channels, and DMs).
-          const channelId = await resolveChannelId(
-            channel,
+          channelId = await resolveChannelId({
+            channelNameOrId: channel,
             accessToken,
-            mcpServerId
-          );
-
-          if (!channelId) {
-            return new Err(
-              new MCPError(
-                `Unable to find channel "${channel}". Make sure the channel exists and you have access to it.`
-              )
-            );
-          }
-
-          // Calculate timestamp for timeFrame filtering.
-          const oldest = timeFrame
-            ? (timeFrameFromNow(timeFrame) / 1000).toString()
-            : undefined;
-
-          // Use conversations.history to get messages, which works for public, private channels, and DMs.
-          const response = await slackClient.conversations.history({
-            channel: channelId,
-            oldest,
-            limit: 100, // Get more messages to have enough threads
+            mcpServerId,
           });
-
-          if (!response.ok) {
-            // Trigger authentication flow for missing_scope.
-            if (response.error === "missing_scope") {
-              return new Ok(makePersonalAuthenticationError("slack").content);
-            }
-            return new Err(
-              new MCPError(response.error ?? "Failed to list threads")
-            );
-          }
-
-          const rawMessages = response.messages ?? [];
-
-          // Filter to only keep messages that have threads (reply_count > 0).
-          const threadsOnly = rawMessages.filter(
-            (msg) => msg.reply_count && msg.reply_count > 0
-          );
-
-          // Keep only the top SLACK_SEARCH_ACTION_NUM_RESULTS threads.
-          const matches = threadsOnly.slice(0, SLACK_SEARCH_ACTION_NUM_RESULTS);
-
-          if (matches.length === 0) {
-            return new Ok([
-              {
-                type: "text" as const,
-                text: `No threads found.`,
-              },
-              {
-                type: "resource" as const,
-                resource: makeQueryResource([], timeFrame, [channel], [], []),
-              },
-            ]);
-          }
-
-          // Get channel info to display channel name in results.
-          const channelInfo = await slackClient.conversations.info({
-            channel: channelId,
-          });
-
-          // Determine display name based on channel type.
-          let displayName: string;
-          if (channelInfo.ok && channelInfo.channel) {
-            // For DMs, channelId starts with "D".
-            if (channelId.startsWith("D")) {
-              // For DMs, use the channel parameter as display name (user ID or name).
-              displayName = channel.startsWith("@") ? channel : `@${channel}`;
-            } else if (channelInfo.channel.name) {
-              displayName = `#${channelInfo.channel.name}`;
-            } else {
-              displayName = `#${channel}`;
-            }
-          } else {
-            displayName = channel.startsWith("#") ? channel : `#${channel}`;
-          }
-
-          const { citationsOffset } = agentLoopContext.runContext.stepContext;
-
-          const refs = getRefs().slice(
-            citationsOffset,
-            citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
-          );
-
-          const results = buildSearchResults<{
-            permalink?: string;
-            text?: string;
-            ts?: string;
-          }>(matches, refs, {
-            permalink: (match) => match.permalink,
-            text: (match) => `${displayName}, ${match.text ?? ""}`,
-            id: (match) => match.ts ?? "",
-            content: (match) => match.text ?? "",
-          });
-
-          return new Ok([
-            ...results.map((result) => ({
-              type: "resource" as const,
-              resource: result,
-            })),
-            {
-              type: "resource" as const,
-              resource: makeQueryResource([], timeFrame, [channel], [], []),
-            },
-          ]);
         } catch (error) {
           if (isSlackTokenRevoked(error)) {
             return new Ok(makePersonalAuthenticationError("slack").content);
@@ -1159,8 +1059,108 @@ async function createServer(
           if (isSlackMissingScope(error)) {
             return new Ok(makePersonalAuthenticationError("slack").content);
           }
-          return new Err(new MCPError(`Error listing threads: ${error}`));
+          return new Err(new MCPError(`Error resolving channel: ${error}`));
         }
+
+        if (!channelId) {
+          return new Err(
+            new MCPError(
+              `Unable to find channel "${channel}". Make sure the channel exists and you have access to it.`
+            )
+          );
+        }
+
+        // Calculate timestamp for timeFrame filtering.
+        const oldest = timeFrame
+          ? (timeFrameFromNow(timeFrame) / 1000).toString()
+          : undefined;
+
+        // Use conversations.history to get messages, which works for public, private channels, and DMs.
+        let response;
+        try {
+          response = await slackClient.conversations.history({
+            channel: channelId,
+            oldest,
+            limit: SLACK_THREAD_LISTING_LIMIT,
+          });
+        } catch (error) {
+          if (isSlackTokenRevoked(error)) {
+            return new Ok(makePersonalAuthenticationError("slack").content);
+          }
+          if (isSlackMissingScope(error)) {
+            return new Ok(makePersonalAuthenticationError("slack").content);
+          }
+          return new Err(new MCPError(`Error fetching messages: ${error}`));
+        }
+
+        if (!response.ok) {
+          // Trigger authentication flow for missing_scope.
+          if (response.error === "missing_scope") {
+            return new Ok(makePersonalAuthenticationError("slack").content);
+          }
+          return new Err(
+            new MCPError(response.error ?? "Failed to list threads")
+          );
+        }
+
+        const rawMessages = response.messages ?? [];
+
+        // Filter to only keep messages that have threads (reply_count > 0).
+        const threadsOnly = rawMessages.filter(
+          (msg) => msg.reply_count && msg.reply_count > 0
+        );
+
+        // Keep only the top SLACK_SEARCH_ACTION_NUM_RESULTS threads.
+        const matches = threadsOnly.slice(0, SLACK_SEARCH_ACTION_NUM_RESULTS);
+
+        if (matches.length === 0) {
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `No threads found.`,
+            },
+          ]);
+        }
+
+        // Get display name for the channel.
+        let displayName: string;
+        try {
+          displayName = await resolveChannelDisplayName(channel, accessToken);
+        } catch (error) {
+          if (isSlackTokenRevoked(error)) {
+            return new Ok(makePersonalAuthenticationError("slack").content);
+          }
+          if (isSlackMissingScope(error)) {
+            return new Ok(makePersonalAuthenticationError("slack").content);
+          }
+          // Fallback to simple formatting on error.
+          displayName = channel.startsWith("#") ? channel : `#${channel}`;
+        }
+
+        const { citationsOffset } = agentLoopContext.runContext.stepContext;
+
+        const refs = getRefs().slice(
+          citationsOffset,
+          citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
+        );
+
+        const results = buildSearchResults<{
+          permalink?: string;
+          text?: string;
+          ts?: string;
+        }>(matches, refs, {
+          permalink: (match) => match.permalink,
+          text: (match) => `${displayName}, ${match.text ?? ""}`,
+          id: (match) => match.ts ?? "",
+          content: (match) => match.text ?? "",
+        });
+
+        return new Ok(
+          results.map((result) => ({
+            type: "resource" as const,
+            resource: result,
+          }))
+        );
       }
     )
   );
