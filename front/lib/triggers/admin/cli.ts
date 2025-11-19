@@ -1,6 +1,6 @@
 import parseArgs from "minimist";
 
-import { createOrUpdateWebhookCleanupSchedule } from "@app/lib/triggers/temporal/schedule/client";
+import { createOrUpdateWebhookCleanupSchedule } from "@app/lib/triggers/temporal/webhook/client";
 
 const main = async () => {
   const argv = parseArgs(process.argv.slice(2));

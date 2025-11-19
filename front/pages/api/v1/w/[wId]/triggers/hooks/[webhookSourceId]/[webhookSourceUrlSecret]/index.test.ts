@@ -31,17 +31,28 @@ vi.mock("@app/lib/triggers/temporal/common/client", () => ({
   })),
 }));
 
-vi.mock("@app/lib/triggers/temporal/webhook/client", () => ({
-  launchAgentTriggerWebhookWorkflow: vi.fn(async () => ({
-    isOk: () => true,
-    isErr: () => false,
-    value: undefined,
-  })),
-}));
+vi.mock("@app/lib/triggers/webhook", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@app/lib/triggers/webhook")>();
+  return {
+    ...actual,
+    processWebhookRequestFully: vi.fn(async () => ({
+      success: true,
+      message: "Webhook request processed successfully.",
+    })),
+  };
+});
 
 vi.mock("@app/lib/file_storage", () => ({
   getWebhookRequestsBucket: () => ({
     uploadRawContentToBucket: vi.fn().mockResolvedValue(undefined),
+    file: vi.fn(() => ({
+      download: vi.fn().mockResolvedValue([
+        JSON.stringify({
+          headers: {},
+          body: { test: "data" },
+        }),
+      ]),
+    })),
   }),
 }));
 

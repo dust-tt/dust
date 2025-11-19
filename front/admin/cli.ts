@@ -12,6 +12,7 @@ import {
 } from "@app/lib/api/data_sources";
 import { garbageCollectGoogleDriveDocument } from "@app/lib/api/poke/plugins/data_sources/garbage_collect_google_drive_document";
 import { Authenticator } from "@app/lib/auth";
+import { getWebhookRequestsBucket } from "@app/lib/file_storage";
 import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { getDustProdActionRegistry } from "@app/lib/registry";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -24,9 +25,10 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
+import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { tokenCountForTexts } from "@app/lib/tokenization";
-import { launchAgentTriggerWebhookWorkflow } from "@app/lib/triggers/temporal/webhook/client";
+import { processWebhookRequestFully } from "@app/lib/triggers/webhook";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import {
@@ -658,9 +660,56 @@ async function trigger(command: string, args: parseArgs.ParsedArgs) {
 
       for (const webhookRequest of failedWebhooks) {
         if (execute) {
-          await launchAgentTriggerWebhookWorkflow({
+          // Fetch webhook source
+          const webhookSource = await WebhookSourceResource.fetchByModelId(
+            webhookRequest.webhookSourceId
+          );
+
+          if (!webhookSource) {
+            logger.error(
+              {
+                webhookRequestId: webhookRequest.id,
+                webhookSourceId: webhookRequest.webhookSourceId,
+              },
+              "Webhook source not found, skipping."
+            );
+            continue;
+          }
+
+          // Fetch headers and body from GCS
+          const bucket = getWebhookRequestsBucket();
+          const file = bucket.file(
+            WebhookRequestResource.getGcsPath({
+              workspaceId: auth.getNonNullableWorkspace().sId,
+              webhookSourceId: webhookSource.id,
+              webRequestId: webhookRequest.id,
+            })
+          );
+
+          let headers: Record<string, string>;
+          let body: Record<string, unknown>;
+          try {
+            const [content] = await file.download();
+            const parsed = JSON.parse(content.toString());
+            headers = parsed.headers;
+            body = parsed.body;
+          } catch (error) {
+            logger.error(
+              {
+                webhookRequestId: webhookRequest.id,
+                error,
+              },
+              "Failed to fetch webhook request content from GCS, skipping."
+            );
+            continue;
+          }
+
+          await processWebhookRequestFully({
             auth,
             webhookRequest,
+            webhookSource,
+            headers,
+            body,
           });
           logger.info(
             {
@@ -669,7 +718,7 @@ async function trigger(command: string, args: parseArgs.ParsedArgs) {
               errorMessage: webhookRequest.errorMessage,
               createdAt: webhookRequest.createdAt,
             },
-            "Webhook workflow launched successfully."
+            "Webhook processed successfully."
           );
         } else {
           logger.info(

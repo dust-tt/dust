@@ -2,13 +2,17 @@ import type { PostWebhookTriggerResponseType } from "@dust-tt/client";
 import type { NextApiResponse } from "next";
 
 import { Authenticator } from "@app/lib/auth";
+import { getWebhookRequestsBucket } from "@app/lib/file_storage";
+import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { processWebhookRequest } from "@app/lib/triggers/webhook";
+import { processWebhookRequestFully } from "@app/lib/triggers/webhook";
 import { statsDClient } from "@app/logger/statsDClient";
 import type { NextApiRequestWithContext } from "@app/logger/withlogging";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { removeNulls } from "@app/types";
+import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
 /**
  * @swagger
@@ -49,6 +53,19 @@ import type { WithAPIErrorResponse } from "@app/types";
  *       405:
  *         description: Method not allowed
  */
+
+/**
+ * To avoid storing sensitive information, only these headers are allowed to be stored in GCS.
+ */
+const HEADERS_ALLOWED_LIST = [
+  ...removeNulls(
+    Object.values(WEBHOOK_PRESETS)
+      .filter((preset) => preset.eventCheck?.type === "headers")
+      .map((preset) => preset.eventCheck?.field.toLowerCase())
+  ),
+  // Header used by Fathom.
+  "webhook-signature",
+];
 
 export const config = {
   api: {
@@ -148,13 +165,78 @@ async function handler(
     `workspace_id:${workspace.sId}`,
   ]);
 
-  const result = await processWebhookRequest(auth, {
-    webhookSource: webhookSource.toJSONForAdmin(),
-    headers,
+  // Convert headers to Record<string, string> for processing
+  const headersRecord: Record<string, string> = Object.fromEntries(
+    Object.entries(headers)
+      .filter(([_, value]) => typeof value === "string")
+      .map(([key, value]) => [key, value as string])
+  );
+
+  // Store webhook request in GCS and DB
+  const filteredHeaders = Object.fromEntries(
+    Object.entries(headersRecord).filter(([key]) =>
+      HEADERS_ALLOWED_LIST.includes(key.toLowerCase())
+    )
+  );
+
+  const content = JSON.stringify({
+    headers: filteredHeaders,
     body,
   });
 
-  if (result.isErr()) {
+  const bucket = getWebhookRequestsBucket();
+
+  // Store in DB
+  const webhookRequest = await WebhookRequestResource.makeNew({
+    workspaceId: workspace.id,
+    webhookSourceId: webhookSource.id,
+    status: "received",
+  });
+
+  const gcsPath = WebhookRequestResource.getGcsPath({
+    workspaceId: workspace.sId,
+    webhookSourceId: webhookSource.id,
+    webRequestId: webhookRequest.id,
+  });
+
+  try {
+    // Store in GCS
+    await bucket.uploadRawContentToBucket({
+      content,
+      contentType: "application/json",
+      filePath: gcsPath,
+    });
+
+    // Process the webhook request directly (no Temporal workflow)
+    const result = await processWebhookRequestFully({
+      auth,
+      webhookRequest,
+      webhookSource,
+      headers: headersRecord,
+      body,
+    });
+
+    if (!result.success) {
+      statsDClient.increment("webhook_error.count", 1, [
+        `provider:${provider}`,
+        `workspace_id:${workspace.sId}`,
+      ]);
+
+      return apiError(req, res, {
+        status_code: 500,
+        api_error: {
+          type: "webhook_processing_error",
+          message: result.message,
+        },
+      });
+    }
+
+    return res.status(200).json({ success: true });
+  } catch (error: unknown) {
+    await webhookRequest.markAsFailed(
+      error instanceof Error ? error.message : String(error)
+    );
+
     statsDClient.increment("webhook_error.count", 1, [
       `provider:${provider}`,
       `workspace_id:${workspace.sId}`,
@@ -164,12 +246,10 @@ async function handler(
       status_code: 500,
       api_error: {
         type: "webhook_processing_error",
-        message: result.error.message,
+        message: error instanceof Error ? error.message : String(error),
       },
     });
   }
-
-  return res.status(200).json({ success: true });
 }
 
 export default withLogging(handler);
