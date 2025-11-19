@@ -12,7 +12,7 @@ export const ConversationContainer = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        "s-flex s-h-full s-w-full s-flex-col s-items-center",
+        "s-flex s-h-full s-w-full s-flex-col s-items-center s-@container/conversation",
         className
       )}
       {...props}
@@ -64,8 +64,8 @@ const wrapperVariants = cva(
 const messageVariants = cva("s-flex s-rounded-2xl", {
   variants: {
     type: {
-      agent: "s-w-full s-gap-3 s-p-4",
       user: "s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-py-4 s-gap-2",
+      agent: "s-w-full s-gap-3 s-p-4",
     },
   },
   defaultVariants: {
