@@ -241,7 +241,7 @@ function* handleStopReason(
         {
           type: "stop_error",
           message:
-            "Claude 4.5's enhanced safety filters prevented this response. This can happen with " +
+            "Claude enhanced safety filters prevented this response. This can happen with " +
             "certain images, document IDs, or in longer conversations. Try starting a new " +
             "conversation or changing the agent's model to GPT-5.",
           isRetryable: false,
