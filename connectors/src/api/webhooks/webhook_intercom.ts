@@ -18,7 +18,9 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
 
 const logger = mainLogger.child(
-  { provider: "intercom" },
+  {
+    provider: "intercom",
+  },
   {
     msgPrefix: "[Intercom] ",
   }
