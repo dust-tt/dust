@@ -6,7 +6,6 @@ import {
   workflowInfo,
 } from "@temporalio/workflow";
 
-import type { IntercomSyncAllConversationsStatus } from "@connectors/connectors/intercom/lib/types";
 import type * as activities from "@connectors/connectors/intercom/temporal/activities";
 import type { IntercomUpdateSignal } from "@connectors/connectors/intercom/temporal/signals";
 import type { ModelId } from "@connectors/types";
