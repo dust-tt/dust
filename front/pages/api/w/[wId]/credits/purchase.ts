@@ -111,6 +111,7 @@ async function handler(
         logger.error(
           {
             workspaceId: workspace.sId,
+            stripeError: true,
             stripeSubscriptionId: subscription.stripeSubscriptionId,
           },
           "Failed to retrieve Stripe subscription"
@@ -119,7 +120,7 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "subscription_not_found",
-            message: "Stripe subscription not found.",
+            message: "[Credit Purchase] Stripe subscription not found.",
           },
         });
       }

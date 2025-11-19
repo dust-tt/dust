@@ -337,14 +337,11 @@ async function handler(
             });
 
           if (creditPurchaseResult.isErr()) {
-            logger.error(
-              {
-                error: creditPurchaseResult.error,
-                invoiceId: invoice.id,
-                stripeSubscriptionId: invoice.subscription,
-              },
-              "[Stripe Webhook] Error processing credit purchase"
-            );
+            logger.error({
+              error: creditPurchaseResult.error,
+              invoiceId: invoice.id,
+              stripeSubscriptionId: invoice.subscription,
+            });
           }
 
           // We don't want credit purchase invoice being paid,
