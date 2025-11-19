@@ -304,7 +304,6 @@ export const ConversationAgentBuilderExample = () => {
             type="user"
             name="Edouard"
             timestamp="14:30"
-            textFullWidth
             pictureUrl="https://dust.tt/static/droidavatar/Droid_Lime_1.jpg"
           >
             In the invitation email to members sent by their companies, I'm
@@ -319,7 +318,6 @@ export const ConversationAgentBuilderExample = () => {
             name="Alice"
             timestamp="15:30"
             isCurrentUser={false}
-            textFullWidth
             pictureUrl="https://dust.tt/static/droidavatar/Droid_Lime_1.jpg"
           >
             Hello, how are you?
@@ -329,7 +327,6 @@ export const ConversationAgentBuilderExample = () => {
             name="Alice"
             timestamp="15:30"
             isCurrentUser={false}
-            textFullWidth
             pictureUrl="https://dust.tt/static/droidavatar/Droid_Lime_1.jpg"
           >
             In the invitation email to members sent by their companies, I'm

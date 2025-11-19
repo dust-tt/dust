@@ -40,7 +40,6 @@ interface UserMessageProps {
   isLastMessage: boolean;
   message: UserMessageType;
   owner: WorkspaceType;
-  textFullWidth?: boolean;
 }
 
 export function UserMessage({
@@ -50,7 +49,6 @@ export function UserMessage({
   isLastMessage,
   message,
   owner,
-  textFullWidth = false,
 }: UserMessageProps) {
   const additionalMarkdownComponents: Components = useMemo(
     () => ({
@@ -83,7 +81,7 @@ export function UserMessage({
 
   return (
     <div className="flex flex-grow flex-col">
-      <div className={classNames("min-w-60 max-w-full", isCurrentUser ? "self-end" : "self-start")}>
+      <div className={classNames("min-w-60 w-full flex flex-col", isCurrentUser ? "items-end" : "items-start")}>
         <ConversationMessage
           // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           pictureUrl={message.context.profilePictureUrl || message.user?.image}
@@ -100,7 +98,6 @@ export function UserMessage({
           type="user"
           isCurrentUser={isCurrentUser}
           citations={citations}
-          textFullWidth={textFullWidth}
         >
           <Markdown
             content={message.content}
