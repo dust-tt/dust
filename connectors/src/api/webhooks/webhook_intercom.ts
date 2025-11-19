@@ -14,14 +14,7 @@ import { withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
 
-const logger = mainLogger.child(
-  {
-    provider: "intercom",
-  },
-  {
-    msgPrefix: "[Intercom] ",
-  }
-);
+const logger = mainLogger.child({ provider: "intercom" });
 
 type IntercombWebhookResBody = WithConnectorsAPIErrorReponse<null>;
 
@@ -41,19 +34,14 @@ const _webhookIntercomAPIHandler = async (
   res: Response<IntercombWebhookResBody>
 ) => {
   const event = req.body;
-  logger.info(
-    {
-      event,
-    },
-    "Received Intercom webhook"
-  );
+  logger.info("[Intercom] Received Intercom webhook", { event });
 
   if (event.topic !== "conversation.admin.closed") {
     logger.error(
       {
         event,
       },
-      "Received Intercom webhook with unknown topic"
+      "[Intercom] Received Intercom webhook with unknown topic"
     );
     return res.status(200).end();
   }
@@ -64,7 +52,7 @@ const _webhookIntercomAPIHandler = async (
       {
         event,
       },
-      "Received Intercom webhook with no workspace id"
+      "[Intercom] Received Intercom webhook with no workspace id"
     );
     return res.status(200).end();
   }
@@ -75,7 +63,7 @@ const _webhookIntercomAPIHandler = async (
       {
         event,
       },
-      "Received Intercom webhook with no conversation"
+      "[Intercom] Received Intercom webhook with no conversation"
     );
     return res.status(200).end();
   }
@@ -91,7 +79,7 @@ const _webhookIntercomAPIHandler = async (
       {
         event,
       },
-      "Received Intercom webhook for unknown workspace"
+      "[Intercom] Received Intercom webhook for unknown workspace"
     );
     return res.status(200).end();
   }
@@ -106,7 +94,7 @@ const _webhookIntercomAPIHandler = async (
       {
         event,
       },
-      "Received Intercom webhook for unknown connector"
+      "[Intercom] Received Intercom webhook for unknown connector"
     );
     return res.status(200).end();
   }
@@ -116,7 +104,7 @@ const _webhookIntercomAPIHandler = async (
       {
         connectorId: connector.id,
       },
-      "Received webhook for paused connector, skipping."
+      "[Intercom] Received webhook for paused connector, skipping."
     );
     return res.status(200).end();
   }
@@ -127,7 +115,9 @@ const _webhookIntercomAPIHandler = async (
   if (!isSelectedAllConvos) {
     if (!conversation.team_assignee_id) {
       // Check we have the permissions to sync this conversation
-      logger.info("Received webhook for conversation without team, skipping.");
+      logger.info(
+        "[Intercom] Received webhook for conversation without team, skipping."
+      );
       return res.status(200).end();
     } else {
       const team = await IntercomTeamModel.findOne({
@@ -138,7 +128,7 @@ const _webhookIntercomAPIHandler = async (
       });
       if (!team || team.permission !== "read") {
         logger.info(
-          "Received webhook for conversation attached to team without read permission, skipping."
+          "[Intercom] Received webhook for conversation attached to team without read permission, skipping."
         );
         return res.status(200).end();
       }
@@ -165,7 +155,7 @@ const _webhookIntercomAPIHandler = async (
     loggerArgs,
   });
 
-  logger.info(loggerArgs, "Upserted conversation from webhook");
+  logger.info(loggerArgs, "[Intercom] Upserted conversation from webhook");
 
   return res.status(200).end();
 };
@@ -185,7 +175,7 @@ const _webhookIntercomUninstallAPIHandler = async (
   res: Response<IntercombWebhookResBody>
 ) => {
   const event = req.body;
-  logger.info({ event }, "Received Intercom uninstall webhook");
+  logger.info({ event }, "[Intercom] Received Intercom uninstall webhook");
 
   const intercomWorkspaceId = event.app_id;
   if (!intercomWorkspaceId) {
@@ -193,7 +183,7 @@ const _webhookIntercomUninstallAPIHandler = async (
       {
         event,
       },
-      "Received Intercom uninstall webhook with no workspace id"
+      "[Intercom] Received Intercom uninstall webhook with no workspace id"
     );
     return res.status(200).end();
   }
@@ -208,7 +198,7 @@ const _webhookIntercomUninstallAPIHandler = async (
       {
         event,
       },
-      "Received Intercom uninstall webhook for unknown workspace"
+      "[Intercom] Received Intercom uninstall webhook for unknown workspace"
     );
     return res.status(200).end();
   }
@@ -222,7 +212,7 @@ const _webhookIntercomUninstallAPIHandler = async (
       {
         event,
       },
-      "Received Intercom uninstall webhook for unknown connector"
+      "[Intercom] Received Intercom uninstall webhook for unknown connector"
     );
     return res.status(200).end();
   }
@@ -252,7 +242,10 @@ const _webhookIntercomUninstallAPIHandler = async (
     intercomWorkspaceId,
   };
 
-  logger.info(loggerArgs, "Errored connector from uninstall webhook");
+  logger.info(
+    loggerArgs,
+    "[Intercom] Errored connector from uninstall webhook"
+  );
 
   return res.status(200).end();
 };
