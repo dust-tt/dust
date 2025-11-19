@@ -43,7 +43,7 @@ import {
   IntercomTeamModel,
   IntercomWorkspaceModel,
 } from "@connectors/lib/models/intercom";
-import logger from "@connectors/logger/logger";
+import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type {
   ConnectorPermission,
@@ -51,6 +51,15 @@ import type {
   ContentNodesViewType,
   DataSourceConfig,
 } from "@connectors/types";
+
+const logger = mainLogger.child(
+  {
+    provider: "intercom",
+  },
+  {
+    msgPrefix: "[Intercom] ",
+  }
+);
 
 export class IntercomConnectorManager extends BaseConnectorManager<null> {
   readonly provider: ConnectorProvider = "intercom";
@@ -104,7 +113,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
           workspaceId: dataSourceConfig.workspaceId,
           error: schedulesStarted.error,
         },
-        "[Intercom] Error creating connector, could not launch scheduled workflows."
+        "Error creating connector, could not launch schedules."
       );
       throw schedulesStarted.error;
     }
@@ -119,10 +128,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
   }): Promise<Result<string, ConnectorManagerError<UpdateConnectorErrorCode>>> {
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
-      logger.error(
-        { connectorId: this.connectorId },
-        "[Intercom] Connector not found."
-      );
+      logger.error({ connectorId: this.connectorId }, "Connector not found.");
       throw new Error(`Connector ${this.connectorId} not found`);
     }
 
@@ -241,10 +247,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
   async resume(): Promise<Result<undefined, Error>> {
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
-      logger.error(
-        { connectorId: this.connectorId },
-        "[Intercom] Connector not found."
-      );
+      logger.error({ connectorId: this.connectorId }, "Connector not found.");
       return new Err(new Error("Connector not found"));
     }
 
@@ -330,10 +333,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
   > {
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
-      logger.error(
-        { connectorId: this.connectorId },
-        "[Intercom] Connector not found."
-      );
+      logger.error({ connectorId: this.connectorId }, "Connector not found.");
       return new Err(
         new ConnectorManagerError("CONNECTOR_NOT_FOUND", "Connector not found")
       );
@@ -392,10 +392,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
   }): Promise<Result<void, Error>> {
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
-      logger.error(
-        { connectorId: this.connectorId },
-        "[Intercom] Connector not found."
-      );
+      logger.error({ connectorId: this.connectorId }, "Connector not found.");
       return new Err(new Error("Connector not found"));
     }
 
@@ -407,7 +404,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
     if (!intercomWorkspace) {
       logger.error(
         { connectorId: this.connectorId },
-        "[Intercom] IntercomWorkspace not found. Cannot set permissions."
+        "IntercomWorkspace not found. Cannot set permissions."
       );
       return new Err(new Error("IntercomWorkspace not found"));
     }
@@ -535,11 +532,11 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       }
 
       return new Ok(undefined);
-    } catch (e) {
+    } catch (error) {
       logger.error(
         {
           connectorId: this.connectorId,
-          error: e,
+          error,
         },
         "Error setting connector permissions."
       );
