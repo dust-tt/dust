@@ -15,7 +15,8 @@ export class CreditModel extends WorkspaceAwareModel<CreditModel> {
   declare updatedAt: CreationOptional<Date>;
 
   declare type: CreditType;
-  declare startDate: Date | null; // When credit becomes active (null = not yet paid/active)
+  // When credit becomes active (null = not yet paid/active).
+  declare startDate: Date | null;
   declare expirationDate: Date | null;
   declare initialAmount: number; // in cents (immutable)
   declare remainingAmount: number; // in cents
