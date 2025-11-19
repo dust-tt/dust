@@ -3,6 +3,7 @@ import { Op, Sequelize } from "sequelize";
 
 import {
   AgentMessageContentParser,
+  getCoTDelimitersConfiguration,
   getDelimitersConfiguration,
 } from "@app/lib/api/assistant/agent_message_content_parser";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
@@ -412,7 +413,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
           const contentParser = new AgentMessageContentParser(
             agentConfiguration,
             message.sId,
-            getDelimitersConfiguration({ agentConfiguration })
+            getCoTDelimitersConfiguration({ agentConfiguration })
           );
           const parsedContent =
             await contentParser.parseContents(textFragments);
