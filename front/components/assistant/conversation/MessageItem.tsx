@@ -140,7 +140,6 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               citations={citations}
               conversationId={context.conversationId}
               currentUser={context.user}
-              textFullWidth={!!context.agentBuilderContext}
               isLastMessage={!nextData}
               message={data}
               owner={context.owner}
