@@ -244,6 +244,7 @@ export async function intercomConversationSyncWorkflow({
 
   const currentSyncMs = new Date().getTime();
 
+  // Sync conversations for each team.
   for (const teamId of teamIds) {
     let cursor = null;
 
@@ -268,6 +269,7 @@ export async function intercomConversationSyncWorkflow({
     } while (cursor);
   }
 
+  // If we sync all conversations, we need to check for conversations that are not assign to a team.
   const syncAllConvosStatus = await getSyncAllConversationsStatusActivity({
     connectorId,
   });
