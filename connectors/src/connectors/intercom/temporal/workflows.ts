@@ -180,6 +180,9 @@ export async function intercomFullSyncWorkflow({
   await saveIntercomConnectorSuccessSync({ connectorId });
 }
 
+/**
+ * This workflow runs on a schedule and syncs the Help Center.
+ */
 export async function intercomHelpCenterSyncWorkflow({
   connectorId,
 }: {
@@ -203,6 +206,7 @@ export async function intercomHelpCenterSyncWorkflow({
   const currentSyncMs = new Date().getTime();
 
   for (const helpCenterId of helpCenterIds) {
+    // We full sync the Help Center, we don't have incremental sync here.
     await executeChild(intercomHelpCenterFullSyncWorkflow, {
       workflowId: `${workflowId}-help-center-${helpCenterId}`,
       searchAttributes: parentSearchAttributes,
@@ -221,6 +225,9 @@ export async function intercomHelpCenterSyncWorkflow({
   await saveIntercomConnectorSuccessSync({ connectorId });
 }
 
+/**
+ * This workflow runs on a schedule and syncs conversations closed over the last CONVERSATION_SYNC_WINDOW_MINUTES.
+ */
 export async function intercomConversationSyncWorkflow({
   connectorId,
 }: {
@@ -292,9 +299,8 @@ export async function intercomConversationSyncWorkflow({
 }
 
 /**
- * Sync Workflow for a Help Center.
- * Launched by the IntercomFullSyncWorkflow, it will sync a given help center.
- * We sync a HelpCenter by fetching all the Collections and Articles.
+ * This workflow is called as a child workflow, it will sync a given Help Center.
+ * We sync a Help Center by fetching all the Collections and Articles.
  */
 export async function intercomHelpCenterFullSyncWorkflow({
   connectorId,
@@ -348,8 +354,7 @@ export async function intercomHelpCenterFullSyncWorkflow({
 }
 
 /**
- * Sync Workflow for a Team.
- * Launched by the IntercomFullSyncWorkflow, it will sync a given Team.
+ * This workflow is called as a child workflow of intercomFullSyncWorkflow, it will sync conversations for a team.
  * We sync a Team by fetching the conversations attached to this team.
  */
 export async function intercomTeamFullSyncWorkflow({
@@ -397,9 +402,8 @@ export async function intercomTeamFullSyncWorkflow({
 }
 
 /**
- * Sync Workflow for All Conversations.
- * Launched by the IntercomFullSyncWorkflow if a signal is received, meaning the admin updated the permissions and
- * ticked or unticked the "All Conversations" checkbox.
+ * This workflow is called as a child workflow of intercomFullSyncWorkflow, it will sync conversations for all teams.
+ * It is triggered when the admin updated the permissions and ticked or unticked the "All Conversations" checkbox.
  */
 export async function intercomAllConversationsFullSyncWorkflow({
   connectorId,
