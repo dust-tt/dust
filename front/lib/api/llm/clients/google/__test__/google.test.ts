@@ -1,8 +1,11 @@
 import { vi } from "vitest";
 
-import type { GoogleModelFamily } from "@app/lib/api/llm/clients/google/types";
+import type {
+  GoogleAIStudioModelFamily,
+  GoogleAIStudioWhitelistedModelId,
+} from "@app/lib/api/llm/clients/google/types";
 import {
-  getGoogleModelFamilyFromModelId,
+  getGoogleAIStudioModelFamilyFromModelId,
   GOOGLE_AI_STUDIO_WHITELISTED_MODEL_IDS,
 } from "@app/lib/api/llm/clients/google/types";
 import { TEST_CONVERSATIONS } from "@app/lib/api/llm/tests/conversations";
@@ -15,16 +18,15 @@ import type {
 import type { ModelIdType } from "@app/types/assistant/models/types";
 
 const GOOGLE_MODEL_FAMILY_TO_TEST_CONFIGS: Record<
-  GoogleModelFamily,
+  GoogleAIStudioModelFamily,
   ConfigParams[]
 > = {
-  reasoning: [
+  "gemini-2": [
     { reasoningEffort: "none" },
     { reasoningEffort: "light", temperature: 0 },
     { reasoningEffort: "medium", temperature: 1 },
     { reasoningEffort: "high" },
   ],
-  "non-reasoning": [{ temperature: 1 }, { temperature: 0 }],
 };
 
 // Inject Dust managed Google AI Studio credentials for testing
@@ -45,8 +47,10 @@ class GoogleTestSuite extends LLMClientTestSuite {
   protected provider = "google_ai_studio" as const;
   protected models = GOOGLE_AI_STUDIO_WHITELISTED_MODEL_IDS;
 
-  protected getTestConfig(modelId: ModelIdType): TestConfig[] {
-    const family = getGoogleModelFamilyFromModelId(modelId);
+  protected getTestConfig(
+    modelId: GoogleAIStudioWhitelistedModelId
+  ): TestConfig[] {
+    const family = getGoogleAIStudioModelFamilyFromModelId(modelId);
     return GOOGLE_MODEL_FAMILY_TO_TEST_CONFIGS[family].map((configParams) => ({
       ...configParams,
       modelId,
