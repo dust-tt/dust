@@ -36,7 +36,6 @@ import {
   BaseConnectorManager,
   ConnectorManagerError,
 } from "@connectors/connectors/interface";
-import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import {
   DEFAULT_CONVERSATIONS_SLIDING_WINDOW,
@@ -151,7 +150,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
         return new Err(
           new ConnectorManagerError(
             "CONNECTOR_OAUTH_TARGET_MISMATCH",
-            "Cannot change workspace of a Intercom connector"
+            "Cannot change workspace of an Intercom connector"
           )
         );
       }
@@ -254,25 +253,27 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       return schedulesRes;
     }
 
-    const dataSourceConfig = dataSourceConfigFromConnector(connector);
     const teamsIds = await IntercomTeamModel.findAll({
       where: {
         connectorId: this.connectorId,
       },
       attributes: ["teamId"],
     });
-    const toBeSignaledTeamIds = teamsIds.map((team) => team.teamId);
-    try {
-      await launchIntercomFullSyncWorkflow({
-        connectorId: this.connectorId,
-        teamIds: toBeSignaledTeamIds,
-      });
-    } catch (e) {
+
+    // TODO(2025-11-19): we should store a cursor of when we last synced conversations and start from there in the
+    //  scheduled workflow. This would remove the need for a full sync now.
+    const fullSyncStartResult = await launchIntercomFullSyncWorkflow({
+      connectorId: this.connectorId,
+      teamIds: teamsIds.map((team) => team.teamId),
+    });
+
+    if (fullSyncStartResult.isErr()) {
       logger.error(
         {
-          workspaceId: dataSourceConfig.workspaceId,
-          dataSourceId: dataSourceConfig.dataSourceId,
-          error: e,
+          connectorId: this.connectorId,
+          workspaceId: connector.workspaceId,
+          dataSourceId: connector.dataSourceId,
+          error: fullSyncStartResult.error,
         },
         "Error launching Intercom full sync workflow."
       );
@@ -374,7 +375,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
           )
         );
       }
-      // Unanhdled error, throwing to get a 500.
+      // Unhandled error, throwing to get a 500.
       throw e;
     }
   }
