@@ -84,7 +84,7 @@ export function AgentObservability({
                         agentAnalytics.mentions.messageCount /
                           agentAnalytics.activeUsers
                       )}`
-                    : "-"}
+                    : 0}
                 </div>
               }
             />
