@@ -4,10 +4,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { FILESYSTEM_FIND_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { renderSearchResults } from "@app/lib/actions/mcp_internal_actions/rendering";
-import {
-  extractDataSourceIdFromNodeId,
-  makeQueryResourceForFind,
-} from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/utils";
+import { extractDataSourceIdFromNodeId } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/utils";
 import { checkConflictingTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import {
   getAgentDataSourceConfigurations,
@@ -184,15 +181,6 @@ async function findCallback(
   }
 
   return new Ok([
-    {
-      type: "resource" as const,
-      resource: makeQueryResourceForFind(
-        query,
-        rootNodeId,
-        mimeTypes,
-        nextPageCursor
-      ),
-    },
     {
       type: "resource" as const,
       resource: renderSearchResults(
