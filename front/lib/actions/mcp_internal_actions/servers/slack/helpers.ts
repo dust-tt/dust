@@ -22,7 +22,7 @@ export const MAX_THREAD_MESSAGES = 200;
 export const DEFAULT_THREAD_MESSAGES = 20;
 export const CHANNEL_CACHE_TTL_MS = 60 * 10 * 1000; // 10 minutes
 
-function isSlackMissingScope(error: unknown): boolean {
+export function isSlackMissingScope(error: unknown): boolean {
   return (
     typeof error === "object" &&
     error !== null &&

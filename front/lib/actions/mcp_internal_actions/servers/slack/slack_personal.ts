@@ -19,6 +19,7 @@ import {
   executeReadThreadMessages,
   executeScheduleMessage,
   getSlackClient,
+  isSlackMissingScope,
   resolveChannelId,
 } from "@app/lib/actions/mcp_internal_actions/servers/slack/helpers";
 import {
@@ -302,15 +303,6 @@ function isSlackTokenRevoked(error: unknown): boolean {
     error !== null &&
     (error as any).message &&
     (error as any).message.toString().includes("token_revoked")
-  );
-}
-
-function isSlackMissingScope(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    (error as any).message &&
-    (error as any).message.toString().includes("missing_scope")
   );
 }
 
