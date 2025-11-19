@@ -246,27 +246,11 @@ export async function intercomConversationSyncWorkflow({
 
   // Sync conversations for each team.
   for (const teamId of teamIds) {
-    let cursor = null;
-
-    // We loop over the conversations to sync them all, by batch of INTERCOM_CONVO_BATCH_SIZE.
-    do {
-      const { conversationIds, nextPageCursor } =
-        await getNextConversationBatchToSyncActivity({
-          connectorId,
-          teamId,
-          cursor,
-          closedAfterTimeWindowMinutes: CONVERSATION_SYNC_WINDOW_MINUTES,
-        });
-
-      await syncConversationBatchActivity({
-        connectorId,
-        teamId,
-        conversationIds,
-        currentSyncMs,
-      });
-
-      cursor = nextPageCursor;
-    } while (cursor);
+    await syncTeamConversations({
+      connectorId,
+      teamId,
+      currentSyncMs,
+    });
   }
 
   // If we sync all conversations, we need to check for conversations that are not assign to a team.
@@ -274,23 +258,11 @@ export async function intercomConversationSyncWorkflow({
     connectorId,
   });
   if (syncAllConvosStatus === "activated") {
-    let cursor = null;
-    do {
-      const { conversationIds, nextPageCursor } =
-        await getNextConversationBatchToSyncActivity({
-          connectorId,
-          cursor,
-          closedAfterTimeWindowMinutes: CONVERSATION_SYNC_WINDOW_MINUTES,
-        });
-
-      await syncConversationBatchActivity({
-        connectorId,
-        conversationIds,
-        currentSyncMs,
-      });
-
-      cursor = nextPageCursor;
-    } while (cursor);
+    await syncTeamConversations({
+      connectorId,
+      teamId: undefined,
+      currentSyncMs,
+    });
   }
 
   await cleanupOutdatedConversations({
@@ -381,26 +353,11 @@ export async function intercomTeamFullSyncWorkflow({
     return;
   }
 
-  let cursor = null;
-
-  // We loop over the conversations to sync them all, by batch of INTERCOM_CONVO_BATCH_SIZE.
-  do {
-    const { conversationIds, nextPageCursor } =
-      await getNextConversationBatchToSyncActivity({
-        connectorId,
-        teamId,
-        cursor,
-      });
-
-    await syncConversationBatchActivity({
-      connectorId,
-      teamId,
-      conversationIds,
-      currentSyncMs,
-    });
-
-    cursor = nextPageCursor;
-  } while (cursor);
+  await syncTeamConversations({
+    connectorId,
+    teamId,
+    currentSyncMs,
+  });
 }
 
 /**
@@ -488,6 +445,38 @@ export async function intercomAllConversationsFullSyncWorkflow({
       });
       break;
   }
+}
+
+async function syncTeamConversations({
+  connectorId,
+  teamId,
+  currentSyncMs,
+}: {
+  connectorId: ModelId;
+  teamId: string | undefined;
+  currentSyncMs: number;
+}) {
+  let cursor = null;
+
+  // We loop over the conversations to sync them all, by batch of INTERCOM_CONVO_BATCH_SIZE.
+  do {
+    const { conversationIds, nextPageCursor } =
+      await getNextConversationBatchToSyncActivity({
+        connectorId,
+        teamId,
+        cursor,
+        closedAfterTimeWindowMinutes: CONVERSATION_SYNC_WINDOW_MINUTES,
+      });
+
+    await syncConversationBatchActivity({
+      connectorId,
+      teamId,
+      conversationIds,
+      currentSyncMs,
+    });
+
+    cursor = nextPageCursor;
+  } while (cursor);
 }
 
 async function cleanupOutdatedConversations({
