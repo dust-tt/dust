@@ -7,11 +7,10 @@ import {
   DropdownMenuTrigger,
   EmptyCTA,
   Input,
-  MoreIcon,
   Page,
-  PencilSquareIcon,
   ScrollArea,
   SearchInput,
+  Separator,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -19,7 +18,6 @@ import {
   SheetHeader,
   SheetTitle,
   SliderToggle,
-  TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type {
@@ -34,7 +32,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ConfirmContext } from "@app/components/Confirm";
 import { GroupsList } from "@app/components/groups/GroupsList";
 import { ConfirmDeleteSpaceDialog } from "@app/components/spaces/ConfirmDeleteSpaceDialog";
-import { EditSpaceNameDialog } from "@app/components/spaces/EditSpaceNameDialog";
 import { SearchGroupsDropdown } from "@app/components/spaces/SearchGroupsDropdown";
 import { SearchMembersDropdown } from "@app/components/spaces/SearchMembersDropdown";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -89,8 +86,6 @@ export function CreateOrEditSpaceModal({
   const [selectedGroups, setSelectedGroups] = useState<GroupType[]>([]);
 
   const [isSaving, setIsSaving] = useState(false);
-  const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
-  const [showEditNameDialog, setShowEditNameDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRestricted, setIsRestricted] = useState(false);
   const [searchSelectedMembers, setSearchSelectedMembers] =
@@ -194,8 +189,6 @@ export function CreateOrEditSpaceModal({
       setSelectedMembers([]);
       setSelectedGroups([]);
       setManagementType("manual");
-      setShowDeleteConfirmDialog(false);
-      setShowEditNameDialog(false);
       setIsDeleting(false);
       setIsSaving(false);
     }, 500);
@@ -280,7 +273,6 @@ export function CreateOrEditSpaceModal({
 
   const onDelete = useCallback(async () => {
     if (!space) {
-      setShowDeleteConfirmDialog(false);
       return;
     }
 
@@ -288,31 +280,12 @@ export function CreateOrEditSpaceModal({
 
     const res = await doDelete(space);
     setIsDeleting(false);
-    setShowDeleteConfirmDialog(false);
 
     if (res) {
       handleClose();
       await router.push(`/w/${owner.sId}/spaces`);
     }
   }, [doDelete, handleClose, owner.sId, router, space]);
-
-  const onEditName = async (newName: string) => {
-    if (!space || !newName.trim()) {
-      setShowEditNameDialog(false);
-      return;
-    }
-
-    if (spaceInfo) {
-      await doUpdate(space, {
-        name: newName.trim(),
-        isRestricted: spaceInfo.isRestricted,
-      });
-      await mutateSpaceInfo();
-    }
-
-    setSpaceName(newName.trim());
-    setShowEditNameDialog(false);
-  };
 
   const handleManagementTypeChange = useCallback(
     async (value: string) => {
@@ -375,16 +348,18 @@ export function CreateOrEditSpaceModal({
   );
 
   const disabled = useMemo(() => {
+    const hasName = spaceName.trim().length > 0;
+
     const canSave =
       !isRestricted ||
       (managementType === "manual" && selectedMembers.length > 0) ||
       (managementType === "group" && selectedGroups.length > 0);
 
     if (!spaceInfo) {
-      return !canSave;
+      return !canSave || !hasName;
     }
 
-    return !isDirty || !canSave;
+    return !isDirty || !canSave || !hasName;
   }, [
     isRestricted,
     managementType,
@@ -392,79 +367,42 @@ export function CreateOrEditSpaceModal({
     selectedGroups,
     spaceInfo,
     isDirty,
+    spaceName,
   ]);
   const isManual = !planAllowsSCIM || managementType === "manual";
   return (
     <Sheet open={isOpen} onOpenChange={handleClose}>
       <SheetContent trapFocusScope={false} size="lg">
         <SheetHeader>
-          <div className="flex flex-col gap-2">
-            <div className="flex flex-col gap-0">
-              <SheetTitle>
-                Space Settings{space ? `- ${spaceName}` : ""}
-              </SheetTitle>
+          <SheetTitle>Space Settings{space ? `- ${spaceName}` : ""}</SheetTitle>
+        </SheetHeader>
+        <SheetContainer>
+          <div className="flex w-full flex-col gap-y-4">
+            <div className="flex w-full flex-col gap-y-4">
+              <Page.SectionHeader title="Name" />
+              <Input
+                placeholder="Space's name"
+                value={spaceName}
+                name="spaceName"
+                message="Space name must be unique"
+                messageStatus="info"
+                onChange={(e) => {
+                  setSpaceName(e.target.value);
+                  setIsDirty(true);
+                }}
+              />
             </div>
-
             {isAdmin && space && space.kind === "regular" && (
               <>
                 <ConfirmDeleteSpaceDialog
                   spaceInfoByCategory={spaceInfo?.categories}
                   space={space}
                   handleDelete={onDelete}
-                  isOpen={showDeleteConfirmDialog}
                   isDeleting={isDeleting}
-                  onClose={() => setShowDeleteConfirmDialog(false)}
                 />
-                <EditSpaceNameDialog
-                  spaceInfo={spaceInfo}
-                  handleEditName={onEditName}
-                  isOpen={showEditNameDialog}
-                  isSaving={isSaving}
-                  onClose={() => setShowEditNameDialog(false)}
-                />
-                <div className="flex w-full justify-end">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button icon={MoreIcon} size="sm" variant="ghost" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuItem
-                        label="Rename space"
-                        onClick={() => setShowEditNameDialog(true)}
-                        icon={PencilSquareIcon}
-                      />
-                      <DropdownMenuItem
-                        label="Delete Space"
-                        onClick={() => setShowDeleteConfirmDialog(true)}
-                        icon={TrashIcon}
-                        variant="warning"
-                      />
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+                <Separator />
               </>
             )}
-          </div>
-        </SheetHeader>
-        <SheetContainer>
-          <div className="flex w-full flex-col gap-y-4">
-            {!space && (
-              <div className="mb-4 flex w-full flex-col gap-y-4">
-                <Page.SectionHeader title="Name" />
-                <Input
-                  placeholder="Space's name"
-                  value={spaceName}
-                  name="spaceName"
-                  message="Space name must be unique"
-                  messageStatus="info"
-                  onChange={(e) => {
-                    setSpaceName(e.target.value);
-                    setIsDirty(true);
-                  }}
-                />
-              </div>
-            )}
-
             <div className="flex w-full items-center justify-between overflow-visible">
               <Page.SectionHeader title="Restricted Access" />
               <SliderToggle

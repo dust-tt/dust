@@ -1,4 +1,5 @@
 import {
+  Button,
   ContentMessage,
   Dialog,
   DialogContainer,
@@ -6,7 +7,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
   Spinner,
+  TrashIcon,
 } from "@dust-tt/sparkle";
 
 import { getSpaceName } from "@app/lib/spaces";
@@ -17,18 +20,14 @@ interface ConfirmDeleteSpaceDialogProps {
   space: SpaceType;
   handleDelete: () => void;
   spaceInfoByCategory: { [key: string]: SpaceCategoryInfo } | undefined;
-  isOpen: boolean;
   isDeleting: boolean;
-  onClose: () => void;
 }
 
 export function ConfirmDeleteSpaceDialog({
   space,
   handleDelete,
   spaceInfoByCategory,
-  isOpen,
   isDeleting,
-  onClose,
 }: ConfirmDeleteSpaceDialogProps) {
   const uniqueAgentNames = spaceInfoByCategory
     ? [
@@ -45,14 +44,17 @@ export function ConfirmDeleteSpaceDialog({
   const hasAgents = uniqueAgentNames.length > 0;
 
   return (
-    <Dialog
-      open={isOpen}
-      onOpenChange={(open) => {
-        if (!open) {
-          onClose();
-        }
-      }}
-    >
+    <Dialog>
+      <DialogTrigger asChild>
+        <div className="flex w-full flex-col items-end">
+          <Button
+            icon={TrashIcon}
+            size="xs"
+            variant="warning"
+            label="Delete space"
+          />
+        </div>
+      </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{`Deleting ${getSpaceName(space)}`}</DialogTitle>
