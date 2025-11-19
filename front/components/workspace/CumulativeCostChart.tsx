@@ -20,20 +20,38 @@ import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
 import {
   CHART_HEIGHT,
-  getSourceColor,
+  USER_MESSAGE_ORIGIN_LABELS,
 } from "@app/components/agent_builder/observability/constants";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
+import {
+  getSourceColor,
+  getToolColor,
+  isUserMessageOrigin,
+} from "@app/components/agent_builder/observability/utils";
 import { useWorkspaceCumulativeCost } from "@app/lib/swr/workspaces";
 
 interface CumulativeCostChartProps {
   workspaceId: string;
 }
 
-const GROUP_BY_OPTIONS = [
-  { value: "global" as const, label: "Global" },
-  { value: "agent" as const, label: "By Agent" },
-  { value: "origin" as const, label: "By Origin" },
+type GroupByOptionValue = "global" | "agent" | "origin";
+
+type ChartDataPoint = {
+  date: string;
+  timestamp: number;
+  totalInitialCreditsCents: number;
+  cumulativeCostCents?: number;
+  [key: string]: string | number | undefined;
+};
+
+const GROUP_BY_OPTIONS: {
+  value: GroupByOptionValue;
+  label: string;
+}[] = [
+  { value: "global", label: "Global" },
+  { value: "agent", label: "By Agent" },
+  { value: "origin", label: "By Origin" },
 ];
 
 // Custom tooltip for global view
@@ -72,7 +90,8 @@ function GlobalTooltip(
 // Custom tooltip for grouped view
 function GroupedTooltip(
   props: TooltipContentProps<number, string>,
-  groupColorMap: Map<string, number>
+  groupBy: "agent" | "origin" | undefined,
+  groups: string[]
 ): JSX.Element | null {
   const { active, payload } = props;
   if (!active || !payload || payload.length === 0) {
@@ -85,17 +104,32 @@ function GroupedTooltip(
   }
 
   const rows = payload
-    .filter((p) => p.dataKey !== "totalInitialCreditsCents" && p.value)
+    .filter(
+      (p) =>
+        p.dataKey !== "totalInitialCreditsCents" &&
+        p.value != null &&
+        typeof p.value === "number"
+    )
     .map((p) => {
       const groupName = p.name || String(p.dataKey);
-      const colorIndex = groupColorMap.get(groupName);
+      let label = groupName;
+      if (groupBy === "origin" && isUserMessageOrigin(groupName)) {
+        label = USER_MESSAGE_ORIGIN_LABELS[groupName].label;
+      }
+
+      let colorClassName: string;
+      if (groupBy === "origin" && isUserMessageOrigin(groupName)) {
+        colorClassName = getSourceColor(groupName, "text");
+      } else if (groupBy === "agent") {
+        colorClassName = getToolColor(groupName, groups, "text");
+      } else {
+        colorClassName = "text-green-500";
+      }
+
       return {
-        label: groupName as string,
-        value: `$${((p.value as number) / 100).toFixed(2)}`,
-        colorClassName:
-          colorIndex !== undefined
-            ? getSourceColor(colorIndex)
-            : "text-green-500",
+        label,
+        value: `$${(p.value / 100).toFixed(2)}`,
+        colorClassName,
       };
     });
 
@@ -127,9 +161,8 @@ export function CumulativeCostChart({ workspaceId }: CumulativeCostChartProps) {
   });
 
   // Process data based on groupBy
-  let chartData: any[] = [];
+  let chartData: ChartDataPoint[] = [];
   let groups: string[] = [];
-  const groupColorMap = new Map<string, number>();
   const legendItems: { key: string; label: string; colorClassName: string }[] =
     [];
 
@@ -156,12 +189,28 @@ export function CumulativeCostChart({ workspaceId }: CumulativeCostChartProps) {
     }
 
     // Build color map for tooltips and legend items
-    groups.forEach((groupName, index) => {
-      groupColorMap.set(groupName, index);
+    groups.forEach((groupName) => {
+      let colorClassName: string;
+      if (
+        cumulativeCostData.groupBy === "origin" &&
+        isUserMessageOrigin(groupName)
+      ) {
+        colorClassName = getSourceColor(groupName, "text");
+      } else if (cumulativeCostData.groupBy === "agent") {
+        colorClassName = getToolColor(groupName, groups, "text");
+      } else {
+        colorClassName = "text-green-500";
+      }
+
+      let label = groupName;
+      if (groupBy === "origin" && isUserMessageOrigin(groupName)) {
+        label = USER_MESSAGE_ORIGIN_LABELS[groupName].label;
+      }
+
       legendItems.push({
         key: groupName,
-        label: groupName,
-        colorClassName: getSourceColor(index),
+        label,
+        colorClassName,
       });
     });
 
@@ -175,7 +224,7 @@ export function CumulativeCostChart({ workspaceId }: CumulativeCostChartProps) {
     // Transform points into chart data
     chartData = cumulativeCostData.points.map((point) => {
       const date = new Date(point.timestamp);
-      const dataPoint: any = {
+      const dataPoint: ChartDataPoint = {
         date: date.toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
@@ -331,7 +380,7 @@ export function CumulativeCostChart({ workspaceId }: CumulativeCostChartProps) {
           />
           <Tooltip
             content={(props: TooltipContentProps<number, string>) =>
-              GroupedTooltip(props, groupColorMap)
+              GroupedTooltip(props, groupBy, groups)
             }
             cursor={false}
             wrapperStyle={{ outline: "none" }}
@@ -352,19 +401,30 @@ export function CumulativeCostChart({ workspaceId }: CumulativeCostChartProps) {
             dot={false}
             activeDot={{ r: 5 }}
           />
-          {groups.map((groupName, index) => (
-            <Area
-              key={groupName}
-              type="monotone"
-              dataKey={groupName}
-              stackId="cost"
-              stroke="currentColor"
-              fill="currentColor"
-              fillOpacity={0.6}
-              strokeWidth={2}
-              className={getSourceColor(index)}
-            />
-          ))}
+          {groups.map((groupName) => {
+            let colorClassName: string;
+            if (groupBy === "origin" && isUserMessageOrigin(groupName)) {
+              colorClassName = getSourceColor(groupName, "text");
+            } else if (groupBy === "agent") {
+              colorClassName = getToolColor(groupName, groups, "text");
+            } else {
+              colorClassName = "text-green-500";
+            }
+
+            return (
+              <Area
+                key={groupName}
+                type="monotone"
+                dataKey={groupName}
+                stackId="cost"
+                stroke="currentColor"
+                fill="currentColor"
+                fillOpacity={0.6}
+                strokeWidth={2}
+                className={colorClassName}
+              />
+            );
+          })}
         </AreaChart>
       )}
     </ChartContainer>
