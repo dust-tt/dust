@@ -151,7 +151,7 @@ export function useFeatureFlags({
   };
 }
 
-export function useWorspaceUsageMetrics({
+export function useWorkspaceUsageMetrics({
   workspaceId,
   days = DEFAULT_PERIOD_DAYS,
   interval = "day",

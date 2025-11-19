@@ -17,7 +17,7 @@ import { ChartContainer } from "@app/components/agent_builder/observability/shar
 import { legendFromConstant } from "@app/components/agent_builder/observability/shared/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
 import { padSeriesToTimeRange } from "@app/components/agent_builder/observability/utils";
-import { useWorspaceUsageMetrics } from "@app/lib/swr/workspaces";
+import { useWorkspaceUsageMetrics } from "@app/lib/swr/workspaces";
 
 function zeroFactory(timestamp: number) {
   return {
@@ -61,7 +61,7 @@ interface DailyCostChartProps {
 
 export function DailyCostChart({ workspaceId, period }: DailyCostChartProps) {
   const { usageMetrics, isUsageMetricsLoading, isUsageMetricsError } =
-    useWorspaceUsageMetrics({
+    useWorkspaceUsageMetrics({
       workspaceId,
       days: period,
       interval: "day",
