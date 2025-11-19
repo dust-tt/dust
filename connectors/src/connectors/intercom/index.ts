@@ -24,7 +24,7 @@ import {
 } from "@connectors/connectors/intercom/lib/utils";
 import {
   launchIntercomFullSyncWorkflow,
-  launchIntercomScheduledWorkflows,
+  launchIntercomSchedules,
   stopIntercomWorkflows,
 } from "@connectors/connectors/intercom/temporal/client";
 import type {
@@ -96,7 +96,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       intercomConfigurationBlob
     );
 
-    const schedulesStarted = await launchIntercomScheduledWorkflows(connector);
+    const schedulesStarted = await launchIntercomSchedules(connector);
 
     if (schedulesStarted.isErr()) {
       await connector.delete();
@@ -249,7 +249,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("Connector not found"));
     }
 
-    const schedulesRes = await launchIntercomScheduledWorkflows(connector);
+    const schedulesRes = await launchIntercomSchedules(connector);
     if (schedulesRes.isErr()) {
       return schedulesRes;
     }

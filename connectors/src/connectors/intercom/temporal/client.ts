@@ -150,7 +150,7 @@ export async function stopIntercomWorkflows(
   return new Ok(undefined);
 }
 
-export async function launchIntercomScheduledWorkflows(
+export async function launchIntercomSchedules(
   connector: ConnectorResource
 ): Promise<Result<void, Error>> {
   const helpCenterResult = await createSchedule({
