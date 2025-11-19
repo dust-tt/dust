@@ -32,7 +32,7 @@ export interface ToolCall {
 export interface ToolCallEvent {
   type: "tool_call";
   content: ToolCall;
-  metadata: LLMClientMetadata;
+  metadata: LLMClientMetadata & { thoughtSignature?: string };
 }
 
 export interface TextGeneratedEvent {
