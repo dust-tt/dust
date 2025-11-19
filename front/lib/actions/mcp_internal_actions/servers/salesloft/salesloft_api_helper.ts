@@ -269,32 +269,33 @@ async function getPeopleByIds(
     return new Map();
   }
 
-  const people = await getAllPages<SalesloftPerson>(accessToken, "/people", {});
+  const idsParam = personIds.join(",");
+  const people = await getAllPages<SalesloftPerson>(accessToken, "/people", {
+    ids: idsParam,
+  });
 
   const peopleMap = new Map<number, SalesloftPerson>();
   for (const person of people) {
-    if (personIds.includes(person.id)) {
-      peopleMap.set(person.id, {
-        id: person.id,
-        first_name: person.first_name,
-        last_name: person.last_name,
-        email_address: person.email_address,
-        phone: person.phone,
-        linkedin_url: person.linkedin_url,
-        title: person.title,
-        city: person.city,
-        state: person.state,
-        country: person.country,
-        person_company_name: person.person_company_name,
-        person_company_website: person.person_company_website,
-        do_not_contact: person.do_not_contact,
-        twitter_handle: person.twitter_handle,
-        job_seniority: person.job_seniority,
-        job_function: person.job_function,
-        untouched: person.untouched,
-        hot_lead: person.hot_lead,
-      });
-    }
+    peopleMap.set(person.id, {
+      id: person.id,
+      first_name: person.first_name,
+      last_name: person.last_name,
+      email_address: person.email_address,
+      phone: person.phone,
+      linkedin_url: person.linkedin_url,
+      title: person.title,
+      city: person.city,
+      state: person.state,
+      country: person.country,
+      person_company_name: person.person_company_name,
+      person_company_website: person.person_company_website,
+      do_not_contact: person.do_not_contact,
+      twitter_handle: person.twitter_handle,
+      job_seniority: person.job_seniority,
+      job_function: person.job_function,
+      untouched: person.untouched,
+      hot_lead: person.hot_lead,
+    });
   }
   return peopleMap;
 }
