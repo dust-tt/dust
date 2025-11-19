@@ -292,7 +292,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
     if (!connector) {
       logger.error(
         { connectorId: this.connectorId },
-        "Notion connector not found."
+        "Intercom connector not found."
       );
       return new Err(new Error("Connector not found"));
     }
