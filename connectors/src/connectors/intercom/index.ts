@@ -583,17 +583,17 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
           },
           attributes: ["teamId"],
         });
-        const toBeSignaledTeamIds = teamsIds.map((team) => team.teamId);
-        const r = await launchIntercomFullSyncWorkflow({
+
+        const fullSyncStartResult = await launchIntercomFullSyncWorkflow({
           connectorId: this.connectorId,
-          teamIds: toBeSignaledTeamIds,
+          teamIds: teamsIds.map((team) => team.teamId),
           forceResync: true,
         });
-        if (r.isErr()) {
-          return r;
+        if (fullSyncStartResult.isErr()) {
+          return fullSyncStartResult;
         }
 
-        return new Ok(void 0);
+        return new Ok(undefined);
       }
 
       default: {

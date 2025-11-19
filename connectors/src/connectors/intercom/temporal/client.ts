@@ -134,16 +134,16 @@ export async function stopIntercomSchedulesAndWorkflows(
     const handle: WorkflowHandle<typeof intercomFullSyncWorkflow> =
       client.workflow.getHandle(workflowId);
     await handle.terminate();
-  } catch (e) {
-    if (!(e instanceof WorkflowNotFoundError)) {
+  } catch (error) {
+    if (!(error instanceof WorkflowNotFoundError)) {
       logger.error(
         {
           workflowId,
-          error: e,
+          error,
         },
         "[Intercom] Failed to stop full sync workflow."
       );
-      return new Err(normalizeError(e));
+      return new Err(normalizeError(error));
     }
   }
 
