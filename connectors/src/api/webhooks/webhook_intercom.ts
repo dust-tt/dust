@@ -41,7 +41,12 @@ const _webhookIntercomAPIHandler = async (
   res: Response<IntercomWebhookResBody>
 ) => {
   const event = req.body;
-  logger.info("Received Intercom webhook", { event });
+  logger.info(
+    {
+      event,
+    },
+    "Received Intercom webhook"
+  );
 
   if (event.topic !== "conversation.admin.closed") {
     logger.error(
