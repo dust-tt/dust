@@ -83,9 +83,9 @@ CreditModel.init(
       },
       // Unique constraint on (workspaceId, invoiceOrLineItemId) to prevent duplicate credit purchases
       {
-        fields: ["workspaceId", "invoiceOrLineItemId"],
+        fields: ["invoiceOrLineItemId"],
         unique: true,
-        name: "credits_workspace_invoice_unique_idx",
+        name: "credits_invoice_unique_idx",
         where: { invoiceOrLineItemId: { [Op.ne]: null } },
       },
       // Composite index for efficient queries on active credits

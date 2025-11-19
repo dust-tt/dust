@@ -13,7 +13,7 @@ ALTER TABLE "public"."credits" ADD COLUMN "startDate" TIMESTAMP WITH TIME ZONE;
 
 -- Create unique index on (workspaceId, invoiceOrLineItemId) to prevent duplicate credit purchases
 -- Uses partial index to only enforce uniqueness for non-null values
-CREATE UNIQUE INDEX "credits_workspace_invoice_unique_idx" ON "public"."credits" ("workspaceId", "invoiceOrLineItemId") WHERE "invoiceOrLineItemId" IS NOT NULL;
+CREATE UNIQUE INDEX "credits_invoice_unique_idx" ON "public"."credits" ("invoiceOrLineItemId") WHERE "invoiceOrLineItemId" IS NOT NULL;
 
 -- Create composite index for efficient queries on active credits
 CREATE INDEX "credits_workspace_start_expiration_idx" ON "public"."credits" ("workspaceId", "startDate", "expirationDate");
