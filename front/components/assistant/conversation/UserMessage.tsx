@@ -96,7 +96,12 @@ export function UserMessage({
 
   return (
     <div className="flex flex-grow flex-col">
-      <div className={classNames("min-w-60 w-full flex flex-col", isCurrentUser ? "items-end" : "items-start")}>
+      <div
+        className={classNames(
+          "flex w-full min-w-60 flex-col",
+          isCurrentUser ? "items-end" : "items-start"
+        )}
+      >
         <ConversationMessage
           // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           pictureUrl={message.context.profilePictureUrl || message.user?.image}

@@ -7,6 +7,7 @@
  */
 
 import {
+  cn,
   TooltipContent,
   TooltipProvider,
   TooltipRoot,
@@ -32,7 +33,12 @@ interface MentionTriggerProps {
 
 function MentionTrigger({ mention }: MentionTriggerProps) {
   return (
-    <span className="inline-block cursor-pointer font-medium text-highlight-500">
+    <span
+      className={cn(
+        "inline-block cursor-pointer font-semibold",
+        mention.type === "agent" ? "text-highlight-500" : "text-success-500"
+      )}
+    >
       @{mention.label}
     </span>
   );

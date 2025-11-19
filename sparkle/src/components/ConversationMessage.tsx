@@ -46,18 +46,21 @@ interface ConversationMessageProps
 
 export type ConversationMessageType = "user" | "agent";
 
-const wrapperVariants = cva("s-flex s-flex-col s-min-w-60 s-w-full s-@container", {
-  variants: {
-    messageType: {
-      agent: "s-pr-0",
-      me: "s-items-end s-pl-9",
-      user: "s-items-start s-pr-9", 
+const wrapperVariants = cva(
+  "s-flex s-flex-col s-min-w-60 s-w-full s-@container",
+  {
+    variants: {
+      messageType: {
+        agent: "s-pr-0",
+        me: "s-items-end s-pl-9",
+        user: "s-items-start s-pr-9",
+      },
     },
-  },
-  defaultVariants: {
-    messageType: "agent",
-  },
-});
+    defaultVariants: {
+      messageType: "agent",
+    },
+  }
+);
 const messageVariants = cva("s-flex s-rounded-2xl", {
   variants: {
     type: {
@@ -118,10 +121,13 @@ export const ConversationMessage = React.forwardRef<
 
     return (
       <div ref={ref} className={cn(wrapperVariants({ messageType }))}>
-        <div className={cn(
-          messageVariants({ type, className }),
-          "s-flex-col @sm:s-flex-row"
-        )} {...props}>
+        <div
+          className={cn(
+            messageVariants({ type, className }),
+            "s-flex-col @sm:s-flex-row"
+          )}
+          {...props}
+        >
           <div className="s-inline-flex s-items-center s-gap-2 @sm:s-hidden">
             <ConversationMessageAvatar
               avatarUrl={pictureUrl}
@@ -130,7 +136,13 @@ export const ConversationMessage = React.forwardRef<
               isDisabled={isDisabled}
               type={type}
             />
-            <ConversationMessageTitle name={name} timestamp={timestamp} infoChip={infoChip} completionStatus={completionStatus} renderName={renderName} />
+            <ConversationMessageTitle
+              name={name}
+              timestamp={timestamp}
+              infoChip={infoChip}
+              completionStatus={completionStatus}
+              renderName={renderName}
+            />
           </div>
 
           <ConversationMessageAvatar
@@ -142,9 +154,15 @@ export const ConversationMessage = React.forwardRef<
             isDisabled={isDisabled}
           />
 
-          <div className="s-flex s-flex-col s-gap-1 s-w-full">
-            <div className="s-hidden @sm:s-block">
-              <ConversationMessageTitle name={name} timestamp={timestamp} infoChip={infoChip} completionStatus={completionStatus} renderName={renderName} />
+          <div className="s-flex s-w-full s-flex-col s-gap-1">
+            <div className="s-heading-sm s-hidden @sm:s-block">
+              <ConversationMessageTitle
+                name={name}
+                timestamp={timestamp}
+                infoChip={infoChip}
+                completionStatus={completionStatus}
+                renderName={renderName}
+              />
             </div>
 
             <ConversationMessageContent citations={citations} type={type}>
@@ -180,10 +198,7 @@ export const ConversationMessageContent = React.forwardRef<
   return (
     <div
       ref={ref}
-      className={cn(
-        "s-flex s-flex-col s-gap-1",
-        className
-      )}
+      className={cn("s-flex s-flex-col s-gap-1", className)}
       {...props}
     >
       <div className="s-text-base s-text-foreground dark:s-text-foreground-night">
@@ -212,24 +227,13 @@ export const ConversationMessageAvatar = React.forwardRef<
   ConversationMessageAvatarProps
 >(
   (
-    {
-      avatarUrl,
-      isBusy,
-      isDisabled,
-      name = "",
-      className,
-      type,
-      ...props
-    },
+    { avatarUrl, isBusy, isDisabled, name = "", className, type, ...props },
     ref
   ) => {
     return (
       <div
         ref={ref}
-        className={cn(
-          "s-flex s-gap-2 @sm/conversation:s-p-0",
-          className
-        )}
+        className={cn("s-flex s-gap-2 @sm/conversation:s-p-0", className)}
         {...props}
       >
         <Avatar
@@ -269,29 +273,19 @@ interface ConversationMessageTitleProps
 export const ConversationMessageTitle = React.forwardRef<
   HTMLDivElement,
   ConversationMessageTitleProps
->(
-  (
-    {
-      name = "",
-      timestamp,
-      infoChip,
-      completionStatus,
-      renderName,
-    }
-  ) => {
-    return (
-      <div className="s-inline-flex s-w-full s-justify-between s-gap-0.5">
-        <div className="s-inline-flex s-items-baseline s-gap-2 s-text-foreground dark:s-text-foreground-night">
-          <span className="s-heading-sm">{renderName(name)}</span>
-          <span className="s-heading-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-            {timestamp}
-          </span>
-          {infoChip && infoChip}
-        </div>
-        {completionStatus ?? null}
+>(({ name = "", timestamp, infoChip, completionStatus, renderName }) => {
+  return (
+    <div className="s-inline-flex s-w-full s-justify-between s-gap-0.5">
+      <div className="s-inline-flex s-items-baseline s-gap-2 s-text-foreground dark:s-text-foreground-night">
+        <span className="s-heading-sm">{renderName(name)}</span>
+        <span className="s-heading-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+          {timestamp}
+        </span>
+        {infoChip && infoChip}
       </div>
-    );
-  }
-);
+      {completionStatus ?? null}
+    </div>
+  );
+});
 
 ConversationMessageTitle.displayName = "ConversationMessageTitle";

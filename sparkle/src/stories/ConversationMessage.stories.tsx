@@ -60,7 +60,7 @@ export const ConversationExample = () => {
             name="@agent"
             pictureUrl="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
             buttons={[
-              <div className="s-flex s-gap-0.5 s-border s-border-solid s-border-border s-rounded-xl">
+              <div className="s-flex s-gap-0.5 s-rounded-xl s-border s-border-solid s-border-border">
                 <Button
                   icon={HandThumbUpIcon}
                   onClick={() => {}}
@@ -73,7 +73,7 @@ export const ConversationExample = () => {
                   size="xs"
                   variant={"ghost"}
                 />
-              </div>
+              </div>,
             ]}
             citations={[
               <Citation href="https://www.google.com">
@@ -293,7 +293,6 @@ Operates on a simple value exchange - provides unlimited affection in return for
 **Limitations:**
 Occasional system crashes when presented with empty food bowl. Single whisker may cause slight navigation errors when squeezing through spaces designed for two-whiskered models.
 `;
-
 
 export const ConversationAgentBuilderExample = () => {
   return (
