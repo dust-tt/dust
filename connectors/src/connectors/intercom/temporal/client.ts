@@ -10,8 +10,8 @@ import { QUEUE_NAME } from "@connectors/connectors/intercom/temporal/config";
 import type { IntercomUpdateSignal } from "@connectors/connectors/intercom/temporal/signals";
 import { intercomUpdatesSignal } from "@connectors/connectors/intercom/temporal/signals";
 import {
-  intercomFullSyncWorkflow,
   intercomConversationSyncWorkflow,
+  intercomFullSyncWorkflow,
   intercomHelpCenterSyncWorkflow,
 } from "@connectors/connectors/intercom/temporal/workflows";
 import { getTemporalClient } from "@connectors/lib/temporal";
@@ -106,24 +106,34 @@ export async function launchIntercomFullSyncWorkflow({
   return new Ok(workflowId);
 }
 
-export async function stopIntercomFullSyncWorkflow(
-  connectorId: ModelId
+export async function stopIntercomWorkflows(
+  connector: ConnectorResource
 ): Promise<Result<void, Error>> {
-  const client = await getTemporalClient();
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    throw new Error(
-      `[Intercom] Connector not found. ConnectorId: ${connectorId}`
-    );
+  const helpCenterResult = await deleteSchedule({
+    scheduleId: makeIntercomHelpCenterScheduleId(connector),
+    connector,
+  });
+
+  if (helpCenterResult.isErr()) {
+    return new Err(helpCenterResult.error);
   }
 
-  const workflowId = getIntercomFullSyncWorkflowId(connectorId);
+  const conversationResult = await deleteSchedule({
+    scheduleId: makeIntercomConversationScheduleId(connector),
+    connector,
+  });
+
+  if (conversationResult.isErr()) {
+    return new Err(conversationResult.error);
+  }
+
+  const client = await getTemporalClient();
+  const workflowId = getIntercomFullSyncWorkflowId(connector.id);
 
   try {
     const handle: WorkflowHandle<typeof intercomFullSyncWorkflow> =
       client.workflow.getHandle(workflowId);
     await handle.terminate();
-    return new Ok(undefined);
   } catch (e) {
     if (!(e instanceof WorkflowNotFoundError)) {
       logger.error(
@@ -202,26 +212,3 @@ export async function launchIntercomScheduledWorkflows(
   return new Ok(undefined);
 }
 
-export async function stopIntercomScheduledWorkflows(
-  connector: ConnectorResource
-): Promise<Result<void, Error>> {
-  const helpCenterResult = await deleteSchedule({
-    scheduleId: makeIntercomHelpCenterScheduleId(connector),
-    connector,
-  });
-
-  if (helpCenterResult.isErr()) {
-    return new Err(helpCenterResult.error);
-  }
-
-  const conversationResult = await deleteSchedule({
-    scheduleId: makeIntercomConversationScheduleId(connector),
-    connector,
-  });
-
-  if (conversationResult.isErr()) {
-    return new Err(conversationResult.error);
-  }
-
-  return new Ok(undefined);
-}
