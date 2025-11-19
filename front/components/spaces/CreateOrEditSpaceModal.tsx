@@ -43,6 +43,7 @@ import {
   useUpdateSpace,
 } from "@app/lib/swr/spaces";
 import { useUser } from "@app/lib/swr/user";
+import type { SpaceCategoryInfo } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 import type {
   GroupType,
   LightWorkspaceType,
@@ -50,7 +51,6 @@ import type {
   SpaceType,
   UserType,
 } from "@app/types";
-import type { SpaceCategoryInfo } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 
 type MembersManagementType = "manual" | "group";
 
@@ -409,8 +409,6 @@ export function CreateOrEditSpaceModal({
                 const newRestricted = !isRestricted;
                 setIsRestricted(newRestricted);
                 setIsDirty(true);
-
-                // Auto-add current user when enabling restricted access for new spaces.
                 if (
                   newRestricted &&
                   !space &&
