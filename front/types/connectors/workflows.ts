@@ -13,10 +13,6 @@ export function getNotionWorkflowId(
   return wfName;
 }
 
-export function getIntercomSyncWorkflowId(connectorId: ModelId) {
-  return `intercom-sync-${connectorId}`;
-}
-
 export function getZendeskSyncWorkflowId(connectorId: ModelId): string {
   return `zendesk-sync-${connectorId}`;
 }
@@ -54,8 +50,6 @@ export function getWorkflowIdsForConnector(
         getNotionWorkflowId(connectorId, "garbage-collector"),
         getNotionWorkflowId(connectorId, "process-database-upsert-queue"),
       ];
-    case "intercom":
-      return [getIntercomSyncWorkflowId(connectorId)];
     case "zendesk":
       return [
         getZendeskSyncWorkflowId(connectorId),

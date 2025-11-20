@@ -30,6 +30,15 @@ inputs:
     description: "Whether reverting or deploying"
     required: false
     default: "false"
+  current_version:
+    description: "Current deployed version for comparison"
+    required: false
+  commit_diff:
+    description: "Commit diff information"
+    required: false
+  commit_count:
+    description: "Number of commits in the diff"
+    required: false
 
 outputs:
   thread_ts:
@@ -90,6 +99,20 @@ runs:
             • Commit: <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ inputs.image_tag }}>
             • Workflow: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View build>
             • Author: ${{ steps.slack_user.outputs.id != '' && format('<@{0}>', steps.slack_user.outputs.id) || format('`{0}`', steps.author.outputs.name) }}
+
+    - name: Notify Build Success
+      if: inputs.step == 'build_success'
+      uses: slackapi/slack-github-action@v2.0.0
+      with:
+        method: chat.postMessage
+        token: ${{ inputs.slack_token }}
+        payload: |
+          channel: ${{ inputs.channel }}
+          thread_ts: ${{ inputs.thread_ts }}
+          text: |
+            ✅ **${{ inputs.region }}**: Built and pushed `${{ inputs.component }}:${{ inputs.image_tag }}`
+            ${{ inputs.current_version != '' && format('📋 *Changes*: {0} → {1} ({2} commits)', inputs.current_version, inputs.image_tag, inputs.commit_count) || format('📋 *New deployment*: {0}', inputs.image_tag) }}
+            ${{ inputs.commit_diff != '' && format('```{0}```', inputs.commit_diff) || '' }}
 
     - name: Notify Deploy Failure
       if: inputs.step == 'failure'

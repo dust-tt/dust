@@ -55,6 +55,7 @@ import { InputBarContext } from "@app/components/assistant/conversation/input_ba
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
+import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useConversations,
@@ -107,9 +108,28 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   );
 
   const { setSidebarOpen } = useContext(SidebarContext);
-  const { conversations, isConversationsError } = useConversations({
-    workspaceId: owner.sId,
-  });
+
+  const { conversations, isConversationsError, mutateConversations } =
+    useConversations({
+      workspaceId: owner.sId,
+    });
+
+  useEffect(() => {
+    const handleConversationsUpdated = () => {
+      void mutateConversations();
+    };
+    window.addEventListener(
+      CONVERSATIONS_UPDATED_EVENT,
+      handleConversationsUpdated
+    );
+    return () => {
+      window.removeEventListener(
+        CONVERSATIONS_UPDATED_EVENT,
+        handleConversationsUpdated
+      );
+    };
+  }, [mutateConversations]);
+
   const [isMultiSelect, setIsMultiSelect] = useState(false);
   const [selectedConversations, setSelectedConversations] = useState<
     ConversationWithoutContentType[]

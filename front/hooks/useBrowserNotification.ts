@@ -1,23 +1,28 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 
 type BrowserNotificationOptions = NotificationOptions & {
   onClick?: () => Promise<void>;
 };
 
 interface UseBrowserNotificationApi {
+  allowBrowserNotification: boolean;
   notify: (title: string, options?: BrowserNotificationOptions) => void;
 }
 
 // This hook provides a thin wrapper around the Web Notifications API. It handles permission
 // requests and ensures that notifications are only attempted in supported environments.
 export function useBrowserNotification(): UseBrowserNotificationApi {
+  const allowBrowserNotification = useMemo(() => {
+    return (
+      typeof Notification !== "undefined" &&
+      Notification.permission === "granted"
+    );
+  }, []);
+
   const notify = useCallback(
     (title: string, options?: BrowserNotificationOptions) => {
       // Guard against non-browser environments or unsupported APIs.
-      if (
-        typeof window === "undefined" ||
-        typeof Notification === "undefined"
-      ) {
+      if (!allowBrowserNotification) {
         return;
       }
 
@@ -42,8 +47,8 @@ export function useBrowserNotification(): UseBrowserNotificationApi {
 
       // If denied, do nothing.
     },
-    []
+    [allowBrowserNotification]
   );
 
-  return { notify };
+  return { allowBrowserNotification, notify };
 }

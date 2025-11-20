@@ -64,8 +64,8 @@ export const NotificationPreferences = () => {
 
                       void novuClient?.preferences
                         .update({
-                          preference: prev,
-                          channels: prev.channels,
+                          preference: newPreferences,
+                          channels: newPreferences.channels,
                         })
                         .then((result) => {
                           if (result.error) {
