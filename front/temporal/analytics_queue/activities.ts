@@ -1,7 +1,6 @@
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
 import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
 import { updateAnalyticsFeedback } from "@app/lib/analytics/feedback";
-import { calculateTokenUsageCost } from "@app/lib/api/assistant/token_pricing";
 import { ANALYTICS_ALIAS_NAME, withEs } from "@app/lib/api/elasticsearch";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
