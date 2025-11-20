@@ -46,61 +46,7 @@ const sendReasoningToolRemovalEmail = async (
 
   const firstName = email.split("@")[0];
 
-  const isVersionA =
-    minReasoningEffort === "medium" || minReasoningEffort === "high";
-
-  let body: string;
-
-  if (isVersionA) {
-    body = `<p>Hi ${firstName},</p>
-
-<p>We're reaching out because you've built the following agents that use the Reasoning tool, which we'll be removing from Dust on [DATE]:</p>
-
-<ul>
-${agentList
-  .split(",")
-  .map((agent) => `  <li>${agent.trim()}</li>`)
-  .join("\n")}
-</ul>
-
-<h3>Why we're making this change</h3>
-
-<p>When we introduced the Reasoning tool in early 2025, it was designed to give you access to pure reasoning models like o1 and DeepSeek R1. These models excelled at deep, step-by-step thinking, but they could <em>only</em> reason, they could not use any tools. So we turned them into a tool themselves, allowing you to combine their reasoning capabilities with other models that <em>could</em> search your company data, browse the web, or query databases. This was the beginning of us exploring the potential of sub-agents: agents that could leverage deep reasoning <em>plus</em> take actions.</p>
-
-<p>Today, modern reasoning models like GPT-5, o3, o4-mini, and Claude Sonnet 4.5 combine the best of both worlds. They can think deeply <em>while simultaneously</em> using tools—searching your data, browsing the web, querying databases, and more. Using these as your agent's base model delivers better performance with lower latency.</p>
-
-<h3>What happens next</h3>
-
-<p>Good news: You're already set up for success!</p>
-
-<p>Your agent is already configured with medium or high reasoning effort, which means you're already leveraging the full reasoning capabilities of your base model. When we remove the Reasoning tool on [DATE]:</p>
-
-<ul>
-  <li>Your agents will continue working normally with their current strong reasoning capabilities</li>
-  <li>No action required from you</li>
-  <li>Your agent will continue reasoning deeply while using all its tools</li>
-</ul>
-
-<p>The Reasoning tool will simply be removed automatically, and your agent's performance will remain great, or even improve slightly due to reduced overhead.</p>
-
-<h3>Timeline</h3>
-
-<ul>
-  <li>[DATE]: Reasoning tool removed from all agents</li>
-  <li>No action needed: Your agents are already optimized</li>
-</ul>
-
-<h3>Questions?</h3>
-
-<p>If you have any concerns, please reach out to our support team or reply to this email.</p>
-
-<p>Thank you for building with Dust!</p>
-
-<p>Best regards,<br>
-[Your Name]<br>
-The Dust Team</p>`;
-  } else {
-    body = `<p>Hi ${firstName},</p>
+  let body = `<p>Hi ${firstName},</p>
 
 <p>We're reaching out because you've built the following agents that use the Reasoning tool, which we'll be removing from Dust on [DATE].</p>
 
@@ -116,7 +62,34 @@ ${agentList
 <p>When we introduced the Reasoning tool in early 2025, it was designed to give you access to pure reasoning models like o1 and DeepSeek R1. These models excelled at deep, step-by-step thinking, but they could <em>only</em> reason, they could not use any tools. So we turned them into a tool themselves, allowing you to combine their reasoning capabilities with other models that <em>could</em> search your company data, browse the web, or query databases. This was the beginning of us exploring the potential of sub-agents: agents that could leverage deep reasoning <em>plus</em> take actions.</p>
 
 <p>Today, modern reasoning models like GPT-5, o3, o4-mini, and Claude Sonnet 4.5 combine the best of both worlds. They can think deeply <em>while simultaneously</em> using tools—searching your data, browsing the web, querying databases, and more. Using these as your agent's base model delivers better performance with lower latency.</p>
+`;
 
+  // Next steps.
+  if (minReasoningEffort === "medium" || minReasoningEffort === "high") {
+    body += `
+<h3>What happens next</h3>
+
+<p>Good news: You're already set up for success!</p>
+
+<p>Your agents are already configured with medium or high reasoning effort, which means you're already leveraging the full reasoning capabilities of your base model. When we remove the Reasoning tool on [DATE]:</p>
+
+<ul>
+  <li>Your agents will continue working normally with their current strong reasoning capabilities</li>
+  <li>No action required from you</li>
+  <li>Your agent will continue reasoning deeply while using all its tools</li>
+</ul>
+
+<p>The Reasoning tool will simply be removed automatically, and your agent's performance will remain great, or even improve slightly due to reduced overhead.</p>
+
+<h3>Timeline</h3>
+
+<ul>
+  <li>[DATE]: Reasoning tool removed from all agents</li>
+  <li>No action needed: Your agents are already optimized</li>
+</ul>
+`;
+  } else {
+    body = `
 <h3>What happens next</h3>
 
 <p><strong>Automatic migration (no action required):</strong></p>
@@ -143,17 +116,20 @@ ${agentList
   <li>[DATE]: Reasoning tool removed from all agents</li>
   <li>Before [DATE]: Optionally adjust your agent's reasoning configuration</li>
 </ul>
+`;
+  }
 
+  // Footer.
+  body += `
 <h3>Questions?</h3>
 
-<p>If you have any concerns, please reach out to our support team or reply to this email.</p>
+<p>If you have any concerns, please reach out to our support team.</p>
 
 <p>Thank you for building with Dust!</p>
 
 <p>Best regards,<br>
 [Your Name]<br>
 The Dust Team</p>`;
-  }
 
   if (execute) {
     const emailResult = await sendEmailWithTemplate({
@@ -177,7 +153,7 @@ The Dust Team</p>`;
     childLogger.info("Successfully sent email");
     return { success: true };
   } else {
-    childLogger.info({ version: isVersionA ? "A" : "B" }, "Would send email");
+    childLogger.info({ minReasoningEffort }, "Would send email");
     return { success: true };
   }
 };
