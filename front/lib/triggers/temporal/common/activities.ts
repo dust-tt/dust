@@ -313,6 +313,7 @@ export async function runTriggeredAgentsActivity({
       await ConversationResource.upsertParticipation(tempAuth, {
         conversation: conversationResult.value,
         action: "subscribed",
+        user: tempAuth.getNonNullableUser().toJSON(),
       });
     }
   }
