@@ -9,16 +9,16 @@ import { checkExtraneousWorkflows } from "@app/lib/production_checks/checks/chec
 import { checkNotionActiveWorkflows } from "@app/lib/production_checks/checks/check_notion_active_workflows";
 import { checkPausedConnectors } from "@app/lib/production_checks/checks/check_paused_connectors";
 import { checkWebcrawlerSchedulerActiveWorkflow } from "@app/lib/production_checks/checks/check_webcrawler_scheduler_active_workflow";
-import { managedDataSourceGCGdriveCheck } from "@app/lib/production_checks/checks/managed_data_source_gdrive_gc";
 import type { Check } from "@app/lib/production_checks/types";
 import mainLogger from "@app/logger/logger";
 
 export const REGISTERED_CHECKS: Check[] = [
-  {
+  // temporary disabled to see if it triggering pod crashes
+  /*{
     name: "managed_data_source_gdrive_gc",
     check: managedDataSourceGCGdriveCheck,
     everyHour: 4,
-  },
+  },*/
   {
     name: "check_notion_active_workflows",
     check: checkNotionActiveWorkflows,
