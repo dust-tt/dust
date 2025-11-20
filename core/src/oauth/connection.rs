@@ -960,7 +960,7 @@ impl Connection {
             .update_connection_related_credential_id(self)
             .await
             .map_err(|e| {
-                error!(error = ?e, "Failed to update related_credential_id");
+                error!(error = %e, "Failed to update related_credential_id");
                 ConnectionError {
                     code: ConnectionErrorCode::InternalError,
                     message: "Failed to update related_credential_id".to_string(),
