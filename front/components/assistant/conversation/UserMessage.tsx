@@ -12,6 +12,7 @@ import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
+import { NewConversationMessage } from "@app/components/assistant/conversation/NewConversationMessage";
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
 import {
   hasHumansInteracting,
@@ -35,6 +36,7 @@ import {
   getUserMentionPlugin,
   userMentionDirective,
 } from "@app/lib/mentions/markdown/plugin";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type { UserMessageType, WorkspaceType } from "@app/types";
 
@@ -55,6 +57,9 @@ export function UserMessage({
   message,
   owner,
 }: UserMessageProps) {
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const userMentionsEnabled = hasFeature("mentions_v2");
+
   const additionalMarkdownComponents: Components = useMemo(
     () => ({
       sup: CiteBlock,
@@ -92,16 +97,58 @@ export function UserMessage({
     );
   }, [message.mentions.length, isLastMessage, methods.data]);
 
-  const isCurrentUser = message.user?.sId === currentUserId;
+  if (userMentionsEnabled) {
+    const isCurrentUser = message.user?.sId === currentUserId;
+    return (
+      <div className="flex flex-grow flex-col">
+        <div
+          className={classNames(
+            "flex w-full min-w-60 flex-col",
+            isCurrentUser ? "items-end" : "items-start"
+          )}
+        >
+          <NewConversationMessage
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            pictureUrl={
+              message.context.profilePictureUrl || message.user?.image
+            }
+            name={message.context.fullName ?? undefined}
+            renderName={renderName}
+            timestamp={formatTimestring(message.created)}
+            infoChip={
+              isTriggeredOrigin(message.context.origin) && (
+                <span className="translate-y-1 text-muted-foreground dark:text-muted-foreground-night">
+                  <TriggerChip message={message} />
+                </span>
+              )
+            }
+            type="user"
+            isCurrentUser={isCurrentUser}
+            citations={citations}
+          >
+            <Markdown
+              content={message.content}
+              isStreaming={false}
+              isLastMessage={isLastMessage}
+              additionalMarkdownComponents={additionalMarkdownComponents}
+              additionalMarkdownPlugins={additionalMarkdownPlugins}
+            />
+          </NewConversationMessage>
+        </div>
+        {message.mentions.length === 0 && isLastMessage && (
+          <AgentSuggestion
+            conversationId={conversationId}
+            owner={owner}
+            userMessage={message}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-grow flex-col">
-      <div
-        className={classNames(
-          "flex w-full min-w-60 flex-col",
-          isCurrentUser ? "items-end" : "items-start"
-        )}
-      >
+      <div className="min-w-60 max-w-full self-end">
         <ConversationMessage
           // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           pictureUrl={message.context.profilePictureUrl || message.user?.image}
@@ -116,7 +163,6 @@ export function UserMessage({
             )
           }
           type="user"
-          isCurrentUser={isCurrentUser}
           citations={citations}
         >
           <Markdown

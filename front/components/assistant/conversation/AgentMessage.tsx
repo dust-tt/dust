@@ -77,6 +77,7 @@ import {
   useConversationMessage,
   usePostOnboardingFollowUp,
 } from "@app/lib/swr/conversations";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type {
   ContentFragmentsType,
@@ -533,24 +534,68 @@ export function AgentMessage({
     ]
   );
 
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const userMentionsEnabled = hasFeature("mentions_v2");
+  if (userMentionsEnabled) {
+    return (
+      <ConversationMessage
+        pictureUrl={agentConfiguration.pictureUrl}
+        name={agentConfiguration.name}
+        buttons={
+          buttons.length > 0
+            ? [
+                <div
+                  className="flex gap-0.5 rounded-xl border border-solid border-border"
+                  key="buttons"
+                >
+                  {buttons.map((button) => (
+                    <span key={button.key}>{button}</span>
+                  ))}
+                </div>,
+              ]
+            : undefined
+        }
+        avatarBusy={agentMessageToRender.status === "created"}
+        isDisabled={isArchived}
+        renderName={renderName}
+        timestamp={
+          parentAgent
+            ? undefined
+            : formatTimestring(
+                agentMessageToRender.completedTs ?? agentMessageToRender.created
+              )
+        }
+        completionStatus={
+          <AgentMessageCompletionStatus agentMessage={agentMessageToRender} />
+        }
+        type="agent"
+        citations={citations}
+      >
+        <div>
+          <AgentMessageContent
+            owner={owner}
+            conversationId={conversationId}
+            retryHandler={retryHandler}
+            isLastMessage={isLastMessage}
+            messageStreamState={messageStreamState}
+            references={references}
+            streaming={shouldStream}
+            lastTokenClassification={
+              messageStreamState.agentState === "thinking" ? "tokens" : null
+            }
+            activeReferences={activeReferences}
+            setActiveReferences={setActiveReferences}
+          />
+        </div>
+      </ConversationMessage>
+    );
+  }
+
   return (
     <ConversationMessage
       pictureUrl={agentConfiguration.pictureUrl}
       name={agentConfiguration.name}
-      buttons={
-        buttons.length > 0
-          ? [
-              <div
-                className="flex gap-0.5 rounded-xl border border-solid border-border"
-                key="buttons"
-              >
-                {buttons.map((button) => (
-                  <span key={button.key}>{button}</span>
-                ))}
-              </div>,
-            ]
-          : undefined
-      }
+      buttons={buttons.length > 0 ? buttons : undefined}
       avatarBusy={agentMessageToRender.status === "created"}
       isDisabled={isArchived}
       renderName={renderName}
