@@ -1,6 +1,5 @@
 import type { estypes } from "@elastic/elasticsearch";
 
-import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { MessageMetricsPoint } from "@app/lib/api/assistant/observability/messages_metrics";
 import { fetchMessageMetrics } from "@app/lib/api/assistant/observability/messages_metrics";
@@ -29,8 +28,6 @@ const SUMMARY_METRICS = [
   "failedMessages",
   "errorRate",
 ] as const satisfies readonly (keyof MessageMetricsPoint)[];
-
-const SUMMARY_SPECIFICATIONS: AgentActionSpecification[] = [];
 
 function hasAnyActivity(
   overview: AgentOverview,
@@ -114,8 +111,8 @@ export async function generateAgentObservabilitySummary({
   };
 
   const prompt =
-    "You are an analytics assistant for Dust. " +
-    "You are given time-series metrics about how an AI agent is used over a given time range. " +
+    "You are an analytics assistant. " +
+    `You are given time-series metrics about how an AI agent called '${agentName}' is used over a given time range. ` +
     "Write a short natural language summary (2-4 sentences) describing the most important trends, " +
     "including notable spikes or drops, usage changes, latency, and error-rate patterns. " +
     "Focus on the big picture and unusual behavior rather than listing every number. " +
@@ -148,7 +145,7 @@ export async function generateAgentObservabilitySummary({
     {
       conversation,
       prompt,
-      specifications: SUMMARY_SPECIFICATIONS,
+      specifications: [],
     },
     {
       context: {
