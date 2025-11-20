@@ -67,7 +67,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever, isRichAgentMention } from "@app/types";
 import { Err, isContentFragmentType, isUserMessageType, Ok } from "@app/types";
 
 const DEFAULT_PAGE_LIMIT = 50;
@@ -488,23 +488,37 @@ export const ConversationViewer = ({
 
       const placeholderAgentMessages: VirtuosoMessage[] = [];
       for (const mention of mentions) {
-        // +1 per agent message mentioned
-        rank += 1;
-        placeholderAgentMessages.push(
-          createPlaceholderAgentMessage({ mention, rank })
-        );
+        if (isRichAgentMention(mention)) {
+          // +1 per agent message mentioned
+          rank += 1;
+          placeholderAgentMessages.push(
+            createPlaceholderAgentMessage({ mention, rank })
+          );
+        }
       }
 
       const nbMessages = ref.current.data.get().length;
       ref.current.data.append(
         [placeholderUserMsg, ...placeholderAgentMessages],
-        () => {
-          return {
-            index: nbMessages, // Avoid jumping around when the agent message is generated.
-            align: "start",
-            behavior: customSmoothScroll,
-          };
-        }
+        mentions.some(isRichAgentMention)
+          ? () => {
+              return {
+                index: nbMessages, // Avoid jumping around when the agent message is generated.
+                align: "start",
+                behavior: customSmoothScroll,
+              };
+            }
+          : (params) => {
+              if (params.scrollLocation.bottomOffset >= 0) {
+                return {
+                  index: "LAST",
+                  align: "end",
+                  behavior: customSmoothScroll,
+                };
+              } else {
+                return false;
+              }
+            }
       );
 
       const result = await submitMessage({
