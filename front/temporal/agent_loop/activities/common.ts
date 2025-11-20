@@ -18,6 +18,7 @@ import logger from "@app/logger/logger";
 import type {
   ConversationWithoutContentType,
   ToolErrorEvent,
+  UserMessageOrigin,
 } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { getAgentLoopData } from "@app/types/assistant/agent_run";
@@ -173,7 +174,7 @@ async function processEventForTokenUsageTracking(
   {
     event,
     userMessageOrigin,
-  }: { event: AgentMessageEvents; userMessageOrigin?: string | null }
+  }: { event: AgentMessageEvents; userMessageOrigin?: UserMessageOrigin | null }
 ) {
   if (event.type === "agent_message_success") {
     const { runIds } = event;
@@ -199,7 +200,7 @@ export async function updateResourceAndPublishEvent(
     conversation: ConversationWithoutContentType;
     step: number;
     modelInteractionDurationMs?: number;
-    userMessageOrigin?: string | null;
+    userMessageOrigin?: UserMessageOrigin | null;
   }
 ): Promise<void> {
   // Processing of events before publishing to Redis.

@@ -14,6 +14,7 @@ import {
   groupTopNAndAggregateOthers,
   searchAnalytics,
 } from "@app/lib/api/elasticsearch";
+import { getShouldTrackTokenUsageCostsESFilter } from "@app/lib/api/programmatic_usage_tracking";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { CreditResource } from "@app/lib/resources/credit_resource";
@@ -107,8 +108,6 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const owner = auth.getNonNullableWorkspace();
-
   switch (req.method) {
     case "GET": {
       const q = QuerySchema.safeParse(req.query);
@@ -141,7 +140,7 @@ async function handler(
       const baseQuery = {
         bool: {
           filter: [
-            { term: { workspace_id: owner.sId } },
+            getShouldTrackTokenUsageCostsESFilter(auth),
             {
               range: {
                 timestamp: {
