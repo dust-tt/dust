@@ -16,16 +16,19 @@ export async function agentTriggerWorkflow({
   workspaceId,
   triggerId,
   contentFragment,
+  webhookRequestId,
 }: {
   userId: string;
   workspaceId: string;
   triggerId: string;
   contentFragment?: ContentFragmentInputWithFileIdType;
+  webhookRequestId?: number;
 }) {
   await runTriggeredAgentsActivity({
     userId,
     workspaceId,
     triggerId,
     contentFragment,
+    webhookRequestId,
   });
 }

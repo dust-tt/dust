@@ -13,6 +13,7 @@ import { serializeMention } from "@app/lib/mentions/format";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import type {
@@ -166,11 +167,13 @@ export async function runTriggeredAgentsActivity({
   workspaceId,
   triggerId,
   contentFragment,
+  webhookRequestId,
 }: {
   userId: string;
   workspaceId: string;
   triggerId: string;
   contentFragment?: ContentFragmentInputWithFileIdType;
+  webhookRequestId?: number;
 }) {
   const auth = await Authenticator.fromUserIdAndWorkspaceId(
     userId,
@@ -300,12 +303,32 @@ export async function runTriggeredAgentsActivity({
       contentFragment,
     });
     if (conversationResult.isErr()) {
-      throw new Error(
-        `Error creating conversation: ${conversationResult.error.api_error.message}`,
-        {
-          cause: conversationResult.error,
+      const { type: errorType, message: errorMessage } =
+        conversationResult.error.api_error;
+      const isNonRetryable = errorType === "plan_message_limit_exceeded";
+
+      if (isNonRetryable) {
+        if (webhookRequestId && trigger.kind === "webhook") {
+          const webhookRequest =
+            await WebhookRequestResource.fetchByModelIdWithAuth(
+              auth,
+              webhookRequestId
+            );
+          if (webhookRequest) {
+            await webhookRequest.markRelatedTrigger({
+              trigger,
+              status: "workflow_start_failed",
+              errorMessage,
+            });
+          }
         }
-      );
+        // Return without throwing, this is normal behaviour so we don't want an error
+        return;
+      }
+
+      throw new Error(`Error creating conversation: ${errorMessage}`, {
+        cause: conversationResult.error,
+      });
     }
 
     // Upsert all the subscribers as participants
