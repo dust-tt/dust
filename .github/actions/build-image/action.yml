@@ -181,11 +181,21 @@ runs:
         
         # Get commits between versions (handle case where CURRENT_TAG might not exist in git)
         if git cat-file -e "$CURRENT_TAG" 2>/dev/null; then
-          COMMITS=$(git log --oneline --pretty=format:"%h %s (%an)" $CURRENT_TAG..$TARGET_TAG 2>/dev/null | head -10)
+          COMMITS_RAW=$(git log --oneline --pretty=format:"%h (%an)" $CURRENT_TAG..$TARGET_TAG 2>/dev/null | head -10)
         else
           echo "Previous tag $CURRENT_TAG not found in git history, showing recent commits"
-          COMMITS=$(git log --oneline --pretty=format:"%h %s (%an)" -10 $TARGET_TAG 2>/dev/null)
+          COMMITS_RAW=$(git log --oneline --pretty=format:"%h (%an)" -10 $TARGET_TAG 2>/dev/null)
         fi
+        
+        # Format commits with GitHub links
+        COMMITS=""
+        while IFS= read -r line; do
+          if [ -n "$line" ]; then
+            COMMIT_HASH=$(echo "$line" | cut -d' ' -f1)
+            AUTHOR=$(echo "$line" | sed 's/^[^ ]* //')
+            COMMITS="$COMMITS• <${{ github.server_url }}/${{ github.repository }}/commit/$COMMIT_HASH|$COMMIT_HASH> $AUTHOR"$'\n'
+          fi
+        done <<< "$COMMITS_RAW"
         
         # Count commits safely
         if [ -n "$COMMITS" ]; then
