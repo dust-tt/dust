@@ -16,7 +16,7 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
-import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
+import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { GetErrorRateResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/error_rate";
 import type { GetFeedbackDistributionResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/feedback-distribution";
@@ -62,8 +62,7 @@ export function useAssistantTemplate({
 }: {
   templateId: string | null;
 }) {
-  const assistantTemplateFetcher: Fetcher<FetchAssistantTemplateResponse> =
-    fetcher;
+  const assistantTemplateFetcher: Fetcher<FetchAgentTemplateResponse> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
     templateId !== null ? `/api/templates/${templateId}` : null,
@@ -964,15 +963,18 @@ export function useAgentToolExecution({
   workspaceId,
   agentConfigurationId,
   days = DEFAULT_PERIOD_DAYS,
+  version,
   disabled,
 }: {
   workspaceId: string;
   agentConfigurationId: string;
   days?: number;
+  version?: string;
   disabled?: boolean;
 }) {
   const fetcherFn: Fetcher<GetToolExecutionResponse> = fetcher;
-  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/tool-execution?days=${days}`;
+  const versionParam = version ? `&version=${encodeURIComponent(version)}` : "";
+  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/tool-execution?days=${days}${versionParam}`;
 
   const { data, error, isValidating } = useSWRWithDefaults(
     disabled ? null : key,
@@ -991,15 +993,18 @@ export function useAgentToolStepIndex({
   workspaceId,
   agentConfigurationId,
   days = DEFAULT_PERIOD_DAYS,
+  version,
   disabled,
 }: {
   workspaceId: string;
   agentConfigurationId: string;
   days?: number;
+  version?: string;
   disabled?: boolean;
 }) {
   const fetcherFn: Fetcher<GetToolStepIndexResponse> = fetcher;
-  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/tool-step-index?days=${days}`;
+  const versionParam = version ? `&version=${encodeURIComponent(version)}` : "";
+  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/tool-step-index?days=${days}${versionParam}`;
 
   const { data, error, isValidating } = useSWRWithDefaults(
     disabled ? null : key,

@@ -1,13 +1,13 @@
 import type { JSONSchema7 } from "json-schema";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import { getLLM } from "@app/lib/api/llm";
-import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
+import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { Authenticator } from "@app/lib/auth";
 import { isJSONSchemaObject } from "@app/lib/utils/json_schemas";
 import type {
   ModelConversationTypeMultiActions,
   ModelIdType,
+  ModelProviderIdType,
   Result,
 } from "@app/types";
 import { Err, Ok, safeParseJSON } from "@app/types";
@@ -55,7 +55,11 @@ const specifications: AgentActionSpecification[] = [
 
 export async function getBuilderJsonSchemaGenerator(
   auth: Authenticator,
-  inputs: { instructions: string; modelId: ModelIdType }
+  inputs: {
+    instructions: string;
+    modelId: ModelIdType;
+    providerId: ModelProviderIdType;
+  }
 ): Promise<Result<{ status: "ok"; schema: JSONSchema7 }, Error>> {
   const conversation: ModelConversationTypeMultiActions = {
     messages: [
@@ -66,59 +70,56 @@ export async function getBuilderJsonSchemaGenerator(
       },
     ],
   };
-
-  const traceContext: LLMTraceContext = {
-    operationType: "process_schema_generator",
-    userId: auth.user()?.sId,
-  };
-  const llm = await getLLM(auth, {
-    modelId: inputs.modelId,
-    bypassFeatureFlag: true,
-    context: traceContext,
-  });
-
-  if (llm === null) {
-    return new Err(new Error("Model not found"));
-  }
-
-  const events = llm.stream({
-    conversation,
-    prompt: PROMPT,
-    specifications,
-  });
-
-  for await (const event of events) {
-    if (event.type === "tool_call") {
-      const args = event.content.arguments;
-
-      if (!args || !("schema" in args) || !(typeof args.schema === "string")) {
-        return new Err(
-          new Error(
-            `Error retrieving schema from arguments: ${JSON.stringify(args)}`
-          )
-        );
-      }
-
-      const parsedSchema = safeParseJSON(args.schema);
-
-      if (
-        parsedSchema.isErr() ||
-        parsedSchema.value === null ||
-        !isJSONSchemaObject(parsedSchema.value)
-      ) {
-        return new Err(
-          new Error(
-            `Error parsing schema from arguments: ${JSON.stringify(args)}`
-          )
-        );
-      }
-
-      return new Ok({
-        status: "ok",
-        schema: parsedSchema.value,
-      });
+  const res = await runMultiActionsAgent(
+    auth,
+    {
+      functionCall: FUNCTION_NAME,
+      modelId: inputs.modelId,
+      providerId: inputs.providerId,
+      temperature: 0.7,
+      useCache: false,
+    },
+    {
+      conversation,
+      prompt: PROMPT,
+      specifications,
+    },
+    {
+      context: {
+        operationType: "process_schema_generator",
+        userId: auth.user()?.sId,
+        workspaceId: auth.getNonNullableWorkspace().sId,
+      },
     }
+  );
+
+  if (res.isErr()) {
+    return new Err(res.error);
   }
 
-  return new Err(new Error("No schema found"));
+  const args = res.value.actions?.[0]?.arguments;
+  if (!args || !("schema" in args) || !(typeof args.schema === "string")) {
+    return new Err(
+      new Error(
+        `Error retrieving schema from arguments: ${JSON.stringify(args)}`
+      )
+    );
+  }
+
+  const parsedSchema = safeParseJSON(args.schema);
+
+  if (
+    parsedSchema.isErr() ||
+    parsedSchema.value === null ||
+    !isJSONSchemaObject(parsedSchema.value)
+  ) {
+    return new Err(
+      new Error(`Error parsing schema from arguments: ${JSON.stringify(args)}`)
+    );
+  }
+
+  return new Ok({
+    status: "ok",
+    schema: parsedSchema.value,
+  });
 }

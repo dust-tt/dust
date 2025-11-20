@@ -47,7 +47,7 @@ export function VersionMarkersDots({
 
     return (
       <ReferenceLine
-        key={formattedDate}
+        key={m.timestamp}
         x={formattedDate}
         className="text-gray-300 dark:text-gray-300-night"
         stroke="currentColor"

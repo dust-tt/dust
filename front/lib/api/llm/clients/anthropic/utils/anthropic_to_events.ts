@@ -226,11 +226,24 @@ function* handleStopReason(
       // Nothing to do for these stop reasons
       break;
     case "max_tokens":
-    case "refusal":
       yield new EventError(
         {
           type: "stop_error",
           message: `Stop reason: ${stopReason}`,
+          isRetryable: false,
+        },
+        metadata
+      );
+      break;
+
+    case "refusal":
+      yield new EventError(
+        {
+          type: "stop_error",
+          message:
+            "Claude enhanced safety filters prevented this response. This can happen with " +
+            "certain images, document IDs, or in longer conversations. Try starting a new " +
+            "conversation or changing the agent's model to GPT-5.",
           isRetryable: false,
         },
         metadata

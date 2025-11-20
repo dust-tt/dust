@@ -5,7 +5,6 @@ import {
   MarkdownSerializer,
 } from "prosemirror-markdown";
 
-import { mentionAgent } from "@app/lib/mentions";
 import { serializeMention } from "@app/lib/mentions/format";
 
 function buildNodeSerializers(schema: Schema) {
@@ -51,7 +50,9 @@ function buildNodeSerializers(schema: Schema) {
         })
       );
     } else {
-      state.write(mentionAgent({ name: node.attrs.label, sId: node.attrs.id }));
+      state.write(
+        serializeMention({ name: node.attrs.label, sId: node.attrs.id })
+      );
     }
   };
 

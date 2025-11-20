@@ -123,6 +123,7 @@ export async function getConversation(
   return new Ok({
     id: conversation.id,
     created: conversation.createdAt.getTime(),
+    updated: conversation.updatedAt.getTime(),
     sId: conversation.sId,
     owner,
     title: conversation.title,

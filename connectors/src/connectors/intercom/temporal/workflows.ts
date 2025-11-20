@@ -1,4 +1,5 @@
 import {
+  continueAsNew,
   executeChild,
   proxyActivities,
   setHandler,
@@ -47,6 +48,9 @@ const {
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 minute",
 });
+
+const TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH = 40_000;
+const TEMPORAL_WORKFLOW_MAX_HISTORY_SIZE_MB = 40;
 
 /**
  * Sync Workflow for Intercom.
@@ -359,15 +363,17 @@ export async function intercomHourlyConversationSyncWorkflow({
 export async function intercomAllConversationsSyncWorkflow({
   connectorId,
   currentSyncMs,
+  initialCursor = null,
 }: {
   connectorId: ModelId;
   currentSyncMs: number;
+  initialCursor?: string | null;
 }) {
   const syncAllConvosStatus = await getSyncAllConversationsStatusActivity({
     connectorId,
   });
 
-  let cursor = null;
+  let cursor = initialCursor;
   let convosIdsToDelete = [];
 
   switch (syncAllConvosStatus) {
@@ -377,7 +383,9 @@ export async function intercomAllConversationsSyncWorkflow({
       break;
     case "scheduled_activate":
       // Upserts teams with permission "none" if not already in db and syncs them with data_sources_folders/nodes.
-      await syncAllTeamsActivity({ connectorId, currentSyncMs });
+      if (!initialCursor) {
+        await syncAllTeamsActivity({ connectorId, currentSyncMs });
+      }
       // We loop over the conversations to sync them all.
       do {
         const { conversationIds, nextPageCursor } =
@@ -391,6 +399,20 @@ export async function intercomAllConversationsSyncWorkflow({
           currentSyncMs,
         });
         cursor = nextPageCursor;
+
+        if (
+          cursor &&
+          (workflowInfo().historyLength >
+            TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH ||
+            workflowInfo().historySize >
+              TEMPORAL_WORKFLOW_MAX_HISTORY_SIZE_MB * 1024 * 1024)
+        ) {
+          await continueAsNew<typeof intercomAllConversationsSyncWorkflow>({
+            connectorId,
+            currentSyncMs,
+            initialCursor: cursor,
+          });
+        }
       } while (cursor);
       // We mark the status as activated.
       await setSyncAllConversationsStatusActivity({

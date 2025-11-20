@@ -57,6 +57,11 @@ export async function getUserForWorkspace(
     return null;
   }
 
+  // Special case for superusers: they can see all users.
+  if (auth.isDustSuperUser()) {
+    return user;
+  }
+
   // Check that the auth user is part of at least one workspace that the requested user is in.
   const { memberships: authUserMemberships } =
     await MembershipResource.getActiveMemberships({

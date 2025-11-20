@@ -897,6 +897,7 @@ export function ConnectorPermissionsModal({
                             : undefined
                         }
                         showExpand={connectorConfiguration?.isNested}
+                        emptyComponent={connectorConfiguration.emptyNodeLabel}
                       />
                     </>
                   )}

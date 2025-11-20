@@ -118,6 +118,7 @@ export async function createConversation(
     id: conversation.id,
     owner,
     created: conversation.createdAt.getTime(),
+    updated: conversation.updatedAt.getTime(),
     sId: conversation.sId,
     title: conversation.title,
     depth: conversation.depth,
@@ -598,6 +599,8 @@ export async function postUserMessage(
         t,
       });
 
+      await ConversationResource.markAsUpdated(auth, { conversation, t });
+
       return {
         userMessage,
         agentMessages: agentMessagesResult.map(({ m }) => m),
@@ -948,6 +951,8 @@ export async function editUserMessage(
         t,
       });
 
+      await ConversationResource.markAsUpdated(auth, { conversation, t });
+
       return {
         userMessage,
         agentMessages: agentMessagesResult.map(({ m }) => m),
@@ -1113,6 +1118,8 @@ export async function retryAgentMessage(
         conversation,
         t,
       });
+
+      await ConversationResource.markAsUpdated(auth, { conversation, t });
 
       const agentMessage: AgentMessageType = {
         id: m.id,
@@ -1316,6 +1323,8 @@ export async function postNewContentFragment(
         t,
       });
     }
+
+    await ConversationResource.markAsUpdated(auth, { conversation, t });
 
     return { contentFragment, messageRow };
   });

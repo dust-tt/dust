@@ -32,8 +32,14 @@ import {
   iterateOverSchemaPropertiesRecursive,
   setValueAtPath,
 } from "@app/lib/utils/json_schemas";
+import logger from "@app/logger/logger";
 import type { WhitelistableFeature, WorkspaceType } from "@app/types";
-import { assertNever, isString, removeNulls } from "@app/types";
+import {
+  assertNever,
+  isProviderWhitelisted,
+  isString,
+  removeNulls,
+} from "@app/types";
 
 function getDataSourceURI(config: DataSourceConfiguration): string {
   const { workspaceId, sId, dataSourceViewId, filter } = config;
@@ -114,8 +120,37 @@ function generateConfiguredInput({
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL: {
-      const { reasoningModel } = actionConfiguration;
-      // Unreachable, when fetching agent configurations using getAgentConfigurations, we always fill the reasoning model.
+      let { reasoningModel } = actionConfiguration;
+
+      if (!reasoningModel) {
+        // If no reasoning model is provided, we fallback to a default reasoning model.
+        // This situation should never happen but it seems we have a bug somewhere.
+        // However, the whole reasoning "tool" will be removed very soon so we can afford to be lenient here.
+
+        if (isProviderWhitelisted(owner, "openai")) {
+          reasoningModel = {
+            modelId: "o4-mini",
+            providerId: "openai",
+            temperature: 0.7,
+            reasoningEffort: "medium",
+          };
+          logger.warn(
+            {
+              workspaceId: owner.sId,
+              agentConfigurationId: actionConfiguration.sId,
+            },
+            "No reasoning model provided, falling back to o4-mini."
+          );
+        } else if (isProviderWhitelisted(owner, "google_ai_studio")) {
+          reasoningModel = {
+            modelId: "gemini-2.5-pro",
+            providerId: "google_ai_studio",
+            temperature: 0.7,
+            reasoningEffort: "light",
+          };
+        }
+      }
+
       assert(
         reasoningModel,
         "Unreachable: missing reasoning model configuration."

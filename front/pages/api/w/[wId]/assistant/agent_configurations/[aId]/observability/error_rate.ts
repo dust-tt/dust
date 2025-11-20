@@ -3,8 +3,8 @@ import { z } from "zod";
 
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import type { ErrorRatePoint } from "@app/lib/api/assistant/observability/error_rate";
-import { fetchErrorRate } from "@app/lib/api/assistant/observability/error_rate";
+import type { MessageMetricsPoint } from "@app/lib/api/assistant/observability/messages_metrics";
+import { fetchMessageMetrics } from "@app/lib/api/assistant/observability/messages_metrics";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -17,7 +17,10 @@ const QuerySchema = z.object({
 });
 
 export type GetErrorRateResponse = {
-  points: ErrorRatePoint[];
+  points: Pick<
+    MessageMetricsPoint,
+    "timestamp" | "count" | "failedMessages" | "errorRate"
+  >[];
 };
 
 async function handler(
@@ -85,7 +88,10 @@ async function handler(
         version,
       });
 
-      const errorRateResult = await fetchErrorRate(baseQuery);
+      const errorRateResult = await fetchMessageMetrics(baseQuery, "day", [
+        "failedMessages",
+        "errorRate",
+      ] as const);
 
       if (errorRateResult.isErr()) {
         const e = errorRateResult.error;

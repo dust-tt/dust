@@ -3,8 +3,8 @@ import { z } from "zod";
 
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import type { LatencyPoint } from "@app/lib/api/assistant/observability/latency";
-import { fetchLatency } from "@app/lib/api/assistant/observability/latency";
+import type { MessageMetricsPoint } from "@app/lib/api/assistant/observability/messages_metrics";
+import { fetchMessageMetrics } from "@app/lib/api/assistant/observability/messages_metrics";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -17,7 +17,10 @@ const QuerySchema = z.object({
 });
 
 export type GetLatencyResponse = {
-  points: LatencyPoint[];
+  points: Pick<
+    MessageMetricsPoint,
+    "timestamp" | "count" | "avgLatencyMs" | "percentilesLatencyMs"
+  >[];
 };
 
 async function handler(
@@ -84,7 +87,10 @@ async function handler(
         version: q.data.version,
       });
 
-      const latencyResult = await fetchLatency(baseQuery);
+      const latencyResult = await fetchMessageMetrics(baseQuery, "day", [
+        "avgLatencyMs",
+        "percentilesLatencyMs",
+      ] as const);
 
       if (latencyResult.isErr()) {
         const e = latencyResult.error;

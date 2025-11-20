@@ -39,7 +39,7 @@ export function ChartsTooltip({
         label: toolName,
         value: count,
         percent,
-        colorClassName: getToolColor(toolName, topTools),
+        colorClassName: getToolColor(toolName, topTools, "text"),
       };
     });
 

@@ -4,13 +4,13 @@ import { DataSourceViewsProvider } from "@app/components/agent_builder/DataSourc
 import { MCPServerViewsProvider } from "@app/components/agent_builder/MCPServerViewsContext";
 import { PreviewPanelProvider } from "@app/components/agent_builder/PreviewPanelContext";
 import { SpacesProvider } from "@app/components/agent_builder/SpacesContext";
-import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
+import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { TemplateActionPreset, UserType, WorkspaceType } from "@app/types";
 
 type AgentBuilderContextType = {
   owner: WorkspaceType;
   user: UserType;
-  assistantTemplate: FetchAssistantTemplateResponse | null;
+  assistantTemplate: FetchAgentTemplateResponse | null;
   presetActionToAdd: TemplateActionPreset | null;
   setPresetActionToAdd: (preset: TemplateActionPreset | null) => void;
 };
@@ -22,13 +22,10 @@ export const AgentBuilderContext = createContext<
 interface AgentBuilderProviderProps {
   owner: WorkspaceType;
   user: UserType;
-  assistantTemplate: FetchAssistantTemplateResponse | null;
+  assistantTemplate: FetchAgentTemplateResponse | null;
   children: React.ReactNode;
 }
 
-// TODO: Move all the components from Assistant Builder to Agent builder
-// and remove the context providers from /assistant_builder
-// (seb) FYI yuka, I did some refactoring to assistant_builder.
 export function AgentBuilderProvider({
   owner,
   user,

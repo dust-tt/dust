@@ -1,7 +1,7 @@
 import { Label } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
-import { TagSearchInput } from "@app/components/assistant_builder/tags/TagSearchInput";
+import { TagSearchInput } from "@app/components/data_source_view/TagSearchInput";
 import { useDataSourceViewSearchTags } from "@app/lib/swr/data_source_views";
 import type {
   DataSourceTag,

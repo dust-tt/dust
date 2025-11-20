@@ -10,14 +10,14 @@ import { launchWorkOSEventsWorkflow } from "@app/temporal/workos_events_queue/cl
  * Usage:
  *
  * # Group events
- * tsx front/scripts/simulate_workos_group_event.ts \
+ * npx tsx ./scripts/simulate_workos_event.ts \
  *   --workspace-id <workspace-sId> \
  *   --event-type group.created \
  *   --group-name "Project Alpha Team" \
  *   --execute
  *
  * # User events
- * tsx front/scripts/simulate_workos_group_event.ts \
+ * npx tsx ./scripts/simulate_workos_event.ts \
  *   --workspace-id <workspace-sId> \
  *   --event-type user.created \
  *   --user-email "john@example.com" \
@@ -26,7 +26,7 @@ import { launchWorkOSEventsWorkflow } from "@app/temporal/workos_events_queue/cl
  *   --execute
  *
  * # Group membership events (can use -u for user-email)
- * tsx front/scripts/simulate_workos_group_event.ts \
+ * npx tsx ./scripts/simulate_workos_event.ts \
  *   --workspace-id <workspace-sId> \
  *   --event-type group.user_added \
  *   --group-name "Project Alpha Team" \
@@ -34,7 +34,7 @@ import { launchWorkOSEventsWorkflow } from "@app/temporal/workos_events_queue/cl
  *   --execute
  *
  * # Domain events
- * tsx front/scripts/simulate_workos_group_event.ts \
+ * npx tsx ./scripts/simulate_workos_event.ts \
  *   --workspace-id <workspace-sId> \
  *   --event-type domain.verified \
  *   --domain "example.com" \

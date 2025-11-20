@@ -19,7 +19,13 @@ export const ZendeskTicketSchema = z
     custom_fields: z.array(
       z.object({
         id: z.number(),
-        value: z.union([z.string(), z.number(), z.boolean(), z.null()]),
+        value: z.union([
+          z.string(),
+          z.number(),
+          z.boolean(),
+          z.null(),
+          z.array(z.string()),
+        ]),
       })
     ),
     via: z
@@ -113,3 +119,25 @@ export type ZendeskTicketMetrics = z.infer<typeof ZendeskTicketMetricsSchema>;
 export const ZendeskTicketMetricsResponseSchema = z.object({
   ticket_metric: ZendeskTicketMetricsSchema,
 });
+
+export type ZendeskTicketMetricsResponse = z.infer<
+  typeof ZendeskTicketMetricsResponseSchema
+>;
+
+export const ZendeskTicketFieldSchema = z.object({
+  id: z.number(),
+  title: z.string(),
+  active: z.boolean(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export type ZendeskTicketField = z.infer<typeof ZendeskTicketFieldSchema>;
+
+export const ZendeskTicketFieldsResponseSchema = z.object({
+  ticket_fields: z.array(ZendeskTicketFieldSchema),
+});
+
+export type ZendeskTicketFieldsResponse = z.infer<
+  typeof ZendeskTicketFieldsResponseSchema
+>;

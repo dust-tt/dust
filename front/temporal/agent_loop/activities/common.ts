@@ -115,12 +115,16 @@ async function processEventForDatabase(
       break;
 
     case "agent_message_success":
-      // Store success and run IDs in database.
-      await agentMessageRow.update({
-        runIds: event.runIds,
-        status: "succeeded",
-        completedAt: new Date(),
-      });
+      await Promise.all([
+        // Store success and run IDs in database.
+        agentMessageRow.update({
+          runIds: event.runIds,
+          status: "succeeded",
+          completedAt: new Date(),
+        }),
+        // Mark the conversation as updated
+        ConversationResource.markAsUpdated(auth, { conversation }),
+      ]);
 
       break;
 

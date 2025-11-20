@@ -2,9 +2,9 @@ import { Spinner } from "@dust-tt/sparkle";
 import type { Dispatch, SetStateAction } from "react";
 import { useMemo } from "react";
 
-import { SpaceSelector } from "@app/components/assistant_builder/spaces/SpaceSelector";
 import type { useCaseDataSourceViewsSelector } from "@app/components/data_source_view/DataSourceViewSelector";
 import { DataSourceViewsSelector } from "@app/components/data_source_view/DataSourceViewSelector";
+import { SpaceSelector } from "@app/components/spaces/SpaceSelector";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type {
   ContentNodesViewType,

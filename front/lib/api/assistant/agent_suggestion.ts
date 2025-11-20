@@ -138,6 +138,7 @@ export async function getSuggestedAgentsForContent(
         operationType: "agent_suggestion",
         contextId: conversationId,
         userId: auth.user()?.sId,
+        workspaceId: owner.sId,
       },
     }
   );

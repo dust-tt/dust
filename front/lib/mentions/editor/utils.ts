@@ -9,8 +9,6 @@ import type { Content, Editor } from "@tiptap/react";
 
 import type { RichMention } from "@app/types";
 
-import { extractFromEditorJSON } from "../format";
-
 /**
  * Inserts a mention into the editor at the current cursor position.
  *
@@ -37,26 +35,6 @@ export function insertMention(editor: Editor, mention: RichMention): void {
     })
     .insertContent(" ")
     .run();
-}
-
-/**
- * Extracts all mentions from the editor's current content.
- *
- * @returns Array of rich mention objects
- */
-export function getMentions(editor: Editor): RichMention[] {
-  return extractFromEditorJSON(editor.getJSON()).mentions;
-}
-
-/**
- * Gets the text content from the editor with mentions serialized.
- *
- * Mentions are converted to the format: :mention[name]{sId=xxx}
- *
- * @returns Serialized text with mentions
- */
-export function getTextWithMentions(editor: Editor): string {
-  return extractFromEditorJSON(editor.getJSON()).text;
 }
 
 /**
@@ -87,13 +65,3 @@ export function resetWithMentions(
 
   editor.commands.setContent(content);
 }
-
-/**
- * Editor utilities for mention handling.
- */
-export const editorMentionUtils = {
-  insertMention,
-  getMentions,
-  getTextWithMentions,
-  resetWithMentions,
-};

@@ -1,8 +1,12 @@
+import { isUserMessageOrigin } from "@app/components/agent_builder/observability/utils";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { getNovuClient } from "@app/lib/notifications";
 import type { ConversationUnreadPayloadType } from "@app/lib/notifications/workflows/conversation-unread";
-import { CONVERSATION_UNREAD_TRIGGER_ID } from "@app/lib/notifications/workflows/conversation-unread";
+import {
+  CONVERSATION_UNREAD_TRIGGER_ID,
+  shouldSendNotification,
+} from "@app/lib/notifications/workflows/conversation-unread";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import { NOTIFICATION_DELAY_MS } from "@app/temporal/agent_loop/workflows";
@@ -24,6 +28,18 @@ export async function conversationUnreadNotificationActivity(
     );
     return;
   }
+  if (!isUserMessageOrigin(agentLoopArgs.userMessageOrigin)) {
+    logger.info(
+      { userMessageOrigin: agentLoopArgs.userMessageOrigin },
+      "User message origin is not a valid origin."
+    );
+    return;
+  }
+
+  // Check if the user message origin is valid for sending notifications.
+  if (!shouldSendNotification(agentLoopArgs.userMessageOrigin)) {
+    return;
+  }
 
   // Check if the workspace has notifications enabled.
   const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
@@ -43,8 +59,13 @@ export async function conversationUnreadNotificationActivity(
   if (!conversation) {
     logger.warn(
       { conversationId: agentLoopArgs.conversationId },
-      "Conversation not found"
+      "Conversation not found after delay"
     );
+    return;
+  }
+
+  // Skip any sub-conversations.
+  if (conversation.depth > 0) {
     return;
   }
 

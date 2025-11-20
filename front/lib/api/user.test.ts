@@ -253,4 +253,29 @@ describe("getUserForWorkspace", () => {
     const result = await getUserForWorkspace(auth, { userId: user2.sId });
     expect(result?.sId).toBe(user2.sId);
   });
+
+  it("should allow access to superuser even if not in the workspace", async () => {
+    await MembershipFactory.associate(workspace1, user1, { role: "user" });
+
+    // create a super user on the same workspace
+    const superUser = await UserFactory.superUser();
+    const workspace1Resource = await WorkspaceResource.fetchById(
+      workspace1.sId
+    );
+    if (!workspace1Resource) {
+      throw new Error("workspace1Resource not found");
+    }
+
+    const auth = new Authenticator({
+      authMethod: "session",
+      workspace: workspace1Resource,
+      user: superUser,
+      role: "admin",
+      groups: [],
+      subscription: null,
+    });
+
+    const result = await getUserForWorkspace(auth, { userId: user1.sId });
+    expect(result?.sId).toBe(user1.sId);
+  });
 });

@@ -167,6 +167,7 @@ export async function findAgentsInMessageGeneration(
       context: {
         operationType: "voice_agent_finder",
         userId: auth.user()?.sId,
+        workspaceId: auth.getNonNullableWorkspace().sId,
       },
     }
   );

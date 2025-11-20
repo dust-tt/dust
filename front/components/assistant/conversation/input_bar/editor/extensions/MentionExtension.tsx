@@ -7,7 +7,6 @@ import { ReactNodeViewRenderer } from "@tiptap/react";
 import { nodePasteRule } from "@tiptap/react";
 import escapeRegExp from "lodash/escapeRegExp";
 
-import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import type { WorkspaceType } from "@app/types";
 
 import { MentionComponent } from "../MentionComponent";
@@ -80,8 +79,7 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
     const pasteRule = nodePasteRule({
       find: (text) => {
         // Note: the `suggestions` object should be available from the MentionStorage extension but it might takes some time to load.
-        const suggestions: EditorSuggestions =
-          this.editor.storage.MentionStorage.suggestions;
+        const suggestions = this.editor.storage.MentionStorage.suggestions;
 
         const results: PasteRuleMatch[] = suggestions.suggestions.flatMap(
           (suggestion) => {
@@ -140,7 +138,7 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
   // the @-suggestion dropdown).
   addKeyboardShortcuts() {
     return {
-      ...(this.parent?.() ?? {}),
+      ...this.parent?.(),
       Backspace: () =>
         this.editor.commands.command(({ tr, state, dispatch }) => {
           const { selection } = state;

@@ -6,7 +6,7 @@ import { Readable } from "stream";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { generateVizAccessToken } from "@app/lib/api/viz/access_tokens";
-import { mentionAgent } from "@app/lib/mentions";
+import { serializeMention } from "@app/lib/mentions/format";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
@@ -566,7 +566,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
         visibility: "unlisted",
         depth: 0,
         message: {
-          content: `${mentionAgent({
+          content: `${serializeMention({
             name: "noop",
             sId: "noop",
           })} Hello from parent`,
@@ -610,7 +610,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
         visibility: "unlisted",
         depth: 1,
         message: {
-          content: `${mentionAgent({
+          content: `${serializeMention({
             name: "noop",
             sId: "noop",
           })} Hello from child`,
@@ -704,7 +704,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
         title: "Conversation A",
         visibility: "unlisted",
         message: {
-          content: `${mentionAgent({
+          content: `${serializeMention({
             name: "noop",
             sId: "noop",
           })} Hello from conversation A`,
@@ -746,7 +746,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
         visibility: "unlisted",
         depth: 0,
         message: {
-          content: `${mentionAgent({
+          content: `${serializeMention({
             name: "noop",
             sId: "noop",
           })} Hello from conversation B`,

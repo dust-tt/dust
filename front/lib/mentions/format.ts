@@ -48,35 +48,6 @@ export function serializeMention(
 }
 
 /**
- * Parses mention strings from text.
- * Returns an array of matches with name and sId.
- */
-export function parseMentions(text: string): Array<{
-  type: "agent" | "user";
-  name: string;
-  sId: string;
-  fullMatch: string;
-}> {
-  const agentMatches = [...text.matchAll(AGENT_MENTION_REGEX)];
-  const agentMentions = agentMatches.map((match) => ({
-    type: "agent" as const,
-    name: match[1],
-    sId: match[2],
-    fullMatch: match[0],
-  }));
-
-  const userMatches = [...text.matchAll(USER_MENTION_REGEX)];
-  const userMentions = userMatches.map((match) => ({
-    type: "user" as const,
-    name: match[1],
-    sId: match[2],
-    fullMatch: match[0],
-  }));
-
-  return [...agentMentions, ...userMentions];
-}
-
-/**
  * Replaces all mention strings with @-style mentions.
  * `:mention[Agent Name]{sId=xxx}` -> @Agent Name
  * `:mention_user[User Name]{sId=xxx}` -> @User Name
@@ -146,14 +117,3 @@ export function extractFromEditorJSON(node?: JSONContent): {
 
   return { text: textContent, mentions };
 }
-
-/**
- * Utilities for working with mention formats.
- */
-export const mentionFormat = {
-  serialize: serializeMention,
-  parse: parseMentions,
-  replaceWithAt: replaceMentionsWithAt,
-  extractFromEditorJSON,
-  regex: AGENT_MENTION_REGEX,
-};

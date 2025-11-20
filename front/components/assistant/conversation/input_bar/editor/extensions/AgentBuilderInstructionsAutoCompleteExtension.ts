@@ -5,7 +5,6 @@ import type { EditorView } from "@tiptap/pm/view";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import debounce from "lodash/debounce";
 
-import type { AgentBuilderState } from "@app/components/assistant_builder/types";
 import type { LightWorkspaceType } from "@app/types";
 
 export const AGENT_BUILDER_INSTRUCTIONS_AUTO_COMPLETE_EXTENSION_NAME =
@@ -18,6 +17,15 @@ const agentBuilderInstructionsAutoCompletePluginKey =
   );
 
 const MINIMUM_TEXT_LENGTH_FOR_SUGGESTIONS = 3;
+
+interface AgentBuilderState {
+  handle: string | null;
+  description: string | null;
+  actions?: Array<{
+    name: string;
+    description: string;
+  }>;
+}
 
 /**
  * Fetches autocompletion suggestions from the agent builder API.

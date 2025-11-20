@@ -35,6 +35,7 @@ import { createOrUpdateUser } from "@app/lib/iam/users";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import mainLogger from "@app/logger/logger";
@@ -778,6 +779,21 @@ async function handleDeleteWorkOSUser(
       return;
     }
     throw membershipRevokeResult.error;
+  }
+
+  const deleteTriggerResult = await TriggerResource.deleteAllForUser(
+    auth,
+    user
+  );
+  if (deleteTriggerResult.isErr()) {
+    logger.error(
+      {
+        workspaceId: workspace.sId,
+        userId: user.sId,
+        error: deleteTriggerResult.error,
+      },
+      "Failed to delete triggers for revoked user"
+    );
   }
 
   void ServerSideTracking.trackRevokeMembership({

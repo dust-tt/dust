@@ -67,6 +67,7 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "gemini-2.5-pro"
   | "gemini-2.5-flash"
   | "gemini-2.5-flash-lite"
+  | "gemini-3-pro-preview"
   | "meta-llama/Llama-3.3-70B-Instruct-Turbo" // togetherai
   | "Qwen/Qwen2.5-Coder-32B-Instruct" // togetherai
   | "Qwen/QwQ-32B-Preview" // togetherai
@@ -299,25 +300,26 @@ export function isSupportedAudioContentType(
 }
 
 const UserMessageOriginSchema = FlexibleEnumSchema<
+  | "agent_handover"
   | "api"
   | "email"
+  | "excel"
   | "extension"
   | "github-copilot-chat"
   | "gsheet"
   | "make"
   | "n8n"
+  | "powerpoint"
   | "raycast"
+  | "run_agent"
   | "slack"
   | "teams"
-  | "triggered"
+  | "transcript"
   | "triggered_programmatic"
+  | "triggered"
   | "web"
   | "zapier"
   | "zendesk"
-  | "run_agent"
-  | "agent_handover"
-  | "excel"
-  | "powerpoint"
 >()
   .or(z.null())
   .or(z.undefined());
@@ -657,6 +659,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "hootl_subscriptions"
   | "http_client_tool"
   | "index_private_slack_channel"
+  | "jit_tool_setup"
   | "labs_mcp_actions_dashboard"
   | "labs_trackers"
   | "labs_transcripts"
@@ -680,7 +683,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "show_debug_tools"
   | "slack_bot_mcp"
   | "slack_enhanced_default_agent"
-  | "slack_files_write_scope"
   | "slack_message_splitting"
   | "slack_semantic_search"
   | "slideshow"
@@ -688,6 +690,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "use_requested_space_ids"
   | "web_summarization"
   | "xai_feature"
+  | "programmatic_usage_metrics"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

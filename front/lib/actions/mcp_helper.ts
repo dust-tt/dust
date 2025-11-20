@@ -1,5 +1,5 @@
 import type { AgentBuilderAction } from "@app/components/agent_builder/AgentBuilderFormContext";
-import type { AssistantBuilderMCPConfiguration } from "@app/components/assistant_builder/types";
+import type { AgentBuilderMCPConfiguration } from "@app/components/agent_builder/types";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type {
   AutoInternalMCPServerNameType,
@@ -132,7 +132,7 @@ export function getMcpServerViewDescription(view: MCPServerViewType): string {
 export function getMcpServerViewDisplayName(
   view: MCPServerViewType,
   action?:
-    | AssistantBuilderMCPConfiguration
+    | AgentBuilderMCPConfiguration
     | AgentBuilderAction
     | MCPServerConfigurationType
 ) {
@@ -145,7 +145,7 @@ export function getMcpServerViewDisplayName(
 export function getMcpServerDisplayName(
   server: MCPServerType,
   action?:
-    | AssistantBuilderMCPConfiguration
+    | AgentBuilderMCPConfiguration
     | AgentBuilderAction
     | MCPServerConfigurationType
 ) {

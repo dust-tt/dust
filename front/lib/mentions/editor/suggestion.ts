@@ -1,4 +1,3 @@
-import type { EditorSuggestionAgent } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import type { RichMention, RichUserMention } from "@app/types";
 import type { RichAgentMention } from "@app/types";
 import { compareAgentsForSort, GLOBAL_AGENTS_SID } from "@app/types";
@@ -37,7 +36,7 @@ export function compareAgentSuggestionsForSort(
 
 function filterAndSortEditorSuggestionAgents(
   lowerCaseQuery: string,
-  suggestions: EditorSuggestionAgent[]
+  suggestions: RichAgentMention[]
 ) {
   return suggestions
     .filter((item) => subFilter(lowerCaseQuery, item.label.toLowerCase()))
@@ -59,9 +58,9 @@ function filterAndSortEditorSuggestionAgents(
 
 export function filterAgentSuggestions(
   query: string,
-  suggestions: EditorSuggestionAgent[],
-  fallbackSuggestions: EditorSuggestionAgent[]
-): EditorSuggestionAgent[] {
+  suggestions: RichAgentMention[],
+  fallbackSuggestions: RichAgentMention[]
+): RichAgentMention[] {
   // keeping the pre-defined order when queried without content
   if (query === "") {
     return suggestions.slice(0, SUGGESTION_DISPLAY_LIMIT);

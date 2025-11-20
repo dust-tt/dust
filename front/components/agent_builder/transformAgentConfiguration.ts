@@ -1,9 +1,9 @@
 import uniqueId from "lodash/uniqueId";
 
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AgentBuilderMCPConfiguration } from "@app/components/agent_builder/types";
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/components/agent_builder/types";
-import type { AssistantBuilderMCPConfiguration } from "@app/components/assistant_builder/types";
-import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
+import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type {
   LightAgentConfigurationType,
   UserType,
@@ -106,7 +106,7 @@ export function getDefaultAgentFormData({
  * Merges template presets with default form data to create a complete configuration.
  */
 export function transformTemplateToFormData(
-  template: FetchAssistantTemplateResponse,
+  template: FetchAgentTemplateResponse,
   user: UserType,
   owner: WorkspaceType
 ): AgentBuilderFormData {
@@ -145,12 +145,12 @@ export function transformTemplateToFormData(
 }
 
 /**
- * Converts AssistantBuilderMCPConfiguration actions to AgentBuilderFormData actions format.
+ * Converts AgentBuilderMCPConfiguration actions to AgentBuilderFormData actions format.
  * Used for YAML export to include actions that are normally loaded client-side.
  * Generates unique IDs since they're only needed for UI purposes.
  */
 export function convertActionsForFormData(
-  actions: AssistantBuilderMCPConfiguration[]
+  actions: AgentBuilderMCPConfiguration[]
 ): AgentBuilderFormData["actions"] {
   return actions.map((action) => ({
     id: uniqueId(),

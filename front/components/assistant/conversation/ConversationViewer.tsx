@@ -17,7 +17,6 @@ import React, {
 
 import { AgentInputBar } from "@app/components/assistant/conversation/AgentInputBar";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
-import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import {
   createPlaceholderAgentMessage,
   createPlaceholderUserMessage,
@@ -36,6 +35,7 @@ import {
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
 import { ConversationViewerEmptyState } from "@app/components/assistant/ConversationViewerEmptyState";
+import { useEnableBrowserNotification } from "@app/hooks/useEnableBrowserNotification";
 import { useEventSource } from "@app/hooks/useEventSource";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
@@ -61,6 +61,7 @@ import type {
   ConversationTitleEvent,
   LightMessageType,
   Result,
+  RichMention,
   UserMention,
   UserMessageNewEvent,
   UserType,
@@ -70,6 +71,9 @@ import { assertNever } from "@app/types";
 import { Err, isContentFragmentType, isUserMessageType, Ok } from "@app/types";
 
 const DEFAULT_PAGE_LIMIT = 50;
+
+// A conversation must be unread and older than that to enable the suggestion of enabling notifications.
+const DELAY_BEFORE_SUGGESTING_PUSH_NOTIFICATION_ACTIVATION = 60 * 60 * 1000; // 1 hour
 
 interface ConversationViewerProps {
   conversationId: string;
@@ -121,6 +125,24 @@ export const ConversationViewer = ({
     conversation,
     workspaceId: owner.sId,
   });
+
+  const { askForPermission } = useEnableBrowserNotification();
+
+  const shouldShowPushNotificationActivation = useMemo(() => {
+    if (!conversation?.sId || !conversation.unread) {
+      return false;
+    }
+
+    const delay = new Date().getTime() - conversation.updated;
+
+    return delay > DELAY_BEFORE_SUGGESTING_PUSH_NOTIFICATION_ACTIVATION;
+  }, [conversation?.sId, conversation?.unread, conversation?.updated]);
+
+  useEffect(() => {
+    if (shouldShowPushNotificationActivation) {
+      void askForPermission();
+    }
+  }, [shouldShowPushNotificationActivation, askForPermission]);
 
   const { mutateConversations } = useConversations({
     workspaceId: owner.sId,
@@ -362,10 +384,6 @@ export const ConversationViewer = ({
             // Debounce the call as we might receive multiple events for the same conversation (as we replay the events).
             void debouncedMarkAsRead(event.conversationId, false);
 
-            // Mutate the messages to be sure that the swr cache is updated.
-            // Fixes an issue where the last message of a conversation is "thinking" and not "done" the first time you switch back and forth to a conversation.
-            void mutateMessages();
-
             // Update the conversation hasError state in the local cache without making a network request.
             void mutateConversations(
               (currentData) => {
@@ -416,7 +434,7 @@ export const ConversationViewer = ({
   const handleSubmit = useCallback(
     async (
       input: string,
-      mentions: EditorMention[],
+      mentions: RichMention[],
       contentFragments: ContentFragmentsType
     ): Promise<Result<undefined, DustError>> => {
       if (!ref?.current) {
@@ -531,7 +549,21 @@ export const ConversationViewer = ({
           : m
       );
 
-      await mutateConversations();
+      void mutateConversations(
+        (currentData) => {
+          if (!currentData?.conversations) {
+            return currentData;
+          }
+          return {
+            conversations: currentData.conversations.map((c) =>
+              c.sId === conversationId
+                ? { ...c, updated: new Date().getTime() }
+                : c
+            ),
+          };
+        },
+        { revalidate: false }
+      );
 
       return new Ok(undefined);
     },
@@ -539,9 +571,9 @@ export const ConversationViewer = ({
       user,
       owner,
       conversationId,
-      mutateConversations,
       setPlanLimitReached,
       sendNotification,
+      mutateConversations,
     ]
   );
 

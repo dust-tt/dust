@@ -773,7 +773,6 @@ describe("ConversationResource", () => {
       const conversationData = userConversations[0].toJSON();
 
       // Verify participation data is used in toJSON.
-      expect(conversationData.updated).toBe(participation.updatedAt.getTime());
       expect(conversationData.unread).toBe(participation.unread);
       expect(conversationData.actionRequired).toBe(
         participation.actionRequired
@@ -784,6 +783,7 @@ describe("ConversationResource", () => {
       expect(conversationData.sId).toBeDefined();
       expect(conversationData.title).toBeDefined();
       expect(conversationData.created).toBeDefined();
+      expect(conversationData.updated).toBeDefined();
       expect(Array.isArray(conversationData.requestedSpaceIds)).toBe(true);
     });
 

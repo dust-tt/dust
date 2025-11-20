@@ -132,7 +132,9 @@ export function registerListTool(
 
           if (!dataSourceConfig) {
             return new Err(
-              new MCPError(`Data source not found for ID: ${dataSourceId}`)
+              new MCPError(`Data source not found for ID: ${dataSourceId}`, {
+                tracked: false,
+              })
             );
           }
 

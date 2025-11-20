@@ -74,6 +74,7 @@ export async function* streamLLMEvents({
           const {
             // Google does not necessarily return an id, so we generate one if missing
             functionCall: { id = `fc_${newId().slice(0, 9)}`, name, args },
+            thoughtSignature,
           } = part;
 
           assert(
@@ -113,10 +114,15 @@ export async function* streamLLMEvents({
               name,
               arguments: args,
             },
-            metadata,
+            // Gemini 3 pro requires the thought signature to be sent back in subsequent requests
+            metadata: { ...metadata, thoughtSignature },
           });
 
           return returnedEvents;
+        }
+
+        if (part.text === "") {
+          return [];
         }
 
         if (part.text) {

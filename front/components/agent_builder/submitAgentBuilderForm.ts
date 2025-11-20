@@ -6,7 +6,7 @@ import { DROID_AVATAR_URLS } from "@app/components/agent_builder/settings/avatar
 import {
   expandFoldersToTables,
   getTableIdForContentNode,
-} from "@app/components/assistant_builder/shared";
+} from "@app/components/agent_builder/shared/tables";
 import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
 import { fetcherWithBody } from "@app/lib/swr/swr";

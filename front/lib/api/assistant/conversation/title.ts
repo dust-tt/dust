@@ -164,6 +164,7 @@ async function generateConversationTitle(
         operationType: "conversation_title_suggestion",
         contextId: conversation.sId,
         userId: auth.user()?.sId,
+        workspaceId: owner.sId,
       },
     }
   );

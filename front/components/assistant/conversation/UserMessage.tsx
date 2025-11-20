@@ -12,10 +12,6 @@ import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
 import { isTriggeredOrigin } from "@app/components/assistant/conversation/types";
 import {
-  agentMentionDirective,
-  getAgentMentionPlugin,
-} from "@app/components/markdown/AgentMentionBlock";
-import {
   CiteBlock,
   getCiteDirective,
 } from "@app/components/markdown/CiteBlock";
@@ -28,6 +24,8 @@ import {
   pastedAttachmentDirective,
 } from "@app/components/markdown/PastedAttachmentBlock";
 import {
+  agentMentionDirective,
+  getAgentMentionPlugin,
   getUserMentionPlugin,
   userMentionDirective,
 } from "@app/lib/mentions/markdown/plugin";

@@ -1,0 +1,11 @@
+POST /front.agent_message_analytics_2/_update_by_query
+{
+  "query": {
+    "exists": {
+      "field": "authMethod"
+    }
+  },
+  "script": {
+    "source": """ctx._source.auth_method =ctx._source.remove("authMethod")"""
+  }
+}

@@ -43,10 +43,6 @@ import {
   isMessageTemporayState,
 } from "@app/components/assistant/conversation/types";
 import {
-  agentMentionDirective,
-  getAgentMentionPlugin,
-} from "@app/components/markdown/AgentMentionBlock";
-import {
   CitationsContext,
   CiteBlock,
   getCiteDirective,
@@ -65,6 +61,8 @@ import {
 import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
+  agentMentionDirective,
+  getAgentMentionPlugin,
   getUserMentionPlugin,
   userMentionDirective,
 } from "@app/lib/mentions/markdown/plugin";

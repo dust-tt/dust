@@ -821,6 +821,7 @@ The directive should be used to display a clickable version of the agent name in
       update_event: "low",
       delete_event: "low",
       check_availability: "never_ask",
+      check_self_availability: "never_ask",
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,

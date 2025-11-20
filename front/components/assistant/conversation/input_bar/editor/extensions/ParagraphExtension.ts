@@ -1,6 +1,7 @@
-import { Paragraph } from "@tiptap/extension-paragraph";
+import type { ParagraphOptions } from "@tiptap/extension-paragraph";
+import Paragraph from "@tiptap/extension-paragraph";
 
-export const ParagraphExtension = Paragraph.extend({
+export const ParagraphExtension = Paragraph.extend<ParagraphOptions>({
   addKeyboardShortcuts() {
     return {
       ...this.parent?.(),

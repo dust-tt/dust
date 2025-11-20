@@ -236,40 +236,21 @@ function createServer(
 
           const userTimezone = getUserTimezone();
 
-          // Return only essential event fields for context efficiency
-          const enrichedData = {
-            ...res.data,
-            items: res.data.items
-              ? res.data.items.map((event) => {
-                  const enriched = isGoogleCalendarEvent(event)
-                    ? enrichEventWithDayOfWeek(event, userTimezone)
-                    : event;
-                  return {
-                    id: enriched.id,
-                    summary: enriched.summary,
-                    description: enriched.description,
-                    location: enriched.location,
-                    start: enriched.start,
-                    end: enriched.end,
-                    attendees: enriched.attendees?.map((a) => ({
-                      email: a.email,
-                      displayName: a.displayName,
-                      responseStatus: a.responseStatus,
-                    })),
-                    htmlLink: enriched.htmlLink,
-                    status: enriched.status,
-                  };
-                })
-              : undefined,
-          };
+          // Enrich events with day of week and format as text
+          const enrichedEvents: EnrichedGoogleCalendarEvent[] = res.data.items
+            ? res.data.items
+                .filter(isGoogleCalendarEvent)
+                .map((event) => enrichEventWithDayOfWeek(event, userTimezone))
+            : [];
 
-          return new Ok([
-            { type: "text" as const, text: "Events listed successfully" },
-            {
-              type: "text" as const,
-              text: JSON.stringify(enrichedData, null, 2),
-            },
-          ]);
+          const eventCount = enrichedEvents.length;
+          const summaryText = `Found ${eventCount} event${eventCount !== 1 ? "s" : ""}${res.data.nextPageToken ? " (more available)" : ""}`;
+          const formattedText = formatEventsListAsText(
+            enrichedEvents,
+            summaryText
+          );
+
+          return new Ok([{ type: "text" as const, text: formattedText }]);
         } catch (err) {
           return new Err(
             new MCPError(
@@ -313,15 +294,17 @@ function createServer(
           const userTimezone = getUserTimezone();
           const enrichedEvent = isGoogleCalendarEvent(res.data)
             ? enrichEventWithDayOfWeek(res.data, userTimezone)
-            : res.data;
+            : null;
 
-          return new Ok([
-            { type: "text" as const, text: "Event fetched successfully" },
-            {
-              type: "text" as const,
-              text: JSON.stringify(enrichedEvent, null, 2),
-            },
-          ]);
+          if (!enrichedEvent) {
+            return new Err(
+              new MCPError("Invalid event data returned from API")
+            );
+          }
+
+          const formattedText = formatEventAsText(enrichedEvent);
+
+          return new Ok([{ type: "text" as const, text: formattedText }]);
         } catch (err) {
           return new Err(
             new MCPError(normalizeError(err).message || "Failed to get event")
@@ -438,13 +421,20 @@ function createServer(
           const userTimezone = getUserTimezone();
           const enrichedEvent = isGoogleCalendarEvent(res.data)
             ? enrichEventWithDayOfWeek(res.data, userTimezone)
-            : res.data;
+            : null;
+
+          if (!enrichedEvent) {
+            return new Err(
+              new MCPError("Invalid event data returned from API")
+            );
+          }
+
+          const formattedText = formatEventAsText(enrichedEvent);
 
           return new Ok([
-            { type: "text" as const, text: "Event created successfully" },
             {
               type: "text" as const,
-              text: JSON.stringify(enrichedEvent, null, 2),
+              text: `Event created successfully\n\n${formattedText}`,
             },
           ]);
         } catch (err) {
@@ -579,13 +569,20 @@ function createServer(
           const userTimezone = getUserTimezone();
           const enrichedEvent = isGoogleCalendarEvent(res.data)
             ? enrichEventWithDayOfWeek(res.data, userTimezone)
-            : res.data;
+            : null;
+
+          if (!enrichedEvent) {
+            return new Err(
+              new MCPError("Invalid event data returned from API")
+            );
+          }
+
+          const formattedText = formatEventAsText(enrichedEvent);
 
           return new Ok([
-            { type: "text" as const, text: "Event updated successfully" },
             {
               type: "text" as const,
-              text: JSON.stringify(enrichedEvent, null, 2),
+              text: `Event updated successfully\n\n${formattedText}`,
             },
           ]);
         } catch (err) {
@@ -886,6 +883,133 @@ function enrichEventWithDayOfWeek(
   }
 
   return enrichedEvent;
+}
+
+function formatEventAsText(event: EnrichedGoogleCalendarEvent): string {
+  const lines: string[] = [];
+
+  if (event.summary) {
+    lines.push(`Title: ${event.summary}`);
+  }
+
+  if (event.start) {
+    const start = event.start;
+    if (start.eventDayOfWeek) {
+      if (start.isAllDay) {
+        lines.push(`Date: ${start.eventDayOfWeek}, ${start.date}`);
+      } else {
+        if (start.dateTime) {
+          const startDate = new Date(start.dateTime);
+          const timeStr = startDate.toLocaleTimeString("en-US", {
+            hour: "numeric",
+            minute: "2-digit",
+            timeZone: start.timeZone ?? undefined,
+          });
+          const dateStr = startDate.toLocaleDateString("en-US", {
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+            timeZone: start.timeZone ?? undefined,
+          });
+          lines.push(
+            `Start: ${start.eventDayOfWeek}, ${dateStr} at ${timeStr}${start.timeZone ? ` (${start.timeZone})` : ""}`
+          );
+        }
+      }
+    } else {
+      lines.push(
+        `Start: ${start.dateTime ?? start.date}${start.timeZone ? ` (${start.timeZone})` : ""}`
+      );
+    }
+  }
+
+  if (event.end) {
+    const end = event.end;
+    if (end.eventDayOfWeek) {
+      if (end.isAllDay) {
+        lines.push(`End: ${end.eventDayOfWeek}, ${end.date}`);
+      } else {
+        if (end.dateTime) {
+          const endDate = new Date(end.dateTime);
+          const timeStr = endDate.toLocaleTimeString("en-US", {
+            hour: "numeric",
+            minute: "2-digit",
+            timeZone: end.timeZone ?? undefined,
+          });
+          const dateStr = endDate.toLocaleDateString("en-US", {
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+            timeZone: end.timeZone ?? undefined,
+          });
+          lines.push(
+            `End: ${end.eventDayOfWeek}, ${dateStr} at ${timeStr}${end.timeZone ? ` (${end.timeZone})` : ""}`
+          );
+        }
+      }
+    } else {
+      lines.push(
+        `End: ${end.dateTime ?? end.date}${end.timeZone ? ` (${end.timeZone})` : ""}`
+      );
+    }
+  }
+
+  if (event.location) {
+    lines.push(`Location: ${event.location}`);
+  }
+
+  if (event.description) {
+    lines.push(`Description: ${event.description}`);
+  }
+
+  if (event.attendees && event.attendees.length > 0) {
+    const attendeeList = event.attendees
+      .map((a) => {
+        const name = a.displayName ?? a.email ?? "Unknown";
+        const status = a.responseStatus ? ` (${a.responseStatus})` : "";
+        return `${name}${status}`;
+      })
+      .join(", ");
+    lines.push(`Attendees: ${attendeeList}`);
+  }
+
+  if (event.status) {
+    lines.push(`Status: ${event.status}`);
+  }
+
+  if (event.htmlLink) {
+    lines.push(`Link: ${event.htmlLink}`);
+  }
+
+  if (event.id) {
+    lines.push(`Event ID: ${event.id}`);
+  }
+
+  return lines.join("\n");
+}
+
+function formatEventsListAsText(
+  events: EnrichedGoogleCalendarEvent[],
+  summary?: string
+): string {
+  if (events.length === 0) {
+    return summary ? `${summary}\n\nNo events found.` : "No events found.";
+  }
+
+  const lines: string[] = [];
+  if (summary) {
+    lines.push(summary);
+    lines.push("");
+  }
+
+  events.forEach((event, index) => {
+    if (index > 0) {
+      lines.push("\n---\n");
+    }
+    lines.push(formatEventAsText(event));
+  });
+
+  return lines.join("\n");
 }
 
 export default createServer;

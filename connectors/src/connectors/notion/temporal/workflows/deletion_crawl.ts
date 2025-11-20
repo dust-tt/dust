@@ -12,107 +12,80 @@ import { notionDeletionCrawlSignal } from "@connectors/connectors/notion/tempora
 import type { ModelId } from "@connectors/types";
 
 const {
-  checkResourceAndQueueRelated,
   batchDeleteResources,
   clearWorkflowCache,
+  deletionCrawlAddSignalsToRedis,
+  batchDiscoverDeletions,
+  completeDeletionCrawlRun,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minute",
 });
 
-const DELETE_BATCH_SIZE = 100;
+const DISCOVERY_BATCH_SIZE = 50;
 
 /**
  * Signal-based deletion crawl workflow.
- * Receives signals for resources to check, maintains a "seen" cache to avoid duplicates,
+ * Receives signals for resources to check, maintains a "seen" cache in Redis to avoid duplicates,
  * and recursively checks parent/children relationships.
  * Auto-terminates after 5 minutes of inactivity.
  */
 export async function notionDeletionCrawlWorkflow({
   connectorId,
-  resourceQueue = [],
 }: {
   connectorId: ModelId;
-  resourceQueue?: NotionDeletionCrawlSignal[];
 }) {
-  const seen = new Set<string>();
   const topLevelWorkflowId = workflowInfo().workflowId;
 
-  // Clear workflow cache at start
+  // Clear workflow cache (pg) at start
   await clearWorkflowCache({
     connectorId,
     topLevelWorkflowId,
   });
 
-  const resourceKey = (resourceId: string, resourceType: string) =>
-    `${resourceType}:${resourceId}`;
-  const hasBeenSeen = (resourceId: string, resourceType: string): boolean => {
-    return seen.has(resourceKey(resourceId, resourceType));
-  };
+  // Pending signals from signal handler (buffer until we store in redis)
+  const pendingSignals: NotionDeletionCrawlSignal[] = [];
 
   setHandler(notionDeletionCrawlSignal, (signal: NotionDeletionCrawlSignal) => {
-    if (!hasBeenSeen(signal.resourceId, signal.resourceType)) {
-      resourceQueue.push(signal);
-    }
+    pendingSignals.push(signal);
   });
 
   for (;;) {
-    // Wait for a resource signal, but stop the workflow if no signals arrive for 5 minutes
-    if (!(await condition(() => resourceQueue.length > 0, "5 minutes"))) {
-      return;
-    }
-
-    while (resourceQueue.length > 0) {
-      const resource = resourceQueue.shift();
-      if (!resource) {
-        continue;
-      }
-
-      const key = resourceKey(resource.resourceId, resource.resourceType);
-
-      seen.add(key);
-
-      // check only direct children + parent
-      const discovered = await checkResourceAndQueueRelated({
+    if (pendingSignals.length > 0) {
+      const storedSignals = [...pendingSignals];
+      await deletionCrawlAddSignalsToRedis({
         connectorId,
-        resourceId: resource.resourceId,
-        resourceType: resource.resourceType,
         workflowId: topLevelWorkflowId,
+        signals: storedSignals,
       });
-
-      for (const pageId of discovered.pageIds) {
-        if (!hasBeenSeen(pageId, "page")) {
-          resourceQueue.push({ resourceId: pageId, resourceType: "page" });
-        }
-      }
-
-      for (const databaseId of discovered.databaseIds) {
-        if (!hasBeenSeen(databaseId, "database")) {
-          resourceQueue.push({
-            resourceId: databaseId,
-            resourceType: "database",
-          });
-        }
-      }
-
-      if (workflowInfo().continueAsNewSuggested) {
-        await batchDeleteResources({
-          connectorId,
-          workflowId: topLevelWorkflowId,
-        });
-        await continueAsNew({ connectorId, resourceQueue });
-        return;
-      } else if (seen.size % DELETE_BATCH_SIZE == 0) {
-        await batchDeleteResources({
-          connectorId,
-          workflowId: topLevelWorkflowId,
-        });
-      }
+      pendingSignals.splice(0, storedSignals.length);
     }
-    seen.clear();
+
+    const { hasMore } = await batchDiscoverDeletions({
+      connectorId,
+      workflowId: topLevelWorkflowId,
+      batchSize: DISCOVERY_BATCH_SIZE,
+    });
 
     await batchDeleteResources({
       connectorId,
       workflowId: topLevelWorkflowId,
     });
+
+    if (workflowInfo().continueAsNewSuggested) {
+      await continueAsNew({ connectorId });
+      return;
+    }
+
+    // Wait for signals to arrive, but stop the workflow if no signals arrive for 5 minutes
+    if (
+      !hasMore &&
+      !(await condition(() => pendingSignals.length > 0, "5 minutes"))
+    ) {
+      await completeDeletionCrawlRun({
+        connectorId,
+        workflowId: topLevelWorkflowId,
+      });
+      return;
+    }
   }
 }
