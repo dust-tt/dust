@@ -203,6 +203,7 @@ export type MCPParamsEvent = {
   configurationId: string;
   messageId: string;
   action: AgentMCPActionWithOutputType;
+  runIds?: string[];
 };
 
 export type MCPSuccessEvent = {
