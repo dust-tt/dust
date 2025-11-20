@@ -7,7 +7,7 @@ import type { AgentOverview } from "@app/lib/api/assistant/observability/overvie
 import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
 import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types";
-import { Err, GEMINI_2_5_FLASH_MODEL_ID, Ok } from "@app/types";
+import { Err, GPT_4_1_MINI_MODEL_ID, Ok } from "@app/types";
 
 export type AgentObservabilitySummaryInput = {
   auth: Authenticator;
@@ -136,8 +136,8 @@ export async function generateAgentObservabilitySummary({
   const res = await runMultiActionsAgent(
     auth,
     {
-      modelId: GEMINI_2_5_FLASH_MODEL_ID,
-      providerId: "google_ai_studio",
+      modelId: GPT_4_1_MINI_MODEL_ID,
+      providerId: "openai",
     },
     {
       conversation,
