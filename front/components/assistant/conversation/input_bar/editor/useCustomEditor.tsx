@@ -9,6 +9,10 @@ import { DataSourceLinkExtension } from "@app/components/assistant/conversation/
 import { KeyboardShortcutsExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/KeyboardShortcutsExtension";
 import { MarkdownStyleExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MarkdownStyleExtension";
 import { MentionExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionExtension";
+<<<<<<< HEAD
+=======
+import { MentionPasteHandlerExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionPasteHandlerExtension";
+>>>>>>> c65c3468f6 (fix(front): paste mentions)
 import { PastedAttachmentExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/PastedAttachmentExtension";
 import { URLDetectionExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/URLDetectionExtension";
 import { createMarkdownSerializer } from "@app/components/assistant/conversation/input_bar/editor/markdownSerializer";
@@ -220,6 +224,7 @@ const useCustomEditor = ({
       },
       suggestion: createMentionSuggestion({ owner, conversationId }),
     }),
+    MentionPasteHandlerExtension.configure({ owner }),
     Placeholder.configure({
       placeholder: "Ask an @agent a question, or get some @help",
       emptyNodeClass:

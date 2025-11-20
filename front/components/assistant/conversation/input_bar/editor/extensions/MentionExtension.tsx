@@ -2,12 +2,9 @@ import type { NodeViewProps } from "@tiptap/core";
 import type { MentionOptions } from "@tiptap/extension-mention";
 import Mention from "@tiptap/extension-mention";
 import { TextSelection } from "@tiptap/pm/state";
-import type { PasteRuleMatch } from "@tiptap/react";
 import { ReactNodeViewRenderer } from "@tiptap/react";
-import { nodePasteRule } from "@tiptap/react";
-import escapeRegExp from "lodash/escapeRegExp";
 
-import type { RichMention, WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types";
 
 import { MentionComponent } from "../MentionComponent";
 
@@ -73,63 +70,6 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
         owner={this.options.owner}
       />
     ));
-  },
-
-  addPasteRules() {
-    const pasteRule = nodePasteRule({
-      find: (text) => {
-        // Note: the `suggestions` was available from the MentionStorage extension. But it's not filled anymore
-        // Fixed in next PR to reduce review size
-        const suggestions = [] as RichMention[];
-
-        const results: PasteRuleMatch[] = suggestions.flatMap((suggestion) => {
-          return [
-            ...text.matchAll(
-              // Note: matching the @ that are found either at the start of a line or after a whitespace character.
-              // and that also are followed by a newline, a whitespace character or the end of the string.
-              new RegExp(
-                `((^@|\\s@)${escapeRegExp(suggestion.label)})(\\s|$)`,
-                "g"
-              )
-            ),
-          ].map((match) => {
-            return {
-              index: match.index,
-              text: match[1],
-              replaceWith: suggestion.label,
-              data: {
-                type: suggestion.type,
-                id: suggestion.id,
-                label: suggestion.label,
-                description: suggestion.description,
-                pictureUrl: suggestion.pictureUrl,
-              },
-            };
-          });
-        });
-        return results;
-      },
-      type: this.type,
-      getAttributes: (match: {
-        data: {
-          type: "agent" | "user";
-          label: string;
-          id: string;
-          description: string;
-          pictureUrl: string;
-        };
-      }) => {
-        return {
-          type: match.data.type,
-          label: match.data.label,
-          id: match.data.id,
-          description: match.data.description,
-          pictureUrl: match.data.pictureUrl,
-        };
-      },
-    });
-
-    return [pasteRule];
   },
 
   // Override Backspace behavior so it removes a single character from the
