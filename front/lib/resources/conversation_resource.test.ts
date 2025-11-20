@@ -731,6 +731,7 @@ describe("ConversationResource", () => {
       await ConversationResource.upsertParticipation(userAuth, {
         conversation,
         action: "posted",
+        user: userAuth.getNonNullableUser().toJSON(),
       });
     });
 
@@ -797,6 +798,7 @@ describe("ConversationResource", () => {
       await ConversationResource.upsertParticipation(userAuth, {
         conversation: recentConvo,
         action: "posted",
+        user: userAuth.getNonNullableUser().toJSON(),
       });
 
       const userConversations =
@@ -846,6 +848,7 @@ describe("ConversationResource", () => {
       await ConversationResource.upsertParticipation(userAuth, {
         conversation: testConvo,
         action: "posted",
+        user: userAuth.getNonNullableUser().toJSON(),
       });
 
       // By default, should only see unlisted conversations (not test conversations)

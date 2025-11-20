@@ -678,12 +678,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     {
       conversation,
       action,
+      user,
     }: {
       conversation: ConversationWithoutContentType | ConversationType;
       action: ParticipantActionType;
+      user: UserType | null;
     }
   ) {
-    const user = auth.user();
     if (!user) {
       return;
     }
