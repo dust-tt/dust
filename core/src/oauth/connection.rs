@@ -925,7 +925,7 @@ impl Connection {
     ) -> Result<(), ConnectionError> {
         match store.retrieve_credential(&related_credential_id).await {
             Err(e) => {
-                error!(error = ?e, "Failed to retrieve credential");
+                error!(error = %e, "Failed to retrieve credential");
                 return Err(ConnectionError {
                     code: ConnectionErrorCode::InternalError,
                     message: "Failed to retrieve credential".to_string(),
