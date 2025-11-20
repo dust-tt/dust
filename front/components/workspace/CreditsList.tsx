@@ -1,4 +1,10 @@
-import { Button, Chip, DataTable, LoadingBlock, Page } from "@dust-tt/sparkle";
+import {
+  Chip,
+  DataTable,
+  Hoverable,
+  LoadingBlock,
+  Page,
+} from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import React, { useMemo, useState } from "react";
 
@@ -98,74 +104,54 @@ function getTableRows(credits: CreditDisplayData[]): RowData[] {
   }));
 }
 
+const Cell = (info: Info, children: React.ReactNode) => (
+  <DataTable.CellContent
+    className={info.row.original.isExpired ? "opacity-40" : ""}
+  >
+    {children}
+  </DataTable.CellContent>
+);
+
 const creditColumns: ColumnDef<RowData, string>[] = [
   {
     id: "type" as const,
     header: "Type",
-    meta: {
-      className: "s-w-32",
-    },
-    cell: (info: Info) => (
-      <DataTable.CellContent>
+    cell: (info: Info) =>
+      Cell(
+        info,
         <Chip
           size="xs"
           color={TYPE_COLORS[info.row.original.type]}
           label={TYPE_LABELS[info.row.original.type]}
         />
-      </DataTable.CellContent>
-    ),
+      ),
   },
   {
     id: "initialAmount" as const,
     accessorKey: "initialAmount",
     header: "Initial Amount",
-    meta: {
-      className: "s-w-32",
-    },
-    cell: (info: Info) => (
-      <DataTable.CellContent>
-        {info.row.original.initialAmount}
-      </DataTable.CellContent>
-    ),
+    cell: (info: Info) => Cell(info, info.row.original.initialAmount),
   },
   {
     id: "consumedAmount" as const,
     accessorKey: "consumedAmount",
     header: "Consumed",
-    meta: {
-      className: "s-w-32",
-    },
-    cell: (info: Info) => (
-      <DataTable.CellContent>
-        {info.row.original.consumedAmount}
-      </DataTable.CellContent>
-    ),
+    cell: (info: Info) => Cell(info, info.row.original.consumedAmount),
   },
   {
     id: "remainingAmount" as const,
     accessorKey: "remainingAmount",
     header: "Remaining",
-    meta: {
-      className: "s-w-32",
-    },
-    cell: (info: Info) => (
-      <DataTable.CellContent>
-        {info.row.original.remainingAmount}
-      </DataTable.CellContent>
-    ),
+    cell: (info: Info) => Cell(info, info.row.original.remainingAmount),
   },
   {
     id: "expirationDate" as const,
     accessorKey: "expirationDate",
     header: "Expiration Date",
     meta: {
-      className: "s-w-40",
+      className: "text-right",
     },
-    cell: (info: Info) => (
-      <DataTable.CellContent>
-        {info.row.original.expirationDate}
-      </DataTable.CellContent>
-    ),
+    cell: (info: Info) => Cell(info, info.row.original.expirationDate),
   },
 ];
 
@@ -185,14 +171,14 @@ export function CreditsList({ credits, isLoading }: CreditsListProps) {
     };
   }, [credits]);
 
-  const activeRows = useMemo(
-    () => getTableRows(activeCredits),
-    [activeCredits]
-  );
-  const expiredRows = useMemo(
-    () => getTableRows(expiredCredits),
-    [expiredCredits]
-  );
+  const displayedRows = useMemo(() => {
+    const active = getTableRows(activeCredits);
+    if (showExpired) {
+      const expired = getTableRows(expiredCredits);
+      return [...active, ...expired];
+    }
+    return active;
+  }, [activeCredits, expiredCredits, showExpired]);
 
   if (isLoading) {
     return (
@@ -214,28 +200,18 @@ export function CreditsList({ credits, isLoading }: CreditsListProps) {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      {activeCredits.length > 0 ? (
-        <DataTable data={activeRows} columns={creditColumns} />
-      ) : (
-        <Page.P>No active credits available.</Page.P>
-      )}
-
+    <>
+      <DataTable data={displayedRows} columns={creditColumns} />
       {expiredCredits.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <Button
-            label={
-              showExpired ? "Hide expired credits" : "Show expired credits"
-            }
-            variant="secondary"
-            size="sm"
+        <div className="flex w-full justify-end pt-2">
+          <Hoverable
+            className="cursor-pointer text-sm text-gray-400 hover:text-gray-500 hover:underline"
             onClick={() => setShowExpired(!showExpired)}
-          />
-          {showExpired && (
-            <DataTable data={expiredRows} columns={creditColumns} />
-          )}
+          >
+            {showExpired ? "Hide expired" : "Show expired"}
+          </Hoverable>
         </div>
       )}
-    </div>
+    </>
   );
 }
