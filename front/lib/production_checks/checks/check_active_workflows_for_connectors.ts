@@ -124,6 +124,7 @@ export const checkActiveWorkflows: CheckFunction = async (
           dataSourceId: connector.dataSourceId,
         });
       }
+      // TODO(2025-11-20 aubin): check schedules for Gong and Intercom.
     }
 
     if (missingActiveWorkflows.length > 0) {
