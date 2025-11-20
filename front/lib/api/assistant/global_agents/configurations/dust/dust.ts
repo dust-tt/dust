@@ -36,10 +36,10 @@ import type {
 } from "@app/types";
 import {
   CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
+  GEMINI_3_PRO_MODEL_CONFIG,
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
   GLOBAL_AGENTS_SID,
-  GPT_5_1_MODEL_CONFIG,
   isProviderWhitelisted,
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
@@ -601,7 +601,7 @@ export function _getDustEdgeGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_EDGE,
     name: "dust-edge",
-    preferredModelConfiguration: GPT_5_1_MODEL_CONFIG,
+    preferredModelConfiguration: GEMINI_3_PRO_MODEL_CONFIG,
     preferredReasoningEffort: "light",
   });
 }
