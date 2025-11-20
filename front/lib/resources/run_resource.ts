@@ -28,6 +28,7 @@ import type {
   Result,
 } from "@app/types";
 import { Err, normalizeError, Ok, SUPPORTED_MODEL_CONFIGS } from "@app/types";
+import { calculateTokenUsageCostForUsage } from "@app/lib/api/assistant/token_pricing";
 
 type RunResourceWithApp = RunResource & { app: AppModel };
 
@@ -266,6 +267,7 @@ export class RunResource extends BaseResource<RunModel> {
           completionTokens,
           cachedTokens,
           cacheCreationTokens,
+          costCents,
         }) => ({
           runId: this.id,
           workspaceId: this.workspaceId,
@@ -275,6 +277,7 @@ export class RunResource extends BaseResource<RunModel> {
           completionTokens,
           cachedTokens,
           cacheCreationTokens: cacheCreationTokens ?? null,
+          costCents,
         })
       )
     );
@@ -290,6 +293,16 @@ export class RunResource extends BaseResource<RunModel> {
       return;
     }
 
+    const usageCostUsd = calculateTokenUsageCostForUsage({
+      modelId: modelConfig.modelId,
+      promptTokens: usage.inputTokens,
+      completionTokens: usage.outputTokens,
+      cachedTokens: usage.cachedTokens ?? null,
+      cacheCreationTokens: usage.cacheCreationTokens ?? null,
+    });
+    // Use ceiling to ensure any non-zero cost is at least 1 cent.
+    const usageCostCents = usageCostUsd > 0 ? Math.ceil(usageCostUsd * 100) : 0;
+
     return this.recordRunUsage([
       {
         cacheCreationTokens: usage.cacheCreationTokens,
@@ -298,6 +311,7 @@ export class RunResource extends BaseResource<RunModel> {
         modelId: modelConfig.modelId,
         promptTokens: usage.inputTokens,
         providerId: modelConfig.providerId,
+        costCents: usageCostCents,
       },
     ]);
   }
@@ -317,6 +331,7 @@ export class RunResource extends BaseResource<RunModel> {
       providerId: usage.providerId as ModelProviderIdType,
       cachedTokens: usage.cachedTokens,
       cacheCreationTokens: usage.cacheCreationTokens,
+      costCents: usage.costCents,
     }));
   }
 }
@@ -338,4 +353,5 @@ export interface RunUsageType {
   cachedTokens: number | null;
   // Optional: tokens spent writing to cache (e.g., Anthropic cache creation)
   cacheCreationTokens?: number | null;
+  costCents: number;
 }

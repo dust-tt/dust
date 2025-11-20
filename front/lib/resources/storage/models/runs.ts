@@ -72,6 +72,8 @@ export class RunUsageModel extends WorkspaceAwareModel<RunUsageModel> {
   declare completionTokens: number;
   declare cachedTokens: number | null;
   declare cacheCreationTokens: number | null;
+
+  declare costCents: number;
 }
 
 RunUsageModel.init(
@@ -101,6 +103,11 @@ RunUsageModel.init(
       type: DataTypes.INTEGER,
       defaultValue: null,
       allowNull: true,
+    },
+    costCents: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      allowNull: false,
     },
   },
   {
