@@ -149,13 +149,15 @@ export function useFeatureFlags({
   };
 }
 
+export type GroupByType = "agent" | "origin" | "apiKey";
+
 export function useWorkspaceProgrammaticCost({
   workspaceId,
   groupBy,
   disabled,
 }: {
   workspaceId: string;
-  groupBy?: "agent" | "origin" | "apiKey";
+  groupBy?: GroupByType;
   disabled?: boolean;
 }) {
   const fetcherFn: Fetcher<GetWorkspaceProgrammaticCostResponse> = fetcher;

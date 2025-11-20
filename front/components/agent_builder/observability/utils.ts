@@ -1,8 +1,6 @@
 import {
   INDEXED_COLORS,
-  OTHER_COLOR,
   OTHER_LABEL,
-  UNKNOWN_COLOR,
   UNKNOWN_LABEL,
   USER_MESSAGE_ORIGIN_LABELS,
 } from "@app/components/agent_builder/observability/constants";
@@ -35,10 +33,10 @@ export function getSourceColor(source: UserMessageOrigin) {
  * "Other" and "Unknown" are special cases that have their own colors.
  */
 export function getIndexedColor(label: string, allLabels: string[]): string {
-  if (label === OTHER_LABEL) {
-    return OTHER_COLOR;
-  } else if (label === UNKNOWN_LABEL) {
-    return UNKNOWN_COLOR;
+  if (label === OTHER_LABEL.label) {
+    return OTHER_LABEL.color;
+  } else if (label === UNKNOWN_LABEL.label) {
+    return UNKNOWN_LABEL.color;
   }
 
   const idx = allLabels.indexOf(label);

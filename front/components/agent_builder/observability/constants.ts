@@ -47,10 +47,15 @@ export const INDEXED_COLORS = [
 
 export const MAX_TOOLS_DISPLAYED = 5;
 
-export const OTHER_LABEL = "Others";
-export const OTHER_COLOR = "text-blue-300 dark:text-blue-300-night";
-export const UNKNOWN_LABEL = "Unknown";
-export const UNKNOWN_COLOR = "text-gray-400 dark:text-gray-400-night";
+export const OTHER_LABEL = {
+  label: "Others",
+  color: "text-blue-300 dark:text-blue-300-night",
+};
+
+export const UNKNOWN_LABEL = {
+  label: "Unknown",
+  color: "text-gray-400 dark:text-gray-400-night",
+};
 
 export const FEEDBACK_DISTRIBUTION_PALETTE = {
   positive: "text-green-400 dark:text-green-400-night",
