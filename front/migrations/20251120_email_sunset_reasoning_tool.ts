@@ -44,6 +44,7 @@ const sendReasoningToolRemovalEmail = async (
   const agentList = record.agent_list.trim();
   const minReasoningEffort = record.min_reasoning_effort.trim().toLowerCase();
 
+  // TODO: get first name.
   const firstName = email.split("@")[0];
 
   let body = `<p>Hi ${firstName},</p>
@@ -53,6 +54,7 @@ const sendReasoningToolRemovalEmail = async (
 <ul>
 ${agentList
   .split(",")
+  // TODO: get agent name + sId, make it clickable.
   .map((agent) => `  <li>${agent.trim()}</li>`)
   .join("\n")}
 </ul>
