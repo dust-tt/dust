@@ -438,6 +438,33 @@ export function isEnterpriseSubscription(
   });
 }
 
+/**
+ * Creates the payload for a credit purchase line item.
+ * This factors out the common parameters used when creating invoice items for credit purchases.
+ */
+function makeCreditPurchaseLineItemPayload({
+  customerId,
+  amountCents,
+  subscription,
+  invoice,
+}: {
+  customerId: string;
+  amountCents: number;
+  subscription?: string;
+  invoice?: string;
+}): Stripe.InvoiceItemCreateParams {
+  const amountDollars = amountCents / 100;
+
+  return {
+    customer: customerId,
+    price: getCreditPurchasePriceId(),
+    quantity: amountCents,
+    description: `Programmatic usage credit: $${amountDollars.toFixed(2)}`,
+    ...(subscription && { subscription }),
+    ...(invoice && { invoice }),
+  };
+}
+
 export function assertStripeSubscriptionItemIsValid({
   item,
   recurringRequired,
@@ -552,24 +579,26 @@ export async function attachCreditPurchaseToSubscription({
 
   try {
     // Get the subscription to find the customer.
-    const subscription =
-      await stripe.subscriptions.retrieve(stripeSubscriptionId);
+    const subscription = await getStripeSubscription(stripeSubscriptionId);
+    if (!subscription) {
+      return new Err({
+        error_message: `Subscription ${stripeSubscriptionId} not found`,
+      });
+    }
+
     const customerId =
       typeof subscription.customer === "string"
         ? subscription.customer
         : subscription.customer.id;
 
-    // Convert cents to dollars for description.
-    const amountDollars = amountCents / 100;
-
     // Create invoice item that will be charged in the next subscription invoice.
-    const invoiceItem = await stripe.invoiceItems.create({
-      customer: customerId,
-      price: getCreditPurchasePriceId(),
-      quantity: amountCents,
-      description: `Programmatic usage credit: $${amountDollars.toFixed(2)}`,
-      subscription: stripeSubscriptionId,
-    });
+    const invoiceItem = await stripe.invoiceItems.create(
+      makeCreditPurchaseLineItemPayload({
+        customerId,
+        amountCents,
+        subscription: stripeSubscriptionId,
+      })
+    );
 
     return new Ok(invoiceItem.id);
   } catch (error) {
@@ -601,9 +630,6 @@ export async function makeAndPayCreditPurchaseInvoice({
         ? subscription.customer
         : subscription.customer.id;
 
-    // Convert cents to dollars for description.
-    const amountDollars = amountCents / 100;
-
     const invoiceParams: Stripe.InvoiceCreateParams = {
       customer: customerId,
       subscription: stripeSubscriptionId,
@@ -617,29 +643,23 @@ export async function makeAndPayCreditPurchaseInvoice({
 
     const invoice = await stripe.invoices.create(invoiceParams);
 
-    await stripe.invoiceItems.create({
-      customer: customerId,
-      invoice: invoice.id,
-      price: getCreditPurchasePriceId(),
-      quantity: amountCents,
-      description: `Programmatic usage credit: $${amountDollars.toFixed(2)}`,
-    });
+    await stripe.invoiceItems.create(
+      makeCreditPurchaseLineItemPayload({
+        customerId,
+        amountCents,
+        invoice: invoice.id,
+      })
+    );
 
     const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
 
-    // Pay the invoice immediately.
-    try {
-      await stripe.invoices.pay(finalizedInvoice.id);
-    } catch (paymentError) {
-      return new Err({
-        error_message: `Invoice created but payment failed: ${normalizeError(paymentError).message}`,
-      });
-    }
+    // Try to pay the invoice immediately.
+    await stripe.invoices.pay(finalizedInvoice.id);
 
     return new Ok(finalizedInvoice);
   } catch (error) {
     return new Err({
-      error_message: `Failed to create and pay credit purchase invoice: ${normalizeError(error).message}`,
+      error_message: `Failed to process credit purchase: ${normalizeError(error).message}`,
     });
   }
 }
