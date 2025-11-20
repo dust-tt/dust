@@ -13,10 +13,6 @@ export function getNotionWorkflowId(
   return wfName;
 }
 
-export function getIntercomSyncWorkflowId(connectorId: ModelId) {
-  return `intercom-sync-${connectorId}`;
-}
-
 export function getZendeskSyncWorkflowId(connectorId: ModelId): string {
   return `zendesk-sync-${connectorId}`;
 }

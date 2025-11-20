@@ -6,7 +6,6 @@ import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/uti
 import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
 import type { ConnectorProvider } from "@app/types";
 import {
-  getIntercomSyncWorkflowId,
   getZendeskGarbageCollectionWorkflowId,
   getZendeskSyncWorkflowId,
   googleDriveIncrementalSyncWorkflowId,
@@ -32,11 +31,6 @@ const providersToCheck: Partial<Record<ConnectorProvider, ProviderCheck>> = {
   confluence: {
     makeIdsFn: (connector: ConnectorBlob) => [
       makeConfluenceSyncWorkflowId(connector.id),
-    ],
-  },
-  intercom: {
-    makeIdsFn: (connector: ConnectorBlob) => [
-      getIntercomSyncWorkflowId(connector.id),
     ],
   },
   google_drive: {
