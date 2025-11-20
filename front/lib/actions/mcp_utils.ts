@@ -9,7 +9,6 @@ import {
   isRunAgentQueryResourceType,
   isToolGeneratedFile,
   isToolMarkerResourceType,
-  isWebsearchQueryResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   getAttachmentFromToolOutput,
@@ -102,7 +101,6 @@ export function rewriteContentForModel(
 
   if (
     isToolMarkerResourceType(content) ||
-    isWebsearchQueryResourceType(content) ||
     isRunAgentQueryResourceType(content)
   ) {
     return null;
