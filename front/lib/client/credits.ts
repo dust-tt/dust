@@ -17,16 +17,6 @@ export async function purchaseCredits({
   amountDollars: number;
   sendNotification: (notificationData: NotificationType) => void;
 }): Promise<boolean> {
-  // Validate amount
-  if (isNaN(amountDollars) || amountDollars <= 0) {
-    sendNotification({
-      type: "error",
-      title: "Invalid amount",
-      description: "Please enter a valid amount greater than 0",
-    });
-    return false;
-  }
-
   try {
     const response = await fetch(`/api/w/${workspaceId}/credits/purchase`, {
       method: "POST",
@@ -58,6 +48,7 @@ export async function purchaseCredits({
   } catch (err) {
     const errorMessage =
       err instanceof Error ? err.message : "Failed to purchase credits";
+
     sendNotification({
       type: "error",
       title: "Purchase failed",
