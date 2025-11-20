@@ -26,6 +26,7 @@ import {
   launchIntercomFullSyncWorkflow,
   launchIntercomSchedules,
   stopIntercomSchedulesAndWorkflows,
+  unpauseIntercomSchedules,
 } from "@connectors/connectors/intercom/temporal/client";
 import type {
   CreateConnectorErrorCode,
@@ -251,7 +252,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("Connector not found"));
     }
 
-    const schedulesRes = await launchIntercomSchedules(connector);
+    const schedulesRes = await unpauseIntercomSchedules(connector);
     if (schedulesRes.isErr()) {
       return schedulesRes;
     }

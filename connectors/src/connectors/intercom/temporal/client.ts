@@ -17,7 +17,8 @@ import {
 import { getTemporalClient } from "@connectors/lib/temporal";
 import {
   createSchedule,
-  deleteSchedule,
+  pauseSchedule,
+  unpauseAndTriggerSchedule,
 } from "@connectors/lib/temporal_schedules";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -109,7 +110,7 @@ export async function launchIntercomFullSyncWorkflow({
 export async function stopIntercomSchedulesAndWorkflows(
   connector: ConnectorResource
 ): Promise<Result<void, Error>> {
-  const helpCenterResult = await deleteSchedule({
+  const helpCenterResult = await pauseSchedule({
     scheduleId: makeIntercomHelpCenterScheduleId(connector),
     connector,
   });
@@ -118,7 +119,7 @@ export async function stopIntercomSchedulesAndWorkflows(
     return helpCenterResult;
   }
 
-  const conversationResult = await deleteSchedule({
+  const conversationResult = await pauseSchedule({
     scheduleId: makeIntercomConversationScheduleId(connector),
     connector,
   });
@@ -209,6 +210,28 @@ export async function launchIntercomSchedules(
     },
   });
 
+  if (conversationResult.isErr()) {
+    return conversationResult;
+  }
+
+  return new Ok(undefined);
+}
+
+export async function unpauseIntercomSchedules(
+  connector: ConnectorResource
+): Promise<Result<void, Error>> {
+  const helpCenterResult = await unpauseAndTriggerSchedule({
+    scheduleId: makeIntercomHelpCenterScheduleId(connector),
+    connector,
+  });
+  if (helpCenterResult.isErr()) {
+    return helpCenterResult;
+  }
+
+  const conversationResult = await unpauseAndTriggerSchedule({
+    scheduleId: makeIntercomConversationScheduleId(connector),
+    connector,
+  });
   if (conversationResult.isErr()) {
     return conversationResult;
   }

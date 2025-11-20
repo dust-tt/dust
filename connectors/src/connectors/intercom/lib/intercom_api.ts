@@ -90,13 +90,12 @@ async function queryIntercomAPI({
         `405 - ${isCaptchaError ? "Captcha error" : text}`,
         "transient_upstream_activity_error"
       );
-    } else {
-      logger.info(
-        { path, response: text, status: rawResponse.status },
-        "Failed to parse Intercom JSON response."
-      );
-      throw e;
     }
+    logger.info(
+      { path, response: text, status: rawResponse.status },
+      "Failed to parse Intercom JSON response."
+    );
+    throw e;
   }
 }
 
