@@ -233,10 +233,13 @@ export async function agentLoopWorkflow({
         },
       });
 
-      await Promise.all([
-        launchAgentMessageAnalyticsActivity(authType, agentLoopArgs),
-        conversationUnreadNotificationActivity(authType, agentLoopArgs),
-      ]);
+      // Ensure analytics runs even if workflow is cancelled
+      await CancellationScope.nonCancellable(async () => {
+        await Promise.all([
+          launchAgentMessageAnalyticsActivity(authType, agentLoopArgs),
+          conversationUnreadNotificationActivity(authType, agentLoopArgs),
+        ]);
+      });
     });
 
     if (childWorkflowHandle) {
@@ -248,15 +251,23 @@ export async function agentLoopWorkflow({
     // Notify error in a non-cancellable scope to ensure it runs even if workflow is cancelled
     await CancellationScope.nonCancellable(async () => {
       if (cancelRequested) {
-        await finalizeCancellationActivity(authType, agentLoopArgs);
+        // Ensure analytics runs even when workflow is cancelled
+        await Promise.all([
+          launchAgentMessageAnalyticsActivity(authType, agentLoopArgs),
+          finalizeCancellationActivity(authType, agentLoopArgs),
+        ]);
         return;
       } else {
-        await notifyWorkflowError(authType, {
-          conversationId: agentLoopArgs.conversationId,
-          agentMessageId: agentLoopArgs.agentMessageId,
-          agentMessageVersion: agentLoopArgs.agentMessageVersion,
-          error: workflowError,
-        });
+        // Ensure analytics runs even when workflow errors
+        await Promise.all([
+          launchAgentMessageAnalyticsActivity(authType, agentLoopArgs),
+          notifyWorkflowError(authType, {
+            conversationId: agentLoopArgs.conversationId,
+            agentMessageId: agentLoopArgs.agentMessageId,
+            agentMessageVersion: agentLoopArgs.agentMessageVersion,
+            error: workflowError,
+          }),
+        ]);
       }
       throw err;
     });

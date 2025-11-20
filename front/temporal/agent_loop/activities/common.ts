@@ -8,7 +8,6 @@ import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
 import { TERMINAL_AGENT_MESSAGE_EVENT_TYPES } from "@app/lib/api/assistant/streaming/types";
-import { maybeTrackTokenUsageCost } from "@app/lib/api/programmatic_usage_tracking";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { Authenticator as AuthenticatorClass } from "@app/lib/auth";
 import type { AgentMessage } from "@app/lib/models/assistant/conversation";
@@ -172,23 +171,6 @@ async function processEventForUnreadState(
   }
 }
 
-// Process potential token usage tracking for agent events before publishing to Redis.
-async function processEventForTokenUsageTracking(
-  auth: Authenticator,
-  {
-    event,
-    userMessageOrigin,
-  }: { event: AgentMessageEvents; userMessageOrigin?: UserMessageOrigin | null }
-) {
-  if (event.type === "agent_message_success") {
-    const { runIds } = event;
-    await maybeTrackTokenUsageCost(auth, {
-      dustRunIds: runIds,
-      userMessageOrigin,
-    });
-  }
-}
-
 export async function updateResourceAndPublishEvent(
   auth: Authenticator,
   {
@@ -217,7 +199,6 @@ export async function updateResourceAndPublishEvent(
       modelInteractionDurationMs,
     }),
     processEventForUnreadState(auth, { event, conversation }),
-    processEventForTokenUsageTracking(auth, { event, userMessageOrigin }),
   ]);
 
   await publishConversationRelatedEvent({
