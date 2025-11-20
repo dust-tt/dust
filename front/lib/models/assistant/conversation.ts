@@ -155,7 +155,6 @@ ConversationParticipantModel.init(
       },
       {
         fields: ["workspaceId", "conversationId"],
-        unique: true,
       },
       {
         fields: ["workspaceId", "userId", "action"],
