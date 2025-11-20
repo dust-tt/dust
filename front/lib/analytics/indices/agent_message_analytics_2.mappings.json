@@ -22,6 +22,15 @@
       "context_origin": {
         "type": "keyword"
       },
+      "root_context_origin": {
+        "type": "keyword"
+      },
+      "auth_method": {
+        "type": "keyword"
+      },
+      "api_key_name": {
+        "type": "keyword"
+      },
       "timestamp": {
         "type": "date"
       },
