@@ -23,6 +23,7 @@ import {
   isInternalIdForAllTeams,
 } from "@connectors/connectors/intercom/lib/utils";
 import {
+  deleteIntercomSchedules,
   launchIntercomFullSyncWorkflow,
   launchIntercomSchedules,
   stopIntercomSchedulesAndWorkflows,
@@ -218,6 +219,8 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
         "Error uninstalling Intercom, continuing..."
       );
     }
+
+    await deleteIntercomSchedules(connector);
 
     const res = await connector.delete();
     if (res.isErr()) {

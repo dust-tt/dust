@@ -17,6 +17,7 @@ import {
 import { getTemporalClient } from "@connectors/lib/temporal";
 import {
   createSchedule,
+  deleteSchedule,
   pauseSchedule,
   unpauseAndTriggerSchedule,
 } from "@connectors/lib/temporal_schedules";
@@ -232,6 +233,32 @@ export async function unpauseIntercomSchedules(
     scheduleId: makeIntercomConversationScheduleId(connector),
     connector,
   });
+  if (conversationResult.isErr()) {
+    return conversationResult;
+  }
+
+  return new Ok(undefined);
+}
+
+export async function deleteIntercomSchedules(
+  connector: ConnectorResource
+): Promise<Result<void, Error>> {
+  await stopIntercomSchedulesAndWorkflows(connector);
+
+  const helpCenterResult = await deleteSchedule({
+    scheduleId: makeIntercomHelpCenterScheduleId(connector),
+    connector,
+  });
+
+  if (helpCenterResult.isErr()) {
+    return helpCenterResult;
+  }
+
+  const conversationResult = await deleteSchedule({
+    scheduleId: makeIntercomConversationScheduleId(connector),
+    connector,
+  });
+
   if (conversationResult.isErr()) {
     return conversationResult;
   }
