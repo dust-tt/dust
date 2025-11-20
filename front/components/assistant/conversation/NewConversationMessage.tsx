@@ -28,8 +28,8 @@ const wrapperVariants = cva("flex flex-col min-w-60 w-full @container", {
   variants: {
     messageType: {
       agent: "pr-0",
-      me: "itemend pl-9",
-      user: "itemstart pr-9",
+      me: "items-end pl-9",
+      user: "items-start pr-9",
     },
   },
   defaultVariants: {
@@ -59,9 +59,11 @@ const buttonsVariants = cva("flex justify-start gap-2", {
     type: "agent",
   },
 });
+
 /**
- * Parent component for both UserMessage and AgentMessage, to ensure avatar,
- * side buttons and spacing are consistent between the two
+ * This is a temporary duplicate of the ConversationMessage component
+ * to ensure the UI is consistent between the new conversation view and the old conversation view.
+ * This will be moved to the ConversationMessage component once 'mentions_v2' feature flag is enabled.
  */
 export const NewConversationMessage = React.forwardRef<
   HTMLDivElement,
@@ -103,7 +105,7 @@ export const NewConversationMessage = React.forwardRef<
           )}
           {...props}
         >
-          <div className="itemcenter inline-flex gap-2 @sm:hidden">
+          <div className="items-center inline-flex gap-2 @sm:hidden">
             <ConversationMessageAvatar
               avatarUrl={pictureUrl}
               name={name}
@@ -252,7 +254,7 @@ const ConversationMessageTitle = React.forwardRef<
 >(({ name = "", timestamp, infoChip, completionStatus, renderName }) => {
   return (
     <div className="inline-flex w-full justify-between gap-0.5">
-      <div className="itembaseline inline-flex gap-2 text-foreground dark:text-foreground-night">
+      <div className="items-baseline inline-flex gap-2 text-foreground dark:text-foreground-night">
         <span className="heading-sm">{renderName(name)}</span>
         <span className="heading-xs text-muted-foreground dark:text-muted-foreground-night">
           {timestamp}
