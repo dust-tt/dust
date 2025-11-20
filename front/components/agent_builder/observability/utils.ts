@@ -1,6 +1,9 @@
 import {
-  OTHER_TOOLS_LABEL,
-  TOOL_COLORS,
+  INDEXED_COLORS,
+  OTHER_COLOR,
+  OTHER_LABEL,
+  UNKNOWN_COLOR,
+  UNKNOWN_LABEL,
   USER_MESSAGE_ORIGIN_LABELS,
 } from "@app/components/agent_builder/observability/constants";
 import type { ObservabilityMode } from "@app/components/agent_builder/observability/ObservabilityContext";
@@ -15,37 +18,31 @@ export type ValuesPayload = { values: Record<string, number> };
 
 export type SourceBucket = { origin: string; count: number };
 
-function addPrefixToColor(color: string, prefix: "text" | "bg"): string {
-  return `${prefix}-${color.replace("dark:", `dark:${prefix}-`)}`;
-}
-
 export function isUserMessageOrigin(
   origin?: string | null
 ): origin is UserMessageOrigin {
   return !!origin && origin in USER_MESSAGE_ORIGIN_LABELS;
 }
 
-export function getSourceColor(
-  source: UserMessageOrigin,
-  prefix: "text" | "bg"
-) {
-  return addPrefixToColor(USER_MESSAGE_ORIGIN_LABELS[source].color, prefix);
+export function getSourceColor(source: UserMessageOrigin) {
+  return USER_MESSAGE_ORIGIN_LABELS[source].color;
 }
 
-export function getToolColor(
-  toolName: string,
-  topTools: string[],
-  prefix: "text" | "bg"
-): string {
-  if (toolName === OTHER_TOOLS_LABEL) {
-    return addPrefixToColor("blue-300", prefix);
+/**
+ * Returns a unique color from TOOL_COLORS based on the label's index in allLabels,
+ * cycling through the array in a rolling ribbon fashion to ensure distinct but repeating colors.
+ * Useful for consistently coloring a set of values.
+ * "Other" and "Unknown" are special cases that have their own colors.
+ */
+export function getIndexedColor(label: string, allLabels: string[]): string {
+  if (label === OTHER_LABEL) {
+    return OTHER_COLOR;
+  } else if (label === UNKNOWN_LABEL) {
+    return UNKNOWN_COLOR;
   }
 
-  const idx = topTools.indexOf(toolName);
-  return addPrefixToColor(
-    TOOL_COLORS[(idx >= 0 ? idx : 0) % TOOL_COLORS.length],
-    prefix
-  );
+  const idx = allLabels.indexOf(label);
+  return INDEXED_COLORS[(idx >= 0 ? idx : 0) % INDEXED_COLORS.length];
 }
 
 export function buildSourceChartData(

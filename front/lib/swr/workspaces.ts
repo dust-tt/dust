@@ -155,7 +155,7 @@ export function useWorkspaceProgrammaticCost({
   disabled,
 }: {
   workspaceId: string;
-  groupBy?: "agent" | "origin";
+  groupBy?: "agent" | "origin" | "apiKey";
   disabled?: boolean;
 }) {
   const fetcherFn: Fetcher<GetWorkspaceProgrammaticCostResponse> = fetcher;

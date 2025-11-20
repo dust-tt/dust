@@ -26,8 +26,8 @@ import {
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
 import {
+  getIndexedColor,
   getSourceColor,
-  getToolColor,
   isUserMessageOrigin,
 } from "@app/components/agent_builder/observability/utils";
 import { useWorkspaceProgrammaticCost } from "@app/lib/swr/workspaces";
@@ -57,25 +57,23 @@ const GROUP_BY_OPTIONS: {
 ];
 
 function getColorClassName(
-  groupBy: "agent" | "origin" | undefined,
+  groupBy: "agent" | "origin" | "apiKey" | undefined,
   groupName: string,
   groups: string[]
 ): string {
-  if (groupBy === "origin" && isUserMessageOrigin(groupName)) {
-    return getSourceColor(groupName, "text");
-  } else if (groupBy === "agent" || groupBy === "apiKey") {
-    return getToolColor(groupName, groups, "text");
-  } else if (!groupBy) {
+  if (!groupBy) {
     return COST_PALETTE.costCents;
+  } else if (groupBy === "origin" && isUserMessageOrigin(groupName)) {
+    return getSourceColor(groupName);
   } else {
-    return COST_PALETTE.unknown;
+    return getIndexedColor(groupName, groups);
   }
 }
 
 // Custom tooltip for grouped view
 function GroupedTooltip(
   props: TooltipContentProps<number, string>,
-  groupBy: "agent" | "origin" | undefined,
+  groupBy: "agent" | "origin" | "apiKey" | undefined,
   groups: string[]
 ): JSX.Element | null {
   const { active, payload } = props;
@@ -124,9 +122,9 @@ function GroupedTooltip(
 export function ProgrammaticCostChart({
   workspaceId,
 }: ProgrammaticCostChartProps) {
-  const [groupBy, setGroupBy] = useState<"agent" | "origin" | undefined>(
-    undefined
-  );
+  const [groupBy, setGroupBy] = useState<
+    "agent" | "origin" | "apiKey" | undefined
+  >(undefined);
 
   const {
     programmaticCostData,

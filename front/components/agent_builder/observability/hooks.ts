@@ -1,6 +1,6 @@
 import {
   MAX_TOOLS_DISPLAYED,
-  OTHER_TOOLS_LABEL,
+  OTHER_LABEL,
 } from "@app/components/agent_builder/observability/constants";
 import type { ObservabilityMode } from "@app/components/agent_builder/observability/ObservabilityContext";
 import type {
@@ -92,7 +92,7 @@ function createChartData(
     const values: Record<string, ToolChartUsageDatum> = {};
     let topToolsCount = 0;
     for (const toolName of displayTools) {
-      if (toolName === OTHER_TOOLS_LABEL) {
+      if (toolName === OTHER_LABEL) {
         continue;
       }
 
@@ -111,7 +111,7 @@ function createChartData(
       const othersCount = total - topToolsCount;
 
       if (othersCount > 0) {
-        values[OTHER_TOOLS_LABEL] = {
+        values[OTHER_LABEL] = {
           percent: calculatePercentage(othersCount, total),
           count: othersCount,
         };
@@ -177,7 +177,7 @@ function processToolUsageData(
   const selectedTools = selectTopTools(counts, MAX_TOOLS_DISPLAYED);
   const includeOthers = counts.size > MAX_TOOLS_DISPLAYED;
   const topTools = includeOthers
-    ? [...selectedTools, OTHER_TOOLS_LABEL]
+    ? [...selectedTools, OTHER_LABEL]
     : selectedTools;
   const chartData = createChartData(data, topTools, includeOthers);
 
