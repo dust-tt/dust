@@ -39,6 +39,22 @@ export function microsoftGarbageCollectionWorkflowId(connectorId: ModelId) {
   return `microsoft-garbageCollection-${connectorId}`;
 }
 
+export function makeGongSyncScheduleId(connectorId: ModelId): string {
+  return `gong-sync-${connectorId}`;
+}
+
+export function makeIntercomHelpCenterScheduleId(
+  connectorId: ModelId
+): string {
+  return `intercom-help-center-sync-${connectorId}`;
+}
+
+export function makeIntercomConversationScheduleId(
+  connectorId: ModelId
+): string {
+  return `intercom-conversation-sync-${connectorId}`;
+}
+
 export function getWorkflowIdsForConnector(
   connectorId: ModelId,
   connectorType: ConnectorProvider
