@@ -443,7 +443,21 @@ export default function Subscription({
           {hasFeature("ppul_credits_purchase_flow") &&
             subscription.stripeSubscriptionId && (
               <Page.Vertical gap="sm">
-                <Page.H variant="h5">Programmatic Usage Credits</Page.H>
+                <div className="flex w-full items-center justify-between">
+                  <Page.H variant="h5">Programmatic Usage Credits</Page.H>
+                  <Button
+                    label="Buy Credits"
+                    variant="primary"
+                    disabled={subscription.trialing}
+                    onClick={withTracking(
+                      TRACKING_AREAS.AUTH,
+                      "subscription_buy_credits",
+                      () => {
+                        setShowBuyCreditDialog(true);
+                      }
+                    )}
+                  />
+                </div>
                 <Page.P>Purchase credits for programmatic API usage</Page.P>
                 <CreditsList credits={credits} isLoading={isCreditsLoading} />
                 {subscription.trialing && (
@@ -452,19 +466,6 @@ export default function Subscription({
                     plan.
                   </ContentMessage>
                 )}
-                <Button
-                  label="Buy Credits"
-                  variant="primary"
-                  className="my-2"
-                  disabled={subscription.trialing}
-                  onClick={withTracking(
-                    TRACKING_AREAS.AUTH,
-                    "subscription_buy_credits",
-                    () => {
-                      setShowBuyCreditDialog(true);
-                    }
-                  )}
-                />
               </Page.Vertical>
             )}
           {displayPricingTable && (
