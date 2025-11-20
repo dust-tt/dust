@@ -5,6 +5,8 @@ import type { MessageMetricsPoint } from "@app/lib/api/assistant/observability/m
 import { fetchMessageMetrics } from "@app/lib/api/assistant/observability/messages_metrics";
 import type { AgentOverview } from "@app/lib/api/assistant/observability/overview";
 import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
+import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
+import { fetchVersionMarkers } from "@app/lib/api/assistant/observability/version_markers";
 import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types";
 import { Err, GPT_4_1_MINI_MODEL_ID, Ok } from "@app/types";
@@ -85,8 +87,18 @@ export async function generateAgentObservabilitySummary({
     );
   }
 
+  const versionMarkersResult = await fetchVersionMarkers(baseQuery);
+  if (versionMarkersResult.isErr()) {
+    return new Err(
+      new Error(
+        `Failed to retrieve version markers for summary: ${versionMarkersResult.error.message}`
+      )
+    );
+  }
+
   const overview = overviewResult.value;
   const points = usageMetricsResult.value;
+  const versionMarkers: AgentVersionMarker[] = versionMarkersResult.value;
 
   if (!hasAnyActivity(overview, points)) {
     return new Ok({
@@ -99,6 +111,7 @@ export async function generateAgentObservabilitySummary({
     days,
     agentName,
     overview,
+    versionMarkers,
     usage: points.map((p) => ({
       timestamp: p.timestamp,
       conversations: p.conversations,
@@ -112,9 +125,11 @@ export async function generateAgentObservabilitySummary({
 
   const prompt =
     "You are an analytics assistant. " +
-    `You are given time-series metrics about how an AI agent called '${agentName}' is used over a given time range. ` +
+    `You are given time-series metrics about how an AI agent called '${agentName}' is used over a given time range, ` +
+    "including version markers that indicate when new versions of the agent were released. " +
     "Write a short natural language summary (2-3 short sentences) describing the most important trends, " +
     "including notable spikes or drops, usage changes, latency, and error-rate patterns. " +
+    "Explicitly relate these changes to specific versions when the data suggests a clear improvement or regression after a version marker. " +
     "Focus on the big picture and unusual behavior rather than listing every number. " +
     "If the data is noisy or inconclusive, say so explicitly.";
 
