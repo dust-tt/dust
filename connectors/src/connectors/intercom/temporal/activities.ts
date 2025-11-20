@@ -570,12 +570,12 @@ export async function getNextConversationBatchToSyncActivity({
   connectorId,
   teamId,
   cursor,
-  lastHourOnly,
+  closedAfterTimeWindowMinutes,
 }: {
   connectorId: ModelId;
   teamId?: string;
   cursor: string | null;
-  lastHourOnly?: boolean;
+  closedAfterTimeWindowMinutes?: number;
 }): Promise<{ conversationIds: string[]; nextPageCursor: string | null }> {
   const connector = await _getIntercomConnectorOrRaise(connectorId);
 
@@ -591,8 +591,8 @@ export async function getNextConversationBatchToSyncActivity({
   let result;
 
   const accessToken = await getIntercomAccessToken(connector.connectionId);
-  const closedAfter = lastHourOnly
-    ? Math.floor((Date.now() - 1 * 60 * 60 * 1000) / 1000)
+  const closedAfter = closedAfterTimeWindowMinutes
+    ? Math.floor((Date.now() - closedAfterTimeWindowMinutes * 60 * 1000) / 1000)
     : undefined;
 
   if (teamId) {
