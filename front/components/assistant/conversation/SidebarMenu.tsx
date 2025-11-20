@@ -552,11 +552,13 @@ interface InboxConversationListProps {
   owner: WorkspaceType;
 }
 
+interface ConversationListContainerProps {
+  children: React.ReactNode;
+}
+
 const ConversationListContainer = ({
   children,
-}: {
-  children: React.ReactNode;
-}) => {
+}: ConversationListContainerProps) => {
   return <div className="px-3 sm:flex sm:flex-col sm:gap-0.5">{children}</div>;
 };
 
