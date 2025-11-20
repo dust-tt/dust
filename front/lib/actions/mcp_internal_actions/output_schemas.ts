@@ -278,25 +278,6 @@ export const isExecuteTablesQueryErrorResourceType = (
   );
 };
 
-// Data source search outputs: query and results.
-
-export const SearchQueryResourceSchema = z.object({
-  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY),
-  text: z.string(),
-  uri: z.literal(""),
-});
-
-export type SearchQueryResourceType = z.infer<typeof SearchQueryResourceSchema>;
-
-export const isSearchQueryResourceType = (
-  outputBlock: CallToolResult["content"][number]
-): outputBlock is { type: "resource"; resource: SearchQueryResourceType } => {
-  return (
-    outputBlock.type === "resource" &&
-    SearchQueryResourceSchema.safeParse(outputBlock.resource).success
-  );
-};
-
 export const SearchResultResourceSchema = z.object({
   mimeType: z.literal(
     INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT

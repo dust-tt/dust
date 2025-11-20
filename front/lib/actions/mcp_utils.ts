@@ -7,7 +7,6 @@ import { MAX_RESOURCE_CONTENT_SIZE } from "@app/lib/actions/action_output_limits
 import {
   isBlobResource,
   isRunAgentQueryResourceType,
-  isSearchQueryResourceType,
   isToolGeneratedFile,
   isToolMarkerResourceType,
   isWebsearchQueryResourceType,
@@ -103,7 +102,6 @@ export function rewriteContentForModel(
 
   if (
     isToolMarkerResourceType(content) ||
-    isSearchQueryResourceType(content) ||
     isWebsearchQueryResourceType(content) ||
     isRunAgentQueryResourceType(content)
   ) {

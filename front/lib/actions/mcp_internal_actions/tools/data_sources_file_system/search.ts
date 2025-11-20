@@ -7,10 +7,7 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import { SEARCH_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import {
-  makeQueryResource,
-  renderSearchResults,
-} from "@app/lib/actions/mcp_internal_actions/rendering";
+import { renderSearchResults } from "@app/lib/actions/mcp_internal_actions/rendering";
 import {
   extractDataSourceIdFromNodeId,
   isDataSourceNodeId,
@@ -326,16 +323,6 @@ async function searchCallback(
   }
 
   return new Ok([
-    {
-      type: "resource" as const,
-      resource: makeQueryResource({
-        query,
-        timeFrame,
-        tagsIn,
-        tagsNot,
-        nodeIds,
-      }),
-    },
     ...(renderedNodes
       ? [{ type: "resource" as const, resource: renderedNodes }]
       : []),

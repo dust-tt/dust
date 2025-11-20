@@ -5,11 +5,7 @@ import { z } from "zod";
 
 import { getConnectionForMCPServer } from "@app/lib/actions/mcp_authentication";
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type {
-  SearchQueryResourceType,
-  SearchResultResourceType,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { renderRelativeTimeFrameForToolOutput } from "@app/lib/actions/mcp_internal_actions/rendering";
+import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   executeGetUser,
   executeListChannels,
@@ -177,40 +173,6 @@ function buildSearchResults<T>(
       chunks: [stripNullBytes(extractors.content(match))],
     })
   );
-}
-
-function makeQueryResource(
-  keywords: string[],
-  relativeTimeFrame: TimeFrame | null,
-  channels?: string[],
-  usersFrom?: string[],
-  usersTo?: string[],
-  usersMentioned?: string[]
-): SearchQueryResourceType {
-  const timeFrameAsString =
-    renderRelativeTimeFrameForToolOutput(relativeTimeFrame);
-  let text = `Searching Slack ${timeFrameAsString}`;
-  if (keywords.length > 0) {
-    text += ` with keywords: ${keywords.join(", ")}`;
-  }
-  if (channels && channels.length > 0) {
-    text += ` in channels: ${channels.join(", ")}`;
-  }
-  if (usersFrom && usersFrom.length > 0) {
-    text += ` from users: ${usersFrom.join(", ")}`;
-  }
-  if (usersTo && usersTo.length > 0) {
-    text += ` to users: ${usersTo.join(", ")}`;
-  }
-  if (usersMentioned && usersMentioned.length > 0) {
-    text += ` mentioning users: ${usersMentioned.join(", ")}`;
-  }
-
-  return {
-    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY,
-    text,
-    uri: "",
-  };
 }
 
 // Common Zod parameter schema parts shared by search tools.
@@ -478,17 +440,6 @@ async function createServer(
                   type: "text" as const,
                   text: `No messages found.`,
                 },
-                {
-                  type: "resource" as const,
-                  resource: makeQueryResource(
-                    keywords,
-                    timeFrame,
-                    channels,
-                    usersFrom,
-                    usersTo,
-                    usersMentioned
-                  ),
-                },
               ]);
             } else {
               const { citationsOffset } =
@@ -511,23 +462,12 @@ async function createServer(
                 }
               );
 
-              return new Ok([
-                ...results.map((result) => ({
+              return new Ok(
+                results.map((result) => ({
                   type: "resource" as const,
                   resource: result,
-                })),
-                {
-                  type: "resource" as const,
-                  resource: makeQueryResource(
-                    keywords,
-                    timeFrame,
-                    channels,
-                    usersFrom,
-                    usersTo,
-                    usersMentioned
-                  ),
-                },
-              ]);
+                }))
+              );
             }
           } catch (error) {
             if (isSlackTokenRevoked(error)) {
@@ -596,17 +536,6 @@ async function createServer(
             if (matches.length === 0) {
               return new Ok([
                 { type: "text" as const, text: `No messages found.` },
-                {
-                  type: "resource" as const,
-                  resource: makeQueryResource(
-                    [query],
-                    timeFrame,
-                    channels,
-                    usersFrom,
-                    usersTo,
-                    usersMentioned
-                  ),
-                },
               ]);
             } else {
               const { citationsOffset } =
@@ -650,23 +579,12 @@ async function createServer(
                 }
               );
 
-              return new Ok([
-                ...results.map((result) => ({
+              return new Ok(
+                results.map((result) => ({
                   type: "resource" as const,
                   resource: result,
-                })),
-                {
-                  type: "resource" as const,
-                  resource: makeQueryResource(
-                    [query],
-                    timeFrame,
-                    channels,
-                    usersFrom,
-                    usersTo,
-                    usersMentioned
-                  ),
-                },
-              ]);
+                }))
+              );
             }
           } catch (error) {
             if (isSlackTokenRevoked(error)) {
@@ -1068,17 +986,6 @@ async function createServer(
                 type: "text" as const,
                 text: `No threads found.`,
               },
-              {
-                type: "resource" as const,
-                resource: makeQueryResource(
-                  [],
-                  timeFrame,
-                  [channel],
-                  [],
-                  [],
-                  []
-                ),
-              },
             ]);
           } else {
             const { citationsOffset } = agentLoopContext.runContext.stepContext;
@@ -1101,23 +1008,12 @@ async function createServer(
               content: (match) => match.text ?? "",
             });
 
-            return new Ok([
-              ...results.map((result) => ({
+            return new Ok(
+              results.map((result) => ({
                 type: "resource" as const,
                 resource: result,
-              })),
-              {
-                type: "resource" as const,
-                resource: makeQueryResource(
-                  [],
-                  timeFrame,
-                  [channel],
-                  [],
-                  [],
-                  []
-                ),
-              },
-            ]);
+              }))
+            );
           }
         } catch (error) {
           if (isSlackTokenRevoked(error)) {
