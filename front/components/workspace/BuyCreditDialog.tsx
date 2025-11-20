@@ -17,7 +17,6 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 interface BuyCreditDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess?: () => void;
   workspaceId: string;
   isEnterprise: boolean;
 }
@@ -25,7 +24,6 @@ interface BuyCreditDialogProps {
 export function BuyCreditDialog({
   isOpen,
   onClose,
-  onSuccess,
   workspaceId,
   isEnterprise,
 }: BuyCreditDialogProps) {
@@ -42,16 +40,12 @@ export function BuyCreditDialog({
   const { submit: handlePurchase, isSubmitting } = useSubmitFunction(
     async () => {
       const amount = parseFloat(amountDollars);
-      const success = await purchaseCredits({
+      await purchaseCredits({
         workspaceId,
         amountDollars: amount,
         sendNotification,
       });
-
-      if (success) {
-        onClose();
-        onSuccess?.();
-      }
+      onClose();
     }
   );
 
@@ -76,11 +70,11 @@ export function BuyCreditDialog({
               <Input
                 id="amount"
                 type="number"
-                placeholder="10.00"
+                placeholder="10"
                 value={amountDollars}
                 onChange={(e) => setAmountDollars(e.target.value)}
                 min="0"
-                step="0.01"
+                step="1"
                 disabled={isSubmitting}
               />
             </div>

@@ -44,7 +44,7 @@ export async function purchaseCredits({
       sendNotification({
         type: "error",
         title: "Purchase failed",
-        description: errorMessage,
+        description: `${errorMessage}. Please contact support if the issue persists.`,
       });
       return false;
     }
@@ -56,11 +56,12 @@ export async function purchaseCredits({
     });
     return true;
   } catch (err) {
+    const errorMessage =
+      err instanceof Error ? err.message : "Failed to purchase credits";
     sendNotification({
       type: "error",
       title: "Purchase failed",
-      description:
-        err instanceof Error ? err.message : "Failed to purchase credits",
+      description: `${errorMessage}. Please contact support if the issue persists.`,
     });
     return false;
   }

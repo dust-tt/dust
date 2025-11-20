@@ -1,0 +1,88 @@
+import type { NextApiRequest, NextApiResponse } from "next";
+
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type { Authenticator } from "@app/lib/auth";
+import { FeatureFlag } from "@app/lib/models/feature_flag";
+import { CreditResource } from "@app/lib/resources/credit_resource";
+import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
+import { isDevelopment } from "@app/types";
+import type {
+  CreditDisplayData,
+  GetCreditsResponseBody,
+} from "@app/types/credits";
+
+async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<WithAPIErrorResponse<GetCreditsResponseBody>>,
+  auth: Authenticator
+): Promise<void> {
+  // Only admins can view credits.
+  if (!auth.isAdmin()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message:
+          "Only users that are `admins` for the current workspace can view credits.",
+      },
+    });
+  }
+
+  // Check feature flag.
+  const workspace = auth.getNonNullableWorkspace();
+  const featureFlag =
+    (await FeatureFlag.findOne({
+      where: {
+        workspaceId: workspace.id,
+        name: "ppul_credits_purchase_flow",
+      },
+    })) ?? isDevelopment();
+
+  if (!featureFlag) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "This feature is not enabled for your workspace.",
+      },
+    });
+  }
+
+  switch (req.method) {
+    case "GET": {
+      // Fetch all credits for the workspace.
+      const credits = await CreditResource.listAll(auth);
+
+      // Transform credits to display format with computed consumed amount.
+      const creditsData: CreditDisplayData[] = credits.map((credit) => ({
+        id: credit.id,
+        type: credit.type,
+        initialAmount: credit.initialAmount,
+        remainingAmount: credit.remainingAmount,
+        consumedAmount: credit.initialAmount - credit.remainingAmount,
+        startDate: credit.startDate ? credit.startDate.getTime() : null,
+        expirationDate: credit.expirationDate
+          ? credit.expirationDate.getTime()
+          : null,
+      }));
+
+      return res.status(200).json({
+        credits: creditsData,
+      });
+    }
+
+    default:
+      return apiError(req, res, {
+        status_code: 405,
+        api_error: {
+          type: "method_not_supported_error",
+          message: "The method passed is not supported.",
+        },
+      });
+  }
+}
+
+export default withSessionAuthenticationForWorkspace(handler, {
+  doesNotRequireCanUseProduct: true,
+});
