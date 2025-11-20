@@ -552,16 +552,6 @@ interface InboxConversationListProps {
   owner: WorkspaceType;
 }
 
-interface ConversationListContainerProps {
-  children: React.ReactNode;
-}
-
-const ConversationListContainer = ({
-  children,
-}: ConversationListContainerProps) => {
-  return <div className="px-3 sm:flex sm:flex-col sm:gap-0.5">{children}</div>;
-};
-
 const InboxConversationList = ({
   unreadConversations,
   actionRequiredConversations,
@@ -586,7 +576,7 @@ const InboxConversationList = ({
   });
 
   return (
-    <ConversationListContainer>
+    <div className="px-3">
       <div className="sticky top-0 z-10 flex items-center justify-between overflow-auto bg-background dark:bg-background-night">
         <NavigationListLabel
           label={dateLabel}
@@ -613,7 +603,7 @@ const InboxConversationList = ({
           {...props}
         />
       ))}
-    </ConversationListContainer>
+    </div>
   );
 };
 
@@ -635,7 +625,7 @@ const ConversationList = ({
   }
 
   return (
-    <ConversationListContainer>
+    <div className="px-3">
       <NavigationListLabel
         label={dateLabel}
         isSticky
@@ -649,7 +639,7 @@ const ConversationList = ({
           {...props}
         />
       ))}
-    </ConversationListContainer>
+    </div>
   );
 };
 
