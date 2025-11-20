@@ -162,6 +162,9 @@ export function groupTopNAndAggregateOthers<
   // Aggregate all "other" groups into a single entry
   const aggregatedByTimestamp: Record<number, number> = {};
 
+  // We have to compute the sum across all "other" groups for each timestamp. This
+  // requires checking each point in all groups, leading to O(n^2) in the worst case,
+  // but since typical numbers of groups and points are small, this is acceptable here.
   for (const { points } of otherGroups) {
     for (const point of points) {
       const value = point[valueKey] as number;

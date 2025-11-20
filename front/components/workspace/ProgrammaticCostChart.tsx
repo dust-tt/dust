@@ -20,6 +20,7 @@ import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
 import {
   CHART_HEIGHT,
+  COST_PALETTE,
   USER_MESSAGE_ORIGIN_LABELS,
 } from "@app/components/agent_builder/observability/constants";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
@@ -64,9 +65,9 @@ function getColorClassName(
   } else if (groupBy === "agent") {
     return getToolColor(groupName, groups, "text");
   } else if (!groupBy) {
-    return "text-blue-500";
+    return COST_PALETTE.costCents;
   } else {
-    return "text-green-500";
+    return COST_PALETTE.unknown;
   }
 }
 
@@ -113,7 +114,7 @@ function GroupedTooltip(
   rows.push({
     label: "Total Credits",
     value: `$${(data.totalInitialCreditsCents / 100).toFixed(2)}`,
-    colorClassName: "text-green-500",
+    colorClassName: COST_PALETTE.totalCredits,
   });
 
   return <ChartTooltipCard title={data.date} rows={rows} />;
@@ -189,7 +190,7 @@ export function ProgrammaticCostChart({
     legendItems.push({
       key: "totalCredits",
       label: "Total Credits",
-      colorClassName: "text-green-500",
+      colorClassName: COST_PALETTE.totalCredits,
     });
 
     // Transform points into chart data
