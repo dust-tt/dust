@@ -226,11 +226,12 @@ export async function maybeTrackTokenUsageCost(
   }
 
   // Compute the price for all the runs.
-  const runsCost = runUsages
+  const runsCostUsd = runUsages
     .flat()
-    .reduce((acc, usage) => acc + usage.costCents, 0);
+    .reduce((acc, usage) => acc + usage.costUsd, 0);
+  const runsCostCents = runsCostUsd > 0 ? Math.ceil(runsCostUsd * 100) : 0;
 
-  await trackTokenUsageCost(auth.getNonNullableWorkspace(), runsCost);
+  await trackTokenUsageCost(auth.getNonNullableWorkspace(), runsCostCents);
 }
 
 export async function resetCredits(

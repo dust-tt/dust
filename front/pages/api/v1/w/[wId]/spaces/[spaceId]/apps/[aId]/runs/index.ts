@@ -2,6 +2,7 @@ import type { RunAppResponseType } from "@dust-tt/client";
 import { createParser } from "eventsource-parser";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { calculateTokenUsageCostForUsage } from "@app/lib/api/assistant/token_pricing";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
@@ -31,7 +32,6 @@ import {
   credentialsFromProviders,
   dustManagedCredentials,
 } from "@app/types";
-import { calculateTokenUsageCostForUsage } from "@app/lib/api/assistant/token_pricing";
 
 export const config = {
   api: {
@@ -83,10 +83,6 @@ function extractUsageFromExecutions(
             cacheCreationTokens: cacheCreationTokens ?? null,
           });
 
-          // Use ceiling to ensure any non-zero cost is at least 1 cent.
-          const usageCostCents =
-            usageCostUsd > 0 ? Math.ceil(usageCostUsd * 100) : 0;
-
           usages.push({
             providerId: block.provider_id,
             modelId: block.model_id,
@@ -94,7 +90,7 @@ function extractUsageFromExecutions(
             completionTokens,
             cachedTokens: cachedTokens ?? null,
             cacheCreationTokens: cacheCreationTokens ?? null,
-            costCents: usageCostCents,
+            costUsd: usageCostUsd,
           });
         }
       }
