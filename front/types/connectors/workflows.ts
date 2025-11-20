@@ -43,9 +43,7 @@ export function makeGongSyncScheduleId(connectorId: ModelId): string {
   return `gong-sync-${connectorId}`;
 }
 
-export function makeIntercomHelpCenterScheduleId(
-  connectorId: ModelId
-): string {
+export function makeIntercomHelpCenterScheduleId(connectorId: ModelId): string {
   return `intercom-help-center-sync-${connectorId}`;
 }
 
