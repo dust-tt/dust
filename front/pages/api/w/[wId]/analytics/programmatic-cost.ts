@@ -22,7 +22,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
 const QuerySchema = z.object({
-  groupBy: z.enum(["agent", "origin"]).optional(),
+  groupBy: z.enum(["agent", "origin", "apiKey"]).optional(),
 });
 
 export type WorkspaceProgrammaticCostPoint = {
@@ -184,8 +184,19 @@ async function handler(
           groupValues["total"]?.set(point.timestamp, point.costCents);
         });
       } else {
+        let groupField: string;
         // Grouped view (agent or origin)
-        const groupField = groupBy === "agent" ? "agent_id" : "context_origin";
+        switch (groupBy) {
+          case "agent":
+            groupField = "agent_id";
+            break;
+          case "origin":
+            groupField = "context_origin";
+            break;
+          case "apiKey":
+            groupField = "api_key_name";
+            break;
+        }
 
         // Use the extracted helper to build metric aggregates
         const metricAggregates = buildMetricAggregates(["costCents"]);
