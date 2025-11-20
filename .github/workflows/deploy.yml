@@ -131,6 +131,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 50 # Fetch last 50 commits for commit diff functionality
 
       - name: Set project ID
         id: project
