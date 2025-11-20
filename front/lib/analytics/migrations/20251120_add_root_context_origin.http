@@ -1,0 +1,9 @@
+PUT /front.agent_message_analytics_2/_mapping
+{
+  "properties": {
+    "root_context_origin": {
+      "type": "keyword"
+    }
+  }
+}
+

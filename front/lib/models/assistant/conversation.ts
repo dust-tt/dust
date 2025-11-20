@@ -523,6 +523,7 @@ export class Message extends WorkspaceAwareModel<Message> {
   declare reactions?: NonAttribute<MessageReaction[]>;
 
   declare conversation?: NonAttribute<ConversationModel>;
+  declare parent?: NonAttribute<Message>;
 }
 
 Message.init(
@@ -647,6 +648,7 @@ Message.belongsTo(AgentMessage, {
 });
 
 Message.belongsTo(Message, {
+  as: "parent",
   foreignKey: { name: "parentId", allowNull: true },
 });
 ContentFragmentModel.hasOne(Message, {

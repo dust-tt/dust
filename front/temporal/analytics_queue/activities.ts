@@ -29,6 +29,39 @@ import type {
   AgentMessageAnalyticsToolUsed,
 } from "@app/types/assistant/analytics";
 
+async function getRootContextOrigin(
+  userMessage: UserMessage
+): Promise<UserMessageOrigin | null> {
+  const originAgentMessageId = userMessage.userContextOriginMessageId;
+  if (originAgentMessageId) {
+    const originAgentMessageRow = await Message.findOne({
+      where: {
+        sId: originAgentMessageId,
+        workspaceId: userMessage.workspaceId,
+      },
+      include: [
+        {
+          model: Message,
+          as: "parent",
+          required: true,
+          include: [
+            {
+              model: UserMessage,
+              as: "userMessage",
+              required: true,
+            },
+          ],
+        },
+      ],
+    });
+    if (originAgentMessageRow?.parent?.userMessage) {
+      return getRootContextOrigin(originAgentMessageRow.parent.userMessage);
+    }
+  }
+
+  return userMessage.userContextOrigin;
+}
+
 export async function storeAgentAnalyticsActivity(
   authType: AuthenticatorType,
   {
@@ -105,12 +138,16 @@ export async function storeAgentAnalyticsActivity(
     throw new Error("User message not found");
   }
 
+  const rootContextOrigin: UserMessageOrigin | null =
+    await getRootContextOrigin(userUserMessageRow);
+
   await storeAgentAnalytics(auth, {
     agentMessageRow,
     agentAgentMessageRow,
     userModel: userUserMessageRow.user ?? null,
     conversationRow,
     contextOrigin: userUserMessageRow.userContextOrigin,
+    rootContextOrigin,
   });
 }
 
@@ -125,6 +162,7 @@ export async function storeAgentAnalytics(
     userModel: UserModel | null;
     conversationRow: ConversationModel;
     contextOrigin: UserMessageOrigin | null;
+    rootContextOrigin: UserMessageOrigin | null;
   }
 ): Promise<void> {
   const {
@@ -133,6 +171,7 @@ export async function storeAgentAnalytics(
     userModel,
     conversationRow,
     contextOrigin,
+    rootContextOrigin,
   } = params;
   // Only index agent messages if there are no blocked actions awaiting approval.
   const actions = await AgentMCPActionResource.listByAgentMessageIds(auth, [
@@ -166,6 +205,7 @@ export async function storeAgentAnalytics(
     agent_version: agentAgentMessageRow.agentConfigurationVersion.toString(),
     conversation_id: conversationRow.sId,
     context_origin: contextOrigin,
+    root_context_origin: rootContextOrigin,
     latency_ms: agentAgentMessageRow.modelInteractionDurationMs ?? 0,
     message_id: agentMessageRow.sId,
     status: agentAgentMessageRow.status,
@@ -177,7 +217,7 @@ export async function storeAgentAnalytics(
     feedbacks,
     version: agentMessageRow.version.toString(),
     auth_method: auth.authMethod(),
-    api_key_name: apiKey?.name,
+    api_key_name: apiKey?.name ?? undefined,
   };
 
   await storeToElasticsearch(document);
