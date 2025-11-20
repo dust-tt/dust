@@ -5,6 +5,8 @@ import type { MessageMetricsPoint } from "@app/lib/api/assistant/observability/m
 import { fetchMessageMetrics } from "@app/lib/api/assistant/observability/messages_metrics";
 import type { AgentOverview } from "@app/lib/api/assistant/observability/overview";
 import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
+import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
+import { fetchVersionMarkers } from "@app/lib/api/assistant/observability/version_markers";
 import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types";
 import { Err, GPT_4_1_MINI_MODEL_ID, Ok } from "@app/types";
@@ -85,8 +87,18 @@ export async function generateAgentObservabilitySummary({
     );
   }
 
+  const versionMarkersResult = await fetchVersionMarkers(baseQuery);
+  if (versionMarkersResult.isErr()) {
+    return new Err(
+      new Error(
+        `Failed to retrieve version markers for summary: ${versionMarkersResult.error.message}`
+      )
+    );
+  }
+
   const overview = overviewResult.value;
   const points = usageMetricsResult.value;
+  const versionMarkers: AgentVersionMarker[] = versionMarkersResult.value;
 
   if (!hasAnyActivity(overview, points)) {
     return new Ok({
@@ -99,6 +111,7 @@ export async function generateAgentObservabilitySummary({
     days,
     agentName,
     overview,
+    versionMarkers,
     usage: points.map((p) => ({
       timestamp: p.timestamp,
       conversations: p.conversations,
