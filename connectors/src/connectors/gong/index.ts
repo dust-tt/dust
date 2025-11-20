@@ -29,7 +29,7 @@ import {
   deleteSchedule,
   pauseSchedule,
   scheduleExists,
-  triggerSchedule,
+  unpauseAndTriggerSchedule,
 } from "@connectors/lib/temporal_schedules";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -233,7 +233,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
         return new Err(creationRes.error);
       }
     } else {
-      const result = await triggerSchedule({
+      const result = await unpauseAndTriggerSchedule({
         connector,
         scheduleId,
       });
@@ -265,7 +265,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
-    const result = await triggerSchedule({
+    const result = await unpauseAndTriggerSchedule({
       connector,
       scheduleId: makeGongSyncScheduleId(connector),
     });
