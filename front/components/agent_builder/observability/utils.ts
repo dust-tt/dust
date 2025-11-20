@@ -1,5 +1,4 @@
 import {
-  isUserMessageOrigin,
   OTHER_TOOLS_LABEL,
   TOOL_COLORS,
   USER_MESSAGE_ORIGIN_LABELS,
@@ -16,13 +15,37 @@ export type ValuesPayload = { values: Record<string, number> };
 
 export type SourceBucket = { origin: string; count: number };
 
-export function getToolColor(toolName: string, topTools: string[]): string {
+function addPrefixToColor(color: string, prefix: "text" | "bg"): string {
+  return `${prefix}-${color.replace("dark:", `dark:${prefix}-`)}`;
+}
+
+export function isUserMessageOrigin(
+  origin?: string | null
+): origin is UserMessageOrigin {
+  return !!origin && origin in USER_MESSAGE_ORIGIN_LABELS;
+}
+
+export function getSourceColor(
+  source: UserMessageOrigin,
+  prefix: "text" | "bg"
+) {
+  return addPrefixToColor(USER_MESSAGE_ORIGIN_LABELS[source].color, prefix);
+}
+
+export function getToolColor(
+  toolName: string,
+  topTools: string[],
+  prefix: "text" | "bg"
+): string {
   if (toolName === OTHER_TOOLS_LABEL) {
-    return "text-blue-300 dark:text-blue-300-night";
+    return addPrefixToColor("blue-300", prefix);
   }
 
   const idx = topTools.indexOf(toolName);
-  return TOOL_COLORS[(idx >= 0 ? idx : 0) % TOOL_COLORS.length];
+  return addPrefixToColor(
+    TOOL_COLORS[(idx >= 0 ? idx : 0) % TOOL_COLORS.length],
+    prefix
+  );
 }
 
 export function buildSourceChartData(

@@ -29,13 +29,7 @@ export const OPENAI_MODEL_FAMILIES = [
 ] as const;
 export type OpenAIModelFamily = (typeof OPENAI_MODEL_FAMILIES)[number];
 
-export const OPENAI_MODEL_FAMILY_CONFIGS: Record<
-  OpenAIModelFamily,
-  {
-    modelIds: ModelIdType[];
-    overwrites: Partial<LLMParameters>;
-  }
-> = {
+export const OPENAI_MODEL_FAMILY_CONFIGS = {
   o3: {
     modelIds: [O3_MODEL_ID],
     overwrites: { temperature: null },
@@ -70,7 +64,13 @@ export const OPENAI_MODEL_FAMILY_CONFIGS: Record<
     modelIds: [GPT_3_5_TURBO_MODEL_ID],
     overwrites: { reasoningEffort: null },
   },
-} as const;
+} as const satisfies Record<
+  OpenAIModelFamily,
+  {
+    modelIds: ModelIdType[];
+    overwrites: Partial<LLMParameters>;
+  }
+>;
 
 export type OpenAIWhitelistedModelId = {
   [K in OpenAIModelFamily]: (typeof OPENAI_MODEL_FAMILY_CONFIGS)[K]["modelIds"][number];
@@ -89,7 +89,7 @@ export function getOpenAIModelFamilyFromModelId(
   modelId: OpenAIWhitelistedModelId
 ): OpenAIModelFamily {
   const family = OPENAI_MODEL_FAMILIES.find((family) =>
-    OPENAI_MODEL_FAMILY_CONFIGS[family].modelIds.includes(modelId)
+    new Set(OPENAI_MODEL_FAMILY_CONFIGS[family].modelIds).has(modelId)
   );
   if (!family) {
     throw new Error(

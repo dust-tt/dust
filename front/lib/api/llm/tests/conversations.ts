@@ -307,7 +307,6 @@ export const runConversation = async (
           break;
         case "reasoning_generated":
           fullReasoning = event.content.text;
-          const { clientId: _, modelId: __, ...otherMetadata } = event.metadata;
           conversationHistory.push({
             role: "assistant",
             name: "Assistant",
@@ -316,7 +315,9 @@ export const runConversation = async (
                 type: "reasoning",
                 value: {
                   reasoning: event.content.text,
-                  metadata: JSON.stringify(otherMetadata),
+                  metadata: JSON.stringify({
+                    encrypted_content: event.metadata.encrypted_content,
+                  }),
                   tokens: 12,
                   provider: config.provider,
                 },
@@ -331,6 +332,9 @@ export const runConversation = async (
         case "error":
           throw new Error(`LLM Error: ${event.content.message}`);
         case "tool_call":
+          const metadata = event.metadata.thoughtSignature
+            ? { thoughtSignature: event.metadata.thoughtSignature }
+            : undefined;
           toolCalls.push({
             name: event.content.name,
             arguments: event.content.arguments,
@@ -346,6 +350,7 @@ export const runConversation = async (
                   id: toolCallId.toString().padStart(9, "0"),
                   name: event.content.name,
                   arguments: JSON.stringify(event.content.arguments),
+                  metadata,
                 },
               },
             ],

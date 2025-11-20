@@ -317,3 +317,22 @@ export function getDelimitersConfiguration({
       CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION.incompleteDelimiterPatterns,
   };
 }
+
+// For UI purpose we want to extract CoT possibly generated with previous reasoning configuration
+export function getCoTDelimitersConfiguration({
+  agentConfiguration,
+}: {
+  agentConfiguration: LightAgentConfigurationType;
+}): DelimitersConfiguration {
+  const model = getSupportedModelConfig(agentConfiguration.model);
+
+  if (DEEPSEEK_MODELS.includes(model.modelId)) {
+    return DEEPSEEK_CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION;
+  }
+
+  return {
+    delimiters: CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION.delimiters,
+    incompleteDelimiterPatterns:
+      CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION.incompleteDelimiterPatterns,
+  };
+}

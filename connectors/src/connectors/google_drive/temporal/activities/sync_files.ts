@@ -118,7 +118,7 @@ export async function syncFiles(
     includeLabels: labels.map((l) => l.id).join(","),
     fields: `nextPageToken, files(${FILE_ATTRIBUTES_TO_FETCH.join(",")})`,
     q: `'${driveFolder.id}' in parents and (${mimeTypesSearchString}) and trashed=false`,
-    pageToken: nextPageToken,
+    ...(nextPageToken ? { pageToken: nextPageToken } : {}),
   });
   if (res.status !== 200) {
     throw new Error(

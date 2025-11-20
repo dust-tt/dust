@@ -7,10 +7,8 @@ import { MAX_RESOURCE_CONTENT_SIZE } from "@app/lib/actions/action_output_limits
 import {
   isBlobResource,
   isRunAgentQueryResourceType,
-  isSearchQueryResourceType,
   isToolGeneratedFile,
   isToolMarkerResourceType,
-  isWebsearchQueryResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   getAttachmentFromToolOutput,
@@ -103,8 +101,6 @@ export function rewriteContentForModel(
 
   if (
     isToolMarkerResourceType(content) ||
-    isSearchQueryResourceType(content) ||
-    isWebsearchQueryResourceType(content) ||
     isRunAgentQueryResourceType(content)
   ) {
     return null;

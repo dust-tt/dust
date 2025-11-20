@@ -11,7 +11,7 @@ import type { ReactNode } from "react";
 import { createContext, useEffect, useRef, useState } from "react";
 
 export type ConfirmDataType = {
-  title: string;
+  title: string | ReactNode;
   message: string | ReactNode;
   validateLabel?: string;
   validateVariant?: "primary" | "warning";

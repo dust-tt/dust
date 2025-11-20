@@ -2,7 +2,10 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { getZendeskClient } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/client";
+import {
+  getUniqueCustomFieldIds,
+  getZendeskClient,
+} from "@app/lib/actions/mcp_internal_actions/servers/zendesk/client";
 import {
   renderTicket,
   renderTicketMetrics,
@@ -63,7 +66,11 @@ function createServer(
         }
 
         const ticket = ticketResult.value;
-        let ticketText = renderTicket(ticket);
+
+        const fieldIds = getUniqueCustomFieldIds(ticket);
+        const ticketFieldsResult = await client.getTicketFieldsByIds(fieldIds);
+
+        let ticketText = renderTicket(ticket, ticketFieldsResult);
 
         if (includeMetrics) {
           const metricsResult = await client.getTicketMetrics(ticketId);
@@ -99,9 +106,9 @@ function createServer(
       query: z
         .string()
         .describe(
-          "The search query using Zendesk query syntax. Examples: 'status:open', 'priority:high " +
+          "The search query using Zendesk query syntax. Examples: 'status:open', 'priority:high' " +
             "status:pending', 'assignee:123', 'tags:bug tags:critical'." +
-            "Do not include 'type:ticket'  as it is automatically added."
+            "Do not include 'type:ticket' as it is automatically added."
         ),
       sortBy: z
         .enum(["updated_at", "created_at", "priority", "status", "ticket_type"])
@@ -146,9 +153,12 @@ function createServer(
           ]);
         }
 
+        const fieldIds = getUniqueCustomFieldIds(results);
+        const ticketFieldsResult = await client.getTicketFieldsByIds(fieldIds);
+
         const ticketsText = results
           .map((ticket) => {
-            return ["---", renderTicket(ticket)].join("\n");
+            return ["---", renderTicket(ticket, ticketFieldsResult)].join("\n");
           })
           .join("\n\n");
 

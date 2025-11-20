@@ -1,6 +1,9 @@
 import { vi } from "vitest";
 
-import type { AnthropicModelFamily } from "@app/lib/api/llm/clients/anthropic/types";
+import type {
+  AnthropicModelFamily,
+  AnthropicWhitelistedModelId,
+} from "@app/lib/api/llm/clients/anthropic/types";
 import {
   ANTHROPIC_WHITELISTED_MODEL_IDS,
   getAnthropicModelFamilyFromModelId,
@@ -76,7 +79,7 @@ class AnthropicTestSuite extends LLMClientTestSuite {
   protected provider = "anthropic" as const;
   protected models = ANTHROPIC_WHITELISTED_MODEL_IDS;
 
-  protected getTestConfig(modelId: ModelIdType): TestConfig[] {
+  protected getTestConfig(modelId: AnthropicWhitelistedModelId): TestConfig[] {
     const family = getAnthropicModelFamilyFromModelId(modelId);
     return ANTHROPIC_MODEL_FAMILY_TO_TEST_CONFIGS[family].map(
       (configParams) => ({

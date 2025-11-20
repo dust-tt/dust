@@ -7,7 +7,6 @@ import {
   finalizeUriForProvider,
   getStringFromQuery,
 } from "@app/lib/api/oauth/utils";
-import { config as regionsConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
@@ -84,6 +83,7 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
             "channels:read",
             "chat:write",
             "files:read",
+            "files:write",
             "groups:history",
             "groups:read",
             "im:history",
@@ -98,15 +98,6 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
           // TODO: This is temporary until our Slack app scope is approved.
           if (extraConfig?.slack_bot_mcp_feature_flag) {
             scopes.push("reactions:read", "reactions:write");
-          }
-
-          // TODO: This is temporary until our Slack app scope is approved.
-          const currentRegion = regionsConfig.getCurrentRegion();
-          if (
-            currentRegion === "europe-west1" &&
-            extraConfig?.slack_files_write_scope_feature_flag === "true"
-          ) {
-            scopes.push("files:write");
           }
 
           return {
@@ -241,10 +232,6 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
       const config = { ...extraConfig };
       if (feature_flags.includes("slack_bot_mcp")) {
         config.slack_bot_mcp_feature_flag = "true";
-      }
-      // TODO: This is temporary until our Slack app scope is approved.
-      if (feature_flags.includes("slack_files_write_scope")) {
-        config.slack_files_write_scope_feature_flag = "true";
       }
       return config;
     }
