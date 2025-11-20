@@ -7,10 +7,10 @@ import { useEffect, useMemo } from "react";
 
 import { cleanupPastedHTML } from "@app/components/assistant/conversation/input_bar/editor/cleanupPastedHTML";
 import { DataSourceLinkExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/DataSourceLinkExtension";
+import { KeyboardShortcutsExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/KeyboardShortcutsExtension";
 import { MarkdownStyleExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MarkdownStyleExtension";
 import { MentionExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionExtension";
 import { MentionStorageExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionStorageExtension";
-import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
 import { PastedAttachmentExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/PastedAttachmentExtension";
 import { URLDetectionExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/URLDetectionExtension";
 import { createMarkdownSerializer } from "@app/components/assistant/conversation/input_bar/editor/markdownSerializer";
@@ -216,9 +216,9 @@ const useCustomEditor = ({
   onInlineText,
 }: CustomEditorProps) => {
   const extensions = [
+    KeyboardShortcutsExtension,
     StarterKit.configure({
-      hardBreak: false, // Disable the built-in Shift+Enter.
-      paragraph: false,
+      hardBreak: false, // Disable the built-in Shift+Enter. We handle it ourselves in the keymap extension
       strike: false,
     }),
     MentionStorageExtension,
@@ -239,7 +239,6 @@ const useCustomEditor = ({
         "first:before:text-gray-400 first:before:float-left first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:h-0",
     }),
     MarkdownStyleExtension,
-    ParagraphExtension,
     PastedAttachmentExtension.configure({
       onInlineText,
     }),

@@ -19,7 +19,7 @@ import { HeadingExtension } from "@app/components/agent_builder/instructions/ext
 import { InstructionBlockExtension } from "@app/components/agent_builder/instructions/extensions/InstructionBlockExtension";
 import { InstructionTipsPopover } from "@app/components/agent_builder/instructions/InstructionsTipsPopover";
 import { useBlockInsertDropdown } from "@app/components/agent_builder/instructions/useBlockInsertDropdown";
-import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
+import { KeyboardShortcutsExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/KeyboardShortcutsExtension";
 import {
   plainTextFromTipTapContent,
   tipTapContentFromPlainText,
@@ -80,7 +80,6 @@ export function AgentBuilderInstructionsEditor({
   const extensions = useMemo(() => {
     return [
       StarterKit.configure({
-        paragraph: false, // We use custom ParagraphExtension
         heading: false,
         bulletList: false,
         orderedList: false,
@@ -99,7 +98,7 @@ export function AgentBuilderInstructionsEditor({
           },
         },
       }),
-      ParagraphExtension,
+      KeyboardShortcutsExtension,
       InstructionBlockExtension,
       AgentInstructionDiffExtension,
       BlockInsertExtension.configure({
