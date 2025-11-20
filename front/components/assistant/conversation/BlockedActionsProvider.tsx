@@ -21,7 +21,6 @@ import { useValidateAction } from "@app/hooks/useValidateAction";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { useBlockedActions } from "@app/lib/swr/blocked_actions";
-import { useConversations } from "@app/lib/swr/conversations";
 import type {
   ConversationWithoutContentType,
   LightWorkspaceType,
@@ -177,13 +176,6 @@ export function BlockedActionsProvider({
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const { mutateConversations } = useConversations({
-    workspaceId: owner.sId,
-    options: {
-      disabled: true,
-    },
-  });
-
   const { validateAction, isValidating } = useValidateAction({
     owner,
     conversation,
@@ -230,25 +222,6 @@ export function BlockedActionsProvider({
       // Close dialog if no more blocked actions
       setIsDialogOpen(false);
       setCurrentValidationIndex(0);
-
-      // This is to update the unread inbox state in sidebar menu.
-      // We only show the conversation in unread inbox if actionRequired is true (and this happens only when you come back to a conversation
-      // since we don't update this value on frontend side), so we don't have to update the cache if it's not in the unread inbox.
-      if (conversation?.actionRequired === true) {
-        void mutateConversations(
-          (currentData) => {
-            if (!currentData?.conversations) {
-              return currentData;
-            }
-            return {
-              conversations: currentData.conversations.map((c) =>
-                c.sId === conversationId ? { ...c, actionRequired: false } : c
-              ),
-            };
-          },
-          { revalidate: false }
-        );
-      }
     }
   };
 
