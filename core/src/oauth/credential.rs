@@ -210,7 +210,7 @@ impl Credential {
                 vec!["client_id", "client_secret"]
             }
             CredentialProvider::Slack => {
-                vec!["client_id", "client_secret", "signing_secret"]
+                vec!["client_id", "client_secret"]
             }
             CredentialProvider::Microsoft => {
                 vec!["client_id", "client_secret"]
