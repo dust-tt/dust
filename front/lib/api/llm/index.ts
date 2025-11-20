@@ -9,7 +9,7 @@ import { isMistralWhitelistedModelId } from "@app/lib/api/llm/clients/mistral/ty
 import { NoopLLM } from "@app/lib/api/llm/clients/noop";
 import { isNoopWhitelistedModelId } from "@app/lib/api/llm/clients/noop/types";
 import { OpenAIResponsesLLM } from "@app/lib/api/llm/clients/openai";
-import { isOpenAIResponsesWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
+import { isOpenAIResponsesWhitelistedModelId } from "@app/lib/api/llm/clients/openai/utils";
 import { XaiLLM } from "@app/lib/api/llm/clients/xai";
 import { isXaiWhitelistedModelId } from "@app/lib/api/llm/clients/xai/types";
 import type { LLM } from "@app/lib/api/llm/llm";
