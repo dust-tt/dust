@@ -259,7 +259,6 @@ export function CreateMCPServerDialog({
       }
       server = createRes.value.server;
 
-      // Save manual auth credentials if this server supports manual auth
       if (
         supportsBearerTokenConfiguration(internalMCPServer) &&
         (sharedSecret ?? customHeaders.length > 0)

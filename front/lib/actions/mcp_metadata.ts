@@ -40,7 +40,7 @@ import type {
 import type { Authenticator } from "@app/lib/auth";
 import { getUntrustedEgressAgent } from "@app/lib/egress";
 import { isWorkspaceUsingStaticIP } from "@app/lib/misc";
-import { InternalMCPServerCredentialResource } from "@app/lib/resources/internal_mcp_server_credentials_resource";
+import { InternalMCPServerCredentialModel } from "@app/lib/models/assistant/actions/internal_mcp_server_credentials";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import logger from "@app/logger/logger";
 import type { MCPOAuthUseCase, OAuthProvider, Result } from "@app/types";
@@ -184,10 +184,12 @@ export const connectToMCPServer = async (
             let bearerTokenApplied = false;
             const bearerTokenCredentials =
               doesInternalMCPServerSupportBearerToken(params.mcpServerId)
-                ? await InternalMCPServerCredentialResource.fetchByInternalMCPServerId(
-                    auth,
-                    params.mcpServerId
-                  )
+                ? await InternalMCPServerCredentialModel.findOne({
+                    where: {
+                      workspaceId: auth.getNonNullableWorkspace().id,
+                      internalMCPServerId: params.mcpServerId,
+                    },
+                  })
                 : null;
 
             if (
