@@ -54,7 +54,7 @@ export function ToolUsageChart({
       topTools.map((t) => ({
         key: t,
         label: t,
-        colorClassName: getToolColor(t, topTools),
+        colorClassName: getToolColor(t, topTools, "text"),
       })),
     [topTools]
   );
@@ -150,7 +150,7 @@ export function ToolUsageChart({
             dataKey={(row: ChartDatum) => row.values[toolName]?.percent ?? 0}
             stackId="a"
             fill="currentColor"
-            className={getToolColor(toolName, topTools)}
+            className={getToolColor(toolName, topTools, "text")}
             name={toolName}
             shape={
               <RoundedTopBarShape toolName={toolName} stackOrder={topTools} />

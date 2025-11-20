@@ -225,6 +225,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable setup flow of new tools in JIT tool dropdown",
     stage: "dust_only",
   },
+  programmatic_usage_metrics: {
+    description: "Enable programmatic usage metrics",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
