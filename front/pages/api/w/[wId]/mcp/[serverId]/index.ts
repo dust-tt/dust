@@ -10,7 +10,6 @@ import {
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import { InternalMCPServerCredentialResource } from "@app/lib/resources/internal_mcp_server_credentials_resource";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -49,7 +48,7 @@ export type GetMCPServerResponseBody = {
 
 export type PatchMCPServerResponseBody = {
   success: true;
-  server?: MCPServerType;
+  server: MCPServerType;
 };
 
 export type DeleteMCPServerResponseBody = {
@@ -338,14 +337,10 @@ async function handleInternalPatch(
           : null
         : undefined;
 
-    const upsertResult = await InternalMCPServerCredentialResource.upsert(
-      auth,
-      {
-        internalMCPServerId: server.id,
-        sharedSecret: body.sharedSecret,
-        customHeaders: recordOrNull,
-      }
-    );
+    const upsertResult = await server.upsertCredentials(auth, {
+      sharedSecret: body.sharedSecret,
+      customHeaders: recordOrNull,
+    });
     if (upsertResult.isErr()) {
       if (upsertResult.error.code === "unauthorized") {
         return respondUnauthorizedUpdate(req, res);
@@ -354,7 +349,7 @@ async function handleInternalPatch(
     }
   }
 
-  return res.status(200).json({ success: true });
+  return res.status(200).json({ success: true, server: server.toJSON() });
 }
 
 function respondUnauthorizedUpdate(

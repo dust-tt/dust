@@ -123,27 +123,22 @@ export function formatTopicsAsText(topics: SlabTopic[]): string {
     return "No topics found.";
   }
 
-  const topicMap = new Map<string, SlabTopic & { children: SlabTopic[] }>();
-  const rootTopics: Array<SlabTopic & { children: SlabTopic[] }> = [];
-
+  const childrenByParentId = new Map<string, SlabTopic[]>();
   topics.forEach((topic) => {
-    topicMap.set(topic.id, { ...topic, children: [] });
+    if (topic.parentId) {
+      const children = childrenByParentId.get(topic.parentId) ?? [];
+      childrenByParentId.set(topic.parentId, [...children, topic]);
+    }
   });
 
-  topicMap.forEach((topic) => {
-    if (topic.parentId) {
-      const parent = topicMap.get(topic.parentId);
-      if (parent) {
-        const updatedParent = {
-          ...parent,
-          children: [...(parent.children ?? []), topic],
-        };
-        topicMap.set(topic.parentId, updatedParent);
-        return;
-      }
-    }
-    rootTopics.push(topic);
+  const buildTopic = (
+    topic: SlabTopic
+  ): SlabTopic & { children: SlabTopic[] } => ({
+    ...topic,
+    children: (childrenByParentId.get(topic.id) ?? []).map(buildTopic),
   });
+
+  const rootTopics = topics.filter((topic) => !topic.parentId).map(buildTopic);
 
   const renderTopic = (
     topic: SlabTopic & { children?: SlabTopic[] },
