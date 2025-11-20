@@ -36,7 +36,7 @@ interface ProgrammaticCostChartProps {
   workspaceId: string;
 }
 
-type GroupByOptionValue = "global" | "agent" | "origin";
+type GroupByOptionValue = "global" | "agent" | "origin" | "apiKey";
 
 type ChartDataPoint = {
   date: string;
@@ -53,6 +53,7 @@ const GROUP_BY_OPTIONS: {
   { value: "global", label: "Global" },
   { value: "agent", label: "By Agent" },
   { value: "origin", label: "By Source" },
+  { value: "apiKey", label: "By Api Key" },
 ];
 
 function getColorClassName(
@@ -62,7 +63,7 @@ function getColorClassName(
 ): string {
   if (groupBy === "origin" && isUserMessageOrigin(groupName)) {
     return getSourceColor(groupName, "text");
-  } else if (groupBy === "agent") {
+  } else if (groupBy === "agent" || groupBy === "apiKey") {
     return getToolColor(groupName, groups, "text");
   } else if (!groupBy) {
     return COST_PALETTE.costCents;
