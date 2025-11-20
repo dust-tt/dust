@@ -94,49 +94,52 @@ const getConversationDetails = async (
       payload.workspaceId
     );
 
-    const conversation = await ConversationResource.fetchById(
+    const conversationRes = await ConversationResource.fetchById(
       auth,
       payload.conversationId
     );
 
-    if (conversation) {
-      recipentFullname = auth.getNonNullableUser().fullName();
-      subject = conversation.title ?? "Dust conversation";
-      isFromTrigger = !!conversation.triggerSId;
+    if (conversationRes.isOk()) {
+      const conversation = conversationRes.value;
+      if (conversation) {
+        recipentFullname = auth.getNonNullableUser().fullName();
+        subject = conversation.title ?? "Dust conversation";
+        isFromTrigger = !!conversation.triggerSId;
 
-      // Retrieve the message that triggered the notification
-      const messageRes = await conversation.getMessageById(
-        auth,
-        payload.messageId
-      );
-
-      if (messageRes.isOk()) {
-        const rendered = await batchRenderMessages(
+        // Retrieve the message that triggered the notification
+        const messageRes = await conversation.getMessageById(
           auth,
-          conversation,
-          [messageRes.value],
-          "light"
+          payload.messageId
         );
 
-        if (rendered.isOk() && rendered.value.length === 1) {
-          const lightMessage = rendered.value[0];
-          if (isContentFragmentType(lightMessage)) {
-            // Do nothing. Content fragments are not displayed in the notification.
-          } else if (isUserMessageType(lightMessage)) {
-            author = lightMessage.user?.fullName ?? "Someone else";
-            avatarUrl = lightMessage.user?.image ?? undefined;
-            previewText = lightMessage.content;
-          } else {
-            author = lightMessage.configuration.name
-              ? `@${lightMessage.configuration.name}`
-              : "An agent";
-            avatarUrl = lightMessage.configuration.pictureUrl ?? undefined;
-            previewText = lightMessage.content ?? "No content";
+        if (messageRes.isOk()) {
+          const rendered = await batchRenderMessages(
+            auth,
+            conversation,
+            [messageRes.value],
+            "light"
+          );
+
+          if (rendered.isOk() && rendered.value.length === 1) {
+            const lightMessage = rendered.value[0];
+            if (isContentFragmentType(lightMessage)) {
+              // Do nothing. Content fragments are not displayed in the notification.
+            } else if (isUserMessageType(lightMessage)) {
+              author = lightMessage.user?.fullName ?? "Someone else";
+              avatarUrl = lightMessage.user?.image ?? undefined;
+              previewText = lightMessage.content;
+            } else {
+              author = lightMessage.configuration.name
+                ? `@${lightMessage.configuration.name}`
+                : "An agent";
+              avatarUrl = lightMessage.configuration.pictureUrl ?? undefined;
+              previewText = lightMessage.content ?? "No content";
+            }
+            previewText =
+              previewText.length > 1024
+                ? previewText.slice(0, 1024) + "..."
+                : previewText;
           }
-          previewText =
-            previewText.length > 1024
-              ? previewText.slice(0, 1024) + "..."
-              : previewText;
         }
       }
     }
@@ -160,14 +163,16 @@ const shouldSkipConversation = async (
       payload.workspaceId
     );
 
-    const conversation = await ConversationResource.fetchById(
+    const conversationRes = await ConversationResource.fetchById(
       auth,
       payload.conversationId
     );
 
-    if (!conversation) {
+    if (conversationRes.isErr() || !conversationRes.value) {
       return true;
     }
+
+    const conversation = conversationRes.value;
 
     const { actionRequired, unread } =
       await ConversationResource.getActionRequiredAndUnreadForUser(

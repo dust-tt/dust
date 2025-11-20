@@ -122,11 +122,11 @@ async function handler(
     isConversationFileUseCase(file.useCase) &&
     file.useCaseMetadata?.conversationId
   ) {
-    const conversation = await ConversationResource.fetchById(
+    const conversationRes = await ConversationResource.fetchById(
       auth,
       file.useCaseMetadata.conversationId
     );
-    if (!conversation) {
+    if (conversationRes.isErr() || !conversationRes.value) {
       return apiError(req, res, {
         status_code: 404,
         api_error: {

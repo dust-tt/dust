@@ -97,10 +97,12 @@ describe("FileResource", () => {
       assert(token, "Share token should be defined");
 
       // Soft-delete the conversation.
-      const conversationResource = await ConversationResource.fetchById(
+      const conversationRes = await ConversationResource.fetchById(
         auth,
         conversation.sId
       );
+      assert(conversationRes.isOk(), "Failed to fetch conversation");
+      const conversationResource = conversationRes.value;
       assert(conversationResource, "Conversation resource should be defined");
       await conversationResource.updateVisibilityToDeleted();
 
