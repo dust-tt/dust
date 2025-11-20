@@ -50,8 +50,6 @@ export function getWorkflowIdsForConnector(
         getNotionWorkflowId(connectorId, "garbage-collector"),
         getNotionWorkflowId(connectorId, "process-database-upsert-queue"),
       ];
-    case "intercom":
-      return [getIntercomSyncWorkflowId(connectorId)];
     case "zendesk":
       return [
         getZendeskSyncWorkflowId(connectorId),
