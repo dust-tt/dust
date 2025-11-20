@@ -180,7 +180,7 @@ runs:
         echo "📋 Getting commit diff: $CURRENT_TAG → $TARGET_TAG"
         
         # Get commits between versions (handle case where CURRENT_TAG might not exist in git)
-        if git rev-parse --verify "$CURRENT_TAG" >/dev/null 2>&1; then
+        if git cat-file -e "$CURRENT_TAG" 2>/dev/null; then
           COMMITS_RAW=$(git log --oneline --pretty=format:"%h (%an)" $CURRENT_TAG..$TARGET_TAG 2>/dev/null | head -10)
         else
           echo "Previous tag $CURRENT_TAG not found in git history, showing recent commits"
