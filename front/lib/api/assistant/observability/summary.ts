@@ -125,9 +125,11 @@ export async function generateAgentObservabilitySummary({
 
   const prompt =
     "You are an analytics assistant. " +
-    `You are given time-series metrics about how an AI agent called '${agentName}' is used over a given time range. ` +
+    `You are given time-series metrics about how an AI agent called '${agentName}' is used over a given time range, ` +
+    "including version markers that indicate when new versions of the agent were released. " +
     "Write a short natural language summary (2-3 short sentences) describing the most important trends, " +
     "including notable spikes or drops, usage changes, latency, and error-rate patterns. " +
+    "Explicitly relate these changes to specific versions when the data suggests a clear improvement or regression after a version marker. " +
     "Focus on the big picture and unusual behavior rather than listing every number. " +
     "If the data is noisy or inconclusive, say so explicitly.";
 
