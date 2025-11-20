@@ -71,7 +71,13 @@ export async function createSchedule({
 
   try {
     const scheduleHandle = await client.schedule.create({
-      action,
+      action: {
+        ...action,
+        searchAttributes: {
+          ...action.searchAttributes,
+          connectorId: connector ? [connector?.id] : undefined,
+        },
+      },
       scheduleId,
       policies,
       spec,
