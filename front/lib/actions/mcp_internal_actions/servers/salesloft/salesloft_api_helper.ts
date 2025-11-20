@@ -104,6 +104,10 @@ interface SalesloftApiResponse<T> {
   };
 }
 
+interface SalesloftSingleItemResponse<T> {
+  data: T;
+}
+
 async function handleSalesloftError(
   response: Response,
   errorText: string
@@ -154,6 +158,33 @@ async function makeSalesloftRequest<T>(
       url.searchParams.append(key, String(value));
     });
   }
+
+  const response = await fetch(url.toString(), {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    await handleSalesloftError(response, errorText);
+  }
+
+  const jsonResponse = await response.json();
+
+  if (!jsonResponse || typeof jsonResponse !== "object") {
+    throw new Error("Invalid response format from Salesloft API");
+  }
+
+  return jsonResponse;
+}
+
+async function makeSalesloftSingleItemRequest<T>(
+  accessToken: string,
+  endpoint: string
+): Promise<SalesloftSingleItemResponse<T>> {
+  const url = new URL(`${SALESLOFT_API_BASE_URL}${endpoint}`);
 
   const response = await fetch(url.toString(), {
     headers: {
@@ -269,13 +300,31 @@ async function getPeopleByIds(
     return new Map();
   }
 
-  const idsParam = personIds.join(",");
-  const people = await getAllPages<SalesloftPerson>(accessToken, "/people", {
-    ids: idsParam,
-  });
+  const people = await concurrentExecutor(
+    personIds,
+    async (personId) => {
+      try {
+        const response = await makeSalesloftSingleItemRequest<SalesloftPerson>(
+          accessToken,
+          `/people/${personId}`
+        );
+        return response.data ?? null;
+      } catch (error) {
+        logger.warn(
+          { personId, error: normalizeError(error) },
+          "Failed to fetch person by ID"
+        );
+        return null;
+      }
+    },
+    { concurrency: 10 }
+  );
 
   const peopleMap = new Map<number, SalesloftPerson>();
   for (const person of people) {
+    if (!person) {
+      continue;
+    }
     peopleMap.set(person.id, {
       id: person.id,
       first_name: person.first_name,
