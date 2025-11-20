@@ -152,7 +152,7 @@ async function handler(
       };
 
       // Fetch all credits for the workspace
-      const credits = await CreditResource.listActive(auth);
+      const credits = await CreditResource.listActive(auth, endOfMonth);
 
       // Calculate credit totals for each timestamp
       const creditTotalsMap = calculateCreditTotalsPerTimestamp(
