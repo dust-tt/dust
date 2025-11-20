@@ -105,7 +105,7 @@ export const NewConversationMessage = React.forwardRef<
           )}
           {...props}
         >
-          <div className="items-center inline-flex gap-2 @sm:hidden">
+          <div className="inline-flex items-center gap-2 @sm:hidden">
             <ConversationMessageAvatar
               avatarUrl={pictureUrl}
               name={name}
@@ -254,7 +254,7 @@ const ConversationMessageTitle = React.forwardRef<
 >(({ name = "", timestamp, infoChip, completionStatus, renderName }) => {
   return (
     <div className="inline-flex w-full justify-between gap-0.5">
-      <div className="items-baseline inline-flex gap-2 text-foreground dark:text-foreground-night">
+      <div className="inline-flex items-baseline gap-2 text-foreground dark:text-foreground-night">
         <span className="heading-sm">{renderName(name)}</span>
         <span className="heading-xs text-muted-foreground dark:text-muted-foreground-night">
           {timestamp}
