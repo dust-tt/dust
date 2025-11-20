@@ -206,8 +206,9 @@ export function ToolsPicker({
     hasFeature,
     isAdmin,
     isDataReady,
-    availableMCPServers,
+    shouldFetchToolsData,
     serverViews,
+    availableMCPServers,
     searchText,
   ]);
 
