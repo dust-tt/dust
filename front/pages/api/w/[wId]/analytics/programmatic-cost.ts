@@ -93,7 +93,8 @@ function calculateCreditTotalsPerTimestamp(
 
 function getDatesInRange(startOfMonth: Date, now: Date): number[] {
   const dates = [];
-  for (let date = startOfMonth; date <= now; date.setDate(date.getDate() + 1)) {
+  const current = new Date(startOfMonth);
+  for (let date = current; date <= now; date.setDate(date.getDate() + 1)) {
     dates.push(date.getTime());
   }
   return dates;
