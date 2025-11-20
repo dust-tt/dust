@@ -63,7 +63,7 @@ jobs:
           exit 1
 
   prepare:
-    needs: [check-branch]
+    needs: [ check-branch ]
     runs-on: ubuntu-latest
     outputs:
       short_sha: ${{ steps.short_sha.outputs.short_sha }}
@@ -78,7 +78,7 @@ jobs:
         run: echo "long_sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
   notify-start:
-    needs: [prepare]
+    needs: [ prepare ]
     runs-on: ubuntu-latest
     outputs:
       thread_ts: ${{ steps.build_message.outputs.thread_ts }}
@@ -122,7 +122,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    needs: [prepare, notify-start, create-matrix]
+    needs: [ prepare, notify-start, create-matrix ]
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -131,8 +131,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-        with:
-          fetch-depth: 50 # Fetch last 50 commits for commit diff functionality
 
       - name: Set project ID
         id: project
@@ -189,7 +187,7 @@ jobs:
           thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"
 
   deploy:
-    needs: [prepare, notify-start, build]
+    needs: [ prepare, notify-start, build ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
