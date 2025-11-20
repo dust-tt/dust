@@ -83,7 +83,9 @@
     "tweetnacl": "^1.0.3",
     "undici": "^6.21.1",
     "uuid": "^9.0.0",
-    "yargs": "^17.7.2"
+    "yargs": "^17.7.2",
+    "zod": "^3.25.76",
+    "zod-validation-error": "^3.5.4"
   },
   "devDependencies": {
     "@types/eslint": "^8.56.10",

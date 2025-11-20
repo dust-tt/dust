@@ -2583,6 +2583,18 @@ export async function clearWorkflowCache({
       workflowId: topLevelWorkflowId,
     },
   });
+  await NotionConnectorPageCacheEntry.destroy({
+    where: {
+      connectorId: connector.id,
+      workflowId: topLevelWorkflowId,
+    },
+  });
+  await NotionConnectorBlockCacheEntry.destroy({
+    where: {
+      connectorId: connector.id,
+      workflowId: topLevelWorkflowId,
+    },
+  });
 }
 
 export async function getDiscoveredResourcesFromCache({
@@ -2600,6 +2612,7 @@ export async function getDiscoveredResourcesFromCache({
   const localLogger = logger.child({
     workspaceId: connector.workspaceId,
     dataSourceId: connector.dataSourceId,
+    connectorId,
   });
 
   localLogger.info(

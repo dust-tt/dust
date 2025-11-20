@@ -683,7 +683,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "show_debug_tools"
   | "slack_bot_mcp"
   | "slack_enhanced_default_agent"
-  | "slack_files_write_scope"
   | "slack_message_splitting"
   | "slack_semantic_search"
   | "slideshow"

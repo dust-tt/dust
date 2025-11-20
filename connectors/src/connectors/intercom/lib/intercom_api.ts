@@ -16,6 +16,7 @@ import logger from "@connectors/logger/logger";
 /**
  * Utility function to call the Intercom API.
  * It centralizes calling the API and handling global errors.
+ * Returns null in case of 404 errors.
  */
 async function queryIntercomAPI({
   accessToken,
@@ -388,6 +389,12 @@ export async function fetchIntercomConversations({
         },
       },
     });
+
+  if (!response || !response.conversations) {
+    // response might be null in case of 404
+    // conversations might not be defined if there is no conversations
+    return { conversations: [], pages: {} };
+  }
 
   return response;
 }
