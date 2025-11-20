@@ -3,6 +3,7 @@ import z from "zod";
 
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import { Authenticator } from "@app/lib/auth";
+import type { NotificationAllowedTags } from "@app/lib/notifications";
 import { renderEmail } from "@app/lib/notifications/email-templates/default";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -262,5 +263,6 @@ export const conversationUnreadWorkflow = workflow(
   },
   {
     payloadSchema: ConversationUnreadPayloadSchema,
+    tags: ["conversations"] as NotificationAllowedTags,
   }
 );

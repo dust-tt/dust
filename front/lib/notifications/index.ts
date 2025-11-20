@@ -5,6 +5,8 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { UserTypeWithWorkspaces } from "@app/types";
 
+export type NotificationAllowedTags = Array<"conversations" | "admin">;
+
 export const getNovuClient = async (): Promise<Novu> => {
   if (!process.env.NOVU_SECRET_KEY) {
     throw new Error("NOVU_SECRET_KEY is not set");
