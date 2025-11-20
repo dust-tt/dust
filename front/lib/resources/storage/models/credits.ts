@@ -3,6 +3,8 @@ import { DataTypes, Op } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { CreditType } from "@app/types/credits";
+import { CREDIT_TYPES } from "@app/types/credits";
 
 /**
  * CreditModel stores consumable monetary credits for programmatic API usage.
@@ -12,9 +14,15 @@ export class CreditModel extends WorkspaceAwareModel<CreditModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
+  declare type: CreditType;
+  // When credit becomes active (null = not yet paid/active).
+  declare startDate: Date | null;
   declare expirationDate: Date | null;
-  declare initialAmount: number; // in cents
+  // Amount in cents (immutable after creation).
+  declare initialAmount: number;
   declare remainingAmount: number; // in cents
+  // Stripe invoice ID or line item ID for idempotency.
+  declare invoiceOrLineItemId: string | null;
 }
 
 CreditModel.init(
@@ -29,6 +37,18 @@ CreditModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
+    type: {
+      type: DataTypes.STRING(16),
+      allowNull: false,
+      validate: {
+        isIn: [CREDIT_TYPES],
+      },
+    },
+    startDate: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
+    },
     expirationDate: {
       type: DataTypes.DATE,
       allowNull: true,
@@ -41,6 +61,11 @@ CreditModel.init(
     remainingAmount: {
       type: DataTypes.INTEGER,
       allowNull: false,
+    },
+    invoiceOrLineItemId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {
@@ -55,6 +80,18 @@ CreditModel.init(
         fields: ["workspaceId", "expirationDate"],
         name: "credits_nonzero_remaining_idx",
         where: { remainingAmount: { [Op.ne]: 0 } },
+      },
+      // Unique constraint on (workspaceId, invoiceOrLineItemId) to prevent duplicate credit purchases
+      {
+        fields: ["invoiceOrLineItemId"],
+        unique: true,
+        name: "credits_invoice_unique_idx",
+        where: { invoiceOrLineItemId: { [Op.ne]: null } },
+      },
+      // Composite index for efficient queries on active credits
+      {
+        fields: ["workspaceId", "startDate", "expirationDate"],
+        name: "credits_workspace_start_expiration_idx",
       },
     ],
   }
