@@ -329,7 +329,7 @@ export class RunResource extends BaseResource<RunModel> {
       providerId: usage.providerId as ModelProviderIdType,
       cachedTokens: usage.cachedTokens,
       cacheCreationTokens: usage.cacheCreationTokens,
-      costCents: usage.costCents,
+      costUsd: usage.costUsd,
     }));
   }
 }
