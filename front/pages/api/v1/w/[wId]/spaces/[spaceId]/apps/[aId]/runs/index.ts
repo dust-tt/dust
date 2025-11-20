@@ -31,6 +31,7 @@ import {
   credentialsFromProviders,
   dustManagedCredentials,
 } from "@app/types";
+import { calculateTokenUsageCostForUsage } from "@app/lib/api/assistant/token_pricing";
 
 export const config = {
   api: {
@@ -74,6 +75,18 @@ function extractUsageFromExecutions(
           const cachedTokens = token_usage.cached_tokens;
           const cacheCreationTokens = token_usage.cache_creation_input_tokens;
 
+          const usageCostUsd = calculateTokenUsageCostForUsage({
+            modelId: block.model_id,
+            promptTokens,
+            completionTokens,
+            cachedTokens: cachedTokens ?? null,
+            cacheCreationTokens: cacheCreationTokens ?? null,
+          });
+
+          // Use ceiling to ensure any non-zero cost is at least 1 cent.
+          const usageCostCents =
+            usageCostUsd > 0 ? Math.ceil(usageCostUsd * 100) : 0;
+
           usages.push({
             providerId: block.provider_id,
             modelId: block.model_id,
@@ -81,6 +94,7 @@ function extractUsageFromExecutions(
             completionTokens,
             cachedTokens: cachedTokens ?? null,
             cacheCreationTokens: cacheCreationTokens ?? null,
+            costCents: usageCostCents,
           });
         }
       }
