@@ -2,7 +2,6 @@ import type { estypes } from "@elastic/elasticsearch";
 import moment from "moment-timezone";
 import type { RedisClientType } from "redis";
 
-import { calculateTokenUsageCost } from "@app/lib/api/assistant/token_pricing";
 import { runOnRedis } from "@app/lib/api/redis";
 import { getWorkspacePublicAPILimits } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
@@ -227,7 +226,9 @@ export async function maybeTrackTokenUsageCost(
   }
 
   // Compute the price for all the runs.
-  const runsCost = calculateTokenUsageCost(runUsages.flat());
+  const runsCost = runUsages
+    .flat()
+    .reduce((acc, usage) => acc + usage.costCents, 0);
 
   await trackTokenUsageCost(auth.getNonNullableWorkspace(), runsCost);
 }

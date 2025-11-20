@@ -212,17 +212,12 @@ async function collectTokenUsage(
 
   return runUsages.flat().reduce(
     (acc, usage) => {
-      const usageCostUsd = calculateTokenUsageCost([usage]);
-      // Use ceiling to ensure any non-zero cost is at least 1 cent.
-      const usageCostCents =
-        usageCostUsd > 0 ? Math.ceil(usageCostUsd * 100) : 0;
-
       return {
         prompt: acc.prompt + usage.promptTokens,
         completion: acc.completion + usage.completionTokens,
         reasoning: acc.reasoning, // No reasoning tokens in RunUsageType yet.
         cached: acc.cached + (usage.cachedTokens ?? 0),
-        cost_cents: acc.cost_cents + usageCostCents,
+        cost_cents: acc.cost_cents + usage.costCents,
       };
     },
     {
