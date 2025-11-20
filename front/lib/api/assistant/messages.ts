@@ -508,6 +508,10 @@ async function batchRenderContentFragment(
   return Promise.all(
     messagesWithContentFragment.map(async (message: Message) => {
       const contentFragment = ContentFragmentResource.fromMessage(message);
+      if (contentFragment.expiredReason) {
+        // ignore expired content fragments
+        return null;
+      }
       const render = await contentFragment.renderFromMessage({
         auth,
         conversationId,
@@ -516,7 +520,7 @@ async function batchRenderContentFragment(
 
       return render;
     })
-  );
+  ).then((results) => removeNulls(results));
 }
 
 /**
