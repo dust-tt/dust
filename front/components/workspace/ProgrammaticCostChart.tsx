@@ -284,36 +284,33 @@ export function ProgrammaticCostChart({
         chartData.length === 0 ? "No cost data for this month." : undefined
       }
       additionalControls={
-        <div className="flex items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                label={
-                  groupBy
-                    ? GROUP_BY_OPTIONS.find((opt) => opt.value === groupBy)
-                        ?.label
-                    : "Global"
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              label={
+                groupBy
+                  ? GROUP_BY_OPTIONS.find((opt) => opt.value === groupBy)?.label
+                  : "Global"
+              }
+              size="xs"
+              variant="outline"
+              isSelect
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {GROUP_BY_OPTIONS.map((option) => (
+              <DropdownMenuItem
+                key={option.value}
+                label={option.label}
+                onClick={() =>
+                  setGroupBy(
+                    option.value === "global" ? undefined : option.value
+                  )
                 }
-                size="xs"
-                variant="outline"
-                isSelect
               />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {GROUP_BY_OPTIONS.map((option) => (
-                <DropdownMenuItem
-                  key={option.value}
-                  label={option.label}
-                  onClick={() =>
-                    setGroupBy(
-                      option.value === "global" ? undefined : option.value
-                    )
-                  }
-                />
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       }
       height={CHART_HEIGHT}
       legendItems={legendItems}
