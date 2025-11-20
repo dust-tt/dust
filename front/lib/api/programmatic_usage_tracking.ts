@@ -11,17 +11,38 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { LightWorkspaceType, UserMessageOrigin } from "@app/types";
 
-export const PROGRAMMATIC_USAGE_ORIGINS: UserMessageOrigin[] = [
-  "api",
-  "gsheet",
-  "make",
-  "n8n",
-  "triggered_programmatic",
-  "zapier",
-  "zendesk",
-  "excel",
-  "powerpoint",
-];
+export const USAGE_ORIGINS_CLASSIFICATION: Record<
+  UserMessageOrigin,
+  "programmatic" | "user"
+> = {
+  agent_handover: "user",
+  api: "programmatic",
+  email: "user",
+  excel: "programmatic",
+  extension: "user",
+  "github-copilot-chat": "user",
+  gsheet: "programmatic",
+  make: "programmatic",
+  n8n: "programmatic",
+  powerpoint: "programmatic",
+  raycast: "user",
+  run_agent: "user",
+  slack: "user",
+  teams: "user",
+  transcript: "user",
+  triggered_programmatic: "programmatic",
+  triggered: "user",
+  web: "user",
+  zapier: "programmatic",
+  zendesk: "programmatic",
+};
+
+const PROGRAMMATIC_USAGE_ORIGINS = Object.keys(
+  USAGE_ORIGINS_CLASSIFICATION
+).filter(
+  (origin) =>
+    USAGE_ORIGINS_CLASSIFICATION[origin as UserMessageOrigin] === "programmatic"
+);
 
 // Programmatic usage tracking: keep Redis key name for backward compatibility.
 const PROGRAMMATIC_USAGE_REMAINING_CREDITS_KEY = "public_api_remaining_credits";
@@ -48,7 +69,7 @@ function shouldTrackTokenUsageCosts(
   if (
     auth.authMethod() === "api_key" ||
     !userMessageOrigin ||
-    PROGRAMMATIC_USAGE_ORIGINS.includes(userMessageOrigin)
+    USAGE_ORIGINS_CLASSIFICATION[userMessageOrigin] === "programmatic"
   ) {
     return true;
   }
