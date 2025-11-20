@@ -73,6 +73,7 @@ export async function createSchedule({
     const scheduleHandle = await client.schedule.create({
       action: {
         ...action,
+        // Workflow-level search attributes.
         searchAttributes: {
           ...action.searchAttributes,
           connectorId: connector ? [connector?.id] : undefined,
@@ -81,6 +82,7 @@ export async function createSchedule({
       scheduleId,
       policies,
       spec,
+      // Schedule-level search attributes.
       searchAttributes: {
         connectorId: connector ? [connector?.id] : undefined,
       },
