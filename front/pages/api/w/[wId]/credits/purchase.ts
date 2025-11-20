@@ -5,10 +5,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { FeatureFlag } from "@app/lib/models/feature_flag";
+import { getFeatureFlags } from "@app/lib/auth";
 import {
   attachCreditPurchaseToSubscription,
-  getStripeClient,
+  getStripeSubscription,
   isEnterpriseSubscription,
   makeAndPayCreditPurchaseInvoice,
 } from "@app/lib/plans/stripe";
@@ -47,15 +47,12 @@ async function handler(
 
   // Check feature flag.
   const workspace = auth.getNonNullableWorkspace();
-  const featureFlag =
-    (await FeatureFlag.findOne({
-      where: {
-        workspaceId: workspace.id,
-        name: "ppul_credits_purchase_flow",
-      },
-    })) ?? isDevelopment();
+  const featureFlags = await getFeatureFlags(workspace);
 
-  if (!featureFlag) {
+  if (
+    !featureFlags.includes("ppul_credits_purchase_flow") &&
+    !isDevelopment()
+  ) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
@@ -107,10 +104,25 @@ async function handler(
 
       try {
         // Get Stripe subscription to determine if Enterprise.
-        const stripe = getStripeClient();
-        const stripeSubscription = await stripe.subscriptions.retrieve(
+        const stripeSubscription = await getStripeSubscription(
           subscription.stripeSubscriptionId
         );
+        if (!stripeSubscription) {
+          logger.error(
+            {
+              workspaceId: workspace.sId,
+              stripeSubscriptionId: subscription.stripeSubscriptionId,
+            },
+            "Stripe subscription not found"
+          );
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "subscription_not_found",
+              message: "Stripe subscription not found.",
+            },
+          });
+        }
         const isEnterprise = isEnterpriseSubscription(stripeSubscription);
 
         // Convert dollars to cents for internal storage.
@@ -203,7 +215,7 @@ async function handler(
                 workspaceId: workspace.sId,
                 amountDollars,
               },
-              "Failed to make credit purchase invoice"
+              "Failed to process credit purchase."
             );
             return apiError(req, res, {
               status_code: 500,
