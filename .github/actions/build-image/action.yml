@@ -150,13 +150,13 @@ runs:
       shell: bash
       run: |
         echo "🔍 Getting current deployed version for ${{ inputs.component }} in ${{ inputs.region }}..."
-        
+
         # Get all tags, exclude the current one we're building, get the most recent
         ALL_TAGS=$(gcloud container images list-tags "${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${{ inputs.component }}" \
           --limit=10 \
           --sort-by=~timestamp \
           --format="value(tags[0])" 2>/dev/null || echo "")
-        
+
         # Filter out current tag and get the first remaining one
         CURRENT_TAG=""
         while IFS= read -r tag; do
@@ -165,7 +165,7 @@ runs:
             break
           fi
         done <<< "$ALL_TAGS"
-        
+
         echo "Current deployed version: ${CURRENT_TAG:-'none found'}"
         echo "current_tag=$CURRENT_TAG" >> $GITHUB_OUTPUT
 
@@ -176,37 +176,30 @@ runs:
       run: |
         CURRENT_TAG="${{ steps.current_version.outputs.current_tag }}"
         TARGET_TAG="${{ inputs.commit_sha }}"
-        
+
         echo "📋 Getting commit diff: $CURRENT_TAG → $TARGET_TAG"
-        
+
         # Get commits between versions (handle case where CURRENT_TAG might not exist in git)
-        if git cat-file -e "$CURRENT_TAG" 2>/dev/null; then
+        if git rev-parse --verify "$CURRENT_TAG" >/dev/null 2>&1; then
           COMMITS_RAW=$(git log --oneline --pretty=format:"%h (%an)" $CURRENT_TAG..$TARGET_TAG 2>/dev/null | head -10)
         else
           echo "Previous tag $CURRENT_TAG not found in git history, showing recent commits"
           COMMITS_RAW=$(git log --oneline --pretty=format:"%h (%an)" -10 $TARGET_TAG 2>/dev/null)
         fi
-        
-        # Format commits with GitHub links
-        COMMITS=""
-        while IFS= read -r line; do
-          if [ -n "$line" ]; then
-            COMMIT_HASH=$(echo "$line" | cut -d' ' -f1)
-            AUTHOR=$(echo "$line" | sed 's/^[^ ]* //')
-            COMMITS="$COMMITS• <${{ github.server_url }}/${{ github.repository }}/commit/$COMMIT_HASH|$COMMIT_HASH> $AUTHOR"$'\n'
-          fi
-        done <<< "$COMMITS_RAW"
-        
+
+        # Store raw commits data
+        COMMITS="$COMMITS_RAW"
+
         # Count commits safely
         if [ -n "$COMMITS" ]; then
           COMMIT_COUNT=$(echo "$COMMITS" | wc -l | tr -d ' ')
         else
           COMMIT_COUNT=0
         fi
-        
+
         # Store results
         echo "commits<<EOF" >> $GITHUB_OUTPUT
         echo "$COMMITS" >> $GITHUB_OUTPUT
         echo "EOF" >> $GITHUB_OUTPUT
-        
+
         echo "commit_count=$COMMIT_COUNT" >> $GITHUB_OUTPUT
