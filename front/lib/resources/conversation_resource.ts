@@ -192,7 +192,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return res.length > 0 ? res[0] : null;
   }
 
-  static async canAccess(auth: Authenticator, sId: string): Promise<'allowed' | 'conversation_not_found' | 'conversation_access_restricted'> {
+  static async canAccess(
+    auth: Authenticator,
+    sId: string
+  ): Promise<
+    "allowed" | "conversation_not_found" | "conversation_access_restricted"
+  > {
     const workspace = auth.getNonNullableWorkspace();
     const { where } = this.getOptions();
     const conversation = await this.model.findOne({
@@ -203,14 +208,24 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       },
     });
     if (!conversation) {
-      return 'conversation_not_found';
+      return "conversation_not_found";
     }
-    const spaces = await SpaceResource.fetchByModelIds(auth, conversation.requestedSpaceIds);
+    const spaces = await SpaceResource.fetchByModelIds(
+      auth,
+      conversation.requestedSpaceIds
+    );
     const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
-    if (!auth.canRead(createResourcePermissionsFromSpacesWithMap(spaceIdToGroupsMap, conversation.requestedSpaceIds.map((id) => Number(id))))) {
-      return 'conversation_access_restricted';
+    if (
+      !auth.canRead(
+        createResourcePermissionsFromSpacesWithMap(
+          spaceIdToGroupsMap,
+          conversation.requestedSpaceIds.map((id) => Number(id))
+        )
+      )
+    ) {
+      return "conversation_access_restricted";
     }
-    return 'allowed';
+    return "allowed";
   }
 
   static async listAll(
