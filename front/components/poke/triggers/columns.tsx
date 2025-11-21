@@ -122,6 +122,12 @@ export function makeColumnsForTriggers(
         }
         return "-";
       },
+      filterFn: (row, columnId, filterValue) => {
+        if (!filterValue || filterValue.length === 0) {
+          return true;
+        }
+        return filterValue.includes(row.getValue(columnId));
+      },
     },
     {
       accessorKey: "configuration",
