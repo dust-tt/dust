@@ -65,6 +65,7 @@ export const slackSearch = async (
       sort: "score",
       sort_dir: "desc",
       limit: SLACK_SEARCH_ACTION_NUM_RESULTS.toString(),
+      channel_types: "public_channel,private_channel,im,mpim",
     });
 
     const resp = await fetch(
@@ -450,13 +451,46 @@ async function createServer(
                 citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
               );
 
-              const results = buildSearchResults<SlackSearchMatch>(
-                matches,
+              // Resolve user and channel names for all matches
+              const matchesWithResolvedNames = await Promise.all(
+                matches.map(async (match) => {
+                  // Resolve author name if it looks like a user ID
+                  let author = match.author_name || "Unknown";
+                  if (author.match(/^U[A-Z0-9]+$/)) {
+                    const resolvedAuthor = await resolveUserDisplayName(
+                      author,
+                      accessToken
+                    );
+                    author = resolvedAuthor || author;
+                  }
+
+                  // Resolve channel name if it looks like a channel ID
+                  let channel = match.channel_name || "Unknown";
+                  if (channel.match(/^[CDG][A-Z0-9]+$/)) {
+                    const resolvedChannel = await resolveChannelDisplayName(
+                      channel,
+                      accessToken
+                    );
+                    channel = resolvedChannel || channel;
+                  }
+
+                  return {
+                    ...match,
+                    resolvedAuthor: author,
+                    resolvedChannel: channel,
+                  };
+                })
+              );
+
+              const results = buildSearchResults<typeof matchesWithResolvedNames[0]>(
+                matchesWithResolvedNames,
                 refs,
                 {
                   permalink: (match) => match.permalink,
-                  text: (match) =>
-                    `From ${match.author_name ?? "Unknown"} in #${match.channel_name ?? "Unknown"}: ${match.content ?? ""}`,
+                  text: (match) => {
+                    const channelPrefix = match.resolvedChannel.startsWith("@") ? "" : "#";
+                    return `From ${match.resolvedAuthor} in ${channelPrefix}${match.resolvedChannel}: ${match.content ?? ""}`;
+                  },
                   id: (match) => match.message_ts ?? "",
                   content: (match) => match.content ?? "",
                 }
@@ -547,36 +581,61 @@ async function createServer(
                 citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
               );
 
-              const getTextFromMatch = (match: SlackSearchMatch) => {
-                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                const author = match.author_name || "Unknown";
-                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                const channel = match.channel_name || "Unknown";
-                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                let content = match.content || "";
+              // Resolve user and channel names for all matches
+              const matchesWithResolvedNames = await Promise.all(
+                matches.map(async (match) => {
+                  // Resolve author name if it looks like a user ID
+                  let author = match.author_name || "Unknown";
+                  if (author.match(/^U[A-Z0-9]+$/)) {
+                    const resolvedAuthor = await resolveUserDisplayName(
+                      author,
+                      accessToken
+                    );
+                    author = resolvedAuthor || author;
+                  }
 
-                // assistant.search.context wraps search words in \uE000 and \uE001.
-                // which display as squares in the UI, so we strip them out.
-                // Ideally, there would be a way to disable this behavior in the Slack API.
-                content = content.replace(/[\uE000\uE001]/g, "");
+                  // Resolve channel name if it looks like a channel ID
+                  let channel = match.channel_name || "Unknown";
+                  if (channel.match(/^[CDG][A-Z0-9]+$/)) {
+                    const resolvedChannel = await resolveChannelDisplayName(
+                      channel,
+                      accessToken
+                    );
+                    channel = resolvedChannel || channel;
+                  }
 
-                // Replace <@U050CALAKFD|someone> with just @someone.
-                content = content.replace(
-                  /<@([A-Z0-9]+)\|([^>]+)>/g,
-                  (_m, _id, username) => `@${username}`
-                );
+                  // assistant.search.context wraps search words in \uE000 and \uE001.
+                  // which display as squares in the UI, so we strip them out.
+                  // Ideally, there would be a way to disable this behavior in the Slack API.
+                  let content = match.content || "";
+                  content = content.replace(/[\uE000\uE001]/g, "");
 
-                return `From ${author} in #${channel}: ${content}`;
-              };
+                  // Replace <@U050CALAKFD|someone> with just @someone.
+                  content = content.replace(
+                    /<@([A-Z0-9]+)\|([^>]+)>/g,
+                    (_m, _id, username) => `@${username}`
+                  );
 
-              const results = buildSearchResults<SlackSearchMatch>(
-                matches,
+                  return {
+                    ...match,
+                    resolvedAuthor: author,
+                    resolvedChannel: channel,
+                    cleanedContent: content,
+                  };
+                })
+              );
+
+              const results = buildSearchResults<typeof matchesWithResolvedNames[0]>(
+                matchesWithResolvedNames,
                 refs,
                 {
                   permalink: (match) => match.permalink,
-                  text: (match) => getTextFromMatch(match),
+                  text: (match) => {
+                    const channelPrefix = match.resolvedChannel.startsWith("@") ? "" : "#";
+                    return `From ${match.resolvedAuthor} in ${channelPrefix}${match.resolvedChannel}: ${match.cleanedContent}`;
+                  },
                   id: (match) => match.message_ts ?? "",
-                  content: (match) => match.content ?? "",
+                  content: (match) => match.cleanedContent ?? "",
                 }
               );
 
