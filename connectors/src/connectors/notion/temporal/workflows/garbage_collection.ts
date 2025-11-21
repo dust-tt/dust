@@ -10,7 +10,6 @@ import PQueue from "p-queue";
 import type * as activities from "@connectors/connectors/notion/temporal/activities";
 import {
   INTERVAL_BETWEEN_GC_SYNCS_MS,
-  INTERVAL_BETWEEN_SYNCS_MS,
   MAX_CONCURRENT_CHILD_WORKFLOWS,
   MAX_PENDING_GARBAGE_COLLECTION_ACTIVITIES,
   MAX_SEARCH_PAGE_GARBAGE_COLLECTION_INDEX,
