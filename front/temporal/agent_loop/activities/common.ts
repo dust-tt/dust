@@ -18,6 +18,7 @@ import logger from "@app/logger/logger";
 import type {
   ConversationWithoutContentType,
   ToolErrorEvent,
+  UserMessageOrigin,
 } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { getAgentLoopData } from "@app/types/assistant/agent_run";
@@ -196,12 +197,14 @@ export async function updateResourceAndPublishEvent(
     conversation,
     step,
     modelInteractionDurationMs,
+    userMessageOrigin,
   }: {
     event: AgentMessageEvents;
     agentMessageRow: AgentMessage;
     conversation: ConversationWithoutContentType;
     step: number;
     modelInteractionDurationMs?: number;
+    userMessageOrigin?: UserMessageOrigin | null;
   }
 ): Promise<void> {
   // Processing of events before publishing to Redis.
