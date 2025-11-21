@@ -154,14 +154,24 @@ export type GroupByType = "agent" | "origin" | "apiKey";
 export function useWorkspaceProgrammaticCost({
   workspaceId,
   groupBy,
+  selectedMonth,
   disabled,
 }: {
   workspaceId: string;
   groupBy?: GroupByType;
+  selectedMonth?: string;
   disabled?: boolean;
 }) {
   const fetcherFn: Fetcher<GetWorkspaceProgrammaticCostResponse> = fetcher;
-  const key = `/api/w/${workspaceId}/analytics/programmatic-cost${groupBy ? `?groupBy=${groupBy}` : ""}`;
+
+  const queryParams = new URLSearchParams();
+  if (selectedMonth) {
+    queryParams.set("selectedMonth", selectedMonth);
+  }
+  if (groupBy) {
+    queryParams.set("groupBy", groupBy);
+  }
+  const key = `/api/w/${workspaceId}/analytics/programmatic-cost?${queryParams.toString()}`;
 
   const { data, error, isValidating } = useSWRWithDefaults(
     disabled ? null : key,

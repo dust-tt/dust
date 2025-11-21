@@ -23,6 +23,7 @@ import type { WithAPIErrorResponse } from "@app/types";
 
 const QuerySchema = z.object({
   groupBy: z.enum(["agent", "origin", "apiKey"]).optional(),
+  selectedMonth: z.string().optional(),
 });
 
 export type WorkspaceProgrammaticCostPoint = {
@@ -92,10 +93,10 @@ function calculateCreditTotalsPerTimestamp(
   return creditTotalsMap;
 }
 
-function getDatesInRange(startOfMonth: Date, now: Date): number[] {
+function getDatesInRange(startOfMonth: Date, endDate: Date): number[] {
   const dates = [];
   const current = new Date(startOfMonth);
-  for (let date = current; date <= now; date.setDate(date.getDate() + 1)) {
+  for (let date = current; date < endDate; date.setDate(date.getDate() + 1)) {
     dates.push(date.getTime());
   }
   return dates;
@@ -121,20 +122,17 @@ async function handler(
         });
       }
 
-      const { groupBy } = q.data;
+      const { groupBy, selectedMonth } = q.data;
 
       const now = new Date();
+      const startOfMonth = selectedMonth
+        ? new Date(selectedMonth)
+        : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth()));
 
-      // TODO: Calculate the start of the current month - should match the billing period
-      const startOfMonth = new Date(
-        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
-      );
-      const endOfMonth = new Date(
-        Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)
-      );
+      const endOfMonth = new Date(startOfMonth);
+      endOfMonth.setMonth(endOfMonth.getMonth() + 1);
 
       const timestamps = getDatesInRange(startOfMonth, endOfMonth);
-      const startDate = new Date(timestamps[0]);
 
       // Build query for the current month
       const baseQuery = {
@@ -144,7 +142,8 @@ async function handler(
             {
               range: {
                 timestamp: {
-                  gte: startDate.toISOString(),
+                  gte: startOfMonth.toISOString(),
+                  lt: endOfMonth.toISOString(),
                 },
               },
             },
@@ -153,7 +152,7 @@ async function handler(
       };
 
       // Fetch all credits for the workspace
-      const credits = await CreditResource.listActive(auth);
+      const credits = await CreditResource.listActive(auth, endOfMonth);
 
       // Calculate credit totals for each timestamp
       const creditTotalsMap = calculateCreditTotalsPerTimestamp(

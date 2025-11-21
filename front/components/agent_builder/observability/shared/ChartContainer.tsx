@@ -18,7 +18,7 @@ import type { LegendItem } from "./ChartLegend";
 import { ChartLegend } from "./ChartLegend";
 
 interface ChartContainerProps {
-  title: string;
+  title: ReactNode;
   isLoading: boolean;
   errorMessage?: string;
   emptyMessage?: string;

@@ -1,5 +1,7 @@
 import {
   Button,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -118,10 +120,17 @@ function GroupedTooltip(
   return <ChartTooltipCard title={data.date} rows={rows} />;
 }
 
+function formatMonth(date: Date): string {
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
 export function ProgrammaticCostChart({
   workspaceId,
 }: ProgrammaticCostChartProps) {
   const [groupBy, setGroupBy] = useState<GroupByType | undefined>(undefined);
+
+  const now = new Date();
+  const [selectedMonth, setSelectedMonth] = useState<string>(formatMonth(now));
 
   const {
     programmaticCostData,
@@ -129,14 +138,38 @@ export function ProgrammaticCostChart({
     isProgrammaticCostError,
   } = useWorkspaceProgrammaticCost({
     workspaceId,
+    selectedMonth,
     groupBy,
   });
 
+  const currentDate = new Date(selectedMonth);
+
   // Get current month name
-  const currentMonth = new Date().toLocaleDateString("en-US", {
+  const currentMonth = currentDate.toLocaleDateString("en-US", {
     month: "long",
     year: "numeric",
   });
+
+  // Calculate next and previous month dates
+  const nextMonthDate = new Date(
+    Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth() + 1, 1)
+  );
+  const previousMonthDate = new Date(
+    Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth() - 1, 1)
+  );
+
+  // Check if we can go to next month (not in the future)
+  const canGoNext = nextMonthDate.getTime() <= now.getTime();
+
+  // Navigate to next month
+  const handleNextMonth = () => {
+    setSelectedMonth(formatMonth(nextMonthDate));
+  };
+
+  // Navigate to previous month
+  const handlePreviousMonth = () => {
+    setSelectedMonth(formatMonth(previousMonthDate));
+  };
 
   // Process data based on groupBy
   let chartData: ChartDataPoint[] = [];
@@ -215,7 +248,31 @@ export function ProgrammaticCostChart({
 
   return (
     <ChartContainer
-      title={`Programmatic Cost - ${currentMonth}`}
+      title={
+        <div className="flex items-center gap-2">
+          <span>Programmatic Cost</span>
+          <Button
+            icon={ChevronLeftIcon}
+            size="xs"
+            variant="ghost"
+            onClick={handlePreviousMonth}
+            tooltip="Previous month"
+          />
+
+          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            {currentMonth}
+          </span>
+          {canGoNext && (
+            <Button
+              icon={ChevronRightIcon}
+              size="xs"
+              variant="ghost"
+              onClick={handleNextMonth}
+              tooltip="Next month"
+            />
+          )}
+        </div>
+      }
       description="Total cost accumulated since the start of the month."
       isLoading={isProgrammaticCostLoading}
       errorMessage={
