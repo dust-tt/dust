@@ -12,15 +12,15 @@ import {
 } from "@app/lib/api/email";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
+import { maybeStartCreditFromProOneOffInvoice } from "@app/lib/credits/purchase";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import {
   assertStripeSubscriptionIsValid,
   createCustomerPortalSession,
   getStripeClient,
-  isEnterpriseSubscription,
+  isCreditPurchaseInvoice,
 } from "@app/lib/plans/stripe";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
-import { CreditResource } from "@app/lib/resources/credit_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -329,73 +329,29 @@ async function handler(
             // the warnings and create an alert if this log appears in all regions
             return res.status(200).json({ success: true });
           }
-          await subscription.update({ paymentFailingSince: null });
 
           // Handle credit purchase activation for Pro subscriptions.
           // (Enterprise subscriptions activate credits optimistically, so we skip them here.)
-          if (
-            invoice.metadata?.credit_purchase === "true" &&
-            invoice.metadata?.credit_amount_cents
-          ) {
-            const workspace = subscription.workspace;
-            const creditAmountCents = parseInt(
-              invoice.metadata.credit_amount_cents,
-              10
+          const creditPurchaseResult =
+            await maybeStartCreditFromProOneOffInvoice({
+              invoice,
+              subscription,
+            });
+
+          if (creditPurchaseResult.isErr()) {
+            logger.error(
+              {
+                error: creditPurchaseResult.error,
+                invoiceId: invoice.id,
+                stripeSubscriptionId: invoice.subscription,
+              },
+              "[Stripe Webhook] Error processing credit purchase"
             );
+          }
 
-            if (!isNaN(creditAmountCents) && creditAmountCents > 0) {
-              // Check if this is NOT an Enterprise subscription to avoid double activation.
-              const stripe = getStripeClient();
-              const stripeSubscription = await stripe.subscriptions.retrieve(
-                invoice.subscription
-              );
-              const isEnterprise = isEnterpriseSubscription(stripeSubscription);
-
-              if (!isEnterprise) {
-                // Pro accounts - activate existing credit record (created in purchase API).
-                const auth = await Authenticator.internalAdminForWorkspace(
-                  workspace.sId
-                );
-
-                const credit = await CreditResource.fetchByInvoiceOrLineItemId(
-                  auth,
-                  invoice.id
-                );
-
-                if (credit) {
-                  const startResult = await credit.start();
-
-                  if (startResult.isErr()) {
-                    logger.error(
-                      {
-                        workspaceId: workspace.sId,
-                        creditAmountCents,
-                        invoiceId: invoice.id,
-                        creditId: credit.id,
-                        expirationDate: credit.expirationDate,
-                      },
-                      "[Stripe Webhook] Error starting credit"
-                    );
-                  }
-                } else {
-                  logger.warn(
-                    {
-                      workspaceId: workspace.sId,
-                      invoiceId: invoice.id,
-                    },
-                    "[Stripe Webhook] Credit not found for invoice"
-                  );
-                }
-              } else {
-                logger.info(
-                  {
-                    workspaceId: workspace.sId,
-                    invoiceId: invoice.id,
-                  },
-                  "[Stripe Webhook] Skipping credit activation for Enterprise (already activated optimistically)"
-                );
-              }
-            }
+          // We don't want credit purchase invoice being paid clearing customer's sub's payment_failed_since
+          if (!isCreditPurchaseInvoice(invoice)) {
+            await subscription.update({ paymentFailingSince: null });
           }
 
           break;

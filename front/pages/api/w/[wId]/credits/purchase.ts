@@ -7,16 +7,17 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import {
-  attachCreditPurchaseToSubscription,
+  createEnterpriseCreditPurchase,
+  createProCreditPurchase,
+} from "@app/lib/credits/purchase";
+import {
   getStripeSubscription,
   isEnterpriseSubscription,
-  makeAndPayCreditPurchaseInvoice,
 } from "@app/lib/plans/stripe";
-import { CreditResource } from "@app/lib/resources/credit_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { isDevelopment, normalizeError } from "@app/types";
+import { isDevelopment } from "@app/types";
 
 export const PostCreditPurchaseRequestBody = t.type({
   amountDollars: t.number,
@@ -102,173 +103,74 @@ async function handler(
         });
       }
 
-      try {
-        // Get Stripe subscription to determine if Enterprise.
-        const stripeSubscription = await getStripeSubscription(
-          subscription.stripeSubscriptionId
-        );
-        if (!stripeSubscription) {
-          logger.error(
-            {
-              workspaceId: workspace.sId,
-              stripeSubscriptionId: subscription.stripeSubscriptionId,
-            },
-            "Stripe subscription not found"
-          );
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "subscription_not_found",
-              message: "Stripe subscription not found.",
-            },
-          });
-        }
-        const isEnterprise = isEnterpriseSubscription(stripeSubscription);
-
-        // Convert dollars to cents for internal storage.
-        const amountCents = Math.round(amountDollars * 100);
-
-        // Orchestrate credit purchase based on subscription type.
-        if (isEnterprise) {
-          // For Enterprise: attach invoice item to subscription.
-          const attachResult = await attachCreditPurchaseToSubscription({
-            stripeSubscriptionId: subscription.stripeSubscriptionId,
-            amountCents,
-          });
-
-          if (attachResult.isErr()) {
-            logger.error(
-              {
-                error: attachResult.error.error_message,
-                workspaceId: workspace.sId,
-                amountDollars,
-              },
-              "Failed to attach credit purchase to subscription"
-            );
-            return apiError(req, res, {
-              status_code: 500,
-              api_error: {
-                type: "internal_server_error",
-                message: "Failed to process credit purchase.",
-              },
-            });
-          }
-
-          const invoiceItemId = attachResult.value;
-
-          // Create credit with full amount.
-          const credit = await CreditResource.makeNew(auth, {
-            type: "committed",
-            initialAmount: amountCents,
-            remainingAmount: amountCents,
-            invoiceOrLineItemId: invoiceItemId,
-          });
-
-          // Activate the credit immediately.
-          const startResult = await credit.start();
-
-          if (startResult.isErr()) {
-            logger.error(
-              {
-                error: startResult.error.message,
-                workspaceId: workspace.sId,
-                invoiceItemId,
-              },
-              "Failed to start credit after creation"
-            );
-            return apiError(req, res, {
-              status_code: 500,
-              api_error: {
-                type: "internal_server_error",
-                message: "Failed to process credit purchase.",
-              },
-            });
-          }
-
-          logger.info(
-            {
-              workspaceId: workspace.sId,
-              amountCents,
-              amountDollars,
-              invoiceItemId,
-              expirationDate: credit.expirationDate,
-            },
-            "Credit purchase attached to subscription and activated"
-          );
-
-          return res.status(200).json({
-            success: true,
-            creditsAdded: amountCents,
-            invoiceId: null,
-          });
-        } else {
-          // For Pro: create and pay one-off invoice.
-          const invoiceResult = await makeAndPayCreditPurchaseInvoice({
-            stripeSubscriptionId: subscription.stripeSubscriptionId,
-            amountCents,
-          });
-
-          if (invoiceResult.isErr()) {
-            logger.error(
-              {
-                error: invoiceResult.error.error_message,
-                workspaceId: workspace.sId,
-                amountDollars,
-              },
-              "Failed to process credit purchase."
-            );
-            return apiError(req, res, {
-              status_code: 500,
-              api_error: {
-                type: "internal_server_error",
-                message: "Failed to process credit purchase.",
-              },
-            });
-          }
-
-          const invoice = invoiceResult.value;
-
-          // Create credit record with full amount (will be activated via webhook when paid).
-          await CreditResource.makeNew(auth, {
-            type: "committed",
-            initialAmount: amountCents,
-            remainingAmount: amountCents,
-            invoiceOrLineItemId: invoice.id,
-          });
-
-          logger.info(
-            {
-              workspaceId: workspace.sId,
-              amountCents,
-              amountDollars,
-              invoiceId: invoice.id,
-            },
-            "Credit purchase invoice created, credit will be started via webhook"
-          );
-
-          return res.status(200).json({
-            success: true,
-            creditsAdded: amountCents,
-            invoiceId: invoice.id,
-          });
-        }
-      } catch (error) {
+      // Get Stripe subscription and determine if Enterprise.
+      const stripeSubscription = await getStripeSubscription(
+        subscription.stripeSubscriptionId
+      );
+      if (!stripeSubscription) {
         logger.error(
           {
-            error: normalizeError(error),
             workspaceId: workspace.sId,
-            amountDollars,
+            stripeSubscriptionId: subscription.stripeSubscriptionId,
           },
-          "Error while processing credit purchase"
+          "Failed to retrieve Stripe subscription"
         );
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "subscription_not_found",
+            message: "Stripe subscription not found.",
+          },
+        });
+      }
+      // Convert dollars to cents for internal storage.
+      const amountCents = Math.round(amountDollars * 100);
+      const isEnterprise = isEnterpriseSubscription(stripeSubscription);
+
+      if (isEnterprise) {
+        const result = await createEnterpriseCreditPurchase({
+          auth,
+          stripeSubscriptionId: subscription.stripeSubscriptionId,
+          amountCents,
+        });
+
+        if (result.isErr()) {
+          return apiError(req, res, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: "Failed to process credit purchase.",
+            },
+          });
+        }
+
+        return res.status(200).json({
+          success: true,
+          creditsAdded: amountCents,
+          invoiceId: null,
+        });
+      }
+      const result = await createProCreditPurchase({
+        auth,
+        stripeSubscriptionId: subscription.stripeSubscriptionId,
+        amountCents,
+      });
+
+      if (result.isErr()) {
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: "Error while processing credit purchase.",
+            message: "Failed to process credit purchase.",
           },
         });
       }
+
+      return res.status(200).json({
+        success: true,
+        creditsAdded: amountCents,
+        invoiceId: result.value.invoiceId,
+      });
     }
 
     default:
