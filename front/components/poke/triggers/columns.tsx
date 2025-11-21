@@ -3,13 +3,14 @@ import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import type { TriggerWithProviderType } from "@app/pages/api/poke/workspaces/[wId]/triggers";
 import type {
   LightAgentConfigurationType,
   LightWorkspaceType,
 } from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
 
-type TriggerDisplayType = TriggerType & {
+type TriggerDisplayType = TriggerWithProviderType & {
   agentName?: string;
 };
 
@@ -91,13 +92,39 @@ export function makeColumnsForTriggers(
       },
       accessorFn: (row) => {
         const agent = agentConfigMap.get(row.agentConfigurationId);
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        return agent?.name || row.agentConfigurationId;
+        return agent?.name ?? row.agentConfigurationId;
       },
     },
     {
       accessorKey: "kind",
       header: "Kind",
+    },
+    {
+      accessorKey: "provider",
+      header: ({ column }) => {
+        return (
+          <div className="flex space-x-2">
+            <p>Provider</p>
+            <IconButton
+              variant="outline"
+              icon={ArrowsUpDownIcon}
+              onClick={() =>
+                column.toggleSorting(column.getIsSorted() === "asc")
+              }
+            />
+          </div>
+        );
+      },
+      cell: ({ row }) => {
+        const trigger = row.original;
+        if (trigger.kind === "webhook") {
+          return trigger.provider ?? "Custom";
+        }
+        return "-";
+      },
+      filterFn: (row, id, value) => {
+        return value.includes(row.getValue(id));
+      },
     },
     {
       accessorKey: "configuration",
