@@ -451,8 +451,9 @@ export async function runModelActivity(
     reasoningEffort: agentConfiguration.model.reasoningEffort,
     responseFormat: agentConfiguration.model.responseFormat,
     context: traceContext,
-    bypassFeatureFlag: isComparisonModeEnabled, // force bypassing feature flag for comparison mode we want to run the new implementation
+    bypassFeatureFlag: true,
   });
+
   const modelInteractionStartDate = performance.now();
 
   if (llm === null || !isComparisonModeEnabled) {
