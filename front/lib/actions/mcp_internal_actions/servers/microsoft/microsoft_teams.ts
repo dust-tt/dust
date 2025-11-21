@@ -483,7 +483,8 @@ function createServer(
                       if (
                         chatMemberIds.length === allUserIds.length &&
                         chatMemberIds.every(
-                          (id: string, index: number) => id === allUserIds[index]
+                          (id: string, index: number) =>
+                            id === allUserIds[index]
                         )
                       ) {
                         existingChat = chat;
@@ -497,7 +498,7 @@ function createServer(
                     }
 
                     nextLink = chatsResponse["@odata.nextLink"];
-                  } while (nextLink)
+                  } while (nextLink);
 
                   if (existingChat) {
                     // Use the existing chat
@@ -505,7 +506,8 @@ function createServer(
                   } else {
                     // Create a new chat with the specified users
                     const members = allUserIds.map((id) => ({
-                      "@odata.type": "#microsoft.graph.aadUserConversationMember",
+                      "@odata.type":
+                        "#microsoft.graph.aadUserConversationMember",
                       roles: ["owner"],
                       "user@odata.bind": `https://graph.microsoft.com/v1.0/users/${id}`,
                     }));
