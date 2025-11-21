@@ -49,9 +49,39 @@ function hasProp<K extends string>(
 function extractErrorReason(err: esErrors.ResponseError): string {
   const body = err.meta?.body;
   if (hasProp(body, "error") && typeof body.error === "object" && body.error) {
-    const e = body.error as unknown;
+    const e = body.error as Record<string, unknown>;
+
+    // Prefer the most specific cause available.
+    if (hasProp(e, "caused_by") && typeof e.caused_by === "object") {
+      const causedBy = e.caused_by as Record<string, unknown>;
+      if (
+        hasProp(causedBy, "reason") &&
+        typeof causedBy.reason !== "undefined"
+      ) {
+        return String(causedBy.reason);
+      }
+    }
+
+    if (hasProp(e, "root_cause") && Array.isArray(e.root_cause)) {
+      const first = e.root_cause[0] as Record<string, unknown> | undefined;
+      if (
+        first &&
+        hasProp(first, "reason") &&
+        typeof first.reason !== "undefined"
+      ) {
+        return String(first.reason);
+      }
+    }
+
     if (hasProp(e, "reason") && typeof e.reason !== "undefined") {
       return String(e.reason);
+    }
+
+    // Fallback to the full error payload for debugging.
+    try {
+      return JSON.stringify(e);
+    } catch {
+      // ignore
     }
   }
   return err.message;

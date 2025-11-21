@@ -31,7 +31,13 @@ type ToolUsageResult = {
 
 type ToolDataItem = {
   label: string | number;
-  tools: Record<string, { count: number }>;
+  tools: Record<
+    string,
+    {
+      count: number;
+      breakdown?: Record<string, number>;
+    }
+  >;
   total?: number;
 };
 
@@ -99,9 +105,21 @@ function createChartData(
       const toolData = item.tools[toolName];
       const count = toolData?.count ?? 0;
       if (count > 0) {
+        const breakdownEntries = toolData.breakdown
+          ? Object.entries(toolData.breakdown)
+          : [];
+
         values[toolName] = {
           percent: calculatePercentage(count, total),
           count,
+          breakdown:
+            breakdownEntries.length > 0
+              ? breakdownEntries.map(([label, breakdownCount]) => ({
+                  label,
+                  count: breakdownCount,
+                  percent: calculatePercentage(breakdownCount, count),
+                }))
+              : undefined,
         };
         topToolsCount += count;
       }
@@ -125,7 +143,15 @@ function createChartData(
 function normalizeVersionData(data: ToolExecutionByVersion[]): ToolDataItem[] {
   return data.map((item) => ({
     label: `v${item.version}`,
-    tools: item.tools,
+    tools: Object.fromEntries(
+      Object.entries(item.tools).map(([toolName, metrics]) => [
+        toolName,
+        {
+          count: metrics.count,
+          breakdown: metrics.mcpViewBreakdown,
+        },
+      ])
+    ),
   }));
 }
 
