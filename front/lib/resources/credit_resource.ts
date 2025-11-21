@@ -107,13 +107,27 @@ export class CreditResource extends BaseResource<CreditModel> {
 
   static async listActive(auth: Authenticator, fromDate: Date = new Date()) {
     const now = new Date();
+    assert(this.model.sequelize, "Unexpected sequelize undefined");
     return this.baseFetch(auth, {
       where: {
         // Credit must have remaining balance (consumed < initial)
         [Op.and]: [
+<<<<<<< HEAD
           Sequelize.where(Sequelize.col("consumedAmountCents"), {
             [Op.lt]: Sequelize.col("initialAmountCents"),
           }),
+||||||| parent of 91b8ffab84 ([front] fix: Fix typo)
+          {
+            consumedAmountCents: {
+              [Op.lt]: "initialAmountCents",
+            },
+          },
+=======
+          this.model.sequelize.where(
+            this.model.sequelize.col("consumedAmountCents"),
+            { [Op.lt]: this.model.sequelize.col("initialAmountCents") }
+          ),
+>>>>>>> 91b8ffab84 ([front] fix: Fix typo)
         ],
 
         // Credit must be started (startDate not null and <= now)
