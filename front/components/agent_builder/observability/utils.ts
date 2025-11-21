@@ -1,7 +1,7 @@
 import {
-  isUserMessageOrigin,
-  OTHER_TOOLS_LABEL,
-  TOOL_COLORS,
+  INDEXED_COLORS,
+  OTHER_LABEL,
+  UNKNOWN_LABEL,
   USER_MESSAGE_ORIGIN_LABELS,
 } from "@app/components/agent_builder/observability/constants";
 import type { ObservabilityMode } from "@app/components/agent_builder/observability/ObservabilityContext";
@@ -16,13 +16,31 @@ export type ValuesPayload = { values: Record<string, number> };
 
 export type SourceBucket = { origin: string; count: number };
 
-export function getToolColor(toolName: string, topTools: string[]): string {
-  if (toolName === OTHER_TOOLS_LABEL) {
-    return "text-blue-300 dark:text-blue-300-night";
+export function isUserMessageOrigin(
+  origin?: string | null
+): origin is UserMessageOrigin {
+  return !!origin && origin in USER_MESSAGE_ORIGIN_LABELS;
+}
+
+export function getSourceColor(source: UserMessageOrigin) {
+  return USER_MESSAGE_ORIGIN_LABELS[source].color;
+}
+
+/**
+ * Returns a unique color from TOOL_COLORS based on the label's index in allLabels,
+ * cycling through the array in a rolling ribbon fashion to ensure distinct but repeating colors.
+ * Useful for consistently coloring a set of values.
+ * "Other" and "Unknown" are special cases that have their own colors.
+ */
+export function getIndexedColor(label: string, allLabels: string[]): string {
+  if (label === OTHER_LABEL.label) {
+    return OTHER_LABEL.color;
+  } else if (label === UNKNOWN_LABEL.label) {
+    return UNKNOWN_LABEL.color;
   }
 
-  const idx = topTools.indexOf(toolName);
-  return TOOL_COLORS[(idx >= 0 ? idx : 0) % TOOL_COLORS.length];
+  const idx = allLabels.indexOf(label);
+  return INDEXED_COLORS[(idx >= 0 ? idx : 0) % INDEXED_COLORS.length];
 }
 
 export function buildSourceChartData(

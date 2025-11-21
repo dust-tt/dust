@@ -12,7 +12,7 @@ use axum::{
     extract::{Path, State},
     middleware::from_fn,
     response::Json,
-    routing::{delete, get, post},
+    routing::{delete, get, patch, post},
     Router,
 };
 use axum_tracing_opentelemetry::middleware::{OtelAxumLayer, OtelInResponseLayer};
@@ -310,6 +310,64 @@ async fn connections_metadata(
 }
 
 #[derive(Deserialize)]
+struct ConnectionUpdateCredentialPayload {
+    related_credential_id: String,
+}
+
+async fn connections_update_credential(
+    State(state): State<Arc<OAuthState>>,
+    Path(connection_id): Path<String>,
+    Json(payload): Json<ConnectionUpdateCredentialPayload>,
+) -> (StatusCode, Json<APIResponse>) {
+    match state.store.retrieve_connection(&connection_id).await {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to retrieve connection",
+            Some(e),
+        ),
+        Ok(None) => error_response(
+            StatusCode::NOT_FOUND,
+            "connection_not_found",
+            "Requested connection was not found",
+            None,
+        ),
+        Ok(Some(mut c)) => {
+            match c
+                .update_related_credential_id(
+                    state.clone().store.clone(),
+                    payload.related_credential_id,
+                )
+                .await
+            {
+                Err(e) => error_response(
+                    match e.code {
+                        connection::ConnectionErrorCode::InvalidCredentialError => {
+                            StatusCode::BAD_REQUEST
+                        }
+                        _ => StatusCode::INTERNAL_SERVER_ERROR,
+                    },
+                    &e.code.to_string(),
+                    &e.message,
+                    None,
+                ),
+                Ok(_) => (
+                    StatusCode::OK,
+                    Json(APIResponse {
+                        error: None,
+                        response: Some(json!({
+                            "connection": {
+                                "connection_id": c.connection_id(),
+                            },
+                        })),
+                    }),
+                ),
+            }
+        }
+    }
+}
+
+#[derive(Deserialize)]
 struct CredentialPayload {
     provider: CredentialProvider,
     metadata: CredentialMetadata,
@@ -443,6 +501,10 @@ pub async fn create_app() -> Result<Router> {
         .route(
             "/connections/{connection_id}/metadata",
             get(connections_metadata),
+        )
+        .route(
+            "/connections/{connection_id}/credential",
+            patch(connections_update_credential),
         )
         .route("/credentials", post(credentials_create))
         .route("/credentials/{credential_id}", get(credentials_retrieve))

@@ -1,6 +1,9 @@
 import { vi } from "vitest";
 
-import type { OpenAIModelFamily } from "@app/lib/api/llm/clients/openai/types";
+import type {
+  OpenAIModelFamily,
+  OpenAIWhitelistedModelId,
+} from "@app/lib/api/llm/clients/openai/types";
 import {
   getOpenAIModelFamilyFromModelId,
   OPENAI_WHITELISTED_MODEL_IDS,
@@ -16,7 +19,6 @@ import type {
   TestConfig,
   TestConversation,
 } from "@app/lib/api/llm/tests/types";
-import type { ModelIdType } from "@app/types/assistant/models/types";
 
 const OPENAI_MODEL_FAMILY_TO_TEST_CONFIGS: Record<
   OpenAIModelFamily,
@@ -99,7 +101,7 @@ class OpenAiTestSuite extends LLMClientTestSuite {
   protected provider = "openai" as const;
   protected models = OPENAI_WHITELISTED_MODEL_IDS;
 
-  protected getTestConfig(modelId: ModelIdType): TestConfig[] {
+  protected getTestConfig(modelId: OpenAIWhitelistedModelId): TestConfig[] {
     const family = getOpenAIModelFamilyFromModelId(modelId);
     return OPENAI_MODEL_FAMILY_TO_TEST_CONFIGS[family].map((configParams) => ({
       ...configParams,
@@ -109,7 +111,7 @@ class OpenAiTestSuite extends LLMClientTestSuite {
   }
 
   protected getSupportedConversations(
-    _modelId: ModelIdType,
+    _modelId: OpenAIWhitelistedModelId,
     config: TestConfig
   ): TestConversation[] {
     const family = getOpenAIModelFamilyFromModelId(_modelId);

@@ -49,7 +49,7 @@ export const AddTriggerMenu = ({
           .map(([provider, preset]) => (
             <DropdownMenuItem
               key={`trigger-${provider}`}
-              label={preset.name}
+              label={preset.name + (preset.featureFlag ? " (Preview)" : "")}
               icon={getIcon(preset.icon)}
               onClick={() =>
                 isWebhookProvider(provider) && createWebhook(provider)

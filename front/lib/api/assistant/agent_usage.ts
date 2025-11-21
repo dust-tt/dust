@@ -161,6 +161,7 @@ export async function agentMentionsCount(
       WHERE
         c."workspaceId" = :workspaceId
         AND mentions."workspaceId" = :workspaceId
+        AND mentions."agentConfigurationId" IS NOT NULL
         AND mentions."createdAt" > NOW() - INTERVAL '${rankingUsageDays} days'
         AND ((:agentConfigurationId)::VARCHAR IS NULL OR mentions."agentConfigurationId" = :agentConfigurationId)
       GROUP BY mentions."agentConfigurationId"

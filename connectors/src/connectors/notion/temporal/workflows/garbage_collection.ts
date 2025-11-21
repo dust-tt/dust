@@ -244,7 +244,11 @@ export async function notionGarbageCollectionWorkflow({
   await completeGarbageCollectionRun(connectorId, nbOfBatches);
 
   if (patched("one-hour-gc-interval")) {
-    await sleep(INTERVAL_BETWEEN_GC_SYNCS_MS);
+    if (patched("12-hour-gc-interval")) {
+      await sleep(INTERVAL_BETWEEN_GC_SYNCS_MS);
+    } else {
+      await sleep(1000 * 60 * 60); // 1 hour, which was the previous value of INTERVAL_BETWEEN_GC_SYNCS_MS
+    }
   } else {
     await sleep(INTERVAL_BETWEEN_SYNCS_MS);
   }

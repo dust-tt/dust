@@ -1,15 +1,18 @@
 import { workflow } from "@novu/framework";
+import uniqBy from "lodash/uniqBy";
 import z from "zod";
 
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import { Authenticator } from "@app/lib/auth";
-import { renderEmail } from "@app/lib/notifications/email-templates/default";
+import type { NotificationAllowedTags } from "@app/lib/notifications";
+import { renderEmail } from "@app/lib/notifications/email-templates/conversations-unread";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { UserMessageOrigin } from "@app/types";
 import {
   assertNever,
   isContentFragmentType,
+  isDevelopment,
   isUserMessageType,
 } from "@app/types";
 
@@ -74,6 +77,7 @@ const ConversationDetailsSchema = z.object({
   previewText: z.string(),
   avatarUrl: z.string().optional(),
   isFromTrigger: z.boolean(),
+  workspaceName: z.string(),
 });
 
 type ConversationDetailsType = z.infer<typeof ConversationDetailsSchema>;
@@ -87,6 +91,7 @@ const getConversationDetails = async (
   let previewText: string = "No preview available.";
   let avatarUrl: string | undefined;
   let isFromTrigger: boolean = false;
+  let workspaceName: string = "A workspace";
 
   if (isRealConversationPayload(payload)) {
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
@@ -94,49 +99,53 @@ const getConversationDetails = async (
       payload.workspaceId
     );
 
-    const conversation = await ConversationResource.fetchById(
+    const conversationRes = await ConversationResource.fetchById(
       auth,
       payload.conversationId
     );
 
-    if (conversation) {
-      recipentFullname = auth.getNonNullableUser().fullName();
-      subject = conversation.title ?? "Dust conversation";
-      isFromTrigger = !!conversation.triggerSId;
+    if (conversationRes.isOk()) {
+      const conversation = conversationRes.value;
+      if (conversation) {
+        workspaceName = auth.getNonNullableWorkspace().name;
+        recipentFullname = auth.getNonNullableUser().fullName();
+        subject = conversation.title ?? "Dust conversation";
+        isFromTrigger = !!conversation.triggerSId;
 
-      // Retrieve the message that triggered the notification
-      const messageRes = await conversation.getMessageById(
-        auth,
-        payload.messageId
-      );
-
-      if (messageRes.isOk()) {
-        const rendered = await batchRenderMessages(
+        // Retrieve the message that triggered the notification
+        const messageRes = await conversation.getMessageById(
           auth,
-          conversation,
-          [messageRes.value],
-          "light"
+          payload.messageId
         );
 
-        if (rendered.isOk() && rendered.value.length === 1) {
-          const lightMessage = rendered.value[0];
-          if (isContentFragmentType(lightMessage)) {
-            // Do nothing. Content fragments are not displayed in the notification.
-          } else if (isUserMessageType(lightMessage)) {
-            author = lightMessage.user?.fullName ?? "Someone else";
-            avatarUrl = lightMessage.user?.image ?? undefined;
-            previewText = lightMessage.content;
-          } else {
-            author = lightMessage.configuration.name
-              ? `@${lightMessage.configuration.name}`
-              : "An agent";
-            avatarUrl = lightMessage.configuration.pictureUrl ?? undefined;
-            previewText = lightMessage.content ?? "No content";
+        if (messageRes.isOk()) {
+          const rendered = await batchRenderMessages(
+            auth,
+            conversation,
+            [messageRes.value],
+            "light"
+          );
+
+          if (rendered.isOk() && rendered.value.length === 1) {
+            const lightMessage = rendered.value[0];
+            if (isContentFragmentType(lightMessage)) {
+              // Do nothing. Content fragments are not displayed in the notification.
+            } else if (isUserMessageType(lightMessage)) {
+              author = lightMessage.user?.fullName ?? "Someone else";
+              avatarUrl = lightMessage.user?.image ?? undefined;
+              previewText = lightMessage.content;
+            } else {
+              author = lightMessage.configuration.name
+                ? `@${lightMessage.configuration.name}`
+                : "An agent";
+              avatarUrl = lightMessage.configuration.pictureUrl ?? undefined;
+              previewText = lightMessage.content ?? "No content";
+            }
+            previewText =
+              previewText.length > 1024
+                ? previewText.slice(0, 1024) + "..."
+                : previewText;
           }
-          previewText =
-            previewText.length > 1024
-              ? previewText.slice(0, 1024) + "..."
-              : previewText;
         }
       }
     }
@@ -148,24 +157,34 @@ const getConversationDetails = async (
     previewText,
     avatarUrl,
     isFromTrigger,
+    workspaceName,
   };
 };
 
-const shouldSkipConversation = async (
-  payload: ConversationUnreadPayloadType
-): Promise<boolean> => {
+const shouldSkipConversation = async ({
+  payload,
+  triggerShouldSkip,
+}: {
+  payload: ConversationUnreadPayloadType;
+  triggerShouldSkip: boolean;
+}): Promise<boolean> => {
   if (isRealConversationPayload(payload)) {
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       payload.userId,
       payload.workspaceId
     );
 
-    const conversation = await ConversationResource.fetchById(
+    const conversationRes = await ConversationResource.fetchById(
       auth,
       payload.conversationId
     );
 
-    if (!conversation) {
+    if (conversationRes.isErr() || !conversationRes.value) {
+      return true;
+    }
+
+    const conversation = conversationRes.value;
+    if (triggerShouldSkip && conversation.triggerSId) {
       return true;
     }
 
@@ -220,47 +239,100 @@ export const conversationUnreadWorkflow = workflow(
         };
       },
       {
-        skip: async () => shouldSkipConversation(payload),
+        skip: async () =>
+          shouldSkipConversation({ payload, triggerShouldSkip: false }),
       }
     );
 
-    await step.delay("delay", () => ({
-      type: "regular",
-      amount: 3,
-      unit: "hours",
-    }));
+    const { events } = await step.digest(
+      "digest",
+      async () => {
+        const digestKey = `${payload.userId}-workspace-${payload.workspaceId}-unread-conversations`;
+        return isDevelopment()
+          ? {
+              amount: 2,
+              unit: "minutes",
+              digestKey,
+            }
+          : {
+              amount: 1,
+              unit: "hours",
+              digestKey,
+            };
+      },
+      {
+        // No email from trigger until we give more control over the notification to the users.
+        skip: async () =>
+          shouldSkipConversation({ payload, triggerShouldSkip: true }),
+      }
+    );
 
     await step.email(
       "send-email",
       async () => {
+        const conversations: Parameters<
+          typeof renderEmail
+        >[0]["conversations"] = [];
+
+        const uniqEventsPerConversation = uniqBy(
+          events,
+          (event) => event.payload.conversationId
+        );
+
+        for (const event of uniqEventsPerConversation) {
+          const shouldSkip = await shouldSkipConversation({
+            payload: event.payload as ConversationUnreadPayloadType,
+            triggerShouldSkip: true,
+          });
+          if (shouldSkip) {
+            continue;
+          }
+
+          const payload = event.payload as ConversationUnreadPayloadType;
+          const details = await getConversationDetails(payload);
+
+          conversations.push({
+            id: payload.conversationId,
+            title: details.subject as string,
+          });
+        }
+
         const body = await renderEmail({
           name: details.recipentFullname,
-          avatarUrl: details.avatarUrl,
-          content:
-            "You have a new unread message from " +
-            details.author +
-            ":\n\n" +
-            details.previewText,
-          action: {
-            label: "Open in Dust",
-            url:
-              process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL +
-              getConversationRoute(payload.workspaceId, payload.conversationId),
+          workspace: {
+            id: payload.workspaceId,
+            name: details.workspaceName,
           },
+          conversations,
         });
         return {
-          subject: `[Dust] ${details.subject} (new message)`,
+          subject:
+            conversations.length > 1
+              ? `[Dust] new unread message(s) in ${conversations.length} conversations`
+              : `[Dust] new unread message(s) in conversation`,
           body,
         };
       },
       {
         // No email from trigger until we give more control over the notification to the users.
-        skip: async () =>
-          (await shouldSkipConversation(payload)) || details.isFromTrigger,
+        skip: async () => {
+          const shouldSkip = await Promise.all(
+            events.map(async (event) =>
+              shouldSkipConversation({
+                payload: event.payload as ConversationUnreadPayloadType,
+                triggerShouldSkip: true,
+              })
+            )
+          );
+
+          // Do not skip if at least one conversation is not skipped.
+          return shouldSkip.every(Boolean);
+        },
       }
     );
   },
   {
     payloadSchema: ConversationUnreadPayloadSchema,
+    tags: ["conversations"] as NotificationAllowedTags,
   }
 );

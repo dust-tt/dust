@@ -93,20 +93,12 @@ export function registerWebSearchTool(
           });
         }
 
-        return new Ok([
-          ...results.map((result) => ({
+        return new Ok(
+          results.map((result) => ({
             type: "resource" as const,
             resource: result,
-          })),
-          {
-            type: "resource" as const,
-            resource: {
-              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.WEBSEARCH_QUERY,
-              text: query,
-              uri: "",
-            },
-          },
-        ]);
+          }))
+        );
       }
     )
   );

@@ -5,16 +5,39 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   ZendeskSearchResponse,
   ZendeskTicket,
+  ZendeskTicketField,
   ZendeskTicketMetrics,
 } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/types";
 import {
   ZendeskSearchResponseSchema,
+  ZendeskTicketFieldsResponseSchema,
   ZendeskTicketMetricsResponseSchema,
   ZendeskTicketResponseSchema,
 } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/types";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, isValidZendeskSubdomain, Ok } from "@app/types";
+
+const MAX_CUSTOM_FIELDS_TO_FETCH = 50;
+
+export function getUniqueCustomFieldIds(
+  tickets: ZendeskTicket | ZendeskTicket[]
+): number[] {
+  const ticketsArray = Array.isArray(tickets) ? tickets : [tickets];
+  const fieldIds = new Set<number>();
+
+  for (const ticket of ticketsArray) {
+    if (ticket.custom_fields) {
+      for (const field of ticket.custom_fields) {
+        if (field.value !== null && field.value !== "") {
+          fieldIds.add(field.id);
+        }
+      }
+    }
+  }
+
+  return Array.from(fieldIds).slice(0, MAX_CUSTOM_FIELDS_TO_FETCH);
+}
 
 export function getZendeskClient(
   authInfo: AuthInfo | undefined
@@ -89,6 +112,7 @@ class ZendeskClient {
     if (!parseResult.success) {
       logger.error(
         {
+          endpoint,
           error: parseResult.error.message,
         },
         "[Zendesk] Invalid API response format"
@@ -185,5 +209,25 @@ class ZendeskClient {
     }
 
     return new Ok(result.value.ticket);
+  }
+
+  async getTicketFieldsByIds(
+    fieldIds: number[]
+  ): Promise<Result<ZendeskTicketField[], Error>> {
+    if (fieldIds.length === 0) {
+      return new Ok([]);
+    }
+
+    const idsParam = fieldIds.join(",");
+    const result = await this.request(
+      `ticket_fields/show_many?ids=${idsParam}`,
+      ZendeskTicketFieldsResponseSchema
+    );
+
+    if (result.isErr()) {
+      return new Err(result.error);
+    }
+
+    return new Ok(result.value.ticket_fields.filter((f) => f.active));
   }
 }

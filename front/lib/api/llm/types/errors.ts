@@ -8,6 +8,7 @@ export type LLMErrorType =
   | "stop_error"
   | "refusal_error"
   | "maximum_length"
+  | "terminated_error"
   // HTTP errors
   | "rate_limit_error"
   | "overloaded_error"
@@ -59,6 +60,15 @@ export function categorizeLLMError(
     typeof error.status === "number"
       ? error.status
       : undefined;
+
+  if (errorMessage === "terminated") {
+    return {
+      type: "terminated_error",
+      message: `Terminated error for ${metadata.clientId}/${metadata.modelId}. ${normalized.message}`,
+      isRetryable: true,
+      originalError: error,
+    };
+  }
 
   if (
     statusCode === 429 ||

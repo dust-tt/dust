@@ -35,6 +35,7 @@ import {
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
 import { ConversationViewerEmptyState } from "@app/components/assistant/ConversationViewerEmptyState";
+import { useEnableBrowserNotification } from "@app/hooks/useEnableBrowserNotification";
 import { useEventSource } from "@app/hooks/useEventSource";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
@@ -66,10 +67,13 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever, isRichAgentMention } from "@app/types";
 import { Err, isContentFragmentType, isUserMessageType, Ok } from "@app/types";
 
 const DEFAULT_PAGE_LIMIT = 50;
+
+// A conversation must be unread and older than that to enable the suggestion of enabling notifications.
+const DELAY_BEFORE_SUGGESTING_PUSH_NOTIFICATION_ACTIVATION = 60 * 60 * 1000; // 1 hour
 
 interface ConversationViewerProps {
   conversationId: string;
@@ -121,6 +125,24 @@ export const ConversationViewer = ({
     conversation,
     workspaceId: owner.sId,
   });
+
+  const { askForPermission } = useEnableBrowserNotification();
+
+  const shouldShowPushNotificationActivation = useMemo(() => {
+    if (!conversation?.sId || !conversation.unread) {
+      return false;
+    }
+
+    const delay = new Date().getTime() - conversation.updated;
+
+    return delay > DELAY_BEFORE_SUGGESTING_PUSH_NOTIFICATION_ACTIVATION;
+  }, [conversation?.sId, conversation?.unread, conversation?.updated]);
+
+  useEffect(() => {
+    if (shouldShowPushNotificationActivation) {
+      void askForPermission();
+    }
+  }, [shouldShowPushNotificationActivation, askForPermission]);
 
   const { mutateConversations } = useConversations({
     workspaceId: owner.sId,
@@ -466,23 +488,37 @@ export const ConversationViewer = ({
 
       const placeholderAgentMessages: VirtuosoMessage[] = [];
       for (const mention of mentions) {
-        // +1 per agent message mentioned
-        rank += 1;
-        placeholderAgentMessages.push(
-          createPlaceholderAgentMessage({ mention, rank })
-        );
+        if (isRichAgentMention(mention)) {
+          // +1 per agent message mentioned
+          rank += 1;
+          placeholderAgentMessages.push(
+            createPlaceholderAgentMessage({ mention, rank })
+          );
+        }
       }
 
       const nbMessages = ref.current.data.get().length;
       ref.current.data.append(
         [placeholderUserMsg, ...placeholderAgentMessages],
-        () => {
-          return {
-            index: nbMessages, // Avoid jumping around when the agent message is generated.
-            align: "start",
-            behavior: customSmoothScroll,
-          };
-        }
+        mentions.some(isRichAgentMention)
+          ? () => {
+              return {
+                index: nbMessages, // Avoid jumping around when the agent message is generated.
+                align: "start",
+                behavior: customSmoothScroll,
+              };
+            }
+          : (params) => {
+              if (params.scrollLocation.bottomOffset >= 0) {
+                return {
+                  index: "LAST",
+                  align: "end",
+                  behavior: customSmoothScroll,
+                };
+              } else {
+                return false;
+              }
+            }
       );
 
       const result = await submitMessage({

@@ -104,6 +104,10 @@ interface SalesloftApiResponse<T> {
   };
 }
 
+interface SalesloftSingleItemResponse<T> {
+  data: T;
+}
+
 async function handleSalesloftError(
   response: Response,
   errorText: string
@@ -154,6 +158,33 @@ async function makeSalesloftRequest<T>(
       url.searchParams.append(key, String(value));
     });
   }
+
+  const response = await fetch(url.toString(), {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    await handleSalesloftError(response, errorText);
+  }
+
+  const jsonResponse = await response.json();
+
+  if (!jsonResponse || typeof jsonResponse !== "object") {
+    throw new Error("Invalid response format from Salesloft API");
+  }
+
+  return jsonResponse;
+}
+
+async function makeSalesloftSingleItemRequest<T>(
+  accessToken: string,
+  endpoint: string
+): Promise<SalesloftSingleItemResponse<T>> {
+  const url = new URL(`${SALESLOFT_API_BASE_URL}${endpoint}`);
 
   const response = await fetch(url.toString(), {
     headers: {
@@ -269,32 +300,51 @@ async function getPeopleByIds(
     return new Map();
   }
 
-  const people = await getAllPages<SalesloftPerson>(accessToken, "/people", {});
+  const people = await concurrentExecutor(
+    personIds,
+    async (personId) => {
+      try {
+        const response = await makeSalesloftSingleItemRequest<SalesloftPerson>(
+          accessToken,
+          `/people/${personId}`
+        );
+        return response.data ?? null;
+      } catch (error) {
+        logger.warn(
+          { personId, error: normalizeError(error) },
+          "Failed to fetch person by ID"
+        );
+        return null;
+      }
+    },
+    { concurrency: 10 }
+  );
 
   const peopleMap = new Map<number, SalesloftPerson>();
   for (const person of people) {
-    if (personIds.includes(person.id)) {
-      peopleMap.set(person.id, {
-        id: person.id,
-        first_name: person.first_name,
-        last_name: person.last_name,
-        email_address: person.email_address,
-        phone: person.phone,
-        linkedin_url: person.linkedin_url,
-        title: person.title,
-        city: person.city,
-        state: person.state,
-        country: person.country,
-        person_company_name: person.person_company_name,
-        person_company_website: person.person_company_website,
-        do_not_contact: person.do_not_contact,
-        twitter_handle: person.twitter_handle,
-        job_seniority: person.job_seniority,
-        job_function: person.job_function,
-        untouched: person.untouched,
-        hot_lead: person.hot_lead,
-      });
+    if (!person) {
+      continue;
     }
+    peopleMap.set(person.id, {
+      id: person.id,
+      first_name: person.first_name,
+      last_name: person.last_name,
+      email_address: person.email_address,
+      phone: person.phone,
+      linkedin_url: person.linkedin_url,
+      title: person.title,
+      city: person.city,
+      state: person.state,
+      country: person.country,
+      person_company_name: person.person_company_name,
+      person_company_website: person.person_company_website,
+      do_not_contact: person.do_not_contact,
+      twitter_handle: person.twitter_handle,
+      job_seniority: person.job_seniority,
+      job_function: person.job_function,
+      untouched: person.untouched,
+      hot_lead: person.hot_lead,
+    });
   }
   return peopleMap;
 }

@@ -67,6 +67,7 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "gemini-2.5-pro"
   | "gemini-2.5-flash"
   | "gemini-2.5-flash-lite"
+  | "gemini-3-pro-preview"
   | "meta-llama/Llama-3.3-70B-Instruct-Turbo" // togetherai
   | "Qwen/Qwen2.5-Coder-32B-Instruct" // togetherai
   | "Qwen/QwQ-32B-Preview" // togetherai
@@ -645,6 +646,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "confluence_tool"
   | "deepseek_feature"
   | "deepseek_r1_global_agent_feature"
+  | "dust_edge_global_agent"
   | "dev_mcp_actions"
   | "disable_run_logs"
   | "disallow_agent_creation_to_users"
@@ -675,6 +677,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_o1_high_reasoning_custom_assistants_feature"
   | "openai_o1_high_reasoning_feature"
   | "openai_usage_mcp"
+  | "ppul_credits_purchase_flow"
   | "salesforce_synced_queries"
   | "salesforce_tool"
   | "salesforce_tool_write"
@@ -682,7 +685,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "show_debug_tools"
   | "slack_bot_mcp"
   | "slack_enhanced_default_agent"
-  | "slack_files_write_scope"
   | "slack_message_splitting"
   | "slack_semantic_search"
   | "slideshow"
@@ -690,6 +692,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "use_requested_space_ids"
   | "web_summarization"
   | "xai_feature"
+  | "programmatic_usage_metrics"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

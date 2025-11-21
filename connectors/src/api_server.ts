@@ -26,10 +26,6 @@ import { unpauseConnectorAPIHandler } from "@connectors/api/unpause_connector";
 import { postConnectorUpdateAPIHandler } from "@connectors/api/update_connector";
 import { webhookDiscordAppHandler } from "@connectors/api/webhooks/webhook_discord_app";
 import { webhookGithubAPIHandler } from "@connectors/api/webhooks/webhook_github";
-import {
-  webhookIntercomAPIHandler,
-  webhookIntercomUninstallAPIHandler,
-} from "@connectors/api/webhooks/webhook_intercom";
 import { webhookNotionAPIHandler } from "@connectors/api/webhooks/webhook_notion";
 import { webhookSlackAPIHandler } from "@connectors/api/webhooks/webhook_slack";
 import { webhookSlackBotAPIHandler } from "@connectors/api/webhooks/webhook_slack_bot";
@@ -155,16 +151,6 @@ export function startServer(port: number) {
     "/webhooks/:webhooks_secret/github",
     bodyParser.raw({ type: "application/json" }),
     webhookGithubAPIHandler
-  );
-  app.post(
-    "/webhooks/:webhooks_secret/intercom",
-    bodyParser.raw({ type: "application/json" }),
-    webhookIntercomAPIHandler
-  );
-  app.post(
-    "/webhooks/:webhooks_secret/intercom/uninstall",
-    bodyParser.raw({ type: "application/json" }),
-    webhookIntercomUninstallAPIHandler
   );
   app.post(
     "/webhooks/:webhooks_secret/notion",

@@ -141,11 +141,16 @@ export async function updateConversationTitle(
     title: string;
   }
 ): Promise<Result<undefined, ConversationError>> {
-  const conversation = await ConversationResource.fetchById(
+  const conversationRes = await ConversationResource.fetchById(
     auth,
     conversationId
   );
 
+  if (conversationRes.isErr()) {
+    return conversationRes;
+  }
+
+  const conversation = conversationRes.value;
   if (!conversation) {
     return new Err(new ConversationError("conversation_not_found"));
   }
@@ -168,7 +173,7 @@ export async function deleteOrLeaveConversation(
     conversationId: string;
   }
 ): Promise<Result<{ success: true }, Error>> {
-  const conversation = await ConversationResource.fetchById(
+  const conversationRes = await ConversationResource.fetchById(
     auth,
     conversationId,
     {
@@ -176,6 +181,11 @@ export async function deleteOrLeaveConversation(
     }
   );
 
+  if (conversationRes.isErr()) {
+    return conversationRes;
+  }
+
+  const conversation = conversationRes.value;
   if (!conversation) {
     return new Err(new ConversationError("conversation_not_found"));
   }
@@ -424,6 +434,7 @@ export async function postUserMessage(
       return ConversationResource.upsertParticipation(auth, {
         conversation,
         action: "posted",
+        user: user?.toJSON() ?? null,
       });
     })(),
   ]);
@@ -568,17 +579,17 @@ export async function postUserMessage(
         rank: m.rank,
       };
 
+      await createUserMentions(auth, {
+        mentions,
+        message: m,
+        conversation,
+        transaction: t,
+      });
+
       // Mark the conversation as unread for all participants except the user.
       await ConversationResource.markAsUnreadForOtherParticipants(auth, {
         conversation,
         excludedUser: user?.toJSON(),
-      });
-
-      await createUserMentions(auth, {
-        mentions,
-        message: m,
-        owner,
-        transaction: t,
       });
 
       const agentMessagesResult = await createAgentMessages({
@@ -770,6 +781,7 @@ export async function editUserMessage(
     ConversationResource.upsertParticipation(auth, {
       conversation,
       action: "posted",
+      user: user?.toJSON() ?? null,
     }),
   ]);
 
@@ -929,7 +941,7 @@ export async function editUserMessage(
       await createUserMentions(auth, {
         mentions,
         message: m,
-        owner,
+        conversation,
         transaction: t,
       });
 

@@ -32,12 +32,18 @@ export function useUser(
   };
 }
 
-export function useUserMetadata(key: string) {
+export function useUserMetadata(
+  key: string,
+  swrOptions?: SWRConfiguration & {
+    disabled?: boolean;
+  }
+) {
   const userMetadataFetcher: Fetcher<GetUserMetadataResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/user/metadata/${encodeURIComponent(key)}`,
-    userMetadataFetcher
+    userMetadataFetcher,
+    swrOptions
   );
 
   return {

@@ -9,28 +9,24 @@ const SvgValTown = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <rect width={24} height={24} rx={4} fill="white" />
-    <g clipPath="url(#clip0_valtown)">
-      <path
-        d="M15.9 16.26C15.47 16.26 15.12 16.13 14.85 15.86C14.58 15.59 14.45 15.23 14.45 14.78V11.09H13.58V9.71H14.45V7.68H16.11V9.71H17.91V11.09H16.11V14.49C16.11 14.76 16.24 14.89 16.48 14.89H17.75V16.26H15.9Z"
-        fill="black"
-      />
-      <path
-        d="M12.26 10.46L9.49 15.05H9.26V10.72C9.26 10.16 8.81 9.71 8.25 9.71H7.59V15.18C7.59 15.78 8.08 16.26 8.67 16.26H9.8C10.4 16.26 10.96 15.94 11.26 15.42L14.56 9.71H13.58C13.04 9.71 12.54 10.00 12.26 10.46Z"
-        fill="black"
-      />
-      <path d="M6.00 9.71H7.67V11.09H6.00V9.71Z" fill="black" />
+    <mask
+      id="ValTown_svg__a"
+      width={20}
+      height={15}
+      x={2}
+      y={5}
+      maskUnits="userSpaceOnUse"
+      style={{
+        maskType: "luminance",
+      }}
+    >
+      <path fill="#fff" d="M22 5H2v14.386h20V5Z" />
+    </mask>
+    <g fill="#000" mask="url(#ValTown_svg__a)">
+      <path d="M18.503 19.3c-.72 0-1.304-.223-1.751-.67-.448-.448-.672-1.046-.672-1.794v-6.16h-1.444V8.388h1.444V5h2.775v3.388h2.995v2.288h-2.995v5.676c0 .44.205.66.617.66h2.114V19.3h-3.083Z" />
+      <path d="m12.436 9.632-4.613 7.645h-.396V10.06c0-.923-.75-1.671-1.673-1.671H4.652V17.5c0 .994.807 1.8 1.802 1.8H8.34a2.8 2.8 0 0 0 2.424-1.398l5.502-9.514H14.64c-.902 0-1.738.472-2.204 1.243Z" />
+      <path d="M2 8.389h2.78v2.288H2V8.389Z" />
     </g>
-    <defs>
-      <clipPath id="clip0_valtown">
-        <rect
-          width={12}
-          height={8.63}
-          fill="white"
-          transform="translate(6 7.68)"
-        />
-      </clipPath>
-    </defs>
   </svg>
 );
 export default SvgValTown;

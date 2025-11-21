@@ -18,14 +18,14 @@ import logger from "@app/logger/logger";
 import type {
   ConversationWithoutContentType,
   ToolErrorEvent,
+  UserMessageOrigin,
 } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { getAgentLoopData } from "@app/types/assistant/agent_run";
 
 export async function markAgentMessageAsFailed(
   agentMessageRow: AgentMessage,
-  error: ToolErrorEvent["error"],
-  runIds?: string[]
+  error: ToolErrorEvent["error"]
 ): Promise<void> {
   await agentMessageRow.update({
     completedAt: new Date(),
@@ -33,7 +33,6 @@ export async function markAgentMessageAsFailed(
     errorMessage: error.message,
     errorMetadata: error.metadata,
     status: "failed",
-    ...(runIds && { runIds }),
   });
 }
 
@@ -63,14 +62,21 @@ async function processEventForDatabase(
     });
   }
 
+  // Merge runIds from events that include them. This ensures runIds are persisted
+  // incrementally as events are published.
+  if ("runIds" in event && event.runIds && event.runIds.length > 0) {
+    const existingRunIds = agentMessageRow.runIds ?? [];
+    // Merge and deduplicate runIds
+    const mergedRunIds = [...new Set([...existingRunIds, ...event.runIds])];
+    await agentMessageRow.update({
+      runIds: mergedRunIds,
+    });
+  }
+
   switch (event.type) {
     case "agent_error":
-      // Store error in database with runIds from the failed LLM call.
-      await markAgentMessageAsFailed(
-        agentMessageRow,
-        event.error,
-        event.runIds
-      );
+      // Store error in database.
+      await markAgentMessageAsFailed(agentMessageRow, event.error);
 
       // Mark the conversation as errored.
       await ConversationResource.markHasError(auth, {
@@ -116,9 +122,8 @@ async function processEventForDatabase(
 
     case "agent_message_success":
       await Promise.all([
-        // Store success and run IDs in database.
+        // Store success in database. runIds are already merged above.
         agentMessageRow.update({
-          runIds: event.runIds,
           status: "succeeded",
           completedAt: new Date(),
         }),
@@ -173,7 +178,7 @@ async function processEventForTokenUsageTracking(
   {
     event,
     userMessageOrigin,
-  }: { event: AgentMessageEvents; userMessageOrigin?: string | null }
+  }: { event: AgentMessageEvents; userMessageOrigin?: UserMessageOrigin | null }
 ) {
   if (event.type === "agent_message_success") {
     const { runIds } = event;
@@ -199,7 +204,7 @@ export async function updateResourceAndPublishEvent(
     conversation: ConversationWithoutContentType;
     step: number;
     modelInteractionDurationMs?: number;
-    userMessageOrigin?: string | null;
+    userMessageOrigin?: UserMessageOrigin | null;
   }
 ): Promise<void> {
   // Processing of events before publishing to Redis.

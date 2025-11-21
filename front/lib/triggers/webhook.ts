@@ -427,6 +427,7 @@ async function launchTriggersWorkflows({
           auth,
           trigger,
           contentFragment,
+          webhookRequestId: webhookRequest.id,
         });
 
         if (result.isErr()) {

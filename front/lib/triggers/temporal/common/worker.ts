@@ -1,7 +1,10 @@
 import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
 
-import { getTemporalAgentWorkerConnection } from "@app/lib/temporal";
+import {
+  getTemporalAgentWorkerConnection,
+  TEMPORAL_MAXED_CACHED_WORKFLOWS,
+} from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
 
@@ -15,6 +18,7 @@ export async function runAgentTriggerWorker() {
     workflowsPath: require.resolve("./workflows"),
     activities,
     taskQueue: QUEUE_NAME,
+    maxCachedWorkflows: TEMPORAL_MAXED_CACHED_WORKFLOWS,
     maxConcurrentActivityTaskExecutions: 2,
     connection,
     namespace,

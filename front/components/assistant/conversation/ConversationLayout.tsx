@@ -215,7 +215,9 @@ function ConversationInnerLayout({
         >
           <ResizablePanel defaultSize={100}>
             <div className="flex h-full flex-col">
-              {activeConversationId && <ConversationTitle owner={owner} />}
+              {activeConversationId && !conversationError && (
+                <ConversationTitle owner={owner} />
+              )}
               {conversationError ? (
                 <ConversationErrorDisplay error={conversationError} />
               ) : (

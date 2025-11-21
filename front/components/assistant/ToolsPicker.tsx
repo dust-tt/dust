@@ -12,23 +12,25 @@ import {
   LoadingBlock,
   ToolsIcon,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 
 import { CreateMCPServerSheet } from "@app/components/actions/mcp/CreateMCPServerSheet";
 import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
+  mcpServersSortingFn,
   mcpServerViewSortingFn,
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
+import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
+import { getDefaultRemoteMCPServerByName } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import {
   useAvailableMCPServers,
   useMCPServerViewsFromSpaces,
 } from "@app/lib/swr/mcp_servers";
-import { useSpaces, useSystemSpace } from "@app/lib/swr/spaces";
+import { useSpaces } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
   trackEvent,
@@ -75,23 +77,24 @@ export function ToolsPicker({
   disabled = false,
   buttonSize = "xs",
 }: ToolsPickerProps) {
-  const router = useRouter();
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [setupSheetServer, setSetupSheetServer] =
     useState<MCPServerType | null>(null);
+  const [setupSheetRemoteServerConfig, setSetupSheetRemoteServerConfig] =
+    useState<DefaultRemoteMCPServerConfig | null>(null);
   const [isSettingUpServer, setIsSettingUpServer] = useState(false);
   const [pendingServerToAdd, setPendingServerToAdd] =
     useState<MCPServerType | null>(null);
 
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
-  const shouldKeepHooksActive =
+  const shouldFetchToolsData =
     isOpen || isSettingUpServer || !!pendingServerToAdd;
 
   const { spaces } = useSpaces({
     workspaceId: owner.sId,
-    disabled: !shouldKeepHooksActive,
+    disabled: !shouldFetchToolsData,
   });
   const globalSpaces = useMemo(
     () => spaces.filter((s) => s.kind === "global"),
@@ -99,17 +102,13 @@ export function ToolsPicker({
   );
 
   const isAdmin = owner.role === "admin";
-  const { systemSpace } = useSystemSpace({
-    workspaceId: owner.sId,
-    disabled: !isOpen || !isAdmin,
-  });
 
   const {
     serverViews,
     isLoading: isServerViewsLoading,
     mutateServerViews,
   } = useMCPServerViewsFromSpaces(owner, globalSpaces, {
-    disabled: !shouldKeepHooksActive,
+    disabled: !shouldFetchToolsData,
   });
 
   const selectedMCPServerViewIds = useMemo(
@@ -156,39 +155,67 @@ export function ToolsPicker({
     );
 
     return {
-      filteredServerViews,
-      filteredServerViewsUnselected: filteredServerViews.filter(
-        (v) => !selectedMCPServerViewIds.includes(v.sId)
-      ),
+      filteredServerViews: filteredServerViews,
+      filteredServerViewsUnselected: filteredServerViews
+        .filter((v) => !selectedMCPServerViewIds.includes(v.sId))
+        .sort(mcpServerViewSortingFn),
     };
   }, [serverViews, searchText, selectedMCPServerViewIds]);
 
-  const { availableMCPServers } = useAvailableMCPServers({
-    owner,
-  });
+  const { availableMCPServers, isAvailableMCPServersLoading } =
+    useAvailableMCPServers({
+      owner,
+      disabled: !shouldFetchToolsData,
+    });
 
-  // We compare by name, not sId, because names are shared between multiple instances of the same MCP server (sIds are not).
-  // We filter by manual availability to show only servers that need install step.
-  const uninstalledServers = useMemo(() => {
-    if (!availableMCPServers || !serverViews) {
+  const isDataReady = !isServerViewsLoading && !isAvailableMCPServersLoading;
+
+  // - We compare by name, not sId, because names are shared between multiple instances of the same MCP server (sIds are not).
+  // - We filter by manual availability to show only servers that need install step, and by search text if present.
+  // - We don't compute uninstalled servers until BOTH data sources have loaded to prevent flicker.
+  const filteredUninstalledServers = useMemo(() => {
+    if (
+      !hasFeature("jit_tool_setup") ||
+      !isAdmin ||
+      !isDataReady ||
+      !shouldFetchToolsData
+    ) {
       return [];
     }
+
     const installedServerNames = new Set(serverViews.map((v) => v.server.name));
-    return availableMCPServers.filter(
+    const uninstalled = availableMCPServers.filter(
       (server) =>
         !installedServerNames.has(server.name) &&
         server.availability === "manual"
     );
-  }, [availableMCPServers, serverViews]);
 
-  const displayToolsToInstall = useMemo(() => {
-    return (
-      isAdmin &&
-      !isServerViewsLoading &&
-      hasFeature("jit_tool_setup") &&
-      uninstalledServers.length > 0
-    );
-  }, [isAdmin, isServerViewsLoading, hasFeature, uninstalledServers]);
+    if (searchText.length === 0) {
+      return uninstalled;
+    }
+
+    return uninstalled
+      .filter(
+        (server) =>
+          asDisplayName(server.name)
+            .toLowerCase()
+            .includes(searchText.toLowerCase()) ||
+          server.description.toLowerCase().includes(searchText.toLowerCase())
+      )
+      .sort((a, b) => mcpServersSortingFn({ mcpServer: a }, { mcpServer: b }));
+  }, [
+    hasFeature,
+    isAdmin,
+    isDataReady,
+    shouldFetchToolsData,
+    serverViews,
+    availableMCPServers,
+    searchText,
+  ]);
+
+  const shouldShowSetupSheet = useMemo(() => {
+    return !!setupSheetServer || !!setupSheetRemoteServerConfig;
+  }, [setupSheetServer, setupSheetRemoteServerConfig]);
 
   return (
     <>
@@ -220,119 +247,85 @@ export function ToolsPicker({
           align="start"
           dropdownHeaders={
             <>
-              <div className="flex items-center">
-                <div className="flex-1">
-                  <DropdownMenuSearchbar
-                    autoFocus
-                    name="search-tools"
-                    placeholder="Search Tools"
-                    value={searchText}
-                    onChange={setSearchText}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && filteredServerViews.length > 0) {
-                        const isSelected = selectedMCPServerViewIds.includes(
-                          filteredServerViews[0].sId
-                        );
-                        if (isSelected) {
-                          trackEvent({
-                            area: TRACKING_AREAS.TOOLS,
-                            object: "tool_deselect",
-                            action: TRACKING_ACTIONS.SELECT,
-                            extra: {
-                              tool_id: filteredServerViews[0].sId,
-                              tool_name: filteredServerViews[0].server.name,
-                            },
-                          });
-                          onDeselect(filteredServerViews[0]);
-                        } else {
-                          trackEvent({
-                            area: TRACKING_AREAS.TOOLS,
-                            object: "tool_select",
-                            action: TRACKING_ACTIONS.SELECT,
-                            extra: {
-                              tool_id: filteredServerViews[0].sId,
-                              tool_name: filteredServerViews[0].server.name,
-                            },
-                          });
-                          onSelect(filteredServerViews[0]);
-                        }
-                        setSearchText("");
-                        setIsOpen(false);
-                      }
-                    }}
-                  />
-                </div>
-                {systemSpace && (
-                  <Button
-                    icon={ToolsIcon}
-                    variant="outline"
-                    label="Manage"
-                    onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      void router.push(
-                        `/w/${owner.sId}/spaces/${systemSpace.sId}/categories/actions`
-                      );
-                    }}
-                  />
-                )}
-              </div>
+              <DropdownMenuSearchbar
+                autoFocus
+                name="search-tools"
+                placeholder="Search Tools"
+                value={searchText}
+                onChange={setSearchText}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && filteredServerViews.length > 0) {
+                    const isSelected = selectedMCPServerViewIds.includes(
+                      filteredServerViews[0].sId
+                    );
+                    if (isSelected) {
+                      trackEvent({
+                        area: TRACKING_AREAS.TOOLS,
+                        object: "tool_deselect",
+                        action: TRACKING_ACTIONS.SELECT,
+                        extra: {
+                          tool_id: filteredServerViews[0].sId,
+                          tool_name: filteredServerViews[0].server.name,
+                        },
+                      });
+                      onDeselect(filteredServerViews[0]);
+                    } else {
+                      trackEvent({
+                        area: TRACKING_AREAS.TOOLS,
+                        object: "tool_select",
+                        action: TRACKING_ACTIONS.SELECT,
+                        extra: {
+                          tool_id: filteredServerViews[0].sId,
+                          tool_name: filteredServerViews[0].server.name,
+                        },
+                      });
+                      onSelect(filteredServerViews[0]);
+                    }
+                    setSearchText("");
+                    setIsOpen(false);
+                  }
+                }}
+              />
               <DropdownMenuSeparator />
             </>
           }
         >
-          {filteredServerViews.length > 0 ? (
+          {!isDataReady && <ToolsPickerLoading />}
+
+          {isDataReady && filteredServerViews.length > 0 && (
             <>
-              {filteredServerViewsUnselected
-                .sort(mcpServerViewSortingFn)
-                .map((v) => {
-                  return (
-                    <DropdownMenuItem
-                      key={`tools-picker-${v.sId}`}
-                      icon={() => getAvatar(v.server)}
-                      label={getMcpServerViewDisplayName(v)}
-                      description={getMcpServerViewDescription(v)}
-                      truncateText
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        trackEvent({
-                          area: TRACKING_AREAS.TOOLS,
-                          object: "tool_select",
-                          action: TRACKING_ACTIONS.SELECT,
-                          extra: {
-                            tool_id: v.sId,
-                            tool_name: v.server.name,
-                          },
-                        });
-                        onSelect(v);
-                        setIsOpen(false);
-                      }}
-                    />
-                  );
-                })}
-              {filteredServerViewsUnselected.length === 0 && (
-                <DropdownMenuItem
-                  id="tools-picker-no-selected"
-                  icon={() => <Icon visual={BoltIcon} size="xs" />}
-                  className="italic"
-                  label="No more tools to select"
-                  description="All available tools are already selected"
-                  disabled
-                />
-              )}
+              {filteredServerViewsUnselected.map((v) => {
+                return (
+                  <DropdownMenuItem
+                    key={`tools-picker-${v.sId}`}
+                    icon={() => getAvatar(v.server)}
+                    label={getMcpServerViewDisplayName(v)}
+                    description={getMcpServerViewDescription(v)}
+                    truncateText
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      trackEvent({
+                        area: TRACKING_AREAS.TOOLS,
+                        object: "tool_select",
+                        action: TRACKING_ACTIONS.SELECT,
+                        extra: {
+                          tool_id: v.sId,
+                          tool_name: v.server.name,
+                        },
+                      });
+                      onSelect(v);
+                      setIsOpen(false);
+                    }}
+                  />
+                );
+              })}
             </>
-          ) : isServerViewsLoading ? (
-            <ToolsPickerLoading />
-          ) : (
-            <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
-              No results found
-            </div>
           )}
 
-          {displayToolsToInstall && (
+          {isDataReady && filteredUninstalledServers.length > 0 && (
             <>
-              {uninstalledServers.map((server) => (
+              {filteredUninstalledServers.map((server) => (
                 <DropdownMenuItem
                   key={`tools-to-install-${server.sId}`}
                   icon={() => getAvatar(server)}
@@ -340,12 +333,25 @@ export function ToolsPicker({
                   description={server.description}
                   truncateText
                   endComponent={
-                    <Chip size="xs" color="golden" label="Activate" />
+                    <Chip size="xs" color="golden" label="Configure" />
                   }
                   onClick={(e) => {
                     e.stopPropagation();
                     e.preventDefault();
-                    setSetupSheetServer(server);
+
+                    const remoteMcpServerConfig =
+                      getDefaultRemoteMCPServerByName(server.name);
+
+                    if (remoteMcpServerConfig) {
+                      // Remote servers always use the remote flow, even if they have OAuth.
+                      setSetupSheetServer(null);
+                      setSetupSheetRemoteServerConfig(remoteMcpServerConfig);
+                    } else {
+                      // Internal servers (with or without OAuth)
+                      setSetupSheetServer(server);
+                      setSetupSheetRemoteServerConfig(null);
+                    }
+
                     setIsSettingUpServer(true);
                     setIsOpen(false);
                   }}
@@ -353,13 +359,35 @@ export function ToolsPicker({
               ))}
             </>
           )}
+
+          {isDataReady &&
+            filteredServerViewsUnselected.length === 0 &&
+            filteredUninstalledServers.length === 0 && (
+              <DropdownMenuItem
+                id="tools-picker-no-selected"
+                icon={() => <Icon visual={BoltIcon} size="xs" />}
+                className="italic"
+                label={
+                  searchText.length > 0
+                    ? "No result"
+                    : "No more tools to select"
+                }
+                description={
+                  searchText.length > 0
+                    ? "No tools found matching your search."
+                    : "All available tools are already selected."
+                }
+                disabled
+              />
+            )}
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {setupSheetServer && (
+      {shouldShowSetupSheet && (
         <CreateMCPServerSheet
           owner={owner}
-          internalMCPServer={setupSheetServer}
+          internalMCPServer={setupSheetServer ?? undefined}
+          defaultServerConfig={setupSheetRemoteServerConfig ?? undefined}
           setMCPServerToShow={async (createdServer) => {
             const updatedData = await mutateServerViews();
 
@@ -385,12 +413,14 @@ export function ToolsPicker({
             }
 
             setSetupSheetServer(null);
+            setSetupSheetRemoteServerConfig(null);
           }}
           setIsLoading={() => {}}
-          isOpen={!!setupSheetServer}
+          isOpen={shouldShowSetupSheet}
           setIsOpen={(isOpen) => {
             if (!isOpen) {
               setSetupSheetServer(null);
+              setSetupSheetRemoteServerConfig(null);
               setPendingServerToAdd(null);
               setIsSettingUpServer(false);
             }

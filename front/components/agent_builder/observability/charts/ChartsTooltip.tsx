@@ -8,7 +8,7 @@ import { ChartTooltipCard } from "@app/components/agent_builder/observability/sh
 import { normalizeVersionLabel } from "@app/components/agent_builder/observability/shared/tooltipHelpers";
 import type { ToolChartModeType } from "@app/components/agent_builder/observability/types";
 import { isToolChartUsagePayload } from "@app/components/agent_builder/observability/types";
-import { getToolColor } from "@app/components/agent_builder/observability/utils";
+import { getIndexedColor } from "@app/components/agent_builder/observability/utils";
 
 export interface ToolUsageTooltipProps
   extends TooltipContentProps<number, string> {
@@ -39,7 +39,7 @@ export function ChartsTooltip({
         label: toolName,
         value: count,
         percent,
-        colorClassName: getToolColor(toolName, topTools),
+        colorClassName: getIndexedColor(toolName, topTools),
       };
     });
 

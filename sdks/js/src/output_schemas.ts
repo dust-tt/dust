@@ -163,25 +163,6 @@ export const isExampleRowsResourceType = (
   );
 };
 
-// Data source search outputs: query and results.
-
-export const SearchQueryResourceSchema = z.object({
-  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY),
-  text: z.string(),
-  uri: z.literal(""),
-});
-
-export type SearchQueryResourceType = z.infer<typeof SearchQueryResourceSchema>;
-
-export const isSearchQueryResourceType = (
-  outputBlock: CallToolResult["content"][number]
-): outputBlock is { type: "resource"; resource: SearchQueryResourceType } => {
-  return (
-    outputBlock.type === "resource" &&
-    SearchQueryResourceSchema.safeParse(outputBlock.resource).success
-  );
-};
-
 export const SearchResultResourceSchema = z.object({
   mimeType: z.literal(
     INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT
@@ -266,28 +247,6 @@ export const isIncludeResultResourceType = (
 };
 
 // Websearch results.
-
-export const WebsearchQueryResourceSchema = z.object({
-  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.WEBSEARCH_QUERY),
-  text: z.string(),
-  uri: z.literal(""),
-});
-
-export type WebsearchQueryResourceType = z.infer<
-  typeof WebsearchQueryResourceSchema
->;
-
-export const isWebsearchQueryResourceType = (
-  outputBlock: CallToolResult["content"][number]
-): outputBlock is {
-  type: "resource";
-  resource: WebsearchQueryResourceType;
-} => {
-  return (
-    outputBlock.type === "resource" &&
-    WebsearchQueryResourceSchema.safeParse(outputBlock.resource).success
-  );
-};
 
 export const WebsearchResultResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.WEBSEARCH_RESULT),

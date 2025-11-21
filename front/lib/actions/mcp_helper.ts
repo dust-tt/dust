@@ -11,6 +11,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
   MCPServerType,
+  MCPServerTypeWithViews,
   MCPServerViewType,
   RemoteMCPServerType,
 } from "@app/lib/api/mcp";
@@ -103,8 +104,8 @@ export const mcpServerViewSortingFn = (
 };
 
 export const mcpServersSortingFn = (
-  a: { mcpServer: MCPServerType },
-  b: { mcpServer: MCPServerType }
+  a: { mcpServer: MCPServerType | MCPServerTypeWithViews },
+  b: { mcpServer: MCPServerType | MCPServerTypeWithViews }
 ) => {
   const { serverType: aServerType } = getServerTypeAndIdFromSId(
     a.mcpServer.sId
@@ -113,7 +114,9 @@ export const mcpServersSortingFn = (
     b.mcpServer.sId
   );
   if (aServerType === bServerType) {
-    return a.mcpServer.name.localeCompare(b.mcpServer.name);
+    const aDisplayName = getMcpServerDisplayName(a.mcpServer);
+    const bDisplayName = getMcpServerDisplayName(b.mcpServer);
+    return aDisplayName.localeCompare(bDisplayName);
   }
   return aServerType < bServerType ? -1 : 1;
 };
@@ -148,7 +151,7 @@ export function getMcpServerDisplayName(
     | AgentBuilderMCPConfiguration
     | AgentBuilderAction
     | MCPServerConfigurationType
-) {
+): string {
   // Unreleased internal servers are displayed with a suffix in the UI.
   const res = getInternalMCPServerNameAndWorkspaceId(server.sId);
   let displayName = asDisplayToolName(server.name);

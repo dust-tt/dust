@@ -5,11 +5,7 @@ import { z } from "zod";
 
 import { getConnectionForMCPServer } from "@app/lib/actions/mcp_authentication";
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type {
-  SearchQueryResourceType,
-  SearchResultResourceType,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { renderRelativeTimeFrameForToolOutput } from "@app/lib/actions/mcp_internal_actions/rendering";
+import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   executeGetUser,
   executeListChannels,
@@ -19,6 +15,11 @@ import {
   executeReadThreadMessages,
   executeScheduleMessage,
   getSlackClient,
+  isSlackMissingScope,
+  resolveChannelDisplayName,
+  resolveChannelId,
+  resolveUserDisplayName,
+  SLACK_THREAD_LISTING_LIMIT,
 } from "@app/lib/actions/mcp_internal_actions/servers/slack/helpers";
 import {
   makeInternalMCPServer,
@@ -30,7 +31,6 @@ import { SLACK_SEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { cacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { TimeFrame } from "@app/types";
 import {
@@ -179,40 +179,6 @@ function buildSearchResults<T>(
   );
 }
 
-function makeQueryResource(
-  keywords: string[],
-  relativeTimeFrame: TimeFrame | null,
-  channels?: string[],
-  usersFrom?: string[],
-  usersTo?: string[],
-  usersMentioned?: string[]
-): SearchQueryResourceType {
-  const timeFrameAsString =
-    renderRelativeTimeFrameForToolOutput(relativeTimeFrame);
-  let text = `Searching Slack ${timeFrameAsString}`;
-  if (keywords.length > 0) {
-    text += ` with keywords: ${keywords.join(", ")}`;
-  }
-  if (channels && channels.length > 0) {
-    text += ` in channels: ${channels.join(", ")}`;
-  }
-  if (usersFrom && usersFrom.length > 0) {
-    text += ` from users: ${usersFrom.join(", ")}`;
-  }
-  if (usersTo && usersTo.length > 0) {
-    text += ` to users: ${usersTo.join(", ")}`;
-  }
-  if (usersMentioned && usersMentioned.length > 0) {
-    text += ` mentioning users: ${usersMentioned.join(", ")}`;
-  }
-
-  return {
-    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY,
-    text,
-    uri: "",
-  };
-}
-
 // Common Zod parameter schema parts shared by search tools.
 const buildCommonSearchParams = () => ({
   channels: z
@@ -299,27 +265,33 @@ function isSlackTokenRevoked(error: unknown): boolean {
   return (
     typeof error === "object" &&
     error !== null &&
-    (error as any).message &&
-    (error as any).message.toString().includes("token_revoked")
+    "message" in error &&
+    typeof error.message === "string" &&
+    error.message.includes("token_revoked")
   );
+}
+
+// Helper to handle common Slack authentication errors.
+// Returns an authentication error response if the error is token-related,
+// or null if the error should be handled by the caller.
+function handleSlackAuthError(error: unknown) {
+  if (isSlackTokenRevoked(error) || isSlackMissingScope(error)) {
+    return new Ok(makePersonalAuthenticationError("slack").content);
+  }
+  return null;
 }
 
 // 'disconnected' is expected when we don't have a Slack connection yet.
 type SlackAIStatus = "enabled" | "disabled" | "disconnected";
 
-const SLACK_AI_STATUS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-
-type GetSlackAIEnablementStatusArgs = {
-  mcpServerId: string;
-  accessToken: string;
-};
-
-const _getSlackAIEnablementStatus = async ({
+async function getSlackAIEnablementStatus({
   accessToken,
 }: {
   accessToken: string;
-}): Promise<SlackAIStatus> => {
+}): Promise<SlackAIStatus> {
   try {
+    // Use assistant.search.info to detect if Slack AI is enabled at workspace level
+    // This endpoint requires search:read.public scope and returns is_ai_search_enabled boolean
     const assistantSearchInfo = await fetch(
       "https://slack.com/api/assistant.search.info",
       {
@@ -335,27 +307,20 @@ const _getSlackAIEnablementStatus = async ({
       return "disconnected";
     }
 
-    const assistantSearchInfoJson = await assistantSearchInfo.json();
+    const data = await assistantSearchInfo.json();
 
-    const status = assistantSearchInfoJson.is_ai_search_enabled
-      ? "enabled"
-      : "disabled";
+    // Check both HTTP ok and Slack API ok for robustness
+    if (!data.ok) {
+      return "disconnected";
+    }
+
+    const status = data.is_ai_search_enabled ? "enabled" : "disabled";
 
     return status;
   } catch (e) {
     return "disconnected";
   }
-};
-
-// Cache the result as this involves a call to the Slack API.
-// We use a hash of the access token as the cache key to avoid storing sensitive information directly.
-const getCachedSlackAIEnablementStatus = cacheWithRedis(
-  _getSlackAIEnablementStatus,
-  ({ mcpServerId }: GetSlackAIEnablementStatusArgs) => mcpServerId,
-  {
-    ttlMs: SLACK_AI_STATUS_CACHE_TTL_MS,
-  }
-);
+}
 
 async function createServer(
   auth: Authenticator,
@@ -370,10 +335,7 @@ async function createServer(
   });
 
   const slackAIStatus: SlackAIStatus = c
-    ? await getCachedSlackAIEnablementStatus({
-        mcpServerId,
-        accessToken: c.access_token,
-      })
+    ? await getSlackAIEnablementStatus({ accessToken: c.access_token })
     : "disconnected";
 
   localLogger.info(
@@ -478,17 +440,6 @@ async function createServer(
                   type: "text" as const,
                   text: `No messages found.`,
                 },
-                {
-                  type: "resource" as const,
-                  resource: makeQueryResource(
-                    keywords,
-                    timeFrame,
-                    channels,
-                    usersFrom,
-                    usersTo,
-                    usersMentioned
-                  ),
-                },
               ]);
             } else {
               const { citationsOffset } =
@@ -505,33 +456,23 @@ async function createServer(
                 {
                   permalink: (match) => match.permalink,
                   text: (match) =>
-                    `#${match.channel_name ?? "Unknown"}, ${match.content ?? ""}`,
+                    `From ${match.author_name ?? "Unknown"} in #${match.channel_name ?? "Unknown"}: ${match.content ?? ""}`,
                   id: (match) => match.message_ts ?? "",
                   content: (match) => match.content ?? "",
                 }
               );
 
-              return new Ok([
-                ...results.map((result) => ({
+              return new Ok(
+                results.map((result) => ({
                   type: "resource" as const,
                   resource: result,
-                })),
-                {
-                  type: "resource" as const,
-                  resource: makeQueryResource(
-                    keywords,
-                    timeFrame,
-                    channels,
-                    usersFrom,
-                    usersTo,
-                    usersMentioned
-                  ),
-                },
-              ]);
+                }))
+              );
             }
           } catch (error) {
-            if (isSlackTokenRevoked(error)) {
-              return new Ok(makePersonalAuthenticationError("slack").content);
+            const authError = handleSlackAuthError(error);
+            if (authError) {
+              return authError;
             }
             return new Err(new MCPError(`Error searching messages: ${error}`));
           }
@@ -596,17 +537,6 @@ async function createServer(
             if (matches.length === 0) {
               return new Ok([
                 { type: "text" as const, text: `No messages found.` },
-                {
-                  type: "resource" as const,
-                  resource: makeQueryResource(
-                    [query],
-                    timeFrame,
-                    channels,
-                    usersFrom,
-                    usersTo,
-                    usersMentioned
-                  ),
-                },
               ]);
             } else {
               const { citationsOffset } =
@@ -650,27 +580,17 @@ async function createServer(
                 }
               );
 
-              return new Ok([
-                ...results.map((result) => ({
+              return new Ok(
+                results.map((result) => ({
                   type: "resource" as const,
                   resource: result,
-                })),
-                {
-                  type: "resource" as const,
-                  resource: makeQueryResource(
-                    [query],
-                    timeFrame,
-                    channels,
-                    usersFrom,
-                    usersTo,
-                    usersMentioned
-                  ),
-                },
-              ]);
+                }))
+              );
             }
           } catch (error) {
-            if (isSlackTokenRevoked(error)) {
-              return new Ok(makePersonalAuthenticationError("slack").content);
+            const authError = handleSlackAuthError(error);
+            if (authError) {
+              return authError;
             }
             return new Err(new MCPError(`Error searching messages: ${error}`));
           }
@@ -737,8 +657,9 @@ async function createServer(
             mcpServerId
           );
         } catch (error) {
-          if (isSlackTokenRevoked(error)) {
-            return new Ok(makePersonalAuthenticationError("slack").content);
+          const authError = handleSlackAuthError(error);
+          if (authError) {
+            return authError;
           }
           return new Err(new MCPError(`Error posting message: ${error}`));
         }
@@ -800,8 +721,9 @@ async function createServer(
             accessToken,
           });
         } catch (error) {
-          if (isSlackTokenRevoked(error)) {
-            return new Ok(makePersonalAuthenticationError("slack").content);
+          const authError = handleSlackAuthError(error);
+          if (authError) {
+            return authError;
           }
           return new Err(new MCPError(`Error scheduling message: ${error}`));
         }
@@ -833,8 +755,9 @@ async function createServer(
         try {
           return await executeListUsers(nameFilter, accessToken);
         } catch (error) {
-          if (isSlackTokenRevoked(error)) {
-            return new Ok(makePersonalAuthenticationError("slack").content);
+          const authError = handleSlackAuthError(error);
+          if (authError) {
+            return authError;
           }
           return new Err(new MCPError(`Error listing users: ${error}`));
         }
@@ -865,8 +788,9 @@ async function createServer(
         try {
           return await executeGetUser(userId, accessToken);
         } catch (error) {
-          if (isSlackTokenRevoked(error)) {
-            return new Ok(makePersonalAuthenticationError("slack").content);
+          const authError = handleSlackAuthError(error);
+          if (authError) {
+            return authError;
           }
           return new Err(new MCPError(`Error retrieving user info: ${error}`));
         }
@@ -902,8 +826,9 @@ async function createServer(
             mcpServerId
           );
         } catch (error) {
-          if (isSlackTokenRevoked(error)) {
-            return new Ok(makePersonalAuthenticationError("slack").content);
+          const authError = handleSlackAuthError(error);
+          if (authError) {
+            return authError;
           }
           return new Err(new MCPError(`Error listing channels: ${error}`));
         }
@@ -939,8 +864,9 @@ async function createServer(
             mcpServerId
           );
         } catch (error) {
-          if (isSlackTokenRevoked(error)) {
-            return new Ok(makePersonalAuthenticationError("slack").content);
+          const authError = handleSlackAuthError(error);
+          if (authError) {
+            return authError;
           }
           return new Err(new MCPError(`Error listing channels: ${error}`));
         }
@@ -987,8 +913,9 @@ async function createServer(
             },
           ]);
         } catch (error) {
-          if (isSlackTokenRevoked(error)) {
-            return new Ok(makePersonalAuthenticationError("slack").content);
+          const authError = handleSlackAuthError(error);
+          if (authError) {
+            return authError;
           }
           return new Err(
             new MCPError(`Error getting channel details: ${error}`)
@@ -1000,9 +927,13 @@ async function createServer(
 
   server.tool(
     "list_threads",
-    "List threads for a given channel. Returns thread headers with timestamps (ts field). Use read_thread_messages with the ts field to read the full thread content.",
+    "List threads for a given channel, private channel, or DM. Returns thread headers with timestamps (ts field). Use read_thread_messages with the ts field to read the full thread content.",
     {
-      channel: z.string().describe("The channel name to list threads for."),
+      channel: z
+        .string()
+        .describe(
+          "The channel name, channel ID, or user ID to list threads for. Supports public channels, private channels, and DMs."
+        ),
       relativeTimeFrame: z
         .string()
         .regex(/^(all|\d+[hdwmy])$/)
@@ -1035,107 +966,138 @@ async function createServer(
 
         const timeFrame = parseTimeFrame(relativeTimeFrame);
 
+        // Resolve channel name to channel ID (supports public, private channels, and DMs).
+        let channelId: string | null;
         try {
-          let query = `-threads:replies in:${channel.charAt(0) === "#" ? channel : `#${channel}`}`;
-
-          if (timeFrame) {
-            const timestampInMs = timeFrameFromNow(timeFrame);
-            const date = new Date(timestampInMs);
-            query = `${query} after:${formatDateForSlackQuery(date)}`;
-          }
-
-          const r = await slackClient.search.messages({
-            query,
-            sort: "timestamp",
-            sort_dir: "desc",
-            highlight: false,
-            count: SLACK_SEARCH_ACTION_NUM_RESULTS,
-            page: 1,
+          channelId = await resolveChannelId({
+            channelNameOrId: channel,
+            accessToken,
+            mcpServerId,
           });
-
-          if (!r.ok) {
-            return new Err(new MCPError(r.error ?? "Unknown error"));
-          }
-
-          const rawMatches = r.messages?.matches ?? [];
-
-          // Keep only the top SLACK_SEARCH_ACTION_NUM_RESULTS matches.
-          const matches = rawMatches.slice(0, SLACK_SEARCH_ACTION_NUM_RESULTS);
-
-          if (matches.length === 0) {
-            return new Ok([
-              {
-                type: "text" as const,
-                text: `No threads found.`,
-              },
-              {
-                type: "resource" as const,
-                resource: makeQueryResource(
-                  [],
-                  timeFrame,
-                  [channel],
-                  [],
-                  [],
-                  []
-                ),
-              },
-            ]);
-          } else {
-            const { citationsOffset } = agentLoopContext.runContext.stepContext;
-
-            const refs = getRefs().slice(
-              citationsOffset,
-              citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
-            );
-
-            const results = buildSearchResults<{
-              permalink?: string;
-              channel?: { name?: string };
-              text?: string;
-              ts?: string;
-            }>(matches, refs, {
-              permalink: (match) => match.permalink,
-              text: (match) =>
-                `#${match.channel?.name ?? "Unknown"}, ${match.text ?? ""}`,
-              id: (match) => match.ts ?? "",
-              content: (match) => match.text ?? "",
-            });
-
-            return new Ok([
-              ...results.map((result) => ({
-                type: "resource" as const,
-                resource: result,
-              })),
-              {
-                type: "resource" as const,
-                resource: makeQueryResource(
-                  [],
-                  timeFrame,
-                  [channel],
-                  [],
-                  [],
-                  []
-                ),
-              },
-            ]);
-          }
         } catch (error) {
-          if (isSlackTokenRevoked(error)) {
+          const authError = handleSlackAuthError(error);
+          if (authError) {
+            return authError;
+          }
+          return new Err(new MCPError(`Error resolving channel: ${error}`));
+        }
+
+        if (!channelId) {
+          return new Err(
+            new MCPError(
+              `Unable to find channel "${channel}". Make sure the channel exists and you have access to it.`
+            )
+          );
+        }
+
+        // Calculate timestamp for timeFrame filtering.
+        const oldest = timeFrame
+          ? (timeFrameFromNow(timeFrame) / 1000).toString()
+          : undefined;
+
+        // Use conversations.history to get messages, which works for public, private channels, and DMs.
+        let response;
+        try {
+          response = await slackClient.conversations.history({
+            channel: channelId,
+            oldest,
+            limit: SLACK_THREAD_LISTING_LIMIT,
+          });
+        } catch (error) {
+          const authError = handleSlackAuthError(error);
+          if (authError) {
+            return authError;
+          }
+          return new Err(new MCPError(`Error fetching messages: ${error}`));
+        }
+
+        if (!response.ok) {
+          // Trigger authentication flow for missing_scope.
+          if (response.error === "missing_scope") {
             return new Ok(makePersonalAuthenticationError("slack").content);
           }
-          return new Err(new MCPError(`Error listing threads: ${error}`));
+          return new Err(
+            new MCPError(response.error ?? "Failed to list threads")
+          );
         }
+
+        const rawMessages = response.messages ?? [];
+
+        // Filter to only keep messages that have threads (reply_count > 0).
+        const threadsOnly = rawMessages.filter(
+          (msg) => msg.reply_count && msg.reply_count > 0
+        );
+
+        // Keep only the top SLACK_SEARCH_ACTION_NUM_RESULTS threads.
+        const matches = threadsOnly.slice(0, SLACK_SEARCH_ACTION_NUM_RESULTS);
+
+        if (matches.length === 0) {
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `No threads found.`,
+            },
+          ]);
+        }
+
+        // Get display name for the channel.
+        const displayName = await resolveChannelDisplayName(
+          channelId,
+          accessToken
+        );
+
+        const { citationsOffset } = agentLoopContext.runContext.stepContext;
+
+        const refs = getRefs().slice(
+          citationsOffset,
+          citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
+        );
+
+        // Resolve user display names for all thread authors.
+        const threadsWithAuthors = await Promise.all(
+          matches.map(async (match) => {
+            const authorName = match.user
+              ? await resolveUserDisplayName(match.user, accessToken)
+              : null;
+            return {
+              ...match,
+              authorName: authorName ?? "Unknown",
+            };
+          })
+        );
+
+        const results = buildSearchResults<{
+          permalink?: string;
+          text?: string;
+          ts?: string;
+          authorName: string;
+        }>(threadsWithAuthors, refs, {
+          permalink: (match) => match.permalink,
+          text: (match) =>
+            `[Thread: ${match.ts}] From ${match.authorName} in ${displayName}: ${match.text ?? ""}`,
+          id: (match) => match.ts ?? "",
+          content: (match) => match.text ?? "",
+        });
+
+        return new Ok(
+          results.map((result) => ({
+            type: "resource" as const,
+            resource: result,
+          }))
+        );
       }
     )
   );
 
   server.tool(
     "read_thread_messages",
-    "Read all messages in a specific thread. Use list_threads first to find thread timestamps (ts field).",
+    "Read all messages in a specific thread from public channels, private channels, or DMs. Use list_threads first to find thread timestamps (ts field).",
     {
       channel: z
         .string()
-        .describe("Channel name or ID where the thread is located"),
+        .describe(
+          "Channel name, channel ID, or user ID where the thread is located. Supports public channels, private channels, and DMs."
+        ),
       threadTs: z
         .string()
         .describe(
@@ -1180,118 +1142,9 @@ async function createServer(
           cursor,
           oldest,
           latest,
-          accessToken
+          accessToken,
+          mcpServerId
         );
-      }
-    )
-  );
-
-  server.tool(
-    "add_reaction",
-    "Add a reaction emoji to a message",
-    {
-      channel: z.string().describe("The channel where the message is located"),
-      timestamp: z
-        .string()
-        .describe("The timestamp of the message to react to"),
-      name: z
-        .string()
-        .describe(
-          "The name of the emoji reaction (without colons, e.g., 'thumbsup', 'heart')"
-        ),
-    },
-    withToolLogging(
-      auth,
-      {
-        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
-        agentLoopContext,
-      },
-      async ({ channel, timestamp, name }, { authInfo }) => {
-        const accessToken = authInfo?.token;
-        if (!accessToken) {
-          return new Err(new MCPError("Access token not found"));
-        }
-
-        const slackClient = await getSlackClient(accessToken);
-
-        try {
-          const response = await slackClient.reactions.add({
-            channel,
-            timestamp,
-            name,
-          });
-
-          if (!response.ok) {
-            return new Err(new MCPError("Failed to add reaction"));
-          }
-
-          return new Ok([
-            {
-              type: "text" as const,
-              text: `Successfully added ${name} reaction to message`,
-            },
-          ]);
-        } catch (error) {
-          if (isSlackTokenRevoked(error)) {
-            return new Ok(makePersonalAuthenticationError("slack").content);
-          }
-          return new Err(new MCPError(`Error adding reaction: ${error}`));
-        }
-      }
-    )
-  );
-
-  server.tool(
-    "remove_reaction",
-    "Remove a reaction emoji from a message",
-    {
-      channel: z.string().describe("The channel where the message is located"),
-      timestamp: z
-        .string()
-        .describe("The timestamp of the message to remove reaction from"),
-      name: z
-        .string()
-        .describe(
-          "The name of the emoji reaction to remove (without colons, e.g., 'thumbsup', 'heart')"
-        ),
-    },
-    withToolLogging(
-      auth,
-      {
-        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
-        agentLoopContext,
-      },
-      async ({ channel, timestamp, name }, { authInfo }) => {
-        const accessToken = authInfo?.token;
-        if (!accessToken) {
-          return new Err(new MCPError("Access token not found"));
-        }
-
-        const slackClient = await getSlackClient(accessToken);
-
-        try {
-          const response = await slackClient.reactions.remove({
-            channel,
-            timestamp,
-            name,
-          });
-
-          if (!response.ok) {
-            return new Err(new MCPError("Failed to remove reaction"));
-          }
-
-          return new Ok([
-            {
-              type: "text" as const,
-              text: `Successfully removed ${name} reaction from message`,
-            },
-          ]);
-        } catch (error) {
-          if (isSlackTokenRevoked(error)) {
-            return new Ok(makePersonalAuthenticationError("slack").content);
-          }
-          return new Err(new MCPError(`Error removing reaction: ${error}`));
-        }
       }
     )
   );

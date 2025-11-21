@@ -28,9 +28,16 @@ export const LATENCY_LEGEND = [
   { key: "median", label: "Median" },
 ] as const;
 
+export const COST_PALETTE = {
+  costCents: "text-blue-400 dark:text-blue-400-night",
+  totalCredits: "text-green-500 dark:text-green-500-night",
+} as const;
+
+export const COST_LEGEND = [{ key: "costCents", label: "Cost" }] as const;
+
 export const CHART_HEIGHT = 260;
 
-export const TOOL_COLORS = [
+export const INDEXED_COLORS = [
   "text-orange-300 dark:text-orange-300-night",
   "text-golden-200 dark:text-golden-200-night",
   "text-green-200 dark:text-green-200-night",
@@ -40,7 +47,15 @@ export const TOOL_COLORS = [
 
 export const MAX_TOOLS_DISPLAYED = 5;
 
-export const OTHER_TOOLS_LABEL = "Others";
+export const OTHER_LABEL = {
+  label: "Others",
+  color: "text-blue-300 dark:text-blue-300-night",
+};
+
+export const UNKNOWN_LABEL = {
+  label: "Unknown",
+  color: "text-gray-400 dark:text-gray-400-night",
+};
 
 export const FEEDBACK_DISTRIBUTION_PALETTE = {
   positive: "text-green-400 dark:text-green-400-night",
@@ -58,68 +73,67 @@ export const USER_MESSAGE_ORIGIN_LABELS: Record<
 > = {
   "github-copilot-chat": {
     label: "GitHub Copilot Chat",
-    color: "bg-blue-500 dark:bg-blue-500-night",
+    color: "text-blue-500 dark:text-blue-500-night",
   },
   agent_handover: {
     label: "Agent handover",
-    color: "bg-gray-300 dark:bg-gray-300-night",
+    color: "text-gray-300 dark:text-gray-300-night",
   },
-  api: { label: "API", color: "bg-blue-300 dark:bg-blue-300-night" },
-  email: { label: "Email", color: "bg-violet-300 dark:bg-violet-300-night" },
-  excel: { label: "Excel", color: "bg-rose-300 dark:bg-rose-300-night" },
+  api: { label: "API", color: "text-blue-300 dark:text-blue-300-night" },
+  email: {
+    label: "Email",
+    color: "text-violet-300 dark:text-violet-300-night",
+  },
+  excel: { label: "Excel", color: "text-rose-300 dark:text-rose-300-night" },
   extension: {
     label: "Chrome extension",
-    color: "bg-golden-300 dark:bg-golden-300-night",
+    color: "text-golden-300 dark:text-golden-300-night",
   },
   gsheet: {
     label: "Google Sheets",
-    color: "bg-green-300 dark:bg-green-300-night",
+    color: "text-green-300 dark:text-green-300-night",
   },
-  make: { label: "Make", color: "bg-gray-600 dark:bg-gray-600-night" },
-  n8n: { label: "n8n", color: "bg-success-muted dark:bg-success-muted-night" },
+  make: { label: "Make", color: "text-gray-600 dark:text-gray-600-night" },
+  n8n: {
+    label: "n8n",
+    color: "text-success-muted dark:text-success-muted-night",
+  },
   powerpoint: {
     label: "PowerPoint",
-    color: "bg-violet-500 dark:bg-violet-500-night",
+    color: "text-violet-500 dark:text-violet-500-night",
   },
   raycast: {
     label: "Raycast",
-    color: "bg-rose-500 dark:bg-rose-500-night",
+    color: "rose-500 dark:rose-500-night",
   },
   run_agent: {
     label: "Sub-agent",
-    color: "bg-golden-500 dark:bg-golden-500-night",
+    color: "text-golden-500 dark:text-golden-500-night",
   },
-  slack: { label: "Slack", color: "bg-green-500 dark:bg-green-500-night" },
+  slack: { label: "Slack", color: "text-green-500 dark:text-green-500-night" },
   teams: {
     label: "Teams",
-    color: "bg-highlight-muted dark:bg-highlight-muted-night",
+    color: "text-highlight-muted dark:text-highlight-muted-night",
   },
   transcript: {
     label: "Transcript",
-    color: "bg-warning-muted dark:bg-warning-muted-night",
+    color: "text-warning-muted dark:text-warning-muted-night",
   },
   triggered_programmatic: {
     label: "Trigger",
-    color: "bg-info-muted dark:bg-info-muted-night",
+    color: "text-info-muted dark:text-info-muted-night",
   },
   triggered: {
     label: "Trigger",
-    color: "bg-info-muted dark:bg-info-muted-night",
+    color: "text-info-muted dark:text-info-muted-night",
   },
-  web: { label: "Conversation", color: "bg-blue-500 dark:bg-blue-500-night" },
-  zapier: { label: "Zapier", color: "bg-blue-800 dark:bg-blue-800-night" },
+  web: {
+    label: "Conversation",
+    color: "text-blue-500 dark:text-blue-500-night",
+  },
+  zapier: { label: "Zapier", color: "text-blue-800 dark:text-blue-800-night" },
   zendesk: {
     label: "Zendesk",
-    color: "bg-blue-800 dark:bg-blue-800-night",
+    color: "text-blue-800 dark:text-blue-800-night",
   },
 };
-
-export function isUserMessageOrigin(
-  origin?: string | null
-): origin is UserMessageOrigin {
-  return !!origin && origin in USER_MESSAGE_ORIGIN_LABELS;
-}
-
-export function getSourceColor(source: UserMessageOrigin) {
-  return USER_MESSAGE_ORIGIN_LABELS[source].color;
-}

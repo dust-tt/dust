@@ -24,6 +24,10 @@ import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { PokePermissionTree } from "@app/components/poke/PokeConnectorPermissionsTree";
 import PokeLayout from "@app/components/poke/PokeLayout";
 import { SlackChannelPatternInput } from "@app/components/poke/PokeSlackChannelPatternInput";
+import {
+  PokeAlert,
+  PokeAlertDescription,
+} from "@app/components/poke/shadcn/ui/alert";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import config from "@app/lib/api/config";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -562,6 +566,22 @@ const DataSourcePage = ({
           {owner.name}
         </a>
       </h3>
+      {dataSource.connectorProvider === "notion" && (
+        <PokeAlert variant="destructive" className="my-4">
+          <PokeAlertDescription>
+            Please read{" "}
+            <a
+              href="http://go/poke-notion"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold underline hover:no-underline"
+            >
+              go/poke-notion
+            </a>{" "}
+            before using any Notion plugin!
+          </PokeAlertDescription>
+        </PokeAlert>
+      )}
       {dataSource.connectorProvider && (
         <p>
           The data displayed here is fetched from <b>connectors</b>, please

@@ -2,7 +2,10 @@ import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
 import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
-import { getTemporalWorkerConnection } from "@app/lib/temporal";
+import {
+  getTemporalWorkerConnection,
+  TEMPORAL_MAXED_CACHED_WORKFLOWS,
+} from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
 import * as activities from "@app/temporal/remote_tools/activities";
@@ -15,6 +18,7 @@ export async function runRemoteToolsSyncWorker() {
     activities,
     taskQueue: QUEUE_NAME,
     connection,
+    maxCachedWorkflows: TEMPORAL_MAXED_CACHED_WORKFLOWS,
     namespace,
     interceptors: {
       activity: [

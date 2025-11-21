@@ -4,6 +4,7 @@ import type { Member } from "@slack/web-api/dist/response/UsersListResponse";
 import slackifyMarkdown from "slackify-markdown";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import { makePersonalAuthenticationError } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -19,7 +20,18 @@ export const SLACK_API_PAGE_SIZE = 100;
 export const MAX_CHANNELS_LIMIT = 500;
 export const MAX_THREAD_MESSAGES = 200;
 export const DEFAULT_THREAD_MESSAGES = 20;
+export const SLACK_THREAD_LISTING_LIMIT = 100;
 export const CHANNEL_CACHE_TTL_MS = 60 * 10 * 1000; // 10 minutes
+
+export function isSlackMissingScope(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof error.message === "string" &&
+    error.message.includes("missing_scope")
+  );
+}
 
 export const getSlackClient = async (accessToken?: string) => {
   if (!accessToken) {
@@ -197,6 +209,120 @@ export const getCachedPublicChannels = cacheWithRedis(
   }
 );
 
+// Helper function to resolve channel name or ID to channel ID.
+// Supports public channels, private channels, and DMs.
+export async function resolveChannelId({
+  channelNameOrId,
+  accessToken,
+  mcpServerId,
+}: {
+  channelNameOrId: string;
+  accessToken: string;
+  mcpServerId: string;
+}): Promise<string | null> {
+  const slackClient = await getSlackClient(accessToken);
+  const searchString = channelNameOrId
+    .trim()
+    .replace(/^#/, "")
+    .replace(/^@/, "");
+
+  // If searchString looks like a Slack channel/DM ID (starts with C, G, or D), try direct lookup first.
+  if (searchString.match(/^[CGD][A-Z0-9]+$/)) {
+    try {
+      const infoResp = await slackClient.conversations.info({
+        channel: searchString,
+      });
+      if (infoResp.ok && infoResp.channel?.id) {
+        return infoResp.channel.id;
+      }
+    } catch (error) {
+      // Fall through to name-based search.
+    }
+  }
+
+  // Search by name in public channels, private channels, and DMs.
+  const channels = await getChannels({
+    mcpServerId,
+    slackClient,
+    types: "public_channel,private_channel,im,mpim",
+    memberOnly: false,
+  });
+
+  const channel = channels.find(
+    (c) =>
+      c.name?.toLowerCase() === searchString.toLowerCase() ||
+      c.id?.toLowerCase() === searchString.toLowerCase()
+  );
+
+  return channel?.id ?? null;
+}
+
+// Helper function to resolve user ID to display name.
+// Returns the user's display name or real name, or null if not found.
+export async function resolveUserDisplayName(
+  userId: string,
+  accessToken: string
+): Promise<string | null> {
+  const slackClient = await getSlackClient(accessToken);
+
+  try {
+    const response = await slackClient.users.info({ user: userId });
+    if (response.ok && response.user) {
+      // Prefer display_name, fallback to real_name, then to name.
+      return (
+        response.user.profile?.display_name ??
+        response.user.real_name ??
+        response.user.name ??
+        null
+      );
+    }
+  } catch (error) {
+    // Return null if we can't resolve the user.
+  }
+
+  return null;
+}
+
+// Resolves a channel ID to a human-readable display name.
+// Handles DMs (direct messages) and regular channels.
+// This function expects a normalized channel ID from resolveChannelId.
+export async function resolveChannelDisplayName(
+  channelId: string,
+  accessToken: string
+): Promise<string> {
+  const slackClient = await getSlackClient(accessToken);
+
+  try {
+    const channelInfo = await slackClient.conversations.info({
+      channel: channelId,
+    });
+
+    if (channelInfo.ok && channelInfo.channel) {
+      // For DMs, channelId starts with "D" and channel.name contains the user ID.
+      if (channelId.startsWith("D") && channelInfo.channel.name) {
+        const userName = await resolveUserDisplayName(
+          channelInfo.channel.name,
+          accessToken
+        );
+        return userName ? `@${userName}` : `@${channelInfo.channel.name}`;
+      }
+
+      // For regular channels (public/private).
+      if (channelInfo.channel.name) {
+        return `#${channelInfo.channel.name}`;
+      }
+    }
+  } catch (error) {
+    // On error, return a fallback value.
+    // If it looks like a DM, prefix with @, otherwise with #.
+    if (channelId.startsWith("D")) {
+      return `@${channelId}`;
+    }
+  }
+
+  return `#${channelId}`;
+}
+
 // Helper function to build filtered list responses.
 function buildFilteredListResponse<T, U = T>(
   items: T[],
@@ -281,14 +407,6 @@ export async function executePostMessage(
     config.getClientFacingUrl()
   );
   message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${agentLoopContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
-
-  const authResult = await slackClient.auth.test();
-  if (
-    !authResult.ok ||
-    !authResult.response_metadata?.scopes?.includes("files:write")
-  ) {
-    fileId = undefined;
-  }
 
   // If a file is provided, upload it as attachment of the original message.
   if (fileId) {
@@ -715,13 +833,30 @@ export async function executeReadThreadMessages(
   cursor: string | undefined,
   oldest: string | undefined,
   latest: string | undefined,
-  accessToken: string
+  accessToken: string,
+  mcpServerId: string
 ) {
   const slackClient = await getSlackClient(accessToken);
 
+  // Resolve channel name/ID to channel ID (supports public/private channels and DMs).
+  const channelId = await resolveChannelId({
+    channelNameOrId: channel,
+    accessToken,
+    mcpServerId,
+  });
+  if (!channelId) {
+    return new Err(
+      new MCPError(
+        `Unable to resolve channel id for "${channel}". Please use a valid channel name, channel id, or user id.`
+      )
+    );
+  }
+
+  // Narrow try-catch to only the Slack API call.
+  let response;
   try {
-    const response = await slackClient.conversations.replies({
-      channel: channel,
+    response = await slackClient.conversations.replies({
+      channel: channelId,
       ts: threadTs,
       limit: limit
         ? Math.min(limit, MAX_THREAD_MESSAGES)
@@ -730,57 +865,61 @@ export async function executeReadThreadMessages(
       oldest: oldest,
       latest: latest,
     });
-
-    if (!response.ok) {
-      return new Err(new MCPError("Failed to read thread messages"));
-    }
-
-    const messages = response.messages ?? [];
-    if (messages.length === 0) {
-      return new Ok([
-        {
-          type: "text" as const,
-          text: "No messages found in this thread.",
-        },
-      ]);
-    }
-
-    // First message is the parent, rest are replies.
-    const parentMessage = messages[0];
-    const threadReplies = messages.slice(1);
-
-    const formattedOutput = {
-      parent_message: {
-        text: parentMessage?.text ?? "",
-        user: parentMessage?.user ?? "",
-        ts: parentMessage?.ts ?? "",
-        reply_count: parentMessage?.reply_count ?? 0,
-      },
-      thread_replies: threadReplies.map((msg) => ({
-        text: msg.text ?? "",
-        user: msg.user ?? "",
-        ts: msg.ts ?? "",
-      })),
-      total_messages: messages.length,
-      has_more: response.has_more ?? false,
-      next_cursor: response.response_metadata?.next_cursor ?? null,
-      pagination_info: {
-        current_page_size: messages.length,
-        replies_in_this_page: threadReplies.length,
-      },
-    };
-
-    return new Ok([
-      {
-        type: "text" as const,
-        text: `Thread contains ${formattedOutput.total_messages} message(s) (1 parent + ${formattedOutput.thread_replies.length} replies)`,
-      },
-      {
-        type: "text" as const,
-        text: JSON.stringify(formattedOutput, null, 2),
-      },
-    ]);
   } catch (error) {
     return new Err(new MCPError(`Error reading thread messages: ${error}`));
   }
+
+  if (!response.ok) {
+    // Trigger authentication flow for missing_scope.
+    if (response.error === "missing_scope") {
+      return new Ok(makePersonalAuthenticationError("slack").content);
+    }
+    return new Err(new MCPError("Failed to read thread messages"));
+  }
+
+  const messages = response.messages ?? [];
+  if (messages.length === 0) {
+    return new Ok([
+      {
+        type: "text" as const,
+        text: "No messages found in this thread.",
+      },
+    ]);
+  }
+
+  // First message is the parent, rest are replies.
+  const parentMessage = messages[0];
+  const threadReplies = messages.slice(1);
+
+  const formattedOutput = {
+    parent_message: {
+      text: parentMessage?.text ?? "",
+      user: parentMessage?.user ?? "",
+      ts: parentMessage?.ts ?? "",
+      reply_count: parentMessage?.reply_count ?? 0,
+    },
+    thread_replies: threadReplies.map((msg) => ({
+      text: msg.text ?? "",
+      user: msg.user ?? "",
+      ts: msg.ts ?? "",
+    })),
+    total_messages: messages.length,
+    has_more: response.has_more ?? false,
+    next_cursor: response.response_metadata?.next_cursor ?? null,
+    pagination_info: {
+      current_page_size: messages.length,
+      replies_in_this_page: threadReplies.length,
+    },
+  };
+
+  return new Ok([
+    {
+      type: "text" as const,
+      text: `Thread contains ${formattedOutput.total_messages} message(s) (1 parent + ${formattedOutput.thread_replies.length} replies)`,
+    },
+    {
+      type: "text" as const,
+      text: JSON.stringify(formattedOutput, null, 2),
+    },
+  ]);
 }

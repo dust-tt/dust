@@ -156,7 +156,7 @@ export function asDisplayToolName(name?: string | null) {
   }
 
   if (name === "image_generation") {
-    return "Create / Update Images";
+    return "Create Images";
   }
 
   if (name === "file_generation") {
@@ -168,7 +168,7 @@ export function asDisplayToolName(name?: string | null) {
   }
 
   if (name === "deep_dive") {
-    return `Go deep`;
+    return "Go deep";
   }
 
   return formatAsDisplayName(name);
@@ -179,7 +179,7 @@ export function asDisplayName(name?: string | null) {
     return "";
   }
 
-  return formatAsDisplayName(name);
+  return asDisplayToolName(name);
 }
 
 // Replace lone surrogates (actual Unicode surrogates, not escaped ones) with placeholder

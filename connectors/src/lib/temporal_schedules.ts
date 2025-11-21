@@ -71,10 +71,18 @@ export async function createSchedule({
 
   try {
     const scheduleHandle = await client.schedule.create({
-      action,
+      action: {
+        ...action,
+        // Workflow-level search attributes.
+        searchAttributes: {
+          ...action.searchAttributes,
+          connectorId: connector ? [connector?.id] : undefined,
+        },
+      },
       scheduleId,
       policies,
       spec,
+      // Schedule-level search attributes.
       searchAttributes: {
         connectorId: connector ? [connector?.id] : undefined,
       },
@@ -136,7 +144,7 @@ export async function deleteSchedule({
 /**
  * Unpauses the schedule if paused and triggers the schedule to start the workflow immediately.
  */
-export async function triggerSchedule({
+export async function unpauseAndTriggerSchedule({
   scheduleId,
   connector,
 }: {

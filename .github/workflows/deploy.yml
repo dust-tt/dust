@@ -131,6 +131,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 50 # Fetch last 50 commits for commit diff functionality
 
       - name: Set project ID
         id: project
@@ -142,6 +144,7 @@ jobs:
           fi
 
       - name: Build Image
+        id: build
         uses: ./.github/actions/build-image
         with:
           commit_sha_long: ${{ needs.prepare.outputs.long_sha }}
@@ -158,6 +161,20 @@ jobs:
           region: ${{ matrix.region }}
           virtuoso_license_key: ${{ secrets.VIRTUOSO_LICENSE_KEY }}
           workload_identity_provider: "projects/357744735673/locations/global/workloadIdentityPools/github-pool-apps/providers/github-provider-apps"
+
+      - name: Notify build success
+        uses: ./.github/actions/slack-notify
+        with:
+          step: "build_success"
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
+          component: ${{ inputs.component }}
+          image_tag: ${{ needs.prepare.outputs.short_sha }}
+          region: ${{ matrix.region }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          current_version: ${{ steps.build.outputs.current_version }}
+          commit_diff: ${{ steps.build.outputs.commit_diff }}
+          commit_count: ${{ steps.build.outputs.commit_count }}
 
       - name: Notify Failure
         if: failure()

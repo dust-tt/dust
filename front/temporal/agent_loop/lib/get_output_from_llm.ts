@@ -148,16 +148,21 @@ export async function getOutputFromLLMStream(
     }
 
     if (event.type === "tool_call") {
+      const {
+        content: { name, id, arguments: args },
+        metadata: { thoughtSignature },
+      } = event;
       actions.push({
-        name: event.content.name,
-        functionCallId: event.content.id,
+        name,
+        functionCallId: id,
       });
       contents.push({
         type: "function_call",
         value: {
-          id: event.content.id,
-          name: event.content.name,
-          arguments: JSON.stringify(event.content.arguments),
+          id,
+          name,
+          arguments: JSON.stringify(args),
+          metadata: thoughtSignature ? { thoughtSignature } : undefined,
         },
       });
     }

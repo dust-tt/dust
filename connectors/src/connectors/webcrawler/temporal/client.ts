@@ -11,7 +11,7 @@ import { getTemporalClient } from "@connectors/lib/temporal";
 import {
   createSchedule,
   scheduleExists,
-  triggerSchedule,
+  unpauseAndTriggerSchedule,
 } from "@connectors/lib/temporal_schedules";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -133,7 +133,7 @@ export async function launchCrawlWebsiteScheduler() {
   });
   // If the schedule already exists, trigger it.
   if (scheduleAlreadyExists) {
-    return triggerSchedule({
+    return unpauseAndTriggerSchedule({
       scheduleId,
     });
   }
