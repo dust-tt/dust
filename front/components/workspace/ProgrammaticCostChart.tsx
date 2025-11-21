@@ -159,7 +159,7 @@ export function ProgrammaticCostChart({
   );
 
   // Check if we can go to next month (not in the future)
-  const canGoNext = nextMonthDate.getTime() <= new Date().getTime();
+  const canGoNext = nextMonthDate.getTime() <= now.getTime();
 
   // Navigate to next month
   const handleNextMonth = () => {

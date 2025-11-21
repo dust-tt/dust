@@ -159,7 +159,7 @@ export function useWorkspaceProgrammaticCost({
 }: {
   workspaceId: string;
   groupBy?: GroupByType;
-  selectedMonth: string;
+  selectedMonth?: string;
   disabled?: boolean;
 }) {
   const fetcherFn: Fetcher<GetWorkspaceProgrammaticCostResponse> = fetcher;
