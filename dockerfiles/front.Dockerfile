@@ -56,6 +56,7 @@ RUN find . -name "*.test.tsx" -delete
 # DATADOG_API_KEY is used to conditionally enable source map generation and upload to Datadog
 RUN BUILD_WITH_SOURCE_MAPS=${DATADOG_API_KEY:+true} \
     FRONT_DATABASE_URI="sqlite:foo.sqlite" \
+    NODE_OPTIONS="--max-old-space-size=8192" \
     npm run build -- --no-lint && \
     if [ -n "$DATADOG_API_KEY" ]; then \
         export DATADOG_SITE=datadoghq.eu DATADOG_API_KEY=$DATADOG_API_KEY; \
