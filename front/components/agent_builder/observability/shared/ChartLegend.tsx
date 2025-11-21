@@ -32,6 +32,8 @@ export interface LegendItem {
   key: string;
   label: string;
   colorClassName: string;
+  onClick?: () => void;
+  isActive?: boolean;
 }
 
 interface ChartLegendProps {
@@ -42,7 +44,15 @@ export function ChartLegend({ items }: ChartLegendProps) {
   return (
     <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2">
       {items.map((item) => (
-        <div key={item.key} className="flex items-center gap-2">
+        <div
+          key={item.key}
+          className={`flex items-center gap-2 ${
+            item.onClick
+              ? "cursor-pointer transition-opacity hover:opacity-80"
+              : ""
+          } ${item.isActive === false ? "opacity-20" : ""}`}
+          onClick={item.onClick}
+        >
           <LegendDot
             className={item.colorClassName}
             rounded={item.key === "versionMarkers" ? "full" : "sm"}
