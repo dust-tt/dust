@@ -8,6 +8,7 @@ import type {
 } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
+import { calculateTokenUsageCostForUsage } from "@app/lib/api/assistant/token_pricing";
 import type { TokenUsage } from "@app/lib/api/llm/types/events";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -266,6 +267,7 @@ export class RunResource extends BaseResource<RunModel> {
           completionTokens,
           cachedTokens,
           cacheCreationTokens,
+          costUsd,
         }) => ({
           runId: this.id,
           workspaceId: this.workspaceId,
@@ -275,6 +277,7 @@ export class RunResource extends BaseResource<RunModel> {
           completionTokens,
           cachedTokens,
           cacheCreationTokens: cacheCreationTokens ?? null,
+          costUsd,
         })
       )
     );
@@ -290,6 +293,14 @@ export class RunResource extends BaseResource<RunModel> {
       return;
     }
 
+    const usageCostUsd = calculateTokenUsageCostForUsage({
+      modelId: modelConfig.modelId,
+      promptTokens: usage.inputTokens,
+      completionTokens: usage.outputTokens,
+      cachedTokens: usage.cachedTokens ?? null,
+      cacheCreationTokens: usage.cacheCreationTokens ?? null,
+    });
+
     return this.recordRunUsage([
       {
         cacheCreationTokens: usage.cacheCreationTokens,
@@ -298,6 +309,7 @@ export class RunResource extends BaseResource<RunModel> {
         modelId: modelConfig.modelId,
         promptTokens: usage.inputTokens,
         providerId: modelConfig.providerId,
+        costUsd: usageCostUsd,
       },
     ]);
   }
@@ -317,6 +329,7 @@ export class RunResource extends BaseResource<RunModel> {
       providerId: usage.providerId as ModelProviderIdType,
       cachedTokens: usage.cachedTokens,
       cacheCreationTokens: usage.cacheCreationTokens,
+      costUsd: usage.costUsd,
     }));
   }
 }
@@ -338,4 +351,5 @@ export interface RunUsageType {
   cachedTokens: number | null;
   // Optional: tokens spent writing to cache (e.g., Anthropic cache creation)
   cacheCreationTokens?: number | null;
+  costUsd: number;
 }
