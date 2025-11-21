@@ -16,7 +16,10 @@ import type {
   VirtuosoMessage,
   VirtuosoMessageListContext,
 } from "@app/components/assistant/conversation/types";
-import { isUserMessage } from "@app/components/assistant/conversation/types";
+import {
+  isHiddenContextOrigin,
+  isUserMessage,
+} from "@app/components/assistant/conversation/types";
 import { useCancelMessage, useConversation } from "@app/lib/swr/conversations";
 import { emptyArray } from "@app/lib/swr/swr";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
@@ -59,7 +62,7 @@ export const AgentInputBar = ({
         isUserMessage(m) &&
         m.user?.id === context.user.id &&
         m.visibility !== "deleted" &&
-        m.context.origin !== "agent_handover"
+        !isHiddenContextOrigin(m.context.origin)
     );
 
   const agentMentions = useMemo(() => {

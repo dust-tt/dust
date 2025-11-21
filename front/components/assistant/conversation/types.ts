@@ -89,7 +89,9 @@ export const isTriggeredOrigin = (origin?: UserMessageOrigin | null) => {
 export const isHiddenContextOrigin = (
   origin?: UserMessageOrigin | null
 ): boolean => {
-  return origin === "onboarding_conversation";
+  return (
+    origin === "onboarding_conversation" || origin === "agent_handover"
+  );
 };
 
 export const isUserMessage = (
