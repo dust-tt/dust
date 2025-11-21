@@ -209,9 +209,7 @@ async function handler(
           }
         }
 
-        const isRunAgent =
-          message.context.origin === "run_agent" ||
-          message.context.origin === "agent_handover";
+        const isRunAgent = !!message.runAgentContext;
         if (isRunAgent && !auth.isSystemKey()) {
           return apiError(req, res, {
             status_code: 401,
@@ -219,6 +217,19 @@ async function handler(
               type: "invalid_request_error",
               message:
                 "Messages from run_agent or agent_handover must come from a system key.",
+            },
+          });
+        }
+
+        if (
+          message.context.origin === "agent_handover" ||
+          message.context.origin === "run_agent"
+        ) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "use runAgentContext instead of origin.",
             },
           });
         }
@@ -361,8 +372,9 @@ async function handler(
           profilePictureUrl: message.context.profilePictureUrl ?? null,
           timezone: message.context.timezone,
           username: message.context.username,
-          originMessageId: message.context.originMessageId ?? null,
         };
+
+        const runAgentContext = message.runAgentContext;
 
         // If tools are enabled, we need to add the MCP server views to the conversation before posting the message.
         if (message.context.selectedMCPServerViewIds) {
@@ -396,6 +408,7 @@ async function handler(
             ? await postUserMessageAndWaitForCompletion(auth, {
                 content: message.content,
                 context: ctx,
+                runAgentContext,
                 conversation,
                 mentions: message.mentions,
                 skipToolsValidation: skipToolsValidation ?? false,
@@ -403,6 +416,7 @@ async function handler(
             : await postUserMessage(auth, {
                 content: message.content,
                 context: ctx,
+                runAgentContext,
                 conversation,
                 mentions: message.mentions,
                 skipToolsValidation: skipToolsValidation ?? false,

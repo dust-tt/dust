@@ -59,7 +59,8 @@ async function isAncestorConversation(
   });
 
   const originMessageId =
-    firstUserMessage?.userMessage?.userContextOriginMessageId;
+    firstUserMessage?.userMessage?.userContextOriginMessageId ??
+    firstUserMessage?.userMessage?.runAgentOriginMessageId;
   if (!originMessageId) {
     return false;
   }

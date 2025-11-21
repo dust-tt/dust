@@ -121,6 +121,8 @@ export async function getOrCreateConversation(
   }
 
   if (conversationId) {
+    const runAgentType =
+      mainConversation.sId !== conversationId ? "run_agent" : "agent_handover";
     const messageRes = await api.postUserMessage({
       conversationId,
       message: {
@@ -132,12 +134,12 @@ export async function getOrCreateConversation(
           fullName: `@${mainAgent.name}`,
           email: null,
           profilePictureUrl: mainAgent.pictureUrl,
-          // `run_agent` origin will skip adding the conversation to the user history.
-          origin:
-            mainConversation.sId !== conversationId
-              ? "run_agent"
-              : "agent_handover",
+          origin: parentOrigin,
           selectedMCPServerViewIds: toolsetsToAdd,
+        },
+        runAgentContext: {
+          // `run_agent` origin will skip adding the conversation to the user history.
+          type: runAgentType,
           originMessageId: originMessage.sId,
         },
       },

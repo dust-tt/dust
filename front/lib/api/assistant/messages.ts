@@ -225,12 +225,23 @@ async function batchRenderUserMessages(
         fullName: userMessage.userContextFullName,
         email: userMessage.userContextEmail,
         profilePictureUrl: userMessage.userContextProfilePictureUrl,
-        origin: userMessage.userContextOrigin,
-        originMessageId: userMessage.userContextOriginMessageId,
+        // TODO: Return real user origin in case or run agent
+        origin: userMessage.runAgentType ?? userMessage.userContextOrigin,
+        // TODO: Remove originMessageId
+        originMessageId:
+          userMessage.runAgentOriginMessageId ??
+          userMessage.userContextOriginMessageId,
         clientSideMCPServerIds: userMessage.clientSideMCPServerIds,
         lastTriggerRunAt:
           userMessage.userContextLastTriggerRunAt?.getTime() ?? null,
       },
+      runAgentContext:
+        userMessage.runAgentType && userMessage.runAgentOriginMessageId
+          ? {
+              type: userMessage.runAgentType,
+              originMessageId: userMessage.runAgentOriginMessageId,
+            }
+          : undefined,
     } satisfies UserMessageType;
   });
 }
@@ -429,6 +440,8 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         : null;
 
       let parentAgentMessage: Message | null = null;
+
+      // TODO Remove once new fields have been backfilled.
       if (
         parentMessage &&
         parentMessage?.userMessage &&
@@ -438,6 +451,19 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         parentAgentMessage =
           messagesBySId.get(
             parentMessage.userMessage.userContextOriginMessageId
+          ) ?? null;
+      }
+      // END TODO
+
+      if (
+        parentMessage &&
+        parentMessage?.userMessage &&
+        parentMessage.userMessage.runAgentType === "agent_handover" &&
+        parentMessage.userMessage.runAgentOriginMessageId
+      ) {
+        parentAgentMessage =
+          messagesBySId.get(
+            parentMessage.userMessage.runAgentOriginMessageId
           ) ?? null;
       }
 

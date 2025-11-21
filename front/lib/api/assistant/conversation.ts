@@ -66,6 +66,7 @@ import type {
   ModelId,
   PlanType,
   Result,
+  RunAgentContext,
   UserMessageContext,
   UserMessageType,
   UserType,
@@ -366,12 +367,14 @@ export async function postUserMessage(
     content,
     mentions,
     context,
+    runAgentContext,
     skipToolsValidation,
   }: {
     conversation: ConversationType;
     content: string;
     mentions: MentionType[];
     context: UserMessageContext;
+    runAgentContext?: RunAgentContext;
     skipToolsValidation: boolean;
   }
 ): Promise<
@@ -427,7 +430,7 @@ export async function postUserMessage(
     (() => {
       // If the origin of the user message is "run_agent", we do not want to update the
       // participation of the user so that the conversation does not appear in the user's history.
-      if (context.origin === "run_agent") {
+      if (runAgentContext?.type === "run_agent") {
         return;
       }
 
@@ -511,11 +514,12 @@ export async function postUserMessage(
         })) ?? -1) + 1;
 
       // Fetch originMessage to ensure it exists
-      const originMessage = context.originMessageId
+      const originMessageId = runAgentContext?.originMessageId;
+      const originMessage = originMessageId
         ? await Message.findOne({
             where: {
               workspaceId: owner.id,
-              sId: context.originMessageId,
+              sId: originMessageId,
             },
           })
         : null;
@@ -539,10 +543,11 @@ export async function postUserMessage(
                   userContextEmail: context.email,
                   userContextProfilePictureUrl: context.profilePictureUrl,
                   userContextOrigin: context.origin,
-                  userContextOriginMessageId: originMessage?.sId ?? null,
                   userContextLastTriggerRunAt: context.lastTriggerRunAt
                     ? new Date(context.lastTriggerRunAt)
                     : null,
+                  runAgentType: runAgentContext?.type,
+                  runAgentOriginMessageId: originMessage?.sId ?? null,
                   userId: user
                     ? user.id
                     : (

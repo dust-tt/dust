@@ -52,6 +52,7 @@ export type MessageWithContentFragmentsType =
  * User messages
  */
 
+// TODO: Remove run_agent and agent_handover once backfilled
 export type UserMessageOrigin =
   | "agent_handover"
   | "api"
@@ -87,6 +88,11 @@ export type UserMessageContext = {
   selectedMCPServerViewIds?: string[];
 };
 
+export type RunAgentContext = {
+  type: "run_agent" | "agent_handover";
+  originMessageId: string;
+};
+
 export type UserMessageType = {
   id: ModelId;
   created: number;
@@ -99,6 +105,7 @@ export type UserMessageType = {
   mentions: MentionType[];
   content: string;
   context: UserMessageContext;
+  runAgentContext?: RunAgentContext;
 };
 
 export function isUserMessageType(
