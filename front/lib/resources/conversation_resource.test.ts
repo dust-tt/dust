@@ -997,6 +997,267 @@ describe("ConversationResource", () => {
     });
   });
 
+  describe("canAccess", () => {
+    let adminAuth: Authenticator;
+    let userAuth: Authenticator;
+    let workspace: LightWorkspaceType;
+    let agents: LightAgentConfigurationType[];
+    let globalSpace: SpaceResource;
+    let restrictedSpace: SpaceResource;
+    let conversations: {
+      accessible: string;
+      restricted: string;
+    };
+
+    beforeEach(async () => {
+      const {
+        authenticator,
+        globalSpace: gs,
+        user,
+        workspace: w,
+      } = await createResourceTest({
+        role: "admin",
+      });
+
+      workspace = w;
+      globalSpace = gs;
+
+      // Create different users with different access levels.
+      const adminUser = user;
+      const regularUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, regularUser, {
+        role: "user",
+      });
+
+      adminAuth = authenticator;
+      userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        regularUser.sId,
+        workspace.sId
+      );
+
+      // Set up spaces and agents.
+      // Create a restricted space only accessible to the admin user.
+      restrictedSpace = await SpaceFactory.regular(workspace);
+      const res = await restrictedSpace.addMembers(adminAuth, {
+        userIds: [adminUser.sId],
+      });
+      assert(res.isOk(), "Failed to add member to restricted space");
+      // Once added, we need to refresh the auth.
+      adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        adminUser.sId,
+        workspace.sId
+      );
+
+      agents = await setupTestAgents(workspace, adminUser);
+
+      // Create conversations with different space access patterns.
+      const accessibleConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        messagesCreatedAt: [dateFromDaysAgo(5)],
+      });
+
+      const restrictedConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [restrictedSpace.id],
+        messagesCreatedAt: [dateFromDaysAgo(5)],
+      });
+
+      conversations = {
+        accessible: accessibleConvo.sId,
+        restricted: restrictedConvo.sId,
+      };
+    });
+
+    afterEach(async () => {
+      await destroyConversation(adminAuth, {
+        conversationId: conversations.accessible,
+      });
+      await destroyConversation(adminAuth, {
+        conversationId: conversations.restricted,
+      });
+    });
+
+    it("should return 'allowed' when user has access to conversation", async () => {
+      const result = await ConversationResource.canAccess(
+        userAuth,
+        conversations.accessible
+      );
+
+      expect(result).toBe("allowed");
+    });
+
+    it("should return 'conversation_access_restricted' when user does not have access to the space", async () => {
+      const result = await ConversationResource.canAccess(
+        userAuth,
+        conversations.restricted
+      );
+
+      expect(result).toBe("conversation_access_restricted");
+    });
+
+    it("should return 'conversation_not_found' when conversation does not exist", async () => {
+      const result = await ConversationResource.canAccess(
+        userAuth,
+        "nonexistent-sId"
+      );
+
+      expect(result).toBe("conversation_not_found");
+    });
+
+    it("should return 'conversation_not_found' when conversation is deleted", async () => {
+      // Delete the conversation
+      const conversationResource = await ConversationResource.fetchById(
+        adminAuth,
+        conversations.accessible,
+        { includeDeleted: false }
+      );
+      assert(conversationResource, "Conversation resource not found");
+      await conversationResource.updateVisibilityToDeleted();
+
+      const result = await ConversationResource.canAccess(
+        userAuth,
+        conversations.accessible
+      );
+
+      expect(result).toBe("conversation_not_found");
+    });
+
+    it("should return 'allowed' when admin has access to restricted space", async () => {
+      const result = await ConversationResource.canAccess(
+        adminAuth,
+        conversations.restricted
+      );
+
+      expect(result).toBe("allowed");
+    });
+
+    it("should return 'conversation_not_found' when conversation belongs to different workspace", async () => {
+      // Create a conversation in a different workspace
+      const anotherWorkspace = await WorkspaceFactory.basic();
+      const anotherUser = await UserFactory.basic();
+      await MembershipFactory.associate(anotherWorkspace, anotherUser, {
+        role: "admin",
+      });
+      const anotherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        anotherUser.sId,
+        anotherWorkspace.sId
+      );
+
+      const anotherAgents = await setupTestAgents(
+        anotherWorkspace,
+        anotherUser
+      );
+      const anotherConvo = await ConversationFactory.create(anotherAuth, {
+        agentConfigurationId: anotherAgents[0].sId,
+        messagesCreatedAt: [dateFromDaysAgo(5)],
+      });
+
+      // Try to access the conversation from another workspace with current user auth
+      const result = await ConversationResource.canAccess(
+        userAuth,
+        anotherConvo.sId
+      );
+
+      expect(result).toBe("conversation_not_found");
+
+      // Clean up
+      await destroyConversation(anotherAuth, {
+        conversationId: anotherConvo.sId,
+      });
+    });
+
+    it("should return 'conversation_not_found' when space is deleted", async () => {
+      // Create a new space and conversation
+      const tempSpace = await SpaceFactory.regular(workspace);
+      const res = await tempSpace.addMembers(adminAuth, {
+        userIds: [adminAuth.getNonNullableUser().sId],
+      });
+      assert(res.isOk(), "Failed to add member to temp space");
+
+      const refreshedAdminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        adminAuth.getNonNullableUser().sId,
+        workspace.sId
+      );
+
+      const tempConvo = await ConversationFactory.create(refreshedAdminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [tempSpace.id],
+        messagesCreatedAt: [dateFromDaysAgo(5)],
+      });
+
+      // Verify conversation is accessible before space deletion
+      let result = await ConversationResource.canAccess(
+        refreshedAdminAuth,
+        tempConvo.sId
+      );
+      expect(result).toBe("allowed");
+
+      // Delete the space
+      await tempSpace.delete(refreshedAdminAuth, { hardDelete: false });
+
+      // Now the conversation should return 'conversation_not_found' because space is deleted
+      result = await ConversationResource.canAccess(
+        refreshedAdminAuth,
+        tempConvo.sId
+      );
+      expect(result).toBe("conversation_not_found");
+
+      // Clean up
+      await destroyConversation(refreshedAdminAuth, {
+        conversationId: tempConvo.sId,
+      });
+    });
+
+    it("should handle conversations with multiple space IDs - all spaces must be accessible", async () => {
+      // Create a conversation with both global and restricted spaces
+      const multiSpaceConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id, restrictedSpace.id],
+        messagesCreatedAt: [dateFromDaysAgo(5)],
+      });
+
+      // Regular user can access global space but not restricted space
+      const userResult = await ConversationResource.canAccess(
+        userAuth,
+        multiSpaceConvo.sId
+      );
+      expect(userResult).toBe("conversation_access_restricted");
+
+      // Admin can access both spaces
+      const adminResult = await ConversationResource.canAccess(
+        adminAuth,
+        multiSpaceConvo.sId
+      );
+      expect(adminResult).toBe("allowed");
+
+      // Clean up
+      await destroyConversation(adminAuth, {
+        conversationId: multiSpaceConvo.sId,
+      });
+    });
+
+    it("should return 'allowed' for conversation with no requested spaces", async () => {
+      const emptySpaceConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [],
+        messagesCreatedAt: [dateFromDaysAgo(5)],
+      });
+
+      const result = await ConversationResource.canAccess(
+        userAuth,
+        emptySpaceConvo.sId
+      );
+
+      expect(result).toBe("allowed");
+
+      // Clean up
+      await destroyConversation(adminAuth, {
+        conversationId: emptySpaceConvo.sId,
+      });
+    });
+  });
+
   describe("getMessageById", () => {
     let auth: Authenticator;
     let conversation: ConversationType;
