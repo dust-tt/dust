@@ -1,4 +1,5 @@
 import type { Client, WorkflowExecutionDescription } from "@temporalio/client";
+import { ScheduleNotFoundError } from "@temporalio/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
@@ -7,8 +8,23 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { getWorkflowIdsForConnector } from "@app/types/connectors/workflows";
+import type {
+  ConnectorProvider,
+  ModelId,
+  WithAPIErrorResponse,
+} from "@app/types";
+import {
+  getNotionWorkflowId,
+  getZendeskGarbageCollectionWorkflowId,
+  getZendeskSyncWorkflowId,
+  googleDriveIncrementalSyncWorkflowId,
+  makeConfluenceSyncWorkflowId,
+  makeGongSyncScheduleId,
+  makeIntercomConversationScheduleId,
+  makeIntercomHelpCenterScheduleId,
+  microsoftGarbageCollectionWorkflowId,
+  microsoftIncrementalSyncWorkflowId,
+} from "@app/types";
 
 export type PendingActivityInfo = {
   activityId: string;
@@ -33,6 +49,73 @@ export type CheckStuckResponseBody = {
 };
 
 const STUCK_THRESHOLD = 5; // Consider an activity stuck if it has 5+ attempts
+
+async function getWorkflowIdsFromSchedule(
+  client: Client,
+  scheduleId: string
+): Promise<string[]> {
+  try {
+    const scheduleHandle = client.schedule.getHandle(scheduleId);
+    const scheduleDescription = await scheduleHandle.describe();
+    return scheduleDescription.info.recentActions.map(
+      (action) => action.action.workflow.workflowId
+    );
+  } catch (error) {
+    if (error instanceof ScheduleNotFoundError) {
+      return [];
+    }
+    throw error;
+  }
+}
+
+async function getWorkflowIdsForConnector(
+  connectorId: ModelId,
+  connectorType: ConnectorProvider
+): Promise<string[]> {
+  switch (connectorType) {
+    case "notion":
+      return [
+        getNotionWorkflowId(connectorId, "sync"),
+        getNotionWorkflowId(connectorId, "garbage-collector"),
+        getNotionWorkflowId(connectorId, "process-database-upsert-queue"),
+      ];
+    case "zendesk":
+      return [
+        getZendeskSyncWorkflowId(connectorId),
+        getZendeskGarbageCollectionWorkflowId(connectorId),
+      ];
+    case "google_drive":
+      return [googleDriveIncrementalSyncWorkflowId(connectorId)];
+    case "confluence":
+      return [makeConfluenceSyncWorkflowId(connectorId)];
+    case "microsoft":
+      return [
+        microsoftIncrementalSyncWorkflowId(connectorId),
+        microsoftGarbageCollectionWorkflowId(connectorId),
+      ];
+    case "gong": {
+      const client = await getTemporalClientForConnectorsNamespace();
+      return getWorkflowIdsFromSchedule(
+        client,
+        makeGongSyncScheduleId(connectorId)
+      );
+    }
+    case "intercom": {
+      const client = await getTemporalClientForConnectorsNamespace();
+      const helpCenterWorkflows = await getWorkflowIdsFromSchedule(
+        client,
+        makeIntercomHelpCenterScheduleId(connectorId)
+      );
+      const conversationWorkflows = await getWorkflowIdsFromSchedule(
+        client,
+        makeIntercomConversationScheduleId(connectorId)
+      );
+      return [...helpCenterWorkflows, ...conversationWorkflows];
+    }
+    default:
+      return [];
+  }
+}
 
 function flattenStuckWorkflows(info: StuckWorkflowInfo): StuckWorkflowInfo[] {
   const result: StuckWorkflowInfo[] = [];
@@ -201,7 +284,7 @@ async function handler(
       }
 
       const client = await getTemporalClientForConnectorsNamespace();
-      const workflowIds = getWorkflowIdsForConnector(
+      const workflowIds = await getWorkflowIdsForConnector(
         parseInt(dataSource.connectorId, 10),
         dataSource.connectorProvider
       );
