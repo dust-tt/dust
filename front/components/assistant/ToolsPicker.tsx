@@ -19,6 +19,7 @@ import { CreateMCPServerSheet } from "@app/components/actions/mcp/CreateMCPServe
 import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
+  mcpServersSortingFn,
   mcpServerViewSortingFn,
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
@@ -348,38 +349,42 @@ export function ToolsPicker({
 
           {isDataReady && filteredUninstalledServers.length > 0 && (
             <>
-              {filteredUninstalledServers.map((server) => (
-                <DropdownMenuItem
-                  key={`tools-to-install-${server.sId}`}
-                  icon={() => getAvatar(server)}
-                  label={asDisplayName(server.name)}
-                  description={server.description}
-                  truncateText
-                  endComponent={
-                    <Chip size="xs" color="golden" label="Activate" />
-                  }
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-
-                    const remoteMcpServerConfig =
-                      getDefaultRemoteMCPServerByName(server.name);
-
-                    if (remoteMcpServerConfig) {
-                      // Remote servers always use the remote flow, even if they have OAuth.
-                      setSetupSheetServer(null);
-                      setSetupSheetRemoteServerConfig(remoteMcpServerConfig);
-                    } else {
-                      // Internal servers (with or without OAuth)
-                      setSetupSheetServer(server);
-                      setSetupSheetRemoteServerConfig(null);
+              {filteredUninstalledServers
+                .sort((a, b) =>
+                  mcpServersSortingFn({ mcpServer: a }, { mcpServer: b })
+                )
+                .map((server) => (
+                  <DropdownMenuItem
+                    key={`tools-to-install-${server.sId}`}
+                    icon={() => getAvatar(server)}
+                    label={asDisplayName(server.name)}
+                    description={server.description}
+                    truncateText
+                    endComponent={
+                      <Chip size="xs" color="golden" label="Configure" />
                     }
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
 
-                    setIsSettingUpServer(true);
-                    setIsOpen(false);
-                  }}
-                />
-              ))}
+                      const remoteMcpServerConfig =
+                        getDefaultRemoteMCPServerByName(server.name);
+
+                      if (remoteMcpServerConfig) {
+                        // Remote servers always use the remote flow, even if they have OAuth.
+                        setSetupSheetServer(null);
+                        setSetupSheetRemoteServerConfig(remoteMcpServerConfig);
+                      } else {
+                        // Internal servers (with or without OAuth)
+                        setSetupSheetServer(server);
+                        setSetupSheetRemoteServerConfig(null);
+                      }
+
+                      setIsSettingUpServer(true);
+                      setIsOpen(false);
+                    }}
+                  />
+                ))}
             </>
           )}
 
