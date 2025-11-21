@@ -125,11 +125,13 @@ export async function fetchToolExecutionMetrics(
 
       const configBuckets = bucketsToArray<ConfigBucket>(sb.configs?.buckets);
       const breakdown: Record<string, number> = {};
+
       configBuckets.forEach((cb) => {
         const sid = cb.key;
         if (!sid || sid === "__no_config__") {
           return;
         }
+
         breakdown[sid] =
           (breakdown[sid] ?? 0) + (cb.doc_count ?? DEFAULT_METRIC_VALUE);
       });
@@ -137,7 +139,8 @@ export async function fetchToolExecutionMetrics(
       tools[serverDisplayName] = {
         count: total,
         successRate,
-        mcpViewBreakdown: breakdown,
+        mcpViewBreakdown:
+          Object.keys(breakdown).length > 0 ? breakdown : undefined,
       };
     });
 
