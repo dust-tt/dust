@@ -31,6 +31,7 @@ import { FeedbackSelectorPopoverContent } from "@app/components/assistant/conver
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/interactive_content/useAutoOpenInteractiveContent";
 import { MCPServerPersonalAuthenticationRequired } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationRequired";
+import { NewConversationMessage } from "@app/components/assistant/conversation/NewConversationMessage";
 import type {
   AgentMessageStateWithControlEvent,
   MessageTemporaryState,
@@ -538,7 +539,7 @@ export function AgentMessage({
   const userMentionsEnabled = hasFeature("mentions_v2");
   if (userMentionsEnabled) {
     return (
-      <ConversationMessage
+      <NewConversationMessage
         pictureUrl={agentConfiguration.pictureUrl}
         name={agentConfiguration.name}
         buttons={
@@ -571,23 +572,21 @@ export function AgentMessage({
         type="agent"
         citations={citations}
       >
-        <div>
-          <AgentMessageContent
-            owner={owner}
-            conversationId={conversationId}
-            retryHandler={retryHandler}
-            isLastMessage={isLastMessage}
-            messageStreamState={messageStreamState}
-            references={references}
-            streaming={shouldStream}
-            lastTokenClassification={
-              messageStreamState.agentState === "thinking" ? "tokens" : null
-            }
-            activeReferences={activeReferences}
-            setActiveReferences={setActiveReferences}
-          />
-        </div>
-      </ConversationMessage>
+        <AgentMessageContent
+          owner={owner}
+          conversationId={conversationId}
+          retryHandler={retryHandler}
+          isLastMessage={isLastMessage}
+          messageStreamState={messageStreamState}
+          references={references}
+          streaming={shouldStream}
+          lastTokenClassification={
+            messageStreamState.agentState === "thinking" ? "tokens" : null
+          }
+          activeReferences={activeReferences}
+          setActiveReferences={setActiveReferences}
+        />
+      </NewConversationMessage>
     );
   }
 

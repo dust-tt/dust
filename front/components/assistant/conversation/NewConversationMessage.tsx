@@ -5,6 +5,7 @@ import { cva } from "class-variance-authority";
 import React from "react";
 
 type ConversationMessageType = "user" | "agent";
+type MessageType = "me" | "user" | "agent";
 
 interface NewConversationMessageProps
   extends React.HTMLAttributes<HTMLDivElement>,
@@ -89,7 +90,7 @@ export const NewConversationMessage = React.forwardRef<
     },
     ref
   ) => {
-    let messageType: "agent" | "me" | "user" = "agent";
+    let messageType: MessageType = "agent";
     if (type === "agent") {
       messageType = "agent";
     } else if (type === "user") {
