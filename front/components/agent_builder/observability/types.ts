@@ -11,6 +11,15 @@ export function isToolChartMode(mode: string): mode is ToolChartModeType {
 export type ToolChartUsageDatum = {
   percent: number;
   count: number;
+  /**
+   * Optional breakdown of this tool segment.
+   * Used to show MCP server view contributions in the tooltip.
+   */
+  breakdown?: {
+    label: string;
+    count: number;
+    percent: number;
+  }[];
 };
 
 export type ChartDatum = {
