@@ -100,15 +100,15 @@ function GroupedTooltip(
     .map((p) => {
       const groupKey = p.name;
 
-      let label = "";
+      let label;
       if (groupKey === "others") {
         label = OTHER_LABEL.label;
       } else if (groupBy === "origin" && isUserMessageOrigin(groupKey)) {
         label = USER_MESSAGE_ORIGIN_LABELS[groupKey].label;
       } else {
-        label = availableGroupsArray.find(
-          (g) => g.groupKey === groupKey
-        )?.groupLabel;
+        label =
+          availableGroupsArray.find((g) => g.groupKey === groupKey)
+            ?.groupLabel ?? "";
       }
 
       const colorClassName = getColorClassName(
