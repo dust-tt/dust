@@ -12,7 +12,6 @@ import {
   LoadingBlock,
   ToolsIcon,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 
 import { CreateMCPServerSheet } from "@app/components/actions/mcp/CreateMCPServerSheet";
@@ -31,7 +30,7 @@ import {
   useAvailableMCPServers,
   useMCPServerViewsFromSpaces,
 } from "@app/lib/swr/mcp_servers";
-import { useSpaces, useSystemSpace } from "@app/lib/swr/spaces";
+import { useSpaces } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
   trackEvent,
@@ -78,7 +77,6 @@ export function ToolsPicker({
   disabled = false,
   buttonSize = "xs",
 }: ToolsPickerProps) {
-  const router = useRouter();
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [setupSheetServer, setSetupSheetServer] =
@@ -104,10 +102,6 @@ export function ToolsPicker({
   );
 
   const isAdmin = owner.role === "admin";
-  const { systemSpace } = useSystemSpace({
-    workspaceId: owner.sId,
-    disabled: !isOpen || !isAdmin,
-  });
 
   const {
     serverViews,
@@ -251,63 +245,45 @@ export function ToolsPicker({
           align="start"
           dropdownHeaders={
             <>
-              <div className="flex items-center">
-                <div className="flex-1">
-                  <DropdownMenuSearchbar
-                    autoFocus
-                    name="search-tools"
-                    placeholder="Search Tools"
-                    value={searchText}
-                    onChange={setSearchText}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && filteredServerViews.length > 0) {
-                        const isSelected = selectedMCPServerViewIds.includes(
-                          filteredServerViews[0].sId
-                        );
-                        if (isSelected) {
-                          trackEvent({
-                            area: TRACKING_AREAS.TOOLS,
-                            object: "tool_deselect",
-                            action: TRACKING_ACTIONS.SELECT,
-                            extra: {
-                              tool_id: filteredServerViews[0].sId,
-                              tool_name: filteredServerViews[0].server.name,
-                            },
-                          });
-                          onDeselect(filteredServerViews[0]);
-                        } else {
-                          trackEvent({
-                            area: TRACKING_AREAS.TOOLS,
-                            object: "tool_select",
-                            action: TRACKING_ACTIONS.SELECT,
-                            extra: {
-                              tool_id: filteredServerViews[0].sId,
-                              tool_name: filteredServerViews[0].server.name,
-                            },
-                          });
-                          onSelect(filteredServerViews[0]);
-                        }
-                        setSearchText("");
-                        setIsOpen(false);
-                      }
-                    }}
-                  />
-                </div>
-                {systemSpace && (
-                  <Button
-                    icon={ToolsIcon}
-                    variant="outline"
-                    label="Manage"
-                    onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      void router.push(
-                        `/w/${owner.sId}/spaces/${systemSpace.sId}/categories/actions`
-                      );
-                    }}
-                  />
-                )}
-              </div>
+              <DropdownMenuSearchbar
+                autoFocus
+                name="search-tools"
+                placeholder="Search Tools"
+                value={searchText}
+                onChange={setSearchText}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && filteredServerViews.length > 0) {
+                    const isSelected = selectedMCPServerViewIds.includes(
+                      filteredServerViews[0].sId
+                    );
+                    if (isSelected) {
+                      trackEvent({
+                        area: TRACKING_AREAS.TOOLS,
+                        object: "tool_deselect",
+                        action: TRACKING_ACTIONS.SELECT,
+                        extra: {
+                          tool_id: filteredServerViews[0].sId,
+                          tool_name: filteredServerViews[0].server.name,
+                        },
+                      });
+                      onDeselect(filteredServerViews[0]);
+                    } else {
+                      trackEvent({
+                        area: TRACKING_AREAS.TOOLS,
+                        object: "tool_select",
+                        action: TRACKING_ACTIONS.SELECT,
+                        extra: {
+                          tool_id: filteredServerViews[0].sId,
+                          tool_name: filteredServerViews[0].server.name,
+                        },
+                      });
+                      onSelect(filteredServerViews[0]);
+                    }
+                    setSearchText("");
+                    setIsOpen(false);
+                  }
+                }}
+              />
               <DropdownMenuSeparator />
             </>
           }
