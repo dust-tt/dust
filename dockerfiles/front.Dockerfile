@@ -45,7 +45,7 @@ RUN npm ci
 COPY /front .
 
 # Build temporal workers
-RUN npm run build:workers
+RUN FRONT_DATABASE_URI="sqlite:foo.sqlite" npm run build:workers
 
 # Remove test files
 RUN find . -name "*.test.ts" -delete
