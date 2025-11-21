@@ -72,7 +72,8 @@ export type UserMessageOrigin =
   | "triggered"
   | "web"
   | "zapier"
-  | "zendesk";
+  | "zendesk"
+  | "onboarding_conversation";
 
 export type UserMessageContext = {
   username: string;

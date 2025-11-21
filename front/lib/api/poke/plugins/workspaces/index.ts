@@ -17,6 +17,7 @@ export * from "./rename_workspace";
 export * from "./reset_message_rate_limit";
 export * from "./restore_conversation";
 export * from "./revoke_users";
+export * from "./send_onboarding_conversation";
 export * from "./set_public_api_limits";
 export * from "./sync_missing_transcripts_date_range";
 export * from "./toggle_auto_create_space";

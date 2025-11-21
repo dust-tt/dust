@@ -34,6 +34,7 @@ export const USAGE_ORIGINS_CLASSIFICATION: Record<
   web: "user",
   zapier: "programmatic",
   zendesk: "programmatic",
+  onboarding_conversation: "user",
 };
 
 const PROGRAMMATIC_USAGE_ORIGINS = Object.keys(
