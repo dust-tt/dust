@@ -22,6 +22,8 @@ import {
   mcpServerViewSortingFn,
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
+import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
+import { getDefaultRemoteMCPServerByName } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import {
@@ -80,6 +82,8 @@ export function ToolsPicker({
   const [isOpen, setIsOpen] = useState(false);
   const [setupSheetServer, setSetupSheetServer] =
     useState<MCPServerType | null>(null);
+  const [setupSheetRemoteServerConfig, setSetupSheetRemoteServerConfig] =
+    useState<DefaultRemoteMCPServerConfig | null>(null);
   const [isSettingUpServer, setIsSettingUpServer] = useState(false);
   const [pendingServerToAdd, setPendingServerToAdd] =
     useState<MCPServerType | null>(null);
@@ -211,6 +215,10 @@ export function ToolsPicker({
     availableMCPServers,
     searchText,
   ]);
+
+  const shouldShowSetupSheet = useMemo(() => {
+    return !!setupSheetServer || !!setupSheetRemoteServerConfig;
+  }, [setupSheetServer, setupSheetRemoteServerConfig]);
 
   return (
     <>
@@ -353,7 +361,20 @@ export function ToolsPicker({
                   onClick={(e) => {
                     e.stopPropagation();
                     e.preventDefault();
-                    setSetupSheetServer(server);
+
+                    const remoteMcpServerConfig =
+                      getDefaultRemoteMCPServerByName(server.name);
+
+                    if (remoteMcpServerConfig) {
+                      // Remote servers always use the remote flow, even if they have OAuth.
+                      setSetupSheetServer(null);
+                      setSetupSheetRemoteServerConfig(remoteMcpServerConfig);
+                    } else {
+                      // Internal servers (with or without OAuth)
+                      setSetupSheetServer(server);
+                      setSetupSheetRemoteServerConfig(null);
+                    }
+
                     setIsSettingUpServer(true);
                     setIsOpen(false);
                   }}
@@ -385,10 +406,11 @@ export function ToolsPicker({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {setupSheetServer && (
+      {shouldShowSetupSheet && (
         <CreateMCPServerSheet
           owner={owner}
-          internalMCPServer={setupSheetServer}
+          internalMCPServer={setupSheetServer ?? undefined}
+          defaultServerConfig={setupSheetRemoteServerConfig ?? undefined}
           setMCPServerToShow={async (createdServer) => {
             const updatedData = await mutateServerViews();
 
@@ -414,12 +436,14 @@ export function ToolsPicker({
             }
 
             setSetupSheetServer(null);
+            setSetupSheetRemoteServerConfig(null);
           }}
           setIsLoading={() => {}}
-          isOpen={!!setupSheetServer}
+          isOpen={shouldShowSetupSheet}
           setIsOpen={(isOpen) => {
             if (!isOpen) {
               setSetupSheetServer(null);
+              setSetupSheetRemoteServerConfig(null);
               setPendingServerToAdd(null);
               setIsSettingUpServer(false);
             }
