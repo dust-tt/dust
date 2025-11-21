@@ -9,7 +9,13 @@ import {
   Ok,
 } from "@app/types";
 
-const OPERATIONS = ["STOP", "PAUSE", "UNPAUSE", "RESUME", "SYNC"] as const;
+const OPERATIONS = [
+  "STOP: stop workflows with intent to resume shortly after (no DB changes)",
+  "RESUME: start all stopped workflows",
+  "PAUSE: stop workflows for a longer period of time (marks Connectors DB)",
+  "UNPAUSE: use to undo PAUSE (marks Connectors DB)",
+  "SYNC: use to synchronize workflows (heavyweight, use sparingly!)",
+] as const;
 
 type OperationType = (typeof OPERATIONS)[number];
 
@@ -20,15 +26,15 @@ const doOperation = (op: OperationType, connectorId: string) => {
   );
 
   switch (op) {
-    case "STOP":
+    case "STOP: stop workflows with intent to resume shortly after (no DB changes)":
       return connectorsAPI.stopConnector(connectorId);
-    case "PAUSE":
+    case "PAUSE: stop workflows for a longer period of time (marks Connectors DB)":
       return connectorsAPI.pauseConnector(connectorId);
-    case "UNPAUSE":
+    case "UNPAUSE: use to undo PAUSE (marks Connectors DB)":
       return connectorsAPI.unpauseConnector(connectorId);
-    case "RESUME":
+    case "RESUME: start all stopped workflows":
       return connectorsAPI.resumeConnector(connectorId);
-    case "SYNC":
+    case "SYNC: use to synchronize workflows (heavyweight, use sparingly!)":
       return connectorsAPI.syncConnector(connectorId);
     default:
       assertNever(op);
