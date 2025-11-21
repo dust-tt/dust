@@ -1,5 +1,6 @@
 import type { Fetcher } from "swr";
 
+import { emptyArray } from "@app/lib/swr/swr";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetCreditsResponseBody } from "@app/types/credits";
 
