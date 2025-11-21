@@ -129,13 +129,12 @@ async function handler(
   let isParticipant = false;
 
   if (user && conversationId) {
-    const conversationRes = await ConversationResource.fetchById(
+    const conversationResource = await ConversationResource.fetchById(
       auth,
       conversationId
     );
 
-    if (conversationRes.isOk() && conversationRes.value && user) {
-      const conversationResource = conversationRes.value;
+    if (user && conversationResource) {
       isParticipant =
         await conversationResource.isConversationParticipant(user);
     }
