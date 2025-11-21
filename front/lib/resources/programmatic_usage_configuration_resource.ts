@@ -1,9 +1,4 @@
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-} from "sequelize";
+import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { z } from "zod";
 
 import type { Authenticator } from "@app/lib/auth";
@@ -14,9 +9,19 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ModelId, Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
+import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
+
+const MAX_FREE_AMOUNT_CENTS = 1_000_000;
+
 // Validation schema for programmatic usage configuration
 const ProgrammaticUsageConfigurationSchema = z.object({
-  freeCreditCents: z.number().int().min(0).max(1_000_000).nullable().optional(),
+  freeCreditCents: z
+    .number()
+    .int()
+    .min(0)
+    .max(MAX_FREE_AMOUNT_CENTS)
+    .nullable()
+    .optional(),
   defaultDiscountPercent: z.number().int().min(0).max(100).optional(),
   paygCapCents: z.number().int().positive().nullable().optional(),
 });
@@ -28,11 +33,11 @@ export interface ProgrammaticUsageConfigurationResource
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class ProgrammaticUsageConfigurationResource extends BaseResource<ProgrammaticUsageConfigurationModel> {
-  static model: ModelStatic<ProgrammaticUsageConfigurationModel> =
+  static model: ModelStaticWorkspaceAware<ProgrammaticUsageConfigurationModel> =
     ProgrammaticUsageConfigurationModel;
 
   constructor(
-    _model: ModelStatic<ProgrammaticUsageConfigurationModel>,
+    _model: ModelStaticWorkspaceAware<ProgrammaticUsageConfigurationModel>,
     blob: Attributes<ProgrammaticUsageConfigurationModel>
   ) {
     super(ProgrammaticUsageConfigurationModel, blob);
@@ -97,10 +102,9 @@ export class ProgrammaticUsageConfigurationResource extends BaseResource<Program
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<ProgrammaticUsageConfigurationResource, Error>> {
     try {
-      // Validate configuration values
       const validation = this.validateConfiguration(blob);
       if (validation.isErr()) {
-        return validation as Err<Error>;
+        return new Err(validation.error);
       }
 
       const configuration = await this.model.create(
@@ -226,7 +230,6 @@ export class ProgrammaticUsageConfigurationResource extends BaseResource<Program
 
   /**
    * Serialization for API responses.
-   * Exposes both id (ModelId) and sId (string) for compatibility.
    */
   toJSON() {
     return {
