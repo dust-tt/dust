@@ -5,7 +5,7 @@ import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 import { config } from "@app/lib/api/regions/config";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
-import { getWorkflowBundle } from "@app/temporal/bundle_helper";
+import { getWorkflowConfig } from "@app/temporal/bundle_helper";
 import * as connectorsDestinationActivities from "@app/temporal/relocation/activities/destination_region/connectors/sql";
 import * as coreDestinationActivities from "@app/temporal/relocation/activities/destination_region/core";
 import * as frontDestinationActivities from "@app/temporal/relocation/activities/destination_region/front";
@@ -21,8 +21,10 @@ export async function runRelocationWorker() {
   const { connection, namespace } =
     await getTemporalRelocationWorkerConnection();
   const worker = await Worker.create({
-    workflowsPath:
-      getWorkflowBundle("relocation") ?? require.resolve("./workflows"),
+    ...getWorkflowConfig({
+      workerName: "relocation",
+      workflowsPath: require.resolve("./workflows"),
+    }),
     activities: {
       ...connectorsDestinationActivities,
       ...connectorsSourceActivities,

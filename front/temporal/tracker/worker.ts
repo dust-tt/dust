@@ -7,7 +7,7 @@ import {
 } from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
-import { getWorkflowBundle } from "@app/temporal/bundle_helper";
+import { getWorkflowConfig } from "@app/temporal/bundle_helper";
 import * as activities from "@app/temporal/tracker/activities";
 import {
   RUN_QUEUE_NAME,
@@ -18,8 +18,10 @@ export async function runTrackerWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
 
   const worker = await Worker.create({
-    workflowsPath:
-      getWorkflowBundle("document_tracker") ?? require.resolve("./workflows"),
+    ...getWorkflowConfig({
+      workerName: "document_tracker",
+      workflowsPath: require.resolve("./workflows"),
+    }),
     activities,
     taskQueue: RUN_QUEUE_NAME,
     connection,
@@ -44,9 +46,10 @@ export async function runTrackerNotificationWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
 
   const worker = await Worker.create({
-    workflowsPath:
-      getWorkflowBundle("tracker_notification") ??
-      require.resolve("./workflows"),
+    ...getWorkflowConfig({
+      workerName: "tracker_notification",
+      workflowsPath: require.resolve("./workflows"),
+    }),
     activities,
     taskQueue: TRACKER_NOTIFICATION_QUEUE_NAME,
     connection,

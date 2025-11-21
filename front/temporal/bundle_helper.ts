@@ -1,18 +1,49 @@
+import { readFileSync } from "fs";
 import path from "path";
+
+import logger from "@app/logger/logger";
+import { normalizeError } from "@app/types";
 
 import type { WorkerName } from "./worker_registry";
 
 /**
- * Returns the workflow bundle path for a worker.
- * In production, uses pre-built bundles. In development, returns undefined for runtime bundling.
+ * Returns the workflow configuration for a worker.
+ * In production, uses pre-built bundles. In development, uses runtime bundling.
+ *
+ * @param workerName The worker name
+ * @param workflowsPath The RESOLVED path to workflows (use require.resolve("./workflows") from worker)
  */
-export function getWorkflowBundle(workerName: WorkerName): string | undefined {
+export function getWorkflowConfig({
+  workerName,
+  workflowsPath,
+}: {
+  workerName: WorkerName;
+  workflowsPath: string;
+}) {
   if (process.env.NODE_ENV === "production") {
-    return path.join(
+    const bundlePath = path.join(
       __dirname,
       "../dist/temporal-bundles",
       `${workerName}.bundle.js`
     );
+
+    try {
+      const code = readFileSync(bundlePath, "utf8");
+      return { workflowBundle: { code } };
+    } catch (error) {
+      logger.error(
+        {
+          error: normalizeError(error),
+          workerName,
+        },
+        "Failed to read workflow bundle, falling back to runtime bundling"
+      );
+
+      // Fallback to runtime bundling if bundle read fails.
+      return { workflowsPath };
+    }
   }
-  return undefined;
+
+  // Development: use runtime bundling
+  return { workflowsPath };
 }

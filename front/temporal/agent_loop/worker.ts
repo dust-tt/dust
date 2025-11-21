@@ -22,7 +22,7 @@ import { publishDeferredEventsActivity } from "@app/temporal/agent_loop/activiti
 import { runModelAndCreateActionsActivity } from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
 import { QUEUE_NAME } from "@app/temporal/agent_loop/config";
-import { getWorkflowBundle } from "@app/temporal/bundle_helper";
+import { getWorkflowConfig } from "@app/temporal/bundle_helper";
 
 // We need to give the worker some time to finish the current activity before shutting down.
 const SHUTDOWN_GRACE_TIME = "2 minutes";
@@ -31,8 +31,10 @@ export async function runAgentLoopWorker() {
   const { connection, namespace } = await getTemporalAgentWorkerConnection();
 
   const worker = await Worker.create({
-    workflowsPath:
-      getWorkflowBundle("agent_loop") ?? require.resolve("./workflows"),
+    ...getWorkflowConfig({
+      workerName: "agent_loop",
+      workflowsPath: require.resolve("./workflows"),
+    }),
     activities: {
       conversationUnreadNotificationActivity,
       ensureConversationTitleActivity,

@@ -7,7 +7,7 @@ import {
 } from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
-import { getWorkflowBundle } from "@app/temporal/bundle_helper";
+import { getWorkflowConfig } from "@app/temporal/bundle_helper";
 import * as activities from "@app/temporal/scrub_workspace/activities";
 
 import { QUEUE_NAME } from "./config";
@@ -15,9 +15,10 @@ import { QUEUE_NAME } from "./config";
 export async function runScrubWorkspaceQueueWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
   const worker = await Worker.create({
-    workflowsPath:
-      getWorkflowBundle("scrub_workspace_queue") ??
-      require.resolve("./workflows"),
+    ...getWorkflowConfig({
+      workerName: "scrub_workspace_queue",
+      workflowsPath: require.resolve("./workflows"),
+    }),
     activities,
     maxConcurrentActivityTaskExecutions: 2,
     taskQueue: QUEUE_NAME,

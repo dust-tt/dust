@@ -8,7 +8,7 @@ import {
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
 import * as activities from "@app/temporal/analytics_queue/activities";
-import { getWorkflowBundle } from "@app/temporal/bundle_helper";
+import { getWorkflowConfig } from "@app/temporal/bundle_helper";
 
 import { QUEUE_NAME } from "./config";
 
@@ -16,8 +16,10 @@ export async function runAnalyticsWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
 
   const worker = await Worker.create({
-    workflowsPath:
-      getWorkflowBundle("analytics_queue") ?? require.resolve("./workflows"),
+    ...getWorkflowConfig({
+      workerName: "analytics_queue",
+      workflowsPath: require.resolve("./workflows"),
+    }),
     activities,
     taskQueue: QUEUE_NAME,
     maxCachedWorkflows: TEMPORAL_MAXED_CACHED_WORKFLOWS,
