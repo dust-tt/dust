@@ -1,4 +1,5 @@
 import * as t from "io-ts";
+import z from "zod";
 
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { validateUrl } from "@app/types/shared/utils/url_utils";
@@ -444,6 +445,14 @@ export const SalesforceCredentialsSchema = t.type({
 export type SalesforceCredentials = t.TypeOf<
   typeof SalesforceCredentialsSchema
 >;
+
+export const SlackClientIdSchema = z.string().regex(/^\d+\.\d+$/);
+export const SlackSecretSchema = z.string().regex(/^[a-f0-9]{32}$/i);
+export const SlackCredentialsStrictSchema = z.strictObject({
+  client_id: SlackClientIdSchema,
+  client_secret: SlackSecretSchema,
+  signing_secret: SlackSecretSchema,
+});
 
 export const NotionCredentialsSchema = t.type({
   integration_token: t.string,
