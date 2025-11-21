@@ -637,6 +637,13 @@ export async function attachCreditPurchaseToSubscription({
 
     return new Ok(invoiceItem.id);
   } catch (error) {
+    logger.error(
+      {
+        stripeSubscriptionId,
+        stripeError: true,
+      },
+      "[Credit Purchase] Failed to attach line item to Stripe subscription"
+    );
     return new Err({
       error_message: `Failed to attach credit purchase to subscription: ${normalizeError(error).message}`,
     });
@@ -705,6 +712,13 @@ export async function makeAndMaybePayCreditPurchaseInvoice({
     }
     return new Ok(finalizedInvoice);
   } catch (error) {
+    logger.error(
+      {
+        stripeSubscriptionId,
+        stripeError: true,
+      },
+      "[Credit Purchase] Failed to create Stripe invoice"
+    );
     return new Err({
       error_message: `Failed to create invoice credit purchase: ${normalizeError(error).message}`,
     });
