@@ -62,32 +62,28 @@ export class CreditResource extends BaseResource<CreditModel> {
     expirationDate?: Date,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
-    try {
-      const effectiveStartDate = startDate ?? new Date();
-      const effectiveExpirationDate =
-        expirationDate ??
-        new Date(Date.now() + CREDIT_EXPIRATION_DAYS * 24 * 60 * 60 * 1000);
+    const effectiveStartDate = startDate ?? new Date();
+    const effectiveExpirationDate =
+      expirationDate ??
+      new Date(Date.now() + CREDIT_EXPIRATION_DAYS * 24 * 60 * 60 * 1000);
 
-      // Update only if startDate is null (ensures idempotency)
-      await this.model.update(
-        {
-          startDate: effectiveStartDate,
-          expirationDate: effectiveExpirationDate,
+    // Update only if startDate is null (ensures idempotency)
+    await this.model.update(
+      {
+        startDate: effectiveStartDate,
+        expirationDate: effectiveExpirationDate,
+      },
+      {
+        where: {
+          id: this.id,
+          workspaceId: this.workspaceId,
+          startDate: null,
         },
-        {
-          where: {
-            id: this.id,
-            workspaceId: this.workspaceId,
-            startDate: null,
-          },
-          transaction,
-        }
-      );
+        transaction,
+      }
+    );
 
-      return new Ok(undefined);
-    } catch (err) {
-      return new Err(normalizeError(err));
-    }
+    return new Ok(undefined);
   }
 
   private static async baseFetch(
@@ -111,16 +107,17 @@ export class CreditResource extends BaseResource<CreditModel> {
 
   static async listActive(auth: Authenticator, fromDate: Date = new Date()) {
     const now = new Date();
+    assert(this.model.sequelize, "Unexpected sequelize undefined");
     return this.baseFetch(auth, {
       where: {
         // Credit must have remaining balance (consumed < initial)
         [Op.and]: [
-          {
-            consumedAmountCents: {
-              [Op.lt]: "initialAmountCents",
-            },
-          },
+          this.model.sequelize.where(
+            this.model.sequelize.col("consumedAmountCents"),
+            { [Op.lt]: this.model.sequelize.col("initialAmountCents") }
+          ),
         ],
+
         // Credit must be started (startDate not null and <= now)
         startDate: { [Op.ne]: null, [Op.lte]: now },
         // Credit must not be expired
@@ -167,45 +164,42 @@ export class CreditResource extends BaseResource<CreditModel> {
       return new Err(new Error("Amount to consume must be strictly positive."));
     }
     assert(this.model.sequelize, "Unexpected sequelize undefined");
-    try {
-      const now = new Date();
-      const [, affectedCount] = await this.model.increment(
-        "consumedAmountCents",
-        {
-          by: amountInCents,
-          where: {
-            id: this.id,
-            workspaceId: this.workspaceId,
-            // Ensure sufficient remaining balance (consumed + amount <= initial)
-            [Op.and]: [
-              this.model.sequelize.where(
-                this.model.sequelize.literal(
-                  '"initialAmountCents" - "consumedAmountCents"'
-                { [Op.gte]: amountInCents }
+    const now = new Date();
+    const [, affectedCount] = await this.model.increment(
+      "consumedAmountCents",
+      {
+        by: amountInCents,
+        where: {
+          id: this.id,
+          workspaceId: this.workspaceId,
+          // Ensure sufficient remaining balance (consumed + amount <= initial)
+          [Op.and]: [
+            this.model.sequelize.where(
+              this.model.sequelize.literal(
+                '"initialAmountCents" - "consumedAmountCents"'
               ),
-            ],
-            // Credit must be started (startDate not null and <= now)
-            startDate: { [Op.ne]: null, [Op.lte]: now },
-            // Credit must not be expired
-            [Op.or]: [
-              { expirationDate: null },
-              { expirationDate: { [Op.gt]: now } },
-            ],
-          },
-          transaction,
-        }
-      );
-      if (!affectedCount || affectedCount < 1) {
-        return new Err(
-          new Error(
-            "Insufficient credit on this line, or credit not yet started/already expired."
-          )
-        );
+              { [Op.gte]: amountInCents }
+            ),
+          ],
+          // Credit must be started (startDate not null and <= now)
+          startDate: { [Op.ne]: null, [Op.lte]: now },
+          // Credit must not be expired
+          [Op.or]: [
+            { expirationDate: null },
+            { expirationDate: { [Op.gt]: now } },
+          ],
+        },
+        transaction,
       }
-      return new Ok(undefined);
-    } catch (e) {
-      return new Err(normalizeError(e));
+    );
+    if (!affectedCount || affectedCount < 1) {
+      return new Err(
+        new Error(
+          "Insufficient credit on this line, or credit not yet started/already expired."
+        )
+      );
     }
+    return new Ok(undefined);
   }
 
   async delete(
