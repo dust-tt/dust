@@ -1,6 +1,7 @@
 import {
   ArrowPathIcon,
   Button,
+  ButtonGroup,
   Chip,
   ClipboardCheckIcon,
   ClipboardIcon,
@@ -331,6 +332,7 @@ export function AgentMessage({
   }
 
   const buttons: React.ReactElement[] = [];
+  const buttonGroups: React.ReactElement[] = [];
 
   const hasMultiAgents =
     generationContext.generatingMessages.filter(
@@ -356,12 +358,13 @@ export function AgentMessage({
     );
   }
 
+  const copyAndRetryButtonGroup: React.ReactElement[] = [];
   // Show copy & feedback buttons only when streaming is done and it didn't fail
   if (
     agentMessageToRender.status !== "created" &&
     agentMessageToRender.status !== "failed"
   ) {
-    buttons.push(
+    const copyButton = (
       <Button
         key="copy-msg-button"
         tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
@@ -372,6 +375,8 @@ export function AgentMessage({
         className="text-muted-foreground"
       />
     );
+    buttons.push(copyButton);
+    copyAndRetryButtonGroup.push(copyButton);
   }
 
   // Show the retry button as long as it's not streaming nor failed,
@@ -397,7 +402,7 @@ export function AgentMessage({
     !shouldStream &&
     !isAgentMessageHandingOver
   ) {
-    buttons.push(
+    const retryButton = (
       <Button
         key="retry-msg-button"
         tooltip="Retry"
@@ -414,6 +419,16 @@ export function AgentMessage({
         disabled={isRetryHandlerProcessing || shouldStream}
       />
     );
+    buttons.push(retryButton);
+    copyAndRetryButtonGroup.push(retryButton);
+  }
+
+  if (copyAndRetryButtonGroup.length > 0) {
+    buttonGroups.push(
+      <ButtonGroup key="first-button-group" variant="outline">
+        {copyAndRetryButtonGroup}
+      </ButtonGroup>
+    );
   }
 
   // Add feedback buttons in the end of the array if the agent is not global nor in draft (= inside agent builder)
@@ -429,6 +444,15 @@ export function AgentMessage({
         key="feedback-selector"
         {...messageFeedback}
         getPopoverInfo={PopoverContent}
+        owner={owner}
+      />
+    );
+    buttonGroups.push(
+      <FeedbackSelector
+        key="feedback-selector"
+        {...messageFeedback}
+        getPopoverInfo={PopoverContent}
+        owner={owner}
       />
     );
   }
@@ -542,20 +566,7 @@ export function AgentMessage({
       <NewConversationMessage
         pictureUrl={agentConfiguration.pictureUrl}
         name={agentConfiguration.name}
-        buttons={
-          buttons.length > 0
-            ? [
-                <div
-                  className="flex gap-0.5 rounded-xl border border-solid border-border"
-                  key="buttons"
-                >
-                  {buttons.map((button) => (
-                    <span key={button.key}>{button}</span>
-                  ))}
-                </div>,
-              ]
-            : undefined
-        }
+        buttons={buttonGroups}
         avatarBusy={agentMessageToRender.status === "created"}
         isDisabled={isArchived}
         renderName={renderName}

@@ -49,7 +49,7 @@ const messageVariants = cva("flex rounded-2xl", {
   },
 });
 
-const buttonsVariants = cva("flex justify-start gap-2", {
+const buttonsVariants = cva("flex justify-start gap-3", {
   variants: {
     type: {
       user: "pt-2 justify-end",
