@@ -44,12 +44,14 @@ export async function createToolActionsActivity(
     stepContexts,
     functionCallStepContentIds,
     step,
+    runIds,
   }: {
     runAgentData: AgentLoopExecutionData;
     actions: AgentActionsEvent["actions"];
     stepContexts: StepContext[];
     functionCallStepContentIds: Record<string, ModelId>;
     step: number;
+    runIds: string[];
   }
 ): Promise<CreateToolActionsResult> {
   const { agentConfiguration, agentMessage, agentMessageRow, conversation } =
@@ -76,6 +78,7 @@ export async function createToolActionsActivity(
       stepContentId,
       stepContext: stepContexts[index],
       step,
+      runIds,
     });
 
     if (result) {
@@ -117,6 +120,7 @@ async function createActionForTool(
     stepContentId,
     stepContext,
     step,
+    runIds,
   }: {
     actionConfiguration: MCPToolConfigurationType;
     agentConfiguration: AgentConfigurationType;
@@ -126,6 +130,7 @@ async function createActionForTool(
     stepContentId: ModelId;
     stepContext: StepContext;
     step: number;
+    runIds: string[];
   }
 ): Promise<{
   actionBlob: ActionBlob;
@@ -196,7 +201,7 @@ async function createActionForTool(
     stepContext,
   });
 
-  // Publish the tool params event.
+  // Publish the tool params event with runIds so they're saved when workflow exits early.
   await updateResourceAndPublishEvent(auth, {
     event: {
       type: "tool_params",
@@ -206,6 +211,7 @@ async function createActionForTool(
       // TODO: cleanup the type field from the public API users and remove everywhere.
       // TODO: move the output field to a separate field.
       action: { ...action.toJSON(), output: null, generatedFiles: [] },
+      runIds,
     },
     agentMessageRow,
     conversation,

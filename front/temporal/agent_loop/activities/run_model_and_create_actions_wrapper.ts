@@ -109,12 +109,15 @@ export async function runModelAndCreateActionsActivity({
   const actionsToRun = actions.slice(0, MAX_ACTIONS_PER_STEP);
 
   // 2. Create tool actions.
+  // Include the new runId in the runIds array when creating actions
+  const currentRunIds = runId ? [...runIds, runId] : runIds;
   const createResult = await createToolActionsActivity(auth, {
     runAgentData,
     actions: actionsToRun,
     stepContexts,
     functionCallStepContentIds: updatedFunctionCallStepContentIds,
     step,
+    runIds: currentRunIds,
   });
 
   const needsApproval = createResult.actionBlobs.some((a) => a.needsApproval);
