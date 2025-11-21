@@ -68,9 +68,7 @@ export function ViewDataSourceTable({
   const isRunning = temporalRunningWorkflows.length > 0;
   const isScheduleBased =
     dataSource.connectorProvider === "gong" ||
-    dataSource.connectorProvider === "intercom"
-      ? "schedules"
-      : "workflows";
+    dataSource.connectorProvider === "intercom";
 
   return (
     <>
