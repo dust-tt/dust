@@ -244,7 +244,6 @@ async function collectToolUsageFromMessage(
   actionResources: AgentMCPActionResource[]
 ): Promise<AgentMessageAnalyticsToolUsed[]> {
   const workspaceId = auth.getNonNullableWorkspace().id;
-
   const uniqueConfigIds = Array.from(
     new Set(actionResources.map((a) => a.mcpServerConfigurationId))
   );
@@ -256,9 +255,9 @@ async function collectToolUsageFromMessage(
     },
   });
 
-  const configIdToSid = new Map<string, string>();
+  const configIdToSId = new Map<string, string>();
   for (const cfg of serverConfigs) {
-    configIdToSid.set(cfg.id.toString(), cfg.sId);
+    configIdToSId.set(cfg.id.toString(), cfg.sId);
   }
 
   return actionResources.map((actionResource) => {
@@ -272,7 +271,7 @@ async function collectToolUsageFromMessage(
         actionResource.functionCallName.split(TOOL_NAME_SEPARATOR).pop() ??
         actionResource.functionCallName,
       mcp_server_configuration_sid:
-        configIdToSid.get(actionResource.mcpServerConfigurationId) ?? undefined,
+        configIdToSId.get(actionResource.mcpServerConfigurationId) ?? undefined,
       execution_time_ms: actionResource.executionDurationMs,
       status: actionResource.status,
     };
