@@ -229,8 +229,9 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
           client_secret: {
             label: "OAuth Client Secret",
             value: undefined,
-            helpMessage: "The client secret from your MCP server.",
-            validator: isValidClientIdOrSecret,
+            helpMessage:
+              "The client secret from your MCP server (optional for PKCE flows).",
+            validator: isValidOptionalClientSecret,
           },
           token_endpoint: {
             label: "OAuth Token Endpoint",
@@ -307,6 +308,11 @@ export function isValidSalesforceDomain(s: unknown): s is string {
 
 export function isValidClientIdOrSecret(s: unknown): s is string {
   return typeof s === "string" && s.trim().length > 0;
+}
+
+export function isValidOptionalClientSecret(s: unknown): s is string {
+  // Allow empty strings for optional client secrets (e.g., PKCE flows)
+  return typeof s === "string";
 }
 
 export function isValidUrl(s: unknown): s is string {
