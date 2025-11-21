@@ -1074,7 +1074,7 @@ async function createServer(
         }>(threadsWithAuthors, refs, {
           permalink: (match) => match.permalink,
           text: (match) =>
-            `From ${match.authorName} in ${displayName}: ${match.text ?? ""}`,
+            `[Thread: ${match.ts}] From ${match.authorName} in ${displayName}: ${match.text ?? ""}`,
           id: (match) => match.ts ?? "",
           content: (match) => match.text ?? "",
         });
