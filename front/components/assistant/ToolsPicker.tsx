@@ -155,10 +155,10 @@ export function ToolsPicker({
     );
 
     return {
-      filteredServerViews,
-      filteredServerViewsUnselected: filteredServerViews.filter(
-        (v) => !selectedMCPServerViewIds.includes(v.sId)
-      ),
+      filteredServerViews: filteredServerViews,
+      filteredServerViewsUnselected: filteredServerViews
+        .filter((v) => !selectedMCPServerViewIds.includes(v.sId))
+        .sort(mcpServerViewSortingFn),
     };
   }, [serverViews, searchText, selectedMCPServerViewIds]);
 
@@ -194,13 +194,15 @@ export function ToolsPicker({
       return uninstalled;
     }
 
-    return uninstalled.filter(
-      (server) =>
-        asDisplayName(server.name)
-          .toLowerCase()
-          .includes(searchText.toLowerCase()) ||
-        server.description.toLowerCase().includes(searchText.toLowerCase())
-    );
+    return uninstalled
+      .filter(
+        (server) =>
+          asDisplayName(server.name)
+            .toLowerCase()
+            .includes(searchText.toLowerCase()) ||
+          server.description.toLowerCase().includes(searchText.toLowerCase())
+      )
+      .sort((a, b) => mcpServersSortingFn({ mcpServer: a }, { mcpServer: b }));
   }, [
     hasFeature,
     isAdmin,
@@ -292,75 +294,69 @@ export function ToolsPicker({
 
           {isDataReady && filteredServerViews.length > 0 && (
             <>
-              {filteredServerViewsUnselected
-                .sort(mcpServerViewSortingFn)
-                .map((v) => {
-                  return (
-                    <DropdownMenuItem
-                      key={`tools-picker-${v.sId}`}
-                      icon={() => getAvatar(v.server)}
-                      label={getMcpServerViewDisplayName(v)}
-                      description={getMcpServerViewDescription(v)}
-                      truncateText
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        trackEvent({
-                          area: TRACKING_AREAS.TOOLS,
-                          object: "tool_select",
-                          action: TRACKING_ACTIONS.SELECT,
-                          extra: {
-                            tool_id: v.sId,
-                            tool_name: v.server.name,
-                          },
-                        });
-                        onSelect(v);
-                        setIsOpen(false);
-                      }}
-                    />
-                  );
-                })}
+              {filteredServerViewsUnselected.map((v) => {
+                return (
+                  <DropdownMenuItem
+                    key={`tools-picker-${v.sId}`}
+                    icon={() => getAvatar(v.server)}
+                    label={getMcpServerViewDisplayName(v)}
+                    description={getMcpServerViewDescription(v)}
+                    truncateText
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      trackEvent({
+                        area: TRACKING_AREAS.TOOLS,
+                        object: "tool_select",
+                        action: TRACKING_ACTIONS.SELECT,
+                        extra: {
+                          tool_id: v.sId,
+                          tool_name: v.server.name,
+                        },
+                      });
+                      onSelect(v);
+                      setIsOpen(false);
+                    }}
+                  />
+                );
+              })}
             </>
           )}
 
           {isDataReady && filteredUninstalledServers.length > 0 && (
             <>
-              {filteredUninstalledServers
-                .sort((a, b) =>
-                  mcpServersSortingFn({ mcpServer: a }, { mcpServer: b })
-                )
-                .map((server) => (
-                  <DropdownMenuItem
-                    key={`tools-to-install-${server.sId}`}
-                    icon={() => getAvatar(server)}
-                    label={asDisplayName(server.name)}
-                    description={server.description}
-                    truncateText
-                    endComponent={
-                      <Chip size="xs" color="golden" label="Configure" />
+              {filteredUninstalledServers.map((server) => (
+                <DropdownMenuItem
+                  key={`tools-to-install-${server.sId}`}
+                  icon={() => getAvatar(server)}
+                  label={asDisplayName(server.name)}
+                  description={server.description}
+                  truncateText
+                  endComponent={
+                    <Chip size="xs" color="golden" label="Configure" />
+                  }
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+
+                    const remoteMcpServerConfig =
+                      getDefaultRemoteMCPServerByName(server.name);
+
+                    if (remoteMcpServerConfig) {
+                      // Remote servers always use the remote flow, even if they have OAuth.
+                      setSetupSheetServer(null);
+                      setSetupSheetRemoteServerConfig(remoteMcpServerConfig);
+                    } else {
+                      // Internal servers (with or without OAuth)
+                      setSetupSheetServer(server);
+                      setSetupSheetRemoteServerConfig(null);
                     }
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
 
-                      const remoteMcpServerConfig =
-                        getDefaultRemoteMCPServerByName(server.name);
-
-                      if (remoteMcpServerConfig) {
-                        // Remote servers always use the remote flow, even if they have OAuth.
-                        setSetupSheetServer(null);
-                        setSetupSheetRemoteServerConfig(remoteMcpServerConfig);
-                      } else {
-                        // Internal servers (with or without OAuth)
-                        setSetupSheetServer(server);
-                        setSetupSheetRemoteServerConfig(null);
-                      }
-
-                      setIsSettingUpServer(true);
-                      setIsOpen(false);
-                    }}
-                  />
-                ))}
+                    setIsSettingUpServer(true);
+                    setIsOpen(false);
+                  }}
+                />
+              ))}
             </>
           )}
 

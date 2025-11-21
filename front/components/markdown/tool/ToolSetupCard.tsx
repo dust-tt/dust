@@ -97,7 +97,7 @@ export function ToolSetupCard({ toolName, toolId, owner }: ToolSetupCardProps) {
 
   const getButtonLabel = () => {
     if (!isAdmin) {
-      return "Admin only can configure tools";
+      return "Only admins can configure tools";
     }
     if (isActivating) {
       return "Configuring...";
