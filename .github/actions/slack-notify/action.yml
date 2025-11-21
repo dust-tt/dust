@@ -138,6 +138,7 @@ runs:
       if: inputs.step == 'build_success'
       uses: slackapi/slack-github-action@v2.0.0
       with:
+        method: chat.postMessage
         # Pass the JSON string directly
         payload: ${{ steps.build_payload.outputs.json_payload }}
         token: ${{ inputs.slack_token }}
