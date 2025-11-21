@@ -96,7 +96,14 @@ makeScript({}, async ({ execute }, logger) => {
           {
             model: AgentConfiguration,
             required: true,
-            attributes: ["id", "sId", "name", "modelId", "providerId"],
+            attributes: [
+              "id",
+              "sId",
+              "name",
+              "modelId",
+              "providerId",
+              "status",
+            ],
           },
         ],
       },
@@ -108,9 +115,21 @@ makeScript({}, async ({ execute }, logger) => {
     return;
   }
 
+  // Calculate agent counts
+  const totalAgentsImpacted = reasoningConfigurations.length;
+  const activeAgentsImpacted = reasoningConfigurations.filter(
+    (config) =>
+      // @ts-expect-error type not inferred with include clause
+      config.agent_mcp_server_configuration.agent_configuration.status ===
+      "active"
+  ).length;
+
   logger.info(
-    { count: reasoningConfigurations.length },
-    `Found ${reasoningConfigurations.length} reasoning configurations for all agents`
+    {
+      totalAgentsImpacted,
+      activeAgentsImpacted,
+    },
+    `Found ${totalAgentsImpacted} reasoning configurations impacting ${activeAgentsImpacted} active agents.`
   );
 
   let successCount = 0;
