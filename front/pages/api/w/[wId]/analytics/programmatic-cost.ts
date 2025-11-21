@@ -35,6 +35,7 @@ export type WorkspaceProgrammaticCostPoint = {
     programmaticCostCents?: number;
   }[];
   totalInitialCreditsCents: number;
+  totalConsumedCreditsCents: number;
   totalRemainingCreditsCents: number;
 };
 
@@ -67,25 +68,39 @@ function calculateCreditTotalsPerTimestamp(
   timestamps: number[]
 ): Map<
   number,
-  { totalInitialCreditsCents: number; totalRemainingCreditsCents: number }
+  {
+    totalInitialCreditsCents: number;
+    totalConsumedCreditsCents: number;
+    totalRemainingCreditsCents: number;
+  }
 > {
   const creditTotalsMap = new Map<
     number,
-    { totalInitialCreditsCents: number; totalRemainingCreditsCents: number }
+    {
+      totalInitialCreditsCents: number;
+      totalConsumedCreditsCents: number;
+      totalRemainingCreditsCents: number;
+    }
   >();
 
   const totalInitialCreditsCents = credits.reduce(
-    (sum, credit) => sum + credit.initialAmount,
+    (sum, credit) => sum + credit.initialAmountCents,
+    0
+  );
+  const totalConsumedCreditsCents = credits.reduce(
+    (sum, credit) => sum + credit.consumedAmountCents,
     0
   );
   const totalRemainingCreditsCents = credits.reduce(
-    (sum, credit) => sum + credit.remainingAmount,
+    (sum, credit) =>
+      sum + (credit.initialAmountCents - credit.consumedAmountCents),
     0
   );
 
   for (const timestamp of timestamps) {
     creditTotalsMap.set(timestamp, {
       totalInitialCreditsCents,
+      totalConsumedCreditsCents,
       totalRemainingCreditsCents,
     });
   }
@@ -321,6 +336,7 @@ async function handler(
           timestamp,
           groups,
           totalInitialCreditsCents: credit?.totalInitialCreditsCents ?? 0,
+          totalConsumedCreditsCents: credit?.totalConsumedCreditsCents ?? 0,
           totalRemainingCreditsCents: credit?.totalRemainingCreditsCents ?? 0,
         };
       });

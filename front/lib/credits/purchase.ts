@@ -173,8 +173,9 @@ export async function createEnterpriseCreditPurchase({
   // Create credit with full amount
   const credit = await CreditResource.makeNew(auth, {
     type: "committed",
-    initialAmount: amountCents,
-    remainingAmount: amountCents,
+    initialAmountCents: amountCents,
+    consumedAmountCents: 0,
+    discount: null,
     invoiceOrLineItemId: invoiceItemId,
   });
 
@@ -249,8 +250,9 @@ export async function createProCreditPurchase({
   // Create credit record (will be activated via webhook when paid)
   await CreditResource.makeNew(auth, {
     type: "committed",
-    initialAmount: amountCents,
-    remainingAmount: amountCents,
+    initialAmountCents: amountCents,
+    consumedAmountCents: 0,
+    discount: null,
     invoiceOrLineItemId: invoice.id,
   });
 
