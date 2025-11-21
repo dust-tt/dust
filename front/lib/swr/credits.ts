@@ -19,7 +19,7 @@ export function useCredits({
   );
 
   return {
-    credits: data?.credits ?? [],
+    credits: data?.credits ?? emptyArray(),
     isCreditsLoading: !error && !data && !disabled,
     isCreditsValidating: isValidating,
     isCreditsError: error,
