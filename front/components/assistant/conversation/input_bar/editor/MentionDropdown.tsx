@@ -5,39 +5,43 @@ import {
   DropdownMenuTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
+import type {
+  MentionDropdownOnKeyDown,
+  MentionDropdownProps,
+} from "@app/components/assistant/conversation/input_bar/editor/types";
 import { classNames } from "@app/lib/utils";
-import type { RichMention } from "@app/types";
 
-interface MentionDropdownProps {
-  mentionDropdownState: {
-    suggestions: RichMention[];
-    onSelect: (suggestion: RichMention) => void;
-    isOpen: boolean;
-    onOpenChange: (open: boolean) => void;
-    triggerRect?: DOMRect | null;
-    selectedIndex: number;
-    onSelectedIndexChange: (index: number) => void;
-    isLoading: boolean;
-  };
-}
-
-export const MentionDropdown = ({
-  mentionDropdownState: {
-    suggestions,
-    onSelect,
-    isOpen,
-    onOpenChange,
-    triggerRect,
-    selectedIndex,
-    onSelectedIndexChange,
-    isLoading,
-  },
-}: MentionDropdownProps) => {
+export const MentionDropdown = forwardRef<
+  MentionDropdownOnKeyDown,
+  MentionDropdownProps
+>(({ items, clientRect, command, onClose }, ref) => {
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const isLoading = false;
+  const triggerRect = useMemo(
+    () => (clientRect ? clientRect() : null),
+    [clientRect]
+  );
   const triggerRef = useRef<HTMLDivElement>(null);
   const [virtualTriggerStyle, setVirtualTriggerStyle] =
     useState<React.CSSProperties>({});
+
+  const selectItem = (index: number) => {
+    const item = items[index];
+
+    if (item) {
+      command(item);
+    }
+  };
 
   const updateTriggerPosition = useCallback(() => {
     if (triggerRect && triggerRef.current) {
@@ -55,9 +59,30 @@ export const MentionDropdown = ({
     }
   }, [triggerRect]);
 
+  useImperativeHandle(ref, () => ({
+    onKeyDown: ({ event }) => {
+      if (event.key === "ArrowUp") {
+        setSelectedIndex((selectedIndex + items.length - 1) % items.length);
+        return true;
+      }
+
+      if (event.key === "ArrowDown") {
+        setSelectedIndex((selectedIndex + 1) % items.length);
+        return true;
+      }
+
+      if (event.key === "Enter" || event.key === "Tab") {
+        selectItem(selectedIndex);
+        return true;
+      }
+
+      return false;
+    },
+  }));
+
   useEffect(() => {
     updateTriggerPosition();
-  }, [triggerRect, updateTriggerPosition]);
+  }, [updateTriggerPosition]);
 
   // Only render the dropdown if we have a valid trigger.
   if (!triggerRect) {
@@ -65,7 +90,7 @@ export const MentionDropdown = ({
   }
 
   return (
-    <DropdownMenu open={isOpen} onOpenChange={onOpenChange}>
+    <DropdownMenu open={true}>
       <DropdownMenuTrigger asChild>
         <div ref={triggerRef} style={virtualTriggerStyle} />
       </DropdownMenuTrigger>
@@ -76,14 +101,20 @@ export const MentionDropdown = ({
         sideOffset={4}
         onCloseAutoFocus={(e) => e.preventDefault()}
         onOpenAutoFocus={(e) => e.preventDefault()}
+        onEscapeKeyDown={() => {
+          onClose?.();
+        }}
+        onInteractOutside={() => {
+          onClose?.();
+        }}
       >
         {isLoading ? (
           <div className="flex h-12 w-full items-center justify-center">
             <Spinner />
           </div>
-        ) : suggestions.length > 0 ? (
+        ) : items.length > 0 ? (
           <div className="flex flex-col gap-y-1 p-1">
-            {suggestions.map((suggestion, index) => (
+            {items.map((suggestion, index) => (
               <div key={suggestion.id}>
                 <button
                   className={classNames(
@@ -93,20 +124,11 @@ export const MentionDropdown = ({
                       ? "text-highlight-500"
                       : "text-foreground dark:text-foreground-night"
                   )}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onSelect(suggestion);
+                  onClick={() => {
+                    selectItem(index);
                   }}
-                  onMouseDown={(e) => {
-                    // This prevents the browser from taking focus away from the editor when onClick is
-                    // triggered.
-                    e.preventDefault();
-                  }}
-                  onMouseEnter={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onSelectedIndexChange(index);
+                  onMouseEnter={() => {
+                    setSelectedIndex(index);
                   }}
                 >
                   <Avatar size="xs" visual={suggestion.pictureUrl} />
@@ -125,4 +147,6 @@ export const MentionDropdown = ({
       </DropdownMenuContent>
     </DropdownMenu>
   );
-};
+});
+
+MentionDropdown.displayName = "MentionDropdown";

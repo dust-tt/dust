@@ -9,7 +9,11 @@ import {
   Ok,
 } from "@app/types";
 
-const OPERATIONS = ["STOP", "PAUSE", "UNPAUSE", "RESUME", "SYNC"] as const;
+const OPERATIONS = [
+  "PAUSE: pause the connector",
+  "UNPAUSE: restart the connector",
+  "SYNC: perform a full data sync for the connector",
+] as const;
 
 type OperationType = (typeof OPERATIONS)[number];
 
@@ -20,15 +24,11 @@ const doOperation = (op: OperationType, connectorId: string) => {
   );
 
   switch (op) {
-    case "STOP":
-      return connectorsAPI.stopConnector(connectorId);
-    case "PAUSE":
+    case "PAUSE: pause the connector":
       return connectorsAPI.pauseConnector(connectorId);
-    case "UNPAUSE":
+    case "UNPAUSE: restart the connector":
       return connectorsAPI.unpauseConnector(connectorId);
-    case "RESUME":
-      return connectorsAPI.resumeConnector(connectorId);
-    case "SYNC":
+    case "SYNC: perform a full data sync for the connector":
       return connectorsAPI.syncConnector(connectorId);
     default:
       assertNever(op);

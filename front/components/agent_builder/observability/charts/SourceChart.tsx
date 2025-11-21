@@ -1,13 +1,13 @@
 import { Cell, Pie, PieChart, Tooltip } from "recharts";
 
-import {
-  CHART_HEIGHT,
-  getSourceColor,
-} from "@app/components/agent_builder/observability/constants";
+import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
-import { buildSourceChartData } from "@app/components/agent_builder/observability/utils";
+import {
+  buildSourceChartData,
+  getSourceColor,
+} from "@app/components/agent_builder/observability/utils";
 import { useAgentContextOrigin } from "@app/lib/swr/assistants";
 
 interface SourceChartProps {
@@ -69,7 +69,7 @@ export function SourceChart({
               return null;
             }
             const rows = data.map((d) => ({
-              label: d.origin,
+              label: d.label,
               value: d.count,
               percent: d.percent,
               colorClassName: getSourceColor(d.origin),

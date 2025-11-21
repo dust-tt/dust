@@ -5,7 +5,6 @@ import { renderSearchResults } from "@app/lib/actions/mcp_internal_actions/rende
 import {
   extractDataSourceIdFromNodeId,
   isDataSourceNodeId,
-  makeQueryResourceForList,
 } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/utils";
 import {
   getAgentDataSourceConfigurations,
@@ -176,14 +175,6 @@ export function registerListTool(
         }
 
         return new Ok([
-          {
-            type: "resource",
-            resource: makeQueryResourceForList(
-              nodeId,
-              mimeTypes,
-              nextPageCursor
-            ),
-          },
           {
             type: "resource",
             resource: renderSearchResults(

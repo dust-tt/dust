@@ -6,6 +6,7 @@
     "dev": "next dev",
     "dev-datadog": "NODE_OPTIONS='-r dd-trace/init' DD_TAGS=service:front-edge DD_TAGS=env:dev-ben DD_GIT_COMMIT_SHA=`git rev-parse HEAD` DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust/ npm run dev",
     "build": "next build",
+    "build:workers": "tsx scripts/temporal-build/build-temporal-bundles.ts",
     "start": "next start --keepAliveTimeout 5000",
     "start:worker": "tsx ./start_worker.ts",
     "dev:worker": "./admin/dev_worker.sh",

@@ -7,6 +7,7 @@ import {
   Mention,
   Message,
 } from "@app/lib/models/assistant/conversation";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import type { MentionType } from "@app/types";
 import type {
@@ -23,13 +24,13 @@ export const createUserMentions = async (
   {
     mentions,
     message,
-    owner,
+    conversation,
     transaction,
   }: {
     mentions: MentionType[];
     message: Message;
-    owner: WorkspaceType;
-    transaction: Transaction;
+    conversation: ConversationType;
+    transaction?: Transaction;
   }
 ) => {
   // Store user mentions in the database
@@ -42,10 +43,16 @@ export const createUserMentions = async (
           {
             messageId: message.id,
             userId: user.id,
-            workspaceId: owner.id,
+            workspaceId: auth.getNonNullableWorkspace().id,
           },
           { transaction }
         );
+
+        await ConversationResource.upsertParticipation(auth, {
+          conversation,
+          action: "subscribed",
+          user: user.toJSON(),
+        });
       }
     })
   );
@@ -56,21 +63,21 @@ export const createAgentMessages = async ({
   agentConfigurations,
   message,
   owner,
-  transaction,
   skipToolsValidation,
   nextMessageRank,
   conversation,
   userMessage,
+  transaction,
 }: {
   mentions: MentionType[];
   agentConfigurations: LightAgentConfigurationType[];
   message: Message;
   owner: WorkspaceType;
-  transaction: Transaction;
   skipToolsValidation: boolean;
   nextMessageRank: number;
   conversation: ConversationType;
   userMessage: UserMessageType;
+  transaction?: Transaction;
 }) => {
   const results = await Promise.all(
     mentions.filter(isAgentMention).map((mention) => {

@@ -7,7 +7,10 @@ import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_
 
 vi.mock("@app/lib/resources/file_resource", () => ({
   FileResource: {
-    fetchById: vi.fn(),
+    fetchById: vi.fn().mockResolvedValue({
+      isErr: () => false,
+      value: { id: "test-file-id" },
+    }),
   },
 }));
 
@@ -50,7 +53,10 @@ vi.mock("@app/lib/api/data_sources", () => ({
 
 vi.mock("@app/lib/resources/conversation_resource", () => ({
   ConversationResource: {
-    fetchById: vi.fn().mockResolvedValue({ id: "test-conversation-id" }),
+    fetchById: vi.fn().mockResolvedValue({
+      isErr: () => false,
+      value: { id: "test-conversation-id" },
+    }),
   },
 }));
 

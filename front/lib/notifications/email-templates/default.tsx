@@ -1,52 +1,51 @@
-import { Html } from "@react-email/html";
 import { render } from "@react-email/render";
-import Head from "next/head";
 import * as React from "react";
+import { z } from "zod";
 
-interface DefaultEmailTemplateProps {
-  name: string;
-  content: string;
-  avatarUrl?: string;
-  action?: {
-    label: string;
-    url: string;
-  };
-}
+import { EmailLayout } from "@app/lib/notifications/email-templates/_layout";
+
+export const DefaultEmailTemplatePropsSchema = z.object({
+  name: z.string(),
+  workspace: z.object({
+    id: z.string(),
+    name: z.string(),
+  }),
+  content: z.string(),
+  avatarUrl: z.string().optional(),
+  action: z
+    .object({
+      label: z.string(),
+      url: z.string(),
+    })
+    .optional(),
+});
+
+type DefaultEmailTemplateProps = z.infer<
+  typeof DefaultEmailTemplatePropsSchema
+>;
 
 const DefaultEmailTemplate = ({
   name,
+  workspace,
   content,
   action,
 }: DefaultEmailTemplateProps) => {
   return (
-    <Html style={{ backgroundColor: "#ffffff" }}>
-      <Head>
-        <title>An email from Dust</title>
-      </Head>
-      <body>
-        <div style={{ margin: "0 auto", maxWidth: "800px" }}>
-          <div style={{ width: "100%", textAlign: "center" }}>
-            <img
-              alt="Dust Logo"
-              style={{ margin: "0 auto" }}
-              width={128}
-              src="https://dust.tt/static/landing/logos/dust/Dust_Logo.png"
-            />
-          </div>
-          <h1>Hi {name},</h1>
-          {content.split("\n").map((line, index) => (
-            <div key={index}>{line}</div>
-          ))}
-          <hr className="border-gray-200" />
+    <EmailLayout workspace={workspace}>
+      <h3>Hi {name},</h3>
+      {content.split("\n").map((line, index) => (
+        <div key={index}>{line}</div>
+      ))}
 
-          {action && (
-            <a href={action.url} target="_blank">
-              {action.label}
-            </a>
-          )}
-        </div>
-      </body>
-    </Html>
+      {action?.label && action?.url && (
+        <>
+          <hr style={{ border: "1px solid #e0e0e0" }} />
+          <a href={action.url} target="_blank">
+            {action.label}
+          </a>
+        </>
+      )}
+    </EmailLayout>
   );
 };
 

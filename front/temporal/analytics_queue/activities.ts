@@ -1,10 +1,10 @@
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
 import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
 import { updateAnalyticsFeedback } from "@app/lib/analytics/feedback";
-import { calculateTokenUsageCost } from "@app/lib/api/assistant/token_pricing";
 import { ANALYTICS_ALIAS_NAME, withEs } from "@app/lib/api/elasticsearch";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
+import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import type { AgentMessageFeedback } from "@app/lib/models/assistant/conversation";
 import {
   AgentMessage,
@@ -210,19 +210,19 @@ async function collectTokenUsage(
     { concurrency: 5 }
   );
 
+  const usageCostUsd = runUsages
+    .flat()
+    .reduce((acc, usage) => acc + usage.costUsd, 0);
+  const usageCostCents = usageCostUsd > 0 ? Math.ceil(usageCostUsd * 100) : 0;
+
   return runUsages.flat().reduce(
     (acc, usage) => {
-      const usageCostUsd = calculateTokenUsageCost([usage]);
-      // Use ceiling to ensure any non-zero cost is at least 1 cent.
-      const usageCostCents =
-        usageCostUsd > 0 ? Math.ceil(usageCostUsd * 100) : 0;
-
       return {
         prompt: acc.prompt + usage.promptTokens,
         completion: acc.completion + usage.completionTokens,
         reasoning: acc.reasoning, // No reasoning tokens in RunUsageType yet.
         cached: acc.cached + (usage.cachedTokens ?? 0),
-        cost_cents: acc.cost_cents + usageCostCents,
+        cost_cents: acc.cost_cents,
       };
     },
     {
@@ -230,7 +230,7 @@ async function collectTokenUsage(
       completion: 0,
       reasoning: 0,
       cached: 0,
-      cost_cents: 0,
+      cost_cents: usageCostCents,
     }
   );
 }
@@ -242,6 +242,23 @@ async function collectToolUsageFromMessage(
   auth: Authenticator,
   actionResources: AgentMCPActionResource[]
 ): Promise<AgentMessageAnalyticsToolUsed[]> {
+  const workspaceId = auth.getNonNullableWorkspace().id;
+  const uniqueConfigIds = Array.from(
+    new Set(actionResources.map((a) => a.mcpServerConfigurationId))
+  );
+
+  const serverConfigs = await AgentMCPServerConfiguration.findAll({
+    where: {
+      workspaceId,
+      id: uniqueConfigIds,
+    },
+  });
+
+  const configIdToSId = new Map<string, string>();
+  for (const cfg of serverConfigs) {
+    configIdToSId.set(cfg.id.toString(), cfg.sId);
+  }
+
   return actionResources.map((actionResource) => {
     return {
       step_index: actionResource.stepContent.step,
@@ -252,6 +269,8 @@ async function collectToolUsageFromMessage(
       tool_name:
         actionResource.functionCallName.split(TOOL_NAME_SEPARATOR).pop() ??
         actionResource.functionCallName,
+      mcp_server_configuration_sid:
+        configIdToSId.get(actionResource.mcpServerConfigurationId) ?? undefined,
       execution_time_ms: actionResource.executionDurationMs,
       status: actionResource.status,
     };

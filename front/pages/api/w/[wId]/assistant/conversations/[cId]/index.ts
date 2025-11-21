@@ -62,7 +62,9 @@ async function handler(
   switch (req.method) {
     case "GET": {
       const conversationRes =
-        await ConversationResource.fetchConversationWithoutContent(auth, cId);
+        await ConversationResource.fetchConversationWithoutContent(auth, cId, {
+          alertIfNoAccessible: true,
+        });
 
       if (conversationRes.isErr()) {
         return apiErrorForConversation(req, res, conversationRes.error);

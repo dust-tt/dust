@@ -27,12 +27,17 @@ export async function getConversation(
 ): Promise<Result<ConversationType, ConversationError>> {
   const owner = auth.getNonNullableWorkspace();
 
-  const conversation = await ConversationResource.fetchById(
+  const conversationRes = await ConversationResource.fetchById(
     auth,
     conversationId,
     { includeDeleted }
   );
 
+  if (conversationRes.isErr()) {
+    return conversationRes;
+  }
+
+  const conversation = conversationRes.value;
   if (!conversation) {
     return new Err(new ConversationError("conversation_not_found"));
   }

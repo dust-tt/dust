@@ -28,9 +28,16 @@ export const LATENCY_LEGEND = [
   { key: "median", label: "Median" },
 ] as const;
 
+export const COST_PALETTE = {
+  costCents: "text-blue-400 dark:text-blue-400-night",
+  totalCredits: "text-green-500 dark:text-green-500-night",
+} as const;
+
+export const COST_LEGEND = [{ key: "costCents", label: "Cost" }] as const;
+
 export const CHART_HEIGHT = 260;
 
-export const TOOL_COLORS = [
+export const INDEXED_COLORS = [
   "text-orange-300 dark:text-orange-300-night",
   "text-golden-200 dark:text-golden-200-night",
   "text-green-200 dark:text-green-200-night",
@@ -40,7 +47,15 @@ export const TOOL_COLORS = [
 
 export const MAX_TOOLS_DISPLAYED = 5;
 
-export const OTHER_TOOLS_LABEL = "Others";
+export const OTHER_LABEL = {
+  label: "Others",
+  color: "text-blue-300 dark:text-blue-300-night",
+};
+
+export const UNKNOWN_LABEL = {
+  label: "Unknown",
+  color: "text-gray-400 dark:text-gray-400-night",
+};
 
 export const FEEDBACK_DISTRIBUTION_PALETTE = {
   positive: "text-green-400 dark:text-green-400-night",
@@ -89,7 +104,7 @@ export const USER_MESSAGE_ORIGIN_LABELS: Record<
   },
   raycast: {
     label: "Raycast",
-    color: "text-rose-500 dark:text-rose-500-night",
+    color: "rose-500 dark:rose-500-night",
   },
   run_agent: {
     label: "Sub-agent",
@@ -122,13 +137,3 @@ export const USER_MESSAGE_ORIGIN_LABELS: Record<
     color: "text-blue-800 dark:text-blue-800-night",
   },
 };
-
-export function isUserMessageOrigin(
-  origin?: string | null
-): origin is UserMessageOrigin {
-  return !!origin && origin in USER_MESSAGE_ORIGIN_LABELS;
-}
-
-export function getSourceColor(source: UserMessageOrigin) {
-  return USER_MESSAGE_ORIGIN_LABELS[source].color;
-}

@@ -479,6 +479,7 @@ export async function runTriggerWebhookActivity({
           auth,
           trigger,
           contentFragment,
+          webhookRequestId,
         });
 
         if (result.isErr()) {

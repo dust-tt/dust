@@ -1,5 +1,5 @@
 import type { RunUsageType } from "@app/lib/resources/run_resource";
-import type { ModelIdType as BaseModelIdType } from "@app/types";
+import type { ModelIdType as BaseModelIdType, ModelIdType } from "@app/types";
 
 type PricingEntry = {
   input: number;
@@ -404,21 +404,33 @@ const DEFAULT_PRICING = MODEL_PRICING[DEFAULT_PRICING_MODEL_ID];
  * Note: promptTokens currently includes cached read and cache write tokens for some providers.
  * To avoid double counting, price all promptTokens at base input rate, then adjust with deltas.
  */
-function calculateTokenUsageCostForUsage(usage: RunUsageType): number {
-  const pricing = MODEL_PRICING[usage.modelId] ?? DEFAULT_PRICING;
+export function calculateTokenUsageCostForUsage({
+  modelId,
+  promptTokens,
+  completionTokens,
+  cachedTokens,
+  cacheCreationTokens,
+}: {
+  modelId: ModelIdType;
+  promptTokens: number;
+  completionTokens: number;
+  cachedTokens: number | null;
+  cacheCreationTokens?: number | null;
+}): number {
+  const pricing = MODEL_PRICING[modelId] ?? DEFAULT_PRICING;
 
-  const cachedReadTokens = usage.cachedTokens ?? 0;
-  const cacheWriteTokens = usage.cacheCreationTokens ?? 0;
+  const cachedReadTokens = cachedTokens ?? 0;
+  const cacheWriteTokens = cacheCreationTokens ?? 0;
 
   const cachedReadRate = pricing.cache_read_input_tokens ?? pricing.input;
   const cacheWriteRate = pricing.cache_creation_input_tokens ?? pricing.input;
 
-  const basePromptCost = (usage.promptTokens / 1_000_000) * pricing.input;
+  const basePromptCost = (promptTokens / 1_000_000) * pricing.input;
   const cachedReadDelta =
     (cachedReadTokens / 1_000_000) * (cachedReadRate - pricing.input);
   const cacheWriteDelta =
     (cacheWriteTokens / 1_000_000) * (cacheWriteRate - pricing.input);
-  const outputCost = (usage.completionTokens / 1_000_000) * pricing.output;
+  const outputCost = (completionTokens / 1_000_000) * pricing.output;
 
   return basePromptCost + cachedReadDelta + cacheWriteDelta + outputCost;
 }

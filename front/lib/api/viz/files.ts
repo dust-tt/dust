@@ -144,25 +144,30 @@ export async function canAccessFileInConversation(
   // We only need to verify if the conversation exists, but internalBuilderForWorkspace only has
   // global group access and can't see agents from other groups that this conversation might
   // reference.
-  const requestedConversation = await ConversationResource.fetchById(
+  const requestedConversationRes = await ConversationResource.fetchById(
     auth,
     requestedConversationId,
     {
       dangerouslySkipPermissionFiltering: true,
     }
   );
+  if (requestedConversationRes.isErr()) {
+    return requestedConversationRes;
+  }
+  const requestedConversation = requestedConversationRes.value;
   if (!requestedConversation) {
     return new Err(new Error("Requested conversation not found"));
   }
 
   // Check if file belongs to a conversation created through a sub agent run.
-  const fileConversation = await ConversationResource.fetchById(
+  const fileConversationRes = await ConversationResource.fetchById(
     auth,
     useCaseMetadata.conversationId
   );
-  if (!fileConversation) {
+  if (fileConversationRes.isErr() || !fileConversationRes.value) {
     return new Err(new Error("File conversation not found"));
   }
+  const fileConversation = fileConversationRes.value;
 
   // Traverse up the conversation hierarchy of the file's conversation.
   const fileBelongsToSubConversation = await isAncestorConversation(

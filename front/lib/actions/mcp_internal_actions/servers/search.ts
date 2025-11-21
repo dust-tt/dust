@@ -11,7 +11,6 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { makeQueryResource } from "@app/lib/actions/mcp_internal_actions/rendering";
 import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/tools/tags/find_tags";
 import {
   checkConflictingTags,
@@ -206,21 +205,12 @@ export async function searchFunction({
     }
   );
 
-  return new Ok([
-    ...results.map((result) => ({
+  return new Ok(
+    results.map((result) => ({
       type: "resource" as const,
       resource: result,
-    })),
-    {
-      type: "resource" as const,
-      resource: makeQueryResource({
-        query,
-        timeFrame,
-        tagsIn,
-        tagsNot,
-      }),
-    },
-  ]);
+    }))
+  );
 }
 
 function createServer(

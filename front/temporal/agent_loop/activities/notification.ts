@@ -1,4 +1,4 @@
-import { isUserMessageOrigin } from "@app/components/agent_builder/observability/constants";
+import { isUserMessageOrigin } from "@app/components/agent_builder/observability/utils";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { getNovuClient } from "@app/lib/notifications";
@@ -10,6 +10,7 @@ import {
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import { NOTIFICATION_DELAY_MS } from "@app/temporal/agent_loop/workflows";
+import { isDevelopment } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 
 /**
@@ -48,21 +49,25 @@ export async function conversationUnreadNotificationActivity(
   }
 
   // Wait 30 seconds before triggering the notification.
-  await new Promise((resolve) => setTimeout(resolve, NOTIFICATION_DELAY_MS));
+  await new Promise((resolve) =>
+    setTimeout(resolve, isDevelopment() ? 3000 : NOTIFICATION_DELAY_MS)
+  );
 
   // Get conversation participants
-  const conversation = await ConversationResource.fetchById(
+  const conversationRes = await ConversationResource.fetchById(
     auth,
     agentLoopArgs.conversationId
   );
 
-  if (!conversation) {
+  if (conversationRes.isErr() || !conversationRes.value) {
     logger.warn(
       { conversationId: agentLoopArgs.conversationId },
       "Conversation not found after delay"
     );
     return;
   }
+
+  const conversation = conversationRes.value;
 
   // Skip any sub-conversations.
   if (conversation.depth > 0) {

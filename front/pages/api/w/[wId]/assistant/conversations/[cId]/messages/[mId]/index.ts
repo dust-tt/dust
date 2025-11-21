@@ -42,9 +42,9 @@ async function handler(
     });
   }
 
-  const conversation = await ConversationResource.fetchById(auth, cId);
+  const conversationRes = await ConversationResource.fetchById(auth, cId);
 
-  if (!conversation) {
+  if (conversationRes.isErr() || !conversationRes.value) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -53,6 +53,8 @@ async function handler(
       },
     });
   }
+
+  const conversation = conversationRes.value;
 
   switch (req.method) {
     case "GET":

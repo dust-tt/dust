@@ -646,6 +646,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "confluence_tool"
   | "deepseek_feature"
   | "deepseek_r1_global_agent_feature"
+  | "dust_edge_global_agent"
   | "dev_mcp_actions"
   | "disable_run_logs"
   | "disallow_agent_creation_to_users"
@@ -676,6 +677,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_o1_high_reasoning_custom_assistants_feature"
   | "openai_o1_high_reasoning_feature"
   | "openai_usage_mcp"
+  | "ppul_credits_purchase_flow"
   | "salesforce_synced_queries"
   | "salesforce_tool"
   | "salesforce_tool_write"
@@ -690,6 +692,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "use_requested_space_ids"
   | "web_summarization"
   | "xai_feature"
+  | "programmatic_usage_metrics"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

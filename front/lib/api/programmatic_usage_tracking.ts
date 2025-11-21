@@ -1,14 +1,47 @@
+import type { estypes } from "@elastic/elasticsearch";
 import moment from "moment-timezone";
 import type { RedisClientType } from "redis";
 
-import { calculateTokenUsageCost } from "@app/lib/api/assistant/token_pricing";
 import { runOnRedis } from "@app/lib/api/redis";
 import { getWorkspacePublicAPILimits } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType, UserMessageOrigin } from "@app/types";
+
+export const USAGE_ORIGINS_CLASSIFICATION: Record<
+  UserMessageOrigin,
+  "programmatic" | "user"
+> = {
+  agent_handover: "user",
+  api: "programmatic",
+  email: "user",
+  excel: "programmatic",
+  extension: "user",
+  "github-copilot-chat": "user",
+  gsheet: "programmatic",
+  make: "programmatic",
+  n8n: "programmatic",
+  powerpoint: "programmatic",
+  raycast: "user",
+  run_agent: "user",
+  slack: "user",
+  teams: "user",
+  transcript: "user",
+  triggered_programmatic: "programmatic",
+  triggered: "user",
+  web: "user",
+  zapier: "programmatic",
+  zendesk: "programmatic",
+};
+
+const PROGRAMMATIC_USAGE_ORIGINS = Object.keys(
+  USAGE_ORIGINS_CLASSIFICATION
+).filter(
+  (origin) =>
+    USAGE_ORIGINS_CLASSIFICATION[origin as UserMessageOrigin] === "programmatic"
+);
 
 // Programmatic usage tracking: keep Redis key name for backward compatibility.
 const PROGRAMMATIC_USAGE_REMAINING_CREDITS_KEY = "public_api_remaining_credits";
@@ -20,7 +53,7 @@ function getRedisKey(workspace: LightWorkspaceType): string {
 
 function shouldTrackTokenUsageCosts(
   auth: Authenticator,
-  { userMessageOrigin }: { userMessageOrigin?: string | null } = {}
+  { userMessageOrigin }: { userMessageOrigin?: UserMessageOrigin | null } = {}
 ): boolean {
   const workspace = auth.getNonNullableWorkspace();
   const limits = getWorkspacePublicAPILimits(workspace);
@@ -30,17 +63,45 @@ function shouldTrackTokenUsageCosts(
     return false;
   }
 
-  // Track for API keys.
-  if (auth.isKey() && !auth.isSystemKey()) {
-    return true;
-  }
-
-  // Track for programmatic webhook triggers.
-  if (userMessageOrigin === "triggered_programmatic") {
+  // Track for API keys, listed programmatic origins or unspecified user message origins.
+  // This must be in sync with the getShouldTrackTokenUsageCostsESFilter function.
+  if (
+    auth.authMethod() === "api_key" ||
+    !userMessageOrigin ||
+    USAGE_ORIGINS_CLASSIFICATION[userMessageOrigin] === "programmatic"
+  ) {
     return true;
   }
 
   return false;
+}
+
+export function getShouldTrackTokenUsageCostsESFilter(
+  auth: Authenticator
+): estypes.QueryDslQueryContainer {
+  const workspace = auth.getNonNullableWorkspace();
+
+  // Track for API keys, listed programmatic origins or unspecified user message origins.
+  // This must be in sync with the shouldTrackTokenUsageCosts function.
+  const shouldClauses: estypes.QueryDslQueryContainer[] = [
+    { term: { auth_method: "api_key" } },
+    { bool: { must_not: { exists: { field: "context_origin" } } } },
+    { terms: { context_origin: PROGRAMMATIC_USAGE_ORIGINS } },
+  ];
+
+  return {
+    bool: {
+      filter: [
+        { term: { workspace_id: workspace.sId } },
+        {
+          bool: {
+            should: shouldClauses,
+            minimum_should_match: 1,
+          },
+        },
+      ],
+    },
+  };
 }
 
 export async function hasReachedPublicAPILimits(
@@ -141,7 +202,7 @@ export async function maybeTrackTokenUsageCost(
   {
     dustRunIds,
     userMessageOrigin,
-  }: { dustRunIds: string[]; userMessageOrigin?: string | null }
+  }: { dustRunIds: string[]; userMessageOrigin?: UserMessageOrigin | null }
 ) {
   if (!shouldTrackTokenUsageCosts(auth, { userMessageOrigin })) {
     return;
@@ -165,9 +226,12 @@ export async function maybeTrackTokenUsageCost(
   }
 
   // Compute the price for all the runs.
-  const runsCost = calculateTokenUsageCost(runUsages.flat());
+  const runsCostUsd = runUsages
+    .flat()
+    .reduce((acc, usage) => acc + usage.costUsd, 0);
+  const runsCostCents = runsCostUsd > 0 ? Math.ceil(runsCostUsd * 100) : 0;
 
-  await trackTokenUsageCost(auth.getNonNullableWorkspace(), runsCost);
+  await trackTokenUsageCost(auth.getNonNullableWorkspace(), runsCostCents);
 }
 
 export async function resetCredits(

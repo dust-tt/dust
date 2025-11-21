@@ -24,7 +24,8 @@ export interface LLMTraceContext {
     | "trigger_cron_timezone_generator"
     | "trigger_webhook_filter_generator"
     | "voice_agent_finder"
-    | "workspace_tags_suggestion";
+    | "workspace_tags_suggestion"
+    | "agent_observability_summary";
 
   /** Context-specific identifier (e.g., agentConfigId, conversationId, etc.) */
   contextId?: string;

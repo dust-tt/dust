@@ -78,11 +78,11 @@ async function handler(
     file.useCaseMetadata?.conversationId
   ) {
     // For conversation files, check if the user has access to the conversation
-    const conversation = await ConversationResource.fetchById(
+    const conversationRes = await ConversationResource.fetchById(
       auth,
       file.useCaseMetadata.conversationId
     );
-    if (!conversation) {
+    if (conversationRes.isErr() || !conversationRes.value) {
       return apiError(req, res, {
         status_code: 404,
         api_error: {

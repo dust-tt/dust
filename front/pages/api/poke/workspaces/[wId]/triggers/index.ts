@@ -4,12 +4,19 @@ import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { removeNulls } from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
+import type { WebhookProvider } from "@app/types/triggers/webhooks";
+
+export type TriggerWithProviderType = TriggerType & {
+  provider?: WebhookProvider | null;
+};
 
 export type PokeListTriggers = {
-  triggers: TriggerType[];
+  triggers: TriggerWithProviderType[];
 };
 
 async function handler(
@@ -44,9 +51,45 @@ async function handler(
   switch (req.method) {
     case "GET":
       const triggers = await TriggerResource.listByWorkspace(auth);
+      const triggerJSONs = triggers.map((t) => t.toJSON());
+
+      const webhookSourceViewIds = removeNulls(
+        triggerJSONs.map((t) =>
+          t.kind === "webhook" ? t.webhookSourceViewSId : null
+        )
+      );
+
+      const webhookSourceViews =
+        webhookSourceViewIds.length > 0
+          ? await WebhookSourcesViewResource.fetchByIds(
+              auth,
+              webhookSourceViewIds
+            )
+          : [];
+
+      const providerMap = new Map<string, WebhookProvider | null>();
+      for (const view of webhookSourceViews) {
+        const viewJSON = view.toJSON();
+        providerMap.set(viewJSON.sId, viewJSON.provider);
+      }
+
+      const triggersWithProvider: TriggerWithProviderType[] = triggerJSONs.map(
+        (t) => {
+          if (t.kind === "webhook" && t.webhookSourceViewSId) {
+            return {
+              ...t,
+              provider: providerMap.get(t.webhookSourceViewSId) ?? null,
+            };
+          }
+          return {
+            ...t,
+            provider: t.kind === "schedule" ? undefined : null,
+          };
+        }
+      );
 
       return res.status(200).json({
-        triggers: triggers.map((t) => t.toJSON()),
+        triggers: triggersWithProvider,
       });
 
     case "DELETE":

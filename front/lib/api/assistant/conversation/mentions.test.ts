@@ -5,7 +5,11 @@ import {
   createUserMentions,
 } from "@app/lib/api/assistant/conversation/mentions";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMessage, Mention } from "@app/lib/models/assistant/conversation";
+import {
+  AgentMessage,
+  ConversationParticipantModel,
+  Mention,
+} from "@app/lib/models/assistant/conversation";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -71,7 +75,7 @@ describe("createAgentMessages", () => {
       agentConfigurations: [agentConfig1],
       message: messageRow,
       owner: workspace,
-      transaction: undefined as never,
+
       skipToolsValidation: false,
       nextMessageRank: 1,
       conversation,
@@ -120,7 +124,7 @@ describe("createAgentMessages", () => {
       agentConfigurations: [agentConfig1, agentConfig2],
       message: messageRow,
       owner: workspace,
-      transaction: undefined as never,
+
       skipToolsValidation: false,
       nextMessageRank: 1,
       conversation,
@@ -164,7 +168,7 @@ describe("createAgentMessages", () => {
       agentConfigurations: [agentConfig1],
       message: messageRow,
       owner: workspace,
-      transaction: undefined as never,
+
       skipToolsValidation: false,
       nextMessageRank: 1,
       conversation,
@@ -190,7 +194,7 @@ describe("createAgentMessages", () => {
       agentConfigurations: [agentConfig1],
       message: messageRow,
       owner: workspace,
-      transaction: undefined as never,
+
       skipToolsValidation: false,
       nextMessageRank: 1,
       conversation,
@@ -220,7 +224,7 @@ describe("createAgentMessages", () => {
       agentConfigurations: [agentConfig1],
       message: messageRow,
       owner: workspace,
-      transaction: undefined as never,
+
       skipToolsValidation: true,
       nextMessageRank: 1,
       conversation,
@@ -256,7 +260,7 @@ describe("createAgentMessages", () => {
       agentConfigurations: [agentConfig1],
       message: messageRow,
       owner: workspace,
-      transaction: undefined as never,
+
       skipToolsValidation: false,
       nextMessageRank: 1,
       conversation,
@@ -288,7 +292,7 @@ describe("createAgentMessages", () => {
       agentConfigurations: [agentConfig1],
       message: messageRow,
       owner: workspace,
-      transaction: undefined as never,
+
       skipToolsValidation: false,
       nextMessageRank: 1,
       conversation,
@@ -324,7 +328,7 @@ describe("createAgentMessages", () => {
       agentConfigurations: [agentConfig1, agentConfig2],
       message: messageRow,
       owner: workspace,
-      transaction: undefined as never,
+
       skipToolsValidation: false,
       nextMessageRank,
       conversation,
@@ -358,7 +362,10 @@ describe("createUserMentions", () => {
   });
 
   it("should store user mentions in the database", async () => {
-    const mentionedUser = auth.getNonNullableUser();
+    const mentionedUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, mentionedUser, {
+      role: "user",
+    });
 
     const { messageRow } = await ConversationFactory.createUserMessage({
       auth,
@@ -377,8 +384,7 @@ describe("createUserMentions", () => {
     await createUserMentions(auth, {
       mentions,
       message: messageRow,
-      owner: workspace,
-      transaction: undefined as never,
+      conversation,
     });
 
     // Verify user mention was stored in the database
@@ -391,6 +397,19 @@ describe("createUserMentions", () => {
     expect(userMentionInDb).not.toBeNull();
     expect(userMentionInDb?.userId).toBe(mentionedUser.id);
     expect(userMentionInDb?.agentConfigurationId).toBeNull();
+
+    // Verify the user is marked as a participant with "subscribed" action.
+    const participant = await ConversationParticipantModel.findOne({
+      where: {
+        workspaceId: workspace.id,
+        conversationId: conversation.id,
+        userId: mentionedUser.id,
+      },
+    });
+    expect(participant).not.toBeNull();
+    expect(participant?.action).toBe("subscribed");
+    expect(participant?.unread).toBe(false);
+    expect(participant?.actionRequired).toBe(false);
   });
 
   it("should handle multiple user mentions", async () => {
@@ -419,8 +438,7 @@ describe("createUserMentions", () => {
     await createUserMentions(auth, {
       mentions,
       message: messageRow,
-      owner: workspace,
-      transaction: undefined as never,
+      conversation,
     });
 
     // Verify both user mentions were stored
@@ -436,6 +454,31 @@ describe("createUserMentions", () => {
     // Both should have null agentConfigurationId
     expect(allMentionsInDb[0].agentConfigurationId).toBeNull();
     expect(allMentionsInDb[1].agentConfigurationId).toBeNull();
+
+    // Verify the users are marked as participants with "subscribed" action.
+    const participant1 = await ConversationParticipantModel.findOne({
+      where: {
+        workspaceId: workspace.id,
+        conversationId: conversation.id,
+        userId: user1.id,
+      },
+    });
+    expect(participant1).not.toBeNull();
+    expect(participant1?.action).toBe("subscribed");
+    expect(participant1?.unread).toBe(false);
+    expect(participant1?.actionRequired).toBe(false);
+
+    const participant2 = await ConversationParticipantModel.findOne({
+      where: {
+        workspaceId: workspace.id,
+        conversationId: conversation.id,
+        userId: user2.id,
+      },
+    });
+    expect(participant2).not.toBeNull();
+    expect(participant2?.action).toBe("subscribed");
+    expect(participant2?.unread).toBe(false);
+    expect(participant2?.actionRequired).toBe(false);
   });
 
   it("should handle empty user mentions array", async () => {
@@ -451,8 +494,7 @@ describe("createUserMentions", () => {
     await createUserMentions(auth, {
       mentions,
       message: messageRow,
-      owner: workspace,
-      transaction: undefined as never,
+      conversation,
     });
 
     // Verify no mentions were stored
@@ -462,10 +504,22 @@ describe("createUserMentions", () => {
       },
     });
     expect(allMentionsInDb).toHaveLength(0);
+
+    // Verify no participants were created
+    const participantsInDb = await ConversationParticipantModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        conversationId: conversation.id,
+      },
+    });
+    expect(participantsInDb).toHaveLength(0);
   });
 
   it("should only process user mentions and ignore agent mentions", async () => {
-    const mentionedUser = auth.getNonNullableUser();
+    const mentionedUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, mentionedUser, {
+      role: "user",
+    });
 
     const { messageRow } = await ConversationFactory.createUserMessage({
       auth,
@@ -487,8 +541,7 @@ describe("createUserMentions", () => {
     await createUserMentions(auth, {
       mentions,
       message: messageRow,
-      owner: workspace,
-      transaction: undefined as never,
+      conversation,
     });
 
     // Verify only user mention was stored, agent mention should be ignored

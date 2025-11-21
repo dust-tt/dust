@@ -40,6 +40,7 @@ export class MicrosoftToolsOAuthProvider implements BaseOAuthStrategyProvider {
       state: connection.connection_id,
       redirect_uri: finalizeUriForProvider("microsoft_tools"),
       scope: extraConfig.scope,
+      prompt: "consent",
     });
     return `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${qs}`;
   }

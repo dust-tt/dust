@@ -8,6 +8,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Fallback to Vertex Anthropic for some Anthropic models",
     stage: "dust_only",
   },
+  dust_edge_global_agent: {
+    description:
+      "Access to dust-edge global agent that we use internally to test other models on dust",
+    stage: "dust_only",
+  },
   notion_private_integration: {
     description: "Setup Notion private integration tokens",
     stage: "on_demand",
@@ -102,6 +107,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   openai_usage_mcp: {
     description: "OpenAI tool for tracking API consumption and costs",
     stage: "on_demand",
+  },
+  ppul_credits_purchase_flow: {
+    description:
+      "Purchase credits flow for workspace admins via Stripe invoices",
+    stage: "dust_only",
   },
   salesforce_synced_queries: {
     description: "Salesforce Connection: retrieval on Synchronized queries",
@@ -223,6 +233,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   jit_tool_setup: {
     description: "Enable setup flow of new tools in JIT tool dropdown",
+    stage: "dust_only",
+  },
+  programmatic_usage_metrics: {
+    description: "Enable programmatic usage metrics",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;

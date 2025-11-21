@@ -11,12 +11,10 @@ import React, {
 } from "react";
 
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
-import { MentionDropdown } from "@app/components/assistant/conversation/input_bar/editor/MentionDropdown";
 import useAgentSuggestions from "@app/components/assistant/conversation/input_bar/editor/useAgentSuggestions";
 import type { CustomEditorProps } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useCustomEditor from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useHandleAgentMentions from "@app/components/assistant/conversation/input_bar/editor/useHandleAgentMentions";
-import { useMentionDropdown } from "@app/components/assistant/conversation/input_bar/editor/useMentionDropdown";
 import useUrlHandler from "@app/components/assistant/conversation/input_bar/editor/useUrlHandler";
 import useUserSuggestions from "@app/components/assistant/conversation/input_bar/editor/useUserSuggestions";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
@@ -133,6 +131,7 @@ const InputBarContainer = ({
     UrlCandidate | NodeCandidate | null
   >(null);
   const [pastedCount, setPastedCount] = useState(0);
+  const [isEmpty, setIsEmpty] = useState(true);
 
   const [selectedNode, setSelectedNode] =
     useState<DataSourceViewContentNode | null>(null);
@@ -289,17 +288,11 @@ const InputBarContainer = ({
     [editorRef, fileUploaderService, sendNotification]
   );
 
-  const agentMentionDropdown = useMentionDropdown(
-    combinedSuggestions,
-    editorRef
-  );
-
   const { editor, editorService } = useCustomEditor({
     suggestions: combinedSuggestions,
     onEnterKeyDown,
     disableAutoFocus,
     onUrlDetected: handleUrlDetected,
-    suggestionHandler: agentMentionDropdown.getSuggestionHandler(),
     owner,
     onInlineText: handleInlineText,
     onLongTextPaste: async ({ text, from, to }) => {
@@ -397,10 +390,27 @@ const InputBarContainer = ({
     },
   });
 
-  // Update the editor ref when the editor is created.
+  // Update the editor ref when the editor is created and listen for updates to the editor.
   useEffect(() => {
+    const handleUpdate = () => {
+      setIsEmpty(editorService.isEmpty());
+    };
+
+    if (editorRef.current) {
+      editorRef.current.off("update", handleUpdate);
+    }
+
+    if (editor) {
+      editor.on("update", handleUpdate);
+    }
     editorRef.current = editor;
-  }, [editor]);
+
+    return () => {
+      if (editor) {
+        editor.off("update", handleUpdate);
+      }
+    };
+  }, [editor, editorService]);
 
   // Disable the editor when disableTextInput is true.
   useEffect(() => {
@@ -555,9 +565,8 @@ const InputBarContainer = ({
         <div className="flex w-full flex-col px-2 py-1.5 sm:pb-2">
           <div className="mb-1 flex flex-wrap items-center">
             {selectedMCPServerViews.map((msv) => (
-              <>
+              <React.Fragment key={msv.sId}>
                 <Chip
-                  key={msv.sId}
                   size="xs"
                   label={getMcpServerViewDisplayName(msv)}
                   icon={getIcon(msv.server.icon)}
@@ -567,7 +576,6 @@ const InputBarContainer = ({
                   }}
                 />
                 <Chip
-                  key={`mobile-${msv.sId}`}
                   size="xs"
                   icon={getIcon(msv.server.icon)}
                   className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night md:hidden"
@@ -575,7 +583,7 @@ const InputBarContainer = ({
                     onMCPServerViewDeselect(msv);
                   }}
                 />
-              </>
+              </React.Fragment>
             ))}
           </div>
           <div className="flex items-center justify-between">
@@ -660,7 +668,7 @@ const InputBarContainer = ({
                 icon={ArrowUpIcon}
                 variant="highlight"
                 disabled={
-                  editorService.isEmpty() ||
+                  isEmpty ||
                   disableSendButton ||
                   voiceTranscriberService.status !== "idle"
                 }
@@ -690,8 +698,6 @@ const InputBarContainer = ({
           </div>
         </div>
       </div>
-
-      <MentionDropdown mentionDropdownState={agentMentionDropdown} />
     </div>
   );
 };

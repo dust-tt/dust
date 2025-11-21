@@ -12,23 +12,25 @@ import {
   LoadingBlock,
   ToolsIcon,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 
 import { CreateMCPServerSheet } from "@app/components/actions/mcp/CreateMCPServerSheet";
 import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
+  mcpServersSortingFn,
   mcpServerViewSortingFn,
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
+import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
+import { getDefaultRemoteMCPServerByName } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import {
   useAvailableMCPServers,
   useMCPServerViewsFromSpaces,
 } from "@app/lib/swr/mcp_servers";
-import { useSpaces, useSystemSpace } from "@app/lib/swr/spaces";
+import { useSpaces } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
   trackEvent,
@@ -75,11 +77,12 @@ export function ToolsPicker({
   disabled = false,
   buttonSize = "xs",
 }: ToolsPickerProps) {
-  const router = useRouter();
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [setupSheetServer, setSetupSheetServer] =
     useState<MCPServerType | null>(null);
+  const [setupSheetRemoteServerConfig, setSetupSheetRemoteServerConfig] =
+    useState<DefaultRemoteMCPServerConfig | null>(null);
   const [isSettingUpServer, setIsSettingUpServer] = useState(false);
   const [pendingServerToAdd, setPendingServerToAdd] =
     useState<MCPServerType | null>(null);
@@ -99,10 +102,6 @@ export function ToolsPicker({
   );
 
   const isAdmin = owner.role === "admin";
-  const { systemSpace } = useSystemSpace({
-    workspaceId: owner.sId,
-    disabled: !isOpen || !isAdmin,
-  });
 
   const {
     serverViews,
@@ -156,10 +155,10 @@ export function ToolsPicker({
     );
 
     return {
-      filteredServerViews,
-      filteredServerViewsUnselected: filteredServerViews.filter(
-        (v) => !selectedMCPServerViewIds.includes(v.sId)
-      ),
+      filteredServerViews: filteredServerViews,
+      filteredServerViewsUnselected: filteredServerViews
+        .filter((v) => !selectedMCPServerViewIds.includes(v.sId))
+        .sort(mcpServerViewSortingFn),
     };
   }, [serverViews, searchText, selectedMCPServerViewIds]);
 
@@ -195,21 +194,28 @@ export function ToolsPicker({
       return uninstalled;
     }
 
-    return uninstalled.filter(
-      (server) =>
-        asDisplayName(server.name)
-          .toLowerCase()
-          .includes(searchText.toLowerCase()) ||
-        server.description.toLowerCase().includes(searchText.toLowerCase())
-    );
+    return uninstalled
+      .filter(
+        (server) =>
+          asDisplayName(server.name)
+            .toLowerCase()
+            .includes(searchText.toLowerCase()) ||
+          server.description.toLowerCase().includes(searchText.toLowerCase())
+      )
+      .sort((a, b) => mcpServersSortingFn({ mcpServer: a }, { mcpServer: b }));
   }, [
     hasFeature,
     isAdmin,
     isDataReady,
-    availableMCPServers,
+    shouldFetchToolsData,
     serverViews,
+    availableMCPServers,
     searchText,
   ]);
+
+  const shouldShowSetupSheet = useMemo(() => {
+    return !!setupSheetServer || !!setupSheetRemoteServerConfig;
+  }, [setupSheetServer, setupSheetRemoteServerConfig]);
 
   return (
     <>
@@ -241,63 +247,45 @@ export function ToolsPicker({
           align="start"
           dropdownHeaders={
             <>
-              <div className="flex items-center">
-                <div className="flex-1">
-                  <DropdownMenuSearchbar
-                    autoFocus
-                    name="search-tools"
-                    placeholder="Search Tools"
-                    value={searchText}
-                    onChange={setSearchText}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && filteredServerViews.length > 0) {
-                        const isSelected = selectedMCPServerViewIds.includes(
-                          filteredServerViews[0].sId
-                        );
-                        if (isSelected) {
-                          trackEvent({
-                            area: TRACKING_AREAS.TOOLS,
-                            object: "tool_deselect",
-                            action: TRACKING_ACTIONS.SELECT,
-                            extra: {
-                              tool_id: filteredServerViews[0].sId,
-                              tool_name: filteredServerViews[0].server.name,
-                            },
-                          });
-                          onDeselect(filteredServerViews[0]);
-                        } else {
-                          trackEvent({
-                            area: TRACKING_AREAS.TOOLS,
-                            object: "tool_select",
-                            action: TRACKING_ACTIONS.SELECT,
-                            extra: {
-                              tool_id: filteredServerViews[0].sId,
-                              tool_name: filteredServerViews[0].server.name,
-                            },
-                          });
-                          onSelect(filteredServerViews[0]);
-                        }
-                        setSearchText("");
-                        setIsOpen(false);
-                      }
-                    }}
-                  />
-                </div>
-                {systemSpace && (
-                  <Button
-                    icon={ToolsIcon}
-                    variant="outline"
-                    label="Manage"
-                    onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      void router.push(
-                        `/w/${owner.sId}/spaces/${systemSpace.sId}/categories/actions`
-                      );
-                    }}
-                  />
-                )}
-              </div>
+              <DropdownMenuSearchbar
+                autoFocus
+                name="search-tools"
+                placeholder="Search Tools"
+                value={searchText}
+                onChange={setSearchText}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && filteredServerViews.length > 0) {
+                    const isSelected = selectedMCPServerViewIds.includes(
+                      filteredServerViews[0].sId
+                    );
+                    if (isSelected) {
+                      trackEvent({
+                        area: TRACKING_AREAS.TOOLS,
+                        object: "tool_deselect",
+                        action: TRACKING_ACTIONS.SELECT,
+                        extra: {
+                          tool_id: filteredServerViews[0].sId,
+                          tool_name: filteredServerViews[0].server.name,
+                        },
+                      });
+                      onDeselect(filteredServerViews[0]);
+                    } else {
+                      trackEvent({
+                        area: TRACKING_AREAS.TOOLS,
+                        object: "tool_select",
+                        action: TRACKING_ACTIONS.SELECT,
+                        extra: {
+                          tool_id: filteredServerViews[0].sId,
+                          tool_name: filteredServerViews[0].server.name,
+                        },
+                      });
+                      onSelect(filteredServerViews[0]);
+                    }
+                    setSearchText("");
+                    setIsOpen(false);
+                  }
+                }}
+              />
               <DropdownMenuSeparator />
             </>
           }
@@ -306,34 +294,32 @@ export function ToolsPicker({
 
           {isDataReady && filteredServerViews.length > 0 && (
             <>
-              {filteredServerViewsUnselected
-                .sort(mcpServerViewSortingFn)
-                .map((v) => {
-                  return (
-                    <DropdownMenuItem
-                      key={`tools-picker-${v.sId}`}
-                      icon={() => getAvatar(v.server)}
-                      label={getMcpServerViewDisplayName(v)}
-                      description={getMcpServerViewDescription(v)}
-                      truncateText
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        trackEvent({
-                          area: TRACKING_AREAS.TOOLS,
-                          object: "tool_select",
-                          action: TRACKING_ACTIONS.SELECT,
-                          extra: {
-                            tool_id: v.sId,
-                            tool_name: v.server.name,
-                          },
-                        });
-                        onSelect(v);
-                        setIsOpen(false);
-                      }}
-                    />
-                  );
-                })}
+              {filteredServerViewsUnselected.map((v) => {
+                return (
+                  <DropdownMenuItem
+                    key={`tools-picker-${v.sId}`}
+                    icon={() => getAvatar(v.server)}
+                    label={getMcpServerViewDisplayName(v)}
+                    description={getMcpServerViewDescription(v)}
+                    truncateText
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      trackEvent({
+                        area: TRACKING_AREAS.TOOLS,
+                        object: "tool_select",
+                        action: TRACKING_ACTIONS.SELECT,
+                        extra: {
+                          tool_id: v.sId,
+                          tool_name: v.server.name,
+                        },
+                      });
+                      onSelect(v);
+                      setIsOpen(false);
+                    }}
+                  />
+                );
+              })}
             </>
           )}
 
@@ -347,12 +333,25 @@ export function ToolsPicker({
                   description={server.description}
                   truncateText
                   endComponent={
-                    <Chip size="xs" color="golden" label="Activate" />
+                    <Chip size="xs" color="golden" label="Configure" />
                   }
                   onClick={(e) => {
                     e.stopPropagation();
                     e.preventDefault();
-                    setSetupSheetServer(server);
+
+                    const remoteMcpServerConfig =
+                      getDefaultRemoteMCPServerByName(server.name);
+
+                    if (remoteMcpServerConfig) {
+                      // Remote servers always use the remote flow, even if they have OAuth.
+                      setSetupSheetServer(null);
+                      setSetupSheetRemoteServerConfig(remoteMcpServerConfig);
+                    } else {
+                      // Internal servers (with or without OAuth)
+                      setSetupSheetServer(server);
+                      setSetupSheetRemoteServerConfig(null);
+                    }
+
                     setIsSettingUpServer(true);
                     setIsOpen(false);
                   }}
@@ -384,10 +383,11 @@ export function ToolsPicker({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {setupSheetServer && (
+      {shouldShowSetupSheet && (
         <CreateMCPServerSheet
           owner={owner}
-          internalMCPServer={setupSheetServer}
+          internalMCPServer={setupSheetServer ?? undefined}
+          defaultServerConfig={setupSheetRemoteServerConfig ?? undefined}
           setMCPServerToShow={async (createdServer) => {
             const updatedData = await mutateServerViews();
 
@@ -413,12 +413,14 @@ export function ToolsPicker({
             }
 
             setSetupSheetServer(null);
+            setSetupSheetRemoteServerConfig(null);
           }}
           setIsLoading={() => {}}
-          isOpen={!!setupSheetServer}
+          isOpen={shouldShowSetupSheet}
           setIsOpen={(isOpen) => {
             if (!isOpen) {
               setSetupSheetServer(null);
+              setSetupSheetRemoteServerConfig(null);
               setPendingServerToAdd(null);
               setIsSettingUpServer(false);
             }

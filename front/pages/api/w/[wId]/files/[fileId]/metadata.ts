@@ -64,12 +64,12 @@ async function handler(
 
   // Check permissions based on useCase and useCaseMetadata.
   if (isConversationFileUseCase(useCase) && useCaseMetadata?.conversationId) {
-    const conversation = await ConversationResource.fetchById(
+    const conversationRes = await ConversationResource.fetchById(
       auth,
       useCaseMetadata.conversationId
     );
 
-    if (!conversation) {
+    if (conversationRes.isErr() || !conversationRes.value) {
       return apiError(req, res, {
         status_code: 404,
         api_error: {
