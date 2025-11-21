@@ -3,11 +3,9 @@ import express from "express";
 
 import { WebhookForwarder } from "../forwarder.js";
 import type { SecretManager } from "../secrets.js";
+import { ALL_REGIONS } from "../webookConfig.js";
 
-export function createNotionRoutes(
-  secretManager: SecretManager,
-  notionVerification: RequestHandler
-) {
+export function createNotionRoutes(secretManager: SecretManager, notionVerification: RequestHandler) {
   const router = express.Router();
 
   // Notion webhook endpoint with Notion verification only (webhook secret already validated)
@@ -37,6 +35,7 @@ async function handleNotionWebhook(
       endpoint,
       headers: req.headers,
       method: req.method,
+      regions: ALL_REGIONS,
     });
   } catch (error) {
     console.error("Notion webhook router error", {

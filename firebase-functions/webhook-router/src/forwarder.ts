@@ -2,6 +2,9 @@ import type { IncomingHttpHeaders } from "http";
 
 import { CONFIG } from "./config.js";
 import type { Secrets } from "./secrets.js";
+import type { Region } from "./webookConfig.js";
+
+type WebhookTarget = { region: Region; url: string; secret: string };
 
 export class WebhookForwarder {
   constructor(private secrets: Secrets) {}
@@ -11,13 +14,15 @@ export class WebhookForwarder {
     endpoint,
     method,
     headers,
+    regions,
   }: {
     body: unknown;
     endpoint: string;
     method: string;
     headers: IncomingHttpHeaders;
+    regions: readonly Region[];
   }): Promise<PromiseSettledResult<Response>[]> {
-    const targets = [
+    const targets: WebhookTarget[] = [
       {
         region: "US",
         url: CONFIG.US_CONNECTOR_URL,
@@ -30,9 +35,9 @@ export class WebhookForwarder {
       },
     ];
 
-    const requests = targets.map((target) =>
-      this.forwardToTarget({ target, endpoint, method, body, headers })
-    );
+    const requests = targets
+      .filter(({ region }) => regions.includes(region))
+      .map((target) => this.forwardToTarget({ target, endpoint, method, body, headers }));
 
     return Promise.allSettled(requests);
   }
@@ -47,7 +52,7 @@ export class WebhookForwarder {
     body: unknown;
     endpoint: string;
     method: string;
-    target: { region: string; url: string; secret: string };
+    target: WebhookTarget;
     headers: IncomingHttpHeaders;
   }): Promise<Response> {
     try {

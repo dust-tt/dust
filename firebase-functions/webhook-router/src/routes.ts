@@ -5,8 +5,9 @@ import { createTeamsVerificationMiddleware } from "./microsoft/verification.js";
 import { createNotionRoutes } from "./notion/routes.js";
 import { createNotionVerificationMiddleware } from "./notion/verification.js";
 import type { SecretManager } from "./secrets.js";
-import { createSlackRoutes } from "./slack/routes.js";
-import { createSlackVerificationMiddleware } from "./slack/verification.js";
+import { createSlackRoutes, createSlackSyncRoutes as createSlackDataSyncRoutes } from "./slack/routes.js";
+import { createSlackDataSyncVerificationMiddleware, createSlackVerificationMiddleware } from "./slack/verification.js";
+import type { WebhookRouterConfigManager } from "./webookRouterConfig.js";
 
 // Webhook secret validation middleware (shared by all platforms)
 function createWebhookSecretMiddleware(secretManager: SecretManager) {
@@ -38,7 +39,7 @@ function createWebhookSecretMiddleware(secretManager: SecretManager) {
   };
 }
 
-export function createRoutes(secretManager: SecretManager) {
+export function createRoutes(secretManager: SecretManager, webhookRouterConfigManager: WebhookRouterConfigManager) {
   const router = express.Router();
 
   // Create shared webhook secret validation middleware
@@ -46,10 +47,14 @@ export function createRoutes(secretManager: SecretManager) {
 
   // Create platform-specific verification middlewares (without webhook secret validation)
   const slackVerification = createSlackVerificationMiddleware(secretManager);
+  const slackDataSyncVerification = createSlackDataSyncVerificationMiddleware(webhookRouterConfigManager);
   const teamsVerification = createTeamsVerificationMiddleware(secretManager);
   const notionVerification = createNotionVerificationMiddleware(secretManager);
 
   // Mount platform routes with webhook secret validation first
+  const slackDataSyncRoutes = createSlackDataSyncRoutes(secretManager, slackDataSyncVerification);
+  router.use("/slack_data_sync", slackDataSyncRoutes);
+
   const slackRoutes = createSlackRoutes(secretManager, slackVerification);
   router.use("/:webhookSecret/slack", webhookSecretValidation, slackRoutes);
 
