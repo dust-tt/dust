@@ -547,9 +547,8 @@ const InputBarContainer = ({
         <div className="flex w-full flex-col px-2 py-1.5 sm:pb-2">
           <div className="mb-1 flex flex-wrap items-center">
             {selectedMCPServerViews.map((msv) => (
-              <>
+              <React.Fragment key={msv.sId}>
                 <Chip
-                  key={msv.sId}
                   size="xs"
                   label={getMcpServerViewDisplayName(msv)}
                   icon={getIcon(msv.server.icon)}
@@ -559,7 +558,6 @@ const InputBarContainer = ({
                   }}
                 />
                 <Chip
-                  key={`mobile-${msv.sId}`}
                   size="xs"
                   icon={getIcon(msv.server.icon)}
                   className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night md:hidden"
@@ -567,7 +565,7 @@ const InputBarContainer = ({
                     onMCPServerViewDeselect(msv);
                   }}
                 />
-              </>
+              </React.Fragment>
             ))}
           </div>
           <div className="flex items-center justify-between">
