@@ -12,7 +12,6 @@ import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy
 import { Authenticator } from "@app/lib/auth";
 import { Message } from "@app/lib/models/assistant/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import {
   createResourcePermissionsFromSpacesWithMap,
@@ -921,16 +920,12 @@ describe("ConversationResource", () => {
       const { ConversationParticipantModel } = await import(
         "@app/lib/models/assistant/conversation"
       );
-      const conversationRes = await ConversationResource.fetchById(
-        adminAuth,
-        conversationIds[0]
-      );
-      assert(conversationRes.isOk(), "Failed to fetch conversation");
-      assert(conversationRes.value, "Conversation not found");
-
       const participation = await ConversationParticipantModel.findOne({
         where: {
-          conversationId: conversationRes.value.id,
+          conversationId: (await ConversationResource.fetchById(
+            adminAuth,
+            conversationIds[0]
+          ))!.id,
           userId: userAuth.getNonNullableUser().id,
           workspaceId: userAuth.getNonNullableWorkspace().id,
         },
@@ -1064,12 +1059,10 @@ describe("ConversationResource", () => {
 
     it("should retrieve a user message with the userMessage include", async () => {
       // Get the conversation resource to access getMessageById
-      const conversationRes = await ConversationResource.fetchById(
+      const conversationResource = await ConversationResource.fetchById(
         auth,
         conversation.sId
       );
-      assert(conversationRes.isOk(), "Failed to fetch conversation");
-      const conversationResource = conversationRes.value;
       assert(conversationResource, "Conversation resource not found");
 
       // Get all messages to find a user message
@@ -1105,12 +1098,10 @@ describe("ConversationResource", () => {
 
     it("should retrieve an agent message with the agentMessage include", async () => {
       // Get the conversation resource to access getMessageById
-      const conversationRes = await ConversationResource.fetchById(
+      const conversationResource = await ConversationResource.fetchById(
         auth,
         conversation.sId
       );
-      assert(conversationRes.isOk(), "Failed to fetch conversation");
-      const conversationResource = conversationRes.value;
       assert(conversationResource, "Conversation resource not found");
 
       // Get all messages to find an agent message
@@ -1148,12 +1139,10 @@ describe("ConversationResource", () => {
     });
 
     it("should return error when message not found", async () => {
-      const conversationRes = await ConversationResource.fetchById(
+      const conversationResource = await ConversationResource.fetchById(
         auth,
         conversation.sId
       );
-      assert(conversationRes.isOk(), "Failed to fetch conversation");
-      const conversationResource = conversationRes.value;
       assert(conversationResource, "Conversation resource not found");
 
       // Try to fetch a non-existent message
@@ -1176,25 +1165,19 @@ describe("ConversationResource", () => {
       });
       conversationIds.push(otherConversation.sId);
 
-      const conversationRes = await ConversationResource.fetchById(
+      const conversationResource = await ConversationResource.fetchById(
         auth,
         conversation.sId
       );
-      assert(conversationRes.isOk(), "Failed to fetch conversation");
-      const conversationResource = conversationRes.value;
       assert(conversationResource, "Conversation resource not found");
 
       // Get a message from the other conversation
-      const otherConversationRes = await ConversationResource.fetchById(
-        auth,
-        otherConversation.sId
-      );
-      assert(otherConversationRes.isOk(), "Failed to fetch other conversation");
-      assert(otherConversationRes.value, "Other conversation not found");
-
       const otherMessages = await Message.findAll({
         where: {
-          conversationId: otherConversationRes.value.id,
+          conversationId: (await ConversationResource.fetchById(
+            auth,
+            otherConversation.sId
+          ))!.id,
           workspaceId: auth.getNonNullableWorkspace().id,
         },
       });
@@ -1214,12 +1197,10 @@ describe("ConversationResource", () => {
     });
 
     it("should verify includes are not optional (both UserMessage and AgentMessage)", async () => {
-      const conversationRes = await ConversationResource.fetchById(
+      const conversationResource = await ConversationResource.fetchById(
         auth,
         conversation.sId
       );
-      assert(conversationRes.isOk(), "Failed to fetch conversation");
-      const conversationResource = conversationRes.value;
       assert(conversationResource, "Conversation resource not found");
 
       // Get all messages
@@ -1261,12 +1242,10 @@ describe("ConversationResource", () => {
     });
 
     it("should return a valid Message object with all expected fields", async () => {
-      const conversationRes = await ConversationResource.fetchById(
+      const conversationResource = await ConversationResource.fetchById(
         auth,
         conversation.sId
       );
-      assert(conversationRes.isOk(), "Failed to fetch conversation");
-      const conversationResource = conversationRes.value;
       assert(conversationResource, "Conversation resource not found");
 
       // Get the first message
