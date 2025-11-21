@@ -104,14 +104,14 @@ function WebhookEditionExecutionLimit({
   return (
     <div className="flex flex-col space-y-1">
       <Label htmlFor="execution-limit">Rate limits</Label>
-      <p>Limits are set on a 24 hours window. </p>
+      <p>Limits are set on a 24-hour window. </p>
       <ContentMessage
         variant="info"
         size="lg"
         icon={ExclamationCircleIcon}
         title={`Up to ${executionLimit} requests per day`}
       >
-        This trigger can send per a limited amount of messages per day. This
+        This trigger can send a limited number of messages per day. This
         prevents a single trigger from using up your workspace's message fair
         use quota. This trigger is currently running on your workspace's{" "}
         {executionMode === "fair_use" ? "fair use" : "programmatic usage"}{" "}
