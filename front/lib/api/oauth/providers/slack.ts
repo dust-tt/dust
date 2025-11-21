@@ -30,16 +30,22 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
         case "personal_actions":
           return {
             user_scopes: [
-              "channels:history",
-              "channels:read",
+              // Write permissions.
               "chat:write",
+              // Get and read chat and thread in any channels.
+              "channels:history",
               "groups:history",
-              "groups:read",
               "im:history",
               "mpim:history",
-              "search:read.private",
+              "channels:read",
+              "groups:read",
+              "im:read",
+              "mpim:read",
+              // Semantic search scopes.
               "search:read.public",
-              "search:read",
+              "search:read.private",
+              // User info scopes.
+              "users:read.email",
               "users:read",
             ],
             bot_scopes: [],
