@@ -110,7 +110,7 @@ export function UserMessage({
           <NewConversationMessage
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             pictureUrl={
-              message.context.profilePictureUrl || message.user?.image
+              message.context.profilePictureUrl ?? message.user?.image
             }
             name={message.context.fullName ?? undefined}
             renderName={renderName}
