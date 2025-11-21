@@ -454,22 +454,71 @@ function createServer(
                   // Really mysterious url found here: https://stackoverflow.com/questions/73936648/send-message-to-self-chat-in-microsoft-teams-using-graph-api
                   endpoint = "/me/chats/48:notes/messages";
                 } else {
-                  const allUserIds = [currentUserId, ...userIds];
-                  const members = allUserIds.map((id) => ({
-                    "@odata.type": "#microsoft.graph.aadUserConversationMember",
-                    roles: ["owner"],
-                    "user@odata.bind": `https://graph.microsoft.com/v1.0/users/${id}`,
-                  }));
-
-                  // Determine chat type based on number of users
+                  const allUserIds = Array.from(
+                    new Set([currentUserId, ...userIds])
+                  ).sort();
                   const chatType = userIds.length === 1 ? "oneOnOne" : "group";
 
-                  const chatResponse = await client.api("/chats").post({
-                    chatType,
-                    members,
-                  });
+                  // First, try to find an existing chat with these exact users
+                  // Fetch pages of chats using pagination, checking each page for a match
+                  let existingChat = null;
+                  let nextLink: string | undefined = undefined;
 
-                  finalChatId = chatResponse.id;
+                  do {
+                    const chatsResponse: any = nextLink
+                      ? await client.api(nextLink).get()
+                      : await client
+                          .api("/me/chats")
+                          .filter(`chatType eq '${chatType}'`)
+                          .expand("members")
+                          .get();
+
+                    // Check chats in the current page
+                    for (const chat of chatsResponse.value || []) {
+                      const chatMemberIds = chat.members
+                        .map((member: { userId: string }) => member.userId)
+                        .sort();
+
+                      // Check if the chat has the exact same members
+                      if (
+                        chatMemberIds.length === allUserIds.length &&
+                        chatMemberIds.every(
+                          (id: string, index: number) =>
+                            id === allUserIds[index]
+                        )
+                      ) {
+                        existingChat = chat;
+                        break;
+                      }
+                    }
+
+                    // Stop pagination if we found a match
+                    if (existingChat) {
+                      break;
+                    }
+
+                    nextLink = chatsResponse["@odata.nextLink"];
+                  } while (nextLink);
+
+                  if (existingChat) {
+                    // Use the existing chat
+                    finalChatId = existingChat.id;
+                  } else {
+                    // Create a new chat with the specified users
+                    const members = allUserIds.map((id) => ({
+                      "@odata.type":
+                        "#microsoft.graph.aadUserConversationMember",
+                      roles: ["owner"],
+                      "user@odata.bind": `https://graph.microsoft.com/v1.0/users/${id}`,
+                    }));
+
+                    const chatResponse = await client.api("/chats").post({
+                      chatType,
+                      members,
+                    });
+
+                    finalChatId = chatResponse.id;
+                  }
                 }
               } catch (err) {
                 return new Err(
@@ -480,7 +529,7 @@ function createServer(
               }
             }
 
-            endpoint = endpoint ?? `/chats/${finalChatId}/messages`;
+            endpoint = endpoint || `/chats/${finalChatId}/messages`;
           } else {
             return new Err(
               new MCPError("Invalid targetType. Must be 'channel' or 'chat'.")
