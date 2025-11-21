@@ -1,3 +1,4 @@
+import assert from "assert";
 import type {
   Attributes,
   CreationAttributes,
@@ -31,7 +32,7 @@ export class CreditResource extends BaseResource<CreditModel> {
   }
 
   // Create a new credit line for a workspace.
-  // Note: initialAmount is immutable after creation.
+  // Note: initialAmountCents is immutable after creation.
   // The credit is not consumable until start() is called (startDate is set).
   static async makeNew(
     auth: Authenticator,
@@ -112,7 +113,14 @@ export class CreditResource extends BaseResource<CreditModel> {
     const now = new Date();
     return this.baseFetch(auth, {
       where: {
-        remainingAmount: { [Op.gt]: 0 },
+        // Credit must have remaining balance (consumed < initial)
+        [Op.and]: [
+          {
+            consumedAmountCents: {
+              [Op.lt]: "initialAmountCents",
+            },
+          },
+        ],
         // Credit must be started (startDate not null and <= now)
         startDate: { [Op.ne]: null, [Op.lte]: now },
         // Credit must not be expired
@@ -158,24 +166,36 @@ export class CreditResource extends BaseResource<CreditModel> {
     if (amountInCents <= 0) {
       return new Err(new Error("Amount to consume must be strictly positive."));
     }
+    assert(this.model.sequelize, "Unexpected sequelize undefined");
     try {
       const now = new Date();
-      const [, affectedCount] = await this.model.decrement("remainingAmount", {
-        by: amountInCents,
-        where: {
-          id: this.id,
-          workspaceId: this.workspaceId,
-          remainingAmount: { [Op.gte]: amountInCents },
-          // Credit must be started (startDate not null and <= now)
-          startDate: { [Op.ne]: null, [Op.lte]: now },
-          // Credit must not be expired
-          [Op.or]: [
-            { expirationDate: null },
-            { expirationDate: { [Op.gt]: now } },
-          ],
-        },
-        transaction,
-      });
+      const [, affectedCount] = await this.model.increment(
+        "consumedAmountCents",
+        {
+          by: amountInCents,
+          where: {
+            id: this.id,
+            workspaceId: this.workspaceId,
+            // Ensure sufficient remaining balance (consumed + amount <= initial)
+            [Op.and]: [
+              this.model.sequelize.where(
+                this.model.sequelize.literal(
+                  `"consumedAmountCents" + ${amountInCents}`
+                ),
+                { [Op.lte]: "initialAmountCents" }
+              ),
+            ],
+            // Credit must be started (startDate not null and <= now)
+            startDate: { [Op.ne]: null, [Op.lte]: now },
+            // Credit must not be expired
+            [Op.or]: [
+              { expirationDate: null },
+              { expirationDate: { [Op.gt]: now } },
+            ],
+          },
+          transaction,
+        }
+      );
       if (!affectedCount || affectedCount < 1) {
         return new Err(
           new Error(
@@ -209,7 +229,8 @@ export class CreditResource extends BaseResource<CreditModel> {
       id: this.id,
       workspaceId: this.workspaceId,
       type: this.type,
-      remainingAmount: this.remainingAmount,
+      initialAmountCents: this.initialAmountCents,
+      consumedAmountCents: this.consumedAmountCents,
       startDate: this.startDate ? this.startDate.toISOString() : null,
       expirationDate: this.expirationDate
         ? this.expirationDate.toISOString()
