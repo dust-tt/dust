@@ -3,7 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import type { JSONSchema7 } from "json-schema";
 import type { ReactElement } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
@@ -17,8 +17,12 @@ import {
 } from "@app/components/poke/shadcn/ui/form";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import {
+  ConversationsUnreadEmailTemplatePropsSchema,
+  renderEmail as renderConversationsUnreadEmail,
+} from "@app/lib/notifications/email-templates/conversations-unread";
+import {
   DefaultEmailTemplatePropsSchema,
-  renderEmail,
+  renderEmail as renderDefaultEmail,
 } from "@app/lib/notifications/email-templates/default";
 
 // Template registry - add new templates here as they're created
@@ -35,8 +39,14 @@ const EMAIL_TEMPLATES: Record<string, EmailTemplate> = {
   default: {
     id: "default",
     name: "Default Template",
-    render: renderEmail,
+    render: renderDefaultEmail,
     schema: DefaultEmailTemplatePropsSchema,
+  },
+  conversationsUnread: {
+    id: "conversationsUnread",
+    name: "Conversations Unread Template",
+    render: renderConversationsUnreadEmail,
+    schema: ConversationsUnreadEmailTemplatePropsSchema,
   },
 };
 
@@ -49,7 +59,25 @@ function getDefaultValuesFromJsonSchema(
 
   for (const [key, propSchema] of Object.entries(properties)) {
     if (typeof propSchema === "object" && propSchema !== null) {
-      if (propSchema.type === "object" && propSchema.properties) {
+      if (propSchema.type === "array") {
+        // Array type
+        if (
+          propSchema.items &&
+          typeof propSchema.items === "object" &&
+          !Array.isArray(propSchema.items)
+        ) {
+          const itemsSchema = propSchema.items as JSONSchema7;
+          if (itemsSchema.type === "object" && itemsSchema.properties) {
+            // Array of objects - default to empty array
+            defaults[key] = [];
+          } else {
+            // Array of primitives - default to empty array
+            defaults[key] = [];
+          }
+        } else {
+          defaults[key] = [];
+        }
+      } else if (propSchema.type === "object" && propSchema.properties) {
         // Nested object
         defaults[key] = getDefaultValuesFromJsonSchema(propSchema);
       } else {
@@ -65,6 +93,250 @@ function getDefaultValuesFromJsonSchema(
 // Helper to format field label from key
 function formatLabel(key: string): string {
   return key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1");
+}
+
+// Component for array fields - always calls useFieldArray hook
+function ArrayFormField({
+  name,
+  schema,
+  control,
+  required = false,
+  parentPath = "",
+}: {
+  name: string;
+  schema: JSONSchema7;
+  control: any;
+  required?: boolean;
+  parentPath?: string;
+}) {
+  const fieldPath = parentPath ? `${parentPath}.${name}` : name;
+  const itemsSchema =
+    schema.items &&
+    typeof schema.items === "object" &&
+    !Array.isArray(schema.items)
+      ? (schema.items as JSONSchema7)
+      : undefined;
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: fieldPath as any,
+  });
+
+  return (
+    <div key={name} className="rounded-lg border p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-sm font-semibold">
+          {formatLabel(name)}
+          {!required && (
+            <span className="ml-2 text-xs text-gray-500">(optional)</span>
+          )}
+        </h3>
+        <Button
+          variant="secondary"
+          size="xs"
+          label="Add Item"
+          onClick={() => {
+            if (itemsSchema?.type === "object" && itemsSchema.properties) {
+              // Array of objects - add empty object with default values
+              const defaultItem: Record<string, any> = {};
+              for (const [itemKey, itemPropSchema] of Object.entries(
+                itemsSchema.properties
+              )) {
+                if (
+                  typeof itemPropSchema === "object" &&
+                  itemPropSchema !== null &&
+                  !Array.isArray(itemPropSchema)
+                ) {
+                  if (
+                    itemPropSchema.type === "object" &&
+                    itemPropSchema.properties
+                  ) {
+                    defaultItem[itemKey] =
+                      getDefaultValuesFromJsonSchema(itemPropSchema);
+                  } else {
+                    defaultItem[itemKey] = "";
+                  }
+                }
+              }
+              append(defaultItem);
+            } else {
+              // Array of primitives
+              append("");
+            }
+          }}
+        />
+      </div>
+      <div className="flex flex-col gap-3">
+        {fields.map((field, index) => (
+          <div key={field.id} className="rounded border p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-xs font-medium">Item {index + 1}</span>
+              <Button
+                variant="secondary"
+                size="xs"
+                label="Remove"
+                onClick={() => remove(index)}
+              />
+            </div>
+            {itemsSchema?.type === "object" && itemsSchema.properties ? (
+              // Array of objects - render nested fields
+              <div className="flex flex-col gap-2">
+                {Object.entries(itemsSchema.properties).map(
+                  ([itemKey, itemPropSchema]) => {
+                    if (
+                      typeof itemPropSchema !== "object" ||
+                      itemPropSchema === null ||
+                      Array.isArray(itemPropSchema)
+                    ) {
+                      return null;
+                    }
+                    const isItemRequired =
+                      itemsSchema.required?.includes(itemKey) ?? false;
+                    return (
+                      <SchemaFormField
+                        key={itemKey}
+                        name={itemKey}
+                        schema={itemPropSchema}
+                        control={control}
+                        required={isItemRequired}
+                        parentPath={`${fieldPath}.${index}`}
+                      />
+                    );
+                  }
+                )}
+              </div>
+            ) : (
+              // Array of primitives
+              <PokeFormField
+                control={control}
+                name={`${fieldPath}.${index}` as any}
+                render={({ field: formField }) => (
+                  <PokeFormItem>
+                    <PokeFormControl>
+                      <Input
+                        {...formField}
+                        placeholder={`Enter ${formatLabel(name).toLowerCase()} item`}
+                      />
+                    </PokeFormControl>
+                  </PokeFormItem>
+                )}
+              />
+            )}
+          </div>
+        ))}
+        {fields.length === 0 && (
+          <p className="text-xs text-gray-500">
+            No items yet. Click "Add Item" to add one.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Recursive component to render form fields based on JSON Schema
+function SchemaFormField({
+  name,
+  schema,
+  control,
+  required = false,
+  parentPath = "",
+}: {
+  name: string;
+  schema: JSONSchema7;
+  control: any;
+  required?: boolean;
+  parentPath?: string;
+}) {
+  const fieldPath = parentPath ? `${parentPath}.${name}` : name;
+  const isTextArea =
+    name.toLowerCase().includes("content") ||
+    name.toLowerCase().includes("body") ||
+    name.toLowerCase().includes("message");
+
+  // Handle arrays - delegate to ArrayFormField component
+  if (schema.type === "array") {
+    return (
+      <ArrayFormField
+        name={name}
+        schema={schema}
+        control={control}
+        required={required}
+        parentPath={parentPath}
+      />
+    );
+  }
+
+  // Handle nested objects
+  if (schema.type === "object" && schema.properties) {
+    return (
+      <div key={name} className="rounded-lg border p-4">
+        <h3 className="mb-3 text-sm font-semibold">
+          {formatLabel(name)}
+          {!required && (
+            <span className="ml-2 text-xs text-gray-500">(optional)</span>
+          )}
+        </h3>
+        <div className="flex flex-col gap-3">
+          {Object.entries(schema.properties).map(
+            ([nestedKey, nestedSchema]) => {
+              if (
+                typeof nestedSchema !== "object" ||
+                nestedSchema === null ||
+                Array.isArray(nestedSchema)
+              ) {
+                return null;
+              }
+              const isNestedRequired =
+                schema.required?.includes(nestedKey) ?? false;
+              return (
+                <SchemaFormField
+                  key={nestedKey}
+                  name={nestedKey}
+                  schema={nestedSchema}
+                  control={control}
+                  required={isNestedRequired}
+                  parentPath={fieldPath}
+                />
+              );
+            }
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Handle simple fields (string, number, etc.)
+  return (
+    <PokeFormField
+      key={name}
+      control={control}
+      name={fieldPath as any}
+      render={({ field: formField }) => (
+        <PokeFormItem>
+          <PokeFormLabel className="text-sm font-medium">
+            {formatLabel(name)}
+            {!required && (
+              <span className="ml-2 text-xs text-gray-500">(optional)</span>
+            )}
+          </PokeFormLabel>
+          <PokeFormControl>
+            {isTextArea ? (
+              <TextArea
+                {...formField}
+                placeholder={`Enter ${formatLabel(name).toLowerCase()}`}
+                rows={6}
+              />
+            ) : (
+              <Input
+                {...formField}
+                placeholder={`Enter ${formatLabel(name).toLowerCase()}`}
+              />
+            )}
+          </PokeFormControl>
+        </PokeFormItem>
+      )}
+    />
+  );
 }
 
 export const getServerSideProps = withSuperUserAuthRequirements<object>(
@@ -133,12 +405,28 @@ export default function EmailTemplatesPreview() {
         const cleanedValues: Record<string, any> = {};
         const required = jsonSchema?.required ?? [];
         for (const [key, value] of Object.entries(values)) {
-          if (value === "" || value === null || value === undefined) {
+          // Handle arrays - filter out empty items
+          if (Array.isArray(value)) {
+            const cleanedArray = value.filter((item) => {
+              if (typeof item === "object" && item !== null) {
+                // For objects in arrays, check if any field has a value
+                return Object.values(item).some(
+                  (v) => v !== "" && v !== null && v !== undefined
+                );
+              }
+              return item !== "" && item !== null && item !== undefined;
+            });
+            if (cleanedArray.length > 0 || required.includes(key)) {
+              cleanedValues[key] = cleanedArray;
+            }
+          } else if (value === "" || value === null || value === undefined) {
             if (!required.includes(key)) {
               continue; // Skip optional empty fields
             }
+            cleanedValues[key] = value;
+          } else {
+            cleanedValues[key] = value;
           }
-          cleanedValues[key] = value;
         }
 
         // Validate and parse with Zod schema
@@ -194,102 +482,14 @@ export default function EmailTemplatesPreview() {
                 }
 
                 const isRequired = jsonSchema.required?.includes(key) ?? false;
-                const isObject = propSchema.type === "object";
-                const isTextArea =
-                  key.toLowerCase().includes("content") ||
-                  key.toLowerCase().includes("body") ||
-                  key.toLowerCase().includes("message");
 
-                if (isObject && propSchema.properties) {
-                  // Nested object
-                  return (
-                    <div key={key} className="rounded-lg border p-4">
-                      <h3 className="mb-3 text-sm font-semibold">
-                        {formatLabel(key)}
-                        {!isRequired && (
-                          <span className="ml-2 text-xs text-gray-500">
-                            (optional)
-                          </span>
-                        )}
-                      </h3>
-                      <div className="flex flex-col gap-3">
-                        {Object.entries(propSchema.properties).map(
-                          ([nestedKey, nestedPropSchema]) => {
-                            if (
-                              typeof nestedPropSchema !== "object" ||
-                              nestedPropSchema === null ||
-                              Array.isArray(nestedPropSchema)
-                            ) {
-                              return null;
-                            }
-
-                            const isNestedRequired =
-                              propSchema.required?.includes(nestedKey) ?? false;
-
-                            return (
-                              <PokeFormField
-                                key={nestedKey}
-                                control={form.control}
-                                name={`${key}.${nestedKey}` as any}
-                                render={({ field: formField }) => (
-                                  <PokeFormItem>
-                                    <PokeFormLabel className="text-sm font-medium">
-                                      {formatLabel(nestedKey)}
-                                      {!isNestedRequired && (
-                                        <span className="ml-2 text-xs text-gray-500">
-                                          (optional)
-                                        </span>
-                                      )}
-                                    </PokeFormLabel>
-                                    <PokeFormControl>
-                                      <Input
-                                        {...formField}
-                                        placeholder={`Enter ${formatLabel(nestedKey).toLowerCase()}`}
-                                      />
-                                    </PokeFormControl>
-                                  </PokeFormItem>
-                                )}
-                              />
-                            );
-                          }
-                        )}
-                      </div>
-                    </div>
-                  );
-                }
-
-                // Simple field
                 return (
-                  <PokeFormField
+                  <SchemaFormField
                     key={key}
+                    name={key}
+                    schema={propSchema}
                     control={form.control}
-                    name={key as any}
-                    render={({ field: formField }) => (
-                      <PokeFormItem>
-                        <PokeFormLabel className="text-sm font-medium">
-                          {formatLabel(key)}
-                          {!isRequired && (
-                            <span className="ml-2 text-xs text-gray-500">
-                              (optional)
-                            </span>
-                          )}
-                        </PokeFormLabel>
-                        <PokeFormControl>
-                          {isTextArea ? (
-                            <TextArea
-                              {...formField}
-                              placeholder={`Enter ${formatLabel(key).toLowerCase()}`}
-                              rows={6}
-                            />
-                          ) : (
-                            <Input
-                              {...formField}
-                              placeholder={`Enter ${formatLabel(key).toLowerCase()}`}
-                            />
-                          )}
-                        </PokeFormControl>
-                      </PokeFormItem>
-                    )}
+                    required={isRequired}
                   />
                 );
               })}
