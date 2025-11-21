@@ -10,9 +10,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
-import { useSendNotification } from "@app/hooks/useNotification";
-import { purchaseCredits } from "@app/lib/client/credits";
-import { useSubmitFunction } from "@app/lib/client/utils";
+import { usePurchaseCredits } from "@app/lib/swr/credits";
 
 interface BuyCreditDialogProps {
   isOpen: boolean;
@@ -28,7 +26,7 @@ export function BuyCreditDialog({
   isEnterprise,
 }: BuyCreditDialogProps) {
   const [amountDollars, setAmountDollars] = useState<string>("");
-  const sendNotification = useSendNotification();
+  const { purchaseCredits } = usePurchaseCredits({ workspaceId });
 
   // Reset state when dialog opens
   useEffect(() => {
@@ -37,17 +35,11 @@ export function BuyCreditDialog({
     }
   }, [isOpen]);
 
-  const { submit: handlePurchase, isSubmitting } = useSubmitFunction(
-    async () => {
-      const amount = parseFloat(amountDollars);
-      await purchaseCredits({
-        workspaceId,
-        amountDollars: amount,
-        sendNotification,
-      });
-      onClose();
-    }
-  );
+  const handlePurchase = async () => {
+    const amount = parseFloat(amountDollars);
+    await purchaseCredits(amount);
+    onClose();
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -75,7 +67,6 @@ export function BuyCreditDialog({
                 onChange={(e) => setAmountDollars(e.target.value)}
                 min="0"
                 step="1"
-                disabled={isSubmitting}
               />
             </div>
 
@@ -96,13 +87,12 @@ export function BuyCreditDialog({
             label: "Cancel",
             variant: "outline",
             onClick: onClose,
-            disabled: isSubmitting,
           }}
           rightButtonProps={{
-            label: isSubmitting ? "Processing..." : "Purchase Credits",
+            label: "Purchase Credits",
             variant: "primary",
             onClick: handlePurchase,
-            disabled: isSubmitting || !amountDollars,
+            disabled: !amountDollars,
           }}
         />
       </DialogContent>

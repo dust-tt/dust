@@ -45,6 +45,18 @@ async function handler(
       },
     });
   }
+  // Get active subscription.
+  const subscription = auth.subscription();
+  if (!subscription || !subscription.stripeSubscriptionId) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "subscription_not_found",
+        message:
+          "No active Stripe subscription found. Please subscribe to a plan first.",
+      },
+    });
+  }
 
   // Check feature flag.
   const workspace = auth.getNonNullableWorkspace();
@@ -86,19 +98,6 @@ async function handler(
           api_error: {
             type: "invalid_request_error",
             message: "Amount must be greater than 0.",
-          },
-        });
-      }
-
-      // Get active subscription.
-      const subscription = auth.subscription();
-      if (!subscription || !subscription.stripeSubscriptionId) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "subscription_not_found",
-            message:
-              "No active Stripe subscription found. Please subscribe to a plan first.",
           },
         });
       }
