@@ -3,7 +3,7 @@
 set -e
 
 # Check required environment variables.
-if [[ -z "$GCP_US_PROJECT_ID" || -z "$GCP_EU_PROJECT_ID" || -z "$GCP_GLOBAL_PROJECT_ID" ]]; then
+if [[ -z "$GCP_US_PROJECT_ID" || -z "$GCP_EU_PROJECT_ID" || -z "$GCP_GLOBAL_PROJECT_ID" || -z "$GCP_WEBHOOK_ROUTER_CONFIG_BUCKET" ]]; then
   echo "❌ Error: Missing required environment variables"
   echo "   Please set: GCP_US_PROJECT_ID, GCP_EU_PROJECT_ID, and GCP_GLOBAL_PROJECT_ID"
   exit 1
@@ -20,6 +20,7 @@ GCP_GLOBAL_PROJECT_ID=$GCP_GLOBAL_PROJECT_ID
 GCP_US_PROJECT_ID=$GCP_US_PROJECT_ID
 GCP_EU_PROJECT_ID=$GCP_EU_PROJECT_ID
 SERVICE_ACCOUNT=webhook-router-sa@$GCP_GLOBAL_PROJECT_ID.iam.gserviceaccount.com
+GCP_WEBHOOK_ROUTER_CONFIG_BUCKET=$GCP_WEBHOOK_ROUTER_CONFIG_BUCKET
 EOF
 
 echo "🏗️ Building TypeScript..."

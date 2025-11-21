@@ -21,8 +21,8 @@ export const CONFIG = {
   NOTION_SIGNING_SECRET: process.env.NOTION_SIGNING_SECRET,
 
   // Endpoints.
-  US_CONNECTOR_URL: "https://connectors.dust.tt",
-  EU_CONNECTOR_URL: "https://eu.connectors.dust.tt",
+  US_CONNECTOR_URL: process.env.US_CONNECTOR_URL ?? "https://connectors.dust.tt",
+  EU_CONNECTOR_URL: process.env.EU_CONNECTOR_URL ?? "https://eu.connectors.dust.tt",
 
   // Secret names.
   SECRET_NAME: "connectors-DUST_CONNECTORS_WEBHOOKS_SECRET",
@@ -35,6 +35,8 @@ export const CONFIG = {
 
   // Notion related secrets.
   NOTION_SIGNING_SECRET_NAME: "NOTION_SIGNING_SECRET",
+
+  DUST_WEBHOOK_ROUTER_CONFIG_FILE_PATH: "webhook-router-config.json",
 } as const;
 
 // Runtime getters for Firebase params.
