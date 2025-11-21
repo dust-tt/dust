@@ -187,19 +187,8 @@ runs:
           COMMITS_RAW=$(git log --oneline --pretty=format:"%h (%an)" -10 $TARGET_TAG 2>/dev/null)
         fi
 
-        # Format commits with GitHub links
-        COMMITS=""
-        while IFS= read -r line; do
-          if [ -n "$line" ]; then
-            COMMIT_HASH=$(echo "$line" | cut -d' ' -f1)
-            AUTHOR=$(echo "$line" | sed 's/^[^ ]* //')
-            if [ -z "$COMMITS" ]; then
-              COMMITS="• <${{ github.server_url }}/${{ github.repository }}/commit/$COMMIT_HASH|$COMMIT_HASH> $AUTHOR"
-            else
-              COMMITS="$COMMITS"$'\n'"• <${{ github.server_url }}/${{ github.repository }}/commit/$COMMIT_HASH|$COMMIT_HASH> $AUTHOR"
-            fi
-          fi
-        done <<< "$COMMITS_RAW"
+        # Store raw commits data
+        COMMITS="$COMMITS_RAW"
 
         # Count commits safely
         if [ -n "$COMMITS" ]; then
