@@ -97,18 +97,18 @@ export function ToolSetupCard({ toolName, toolId, owner }: ToolSetupCardProps) {
 
   const getButtonLabel = () => {
     if (!isAdmin) {
-      return "Admin only can activate tools";
+      return "Only admins can configure tools";
     }
     if (isActivating) {
-      return "Activating...";
+      return "Configuring...";
     }
     if (isToolActivatedInGlobalSpace) {
-      return "Activated";
+      return "Configured";
     }
     if (isToolActivatedInSystemSpace) {
       return "Add to Company Data";
     }
-    return "Activate";
+    return "Configure";
   };
 
   const getButtonClickHandler = () => {
