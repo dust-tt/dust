@@ -1,3 +1,4 @@
+import assert from "assert";
 import type {
   Attributes,
   CreationAttributes,
