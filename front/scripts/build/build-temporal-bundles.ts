@@ -5,6 +5,7 @@ import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
 import type { WorkerName } from "@app/temporal/worker_registry";
 import { ALL_WORKERS } from "@app/temporal/worker_registry";
+import { assertNever } from "@app/types";
 
 interface WorkerInfo {
   name: string;
@@ -27,6 +28,7 @@ function getWorkerWorkflowsPath(workerName: WorkerName): string {
   return path.join(workerDir, "workflows");
 }
 
+// TODO(2025-11-21: flav): Temporary, refactors once webhooks and schedules are moved to temporal/.
 function getWorkerDirectory(workerName: WorkerName): string | null {
   const baseDir = path.join(__dirname, "../../");
 
@@ -70,7 +72,7 @@ function getWorkerDirectory(workerName: WorkerName): string | null {
     case "workos_events_queue":
       return path.join(baseDir, "temporal/workos_events_queue");
     default:
-      return null;
+      return assertNever(workerName);
   }
 }
 
