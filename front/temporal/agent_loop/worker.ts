@@ -6,6 +6,7 @@ import { initializeLangfuseInstrumentation } from "@app/lib/api/instrumentation/
 import { getTemporalAgentWorkerConnection } from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
+import { getWorkflowBundle } from "@app/temporal/bundle_helper";
 import { launchAgentMessageAnalyticsActivity } from "@app/temporal/agent_loop/activities/analytics";
 import {
   finalizeCancellationActivity,
@@ -29,8 +30,10 @@ const SHUTDOWN_GRACE_TIME = "2 minutes";
 export async function runAgentLoopWorker() {
   const { connection, namespace } = await getTemporalAgentWorkerConnection();
 
+  const workflowBundle = getWorkflowBundle("agent_loop");
+  
   const worker = await Worker.create({
-    workflowsPath: require.resolve("./workflows"),
+    workflowsPath: workflowBundle ?? require.resolve("./workflows"),
     activities: {
       conversationUnreadNotificationActivity,
       ensureConversationTitleActivity,
