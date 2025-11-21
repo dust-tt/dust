@@ -70,7 +70,7 @@ export async function ensureConversationTitle(
 
   const titleRes = await generateConversationTitle(auth, {
     ...conversation,
-    content: [...conversation.content, [userMessage]],
+    content: [...conversationContent, [userMessage]],
   });
 
   if (titleRes.isErr()) {
