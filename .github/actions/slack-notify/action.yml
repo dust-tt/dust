@@ -105,32 +105,55 @@ runs:
       id: build_payload
       shell: bash
       run: |
-        # 1. Build the message text (use literal newlines \n for JSON)
-        # We use printf to safely handle the formatted string
-        MSG="🔨 Build completed in ${{ inputs.region }} region\n• Image: ${{ inputs.image_tag }}"
+        # 1. Prepare Text Variables
+        # Use actual newlines in variables for readability in blocks
+        HEADER="🔨 *Build completed in ${{ inputs.region }} region*"
+        DETAILS="• Image: \`${{ inputs.image_tag }}\`"
 
         if [ -n "${{ inputs.current_version }}" ]; then
-          MSG="$MSG\n• Changes: ${{ inputs.current_version }} → ${{ inputs.image_tag }} (${{ inputs.commit_count }} commits)"
+          DETAILS="${DETAILS}"
+        • Changes: ${{ inputs.current_version }} → ${{ inputs.image_tag }} (${{ inputs.commit_count }} commits)"
         fi
 
+        CHANGELOG=""
         if [ -n "${{ inputs.commit_diff }}" ]; then
           while IFS= read -r line; do
             if [ -n "$line" ]; then
               COMMIT_HASH=$(echo "$line" | cut -d' ' -f1)
               AUTHOR=$(echo "$line" | sed 's/^[^ ]* //')
-              MSG="$MSG\n• <${{ github.server_url }}/${{ github.repository }}/commit/$COMMIT_HASH|$COMMIT_HASH> $AUTHOR"
+              # Slack Link Syntax: <url|text>
+              CHANGELOG="${CHANGELOG}• <${{ github.server_url }}/${{ github.repository }}/commit/${COMMIT_HASH}|${COMMIT_HASH}> ${AUTHOR}"
             fi
           done <<< "${{ inputs.commit_diff }}"
         fi
 
-        # 2. Construct the JSON payload using jq
-        # This handles all quoting and newline escaping automatically
-        # -c is CRITICAL to output a single line string
+        # 2. Construct JSON with jq
+        # We build a "blocks" array.
+        # Section 1: Header + Details
+        # Section 2: Changelog (if exists)
+
+        # We construct the JSON structure using jq to safely handle escaping
+        # We pass the variables in as arguments
+
         JSON_PAYLOAD=$(jq -c -n \
           --arg channel "${{ inputs.channel }}" \
           --arg ts "${{ inputs.thread_ts }}" \
-          --arg text "$MSG" \
-          '{channel: $channel, thread_ts: $ts, text: $text}')
+          --arg header "$HEADER" \
+          --arg details "$DETAILS" \
+          --arg changelog "$CHANGELOG" \
+          '{
+            channel: $channel,
+            thread_ts: $ts,
+            blocks: [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": ($header + "\n" + $details)
+                }
+              }
+            ]
+          } | if $changelog != "" then .blocks += [{"type": "section", "text": {"type": "mrkdwn", "text": $changelog}}] else . end')
 
         echo "json_payload=$JSON_PAYLOAD" >> $GITHUB_OUTPUT
 
@@ -139,9 +162,8 @@ runs:
       uses: slackapi/slack-github-action@v2.0.0
       with:
         method: chat.postMessage
-        # Pass the JSON string directly
-        payload: ${{ steps.build_payload.outputs.json_payload }}
         token: ${{ inputs.slack_token }}
+        payload: ${{ steps.build_payload.outputs.json_payload }}
 
     - name: Notify Deploy Failure
       if: inputs.step == 'failure'
