@@ -7,6 +7,7 @@ import {
 } from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
+import { getWorkflowConfig } from "@app/temporal/bundle_helper";
 import * as activities from "@app/temporal/mentions_count_queue/activities";
 
 import { QUEUE_NAME } from "./config";
@@ -14,7 +15,10 @@ import { QUEUE_NAME } from "./config";
 export async function runMentionsCountWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
   const worker = await Worker.create({
-    workflowsPath: require.resolve("./workflows"),
+    ...getWorkflowConfig({
+      workerName: "mentions_count",
+      workflowsPath: require.resolve("./workflows"),
+    }),
     activities,
     taskQueue: QUEUE_NAME,
     maxCachedWorkflows: TEMPORAL_MAXED_CACHED_WORKFLOWS,

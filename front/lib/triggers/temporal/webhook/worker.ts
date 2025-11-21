@@ -7,6 +7,7 @@ import {
 } from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
+import { getWorkflowConfig } from "@app/temporal/bundle_helper";
 
 import * as activities from "./activities";
 import { QUEUE_NAME } from "./config";
@@ -15,7 +16,10 @@ export async function runAgentTriggerWebhookWorker() {
   const { connection, namespace } = await getTemporalAgentWorkerConnection();
 
   const worker = await Worker.create({
-    workflowsPath: require.resolve("./workflows"),
+    ...getWorkflowConfig({
+      workerName: "agent_trigger_webhook",
+      workflowsPath: require.resolve("./workflows"),
+    }),
     activities,
     taskQueue: QUEUE_NAME,
     maxCachedWorkflows: TEMPORAL_MAXED_CACHED_WORKFLOWS,

@@ -33,8 +33,6 @@ interface ProviderCheck {
   makeIdsFn: (connector: ConnectorBlob) => string[];
 }
 
-const connectorsDb = getConnectorsPrimaryDbConnection();
-
 const providersToCheck: Partial<Record<ConnectorProvider, ProviderCheck>> = {
   confluence: {
     type: "workflow",
@@ -78,15 +76,16 @@ const providersToCheck: Partial<Record<ConnectorProvider, ProviderCheck>> = {
 };
 
 async function listAllConnectorsForProvider(provider: ConnectorProvider) {
-  const connectors: ConnectorBlob[] = await connectorsDb.query(
-    `SELECT id, "dataSourceId", "workspaceId", "pausedAt" FROM connectors WHERE "type" = :provider and  "errorType" IS NULL`,
-    {
-      type: QueryTypes.SELECT,
-      replacements: {
-        provider,
-      },
-    }
-  );
+  const connectors: ConnectorBlob[] =
+    await getConnectorsPrimaryDbConnection().query(
+      `SELECT id, "dataSourceId", "workspaceId", "pausedAt" FROM connectors WHERE "type" = :provider and  "errorType" IS NULL`,
+      {
+        type: QueryTypes.SELECT,
+        replacements: {
+          provider,
+        },
+      }
+    );
 
   return connectors;
 }

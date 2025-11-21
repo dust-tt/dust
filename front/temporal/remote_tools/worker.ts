@@ -8,13 +8,17 @@ import {
 } from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
+import { getWorkflowConfig } from "@app/temporal/bundle_helper";
 import * as activities from "@app/temporal/remote_tools/activities";
 import { QUEUE_NAME } from "@app/temporal/remote_tools/config";
 
 export async function runRemoteToolsSyncWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
   const worker = await Worker.create({
-    workflowsPath: require.resolve("./workflows"),
+    ...getWorkflowConfig({
+      workerName: "remote_tools_sync",
+      workflowsPath: require.resolve("./workflows"),
+    }),
     activities,
     taskQueue: QUEUE_NAME,
     connection,

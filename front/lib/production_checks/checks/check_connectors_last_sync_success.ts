@@ -19,15 +19,14 @@ interface ConnectorBlob {
   lastSyncStartTime: Date | null;
 }
 
-const connectorsDb = getConnectorsPrimaryDbConnection();
-
 async function listAllConnectors() {
-  const connectors: ConnectorBlob[] = await connectorsDb.query(
-    `SELECT id, "dataSourceId", "workspaceId", "pausedAt", "lastSyncSuccessfulTime", "lastSyncStartTime", "createdAt", "type" FROM connectors WHERE "errorType" IS NULL AND "pausedAt" IS NULL AND "type" <> 'webcrawler'`,
-    {
-      type: QueryTypes.SELECT,
-    }
-  );
+  const connectors: ConnectorBlob[] =
+    await getConnectorsPrimaryDbConnection().query(
+      `SELECT id, "dataSourceId", "workspaceId", "pausedAt", "lastSyncSuccessfulTime", "lastSyncStartTime", "createdAt", "type" FROM connectors WHERE "errorType" IS NULL AND "pausedAt" IS NULL AND "type" <> 'webcrawler'`,
+      {
+        type: QueryTypes.SELECT,
+      }
+    );
   return connectors;
 }
 
