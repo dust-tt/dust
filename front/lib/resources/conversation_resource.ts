@@ -214,16 +214,20 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       auth,
       conversation.requestedSpaceIds
     );
-    const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
-    if (
-      !auth.canRead(
-        createResourcePermissionsFromSpacesWithMap(
-          spaceIdToGroupsMap,
-          conversation.requestedSpaceIds.map((id) => Number(id))
+    try {
+      const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
+      if (
+        !auth.canRead(
+          createResourcePermissionsFromSpacesWithMap(
+            spaceIdToGroupsMap,
+            conversation.requestedSpaceIds.map((id) => Number(id))
+          )
         )
-      )
-    ) {
-      return "conversation_access_restricted";
+      ) {
+        return "conversation_access_restricted";
+      }
+    } catch (error) {
+      return "conversation_not_found";
     }
     return "allowed";
   }
