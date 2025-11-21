@@ -105,55 +105,55 @@ runs:
       id: build_payload
       shell: bash
       run: |
-        # 1. Prepare Text Variables
-        # Use actual newlines in variables for readability in blocks
+        # 1. Build Text Content
         HEADER="🔨 *Build completed in ${{ inputs.region }} region*"
         DETAILS="• Image: \`${{ inputs.image_tag }}\`"
 
         if [ -n "${{ inputs.current_version }}" ]; then
-          DETAILS="${DETAILS}"
+          DETAILS="${DETAILS}
         • Changes: ${{ inputs.current_version }} → ${{ inputs.image_tag }} (${{ inputs.commit_count }} commits)"
         fi
 
+        # Combine Header and Details
+        MAIN_TEXT="$HEADER
+        $DETAILS"
+
+        # 2. Build Changelog Content
         CHANGELOG=""
         if [ -n "${{ inputs.commit_diff }}" ]; then
           while IFS= read -r line; do
             if [ -n "$line" ]; then
               COMMIT_HASH=$(echo "$line" | cut -d' ' -f1)
               AUTHOR=$(echo "$line" | sed 's/^[^ ]* //')
-              # Slack Link Syntax: <url|text>
-              CHANGELOG="${CHANGELOG}• <${{ github.server_url }}/${{ github.repository }}/commit/${COMMIT_HASH}|${COMMIT_HASH}> ${AUTHOR}"
+              CHANGELOG="${CHANGELOG}• <${{ github.server_url }}/${{ github.repository }}/commit/${COMMIT_HASH}|${COMMIT_HASH}> ${AUTHOR}
+        "
             fi
           done <<< "${{ inputs.commit_diff }}"
         fi
 
-        # 2. Construct JSON with jq
-        # We build a "blocks" array.
-        # Section 1: Header + Details
-        # Section 2: Changelog (if exists)
+        # 3. Construct JSON using simplified jq logic
+        # We create the two block objects first
 
-        # We construct the JSON structure using jq to safely handle escaping
-        # We pass the variables in as arguments
+        # Block 1: Main Info
+        BLOCK1=$(jq -c -n --arg text "$MAIN_TEXT" '{type: "section", text: {type: "mrkdwn", text: $text}}')
 
+        # Block 2: Changelog (only if exists)
+        if [ -n "$CHANGELOG" ]; then
+           BLOCK2=$(jq -c -n --arg text "$CHANGELOG" '{type: "section", text: {type: "mrkdwn", text: $text}}')
+           # Combine into array
+           BLOCKS="[$BLOCK1, $BLOCK2]"
+        else
+           BLOCKS="[$BLOCK1]"
+        fi
+
+        # 4. Create Final Payload
+        # We pass the pre-built JSON array 'blocks' directly into the final object
+        # utilizing --argjson to interpret it as JSON, not a string.
         JSON_PAYLOAD=$(jq -c -n \
           --arg channel "${{ inputs.channel }}" \
           --arg ts "${{ inputs.thread_ts }}" \
-          --arg header "$HEADER" \
-          --arg details "$DETAILS" \
-          --arg changelog "$CHANGELOG" \
-          '{
-            channel: $channel,
-            thread_ts: $ts,
-            blocks: [
-              {
-                "type": "section",
-                "text": {
-                  "type": "mrkdwn",
-                  "text": ($header + "\n" + $details)
-                }
-              }
-            ]
-          } | if $changelog != "" then .blocks += [{"type": "section", "text": {"type": "mrkdwn", "text": $changelog}}] else . end')
+          --argjson blocks "$BLOCKS" \
+          '{channel: $channel, thread_ts: $ts, blocks: $blocks}')
 
         echo "json_payload=$JSON_PAYLOAD" >> $GITHUB_OUTPUT
 
