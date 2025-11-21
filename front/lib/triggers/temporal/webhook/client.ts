@@ -1,19 +1,20 @@
+import {
+  ScheduleNotFoundError,
+  ScheduleOverlapPolicy,
+} from "@temporalio/client";
+
 import type { Authenticator } from "@app/lib/auth";
 import type { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
-import type { Result } from "@app/types";
-import { normalizeError, Err, Ok } from "@app/types";
 import { QUEUE_NAME } from "@app/lib/triggers/temporal/webhook/config";
+import logger from "@app/logger/logger";
+import type { Result } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 import {
   agentTriggerWebhookWorkflow,
   webhookCleanupWorkflow,
 } from "./workflows";
-import {
-  ScheduleNotFoundError,
-  ScheduleOverlapPolicy,
-} from "@temporalio/client";
-import logger from "@app/logger/logger";
 
 export const WEBHOOK_CLEANUP_SCHEDULE_ID = "webhook-cleanup-schedule";
 
