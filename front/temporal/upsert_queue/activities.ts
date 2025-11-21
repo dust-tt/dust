@@ -4,7 +4,6 @@ import * as reporter from "io-ts-reporters";
 
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
-import { runDocumentUpsertHooks } from "@app/lib/document_upsert_hooks/hooks";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { WorkflowError } from "@app/lib/temporal_monitoring";
 import { EnqueueUpsertDocument } from "@app/lib/upsert_queue";
@@ -159,15 +158,4 @@ export async function upsertDocumentActivity(
     Date.now() - enqueueTimestamp,
     []
   );
-
-  runDocumentUpsertHooks({
-    auth,
-    dataSourceId: dataSource.sId,
-    documentId: upsertQueueItem.documentId,
-    documentHash: upsertRes.value.document.hash,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    dataSourceConnectorProvider: dataSource.connectorProvider || null,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    upsertContext: upsertQueueItem.upsertContext || undefined,
-  });
 }
