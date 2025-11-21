@@ -506,7 +506,7 @@ function StuckActivitiesDialog({
                         href={
                           "https://app.datadoghq.eu/logs?query=%40dd.env%3Aprod%20%40dd.service%3Aconnectors-worker" +
                           `%20%40activityType%3A${encodeURIComponent(activity.activityType)}` +
-                          `%20%40workflowId%3A${encodeURIComponent(workflow.workflowId)}` +
+                          `%20%40workflowId%3A${encodeURIComponent(workflow.workflowId.replaceAll(":", "\\:"))}` +
                           "&agg_m=count&agg_m_source=base&agg_t=count&cols=%40workflowId&" +
                           "fromUser=true&messageDisplay=inline&refresh_mode=sliding&storage=hot&" +
                           "stream_sort=time%2Cdesc&viz=stream"
