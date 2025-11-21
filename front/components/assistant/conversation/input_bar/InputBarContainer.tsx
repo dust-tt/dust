@@ -131,6 +131,7 @@ const InputBarContainer = ({
     UrlCandidate | NodeCandidate | null
   >(null);
   const [pastedCount, setPastedCount] = useState(0);
+  const [isEmpty, setIsEmpty] = useState(true);
 
   const [selectedNode, setSelectedNode] =
     useState<DataSourceViewContentNode | null>(null);
@@ -389,10 +390,27 @@ const InputBarContainer = ({
     },
   });
 
-  // Update the editor ref when the editor is created.
+  // Update the editor ref when the editor is created and listen for updates to the editor.
   useEffect(() => {
+    const handleUpdate = () => {
+      setIsEmpty(editorService.isEmpty());
+    };
+
+    if (editorRef.current) {
+      editorRef.current.off("update", handleUpdate);
+    }
+
+    if (editor) {
+      editor.on("update", handleUpdate);
+    }
     editorRef.current = editor;
-  }, [editor]);
+
+    return () => {
+      if (editor) {
+        editor.off("update", handleUpdate);
+      }
+    };
+  }, [editor, editorService]);
 
   // Disable the editor when disableTextInput is true.
   useEffect(() => {
@@ -650,7 +668,7 @@ const InputBarContainer = ({
                 icon={ArrowUpIcon}
                 variant="highlight"
                 disabled={
-                  editorService.isEmpty() ||
+                  isEmpty ||
                   disableSendButton ||
                   voiceTranscriberService.status !== "idle"
                 }
