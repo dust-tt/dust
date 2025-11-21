@@ -83,6 +83,7 @@ export function ChartsTooltip({
 
 interface FeedbackDistributionData {
   timestamp: number;
+  date: string;
   positive: number;
   negative: number;
 }
@@ -90,11 +91,17 @@ interface FeedbackDistributionData {
 function isFeedbackDistributionData(
   data: unknown
 ): data is FeedbackDistributionData {
+  if (typeof data !== "object" || data === null) {
+    return false;
+  }
+
+  const d = data as Record<string, unknown>;
+
   return (
-    typeof data === "object" &&
-    data !== null &&
-    "positive" in data &&
-    "negative" in data
+    typeof d.timestamp === "number" &&
+    typeof d.date === "string" &&
+    typeof d.positive === "number" &&
+    typeof d.negative === "number"
   );
 }
 
