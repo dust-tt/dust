@@ -308,7 +308,7 @@ function tokenUsage(
 ): TokenUsageEvent {
   const cachedTokens = usage.cache_read_input_tokens ?? 0;
   const cacheCreationTokens = usage.cache_creation_input_tokens ?? 0;
-  // In order to keep logic as it is implemented in core
+  // Include all input tokens to keep consistency with core implementation
   const inputTokens =
     (usage.input_tokens ?? 0) + cachedTokens + cacheCreationTokens;
 
