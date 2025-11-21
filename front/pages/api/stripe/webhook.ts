@@ -88,7 +88,7 @@ async function handler(
           api_error: {
             type: "internal_server_error",
             message:
-              "Webhook signature verification failed. The event signature could not be validated..",
+              "Invalid Stripe Webhook event, the signature may not be valid.",
           },
         });
       }
