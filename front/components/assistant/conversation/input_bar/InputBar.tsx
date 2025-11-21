@@ -326,6 +326,7 @@ export const InputBar = React.memo(function InputBar({
             allAgents={activeAgents}
             agentConfigurations={agentConfigurations}
             owner={owner}
+            conversationId={conversationId}
             selectedAgent={selectedAgent}
             onEnterKeyDown={handleSubmit}
             stickyMentions={stickyMentions}

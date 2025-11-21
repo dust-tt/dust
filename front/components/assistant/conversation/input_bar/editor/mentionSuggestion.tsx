@@ -1,5 +1,4 @@
 import { PluginKey } from "@tiptap/pm/state";
-import type { Editor } from "@tiptap/react";
 import { ReactRenderer } from "@tiptap/react";
 import type {
   SuggestionKeyDownProps,
@@ -12,30 +11,22 @@ import type {
   MentionDropdownOnKeyDown,
   MentionDropdownProps,
 } from "@app/components/assistant/conversation/input_bar/editor/types";
-import { filterMentionSuggestions } from "@app/lib/mentions/editor/suggestion";
-import type { RichMention } from "@app/types";
+import type { RichMention, WorkspaceType } from "@app/types";
+
 export const mentionPluginKey = new PluginKey("mention-suggestion");
 
-export function createMentionSuggestion() {
+export function createMentionSuggestion({
+  owner,
+  conversationId,
+}: {
+  owner: WorkspaceType;
+  conversationId: string | null;
+}) {
   return {
     pluginKey: mentionPluginKey,
     // Ensure queries can contain spaces (e.g., @Sales Team → decomposes to
     // text and keeps the dropdown active over the full label).
     allowSpaces: true,
-
-    items: ({
-      editor,
-      query,
-    }: {
-      editor: Editor;
-      query: string;
-    }): RichMention[] => {
-      return filterMentionSuggestions(
-        query,
-        editor.storage.MentionStorage.suggestions.suggestions,
-        editor.storage.MentionStorage.suggestions.fallbackSuggestions
-      );
-    },
 
     render: () => {
       let component: ReactRenderer<
@@ -56,6 +47,8 @@ export function createMentionSuggestion() {
             editor: props.editor,
             props: {
               ...props,
+              owner,
+              conversationId,
               onClose: closeDropdown,
             },
           });
@@ -67,6 +60,8 @@ export function createMentionSuggestion() {
           component?.updateProps({
             ...props,
             onClose: closeDropdown,
+            owner,
+            conversationId,
           });
         },
 

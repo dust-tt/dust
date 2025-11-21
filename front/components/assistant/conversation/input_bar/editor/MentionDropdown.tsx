@@ -18,21 +18,29 @@ import type {
   MentionDropdownOnKeyDown,
   MentionDropdownProps,
 } from "@app/components/assistant/conversation/input_bar/editor/types";
+import { useMentionSuggestions } from "@app/lib/swr/mentions";
 import { classNames } from "@app/lib/utils";
 
 export const MentionDropdown = forwardRef<
   MentionDropdownOnKeyDown,
   MentionDropdownProps
->(({ items, clientRect, command, onClose }, ref) => {
+>(({ query, clientRect, command, onClose, owner, conversationId }, ref) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const isLoading = false;
+
+  // Fetch suggestions from server using the query.
+  const { suggestions, isLoading } = useMentionSuggestions({
+    workspaceId: owner.sId,
+    conversationId,
+    query,
+  });
+
   const triggerRect = clientRect ? clientRect() : null;
   const triggerRef = useRef<HTMLDivElement>(null);
   const [virtualTriggerStyle, setVirtualTriggerStyle] =
     useState<React.CSSProperties>({});
 
   const selectItem = (index: number) => {
-    const item = items[index];
+    const item = suggestions[index];
 
     if (item) {
       command(item);
@@ -58,12 +66,14 @@ export const MentionDropdown = forwardRef<
   useImperativeHandle(ref, () => ({
     onKeyDown: ({ event }) => {
       if (event.key === "ArrowUp") {
-        setSelectedIndex((selectedIndex + items.length - 1) % items.length);
+        setSelectedIndex(
+          (selectedIndex + suggestions.length - 1) % suggestions.length
+        );
         return true;
       }
 
       if (event.key === "ArrowDown") {
-        setSelectedIndex((selectedIndex + 1) % items.length);
+        setSelectedIndex((selectedIndex + 1) % suggestions.length);
         return true;
       }
 
@@ -80,10 +90,23 @@ export const MentionDropdown = forwardRef<
     updateTriggerPosition();
   }, [triggerRect, updateTriggerPosition]);
 
+  // Reset the selected index when items change (e.g., when query changes).
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [suggestions]);
+
   // Only render the dropdown if we have a valid trigger.
   if (!triggerRect) {
     return null;
   }
+
+  // Generate a key based on content state to force remount when content size changes significantly.
+  // This ensures Radix UI recalculates collision detection and positioning.
+  const contentKey = isLoading
+    ? "loading"
+    : suggestions.length === 0
+      ? "empty"
+      : `results-${suggestions.length}`;
 
   return (
     <DropdownMenu open={true}>
@@ -91,6 +114,7 @@ export const MentionDropdown = forwardRef<
         <div ref={triggerRef} style={virtualTriggerStyle} />
       </DropdownMenuTrigger>
       <DropdownMenuContent
+        key={contentKey}
         className="w-72"
         align="start"
         side="bottom"
@@ -108,9 +132,9 @@ export const MentionDropdown = forwardRef<
           <div className="flex h-12 w-full items-center justify-center">
             <Spinner />
           </div>
-        ) : items.length > 0 ? (
+        ) : suggestions.length > 0 ? (
           <div className="flex flex-col gap-y-1 p-1">
-            {items.map((suggestion, index) => (
+            {suggestions.map((suggestion, index) => (
               <div key={suggestion.id}>
                 <button
                   className={classNames(

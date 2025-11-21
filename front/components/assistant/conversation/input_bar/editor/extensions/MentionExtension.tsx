@@ -7,7 +7,7 @@ import { ReactNodeViewRenderer } from "@tiptap/react";
 import { nodePasteRule } from "@tiptap/react";
 import escapeRegExp from "lodash/escapeRegExp";
 
-import type { WorkspaceType } from "@app/types";
+import type { RichMention, WorkspaceType } from "@app/types";
 
 import { MentionComponent } from "../MentionComponent";
 
@@ -78,36 +78,35 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
   addPasteRules() {
     const pasteRule = nodePasteRule({
       find: (text) => {
-        // Note: the `suggestions` object should be available from the MentionStorage extension but it might takes some time to load.
-        const suggestions = this.editor.storage.MentionStorage.suggestions;
+        // Note: the `suggestions` was available from the MentionStorage extension. But it's not filled anymore
+        // Fixed in next PR to reduce review size
+        const suggestions = [] as RichMention[];
 
-        const results: PasteRuleMatch[] = suggestions.suggestions.flatMap(
-          (suggestion) => {
-            return [
-              ...text.matchAll(
-                // Note: matching the @ that are found either at the start of a line or after a whitespace character.
-                // and that also are followed by a newline, a whitespace character or the end of the string.
-                new RegExp(
-                  `((^@|\\s@)${escapeRegExp(suggestion.label)})(\\s|$)`,
-                  "g"
-                )
-              ),
-            ].map((match) => {
-              return {
-                index: match.index,
-                text: match[1],
-                replaceWith: suggestion.label,
-                data: {
-                  type: suggestion.type,
-                  id: suggestion.id,
-                  label: suggestion.label,
-                  description: suggestion.description,
-                  pictureUrl: suggestion.pictureUrl,
-                },
-              };
-            });
-          }
-        );
+        const results: PasteRuleMatch[] = suggestions.flatMap((suggestion) => {
+          return [
+            ...text.matchAll(
+              // Note: matching the @ that are found either at the start of a line or after a whitespace character.
+              // and that also are followed by a newline, a whitespace character or the end of the string.
+              new RegExp(
+                `((^@|\\s@)${escapeRegExp(suggestion.label)})(\\s|$)`,
+                "g"
+              )
+            ),
+          ].map((match) => {
+            return {
+              index: match.index,
+              text: match[1],
+              replaceWith: suggestion.label,
+              data: {
+                type: suggestion.type,
+                id: suggestion.id,
+                label: suggestion.label,
+                description: suggestion.description,
+                pictureUrl: suggestion.pictureUrl,
+              },
+            };
+          });
+        });
         return results;
       },
       type: this.type,
