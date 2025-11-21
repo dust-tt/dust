@@ -71,7 +71,7 @@ async function getWorkflowIdsFromSchedule(
 async function getWorkflowIdsForConnector(
   connectorId: ModelId,
   connectorType: ConnectorProvider
-): Promise<string[]> {
+): Promise<string[] | null> {
   switch (connectorType) {
     case "notion":
       return [
@@ -113,7 +113,7 @@ async function getWorkflowIdsForConnector(
       return [...helpCenterWorkflows, ...conversationWorkflows];
     }
     default:
-      return [];
+      return null;
   }
 }
 
@@ -289,7 +289,7 @@ async function handler(
         dataSource.connectorProvider
       );
 
-      if (workflowIds.length === 0) {
+      if (workflowIds === null) {
         return res.status(200).json({
           isStuck: false,
           workflows: [],
