@@ -44,9 +44,6 @@ RUN npm ci
 
 COPY /front .
 
-# Debug: check if build script exists
-RUN ls -la scripts/build/
-
 # Build temporal workers
 RUN npm run build:workers
 
