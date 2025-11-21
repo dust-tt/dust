@@ -11,6 +11,7 @@ import type { UserMessageOrigin } from "@app/types";
 import {
   assertNever,
   isContentFragmentType,
+  isDevelopment,
   isUserMessageType,
 } from "@app/types";
 
@@ -225,11 +226,27 @@ export const conversationUnreadWorkflow = workflow(
       }
     );
 
-    await step.delay("delay", () => ({
-      type: "regular",
-      amount: 3,
-      unit: "hours",
-    }));
+    await step.digest(
+      "digest",
+      async () => {
+        return isDevelopment()
+          ? {
+              amount: 3,
+              unit: "minutes",
+              digestKey: payload.conversationId,
+            }
+          : {
+              amount: 1,
+              unit: "hours",
+              digestKey: payload.conversationId,
+            };
+      },
+      {
+        // No email from trigger until we give more control over the notification to the users.
+        skip: async () =>
+          (await shouldSkipConversation(payload)) || details.isFromTrigger,
+      }
+    );
 
     await step.email(
       "send-email",
@@ -237,11 +254,7 @@ export const conversationUnreadWorkflow = workflow(
         const body = await renderEmail({
           name: details.recipentFullname,
           avatarUrl: details.avatarUrl,
-          content:
-            "You have a new unread message from " +
-            details.author +
-            ":\n\n" +
-            details.previewText,
+          content: `You have unread message(s) in the conversation ${details.subject}.`,
           action: {
             label: "Open in Dust",
             url:
@@ -250,7 +263,7 @@ export const conversationUnreadWorkflow = workflow(
           },
         });
         return {
-          subject: `[Dust] ${details.subject} (new message)`,
+          subject: "[Dust] New unread message(s)",
           body,
         };
       },
