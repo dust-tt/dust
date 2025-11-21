@@ -71,23 +71,27 @@ export default function TriggerPage({
   conversations,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
-    <div className="flex flex-col gap-y-6">
-      <ViewTriggerTable trigger={trigger} agent={agent} owner={owner} />
-      <div className="border-t border-gray-200 pt-6">
-        <h2 className="mb-4 text-lg font-semibold">Plugins</h2>
-        <PluginList
-          pluginResourceTarget={{
-            resourceType: "triggers",
-            resourceId: trigger.sId,
-            workspace: owner,
-          }}
-        />
+    <>
+      <h3 className="text-xl font-bold">
+        Trigger {trigger.name} on agent {agent.name}{" "}
+        <a href={`/poke/${owner.sId}`} className="text-highlight-500">
+          {owner.name}
+        </a>
+      </h3>
+      <div className="flex flex-row gap-x-6">
+        <ViewTriggerTable trigger={trigger} agent={agent} owner={owner} />
+        <div className="mt-4 flex grow flex-col">
+          <PluginList
+            pluginResourceTarget={{
+              resourceType: "triggers",
+              resourceId: trigger.sId,
+              workspace: owner,
+            }}
+          />
+          <ConversationDataTable owner={owner} conversations={conversations} />
+        </div>
       </div>
-      <div className="border-t border-gray-200 pt-6">
-        <h2 className="mb-4 text-lg font-semibold">Conversations</h2>
-        <ConversationDataTable owner={owner} conversations={conversations} />
-      </div>
-    </div>
+    </>
   );
 }
 
