@@ -18,6 +18,7 @@ import {
   isSlackMissingScope,
   resolveChannelDisplayName,
   resolveChannelId,
+  resolveUserDisplayName,
   SLACK_THREAD_LISTING_LIMIT,
 } from "@app/lib/actions/mcp_internal_actions/servers/slack/helpers";
 import {
@@ -271,6 +272,16 @@ function isSlackTokenRevoked(error: unknown): boolean {
   );
 }
 
+// Helper to handle common Slack authentication errors.
+// Returns an authentication error response if the error is token-related,
+// or null if the error should be handled by the caller.
+function handleSlackAuthError(error: unknown) {
+  if (isSlackTokenRevoked(error) || isSlackMissingScope(error)) {
+    return new Ok(makePersonalAuthenticationError("slack").content);
+  }
+  return null;
+}
+
 // 'disconnected' is expected when we don't have a Slack connection yet.
 type SlackAIStatus = "enabled" | "disabled" | "disconnected";
 
@@ -461,7 +472,7 @@ async function createServer(
                 {
                   permalink: (match) => match.permalink,
                   text: (match) =>
-                    `#${match.channel_name ?? "Unknown"}, ${match.content ?? ""}`,
+                    `From ${match.author_name ?? "Unknown"} in #${match.channel_name ?? "Unknown"}: ${match.content ?? ""}`,
                   id: (match) => match.message_ts ?? "",
                   content: (match) => match.content ?? "",
                 }
@@ -475,8 +486,9 @@ async function createServer(
               );
             }
           } catch (error) {
-            if (isSlackTokenRevoked(error)) {
-              return new Ok(makePersonalAuthenticationError("slack").content);
+            const authError = handleSlackAuthError(error);
+            if (authError) {
+              return authError;
             }
             return new Err(new MCPError(`Error searching messages: ${error}`));
           }
@@ -592,8 +604,9 @@ async function createServer(
               );
             }
           } catch (error) {
-            if (isSlackTokenRevoked(error)) {
-              return new Ok(makePersonalAuthenticationError("slack").content);
+            const authError = handleSlackAuthError(error);
+            if (authError) {
+              return authError;
             }
             return new Err(new MCPError(`Error searching messages: ${error}`));
           }
@@ -660,8 +673,9 @@ async function createServer(
             mcpServerId
           );
         } catch (error) {
-          if (isSlackTokenRevoked(error)) {
-            return new Ok(makePersonalAuthenticationError("slack").content);
+          const authError = handleSlackAuthError(error);
+          if (authError) {
+            return authError;
           }
           return new Err(new MCPError(`Error posting message: ${error}`));
         }
@@ -723,8 +737,9 @@ async function createServer(
             accessToken,
           });
         } catch (error) {
-          if (isSlackTokenRevoked(error)) {
-            return new Ok(makePersonalAuthenticationError("slack").content);
+          const authError = handleSlackAuthError(error);
+          if (authError) {
+            return authError;
           }
           return new Err(new MCPError(`Error scheduling message: ${error}`));
         }
@@ -756,8 +771,9 @@ async function createServer(
         try {
           return await executeListUsers(nameFilter, accessToken);
         } catch (error) {
-          if (isSlackTokenRevoked(error)) {
-            return new Ok(makePersonalAuthenticationError("slack").content);
+          const authError = handleSlackAuthError(error);
+          if (authError) {
+            return authError;
           }
           return new Err(new MCPError(`Error listing users: ${error}`));
         }
@@ -788,8 +804,9 @@ async function createServer(
         try {
           return await executeGetUser(userId, accessToken);
         } catch (error) {
-          if (isSlackTokenRevoked(error)) {
-            return new Ok(makePersonalAuthenticationError("slack").content);
+          const authError = handleSlackAuthError(error);
+          if (authError) {
+            return authError;
           }
           return new Err(new MCPError(`Error retrieving user info: ${error}`));
         }
@@ -825,8 +842,9 @@ async function createServer(
             mcpServerId
           );
         } catch (error) {
-          if (isSlackTokenRevoked(error)) {
-            return new Ok(makePersonalAuthenticationError("slack").content);
+          const authError = handleSlackAuthError(error);
+          if (authError) {
+            return authError;
           }
           return new Err(new MCPError(`Error listing channels: ${error}`));
         }
@@ -862,8 +880,9 @@ async function createServer(
             mcpServerId
           );
         } catch (error) {
-          if (isSlackTokenRevoked(error)) {
-            return new Ok(makePersonalAuthenticationError("slack").content);
+          const authError = handleSlackAuthError(error);
+          if (authError) {
+            return authError;
           }
           return new Err(new MCPError(`Error listing channels: ${error}`));
         }
@@ -910,8 +929,9 @@ async function createServer(
             },
           ]);
         } catch (error) {
-          if (isSlackTokenRevoked(error)) {
-            return new Ok(makePersonalAuthenticationError("slack").content);
+          const authError = handleSlackAuthError(error);
+          if (authError) {
+            return authError;
           }
           return new Err(
             new MCPError(`Error getting channel details: ${error}`)
@@ -971,11 +991,9 @@ async function createServer(
             mcpServerId,
           });
         } catch (error) {
-          if (isSlackTokenRevoked(error)) {
-            return new Ok(makePersonalAuthenticationError("slack").content);
-          }
-          if (isSlackMissingScope(error)) {
-            return new Ok(makePersonalAuthenticationError("slack").content);
+          const authError = handleSlackAuthError(error);
+          if (authError) {
+            return authError;
           }
           return new Err(new MCPError(`Error resolving channel: ${error}`));
         }
@@ -1002,11 +1020,9 @@ async function createServer(
             limit: SLACK_THREAD_LISTING_LIMIT,
           });
         } catch (error) {
-          if (isSlackTokenRevoked(error)) {
-            return new Ok(makePersonalAuthenticationError("slack").content);
-          }
-          if (isSlackMissingScope(error)) {
-            return new Ok(makePersonalAuthenticationError("slack").content);
+          const authError = handleSlackAuthError(error);
+          if (authError) {
+            return authError;
           }
           return new Err(new MCPError(`Error fetching messages: ${error}`));
         }
@@ -1041,19 +1057,10 @@ async function createServer(
         }
 
         // Get display name for the channel.
-        let displayName: string;
-        try {
-          displayName = await resolveChannelDisplayName(channel, accessToken);
-        } catch (error) {
-          if (isSlackTokenRevoked(error)) {
-            return new Ok(makePersonalAuthenticationError("slack").content);
-          }
-          if (isSlackMissingScope(error)) {
-            return new Ok(makePersonalAuthenticationError("slack").content);
-          }
-          // Fallback to simple formatting on error.
-          displayName = channel.startsWith("#") ? channel : `#${channel}`;
-        }
+        const displayName = await resolveChannelDisplayName(
+          channelId,
+          accessToken
+        );
 
         const { citationsOffset } = agentLoopContext.runContext.stepContext;
 
@@ -1062,13 +1069,28 @@ async function createServer(
           citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
         );
 
+        // Resolve user display names for all thread authors.
+        const threadsWithAuthors = await Promise.all(
+          matches.map(async (match) => {
+            const authorName = match.user
+              ? await resolveUserDisplayName(match.user, accessToken)
+              : null;
+            return {
+              ...match,
+              authorName: authorName ?? "Unknown",
+            };
+          })
+        );
+
         const results = buildSearchResults<{
           permalink?: string;
           text?: string;
           ts?: string;
-        }>(matches, refs, {
+          authorName: string;
+        }>(threadsWithAuthors, refs, {
           permalink: (match) => match.permalink,
-          text: (match) => `${displayName}, ${match.text ?? ""}`,
+          text: (match) =>
+            `From ${match.authorName} in ${displayName}: ${match.text ?? ""}`,
           id: (match) => match.ts ?? "",
           content: (match) => match.text ?? "",
         });
@@ -1189,8 +1211,9 @@ async function createServer(
             },
           ]);
         } catch (error) {
-          if (isSlackTokenRevoked(error)) {
-            return new Ok(makePersonalAuthenticationError("slack").content);
+          const authError = handleSlackAuthError(error);
+          if (authError) {
+            return authError;
           }
           return new Err(new MCPError(`Error adding reaction: ${error}`));
         }
@@ -1244,8 +1267,9 @@ async function createServer(
             },
           ]);
         } catch (error) {
-          if (isSlackTokenRevoked(error)) {
-            return new Ok(makePersonalAuthenticationError("slack").content);
+          const authError = handleSlackAuthError(error);
+          if (authError) {
+            return authError;
           }
           return new Err(new MCPError(`Error removing reaction: ${error}`));
         }

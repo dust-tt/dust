@@ -283,62 +283,44 @@ export async function resolveUserDisplayName(
   return null;
 }
 
-// Resolves a channel ID or name to a human-readable display name.
-// Handles DMs (direct messages), regular channels, and fallback cases.
+// Resolves a channel ID to a human-readable display name.
+// Handles DMs (direct messages) and regular channels.
+// This function expects a normalized channel ID from resolveChannelId.
 export async function resolveChannelDisplayName(
-  channelIdOrName: string,
+  channelId: string,
   accessToken: string
 ): Promise<string> {
   const slackClient = await getSlackClient(accessToken);
 
   try {
-    // If it looks like a channel ID (starts with C, D, or G), get channel info.
-    if (channelIdOrName.match(/^[CDG][A-Z0-9]+$/)) {
-      const channelInfo = await slackClient.conversations.info({
-        channel: channelIdOrName,
-      });
+    const channelInfo = await slackClient.conversations.info({
+      channel: channelId,
+    });
 
-      if (channelInfo.ok && channelInfo.channel) {
-        // For DMs, channelId starts with "D" and channel.name contains the user ID.
-        if (channelIdOrName.startsWith("D") && channelInfo.channel.name) {
-          const userName = await resolveUserDisplayName(
-            channelInfo.channel.name,
-            accessToken
-          );
-          return userName ? `@${userName}` : `@${channelInfo.channel.name}`;
-        }
+    if (channelInfo.ok && channelInfo.channel) {
+      // For DMs, channelId starts with "D" and channel.name contains the user ID.
+      if (channelId.startsWith("D") && channelInfo.channel.name) {
+        const userName = await resolveUserDisplayName(
+          channelInfo.channel.name,
+          accessToken
+        );
+        return userName ? `@${userName}` : `@${channelInfo.channel.name}`;
+      }
 
-        // For regular channels (public/private).
-        if (channelInfo.channel.name) {
-          return `#${channelInfo.channel.name}`;
-        }
+      // For regular channels (public/private).
+      if (channelInfo.channel.name) {
+        return `#${channelInfo.channel.name}`;
       }
     }
-
-    // If it looks like a user ID (starts with U), resolve to user name.
-    if (channelIdOrName.match(/^U[A-Z0-9]+$/)) {
-      const userName = await resolveUserDisplayName(
-        channelIdOrName,
-        accessToken
-      );
-      return userName ? `@${userName}` : `@${channelIdOrName}`;
-    }
-
-    // If it's already a channel name (not an ID), just prefix with #.
-    if (!channelIdOrName.match(/^[A-Z0-9]+$/)) {
-      return `#${channelIdOrName}`;
-    }
-
-    // Fallback: treat as channel name.
-    return `#${channelIdOrName}`;
   } catch (error) {
     // On error, return a fallback value.
-    // If it looks like a user ID, prefix with @, otherwise with #.
-    if (channelIdOrName.match(/^[UD][A-Z0-9]+$/)) {
-      return `@${channelIdOrName}`;
+    // If it looks like a DM, prefix with @, otherwise with #.
+    if (channelId.startsWith("D")) {
+      return `@${channelId}`;
     }
-    return `#${channelIdOrName}`;
   }
+
+  return `#${channelId}`;
 }
 
 // Helper function to build filtered list responses.
@@ -856,22 +838,24 @@ export async function executeReadThreadMessages(
 ) {
   const slackClient = await getSlackClient(accessToken);
 
-  try {
-    // Resolve channel name/ID to channel ID (supports public/private channels and DMs).
-    const channelId = await resolveChannelId({
-      channelNameOrId: channel,
-      accessToken,
-      mcpServerId,
-    });
-    if (!channelId) {
-      return new Err(
-        new MCPError(
-          `Unable to resolve channel id for "${channel}". Please use a valid channel name, channel id, or user id.`
-        )
-      );
-    }
+  // Resolve channel name/ID to channel ID (supports public/private channels and DMs).
+  const channelId = await resolveChannelId({
+    channelNameOrId: channel,
+    accessToken,
+    mcpServerId,
+  });
+  if (!channelId) {
+    return new Err(
+      new MCPError(
+        `Unable to resolve channel id for "${channel}". Please use a valid channel name, channel id, or user id.`
+      )
+    );
+  }
 
-    const response = await slackClient.conversations.replies({
+  // Narrow try-catch to only the Slack API call.
+  let response;
+  try {
+    response = await slackClient.conversations.replies({
       channel: channelId,
       ts: threadTs,
       limit: limit
@@ -881,64 +865,61 @@ export async function executeReadThreadMessages(
       oldest: oldest,
       latest: latest,
     });
+  } catch (error) {
+    return new Err(new MCPError(`Error reading thread messages: ${error}`));
+  }
 
-    if (!response.ok) {
-      // Trigger authentication flow for missing_scope.
-      if (response.error === "missing_scope") {
-        return new Ok(makePersonalAuthenticationError("slack").content);
-      }
-      return new Err(new MCPError("Failed to read thread messages"));
+  if (!response.ok) {
+    // Trigger authentication flow for missing_scope.
+    if (response.error === "missing_scope") {
+      return new Ok(makePersonalAuthenticationError("slack").content);
     }
+    return new Err(new MCPError("Failed to read thread messages"));
+  }
 
-    const messages = response.messages ?? [];
-    if (messages.length === 0) {
-      return new Ok([
-        {
-          type: "text" as const,
-          text: "No messages found in this thread.",
-        },
-      ]);
-    }
-
-    // First message is the parent, rest are replies.
-    const parentMessage = messages[0];
-    const threadReplies = messages.slice(1);
-
-    const formattedOutput = {
-      parent_message: {
-        text: parentMessage?.text ?? "",
-        user: parentMessage?.user ?? "",
-        ts: parentMessage?.ts ?? "",
-        reply_count: parentMessage?.reply_count ?? 0,
-      },
-      thread_replies: threadReplies.map((msg) => ({
-        text: msg.text ?? "",
-        user: msg.user ?? "",
-        ts: msg.ts ?? "",
-      })),
-      total_messages: messages.length,
-      has_more: response.has_more ?? false,
-      next_cursor: response.response_metadata?.next_cursor ?? null,
-      pagination_info: {
-        current_page_size: messages.length,
-        replies_in_this_page: threadReplies.length,
-      },
-    };
-
+  const messages = response.messages ?? [];
+  if (messages.length === 0) {
     return new Ok([
       {
         type: "text" as const,
-        text: `Thread contains ${formattedOutput.total_messages} message(s) (1 parent + ${formattedOutput.thread_replies.length} replies)`,
-      },
-      {
-        type: "text" as const,
-        text: JSON.stringify(formattedOutput, null, 2),
+        text: "No messages found in this thread.",
       },
     ]);
-  } catch (error) {
-    if (isSlackMissingScope(error)) {
-      return new Ok(makePersonalAuthenticationError("slack").content);
-    }
-    return new Err(new MCPError(`Error reading thread messages: ${error}`));
   }
+
+  // First message is the parent, rest are replies.
+  const parentMessage = messages[0];
+  const threadReplies = messages.slice(1);
+
+  const formattedOutput = {
+    parent_message: {
+      text: parentMessage?.text ?? "",
+      user: parentMessage?.user ?? "",
+      ts: parentMessage?.ts ?? "",
+      reply_count: parentMessage?.reply_count ?? 0,
+    },
+    thread_replies: threadReplies.map((msg) => ({
+      text: msg.text ?? "",
+      user: msg.user ?? "",
+      ts: msg.ts ?? "",
+    })),
+    total_messages: messages.length,
+    has_more: response.has_more ?? false,
+    next_cursor: response.response_metadata?.next_cursor ?? null,
+    pagination_info: {
+      current_page_size: messages.length,
+      replies_in_this_page: threadReplies.length,
+    },
+  };
+
+  return new Ok([
+    {
+      type: "text" as const,
+      text: `Thread contains ${formattedOutput.total_messages} message(s) (1 parent + ${formattedOutput.thread_replies.length} replies)`,
+    },
+    {
+      type: "text" as const,
+      text: JSON.stringify(formattedOutput, null, 2),
+    },
+  ]);
 }
