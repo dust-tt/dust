@@ -1,8 +1,30 @@
+import { useCallback, useSyncExternalStore } from "react";
 import type { Fetcher } from "swr";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import { emptyArray } from "@app/lib/swr/swr";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetCreditsResponseBody } from "@app/types/credits";
+
+// Global state for tracking purchase loading status per workspace
+const purchaseLoadingState = new Map<string, boolean>();
+const purchaseLoadingListeners = new Set<() => void>();
+
+function setPurchaseLoading(workspaceId: string, loading: boolean) {
+  purchaseLoadingState.set(workspaceId, loading);
+  purchaseLoadingListeners.forEach((listener) => listener());
+}
+
+function getPurchaseLoading(workspaceId: string): boolean {
+  return purchaseLoadingState.get(workspaceId) ?? false;
+}
+
+function subscribeToPurchaseLoading(callback: () => void) {
+  purchaseLoadingListeners.add(callback);
+  return () => {
+    purchaseLoadingListeners.delete(callback);
+  };
+}
 
 export function useCredits({
   workspaceId,
@@ -16,7 +38,7 @@ export function useCredits({
   const { data, error, mutate, isValidating } = useSWRWithDefaults(
     `/api/w/${workspaceId}/credits`,
     creditsFetcher,
-    { disabled }
+    { disabled, refreshInterval: 5000 }
   );
 
   return {
@@ -25,5 +47,80 @@ export function useCredits({
     isCreditsValidating: isValidating,
     isCreditsError: error,
     mutateCredits: mutate,
+  };
+}
+
+export function usePurchaseCredits({ workspaceId }: { workspaceId: string }) {
+  const isLoading = useSyncExternalStore(
+    subscribeToPurchaseLoading,
+    () => getPurchaseLoading(workspaceId),
+    () => false
+  );
+
+  const { mutateCredits } = useCredits({
+    disabled: true,
+    workspaceId,
+  });
+
+  const sendNotification = useSendNotification();
+
+  const purchaseCredits = useCallback(
+    async (amountDollars: number): Promise<boolean> => {
+      if (getPurchaseLoading(workspaceId)) {
+        return false;
+      }
+
+      setPurchaseLoading(workspaceId, true);
+
+      try {
+        const response = await fetch(`/api/w/${workspaceId}/credits/purchase`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ amountDollars }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          const errorMessage =
+            errorData.error?.message || "Failed to purchase credits";
+
+          sendNotification({
+            type: "error",
+            title: "Purchase failed",
+            description: `${errorMessage}. Please contact support if the issue persists.`,
+          });
+          return false;
+        }
+
+        sendNotification({
+          type: "success",
+          title: "Credits purchased",
+          description: `Successfully added $${amountDollars} in credits`,
+        });
+
+        void mutateCredits();
+        return true;
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : "Failed to purchase credits";
+
+        sendNotification({
+          type: "error",
+          title: "Purchase failed",
+          description: `${errorMessage}. Please contact support if the issue persists.`,
+        });
+        return false;
+      } finally {
+        setPurchaseLoading(workspaceId, false);
+      }
+    },
+    [workspaceId, mutateCredits, sendNotification]
+  );
+
+  return {
+    purchaseCredits,
+    isLoading,
   };
 }

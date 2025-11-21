@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { FeatureFlag } from "@app/lib/models/feature_flag";
+import { getFeatureFlags } from "@app/lib/auth";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -31,15 +31,12 @@ async function handler(
 
   // Check feature flag.
   const workspace = auth.getNonNullableWorkspace();
-  const featureFlag =
-    (await FeatureFlag.findOne({
-      where: {
-        workspaceId: workspace.id,
-        name: "ppul_credits_purchase_flow",
-      },
-    })) ?? isDevelopment();
+  const featureFlags = await getFeatureFlags(workspace);
 
-  if (!featureFlag) {
+  if (
+    !featureFlags.includes("ppul_credits_purchase_flow") &&
+    !isDevelopment()
+  ) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
@@ -52,7 +49,7 @@ async function handler(
   switch (req.method) {
     case "GET": {
       // Fetch all credits for the workspace.
-      const credits = await CreditResource.listAll(auth);
+      const credits = await CreditResource.listActive(auth);
 
       // Transform credits to display format with computed consumed amount.
       const creditsData: CreditDisplayData[] = credits.map((credit) => ({

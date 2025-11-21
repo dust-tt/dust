@@ -94,7 +94,7 @@ function getTableRows(credits: CreditDisplayData[]): RowData[] {
     }),
     expirationDate:
       credit.expirationDate !== null
-        ? new Date(credit.expirationDate).toLocaleDateString("en-US", {
+        ? new Date(credit.expirationDate).toLocaleDateString(undefined, {
             year: "numeric",
             month: "long",
             day: "numeric",
