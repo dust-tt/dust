@@ -4,10 +4,8 @@ import type {
   OpenAIModelFamily,
   OpenAIWhitelistedModelId,
 } from "@app/lib/api/llm/clients/openai/types";
-import {
-  getOpenAIModelFamilyFromModelId,
-  OPENAI_WHITELISTED_MODEL_IDS,
-} from "@app/lib/api/llm/clients/openai/types";
+import { OPENAI_WHITELISTED_MODEL_IDS } from "@app/lib/api/llm/clients/openai/types";
+import { getOpenAIModelFamilyFromModelId } from "@app/lib/api/llm/clients/openai/utils";
 import {
   TEST_CONVERSATIONS,
   TEST_STRUCTURED_OUTPUT_CONVERSATIONS,
@@ -25,21 +23,24 @@ const OPENAI_MODEL_FAMILY_TO_TEST_CONFIGS: Record<
   ConfigParams[]
 > = {
   o3: [
-    { reasoningEffort: "none" },
-    { reasoningEffort: "light" },
     { reasoningEffort: "medium" },
     { reasoningEffort: "high" },
     ...TEST_STRUCTURED_OUTPUT_KEYS.map((testStructuredOutputKey) => ({
       testStructuredOutputKey,
     })),
   ],
-  "o3-no-vision": [
-    { reasoningEffort: "none" },
-    { reasoningEffort: "light" },
-    { reasoningEffort: "medium" },
+  "o3-no-vision": [{ reasoningEffort: "medium" }, { reasoningEffort: "high" }],
+  reasoning: [
+    { reasoningEffort: "medium", temperature: 1 },
     { reasoningEffort: "high" },
   ],
-  reasoning: [
+  "gpt-5": [
+    { reasoningEffort: "none" },
+    { reasoningEffort: "light", temperature: 0 },
+    { reasoningEffort: "medium", temperature: 1 },
+    { reasoningEffort: "high" },
+  ],
+  "gpt-5.1": [
     { reasoningEffort: "none" },
     { reasoningEffort: "light", temperature: 0 },
     { reasoningEffort: "medium", temperature: 1 },
