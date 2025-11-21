@@ -12,6 +12,7 @@ import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy
 import { Authenticator } from "@app/lib/auth";
 import { Message } from "@app/lib/models/assistant/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import {
   createResourcePermissionsFromSpacesWithMap,
@@ -700,37 +701,6 @@ describe("ConversationResource", () => {
       expect(conversationIds).toContain(conversations.restricted[0]);
     });
 
-    it("should return null when alertIfNoAccessible is true and user lacks access", async () => {
-      // Try to fetch a restricted conversation that the user doesn't have access to
-      const conversationRes = await ConversationResource.fetchById(
-        userAuth,
-        conversations.restricted[0],
-        {
-          alertIfNoAccessible: true,
-        }
-      );
-
-      expect(conversationRes.isErr()).toBe(true);
-    });
-
-    it("should return conversation when alertIfNoAccessible is true and user has access", async () => {
-      // Should succeed when user has access
-      const conversationRes = await ConversationResource.fetchById(
-        userAuth,
-        conversations.accessible[0],
-        {
-          alertIfNoAccessible: true,
-        }
-      );
-
-      expect(conversationRes.isOk()).toBe(true);
-      if (conversationRes.isOk()) {
-        const conversation = conversationRes.value;
-        expect(conversation).toBeDefined();
-        expect(conversation?.sId).toBe(conversations.accessible[0]);
-      }
-    });
-
     it("should include deleted conversations when includeDeleted option is true", async () => {
       // Create and then delete a conversation
       const deletableConvo = await ConversationFactory.create(adminAuth, {
@@ -739,12 +709,11 @@ describe("ConversationResource", () => {
         messagesCreatedAt: [dateFromDaysAgo(5)],
       });
 
-      const conversationRes = await ConversationResource.fetchById(
+      const conversationResource = await ConversationResource.fetchById(
         adminAuth,
         deletableConvo.sId
       );
-      assert(conversationRes.isOk(), "Failed to fetch conversation");
-      const conversationResource = conversationRes.value;
+
       assert(conversationResource, "Conversation resource not found");
       await conversationResource.updateVisibilityToDeleted();
 
