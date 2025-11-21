@@ -69,22 +69,16 @@ if (
             "Our mission at Dust is to transform how work gets done by letting any team\n" +
             "and employee shape the exact agents they need to accelerate their jobs.\n\n" +
             "Want to help us build this future? We're looking for talented engineers who:\n" +
-            "  • Are passionate about crafting exceptional developer experiences\n" +
-            "  • Love solving complex technical challenges\n" +
+            "  • Are passionate about crafting rock-solid code and exceptional experiences at warp speed.\n" +
             "  • Want to shape the future of work with AI\n\n" +
-            "Join us in Paris! 🇫🇷",
+            "Join us \\o/",
           "color: #0A361A; font-size: 14px; line-height: 1.6;"
         );
 
         console.log(
-          "%c👉 Check out our open positions: %chttps://jobs.ashbyhq.com/dust",
+          "%c👉 Check out our open positions: %chttps://dust.tt/home/about ",
           "color: #277644; font-size: 16px; font-weight: bold;",
           "color: #54B47D; font-size: 16px; font-weight: bold; text-decoration: underline;"
-        );
-
-        console.log(
-          "%cP.S. If you found this, you're exactly the kind of person we're looking for! 😉",
-          "color: #418B5C; font-size: 12px; font-style: italic; margin-top: 10px;"
         );
       }
     } catch (e) {
