@@ -14,10 +14,10 @@ import { QUEUE_NAME } from "./config";
 
 export async function runAnalyticsWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
-  const workflowBundle = getWorkflowBundle("analytics_queue");
-  
+
   const worker = await Worker.create({
-    workflowsPath: workflowBundle ?? require.resolve("./workflows"),
+    workflowsPath:
+      getWorkflowBundle("analytics_queue") ?? require.resolve("./workflows"),
     activities,
     taskQueue: QUEUE_NAME,
     maxCachedWorkflows: TEMPORAL_MAXED_CACHED_WORKFLOWS,
