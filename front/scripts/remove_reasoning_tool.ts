@@ -1,10 +1,5 @@
-import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
-import {
-  AgentChildAgentConfiguration,
-  AgentMCPServerConfiguration,
-} from "@app/lib/models/assistant/actions/mcp";
+import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
-import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
@@ -47,36 +42,14 @@ async function deleteReasoningConfigurationAndRelatedResources(
 
   try {
     // Delete in the correct order to avoid foreign key constraint violations
-
-    // 1. Delete agent_data_source_configurations
-    await AgentDataSourceConfiguration.destroy({
-      where: {
-        mcpServerConfigurationId,
-      },
-    });
-
-    // 2. Delete agent_tables_query_configuration_tables
-    await AgentTablesQueryConfigurationTable.destroy({
-      where: {
-        mcpServerConfigurationId,
-      },
-    });
-
-    // 3. Delete agent_child_agent_configurations
-    await AgentChildAgentConfiguration.destroy({
-      where: {
-        mcpServerConfigurationId,
-      },
-    });
-
-    // 4. Delete agent_reasoning_configurations
+    // 1. Delete agent_reasoning_configurations
     await AgentReasoningConfiguration.destroy({
       where: {
         mcpServerConfigurationId,
       },
     });
 
-    // 5. Finally delete agent_mcp_server_configurations
+    // 2. Finally delete agent_mcp_server_configurations
     await AgentMCPServerConfiguration.destroy({
       where: {
         id: mcpServerConfigurationId,
