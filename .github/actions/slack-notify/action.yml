@@ -100,24 +100,32 @@ runs:
             • Workflow: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View build>
             • Author: ${{ steps.slack_user.outputs.id != '' && format('<@{0}>', steps.slack_user.outputs.id) || format('`{0}`', steps.author.outputs.name) }}
 
-    - name: Format commit diff
-      if: inputs.step == 'build_success' && inputs.commit_diff != ''
-      id: format_commits
+    - name: Format commit message
+      if: inputs.step == 'build_success'
+      id: format_message
       shell: bash
       run: |
-        COMMITS_RAW="${{ inputs.commit_diff }}"
-        FORMATTED_COMMITS=""
+        MESSAGE="🔨 Build completed in ${{ inputs.region }} region\\n• Image: ${{ inputs.image_tag }}"
         
-        while IFS= read -r line; do
-          if [ -n "$line" ]; then
-            COMMIT_HASH=$(echo "$line" | cut -d' ' -f1)
-            AUTHOR=$(echo "$line" | sed 's/^[^ ]* //')
-            FORMATTED_COMMITS="$FORMATTED_COMMITS• <${{ github.server_url }}/${{ github.repository }}/commit/$COMMIT_HASH|$COMMIT_HASH> $AUTHOR"$'\n'
-          fi
-        done <<< "$COMMITS_RAW"
+        # Add changes info if available
+        if [ -n "${{ inputs.current_version }}" ]; then
+          MESSAGE="$MESSAGE\\n• Changes: ${{ inputs.current_version }} → ${{ inputs.image_tag }} (${{ inputs.commit_count }} commits)"
+        fi
         
-        echo "formatted_commits<<EOF" >> $GITHUB_OUTPUT
-        echo "$FORMATTED_COMMITS" >> $GITHUB_OUTPUT
+        # Add formatted commits if available
+        if [ -n "${{ inputs.commit_diff }}" ]; then
+          COMMITS_RAW="${{ inputs.commit_diff }}"
+          while IFS= read -r line; do
+            if [ -n "$line" ]; then
+              COMMIT_HASH=$(echo "$line" | cut -d' ' -f1)
+              AUTHOR=$(echo "$line" | sed 's/^[^ ]* //')
+              MESSAGE="$MESSAGE\\n• <${{ github.server_url }}/${{ github.repository }}/commit/$COMMIT_HASH|$COMMIT_HASH> $AUTHOR"
+            fi
+          done <<< "$COMMITS_RAW"
+        fi
+        
+        echo "message<<EOF" >> $GITHUB_OUTPUT
+        echo "$MESSAGE" >> $GITHUB_OUTPUT
         echo "EOF" >> $GITHUB_OUTPUT
 
     - name: Notify Build Success
@@ -129,11 +137,7 @@ runs:
         payload: |
           channel: ${{ inputs.channel }}
           thread_ts: ${{ inputs.thread_ts }}
-          text: |
-            🔨 Build completed in ${{ inputs.region }} region
-            • Image: ${{ inputs.image_tag }}
-            ${{ inputs.current_version != '' && format('• Changes: {0} → {1} ({2} commits)', inputs.current_version, inputs.image_tag, inputs.commit_count) || '' }}
-            ${{ steps.format_commits.outputs.formatted_commits || '' }}
+          text: ${{ steps.format_message.outputs.message }}
 
     - name: Notify Deploy Failure
       if: inputs.step == 'failure'
