@@ -6,7 +6,6 @@ import { initializeLangfuseInstrumentation } from "@app/lib/api/instrumentation/
 import { getTemporalAgentWorkerConnection } from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
-import { getWorkflowBundle } from "@app/temporal/bundle_helper";
 import { launchAgentMessageAnalyticsActivity } from "@app/temporal/agent_loop/activities/analytics";
 import {
   finalizeCancellationActivity,
@@ -23,6 +22,7 @@ import { publishDeferredEventsActivity } from "@app/temporal/agent_loop/activiti
 import { runModelAndCreateActionsActivity } from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
 import { QUEUE_NAME } from "@app/temporal/agent_loop/config";
+import { getWorkflowBundle } from "@app/temporal/bundle_helper";
 
 // We need to give the worker some time to finish the current activity before shutting down.
 const SHUTDOWN_GRACE_TIME = "2 minutes";
@@ -30,10 +30,9 @@ const SHUTDOWN_GRACE_TIME = "2 minutes";
 export async function runAgentLoopWorker() {
   const { connection, namespace } = await getTemporalAgentWorkerConnection();
 
-  const workflowBundle = getWorkflowBundle("agent_loop");
-  
   const worker = await Worker.create({
-    workflowsPath: workflowBundle ?? require.resolve("./workflows"),
+    workflowsPath:
+      getWorkflowBundle("agent_loop") ?? require.resolve("./workflows"),
     activities: {
       conversationUnreadNotificationActivity,
       ensureConversationTitleActivity,

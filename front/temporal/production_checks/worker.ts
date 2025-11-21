@@ -7,6 +7,7 @@ import {
 } from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
+import { getWorkflowBundle } from "@app/temporal/bundle_helper";
 import * as activities from "@app/temporal/production_checks/activities";
 
 import { QUEUE_NAME } from "./config";
@@ -14,7 +15,8 @@ import { QUEUE_NAME } from "./config";
 export async function runProductionChecksWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
   const worker = await Worker.create({
-    workflowsPath: require.resolve("./workflows"),
+    workflowsPath:
+      getWorkflowBundle("production_checks") ?? require.resolve("./workflows"),
     activities,
     taskQueue: QUEUE_NAME,
     connection,
