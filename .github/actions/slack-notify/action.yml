@@ -125,7 +125,8 @@ runs:
 
         # 2. Construct the JSON payload using jq
         # This handles all quoting and newline escaping automatically
-        JSON_PAYLOAD=$(jq -n \
+        # -c is CRITICAL to output a single line string
+        JSON_PAYLOAD=$(jq -c -n \
           --arg channel "${{ inputs.channel }}" \
           --arg ts "${{ inputs.thread_ts }}" \
           --arg text "$MSG" \
