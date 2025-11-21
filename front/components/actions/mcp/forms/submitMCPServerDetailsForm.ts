@@ -3,6 +3,7 @@ import { diffInfoForm } from "@app/components/actions/mcp/forms/infoFormSchema";
 import {
   getMcpServerViewDisplayName,
   isRemoteMCPServerType,
+  supportsBearerTokenConfiguration,
 } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { Result, WorkspaceType } from "@app/types";
@@ -22,7 +23,13 @@ export async function submitMCPServerDetailsForm({
   mutate?: () => Promise<void>;
 }): Promise<Result<void, Error>> {
   const isRemote = isRemoteMCPServerType(mcpServerView.server);
-  const diff = diffInfoForm(initialValues, values, isRemote);
+  const supportsBearerToken = supportsBearerTokenConfiguration(
+    mcpServerView.server
+  );
+  const diff = diffInfoForm(initialValues, values, {
+    isRemote,
+    supportsBearerToken: supportsBearerToken,
+  });
 
   try {
     if (diff.serverView) {
@@ -40,13 +47,13 @@ export async function submitMCPServerDetailsForm({
       }
     }
 
-    if (diff.remoteIcon) {
+    if (diff.icon) {
       const res = await fetch(
         `/api/w/${owner.sId}/mcp/${mcpServerView.server.sId}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ icon: diff.remoteIcon }),
+          body: JSON.stringify({ icon: diff.icon }),
         }
       );
       if (!res.ok) {
@@ -55,13 +62,13 @@ export async function submitMCPServerDetailsForm({
       }
     }
 
-    if (diff.remoteSharedSecret) {
+    if (diff.authSharedSecret) {
       const res = await fetch(
         `/api/w/${owner.sId}/mcp/${mcpServerView.server.sId}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sharedSecret: diff.remoteSharedSecret }),
+          body: JSON.stringify({ sharedSecret: diff.authSharedSecret }),
         }
       );
       if (!res.ok) {
@@ -70,8 +77,8 @@ export async function submitMCPServerDetailsForm({
       }
     }
 
-    if (typeof diff.remoteCustomHeaders !== "undefined") {
-      const sanitized = sanitizeHeadersArray(diff.remoteCustomHeaders ?? []);
+    if (typeof diff.authCustomHeaders !== "undefined") {
+      const sanitized = sanitizeHeadersArray(diff.authCustomHeaders ?? []);
       const res = await fetch(
         `/api/w/${owner.sId}/mcp/${mcpServerView.server.sId}`,
         {

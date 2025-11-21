@@ -4,6 +4,7 @@ import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
   getMcpServerViewDescription,
   isRemoteMCPServerType,
+  supportsBearerTokenConfiguration,
 } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { HeaderRow } from "@app/types";
@@ -38,11 +39,7 @@ export function getMCPServerFormDefaults(
   mcpServerWithViews?: { views: Array<{ spaceId: string }> },
   spaces?: Array<{ sId: string; kind: string }>
 ): MCPServerFormValues {
-  // Base info defaults.
-  const baseDefaults = {
-    name: view.name ?? view.server.name,
-    description: getMcpServerViewDescription(view),
-  };
+  const supportsBearerToken = supportsBearerTokenConfiguration(view.server);
 
   // Tool settings defaults.
   const toolSettings: Record<string, ToolSettings> = {};
@@ -82,33 +79,33 @@ export function getMCPServerFormDefaults(
     }
   }
 
-  // Add remote-specific fields if applicable.
-  if (isRemoteMCPServerType(view.server)) {
-    const customHeaders = Object.entries(view.server.customHeaders ?? {}).map(
-      ([key, value]) => ({
-        key,
-        value: String(value),
-      })
-    );
-    return {
-      ...baseDefaults,
-      icon: view.server.icon,
-      sharedSecret: view.server.sharedSecret ?? "",
-      customHeaders,
-      toolSettings,
-      sharingSettings,
-    };
-  }
-
-  return {
-    ...baseDefaults,
+  const defaults: MCPServerFormValues = {
+    name: view.name ?? view.server.name,
+    description: getMcpServerViewDescription(view),
     toolSettings,
     sharingSettings,
   };
+
+  if (supportsBearerToken) {
+    defaults.sharedSecret = view.server.sharedSecret ?? "";
+    defaults.customHeaders = Object.entries(
+      view.server.customHeaders ?? {}
+    ).map(([key, value]) => ({
+      key,
+      value: String(value),
+    }));
+  }
+
+  if (isRemoteMCPServerType(view.server)) {
+    defaults.icon = view.server.icon;
+  }
+
+  return defaults;
 }
 
 export function getMCPServerFormSchema(view: MCPServerViewType) {
-  const baseSchema = z.object({
+  const supportsBearerToken = supportsBearerTokenConfiguration(view.server);
+  let schema = z.object({
     name: z.string().min(1, "Name is required."),
     description: z.string().min(1, "Description is required."),
     toolSettings: z.record(
@@ -121,8 +118,13 @@ export function getMCPServerFormSchema(view: MCPServerViewType) {
   });
 
   if (isRemoteMCPServerType(view.server)) {
-    return baseSchema.extend({
+    schema = schema.extend({
       icon: z.string().optional(),
+    });
+  }
+
+  if (supportsBearerToken) {
+    schema = schema.extend({
       sharedSecret: z.string().optional(),
       customHeaders: z
         .array(
@@ -135,14 +137,15 @@ export function getMCPServerFormSchema(view: MCPServerViewType) {
         .optional(),
     });
   }
-  return baseSchema;
+
+  return schema;
 }
 
 type FormDiffType = {
   serverView?: { name: string; description: string };
-  remoteIcon?: string;
-  remoteSharedSecret?: string;
-  remoteCustomHeaders?: HeaderRow[] | null;
+  icon?: string;
+  authSharedSecret?: string;
+  authCustomHeaders?: HeaderRow[] | null;
   toolChanges?: Array<{
     toolName: string;
     enabled: boolean;
@@ -157,7 +160,13 @@ type FormDiffType = {
 export function diffMCPServerForm(
   initial: MCPServerFormValues,
   current: MCPServerFormValues,
-  isRemote: boolean
+  {
+    isRemote,
+    supportsBearerToken,
+  }: {
+    isRemote: boolean;
+    supportsBearerToken: boolean;
+  }
 ): FormDiffType {
   const out: FormDiffType = {};
 
@@ -175,21 +184,23 @@ export function diffMCPServerForm(
   // Check remote-specific changes.
   if (isRemote) {
     if (current.icon && current.icon !== initial.icon) {
-      out.remoteIcon = current.icon;
+      out.icon = current.icon;
     }
+  }
+
+  if (supportsBearerToken) {
     if (
       typeof current.sharedSecret === "string" &&
       current.sharedSecret !== initial.sharedSecret &&
       current.sharedSecret.length > 0
     ) {
-      out.remoteSharedSecret = current.sharedSecret;
+      out.authSharedSecret = current.sharedSecret;
     }
 
-    // Compare sanitized custom headers.
     const iSan = sanitizeHeadersArray(initial.customHeaders ?? []);
     const cSan = sanitizeHeadersArray(current.customHeaders ?? []);
     if (JSON.stringify(iSan) !== JSON.stringify(cSan)) {
-      out.remoteCustomHeaders = cSan.length > 0 ? cSan : null;
+      out.authCustomHeaders = cSan.length > 0 ? cSan : null;
     }
   }
 
