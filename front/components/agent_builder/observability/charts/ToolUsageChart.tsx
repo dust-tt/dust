@@ -32,6 +32,7 @@ export function ToolUsageChart({
 }) {
   const { period, mode, selectedVersion } = useObservabilityContext();
   const [toolMode, setToolMode] = useState<ToolChartModeType>("version");
+  const [hoveredTool, setHoveredTool] = useState<string | null>(null);
 
   const {
     chartData,
@@ -61,9 +62,14 @@ export function ToolUsageChart({
 
   const renderToolUsageTooltip = useCallback(
     (payload: TooltipContentProps<number, string>) => (
-      <ChartsTooltip {...payload} mode={toolMode} topTools={topTools} />
+      <ChartsTooltip
+        {...payload}
+        mode={toolMode}
+        topTools={topTools}
+        hoveredTool={hoveredTool}
+      />
     ),
-    [toolMode, topTools]
+    [toolMode, topTools, hoveredTool]
   );
 
   return (
@@ -155,6 +161,8 @@ export function ToolUsageChart({
             shape={
               <RoundedTopBarShape toolName={toolName} stackOrder={topTools} />
             }
+            onMouseEnter={() => setHoveredTool(toolName)}
+            onMouseLeave={() => setHoveredTool(null)}
           />
         ))}
       </BarChart>

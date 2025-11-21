@@ -14,6 +14,7 @@ export interface ToolUsageTooltipProps
   extends TooltipContentProps<number, string> {
   mode: ToolChartModeType;
   topTools: string[];
+  hoveredTool?: string | null;
 }
 
 export function ChartsTooltip({
@@ -22,13 +23,22 @@ export function ChartsTooltip({
   label,
   mode,
   topTools,
+  hoveredTool,
 }: ToolUsageTooltipProps) {
   if (!active || !payload || payload.length === 0) {
     return null;
   }
 
+  // Only show a tooltip when a specific tool segment is hovered.
+  if (!hoveredTool) {
+    return null;
+  }
+
   const typed = payload.filter(isToolChartUsagePayload);
-  const rows = typed
+  const filtered = hoveredTool
+    ? typed.filter((p) => p.name === hoveredTool)
+    : typed;
+  const rows = filtered
     .filter((p) => (p.value ?? 0) > 0)
     .sort((a, b) => (b.value ?? 0) - (a.value ?? 0))
     .map((p) => {
