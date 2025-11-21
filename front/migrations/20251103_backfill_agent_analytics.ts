@@ -16,7 +16,10 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import { storeAgentAnalytics } from "@app/temporal/analytics_queue/activities";
+import {
+  getRootContextOrigin,
+  storeAgentAnalytics,
+} from "@app/temporal/analytics_queue/activities";
 import { LightWorkspaceType } from "@app/types";
 
 async function backfillAgentAnalytics(
@@ -202,6 +205,9 @@ async function backfillAgentAnalytics(
               throw new Error("User message not found");
             }
 
+            const rootContextOrigin =
+              await getRootContextOrigin(userUserMessageRow);
+
             // Store the analytics
             await storeAgentAnalytics(auth, {
               agentMessageRow,
@@ -209,6 +215,7 @@ async function backfillAgentAnalytics(
               userModel: userUserMessageRow.user ?? null,
               conversationRow,
               contextOrigin: userUserMessageRow.userContextOrigin ?? null,
+              rootContextOrigin,
             });
 
             successCount++;

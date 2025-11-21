@@ -29,7 +29,7 @@ import type {
   AgentMessageAnalyticsToolUsed,
 } from "@app/types/assistant/analytics";
 
-async function getRootContextOrigin(
+export async function getRootContextOrigin(
   userMessage: UserMessage
 ): Promise<UserMessageOrigin | null> {
   const originAgentMessageId = userMessage.userContextOriginMessageId;
