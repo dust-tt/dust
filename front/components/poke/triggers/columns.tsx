@@ -118,7 +118,7 @@ export function makeColumnsForTriggers(
       cell: ({ row }) => {
         const trigger = row.original;
         if (trigger.kind === "webhook") {
-          return trigger.provider ?? "N/A";
+          return trigger.provider ?? "Custom";
         }
         return "-";
       },
