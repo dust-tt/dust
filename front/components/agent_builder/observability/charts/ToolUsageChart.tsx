@@ -13,7 +13,10 @@ import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
 import { ChartsTooltip } from "@app/components/agent_builder/observability/charts/ChartsTooltip";
 import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
-import { useToolUsageData } from "@app/components/agent_builder/observability/hooks";
+import {
+  useMcpConfigurationNames,
+  useToolUsageData,
+} from "@app/components/agent_builder/observability/hooks";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import { RoundedTopBarShape } from "@app/components/agent_builder/observability/shared/ChartShapes";
@@ -34,6 +37,11 @@ export function ToolUsageChart({
   const [toolMode, setToolMode] = useState<ToolChartModeType>("version");
   const [hoveredTool, setHoveredTool] = useState<string | null>(null);
 
+  const { getConfigurationName } = useMcpConfigurationNames({
+    workspaceId,
+    agentConfigurationId,
+  });
+
   const {
     chartData,
     topTools,
@@ -48,6 +56,7 @@ export function ToolUsageChart({
     period,
     mode: toolMode,
     filterVersion: mode === "version" ? selectedVersion?.version : undefined,
+    getConfigurationName,
   });
 
   const legendItems = useMemo(
