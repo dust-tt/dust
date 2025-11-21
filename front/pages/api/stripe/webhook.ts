@@ -79,18 +79,16 @@ async function handler(
           apiConfig.getStripeSecretWebhookKey()
         );
       } catch (error) {
-        logger.error(
-          { error, stripeError: true },
-          "Error constructing Stripe event in Webhook."
-        );
+        logger.error({ error }, "Error constructing Stripe event in Webhook.");
       }
 
       if (!event) {
         return apiError(req, res, {
-          status_code: 500,
+          status_code: 403,
           api_error: {
             type: "internal_server_error",
-            message: "Error constructing Stripe Webhook event.",
+            message:
+              "Webhook signature verification failed. The event signature could not be validated..",
           },
         });
       }
