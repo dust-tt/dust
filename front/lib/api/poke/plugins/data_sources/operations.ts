@@ -10,9 +10,9 @@ import {
 } from "@app/types";
 
 const OPERATIONS = [
-  "PAUSE: stop all workflows for this connector",
-  "UNPAUSE: restart any paused workflows",
-  "SYNC: perform a full data sync for this connector",
+  "PAUSE: pause the connector",
+  "UNPAUSE: restart the connector",
+  "SYNC: perform a full data sync for the connector",
 ] as const;
 
 type OperationType = (typeof OPERATIONS)[number];
@@ -24,11 +24,11 @@ const doOperation = (op: OperationType, connectorId: string) => {
   );
 
   switch (op) {
-    case "PAUSE: stop all workflows for this connector":
+    case "PAUSE: pause the connector":
       return connectorsAPI.pauseConnector(connectorId);
-    case "UNPAUSE: restart any paused workflows":
+    case "UNPAUSE: restart the connector":
       return connectorsAPI.unpauseConnector(connectorId);
-    case "SYNC: perform a full data sync for this connector":
+    case "SYNC: perform a full data sync for the connector":
       return connectorsAPI.syncConnector(connectorId);
     default:
       assertNever(op);
