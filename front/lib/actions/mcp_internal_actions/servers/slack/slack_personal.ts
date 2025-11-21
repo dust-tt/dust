@@ -31,7 +31,6 @@ import { SLACK_SEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { cacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { TimeFrame } from "@app/types";
 import {
@@ -285,19 +284,14 @@ function handleSlackAuthError(error: unknown) {
 // 'disconnected' is expected when we don't have a Slack connection yet.
 type SlackAIStatus = "enabled" | "disabled" | "disconnected";
 
-const SLACK_AI_STATUS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-
-type GetSlackAIEnablementStatusArgs = {
-  mcpServerId: string;
-  accessToken: string;
-};
-
-const _getSlackAIEnablementStatus = async ({
+async function getSlackAIEnablementStatus({
   accessToken,
 }: {
   accessToken: string;
-}): Promise<SlackAIStatus> => {
+}): Promise<SlackAIStatus> {
   try {
+    // Use assistant.search.info to detect if Slack AI is enabled at workspace level
+    // This endpoint requires search:read.public scope and returns is_ai_search_enabled boolean
     const assistantSearchInfo = await fetch(
       "https://slack.com/api/assistant.search.info",
       {
@@ -313,27 +307,20 @@ const _getSlackAIEnablementStatus = async ({
       return "disconnected";
     }
 
-    const assistantSearchInfoJson = await assistantSearchInfo.json();
+    const data = await assistantSearchInfo.json();
 
-    const status = assistantSearchInfoJson.is_ai_search_enabled
-      ? "enabled"
-      : "disabled";
+    // Check both HTTP ok and Slack API ok for robustness
+    if (!data.ok) {
+      return "disconnected";
+    }
+
+    const status = data.is_ai_search_enabled ? "enabled" : "disabled";
 
     return status;
   } catch (e) {
     return "disconnected";
   }
-};
-
-// Cache the result as this involves a call to the Slack API.
-// We use a hash of the access token as the cache key to avoid storing sensitive information directly.
-const getCachedSlackAIEnablementStatus = cacheWithRedis(
-  _getSlackAIEnablementStatus,
-  ({ mcpServerId }: GetSlackAIEnablementStatusArgs) => mcpServerId,
-  {
-    ttlMs: SLACK_AI_STATUS_CACHE_TTL_MS,
-  }
-);
+}
 
 async function createServer(
   auth: Authenticator,
@@ -348,10 +335,7 @@ async function createServer(
   });
 
   const slackAIStatus: SlackAIStatus = c
-    ? await getCachedSlackAIEnablementStatus({
-        mcpServerId,
-        accessToken: c.access_token,
-      })
+    ? await getSlackAIEnablementStatus({ accessToken: c.access_token })
     : "disconnected";
 
   localLogger.info(
@@ -1161,118 +1145,6 @@ async function createServer(
           accessToken,
           mcpServerId
         );
-      }
-    )
-  );
-
-  server.tool(
-    "add_reaction",
-    "Add a reaction emoji to a message",
-    {
-      channel: z.string().describe("The channel where the message is located"),
-      timestamp: z
-        .string()
-        .describe("The timestamp of the message to react to"),
-      name: z
-        .string()
-        .describe(
-          "The name of the emoji reaction (without colons, e.g., 'thumbsup', 'heart')"
-        ),
-    },
-    withToolLogging(
-      auth,
-      {
-        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
-        agentLoopContext,
-      },
-      async ({ channel, timestamp, name }, { authInfo }) => {
-        const accessToken = authInfo?.token;
-        if (!accessToken) {
-          return new Err(new MCPError("Access token not found"));
-        }
-
-        const slackClient = await getSlackClient(accessToken);
-
-        try {
-          const response = await slackClient.reactions.add({
-            channel,
-            timestamp,
-            name,
-          });
-
-          if (!response.ok) {
-            return new Err(new MCPError("Failed to add reaction"));
-          }
-
-          return new Ok([
-            {
-              type: "text" as const,
-              text: `Successfully added ${name} reaction to message`,
-            },
-          ]);
-        } catch (error) {
-          const authError = handleSlackAuthError(error);
-          if (authError) {
-            return authError;
-          }
-          return new Err(new MCPError(`Error adding reaction: ${error}`));
-        }
-      }
-    )
-  );
-
-  server.tool(
-    "remove_reaction",
-    "Remove a reaction emoji from a message",
-    {
-      channel: z.string().describe("The channel where the message is located"),
-      timestamp: z
-        .string()
-        .describe("The timestamp of the message to remove reaction from"),
-      name: z
-        .string()
-        .describe(
-          "The name of the emoji reaction to remove (without colons, e.g., 'thumbsup', 'heart')"
-        ),
-    },
-    withToolLogging(
-      auth,
-      {
-        toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
-        agentLoopContext,
-      },
-      async ({ channel, timestamp, name }, { authInfo }) => {
-        const accessToken = authInfo?.token;
-        if (!accessToken) {
-          return new Err(new MCPError("Access token not found"));
-        }
-
-        const slackClient = await getSlackClient(accessToken);
-
-        try {
-          const response = await slackClient.reactions.remove({
-            channel,
-            timestamp,
-            name,
-          });
-
-          if (!response.ok) {
-            return new Err(new MCPError("Failed to remove reaction"));
-          }
-
-          return new Ok([
-            {
-              type: "text" as const,
-              text: `Successfully removed ${name} reaction from message`,
-            },
-          ]);
-        } catch (error) {
-          const authError = handleSlackAuthError(error);
-          if (authError) {
-            return authError;
-          }
-          return new Err(new MCPError(`Error removing reaction: ${error}`));
-        }
       }
     )
   );

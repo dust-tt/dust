@@ -11,10 +11,12 @@ export async function launchAgentTriggerWorkflow({
   auth,
   trigger,
   contentFragment,
+  webhookRequestId,
 }: {
   auth: Authenticator;
   trigger: TriggerType;
   contentFragment?: ContentFragmentInputWithFileIdType;
+  webhookRequestId?: number;
 }): Promise<Result<undefined, Error>> {
   const client = await getTemporalClientForAgentNamespace();
 
@@ -31,6 +33,7 @@ export async function launchAgentTriggerWorkflow({
         workspaceId: auth.getNonNullableWorkspace().sId,
         triggerId: trigger.sId,
         contentFragment,
+        webhookRequestId,
       },
     ],
     taskQueue: QUEUE_NAME,

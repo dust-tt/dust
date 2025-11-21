@@ -26,17 +26,16 @@ import {
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
 import {
+  getIndexedColor,
   getSourceColor,
-  getToolColor,
   isUserMessageOrigin,
 } from "@app/components/agent_builder/observability/utils";
+import type { GroupByType } from "@app/lib/swr/workspaces";
 import { useWorkspaceProgrammaticCost } from "@app/lib/swr/workspaces";
 
 interface ProgrammaticCostChartProps {
   workspaceId: string;
 }
-
-type GroupByOptionValue = "global" | "agent" | "origin";
 
 type ChartDataPoint = {
   date: string;
@@ -47,34 +46,33 @@ type ChartDataPoint = {
 };
 
 const GROUP_BY_OPTIONS: {
-  value: GroupByOptionValue;
+  value: "global" | GroupByType;
   label: string;
 }[] = [
   { value: "global", label: "Global" },
   { value: "agent", label: "By Agent" },
   { value: "origin", label: "By Source" },
+  { value: "apiKey", label: "By Api Key" },
 ];
 
 function getColorClassName(
-  groupBy: "agent" | "origin" | undefined,
+  groupBy: GroupByType | undefined,
   groupName: string,
   groups: string[]
 ): string {
-  if (groupBy === "origin" && isUserMessageOrigin(groupName)) {
-    return getSourceColor(groupName, "text");
-  } else if (groupBy === "agent") {
-    return getToolColor(groupName, groups, "text");
-  } else if (!groupBy) {
+  if (!groupBy) {
     return COST_PALETTE.costCents;
+  } else if (groupBy === "origin" && isUserMessageOrigin(groupName)) {
+    return getSourceColor(groupName);
   } else {
-    return COST_PALETTE.unknown;
+    return getIndexedColor(groupName, groups);
   }
 }
 
 // Custom tooltip for grouped view
 function GroupedTooltip(
   props: TooltipContentProps<number, string>,
-  groupBy: "agent" | "origin" | undefined,
+  groupBy: GroupByType | undefined,
   groups: string[]
 ): JSX.Element | null {
   const { active, payload } = props;
@@ -123,9 +121,7 @@ function GroupedTooltip(
 export function ProgrammaticCostChart({
   workspaceId,
 }: ProgrammaticCostChartProps) {
-  const [groupBy, setGroupBy] = useState<"agent" | "origin" | undefined>(
-    undefined
-  );
+  const [groupBy, setGroupBy] = useState<GroupByType | undefined>(undefined);
 
   const {
     programmaticCostData,

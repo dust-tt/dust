@@ -43,7 +43,7 @@ export function SourceChart({
   const legendItems = data.map((d) => ({
     key: d.label,
     label: d.label,
-    colorClassName: getSourceColor(d.origin, "text"),
+    colorClassName: getSourceColor(d.origin),
   }));
 
   return (
@@ -72,7 +72,7 @@ export function SourceChart({
               label: d.label,
               value: d.count,
               percent: d.percent,
-              colorClassName: getSourceColor(d.origin, "text"),
+              colorClassName: getSourceColor(d.origin),
             }));
             return <ChartTooltipCard title="Source breakdown" rows={rows} />;
           }}
@@ -96,7 +96,7 @@ export function SourceChart({
           {data.map((entry) => (
             <Cell
               key={entry.origin}
-              className={getSourceColor(entry.origin, "text")}
+              className={getSourceColor(entry.origin)}
               fill="currentColor"
             />
           ))}

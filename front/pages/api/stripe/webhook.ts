@@ -12,11 +12,13 @@ import {
 } from "@app/lib/api/email";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
+import { maybeStartCreditFromProOneOffInvoice } from "@app/lib/credits/purchase";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import {
   assertStripeSubscriptionIsValid,
   createCustomerPortalSession,
   getStripeClient,
+  isCreditPurchaseInvoice,
 } from "@app/lib/plans/stripe";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
@@ -65,7 +67,7 @@ async function handler(
       // Collect raw body using stream pipeline
       let rawBody = Buffer.from("");
       const collector = new Writable({
-        write(chunk, encoding, callback) {
+        write(chunk, _encoding, callback) {
           rawBody = Buffer.concat([rawBody, chunk]);
           callback();
         },
@@ -79,18 +81,16 @@ async function handler(
           apiConfig.getStripeSecretWebhookKey()
         );
       } catch (error) {
-        logger.error(
-          { error, stripeError: true },
-          "Error constructing Stripe event in Webhook."
-        );
+        logger.error({ error }, "Error constructing Stripe event in Webhook.");
       }
 
       if (!event) {
         return apiError(req, res, {
-          status_code: 500,
+          status_code: 403,
           api_error: {
             type: "internal_server_error",
-            message: "Error constructing Stripe Webhook event.",
+            message:
+              "Invalid Stripe Webhook event, the signature may not be valid.",
           },
         });
       }
@@ -327,7 +327,31 @@ async function handler(
             // the warnings and create an alert if this log appears in all regions
             return res.status(200).json({ success: true });
           }
-          await subscription.update({ paymentFailingSince: null });
+
+          // Handle credit purchase activation for Pro subscriptions.
+          // (Enterprise subscriptions activate credits optimistically, so we skip them here.)
+          const creditPurchaseResult =
+            await maybeStartCreditFromProOneOffInvoice({
+              invoice,
+              subscription,
+            });
+
+          if (creditPurchaseResult.isErr()) {
+            logger.error(
+              {
+                error: creditPurchaseResult.error,
+                invoiceId: invoice.id,
+                stripeSubscriptionId: invoice.subscription,
+              },
+              "[Stripe Webhook] Error processing credit purchase"
+            );
+          }
+
+          // We don't want credit purchase invoice being paid clearing customer's sub's payment_failed_since
+          if (!isCreditPurchaseInvoice(invoice)) {
+            await subscription.update({ paymentFailingSince: null });
+          }
+
           break;
         case "invoice.payment_failed":
           // Occurs when payment failed or the user does not have a valid payment method.

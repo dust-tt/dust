@@ -45,6 +45,7 @@ export type FetchConversationOptions = {
   includeDeleted?: boolean;
   includeTest?: boolean;
   dangerouslySkipPermissionFiltering?: boolean;
+  alertIfNoAccessible?: boolean;
 };
 
 interface UserParticipation {
@@ -103,7 +104,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     auth: Authenticator,
     fetchConversationOptions?: FetchConversationOptions,
     options: ResourceFindOptions<ConversationModel> = {}
-  ) {
+  ): Promise<Result<ConversationResource[], ConversationError>> {
     const workspace = auth.getNonNullableWorkspace();
     const { where } = this.getOptions(fetchConversationOptions);
 
@@ -127,7 +128,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         : await SpaceResource.fetchByModelIds(auth, uniqueSpaceIds);
 
     if (fetchConversationOptions?.dangerouslySkipPermissionFiltering) {
-      return conversations.map((c) => new this(this.model, c.get()));
+      return new Ok(conversations.map((c) => new this(this.model, c.get())));
     }
 
     // Filter out conversations that reference missing/deleted spaces.
@@ -154,7 +155,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       )
     );
 
-    return spaceBasedAccessible;
+    if (
+      fetchConversationOptions?.alertIfNoAccessible &&
+      spaceBasedAccessible.length !== validConversations.length
+    ) {
+      return new Err(new ConversationError("conversation_access_restricted"));
+    }
+
+    return new Ok(spaceBasedAccessible);
   }
 
   static triggerIdToSId(triggerId: number | null, workspaceId: number) {
@@ -175,28 +183,48 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     sIds: string[],
     options?: FetchConversationOptions
   ) {
-    return this.baseFetchWithAuthorization(auth, options, {
+    const res = await this.baseFetchWithAuthorization(auth, options, {
       where: {
         sId: { [Op.in]: sIds },
       },
     });
+
+    if (res.isErr()) {
+      return [];
+    }
+
+    return res.value;
   }
 
   static async fetchById(
     auth: Authenticator,
     sId: string,
     options?: FetchConversationOptions
-  ): Promise<ConversationResource | null> {
-    const res = await this.fetchByIds(auth, [sId], options);
+  ): Promise<Result<ConversationResource | null, ConversationError>> {
+    const res = await this.baseFetchWithAuthorization(auth, options, {
+      where: {
+        sId: { [Op.in]: [sId] },
+      },
+    });
 
-    return res.length > 0 ? res[0] : null;
+    if (res.isErr()) {
+      return res;
+    }
+
+    return new Ok(res.value.length > 0 ? res.value[0] : null);
   }
 
   static async listAll(
     auth: Authenticator,
     options?: FetchConversationOptions
   ): Promise<ConversationResource[]> {
-    return this.baseFetchWithAuthorization(auth, options);
+    const res = await this.baseFetchWithAuthorization(auth, options);
+
+    if (res.isErr()) {
+      return [];
+    }
+
+    return res.value;
   }
 
   // TODO(2025-10-22 flav): Use baseFetchWithAuthorization.
@@ -290,7 +318,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const results: ConversationResource[] = [];
     for (let i = 0; i < inactiveConversations.length; i += batchSize) {
       const batch = inactiveConversations.slice(i, i + batchSize);
-      const conversations = await this.baseFetchWithAuthorization(
+      const conversationsRes = await this.baseFetchWithAuthorization(
         auth,
         options,
         {
@@ -302,7 +330,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         }
       );
 
-      results.push(...conversations);
+      if (conversationsRes.isOk()) {
+        results.push(...conversationsRes.value);
+      }
     }
 
     return results;
@@ -357,33 +387,40 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     // Step 2: Filter conversations by creation date.
     const conversationIds = messageWithAgent.map((m) => m.conversationId);
-    const conversations = await this.baseFetchWithAuthorization(auth, options, {
-      where: {
-        id: {
-          [Op.in]: conversationIds,
+    const conversationsRes = await this.baseFetchWithAuthorization(
+      auth,
+      options,
+      {
+        where: {
+          id: {
+            [Op.in]: conversationIds,
+          },
+          createdAt: {
+            [Op.lt]: cutoffDate,
+          },
         },
-        createdAt: {
-          [Op.lt]: cutoffDate,
-        },
-      },
-    });
+      }
+    );
 
-    return conversations.map((c) => c.sId);
+    if (conversationsRes.isErr()) {
+      return [];
+    }
+
+    return conversationsRes.value.map((c) => c.sId);
   }
 
   static async fetchConversationWithoutContent(
     auth: Authenticator,
     sId: string,
-    options?: FetchConversationOptions & {
-      dangerouslySkipPermissionFiltering?: boolean;
-    }
+    options?: FetchConversationOptions
   ): Promise<Result<ConversationWithoutContentType, ConversationError>> {
-    const conversation = await this.fetchById(auth, sId, {
-      includeDeleted: options?.includeDeleted,
-      dangerouslySkipPermissionFiltering:
-        options?.dangerouslySkipPermissionFiltering,
-    });
+    const conversationRes = await this.fetchById(auth, sId, options);
 
+    if (conversationRes.isErr()) {
+      return conversationRes;
+    }
+
+    const conversation = conversationRes.value;
     if (!conversation) {
       return new Err(new ConversationError("conversation_not_found"));
     }
@@ -415,7 +452,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     blob: Partial<InferAttributes<ConversationModel, { omit: "workspaceId" }>>,
     transaction?: Transaction
   ): Promise<Result<undefined, Error>> {
-    const conversation = await this.fetchById(auth, sId);
+    const conversationRes = await this.fetchById(auth, sId);
+    if (conversationRes.isErr()) {
+      return conversationRes;
+    }
+
+    const conversation = conversationRes.value;
     if (conversation == null) {
       return new Err(new ConversationError("conversation_not_found"));
     }
@@ -452,7 +494,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const conversationIds = participations.map((p) => p.conversationId);
 
     // Use baseFetchWithAuthorization to get conversations with proper authorization.
-    const conversations = await this.baseFetchWithAuthorization(
+    const conversationsRes = await this.baseFetchWithAuthorization(
       auth,
       {},
       {
@@ -462,6 +504,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         },
       }
     );
+
+    if (conversationsRes.isErr()) {
+      return [];
+    }
+
+    const conversations = conversationsRes.value;
 
     const participationMap = new Map(
       participations.map((p) => [
@@ -500,12 +548,22 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return [];
     }
 
-    const conversations = await this.baseFetchWithAuthorization(auth, options, {
-      where: {
-        triggerId: triggerModelId,
-      },
-      order: [["createdAt", "DESC"]],
-    });
+    const conversationsRes = await this.baseFetchWithAuthorization(
+      auth,
+      options,
+      {
+        where: {
+          triggerId: triggerModelId,
+        },
+        order: [["createdAt", "DESC"]],
+      }
+    );
+
+    if (conversationsRes.isErr()) {
+      return [];
+    }
+
+    const conversations = conversationsRes.value;
 
     return Promise.all(
       conversations.map(async (c) => {
@@ -556,10 +614,15 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     auth: Authenticator,
     conversationId: string
   ) {
-    const conversation = await ConversationResource.fetchById(
+    const conversationRes = await ConversationResource.fetchById(
       auth,
       conversationId
     );
+    if (conversationRes.isErr()) {
+      return conversationRes;
+    }
+
+    const conversation = conversationRes.value;
     if (conversation === null) {
       return new Err(new ConversationError("conversation_not_found"));
     }
@@ -678,12 +741,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     {
       conversation,
       action,
+      user,
     }: {
       conversation: ConversationWithoutContentType | ConversationType;
       action: ParticipantActionType;
+      user: UserType | null;
     }
   ) {
-    const user = auth.user();
     if (!user) {
       return;
     }
@@ -810,7 +874,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     requestedSpaceIds: number[],
     transaction?: Transaction
   ) {
-    const conversation = await ConversationResource.fetchById(auth, sId);
+    const conversationRes = await ConversationResource.fetchById(auth, sId);
+    if (conversationRes.isErr()) {
+      return conversationRes;
+    }
+
+    const conversation = conversationRes.value;
     if (conversation === null) {
       return new Err(new ConversationError("conversation_not_found"));
     }

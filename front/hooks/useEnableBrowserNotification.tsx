@@ -53,10 +53,23 @@ export const useEnableBrowserNotification = () => {
     // Couldn't make it work with a simple useState().
     shownRef.current = true;
 
+    await setUserMetadataFromClient({
+      key: BROWSER_NOTIFICATION_LAST_ASKED_FOR_KEY,
+      value: `${Date.now()}`,
+    });
+    await mutateMetadata((current) => {
+      if (current) {
+        return {
+          ...current,
+          value: Date.now(),
+        };
+      }
+      return current;
+    });
+
     const confirmed = await confirm({
       title: (
         <div className="flex items-center gap-2">
-          <div className="h-2 w-2 flex-shrink-0 rounded-full bg-highlight-500 dark:bg-highlight-500-night" />
           Enable notifications for new messages
         </div>
       ),
@@ -66,21 +79,7 @@ export const useEnableBrowserNotification = () => {
     });
 
     if (confirmed) {
-      void Notification.requestPermission();
-    } else {
-      await setUserMetadataFromClient({
-        key: BROWSER_NOTIFICATION_LAST_ASKED_FOR_KEY,
-        value: `${Date.now()}`,
-      });
-      await mutateMetadata((current) => {
-        if (current) {
-          return {
-            ...current,
-            value: Date.now(),
-          };
-        }
-        return current;
-      });
+      await Notification.requestPermission();
     }
 
     shownRef.current = false;

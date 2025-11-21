@@ -346,7 +346,7 @@ function createServer(
 
   server.tool(
     "post_message",
-    "Post a message to a Teams channel, chat, or as a reply in a thread. Can send messages to channels, direct chats, or as threaded replies.",
+    "Post a message to a Teams channel, chat, or as a reply in a thread. Can send messages to channels, direct chats, or as threaded replies. For direct messages, you can provide userIds instead of chatId to automatically create a chat if it doesn't exist (one-on-one for 1 user, group chat for multiple users). By default (it no chat, channel or users are provided), the message will be sent to the current user's self-chat.",
     {
       messageContent: z
         .string()
@@ -373,7 +373,15 @@ function createServer(
       chatId: z
         .string()
         .optional()
-        .describe("The ID of the chat (required when targetType is 'chat')."),
+        .describe(
+          "The ID of the chat (required when targetType is 'chat', unless userIds is provided)."
+        ),
+      userIds: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "Array of user IDs to send a message to (optional, only for targetType 'chat'). If 1 user ID is provided, a one-on-one chat will be created/used. If multiple user IDs are provided, a group chat will be created. Cannot be used together with chatId."
+        ),
       parentMessageId: z
         .string()
         .optional()
@@ -391,6 +399,7 @@ function createServer(
           teamId,
           channelId,
           chatId,
+          userIds,
           parentMessageId,
         },
         { authInfo }
@@ -403,7 +412,8 @@ function createServer(
         }
 
         try {
-          let endpoint: string;
+          let endpoint: string = "";
+          let finalChatId = chatId;
 
           // Validate required parameters based on target type
           if (targetType === "channel") {
@@ -422,13 +432,55 @@ function createServer(
               endpoint = `/teams/${teamId}/channels/${channelId}/messages`;
             }
           } else if (targetType === "chat") {
-            if (!chatId) {
+            const meResponse = await client.api("/me").select("id").get();
+            const currentUserId = meResponse.id;
+            // Validate that either chatId or userIds is provided, but not both
+            if (chatId && userIds && userIds.length > 0) {
               return new Err(
-                new MCPError("chatId is required when targetType is 'chat'")
+                new MCPError(
+                  "Cannot provide both chatId and userIds. Use chatId for existing chats, or userIds to create/find a chat."
+                )
               );
             }
-            // New message in a chat (chats don't support threaded replies via parentMessageId)
-            endpoint = `/chats/${chatId}/messages`;
+            if (!chatId && (!userIds || userIds.length === 0)) {
+              userIds = [currentUserId]; // default to self-chat
+            }
+
+            // If userIds is provided, create or get existing chat
+            if (userIds && userIds.length > 0) {
+              try {
+                if (userIds.length === 1 && userIds[0] === currentUserId) {
+                  // Send a message to the self-chat
+                  // Really mysterious url found here: https://stackoverflow.com/questions/73936648/send-message-to-self-chat-in-microsoft-teams-using-graph-api
+                  endpoint = "/me/chats/48:notes/messages";
+                } else {
+                  const allUserIds = [currentUserId, ...userIds];
+                  const members = allUserIds.map((id) => ({
+                    "@odata.type": "#microsoft.graph.aadUserConversationMember",
+                    roles: ["owner"],
+                    "user@odata.bind": `https://graph.microsoft.com/v1.0/users/${id}`,
+                  }));
+
+                  // Determine chat type based on number of users
+                  const chatType = userIds.length === 1 ? "oneOnOne" : "group";
+
+                  const chatResponse = await client.api("/chats").post({
+                    chatType,
+                    members,
+                  });
+
+                  finalChatId = chatResponse.id;
+                }
+              } catch (err) {
+                return new Err(
+                  new MCPError(
+                    `Failed to create or find chat with users: ${normalizeError(err).message}`
+                  )
+                );
+              }
+            }
+
+            endpoint = endpoint ?? `/chats/${finalChatId}/messages`;
           } else {
             return new Err(
               new MCPError("Invalid targetType. Must be 'channel' or 'chat'.")

@@ -1,3 +1,4 @@
+import compact from "lodash/compact";
 import type {
   FunctionTool,
   ResponseFormatTextJSONSchemaConfig,
@@ -16,6 +17,8 @@ import {
   extractEncryptedContentFromMetadata,
   extractIdFromMetadata,
 } from "@app/lib/api/llm/utils";
+import type { RegionType } from "@app/lib/api/regions/config";
+import { config } from "@app/lib/api/regions/config";
 import type {
   ModelConversationTypeMultiActions,
   ReasoningEffort,
@@ -41,9 +44,14 @@ function toInputContent(content: Content): ResponseInputContent {
   }
 }
 
+const REGION_MAPPING: { [key in RegionType]: "us" | "eu" } = {
+  "us-central1": "us",
+  "europe-west1": "eu",
+};
+
 function toAssistantInputItem(
   content: AgentContentItemType
-): ResponseInputItem {
+): ResponseInputItem | null {
   switch (content.type) {
     case "text_content":
       return {
@@ -58,7 +66,17 @@ function toAssistantInputItem(
         name: content.value.name,
         arguments: content.value.arguments,
       };
-    case "reasoning":
+    case "reasoning": {
+      // The encrypted content is only usable if it was generated in the same region
+      // as the one being used to call the API, since OpenAI uses different keys per region.
+      // So if we find a mismatch, we skip adding this reasoning item to the input.
+      // This might degrade the quality, but it's better than blowing up.
+      const region = content.value.region ?? "us";
+
+      if (region !== REGION_MAPPING[config.getCurrentRegion()]) {
+        return null;
+      }
+
       const reasoning = content.value.reasoning;
       const id = extractIdFromMetadata(content.value.metadata);
       const encryptedContent = extractEncryptedContentFromMetadata(
@@ -70,6 +88,7 @@ function toAssistantInputItem(
         summary: reasoning ? [{ type: "summary_text", text: reasoning }] : [],
         ...(encryptedContent ? { encrypted_content: encryptedContent } : {}),
       };
+    }
     case "error":
       return {
         role: "assistant",
@@ -121,7 +140,10 @@ export function toInput(
         inputs.push(toUserInputMessage(message));
         break;
       case "assistant":
-        inputs.push(...message.contents.map(toAssistantInputItem));
+        const assistantItems = compact(
+          message.contents.map(toAssistantInputItem)
+        );
+        inputs.push(...assistantItems);
         break;
       case "function":
         inputs.push(toToolCallOutputItem(message));

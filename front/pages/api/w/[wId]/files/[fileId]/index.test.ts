@@ -44,7 +44,10 @@ vi.mock("@app/lib/api/data_sources", () => ({
 
 vi.mock("@app/lib/resources/conversation_resource", () => ({
   ConversationResource: {
-    fetchById: vi.fn().mockResolvedValue({ id: "test-conversation-id" }),
+    fetchById: vi.fn().mockResolvedValue({
+      isErr: () => false,
+      value: { id: "test-conversation-id" },
+    }),
   },
 }));
 

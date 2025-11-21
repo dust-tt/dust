@@ -21,7 +21,7 @@ import type {
   ChartDatum,
   ToolChartModeType,
 } from "@app/components/agent_builder/observability/types";
-import { getToolColor } from "@app/components/agent_builder/observability/utils";
+import { getIndexedColor } from "@app/components/agent_builder/observability/utils";
 
 export function ToolUsageChart({
   workspaceId,
@@ -54,7 +54,7 @@ export function ToolUsageChart({
       topTools.map((t) => ({
         key: t,
         label: t,
-        colorClassName: getToolColor(t, topTools, "text"),
+        colorClassName: getIndexedColor(t, topTools),
       })),
     [topTools]
   );
@@ -150,7 +150,7 @@ export function ToolUsageChart({
             dataKey={(row: ChartDatum) => row.values[toolName]?.percent ?? 0}
             stackId="a"
             fill="currentColor"
-            className={getToolColor(toolName, topTools, "text")}
+            className={getIndexedColor(toolName, topTools)}
             name={toolName}
             shape={
               <RoundedTopBarShape toolName={toolName} stackOrder={topTools} />

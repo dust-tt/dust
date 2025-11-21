@@ -12,6 +12,7 @@ import { useBrowserNotification } from "@app/hooks/useBrowserNotification";
 import { useDatadogLogs } from "@app/hooks/useDatadogLogs";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useNovuClient } from "@app/hooks/useNovuClient";
+import { ConversationsUpdatedEvent } from "@app/lib/notifications/events";
 import { useUser } from "@app/lib/swr/user";
 import { getFaviconPath } from "@app/lib/utils";
 
@@ -50,23 +51,37 @@ export default function AppRootLayout({
     }
   }, [user?.email, user?.fullName, user?.sId]);
 
-  const { notify } = useBrowserNotification();
+  const { allowBrowserNotification, notify } = useBrowserNotification();
 
   useEffect(() => {
     const setupNotifications = async (novuClient: Novu) => {
       const dustFacingUrl =
         process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL ?? "https://dust.tt";
 
-      const unsubscribe = await novuClient.on(
+      const unsubscribe = novuClient.on(
         "notifications.notification_received",
         (notification) => {
-          sendNotification({
-            title: notification.result.subject ?? "New notification",
-            description: notification.result.body.replaceAll("\n", " ").trim(),
-            type: "info",
-          });
+          if (
+            notification.result.tags?.includes("conversations") &&
+            window !== undefined
+          ) {
+            window.dispatchEvent(new ConversationsUpdatedEvent());
+          }
 
-          if (!notification.result.data?.skipPushNotification) {
+          if (!allowBrowserNotification) {
+            sendNotification({
+              title: notification.result.subject ?? "New notification",
+              description: notification.result.body
+                .replaceAll("\n", " ")
+                .trim(),
+              type: "success",
+            });
+          }
+
+          if (
+            !notification.result.data?.skipPushNotification &&
+            allowBrowserNotification
+          ) {
             notify(notification.result.subject ?? "New notification", {
               body: notification.result.body.replaceAll("\n", " ").trim(),
               icon:
@@ -110,7 +125,7 @@ export default function AppRootLayout({
         console.error("Failed to setup notifications", { error });
       }
     }
-  }, [notify, novuClient, push, sendNotification]);
+  }, [allowBrowserNotification, notify, novuClient, push, sendNotification]);
 
   return (
     <ThemeProvider>

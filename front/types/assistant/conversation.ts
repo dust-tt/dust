@@ -53,26 +53,26 @@ export type MessageWithContentFragmentsType =
  */
 
 export type UserMessageOrigin =
+  | "agent_handover"
   | "api"
   | "email"
+  | "excel"
   | "extension"
   | "github-copilot-chat"
   | "gsheet"
   | "make"
   | "n8n"
+  | "powerpoint"
   | "raycast"
+  | "run_agent"
   | "slack"
   | "teams"
-  | "triggered"
+  | "transcript"
   | "triggered_programmatic"
+  | "triggered"
   | "web"
   | "zapier"
-  | "zendesk"
-  | "excel"
-  | "powerpoint"
-  | "run_agent"
-  | "agent_handover"
-  | "transcript";
+  | "zendesk";
 
 export type UserMessageContext = {
   username: string;

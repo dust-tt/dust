@@ -108,6 +108,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "OpenAI tool for tracking API consumption and costs",
     stage: "on_demand",
   },
+  ppul_credits_purchase_flow: {
+    description:
+      "Purchase credits flow for workspace admins via Stripe invoices",
+    stage: "dust_only",
+  },
   salesforce_synced_queries: {
     description: "Salesforce Connection: retrieval on Synchronized queries",
     stage: "on_demand",
