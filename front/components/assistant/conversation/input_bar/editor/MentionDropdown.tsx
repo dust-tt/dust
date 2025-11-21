@@ -10,6 +10,7 @@ import React, {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -26,7 +27,10 @@ export const MentionDropdown = forwardRef<
 >(({ items, clientRect, command, onClose }, ref) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const isLoading = false;
-  const triggerRect = clientRect ? clientRect() : null;
+  const triggerRect = useMemo(
+    () => (clientRect ? clientRect() : null),
+    [clientRect]
+  );
   const triggerRef = useRef<HTMLDivElement>(null);
   const [virtualTriggerStyle, setVirtualTriggerStyle] =
     useState<React.CSSProperties>({});
@@ -78,7 +82,7 @@ export const MentionDropdown = forwardRef<
 
   useEffect(() => {
     updateTriggerPosition();
-  }, [triggerRect, updateTriggerPosition]);
+  }, [updateTriggerPosition]);
 
   // Only render the dropdown if we have a valid trigger.
   if (!triggerRect) {
