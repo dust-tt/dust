@@ -25,6 +25,7 @@ import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideP
 import { ErrorBoundary } from "@app/components/error_boundary/ErrorBoundary";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import { useURLSheet } from "@app/hooks/useURLSheet";
+import { ONBOARDING_CONVERSATION_ENABLED } from "@app/lib/onboarding";
 import { useConversation } from "@app/lib/swr/conversations";
 import type {
   ConversationError,
@@ -115,7 +116,12 @@ const ConversationLayoutContent = ({
     useWelcomeTourGuide();
 
   const shouldDisplayWelcomeTourGuide = useMemo(() => {
-    return router.query.welcome === "true" && !activeConversationId;
+    // Only show the welcome tour guide if onboarding chat is disabled.
+    return (
+      router.query.welcome === "true" &&
+      !activeConversationId &&
+      !ONBOARDING_CONVERSATION_ENABLED
+    );
   }, [router.query.welcome, activeConversationId]);
 
   const onTourGuideEnd = () => {

@@ -322,6 +322,7 @@ const UserMessageOriginSchema = FlexibleEnumSchema<
   | "web"
   | "zapier"
   | "zendesk"
+  | "onboarding_conversation"
 >()
   .or(z.null())
   .or(z.undefined());
