@@ -1,7 +1,10 @@
 import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
 
-import { getTemporalWorkerConnection } from "@app/lib/temporal";
+import {
+  getTemporalWorkerConnection,
+  TEMPORAL_MAXED_CACHED_WORKFLOWS,
+} from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
 import * as activities from "@app/temporal/workos_events_queue/activities";
@@ -16,6 +19,7 @@ export async function runWorkOSEventsWorker() {
     taskQueue: QUEUE_NAME,
     maxConcurrentActivityTaskExecutions: 32,
     connection,
+    maxCachedWorkflows: TEMPORAL_MAXED_CACHED_WORKFLOWS,
     namespace,
     interceptors: {
       activity: [
