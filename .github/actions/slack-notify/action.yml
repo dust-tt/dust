@@ -113,7 +113,7 @@ runs:
             🔨 Build completed in ${{ inputs.region }} region
             • Image: ${{ inputs.image_tag }}
             ${{ inputs.current_version != '' && format('• Changes: {0} → {1} ({2} commits)', inputs.current_version, inputs.image_tag, inputs.commit_count) || '' }}
-            ${{ inputs.commit_diff != '' && inputs.commit_diff || '' }}
+            ${{ inputs.commit_diff }}
 
     - name: Notify Deploy Failure
       if: inputs.step == 'failure'
