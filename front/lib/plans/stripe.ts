@@ -10,6 +10,7 @@ import {
   isSupportedReportUsage,
   SUPPORTED_REPORT_USAGE,
 } from "@app/lib/plans/usage/types";
+import logger from "@app/logger/logger";
 import type {
   BillingPeriod,
   LightWorkspaceType,
@@ -18,7 +19,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { Err, isDevelopment, Ok } from "@app/types";
+import { Err, isDevelopment, normalizeError, Ok } from "@app/types";
 
 export function getProPlanStripeProductId(owner: WorkspaceType) {
   const isBusiness = owner.metadata?.isBusiness;
@@ -36,6 +37,13 @@ export function getProPlanStripeProductId(owner: WorkspaceType) {
     : isBusiness
       ? prodBusinessProPlanProductId
       : prodProPlanProductId;
+}
+
+export function getCreditPurchasePriceId() {
+  const devCreditPurchasePriceId = "price_1SUoyQDKd2JRwZF6FBHIGbwC";
+  const prodCreditPurchasePriceId = "price_prod_credit_purchase_TODO";
+
+  return isDevelopment() ? devCreditPurchasePriceId : prodCreditPurchasePriceId;
 }
 
 export const getStripeClient = () => {
@@ -431,6 +439,70 @@ export function isEnterpriseSubscription(
   });
 }
 
+/**
+ * Extracts the customer ID from a Stripe subscription.
+ * Handles both string and expanded customer object.
+ */
+export function getCustomerId(subscription: Stripe.Subscription): string {
+  return typeof subscription.customer === "string"
+    ? subscription.customer
+    : subscription.customer.id;
+}
+
+/**
+ * Checks if a Stripe invoice is for a credit purchase.
+ */
+export function isCreditPurchaseInvoice(invoice: Stripe.Invoice): boolean {
+  return invoice.metadata?.credit_purchase === "true";
+}
+
+/**
+ * Extracts the credit amount in cents from a credit purchase invoice.
+ * Returns null if the invoice is not a credit purchase or if the amount is invalid.
+ */
+export function getCreditAmountFromInvoice(
+  invoice: Stripe.Invoice
+): number | null {
+  if (!isCreditPurchaseInvoice(invoice) || !invoice.metadata) {
+    return null;
+  }
+
+  const amountCents = parseInt(invoice.metadata.credit_amount_cents, 10);
+
+  if (isNaN(amountCents) || amountCents <= 0) {
+    return null;
+  }
+
+  return amountCents;
+}
+
+/**
+ * Creates the payload for a credit purchase line item.
+ * This factors out the common parameters used when creating invoice items for credit purchases.
+ */
+function makeCreditPurchaseLineItemPayload({
+  customerId,
+  amountCents,
+  subscription,
+  invoice,
+}: {
+  customerId: string;
+  amountCents: number;
+  subscription?: string;
+  invoice?: string;
+}): Stripe.InvoiceItemCreateParams {
+  const amountDollars = amountCents / 100;
+
+  return {
+    customer: customerId,
+    price: getCreditPurchasePriceId(),
+    quantity: amountCents,
+    description: `Programmatic usage credit: $${amountDollars.toFixed(2)}`,
+    ...(subscription && { subscription }),
+    ...(invoice && { invoice }),
+  };
+}
+
 export function assertStripeSubscriptionItemIsValid({
   item,
   recurringRequired,
@@ -527,4 +599,128 @@ export async function reportActiveSeats(
     stripeSubscriptionItem,
     activeSeats
   );
+}
+
+/**
+ * Attaches a credit purchase as an invoice item to a subscription.
+ * The item will be included in the next regular subscription invoice.
+ * Returns the invoice item ID for idempotency tracking.
+ */
+export async function attachCreditPurchaseToSubscription({
+  stripeSubscriptionId,
+  amountCents,
+}: {
+  stripeSubscriptionId: string;
+  amountCents: number;
+}): Promise<Result<string, { error_message: string }>> {
+  const stripe = getStripeClient();
+
+  // Get the subscription to find the customer.
+  const subscription = await getStripeSubscription(stripeSubscriptionId);
+  if (!subscription) {
+    return new Err({
+      error_message: `Subscription ${stripeSubscriptionId} not found`,
+    });
+  }
+
+  const customerId = getCustomerId(subscription);
+
+  try {
+    // Create invoice item that will be charged in the next subscription invoice.
+    const invoiceItem = await stripe.invoiceItems.create(
+      makeCreditPurchaseLineItemPayload({
+        customerId,
+        amountCents,
+        subscription: stripeSubscriptionId,
+      })
+    );
+
+    return new Ok(invoiceItem.id);
+  } catch (error) {
+    logger.error(
+      {
+        stripeSubscriptionId,
+        stripeError: true,
+      },
+      "[Credit Purchase] Failed to attach line item to Stripe subscription"
+    );
+    return new Err({
+      error_message: `Failed to attach credit purchase to subscription: ${normalizeError(error).message}`,
+    });
+  }
+}
+
+/**
+ * Creates and pays a one-off invoice for credit purchase.
+ * The invoice is created, finalized, and immediately paid.
+ */
+export async function makeAndMaybePayCreditPurchaseInvoice({
+  stripeSubscriptionId,
+  amountCents,
+}: {
+  stripeSubscriptionId: string;
+  amountCents: number;
+}): Promise<Result<Stripe.Invoice, { error_message: string }>> {
+  const stripe = getStripeClient();
+
+  // Get the subscription to find the customer.
+  const subscription = await getStripeSubscription(stripeSubscriptionId);
+  if (!subscription) {
+    return new Err({
+      error_message: `Subscription ${stripeSubscriptionId} not found`,
+    });
+  }
+  const customerId = getCustomerId(subscription);
+
+  const invoiceParams: Stripe.InvoiceCreateParams = {
+    customer: customerId,
+    subscription: stripeSubscriptionId,
+    collection_method: "charge_automatically",
+    metadata: {
+      credit_purchase: "true",
+      credit_amount_cents: amountCents.toString(),
+    },
+    auto_advance: false,
+  };
+
+  try {
+    const invoice = await stripe.invoices.create(invoiceParams);
+
+    await stripe.invoiceItems.create(
+      makeCreditPurchaseLineItemPayload({
+        customerId,
+        amountCents,
+        invoice: invoice.id,
+      })
+    );
+
+    const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
+    // Why this double try-catch ?
+    // The customer's invoice payment MAY fail, but we are OK with it,
+    // we still want to create the credit purchase on our side,
+    // and IF the payment succeeds, we will activate it via stripe `invoice.paid` webhook.
+    try {
+      // Try to pay the invoice immediately.
+      await stripe.invoices.pay(finalizedInvoice.id);
+    } catch (error) {
+      logger.info(
+        {
+          invoiceStripeId: finalizedInvoice.id,
+        },
+        "[Credit Purchase] Invoice payment failed."
+      );
+    }
+    return new Ok(finalizedInvoice);
+  } catch (error) {
+    logger.error(
+      {
+        stripeSubscriptionId,
+        stripeError: true,
+      },
+      "[Credit Purchase] Failed to create Stripe invoice"
+    );
+    return new Err({
+      error_message: `Failed to create invoice credit purchase: ${normalizeError(error).message}`,
+    });
+  }
 }
