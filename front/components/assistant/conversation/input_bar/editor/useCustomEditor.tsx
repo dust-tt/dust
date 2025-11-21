@@ -10,6 +10,7 @@ import { KeyboardShortcutsExtension } from "@app/components/assistant/conversati
 import { MarkdownStyleExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MarkdownStyleExtension";
 import { MentionExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionExtension";
 import { PastedAttachmentExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/PastedAttachmentExtension";
+import { PastedMentionExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/PastedMentionExtension";
 import { URLDetectionExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/URLDetectionExtension";
 import { createMarkdownSerializer } from "@app/components/assistant/conversation/input_bar/editor/markdownSerializer";
 import {
@@ -19,6 +20,7 @@ import {
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { extractFromEditorJSON } from "@app/lib/mentions/format";
+import { useMentionValidation } from "@app/lib/swr/hooks/useMentionValidation";
 import { isMobile } from "@app/lib/utils";
 import type { RichMention } from "@app/types";
 import type { WorkspaceType } from "@app/types";
@@ -205,6 +207,12 @@ const useCustomEditor = ({
   longTextPasteCharsThreshold,
   onInlineText,
 }: CustomEditorProps) => {
+  // Hook to validate mentions against the backend.
+  const { validateMention } = useMentionValidation({
+    workspaceId: owner.sId,
+    conversationId,
+  });
+
   const extensions = [
     KeyboardShortcutsExtension,
     StarterKit.configure({
@@ -228,6 +236,9 @@ const useCustomEditor = ({
     MarkdownStyleExtension,
     PastedAttachmentExtension.configure({
       onInlineText,
+    }),
+    PastedMentionExtension.configure({
+      validateMention,
     }),
     URLStorageExtension,
   ];
