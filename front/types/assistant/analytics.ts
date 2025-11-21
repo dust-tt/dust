@@ -18,6 +18,7 @@ export interface AgentMessageAnalyticsToolUsed {
   step_index: number;
   server_name: string;
   tool_name: string;
+  mcp_server_configuration_sid: string;
   execution_time_ms: number | null;
   status: string;
 }

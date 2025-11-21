@@ -5,6 +5,7 @@ import { calculateTokenUsageCost } from "@app/lib/api/assistant/token_pricing";
 import { ANALYTICS_ALIAS_NAME, withEs } from "@app/lib/api/elasticsearch";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
+import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import type { AgentMessageFeedback } from "@app/lib/models/assistant/conversation";
 import {
   AgentMessage,
@@ -242,6 +243,24 @@ async function collectToolUsageFromMessage(
   auth: Authenticator,
   actionResources: AgentMCPActionResource[]
 ): Promise<AgentMessageAnalyticsToolUsed[]> {
+  const workspaceId = auth.getNonNullableWorkspace().id;
+
+  const uniqueConfigIds = Array.from(
+    new Set(actionResources.map((a) => a.mcpServerConfigurationId))
+  );
+
+  const serverConfigs = await AgentMCPServerConfiguration.findAll({
+    where: {
+      workspaceId,
+      id: uniqueConfigIds,
+    },
+  });
+
+  const configIdToSid = new Map<string, string>();
+  for (const cfg of serverConfigs) {
+    configIdToSid.set(cfg.id.toString(), cfg.sId);
+  }
+
   return actionResources.map((actionResource) => {
     return {
       step_index: actionResource.stepContent.step,
@@ -252,6 +271,8 @@ async function collectToolUsageFromMessage(
       tool_name:
         actionResource.functionCallName.split(TOOL_NAME_SEPARATOR).pop() ??
         actionResource.functionCallName,
+      mcp_server_configuration_sid:
+        configIdToSid.get(actionResource.mcpServerConfigurationId) ?? undefined,
       execution_time_ms: actionResource.executionDurationMs,
       status: actionResource.status,
     };
