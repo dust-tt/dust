@@ -180,9 +180,8 @@ export class CreditResource extends BaseResource<CreditModel> {
             [Op.and]: [
               this.model.sequelize.where(
                 this.model.sequelize.literal(
-                  `"consumedAmountCents" + ${amountInCents}`
-                ),
-                { [Op.lte]: "initialAmountCents" }
+                  '"initialAmountCents" - "consumedAmountCents"'
+                { [Op.gte]: amountInCents }
               ),
             ],
             // Credit must be started (startDate not null and <= now)
