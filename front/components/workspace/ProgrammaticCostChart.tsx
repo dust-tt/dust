@@ -90,7 +90,7 @@ function GroupedTooltip(
     return null;
   }
 
-  const rows: TooltipRow[] = payload
+  const rows = payload
     .filter(
       (p) =>
         p.dataKey !== "totalInitialCreditsCents" &&
@@ -100,7 +100,7 @@ function GroupedTooltip(
     .map((p) => {
       const groupKey = p.name;
 
-      let label;
+      let label = "";
       if (groupKey === "others") {
         label = OTHER_LABEL.label;
       } else if (groupBy === "origin" && isUserMessageOrigin(groupKey)) {
