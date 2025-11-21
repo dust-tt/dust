@@ -8,6 +8,7 @@ import { ConversationLayout } from "@app/components/assistant/conversation/Conve
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import { createOnboardingConversationIfNeeded } from "@app/lib/api/assistant/conversation";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isString } from "@app/types";
@@ -66,6 +67,32 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   }
 
   const { cId } = context.params;
+
+  // If the user is coming from the welcome flow to a "new" conversation,
+  // we may need to create the onboarding conversation on the backend,
+  // then redirect them to it if it exists.
+  if (
+    typeof cId === "string" &&
+    cId === "new" &&
+    context.query.welcome === "true"
+  ) {
+    await createOnboardingConversationIfNeeded(auth);
+
+    const userResource = auth.user();
+    const metadata = userResource
+      ? await userResource.getMetadata("onboarding:conversation")
+      : null;
+
+    const onboardingConversationId = metadata?.value ?? null;
+    if (onboardingConversationId) {
+      return {
+        redirect: {
+          destination: `/w/${owner.sId}/conversation/${onboardingConversationId}`,
+          permanent: false,
+        },
+      };
+    }
+  }
 
   return {
     props: {
