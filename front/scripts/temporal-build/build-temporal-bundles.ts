@@ -3,9 +3,9 @@ import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
-import type { WorkerName } from "../../temporal/worker_registry";
-import { ALL_WORKERS } from "../../temporal/worker_registry";
-import { assertNever } from "../../types";
+import type { WorkerName } from "@app/temporal/worker_registry";
+import { ALL_WORKERS } from "@app/temporal/worker_registry";
+import { assertNever } from "@app/types";
 
 interface WorkerInfo {
   name: string;
