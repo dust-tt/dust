@@ -40,7 +40,7 @@ export const sendOnboardingConversationPlugin = createPlugin({
       workspace: renderLightWorkspaceType({ workspace }),
     });
 
-    if (role === "admin") {
+    if (role !== "admin") {
       return new Err(new Error("User is not an admin of this workspace."));
     }
 
