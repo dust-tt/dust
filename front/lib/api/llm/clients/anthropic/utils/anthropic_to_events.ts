@@ -306,13 +306,18 @@ function tokenUsage(
   usage: MessageDeltaUsage,
   metadata: LLMClientMetadata
 ): TokenUsageEvent {
+  const cachedTokens = usage.cache_read_input_tokens ?? 0;
+  const cacheCreationTokens = usage.cache_creation_input_tokens ?? 0;
+
   return {
     type: "token_usage",
     content: {
-      inputTokens: usage.input_tokens ?? 0,
+      // In order to keep logic as it is implemented in core
+      inputTokens:
+        (usage.input_tokens ?? 0) + cachedTokens + cacheCreationTokens,
       outputTokens: usage.output_tokens,
-      cachedTokens: usage.cache_read_input_tokens ?? 0,
-      cacheCreationTokens: usage.cache_creation_input_tokens ?? 0,
+      cachedTokens,
+      cacheCreationTokens,
       totalTokens: (usage.input_tokens ?? 0) + usage.output_tokens,
     },
     metadata,
