@@ -44,6 +44,12 @@ RUN npm ci
 
 COPY /front .
 
+# Debug: check if build script exists
+RUN ls -la scripts/build/
+
+# Build temporal workers
+RUN npm run build:workers
+
 # Remove test files
 RUN find . -name "*.test.ts" -delete
 RUN find . -name "*.test.tsx" -delete
@@ -54,7 +60,6 @@ RUN find . -name "*.test.tsx" -delete
 RUN BUILD_WITH_SOURCE_MAPS=${DATADOG_API_KEY:+true} \
     FRONT_DATABASE_URI="sqlite:foo.sqlite" \
     npm run build -- --no-lint && \
-    npm run build:workers && \
     if [ -n "$DATADOG_API_KEY" ]; then \
         export DATADOG_SITE=datadoghq.eu DATADOG_API_KEY=$DATADOG_API_KEY; \
         npx --yes @datadog/datadog-ci sourcemaps upload ./.next/static \
