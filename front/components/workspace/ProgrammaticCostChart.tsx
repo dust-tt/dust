@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -23,6 +23,7 @@ import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 import {
   CHART_HEIGHT,
   COST_PALETTE,
+  OTHER_LABEL,
   USER_MESSAGE_ORIGIN_LABELS,
 } from "@app/components/agent_builder/observability/constants";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
@@ -32,8 +33,8 @@ import {
   getSourceColor,
   isUserMessageOrigin,
 } from "@app/components/agent_builder/observability/utils";
-import type { GroupByType } from "@app/lib/swr/workspaces";
 import { useWorkspaceProgrammaticCost } from "@app/lib/swr/workspaces";
+import type { GroupByType } from "@app/pages/api/w/[wId]/analytics/programmatic-cost";
 
 interface ProgrammaticCostChartProps {
   workspaceId: string;
@@ -64,6 +65,8 @@ function getColorClassName(
 ): string {
   if (!groupBy) {
     return COST_PALETTE.costCents;
+  } else if (groupName === "others") {
+    return OTHER_LABEL.color;
   } else if (groupBy === "origin" && isUserMessageOrigin(groupName)) {
     return getSourceColor(groupName);
   } else {
@@ -75,7 +78,7 @@ function getColorClassName(
 function GroupedTooltip(
   props: TooltipContentProps<number, string>,
   groupBy: GroupByType | undefined,
-  groups: string[]
+  availableGroupsArray: { groupKey: string; groupLabel: string }[]
 ): JSX.Element | null {
   const { active, payload } = props;
   if (!active || !payload || payload.length === 0) {
@@ -87,7 +90,7 @@ function GroupedTooltip(
     return null;
   }
 
-  const rows = payload
+  const rows: TooltipRow[] = payload
     .filter(
       (p) =>
         p.dataKey !== "totalInitialCreditsCents" &&
@@ -95,13 +98,24 @@ function GroupedTooltip(
         typeof p.value === "number"
     )
     .map((p) => {
-      const groupName = p.name || String(p.dataKey);
-      let label = groupName;
-      if (groupBy === "origin" && isUserMessageOrigin(groupName)) {
-        label = USER_MESSAGE_ORIGIN_LABELS[groupName].label;
+      const groupKey = p.name;
+
+      let label;
+      if (groupKey === "others") {
+        label = OTHER_LABEL.label;
+      } else if (groupBy === "origin" && isUserMessageOrigin(groupKey)) {
+        label = USER_MESSAGE_ORIGIN_LABELS[groupKey].label;
+      } else {
+        label = availableGroupsArray.find(
+          (g) => g.groupKey === groupKey
+        )?.groupLabel;
       }
 
-      const colorClassName = getColorClassName(groupBy, groupName, groups);
+      const colorClassName = getColorClassName(
+        groupBy,
+        groupKey,
+        availableGroupsArray.map((g) => g.groupKey)
+      );
 
       return {
         label,
@@ -128,6 +142,9 @@ export function ProgrammaticCostChart({
   workspaceId,
 }: ProgrammaticCostChartProps) {
   const [groupBy, setGroupBy] = useState<GroupByType | undefined>(undefined);
+  const [filter, setFilter] = useState<Partial<Record<GroupByType, string[]>>>(
+    {}
+  );
 
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState<string>(formatMonth(now));
@@ -140,6 +157,7 @@ export function ProgrammaticCostChart({
     workspaceId,
     selectedMonth,
     groupBy,
+    filter,
   });
 
   const currentDate = new Date(selectedMonth);
@@ -172,79 +190,154 @@ export function ProgrammaticCostChart({
   };
 
   // Process data based on groupBy
-  let chartData: ChartDataPoint[] = [];
-  let groups: string[] = [];
-  const legendItems: { key: string; label: string; colorClassName: string }[] =
-    [];
+  const availableGroupsArray = programmaticCostData?.availableGroups ?? [];
+  const points = programmaticCostData?.points ?? [];
+  const allGroupKeys = availableGroupsArray.map((g) => g.groupKey);
 
-  if (programmaticCostData) {
-    // Extract all unique group names (excluding "total" for ungrouped view)
-    const groupSet = new Set<string>();
-    programmaticCostData.points.forEach((point) => {
-      point.groups.forEach((g) => {
-        groupSet.add(g.groupLabel);
-      });
+  // Build map from groupKey to groupLabel from availableGroups (always use labels from availableGroups)
+  const groupKeyToLabel = new Map<string, string>();
+  availableGroupsArray.forEach((group) => {
+    groupKeyToLabel.set(group.groupKey, group.groupLabel);
+  });
+
+  // Extract visible group keys from filtered data
+  const visibleGroupKeys = new Set<string>();
+  points.forEach((point) => {
+    point.groups.forEach((g) => {
+      visibleGroupKeys.add(g.groupKey);
     });
+  });
 
-    // For grouped view, order groups with "Others" at the end
-    if (groupBy) {
-      const regularGroups = Array.from(groupSet).filter(
-        (name) => name !== "Others"
-      );
-      const othersGroups = Array.from(groupSet).filter(
-        (name) => name === "Others"
-      );
-      groups = [...regularGroups, ...othersGroups];
-    } else {
-      groups = Array.from(groupSet);
-    }
+  const enabledGroupKeys = groupBy ? filter[groupBy] : undefined;
 
-    // Build color map for tooltips and legend items
-    groups.forEach((groupName) => {
-      const colorClassName = getColorClassName(groupBy, groupName, groups);
+  const groupKeys = availableGroupsArray
+    .map((g) => g.groupKey)
+    .filter((key) => visibleGroupKeys.has(key));
 
-      let label = groupName;
-      if (groupBy === "origin" && isUserMessageOrigin(groupName)) {
-        label = USER_MESSAGE_ORIGIN_LABELS[groupName].label;
-      }
-
-      legendItems.push({
-        key: groupName,
-        label,
-        colorClassName,
-      });
-    });
-
-    // Add Total Credits to legend
-    legendItems.push({
-      key: "totalCredits",
-      label: "Total Credits",
-      colorClassName: COST_PALETTE.totalCredits,
-    });
-
-    // Transform points into chart data
-    chartData = programmaticCostData.points.map((point) => {
-      const date = new Date(point.timestamp);
-      const dataPoint: ChartDataPoint = {
-        date: date.toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-        }),
-        timestamp: point.timestamp,
-        totalInitialCreditsCents: point.totalInitialCreditsCents,
-      };
-
-      // Add each group's cumulative cost to the data point
-      // Keep undefined values as-is so Recharts doesn't render those points
-      point.groups.forEach((g) => {
-        dataPoint[g.groupLabel] = g.programmaticCostCents;
-      });
-
-      return dataPoint;
-    });
+  // Add others group key if it exists at the end of the array
+  if (visibleGroupKeys.has("others")) {
+    groupKeys.push("others");
   }
 
+  const legendItems: {
+    key: string;
+    label: string;
+    colorClassName: string;
+    onClick?: () => void;
+    isActive?: boolean;
+  }[] = [];
+
+  availableGroupsArray.forEach((group) => {
+    const colorClassName = getColorClassName(
+      groupBy,
+      group.groupKey,
+      allGroupKeys
+    );
+
+    let label = group.groupLabel;
+    if (groupBy === "origin" && isUserMessageOrigin(group.groupKey)) {
+      label = USER_MESSAGE_ORIGIN_LABELS[group.groupKey].label;
+    }
+
+    // A group is active if no filter is set (all enabled) OR it's in the enabled list
+    const isActive =
+      !enabledGroupKeys || enabledGroupKeys.includes(group.groupKey);
+
+    legendItems.push({
+      key: group.groupKey,
+      label,
+      colorClassName,
+      onClick: groupBy
+        ? () => {
+            setFilter((prev) => {
+              const currentFilter = prev[groupBy] ?? [];
+              const isCurrentlySelected = currentFilter.includes(
+                group.groupKey
+              );
+              if (isCurrentlySelected) {
+                // Disable: remove from filter
+                const newEnabled = currentFilter.filter(
+                  (k) => k !== group.groupKey
+                );
+                // If all groups are disabled (only one was enabled), enable all
+                if (newEnabled.length === 0) {
+                  return {
+                    ...prev,
+                    [groupBy]: undefined,
+                  };
+                }
+                return {
+                  ...prev,
+                  [groupBy]: newEnabled,
+                };
+              } else {
+                // Enable: add to filter
+                const newEnabled = [...currentFilter, group.groupKey];
+                // If all groups are now enabled, remove filter
+                if (newEnabled.length === allGroupKeys.length) {
+                  return {
+                    ...prev,
+                    [groupBy]: undefined,
+                  };
+                }
+                return {
+                  ...prev,
+                  [groupBy]: newEnabled,
+                };
+              }
+            });
+          }
+        : undefined,
+      isActive,
+    });
+  });
+
+  // Add Total Credits to legend (not clickable)
+  legendItems.push({
+    key: "totalCredits",
+    label: "Total Credits",
+    colorClassName: COST_PALETTE.totalCredits,
+    isActive: true,
+  });
+
+  // Transform points into chart data using labels from availableGroups
+  const chartData = points.map((point) => {
+    const date = new Date(point.timestamp);
+    const dataPoint: ChartDataPoint = {
+      date: date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      }),
+      timestamp: point.timestamp,
+      totalInitialCreditsCents: point.totalInitialCreditsCents,
+    };
+
+    // Add each group's cumulative cost to the data point using labels from availableGroups
+    // Keep undefined values as-is so Recharts doesn't render those points
+    point.groups.forEach((g) => {
+      dataPoint[g.groupKey] = g.programmaticCostCents;
+    });
+
+    return dataPoint;
+  });
+
   const ChartComponent = groupBy ? AreaChart : LineChart;
+
+  // Don't reset filter when groupBy changes - keep it for persistence
+  const handleGroupByChange = (newGroupBy: GroupByType | undefined) => {
+    setGroupBy(newGroupBy);
+  };
+
+  // Check if any filters are applied
+  const hasFilters = useMemo(() => {
+    return Object.values(filter).some(
+      (filterArray) => filterArray && filterArray.length > 0
+    );
+  }, [filter]);
+
+  const handleClearFilters = () => {
+    setFilter({});
+  };
 
   return (
     <ChartContainer
@@ -284,33 +377,44 @@ export function ProgrammaticCostChart({
         chartData.length === 0 ? "No cost data for this month." : undefined
       }
       additionalControls={
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+        <div className="flex items-center gap-2">
+          {hasFilters && (
             <Button
-              label={
-                groupBy
-                  ? GROUP_BY_OPTIONS.find((opt) => opt.value === groupBy)?.label
-                  : "Global"
-              }
+              label="Clear filters"
               size="xs"
-              variant="outline"
-              isSelect
+              variant="ghost"
+              onClick={handleClearFilters}
             />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {GROUP_BY_OPTIONS.map((option) => (
-              <DropdownMenuItem
-                key={option.value}
-                label={option.label}
-                onClick={() =>
-                  setGroupBy(
-                    option.value === "global" ? undefined : option.value
-                  )
+          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                label={
+                  groupBy
+                    ? GROUP_BY_OPTIONS.find((opt) => opt.value === groupBy)
+                        ?.label
+                    : "Global"
                 }
+                size="xs"
+                variant="outline"
+                isSelect
               />
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {GROUP_BY_OPTIONS.map((option) => (
+                <DropdownMenuItem
+                  key={option.value}
+                  label={option.label}
+                  onClick={() =>
+                    handleGroupByChange(
+                      option.value === "global" ? undefined : option.value
+                    )
+                  }
+                />
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       }
       height={CHART_HEIGHT}
       legendItems={legendItems}
@@ -342,7 +446,7 @@ export function ProgrammaticCostChart({
         />
         <Tooltip
           content={(props: TooltipContentProps<number, string>) =>
-            GroupedTooltip(props, groupBy, groups)
+            GroupedTooltip(props, groupBy, availableGroupsArray)
           }
           cursor={false}
           wrapperStyle={{ outline: "none" }}
@@ -364,14 +468,18 @@ export function ProgrammaticCostChart({
           dot={false}
           activeDot={{ r: 5 }}
         />
-        {groups.map((groupName) => {
-          const colorClassName = getColorClassName(groupBy, groupName, groups);
+        {groupKeys.map((groupKey) => {
+          const colorClassName = getColorClassName(
+            groupBy,
+            groupKey,
+            allGroupKeys
+          );
 
           return groupBy ? (
             <Area
-              key={groupName}
+              key={groupKey}
               type="monotone"
-              dataKey={groupName}
+              dataKey={groupKey}
               stackId="cost"
               stroke="currentColor"
               fill="currentColor"
@@ -381,11 +489,11 @@ export function ProgrammaticCostChart({
             />
           ) : (
             <Line
-              key={groupName}
+              key={groupKey}
               type="monotone"
               className={colorClassName}
-              dataKey={groupName}
-              name={groupName}
+              dataKey={groupKey}
+              name={groupKey}
               stroke="currentColor"
               strokeWidth={2}
               dot={false}
