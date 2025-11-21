@@ -1,4 +1,8 @@
-import type { Client, WorkflowHandle } from "@temporalio/client";
+import type {
+  Client,
+  ScheduleHandle,
+  WorkflowHandle,
+} from "@temporalio/client";
 import { QueryTypes } from "sequelize";
 
 import type { CheckFunction } from "@app/lib/production_checks/types";
@@ -10,6 +14,9 @@ import {
   getZendeskSyncWorkflowId,
   googleDriveIncrementalSyncWorkflowId,
   makeConfluenceSyncWorkflowId,
+  makeGongSyncScheduleId,
+  makeIntercomConversationScheduleId,
+  makeIntercomHelpCenterScheduleId,
   microsoftGarbageCollectionWorkflowId,
   microsoftIncrementalSyncWorkflowId,
 } from "@app/types";
@@ -22,6 +29,7 @@ interface ConnectorBlob {
 }
 
 interface ProviderCheck {
+  type: "workflow" | "schedule";
   makeIdsFn: (connector: ConnectorBlob) => string[];
 }
 
@@ -29,25 +37,42 @@ const connectorsDb = getConnectorsPrimaryDbConnection();
 
 const providersToCheck: Partial<Record<ConnectorProvider, ProviderCheck>> = {
   confluence: {
+    type: "workflow",
     makeIdsFn: (connector: ConnectorBlob) => [
       makeConfluenceSyncWorkflowId(connector.id),
     ],
   },
   google_drive: {
+    type: "workflow",
     makeIdsFn: (connector: ConnectorBlob) => [
       googleDriveIncrementalSyncWorkflowId(connector.id),
     ],
   },
   microsoft: {
+    type: "workflow",
     makeIdsFn: (connector: ConnectorBlob) => [
       microsoftIncrementalSyncWorkflowId(connector.id),
       microsoftGarbageCollectionWorkflowId(connector.id),
     ],
   },
   zendesk: {
+    type: "workflow",
     makeIdsFn: (connector: ConnectorBlob) => [
       getZendeskSyncWorkflowId(connector.id),
       getZendeskGarbageCollectionWorkflowId(connector.id),
+    ],
+  },
+  gong: {
+    type: "schedule",
+    makeIdsFn: (connector: ConnectorBlob) => [
+      makeGongSyncScheduleId(connector.id),
+    ],
+  },
+  intercom: {
+    type: "schedule",
+    makeIdsFn: (connector: ConnectorBlob) => [
+      makeIntercomHelpCenterScheduleId(connector.id),
+      makeIntercomConversationScheduleId(connector.id),
     ],
   },
 };
@@ -66,23 +91,46 @@ async function listAllConnectorsForProvider(provider: ConnectorProvider) {
   return connectors;
 }
 
-async function areTemporalWorkflowsRunning(
+async function areTemporalEntitiesActive(
   client: Client,
   connector: ConnectorBlob,
   info: ProviderCheck
 ) {
-  for (const workflowId of info.makeIdsFn(connector)) {
-    try {
-      const workflowHandle: WorkflowHandle =
-        client.workflow.getHandle(workflowId);
+  const ids = info.makeIdsFn(connector);
 
-      const descriptions = await Promise.all([workflowHandle.describe()]);
+  switch (info.type) {
+    case "workflow": {
+      for (const workflowId of ids) {
+        try {
+          const workflowHandle: WorkflowHandle =
+            client.workflow.getHandle(workflowId);
 
-      if (!descriptions.every(({ status: { name } }) => name === "RUNNING")) {
-        return false;
+          const descriptions = await Promise.all([workflowHandle.describe()]);
+
+          if (descriptions.some(({ status: { name } }) => name !== "RUNNING")) {
+            return false;
+          }
+        } catch (err) {
+          return false;
+        }
       }
-    } catch (err) {
-      return false;
+      break;
+    }
+    case "schedule": {
+      for (const scheduleId of ids) {
+        try {
+          const scheduleHandle: ScheduleHandle =
+            client.schedule.getHandle(scheduleId);
+
+          const description = await scheduleHandle.describe();
+
+          if (description.state.paused) {
+            return false;
+          }
+        } catch (err) {
+          return false;
+        }
+      }
     }
   }
 
@@ -112,11 +160,8 @@ export const checkActiveWorkflows: CheckFunction = async (
       }
       heartbeat();
 
-      const isActive = await areTemporalWorkflowsRunning(
-        client,
-        connector,
-        info
-      );
+      const isActive = await areTemporalEntitiesActive(client, connector, info);
+
       if (!isActive) {
         missingActiveWorkflows.push({
           connectorId: connector.id,
@@ -124,7 +169,6 @@ export const checkActiveWorkflows: CheckFunction = async (
           dataSourceId: connector.dataSourceId,
         });
       }
-      // TODO(2025-11-20 aubin): check schedules for Gong and Intercom.
     }
 
     if (missingActiveWorkflows.length > 0) {
