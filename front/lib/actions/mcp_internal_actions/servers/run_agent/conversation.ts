@@ -20,8 +20,9 @@ import type {
   AgentMessageType,
   ConversationType,
   Result,
+  UserMessageOrigin,
 } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, isUserMessageType, Ok } from "@app/types";
 
 export async function getOrCreateConversation(
   api: DustAPI,
@@ -118,6 +119,14 @@ export async function getOrCreateConversation(
         });
       }
     }
+  }
+
+  let parentOrigin: UserMessageOrigin | null = null;
+  const parentMessage = mainConversation.content
+    .flat()
+    .find((m) => m.sId === originMessage.parentMessageId);
+  if (parentMessage && isUserMessageType(parentMessage)) {
+    parentOrigin = parentMessage.context.origin ?? null;
   }
 
   if (conversationId) {
