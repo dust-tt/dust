@@ -1,4 +1,5 @@
 import _ from "lodash";
+import type { z } from "zod";
 
 import {
   isZendeskNotFoundError,
@@ -18,6 +19,24 @@ import type {
   ZendeskFetchedTicketComment,
   ZendeskFetchedTicketField,
   ZendeskFetchedUser,
+} from "@connectors/connectors/zendesk/lib/types";
+import {
+  ZendeskArticleResponseSchema,
+  ZendeskArticlesResponseSchema,
+  ZendeskBrandResponseSchema,
+  ZendeskBrandsResponseSchema,
+  ZendeskCategoriesResponseSchema,
+  ZendeskCategoryResponseSchema,
+  ZendeskOrganizationsResponseSchema,
+  ZendeskSearchCountResponseSchema,
+  ZendeskSectionResponseSchema,
+  ZendeskSectionsResponseSchema,
+  ZendeskTicketCommentsResponseSchema,
+  ZendeskTicketFieldResponseSchema,
+  ZendeskTicketResponseSchema,
+  ZendeskTicketsResponseSchema,
+  ZendeskUserResponseSchema,
+  ZendeskUsersResponseSchema,
 } from "@connectors/connectors/zendesk/lib/types";
 import { setTimeoutAsync } from "@connectors/lib/async_utils";
 import type { RateLimit } from "@connectors/lib/throttle";
@@ -121,7 +140,10 @@ export class ZendeskClient {
     return false;
   }
 
-  private async fetchFromZendeskWithRetries(url: string): Promise<unknown> {
+  private async fetchFromZendeskWithRetries<T extends z.Schema>(
+    url: string,
+    schema: T
+  ): Promise<z.infer<T>> {
     const { subdomain, endpoint } = extractMetadataFromZendeskUrl(url);
     const rateLimitConfig = this.createRateLimitConfig();
 
@@ -179,7 +201,29 @@ export class ZendeskClient {
         });
       }
 
-      return jsonResponse;
+      // Validate response with schema
+      const parseResult = schema.safeParse(jsonResponse);
+      if (!parseResult.success) {
+        logger.error(
+          {
+            subdomain,
+            endpoint,
+            error: parseResult.error.message,
+          },
+          "[Zendesk] Invalid API response format"
+        );
+        statsDClient.increment(
+          "zendesk_api.requests.validation_error.count",
+          1,
+          tags
+        );
+        throw new ZendeskApiError(
+          `Invalid Zendesk API response format: ${parseResult.error.message}`,
+          500,
+          { url, ...extractMetadataFromZendeskUrl(url) }
+        );
+      }
+      return parseResult.data;
     };
 
     if (rateLimitConfig === null) {
@@ -214,10 +258,11 @@ export class ZendeskClient {
   }): Promise<ZendeskFetchedBrand | null> {
     const url = `https://${subdomain}.zendesk.com/api/v2/brands/${brandId}`;
     try {
-      const response = (await this.fetchFromZendeskWithRetries(url)) as {
-        brand: ZendeskFetchedBrand;
-      };
-      return response?.brand ?? null;
+      const response = await this.fetchFromZendeskWithRetries(
+        url,
+        ZendeskBrandResponseSchema
+      );
+      return response.brand;
     } catch (e) {
       if (isZendeskNotFoundError(e)) {
         return null;
@@ -235,9 +280,10 @@ export class ZendeskClient {
   }): Promise<ZendeskFetchedTicketField | null> {
     const url = `https://${subdomain}.zendesk.com/api/v2/ticket_fields/${fieldId}`;
     try {
-      const response = (await this.fetchFromZendeskWithRetries(url)) as {
-        ticket_field: ZendeskFetchedTicketField;
-      };
+      const response = await this.fetchFromZendeskWithRetries(
+        url,
+        ZendeskTicketFieldResponseSchema
+      );
       return response?.ticket_field ?? null;
     } catch (e) {
       if (isZendeskNotFoundError(e)) {
@@ -259,9 +305,10 @@ export class ZendeskClient {
     const finalQuery =
       query || `type:ticket status:solved updated>${retentionPeriodDays}days`;
     const url = `https://${brandSubdomain}.zendesk.com/api/v2/search/count?query=${encodeURIComponent(finalQuery)}`;
-    const response = (await this.fetchFromZendeskWithRetries(url)) as {
-      count: string;
-    };
+    const response = await this.fetchFromZendeskWithRetries(
+      url,
+      ZendeskSearchCountResponseSchema
+    );
     return parseInt(response.count, 10);
   }
 
@@ -274,10 +321,11 @@ export class ZendeskClient {
   }): Promise<ZendeskFetchedTicket | null> {
     const url = `https://${brandSubdomain}.zendesk.com/api/v2/tickets/${ticketId}`;
     try {
-      const response = (await this.fetchFromZendeskWithRetries(url)) as {
-        ticket: ZendeskFetchedTicket;
-      };
-      return response?.ticket ?? null;
+      const response = await this.fetchFromZendeskWithRetries(
+        url,
+        ZendeskTicketResponseSchema
+      );
+      return response.ticket;
     } catch (e) {
       if (isZendeskNotFoundError(e)) {
         return null;
@@ -294,19 +342,18 @@ export class ZendeskClient {
     ticketId: number;
   }): Promise<ZendeskFetchedTicketComment[]> {
     const comments = [];
-    let url: string = `https://${brandSubdomain}.zendesk.com/api/v2/tickets/${ticketId}/comments?page[size]=${COMMENT_PAGE_SIZE}`;
+    let url = `https://${brandSubdomain}.zendesk.com/api/v2/tickets/${ticketId}/comments?page[size]=${COMMENT_PAGE_SIZE}`;
     let hasMore = true;
 
     while (hasMore) {
       try {
-        const response = (await this.fetchFromZendeskWithRetries(url)) as {
-          comments: ZendeskFetchedTicketComment[];
-          hasMore: boolean;
-          nextLink: string;
-        };
+        const response = await this.fetchFromZendeskWithRetries(
+          url,
+          ZendeskTicketCommentsResponseSchema
+        );
         comments.push(...response.comments);
-        hasMore = response.hasMore || false;
-        url = response.nextLink;
+        hasMore = response.hasMore ?? false;
+        url = response.nextLink ?? "";
       } catch (e) {
         if (isZendeskNotFoundError(e)) {
           return [];
@@ -327,9 +374,10 @@ export class ZendeskClient {
   }): Promise<ZendeskFetchedUser[]> {
     const users: ZendeskFetchedUser[] = [];
     for (const chunk of _.chunk(userIds, 100)) {
-      const response = (await this.fetchFromZendeskWithRetries(
-        `https://${brandSubdomain}.zendesk.com/api/v2/users/show_many?ids=${chunk.join(",")}`
-      )) as { users: ZendeskFetchedUser[] };
+      const response = await this.fetchFromZendeskWithRetries(
+        `https://${brandSubdomain}.zendesk.com/api/v2/users/show_many?ids=${chunk.join(",")}`,
+        ZendeskUsersResponseSchema
+      );
       users.push(...response.users);
     }
     return users;
@@ -380,9 +428,10 @@ export class ZendeskClient {
     if (nonCachedOrganizationIds.length > 0) {
       for (const chunk of _.chunk(nonCachedOrganizationIds, 100)) {
         const parameter = `ids=${encodeURIComponent(chunk.join(","))}`;
-        const response = (await this.fetchFromZendeskWithRetries(
-          `https://${brandSubdomain}.zendesk.com/api/v2/organizations/show_many?${parameter}`
-        )) as { organizations: ZendeskFetchedOrganization[] };
+        const response = await this.fetchFromZendeskWithRetries(
+          `https://${brandSubdomain}.zendesk.com/api/v2/organizations/show_many?${parameter}`,
+          ZendeskOrganizationsResponseSchema
+        );
 
         for (const organization of response.organizations) {
           setOrganizationInCache(organization, {
@@ -429,10 +478,11 @@ export class ZendeskClient {
   }): Promise<ZendeskFetchedCategory | null> {
     const url = `https://${brandSubdomain}.zendesk.com/api/v2/help_center/categories/${categoryId}`;
     try {
-      const response = (await this.fetchFromZendeskWithRetries(url)) as {
-        category: ZendeskFetchedCategory;
-      };
-      return response?.category ?? null;
+      const response = await this.fetchFromZendeskWithRetries(
+        url,
+        ZendeskCategoryResponseSchema
+      );
+      return response.category;
     } catch (e) {
       if (isZendeskNotFoundError(e)) {
         return null;
@@ -453,15 +503,14 @@ export class ZendeskClient {
         ? params.url
         : `https://${params.brandSubdomain}.zendesk.com/api/v2/help_center/categories?page[size]=${params.pageSize}`;
     try {
-      const response = (await this.fetchFromZendeskWithRetries(apiUrl)) as {
-        categories: ZendeskFetchedCategory[];
-        meta: { has_more: boolean };
-        links: { next: string | null };
-      };
+      const response = await this.fetchFromZendeskWithRetries(
+        apiUrl,
+        ZendeskCategoriesResponseSchema
+      );
       return {
         categories: response.categories,
-        hasMore: response.meta.has_more,
-        nextLink: response.links.next,
+        hasMore: response.meta?.has_more ?? false,
+        nextLink: response.links?.next ?? null,
       };
     } catch (e) {
       if (isZendeskNotFoundError(e)) {
@@ -485,15 +534,14 @@ export class ZendeskClient {
         ? params.url
         : `https://${params.brandSubdomain}.zendesk.com/api/v2/help_center/categories/${params.categoryId}/articles?page[size]=${params.pageSize}`;
     try {
-      const response = (await this.fetchFromZendeskWithRetries(apiUrl)) as {
-        articles: ZendeskFetchedArticle[];
-        meta: { has_more: boolean };
-        links: { next: string | null };
-      };
+      const response = await this.fetchFromZendeskWithRetries(
+        apiUrl,
+        ZendeskArticlesResponseSchema
+      );
       return {
         articles: response.articles,
-        hasMore: response.meta.has_more,
-        nextLink: response.links.next,
+        hasMore: response.meta?.has_more ?? false,
+        nextLink: response.links?.next ?? null,
       };
     } catch (e) {
       if (isZendeskNotFoundError(e)) {
@@ -512,9 +560,10 @@ export class ZendeskClient {
   }): Promise<ZendeskFetchedSection[]> {
     const url = `https://${brandSubdomain}.zendesk.com/api/v2/help_center/categories/${categoryId}/sections`;
     try {
-      const response = (await this.fetchFromZendeskWithRetries(url)) as {
-        sections: ZendeskFetchedSection[];
-      };
+      const response = await this.fetchFromZendeskWithRetries(
+        url,
+        ZendeskSectionsResponseSchema
+      );
       return response.sections || [];
     } catch (e) {
       if (isZendeskNotFoundError(e)) {
@@ -537,18 +586,17 @@ export class ZendeskClient {
           ? params.url
           : `https://${params.brandSubdomain}.zendesk.com/api/v2/incremental/tickets/cursor?per_page=${TICKET_PAGE_SIZE}&start_time=${params.startTime}`;
 
-      const response = (await this.fetchFromZendeskWithRetries(apiUrl)) as {
-        tickets: ZendeskFetchedTicket[];
-        end_of_stream: boolean;
-        after_url: string | null;
-      };
+      const response = await this.fetchFromZendeskWithRetries(
+        apiUrl,
+        ZendeskTicketsResponseSchema
+      );
       return {
         tickets: response.tickets,
         hasMore:
-          !response.end_of_stream &&
+          !(response.end_of_stream ?? true) &&
           response.after_url !== null &&
           response.tickets.length !== 0,
-        nextLink: response.after_url,
+        nextLink: response.after_url ?? null,
       };
     } catch (e) {
       if (isZendeskNotFoundError(e)) {
@@ -571,15 +619,14 @@ export class ZendeskClient {
   }> {
     const url = `https://${brandSubdomain}.zendesk.com/api/v2/help_center/incremental/articles.json?start_time=${startTime}`;
     try {
-      const response = (await this.fetchFromZendeskWithRetries(url)) as {
-        articles: ZendeskFetchedArticle[];
-        next_page: string | null;
-        end_time: number;
-      };
+      const response = await this.fetchFromZendeskWithRetries(
+        url,
+        ZendeskArticlesResponseSchema
+      );
       return {
         articles: response.articles,
         hasMore: response.next_page !== null && response.articles.length !== 0,
-        endTime: response.end_time,
+        endTime: response.end_time ?? startTime,
       };
     } catch (e) {
       if (isZendeskNotFoundError(e)) {
@@ -598,10 +645,11 @@ export class ZendeskClient {
   }): Promise<ZendeskFetchedSection | null> {
     const url = `https://${brandSubdomain}.zendesk.com/api/v2/help_center/sections/${sectionId}`;
     try {
-      const response = (await this.fetchFromZendeskWithRetries(url)) as {
-        section: ZendeskFetchedSection;
-      };
-      return response?.section ?? null;
+      const response = await this.fetchFromZendeskWithRetries(
+        url,
+        ZendeskSectionResponseSchema
+      );
+      return response.section;
     } catch (e) {
       if (isZendeskNotFoundError(e)) {
         return null;
@@ -619,10 +667,11 @@ export class ZendeskClient {
   }): Promise<ZendeskFetchedUser | null> {
     const url = `https://${brandSubdomain}.zendesk.com/api/v2/users/${userId}`;
     try {
-      const response = (await this.fetchFromZendeskWithRetries(url)) as {
-        user: ZendeskFetchedUser;
-      };
-      return response?.user ?? null;
+      const response = await this.fetchFromZendeskWithRetries(
+        url,
+        ZendeskUserResponseSchema
+      );
+      return response.user;
     } catch (e) {
       if (isZendeskNotFoundError(e)) {
         return null;
@@ -637,9 +686,10 @@ export class ZendeskClient {
     subdomain: string;
   }): Promise<ZendeskFetchedBrand[]> {
     const url = `https://${subdomain}.zendesk.com/api/v2/brands`;
-    const response = (await this.fetchFromZendeskWithRetries(url)) as {
-      brands: ZendeskFetchedBrand[];
-    };
+    const response = await this.fetchFromZendeskWithRetries(
+      url,
+      ZendeskBrandsResponseSchema
+    );
     return response.brands;
   }
 
@@ -649,9 +699,10 @@ export class ZendeskClient {
     brandSubdomain: string;
   }): Promise<ZendeskFetchedCategory[]> {
     const url = `https://${brandSubdomain}.zendesk.com/api/v2/help_center/categories`;
-    const response = (await this.fetchFromZendeskWithRetries(url)) as {
-      categories: ZendeskFetchedCategory[];
-    };
+    const response = await this.fetchFromZendeskWithRetries(
+      url,
+      ZendeskCategoriesResponseSchema
+    );
     return response.categories;
   }
 
@@ -664,9 +715,10 @@ export class ZendeskClient {
   }): Promise<ZendeskFetchedArticle | null> {
     try {
       const url = `https://${brandSubdomain}.zendesk.com/api/v2/help_center/articles/${articleId}`;
-      const response = (await this.fetchFromZendeskWithRetries(url)) as {
-        article: ZendeskFetchedArticle;
-      };
+      const response = await this.fetchFromZendeskWithRetries(
+        url,
+        ZendeskArticleResponseSchema
+      );
       return response.article;
     } catch (e) {
       if (isZendeskNotFoundError(e)) {
