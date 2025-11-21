@@ -27,6 +27,7 @@ import {
   USER_MESSAGE_ORIGIN_LABELS,
 } from "@app/components/agent_builder/observability/constants";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
+import type { LegendItem } from "@app/components/agent_builder/observability/shared/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
 import {
   getIndexedColor,
@@ -34,7 +35,10 @@ import {
   isUserMessageOrigin,
 } from "@app/components/agent_builder/observability/utils";
 import { useWorkspaceProgrammaticCost } from "@app/lib/swr/workspaces";
-import type { GroupByType } from "@app/pages/api/w/[wId]/analytics/programmatic-cost";
+import type {
+  AvailableGroup,
+  GroupByType,
+} from "@app/pages/api/w/[wId]/analytics/programmatic-cost";
 
 interface ProgrammaticCostChartProps {
   workspaceId: string;
@@ -189,19 +193,67 @@ export function ProgrammaticCostChart({
     setSelectedMonth(formatMonth(previousMonthDate));
   };
 
-  // Process data based on groupBy
+  // Group by change
+  const handleGroupByChange = (newGroupBy: GroupByType | undefined) => {
+    setGroupBy(newGroupBy);
+  };
+
+  // Filter change
+  const handleFilterChange = (group: AvailableGroup) => {
+    if (groupBy) {
+      setFilter((prev) => {
+        const currentFilter = prev[groupBy] ?? [];
+        const isCurrentlySelected = currentFilter.includes(group.groupKey);
+        if (isCurrentlySelected) {
+          // Disable: remove from filter
+          const newEnabled = currentFilter.filter((k) => k !== group.groupKey);
+          // If all groups are disabled (only one was enabled), enable all
+          if (newEnabled.length === 0) {
+            return {
+              ...prev,
+              [groupBy]: undefined,
+            };
+          }
+          return {
+            ...prev,
+            [groupBy]: newEnabled,
+          };
+        } else {
+          // Enable: add to filter
+          const newEnabled = [...currentFilter, group.groupKey];
+          // If all groups are now enabled, remove filter
+          if (newEnabled.length === allGroupKeys.length) {
+            return {
+              ...prev,
+              [groupBy]: undefined,
+            };
+          }
+          return {
+            ...prev,
+            [groupBy]: newEnabled,
+          };
+        }
+      });
+    }
+  };
+
+  const handleClearFilters = () => {
+    setFilter({});
+  };
+
+  // Getting list of all available groups.
   const availableGroupsArray = programmaticCostData?.availableGroups ?? [];
-  const points = programmaticCostData?.points ?? [];
   const allGroupKeys = availableGroupsArray.map((g) => g.groupKey);
 
-  // Build map from groupKey to groupLabel from availableGroups (always use labels from availableGroups)
+  // Build map from groupKey to groupLabel from availableGroups.
   const groupKeyToLabel = new Map<string, string>();
   availableGroupsArray.forEach((group) => {
     groupKeyToLabel.set(group.groupKey, group.groupLabel);
   });
 
-  // Extract visible group keys from filtered data
+  // Extract visible group keys from filtered data.
   const visibleGroupKeys = new Set<string>();
+  const points = programmaticCostData?.points ?? [];
   points.forEach((point) => {
     point.groups.forEach((g) => {
       visibleGroupKeys.add(g.groupKey);
@@ -219,15 +271,7 @@ export function ProgrammaticCostChart({
     groupKeys.push("others");
   }
 
-  const legendItems: {
-    key: string;
-    label: string;
-    colorClassName: string;
-    onClick?: () => void;
-    isActive?: boolean;
-  }[] = [];
-
-  availableGroupsArray.forEach((group) => {
+  const legendItems: LegendItem[] = availableGroupsArray.map((group) => {
     const colorClassName = getColorClassName(
       groupBy,
       group.groupKey,
@@ -242,54 +286,15 @@ export function ProgrammaticCostChart({
     // A group is active if no filter is set (all enabled) OR it's in the enabled list
     const isActive =
       !enabledGroupKeys || enabledGroupKeys.includes(group.groupKey);
-
-    legendItems.push({
+    const isVisible = visibleGroupKeys.has(group.groupKey);
+    return {
       key: group.groupKey,
       label,
-      colorClassName,
-      onClick: groupBy
-        ? () => {
-            setFilter((prev) => {
-              const currentFilter = prev[groupBy] ?? [];
-              const isCurrentlySelected = currentFilter.includes(
-                group.groupKey
-              );
-              if (isCurrentlySelected) {
-                // Disable: remove from filter
-                const newEnabled = currentFilter.filter(
-                  (k) => k !== group.groupKey
-                );
-                // If all groups are disabled (only one was enabled), enable all
-                if (newEnabled.length === 0) {
-                  return {
-                    ...prev,
-                    [groupBy]: undefined,
-                  };
-                }
-                return {
-                  ...prev,
-                  [groupBy]: newEnabled,
-                };
-              } else {
-                // Enable: add to filter
-                const newEnabled = [...currentFilter, group.groupKey];
-                // If all groups are now enabled, remove filter
-                if (newEnabled.length === allGroupKeys.length) {
-                  return {
-                    ...prev,
-                    [groupBy]: undefined,
-                  };
-                }
-                return {
-                  ...prev,
-                  [groupBy]: newEnabled,
-                };
-              }
-            });
-          }
-        : undefined,
+      colorClassName:
+        !isVisible && isActive ? OTHER_LABEL.color : colorClassName,
+      onClick: groupBy ? () => handleFilterChange(group) : undefined,
       isActive,
-    });
+    };
   });
 
   // Add Total Credits to legend (not clickable)
@@ -323,21 +328,12 @@ export function ProgrammaticCostChart({
 
   const ChartComponent = groupBy ? AreaChart : LineChart;
 
-  // Don't reset filter when groupBy changes - keep it for persistence
-  const handleGroupByChange = (newGroupBy: GroupByType | undefined) => {
-    setGroupBy(newGroupBy);
-  };
-
   // Check if any filters are applied
   const hasFilters = useMemo(() => {
     return Object.values(filter).some(
       (filterArray) => filterArray && filterArray.length > 0
     );
   }, [filter]);
-
-  const handleClearFilters = () => {
-    setFilter({});
-  };
 
   return (
     <ChartContainer

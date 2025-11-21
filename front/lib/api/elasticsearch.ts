@@ -150,9 +150,12 @@ export function groupTopNAndAggregateOthers<
   topN: number = 5,
   valueKey: keyof T
 ): Array<{ groupKey: string; points: T[] }> {
-  // Keep top N groups
-  const topGroups = groups.slice(0, topN);
-  const otherGroups = groups.slice(topN);
+  if (groups.length <= topN) {
+    return groups;
+  }
+  // Keep top N-1 groups, last groups will be aggregated into "Others".
+  const topGroups = groups.slice(0, topN - 1);
+  const otherGroups = groups.slice(topN - 1);
 
   // If no groups beyond topN, return as-is
   if (otherGroups.length === 0) {
