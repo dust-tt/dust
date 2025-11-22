@@ -1135,6 +1135,10 @@ describe("ConversationResource", () => {
     it("should return 'conversation_not_found' when conversation belongs to different workspace", async () => {
       // Create a conversation in a different workspace
       const anotherWorkspace = await WorkspaceFactory.basic();
+
+      // Create the required default groups for the workspace
+      await GroupResource.makeDefaultsForWorkspace(anotherWorkspace);
+
       const anotherUser = await UserFactory.basic();
       await MembershipFactory.associate(anotherWorkspace, anotherUser, {
         role: "admin",
