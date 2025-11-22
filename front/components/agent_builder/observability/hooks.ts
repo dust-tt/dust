@@ -73,7 +73,7 @@ export function useMcpConfigurationNames(params: {
   workspaceId: string;
   agentConfigurationId: string;
 }): {
-  getConfigurationName: (sid: string) => string | null;
+  configurationNames: Map<string, string>;
   isLoading: boolean;
 } {
   const { workspaceId, agentConfigurationId } = params;
@@ -87,7 +87,7 @@ export function useMcpConfigurationNames(params: {
     mcpConfigurationsFetcher
   );
 
-  const configurationNameMap = useMemo(() => {
+  const configurationNames = useMemo(() => {
     if (!data?.configurations) {
       return new Map<string, string>();
     }
@@ -101,13 +101,8 @@ export function useMcpConfigurationNames(params: {
     return map;
   }, [data]);
 
-  const getConfigurationName = useMemo(
-    () => (sid: string) => configurationNameMap.get(sid) ?? null,
-    [configurationNameMap]
-  );
-
   return {
-    getConfigurationName,
+    configurationNames,
     isLoading: !error && !data,
   };
 }
@@ -136,7 +131,7 @@ function createChartData(
   items: ToolDataItem[],
   displayTools: string[],
   includeOthers: boolean,
-  getConfigurationName?: (sid: string) => string | null
+  configurationNames?: Map<string, string>
 ): ChartDatum[] {
   return items.map((item) => {
     const total =
@@ -163,7 +158,7 @@ function createChartData(
           breakdown:
             breakdownEntries.length > 0
               ? breakdownEntries.map(([sid, breakdownCount]) => ({
-                  label: getConfigurationName?.(sid) ?? sid,
+                  label: configurationNames?.get(sid) ?? toolName,
                   count: breakdownCount,
                   percent: calculatePercentage(breakdownCount, count),
                 }))
@@ -236,7 +231,7 @@ function processToolUsageData(
   legendDescription: string,
   isLoading: boolean,
   errorMessage: string | undefined,
-  getConfigurationName?: (sid: string) => string | null
+  configurationNames?: Map<string, string>
 ): ToolUsageResult {
   if (data.length === 0) {
     return createEmptyResult(
@@ -258,7 +253,7 @@ function processToolUsageData(
     data,
     topTools,
     includeOthers,
-    getConfigurationName
+    configurationNames
   );
 
   return {
@@ -278,7 +273,7 @@ export function useToolUsageData(params: {
   period: number;
   mode: ToolChartModeType;
   filterVersion?: string | null;
-  getConfigurationName?: (sid: string) => string | null;
+  configurationNames?: Map<string, string>;
 }): ToolUsageResult {
   const {
     workspaceId,
@@ -286,7 +281,7 @@ export function useToolUsageData(params: {
     period,
     mode,
     filterVersion,
-    getConfigurationName,
+    configurationNames,
   } = params;
 
   const exec = useAgentToolExecution({
@@ -326,7 +321,7 @@ export function useToolUsageData(params: {
         `Usage frequency of tools for each agent version.`,
         isLoading,
         errorMessage,
-        getConfigurationName
+        configurationNames
       );
     }
 
@@ -345,7 +340,7 @@ export function useToolUsageData(params: {
         `Usage tools per step within a message.`,
         isLoading,
         errorMessage,
-        getConfigurationName
+        configurationNames
       );
     }
 
