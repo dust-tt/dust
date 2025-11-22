@@ -2,9 +2,17 @@ import { z } from "zod";
 
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
+  FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL,
+  FALLBACK_MCP_TOOL_STAKE_LEVEL,
+} from "@app/lib/actions/constants";
+import {
   getMcpServerViewDescription,
   isRemoteMCPServerType,
 } from "@app/lib/actions/mcp_helper";
+import {
+  INTERNAL_MCP_SERVERS,
+  isInternalMCPServerName,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { HeaderRow } from "@app/types";
 import { sanitizeHeadersArray } from "@app/types";
@@ -33,6 +41,28 @@ export type MCPServerFormValues = ServerSettings & {
   sharingSettings: Record<string, boolean>;
 };
 
+function getDefaultInternalToolStakeLevel(
+  serverName: string,
+  toolName: string
+): MCPToolStakeLevelType {
+  if (!isInternalMCPServerName(serverName)) {
+    return FALLBACK_MCP_TOOL_STAKE_LEVEL;
+  }
+
+  const serverConfig = INTERNAL_MCP_SERVERS[serverName];
+  const serverToolStakes = serverConfig.tools_stakes as
+    | Record<string, MCPToolStakeLevelType>
+    | undefined;
+  const configuredStake = serverToolStakes?.[toolName];
+  if (configuredStake) {
+    return configuredStake;
+  }
+
+  return serverConfig.availability === "manual"
+    ? FALLBACK_MCP_TOOL_STAKE_LEVEL
+    : FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL;
+}
+
 export function getMCPServerFormDefaults(
   view: MCPServerViewType,
   mcpServerWithViews?: { views: Array<{ spaceId: string }> },
@@ -48,9 +78,14 @@ export function getMCPServerFormDefaults(
   const toolSettings: Record<string, ToolSettings> = {};
   for (const tool of view.server.tools ?? []) {
     const metadata = view.toolsMetadata?.find((m) => m.toolName === tool.name);
+    const defaultPermission =
+      metadata?.permission ??
+      (isRemoteMCPServerType(view.server)
+        ? FALLBACK_MCP_TOOL_STAKE_LEVEL
+        : getDefaultInternalToolStakeLevel(view.server.name, tool.name));
     toolSettings[tool.name] = {
       enabled: metadata?.enabled ?? true,
-      permission: metadata?.permission ?? "high",
+      permission: defaultPermission,
     };
   }
 
