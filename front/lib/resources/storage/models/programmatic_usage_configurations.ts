@@ -23,6 +23,8 @@ export class ProgrammaticUsageConfigurationModel extends WorkspaceAwareModel<Pro
   declare paygCapCents: number | null;
 }
 
+const MAX_FREE_AMOUNT_CENTS = 1_000_000;
+
 ProgrammaticUsageConfigurationModel.init(
   {
     createdAt: {
@@ -39,15 +41,35 @@ ProgrammaticUsageConfigurationModel.init(
       type: DataTypes.INTEGER,
       allowNull: true,
       defaultValue: null,
+      validate: {
+        isValidFreeCreditAmount(value: number | null) {
+          if (value !== null && (value < 0 || value > MAX_FREE_AMOUNT_CENTS)) {
+            throw new Error(
+              `freeCreditCents must be between 0 and ${MAX_FREE_AMOUNT_CENTS}`
+            );
+          }
+        },
+      },
     },
     defaultDiscountPercent: {
       type: DataTypes.INTEGER,
       allowNull: false,
+      validate: {
+        min: 0,
+        max: 100,
+      },
     },
     paygCapCents: {
       type: DataTypes.INTEGER,
       allowNull: true,
       defaultValue: null,
+      validate: {
+        isPositive(value: number | null) {
+          if (value !== null && value <= 0) {
+            throw new Error("paygCapCents must be strictly positive when set");
+          }
+        },
+      },
     },
   },
   {
@@ -57,5 +79,6 @@ ProgrammaticUsageConfigurationModel.init(
       // Enforce 1:1 relationship with workspace
       { unique: true, fields: ["workspaceId"] },
     ],
+    relationship: "hasOne",
   }
 );
