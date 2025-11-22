@@ -37,7 +37,7 @@ export function ToolUsageChart({
   const [toolMode, setToolMode] = useState<ToolChartModeType>("version");
   const [hoveredTool, setHoveredTool] = useState<string | null>(null);
 
-  const { getConfigurationName } = useMcpConfigurationNames({
+  const { configurationNames } = useMcpConfigurationNames({
     workspaceId,
     agentConfigurationId,
   });
@@ -56,7 +56,7 @@ export function ToolUsageChart({
     period,
     mode: toolMode,
     filterVersion: mode === "version" ? selectedVersion?.version : undefined,
-    getConfigurationName,
+    configurationNames,
   });
 
   const legendItems = useMemo(

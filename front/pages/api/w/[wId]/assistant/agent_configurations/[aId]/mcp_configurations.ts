@@ -86,12 +86,10 @@ async function handler(
         attributes: ["sId", "name"],
       });
 
-      const configurations = mcpConfigurations
-        .filter((c) => c.sId && c.sId.trim() !== "")
-        .map((c) => ({
-          sId: c.sId,
-          name: c.name,
-        }));
+      const configurations = mcpConfigurations.map((c) => ({
+        sId: c.sId,
+        name: c.name,
+      }));
 
       return res.status(200).json({ configurations });
     }
