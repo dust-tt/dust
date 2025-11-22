@@ -56,16 +56,6 @@ export class CreditResource extends BaseResource<CreditModel> {
     return new this(this.model, credit.get());
   }
 
-  /**
-   * Start a credit by setting startDate and expirationDate.
-   * This makes the credit active and consumable.
-   * Idempotent: only updates if startDate is null, returns success if already started.
-   *
-   * @param startDate - When the credit becomes active (default: now)
-   * @param expirationDate - When the credit expires (default: now + CREDIT_EXPIRATION_DAYS)
-   * @param transaction - Optional database transaction
-   * @returns Result with undefined on success or an error
-   */
   async start(
     startDate?: Date,
     expirationDate?: Date,
