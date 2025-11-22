@@ -1,3 +1,6 @@
+import { useMemo } from "react";
+import type { Fetcher } from "swr";
+
 import {
   MAX_TOOLS_DISPLAYED,
   OTHER_LABEL,
@@ -17,6 +20,7 @@ import {
   useAgentToolExecution,
   useAgentToolStepIndex,
 } from "@app/lib/swr/assistants";
+import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 type ToolUsageResult = {
@@ -31,7 +35,13 @@ type ToolUsageResult = {
 
 type ToolDataItem = {
   label: string | number;
-  tools: Record<string, { count: number }>;
+  tools: Record<
+    string,
+    {
+      count: number;
+      breakdown?: Record<string, number>;
+    }
+  >;
   total?: number;
 };
 
@@ -59,6 +69,44 @@ type LatencyDataResult = {
   errorMessage: string | undefined;
 };
 
+export function useMcpConfigurationNames(params: {
+  workspaceId: string;
+  agentConfigurationId: string;
+}): {
+  configurationNames: Map<string, string>;
+  isLoading: boolean;
+} {
+  const { workspaceId, agentConfigurationId } = params;
+
+  const mcpConfigurationsFetcher: Fetcher<{
+    configurations: Array<{ sId: string; name: string | null }>;
+  }> = fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/mcp_configurations`,
+    mcpConfigurationsFetcher
+  );
+
+  const configurationNames = useMemo(() => {
+    if (!data?.configurations) {
+      return new Map<string, string>();
+    }
+
+    const map = new Map<string, string>();
+    for (const config of data.configurations) {
+      if (config.sId && config.name) {
+        map.set(config.sId, config.name);
+      }
+    }
+    return map;
+  }, [data]);
+
+  return {
+    configurationNames,
+    isLoading: !error && !data,
+  };
+}
+
 function calculatePercentage(count: number, total: number): number {
   if (total === 0) {
     return 0;
@@ -82,7 +130,8 @@ function aggregateToolCounts(items: ToolDataItem[]): Map<string, number> {
 function createChartData(
   items: ToolDataItem[],
   displayTools: string[],
-  includeOthers: boolean
+  includeOthers: boolean,
+  configurationNames?: Map<string, string>
 ): ChartDatum[] {
   return items.map((item) => {
     const total =
@@ -99,9 +148,21 @@ function createChartData(
       const toolData = item.tools[toolName];
       const count = toolData?.count ?? 0;
       if (count > 0) {
+        const breakdownEntries = toolData.breakdown
+          ? Object.entries(toolData.breakdown)
+          : [];
+
         values[toolName] = {
           percent: calculatePercentage(count, total),
           count,
+          breakdown:
+            breakdownEntries.length > 0
+              ? breakdownEntries.map(([sid, breakdownCount]) => ({
+                  label: configurationNames?.get(sid) ?? toolName,
+                  count: breakdownCount,
+                  percent: calculatePercentage(breakdownCount, count),
+                }))
+              : undefined,
         };
         topToolsCount += count;
       }
@@ -125,7 +186,15 @@ function createChartData(
 function normalizeVersionData(data: ToolExecutionByVersion[]): ToolDataItem[] {
   return data.map((item) => ({
     label: `v${item.version}`,
-    tools: item.tools,
+    tools: Object.fromEntries(
+      Object.entries(item.tools).map(([toolName, metrics]) => [
+        toolName,
+        {
+          count: metrics.count,
+          breakdown: metrics.mcpViewBreakdown,
+        },
+      ])
+    ),
   }));
 }
 
@@ -161,7 +230,8 @@ function processToolUsageData(
   emptyMessage: string,
   legendDescription: string,
   isLoading: boolean,
-  errorMessage: string | undefined
+  errorMessage: string | undefined,
+  configurationNames?: Map<string, string>
 ): ToolUsageResult {
   if (data.length === 0) {
     return createEmptyResult(
@@ -179,7 +249,12 @@ function processToolUsageData(
   const topTools = includeOthers
     ? [...selectedTools, OTHER_LABEL.label]
     : selectedTools;
-  const chartData = createChartData(data, topTools, includeOthers);
+  const chartData = createChartData(
+    data,
+    topTools,
+    includeOthers,
+    configurationNames
+  );
 
   return {
     chartData,
@@ -198,9 +273,16 @@ export function useToolUsageData(params: {
   period: number;
   mode: ToolChartModeType;
   filterVersion?: string | null;
+  configurationNames?: Map<string, string>;
 }): ToolUsageResult {
-  const { workspaceId, agentConfigurationId, period, mode, filterVersion } =
-    params;
+  const {
+    workspaceId,
+    agentConfigurationId,
+    period,
+    mode,
+    filterVersion,
+    configurationNames,
+  } = params;
 
   const exec = useAgentToolExecution({
     workspaceId,
@@ -238,7 +320,8 @@ export function useToolUsageData(params: {
           : "No tool execution data available for this period.",
         `Usage frequency of tools for each agent version.`,
         isLoading,
-        errorMessage
+        errorMessage,
+        configurationNames
       );
     }
 
@@ -256,7 +339,8 @@ export function useToolUsageData(params: {
         "No tool usage by step for this period.",
         `Usage tools per step within a message.`,
         isLoading,
-        errorMessage
+        errorMessage,
+        configurationNames
       );
     }
 

@@ -13,7 +13,10 @@ import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
 import { ChartsTooltip } from "@app/components/agent_builder/observability/charts/ChartsTooltip";
 import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
-import { useToolUsageData } from "@app/components/agent_builder/observability/hooks";
+import {
+  useMcpConfigurationNames,
+  useToolUsageData,
+} from "@app/components/agent_builder/observability/hooks";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import { RoundedTopBarShape } from "@app/components/agent_builder/observability/shared/ChartShapes";
@@ -32,6 +35,12 @@ export function ToolUsageChart({
 }) {
   const { period, mode, selectedVersion } = useObservabilityContext();
   const [toolMode, setToolMode] = useState<ToolChartModeType>("version");
+  const [hoveredTool, setHoveredTool] = useState<string | null>(null);
+
+  const { configurationNames } = useMcpConfigurationNames({
+    workspaceId,
+    agentConfigurationId,
+  });
 
   const {
     chartData,
@@ -47,6 +56,7 @@ export function ToolUsageChart({
     period,
     mode: toolMode,
     filterVersion: mode === "version" ? selectedVersion?.version : undefined,
+    configurationNames,
   });
 
   const legendItems = useMemo(
@@ -61,9 +71,14 @@ export function ToolUsageChart({
 
   const renderToolUsageTooltip = useCallback(
     (payload: TooltipContentProps<number, string>) => (
-      <ChartsTooltip {...payload} mode={toolMode} topTools={topTools} />
+      <ChartsTooltip
+        {...payload}
+        mode={toolMode}
+        topTools={topTools}
+        hoveredTool={hoveredTool}
+      />
     ),
-    [toolMode, topTools]
+    [toolMode, topTools, hoveredTool]
   );
 
   return (
@@ -155,6 +170,8 @@ export function ToolUsageChart({
             shape={
               <RoundedTopBarShape toolName={toolName} stackOrder={topTools} />
             }
+            onMouseEnter={() => setHoveredTool(toolName)}
+            onMouseLeave={() => setHoveredTool(null)}
           />
         ))}
       </BarChart>

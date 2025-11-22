@@ -14,6 +14,7 @@ export interface ToolUsageTooltipProps
   extends TooltipContentProps<number, string> {
   mode: ToolChartModeType;
   topTools: string[];
+  hoveredTool?: string | null;
 }
 
 export function ChartsTooltip({
@@ -22,26 +23,56 @@ export function ChartsTooltip({
   label,
   mode,
   topTools,
+  hoveredTool,
 }: ToolUsageTooltipProps) {
   if (!active || !payload || payload.length === 0) {
     return null;
   }
 
+  // Only show a tooltip when a specific tool segment is hovered.
+  if (!hoveredTool) {
+    return null;
+  }
+
   const typed = payload.filter(isToolChartUsagePayload);
-  const rows = typed
-    .filter((p) => (p.value ?? 0) > 0)
-    .sort((a, b) => (b.value ?? 0) - (a.value ?? 0))
-    .map((p) => {
+  const filtered = hoveredTool
+    ? typed.filter((p) => p.name === hoveredTool)
+    : typed;
+  const rows = filtered
+    .flatMap((p) => {
       const toolName = p.name ?? "";
-      const percent = p.payload?.values?.[toolName]?.percent ?? 0;
-      const count = p.payload?.values?.[toolName]?.count ?? 0;
-      return {
-        label: toolName,
-        value: count,
-        percent,
-        colorClassName: getIndexedColor(toolName, topTools),
-      };
-    });
+      const data = p.payload?.values?.[toolName];
+      if (!data || (data.count ?? 0) <= 0) {
+        return [];
+      }
+
+      const colorClassName = getIndexedColor(toolName, topTools);
+
+      // If this tool segment represents an MCP server, show its view-level
+      // breakdown instead of a single aggregated row.
+      if (data.breakdown && data.breakdown.length > 0) {
+        return data.breakdown.map((b) => ({
+          label: b.label,
+          value: b.count,
+          percent: b.percent,
+          colorClassName,
+        }));
+      }
+
+      return [
+        {
+          label: toolName,
+          value: data.count,
+          percent: data.percent,
+          colorClassName,
+        },
+      ];
+    })
+    .sort((a, b) => (b.value as number) - (a.value as number));
+
+  if (rows.length === 0) {
+    return null;
+  }
 
   const title =
     mode === "step"
@@ -52,6 +83,7 @@ export function ChartsTooltip({
 
 interface FeedbackDistributionData {
   timestamp: number;
+  date: string;
   positive: number;
   negative: number;
 }
@@ -59,11 +91,17 @@ interface FeedbackDistributionData {
 function isFeedbackDistributionData(
   data: unknown
 ): data is FeedbackDistributionData {
+  if (typeof data !== "object" || data === null) {
+    return false;
+  }
+
+  const d = data as Record<string, unknown>;
+
   return (
-    typeof data === "object" &&
-    data !== null &&
-    "positive" in data &&
-    "negative" in data
+    typeof d.timestamp === "number" &&
+    typeof d.date === "string" &&
+    typeof d.positive === "number" &&
+    typeof d.negative === "number"
   );
 }
 
