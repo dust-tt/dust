@@ -1,51 +1,37 @@
 import type Stripe from "stripe";
 
-import { Authenticator } from "@app/lib/auth";
-import type { Subscription } from "@app/lib/models/plan";
+import type { Authenticator } from "@app/lib/auth";
 import {
   attachCreditPurchaseToSubscription,
   getCreditAmountFromInvoice,
-  getStripeSubscription,
   isCreditPurchaseInvoice,
   isEnterpriseSubscription,
   makeAndMaybePayCreditPurchaseInvoice,
 } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
-import type { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
-/**
- * Handles credit purchase activation from a Stripe invoice for Pro subscriptions.
- * (Enterprise subscriptions activate credits optimistically, so we skip them here.)
- *
- * @param invoice - The Stripe invoice that was paid
- * @param subscription - The subscription record with workspace included
- * @returns Result indicating success or failure
- */
-export async function maybeStartCreditFromProOneOffInvoice({
+export async function startCreditFromProOneOffInvoice({
+  auth,
   invoice,
-  subscription,
+  stripeSubscription,
 }: {
+  auth: Authenticator;
   invoice: Stripe.Invoice;
-  subscription: Subscription & { workspace: WorkspaceModel };
+  stripeSubscription: Stripe.Subscription;
 }): Promise<Result<undefined, Error>> {
-  // Check if this is a credit purchase invoice
-  if (!isCreditPurchaseInvoice(invoice)) {
-    // Not a credit purchase invoice, nothing to do
-    return new Ok(undefined);
-  }
-
-  if (typeof invoice.subscription !== "string") {
-    return new Err(
-      new Error(
-        "Credit purchase invoice does not have a valid subscription ID."
-      )
+  if (
+    !isCreditPurchaseInvoice(invoice) ||
+    isEnterpriseSubscription(stripeSubscription)
+  ) {
+    throw new Error(
+      `Cannot process this invoice for credit purchase: ${invoice.id}`
     );
   }
 
-  const workspace = subscription.workspace;
+  const workspace = auth.getNonNullableWorkspace();
   const creditAmountCents = getCreditAmountFromInvoice(invoice);
 
   if (creditAmountCents === null) {
@@ -59,34 +45,6 @@ export async function maybeStartCreditFromProOneOffInvoice({
     );
     return new Err(new Error("Invalid credit amount in invoice metadata"));
   }
-
-  const stripeSubscription = await getStripeSubscription(invoice.subscription);
-  if (!stripeSubscription) {
-    logger.error(
-      {
-        workspaceId: workspace.sId,
-        invoiceId: invoice.id,
-      },
-      "[Credit Purchase] Subscription not found"
-    );
-    return new Err(new Error("Subscription not found"));
-  }
-  // Check if this is an Enterprise subscription
-  const isEnterprise = isEnterpriseSubscription(stripeSubscription);
-
-  if (isEnterprise) {
-    logger.info(
-      {
-        workspaceId: workspace.sId,
-        invoiceId: invoice.id,
-      },
-      "[Credit Purchase] Skipping credit activation for Enterprise (already activated optimistically)"
-    );
-    return new Ok(undefined);
-  }
-
-  // Pro accounts - activate existing credit record (created in purchase API).
-  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
   const credit = await CreditResource.fetchByInvoiceOrLineItemId(
     auth,
@@ -130,15 +88,6 @@ export async function maybeStartCreditFromProOneOffInvoice({
   return new Ok(undefined);
 }
 
-/**
- * Creates and activates a credit purchase for Enterprise subscriptions.
- * Attaches an invoice item to the subscription and immediately activates the credit.
- *
- * @param auth - Authenticator for the workspace
- * @param stripeSubscriptionId - Stripe subscription ID
- * @param amountCents - Credit amount in cents
- * @returns Result with credit info or error
- */
 export async function createEnterpriseCreditPurchase({
   auth,
   stripeSubscriptionId,
@@ -207,15 +156,6 @@ export async function createEnterpriseCreditPurchase({
   return new Ok({ credit, invoiceItemId });
 }
 
-/**
- * Creates a credit purchase for Pro subscriptions.
- * Creates and pays a one-off invoice. Credit will be activated via webhook when paid.
- *
- * @param auth - Authenticator for the workspace
- * @param stripeSubscriptionId - Stripe subscription ID
- * @param amountCents - Credit amount in cents
- * @returns Result with invoice ID or error
- */
 export async function createProCreditPurchase({
   auth,
   stripeSubscriptionId,
