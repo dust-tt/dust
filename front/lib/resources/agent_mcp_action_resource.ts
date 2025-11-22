@@ -201,14 +201,13 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   ): Promise<BlockedToolExecution[]> {
     const owner = auth.getNonNullableWorkspace();
 
-    const conversationRes = await ConversationResource.fetchById(
+    const conversation = await ConversationResource.fetchById(
       auth,
       conversationId
     );
-    if (conversationRes.isErr() || !conversationRes.value) {
+    if (!conversation) {
       return [];
     }
-    const conversation = conversationRes.value;
 
     const latestAgentMessages =
       await conversation.getLatestAgentMessageIdByRank(auth);

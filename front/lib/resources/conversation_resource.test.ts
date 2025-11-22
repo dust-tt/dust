@@ -701,37 +701,6 @@ describe("ConversationResource", () => {
       expect(conversationIds).toContain(conversations.restricted[0]);
     });
 
-    it("should return null when alertIfNoAccessible is true and user lacks access", async () => {
-      // Try to fetch a restricted conversation that the user doesn't have access to
-      const conversationRes = await ConversationResource.fetchById(
-        userAuth,
-        conversations.restricted[0],
-        {
-          alertIfNoAccessible: true,
-        }
-      );
-
-      expect(conversationRes.isErr()).toBe(true);
-    });
-
-    it("should return conversation when alertIfNoAccessible is true and user has access", async () => {
-      // Should succeed when user has access
-      const conversationRes = await ConversationResource.fetchById(
-        userAuth,
-        conversations.accessible[0],
-        {
-          alertIfNoAccessible: true,
-        }
-      );
-
-      expect(conversationRes.isOk()).toBe(true);
-      if (conversationRes.isOk()) {
-        const conversation = conversationRes.value;
-        expect(conversation).toBeDefined();
-        expect(conversation?.sId).toBe(conversations.accessible[0]);
-      }
-    });
-
     it("should include deleted conversations when includeDeleted option is true", async () => {
       // Create and then delete a conversation
       const deletableConvo = await ConversationFactory.create(adminAuth, {
@@ -740,12 +709,11 @@ describe("ConversationResource", () => {
         messagesCreatedAt: [dateFromDaysAgo(5)],
       });
 
-      const conversationRes = await ConversationResource.fetchById(
+      const conversationResource = await ConversationResource.fetchById(
         adminAuth,
         deletableConvo.sId
       );
-      assert(conversationRes.isOk(), "Failed to fetch conversation");
-      const conversationResource = conversationRes.value;
+
       assert(conversationResource, "Conversation resource not found");
       await conversationResource.updateVisibilityToDeleted();
 
@@ -921,16 +889,12 @@ describe("ConversationResource", () => {
       const { ConversationParticipantModel } = await import(
         "@app/lib/models/assistant/conversation"
       );
-      const conversationRes = await ConversationResource.fetchById(
-        adminAuth,
-        conversationIds[0]
-      );
-      assert(conversationRes.isOk(), "Failed to fetch conversation");
-      assert(conversationRes.value, "Conversation not found");
-
       const participation = await ConversationParticipantModel.findOne({
         where: {
-          conversationId: conversationRes.value.id,
+          conversationId: (await ConversationResource.fetchById(
+            adminAuth,
+            conversationIds[0]
+          ))!.id,
           userId: userAuth.getNonNullableUser().id,
           workspaceId: userAuth.getNonNullableWorkspace().id,
         },
@@ -1033,6 +997,271 @@ describe("ConversationResource", () => {
     });
   });
 
+  describe("canAccess", () => {
+    let adminAuth: Authenticator;
+    let userAuth: Authenticator;
+    let workspace: LightWorkspaceType;
+    let agents: LightAgentConfigurationType[];
+    let globalSpace: SpaceResource;
+    let restrictedSpace: SpaceResource;
+    let conversations: {
+      accessible: string;
+      restricted: string;
+    };
+
+    beforeEach(async () => {
+      const {
+        authenticator,
+        globalSpace: gs,
+        user,
+        workspace: w,
+      } = await createResourceTest({
+        role: "admin",
+      });
+
+      workspace = w;
+      globalSpace = gs;
+
+      // Create different users with different access levels.
+      const adminUser = user;
+      const regularUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, regularUser, {
+        role: "user",
+      });
+
+      adminAuth = authenticator;
+      userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        regularUser.sId,
+        workspace.sId
+      );
+
+      // Set up spaces and agents.
+      // Create a restricted space only accessible to the admin user.
+      restrictedSpace = await SpaceFactory.regular(workspace);
+      const res = await restrictedSpace.addMembers(adminAuth, {
+        userIds: [adminUser.sId],
+      });
+      assert(res.isOk(), "Failed to add member to restricted space");
+      // Once added, we need to refresh the auth.
+      adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        adminUser.sId,
+        workspace.sId
+      );
+
+      agents = await setupTestAgents(workspace, adminUser);
+
+      // Create conversations with different space access patterns.
+      const accessibleConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        messagesCreatedAt: [dateFromDaysAgo(5)],
+      });
+
+      const restrictedConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [restrictedSpace.id],
+        messagesCreatedAt: [dateFromDaysAgo(5)],
+      });
+
+      conversations = {
+        accessible: accessibleConvo.sId,
+        restricted: restrictedConvo.sId,
+      };
+    });
+
+    afterEach(async () => {
+      await destroyConversation(adminAuth, {
+        conversationId: conversations.accessible,
+      });
+      await destroyConversation(adminAuth, {
+        conversationId: conversations.restricted,
+      });
+    });
+
+    it("should return 'allowed' when user has access to conversation", async () => {
+      const result = await ConversationResource.canAccess(
+        userAuth,
+        conversations.accessible
+      );
+
+      expect(result).toBe("allowed");
+    });
+
+    it("should return 'conversation_access_restricted' when user does not have access to the space", async () => {
+      const result = await ConversationResource.canAccess(
+        userAuth,
+        conversations.restricted
+      );
+
+      expect(result).toBe("conversation_access_restricted");
+    });
+
+    it("should return 'conversation_not_found' when conversation does not exist", async () => {
+      const result = await ConversationResource.canAccess(
+        userAuth,
+        "nonexistent-sId"
+      );
+
+      expect(result).toBe("conversation_not_found");
+    });
+
+    it("should return 'conversation_not_found' when conversation is deleted", async () => {
+      // Delete the conversation
+      const conversationResource = await ConversationResource.fetchById(
+        adminAuth,
+        conversations.accessible,
+        { includeDeleted: false }
+      );
+      assert(conversationResource, "Conversation resource not found");
+      await conversationResource.updateVisibilityToDeleted();
+
+      const result = await ConversationResource.canAccess(
+        userAuth,
+        conversations.accessible
+      );
+
+      expect(result).toBe("conversation_not_found");
+    });
+
+    it("should return 'allowed' when admin has access to restricted space", async () => {
+      const result = await ConversationResource.canAccess(
+        adminAuth,
+        conversations.restricted
+      );
+
+      expect(result).toBe("allowed");
+    });
+
+    it("should return 'conversation_not_found' when conversation belongs to different workspace", async () => {
+      // Create a conversation in a different workspace
+      const anotherWorkspace = await WorkspaceFactory.basic();
+
+      // Create the required default groups for the workspace
+      await GroupResource.makeDefaultsForWorkspace(anotherWorkspace);
+
+      const anotherUser = await UserFactory.basic();
+      await MembershipFactory.associate(anotherWorkspace, anotherUser, {
+        role: "admin",
+      });
+      const anotherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        anotherUser.sId,
+        anotherWorkspace.sId
+      );
+
+      const anotherAgents = await setupTestAgents(
+        anotherWorkspace,
+        anotherUser
+      );
+      const anotherConvo = await ConversationFactory.create(anotherAuth, {
+        agentConfigurationId: anotherAgents[0].sId,
+        messagesCreatedAt: [dateFromDaysAgo(5)],
+      });
+
+      // Try to access the conversation from another workspace with current user auth
+      const result = await ConversationResource.canAccess(
+        userAuth,
+        anotherConvo.sId
+      );
+
+      expect(result).toBe("conversation_not_found");
+
+      // Clean up
+      await destroyConversation(anotherAuth, {
+        conversationId: anotherConvo.sId,
+      });
+    });
+
+    it("should return 'conversation_not_found' when space is deleted", async () => {
+      // Create a new space and conversation
+      const tempSpace = await SpaceFactory.regular(workspace);
+      const res = await tempSpace.addMembers(adminAuth, {
+        userIds: [adminAuth.getNonNullableUser().sId],
+      });
+      assert(res.isOk(), "Failed to add member to temp space");
+
+      const refreshedAdminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        adminAuth.getNonNullableUser().sId,
+        workspace.sId
+      );
+
+      const tempConvo = await ConversationFactory.create(refreshedAdminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [tempSpace.id],
+        messagesCreatedAt: [dateFromDaysAgo(5)],
+      });
+
+      // Verify conversation is accessible before space deletion
+      let result = await ConversationResource.canAccess(
+        refreshedAdminAuth,
+        tempConvo.sId
+      );
+      expect(result).toBe("allowed");
+
+      // Delete the space
+      await tempSpace.delete(refreshedAdminAuth, { hardDelete: false });
+
+      // Now the conversation should return 'conversation_not_found' because space is deleted
+      result = await ConversationResource.canAccess(
+        refreshedAdminAuth,
+        tempConvo.sId
+      );
+      expect(result).toBe("conversation_not_found");
+
+      // Clean up
+      await destroyConversation(refreshedAdminAuth, {
+        conversationId: tempConvo.sId,
+      });
+    });
+
+    it("should handle conversations with multiple space IDs - all spaces must be accessible", async () => {
+      // Create a conversation with both global and restricted spaces
+      const multiSpaceConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id, restrictedSpace.id],
+        messagesCreatedAt: [dateFromDaysAgo(5)],
+      });
+
+      // Regular user can access global space but not restricted space
+      const userResult = await ConversationResource.canAccess(
+        userAuth,
+        multiSpaceConvo.sId
+      );
+      expect(userResult).toBe("conversation_access_restricted");
+
+      // Admin can access both spaces
+      const adminResult = await ConversationResource.canAccess(
+        adminAuth,
+        multiSpaceConvo.sId
+      );
+      expect(adminResult).toBe("allowed");
+
+      // Clean up
+      await destroyConversation(adminAuth, {
+        conversationId: multiSpaceConvo.sId,
+      });
+    });
+
+    it("should return 'allowed' for conversation with no requested spaces", async () => {
+      const emptySpaceConvo = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [],
+        messagesCreatedAt: [dateFromDaysAgo(5)],
+      });
+
+      const result = await ConversationResource.canAccess(
+        userAuth,
+        emptySpaceConvo.sId
+      );
+
+      expect(result).toBe("allowed");
+
+      // Clean up
+      await destroyConversation(adminAuth, {
+        conversationId: emptySpaceConvo.sId,
+      });
+    });
+  });
+
   describe("getMessageById", () => {
     let auth: Authenticator;
     let conversation: ConversationType;
@@ -1064,12 +1293,10 @@ describe("ConversationResource", () => {
 
     it("should retrieve a user message with the userMessage include", async () => {
       // Get the conversation resource to access getMessageById
-      const conversationRes = await ConversationResource.fetchById(
+      const conversationResource = await ConversationResource.fetchById(
         auth,
         conversation.sId
       );
-      assert(conversationRes.isOk(), "Failed to fetch conversation");
-      const conversationResource = conversationRes.value;
       assert(conversationResource, "Conversation resource not found");
 
       // Get all messages to find a user message
@@ -1105,12 +1332,10 @@ describe("ConversationResource", () => {
 
     it("should retrieve an agent message with the agentMessage include", async () => {
       // Get the conversation resource to access getMessageById
-      const conversationRes = await ConversationResource.fetchById(
+      const conversationResource = await ConversationResource.fetchById(
         auth,
         conversation.sId
       );
-      assert(conversationRes.isOk(), "Failed to fetch conversation");
-      const conversationResource = conversationRes.value;
       assert(conversationResource, "Conversation resource not found");
 
       // Get all messages to find an agent message
@@ -1148,12 +1373,10 @@ describe("ConversationResource", () => {
     });
 
     it("should return error when message not found", async () => {
-      const conversationRes = await ConversationResource.fetchById(
+      const conversationResource = await ConversationResource.fetchById(
         auth,
         conversation.sId
       );
-      assert(conversationRes.isOk(), "Failed to fetch conversation");
-      const conversationResource = conversationRes.value;
       assert(conversationResource, "Conversation resource not found");
 
       // Try to fetch a non-existent message
@@ -1176,25 +1399,19 @@ describe("ConversationResource", () => {
       });
       conversationIds.push(otherConversation.sId);
 
-      const conversationRes = await ConversationResource.fetchById(
+      const conversationResource = await ConversationResource.fetchById(
         auth,
         conversation.sId
       );
-      assert(conversationRes.isOk(), "Failed to fetch conversation");
-      const conversationResource = conversationRes.value;
       assert(conversationResource, "Conversation resource not found");
 
       // Get a message from the other conversation
-      const otherConversationRes = await ConversationResource.fetchById(
-        auth,
-        otherConversation.sId
-      );
-      assert(otherConversationRes.isOk(), "Failed to fetch other conversation");
-      assert(otherConversationRes.value, "Other conversation not found");
-
       const otherMessages = await Message.findAll({
         where: {
-          conversationId: otherConversationRes.value.id,
+          conversationId: (await ConversationResource.fetchById(
+            auth,
+            otherConversation.sId
+          ))!.id,
           workspaceId: auth.getNonNullableWorkspace().id,
         },
       });
@@ -1214,12 +1431,10 @@ describe("ConversationResource", () => {
     });
 
     it("should verify includes are not optional (both UserMessage and AgentMessage)", async () => {
-      const conversationRes = await ConversationResource.fetchById(
+      const conversationResource = await ConversationResource.fetchById(
         auth,
         conversation.sId
       );
-      assert(conversationRes.isOk(), "Failed to fetch conversation");
-      const conversationResource = conversationRes.value;
       assert(conversationResource, "Conversation resource not found");
 
       // Get all messages
@@ -1261,12 +1476,10 @@ describe("ConversationResource", () => {
     });
 
     it("should return a valid Message object with all expected fields", async () => {
-      const conversationRes = await ConversationResource.fetchById(
+      const conversationResource = await ConversationResource.fetchById(
         auth,
         conversation.sId
       );
-      assert(conversationRes.isOk(), "Failed to fetch conversation");
-      const conversationResource = conversationRes.value;
       assert(conversationResource, "Conversation resource not found");
 
       // Get the first message
