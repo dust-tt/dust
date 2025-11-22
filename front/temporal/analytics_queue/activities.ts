@@ -2,6 +2,7 @@ import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
 import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
 import { updateAnalyticsFeedback } from "@app/lib/analytics/feedback";
 import { ANALYTICS_ALIAS_NAME, withEs } from "@app/lib/api/elasticsearch";
+import { maybeTrackTokenUsageCost } from "@app/lib/api/programmatic_usage_tracking";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
@@ -103,6 +104,14 @@ export async function storeAgentAnalyticsActivity(
 
   if (!userUserMessageRow) {
     throw new Error("User message not found");
+  }
+
+  // Track token usage cost for programmatic usage.
+  if (agentAgentMessageRow.runIds) {
+    await maybeTrackTokenUsageCost(auth, {
+      dustRunIds: agentAgentMessageRow.runIds,
+      userMessageOrigin: userUserMessageRow.userContextOrigin,
+    });
   }
 
   await storeAgentAnalytics(auth, {
