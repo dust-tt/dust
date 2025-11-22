@@ -144,6 +144,75 @@ function validateModjoResponse(
 const CALL_BUFFER_HOURS = 6; // Increased buffer for very long calls (meetings can be 4+ hours)
 const MIN_LOOKBACK_HOURS = 24; // Minimum lookback even if last sync was recent
 const MODJO_API_URL = "https://api.modjo.ai";
+const MAX_REDIRECTS = 1; // Maximum number of redirects to follow
+
+async function fetchWithRedirectHandling(
+  url: string,
+  options: RequestInit,
+  maxRedirects: number = MAX_REDIRECTS
+): Promise<Response> {
+  const initUrl = new URL(url);
+  let currentUrl = url;
+  const visitedUrls = new Set<string>();
+  let redirectCount = 0;
+  const originalBody = options.body;
+
+  while (redirectCount <= maxRedirects) {
+    if (visitedUrls.has(currentUrl)) {
+      throw new Error(
+        `Circular redirect detected: ${currentUrl} was already visited`
+      );
+    }
+    visitedUrls.add(currentUrl);
+
+    const response = await fetch(currentUrl, {
+      ...options,
+      body: originalBody,
+      redirect: "manual",
+    });
+
+    // Check if this is a redirect response
+    if (
+      response.status === 301 ||
+      response.status === 302 ||
+      response.status === 307 ||
+      response.status === 308
+    ) {
+      // Sanitize Location header to prevent header injection
+      const location = response.headers
+        .get("Location")
+        ?.trim()
+        .replace(/[\r\n\t]/g, "");
+      if (!location) {
+        throw new Error(
+          `Redirect response (${response.status}) missing Location header`
+        );
+      }
+
+      redirectCount++;
+      if (redirectCount > maxRedirects) {
+        throw new Error(
+          `Maximum redirect limit (${maxRedirects}) exceeded for ${url}`
+        );
+      }
+
+      const resolvedUrl = new URL(location, currentUrl);
+
+      // Prevent protocol downgrade (HTTPS -> HTTP)
+      if (initUrl.protocol === "https:" && resolvedUrl.protocol !== "https:") {
+        throw new Error(
+          `Protocol downgrade detected: redirect from HTTPS to ${resolvedUrl.protocol}`
+        );
+      }
+
+      currentUrl = resolvedUrl.toString();
+      continue;
+    }
+    return response;
+  }
+
+  throw new Error(`Unexpected redirect loop for ${url}`);
+}
 
 export async function retrieveModjoTranscripts(
   auth: Authenticator,
@@ -268,32 +337,35 @@ export async function retrieveModjoTranscripts(
           await new Promise((resolve) => setTimeout(resolve, delayMs));
         }
 
-        const response = await fetch(`${MODJO_API_URL}/v1/calls/exports`, {
-          method: "POST",
-          headers: {
-            "X-API-KEY": modjoApiKey,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            pagination: { page, perPage },
-            filters: {
-              callStartDateRange: {
-                start: fromDateTime,
-                end: new Date().toISOString(),
+        const response = await fetchWithRedirectHandling(
+          `${MODJO_API_URL}/v1/calls/exports`,
+          {
+            method: "POST",
+            headers: {
+              "X-API-KEY": modjoApiKey,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              pagination: { page, perPage },
+              filters: {
+                callStartDateRange: {
+                  start: fromDateTime,
+                  end: new Date().toISOString(),
+                },
               },
-            },
-            relations: {
-              recording: true,
-              highlights: true,
-              transcript: true,
-              speakers: true,
-              tags: true,
-              contacts: true,
-              account: true,
-              deal: true,
-            },
-          }),
-        });
+              relations: {
+                recording: true,
+                highlights: true,
+                transcript: true,
+                speakers: true,
+                tags: true,
+                contacts: true,
+                account: true,
+                deal: true,
+              },
+            }),
+          }
+        );
 
         if (!response.ok) {
           // Handle rate limiting specifically
@@ -524,29 +596,32 @@ export async function retrieveModjoTranscriptContent(
     return user;
   };
 
-  const response = await fetch(`${MODJO_API_URL}/v1/calls/exports`, {
-    method: "POST",
-    headers: {
-      "X-API-KEY": modjoApiKey,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      pagination: { page: 1, perPage: 1 },
-      filters: {
-        callIds: [parseInt(fileId)],
+  const response = await fetchWithRedirectHandling(
+    `${MODJO_API_URL}/v1/calls/exports`,
+    {
+      method: "POST",
+      headers: {
+        "X-API-KEY": modjoApiKey,
+        "Content-Type": "application/json",
       },
-      relations: {
-        recording: true,
-        highlights: true,
-        transcript: true,
-        speakers: true,
-        tags: true,
-        contacts: true,
-        account: true,
-        deal: true,
-      },
-    }),
-  });
+      body: JSON.stringify({
+        pagination: { page: 1, perPage: 1 },
+        filters: {
+          callIds: [parseInt(fileId)],
+        },
+        relations: {
+          recording: true,
+          highlights: true,
+          transcript: true,
+          speakers: true,
+          tags: true,
+          contacts: true,
+          account: true,
+          deal: true,
+        },
+      }),
+    }
+  );
 
   if (!response.ok) {
     localLogger.error(
@@ -816,23 +891,26 @@ export async function scanModjoTranscriptsInDateRange(
 
   while (hasMorePages) {
     try {
-      const response = await fetch(`${MODJO_API_URL}/v1/calls/exports`, {
-        method: "POST",
-        headers: {
-          "X-API-KEY": modjoApiKey,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          pagination: { page, perPage },
-          filters: {
-            callStartDateRange: {
-              start: startDate.toISOString(),
-              end: endDate.toISOString(),
-            },
+      const response = await fetchWithRedirectHandling(
+        `${MODJO_API_URL}/v1/calls/exports`,
+        {
+          method: "POST",
+          headers: {
+            "X-API-KEY": modjoApiKey,
+            "Content-Type": "application/json",
           },
-          relations: {},
-        }),
-      });
+          body: JSON.stringify({
+            pagination: { page, perPage },
+            filters: {
+              callStartDateRange: {
+                start: startDate.toISOString(),
+                end: endDate.toISOString(),
+              },
+            },
+            relations: {},
+          }),
+        }
+      );
 
       if (!response.ok) {
         const errorText = await response.text();
