@@ -32,6 +32,7 @@ import {
   Message,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
+import { triggerConversationUnreadNotifications } from "@app/lib/notifications/workflows/conversation-unread";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -591,6 +592,22 @@ export async function postUserMessage(
         conversation,
         excludedUser: user?.toJSON(),
       });
+
+      const featureFlags = await getFeatureFlags(owner);
+      if (featureFlags.includes("notifications")) {
+        // TODO(mentionsv2) here we fetch the conversation again to trigger the notification.
+        // We should refactor to pass the resource as the argument of the postUserMessage function.
+        const conversationRes = await ConversationResource.fetchById(
+          auth,
+          conversation.sId
+        );
+        if (conversationRes.isOk() && conversationRes.value) {
+          await triggerConversationUnreadNotifications(auth, {
+            conversation: conversationRes.value,
+            messageId: m.sId,
+          });
+        }
+      }
 
       const agentMessagesResult = await createAgentMessages({
         mentions,

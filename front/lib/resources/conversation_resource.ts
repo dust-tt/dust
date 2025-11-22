@@ -747,10 +747,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       action: ParticipantActionType;
       user: UserType | null;
     }
-  ) {
+  ): Promise<"added" | "updated" | "none"> {
     if (!user) {
-      return;
+      return "none";
     }
+
+    let status: "added" | "updated" | "none" = "none";
 
     await withTransaction(async (t) => {
       const participant = await ConversationParticipantModel.findOne({
@@ -763,6 +765,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       });
 
       if (participant) {
+        // If the action is subscribed, we do not update the participant at all.
+        if (action === "subscribed") {
+          status = "none";
+          return;
+        }
+
         participant.changed("updatedAt", true);
         await participant.update(
           {
@@ -771,6 +779,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           },
           { transaction: t }
         );
+        status = "updated";
       } else {
         await ConversationParticipantModel.create(
           {
@@ -783,8 +792,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           },
           { transaction: t }
         );
+        status = "added";
       }
     });
+
+    return status;
   }
 
   /**
