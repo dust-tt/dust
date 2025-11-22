@@ -69,6 +69,7 @@ const API_ERROR_TYPES = [
   "subscription_payment_failed",
   "subscription_not_found",
   "subscription_state_invalid",
+  "trial_restriction",
   "service_unavailable",
   // Use by agent creation / update
   "assistant_saving_error",

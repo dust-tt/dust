@@ -8,3 +8,17 @@ export function isCreditType(value: unknown): value is CreditType {
 
 // Credit expiration duration in days (default: 1 year)
 export const CREDIT_EXPIRATION_DAYS = 365;
+
+export type CreditDisplayData = {
+  id: number;
+  type: CreditType;
+  initialAmount: number;
+  remainingAmount: number;
+  consumedAmount: number;
+  startDate: number | null;
+  expirationDate: number | null;
+};
+
+export type GetCreditsResponseBody = {
+  credits: CreditDisplayData[];
+};

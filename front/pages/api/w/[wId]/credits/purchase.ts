@@ -45,6 +45,18 @@ async function handler(
       },
     });
   }
+  // Get active subscription.
+  const subscription = auth.subscription();
+  if (!subscription || !subscription.stripeSubscriptionId) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "subscription_not_found",
+        message:
+          "No active Stripe subscription found. Please subscribe to a plan first.",
+      },
+    });
+  }
 
   // Check feature flag.
   const workspace = auth.getNonNullableWorkspace();
@@ -90,19 +102,6 @@ async function handler(
         });
       }
 
-      // Get active subscription.
-      const subscription = auth.subscription();
-      if (!subscription || !subscription.stripeSubscriptionId) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "subscription_not_found",
-            message:
-              "No active Stripe subscription found. Please subscribe to a plan first.",
-          },
-        });
-      }
-
       // Get Stripe subscription and determine if Enterprise.
       const stripeSubscription = await getStripeSubscription(
         subscription.stripeSubscriptionId
@@ -111,6 +110,7 @@ async function handler(
         logger.error(
           {
             workspaceId: workspace.sId,
+            stripeError: true,
             stripeSubscriptionId: subscription.stripeSubscriptionId,
           },
           "Failed to retrieve Stripe subscription"
@@ -119,7 +119,7 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "subscription_not_found",
-            message: "Stripe subscription not found.",
+            message: "[Credit Purchase] Stripe subscription not found.",
           },
         });
       }
