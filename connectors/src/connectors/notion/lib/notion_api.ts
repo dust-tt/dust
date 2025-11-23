@@ -614,7 +614,7 @@ export async function getParsedDatabase(
     ) {
       if (e.code === "validation_error") {
         localLogger.info(
-          { message: e.message },
+          { errorMessage: e.message },
           "Got validation error trying to retrieve database (expected for linked databases)."
         );
       } else {
