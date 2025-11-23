@@ -591,9 +591,9 @@ export async function postUserMessage(
           auth,
           conversation.sId
         );
-        if (conversationRes.isOk() && conversationRes.value) {
+        if (conversationRes) {
           await triggerConversationUnreadNotifications(auth, {
-            conversation: conversationRes.value,
+            conversation: conversationRes,
             messageId: m.sId,
           });
         }

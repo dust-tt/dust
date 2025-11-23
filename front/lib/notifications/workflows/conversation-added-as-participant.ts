@@ -51,24 +51,21 @@ const getConversationDetails = async ({
       payload.workspaceId
     );
 
-    const conversationRes = await ConversationResource.fetchById(
+    const conversation = await ConversationResource.fetchById(
       auth,
       payload.conversationId
     );
 
-    if (conversationRes.isOk()) {
-      const conversation = conversationRes.value;
-      if (conversation) {
-        workspaceName = auth.getNonNullableWorkspace().name;
-        subject = conversation.title ?? "Dust conversation";
+    if (conversation) {
+      workspaceName = auth.getNonNullableWorkspace().name;
+      subject = conversation.title ?? "Dust conversation";
 
-        const userThatAddedYou = await UserResource.fetchById(
-          payload.userThatAddedYouId
-        );
+      const userThatAddedYou = await UserResource.fetchById(
+        payload.userThatAddedYouId
+      );
 
-        if (userThatAddedYou) {
-          userThatAddedYouFullname = userThatAddedYou.fullName();
-        }
+      if (userThatAddedYou) {
+        userThatAddedYouFullname = userThatAddedYou.fullName();
       }
     }
   }
@@ -92,12 +89,12 @@ const shouldSkipConversation = async ({
       payload.workspaceId
     );
 
-    const conversationRes = await ConversationResource.fetchById(
+    const conversation = await ConversationResource.fetchById(
       auth,
       payload.conversationId
     );
 
-    if (conversationRes.isErr() || !conversationRes.value) {
+    if (conversation) {
       return true;
     }
   }
