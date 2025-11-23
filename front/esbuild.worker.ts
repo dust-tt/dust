@@ -1,5 +1,4 @@
-const esbuild = require("esbuild");
-const path = require("path");
+import esbuild from "esbuild";
 
 async function buildWorker() {
   try {
@@ -34,4 +33,7 @@ async function buildWorker() {
   }
 }
 
-buildWorker();
+buildWorker().catch((error) => {
+  console.error("❌ Unhandled error:", error);
+  process.exit(1);
+});
