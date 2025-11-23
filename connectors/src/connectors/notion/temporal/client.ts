@@ -334,7 +334,7 @@ export async function stopNotionDeletionCrawlWorkflow(
   const workflow = await getDeletionCrawlWorkflow(connectorId);
 
   if (!workflow) {
-    logger.warn(
+    logger.info(
       {
         workspaceId: dataSourceConfig.workspaceId,
       },
