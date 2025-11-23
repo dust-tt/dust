@@ -7,7 +7,7 @@
     "dev-datadog": "NODE_OPTIONS='-r dd-trace/init' DD_TAGS=service:front-edge DD_TAGS=env:dev-ben DD_GIT_COMMIT_SHA=`git rev-parse HEAD` DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust/ npm run dev",
     "build": "next build",
     "build:temporal-bundles": "tsx scripts/temporal-build/build-temporal-bundles.ts",
-    "build:workers": "esbuild start_worker.ts --bundle --platform=node --target=node20 --outfile=dist/start_worker.js --alias:@app=. --packages=external",
+    "build:workers": "node esbuild.worker.js",
     "start": "next start --keepAliveTimeout 5000",
     "start:worker": "tsx ./start_worker.ts",
     "dev:worker": "./admin/dev_worker.sh",
