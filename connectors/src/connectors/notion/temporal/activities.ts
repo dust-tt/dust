@@ -1841,6 +1841,10 @@ export async function cacheBlockChildren({
         block.type === "child_database" &&
         block.child_database.title == "Untitled"
       ) {
+        localLogger.info(
+          { blockId: block.id },
+          "Skipping linked child database block."
+        );
         continue;
       }
       parsedBlocks.push(parsePageBlock(block));
