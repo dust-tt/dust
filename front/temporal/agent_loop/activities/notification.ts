@@ -69,7 +69,7 @@ export async function conversationUnreadNotificationActivity(
     conversation,
     messageId: agentLoopArgs.agentMessageId,
   });
-  
+
   if (r.isErr()) {
     logger.error(
       { error: r.error },
