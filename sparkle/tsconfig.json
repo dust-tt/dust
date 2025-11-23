@@ -11,7 +11,7 @@
     "outDir": "./dist/esm",
     "esModuleInterop": true,
     "module": "esnext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "importHelpers": true,
     "isolatedModules": true,
@@ -24,6 +24,6 @@
     "sourceMap": true,
     "declarationMap": true
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", ".storybook/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }

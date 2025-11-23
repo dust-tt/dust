@@ -32,25 +32,27 @@ const preview: Preview = {
       ],
     },
     backgrounds: {
-      default: "white",
-      values: [
-        {
+      options: {
+        white: {
           name: "white",
           value: "#ffffff",
         },
-        {
+
+        light: {
           name: "light",
           value: "#F7F7F7",
         },
-        {
+
+        dark: {
           name: "dark",
           value: "#090F18",
         },
-        {
+
+        black: {
           name: "black",
           value: "#000000",
         },
-      ],
+      },
     },
   },
 
@@ -77,6 +79,12 @@ const preview: Preview = {
   ],
 
   tags: ["autodocs"],
+
+  initialGlobals: {
+    backgrounds: {
+      value: "white",
+    },
+  },
 };
 
 export default preview;
