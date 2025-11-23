@@ -94,7 +94,7 @@ const shouldSkipConversation = async ({
       payload.conversationId
     );
 
-    if (conversation) {
+    if (!conversation) {
       return true;
     }
   }
