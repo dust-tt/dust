@@ -47,6 +47,9 @@ COPY /front .
 # Build temporal workers
 RUN FRONT_DATABASE_URI="sqlite:foo.sqlite" npm run build:temporal-bundles
 
+# Build workers with esbuild
+RUN npm run build:workers
+
 # Remove test files
 RUN find . -name "*.test.ts" -delete
 RUN find . -name "*.test.tsx" -delete
