@@ -562,6 +562,10 @@ export async function upsertDatabaseInConnectorsDb({
       topLevelWorkflowId,
       loggerArgs,
     });
+  } else {
+    localLogger.info(
+      "notionUpsertDatabaseActivity: getParsedDatabase returned undefined."
+    );
   }
 
   const createdOrMoved =
