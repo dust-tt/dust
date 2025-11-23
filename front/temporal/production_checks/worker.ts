@@ -17,7 +17,7 @@ export async function runProductionChecksWorker() {
   const worker = await Worker.create({
     ...getWorkflowConfig({
       workerName: "production_checks",
-      workflowsPath: require.resolve("./workflows"),
+      getWorkflowsPath: () => require.resolve("./workflows"),
     }),
     activities,
     taskQueue: QUEUE_NAME,

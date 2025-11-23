@@ -18,7 +18,7 @@ export async function runAgentTriggerWebhookWorker() {
   const worker = await Worker.create({
     ...getWorkflowConfig({
       workerName: "agent_trigger_webhook",
-      workflowsPath: require.resolve("./workflows"),
+      getWorkflowsPath: () => require.resolve("./workflows"),
     }),
     activities,
     taskQueue: QUEUE_NAME,

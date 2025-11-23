@@ -15,7 +15,7 @@ export async function runPokeWorker() {
   const worker = await Worker.create({
     ...getWorkflowConfig({
       workerName: "poke",
-      workflowsPath: require.resolve("./workflows"),
+      getWorkflowsPath: () => require.resolve("./workflows"),
     }),
     activities,
     taskQueue: "poke-queue",

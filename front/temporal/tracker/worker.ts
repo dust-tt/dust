@@ -20,7 +20,7 @@ export async function runTrackerWorker() {
   const worker = await Worker.create({
     ...getWorkflowConfig({
       workerName: "document_tracker",
-      workflowsPath: require.resolve("./workflows"),
+      getWorkflowsPath: () => require.resolve("./workflows"),
     }),
     activities,
     taskQueue: RUN_QUEUE_NAME,
@@ -48,7 +48,7 @@ export async function runTrackerNotificationWorker() {
   const worker = await Worker.create({
     ...getWorkflowConfig({
       workerName: "tracker_notification",
-      workflowsPath: require.resolve("./workflows"),
+      getWorkflowsPath: () => require.resolve("./workflows"),
     }),
     activities,
     taskQueue: TRACKER_NOTIFICATION_QUEUE_NAME,

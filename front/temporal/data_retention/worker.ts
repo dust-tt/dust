@@ -18,7 +18,7 @@ export async function runDataRetentionWorker() {
   const worker = await Worker.create({
     ...getWorkflowConfig({
       workerName: "data_retention",
-      workflowsPath: require.resolve("./workflows"),
+      getWorkflowsPath: () => require.resolve("./workflows"),
     }),
     activities,
     taskQueue: QUEUE_NAME,

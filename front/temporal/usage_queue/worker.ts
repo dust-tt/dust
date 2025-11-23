@@ -14,7 +14,7 @@ export async function runUpdateWorkspaceUsageWorker() {
   const worker = await Worker.create({
     ...getWorkflowConfig({
       workerName: "update_workspace_usage",
-      workflowsPath: require.resolve("./workflows"),
+      getWorkflowsPath: () => require.resolve("./workflows"),
     }),
     activities,
     taskQueue: QUEUE_NAME,

@@ -17,7 +17,7 @@ export async function runWorkOSEventsWorker() {
   const worker = await Worker.create({
     ...getWorkflowConfig({
       workerName: "workos_events_queue",
-      workflowsPath: require.resolve("./workflows"),
+      getWorkflowsPath: () => require.resolve("./workflows"),
     }),
     activities,
     taskQueue: QUEUE_NAME,

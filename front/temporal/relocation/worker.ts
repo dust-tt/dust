@@ -23,7 +23,7 @@ export async function runRelocationWorker() {
   const worker = await Worker.create({
     ...getWorkflowConfig({
       workerName: "relocation",
-      workflowsPath: require.resolve("./workflows"),
+      getWorkflowsPath: () => require.resolve("./workflows"),
     }),
     activities: {
       ...connectorsDestinationActivities,

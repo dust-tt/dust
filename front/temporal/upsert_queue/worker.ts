@@ -15,7 +15,7 @@ export async function runUpsertQueueWorker() {
   const worker = await Worker.create({
     ...getWorkflowConfig({
       workerName: "upsert_queue",
-      workflowsPath: require.resolve("./workflows"),
+      getWorkflowsPath: () => require.resolve("./workflows"),
     }),
     activities,
     taskQueue: QUEUE_NAME,
