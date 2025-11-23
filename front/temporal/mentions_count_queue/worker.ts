@@ -17,7 +17,7 @@ export async function runMentionsCountWorker() {
   const worker = await Worker.create({
     ...getWorkflowConfig({
       workerName: "mentions_count",
-      workflowsPath: require.resolve("./workflows"),
+      getWorkflowsPath: () => require.resolve("./workflows"),
     }),
     activities,
     taskQueue: QUEUE_NAME,

@@ -15,10 +15,10 @@ import type { WorkerName } from "./worker_registry";
  */
 export function getWorkflowConfig({
   workerName,
-  workflowsPath,
+  getWorkflowsPath,
 }: {
   workerName: WorkerName;
-  workflowsPath: string;
+  getWorkflowsPath: () => string;
 }) {
   if (process.env.NODE_ENV === "production") {
     const bundlePath = path.join(
@@ -40,10 +40,10 @@ export function getWorkflowConfig({
       );
 
       // Fallback to runtime bundling if bundle read fails.
-      return { workflowsPath };
+      return { workflowsPath: getWorkflowsPath() };
     }
   }
 
   // Development: use runtime bundling
-  return { workflowsPath };
+  return { workflowsPath: getWorkflowsPath() };
 }

@@ -18,7 +18,7 @@ export async function runAgentTriggerWorker() {
   const worker = await Worker.create({
     ...getWorkflowConfig({
       workerName: "agent_schedule",
-      workflowsPath: require.resolve("./workflows"),
+      getWorkflowsPath: () => require.resolve("./workflows"),
     }),
     activities,
     taskQueue: QUEUE_NAME,

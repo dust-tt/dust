@@ -18,7 +18,7 @@ export async function runHardDeleteWorker() {
   const worker = await Worker.create({
     ...getWorkflowConfig({
       workerName: "hard_delete",
-      workflowsPath: require.resolve("./workflows"),
+      getWorkflowsPath: () => require.resolve("./workflows"),
     }),
     activities,
     taskQueue: QUEUE_NAME,
