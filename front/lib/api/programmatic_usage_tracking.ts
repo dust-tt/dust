@@ -51,6 +51,8 @@ function getRedisKey(workspace: LightWorkspaceType): string {
   return `${PROGRAMMATIC_USAGE_REMAINING_CREDITS_KEY}:${workspace.id}`;
 }
 
+const USERS_HAVE_BEEN_WARNED = false;
+
 function shouldTrackTokenUsageCosts(
   auth: Authenticator,
   { userMessageOrigin }: { userMessageOrigin?: UserMessageOrigin | null } = {}
@@ -65,10 +67,21 @@ function shouldTrackTokenUsageCosts(
 
   // Track for API keys, listed programmatic origins or unspecified user message origins.
   // This must be in sync with the getShouldTrackTokenUsageCostsESFilter function.
+
+  if (!userMessageOrigin) {
+    logger.warn(
+      { workspaceId: workspace.sId },
+      "No user message origin provided, assuming non-programmatic usage for now"
+    );
+    return false;
+  }
+
   if (
     auth.authMethod() === "api_key" ||
-    !userMessageOrigin ||
-    USAGE_ORIGINS_CLASSIFICATION[userMessageOrigin] === "programmatic"
+    // TODO(PPUL): remove this after notifying users.
+    (USERS_HAVE_BEEN_WARNED &&
+      USAGE_ORIGINS_CLASSIFICATION[userMessageOrigin] === "programmatic") ||
+    userMessageOrigin === "triggered_programmatic"
   ) {
     return true;
   }
