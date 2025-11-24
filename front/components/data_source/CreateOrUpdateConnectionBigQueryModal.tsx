@@ -110,7 +110,11 @@ export function CreateOrUpdateConnectionBigQueryModal({
 
   // Region picking
   const [selectedLocation, setSelectedLocation] = useState<string>();
-  const { locations, isLocationsLoading } = useBigQueryLocations({
+  const {
+    locations,
+    isLocationsLoading,
+    error: locationsError,
+  } = useBigQueryLocations({
     owner,
     credentials: credentialsState.credentials,
   });
@@ -123,11 +127,22 @@ export function CreateOrUpdateConnectionBigQueryModal({
     if (locations && Object.keys(locations).length === 1) {
       setSelectedLocation(Object.keys(locations)[0]);
     }
-  }, [locations]);
+    if (
+      locations &&
+      !locationsError &&
+      Object.keys(locations ?? {}).length === 0
+    ) {
+      setError(
+        "No locations found - make sure you follow the instructions in the guide."
+      );
+    }
+  }, [locations, locationsError]);
 
   useEffect(() => {
-    setError(credentialsState.errorMessage);
-  }, [credentialsState.errorMessage]);
+    const errorMessage =
+      credentialsState.errorMessage ?? locationsError?.message;
+    setError(errorMessage);
+  }, [credentialsState.errorMessage, locationsError]);
 
   if (connectorProviderConfiguration.connectorProvider !== "bigquery") {
     // Should never happen.
@@ -341,7 +356,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
                   value={selectedLocation}
                   onValueChange={setSelectedLocation}
                 >
-                  {Object.entries(locations).map(([location, tables]) => (
+                  {Object.entries(locations ?? {}).map(([location, tables]) => (
                     <RadioGroupCustomItem
                       key={location}
                       id={location}
