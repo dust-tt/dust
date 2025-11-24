@@ -25,7 +25,6 @@ import { getIcon } from "@app/components/resources/resources_icons";
 import type { WebhookSourceFormValues } from "@app/components/triggers/forms/webhookSourceFormSchema";
 import { WebhookEndpointUsageInfo } from "@app/components/triggers/WebhookEndpointUsageInfo";
 import { useSendNotification } from "@app/hooks/useNotification";
-import config from "@app/lib/api/config";
 import { buildWebhookUrl, normalizeWebhookIcon } from "@app/lib/webhookSource";
 import type { LightWorkspaceType } from "@app/types";
 import type { WebhookSourceViewForAdminType } from "@app/types/triggers/webhooks";
@@ -97,7 +96,7 @@ export function WebhookSourceDetailsInfo({
 
   const webhookUrl = useMemo(() => {
     return buildWebhookUrl({
-      apiBaseUrl: config.getClientFacingUrl(),
+      apiBaseUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
       workspaceId: owner.sId,
       webhookSource: webhookSourceView.webhookSource,
     });
