@@ -1,11 +1,10 @@
-import assert from "assert";
 import type {
   Attributes,
   CreationAttributes,
   ModelStatic,
   Transaction,
 } from "sequelize";
-import { Op } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -107,15 +106,13 @@ export class CreditResource extends BaseResource<CreditModel> {
 
   static async listActive(auth: Authenticator, fromDate: Date = new Date()) {
     const now = new Date();
-    assert(this.model.sequelize, "Unexpected sequelize undefined");
     return this.baseFetch(auth, {
       where: {
         // Credit must have remaining balance (consumed < initial)
         [Op.and]: [
-          this.model.sequelize.where(
-            this.model.sequelize.col("consumedAmountCents"),
-            { [Op.lt]: this.model.sequelize.col("initialAmountCents") }
-          ),
+          Sequelize.where(Sequelize.col("consumedAmountCents"), {
+            [Op.lt]: Sequelize.col("initialAmountCents"),
+          }),
         ],
 
         // Credit must be started (startDate not null and <= now)
@@ -163,7 +160,6 @@ export class CreditResource extends BaseResource<CreditModel> {
     if (amountInCents <= 0) {
       return new Err(new Error("Amount to consume must be strictly positive."));
     }
-    assert(this.model.sequelize, "Unexpected sequelize undefined");
     const now = new Date();
     const [, affectedCount] = await this.model.increment(
       "consumedAmountCents",
@@ -174,10 +170,8 @@ export class CreditResource extends BaseResource<CreditModel> {
           workspaceId: this.workspaceId,
           // Ensure sufficient remaining balance (consumed + amount <= initial)
           [Op.and]: [
-            this.model.sequelize.where(
-              this.model.sequelize.literal(
-                '"initialAmountCents" - "consumedAmountCents"'
-              ),
+            Sequelize.where(
+              Sequelize.literal('"initialAmountCents" - "consumedAmountCents"'),
               { [Op.gte]: amountInCents }
             ),
           ],
