@@ -2,9 +2,9 @@ import TurndownService from "turndown";
 
 import { getArticleInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
 import type {
-  ZendeskArticle,
-  ZendeskSection,
-  ZendeskUser,
+  ZendeskFetchedArticle,
+  ZendeskFetchedSection,
+  ZendeskFetchedUser,
 } from "@connectors/connectors/zendesk/lib/types";
 import {
   deleteDataSourceDocument,
@@ -61,13 +61,13 @@ export async function syncArticle({
   dataSourceConfig,
   loggerArgs,
 }: {
-  article: ZendeskArticle;
+  article: ZendeskFetchedArticle;
   connector: ConnectorResource;
   configuration: ZendeskConfigurationResource;
   dataSourceConfig: DataSourceConfig;
-  section: ZendeskSection | null;
+  section: ZendeskFetchedSection | null;
   category: ZendeskCategoryResource;
-  user: ZendeskUser | null;
+  user: ZendeskFetchedUser | null;
   helpCenterIsAllowed: boolean;
   currentSyncDateMs: number;
   loggerArgs: Record<string, string | number | null>;

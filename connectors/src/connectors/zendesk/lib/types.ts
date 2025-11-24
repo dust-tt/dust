@@ -63,6 +63,7 @@ export const ZendeskTicketSchema = z
   .passthrough();
 
 export type ZendeskTicket = z.infer<typeof ZendeskTicketSchema>;
+export type ZendeskFetchedTicket = z.infer<typeof ZendeskTicketSchema>;
 
 export const ZendeskTicketResponseSchema = z.object({
   ticket: ZendeskTicketSchema,
@@ -170,7 +171,7 @@ export const ZendeskBrandSchema = z
   })
   .passthrough();
 
-export type ZendeskBrand = z.infer<typeof ZendeskBrandSchema>;
+export type ZendeskFetchedBrand = z.infer<typeof ZendeskBrandSchema>;
 
 export const ZendeskBrandResponseSchema = z.object({
   brand: ZendeskBrandSchema,
@@ -198,7 +199,7 @@ export const ZendeskArticleSchema = z
   })
   .passthrough();
 
-export type ZendeskArticle = z.infer<typeof ZendeskArticleSchema>;
+export type ZendeskFetchedArticle = z.infer<typeof ZendeskArticleSchema>;
 
 export const ZendeskArticleResponseSchema = z.object({
   article: ZendeskArticleSchema,
@@ -226,7 +227,7 @@ export const ZendeskCategorySchema = z
   })
   .passthrough();
 
-export type ZendeskCategory = z.infer<typeof ZendeskCategorySchema>;
+export type ZendeskFetchedCategory = z.infer<typeof ZendeskCategorySchema>;
 
 export const ZendeskCategoryResponseSchema = z.object({
   category: ZendeskCategorySchema,
@@ -250,7 +251,7 @@ export const ZendeskSectionSchema = z
   })
   .passthrough();
 
-export type ZendeskSection = z.infer<typeof ZendeskSectionSchema>;
+export type ZendeskFetchedSection = z.infer<typeof ZendeskSectionSchema>;
 
 export const ZendeskSectionResponseSchema = z.object({
   section: ZendeskSectionSchema,
@@ -274,7 +275,7 @@ export const ZendeskUserSchema = z
   })
   .passthrough();
 
-export type ZendeskUser = z.infer<typeof ZendeskUserSchema>;
+export type ZendeskFetchedUser = z.infer<typeof ZendeskUserSchema>;
 
 export const ZendeskUserResponseSchema = z.object({
   user: ZendeskUserSchema,
@@ -296,7 +297,9 @@ export const ZendeskOrganizationSchema = z
   })
   .passthrough();
 
-export type ZendeskOrganization = z.infer<typeof ZendeskOrganizationSchema>;
+export type ZendeskFetchedOrganization = z.infer<
+  typeof ZendeskOrganizationSchema
+>;
 
 export const ZendeskOrganizationResponseSchema = z.object({
   organization: ZendeskOrganizationSchema,
@@ -318,7 +321,9 @@ export const ZendeskTicketFieldSchema = z
   })
   .passthrough();
 
-export type ZendeskTicketField = z.infer<typeof ZendeskTicketFieldSchema>;
+export type ZendeskFetchedTicketField = z.infer<
+  typeof ZendeskTicketFieldSchema
+>;
 
 export const ZendeskTicketFieldResponseSchema = z.object({
   ticket_field: ZendeskTicketFieldSchema,
@@ -335,7 +340,9 @@ export const ZendeskTicketCommentSchema = z
   })
   .passthrough();
 
-export type ZendeskTicketComment = z.infer<typeof ZendeskTicketCommentSchema>;
+export type ZendeskFetchedTicketComment = z.infer<
+  typeof ZendeskTicketCommentSchema
+>;
 
 export const ZendeskTicketCommentsResponseSchema = z.object({
   comments: z.array(ZendeskTicketCommentSchema),

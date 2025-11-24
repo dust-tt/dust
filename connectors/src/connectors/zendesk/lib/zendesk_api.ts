@@ -10,15 +10,15 @@ import {
   setOrganizationInCache,
 } from "@connectors/connectors/zendesk/lib/in_memory_cache";
 import type {
-  ZendeskArticle,
-  ZendeskBrand,
-  ZendeskCategory,
-  ZendeskOrganization,
-  ZendeskSection,
-  ZendeskTicket,
-  ZendeskTicketComment,
-  ZendeskTicketField,
-  ZendeskUser,
+  ZendeskFetchedArticle,
+  ZendeskFetchedBrand,
+  ZendeskFetchedCategory,
+  ZendeskFetchedOrganization,
+  ZendeskFetchedSection,
+  ZendeskFetchedTicket,
+  ZendeskFetchedTicketComment,
+  ZendeskFetchedTicketField,
+  ZendeskFetchedUser,
 } from "@connectors/connectors/zendesk/lib/types";
 import {
   ZendeskArticleResponseSchema,
@@ -234,7 +234,7 @@ export class ZendeskClient {
   }: {
     subdomain: string;
     brandId: number;
-  }): Promise<ZendeskBrand | null> {
+  }): Promise<ZendeskFetchedBrand | null> {
     const url = `https://${subdomain}.zendesk.com/api/v2/brands/${brandId}`;
     try {
       const response = await this.fetchFromZendeskWithRetries(
@@ -256,7 +256,7 @@ export class ZendeskClient {
   }: {
     subdomain: string;
     fieldId: number;
-  }): Promise<ZendeskTicketField | null> {
+  }): Promise<ZendeskFetchedTicketField | null> {
     const url = `https://${subdomain}.zendesk.com/api/v2/ticket_fields/${fieldId}`;
     try {
       const response = await this.fetchFromZendeskWithRetries(
@@ -297,7 +297,7 @@ export class ZendeskClient {
   }: {
     brandSubdomain: string;
     ticketId: number;
-  }): Promise<ZendeskTicket | null> {
+  }): Promise<ZendeskFetchedTicket | null> {
     const url = `https://${brandSubdomain}.zendesk.com/api/v2/tickets/${ticketId}`;
     try {
       const response = await this.fetchFromZendeskWithRetries(
@@ -319,7 +319,7 @@ export class ZendeskClient {
   }: {
     brandSubdomain: string;
     ticketId: number;
-  }): Promise<ZendeskTicketComment[]> {
+  }): Promise<ZendeskFetchedTicketComment[]> {
     const comments = [];
     let url = `https://${brandSubdomain}.zendesk.com/api/v2/tickets/${ticketId}/comments?page[size]=${COMMENT_PAGE_SIZE}`;
     let hasMore = true;
@@ -350,8 +350,8 @@ export class ZendeskClient {
   }: {
     brandSubdomain: string;
     userIds: number[];
-  }): Promise<ZendeskUser[]> {
-    const users: ZendeskUser[] = [];
+  }): Promise<ZendeskFetchedUser[]> {
+    const users: ZendeskFetchedUser[] = [];
     for (const chunk of _.chunk(userIds, 100)) {
       const response = await this.fetchFromZendeskWithRetries(
         `https://${brandSubdomain}.zendesk.com/api/v2/users/show_many?ids=${chunk.join(",")}`,
@@ -368,12 +368,12 @@ export class ZendeskClient {
   }: {
     brandSubdomain: string;
     organizationIds: number[];
-  }): Promise<ZendeskOrganization[]> {
+  }): Promise<ZendeskFetchedOrganization[]> {
     if (organizationIds.length === 0) {
       return [];
     }
 
-    const results: ZendeskOrganization[] = [];
+    const results: ZendeskFetchedOrganization[] = [];
     const nonCachedOrganizationIds: number[] = [];
 
     for (const organizationId of organizationIds) {
@@ -426,7 +426,7 @@ export class ZendeskClient {
   }
 
   async getOrganizationTagMapForTickets(
-    tickets: ZendeskTicket[],
+    tickets: ZendeskFetchedTicket[],
     {
       brandSubdomain,
     }: {
@@ -454,7 +454,7 @@ export class ZendeskClient {
   }: {
     brandSubdomain: string;
     categoryId: number;
-  }): Promise<ZendeskCategory | null> {
+  }): Promise<ZendeskFetchedCategory | null> {
     const url = `https://${brandSubdomain}.zendesk.com/api/v2/help_center/categories/${categoryId}`;
     try {
       const response = await this.fetchFromZendeskWithRetries(
@@ -473,7 +473,7 @@ export class ZendeskClient {
   async listCategoriesInBrand(
     params: { url: string } | { brandSubdomain: string; pageSize: number }
   ): Promise<{
-    categories: ZendeskCategory[];
+    categories: ZendeskFetchedCategory[];
     hasMore: boolean;
     nextLink: string | null;
   }> {
@@ -504,7 +504,7 @@ export class ZendeskClient {
       | { url: string }
       | { brandSubdomain: string; categoryId: number; pageSize: number }
   ): Promise<{
-    articles: ZendeskArticle[];
+    articles: ZendeskFetchedArticle[];
     hasMore: boolean;
     nextLink: string | null;
   }> {
@@ -536,7 +536,7 @@ export class ZendeskClient {
   }: {
     brandSubdomain: string;
     categoryId: number;
-  }): Promise<ZendeskSection[]> {
+  }): Promise<ZendeskFetchedSection[]> {
     const url = `https://${brandSubdomain}.zendesk.com/api/v2/help_center/categories/${categoryId}/sections`;
     try {
       const response = await this.fetchFromZendeskWithRetries(
@@ -555,7 +555,7 @@ export class ZendeskClient {
   async listTickets(
     params: { url: string } | { brandSubdomain: string; startTime: number }
   ): Promise<{
-    tickets: ZendeskTicket[];
+    tickets: ZendeskFetchedTicket[];
     hasMore: boolean;
     nextLink: string | null;
   }> {
@@ -592,7 +592,7 @@ export class ZendeskClient {
     brandSubdomain: string;
     startTime: number;
   }): Promise<{
-    articles: ZendeskArticle[];
+    articles: ZendeskFetchedArticle[];
     hasMore: boolean;
     endTime: number;
   }> {
@@ -621,7 +621,7 @@ export class ZendeskClient {
   }: {
     brandSubdomain: string;
     sectionId: number;
-  }): Promise<ZendeskSection | null> {
+  }): Promise<ZendeskFetchedSection | null> {
     const url = `https://${brandSubdomain}.zendesk.com/api/v2/help_center/sections/${sectionId}`;
     try {
       const response = await this.fetchFromZendeskWithRetries(
@@ -643,7 +643,7 @@ export class ZendeskClient {
   }: {
     brandSubdomain: string;
     userId: number;
-  }): Promise<ZendeskUser | null> {
+  }): Promise<ZendeskFetchedUser | null> {
     const url = `https://${brandSubdomain}.zendesk.com/api/v2/users/${userId}`;
     try {
       const response = await this.fetchFromZendeskWithRetries(
@@ -663,7 +663,7 @@ export class ZendeskClient {
     subdomain,
   }: {
     subdomain: string;
-  }): Promise<ZendeskBrand[]> {
+  }): Promise<ZendeskFetchedBrand[]> {
     const url = `https://${subdomain}.zendesk.com/api/v2/brands`;
     const response = await this.fetchFromZendeskWithRetries(
       url,
@@ -676,7 +676,7 @@ export class ZendeskClient {
     brandSubdomain,
   }: {
     brandSubdomain: string;
-  }): Promise<ZendeskCategory[]> {
+  }): Promise<ZendeskFetchedCategory[]> {
     const url = `https://${brandSubdomain}.zendesk.com/api/v2/help_center/categories`;
     const response = await this.fetchFromZendeskWithRetries(
       url,
@@ -691,7 +691,7 @@ export class ZendeskClient {
   }: {
     brandSubdomain: string;
     articleId: number;
-  }): Promise<ZendeskArticle | null> {
+  }): Promise<ZendeskFetchedArticle | null> {
     try {
       const url = `https://${brandSubdomain}.zendesk.com/api/v2/help_center/articles/${articleId}`;
       const response = await this.fetchFromZendeskWithRetries(
@@ -754,7 +754,7 @@ function extractMetadataFromZendeskUrl(url: string): {
   };
 }
 
-export function isUserAdmin(user: ZendeskUser): boolean {
+export function isUserAdmin(user: ZendeskFetchedUser): boolean {
   return user.active && user.role === "admin";
 }
 
@@ -764,7 +764,7 @@ export async function fetchZendeskCurrentUser({
 }: {
   subdomain: string;
   accessToken: string;
-}): Promise<ZendeskUser> {
+}): Promise<ZendeskFetchedUser> {
   const url = `https://${subdomain}.zendesk.com/api/v2/users/me`;
   const response = await fetch(url, {
     method: "GET",
