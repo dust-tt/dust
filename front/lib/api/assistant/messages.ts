@@ -441,7 +441,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
 
       let parentAgentMessage: Message | null = null;
 
-      // TODO(2025-11-24 PPUL): Return this block once data has been backfilled
+      // TODO(2025-11-24 PPUL): Remove this block once data has been backfilled
       if (
         parentMessage &&
         parentMessage?.userMessage &&
