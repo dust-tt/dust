@@ -80,9 +80,9 @@ export default function TriggerPage({
             }}
           />
           {trigger.kind === "webhook" && (
-            <PokeRecentWebhookRequests owner={owner} triggerId={trigger.sId} />
+            <PokeRecentWebhookRequests owner={owner} trigger={trigger} />
           )}
-          <ConversationDataTable owner={owner} triggerId={trigger.sId} />
+          <ConversationDataTable owner={owner} trigger={trigger} />
         </div>
       </div>
     </>
