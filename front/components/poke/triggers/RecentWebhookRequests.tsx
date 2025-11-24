@@ -13,15 +13,16 @@ import React, { useState } from "react";
 import { WebhookRequestStatusBadge } from "@app/components/agent_builder/triggers/WebhookRequestStatusBadge";
 import { usePokeWebhookRequests } from "@app/poke/swr/triggers";
 import type { LightWorkspaceType } from "@app/types";
+import type { TriggerType } from "@app/types/assistant/triggers";
 
 interface PokeRecentWebhookRequestsProps {
   owner: LightWorkspaceType;
-  triggerId: string;
+  trigger: TriggerType;
 }
 
 export function PokeRecentWebhookRequests({
   owner,
-  triggerId,
+  trigger,
 }: PokeRecentWebhookRequestsProps) {
   const defaultOpen = true;
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -32,6 +33,16 @@ export function PokeRecentWebhookRequests({
         <h2 className="text-md font-bold">Webhook Request History</h2>
       </div>
       <div className="flex flex-grow flex-col justify-center p-4">
+        {trigger.naturalLanguageDescription && (
+          <div className="bg-secondary mb-4 rounded-md border border-border p-4 dark:border-border-night">
+            <p className="text-sm font-medium text-foreground dark:text-foreground-night">
+              Natural language description
+            </p>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground dark:text-muted-foreground-night">
+              {trigger.naturalLanguageDescription}
+            </p>
+          </div>
+        )}
         <CollapsibleComponent
           rootProps={{ defaultOpen, onOpenChange: setIsOpen }}
           triggerChildren={
@@ -41,7 +52,7 @@ export function PokeRecentWebhookRequests({
             <PokeRecentWebhookRequestsContent
               isOpen={isOpen}
               owner={owner}
-              triggerId={triggerId}
+              triggerId={trigger.sId}
             />
           }
         />
