@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import assert from "assert";
 import type Stripe from "stripe";
 
