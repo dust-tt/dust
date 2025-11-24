@@ -1,14 +1,19 @@
+import { Label } from "@dust-tt/sparkle";
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
 import {
   FEEDBACK_DISTRIBUTION_LEGEND,
   FEEDBACK_DISTRIBUTION_PALETTE,
 } from "@app/components/agent_builder/observability/constants";
-import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
+import {
+  ChartTooltipCard,
+  LegendDot,
+} from "@app/components/agent_builder/observability/shared/ChartTooltip";
 import { normalizeVersionLabel } from "@app/components/agent_builder/observability/shared/tooltipHelpers";
 import type { ToolChartModeType } from "@app/components/agent_builder/observability/types";
 import { isToolChartUsagePayload } from "@app/components/agent_builder/observability/types";
 import { getIndexedColor } from "@app/components/agent_builder/observability/utils";
+import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 
 export interface ToolUsageTooltipProps
   extends TooltipContentProps<number, string> {
@@ -35,50 +40,79 @@ export function ChartsTooltip({
   }
 
   const typed = payload.filter(isToolChartUsagePayload);
-  const filtered = hoveredTool
-    ? typed.filter((p) => p.name === hoveredTool)
-    : typed;
-  const rows = filtered
-    .flatMap((p) => {
-      const toolName = p.name ?? "";
-      const data = p.payload?.values?.[toolName];
-      if (!data || (data.count ?? 0) <= 0) {
-        return [];
-      }
+  const filtered = typed.filter((p) => p.name === hoveredTool);
 
-      const colorClassName = getIndexedColor(toolName, topTools);
+  if (filtered.length === 0) {
+    return null;
+  }
 
-      // If this tool segment represents an MCP server, show its view-level
-      // breakdown instead of a single aggregated row.
-      if (data.breakdown && data.breakdown.length > 0) {
-        return data.breakdown.map((b) => ({
-          label: b.label,
-          value: b.count,
-          percent: b.percent,
-          colorClassName,
-        }));
-      }
+  const toolPayload = filtered[0];
+  const toolName = toolPayload.name ?? "";
+  const data = toolPayload.payload?.values?.[toolName];
 
-      return [
+  if (!data || (data.count ?? 0) <= 0) {
+    return null;
+  }
+
+  const colorClassName = getIndexedColor(toolName, topTools);
+
+  const title =
+    mode === "step"
+      ? `Step ${String(label)}`
+      : normalizeVersionLabel(String(label));
+
+  // If there's a breakdown, show the configurations as bullet points
+  if (data.breakdown && data.breakdown.length > 0) {
+    const breakdownRows = data.breakdown
+      .map((b) => ({
+        label: b.label,
+        value: b.count,
+        percent: b.percent,
+      }))
+      .sort((a, b) => (b.value as number) - (a.value as number));
+
+    return (
+      <div
+        role="tooltip"
+        className="min-w-32 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl dark:border-border-night/50 dark:bg-background-night"
+      >
+        <div className="mb-2 flex items-center gap-2">
+          <LegendDot className={colorClassName} />
+          <Label>{toolName}</Label>
+        </div>
+        <div className="space-y-1.5">
+          {breakdownRows.map((b) => (
+            <div key={b.label} className="flex items-center gap-2">
+              <span className="text-muted-foreground dark:text-muted-foreground-night">
+                {asDisplayToolName(b.label)}
+              </span>
+              <span className="ml-auto font-mono font-medium tabular-nums text-foreground dark:text-foreground-night">
+                {b.value}
+              </span>
+              <span className="text-muted-foreground dark:text-muted-foreground-night">
+                ({b.percent}%)
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // No breakdown - show single tool
+  return (
+    <ChartTooltipCard
+      title={title}
+      rows={[
         {
           label: toolName,
           value: data.count,
           percent: data.percent,
           colorClassName,
         },
-      ];
-    })
-    .sort((a, b) => (b.value as number) - (a.value as number));
-
-  if (rows.length === 0) {
-    return null;
-  }
-
-  const title =
-    mode === "step"
-      ? `Step ${String(label)}`
-      : normalizeVersionLabel(String(label));
-  return <ChartTooltipCard title={title} rows={rows} />;
+      ]}
+    />
+  );
 }
 
 interface FeedbackDistributionData {
