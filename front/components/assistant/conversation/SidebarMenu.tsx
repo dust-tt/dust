@@ -35,6 +35,7 @@ import moment from "moment";
 import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
 import {
+  forwardRef,
   useCallback,
   useContext,
   useEffect,
@@ -124,17 +125,6 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
       workspaceId: owner.sId,
     });
 
-  const {
-    readConversations,
-    unreadConversations,
-    actionRequiredConversations,
-  } = useMemo(() => {
-    return getGroupConversationsByUnreadAndActionRequired(conversations);
-  }, [conversations]);
-
-  const shouldDisplayInbox =
-    unreadConversations.length > 0 || actionRequiredConversations.length > 0;
-
   useEffect(() => {
     const handleConversationsUpdated = () => {
       void mutateConversations();
@@ -164,6 +154,8 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   const isRestrictedFromAgentCreation =
     featureFlags.includes("disallow_agent_creation_to_users") &&
     !isBuilder(owner);
+
+  const isMentionsV2Enabled = hasFeature("mentions_v2");
 
   const [showDeleteDialog, setShowDeleteDialog] = useState<
     "all" | "selection" | null
@@ -281,10 +273,6 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     threshold: 0,
   });
 
-  const { markAllAsRead, isMarkingAllAsRead } = useMarkAllConversationsAsRead({
-    owner,
-  });
-
   useEffect(() => {
     if (
       // The observer is in view.
@@ -299,16 +287,6 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     }
   }, [inView, nextPage, entry, conversations.length, conversationsPage]);
 
-  const conversationsByDate = readConversations?.length
-    ? getGroupConversationsByDate({
-        conversations: readConversations.slice(
-          0,
-          (conversationsPage + 1) * CONVERSATIONS_PER_PAGE
-        ),
-        titleFilter,
-      })
-    : ({} as Record<GroupLabel, ConversationWithoutContentType[]>);
-
   const { setAnimate } = useContext(InputBarContext);
 
   const handleNewClick = useCallback(async () => {
@@ -322,6 +300,16 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
       setAnimate(true);
     }
   }, [setSidebarOpen, router, setAnimate]);
+
+  const conversationsByDate = conversations.length
+    ? getGroupConversationsByDate({
+        conversations: conversations.slice(
+          0,
+          (conversationsPage + 1) * CONVERSATIONS_PER_PAGE
+        ),
+        titleFilter,
+      })
+    : ({} as Record<GroupLabel, ConversationWithoutContentType[]>);
 
   return (
     <>
@@ -502,54 +490,56 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                 Error loading conversations
               </Label>
             )}
-            <NavigationList
-              className="dd-privacy-mask h-full w-full"
-              viewportRef={conversationsNavigationRef}
-            >
-              {shouldDisplayInbox && (
-                <div className="bg-background pb-3 dark:bg-background-night">
-                  <InboxConversationList
-                    unreadConversations={unreadConversations}
-                    actionRequiredConversations={actionRequiredConversations}
-                    dateLabel={`Inbox (${unreadConversations.length + actionRequiredConversations.length})`}
-                    isMultiSelect={isMultiSelect}
-                    isMarkingAllAsRead={isMarkingAllAsRead}
-                    onMarkAllAsRead={markAllAsRead}
-                    selectedConversations={selectedConversations}
-                    toggleConversationSelection={toggleConversationSelection}
-                    router={router}
-                    owner={owner}
-                  />
-                </div>
-              )}
-              {readConversations.length > 0 && (
-                <>
-                  {Object.keys(conversationsByDate).map((dateLabel) => (
-                    <ConversationList
-                      key={dateLabel}
-                      conversations={
-                        conversationsByDate[dateLabel as GroupLabel]
-                      }
-                      dateLabel={dateLabel}
-                      isMultiSelect={isMultiSelect}
-                      selectedConversations={selectedConversations}
-                      toggleConversationSelection={toggleConversationSelection}
-                      router={router}
-                      owner={owner}
-                    />
-                  ))}
-                  {conversationsNavigationRef.current && (
-                    <div
-                      // Change the key each page to force a re-render and get a new entry
-                      key={`infinite-scroll-conversation-${conversationsPage}`}
-                      id="infinite-scroll-conversations"
-                      ref={ref}
-                      style={{ height: "2px" }}
-                    />
-                  )}
-                </>
-              )}
-            </NavigationList>
+            {isMentionsV2Enabled ? (
+              <NavigationListWithInbox
+                ref={ref}
+                conversations={conversations}
+                conversationsPage={conversationsPage}
+                titleFilter={titleFilter}
+                conversationsNavigationRef={conversationsNavigationRef}
+                isMultiSelect={isMultiSelect}
+                selectedConversations={selectedConversations}
+                toggleConversationSelection={toggleConversationSelection}
+                router={router}
+                owner={owner}
+              />
+            ) : (
+              <NavigationList
+                className="dd-privacy-mask h-full w-full"
+                viewportRef={conversationsNavigationRef}
+              >
+                {conversations.length > 0 && (
+                  <>
+                    {Object.keys(conversationsByDate).map((dateLabel) => (
+                      <ConversationList
+                        key={dateLabel}
+                        conversations={
+                          conversationsByDate[dateLabel as GroupLabel]
+                        }
+                        dateLabel={dateLabel}
+                        isMultiSelect={isMultiSelect}
+                        selectedConversations={selectedConversations}
+                        toggleConversationSelection={
+                          toggleConversationSelection
+                        }
+                        router={router}
+                        owner={owner}
+                      />
+                    ))}
+                    {conversationsNavigationRef.current && (
+                      <div
+                        // Change the key each page to force a re-render and get a new entry
+                        key={`infinite-scroll-conversation-${conversationsPage}`}
+                        id="infinite-scroll-conversations"
+                        ref={ref}
+                        style={{ height: "2px" }}
+                      />
+                    )}
+                  </>
+                )}
+              </NavigationList>
+            )}
+
             <InAppBanner />
           </div>
         </div>
@@ -624,6 +614,7 @@ const InboxConversationList = ({
           </div>
         )}
       </div>
+
       {sortedInboxConversations.map((conversation) => (
         <ConversationListItem
           key={conversation.sId}
@@ -771,3 +762,115 @@ const ConversationListItem = ({
     </>
   );
 };
+
+interface NavigationListWithInboxProps {
+  conversations: ConversationWithoutContentType[];
+  conversationsPage: number;
+  titleFilter: string;
+  conversationsNavigationRef: React.RefObject<HTMLDivElement>;
+  isMultiSelect: boolean;
+  selectedConversations: ConversationWithoutContentType[];
+  toggleConversationSelection: (
+    conversation: ConversationWithoutContentType
+  ) => void;
+  router: NextRouter;
+  owner: WorkspaceType;
+}
+
+const NavigationListWithInbox = forwardRef<
+  HTMLDivElement,
+  NavigationListWithInboxProps
+>(
+  (
+    {
+      conversations,
+      conversationsPage,
+      titleFilter,
+      conversationsNavigationRef,
+      isMultiSelect,
+      selectedConversations,
+      toggleConversationSelection,
+      router,
+      owner,
+    },
+    ref
+  ) => {
+    const {
+      readConversations,
+      unreadConversations,
+      actionRequiredConversations,
+    } = useMemo(() => {
+      return getGroupConversationsByUnreadAndActionRequired(conversations);
+    }, [conversations]);
+
+    const { markAllAsRead, isMarkingAllAsRead } = useMarkAllConversationsAsRead(
+      {
+        owner,
+      }
+    );
+
+    const shouldDisplayInbox =
+      unreadConversations.length > 0 || actionRequiredConversations.length > 0;
+
+    const conversationsByDate = readConversations?.length
+      ? getGroupConversationsByDate({
+          conversations: readConversations.slice(
+            0,
+            (conversationsPage + 1) * CONVERSATIONS_PER_PAGE
+          ),
+          titleFilter,
+        })
+      : ({} as Record<GroupLabel, ConversationWithoutContentType[]>);
+
+    return (
+      <NavigationList
+        className="dd-privacy-mask h-full w-full"
+        viewportRef={conversationsNavigationRef}
+      >
+        {shouldDisplayInbox && (
+          <div className="bg-background pb-3 dark:bg-background-night">
+            <InboxConversationList
+              unreadConversations={unreadConversations}
+              actionRequiredConversations={actionRequiredConversations}
+              dateLabel={`Inbox (${unreadConversations.length + actionRequiredConversations.length})`}
+              isMultiSelect={isMultiSelect}
+              isMarkingAllAsRead={isMarkingAllAsRead}
+              onMarkAllAsRead={markAllAsRead}
+              selectedConversations={selectedConversations}
+              toggleConversationSelection={toggleConversationSelection}
+              router={router}
+              owner={owner}
+            />
+          </div>
+        )}
+        {readConversations.length > 0 && (
+          <>
+            {Object.keys(conversationsByDate).map((dateLabel) => (
+              <ConversationList
+                key={dateLabel}
+                conversations={conversationsByDate[dateLabel as GroupLabel]}
+                dateLabel={dateLabel}
+                isMultiSelect={isMultiSelect}
+                selectedConversations={selectedConversations}
+                toggleConversationSelection={toggleConversationSelection}
+                router={router}
+                owner={owner}
+              />
+            ))}
+            {conversationsNavigationRef.current && (
+              <div
+                // Change the key each page to force a re-render and get a new entry
+                key={`infinite-scroll-conversation-${conversationsPage}`}
+                id="infinite-scroll-conversations"
+                ref={ref}
+                style={{ height: "2px" }}
+              />
+            )}
+          </>
+        )}
+      </NavigationList>
+    );
+  }
+);
+
+NavigationListWithInbox.displayName = "NavigationListWithInbox";
