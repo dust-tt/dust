@@ -147,12 +147,10 @@ export async function retrieveNewTranscriptsActivity(
           );
           await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
 
-          // Send email notification to the user
           if (user) {
             await sendModjoDisconnectionEmail(user.email, workspace.name);
           }
 
-          // Return empty array - sync is stopped
           return [];
         }
         throw error;
