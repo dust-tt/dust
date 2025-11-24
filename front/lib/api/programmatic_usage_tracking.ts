@@ -71,7 +71,7 @@ function shouldTrackTokenUsageCosts(
   if (!userMessageOrigin) {
     logger.warn(
       { workspaceId: workspace.sId },
-      "No user message origin provided, assuming programmatic usage for tracking"
+      "No user message origin provided, assuming non-programmatic usage for now"
     );
     return false;
   }
