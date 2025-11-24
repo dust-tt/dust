@@ -725,10 +725,9 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         const { accessToken, subdomain } =
           await getZendeskSubdomainAndAccessToken(connector.connectionId);
 
-        const zendeskClient = new ZendeskClient(
+        const zendeskClient = await ZendeskClient.createClient(
           accessToken,
-          connectorId,
-          zendeskConfiguration.rateLimitTransactionsPerSecond
+          connectorId
         );
 
         const convertedFields: { id: number; name: string }[] = [];

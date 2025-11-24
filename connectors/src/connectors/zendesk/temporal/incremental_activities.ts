@@ -106,10 +106,9 @@ export async function syncZendeskArticleUpdateBatchActivity({
     connector.connectionId
   );
 
-  const zendeskClient = new ZendeskClient(
+  const zendeskClient = await ZendeskClient.createClient(
     accessToken,
-    connectorId,
-    configuration.rateLimitTransactionsPerSecond
+    connectorId
   );
 
   const brandSubdomain = await zendeskClient.getBrandSubdomain({
@@ -244,10 +243,9 @@ export async function syncZendeskTicketUpdateBatchActivity({
     connector.connectionId
   );
 
-  const zendeskClient = new ZendeskClient(
+  const zendeskClient = await ZendeskClient.createClient(
     accessToken,
-    connectorId,
-    configuration.rateLimitTransactionsPerSecond
+    connectorId
   );
 
   const brandSubdomain = await zendeskClient.getBrandSubdomain({

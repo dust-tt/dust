@@ -43,7 +43,10 @@ import type { RateLimit } from "@connectors/lib/throttle";
 import { throttleWithRedis } from "@connectors/lib/throttle";
 import mainLogger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
-import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
+import {
+  ZendeskBrandResource,
+  ZendeskConfigurationResource,
+} from "@connectors/resources/zendesk_resources";
 import type { ModelId } from "@connectors/types";
 
 const RATE_LIMIT_MAX_RETRIES = 5;
@@ -63,11 +66,29 @@ const ZENDESK_URL_REGEX = /^https?:\/\/(.*)\.zendesk\.com([^?]*).*/;
 const ZENDESK_ENDPOINT_REGEX = /\/([a-zA-Z_]+)\/(\d+)/g;
 
 export class ZendeskClient {
-  constructor(
+  private rateLimitTransactionsPerSecond: number | null = null;
+
+  private constructor(
     private readonly accessToken: string,
-    private readonly connectorId: ModelId,
-    private readonly rateLimitTransactionsPerSecond: number | null
+    private readonly connectorId: ModelId
   ) {}
+
+  static async createClient(
+    accessToken: string,
+    connectorId: ModelId
+  ): Promise<ZendeskClient> {
+    const client = new ZendeskClient(accessToken, connectorId);
+
+    // Fetch configuration to get rate limit settings
+    const configuration =
+      await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
+    if (configuration) {
+      client.rateLimitTransactionsPerSecond =
+        configuration.rateLimitTransactionsPerSecond;
+    }
+
+    return client;
+  }
 
   private createRateLimitConfig(): RateLimit | null {
     if (this.rateLimitTransactionsPerSecond === null) {
