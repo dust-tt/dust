@@ -43,11 +43,11 @@ async function readCsvFile(
   return parseResult.data;
 }
 
-const sendReasoningToolRemovalEmail = async (
+async function sendReasoningToolRemovalEmail(
   record: CsvRecord,
   execute: boolean,
   logger: Logger
-): Promise<{ success: boolean; error?: string }> => {
+): Promise<{ success: boolean; error?: string }> {
   const childLogger = logger.child({ email: record.email });
 
   const email = record.email.trim().toLowerCase();
@@ -165,7 +165,7 @@ The Dust Team</p>`;
     childLogger.info({ minReasoningEffort }, "Would send email");
     return { success: true };
   }
-};
+}
 
 makeScript(
   {
