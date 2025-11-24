@@ -134,11 +134,13 @@ function RecentWebhookRequestsContent({
               }
               contentChildren={
                 request.payload ? (
-                  <div className="max-w-full overflow-x-auto rounded">
-                    <Markdown
-                      forcedTextSize="xs"
-                      content={`\`\`\`json\n${JSON.stringify(request.payload.body, null, 2)}\n\`\`\``}
-                    />
+                  <div className="rounded">
+                    <pre className="max-h-64 overflow-auto text-xs">
+                      <Markdown
+                        forcedTextSize="xs"
+                        content={`\`\`\`json\n${JSON.stringify(request.payload.body, null, 2)}\n\`\`\``}
+                      />
+                    </pre>
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
