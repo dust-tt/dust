@@ -4,6 +4,7 @@ import type { ReactElement } from "react";
 import { ConversationDataTable } from "@app/components/poke/conversation/table";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import PokeLayout from "@app/components/poke/PokeLayout";
+import { PokeRecentWebhookRequests } from "@app/components/poke/triggers/RecentWebhookRequests";
 import { ViewTriggerTable } from "@app/components/poke/triggers/view";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
@@ -78,6 +79,9 @@ export default function TriggerPage({
               workspace: owner,
             }}
           />
+          {trigger.kind === "webhook" && (
+            <PokeRecentWebhookRequests owner={owner} triggerId={trigger.sId} />
+          )}
           <ConversationDataTable owner={owner} triggerId={trigger.sId} />
         </div>
       </div>
