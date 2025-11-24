@@ -1,6 +1,6 @@
 import type { SVGProps } from "react";
 import * as React from "react";
-const SvgCodeSlash = (props: SVGProps<SVGSVGElement>) => (
+const SvgItalic = (props: SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="1em"
@@ -11,8 +11,8 @@ const SvgCodeSlash = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="m24 12-5 4.907-1.5-1.492L21 12l-3.5-3.539L19 6.97 24 12ZM3 12l3.5 3.415L5 16.907 0 12l5-5.031L6.5 8.46 3 12Zm8 7.896H8.5L13 3.98h2.5L11 19.896Z"
+      d="m3 21 1.385-2.77h3.184l5.123-12.46H8.538L9.923 3H21l-1.385 2.77h-3.184l-5.123 12.46h4.153L14.077 21H3Z"
     />
   </svg>
 );
-export default SvgCodeSlash;
+export default SvgItalic;
