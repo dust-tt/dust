@@ -196,8 +196,8 @@ export class UserMessage extends WorkspaceAwareModel<UserMessage> {
   // TODO(2025-11-24 PPUL): Remove this once data has been backfilled
   declare userContextOriginMessageId: string | null;
 
-  declare runAgentType: "run_agent" | "agent_handover" | null;
-  declare runAgentOriginMessageId: string | null;
+  declare agenticMessageType: "run_agent" | "agent_handover" | null;
+  declare agenticOriginMessageId: string | null;
 
   declare userContextLastTriggerRunAt: Date | null;
 
@@ -267,11 +267,11 @@ UserMessage.init(
       allowNull: true,
       defaultValue: null,
     },
-    runAgentType: {
+    agenticMessageType: {
       type: DataTypes.STRING(16),
       allowNull: true,
     },
-    runAgentOriginMessageId: {
+    agenticOriginMessageId: {
       type: DataTypes.STRING(32),
       allowNull: true,
     },
@@ -296,12 +296,11 @@ UserMessage.init(
     ],
     hooks: {
       beforeValidate: (userMessage) => {
-        const hasRunAgentType = !!userMessage.runAgentType;
-        const hasRunAgentOriginMessageId =
-          !!userMessage.runAgentOriginMessageId;
-        if (hasRunAgentType !== hasRunAgentOriginMessageId) {
+        const hasAgenticMessageType = !!userMessage.agenticMessageType;
+        const hasAgenticOriginMessageId = !!userMessage.agenticOriginMessageId;
+        if (hasAgenticMessageType !== hasAgenticOriginMessageId) {
           throw new Error(
-            "runAgentType and runAgentOriginMessageId must be set together"
+            "agenticMessageType and agenticOriginMessageId must be set together"
           );
         }
       },

@@ -625,7 +625,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
             profilePictureUrl: null,
             origin: "web",
           },
-          runAgentContext: {
+          agenticMessageData: {
             type: "run_agent",
             originMessageId: parentMessageId,
           },

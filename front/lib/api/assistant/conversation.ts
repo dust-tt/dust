@@ -67,7 +67,7 @@ import type {
   ModelId,
   PlanType,
   Result,
-  RunAgentContext,
+  AgenticMessageData,
   UserMessageContext,
   UserMessageType,
   UserType,
@@ -358,14 +358,14 @@ export async function postUserMessage(
     content,
     mentions,
     context,
-    runAgentContext,
+    agenticMessageData,
     skipToolsValidation,
   }: {
     conversation: ConversationType;
     content: string;
     mentions: MentionType[];
     context: UserMessageContext;
-    runAgentContext?: RunAgentContext;
+    agenticMessageData?: AgenticMessageData;
     skipToolsValidation: boolean;
   }
 ): Promise<
@@ -421,7 +421,7 @@ export async function postUserMessage(
     (() => {
       // If the origin of the user message is "run_agent", we do not want to update the
       // participation of the user so that the conversation does not appear in the user's history.
-      if (runAgentContext?.type === "run_agent") {
+      if (agenticMessageData?.type === "run_agent") {
         return;
       }
 
@@ -505,7 +505,7 @@ export async function postUserMessage(
         })) ?? -1) + 1;
 
       // Fetch originMessage to ensure it exists
-      const originMessageId = runAgentContext?.originMessageId;
+      const originMessageId = agenticMessageData?.originMessageId;
       const originMessage = originMessageId
         ? await Message.findOne({
             where: {
@@ -537,8 +537,8 @@ export async function postUserMessage(
                   userContextLastTriggerRunAt: context.lastTriggerRunAt
                     ? new Date(context.lastTriggerRunAt)
                     : null,
-                  runAgentType: runAgentContext?.type,
-                  runAgentOriginMessageId: originMessage?.sId ?? null,
+                  agenticMessageType: agenticMessageData?.type,
+                  agenticOriginMessageId: originMessage?.sId ?? null,
                   userId: user
                     ? user.id
                     : (
@@ -574,11 +574,11 @@ export async function postUserMessage(
         context: {
           ...context,
           // TODO(2025-11-24 PPUL): Remove once extensions have been updated - return real user origin and no originMessageId
-          origin: runAgentContext?.type ?? context.origin,
+          origin: agenticMessageData?.type ?? context.origin,
           originMessageId:
-            runAgentContext?.originMessageId ?? context.originMessageId,
+            agenticMessageData?.originMessageId ?? context.originMessageId,
         },
-        runAgentContext,
+        agenticMessageData,
         rank: m.rank,
       };
 

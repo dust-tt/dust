@@ -121,7 +121,7 @@ async function handler(
         mentions,
         blocking,
         skipToolsValidation,
-        runAgentContext,
+        agenticMessageData,
       } = r.data;
 
       if (isEmptyString(context.username)) {
@@ -168,7 +168,7 @@ async function handler(
         }
       }
 
-      const isRunAgent = !!runAgentContext;
+      const isRunAgent = !!agenticMessageData;
       if (isRunAgent && !auth.isSystemKey()) {
         return apiError(req, res, {
           status_code: 401,
@@ -189,7 +189,7 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "use runAgentContext instead of origin.",
+            message: "use agenticMessageData instead of origin.",
           },
         });
       }
@@ -210,7 +210,7 @@ async function handler(
           ? await postUserMessageAndWaitForCompletion(auth, {
               content,
               context: ctx,
-              runAgentContext,
+              agenticMessageData,
               conversation,
               mentions,
               skipToolsValidation: skipToolsValidation ?? false,
@@ -218,7 +218,7 @@ async function handler(
           : await postUserMessage(auth, {
               content,
               context: ctx,
-              runAgentContext,
+              agenticMessageData,
               conversation,
               mentions,
               skipToolsValidation: skipToolsValidation ?? false,

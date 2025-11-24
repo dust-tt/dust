@@ -28,7 +28,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type {
   ContentFragmentType,
-  RunAgentContext,
+  AgenticMessageData,
   UserMessageContext,
   UserMessageType,
   WithAPIErrorResponse,
@@ -210,7 +210,7 @@ async function handler(
           }
         }
 
-        const isRunAgent = !!message.runAgentContext;
+        const isRunAgent = !!message.agenticMessageData;
         if (isRunAgent && !auth.isSystemKey()) {
           return apiError(req, res, {
             status_code: 401,
@@ -231,7 +231,7 @@ async function handler(
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
-              message: "use runAgentContext instead of origin.",
+              message: "use agenticMessageData instead of origin.",
             },
           });
         }
@@ -376,8 +376,8 @@ async function handler(
           username: message.context.username,
         };
 
-        const runAgentContext: RunAgentContext | undefined =
-          message.runAgentContext ?? undefined;
+        const agenticMessageData: AgenticMessageData | undefined =
+          message.agenticMessageData ?? undefined;
 
         // If tools are enabled, we need to add the MCP server views to the conversation before posting the message.
         if (message.context.selectedMCPServerViewIds) {
@@ -411,7 +411,7 @@ async function handler(
             ? await postUserMessageAndWaitForCompletion(auth, {
                 content: message.content,
                 context: ctx,
-                runAgentContext,
+                agenticMessageData,
                 conversation,
                 mentions: message.mentions,
                 skipToolsValidation: skipToolsValidation ?? false,
@@ -419,7 +419,7 @@ async function handler(
             : await postUserMessage(auth, {
                 content: message.content,
                 context: ctx,
-                runAgentContext,
+                agenticMessageData,
                 conversation,
                 mentions: message.mentions,
                 skipToolsValidation: skipToolsValidation ?? false,

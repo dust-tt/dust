@@ -88,7 +88,7 @@ export type UserMessageContext = {
   selectedMCPServerViewIds?: string[];
 };
 
-export type RunAgentContext = {
+export type AgenticMessageData = {
   type: "run_agent" | "agent_handover";
   originMessageId: string;
 };
@@ -105,7 +105,7 @@ export type UserMessageType = {
   mentions: MentionType[];
   content: string;
   context: UserMessageContext;
-  runAgentContext?: RunAgentContext;
+  agenticMessageData?: AgenticMessageData;
 };
 
 export function isUserMessageType(

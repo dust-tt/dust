@@ -226,20 +226,20 @@ async function batchRenderUserMessages(
         email: userMessage.userContextEmail,
         profilePictureUrl: userMessage.userContextProfilePictureUrl,
         // TODO(2025-11-24 PPUL): Return real user origin even in case of run_agent, once extensions have been updated
-        origin: userMessage.runAgentType ?? userMessage.userContextOrigin,
+        origin: userMessage.agenticMessageType ?? userMessage.userContextOrigin,
         // TODO(2025-11-24 PPUL): Remove once extensions have been updated
         originMessageId:
-          userMessage.runAgentOriginMessageId ??
+          userMessage.agenticOriginMessageId ??
           userMessage.userContextOriginMessageId,
         clientSideMCPServerIds: userMessage.clientSideMCPServerIds,
         lastTriggerRunAt:
           userMessage.userContextLastTriggerRunAt?.getTime() ?? null,
       },
-      runAgentContext:
-        userMessage.runAgentType && userMessage.runAgentOriginMessageId
+      agenticMessageData:
+        userMessage.agenticMessageType && userMessage.agenticOriginMessageId
           ? {
-              type: userMessage.runAgentType,
-              originMessageId: userMessage.runAgentOriginMessageId,
+              type: userMessage.agenticMessageType,
+              originMessageId: userMessage.agenticOriginMessageId,
             }
           : undefined,
     } satisfies UserMessageType;
@@ -458,13 +458,12 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       if (
         parentMessage &&
         parentMessage?.userMessage &&
-        parentMessage.userMessage.runAgentType === "agent_handover" &&
-        parentMessage.userMessage.runAgentOriginMessageId
+        parentMessage.userMessage.agenticMessageType === "agent_handover" &&
+        parentMessage.userMessage.agenticOriginMessageId
       ) {
         parentAgentMessage =
-          messagesBySId.get(
-            parentMessage.userMessage.runAgentOriginMessageId
-          ) ?? null;
+          messagesBySId.get(parentMessage.userMessage.agenticOriginMessageId) ??
+          null;
       }
 
       const m = {

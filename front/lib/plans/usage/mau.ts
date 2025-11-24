@@ -34,7 +34,7 @@ async function countActiveUsersForPeriodInWorkspace({
     AND "user_messages"."userId" IS NOT NULL
     AND "user_messages"."userContextOrigin" != 'run_agent'
     AND "user_messages"."userContextOrigin" != 'agent_handover'
-    AND "user_messages"."runAgentType" IS NULL
+    AND "user_messages"."agenticMessageType" IS NULL
     AND "mentions"."createdAt" BETWEEN :startDate AND :endDate
     GROUP BY "user_messages"."userId"
     HAVING COUNT(mentions.*) >= :minNumberOfRows

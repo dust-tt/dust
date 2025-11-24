@@ -62,7 +62,7 @@ export async function summarizeWithAgent({
         origin: parentOrigin,
         selectedMCPServerViewIds: null,
       },
-      runAgentContext: {
+      agenticMessageData: {
         // `run_agent` type will skip adding the conversation to the user history.
         type: "run_agent",
         originMessageId: originMessage.sId,
