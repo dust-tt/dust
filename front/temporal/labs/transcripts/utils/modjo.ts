@@ -9,6 +9,17 @@ import type { Logger } from "@app/logger/logger";
 import logger from "@app/logger/logger";
 import { isModjoCredentials, OAuthAPI } from "@app/types";
 
+/**
+ * Error thrown when Modjo API returns a 401 Unauthorized response,
+ * indicating the API key is invalid or the tenant is deactivated.
+ */
+export class ModjoAuthenticationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ModjoAuthenticationError";
+  }
+}
+
 const ModjoSpeakerSchema = t.partial({
   contactId: t.union([t.number, t.undefined]),
   userId: t.union([t.number, t.undefined]),
@@ -296,6 +307,22 @@ export async function retrieveModjoTranscripts(
         });
 
         if (!response.ok) {
+          // Handle authentication errors - don't retry, throw immediately
+          if (response.status === 401) {
+            const errorBody = await response.text();
+            localLogger.error(
+              {
+                status: response.status,
+                body: errorBody,
+                page,
+              },
+              "[retrieveModjoTranscripts] Authentication failed - API key invalid or tenant deactivated"
+            );
+            throw new ModjoAuthenticationError(
+              `Modjo API authentication failed: ${errorBody}`
+            );
+          }
+
           // Handle rate limiting specifically
           if (response.status === 429) {
             localLogger.warn(
@@ -549,16 +576,22 @@ export async function retrieveModjoTranscriptContent(
   });
 
   if (!response.ok) {
+    const errorText = await response.text();
     localLogger.error(
       {
         fileId,
         transcriptsConfigurationId: transcriptsConfiguration.id,
         transcriptsConfigurationSid: transcriptsConfiguration.sId,
         status: response.status,
-        error: await response.text(),
+        error: errorText,
       },
       "[processTranscriptActivity] Error fetching call from Modjo. Skipping."
     );
+    if (response.status === 401) {
+      throw new ModjoAuthenticationError(
+        `Modjo API authentication failed: ${errorText}`
+      );
+    }
     if (response.status === 404) {
       return null;
     }
