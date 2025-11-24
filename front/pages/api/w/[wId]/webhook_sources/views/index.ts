@@ -46,7 +46,7 @@ async function handler(
 
       const normalizedQuery = {
         ...req.query,
-        spaceIds: spaceIds.split(",").filter((id) => id.trim() !== ""),
+        spaceIds: spaceIds.split(","),
       };
 
       const r = GetWebhookSourceViewsRequestSchema.safeParse(normalizedQuery);

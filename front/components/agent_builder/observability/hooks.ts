@@ -1,6 +1,3 @@
-import { useMemo } from "react";
-import type { Fetcher } from "swr";
-
 import {
   MAX_TOOLS_DISPLAYED,
   OTHER_LABEL,
@@ -20,7 +17,6 @@ import {
   useAgentToolExecution,
   useAgentToolStepIndex,
 } from "@app/lib/swr/assistants";
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 type ToolUsageResult = {
@@ -68,44 +64,6 @@ type LatencyDataResult = {
   isLoading: boolean;
   errorMessage: string | undefined;
 };
-
-export function useMcpConfigurationNames(params: {
-  workspaceId: string;
-  agentConfigurationId: string;
-}): {
-  configurationNames: Map<string, string>;
-  isLoading: boolean;
-} {
-  const { workspaceId, agentConfigurationId } = params;
-
-  const mcpConfigurationsFetcher: Fetcher<{
-    configurations: Array<{ sId: string; name: string | null }>;
-  }> = fetcher;
-
-  const { data, error } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/mcp_configurations`,
-    mcpConfigurationsFetcher
-  );
-
-  const configurationNames = useMemo(() => {
-    if (!data?.configurations) {
-      return new Map<string, string>();
-    }
-
-    const map = new Map<string, string>();
-    for (const config of data.configurations) {
-      if (config.sId && config.name) {
-        map.set(config.sId, config.name);
-      }
-    }
-    return map;
-  }, [data]);
-
-  return {
-    configurationNames,
-    isLoading: !error && !data,
-  };
-}
 
 function calculatePercentage(count: number, total: number): number {
   if (total === 0) {

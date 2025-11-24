@@ -1,5 +1,6 @@
 import { ButtonsSwitch, ButtonsSwitchList } from "@dust-tt/sparkle";
 import { useCallback, useMemo, useState } from "react";
+import type { Fetcher } from "swr";
 import {
   Bar,
   BarChart,
@@ -13,10 +14,7 @@ import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
 import { ChartsTooltip } from "@app/components/agent_builder/observability/charts/ChartsTooltip";
 import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
-import {
-  useMcpConfigurationNames,
-  useToolUsageData,
-} from "@app/components/agent_builder/observability/hooks";
+import { useToolUsageData } from "@app/components/agent_builder/observability/hooks";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import { RoundedTopBarShape } from "@app/components/agent_builder/observability/shared/ChartShapes";
@@ -25,6 +23,7 @@ import type {
   ToolChartModeType,
 } from "@app/components/agent_builder/observability/types";
 import { getIndexedColor } from "@app/components/agent_builder/observability/utils";
+import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 
 export function ToolUsageChart({
   workspaceId,
@@ -37,10 +36,27 @@ export function ToolUsageChart({
   const [toolMode, setToolMode] = useState<ToolChartModeType>("version");
   const [hoveredTool, setHoveredTool] = useState<string | null>(null);
 
-  const { configurationNames } = useMcpConfigurationNames({
-    workspaceId,
-    agentConfigurationId,
-  });
+  const mcpConfigurationsFetcher: Fetcher<{
+    configurations: Array<{ sId: string; name: string | null }>;
+  }> = fetcher;
+
+  const { data: mcpConfigs } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/mcp_configurations`,
+    mcpConfigurationsFetcher
+  );
+
+  const configurationNames = useMemo(() => {
+    if (!mcpConfigs?.configurations) {
+      return new Map<string, string>();
+    }
+    const map = new Map<string, string>();
+    for (const config of mcpConfigs.configurations) {
+      if (config.sId && config.name) {
+        map.set(config.sId, config.name);
+      }
+    }
+    return map;
+  }, [mcpConfigs]);
 
   const {
     chartData,

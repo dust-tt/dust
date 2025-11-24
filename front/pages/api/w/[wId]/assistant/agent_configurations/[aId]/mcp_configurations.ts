@@ -61,35 +61,40 @@ async function handler(
         });
       }
 
-      const agentVersions = await AgentConfiguration.findAll({
-        where: {
-          workspaceId: owner.id,
-          sId: aId,
-          status: {
-            [Op.ne]: "draft",
-          },
-        },
-        attributes: ["id"],
-      });
-
-      const agentConfigurationIds = agentVersions.map((a) => a.id);
-
-      if (agentConfigurationIds.length === 0) {
-        return res.status(200).json({ configurations: [] });
-      }
-
       const mcpConfigurations = await AgentMCPServerConfiguration.findAll({
         where: {
           workspaceId: owner.id,
-          agentConfigurationId: agentConfigurationIds,
         },
         attributes: ["sId", "name"],
+        include: [
+          {
+            model: AgentConfiguration,
+            where: {
+              sId: aId,
+              status: {
+                [Op.ne]: "draft",
+              },
+            },
+            required: true,
+            attributes: [],
+          },
+        ],
       });
 
-      const configurations = mcpConfigurations.map((c) => ({
-        sId: c.sId,
-        name: c.name,
-      }));
+      // Deduplicate configurations by sId
+      const seenSIds = new Set<string>();
+      const configurations = mcpConfigurations
+        .filter((c) => {
+          if (seenSIds.has(c.sId)) {
+            return false;
+          }
+          seenSIds.add(c.sId);
+          return true;
+        })
+        .map((c) => ({
+          sId: c.sId,
+          name: c.name,
+        }));
 
       return res.status(200).json({ configurations });
     }

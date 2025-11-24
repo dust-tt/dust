@@ -124,17 +124,16 @@ export async function fetchToolExecutionMetrics(
       const serverDisplayName = asDisplayToolName(sb.key);
 
       const configBuckets = bucketsToArray<ConfigBucket>(sb.configs?.buckets);
-      const breakdown: Record<string, number> = {};
-
-      configBuckets.forEach((cb) => {
-        const sid = cb.key;
-        if (!sid || sid === "__no_config__") {
-          return;
-        }
-
-        breakdown[sid] =
-          (breakdown[sid] ?? 0) + (cb.doc_count ?? DEFAULT_METRIC_VALUE);
-      });
+      const breakdown = configBuckets.reduce<Record<string, number>>(
+        (acc, cb) => {
+          const sid = cb.key;
+          if (sid && sid !== "__no_config__") {
+            acc[sid] = (acc[sid] ?? 0) + (cb.doc_count ?? DEFAULT_METRIC_VALUE);
+          }
+          return acc;
+        },
+        {}
+      );
 
       tools[serverDisplayName] = {
         count: total,

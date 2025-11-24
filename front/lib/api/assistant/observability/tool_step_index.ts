@@ -12,6 +12,7 @@ export type ToolStepIndexByStep = {
   tools: {
     [toolName: string]: {
       count: number;
+      breakdown?: Record<string, number>;
     };
   };
   total: number;
@@ -22,7 +23,11 @@ type TermBucket<T = string | number> = {
   doc_count: number;
 };
 
-type ToolBucket = TermBucket<string>;
+type ConfigBucket = TermBucket<string>;
+
+type ToolBucket = TermBucket<string> & {
+  configs?: estypes.AggregationsMultiBucketAggregateBase<ConfigBucket>;
+};
 
 type StepBucket = TermBucket<number> & {
   tool_names?: estypes.AggregationsMultiBucketAggregateBase<ToolBucket>;
@@ -62,6 +67,15 @@ export async function fetchToolStepIndexDistribution(
                 field: "tools_used.tool_name",
                 size: 50,
               },
+              aggs: {
+                configs: {
+                  terms: {
+                    field: "tools_used.mcp_server_configuration_sid.keyword",
+                    size: 50,
+                    missing: "__no_config__",
+                  },
+                },
+              },
             },
           },
         },
@@ -87,8 +101,21 @@ export async function fetchToolStepIndexDistribution(
 
     const tools: ToolStepIndexByStep["tools"] = {};
     toolBuckets.forEach((tb) => {
+      const configBuckets = bucketsToArray<ConfigBucket>(tb.configs?.buckets);
+      const breakdown = configBuckets.reduce<Record<string, number>>(
+        (acc, cb) => {
+          const sid = cb.key;
+          if (sid && sid !== "__no_config__") {
+            acc[sid] = (acc[sid] ?? 0) + (cb.doc_count ?? DEFAULT_METRIC_VALUE);
+          }
+          return acc;
+        },
+        {}
+      );
+
       tools[asDisplayToolName(tb.key)] = {
         count: tb.doc_count ?? DEFAULT_METRIC_VALUE,
+        breakdown: Object.keys(breakdown).length > 0 ? breakdown : undefined,
       };
     });
 
