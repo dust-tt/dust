@@ -17,7 +17,7 @@ export async function runRemoteToolsSyncWorker() {
   const worker = await Worker.create({
     ...getWorkflowConfig({
       workerName: "remote_tools_sync",
-      workflowsPath: require.resolve("./workflows"),
+      getWorkflowsPath: () => require.resolve("./workflows"),
     }),
     activities,
     taskQueue: QUEUE_NAME,

@@ -33,7 +33,7 @@ export async function runAgentLoopWorker() {
   const worker = await Worker.create({
     ...getWorkflowConfig({
       workerName: "agent_loop",
-      workflowsPath: require.resolve("./workflows"),
+      getWorkflowsPath: () => require.resolve("./workflows"),
     }),
     activities: {
       conversationUnreadNotificationActivity,

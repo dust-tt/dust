@@ -612,7 +612,14 @@ export async function getParsedDatabase(
         // it's not useful to retry.
         e.code === "validation_error")
     ) {
-      localLogger.info("Database not found.");
+      if (e.code === "validation_error") {
+        localLogger.info(
+          { errorMessage: e.message },
+          "Got validation error trying to retrieve database (expected for linked databases)."
+        );
+      } else {
+        localLogger.info("Database not found.");
+      }
       return null;
     }
     localLogger.error(

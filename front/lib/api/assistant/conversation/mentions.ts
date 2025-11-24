@@ -2,11 +2,13 @@ import type { Transaction } from "sequelize";
 
 import { getUserForWorkspace } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import {
   AgentMessage,
   Mention,
   Message,
 } from "@app/lib/models/assistant/conversation";
+import { triggerConversationAddedAsParticipantNotification } from "@app/lib/notifications/workflows/conversation-added-as-participant";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import type { MentionType } from "@app/types";
@@ -48,11 +50,22 @@ export const createUserMentions = async (
           { transaction }
         );
 
-        await ConversationResource.upsertParticipation(auth, {
+        const status = await ConversationResource.upsertParticipation(auth, {
           conversation,
           action: "subscribed",
           user: user.toJSON(),
         });
+
+        const featureFlags = await getFeatureFlags(
+          auth.getNonNullableWorkspace()
+        );
+
+        if (status === "added" && featureFlags.includes("notifications")) {
+          await triggerConversationAddedAsParticipantNotification(auth, {
+            conversation,
+            addedUserId: user.sId,
+          });
+        }
       }
     })
   );

@@ -32,6 +32,7 @@ import {
   Message,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
+import { triggerConversationUnreadNotifications } from "@app/lib/notifications/workflows/conversation-unread";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -141,16 +142,11 @@ export async function updateConversationTitle(
     title: string;
   }
 ): Promise<Result<undefined, ConversationError>> {
-  const conversationRes = await ConversationResource.fetchById(
+  const conversation = await ConversationResource.fetchById(
     auth,
     conversationId
   );
 
-  if (conversationRes.isErr()) {
-    return conversationRes;
-  }
-
-  const conversation = conversationRes.value;
   if (!conversation) {
     return new Err(new ConversationError("conversation_not_found"));
   }
@@ -173,7 +169,7 @@ export async function deleteOrLeaveConversation(
     conversationId: string;
   }
 ): Promise<Result<{ success: true }, Error>> {
-  const conversationRes = await ConversationResource.fetchById(
+  const conversation = await ConversationResource.fetchById(
     auth,
     conversationId,
     {
@@ -181,11 +177,6 @@ export async function deleteOrLeaveConversation(
     }
   );
 
-  if (conversationRes.isErr()) {
-    return conversationRes;
-  }
-
-  const conversation = conversationRes.value;
   if (!conversation) {
     return new Err(new ConversationError("conversation_not_found"));
   }
@@ -458,7 +449,7 @@ export async function postUserMessage(
       return new Err({
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "model_disabled",
           message:
             `Assistant ${agentConfig.name} is based on a model that was disabled ` +
             `by your workspace admin. Please edit the agent to use another model ` +
@@ -591,6 +582,22 @@ export async function postUserMessage(
         conversation,
         excludedUser: user?.toJSON(),
       });
+
+      const featureFlags = await getFeatureFlags(owner);
+      if (featureFlags.includes("notifications")) {
+        // TODO(mentionsv2) here we fetch the conversation again to trigger the notification.
+        // We should refactor to pass the resource as the argument of the postUserMessage function.
+        const conversationRes = await ConversationResource.fetchById(
+          auth,
+          conversation.sId
+        );
+        if (conversationRes) {
+          await triggerConversationUnreadNotifications(auth, {
+            conversation: conversationRes,
+            messageId: m.sId,
+          });
+        }
+      }
 
       const agentMessagesResult = await createAgentMessages({
         mentions,
@@ -804,7 +811,7 @@ export async function editUserMessage(
       return new Err({
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "model_disabled",
           message:
             `Assistant ${agentConfig.name} is based on a model that was disabled ` +
             `by your workspace admin. Please edit the agent to use another model ` +

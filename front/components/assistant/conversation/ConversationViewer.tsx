@@ -16,6 +16,7 @@ import React, {
 } from "react";
 
 import { AgentInputBar } from "@app/components/assistant/conversation/AgentInputBar";
+import { autoUseDustAgent } from "@app/components/assistant/conversation/AgentSuggestion";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
 import {
   createPlaceholderAgentMessage,
@@ -288,11 +289,18 @@ export const ConversationViewer = ({
               const exists = ref.current.data.find(predicate);
 
               if (!exists) {
-                ref.current.data.append([
-                  { ...event.message, contentFragments: [] },
-                ]);
-              } else {
-                // We don't update if it already exists as if it already exists, it means we have received the message from the backend.
+                ref.current.data.append(
+                  [{ ...event.message, contentFragments: [] }],
+                  true
+                );
+                // Using else if with the type guard just to please the type checker as we already know it's a user message from the predicate.
+              } else if (isUserMessage(exists)) {
+                // We only update if the version is greater than the existing version.
+                if (exists.version < event.message.version) {
+                  ref.current.data.map((m) =>
+                    areSameRank(m, userMessage) ? userMessage : m
+                  );
+                }
               }
 
               void mutateConversationParticipants(
@@ -497,10 +505,14 @@ export const ConversationViewer = ({
         }
       }
 
+      const isMentioningAgent =
+        (mentions.length === 0 && autoUseDustAgent(ref.current.data.get())) ||
+        mentions.some(isRichAgentMention);
+
       const nbMessages = ref.current.data.get().length;
       ref.current.data.append(
         [placeholderUserMsg, ...placeholderAgentMessages],
-        mentions.some(isRichAgentMention)
+        isMentioningAgent
           ? () => {
               return {
                 index: nbMessages, // Avoid jumping around when the agent message is generated.

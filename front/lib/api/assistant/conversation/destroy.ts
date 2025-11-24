@@ -205,13 +205,13 @@ export async function destroyConversation(
 
   await destroyConversationDataSource(auth, { conversation });
 
-  const cRes = await ConversationResource.fetchById(auth, conversation.sId, {
+  const c = await ConversationResource.fetchById(auth, conversation.sId, {
     includeDeleted: true,
     includeTest: true,
     dangerouslySkipPermissionFiltering: true,
   });
-  if (cRes.isOk() && cRes.value) {
-    await cRes.value.delete(auth);
+  if (c) {
+    await c.delete(auth);
   }
 
   return new Ok(undefined);

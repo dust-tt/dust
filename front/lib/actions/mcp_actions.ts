@@ -11,7 +11,7 @@ import {
 import { Context, heartbeat } from "@temporalio/activity";
 import assert from "assert";
 import EventEmitter from "events";
-import type { JSONSchema7 } from "json-schema";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 import {
   calculateContentSize,
@@ -98,13 +98,13 @@ const MCP_TOOL_DONE_EVENT_NAME = "TOOL_DONE" as const;
 const MCP_TOOL_ERROR_EVENT_NAME = "TOOL_ERROR" as const;
 const MCP_TOOL_HEARTBEAT_EVENT_NAME = "TOOL_HEARTBEAT" as const;
 
-const EMPTY_INPUT_SCHEMA: JSONSchema7 = {
+const EMPTY_INPUT_SCHEMA: JSONSchema = {
   properties: {},
   required: [],
   type: "object",
 };
 
-function isEmptyInputSchema(schema: JSONSchema7): boolean {
+function isEmptyInputSchema(schema: JSONSchema): boolean {
   // By default, empty tools yields an empty input schema.
   const isContentConsideredEmpty =
     schema.properties === undefined &&

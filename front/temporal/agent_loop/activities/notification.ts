@@ -1,11 +1,9 @@
 import { isUserMessageOrigin } from "@app/components/agent_builder/observability/utils";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
-import { getNovuClient } from "@app/lib/notifications";
-import type { ConversationUnreadPayloadType } from "@app/lib/notifications/workflows/conversation-unread";
 import {
-  CONVERSATION_UNREAD_TRIGGER_ID,
-  shouldSendNotification,
+  shouldSendNotificationForAgentAnswer,
+  triggerConversationUnreadNotifications,
 } from "@app/lib/notifications/workflows/conversation-unread";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
@@ -38,7 +36,7 @@ export async function conversationUnreadNotificationActivity(
   }
 
   // Check if the user message origin is valid for sending notifications.
-  if (!shouldSendNotification(agentLoopArgs.userMessageOrigin)) {
+  if (!shouldSendNotificationForAgentAnswer(agentLoopArgs.userMessageOrigin)) {
     return;
   }
 
@@ -54,12 +52,12 @@ export async function conversationUnreadNotificationActivity(
   );
 
   // Get conversation participants
-  const conversationRes = await ConversationResource.fetchById(
+  const conversation = await ConversationResource.fetchById(
     auth,
     agentLoopArgs.conversationId
   );
 
-  if (conversationRes.isErr() || !conversationRes.value) {
+  if (!conversation) {
     logger.warn(
       { conversationId: agentLoopArgs.conversationId },
       "Conversation not found after delay"
@@ -67,44 +65,16 @@ export async function conversationUnreadNotificationActivity(
     return;
   }
 
-  const conversation = conversationRes.value;
+  const r = await triggerConversationUnreadNotifications(auth, {
+    conversation,
+    messageId: agentLoopArgs.agentMessageId,
+  });
 
-  // Skip any sub-conversations.
-  if (conversation.depth > 0) {
+  if (r.isErr()) {
+    logger.error(
+      { error: r.error },
+      "Failed to trigger conversation unread notification"
+    );
     return;
-  }
-
-  const participants = await conversation.listParticipants(auth, true);
-
-  if (participants.length !== 0) {
-    try {
-      const novuClient = await getNovuClient();
-
-      await novuClient.bulkTrigger(
-        participants.map((p) => {
-          const payload: ConversationUnreadPayloadType = {
-            conversationId: conversation.sId,
-            workspaceId: auth.getNonNullableWorkspace().sId,
-            userId: p.sId,
-            messageId: agentLoopArgs.agentMessageId,
-          };
-          return {
-            name: CONVERSATION_UNREAD_TRIGGER_ID,
-            to: {
-              subscriberId: p.sId,
-              email: p.email,
-              firstName: p.firstName ?? undefined,
-              lastName: p.lastName ?? undefined,
-            },
-            payload,
-          };
-        })
-      );
-    } catch (error) {
-      logger.error(
-        { error },
-        "Failed to trigger conversation unread notification"
-      );
-    }
   }
 }

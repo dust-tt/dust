@@ -12,13 +12,15 @@ import {
 } from "@app/lib/api/email";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
-import { maybeStartCreditFromProOneOffInvoice } from "@app/lib/credits/purchase";
+import { startCreditFromProOneOffInvoice } from "@app/lib/credits/purchase";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import {
   assertStripeSubscriptionIsValid,
   createCustomerPortalSession,
   getStripeClient,
+  getStripeSubscription,
   isCreditPurchaseInvoice,
+  isEnterpriseSubscription,
 } from "@app/lib/plans/stripe";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
@@ -315,7 +317,8 @@ async function handler(
             where: { stripeSubscriptionId: invoice.subscription },
             include: [WorkspaceModel],
           });
-          if (!subscription) {
+
+          if (!subscription || !subscription.stripeSubscriptionId) {
             logger.warn(
               {
                 event,
@@ -328,30 +331,50 @@ async function handler(
             return res.status(200).json({ success: true });
           }
 
-          // Handle credit purchase activation for Pro subscriptions.
-          // (Enterprise subscriptions activate credits optimistically, so we skip them here.)
-          const creditPurchaseResult =
-            await maybeStartCreditFromProOneOffInvoice({
-              invoice,
-              subscription,
-            });
-
-          if (creditPurchaseResult.isErr()) {
-            logger.error(
+          stripeSubscription = await getStripeSubscription(
+            subscription.stripeSubscriptionId
+          );
+          if (!stripeSubscription) {
+            logger.warn(
               {
-                error: creditPurchaseResult.error,
-                invoiceId: invoice.id,
+                event,
                 stripeSubscriptionId: invoice.subscription,
               },
-              "[Stripe Webhook] Error processing credit purchase"
+              "[Stripe Webhook] Stripe subscription not found."
             );
+            // We return a 200 here to handle multiple regions, DD will watch
+            // the warnings and create an alert if this log appears in all regions
+            return res.status(200).json({ success: true });
           }
 
-          // We don't want credit purchase invoice being paid clearing customer's sub's payment_failed_since
-          if (!isCreditPurchaseInvoice(invoice)) {
+          const isProCreditPurchaseInvoice =
+            isCreditPurchaseInvoice(invoice) &&
+            !isEnterpriseSubscription(stripeSubscription);
+
+          if (isProCreditPurchaseInvoice) {
+            const auth = await Authenticator.internalAdminForWorkspace(
+              subscription.workspace.sId
+            );
+            const creditPurchaseResult = await startCreditFromProOneOffInvoice({
+              auth,
+              invoice,
+              stripeSubscription,
+            });
+
+            if (creditPurchaseResult.isErr()) {
+              logger.error(
+                {
+                  error: creditPurchaseResult.error,
+                  invoiceId: invoice.id,
+                  stripeSubscriptionId: invoice.subscription,
+                },
+                "[Stripe Webhook] Error processing credit purchase"
+              );
+            }
+          } else if (!isCreditPurchaseInvoice(invoice)) {
+            // We don't want credit purchase invoice being paid clearing customer's sub's payment_failed_since
             await subscription.update({ paymentFailingSince: null });
           }
-
           break;
         case "invoice.payment_failed":
           // Occurs when payment failed or the user does not have a valid payment method.

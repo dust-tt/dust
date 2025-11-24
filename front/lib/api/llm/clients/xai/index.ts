@@ -12,7 +12,6 @@ import type {
 import { handleError } from "@app/lib/api/llm/utils/openai_like/errors";
 import {
   toInput,
-  toReasoning,
   toTool,
 } from "@app/lib/api/llm/utils/openai_like/responses/conversation_to_openai";
 import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_like/responses/openai_to_events";
@@ -50,12 +49,11 @@ export class XaiLLM extends LLM {
         model: this.modelId,
         input: toInput(prompt, conversation, "system"),
         stream: true,
+        // Reasoning not supported by xai responses api yet
+        // Using default value for reasoning models
         temperature: this.temperature,
-        reasoning: toReasoning(
-          this.reasoningEffort,
-          this.modelConfig.useNativeLightReasoning
-        ),
         tools: specifications.map(toTool),
+        include: ["reasoning.encrypted_content"],
       });
 
       yield* streamLLMEvents(events, this.metadata);

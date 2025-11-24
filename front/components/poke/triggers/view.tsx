@@ -64,11 +64,6 @@ export function ViewTriggerTable({
                 </PokeTableCell>
               </PokeTableRow>
               <PokeTableRow>
-                <PokeTableHead>Custom Prompt</PokeTableHead>
-                {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
-                <PokeTableCell>{trigger.customPrompt || "None"}</PokeTableCell>
-              </PokeTableRow>
-              <PokeTableRow>
                 <PokeTableHead>Enabled</PokeTableHead>
                 <PokeTableCell>{trigger.enabled ? "Yes" : "No"}</PokeTableCell>
               </PokeTableRow>

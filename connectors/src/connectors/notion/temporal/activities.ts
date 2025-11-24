@@ -562,6 +562,10 @@ export async function upsertDatabaseInConnectorsDb({
       topLevelWorkflowId,
       loggerArgs,
     });
+  } else {
+    localLogger.info(
+      "notionUpsertDatabaseActivity: getParsedDatabase returned undefined."
+    );
   }
 
   const createdOrMoved =
@@ -1462,7 +1466,8 @@ export async function updateParentsFields({
     notionPageIds,
     notionDatabaseIds,
     runTimestamp.toString(),
-    async () => heartbeat()
+    async () => heartbeat(),
+    parentsLastUpdatedAt == 0
   );
 
   localLogger.info({ nbUpdated, nextCursors }, "Updated parents fields.");
@@ -1827,6 +1832,26 @@ export async function cacheBlockChildren({
   let parsedBlocks: ParsedNotionBlock[] = [];
   for (const block of resultPage.results) {
     if (isFullBlock(block)) {
+      // A child database with title "Untitled" is an almost certain sign of a linked database.
+      // We ignore those because we will fail to retrieve their content later with two possible errors:
+      // - Database with ID xyz is a linked database. Database retrievals do not support linked databases.
+      // - Database with ID xyz does not contain any data sources accessible by this API bot.
+      // If we don't, we will end up doing a lot of extra work, and storing bogus entries in notion_databases.
+      // Note that if you create a regular (non-linked) database in Notion without giving it a
+      // name, it will be named something like "New database", and not "Untitled".
+      // So someone would have to explicitly name a database "Untitled" for us to ignore it,
+      // and we can live with that. Unfortunately Notion does not provide any other reliable way
+      // to detect linked databases when we enumerate blocks.
+      if (
+        block.type === "child_database" &&
+        block.child_database.title == "Untitled"
+      ) {
+        localLogger.info(
+          { blockId: block.id },
+          "Skipping linked child database block."
+        );
+        continue;
+      }
       parsedBlocks.push(parsePageBlock(block));
     }
   }

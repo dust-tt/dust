@@ -13,6 +13,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
+import React from "react";
 import { useCallback, useEffect, useState } from "react";
 
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
@@ -29,7 +30,6 @@ import {
 import { useUser } from "@app/lib/swr/user";
 import { getConversationRoute, setQueryParam } from "@app/lib/utils/router";
 import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
-import { asDisplayName } from "@app/types/shared/utils/string_utils";
 
 /**
  * Hook for handling right-click context menu with timing protection
@@ -123,10 +123,16 @@ export function ConversationMenu({
   const sendNotification = useSendNotification();
 
   const { onOpenChange: onOpenChangeAgentModal } = useURLSheet("agentDetails");
+  const { onOpenChange: onOpenChangeUserModal } = useURLSheet("userDetails");
 
-  const handleSeeDetails = (agentId: string) => {
+  const handleSeeAgentDetails = (agentId: string) => {
     onOpenChangeAgentModal(true);
     setQueryParam(router, "agentDetails", agentId);
+  };
+
+  const handleSeeUserDetails = (userId: string) => {
+    onOpenChangeUserModal(true);
+    setQueryParam(router, "userDetails", userId);
   };
 
   const shouldWaitBeforeFetching =
@@ -134,8 +140,7 @@ export function ConversationMenu({
   const conversationParticipationOption = useConversationParticipationOption({
     ownerId: owner.sId,
     conversationId: activeConversationId,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    userId: user?.sId || null,
+    userId: user?.sId ?? null,
     disabled: shouldWaitBeforeFetching,
   });
   const { conversationParticipants } = useConversationParticipants({
@@ -287,22 +292,21 @@ export function ConversationMenu({
 
           {conversationParticipants === undefined ? null : (
             <>
-              {conversationParticipants?.users.length > 0 && (
+              {conversationParticipants.users.length > 0 && (
                 <>
                   <DropdownMenuLabel>Participants</DropdownMenuLabel>
                   {conversationParticipants.users.map((user) => (
                     <DropdownMenuItem
                       key={user.sId}
-                      label={asDisplayName(user.username)}
+                      label={user.fullName ?? user.username}
+                      onClick={() => handleSeeUserDetails(user.sId)}
                       icon={
                         <Avatar
                           size="xs"
                           visual={user.pictureUrl}
-                          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                          name={user.fullName || user.username}
+                          name={user.fullName ?? user.username}
                         />
                       }
-                      disabled
                       className="!text-foreground dark:!text-foreground-night"
                     />
                   ))}
@@ -315,7 +319,9 @@ export function ConversationMenu({
                     <DropdownMenuItem
                       key={agent.configurationId}
                       label={agent.name}
-                      onClick={() => handleSeeDetails(agent.configurationId)}
+                      onClick={() =>
+                        handleSeeAgentDetails(agent.configurationId)
+                      }
                       icon={
                         <Avatar
                           size="xs"

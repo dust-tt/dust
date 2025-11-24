@@ -11,7 +11,10 @@ import { toFileContentFragment } from "@app/lib/api/assistant/conversation/conte
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import config from "@app/lib/api/config";
-import { sendEmailWithTemplate } from "@app/lib/api/email";
+import {
+  sendEmailWithTemplate,
+  sendModjoDisconnectionEmail,
+} from "@app/lib/api/email";
 import { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
@@ -29,6 +32,7 @@ import {
   retrieveGoogleTranscripts,
 } from "@app/temporal/labs/transcripts/utils/google";
 import {
+  ModjoAuthenticationError,
   retrieveModjoTranscriptContent,
   retrieveModjoTranscripts,
 } from "@app/temporal/labs/transcripts/utils/modjo";
@@ -128,12 +132,29 @@ export async function retrieveNewTranscriptsActivity(
       break;
 
     case "modjo":
-      const modjoTranscriptsIds = await retrieveModjoTranscripts(
-        auth,
-        transcriptsConfiguration,
-        localLogger
-      );
-      transcriptsIdsToProcess.push(...modjoTranscriptsIds);
+      try {
+        const modjoTranscriptsIds = await retrieveModjoTranscripts(
+          auth,
+          transcriptsConfiguration,
+          localLogger
+        );
+        transcriptsIdsToProcess.push(...modjoTranscriptsIds);
+      } catch (error) {
+        if (error instanceof ModjoAuthenticationError) {
+          localLogger.error(
+            { error: error.message },
+            "[retrieveNewTranscripts] Modjo authentication failed - disconnecting and notifying user"
+          );
+          await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+
+          if (user) {
+            await sendModjoDisconnectionEmail(user.email, workspace.name);
+          }
+
+          return [];
+        }
+        throw error;
+      }
       break;
 
     default:

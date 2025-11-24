@@ -14,7 +14,7 @@ export async function runLabsTranscriptsWorker() {
   const worker = await Worker.create({
     ...getWorkflowConfig({
       workerName: "labs",
-      workflowsPath: require.resolve("./workflows"),
+      getWorkflowsPath: () => require.resolve("./workflows"),
     }),
     activities,
     taskQueue: TRANSCRIPTS_QUEUE_NAME,

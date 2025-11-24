@@ -6,12 +6,12 @@ const SvgHeading = (props: SVGProps<SVGSVGElement>) => (
     width="1em"
     height="1em"
     fill="none"
-    viewBox="0 0 24 25"
+    viewBox="0 0 24 24"
     {...props}
   >
     <path
       fill="currentColor"
-      d="M15 11.057V5.021h3v15.088h-3v-6.036H9v6.036H6V5.021h3v6.036h6Z"
+      d="M15 10V3.995h3v16.01h-3V13H9v7.005H6V3.995h3V10h6Z"
     />
   </svg>
 );

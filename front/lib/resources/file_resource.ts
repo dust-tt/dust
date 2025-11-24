@@ -177,12 +177,12 @@ export class FileResource extends BaseResource<FileModel> {
       // conversation exists, but internalBuilderForWorkspace only has global group
       // access and can't see agents from other groups that this conversation might reference.
       // Skip permission filtering since share token provides its own authorization.
-      const conversationRes = await ConversationResource.fetchById(
+      const conversation = await ConversationResource.fetchById(
         auth,
         conversationId,
         { dangerouslySkipPermissionFiltering: true }
       );
-      if (conversationRes.isErr() || !conversationRes.value) {
+      if (!conversation) {
         return null;
       }
     }

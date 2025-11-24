@@ -41,15 +41,13 @@ makeScript(
 
     // Step 1: Check if conversation exists (bypass permissions)
     logger.info("STEP 1: Checking if conversation exists...");
-    const conversationWithoutPermCheckRes =
-      await ConversationResource.fetchById(auth, conversationId, {
-        dangerouslySkipPermissionFiltering: true,
-      });
+    const conversationWithoutPermCheck = await ConversationResource.fetchById(
+      auth,
+      conversationId,
+      { dangerouslySkipPermissionFiltering: true }
+    );
 
-    if (
-      conversationWithoutPermCheckRes.isErr() ||
-      !conversationWithoutPermCheckRes.value
-    ) {
+    if (!conversationWithoutPermCheck) {
       logger.error(
         "✗ Conversation not found in this workspace (or doesn't exist)"
       );
@@ -62,8 +60,6 @@ makeScript(
       return;
     }
 
-    const conversationWithoutPermCheck = conversationWithoutPermCheckRes.value;
-
     logger.info("✓ Conversation exists", {
       conversationId: conversationWithoutPermCheck.sId,
       visibility: conversationWithoutPermCheck.visibility,
@@ -75,13 +71,12 @@ makeScript(
 
     // Step 2: Check if user has access (with permission filtering)
     logger.info("STEP 2: Checking user access (with permission filtering)...");
-    const conversationRes = await ConversationResource.fetchById(
+    const conversation = await ConversationResource.fetchById(
       auth,
       conversationId
     );
 
-    if (conversationRes.isOk() && conversationRes.value) {
-      const conversation = conversationRes.value;
+    if (conversation) {
       logger.info("✓ USER HAS ACCESS TO CONVERSATION", {
         conversationExists: true,
         userHasAccess: true,
