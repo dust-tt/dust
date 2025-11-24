@@ -56,7 +56,7 @@ const sendReasoningToolRemovalEmail = async (
 
   let body = `<p>Hi ${record.first_name},</p>
 
-<p>We're reaching out because you've built the following agents that use the Reasoning tool, which we'll be removing from Dust on [DATE].</p>
+<p>We're reaching out because you've built the following agents that use the Reasoning tool, which we'll be removing from Dust on Friday, November 28th.</p>
 
 <ul>
 ${agentList
@@ -80,7 +80,7 @@ ${agentList
 
 <p>Good news: You're already set up for success!</p>
 
-<p>Your agents are already configured with medium or high reasoning effort, which means you're already leveraging the full reasoning capabilities of your base model. When we remove the Reasoning tool on [DATE]:</p>
+<p>Your agents are already configured with medium or high reasoning effort, which means you're already leveraging the full reasoning capabilities of your base model. When we remove the Reasoning tool on Friday, November 28th:</p>
 
 <ul>
   <li>Your agents will continue working normally with their current strong reasoning capabilities</li>
@@ -93,7 +93,7 @@ ${agentList
 <h3>Timeline</h3>
 
 <ul>
-  <li>[DATE]: Reasoning tool removed from all agents</li>
+  <li>Friday, November 28th: Reasoning tool removed from all agents</li>
   <li>No action needed: Your agents are already optimized</li>
 </ul>
 `;
@@ -104,7 +104,7 @@ ${agentList
 <p><strong>Automatic migration (no action required):</strong></p>
 
 <ul>
-  <li>On [DATE], we'll automatically remove the Reasoning tool from all agents</li>
+  <li>On Friday, November 28th, we'll automatically remove the Reasoning tool from all agents</li>
   <li>Your agents will continue working normally</li>
   <li>No configuration changes needed from you</li>
 </ul>
@@ -122,8 +122,8 @@ ${agentList
 <h3>Timeline</h3>
 
 <ul>
-  <li>[DATE]: Reasoning tool removed from all agents</li>
-  <li>Before [DATE]: Optionally adjust your agent's reasoning configuration</li>
+  <li>Friday, November 28th: Reasoning tool removed from all agents</li>
+  <li>Before Friday, November 28th: Optionally adjust your agent's reasoning configuration</li>
 </ul>
 `;
   }
