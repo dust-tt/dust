@@ -161,9 +161,6 @@ async function slackSemanticSearch(
   }
 }
 
-// Legacy export for backward compatibility (uses semantic search with fallback)
-export const slackSearch = slackSemanticSearch;
-
 // Helper function to resolve user and channel IDs for search results
 async function resolveSearchResultIds(
   matches: SlackSearchResult[],
@@ -184,13 +181,15 @@ async function resolveSearchResultIds(
   ];
 
   const [userNames, channelNames] = await Promise.all([
-    Promise.all(
-      uniqueUserIds.map((userId) => resolveUserDisplayName(userId, accessToken))
+    concurrentExecutor(
+      uniqueUserIds,
+      (userId) => resolveUserDisplayName(userId, accessToken),
+      { concurrency: 3 }
     ),
-    Promise.all(
-      uniqueChannelIds.map((channelId) =>
-        resolveChannelDisplayName(channelId, accessToken)
-      )
+    concurrentExecutor(
+      uniqueChannelIds,
+      (channelId) => resolveChannelDisplayName(channelId, accessToken),
+      { concurrency: 3 }
     ),
   ]);
 
