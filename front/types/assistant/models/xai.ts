@@ -5,8 +5,12 @@ export const GROK_3_MINI_MODEL_ID = "grok-3-mini-latest" as const;
 export const GROK_4_MODEL_ID = "grok-4-latest" as const;
 export const GROK_4_FAST_REASONING_MODEL_ID =
   "grok-4-fast-reasoning-latest" as const;
+export const GROK_4_1_FAST_REASONING_MODEL_ID =
+  "grok-4-1-fast-reasoning-latest" as const;
 export const GROK_4_FAST_NON_REASONING_MODEL_ID =
   "grok-4-fast-non-reasoning-latest" as const;
+export const GROK_4_1_FAST_NON_REASONING_MODEL_ID =
+  "grok-4-1-fast-non-reasoning-latest" as const;
 
 export const GROK_3_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "xai",
@@ -83,7 +87,7 @@ export const GROK_4_FAST_REASONING_MODEL_CONFIG: ModelConfigurationType = {
   description: "xAI's Grok 4 fast flagship model (2M context).",
   shortDescription: "xAI's fast flagship model.",
   isLegacy: false,
-  isLatest: true,
+  isLatest: false,
   generationTokensCount: 8_192,
   supportsVision: false,
   minimumReasoningEffort: "none",
@@ -101,10 +105,10 @@ export const GROK_4_FAST_NON_REASONING_MODEL_CONFIG: ModelConfigurationType = {
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 64,
   largeModel: true,
-  description: "xAI's Grok 4 fast non-reading flagship model (2M context).",
+  description: "xAI's Grok 4 fast non-reasoning flagship model (2M context).",
   shortDescription: "xAI's flagship non-reasoning model.",
   isLegacy: false,
-  isLatest: true,
+  isLatest: false,
   generationTokensCount: 8_192,
   supportsVision: false,
   minimumReasoningEffort: "none",
@@ -114,3 +118,47 @@ export const GROK_4_FAST_NON_REASONING_MODEL_CONFIG: ModelConfigurationType = {
   featureFlag: "xai_feature",
   tokenizer: { type: "tiktoken", base: "o200k_base" },
 };
+export const GROK_4_1_FAST_REASONING_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "xai",
+  modelId: GROK_4_1_FAST_REASONING_MODEL_ID,
+  displayName: "Grok 4.1 Fast",
+  contextSize: 2_000_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description: "xAI's Grok 4.1 fast flagship model (2M context).",
+  shortDescription: "xAI's fast flagship model.",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 8_192,
+  supportsVision: true,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "none",
+  defaultReasoningEffort: "none",
+  supportsResponseFormat: false,
+  featureFlag: "xai_feature",
+  tokenizer: { type: "tiktoken", base: "o200k_base" },
+};
+export const GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG: ModelConfigurationType =
+  {
+    providerId: "xai",
+    modelId: GROK_4_1_FAST_NON_REASONING_MODEL_ID,
+    displayName: "Grok 4.1 Fast (Non-Reasoning)",
+    contextSize: 2_000_000,
+    recommendedTopK: 32,
+    recommendedExhaustiveTopK: 64,
+    largeModel: true,
+    description:
+      "xAI's Grok 4.1 fast non-reasoning flagship model (2M context).",
+    shortDescription: "xAI's flagship non-reasoning model.",
+    isLegacy: false,
+    isLatest: true,
+    generationTokensCount: 8_192,
+    supportsVision: true,
+    minimumReasoningEffort: "none",
+    maximumReasoningEffort: "none",
+    defaultReasoningEffort: "none",
+    supportsResponseFormat: false,
+    featureFlag: "xai_feature",
+    tokenizer: { type: "tiktoken", base: "o200k_base" },
+  };

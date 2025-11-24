@@ -83,6 +83,8 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "grok-4-latest" // xAI
   | "grok-4-fast-non-reasoning-latest"
   | "grok-4-fast-reasoning-latest"
+  | "grok-4-1-fast-non-reasoning-latest"
+  | "grok-4-1-fast-reasoning-latest"
   | "noop" // Noop
 >();
 
