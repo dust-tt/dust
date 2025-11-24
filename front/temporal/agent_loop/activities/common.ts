@@ -179,14 +179,12 @@ export async function updateResourceAndPublishEvent(
     conversation,
     step,
     modelInteractionDurationMs,
-    userMessageOrigin,
   }: {
     event: AgentMessageEvents;
     agentMessageRow: AgentMessage;
     conversation: ConversationWithoutContentType;
     step: number;
     modelInteractionDurationMs?: number;
-    userMessageOrigin?: UserMessageOrigin | null;
   }
 ): Promise<void> {
   // Processing of events before publishing to Redis.
