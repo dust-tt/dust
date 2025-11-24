@@ -1,30 +1,50 @@
 import {
   BoldIcon,
+  cn,
   CodeBlockIcon,
   CodeSlashIcon,
-  FontSizeAiIcon,
+  HeadingIcon,
   ItalicIcon,
   LinkMIcon,
   ListCheckIcon,
   ListOrdered2Icon,
   QuoteTextIcon,
   Separator,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 
 import { ToolbarIcon } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarIcon";
 
-export function Toolbar({ editor }: { editor: Editor | null }) {
+interface ToolbarProps {
+  editor: Editor | null;
+  className?: string;
+  toggleToolbar?: () => void;
+}
+
+export function Toolbar({ editor, className, toggleToolbar }: ToolbarProps) {
   if (!editor) {
     return null;
   }
   return (
-    <div className="flex flex-col">
-      <div className="m-2 flex flex-row gap-2 self-end rounded-2xl bg-white px-3 py-2">
+    <div className={cn("flex flex-col", className)}>
+      <div
+        className={cn(
+          "flex flex-row gap-2 self-end rounded-2xl bg-white px-3 py-2",
+          !toggleToolbar && "m-2"
+        )}
+      >
+        {!!toggleToolbar && (
+          <ToolbarIcon
+            icon={XMarkIcon}
+            onClick={toggleToolbar}
+            tooltip="Close toolbar"
+          />
+        )}
         <ToolbarIcon
-          icon={FontSizeAiIcon}
-          onClick={() => editor.chain().focus().clearNodes().run()}
-          tooltip="Clear formatting"
+          icon={HeadingIcon}
+          onClick={() => editor.chain().focus().setHeading({ level: 1 }).run()}
+          tooltip="Heading"
         />
         <ToolbarIcon
           icon={BoldIcon}

@@ -17,6 +17,7 @@ import useHandleAgentMentions from "@app/components/assistant/conversation/input
 import useUrlHandler from "@app/components/assistant/conversation/input_bar/editor/useUrlHandler";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { InputBarToolbarToggle } from "@app/components/assistant/conversation/input_bar/InputBarToolbarToggle";
 import {
   getDisplayNameFromPastedFileId,
   getPastedFileName,
@@ -515,6 +516,8 @@ const InputBarContainer = ({
     "px-3 sm:pl-4 sm:pt-3.5 pt-3"
   );
 
+  const [isToolbarOpen, setIsToolbarOpen] = useState(false);
+
   return (
     <div
       id="InputBarContainer"
@@ -527,7 +530,7 @@ const InputBarContainer = ({
       }}
     >
       <div className="flex w-0 flex-grow flex-col">
-        <Toolbar editor={editor} />
+        <Toolbar editor={editor} className="hidden sm:flex" />
         <EditorContent
           disabled={disableTextInput}
           editor={editor}
@@ -574,7 +577,14 @@ const InputBarContainer = ({
           </div>
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              {actions.includes("attachment") && (
+              <InputBarToolbarToggle
+                className="flex sm:hidden"
+                isOpen={isToolbarOpen}
+                setIsOpen={setIsToolbarOpen}
+                buttonSize={buttonSize}
+                editor={editor}
+              />
+              {actions.includes("attachment") && !isToolbarOpen && (
                 <>
                   <input
                     accept={getSupportedFileExtensions().join(",")}
@@ -602,7 +612,7 @@ const InputBarContainer = ({
                   />
                 </>
               )}
-              {actions.includes("tools") && (
+              {actions.includes("tools") && !isToolbarOpen && (
                 <ToolsPicker
                   owner={owner}
                   selectedMCPServerViews={selectedMCPServerViews}
@@ -613,27 +623,28 @@ const InputBarContainer = ({
                 />
               )}
               {(actions.includes("agents-list") ||
-                actions.includes("agents-list-with-actions")) && (
-                <AgentPicker
-                  owner={owner}
-                  size={buttonSize}
-                  onItemClick={(c) => {
-                    editorService.insertMention({
-                      type: "agent",
-                      id: c.sId,
-                      label: c.name,
-                      description: c.description,
-                      pictureUrl: c.pictureUrl,
-                    });
-                  }}
-                  agents={allAgents}
-                  showDropdownArrow={false}
-                  showFooterButtons={actions.includes(
-                    "agents-list-with-actions"
-                  )}
-                  disabled={disableTextInput}
-                />
-              )}
+                actions.includes("agents-list-with-actions")) &&
+                !isToolbarOpen && (
+                  <AgentPicker
+                    owner={owner}
+                    size={buttonSize}
+                    onItemClick={(c) => {
+                      editorService.insertMention({
+                        type: "agent",
+                        id: c.sId,
+                        label: c.name,
+                        description: c.description,
+                        pictureUrl: c.pictureUrl,
+                      });
+                    }}
+                    agents={allAgents}
+                    showDropdownArrow={false}
+                    showFooterButtons={actions.includes(
+                      "agents-list-with-actions"
+                    )}
+                    disabled={disableTextInput}
+                  />
+                )}
             </div>
             <div className="grow" />
             <div className="flex items-center gap-2 md:gap-1">
