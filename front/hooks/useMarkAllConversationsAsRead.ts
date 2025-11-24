@@ -39,7 +39,7 @@ export function useMarkAllConversationsAsRead({
       }
 
       setIsMarkingAllAsRead(false);
-      
+
       if (successCount === total) {
         sendNotification({
           type: "success",
