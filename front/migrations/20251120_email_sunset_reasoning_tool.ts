@@ -10,6 +10,8 @@ import { z } from "zod";
 
 const MAIL_CONCURRENCY = 5;
 
+const { DUST_CLIENT_FACING_URL } = process.env;
+
 const CsvRecordSchema = z.object({
   author_first_name: z.string(),
   email: z.string(),
@@ -54,6 +56,12 @@ async function sendReasoningToolRemovalEmail(
   const email = record.email.trim().toLowerCase();
   const agentList = record.agent_list.trim();
   const minReasoningEffort = record.min_reasoning_effort.trim().toLowerCase();
+  const workspaceId = record.workspace_id.trim();
+
+  const baseUrl = DUST_CLIENT_FACING_URL;
+  if (!baseUrl) {
+    throw new Error("DUST_CLIENT_FACING_URL is not defined");
+  }
 
   let body = `<p>Hi ${record.author_first_name},</p>
 
@@ -62,8 +70,11 @@ async function sendReasoningToolRemovalEmail(
 <ul>
 ${agentList
   .split(",")
-  // TODO: get agent name + sId, make it clickable.
-  .map((agent) => `  <li>${agent.trim()}</li>`)
+  .map((agent) => {
+    const [agentId, agentName] = agent.trim().split("|");
+    const agentUrl = `${baseUrl}/w/${workspaceId}/builder/agents/${agentId}`;
+    return `  <li><a href="${agentUrl}">${agentName}</a></li>`;
+  })
   .join("\n")}
 </ul>
 
