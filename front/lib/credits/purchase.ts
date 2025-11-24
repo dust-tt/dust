@@ -199,7 +199,19 @@ export async function createProCreditPurchase({
     invoiceOrLineItemId: invoice.id,
   });
 
-  await finalizeCreditPurchaseInvoice(invoice);
+  const finalizeResult = await finalizeCreditPurchaseInvoice(invoice);
+  if (finalizeResult.isErr()) {
+    logger.error(
+      {
+        error: finalizeResult.error.error_message,
+        workspaceId: workspace.sId,
+        invoiceId: invoice.id,
+        amountCents,
+      },
+      "[Credit Purchase] Failed to finalize credit purchase invoice"
+    );
+    return new Err(new Error(finalizeResult.error.error_message));
+  }
 
   logger.info(
     {
