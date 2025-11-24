@@ -148,7 +148,7 @@ function PokeRecentWebhookRequestsContent({
               }
               contentChildren={
                 request.payload ? (
-                  <div className="rounded">
+                  <div className="max-w-full overflow-x-auto rounded">
                     <pre className="max-h-64 overflow-auto text-xs">
                       <Markdown
                         forcedTextSize="xs"
