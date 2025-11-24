@@ -1,13 +1,11 @@
 import { vi } from "vitest";
 
 import type {
+  ModelConfig,
   OpenAIModelFamily,
   OpenAIWhitelistedModelId,
 } from "@app/lib/api/llm/clients/openai/types";
-import {
-  OPENAI_MODEL_FAMILIES,
-  OPENAI_MODEL_FAMILY_CONFIGS,
-} from "@app/lib/api/llm/clients/openai/types";
+import { OPENAI_MODEL_FAMILY_CONFIGS } from "@app/lib/api/llm/clients/openai/types";
 import {
   TEST_CONVERSATIONS,
   TEST_STRUCTURED_OUTPUT_CONVERSATIONS,
@@ -111,15 +109,16 @@ vi.mock("@app/lib/api/regions/config", async (importOriginal) => {
 function getOpenAIModelFamilyFromModelId(
   modelId: OpenAIWhitelistedModelId
 ): OpenAIModelFamily {
-  const family = OPENAI_MODEL_FAMILIES.find((family) =>
-    new Set(OPENAI_MODEL_FAMILY_CONFIGS[family].modelIds).has(modelId)
-  );
+  const family = Object.entries(OPENAI_MODEL_FAMILY_CONFIGS).find(
+    ([_family, config]: [string, ModelConfig]) =>
+      config.modelIds.includes(modelId)
+  )?.[0];
   if (!family) {
     throw new Error(
       `Model ID ${modelId} does not belong to any OpenAI model family`
     );
   }
-  return family;
+  return family as OpenAIModelFamily;
 }
 
 /**
