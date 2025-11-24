@@ -72,7 +72,7 @@ export async function fetchToolStepIndexDistribution(
               aggs: {
                 configs: {
                   terms: {
-                    field: "tools_used.mcp_server_configuration_sid.keyword",
+                    field: "tools_used.mcp_server_configuration_sid",
                     size: 50,
                     missing: MISSING_CONFIG_NAME,
                   },
