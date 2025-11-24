@@ -25,18 +25,18 @@ type TermBucket<T = string | number> = {
 
 type ConfigBucket = TermBucket<string>;
 
-type ToolBucket = TermBucket<string> & {
+type ServerBucket = TermBucket<string> & {
   configs?: estypes.AggregationsMultiBucketAggregateBase<ConfigBucket>;
 };
 
 type StepBucket = TermBucket<number> & {
-  tool_names?: estypes.AggregationsMultiBucketAggregateBase<ToolBucket>;
+  servers?: estypes.AggregationsMultiBucketAggregateBase<ServerBucket>;
 };
 
 type ToolStepIndexAggs = {
   steps?: {
     by_step?: estypes.AggregationsMultiBucketAggregateBase<StepBucket>;
-    top_tools?: estypes.AggregationsMultiBucketAggregateBase<ToolBucket>;
+    top_tools?: estypes.AggregationsMultiBucketAggregateBase<ServerBucket>;
   };
 };
 
@@ -50,7 +50,7 @@ export async function fetchToolStepIndexDistribution(
         // Global top tools across all steps (not strictly required client-side but useful if needed)
         top_tools: {
           terms: {
-            field: "tools_used.tool_name",
+            field: "tools_used.server_name",
             size: 50,
             order: { _count: "desc" },
           },
@@ -62,9 +62,9 @@ export async function fetchToolStepIndexDistribution(
             order: { _key: "asc" },
           },
           aggs: {
-            tool_names: {
+            servers: {
               terms: {
-                field: "tools_used.tool_name",
+                field: "tools_used.server_name",
                 size: 50,
               },
               aggs: {
@@ -97,11 +97,13 @@ export async function fetchToolStepIndexDistribution(
   );
 
   const byStep: ToolStepIndexByStep[] = stepBuckets.map((sb) => {
-    const toolBuckets = bucketsToArray<ToolBucket>(sb.tool_names?.buckets);
+    const serverBuckets = bucketsToArray<ServerBucket>(sb.servers?.buckets);
 
     const tools: ToolStepIndexByStep["tools"] = {};
-    toolBuckets.forEach((tb) => {
-      const configBuckets = bucketsToArray<ConfigBucket>(tb.configs?.buckets);
+    serverBuckets.forEach((serverBucket) => {
+      const configBuckets = bucketsToArray<ConfigBucket>(
+        serverBucket.configs?.buckets
+      );
       const breakdown = configBuckets.reduce<Record<string, number>>(
         (acc, cb) => {
           const sid = cb.key;
@@ -113,8 +115,8 @@ export async function fetchToolStepIndexDistribution(
         {}
       );
 
-      tools[asDisplayToolName(tb.key)] = {
-        count: tb.doc_count ?? DEFAULT_METRIC_VALUE,
+      tools[asDisplayToolName(serverBucket.key)] = {
+        count: serverBucket.doc_count ?? DEFAULT_METRIC_VALUE,
         breakdown: Object.keys(breakdown).length > 0 ? breakdown : undefined,
       };
     });
