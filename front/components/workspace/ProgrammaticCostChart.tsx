@@ -69,8 +69,6 @@ function getColorClassName(
 ): string {
   if (!groupBy) {
     return COST_PALETTE.costCents;
-  } else if (groupName === "others") {
-    return OTHER_LABEL.color;
   } else if (groupBy === "origin" && isUserMessageOrigin(groupName)) {
     return getSourceColor(groupName);
   } else {
@@ -105,9 +103,7 @@ function GroupedTooltip(
       const groupKey = p.name;
 
       let label;
-      if (groupKey === "others") {
-        label = OTHER_LABEL.label;
-      } else if (groupBy === "origin" && isUserMessageOrigin(groupKey)) {
+      if (groupBy === "origin" && isUserMessageOrigin(groupKey)) {
         label = USER_MESSAGE_ORIGIN_LABELS[groupKey].label;
       } else {
         label =
@@ -256,14 +252,7 @@ export function ProgrammaticCostChart({
 
   const enabledGroupKeys = groupBy ? filter[groupBy] : undefined;
 
-  const groupKeys = availableGroupsArray
-    .map((g) => g.groupKey)
-    .filter((key) => visibleGroupKeys.has(key));
-
-  // Add others group key if it exists at the end of the array
-  if (visibleGroupKeys.has("others")) {
-    groupKeys.push("others");
-  }
+  const groupKeys = availableGroupsArray.map((g) => g.groupKey);
 
   const legendItems: LegendItem[] = availableGroupsArray.map((group) => {
     const colorClassName = getColorClassName(
@@ -273,7 +262,9 @@ export function ProgrammaticCostChart({
     );
 
     let label = group.groupLabel;
-    if (groupBy === "origin" && isUserMessageOrigin(group.groupKey)) {
+    if (group.groupKey === "others") {
+      label = OTHER_LABEL.label;
+    } else if (groupBy === "origin" && isUserMessageOrigin(group.groupKey)) {
       label = USER_MESSAGE_ORIGIN_LABELS[group.groupKey].label;
     }
 
@@ -281,12 +272,14 @@ export function ProgrammaticCostChart({
     const isActive =
       !enabledGroupKeys || enabledGroupKeys.includes(group.groupKey);
     const isVisible = visibleGroupKeys.has(group.groupKey);
+    const canFilter = !["total", "others", "unknown"].includes(group.groupKey);
+
     return {
       key: group.groupKey,
       label,
       colorClassName:
         !isVisible && isActive ? OTHER_LABEL.color : colorClassName,
-      onClick: groupBy ? () => handleFilterChange(group) : undefined,
+      onClick: canFilter ? () => handleFilterChange(group) : undefined,
       isActive,
     };
   });
@@ -314,7 +307,7 @@ export function ProgrammaticCostChart({
     // Add each group's cumulative cost to the data point using labels from availableGroups
     // Keep undefined values as-is so Recharts doesn't render those points
     point.groups.forEach((g) => {
-      dataPoint[g.groupKey] = g.programmaticCostCents;
+      dataPoint[g.groupKey] = g.cumulatedCostCents;
     });
 
     return dataPoint;
