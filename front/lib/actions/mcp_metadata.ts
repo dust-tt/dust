@@ -38,7 +38,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { getUntrustedEgressAgent } from "@app/lib/egress";
 import { isWorkspaceUsingStaticIP } from "@app/lib/misc";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
-import { validateJsonSchema } from "@app/lib/utils/json_schemas";
 import logger from "@app/logger/logger";
 import type { MCPOAuthUseCase, OAuthProvider, Result } from "@app/types";
 import {
@@ -471,21 +470,13 @@ export function extractMetadataFromServerVersion(
 }
 
 export function extractMetadataFromTools(tools: Tool[]): MCPToolType[] {
-  return tools.map((tool) => {
-    let inputSchema: JSONSchema | undefined;
-
-    const { isValid, error } = validateJsonSchema(tool.inputSchema);
-    if (isValid) {
-      inputSchema = tool.inputSchema as JSONSchema;
-    } else {
-      logger.error(
-        `[MCP] Invalid input schema for tool: ${tool.name} (${error}).`
-      );
-    }
+  return tools.map(({ name, description, inputSchema }) => {
     return {
-      name: tool.name,
-      description: tool.description ?? "",
-      inputSchema,
+      name,
+      description: description ?? "",
+      // TODO: the types are slightly incompatible: we have an unknown as the values of `properties`
+      //  whereas JSONSchema expects a JSONSchema7Definition.
+      inputSchema: inputSchema as JSONSchema,
     };
   });
 }
