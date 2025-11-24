@@ -52,7 +52,12 @@ import { useConversationsNavigation } from "@app/components/assistant/conversati
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { InAppBanner } from "@app/components/assistant/conversation/InAppBanner";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import {
+  getGroupConversationsByDate,
+  getGroupConversationsByUnreadAndActionRequired,
+} from "@app/components/assistant/conversation/utils";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
+import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
 import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
@@ -63,7 +68,6 @@ import {
 } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import { removeDiacritics, subFilter } from "@app/lib/utils";
 import {
   getAgentBuilderRoute,
   getConversationRoute,
@@ -82,6 +86,12 @@ type GroupLabel =
   | "Last Month"
   | "Last 12 Months"
   | "Older";
+
+// Handle "infinite" scroll
+// We only start with 10 conversations shown (no need more on mobile) and load more until we fill the parent container.
+// We use an intersection observer to detect when the bottom of the list is visible and load more conversations.
+// That way, the list starts lightweight and only show more conversations when needed.
+const CONVERSATIONS_PER_PAGE = 10;
 
 export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   const router = useRouter();
@@ -113,6 +123,17 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     useConversations({
       workspaceId: owner.sId,
     });
+
+  const {
+    readConversations,
+    unreadConversations,
+    actionRequiredConversations,
+  } = useMemo(() => {
+    return getGroupConversationsByUnreadAndActionRequired(conversations);
+  }, [conversations]);
+
+  const shouldDisplayInbox =
+    unreadConversations.length > 0 || actionRequiredConversations.length > 0;
 
   useEffect(() => {
     const handleConversationsUpdated = () => {
@@ -245,60 +266,6 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     setShowDeleteDialog(null);
   }, [conversations, doDelete, sendNotification]);
 
-  const groupConversationsByDate = (
-    conversations: ConversationWithoutContentType[]
-  ) => {
-    const today = moment().startOf("day");
-    const yesterday = moment().subtract(1, "days").startOf("day");
-    const lastWeek = moment().subtract(1, "weeks").startOf("day");
-    const lastMonth = moment().subtract(1, "months").startOf("day");
-    const lastYear = moment().subtract(1, "years").startOf("day");
-
-    const groups: Record<GroupLabel, ConversationWithoutContentType[]> = {
-      Today: [],
-      Yesterday: [],
-      "Last Week": [],
-      "Last Month": [],
-      "Last 12 Months": [],
-      Older: [],
-    };
-
-    conversations.forEach((conversation: ConversationWithoutContentType) => {
-      if (
-        titleFilter &&
-        !subFilter(
-          removeDiacritics(titleFilter).toLowerCase(),
-          removeDiacritics(conversation.title ?? "").toLowerCase()
-        )
-      ) {
-        return;
-      }
-
-      const updatedAt = moment(conversation.updated ?? conversation.created);
-      if (updatedAt.isSameOrAfter(today)) {
-        groups["Today"].push(conversation);
-      } else if (updatedAt.isSameOrAfter(yesterday)) {
-        groups["Yesterday"].push(conversation);
-      } else if (updatedAt.isSameOrAfter(lastWeek)) {
-        groups["Last Week"].push(conversation);
-      } else if (updatedAt.isSameOrAfter(lastMonth)) {
-        groups["Last Month"].push(conversation);
-      } else if (updatedAt.isSameOrAfter(lastYear)) {
-        groups["Last 12 Months"].push(conversation);
-      } else {
-        groups["Older"].push(conversation);
-      }
-    });
-
-    return groups;
-  };
-
-  // Handle "infinite" scroll
-  // We only start with 10 conversations shown (no need more on mobile) and load more until we fill the parent container.
-  // We use an intersection observer to detect when the bottom of the list is visible and load more conversations.
-  // That way, the list starts lightweight and only show more conversations when needed.
-  const CONVERSATIONS_PER_PAGE = 10;
-
   const [conversationsPage, setConversationsPage] = useState(0);
 
   const nextPage = useCallback(() => {
@@ -312,6 +279,10 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   const { ref, inView, entry } = useInView({
     root: conversationsNavigationRef.current,
     threshold: 0,
+  });
+
+  const { markAllAsRead, isMarkingAllAsRead } = useMarkAllConversationsAsRead({
+    owner,
   });
 
   useEffect(() => {
@@ -328,10 +299,14 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     }
   }, [inView, nextPage, entry, conversations.length, conversationsPage]);
 
-  const conversationsByDate = conversations.length
-    ? groupConversationsByDate(
-        conversations.slice(0, (conversationsPage + 1) * CONVERSATIONS_PER_PAGE)
-      )
+  const conversationsByDate = readConversations?.length
+    ? getGroupConversationsByDate({
+        conversations: readConversations.slice(
+          0,
+          (conversationsPage + 1) * CONVERSATIONS_PER_PAGE
+        ),
+        titleFilter,
+      })
     : ({} as Record<GroupLabel, ConversationWithoutContentType[]>);
 
   const { setAnimate } = useContext(InputBarContext);
@@ -528,13 +503,29 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
               </Label>
             )}
             <NavigationList
-              className="dd-privacy-mask h-full w-full px-3"
+              className="dd-privacy-mask h-full w-full"
               viewportRef={conversationsNavigationRef}
             >
-              {conversationsByDate && conversations.length > 0 && (
+              {shouldDisplayInbox && (
+                <div className="bg-background pb-3 dark:bg-background-night">
+                  <InboxConversationList
+                    unreadConversations={unreadConversations}
+                    actionRequiredConversations={actionRequiredConversations}
+                    dateLabel={`Inbox (${unreadConversations.length + actionRequiredConversations.length})`}
+                    isMultiSelect={isMultiSelect}
+                    isMarkingAllAsRead={isMarkingAllAsRead}
+                    onMarkAllAsRead={markAllAsRead}
+                    selectedConversations={selectedConversations}
+                    toggleConversationSelection={toggleConversationSelection}
+                    router={router}
+                    owner={owner}
+                  />
+                </div>
+              )}
+              {readConversations.length > 0 && (
                 <>
                   {Object.keys(conversationsByDate).map((dateLabel) => (
-                    <RenderConversations
+                    <ConversationList
                       key={dateLabel}
                       conversations={
                         conversationsByDate[dateLabel as GroupLabel]
@@ -567,7 +558,85 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   );
 }
 
-const RenderConversations = ({
+interface InboxConversationListProps {
+  unreadConversations: ConversationWithoutContentType[];
+  actionRequiredConversations: ConversationWithoutContentType[];
+  dateLabel: string;
+  isMultiSelect: boolean;
+  isMarkingAllAsRead: boolean;
+  onMarkAllAsRead: (conversations: ConversationWithoutContentType[]) => void;
+  selectedConversations: ConversationWithoutContentType[];
+  toggleConversationSelection: (c: ConversationWithoutContentType) => void;
+  router: NextRouter;
+  owner: WorkspaceType;
+}
+
+interface ConversationListContainerProps {
+  children: React.ReactNode;
+}
+
+const ConversationListContainer = ({
+  children,
+}: ConversationListContainerProps) => {
+  return <div className="px-3 sm:flex sm:flex-col sm:gap-0.5">{children}</div>;
+};
+
+const InboxConversationList = ({
+  unreadConversations,
+  actionRequiredConversations,
+  dateLabel,
+  isMultiSelect,
+  isMarkingAllAsRead,
+  onMarkAllAsRead,
+  ...props
+}: InboxConversationListProps) => {
+  if (!unreadConversations.length && !actionRequiredConversations.length) {
+    return null;
+  }
+
+  const shouldShowMarkAllAsReadButton =
+    unreadConversations.length > 0 && !isMultiSelect && onMarkAllAsRead;
+
+  const sortedInboxConversations = [
+    ...unreadConversations,
+    ...actionRequiredConversations,
+  ].sort((a, b) => {
+    return (b.updated ?? b.created) - (a.updated ?? b.created);
+  });
+
+  return (
+    <ConversationListContainer>
+      <div className="sticky top-0 z-10 flex items-center justify-between overflow-auto bg-background dark:bg-background-night">
+        <NavigationListLabel
+          label={dateLabel}
+          className="bg-background dark:bg-background-night"
+        />
+        {shouldShowMarkAllAsReadButton && (
+          <div className="flex">
+            <Button
+              size="xs"
+              variant="ghost"
+              label={`Mark as read`}
+              onClick={() => onMarkAllAsRead(unreadConversations)}
+              isLoading={isMarkingAllAsRead}
+              className="mt-2 text-muted-foreground dark:text-muted-foreground-night"
+            />
+          </div>
+        )}
+      </div>
+      {sortedInboxConversations.map((conversation) => (
+        <ConversationListItem
+          key={conversation.sId}
+          conversation={conversation}
+          isMultiSelect={isMultiSelect}
+          {...props}
+        />
+      ))}
+    </ConversationListContainer>
+  );
+};
+
+const ConversationList = ({
   conversations,
   dateLabel,
   ...props
@@ -585,20 +654,21 @@ const RenderConversations = ({
   }
 
   return (
-    <>
+    <ConversationListContainer>
       <NavigationListLabel
         label={dateLabel}
         isSticky
         className="bg-muted-background dark:bg-muted-background-night"
       />
+
       {conversations.map((conversation) => (
-        <RenderConversation
+        <ConversationListItem
           key={conversation.sId}
           conversation={conversation}
           {...props}
         />
       ))}
-    </>
+    </ConversationListContainer>
   );
 };
 
@@ -617,7 +687,7 @@ function getConversationDotStatus(
   return "idle";
 }
 
-const RenderConversation = ({
+const ConversationListItem = ({
   conversation,
   isMultiSelect,
   selectedConversations,
@@ -641,8 +711,7 @@ const RenderConversation = ({
   } = useConversationMenu();
 
   const conversationLabel =
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    conversation.title ||
+    conversation.title ??
     (moment(conversation.created).isSame(moment(), "day")
       ? "New Conversation"
       : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`);
