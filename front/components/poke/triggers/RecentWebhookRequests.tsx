@@ -7,9 +7,9 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import moment from "moment";
-import Link from "next/link";
 import React, { useState } from "react";
 
+import { TriggerFilterRenderer } from "@app/components/agent_builder/triggers/TriggerFilterRenderer";
 import { WebhookRequestStatusBadge } from "@app/components/agent_builder/triggers/WebhookRequestStatusBadge";
 import { usePokeWebhookRequests } from "@app/poke/swr/triggers";
 import type { LightWorkspaceType } from "@app/types";
@@ -41,6 +41,20 @@ export function PokeRecentWebhookRequests({
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground dark:text-muted-foreground-night">
               {trigger.naturalLanguageDescription}
             </p>
+          </div>
+        )}
+        {trigger.kind === "webhook" && (
+          <div className="bg-secondary mb-4 rounded-md border border-border p-4 dark:border-border-night">
+            <p className="text-sm font-medium text-foreground dark:text-foreground-night">
+              Filter
+            </p>
+            {trigger.configuration.filter ? (
+              <TriggerFilterRenderer data={trigger.configuration.filter} />
+            ) : (
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground dark:text-muted-foreground-night">
+                No filter
+              </p>
+            )}
           </div>
         )}
         <CollapsibleComponent
@@ -114,18 +128,7 @@ function PokeRecentWebhookRequestsContent({
     <div className="space-y-2">
       {wasRateLimited && (
         <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          <p>
-            Some requests were rate limited.
-            <br />
-            Contact{" "}
-            <Link
-              href="mailto:support@dust.tt?subject=Increase%20Webhook%20Trigger%20Rate%20Limit"
-              className="underline"
-            >
-              support@dust.tt
-            </Link>{" "}
-            to increase the rate limit for this trigger.
-          </p>
+          Some requests were rate limited.
         </div>
       )}
       <div className="flex flex-col px-4">
