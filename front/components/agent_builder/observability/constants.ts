@@ -48,11 +48,13 @@ export const INDEXED_COLORS = [
 export const MAX_TOOLS_DISPLAYED = 5;
 
 export const OTHER_LABEL = {
+  key: "others",
   label: "Others",
   color: "text-blue-300 dark:text-blue-300-night",
 };
 
 export const UNKNOWN_LABEL = {
+  key: "unknown",
   label: "Unknown",
   color: "text-gray-400 dark:text-gray-400-night",
 };
