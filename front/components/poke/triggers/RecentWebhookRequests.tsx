@@ -33,6 +33,16 @@ export function PokeRecentWebhookRequests({
         <h2 className="text-md font-bold">Webhook Request History</h2>
       </div>
       <div className="flex flex-grow flex-col justify-center p-4">
+        {trigger.naturalLanguageDescription && (
+          <div className="bg-secondary mb-4 rounded-md border border-border p-4 dark:border-border-night">
+            <p className="text-sm font-medium text-foreground dark:text-foreground-night">
+              Natural language description
+            </p>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground dark:text-muted-foreground-night">
+              {trigger.naturalLanguageDescription}
+            </p>
+          </div>
+        )}
         <CollapsibleComponent
           rootProps={{ defaultOpen, onOpenChange: setIsOpen }}
           triggerChildren={
