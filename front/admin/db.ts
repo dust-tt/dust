@@ -1,5 +1,6 @@
 import { ConversationMCPServerViewModel } from "@app/lib/models/assistant/actions/conversation_mcp_server_view";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
+import { InternalMCPServerCredentialModel } from "@app/lib/models/assistant/actions/internal_mcp_server_credentials";
 import {
   AgentChildAgentConfiguration,
   AgentMCPActionModel,
@@ -156,6 +157,7 @@ async function main() {
   await MCPServerViewModel.sync({ alter: true });
   await MCPServerConnection.sync({ alter: true });
   await RemoteMCPServerToolMetadataModel.sync({ alter: true });
+  await InternalMCPServerCredentialModel.sync({ alter: true });
 
   await ConversationMCPServerViewModel.sync({ alter: true });
 

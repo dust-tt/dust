@@ -14,7 +14,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import {
   getMcpServerDisplayName,
   isRemoteMCPServerType,
-  supportsBearerTokenConfiguration,
+  requiresBearerTokenConfiguration,
 } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useMCPServers, useMCPServerViews } from "@app/lib/swr/mcp_servers";
@@ -239,7 +239,7 @@ export function MCPServerDetails({
           // Calculate what changed.
           const diff = diffMCPServerForm(defaults, values, {
             isRemote: isRemoteMCPServerType(mcpServerView.server),
-            supportsBearerToken: supportsBearerTokenConfiguration(
+            requiresBearerToken: requiresBearerTokenConfiguration(
               mcpServerView.server
             ),
           });

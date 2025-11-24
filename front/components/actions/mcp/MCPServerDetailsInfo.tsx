@@ -8,7 +8,7 @@ import { RemoteMCPForm } from "@app/components/actions/mcp/RemoteMCPForm";
 import { ToolsList } from "@app/components/actions/mcp/ToolsList";
 import {
   isRemoteMCPServerType,
-  supportsBearerTokenConfiguration,
+  requiresBearerTokenConfiguration,
 } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { LightWorkspaceType } from "@app/types";
@@ -32,7 +32,7 @@ export function MCPServerDetailsInfo({
     return null;
   }
 
-  const supportsBearerToken = supportsBearerTokenConfiguration(
+  const requiresBearerToken = requiresBearerTokenConfiguration(
     mcpServerView.server
   );
   return (
@@ -52,7 +52,7 @@ export function MCPServerDetailsInfo({
       )}
       {isRemoteMCPServerType(mcpServerView.server) ? (
         <RemoteMCPForm mcpServer={mcpServerView.server} owner={owner} />
-      ) : supportsBearerToken ? (
+      ) : requiresBearerToken ? (
         <>
           <Separator />
           <InternalMCPBearerTokenForm />

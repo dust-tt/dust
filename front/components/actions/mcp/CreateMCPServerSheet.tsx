@@ -29,7 +29,7 @@ import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
   getMcpServerDisplayName,
-  supportsBearerTokenConfiguration,
+  requiresBearerTokenConfiguration,
 } from "@app/lib/actions/mcp_helper";
 import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
@@ -241,10 +241,26 @@ export function CreateMCPServerDialog({
     setExternalIsLoading(true);
     let server: MCPServerType | undefined;
     if (internalMCPServer) {
+      const sanitizedHeaders =
+        requiresBearerTokenConfiguration(internalMCPServer) &&
+        customHeaders.length > 0
+          ? sanitizeHeadersArray(customHeaders)
+          : undefined;
+
       const createRes = await createInternalMCPServer({
         name: internalMCPServer.name,
         oauthConnection,
         includeGlobal: true,
+        ...(requiresBearerTokenConfiguration(internalMCPServer) &&
+        (sharedSecret !== undefined || customHeaders.length > 0)
+          ? {
+              sharedSecret: sharedSecret,
+              customHeaders:
+                sanitizedHeaders && sanitizedHeaders.length > 0
+                  ? sanitizedHeaders
+                  : undefined,
+            }
+          : {}),
       });
 
       if (createRes.isErr()) {
@@ -258,37 +274,6 @@ export function CreateMCPServerDialog({
         return;
       }
       server = createRes.value.server;
-
-      if (
-        supportsBearerTokenConfiguration(internalMCPServer) &&
-        (sharedSecret ?? customHeaders.length > 0)
-      ) {
-        const sanitizedHeaders = sanitizeHeadersArray(customHeaders);
-        const credentialRes = await fetch(
-          `/api/w/${owner.sId}/mcp/${server.sId}`,
-          {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              sharedSecret: sharedSecret ?? null,
-              customHeaders:
-                sanitizedHeaders.length > 0 ? sanitizedHeaders : null,
-            }),
-          }
-        );
-
-        if (!credentialRes.ok) {
-          const body = await credentialRes.json();
-          sendNotification({
-            type: "error",
-            title: "Failed to save credentials",
-            description: body.error?.message || "Failed to save credentials",
-          });
-          setExternalIsLoading(false);
-          setIsLoading(false);
-          return;
-        }
-      }
     }
 
     if (remoteServerUrl) {
@@ -588,9 +573,26 @@ export function CreateMCPServerDialog({
             )}
 
           {internalMCPServer &&
-            !authorization &&
-            supportsBearerTokenConfiguration(internalMCPServer) && (
+            requiresBearerTokenConfiguration(internalMCPServer) && (
               <>
+                <p className="text-sm text-muted-foreground">
+                  {internalMCPServer.description}
+                  {internalMCPServer.documentationUrl && (
+                    <>
+                      {" "}
+                      <a
+                        href={internalMCPServer.documentationUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline"
+                      >
+                        See {getMcpServerDisplayName(internalMCPServer)}{" "}
+                        documentation.
+                      </a>
+                    </>
+                  )}
+                </p>
+
                 <div className="space-y-2">
                   <div className="flex items-center space-x-2">
                     <Label htmlFor="bearerToken">
@@ -621,7 +623,9 @@ export function CreateMCPServerDialog({
               </>
             )}
 
-          {!defaultServerConfig && (
+          {!defaultServerConfig &&
+            (!internalMCPServer ||
+              requiresBearerTokenConfiguration(internalMCPServer)) && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
@@ -646,29 +650,29 @@ export function CreateMCPServerDialog({
             </div>
           )}
             {!defaultServerConfig && !internalMCPServer && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Label htmlFor="customHeaders">Use custom headers</Label>
-                    <Tooltip
-                      trigger={
-                        <Icon
-                          visual={InformationCircleIcon}
-                          size="xs"
-                          className="text-gray-400"
-                        />
-                      }
-                      label="Custom headers can be added for advanced networking such as firewalls."
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Label htmlFor="customHeaders">Use custom headers</Label>
+                      <Tooltip
+                        trigger={
+                          <Icon
+                            visual={InformationCircleIcon}
+                            size="xs"
+                            className="text-gray-400"
+                          />
+                        }
+                        label="Custom headers can be added for advanced networking such as firewalls."
+                      />
+                    </div>
+                    <SliderToggle
+                      disabled={false}
+                      selected={useCustomHeaders}
+                      onClick={() => setUseCustomHeaders(!useCustomHeaders)}
                     />
                   </div>
-                  <SliderToggle
-                    disabled={false}
-                    selected={useCustomHeaders}
-                    onClick={() => setUseCustomHeaders(!useCustomHeaders)}
-                  />
                 </div>
-              </div>
-            )}
+              )}
 
             {useCustomHeaders && (
               <McpServerHeaders
@@ -702,7 +706,7 @@ export function CreateMCPServerDialog({
               (defaultServerConfig?.authMethod === "bearer" && !sharedSecret) ||
                 (internalMCPServer &&
                   !authorization &&
-                  supportsBearerTokenConfiguration(internalMCPServer) &&
+                  requiresBearerTokenConfiguration(internalMCPServer) &&
                   !sharedSecret) ||
               (!internalMCPServer && !validateUrl(remoteServerUrl).valid) ||
               isLoading,

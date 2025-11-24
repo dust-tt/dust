@@ -275,10 +275,14 @@ export function useCreateInternalMCPServer(owner: LightWorkspaceType) {
     name,
     oauthConnection,
     includeGlobal,
+    sharedSecret,
+    customHeaders,
   }: {
     name: string;
     oauthConnection?: MCPConnectionType;
     includeGlobal: boolean;
+    sharedSecret?: string;
+    customHeaders?: Array<{ key: string; value: string }>;
   }): Promise<Result<CreateMCPServerResponseBody, Error>> => {
     const response = await fetch(`/api/w/${owner.sId}/mcp`, {
       method: "POST",
@@ -289,6 +293,8 @@ export function useCreateInternalMCPServer(owner: LightWorkspaceType) {
         useCase: oauthConnection?.useCase,
         connectionId: oauthConnection?.connectionId,
         includeGlobal,
+        ...(sharedSecret !== undefined ? { sharedSecret } : {}),
+        ...(customHeaders !== undefined ? { customHeaders } : {}),
       }),
     });
 

@@ -5,7 +5,7 @@ import { fromError } from "zod-validation-error";
 import type { CustomResourceIconType } from "@app/components/resources/resources_icons";
 import {
   getServerTypeAndIdFromSId,
-  supportsBearerTokenConfiguration,
+  requiresBearerTokenConfiguration,
 } from "@app/lib/actions/mcp_helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { MCPServerType } from "@app/lib/api/mcp";
@@ -311,8 +311,8 @@ async function handleInternalPatch(
     });
   }
 
-  const supportsBearerToken = supportsBearerTokenConfiguration(server.toJSON());
-  if (!supportsBearerToken) {
+  const requiresBearerToken = requiresBearerTokenConfiguration(server.toJSON());
+  if (!requiresBearerToken) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {

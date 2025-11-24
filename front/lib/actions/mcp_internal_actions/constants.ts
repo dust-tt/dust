@@ -1298,7 +1298,7 @@ The directive should be used to display a clickable version of the agent name in
       return !featureFlags.includes("slab_mcp");
     },
     isPreview: true,
-    supportsBearerToken: true,
+    requiresBearerToken: true,
     tools_stakes: {
       search_posts: "never_ask",
       get_post_contents: "never_ask",
@@ -1664,7 +1664,7 @@ The directive should be used to display a clickable version of the agent name in
     tools_stakes: Record<string, MCPToolStakeLevelType> | undefined;
     tools_retry_policies: Record<string, MCPToolRetryPolicyType> | undefined;
     timeoutMs: number | undefined;
-    supportsBearerToken?: boolean;
+    requiresBearerToken?: boolean;
     serverInfo: InternalMCPServerDefinitionType & { name: K };
   };
 };

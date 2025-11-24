@@ -2,7 +2,7 @@ import { Op } from "sequelize";
 
 import {
   autoInternalMCPServerNameToSId,
-  doesInternalMCPServerSupportBearerToken,
+  doesInternalMCPServerRequireBearerToken,
   internalMCPServerNameToSId,
 } from "@app/lib/actions/mcp_helper";
 import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions";
@@ -91,7 +91,7 @@ export class InternalMCPServerInMemoryResource {
     ...extractMetadataFromServerVersion(undefined),
     tools: [],
   };
-  private _internalServerCredential: InternalMCPServerCredentialModel | null =
+  private internalServerCredential: InternalMCPServerCredentialModel | null =
     null;
 
   constructor(id: string) {
@@ -117,11 +117,8 @@ export class InternalMCPServerInMemoryResource {
     }
 
     server.metadata = cachedMetadata;
-    server._internalServerCredential =
-      await InternalMCPServerInMemoryResource.fetchInternalServerCredential(
-        auth,
-        id
-      );
+    server.internalServerCredential =
+      await server.fetchInternalServerCredential(auth);
 
     return server;
   }
@@ -368,19 +365,6 @@ export class InternalMCPServerInMemoryResource {
     return removeNulls(resources);
   }
 
-  static async fetchInternalServerCredential(auth: Authenticator, id: string) {
-    if (!doesInternalMCPServerSupportBearerToken(id)) {
-      return null;
-    }
-
-    return InternalMCPServerCredentialModel.findOne({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        internalMCPServerId: id,
-      },
-    });
-  }
-
   async upsertCredentials(
     auth: Authenticator,
     {
@@ -403,21 +387,11 @@ export class InternalMCPServerInMemoryResource {
       );
     }
 
-    const r = getInternalMCPServerNameAndWorkspaceId(this.id);
-    if (r.isErr()) {
-      return new Err(
-        new DustError(
-          "unauthorized",
-          `Invalid internal MCP server ID: ${this.id}`
-        )
-      );
-    }
-
-    const workspaceModelId = r.value.workspaceModelId;
+    const workspaceId = auth.getNonNullableWorkspace().id;
 
     const existing = await InternalMCPServerCredentialModel.findOne({
       where: {
-        workspaceId: workspaceModelId,
+        workspaceId: workspaceId,
         internalMCPServerId: this.id,
       },
     });
@@ -444,14 +418,14 @@ export class InternalMCPServerInMemoryResource {
       record = existing;
     } else {
       record = await InternalMCPServerCredentialModel.create({
-        workspaceId: workspaceModelId,
+        workspaceId: workspaceId,
         internalMCPServerId: this.id,
         sharedSecret: sharedSecret ?? null,
         customHeaders: customHeaders ?? null,
       });
     }
 
-    this._internalServerCredential = record;
+    this.internalServerCredential = record;
 
     return new Ok(undefined);
   }
@@ -460,21 +434,21 @@ export class InternalMCPServerInMemoryResource {
     sharedSecret: string | null;
     customHeaders: Record<string, string> | null;
   } {
-    if (!doesInternalMCPServerSupportBearerToken(this.id)) {
+    if (!doesInternalMCPServerRequireBearerToken(this.id)) {
       return { sharedSecret: null, customHeaders: null };
     }
 
-    if (!this._internalServerCredential) {
+    if (!this.internalServerCredential) {
       return { sharedSecret: null, customHeaders: null };
     }
 
-    const redactedSecret = this._internalServerCredential.sharedSecret
-      ? redactString(this._internalServerCredential.sharedSecret, 4)
+    const redactedSecret = this.internalServerCredential.sharedSecret
+      ? redactString(this.internalServerCredential.sharedSecret, 4)
       : null;
 
-    const redactedHeaders = this._internalServerCredential.customHeaders
+    const redactedHeaders = this.internalServerCredential.customHeaders
       ? Object.fromEntries(
-          Object.entries(this._internalServerCredential.customHeaders).map(
+          Object.entries(this.internalServerCredential.customHeaders).map(
             ([key, value]) => [
               key,
               value !== null && value !== undefined
@@ -489,6 +463,19 @@ export class InternalMCPServerInMemoryResource {
       sharedSecret: redactedSecret,
       customHeaders: redactedHeaders,
     };
+  }
+
+  private async fetchInternalServerCredential(auth: Authenticator) {
+    if (!doesInternalMCPServerRequireBearerToken(this.id)) {
+      return null;
+    }
+
+    return InternalMCPServerCredentialModel.findOne({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        internalMCPServerId: this.id,
+      },
+    });
   }
 
   // Serialization.

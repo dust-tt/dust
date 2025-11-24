@@ -4,7 +4,7 @@ import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
   getMcpServerViewDescription,
   isRemoteMCPServerType,
-  supportsBearerTokenConfiguration,
+  requiresBearerTokenConfiguration,
 } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { HeaderRow } from "@app/types";
@@ -39,7 +39,7 @@ export function getMCPServerFormDefaults(
   mcpServerWithViews?: { views: Array<{ spaceId: string }> },
   spaces?: Array<{ sId: string; kind: string }>
 ): MCPServerFormValues {
-  const supportsBearerToken = supportsBearerTokenConfiguration(view.server);
+  const requiresBearerToken = requiresBearerTokenConfiguration(view.server);
 
   // Tool settings defaults.
   const toolSettings: Record<string, ToolSettings> = {};
@@ -86,7 +86,7 @@ export function getMCPServerFormDefaults(
     sharingSettings,
   };
 
-  if (supportsBearerToken) {
+  if (requiresBearerToken) {
     defaults.sharedSecret = view.server.sharedSecret ?? "";
     defaults.customHeaders = Object.entries(
       view.server.customHeaders ?? {}
@@ -104,7 +104,7 @@ export function getMCPServerFormDefaults(
 }
 
 export function getMCPServerFormSchema(view: MCPServerViewType) {
-  const supportsBearerToken = supportsBearerTokenConfiguration(view.server);
+  const requiresBearerToken = requiresBearerTokenConfiguration(view.server);
   let schema = z.object({
     name: z.string().min(1, "Name is required."),
     description: z.string().min(1, "Description is required."),
@@ -123,7 +123,7 @@ export function getMCPServerFormSchema(view: MCPServerViewType) {
     });
   }
 
-  if (supportsBearerToken) {
+  if (requiresBearerToken) {
     schema = schema.extend({
       sharedSecret: z.string().optional(),
       customHeaders: z
@@ -162,10 +162,10 @@ export function diffMCPServerForm(
   current: MCPServerFormValues,
   {
     isRemote,
-    supportsBearerToken,
+    requiresBearerToken,
   }: {
     isRemote: boolean;
-    supportsBearerToken: boolean;
+    requiresBearerToken: boolean;
   }
 ): FormDiffType {
   const out: FormDiffType = {};
@@ -188,7 +188,7 @@ export function diffMCPServerForm(
     }
   }
 
-  if (supportsBearerToken) {
+  if (requiresBearerToken) {
     if (
       typeof current.sharedSecret === "string" &&
       current.sharedSecret !== initial.sharedSecret &&

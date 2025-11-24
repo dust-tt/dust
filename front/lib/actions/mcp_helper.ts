@@ -177,7 +177,7 @@ export function getMcpServerDisplayName(
   return displayName;
 }
 
-export function doesInternalMCPServerSupportBearerToken(
+export function doesInternalMCPServerRequireBearerToken(
   serverId: string
 ): boolean {
   const res = getInternalMCPServerNameAndWorkspaceId(serverId);
@@ -186,18 +186,18 @@ export function doesInternalMCPServerSupportBearerToken(
   }
   const serverConfig = INTERNAL_MCP_SERVERS[res.value.name];
   return (
-    "supportsBearerToken" in serverConfig &&
-    serverConfig.supportsBearerToken === true
+    "requiresBearerToken" in serverConfig &&
+    serverConfig.requiresBearerToken === true
   );
 }
 
-export function supportsBearerTokenConfiguration(
+export function requiresBearerTokenConfiguration(
   server: MCPServerType
 ): boolean {
   if (isRemoteMCPServerType(server)) {
     return true;
   }
-  return doesInternalMCPServerSupportBearerToken(server.sId);
+  return doesInternalMCPServerRequireBearerToken(server.sId);
 }
 
 // Only includes action types that are actually used in templates.

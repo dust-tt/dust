@@ -21,7 +21,7 @@ import {
 } from "@app/lib/actions/mcp_authentication";
 import { MCPServerNotFoundError } from "@app/lib/actions/mcp_errors";
 import {
-  doesInternalMCPServerSupportBearerToken,
+  doesInternalMCPServerRequireBearerToken,
   getServerTypeAndIdFromSId,
 } from "@app/lib/actions/mcp_helper";
 import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
@@ -181,9 +181,8 @@ export const connectToMCPServer = async (
 
           // For internal servers, to avoid any unnecessary work, we only try to fetch the token if we are trying to run a tool.
           if (agentLoopContext?.runContext) {
-            let bearerTokenApplied = false;
             const bearerTokenCredentials =
-              doesInternalMCPServerSupportBearerToken(params.mcpServerId)
+              doesInternalMCPServerRequireBearerToken(params.mcpServerId)
                 ? await InternalMCPServerCredentialModel.findOne({
                     where: {
                       workspaceId: auth.getNonNullableWorkspace().id,
@@ -192,11 +191,11 @@ export const connectToMCPServer = async (
                   })
                 : null;
 
-            if (
-              bearerTokenCredentials &&
-              (bearerTokenCredentials.sharedSecret ??
-                bearerTokenCredentials.customHeaders)
-            ) {
+            const metadata = extractMetadataFromServerVersion(
+              mcpClient.getServerVersion()
+            );
+
+            if (bearerTokenCredentials) {
               const authInfo: AuthInfo = {
                 token: bearerTokenCredentials.sharedSecret ?? "",
                 expiresAt: undefined,
@@ -211,15 +210,7 @@ export const connectToMCPServer = async (
 
               client.setAuthInfo(authInfo);
               server.setAuthInfo(authInfo);
-              bearerTokenApplied = !!bearerTokenCredentials.sharedSecret;
-            }
-
-            const metadata = extractMetadataFromServerVersion(
-              mcpClient.getServerVersion()
-            );
-
-            // The server requires authentication.
-            if (metadata.authorization && !bearerTokenApplied) {
+            } else if (metadata.authorization) {
               if (!params.oAuthUseCase) {
                 throw new Error(
                   "Internal server requires authentication but no use case was provided - Should never happen"
