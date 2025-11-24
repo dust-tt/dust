@@ -26,6 +26,27 @@ function subscribeToPurchaseLoading(callback: () => void) {
   };
 }
 
+// Global state for tracking post-purchase refresh count per workspace
+const postPurchaseRefreshState = new Map<string, number>();
+const postPurchaseRefreshListeners = new Set<() => void>();
+
+function getPostPurchaseRefreshCount(workspaceId: string): number {
+  return postPurchaseRefreshState.get(workspaceId) ?? Infinity;
+}
+
+function incrementPostPurchaseRefreshCount(workspaceId: string): void {
+  const current = postPurchaseRefreshState.get(workspaceId) ?? Infinity;
+  if (current < 5) {
+    postPurchaseRefreshState.set(workspaceId, current + 1);
+    postPurchaseRefreshListeners.forEach((listener) => listener());
+  }
+}
+
+function resetPostPurchaseRefreshCount(workspaceId: string): void {
+  postPurchaseRefreshState.set(workspaceId, 0);
+  postPurchaseRefreshListeners.forEach((listener) => listener());
+}
+
 export function useCredits({
   workspaceId,
   disabled,
@@ -38,7 +59,17 @@ export function useCredits({
   const { data, error, mutate, isValidating } = useSWRWithDefaults(
     `/api/w/${workspaceId}/credits`,
     creditsFetcher,
-    { disabled, refreshInterval: 5000 }
+    {
+      disabled,
+      refreshInterval: () => {
+        const count = getPostPurchaseRefreshCount(workspaceId);
+        if (count < 5) {
+          incrementPostPurchaseRefreshCount(workspaceId);
+          return 5000;
+        }
+        return 0;
+      },
+    }
   );
 
   return {
@@ -93,6 +124,8 @@ export function usePurchaseCredits({ workspaceId }: { workspaceId: string }) {
           });
           return false;
         }
+
+        resetPostPurchaseRefreshCount(workspaceId);
 
         sendNotification({
           type: "success",

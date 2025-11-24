@@ -53,9 +53,10 @@ async function handler(
         .map((credit) => ({
           id: credit.id,
           type: credit.type,
-          initialAmount: credit.initialAmount,
-          remainingAmount: credit.remainingAmount,
-          consumedAmount: credit.initialAmount - credit.remainingAmount,
+          initialAmount: credit.initialAmountCents,
+          remainingAmount:
+            credit.initialAmountCents - credit.consumedAmountCents,
+          consumedAmount: credit.consumedAmountCents,
           startDate: credit.startDate ? credit.startDate.getTime() : null,
           expirationDate: credit.expirationDate
             ? credit.expirationDate.getTime()

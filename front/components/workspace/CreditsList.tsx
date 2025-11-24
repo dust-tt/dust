@@ -70,10 +70,7 @@ function sortCredits(credits: CreditDisplayData[]): CreditDisplayData[] {
 
 function isExpired(credit: CreditDisplayData): boolean {
   const now = Date.now();
-  return (
-    (credit.expirationDate !== null && credit.expirationDate <= now) ||
-    credit.remainingAmount === 0
-  );
+  return credit.expirationDate !== null && credit.expirationDate <= now;
 }
 
 function getTableRows(credits: CreditDisplayData[]): RowData[] {
