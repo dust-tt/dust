@@ -65,8 +65,13 @@ export function ViewTriggerTable({
               </PokeTableRow>
               <PokeTableRow>
                 <PokeTableHead>Custom Prompt</PokeTableHead>
-                {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
-                <PokeTableCell>{trigger.customPrompt || "None"}</PokeTableCell>
+                <PokeTableCell>{trigger.customPrompt ?? "None"}</PokeTableCell>
+              </PokeTableRow>
+              <PokeTableRow>
+                <PokeTableHead>Natural Language Description</PokeTableHead>
+                <PokeTableCell>
+                  {trigger.naturalLanguageDescription ?? "None"}
+                </PokeTableCell>
               </PokeTableRow>
               <PokeTableRow>
                 <PokeTableHead>Enabled</PokeTableHead>
