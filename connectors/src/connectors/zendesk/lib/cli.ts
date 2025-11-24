@@ -9,7 +9,7 @@ import {
   shouldSyncTicket,
   syncTicket,
 } from "@connectors/connectors/zendesk/lib/sync_ticket";
-import type { ZendeskFetchedTicket } from "@connectors/connectors/zendesk/lib/types";
+import type { ZendeskTicket } from "@connectors/connectors/zendesk/lib/types";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
   fetchZendeskCurrentUser,
@@ -64,7 +64,7 @@ function getTagsArgs(args: ZendeskCommandType["args"]) {
 }
 
 async function checkTicketShouldBeSynced(
-  ticket: ZendeskFetchedTicket | null,
+  ticket: ZendeskTicket | null,
   configuration: ZendeskConfigurationResource,
   {
     brandId,

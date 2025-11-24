@@ -3,7 +3,7 @@ import {
   getCategoryInternalId,
   getHelpCenterInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
-import type { ZendeskFetchedCategory } from "@connectors/connectors/zendesk/lib/types";
+import type { ZendeskCategory } from "@connectors/connectors/zendesk/lib/types";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
   deleteDataSourceDocument,
@@ -80,7 +80,7 @@ export async function syncCategory({
 }: {
   connectorId: ModelId;
   brandId: number;
-  category: ZendeskFetchedCategory;
+  category: ZendeskCategory;
   isHelpCenterSelected: boolean;
   currentSyncDateMs: number;
   dataSourceConfig: DataSourceConfig;
