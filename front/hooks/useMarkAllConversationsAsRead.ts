@@ -35,11 +35,11 @@ export function useMarkAllConversationsAsRead({
           successCount += 1;
         } catch (error) {
           // do nothing
-        } finally {
-          setIsMarkingAllAsRead(false);
         }
       }
 
+      setIsMarkingAllAsRead(false);
+      
       if (successCount === total) {
         sendNotification({
           type: "success",
