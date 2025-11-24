@@ -54,10 +54,7 @@ const sendReasoningToolRemovalEmail = async (
   const agentList = record.agent_list.trim();
   const minReasoningEffort = record.min_reasoning_effort.trim().toLowerCase();
 
-  // TODO: get first name.
-  const firstName = email.split("@")[0];
-
-  let body = `<p>Hi ${firstName},</p>
+  let body = `<p>Hi ${record.first_name},</p>
 
 <p>We're reaching out because you've built the following agents that use the Reasoning tool, which we'll be removing from Dust on [DATE].</p>
 
