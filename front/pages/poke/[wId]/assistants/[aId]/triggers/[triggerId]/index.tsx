@@ -7,10 +7,8 @@ import PokeLayout from "@app/components/poke/PokeLayout";
 import { ViewTriggerTable } from "@app/components/poke/triggers/view";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type {
-  ConversationWithoutContentType,
   LightAgentConfigurationType,
   LightWorkspaceType,
   WorkspaceType,
@@ -21,7 +19,6 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   trigger: TriggerType;
   agent: LightAgentConfigurationType;
   owner: LightWorkspaceType;
-  conversations: ConversationWithoutContentType[];
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
 
@@ -49,17 +46,11 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     };
   }
 
-  const conversations = await ConversationResource.listConversationsForTrigger(
-    auth,
-    triggerId
-  );
-
   return {
     props: {
       trigger: trigger.toJSON(),
       agent: agentConfiguration,
       owner,
-      conversations,
     },
   };
 });
@@ -68,26 +59,29 @@ export default function TriggerPage({
   trigger,
   agent,
   owner,
-  conversations,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
-    <div className="flex flex-col gap-y-6">
-      <ViewTriggerTable trigger={trigger} agent={agent} owner={owner} />
-      <div className="border-t border-gray-200 pt-6">
-        <h2 className="mb-4 text-lg font-semibold">Plugins</h2>
-        <PluginList
-          pluginResourceTarget={{
-            resourceType: "triggers",
-            resourceId: trigger.sId,
-            workspace: owner,
-          }}
-        />
+    <>
+      <h3 className="text-xl font-bold">
+        Trigger {trigger.name} on agent {agent.name}{" "}
+        <a href={`/poke/${owner.sId}`} className="text-highlight-500">
+          {owner.name}
+        </a>
+      </h3>
+      <div className="flex flex-row gap-x-6">
+        <ViewTriggerTable trigger={trigger} agent={agent} owner={owner} />
+        <div className="mt-4 flex grow flex-col">
+          <PluginList
+            pluginResourceTarget={{
+              resourceType: "triggers",
+              resourceId: trigger.sId,
+              workspace: owner,
+            }}
+          />
+          <ConversationDataTable owner={owner} triggerId={trigger.sId} />
+        </div>
       </div>
-      <div className="border-t border-gray-200 pt-6">
-        <h2 className="mb-4 text-lg font-semibold">Conversations</h2>
-        <ConversationDataTable owner={owner} conversations={conversations} />
-      </div>
-    </div>
+    </>
   );
 }
 
@@ -101,7 +95,6 @@ TriggerPage.getLayout = (
     owner: WorkspaceType;
     agent: LightAgentConfigurationType;
     trigger: TriggerType;
-    conversations: ConversationWithoutContentType[];
   }
 ) => {
   return (
