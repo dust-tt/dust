@@ -4,7 +4,7 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
-import { Op } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -31,7 +31,7 @@ export class CreditResource extends BaseResource<CreditModel> {
   }
 
   // Create a new credit line for a workspace.
-  // Note: initialAmount is immutable after creation.
+  // Note: initialAmountCents is immutable after creation.
   // The credit is not consumable until start() is called (startDate is set).
   static async makeNew(
     auth: Authenticator,
@@ -61,32 +61,28 @@ export class CreditResource extends BaseResource<CreditModel> {
     expirationDate?: Date,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
-    try {
-      const effectiveStartDate = startDate ?? new Date();
-      const effectiveExpirationDate =
-        expirationDate ??
-        new Date(Date.now() + CREDIT_EXPIRATION_DAYS * 24 * 60 * 60 * 1000);
+    const effectiveStartDate = startDate ?? new Date();
+    const effectiveExpirationDate =
+      expirationDate ??
+      new Date(Date.now() + CREDIT_EXPIRATION_DAYS * 24 * 60 * 60 * 1000);
 
-      // Update only if startDate is null (ensures idempotency)
-      await this.model.update(
-        {
-          startDate: effectiveStartDate,
-          expirationDate: effectiveExpirationDate,
+    // Update only if startDate is null (ensures idempotency)
+    await this.model.update(
+      {
+        startDate: effectiveStartDate,
+        expirationDate: effectiveExpirationDate,
+      },
+      {
+        where: {
+          id: this.id,
+          workspaceId: this.workspaceId,
+          startDate: null,
         },
-        {
-          where: {
-            id: this.id,
-            workspaceId: this.workspaceId,
-            startDate: null,
-          },
-          transaction,
-        }
-      );
+        transaction,
+      }
+    );
 
-      return new Ok(undefined);
-    } catch (err) {
-      return new Err(normalizeError(err));
-    }
+    return new Ok(undefined);
   }
 
   private static async baseFetch(
@@ -112,7 +108,13 @@ export class CreditResource extends BaseResource<CreditModel> {
     const now = new Date();
     return this.baseFetch(auth, {
       where: {
-        remainingAmount: { [Op.gt]: 0 },
+        // Credit must have remaining balance (consumed < initial)
+        [Op.and]: [
+          Sequelize.where(Sequelize.col("consumedAmountCents"), {
+            [Op.lt]: Sequelize.col("initialAmountCents"),
+          }),
+        ],
+
         // Credit must be started (startDate not null and <= now)
         startDate: { [Op.ne]: null, [Op.lte]: now },
         // Credit must not be expired
@@ -158,14 +160,21 @@ export class CreditResource extends BaseResource<CreditModel> {
     if (amountInCents <= 0) {
       return new Err(new Error("Amount to consume must be strictly positive."));
     }
-    try {
-      const now = new Date();
-      const [, affectedCount] = await this.model.decrement("remainingAmount", {
+    const now = new Date();
+    const [, affectedCount] = await this.model.increment(
+      "consumedAmountCents",
+      {
         by: amountInCents,
         where: {
           id: this.id,
           workspaceId: this.workspaceId,
-          remainingAmount: { [Op.gte]: amountInCents },
+          // Ensure sufficient remaining balance (consumed + amount <= initial)
+          [Op.and]: [
+            Sequelize.where(
+              Sequelize.literal('"initialAmountCents" - "consumedAmountCents"'),
+              { [Op.gte]: amountInCents }
+            ),
+          ],
           // Credit must be started (startDate not null and <= now)
           startDate: { [Op.ne]: null, [Op.lte]: now },
           // Credit must not be expired
@@ -175,18 +184,16 @@ export class CreditResource extends BaseResource<CreditModel> {
           ],
         },
         transaction,
-      });
-      if (!affectedCount || affectedCount < 1) {
-        return new Err(
-          new Error(
-            "Insufficient credit on this line, or credit not yet started/already expired."
-          )
-        );
       }
-      return new Ok(undefined);
-    } catch (e) {
-      return new Err(normalizeError(e));
+    );
+    if (!affectedCount || affectedCount < 1) {
+      return new Err(
+        new Error(
+          "Insufficient credit on this line, or credit not yet started/already expired."
+        )
+      );
     }
+    return new Ok(undefined);
   }
 
   async delete(
@@ -209,7 +216,8 @@ export class CreditResource extends BaseResource<CreditModel> {
       id: this.id,
       workspaceId: this.workspaceId,
       type: this.type,
-      remainingAmount: this.remainingAmount,
+      initialAmountCents: this.initialAmountCents,
+      consumedAmountCents: this.consumedAmountCents,
       startDate: this.startDate ? this.startDate.toISOString() : null,
       expirationDate: this.expirationDate
         ? this.expirationDate.toISOString()
