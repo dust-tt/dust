@@ -135,7 +135,7 @@ export default function CreateAgent({
       assistantTemplate={assistantTemplate}
     >
       <Head>
-        <title>{`Dust - New Agent`}</title>
+        <title>Dust - New Agent</title>
       </Head>
       <AgentBuilder
         agentConfiguration={
