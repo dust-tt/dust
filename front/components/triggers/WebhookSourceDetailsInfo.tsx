@@ -97,7 +97,7 @@ export function WebhookSourceDetailsInfo({
 
   const webhookUrl = useMemo(() => {
     return buildWebhookUrl({
-      apiBaseUrl: config.getDustAPIConfig().url,
+      apiBaseUrl: config.getClientFacingUrl(),
       workspaceId: owner.sId,
       webhookSource: webhookSourceView.webhookSource,
     });
