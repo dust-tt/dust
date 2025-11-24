@@ -374,6 +374,25 @@ async function handler(
                 "[Stripe Webhook] Error processing credit purchase"
               );
             }
+          } else if (invoice.billing_reason === "subscription_cycle") {
+            const freeCreditsResult =
+              await grantFreeCreditsOnSubscriptionRenewal({
+                auth,
+                invoice,
+                stripeSubscription,
+              });
+
+            if (freeCreditsResult.isErr()) {
+              logger.error(
+                {
+                  error: freeCreditsResult.error,
+                  invoiceId: invoice.id,
+                  stripeSubscriptionId: invoice.subscription,
+                  workspaceId: subscription.workspace.sId,
+                },
+                "[Stripe Webhook] Error granting free credits on renewal"
+              );
+            }
           } else if (!isCreditPurchaseInvoice(invoice)) {
             await subscription.update({ paymentFailingSince: null });
           }
