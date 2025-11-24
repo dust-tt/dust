@@ -19,8 +19,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { Result, WithAPIErrorResponse } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types";
 
 const GROUP_BY_KEYS = ["agent", "origin", "apiKey"] as const;
 
@@ -36,7 +35,20 @@ const FilterSchema = z.record(z.enum(GROUP_BY_KEYS), z.string().array());
 
 const QuerySchema = z.object({
   groupBy: z.enum(GROUP_BY_KEYS).optional(),
-  filter: z.string().optional(),
+  filter: z
+    .string()
+    .optional()
+    .transform((val) => {
+      if (!val) {
+        return undefined;
+      }
+      try {
+        return JSON.parse(val);
+      } catch {
+        return val; // Return original to trigger validation error
+      }
+    })
+    .pipe(FilterSchema.optional()),
   selectedMonth: z.string().optional(),
 });
 
@@ -136,24 +148,6 @@ function getDatesInRange(startOfMonth: Date, endDate: Date): number[] {
   return dates;
 }
 
-function parseFilterParams(
-  filterString: string | undefined
-): Result<Partial<Record<GroupByType, string[]>> | undefined, Error> {
-  if (filterString) {
-    try {
-      const parsedFilter = JSON.parse(filterString);
-      const filterValidation = FilterSchema.safeParse(parsedFilter);
-      if (!filterValidation.success) {
-        return new Err(Error(filterValidation.error.message));
-      }
-      return new Ok(filterValidation.data);
-    } catch (error) {
-      return new Err(normalizeError(error));
-    }
-  }
-  return new Ok(undefined);
-}
-
 function getSelectedFilterClauses(
   filterParams: Partial<Record<GroupByType, string[]>> | undefined,
   excluded?: GroupByType
@@ -229,19 +223,7 @@ async function handler(
         });
       }
 
-      const { groupBy, selectedMonth, filter: filterString } = q.data;
-
-      // Parse and validate the filter JSON
-      const filterParams = parseFilterParams(filterString);
-      if (filterParams.isErr()) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: `Invalid filter parameter: ${filterParams.error.message}`,
-          },
-        });
-      }
+      const { groupBy, selectedMonth, filter: filterParams } = q.data;
 
       // Get selected date range
       const now = new Date();
@@ -280,7 +262,7 @@ async function handler(
         bool: {
           filter: [
             ...baseFilterClauses,
-            ...getSelectedFilterClauses(filterParams.value),
+            ...getSelectedFilterClauses(filterParams),
           ],
         },
       };
@@ -360,7 +342,7 @@ async function handler(
         }
 
         let availableGroupBuckets = groupBuckets;
-        if (filterParams.value) {
+        if (filterParams) {
           const availableGroupsResult = await searchAnalytics<
             never,
             GroupedAggs
@@ -369,7 +351,7 @@ async function handler(
               bool: {
                 filter: [
                   ...baseFilterClauses,
-                  ...getSelectedFilterClauses(filterParams.value, groupBy),
+                  ...getSelectedFilterClauses(filterParams, groupBy),
                 ],
               },
             },
