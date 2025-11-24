@@ -5,8 +5,9 @@ import { asDisplayToolName } from "@app/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
+import { buildConfigBreakdown, MISSING_CONFIG_NAME } from "./tool_breakdown";
+
 const DEFAULT_METRIC_VALUE = 0;
-export const MISSING_CONFIG_NAME = "__no_config__";
 
 type ToolExecutionToolMetrics = {
   count: number;
@@ -123,18 +124,7 @@ export async function fetchToolExecutionMetrics(
           : DEFAULT_METRIC_VALUE;
 
       const serverDisplayName = asDisplayToolName(sb.key);
-
-      const configBuckets = bucketsToArray<ConfigBucket>(sb.configs?.buckets);
-      const breakdown = configBuckets.reduce<Record<string, number>>(
-        (acc, cb) => {
-          const sid = cb.key;
-          if (sid && sid !== MISSING_CONFIG_NAME) {
-            acc[sid] = (acc[sid] ?? 0) + (cb.doc_count ?? DEFAULT_METRIC_VALUE);
-          }
-          return acc;
-        },
-        {}
-      );
+      const breakdown = buildConfigBreakdown(sb.configs);
 
       tools[serverDisplayName] = {
         count: total,

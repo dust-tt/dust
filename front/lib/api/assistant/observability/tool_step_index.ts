@@ -5,8 +5,9 @@ import { asDisplayToolName } from "@app/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
+import { buildConfigBreakdown, MISSING_CONFIG_NAME } from "./tool_breakdown";
+
 const DEFAULT_METRIC_VALUE = 0;
-const MISSING_CONFIG_NAME = "__no_config__";
 
 export type ToolStepIndexByStep = {
   step: number;
@@ -102,19 +103,7 @@ export async function fetchToolStepIndexDistribution(
 
     const tools: ToolStepIndexByStep["tools"] = {};
     serverBuckets.forEach((serverBucket) => {
-      const configBuckets = bucketsToArray<ConfigBucket>(
-        serverBucket.configs?.buckets
-      );
-      const breakdown = configBuckets.reduce<Record<string, number>>(
-        (acc, cb) => {
-          const sid = cb.key;
-          if (sid && sid !== MISSING_CONFIG_NAME) {
-            acc[sid] = (acc[sid] ?? 0) + (cb.doc_count ?? DEFAULT_METRIC_VALUE);
-          }
-          return acc;
-        },
-        {}
-      );
+      const breakdown = buildConfigBreakdown(serverBucket.configs);
 
       tools[asDisplayToolName(serverBucket.key)] = {
         count: serverBucket.doc_count ?? DEFAULT_METRIC_VALUE,
