@@ -17,11 +17,17 @@ import {
   SliderToggle,
   Tooltip,
 } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { MCPServerOAuthConnexion } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
+import type {
+  CustomResourceIconType,
+  InternalAllowedIconType,
+} from "@app/components/resources/resources_icons";
+import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
+import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import type { MCPServerType } from "@app/lib/api/mcp";
@@ -298,6 +304,27 @@ export function CreateMCPServerSheet({
     return "Static OAuth";
   };
 
+  const toolName: string = useMemo(() => {
+    if (internalMCPServer) {
+      return getMcpServerDisplayName(internalMCPServer);
+    }
+    if (defaultServerConfig) {
+      return defaultServerConfig.name;
+    }
+    return "MCP Server";
+  }, [internalMCPServer, defaultServerConfig]);
+
+  const toolIcon: InternalAllowedIconType | CustomResourceIconType =
+    useMemo(() => {
+      if (internalMCPServer) {
+        return internalMCPServer.icon;
+      }
+      if (defaultServerConfig) {
+        return defaultServerConfig.icon;
+      }
+      return DEFAULT_MCP_SERVER_ICON;
+    }, [internalMCPServer, defaultServerConfig]);
+
   return (
     <Sheet
       open={isOpen}
@@ -309,11 +336,10 @@ export function CreateMCPServerSheet({
       <SheetContent size="lg">
         <SheetHeader>
           <SheetTitle>
-            {internalMCPServer
-              ? `Add ${getMcpServerDisplayName(internalMCPServer)}`
-              : defaultServerConfig
-                ? `Add ${defaultServerConfig.name}`
-                : "Add MCP Server"}
+            <div className="flex items-center gap-2">
+              {getAvatarFromIcon(toolIcon, "sm")}
+              <span>Configure {toolName}</span>
+            </div>
           </SheetTitle>
         </SheetHeader>
         <SheetContainer className="space-y-4">
@@ -487,6 +513,7 @@ export function CreateMCPServerSheet({
 
           {authorization && (
             <MCPServerOAuthConnexion
+              toolName={toolName}
               authorization={authorization}
               authCredentials={authCredentials}
               useCase={useCase}
