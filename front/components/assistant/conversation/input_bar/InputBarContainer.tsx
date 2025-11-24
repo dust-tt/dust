@@ -21,6 +21,7 @@ import {
   getDisplayNameFromPastedFileId,
   getPastedFileName,
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
+import { Toolbar } from "@app/components/assistant/conversation/input_bar/toolbar/Toolbar";
 import { ToolsPicker } from "@app/components/assistant/ToolsPicker";
 import { VoicePicker } from "@app/components/assistant/VoicePicker";
 import { getIcon } from "@app/components/resources/resources_icons";
@@ -526,6 +527,7 @@ const InputBarContainer = ({
       }}
     >
       <div className="flex w-0 flex-grow flex-col">
+        <Toolbar editor={editor} />
         <EditorContent
           disabled={disableTextInput}
           editor={editor}
