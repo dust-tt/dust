@@ -7,6 +7,7 @@ const config: KnipConfig = {
     "**/cli.ts",
     "scripts/**/*.ts",
     "mailing/**/*.{ts,js}",
+    "next-sitemap.config.js",
   ],
   project: ["**/*.{js,jsx,ts,tsx}"],
   rules: {
