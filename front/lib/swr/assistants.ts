@@ -18,6 +18,7 @@ import {
 import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
 import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
+import type { GetAgentMcpConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/mcp_configurations";
 import type { GetErrorRateResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/error_rate";
 import type { GetFeedbackDistributionResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/feedback-distribution";
 import type { GetLatencyResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/latency";
@@ -29,7 +30,6 @@ import type { GetToolStepIndexResponse } from "@app/pages/api/w/[wId]/assistant/
 import type { GetUsageMetricsResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/usage-metrics";
 import type { GetVersionMarkersResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/version-markers";
 import type { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/usage";
-import type { GetAgentMcpConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/mcp_configurations";
 import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api/w/[wId]/assistant/builder/slack/channels_linked_with_agent";
 import type { GetMemberResponseBody } from "@app/pages/api/w/[wId]/members/[uId]";
 import type { PostAgentUserFavoriteRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_favorite";
