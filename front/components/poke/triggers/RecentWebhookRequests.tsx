@@ -114,18 +114,7 @@ function PokeRecentWebhookRequestsContent({
     <div className="space-y-2">
       {wasRateLimited && (
         <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          <p>
-            Some requests were rate limited.
-            <br />
-            Contact{" "}
-            <Link
-              href="mailto:support@dust.tt?subject=Increase%20Webhook%20Trigger%20Rate%20Limit"
-              className="underline"
-            >
-              support@dust.tt
-            </Link>{" "}
-            to increase the rate limit for this trigger.
-          </p>
+          Some requests were rate limited.
         </div>
       )}
       <div className="flex flex-col px-4">
