@@ -5,6 +5,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
   Input,
+  Label,
 } from "@dust-tt/sparkle";
 import { Hoverable } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
@@ -18,7 +19,6 @@ import type {
 import {
   getProviderRequiredOAuthCredentialInputs,
   isSupportedOAuthCredential,
-  OAUTH_PROVIDER_NAMES,
 } from "@app/types";
 
 export const OAUTH_USE_CASE_TO_LABEL: Record<MCPOAuthUseCase, string> = {
@@ -27,6 +27,7 @@ export const OAUTH_USE_CASE_TO_LABEL: Record<MCPOAuthUseCase, string> = {
 };
 
 type MCPServerOauthConnexionProps = {
+  toolName: string;
   authorization: AuthorizationInfo;
   authCredentials: OAuthCredentials | null;
   useCase: MCPOAuthUseCase | null;
@@ -37,6 +38,7 @@ type MCPServerOauthConnexionProps = {
 };
 
 export function MCPServerOAuthConnexion({
+  toolName,
   authorization,
   authCredentials,
   useCase,
@@ -118,8 +120,10 @@ export function MCPServerOAuthConnexion({
     >
       <>
         {authorization.supported_use_cases.length > 1 && containerRef && (
-          <div className="w-full space-y-2">
-            <div className="heading-base">Authentication type</div>
+          <div className="w-full space-y-4">
+            <div className="heading-lg text-foreground dark:text-foreground-night">
+              How do you want to connect {toolName}?
+            </div>
             <div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -167,45 +171,55 @@ export function MCPServerOAuthConnexion({
           )}
         </div>
 
-        {inputs &&
-          Object.entries(inputs).map(([key, inputData]) => {
-            if (inputData.value) {
-              // If the credential is already set, we don't need to ask the user for it.
-              return null;
-            }
+        {inputs && (
+          <div className="w-full space-y-4 pt-6">
+            <div className="heading-lg text-foreground dark:text-foreground-night">
+              Required information to connect {toolName}
+            </div>
+            {inputs &&
+              Object.entries(inputs).map(([key, inputData]) => {
+                if (inputData.value) {
+                  // If the credential is already set, we don't need to ask the user for it.
+                  return null;
+                }
 
-            if (!isSupportedOAuthCredential(key)) {
-              // Can't happen but to make typescript happy.
-              return null;
-            }
+                if (!isSupportedOAuthCredential(key)) {
+                  // Can't happen but to make typescript happy.
+                  return null;
+                }
 
-            const value = authCredentials?.[key] ?? "";
-            return (
-              <div key={key} className="w-full space-y-1">
-                <div className="heading-base">{inputData.label}</div>
-                <Input
-                  id={key}
-                  value={value}
-                  onChange={(e) =>
-                    setAuthCredentials({
-                      ...authCredentials,
-                      [key]: e.target.value,
-                    })
-                  }
-                  message={inputData.helpMessage}
-                  messageStatus={
-                    value.length > 0 &&
-                    inputData.validator &&
-                    !inputData.validator(value)
-                      ? "error"
-                      : undefined
-                  }
-                />
-              </div>
-            );
-          })}
+                const value = authCredentials?.[key] ?? "";
+                return (
+                  <div key={key} className="w-full space-y-1">
+                    <Label className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                      {inputData.label}
+                    </Label>
+                    <Input
+                      id={key}
+                      value={value}
+                      onChange={(e) =>
+                        setAuthCredentials({
+                          ...authCredentials,
+                          [key]: e.target.value,
+                        })
+                      }
+                      message={inputData.helpMessage}
+                      messageStatus={
+                        value.length > 0 &&
+                        inputData.validator &&
+                        !inputData.validator(value)
+                          ? "error"
+                          : undefined
+                      }
+                    />
+                  </div>
+                );
+              })}
+          </div>
+        )}
+
         {documentationUrl && (
-          <div className="w-full text-muted-foreground dark:text-muted-foreground-night">
+          <div className="w-full pt-6 text-muted-foreground dark:text-muted-foreground-night">
             Questions ? Read{" "}
             <Hoverable
               href={documentationUrl}
@@ -214,7 +228,7 @@ export function MCPServerOAuthConnexion({
             >
               our guide
             </Hoverable>{" "}
-            on {OAUTH_PROVIDER_NAMES[authorization.provider]}
+            on {toolName}.
           </div>
         )}
       </>
