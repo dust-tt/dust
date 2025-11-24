@@ -115,8 +115,14 @@ async function handler(
         });
       }
 
-      const { content, context, mentions, blocking, skipToolsValidation } =
-        r.data;
+      const {
+        content,
+        context,
+        mentions,
+        blocking,
+        skipToolsValidation,
+        runAgentContext,
+      } = r.data;
 
       if (isEmptyString(context.username)) {
         return apiError(req, res, {
@@ -162,8 +168,7 @@ async function handler(
         }
       }
 
-      const isRunAgent =
-        context.origin === "run_agent" || context.origin === "agent_handover";
+      const isRunAgent = !!runAgentContext;
       if (isRunAgent && !auth.isSystemKey()) {
         return apiError(req, res, {
           status_code: 401,
@@ -174,6 +179,21 @@ async function handler(
           },
         });
       }
+
+      if (
+        context.origin === "agent_handover" ||
+        context.origin === "run_agent" ||
+        context.originMessageId
+      ) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "use runAgentContext instead of origin.",
+          },
+        });
+      }
+
       const ctx: UserMessageContext = {
         clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
         email: context.email?.toLowerCase() ?? null,
@@ -190,6 +210,7 @@ async function handler(
           ? await postUserMessageAndWaitForCompletion(auth, {
               content,
               context: ctx,
+              runAgentContext,
               conversation,
               mentions,
               skipToolsValidation: skipToolsValidation ?? false,
@@ -197,6 +218,7 @@ async function handler(
           : await postUserMessage(auth, {
               content,
               context: ctx,
+              runAgentContext,
               conversation,
               mentions,
               skipToolsValidation: skipToolsValidation ?? false,

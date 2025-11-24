@@ -93,14 +93,16 @@ export class ConversationFactory {
     conversation,
     content,
     origin = "web",
-    originMessageId,
+    runAgentType,
+    runAgentOriginMessageId,
   }: {
     auth: Authenticator;
     workspace: WorkspaceType;
     conversation: ConversationType;
     content: string;
     origin?: UserMessageOrigin;
-    originMessageId?: string;
+    runAgentType?: "run_agent" | "agent_handover";
+    runAgentOriginMessageId?: string;
   }): Promise<{ messageRow: Message; userMessage: UserMessageType }> {
     const userMessageRow = await UserMessage.create({
       userId: auth.getNonNullableUser().id,
@@ -141,8 +143,14 @@ export class ConversationFactory {
         email: userMessageRow.userContextEmail,
         profilePictureUrl: userMessageRow.userContextProfilePictureUrl,
         origin: userMessageRow.userContextOrigin,
-        ...(originMessageId && { originMessageId }),
       },
+      ...(runAgentType &&
+        runAgentOriginMessageId && {
+          runAgentContext: {
+            type: runAgentType,
+            originMessageId: runAgentOriginMessageId,
+          },
+        }),
       rank: messageRow.rank,
     };
 

@@ -193,7 +193,11 @@ export class UserMessage extends WorkspaceAwareModel<UserMessage> {
   declare userContextEmail: string | null;
   declare userContextProfilePictureUrl: string | null;
   declare userContextOrigin: UserMessageOrigin | null;
+  // TODO(2025-11-24 PPUL): Remove this once data has been backfilled
   declare userContextOriginMessageId: string | null;
+
+  declare runAgentType: "run_agent" | "agent_handover" | null;
+  declare runAgentOriginMessageId: string | null;
 
   declare userContextLastTriggerRunAt: Date | null;
 
@@ -253,6 +257,7 @@ UserMessage.init(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    // TODO: Remove this once backfilled
     userContextOriginMessageId: {
       type: DataTypes.STRING(32),
       allowNull: true,
@@ -261,6 +266,14 @@ UserMessage.init(
       type: DataTypes.DATE,
       allowNull: true,
       defaultValue: null,
+    },
+    runAgentType: {
+      type: DataTypes.STRING(16),
+      allowNull: true,
+    },
+    runAgentOriginMessageId: {
+      type: DataTypes.STRING(32),
+      allowNull: true,
     },
   },
   {

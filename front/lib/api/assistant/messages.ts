@@ -225,12 +225,23 @@ async function batchRenderUserMessages(
         fullName: userMessage.userContextFullName,
         email: userMessage.userContextEmail,
         profilePictureUrl: userMessage.userContextProfilePictureUrl,
-        origin: userMessage.userContextOrigin,
-        originMessageId: userMessage.userContextOriginMessageId,
+        // TODO(2025-11-24 PPUL): Return real user origin even in case of run_agent, once extensions have been updated
+        origin: userMessage.runAgentType ?? userMessage.userContextOrigin,
+        // TODO(2025-11-24 PPUL): Remove once extensions have been updated
+        originMessageId:
+          userMessage.runAgentOriginMessageId ??
+          userMessage.userContextOriginMessageId,
         clientSideMCPServerIds: userMessage.clientSideMCPServerIds,
         lastTriggerRunAt:
           userMessage.userContextLastTriggerRunAt?.getTime() ?? null,
       },
+      runAgentContext:
+        userMessage.runAgentType && userMessage.runAgentOriginMessageId
+          ? {
+              type: userMessage.runAgentType,
+              originMessageId: userMessage.runAgentOriginMessageId,
+            }
+          : undefined,
     } satisfies UserMessageType;
   });
 }
@@ -429,6 +440,8 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         : null;
 
       let parentAgentMessage: Message | null = null;
+
+      // TODO(2025-11-24 PPUL): Return this block once data has been backfilled
       if (
         parentMessage &&
         parentMessage?.userMessage &&
@@ -438,6 +451,19 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         parentAgentMessage =
           messagesBySId.get(
             parentMessage.userMessage.userContextOriginMessageId
+          ) ?? null;
+      }
+      // END TODO
+
+      if (
+        parentMessage &&
+        parentMessage?.userMessage &&
+        parentMessage.userMessage.runAgentType === "agent_handover" &&
+        parentMessage.userMessage.runAgentOriginMessageId
+      ) {
+        parentAgentMessage =
+          messagesBySId.get(
+            parentMessage.userMessage.runAgentOriginMessageId
           ) ?? null;
       }
 
