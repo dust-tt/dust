@@ -1466,7 +1466,8 @@ export async function updateParentsFields({
     notionPageIds,
     notionDatabaseIds,
     runTimestamp.toString(),
-    async () => heartbeat()
+    async () => heartbeat(),
+    parentsLastUpdatedAt == 0
   );
 
   localLogger.info({ nbUpdated, nextCursors }, "Updated parents fields.");
