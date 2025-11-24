@@ -11,7 +11,7 @@ import {
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import {
   bucketsToArray,
-  groupTopNAndAggregateOthers,
+  ensureAtMostNGroups,
   searchAnalytics,
 } from "@app/lib/api/elasticsearch";
 import { getShouldTrackTokenUsageCostsESFilter } from "@app/lib/api/programmatic_usage_tracking";
@@ -345,8 +345,8 @@ async function handler(
           };
         });
 
-        // Group top 5 and aggregate others using extracted helper
-        const allGroupsToProcess = groupTopNAndAggregateOthers(
+        // Keep at most 5 groups
+        const allGroupsToProcess = ensureAtMostNGroups(
           groupsWithParsedPoints,
           5,
           "costCents"

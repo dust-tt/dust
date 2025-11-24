@@ -245,12 +245,6 @@ export function ProgrammaticCostChart({
   const availableGroupsArray = programmaticCostData?.availableGroups ?? [];
   const allGroupKeys = availableGroupsArray.map((g) => g.groupKey);
 
-  // Build map from groupKey to groupLabel from availableGroups.
-  const groupKeyToLabel = new Map<string, string>();
-  availableGroupsArray.forEach((group) => {
-    groupKeyToLabel.set(group.groupKey, group.groupLabel);
-  });
-
   // Extract visible group keys from filtered data.
   const visibleGroupKeys = new Set<string>();
   const points = programmaticCostData?.points ?? [];
