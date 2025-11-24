@@ -1,5 +1,11 @@
 import {
   Button,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuRadioGroup,
@@ -9,11 +15,6 @@ import {
   InformationCircleIcon,
   Input,
   Label,
-  Sheet,
-  SheetContainer,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
   SliderToggle,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -53,7 +54,7 @@ import { McpServerHeaders } from "./MCPServerHeaders";
 
 const DEFAULT_AUTH_METHOD = "oauth-dynamic";
 
-type RemoteMCPServerDetailsProps = {
+type CreateMCPServerDialogProps = {
   owner: WorkspaceType;
   internalMCPServer?: MCPServerType;
   setMCPServerToShow: (server: MCPServerType) => void;
@@ -63,7 +64,7 @@ type RemoteMCPServerDetailsProps = {
   defaultServerConfig?: DefaultRemoteMCPServerConfig;
 };
 
-export function CreateMCPServerSheet({
+export function CreateMCPServerDialog({
   owner,
   internalMCPServer,
   setMCPServerToShow,
@@ -71,7 +72,7 @@ export function CreateMCPServerSheet({
   isOpen = false,
   setIsOpen,
   defaultServerConfig,
-}: RemoteMCPServerDetailsProps) {
+}: CreateMCPServerDialogProps) {
   const sendNotification = useSendNotification();
   const [
     remoteMCPServerOAuthDiscoveryDone,
@@ -326,277 +327,276 @@ export function CreateMCPServerSheet({
     }, [internalMCPServer, defaultServerConfig]);
 
   return (
-    <Sheet
+    <Dialog
       open={isOpen}
       onOpenChange={(open) => {
         setIsOpen(open);
         resetState();
       }}
     >
-      <SheetContent size="lg">
-        <SheetHeader>
-          <SheetTitle>
+      <DialogContent size="lg" onClick={(e) => e.stopPropagation()}>
+        <DialogHeader>
+          <DialogTitle>
             <div className="flex items-center gap-2">
               {getAvatarFromIcon(toolIcon, "sm")}
               <span>Configure {toolName}</span>
             </div>
-          </SheetTitle>
-        </SheetHeader>
-        <SheetContainer className="space-y-4">
-          {!internalMCPServer &&
-            (!authorization || authorization.provider === "mcp_static") && (
-              <>
-                {defaultServerConfig && (
-                  <div className="mb-4">
-                    <p className="text-sm text-muted-foreground">
-                      {defaultServerConfig.description}
-                      {defaultServerConfig.documentationUrl && (
-                        <>
-                          {" "}
-                          <a
-                            href={defaultServerConfig.documentationUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary hover:underline"
-                          >
-                            See {defaultServerConfig.name} documentation.
-                          </a>
-                        </>
-                      )}
-                    </p>
-                    {defaultServerConfig.connectionInstructions && (
-                      <p className="mt-2 text-sm text-muted-foreground">
-                        {defaultServerConfig.connectionInstructions}
+          </DialogTitle>
+        </DialogHeader>
+        <DialogContainer>
+          <div className="space-y-4">
+            {!internalMCPServer &&
+              (!authorization || authorization.provider === "mcp_static") && (
+                <>
+                  {defaultServerConfig && (
+                    <div className="mb-4">
+                      <p className="text-sm text-muted-foreground">
+                        {defaultServerConfig.description}
+                        {defaultServerConfig.documentationUrl && (
+                          <>
+                            {" "}
+                            <a
+                              href={defaultServerConfig.documentationUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary hover:underline"
+                            >
+                              See {defaultServerConfig.name} documentation.
+                            </a>
+                          </>
+                        )}
                       </p>
-                    )}
-                  </div>
-                )}
-
-                {!defaultServerConfig?.url && (
-                  <div className="space-y-2">
-                    <Label htmlFor="url">URL</Label>
-                    <div className="flex space-x-2">
-                      <div className="flex-grow">
-                        <Input
-                          id="url"
-                          placeholder="https://example.com/api/mcp"
-                          value={remoteServerUrl}
-                          onChange={(e) => setRemoteServerUrl(e.target.value)}
-                          isError={!!error}
-                          message={error}
-                          autoFocus
-                        />
-                      </div>
+                      {defaultServerConfig.connectionInstructions && (
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          {defaultServerConfig.connectionInstructions}
+                        </p>
+                      )}
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {(!defaultServerConfig ||
-                  defaultServerConfig?.authMethod === "bearer") && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <Label>Authentication</Label>
-                        <Tooltip
-                          trigger={
-                            <Icon
-                              visual={InformationCircleIcon}
-                              size="xs"
-                              className="text-gray-400"
-                            />
-                          }
-                          label="Choose how to authenticate to the MCP server: Automatic discovery, Bearer token, or Static OAuth credentials."
-                        />
-                      </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="outline"
-                            isSelect
-                            label={getAuthMethodLabel()}
+                  {!defaultServerConfig?.url && (
+                    <div className="space-y-2">
+                      <Label htmlFor="url">URL</Label>
+                      <div className="flex space-x-2">
+                        <div className="flex-grow">
+                          <Input
+                            id="url"
+                            placeholder="https://example.com/api/mcp"
+                            value={remoteServerUrl}
+                            onChange={(e) => setRemoteServerUrl(e.target.value)}
+                            isError={!!error}
+                            message={error}
+                            autoFocus
                           />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          <DropdownMenuRadioGroup value={authMethod}>
-                            {!defaultServerConfig && (
-                              <DropdownMenuRadioItem
-                                value="oauth-dynamic"
-                                label="Automatic"
-                                onClick={() => {
-                                  setAuthMethod("oauth-dynamic");
-                                  setAuthorization(null);
-                                  setIsOAuthFormValid(true);
-                                }}
-                              />
-                            )}
-                            {(!defaultServerConfig ||
-                              defaultServerConfig?.authMethod === "bearer") && (
-                              <DropdownMenuRadioItem
-                                value="bearer"
-                                label={
-                                  defaultServerConfig?.authMethod === "bearer"
-                                    ? `${defaultServerConfig.name} API Key`
-                                    : "Bearer token"
-                                }
-                                onClick={() => {
-                                  setAuthMethod("bearer");
-                                  setAuthorization(null);
-                                  setIsOAuthFormValid(true);
-                                }}
-                              />
-                            )}
-                            {!defaultServerConfig && (
-                              <DropdownMenuRadioItem
-                                value="oauth-static"
-                                label="Static OAuth"
-                                onClick={() => {
-                                  setAuthMethod("oauth-static");
-                                  setAuthorization({
-                                    provider: "mcp_static",
-                                    supported_use_cases: [
-                                      "platform_actions",
-                                      "personal_actions",
-                                    ],
-                                  });
-                                  setIsOAuthFormValid(false);
-                                }}
-                              />
-                            )}
-                          </DropdownMenuRadioGroup>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                        </div>
+                      </div>
                     </div>
-                    {(authMethod === "oauth-dynamic" ||
-                      defaultServerConfig?.authMethod === "oauth-dynamic") && (
-                      <div className="text-xs text-muted-foreground">
-                        Dust will automatically discover if OAuth authentication
-                        is required. If OAuth is not needed, the server will be
-                        accessed without authentication. Otherwise, Dust will
-                        try to use dynamic client registration to get the OAuth
-                        credentials.
+                  )}
+
+                  {(!defaultServerConfig ||
+                    defaultServerConfig?.authMethod === "bearer") && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <Label>Authentication</Label>
+                          <Tooltip
+                            trigger={
+                              <Icon
+                                visual={InformationCircleIcon}
+                                size="xs"
+                                className="text-gray-400"
+                              />
+                            }
+                            label="Choose how to authenticate to the MCP server: Automatic discovery, Bearer token, or Static OAuth credentials."
+                          />
+                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="outline"
+                              isSelect
+                              label={getAuthMethodLabel()}
+                            />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuRadioGroup value={authMethod}>
+                              {!defaultServerConfig && (
+                                <DropdownMenuRadioItem
+                                  value="oauth-dynamic"
+                                  label="Automatic"
+                                  onClick={() => {
+                                    setAuthMethod("oauth-dynamic");
+                                    setAuthorization(null);
+                                    setIsOAuthFormValid(true);
+                                  }}
+                                />
+                              )}
+                              {(!defaultServerConfig ||
+                                defaultServerConfig?.authMethod ===
+                                  "bearer") && (
+                                <DropdownMenuRadioItem
+                                  value="bearer"
+                                  label={
+                                    defaultServerConfig?.authMethod === "bearer"
+                                      ? `${defaultServerConfig.name} API Key`
+                                      : "Bearer token"
+                                  }
+                                  onClick={() => {
+                                    setAuthMethod("bearer");
+                                    setAuthorization(null);
+                                    setIsOAuthFormValid(true);
+                                  }}
+                                />
+                              )}
+                              {!defaultServerConfig && (
+                                <DropdownMenuRadioItem
+                                  value="oauth-static"
+                                  label="Static OAuth"
+                                  onClick={() => {
+                                    setAuthMethod("oauth-static");
+                                    setAuthorization({
+                                      provider: "mcp_static",
+                                      supported_use_cases: [
+                                        "platform_actions",
+                                        "personal_actions",
+                                      ],
+                                    });
+                                    setIsOAuthFormValid(false);
+                                  }}
+                                />
+                              )}
+                            </DropdownMenuRadioGroup>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
-                    )}
-                    {(authMethod === "bearer" ||
-                      defaultServerConfig?.authMethod === "bearer") && (
-                      <div className="flex-grow">
-                        <Input
-                          id="sharedSecret"
-                          placeholder={
-                            defaultServerConfig?.authMethod === "bearer"
-                              ? `Paste your ${defaultServerConfig.name} API key here`
-                              : authMethod === "bearer"
-                                ? "Paste the Bearer Token here"
-                                : ""
-                          }
-                          disabled={authMethod !== "bearer"}
-                          value={sharedSecret}
-                          onChange={(e) => setSharedSecret(e.target.value)}
-                          isError={
-                            defaultServerConfig?.authMethod === "bearer" &&
-                            !sharedSecret
-                          }
-                        />
-                      </div>
-                    )}
-                    {!defaultServerConfig && authMethod === "oauth-static" && (
-                      <div className="text-xs text-muted-foreground">
-                        The redirect URI to allow is{" "}
-                        <strong>
-                          {window.origin + "/oauth/mcp_static/finalize"}
-                        </strong>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </>
+                      {(authMethod === "oauth-dynamic" ||
+                        defaultServerConfig?.authMethod ===
+                          "oauth-dynamic") && (
+                        <div className="text-xs text-muted-foreground">
+                          Dust will automatically discover if OAuth
+                          authentication is required. If OAuth is not needed,
+                          the server will be accessed without authentication.
+                          Otherwise, Dust will try to use dynamic client
+                          registration to get the OAuth credentials.
+                        </div>
+                      )}
+                      {(authMethod === "bearer" ||
+                        defaultServerConfig?.authMethod === "bearer") && (
+                        <div className="flex-grow">
+                          <Input
+                            id="sharedSecret"
+                            placeholder={
+                              defaultServerConfig?.authMethod === "bearer"
+                                ? `Paste your ${defaultServerConfig.name} API key here`
+                                : authMethod === "bearer"
+                                  ? "Paste the Bearer Token here"
+                                  : ""
+                            }
+                            disabled={authMethod !== "bearer"}
+                            value={sharedSecret}
+                            onChange={(e) => setSharedSecret(e.target.value)}
+                            isError={
+                              defaultServerConfig?.authMethod === "bearer" &&
+                              !sharedSecret
+                            }
+                          />
+                        </div>
+                      )}
+                      {!defaultServerConfig &&
+                        authMethod === "oauth-static" && (
+                          <div className="text-xs text-muted-foreground">
+                            The redirect URI to allow is{" "}
+                            <strong>
+                              {window.origin + "/oauth/mcp_static/finalize"}
+                            </strong>
+                          </div>
+                        )}
+                    </div>
+                  )}
+                </>
+              )}
+
+            {authorization && (
+              <MCPServerOAuthConnexion
+                toolName={toolName}
+                authorization={authorization}
+                authCredentials={authCredentials}
+                useCase={useCase}
+                setUseCase={setUseCase}
+                setAuthCredentials={setAuthCredentials}
+                setIsFormValid={setIsOAuthFormValid}
+                documentationUrl={
+                  internalMCPServer?.documentationUrl ?? undefined
+                }
+              />
             )}
 
-          {authorization && (
-            <MCPServerOAuthConnexion
-              toolName={toolName}
-              authorization={authorization}
-              authCredentials={authCredentials}
-              useCase={useCase}
-              setUseCase={setUseCase}
-              setAuthCredentials={setAuthCredentials}
-              setIsFormValid={setIsOAuthFormValid}
-              documentationUrl={
-                internalMCPServer?.documentationUrl ?? undefined
-              }
-            />
-          )}
-
-          {!defaultServerConfig && !internalMCPServer && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Label htmlFor="customHeaders">Use custom headers</Label>
-                  <Tooltip
-                    trigger={
-                      <Icon
-                        visual={InformationCircleIcon}
-                        size="xs"
-                        className="text-gray-400"
-                      />
-                    }
-                    label="Custom headers can be added for advanced networking such as firewalls."
+            {!defaultServerConfig && !internalMCPServer && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Label htmlFor="customHeaders">Use custom headers</Label>
+                    <Tooltip
+                      trigger={
+                        <Icon
+                          visual={InformationCircleIcon}
+                          size="xs"
+                          className="text-gray-400"
+                        />
+                      }
+                      label="Custom headers can be added for advanced networking such as firewalls."
+                    />
+                  </div>
+                  <SliderToggle
+                    disabled={false}
+                    selected={useCustomHeaders}
+                    onClick={() => setUseCustomHeaders(!useCustomHeaders)}
                   />
                 </div>
-                <SliderToggle
-                  disabled={false}
-                  selected={useCustomHeaders}
-                  onClick={() => setUseCustomHeaders(!useCustomHeaders)}
-                />
               </div>
-            </div>
-          )}
+            )}
 
-          {useCustomHeaders && (
-            <McpServerHeaders
-              headers={customHeaders}
-              onHeadersChange={(headers) => setCustomHeaders(headers)}
-            />
-          )}
-        </SheetContainer>
-        <div className="mt-2">
-          <div className="flex flex-row gap-2 border-t border-border px-3 py-3 dark:border-border-night">
-            <Button
-              label="Cancel"
-              variant="outline"
-              onClick={() => {
-                setIsOpen(false);
-                resetState();
-              }}
-            />
-            <div className="flex-grow" />
-            <Button
-              label={
-                isLoading
-                  ? "Loading..."
-                  : authorization
-                    ? "Setup connection"
-                    : "Save"
-              }
-              variant="primary"
-              disabled={
-                /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-                !isOAuthFormValid ||
-                (authorization && !useCase) ||
-                (defaultServerConfig?.authMethod === "bearer" &&
-                  !sharedSecret) ||
-                (!internalMCPServer && !validateUrl(remoteServerUrl).valid) ||
-                isLoading
-                /* eslint-enable @typescript-eslint/prefer-nullish-coalescing */
-              }
-              onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                e.preventDefault();
-                e.stopPropagation();
-                void handleSave(e);
-              }}
-            />
+            {useCustomHeaders && (
+              <McpServerHeaders
+                headers={customHeaders}
+                onHeadersChange={(headers) => setCustomHeaders(headers)}
+              />
+            )}
           </div>
-        </div>
-      </SheetContent>
-    </Sheet>
+        </DialogContainer>
+        <DialogFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "ghost",
+            onClick: () => {
+              setIsOpen(false);
+              resetState();
+            },
+          }}
+          rightButtonProps={{
+            isLoading: isLoading,
+            label: isLoading
+              ? "Loading..."
+              : authorization
+                ? "Setup connection"
+                : "Save",
+            variant: "primary",
+            disabled:
+              /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+              !isOAuthFormValid ||
+              (authorization && !useCase) ||
+              (defaultServerConfig?.authMethod === "bearer" && !sharedSecret) ||
+              (!internalMCPServer && !validateUrl(remoteServerUrl).valid) ||
+              isLoading,
+            /* eslint-enable @typescript-eslint/prefer-nullish-coalescing */
+            onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
+              e.preventDefault();
+              e.stopPropagation();
+              void handleSave(e);
+            },
+          }}
+        />
+      </DialogContent>
+    </Dialog>
   );
 }
