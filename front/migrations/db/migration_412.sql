@@ -1,9 +1,3 @@
-<<<<<<< HEAD
-UPDATE agent_mcp_server_configurations
-SET name = null
-where name = 'web_search__browse';
-||||||| parent of 41f85ee7ca ([front] feat: PPUL - Add ppul configuration resource)
-=======
 -- Migration created on November 21, 2025
 -- Create programmatic_usage_configurations table to manage workspace-specific configuration for programmatic API usage
 -- This table maintains a 1:1 relationship with workspaces (enforced by unique index on workspaceId)
@@ -23,4 +17,3 @@ CREATE TABLE IF NOT EXISTS "programmatic_usage_configurations" (
 -- Enforce 1:1 relationship between workspace and configuration
 CREATE UNIQUE INDEX "programmatic_usage_configurations_workspace_id"
   ON "programmatic_usage_configurations" ("workspaceId");
->>>>>>> 41f85ee7ca ([front] feat: PPUL - Add ppul configuration resource)
