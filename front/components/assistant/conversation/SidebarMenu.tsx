@@ -596,7 +596,7 @@ const InboxConversationList = ({
     ...unreadConversations,
     ...actionRequiredConversations,
   ].sort((a, b) => {
-    return (b.updated ?? b.created) - (a.updated ?? b.created);
+    return (b.updated ?? b.created) - (a.updated ?? a.created);
   });
 
   return (
