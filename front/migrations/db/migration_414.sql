@@ -2,4 +2,4 @@
 ALTER TABLE "public"."conversations"
 ADD COLUMN "spaceId" BIGINT DEFAULT NULL REFERENCES "vaults" ("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
-CREATE INDEX "conversations_workspace_id_space_id" ON "conversations" ("workspaceId", "spaceId");
+CREATE INDEX CONCURRENTLY "conversations_workspace_id_space_id" ON "conversations" ("workspaceId", "spaceId");
