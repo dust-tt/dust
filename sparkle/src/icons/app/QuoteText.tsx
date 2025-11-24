@@ -11,7 +11,7 @@ const SvgQuoteText = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="M21 4H3v2h18V4Zm0 7H9v2h12v-2Zm0 7H9v2h12v-2ZM6 11H3v9h3v-9Z"
+      d="M21 5H3v2h18V5Zm0 6H9v2h12v-2Zm0 6H9v2h12v-2ZM6 10H3v10h3V10Z"
     />
   </svg>
 );

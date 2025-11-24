@@ -11,7 +11,7 @@ const SvgListCheck = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="M8 4h13v2H8V4Zm-5-.5h3v3H3v-3Zm0 7h3v3H3v-3Zm0 7h3v3H3v-3ZM8 11h13v2H8v-2Zm0 7h13v2H8v-2Z"
+      d="M8 5h13v2H8V5Zm-5-.5h3v3H3v-3Zm0 6h3v3H3v-3Zm0 6h3v3H3v-3ZM8 11h13v2H8v-2Zm0 6h13v2H8v-2Z"
     />
   </svg>
 );
