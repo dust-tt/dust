@@ -56,20 +56,43 @@ export type BaseContentFragmentType = {
 
 export type ContentNodeContentFragmentType = BaseContentFragmentType & {
   contentFragmentType: "content_node";
-  nodeId: string;
-  nodeDataSourceViewId: string;
-  nodeType: ContentNodeType;
-  contentNodeData: ContentFragmentNodeData;
-};
+} & (
+    | {
+        expiredReason: null;
+        nodeId: string;
+        nodeDataSourceViewId: string;
+        nodeType: ContentNodeType;
+        contentNodeData: ContentFragmentNodeData;
+      }
+    | {
+        expiredReason: ContentFragmentExpiredReason;
+        nodeId: null;
+        nodeDataSourceViewId: null;
+        nodeType: null;
+        contentNodeData: null;
+      }
+  );
 
 export type FileContentFragmentType = BaseContentFragmentType & {
   contentFragmentType: "file";
-  fileId: string | null;
-  snippet: string | null;
-  generatedTables: string[];
-  textUrl: string;
-  textBytes: number | null;
-};
+} & (
+    | {
+        expiredReason: null;
+        fileId: string | null;
+        snippet: string | null;
+        generatedTables: string[];
+        textUrl: string;
+        textBytes: number | null;
+      }
+    | {
+        expiredReason: ContentFragmentExpiredReason;
+        fileId: null;
+        snippet: null;
+        generatedTables: [];
+        textUrl: null;
+        textBytes: null;
+      }
+  );
 
 export type ContentFragmentType =
   | FileContentFragmentType
@@ -102,4 +125,21 @@ export function isContentNodeContentFragment(
   arg: ContentFragmentType
 ): arg is ContentNodeContentFragmentType {
   return arg.contentFragmentType === "content_node";
+}
+
+// Type guard to check if content fragment is expired
+export function isExpiredContentFragment(
+  arg: ContentFragmentType
+): arg is ContentFragmentType & {
+  expiredReason: ContentFragmentExpiredReason;
+} {
+  return arg.expiredReason !== null;
+}
+
+// Type guard to filter out expired content fragments
+// Use this in API responses where complete data is required
+export function isNonExpiredContentFragment(
+  arg: ContentFragmentType
+): arg is ContentFragmentType & { expiredReason: null } {
+  return arg.expiredReason === null;
 }

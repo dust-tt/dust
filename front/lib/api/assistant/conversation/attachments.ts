@@ -91,17 +91,25 @@ export function conversationAttachmentId(
 export function getAttachmentFromContentFragment(
   cf: ContentFragmentType
 ): ConversationAttachmentType | null {
-  if (isContentNodeContentFragment(cf)) {
-    return getAttachmentFromContentNodeContentFragment(cf);
+  // Expired content fragments cannot be converted to attachments
+  if (cf.expiredReason) {
+    return null;
   }
-  if (isFileContentFragment(cf)) {
-    return getAttachmentFromFileContentFragment(cf);
+
+  // After this check, we know expiredReason is null
+  const nonExpiredCf = cf as ContentFragmentType & { expiredReason: null };
+
+  if (isContentNodeContentFragment(nonExpiredCf)) {
+    return getAttachmentFromContentNodeContentFragment(nonExpiredCf);
   }
-  assertNever(cf);
+  if (isFileContentFragment(nonExpiredCf)) {
+    return getAttachmentFromFileContentFragment(nonExpiredCf);
+  }
+  assertNever(nonExpiredCf);
 }
 
 export function getAttachmentFromContentNodeContentFragment(
-  cf: ContentNodeContentFragmentType
+  cf: ContentNodeContentFragmentType & { expiredReason: null }
 ): ContentNodeAttachmentType {
   const isQueryable =
     isQueryableContentType(cf.contentType) || cf.nodeType === "table";
