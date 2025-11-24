@@ -1,6 +1,4 @@
 // This file should remain synchronized with connectors/src/connectors/zendesk/lib/zendesk_shared_types.ts
-// There is currently no way to share code between connectors and front, so this is a copy-pasted file.
-// Any changes to validation logic or shared schemas should be made in both places.
 
 import z from "zod";
 
