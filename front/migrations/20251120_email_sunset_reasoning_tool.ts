@@ -165,10 +165,10 @@ The Dust Team</p>`;
       };
     }
 
-    childLogger.info("Successfully sent email");
+    childLogger.info({ email }, "Successfully sent email");
     return { success: true };
   } else {
-    childLogger.info({ minReasoningEffort }, "Would send email");
+    childLogger.info({ email, body }, "Would send email");
     return { success: true };
   }
 }
