@@ -7,10 +7,8 @@ import PokeLayout from "@app/components/poke/PokeLayout";
 import { ViewTriggerTable } from "@app/components/poke/triggers/view";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type {
-  ConversationWithoutContentType,
   LightAgentConfigurationType,
   LightWorkspaceType,
   WorkspaceType,
@@ -21,7 +19,6 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   trigger: TriggerType;
   agent: LightAgentConfigurationType;
   owner: LightWorkspaceType;
-  conversations: ConversationWithoutContentType[];
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
 
@@ -49,17 +46,11 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     };
   }
 
-  const conversations = await ConversationResource.listConversationsForTrigger(
-    auth,
-    triggerId
-  );
-
   return {
     props: {
       trigger: trigger.toJSON(),
       agent: agentConfiguration,
       owner,
-      conversations,
     },
   };
 });
@@ -68,7 +59,6 @@ export default function TriggerPage({
   trigger,
   agent,
   owner,
-  conversations,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
     <>
@@ -88,7 +78,7 @@ export default function TriggerPage({
               workspace: owner,
             }}
           />
-          <ConversationDataTable owner={owner} conversations={conversations} />
+          <ConversationDataTable owner={owner} triggerId={trigger.sId} />
         </div>
       </div>
     </>
@@ -105,7 +95,6 @@ TriggerPage.getLayout = (
     owner: WorkspaceType;
     agent: LightAgentConfigurationType;
     trigger: TriggerType;
-    conversations: ConversationWithoutContentType[];
   }
 ) => {
   return (
