@@ -559,6 +559,7 @@ interface InboxConversationListProps {
   toggleConversationSelection: (c: ConversationWithoutContentType) => void;
   router: NextRouter;
   owner: WorkspaceType;
+  titleFilter: string;
 }
 
 interface ConversationListContainerProps {
@@ -577,6 +578,7 @@ const InboxConversationList = ({
   dateLabel,
   isMultiSelect,
   isMarkingAllAsRead,
+  titleFilter,
   onMarkAllAsRead,
   ...props
 }: InboxConversationListProps) => {
@@ -585,7 +587,10 @@ const InboxConversationList = ({
   }
 
   const shouldShowMarkAllAsReadButton =
-    unreadConversations.length > 0 && !isMultiSelect && onMarkAllAsRead;
+    unreadConversations.length > 0 &&
+    titleFilter.length === 0 &&
+    !isMultiSelect &&
+    onMarkAllAsRead;
 
   const sortedInboxConversations = [
     ...unreadConversations,
@@ -839,6 +844,7 @@ const NavigationListWithInbox = forwardRef<
               dateLabel={`Inbox (${unreadConversations.length + actionRequiredConversations.length})`}
               isMultiSelect={isMultiSelect}
               isMarkingAllAsRead={isMarkingAllAsRead}
+              titleFilter={titleFilter}
               onMarkAllAsRead={markAllAsRead}
               selectedConversations={selectedConversations}
               toggleConversationSelection={toggleConversationSelection}
