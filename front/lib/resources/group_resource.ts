@@ -913,11 +913,11 @@ export class GroupResource extends BaseResource<GroupModel> {
     } else {
       memberships = await GroupMembershipModel.findAll({
         where: {
-          groupId: this.id,
           workspaceId: owner.id,
+          groupId: this.id,
+          status: "active",
           startAt: { [Op.lte]: new Date() },
           [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
-          status: "active",
         },
         transaction,
       });
@@ -955,8 +955,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       // Get all members regardless of status (active, suspended)
       memberships = await GroupMembershipModel.findAll({
         where: {
-          groupId: this.id,
           workspaceId: owner.id,
+          groupId: this.id,
           startAt: { [Op.lte]: new Date() },
           [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
           // Note: No status filter here - we want all statuses
@@ -992,11 +992,11 @@ export class GroupResource extends BaseResource<GroupModel> {
     } else {
       return GroupMembershipModel.count({
         where: {
-          groupId: this.id,
           workspaceId: owner.id,
+          groupId: this.id,
+          status: "active",
           startAt: { [Op.lte]: new Date() },
           [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
-          status: "active",
         },
       });
     }
