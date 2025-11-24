@@ -1,6 +1,5 @@
 import { ButtonsSwitch, ButtonsSwitchList } from "@dust-tt/sparkle";
 import { useCallback, useMemo, useState } from "react";
-import type { Fetcher } from "swr";
 import {
   Bar,
   BarChart,
@@ -23,7 +22,7 @@ import type {
   ToolChartModeType,
 } from "@app/components/agent_builder/observability/types";
 import { getIndexedColor } from "@app/components/agent_builder/observability/utils";
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { useAgentMcpConfigurations } from "@app/lib/swr/assistants";
 
 export function ToolUsageChart({
   workspaceId,
@@ -36,27 +35,23 @@ export function ToolUsageChart({
   const [toolMode, setToolMode] = useState<ToolChartModeType>("version");
   const [hoveredTool, setHoveredTool] = useState<string | null>(null);
 
-  const mcpConfigurationsFetcher: Fetcher<{
-    configurations: Array<{ sId: string; name: string | null }>;
-  }> = fetcher;
-
-  const { data: mcpConfigs } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/mcp_configurations`,
-    mcpConfigurationsFetcher
-  );
+  const { configurations: mcpConfigurations } = useAgentMcpConfigurations({
+    workspaceId,
+    agentConfigurationId,
+  });
 
   const configurationNames = useMemo(() => {
-    if (!mcpConfigs?.configurations) {
+    if (!mcpConfigurations) {
       return new Map<string, string>();
     }
     const map = new Map<string, string>();
-    for (const config of mcpConfigs.configurations) {
+    for (const config of mcpConfigurations) {
       if (config.sId && config.name) {
         map.set(config.sId, config.name);
       }
     }
     return map;
-  }, [mcpConfigs]);
+  }, [mcpConfigurations]);
 
   const {
     chartData,

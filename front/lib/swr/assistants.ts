@@ -29,6 +29,7 @@ import type { GetToolStepIndexResponse } from "@app/pages/api/w/[wId]/assistant/
 import type { GetUsageMetricsResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/usage-metrics";
 import type { GetVersionMarkersResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/version-markers";
 import type { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/usage";
+import type { GetAgentMcpConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/mcp_configurations";
 import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api/w/[wId]/assistant/builder/slack/channels_linked_with_agent";
 import type { GetMemberResponseBody } from "@app/pages/api/w/[wId]/members/[uId]";
 import type { PostAgentUserFavoriteRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_favorite";
@@ -40,6 +41,34 @@ import type {
   UserType,
 } from "@app/types";
 import { normalizeError } from "@app/types";
+
+export function useAgentMcpConfigurations({
+  workspaceId,
+  agentConfigurationId,
+  disabled,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  disabled?: boolean;
+}) {
+  const mcpConfigurationsFetcher: Fetcher<GetAgentMcpConfigurationsResponseBody> =
+    fetcher;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled
+      ? null
+      : `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/mcp_configurations`,
+    mcpConfigurationsFetcher,
+    { disabled }
+  );
+
+  return {
+    configurations: data?.configurations ?? emptyArray(),
+    isAgentMcpConfigurationsLoading: !error && !data && !disabled,
+    isAgentMcpConfigurationsError: error,
+    isAgentMcpConfigurationsValidating: isValidating,
+  };
+}
 
 export function useAssistantTemplates() {
   const assistantTemplatesFetcher: Fetcher<FetchAssistantTemplatesResponse> =
