@@ -3,10 +3,11 @@ import type Stripe from "stripe";
 import type { Authenticator } from "@app/lib/auth";
 import {
   attachCreditPurchaseToSubscription,
+  finalizeCreditPurchaseInvoice,
   getCreditAmountFromInvoice,
   isCreditPurchaseInvoice,
   isEnterpriseSubscription,
-  makeAndMaybePayCreditPurchaseInvoice,
+  makeCreditPurchaseInvoice,
 } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import logger from "@app/logger/logger";
@@ -170,7 +171,7 @@ export async function createProCreditPurchase({
   const workspace = auth.getNonNullableWorkspace();
 
   // Create and pay one-off invoice
-  const invoiceResult = await makeAndMaybePayCreditPurchaseInvoice({
+  const invoiceResult = await makeCreditPurchaseInvoice({
     stripeSubscriptionId,
     amountCents,
   });
@@ -197,6 +198,20 @@ export async function createProCreditPurchase({
     discount: null,
     invoiceOrLineItemId: invoice.id,
   });
+
+  const finalizeResult = await finalizeCreditPurchaseInvoice(invoice);
+  if (finalizeResult.isErr()) {
+    logger.error(
+      {
+        error: finalizeResult.error.error_message,
+        workspaceId: workspace.sId,
+        invoiceId: invoice.id,
+        amountCents,
+      },
+      "[Credit Purchase] Failed to finalize credit purchase invoice"
+    );
+    return new Err(new Error(finalizeResult.error.error_message));
+  }
 
   logger.info(
     {
