@@ -63,13 +63,31 @@ export function ChartsTooltip({
 
   // If there's a breakdown, show the configurations as bullet points
   if (data.breakdown && data.breakdown.length > 0) {
-    const breakdownRows = data.breakdown
-      .map((b) => ({
-        label: b.label,
-        value: b.count,
-        percent: b.percent,
+    // Aggregate rows by display label so that multiple configurations
+    // with the same name (or missing names) are combined into a single row.
+    const aggregated = data.breakdown.reduce<Map<string, { value: number }>>(
+      (acc, entry) => {
+        const displayLabel = asDisplayToolName(entry.label);
+        const current = acc.get(displayLabel) ?? { value: 0 };
+        current.value += entry.count;
+        acc.set(displayLabel, current);
+        return acc;
+      },
+      new Map()
+    );
+
+    const total = Array.from(aggregated.values()).reduce(
+      (sum, { value }) => sum + value,
+      0
+    );
+
+    const breakdownRows = Array.from(aggregated.entries())
+      .map(([displayLabel, { value }]) => ({
+        label: displayLabel,
+        value,
+        percent: total > 0 ? Math.round((value / total) * 100) : 0,
       }))
-      .sort((a, b) => (b.value as number) - (a.value as number));
+      .sort((a, b) => b.value - a.value);
 
     return (
       <div
@@ -84,7 +102,7 @@ export function ChartsTooltip({
           {breakdownRows.map((b) => (
             <div key={b.label} className="flex items-center gap-2">
               <span className="text-muted-foreground dark:text-muted-foreground-night">
-                {asDisplayToolName(b.label)}
+                {b.label}
               </span>
               <span className="ml-auto font-mono font-medium tabular-nums text-foreground dark:text-foreground-night">
                 {b.value}
