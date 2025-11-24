@@ -156,17 +156,29 @@ const CALL_BUFFER_HOURS = 6; // Increased buffer for very long calls (meetings c
 const MIN_LOOKBACK_HOURS = 24; // Minimum lookback even if last sync was recent
 const MODJO_API_URL = "https://api.modjo.ai";
 
+// Batch configuration for first sync to avoid timeouts
+// Process 50 pages per activity call (50 * 15 = 750 calls max per batch)
+const MAX_PAGES_PER_BATCH = 50;
+const MODJO_PAGE_SIZE = 15;
+
+export interface ModjoTranscriptsResult {
+  fileIds: string[];
+  nextCursor: number | null;
+  isFirstSync: boolean;
+}
+
 export async function retrieveModjoTranscripts(
   auth: Authenticator,
   transcriptsConfiguration: LabsTranscriptsConfigurationResource,
-  localLogger: Logger
-): Promise<string[]> {
+  localLogger: Logger,
+  cursor: number | null = null
+): Promise<ModjoTranscriptsResult> {
   if (!transcriptsConfiguration) {
     localLogger.error(
       {},
       "[retrieveModjoTranscripts] No default transcripts configuration found."
     );
-    return [];
+    return { fileIds: [], nextCursor: null, isFirstSync: false };
   }
 
   if (!transcriptsConfiguration.credentialId) {
@@ -174,7 +186,7 @@ export async function retrieveModjoTranscripts(
       {},
       "[retrieveModjoTranscripts] No API key found for default configuration. Skipping."
     );
-    return [];
+    return { fileIds: [], nextCursor: null, isFirstSync: false };
   }
   const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
 
@@ -187,7 +199,7 @@ export async function retrieveModjoTranscripts(
       { error: modjoApiKeyRes.error },
       "[retrieveModjoTranscripts] Error fetching API key from Modjo. Skipping."
     );
-    return [];
+    return { fileIds: [], nextCursor: null, isFirstSync: false };
   }
 
   if (!isModjoCredentials(modjoApiKeyRes.value.credential.content)) {
@@ -197,14 +209,18 @@ export async function retrieveModjoTranscripts(
   const modjoApiKey = modjoApiKeyRes.value.credential.content.api_key;
 
   // Check if this is the first sync by looking for any existing history
-  const hasAnyHistory = await transcriptsConfiguration.hasAnyHistory();
+  // Note: if we have a cursor, we're continuing a first sync, so check history only on first call
+  const hasAnyHistory = cursor
+    ? false
+    : await transcriptsConfiguration.hasAnyHistory();
+  const isFirstSync = !hasAnyHistory;
 
   let fromDateTime: string;
-  if (!hasAnyHistory) {
+  if (isFirstSync) {
     // First sync: no date restriction to pull all historical transcripts
     fromDateTime = new Date(0).toISOString(); // Start from epoch to get all history
     localLogger.info(
-      {},
+      { cursor },
       "[retrieveModjoTranscripts] First sync detected - retrieving all historical transcripts"
     );
   } else {
@@ -247,8 +263,10 @@ export async function retrieveModjoTranscripts(
   }
 
   const fileIdsToProcess: string[] = [];
-  let page = 1;
-  const perPage = 15;
+  // Start from cursor if provided, otherwise start from page 1
+  let page = cursor ?? 1;
+  const perPage = MODJO_PAGE_SIZE;
+  let pagesProcessedInBatch = 0;
 
   // Retry configuration
   const MAX_RETRIES_PER_PAGE = 3;
@@ -257,8 +275,22 @@ export async function retrieveModjoTranscripts(
 
   let hasMorePages = true;
   let consecutivePageFailures = 0;
+  let nextCursor: number | null = null;
 
   while (hasMorePages) {
+    // For first sync, limit pages per batch to avoid timeouts
+    if (isFirstSync && pagesProcessedInBatch >= MAX_PAGES_PER_BATCH) {
+      nextCursor = page;
+      localLogger.info(
+        {
+          pagesProcessedInBatch,
+          nextCursor,
+          fileIdsFoundInBatch: fileIdsToProcess.length,
+        },
+        "[retrieveModjoTranscripts] First sync batch limit reached - returning cursor for next batch"
+      );
+      break;
+    }
     let pageSuccess = false;
     let retryCount = 0;
 
@@ -424,6 +456,7 @@ export async function retrieveModjoTranscripts(
         // Mark page as successful
         pageSuccess = true;
         consecutivePageFailures = 0; // Reset consecutive failure counter on success
+        pagesProcessedInBatch++;
 
         if (paginationInfo?.nextPage) {
           page = paginationInfo.nextPage;
@@ -492,14 +525,20 @@ export async function retrieveModjoTranscripts(
 
   localLogger.info(
     {
-      totalPages: page - 1,
+      totalPages: pagesProcessedInBatch,
       totalTranscriptsToProcess: fileIdsToProcess.length,
-      syncType: !hasAnyHistory ? "full" : "incremental",
+      syncType: isFirstSync ? "full" : "incremental",
+      nextCursor,
+      startedAtPage: cursor ?? 1,
     },
-    "[retrieveModjoTranscripts] Pagination completed successfully"
+    "[retrieveModjoTranscripts] Batch completed"
   );
 
-  return fileIdsToProcess;
+  return {
+    fileIds: fileIdsToProcess,
+    nextCursor,
+    isFirstSync,
+  };
 }
 
 export async function retrieveModjoTranscriptContent(
