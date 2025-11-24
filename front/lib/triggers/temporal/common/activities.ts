@@ -305,7 +305,9 @@ export async function runTriggeredAgentsActivity({
     if (conversationResult.isErr()) {
       const { type: errorType, message: errorMessage } =
         conversationResult.error.api_error;
-      const isNonRetryable = errorType === "plan_message_limit_exceeded";
+      const isNonRetryable =
+        errorType === "plan_message_limit_exceeded" ||
+        errorType === "model_disabled";
 
       if (isNonRetryable) {
         if (webhookRequestId && trigger.kind === "webhook") {

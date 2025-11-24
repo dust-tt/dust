@@ -449,7 +449,7 @@ export async function postUserMessage(
       return new Err({
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "model_disabled",
           message:
             `Assistant ${agentConfig.name} is based on a model that was disabled ` +
             `by your workspace admin. Please edit the agent to use another model ` +
@@ -811,7 +811,7 @@ export async function editUserMessage(
       return new Err({
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "model_disabled",
           message:
             `Assistant ${agentConfig.name} is based on a model that was disabled ` +
             `by your workspace admin. Please edit the agent to use another model ` +
