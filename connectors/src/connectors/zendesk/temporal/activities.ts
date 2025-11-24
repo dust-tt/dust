@@ -105,6 +105,12 @@ export async function syncZendeskBrandActivity({
     throw new Error("[Zendesk] Connector not found.");
   }
 
+  const configuration =
+    await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
+  if (!configuration) {
+    throw new Error(`[Zendesk] Configuration not found.`);
+  }
+
   const brandInDb = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
     brandId,
@@ -118,9 +124,11 @@ export async function syncZendeskBrandActivity({
   const { subdomain, accessToken } = await getZendeskSubdomainAndAccessToken(
     connector.connectionId
   );
-  const zendeskClient = await ZendeskClient.createClient(
+
+  const zendeskClient = new ZendeskClient(
     accessToken,
-    connectorId
+    connectorId,
+    configuration.rateLimitTransactionsPerSecond
   );
   const fetchedBrand = await zendeskClient.fetchBrand({
     subdomain,
@@ -273,13 +281,23 @@ export async function getZendeskHelpCenterReadAllowedBrandIdsActivity(
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
   }
+
+  const configuration =
+    await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
+  if (!configuration) {
+    throw new Error(`[Zendesk] Configuration not found.`);
+  }
+
   const { subdomain, accessToken } = await getZendeskSubdomainAndAccessToken(
     connector.connectionId
   );
-  const zendeskClient = await ZendeskClient.createClient(
+
+  const zendeskClient = new ZendeskClient(
     accessToken,
-    connectorId
+    connectorId,
+    configuration.rateLimitTransactionsPerSecond
   );
+
   for (const brandId of brandsWithHelpCenter) {
     const fetchedBrand = await zendeskClient.fetchBrand({
       subdomain,
@@ -343,6 +361,12 @@ export async function syncZendeskCategoryBatchActivity({
     throw new Error("[Zendesk] Connector not found.");
   }
 
+  const configuration =
+    await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
+  if (!configuration) {
+    throw new Error(`[Zendesk] Configuration not found.`);
+  }
+
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
   const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
@@ -354,9 +378,10 @@ export async function syncZendeskCategoryBatchActivity({
     brandId,
   });
 
-  const zendeskClient = await ZendeskClient.createClient(
+  const zendeskClient = new ZendeskClient(
     accessToken,
-    connectorId
+    connectorId,
+    configuration.rateLimitTransactionsPerSecond
   );
 
   const brandSubdomain = await zendeskClient.getBrandSubdomain({
@@ -419,6 +444,13 @@ export async function syncZendeskCategoryActivity({
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
   }
+
+  const configuration =
+    await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
+  if (!configuration) {
+    throw new Error(`[Zendesk] Configuration not found.`);
+  }
+
   const categoryInDb = await ZendeskCategoryResource.fetchByCategoryId({
     connectorId,
     brandId,
@@ -444,9 +476,10 @@ export async function syncZendeskCategoryActivity({
     connector.connectionId
   );
 
-  const zendeskClient = await ZendeskClient.createClient(
+  const zendeskClient = new ZendeskClient(
     accessToken,
-    connectorId
+    connectorId,
+    configuration.rateLimitTransactionsPerSecond
   );
 
   const brandSubdomain = await zendeskClient.getBrandSubdomain({
@@ -524,11 +557,13 @@ export async function syncZendeskArticleBatchActivity({
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
   }
+
   const configuration =
     await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
   if (!configuration) {
     throw new Error(`[Zendesk] Configuration not found.`);
   }
+
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const loggerArgs = {
     workspaceId: dataSourceConfig.workspaceId,
@@ -536,6 +571,7 @@ export async function syncZendeskArticleBatchActivity({
     provider: "zendesk",
     dataSourceId: dataSourceConfig.dataSourceId,
   };
+
   const category = await ZendeskCategoryResource.fetchByCategoryId({
     connectorId,
     brandId,
@@ -551,9 +587,10 @@ export async function syncZendeskArticleBatchActivity({
     connector.connectionId
   );
 
-  const zendeskClient = await ZendeskClient.createClient(
+  const zendeskClient = new ZendeskClient(
     accessToken,
-    connectorId
+    connectorId,
+    configuration.rateLimitTransactionsPerSecond
   );
 
   const brandSubdomain = await zendeskClient.getBrandSubdomain({
@@ -632,11 +669,13 @@ export async function syncZendeskTicketBatchActivity({
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
   }
+
   const configuration =
     await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
   if (!configuration) {
     throw new Error(`[Zendesk] Configuration not found.`);
   }
+
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const loggerArgs = {
     workspaceId: dataSourceConfig.workspaceId,
@@ -649,9 +688,10 @@ export async function syncZendeskTicketBatchActivity({
     connector.connectionId
   );
 
-  const zendeskClient = await ZendeskClient.createClient(
+  const zendeskClient = new ZendeskClient(
     accessToken,
-    connectorId
+    connectorId,
+    configuration.rateLimitTransactionsPerSecond
   );
 
   const brandSubdomain = await zendeskClient.getBrandSubdomain({
