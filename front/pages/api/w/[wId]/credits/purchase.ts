@@ -17,7 +17,6 @@ import {
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { isDevelopment } from "@app/types";
 
 export const PostCreditPurchaseRequestBody = t.type({
   amountDollars: t.number,
@@ -62,10 +61,7 @@ async function handler(
   const workspace = auth.getNonNullableWorkspace();
   const featureFlags = await getFeatureFlags(workspace);
 
-  if (
-    !featureFlags.includes("ppul_credits_purchase_flow") &&
-    !isDevelopment()
-  ) {
+  if (!featureFlags.includes("ppul_credits_purchase_flow")) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {

@@ -6,7 +6,6 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { isDevelopment } from "@app/types";
 import type {
   CreditDisplayData,
   GetCreditsResponseBody,
@@ -33,10 +32,7 @@ async function handler(
   const workspace = auth.getNonNullableWorkspace();
   const featureFlags = await getFeatureFlags(workspace);
 
-  if (
-    !featureFlags.includes("ppul_credits_purchase_flow") &&
-    !isDevelopment()
-  ) {
+  if (!featureFlags.includes("ppul_credits_purchase_flow")) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
@@ -49,20 +45,22 @@ async function handler(
   switch (req.method) {
     case "GET": {
       // Fetch all credits for the workspace.
-      const credits = await CreditResource.listActive(auth);
+      const credits = await CreditResource.listAll(auth);
 
       // Transform credits to display format with computed consumed amount.
-      const creditsData: CreditDisplayData[] = credits.map((credit) => ({
-        id: credit.id,
-        type: credit.type,
-        initialAmount: credit.initialAmount,
-        remainingAmount: credit.remainingAmount,
-        consumedAmount: credit.initialAmount - credit.remainingAmount,
-        startDate: credit.startDate ? credit.startDate.getTime() : null,
-        expirationDate: credit.expirationDate
-          ? credit.expirationDate.getTime()
-          : null,
-      }));
+      const creditsData: CreditDisplayData[] = credits
+        .filter((credit) => !!credit.startDate)
+        .map((credit) => ({
+          id: credit.id,
+          type: credit.type,
+          initialAmount: credit.initialAmount,
+          remainingAmount: credit.remainingAmount,
+          consumedAmount: credit.initialAmount - credit.remainingAmount,
+          startDate: credit.startDate ? credit.startDate.getTime() : null,
+          expirationDate: credit.expirationDate
+            ? credit.expirationDate.getTime()
+            : null,
+        }));
 
       return res.status(200).json({
         credits: creditsData,
