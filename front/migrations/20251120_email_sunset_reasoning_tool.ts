@@ -152,7 +152,7 @@ The Dust Team</p>`;
         name: "Dust team",
         email: "team@dust.tt",
       },
-      subject: "[Dust] Update: Reasoning Tool Removal",
+      subject: "Reasoning tool removal on November 28th",
       body,
     });
 
