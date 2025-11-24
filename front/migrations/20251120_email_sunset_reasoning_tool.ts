@@ -80,13 +80,7 @@ ${agentList
 
 <p>Good news: You're already set up for success!</p>
 
-<p>Your agents are already configured with medium or high reasoning effort, which means you're already leveraging the full reasoning capabilities of your base model. When we remove the Reasoning tool on Friday, November 28th:</p>
-
-<ul>
-  <li>Your agents will continue working normally with their current strong reasoning capabilities</li>
-  <li>No action required from you</li>
-  <li>Your agent will continue reasoning deeply while using all its tools</li>
-</ul>
+<p>Your agents are already configured with medium or high reasoning effort, which means you're already leveraging the full reasoning capabilities of your base model.</p>
 
 <p>The Reasoning tool will simply be removed automatically, and your agent's performance will remain great, or even improve slightly due to reduced overhead.</p>
 
@@ -111,9 +105,9 @@ ${agentList
 
 <p><strong>Recommended: Maintain strong reasoning capabilities</strong></p>
 
-<p>Since your agent currently uses the Reasoning tool and has ${minReasoningEffort} reasoning effort configured, we recommend one of these options to maintain strong reasoning:</p>
+<p>Since your agent currently uses the Reasoning tool and has ${minReasoningEffort === "none" ? "no" : minReasoningEffort} reasoning effort configured, we recommend one of these options to maintain strong reasoning:</p>
 
-<p><strong>Option 1: Increase reasoning effort</strong> - Edit your agent and set <code>reasoningEffort</code> to "medium" or "high" in the model settings of Agent Builder</p>
+<p><strong>Option 1: Increase reasoning effort</strong> - Edit your agent and set <code>reasoningEffort</code> to "medium" or "high" in the model settings of Agent Builder if the underlying model supports it</p>
 
 <p><strong>Option 2: Switch to a reasoning model</strong> - Change your base model to GPT-5 or Claude Sonnet 4.5 with "medium" or "high" reasoning effort</p>
 
