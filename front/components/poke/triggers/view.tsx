@@ -64,16 +64,6 @@ export function ViewTriggerTable({
                 </PokeTableCell>
               </PokeTableRow>
               <PokeTableRow>
-                <PokeTableHead>Custom Prompt</PokeTableHead>
-                <PokeTableCell>{trigger.customPrompt ?? "None"}</PokeTableCell>
-              </PokeTableRow>
-              <PokeTableRow>
-                <PokeTableHead>Natural Language Description</PokeTableHead>
-                <PokeTableCell>
-                  {trigger.naturalLanguageDescription ?? "None"}
-                </PokeTableCell>
-              </PokeTableRow>
-              <PokeTableRow>
                 <PokeTableHead>Enabled</PokeTableHead>
                 <PokeTableCell>{trigger.enabled ? "Yes" : "No"}</PokeTableCell>
               </PokeTableRow>
