@@ -52,20 +52,18 @@ export async function conversationUnreadNotificationActivity(
   );
 
   // Get conversation participants
-  const conversationRes = await ConversationResource.fetchById(
+  const conversation = await ConversationResource.fetchById(
     auth,
     agentLoopArgs.conversationId
   );
 
-  if (conversationRes.isErr() || !conversationRes.value) {
+  if (!conversation) {
     logger.warn(
       { conversationId: agentLoopArgs.conversationId },
       "Conversation not found after delay"
     );
     return;
   }
-
-  const conversation = conversationRes.value;
 
   const r = await triggerConversationUnreadNotifications(auth, {
     conversation,

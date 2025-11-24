@@ -142,16 +142,11 @@ export async function updateConversationTitle(
     title: string;
   }
 ): Promise<Result<undefined, ConversationError>> {
-  const conversationRes = await ConversationResource.fetchById(
+  const conversation = await ConversationResource.fetchById(
     auth,
     conversationId
   );
 
-  if (conversationRes.isErr()) {
-    return conversationRes;
-  }
-
-  const conversation = conversationRes.value;
   if (!conversation) {
     return new Err(new ConversationError("conversation_not_found"));
   }
@@ -174,7 +169,7 @@ export async function deleteOrLeaveConversation(
     conversationId: string;
   }
 ): Promise<Result<{ success: true }, Error>> {
-  const conversationRes = await ConversationResource.fetchById(
+  const conversation = await ConversationResource.fetchById(
     auth,
     conversationId,
     {
@@ -182,11 +177,6 @@ export async function deleteOrLeaveConversation(
     }
   );
 
-  if (conversationRes.isErr()) {
-    return conversationRes;
-  }
-
-  const conversation = conversationRes.value;
   if (!conversation) {
     return new Err(new ConversationError("conversation_not_found"));
   }
@@ -601,9 +591,9 @@ export async function postUserMessage(
           auth,
           conversation.sId
         );
-        if (conversationRes.isOk() && conversationRes.value) {
+        if (conversationRes) {
           await triggerConversationUnreadNotifications(auth, {
-            conversation: conversationRes.value,
+            conversation: conversationRes,
             messageId: m.sId,
           });
         }
