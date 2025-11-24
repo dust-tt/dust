@@ -76,6 +76,7 @@ import {
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { OnboardingTaskModel } from "@app/lib/resources/storage/models/onboarding_tasks";
 import { PluginRunModel } from "@app/lib/resources/storage/models/plugin_runs";
+import { ProgrammaticUsageConfigurationModel } from "@app/lib/resources/storage/models/programmatic_usage_configurations";
 import {
   RunModel,
   RunUsageModel,
@@ -143,6 +144,7 @@ async function main() {
   await Subscription.sync({ alter: true });
   await TemplateModel.sync({ alter: true });
   await CreditModel.sync({ alter: true });
+  await ProgrammaticUsageConfigurationModel.sync({ alter: true });
 
   await AgentConfiguration.sync({ alter: true });
   await AgentUserRelation.sync({ alter: true });
