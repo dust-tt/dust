@@ -11,10 +11,11 @@ import { z } from "zod";
 const MAIL_CONCURRENCY = 5;
 
 const CsvRecordSchema = z.object({
-  first_name: z.string(),
+  author_first_name: z.string(),
   email: z.string(),
   agent_list: z.string(),
   min_reasoning_effort: z.string(),
+  workspace_id: z.string(),
 });
 
 type CsvRecord = z.infer<typeof CsvRecordSchema>;
@@ -54,7 +55,7 @@ async function sendReasoningToolRemovalEmail(
   const agentList = record.agent_list.trim();
   const minReasoningEffort = record.min_reasoning_effort.trim().toLowerCase();
 
-  let body = `<p>Hi ${record.first_name},</p>
+  let body = `<p>Hi ${record.author_first_name},</p>
 
 <p>We're reaching out because you've built the following agents that use the Reasoning tool, which we'll be removing from Dust on Friday, November 28th.</p>
 
@@ -182,18 +183,6 @@ makeScript(
 
     if (records.length === 0) {
       throw new Error("CSV file is empty");
-    }
-
-    const firstRecord = records[0];
-    if (
-      !firstRecord ||
-      !("email" in firstRecord) ||
-      !("agent_list" in firstRecord) ||
-      !("min_reasoning_effort" in firstRecord)
-    ) {
-      throw new Error(
-        "CSV file must have 'email', 'agent_list', and 'min_reasoning_effort' columns"
-      );
     }
 
     const validRecords = records.filter((record) => {
