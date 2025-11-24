@@ -371,7 +371,7 @@ async function handler(
                 "[Stripe Webhook] Error processing credit purchase"
               );
             }
-          } else {
+          } else if (!isCreditPurchaseInvoice(invoice)) {
             // We don't want credit purchase invoice being paid clearing customer's sub's payment_failed_since
             await subscription.update({ paymentFailingSince: null });
           }

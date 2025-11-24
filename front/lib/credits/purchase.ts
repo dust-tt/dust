@@ -27,7 +27,9 @@ export async function startCreditFromProOneOffInvoice({
     isEnterpriseSubscription(stripeSubscription)
   ) {
     throw new Error(
-      `Cannot process this invoice for credit purchase: ${invoice.id}`
+      `Cannot process this invoice for credit purchase: ${invoice.id}\n` +
+        `isCreditPurchaseInvoice: ${isCreditPurchaseInvoice(invoice)}\n` +
+        `isEntrepriseSubscription: ${isEnterpriseSubscription(stripeSubscription)}`
     );
   }
 
