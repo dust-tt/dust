@@ -445,7 +445,7 @@ export function CodeBlockWithExtendedSupport({
         {showPrettyJson ? (
           <PrettyJsonViewer data={parsedJson} />
         ) : (
-          <CodeBlock className={className} inline={inline}>
+          <CodeBlock className={className} inline={inline} wrapLongLines>
             {children}
           </CodeBlock>
         )}
