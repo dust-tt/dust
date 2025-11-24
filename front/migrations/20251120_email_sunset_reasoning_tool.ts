@@ -17,6 +17,8 @@ const CsvRecordSchema = z.object({
   min_reasoning_effort: z.string(),
 });
 
+type CsvRecord = z.infer<typeof CsvRecordSchema>;
+
 async function readCsvFile(
   filePath: string
 ): Promise<z.infer<typeof CsvRecordSchema>[]> {
