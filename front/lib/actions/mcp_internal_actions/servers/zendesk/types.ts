@@ -330,25 +330,3 @@ export const ZendeskTicketCommentsResponseSchema = z.object({
 export const ZendeskSearchCountResponseSchema = z.object({
   count: z.string(),
 });
-
-export type ZendeskTicketMetricsResponse = z.infer<
-  typeof ZendeskTicketMetricsResponseSchema
->;
-
-export const ZendeskTicketFieldSchema = z.object({
-  id: z.number(),
-  title: z.string(),
-  active: z.boolean(),
-  created_at: z.string(),
-  updated_at: z.string(),
-});
-
-export type ZendeskTicketField = z.infer<typeof ZendeskTicketFieldSchema>;
-
-export const ZendeskTicketFieldsResponseSchema = z.object({
-  ticket_fields: z.array(ZendeskTicketFieldSchema),
-});
-
-export type ZendeskTicketFieldsResponse = z.infer<
-  typeof ZendeskTicketFieldsResponseSchema
->;
