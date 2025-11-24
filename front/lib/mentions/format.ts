@@ -16,14 +16,21 @@ import { assertNever } from "@app/types";
  * Regular expression for parsing agent mention strings.
  * Format: `:mention[name]{sId=xxx}`
  */
-const AGENT_MENTION_REGEX = /:mention\[([^\]]+)\]\{[^}]+\}/g;
+export const AGENT_MENTION_REGEX = /:mention\[([^\]]+)]\{sId=([^}]+?)}/g;
+export const AGENT_MENTION_REGEX_BEGINNING = new RegExp(
+  "^" + AGENT_MENTION_REGEX.source,
+  AGENT_MENTION_REGEX.flags
+);
 
 /**
  * Regular expression for parsing mention strings.
  * Format: `:mention_user[name]{sId=xxx}`
  */
-const USER_MENTION_REGEX = /:mention_user\[([^\]]+)\]\{[^}]+\}/g;
-
+export const USER_MENTION_REGEX = /:mention_user\[([^\]]+)]\{sId=([^}]+?)}/g;
+export const USER_MENTION_REGEX_BEGINNING = new RegExp(
+  "^" + USER_MENTION_REGEX.source,
+  USER_MENTION_REGEX.flags
+);
 /**
  * Serializes a mention to the standard string format.
  * Format:

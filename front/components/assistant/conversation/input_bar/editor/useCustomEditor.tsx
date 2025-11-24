@@ -1,4 +1,5 @@
 import { Placeholder } from "@tiptap/extensions";
+import { Markdown } from "@tiptap/markdown";
 import type { Editor } from "@tiptap/react";
 import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
@@ -211,6 +212,7 @@ const useCustomEditor = ({
       hardBreak: false, // Disable the built-in Shift+Enter. We handle it ourselves in the keymap extension
       strike: false,
     }),
+    Markdown,
     DataSourceLinkExtension,
     MentionExtension.configure({
       owner,
