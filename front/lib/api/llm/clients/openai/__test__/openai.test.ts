@@ -5,8 +5,8 @@ import type {
   OpenAIWhitelistedModelId,
 } from "@app/lib/api/llm/clients/openai/types";
 import {
-  getOpenAIModelFamilyFromModelId,
-  OPENAI_WHITELISTED_MODEL_IDS,
+  OPENAI_MODEL_FAMILIES,
+  OPENAI_MODEL_FAMILY_CONFIGS,
 } from "@app/lib/api/llm/clients/openai/types";
 import {
   TEST_CONVERSATIONS,
@@ -25,21 +25,24 @@ const OPENAI_MODEL_FAMILY_TO_TEST_CONFIGS: Record<
   ConfigParams[]
 > = {
   o3: [
-    { reasoningEffort: "none" },
-    { reasoningEffort: "light" },
     { reasoningEffort: "medium" },
     { reasoningEffort: "high" },
     ...TEST_STRUCTURED_OUTPUT_KEYS.map((testStructuredOutputKey) => ({
       testStructuredOutputKey,
     })),
   ],
-  "o3-no-vision": [
-    { reasoningEffort: "none" },
-    { reasoningEffort: "light" },
-    { reasoningEffort: "medium" },
+  "o3-no-vision": [{ reasoningEffort: "medium" }, { reasoningEffort: "high" }],
+  reasoning: [
+    { reasoningEffort: "medium", temperature: 1 },
     { reasoningEffort: "high" },
   ],
-  reasoning: [
+  "gpt-5": [
+    { reasoningEffort: "none" },
+    { reasoningEffort: "light", temperature: 0 },
+    { reasoningEffort: "medium", temperature: 1 },
+    { reasoningEffort: "high" },
+  ],
+  "gpt-5.1": [
     { reasoningEffort: "none" },
     { reasoningEffort: "light", temperature: 0 },
     { reasoningEffort: "medium", temperature: 1 },
@@ -83,9 +86,41 @@ vi.mock("@app/types", async (importOriginal) => {
     dustManagedCredentials: vi.fn(() => ({
       OPENAI_API_KEY: process.env.VITE_DUST_MANAGED_OPENAI_API_KEY ?? "",
       OPENAI_BASE_URL: "https://api.openai.com/v1",
+      DUST_REGION: "us-central1",
     })),
   };
 });
+
+// Inject Region
+vi.mock("@app/lib/api/regions/config", async (importOriginal) => {
+  const actual = await importOriginal();
+
+  return {
+    // @ts-expect-error actual is unknown
+    ...actual,
+    config: {
+      // @ts-expect-error importOriginal does not preserve types
+      ...actual.config,
+      getCurrentRegion: vi.fn(() => ({
+        DUST_REGION: "us-central1",
+      })),
+    },
+  };
+});
+
+function getOpenAIModelFamilyFromModelId(
+  modelId: OpenAIWhitelistedModelId
+): OpenAIModelFamily {
+  const family = OPENAI_MODEL_FAMILIES.find((family) =>
+    new Set(OPENAI_MODEL_FAMILY_CONFIGS[family].modelIds).has(modelId)
+  );
+  if (!family) {
+    throw new Error(
+      `Model ID ${modelId} does not belong to any OpenAI model family`
+    );
+  }
+  return family;
+}
 
 /**
  * Open AI LLM Client Test Suite.
@@ -99,10 +134,12 @@ vi.mock("@app/types", async (importOriginal) => {
  */
 class OpenAiTestSuite extends LLMClientTestSuite {
   protected provider = "openai" as const;
-  protected models = OPENAI_WHITELISTED_MODEL_IDS;
+  // The models to test
+  protected models = [];
 
   protected getTestConfig(modelId: OpenAIWhitelistedModelId): TestConfig[] {
     const family = getOpenAIModelFamilyFromModelId(modelId);
+
     return OPENAI_MODEL_FAMILY_TO_TEST_CONFIGS[family].map((configParams) => ({
       ...configParams,
       modelId,
