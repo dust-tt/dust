@@ -294,6 +294,18 @@ UserMessage.init(
         name: "user_messages_workspace_id_date_created_at_user_id_idx",
       },
     ],
+    hooks: {
+      beforeValidate: (userMessage) => {
+        const hasRunAgentType = !!userMessage.runAgentType;
+        const hasRunAgentOriginMessageId =
+          !!userMessage.runAgentOriginMessageId;
+        if (hasRunAgentType !== hasRunAgentOriginMessageId) {
+          throw new Error(
+            "runAgentType and runAgentOriginMessageId must be set together"
+          );
+        }
+      },
+    },
   }
 );
 

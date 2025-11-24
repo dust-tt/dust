@@ -147,7 +147,7 @@ export async function getOrCreateConversation(
           selectedMCPServerViewIds: toolsetsToAdd,
         },
         runAgentContext: {
-          // `run_agent` origin will skip adding the conversation to the user history.
+          // `run_agent` type will skip adding the conversation to the user history.
           type: runAgentType,
           originMessageId: originMessage.sId,
         },

@@ -23,6 +23,7 @@ async function countActiveUsersForPeriodInWorkspace({
   workspace: LightWorkspaceType;
 }): Promise<number> {
   // Use the replica database to compute this avoid impacting production performances.
+  // TODO(2025-11-24 PPUL): Remove constraints on userContextOrigin once backfilled.
   const result = await getFrontReplicaDbConnection().query(
     `
     SELECT "user_messages"."userId", COUNT(mentions.id) AS count
