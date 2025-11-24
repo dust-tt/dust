@@ -143,7 +143,6 @@ ${agentList
 <p>Thank you for building with Dust!</p>
 
 <p>Best regards,<br>
-[Your Name]<br>
 The Dust Team</p>`;
 
   if (execute) {
