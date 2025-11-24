@@ -32,6 +32,7 @@ export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
 
   // Note: Using spaceId for the FK instead of vaultId as it is not a "ResourceWithSpace" and it's aligned with "requestedSpaceIds".
   declare spaceId: ForeignKey<SpaceModel["id"]> | null;
+  declare space: NonAttribute<SpaceModel>;
 }
 
 ConversationModel.init(

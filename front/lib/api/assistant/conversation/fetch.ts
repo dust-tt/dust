@@ -135,6 +135,7 @@ export async function getConversation(
     unread,
     hasError: conversation.hasError,
     requestedGroupIds: [],
-    requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(auth),
+    requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(),
+    spaceId: conversation.space?.sId ?? null,
   });
 }
