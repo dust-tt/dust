@@ -12,9 +12,14 @@ export function toThinkingConfig(
   reasoningEffort: ReasoningEffort | null,
   useNativeLightReasoning?: boolean
 ): ThinkingConfigParam | undefined {
-  if (!reasoningEffort || reasoningEffort === "none") {
+  if (!reasoningEffort) {
     return undefined;
   }
+
+  if (reasoningEffort === "none") {
+    return { type: "disabled" };
+  }
+
   if (reasoningEffort !== "light") {
     return {
       type: "enabled",
@@ -30,5 +35,5 @@ export function toThinkingConfig(
     };
   }
 
-  return undefined;
+  return { type: "disabled" };
 }
