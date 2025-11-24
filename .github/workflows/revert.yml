@@ -106,9 +106,9 @@ jobs:
       - name: Validate image tag exists
         run: |
           echo "Validating image tag ${{ inputs.image_tag }} exists for ${{ inputs.component }} in ${{ inputs.region }}"
-          
+
           IMAGE_REPO="${{ inputs.region }}-docker.pkg.dev/${{ steps.project.outputs.PROJECT_ID }}/dust-images/${{ inputs.component }}"
-          
+
           if ! gcloud container images describe "${IMAGE_REPO}:${{ inputs.image_tag }}" --quiet >/dev/null 2>&1; then
             echo "❌ Image tag '${{ inputs.image_tag }}' not found in registry ${IMAGE_REPO}"
             echo "Available tags:"
@@ -118,8 +118,8 @@ jobs:
               --format="table(timestamp.date('%Y-%m-%d %H:%M:%S'),tags[0])"
             exit 1
           fi
-          
-          echo "✅ Image tag '${{ inputs.image_tag }}' exists in registry"
+
+          echo "✅ Image tag '${{ inputs.image_tag }}' exists in registry" >> $GITHUB_STEP_SUMMARY
 
       - name: Generate token
         id: generate-token
