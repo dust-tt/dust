@@ -17,7 +17,6 @@ import {
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { isDevelopment } from "@app/types";
 
 export const PostCreditPurchaseRequestBody = t.type({
   amountDollars: t.number,
@@ -45,15 +44,24 @@ async function handler(
       },
     });
   }
+  // Get active subscription.
+  const subscription = auth.subscription();
+  if (!subscription || !subscription.stripeSubscriptionId) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "subscription_not_found",
+        message:
+          "No active Stripe subscription found. Please subscribe to a plan first.",
+      },
+    });
+  }
 
   // Check feature flag.
   const workspace = auth.getNonNullableWorkspace();
   const featureFlags = await getFeatureFlags(workspace);
 
-  if (
-    !featureFlags.includes("ppul_credits_purchase_flow") &&
-    !isDevelopment()
-  ) {
+  if (!featureFlags.includes("ppul_credits_purchase_flow")) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
@@ -90,19 +98,6 @@ async function handler(
         });
       }
 
-      // Get active subscription.
-      const subscription = auth.subscription();
-      if (!subscription || !subscription.stripeSubscriptionId) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "subscription_not_found",
-            message:
-              "No active Stripe subscription found. Please subscribe to a plan first.",
-          },
-        });
-      }
-
       // Get Stripe subscription and determine if Enterprise.
       const stripeSubscription = await getStripeSubscription(
         subscription.stripeSubscriptionId
@@ -111,6 +106,7 @@ async function handler(
         logger.error(
           {
             workspaceId: workspace.sId,
+            stripeError: true,
             stripeSubscriptionId: subscription.stripeSubscriptionId,
           },
           "Failed to retrieve Stripe subscription"
@@ -119,7 +115,7 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "subscription_not_found",
-            message: "Stripe subscription not found.",
+            message: "[Credit Purchase] Stripe subscription not found.",
           },
         });
       }

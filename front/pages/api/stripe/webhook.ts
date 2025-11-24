@@ -327,7 +327,6 @@ async function handler(
             // the warnings and create an alert if this log appears in all regions
             return res.status(200).json({ success: true });
           }
-
           // Handle credit purchase activation for Pro subscriptions.
           // (Enterprise subscriptions activate credits optimistically, so we skip them here.)
           const creditPurchaseResult =
@@ -337,17 +336,15 @@ async function handler(
             });
 
           if (creditPurchaseResult.isErr()) {
-            logger.error(
-              {
-                error: creditPurchaseResult.error,
-                invoiceId: invoice.id,
-                stripeSubscriptionId: invoice.subscription,
-              },
-              "[Stripe Webhook] Error processing credit purchase"
-            );
+            logger.error({
+              error: creditPurchaseResult.error,
+              invoiceId: invoice.id,
+              stripeSubscriptionId: invoice.subscription,
+            });
           }
 
-          // We don't want credit purchase invoice being paid clearing customer's sub's payment_failed_since
+          // We don't want credit purchase invoice being paid,
+          // to clear customer's sub's payment_failed_since
           if (!isCreditPurchaseInvoice(invoice)) {
             await subscription.update({ paymentFailingSince: null });
           }

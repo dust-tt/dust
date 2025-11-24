@@ -41,7 +41,7 @@ export function getProPlanStripeProductId(owner: WorkspaceType) {
 
 export function getCreditPurchasePriceId() {
   const devCreditPurchasePriceId = "price_1SUoyQDKd2JRwZF6FBHIGbwC";
-  const prodCreditPurchasePriceId = "price_prod_credit_purchase_TODO";
+  const prodCreditPurchasePriceId = "price_1SVYsjDKd2JRwZF6zdIW29mC";
 
   return isDevelopment() ? devCreditPurchasePriceId : prodCreditPurchasePriceId;
 }
