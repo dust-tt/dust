@@ -14,10 +14,21 @@ type GroupLabel =
 // We treat the conversations as unread if they are unread or have an action required
 // (note that action required conversations are never marked as unread).
 export function getGroupConversationsByUnreadAndActionRequired(
-  conversations: ConversationWithoutContentType[]
+  conversations: ConversationWithoutContentType[],
+  titleFilter: string
 ) {
   return conversations.reduce(
     (acc, conversation) => {
+      if (
+        titleFilter &&
+        !subFilter(
+          removeDiacritics(titleFilter).toLowerCase(),
+          removeDiacritics(conversation.title ?? "").toLowerCase()
+        )
+      ) {
+        return acc;
+      }
+
       if (conversation.unread) {
         acc.unreadConversations.push(conversation);
         return acc;

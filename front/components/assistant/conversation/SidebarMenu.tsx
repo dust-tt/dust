@@ -800,8 +800,11 @@ const NavigationListWithInbox = forwardRef<
       unreadConversations,
       actionRequiredConversations,
     } = useMemo(() => {
-      return getGroupConversationsByUnreadAndActionRequired(conversations);
-    }, [conversations]);
+      return getGroupConversationsByUnreadAndActionRequired(
+        conversations,
+        titleFilter
+      );
+    }, [conversations, titleFilter]);
 
     const { markAllAsRead, isMarkingAllAsRead } = useMarkAllConversationsAsRead(
       {
@@ -812,6 +815,7 @@ const NavigationListWithInbox = forwardRef<
     const shouldDisplayInbox =
       unreadConversations.length > 0 || actionRequiredConversations.length > 0;
 
+    // TODO: Remove filtering by titleFilter when we release the inbox.
     const conversationsByDate = readConversations?.length
       ? getGroupConversationsByDate({
           conversations: readConversations.slice(
