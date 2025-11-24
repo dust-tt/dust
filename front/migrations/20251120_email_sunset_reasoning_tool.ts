@@ -6,16 +6,20 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { isString, normalizeError } from "@app/types";
+import { z } from "zod";
 
 const MAIL_CONCURRENCY = 5;
 
-interface CsvRecord {
-  email: string;
-  agent_list: string;
-  min_reasoning_effort: string;
-}
+const CsvRecordSchema = z.object({
+  first_name: z.string(),
+  email: z.string(),
+  agent_list: z.string(),
+  min_reasoning_effort: z.string(),
+});
 
-const readCsvFile = async (filePath: string): Promise<CsvRecord[]> => {
+async function readCsvFile(
+  filePath: string
+): Promise<z.infer<typeof CsvRecordSchema>[]> {
   const parser = parse({
     delimiter: ",",
     columns: true,
@@ -29,9 +33,13 @@ const readCsvFile = async (filePath: string): Promise<CsvRecord[]> => {
   for await (const record of parser) {
     records.push(record);
   }
+  const parseResult = z.array(CsvRecordSchema).safeParse(records);
+  if (!parseResult.success) {
+    throw new Error(`Failed to parse CSV file: ${parseResult.error.message}`);
+  }
 
-  return records;
-};
+  return parseResult.data;
+}
 
 const sendReasoningToolRemovalEmail = async (
   record: CsvRecord,
