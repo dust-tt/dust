@@ -12,7 +12,8 @@ import {
 } from "@app/lib/api/email";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
-import { startCreditFromProOneOffInvoice } from "@app/lib/credits/purchase";
+import { startCreditFromProOneOffInvoice } from "@app/lib/credits/committed";
+import { grantFreeCreditsOnSubscriptionRenewal } from "@app/lib/credits/free";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import {
   assertStripeSubscriptionIsValid,
@@ -297,13 +298,13 @@ async function handler(
               },
             });
           }
-        case "invoice.paid":
+        case "invoice.paid": {
           // This is what confirms the subscription is active and payments are being made.
           logger.info(
             { event },
             "[Stripe Webhook] Received customer.invoice.paid event."
           );
-          invoice = event.data.object as Stripe.Invoice;
+          const invoice = event.data.object as Stripe.Invoice;
           if (typeof invoice.subscription !== "string") {
             return _returnStripeApiError(
               req,
@@ -313,7 +314,7 @@ async function handler(
             );
           }
           // Setting subscription payment status to succeeded
-          subscription = await Subscription.findOne({
+          const subscription = await Subscription.findOne({
             where: { stripeSubscriptionId: invoice.subscription },
             include: [WorkspaceModel],
           });
@@ -331,9 +332,10 @@ async function handler(
             return res.status(200).json({ success: true });
           }
 
-          stripeSubscription = await getStripeSubscription(
+          const stripeSubscription = await getStripeSubscription(
             subscription.stripeSubscriptionId
           );
+
           if (!stripeSubscription) {
             logger.warn(
               {
@@ -351,10 +353,11 @@ async function handler(
             isCreditPurchaseInvoice(invoice) &&
             !isEnterpriseSubscription(stripeSubscription);
 
+          const auth = await Authenticator.internalAdminForWorkspace(
+            subscription.workspace.sId
+          );
+
           if (isProCreditPurchaseInvoice) {
-            const auth = await Authenticator.internalAdminForWorkspace(
-              subscription.workspace.sId
-            );
             const creditPurchaseResult = await startCreditFromProOneOffInvoice({
               auth,
               invoice,
@@ -371,11 +374,30 @@ async function handler(
                 "[Stripe Webhook] Error processing credit purchase"
               );
             }
+          } else if (invoice.billing_reason === "subscription_cycle") {
+            const freeCreditsResult =
+              await grantFreeCreditsOnSubscriptionRenewal({
+                auth,
+                invoice,
+                stripeSubscription,
+              });
+
+            if (freeCreditsResult.isErr()) {
+              logger.error(
+                {
+                  error: freeCreditsResult.error,
+                  invoiceId: invoice.id,
+                  stripeSubscriptionId: invoice.subscription,
+                  workspaceId: subscription.workspace.sId,
+                },
+                "[Stripe Webhook] Error granting free credits on renewal"
+              );
+            }
           } else if (!isCreditPurchaseInvoice(invoice)) {
-            // We don't want credit purchase invoice being paid clearing customer's sub's payment_failed_since
             await subscription.update({ paymentFailingSince: null });
           }
           break;
+        }
         case "invoice.payment_failed":
           // Occurs when payment failed or the user does not have a valid payment method.
           // The stripe subscription becomes "past_due".

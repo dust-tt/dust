@@ -9,7 +9,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import {
   createEnterpriseCreditPurchase,
   createProCreditPurchase,
-} from "@app/lib/credits/purchase";
+} from "@app/lib/credits/committed";
 import {
   getStripeSubscription,
   isEnterpriseSubscription,
