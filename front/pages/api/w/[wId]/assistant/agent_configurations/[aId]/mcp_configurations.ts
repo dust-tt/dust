@@ -10,10 +10,10 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
 export type GetAgentMcpConfigurationsResponseBody = {
-  configurations: Array<{
+  configurations: {
     sId: string;
     name: string | null;
-  }>;
+  }[];
 };
 
 async function handler(

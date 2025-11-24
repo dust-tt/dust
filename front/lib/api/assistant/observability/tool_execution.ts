@@ -6,6 +6,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
 const DEFAULT_METRIC_VALUE = 0;
+export const MISSING_CONFIG_NAME = "__no_config__";
 
 type ToolExecutionToolMetrics = {
   count: number;
@@ -78,7 +79,7 @@ export async function fetchToolExecutionMetrics(
                     // Use the keyword variant to avoid fielddata issues on text fields.
                     field: "tools_used.mcp_server_configuration_sid.keyword",
                     size: 50,
-                    missing: "__no_config__",
+                    missing: MISSING_CONFIG_NAME,
                   },
                 },
               },
@@ -127,7 +128,7 @@ export async function fetchToolExecutionMetrics(
       const breakdown = configBuckets.reduce<Record<string, number>>(
         (acc, cb) => {
           const sid = cb.key;
-          if (sid && sid !== "__no_config__") {
+          if (sid && sid !== MISSING_CONFIG_NAME) {
             acc[sid] = (acc[sid] ?? 0) + (cb.doc_count ?? DEFAULT_METRIC_VALUE);
           }
           return acc;
