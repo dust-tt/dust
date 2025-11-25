@@ -2,7 +2,6 @@ import { WorkflowExecutionAlreadyStartedError } from "@temporalio/common";
 import type { ChildWorkflowHandle } from "@temporalio/workflow";
 import {
   CancellationScope,
-  patched,
   proxyActivities,
   setHandler,
   startChild,
