@@ -39,7 +39,4 @@ export const LINEAR_WEBHOOK_PRESET: PresetWebhook<"linear"> = {
     detailsComponent: WebhookSourceLinearDetails,
     createFormComponent: CreateWebhookLinearConnection,
   },
-
-  // NOT GA YET
-  featureFlag: "hootl_dev_webhooks",
 };
