@@ -9,35 +9,35 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
-const TRENCH_1_USERS = 10;
-const TRENCH_1_CENTS_PER_USER = 500; // $5
-const TRENCH_2_USERS = 40; // 11-50
-const TRENCH_2_CENTS_PER_USER = 200; // $2
-const TRENCH_3_USERS = 50; // 51-100
-const TRENCH_3_CENTS_PER_USER = 100; // $1
+const BRACKET_1_USERS = 10;
+const BRACKET_1_CENTS_PER_USER = 500; // $5
+const BRACKET_2_USERS = 40; // 11-50
+const BRACKET_2_CENTS_PER_USER = 200; // $2
+const BRACKET_3_USERS = 50; // 51-100
+const BRACKET_3_CENTS_PER_USER = 100; // $1
 
 /**
- * Calculate free credit amount based on trenches system:
+ * Calculate free credit amount based on brackets system:
  * - First 10 users: $5 each
  * - Next 40 users (11-50): $2 each
  * - Next 50 users (51-100): $1 each
  * - Cap at 100 users
  */
 function calculateFreeCreditAmount(userCount: number): number {
-  const usersInTrench1 = Math.min(TRENCH_1_USERS, userCount);
-  const usersInTrench2 = Math.min(
-    TRENCH_2_USERS,
-    Math.max(0, userCount - TRENCH_1_USERS)
+  const usersInBracket1 = Math.min(BRACKET_1_USERS, userCount);
+  const usersInBracket2 = Math.min(
+    BRACKET_2_USERS,
+    Math.max(0, userCount - BRACKET_1_USERS)
   );
-  const usersInTrench3 = Math.min(
-    TRENCH_3_USERS,
-    Math.max(0, userCount - TRENCH_1_USERS - TRENCH_2_USERS)
+  const usersInBracket3 = Math.min(
+    BRACKET_3_USERS,
+    Math.max(0, userCount - BRACKET_1_USERS - BRACKET_2_USERS)
   );
 
   return (
-    usersInTrench1 * TRENCH_1_CENTS_PER_USER +
-    usersInTrench2 * TRENCH_2_CENTS_PER_USER +
-    usersInTrench3 * TRENCH_3_CENTS_PER_USER
+    usersInBracket1 * BRACKET_1_CENTS_PER_USER +
+    usersInBracket2 * BRACKET_2_CENTS_PER_USER +
+    usersInBracket3 * BRACKET_3_CENTS_PER_USER
   );
 }
 
@@ -101,7 +101,7 @@ export async function grantFreeCreditsOnSubscriptionRenewal({
     const userCount = await MembershipResource.getMembersCountForWorkspace({
       workspace: renderLightWorkspaceType({ workspace }),
       activeOnly: true,
-      asOfDate: fiveDaysAgo,
+      membershipSpan: { fromDate: fiveDaysAgo, toDate: fiveDaysAgo },
     });
 
     creditAmountCents = calculateFreeCreditAmount(userCount);
@@ -113,7 +113,7 @@ export async function grantFreeCreditsOnSubscriptionRenewal({
         countAsOfDate: fiveDaysAgo.toISOString(),
         creditAmountCents,
       },
-      "[Free Credits] Calculated credit amount using trenches system"
+      "[Free Credits] Calculated credit amount using brackets system"
     );
   }
 

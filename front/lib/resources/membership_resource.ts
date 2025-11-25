@@ -407,22 +407,23 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     activeOnly,
     rolesFilter,
     transaction,
-    asOfDate,
+    membershipSpan,
   }: {
     workspace: LightWorkspaceType;
     activeOnly: boolean;
     rolesFilter?: MembershipRoleType[];
     transaction?: Transaction;
-    asOfDate?: Date;
+    membershipSpan?: { fromDate: Date; toDate: Date };
   }): Promise<number> {
-    const referenceDate = asOfDate ?? new Date();
+    const fromDate = membershipSpan?.fromDate ?? new Date();
+    const toDate = membershipSpan?.toDate ?? new Date();
     const where: WhereOptions<InferAttributes<MembershipModel>> = activeOnly
       ? {
           endAt: {
-            [Op.or]: [{ [Op.eq]: null }, { [Op.gt]: referenceDate }],
+            [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: fromDate }],
           },
           startAt: {
-            [Op.lte]: referenceDate,
+            [Op.lte]: toDate,
           },
         }
       : {};
