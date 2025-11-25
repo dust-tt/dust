@@ -7,6 +7,7 @@ import type {
   NodeSelectionState,
 } from "@app/components/data_source_view/context/types";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { CATEGORY_DETAILS, getSpaceIcon } from "@app/lib/spaces";
@@ -336,7 +337,7 @@ export function getVisualForTreeItem(
       // For data sources, we can use the connector provider logo or fall back to a generic icon
       if (item.dataSourceView.dataSource.connectorProvider) {
         const connectorProvider =
-          CONNECTOR_CONFIGURATIONS[
+          CONNECTOR_UI_CONFIGURATIONS[
             item.dataSourceView.dataSource.connectorProvider
           ];
 

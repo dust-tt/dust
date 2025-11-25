@@ -11,10 +11,11 @@ import {
   Square3Stack3DIcon,
 } from "@dust-tt/sparkle";
 
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import {
-  CONNECTOR_CONFIGURATIONS,
+  CONNECTOR_UI_CONFIGURATIONS,
   getConnectorProviderLogoWithFallback,
-} from "@app/lib/connector_providers";
+} from "@app/lib/connector_providers_ui";
 import type {
   ContentNode,
   ContentNodeType,
@@ -77,9 +78,11 @@ export function getVisualForDataSourceViewContentNode(
     node.mimeType &&
     node.mimeType === DATA_SOURCE_MIME_TYPE &&
     node.dataSourceView?.dataSource?.connectorProvider &&
-    CONNECTOR_CONFIGURATIONS[node.dataSourceView.dataSource.connectorProvider]
+    CONNECTOR_UI_CONFIGURATIONS[
+      node.dataSourceView.dataSource.connectorProvider
+    ]
   ) {
-    return CONNECTOR_CONFIGURATIONS[
+    return CONNECTOR_UI_CONFIGURATIONS[
       node.dataSourceView.dataSource.connectorProvider
     ].getLogoComponent();
   }
