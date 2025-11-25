@@ -136,7 +136,6 @@ ${agentList
 
   // Footer.
   body += `
-<h3>Questions?</h3>
 
 <p>If you have any concerns, please reach out to us at support@dust.tt</p>
 
