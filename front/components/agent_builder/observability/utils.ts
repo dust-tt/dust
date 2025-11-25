@@ -33,9 +33,9 @@ export function getSourceColor(source: UserMessageOrigin) {
  * "Other" and "Unknown" are special cases that have their own colors.
  */
 export function getIndexedColor(label: string, allLabels: string[]): string {
-  if (label === OTHER_LABEL.key) {
+  if (label === OTHER_LABEL.label) {
     return OTHER_LABEL.color;
-  } else if (label === UNKNOWN_LABEL.key) {
+  } else if (label === UNKNOWN_LABEL.label) {
     return UNKNOWN_LABEL.color;
   }
 
