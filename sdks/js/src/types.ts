@@ -665,7 +665,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "hootl_subscriptions"
   | "http_client_tool"
   | "index_private_slack_channel"
-  | "jit_tool_setup"
   | "labs_mcp_actions_dashboard"
   | "labs_trackers"
   | "labs_transcripts"

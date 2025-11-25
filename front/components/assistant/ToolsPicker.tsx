@@ -31,7 +31,6 @@ import {
   useMCPServerViewsFromSpaces,
 } from "@app/lib/swr/mcp_servers";
 import { useSpaces } from "@app/lib/swr/spaces";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
   trackEvent,
   TRACKING_ACTIONS,
@@ -86,8 +85,6 @@ export function ToolsPicker({
   const [isSettingUpServer, setIsSettingUpServer] = useState(false);
   const [pendingServerToAdd, setPendingServerToAdd] =
     useState<MCPServerType | null>(null);
-
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
   const shouldFetchToolsData =
     isOpen || isSettingUpServer || !!pendingServerToAdd;
@@ -174,12 +171,7 @@ export function ToolsPicker({
   // - We filter by manual availability to show only servers that need install step, and by search text if present.
   // - We don't compute uninstalled servers until BOTH data sources have loaded to prevent flicker.
   const filteredUninstalledServers = useMemo(() => {
-    if (
-      !hasFeature("jit_tool_setup") ||
-      !isAdmin ||
-      !isDataReady ||
-      !shouldFetchToolsData
-    ) {
+    if (!isAdmin || !isDataReady || !shouldFetchToolsData) {
       return [];
     }
 
@@ -204,7 +196,6 @@ export function ToolsPicker({
       )
       .sort((a, b) => mcpServersSortingFn({ mcpServer: a }, { mcpServer: b }));
   }, [
-    hasFeature,
     isAdmin,
     isDataReady,
     shouldFetchToolsData,
