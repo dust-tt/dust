@@ -14,7 +14,7 @@ const { DUST_CLIENT_FACING_URL } = process.env;
 
 const CsvRecordSchema = z.object({
   author_first_name: z.string(),
-  email: z.string(),
+  author_email: z.string(),
   agents: z.string(),
   min_reasoning_effort: z.string().optional(),
   workspace_id: z.string(),
@@ -51,9 +51,9 @@ async function sendReasoningToolRemovalEmail(
   execute: boolean,
   logger: Logger
 ): Promise<{ success: boolean; error?: string }> {
-  const childLogger = logger.child({ email: record.email });
+  const childLogger = logger.child({ email: record.author_email });
 
-  const email = record.email.trim().toLowerCase();
+  const email = record.author_email.trim().toLowerCase();
   const agentList = record.agents.trim();
   const minReasoningEffort = record.min_reasoning_effort?.trim().toLowerCase();
   const workspaceId = record.workspace_id.trim();
@@ -197,7 +197,7 @@ makeScript(
 
     const validRecords = records.filter((record) => {
       if (
-        !isString(record.email) ||
+        !isString(record.author_email) ||
         !isString(record.agents) ||
         !isString(record.min_reasoning_effort)
       ) {
@@ -217,7 +217,7 @@ makeScript(
           execute,
           logger
         );
-        return { email: record.email, ...result };
+        return { email: record.author_email, ...result };
       },
       { concurrency: MAIL_CONCURRENCY }
     );
