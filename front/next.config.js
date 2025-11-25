@@ -36,7 +36,9 @@ const withBundleAnalyzer = bundleAnalyzer({
 });
 
 const config = {
-  // Standalone output for optimized Docker builds. It doesn't include static asset.
+  // Standalone output creates self-contained server with minimal dependencies for Docker. It
+  // creates standalone folder that copies only the necessary files for a production deployment
+  // including select files in node_modules.
   output: "standalone",
   transpilePackages: ["@uiw/react-textarea-code-editor"],
   // As of Next 14.2.3 swc minification creates a bug in the generated client side files.
