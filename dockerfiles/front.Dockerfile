@@ -1,3 +1,4 @@
+# Build stage
 FROM node:20.19.2 AS front
 
 RUN apt-get update && \
@@ -78,13 +79,21 @@ RUN BUILD_WITH_SOURCE_MAPS=${DATADOG_API_KEY:+true} \
         find .next -type f -name "*.map" -print -delete; \
     fi
 
-# Next.js standalone build doesn't automatically copy public and static assets
-# Copy public folder
-RUN cp -r public .next/standalone/
-# Copy static assets
-RUN cp -r .next/static .next/standalone/.next/
-
 RUN npm run sitemap
+
+# Production stage (only standalone output)
+FROM node:20.19.2-slim AS runtime
+
+RUN apt-get update && \
+  apt-get install -y redis-tools postgresql-client libjemalloc2 && \
+  rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy the standalone output and necessary static files/assets from build stage
+COPY --from=front /app/.next/standalone ./
+COPY --from=front /app/.next/static ./.next/static
+COPY --from=front /app/public ./public
 
 # Preload jemalloc for all processes:
 ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
@@ -92,4 +101,4 @@ ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
 ENV DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust/
 ENV DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
 
-CMD ["npm", "--silent", "run", "start"]
+CMD ["node", "server.js"]
