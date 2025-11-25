@@ -36,6 +36,8 @@ const withBundleAnalyzer = bundleAnalyzer({
 });
 
 const config = {
+  // Standalone output for optimized Docker builds. It doesn't include static asset.
+  output: "standalone",
   transpilePackages: ["@uiw/react-textarea-code-editor"],
   // As of Next 14.2.3 swc minification creates a bug in the generated client side files.
   swcMinify: false,

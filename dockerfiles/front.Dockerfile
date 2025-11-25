@@ -77,6 +77,13 @@ RUN BUILD_WITH_SOURCE_MAPS=${DATADOG_API_KEY:+true} \
         --service=$NEXT_PUBLIC_DATADOG_SERVICE && \
         find .next -type f -name "*.map" -print -delete; \
     fi
+
+# Next.js standalone build doesn't automatically copy public and static assets
+# Copy public folder
+RUN cp -r public .next/standalone/
+# Copy static assets
+RUN cp -r .next/static .next/standalone/.next/
+
 RUN npm run sitemap
 
 # Preload jemalloc for all processes:
