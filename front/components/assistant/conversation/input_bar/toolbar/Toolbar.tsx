@@ -5,7 +5,6 @@ import {
   CodeSlashIcon,
   HeadingIcon,
   ItalicIcon,
-  LinkMIcon,
   ListCheckIcon,
   ListOrdered2Icon,
   QuoteTextIcon,
@@ -15,6 +14,7 @@ import {
 import type { Editor } from "@tiptap/react";
 
 import { ToolbarIcon } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarIcon";
+import { ToolbarLink } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarLink";
 
 interface ToolbarProps {
   editor: Editor | null;
@@ -26,6 +26,7 @@ export function Toolbar({ editor, className, toggleToolbar }: ToolbarProps) {
   if (!editor) {
     return null;
   }
+
   return (
     <div className={cn("flex flex-col", className)}>
       <div
@@ -43,7 +44,7 @@ export function Toolbar({ editor, className, toggleToolbar }: ToolbarProps) {
         )}
         <ToolbarIcon
           icon={HeadingIcon}
-          onClick={() => editor.chain().focus().setHeading({ level: 1 }).run()}
+          onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
           tooltip="Heading"
         />
         <ToolbarIcon
@@ -60,18 +61,7 @@ export function Toolbar({ editor, className, toggleToolbar }: ToolbarProps) {
         />
 
         <Separator orientation="vertical" />
-        <ToolbarIcon
-          icon={LinkMIcon}
-          onClick={() =>
-            editor
-              .chain()
-              .focus()
-              .toggleLink({ href: "https://www.google.com" })
-              .run()
-          }
-          active={editor.isActive("link")}
-          tooltip="Link"
-        />
+        <ToolbarLink editor={editor} />
 
         <Separator orientation="vertical" />
         <ToolbarIcon
