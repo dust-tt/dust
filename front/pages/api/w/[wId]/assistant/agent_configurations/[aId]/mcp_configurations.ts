@@ -1,19 +1,17 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { Op } from "sequelize";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import {
+  listAgentMcpConfigurationsForAgent,
+  type AgentMcpConfigurationSummary,
+} from "@app/lib/api/assistant/mcp_configurations";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
 export type GetAgentMcpConfigurationsResponseBody = {
-  configurations: {
-    sId: string;
-    name: string | null;
-  }[];
+  configurations: AgentMcpConfigurationSummary[];
 };
 
 async function handler(
@@ -61,40 +59,10 @@ async function handler(
         });
       }
 
-      const mcpConfigurations = await AgentMCPServerConfiguration.findAll({
-        where: {
-          workspaceId: owner.id,
-        },
-        attributes: ["sId", "name"],
-        include: [
-          {
-            model: AgentConfiguration,
-            where: {
-              sId: aId,
-              status: {
-                [Op.ne]: "draft",
-              },
-            },
-            required: true,
-            attributes: [],
-          },
-        ],
+      const configurations = await listAgentMcpConfigurationsForAgent({
+        workspaceId: owner.id,
+        agentConfigurationSId: aId,
       });
-
-      // Deduplicate configurations by sId
-      const seenSIds = new Set<string>();
-      const configurations = mcpConfigurations
-        .filter((c) => {
-          if (seenSIds.has(c.sId)) {
-            return false;
-          }
-          seenSIds.add(c.sId);
-          return true;
-        })
-        .map((c) => ({
-          sId: c.sId,
-          name: c.name,
-        }));
 
       return res.status(200).json({ configurations });
     }
