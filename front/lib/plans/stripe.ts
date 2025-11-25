@@ -53,11 +53,12 @@ export const getStripeClient = () => {
   });
 };
 
-/**
- * Calls the Stripe API to get the price ID for a given product ID.
- * We use prices metata to find the default price for a given product.
- * For the Pro plan, the metadata are "IS_DEFAULT_YEARLY_PRICE" and "IS_DEFAULT_MONHTLY_PRICE" and are set to "true".
- */
+export async function getStripeAccountId(): Promise<string> {
+  const stripe = getStripeClient();
+  const account = await stripe.accounts.retrieve();
+  return account.id;
+}
+
 async function getDefautPriceFromMetadata(
   productId: string,
   key: string
@@ -500,6 +501,55 @@ export function getCreditAmountFromInvoice(
   return amountCents;
 }
 
+export function makeCreditPurchaseOnceCouponId(percentOff: number): string {
+  return `programmatic-usage-credits-once-${percentOff}`;
+}
+
+export async function getCreditPurchaseCouponId(
+  discountPercent: number
+): Promise<Result<string | undefined, Error>> {
+  const couponId = makeCreditPurchaseOnceCouponId(discountPercent);
+  const couponResult = await createCreditPurchaseCoupon(
+    couponId,
+    discountPercent
+  );
+
+  if (couponResult.isErr()) {
+    return new Err(new Error(couponResult.error.error_message));
+  }
+
+  return new Ok(couponResult.value);
+}
+
+export async function createCreditPurchaseCoupon(
+  couponId: string,
+  percentOff: number
+): Promise<Result<string, { error_message: string }>> {
+  const stripe = getStripeClient();
+
+  // why this try/catch ?
+  // Stripe will throw if the coupon does not exist (http 404)
+  try {
+    const existingCoupon = await stripe.coupons.retrieve(couponId);
+    return new Ok(existingCoupon.id);
+  } catch (error) {
+    if (
+      error instanceof Stripe.errors.StripeInvalidRequestError &&
+      error.code === "resource_missing"
+    ) {
+      const newCoupon = await stripe.coupons.create({
+        id: couponId,
+        percent_off: percentOff,
+        duration: "once",
+        name: `Programmatic Usage Credits Discount`,
+      });
+      return new Ok(newCoupon.id);
+    } else {
+      throw error;
+    }
+  }
+}
+
 /**
  * Creates the payload for a credit purchase line item.
  * This factors out the common parameters used when creating invoice items for credit purchases.
@@ -509,11 +559,13 @@ function makeCreditPurchaseLineItemPayload({
   amountCents,
   subscription,
   invoice,
+  couponId,
 }: {
   customerId: string;
   amountCents: number;
   subscription?: string;
   invoice?: string;
+  couponId?: string;
 }): Stripe.InvoiceItemCreateParams {
   const amountDollars = amountCents / 100;
 
@@ -524,6 +576,7 @@ function makeCreditPurchaseLineItemPayload({
     description: `Programmatic usage credit: $${amountDollars.toFixed(2)}`,
     ...(subscription && { subscription }),
     ...(invoice && { invoice }),
+    ...(couponId && { discounts: [{ coupon: couponId }] }),
   };
 }
 
@@ -633,9 +686,11 @@ export async function reportActiveSeats(
 export async function attachCreditPurchaseToSubscription({
   stripeSubscriptionId,
   amountCents,
+  couponId,
 }: {
   stripeSubscriptionId: string;
   amountCents: number;
+  couponId?: string;
 }): Promise<Result<string, { error_message: string }>> {
   const stripe = getStripeClient();
 
@@ -656,6 +711,7 @@ export async function attachCreditPurchaseToSubscription({
         customerId,
         amountCents,
         subscription: stripeSubscriptionId,
+        couponId,
       })
     );
 
