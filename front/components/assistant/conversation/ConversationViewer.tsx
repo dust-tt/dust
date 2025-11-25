@@ -154,6 +154,7 @@ export const ConversationViewer = ({
   const {
     isLoadingInitialData,
     isMessagesLoading,
+    isMessagesError,
     isValidating,
     messages,
     setSize,
@@ -672,8 +673,10 @@ export const ConversationViewer = ({
 
   return (
     <>
-      {conversationError && (
-        <ConversationErrorDisplay error={conversationError} />
+      {(conversationError || isMessagesError) && (
+        <ConversationErrorDisplay
+          error={conversationError || isMessagesError}
+        />
       )}
       <VirtuosoMessageListLicense
         licenseKey={process.env.NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY ?? ""}
