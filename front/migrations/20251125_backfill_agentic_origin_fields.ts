@@ -5,7 +5,7 @@ import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { UserMessageOrigin } from "@app/types";
 
-const BATCH_SIZE = 10;
+const BATCH_SIZE = 1000;
 
 export async function getRootContextOrigin(
   userMessage: UserMessage
@@ -111,13 +111,19 @@ async function updateAgenticFields(
         const originalUserContextOrigin = userMessage.userContextOrigin;
 
         if (execute) {
-          await userMessage.update({
-            userContextOrigin: rootContextOrigin,
-            agenticOriginMessageId: userMessage.userContextOriginMessageId,
-            agenticMessageType: originalUserContextOrigin as
-              | "run_agent"
-              | "agent_handover",
-          });
+          await userMessage.update(
+            {
+              userContextOrigin: rootContextOrigin,
+              agenticOriginMessageId: userMessage.userContextOriginMessageId,
+              agenticMessageType: originalUserContextOrigin as
+                | "run_agent"
+                | "agent_handover",
+            },
+            {
+              hooks: false,
+              silent: true,
+            }
+          );
         } else {
           logger.info(
             {
