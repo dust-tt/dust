@@ -1,4 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import sanitizeHtml from "sanitize-html";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
@@ -520,20 +521,8 @@ function createServer(
         const existingBody = createDraftResult.body?.content || "";
 
         // Prepend the new body to the existing HTML content
-        // If contentType is HTML, we need to properly insert the new content
-        let combinedBody: string;
-        if (contentType === "html") {
-          // For HTML, add the new body as a paragraph before the existing content
-          combinedBody = `<div>${body}</div><br><br>${existingBody}`;
-        } else {
-          // For plain text, convert to HTML and combine
-          const escapedBody = body
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/\n/g, "<br>");
-          combinedBody = `<div>${escapedBody}</div><br><br>${existingBody}`;
-        }
+        const sanitizedBody = sanitizeHtml(body);
+        const combinedBody = `<div>${sanitizedBody}</div><br><br>${existingBody}`;
 
         const updateDraftResponse = await fetchFromOutlook(
           `/me/messages/${createDraftResult.id}`,
