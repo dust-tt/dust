@@ -82,7 +82,7 @@ ${agentList
 
 <p>When we introduced the Reasoning tool in early 2025, it was designed to give you access to pure reasoning models like o1 and DeepSeek R1. These models excelled at deep, step-by-step thinking, but they could <em>only</em> reason, they could not use any tools. So we turned them into a tool themselves, allowing you to combine their reasoning capabilities with other models that <em>could</em> search your company data, browse the web, or query databases. This was the beginning of us exploring the potential of sub-agents: agents that could leverage deep reasoning <em>plus</em> take actions.</p>
 
-<p>Today, modern reasoning models like GPT-5, o3, o4-mini, and Claude Sonnet 4.5 combine the best of both worlds. They can think deeply <em>while simultaneously</em> using tools—searching your data, browsing the web, querying databases, and more. Using these as your agent's base model delivers better performance with lower latency.</p>
+<p>Today, modern reasoning models like GPT-5, o3, o4-mini, and Claude Sonnet 4.5 combine the best of both worlds. They can think deeply <em>while simultaneously</em> using tools: searching your data, browsing the web, querying databases, and more. Using these as your agent's base model delivers better performance with lower latency.</p>
 `;
 
   // Next steps.
