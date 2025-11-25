@@ -40,10 +40,12 @@ export default function ConversationSidePanelContainer({
 
   return (
     <>
-      {/* Resizable Handle for Panels - Only show on desktop */}
-      {currentPanel && !isMobile && (
-        <ResizableHandle withHandle className="z-50" />
-      )}
+      {/* Resizable Handle for Panels - Always render but control visibility */}
+      <ResizableHandle
+        withHandle={currentPanel && !isMobile}
+        disabled={!currentPanel || isMobile}
+        className="z-50"
+      />
       {/* Panel Container - either Interactive Content or Actions */}
       <ResizablePanel
         ref={panelRef}
