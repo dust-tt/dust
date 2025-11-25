@@ -154,8 +154,6 @@ export async function agentLoopWorkflow({
     executionScope.cancel();
   });
 
-  const shouldTrackUsage = patched("track-usage-activity");
-
   try {
     // If conversation title is not set, launch a child workflow to generate the conversation title in
     // the background. If a workflow with the same ID is already running, ignore the error and
@@ -248,9 +246,7 @@ export async function agentLoopWorkflow({
       await CancellationScope.nonCancellable(async () => {
         await Promise.all([
           launchAgentMessageAnalyticsActivity(authType, agentLoopArgs),
-          ...(shouldTrackUsage
-            ? [trackUsageActivity(authType, agentLoopArgs)]
-            : []),
+          trackUsageActivity(authType, agentLoopArgs),
           conversationUnreadNotificationActivity(authType, agentLoopArgs),
         ]);
       });
@@ -268,9 +264,7 @@ export async function agentLoopWorkflow({
         // Ensure analytics runs even when workflow is cancelled
         await Promise.all([
           launchAgentMessageAnalyticsActivity(authType, agentLoopArgs),
-          ...(shouldTrackUsage
-            ? [trackUsageActivity(authType, agentLoopArgs)]
-            : []),
+          trackUsageActivity(authType, agentLoopArgs),
           finalizeCancellationActivity(authType, agentLoopArgs),
         ]);
         return;
@@ -278,9 +272,7 @@ export async function agentLoopWorkflow({
         // Ensure analytics runs even when workflow errors
         await Promise.all([
           launchAgentMessageAnalyticsActivity(authType, agentLoopArgs),
-          ...(shouldTrackUsage
-            ? [trackUsageActivity(authType, agentLoopArgs)]
-            : []),
+          trackUsageActivity(authType, agentLoopArgs),
           notifyWorkflowError(authType, {
             conversationId: agentLoopArgs.conversationId,
             agentMessageId: agentLoopArgs.agentMessageId,
