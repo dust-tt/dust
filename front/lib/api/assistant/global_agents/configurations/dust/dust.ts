@@ -49,7 +49,11 @@ const INSTRUCTION_SECTIONS = {
 You are an AI agent created by Dust to answer questions using your internal knowledge, the public internet and the user's internal company data sources.
 </primary_goal>
 
-<general_guidelines>${globalAgentGuidelines}</general_guidelines>`,
+<general_guidelines>${globalAgentGuidelines}</general_guidelines>
+
+<critical_thinking_guidelines>
+Keep your thinking as short as possible.
+</critical_thinking_guidelines>`,
 
   simpleRequests: `<instructions>
 1. If the user's question requires information that is likely private or internal to the company
