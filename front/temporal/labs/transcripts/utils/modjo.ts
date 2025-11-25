@@ -172,7 +172,8 @@ export async function retrieveModjoTranscripts(
   auth: Authenticator,
   transcriptsConfiguration: LabsTranscriptsConfigurationResource,
   localLogger: Logger,
-  cursor: number | null = null
+  cursor: number | null = null,
+  isFirstSyncOverride: boolean | null = null
 ): Promise<ModjoTranscriptsResult> {
   if (!transcriptsConfiguration) {
     localLogger.error(
@@ -209,12 +210,20 @@ export async function retrieveModjoTranscripts(
 
   const modjoApiKey = modjoApiKeyRes.value.credential.content.api_key;
 
-  // Check if this is the first sync by looking for any existing history
-  // Note: if we have a cursor, we're continuing a first sync, so check history only on first call
-  const hasAnyHistory = cursor
-    ? false
-    : await transcriptsConfiguration.hasAnyHistory();
-  const isFirstSync = !hasAnyHistory;
+  // Determine if this is a first sync (full historical sync) or incremental sync
+  // If isFirstSyncOverride is provided, use it (preserves state across continueAsNew)
+  // Otherwise, auto-detect based on whether any history exists
+  let isFirstSync: boolean;
+  if (isFirstSyncOverride !== null) {
+    isFirstSync = isFirstSyncOverride;
+    localLogger.info(
+      { isFirstSync, isFirstSyncOverride },
+      "[retrieveModjoTranscripts] Using explicit isFirstSync from workflow"
+    );
+  } else {
+    const hasAnyHistory = await transcriptsConfiguration.hasAnyHistory();
+    isFirstSync = !hasAnyHistory;
+  }
 
   let fromDateTime: string;
   if (isFirstSync) {
