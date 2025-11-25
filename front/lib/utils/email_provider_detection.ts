@@ -19,26 +19,38 @@ const DNS_TIMEOUT_MS = 2000;
 const RATE_LIMIT_MAX_LOOKUPS = 10;
 const RATE_LIMIT_WINDOW_SECONDS = 60;
 
-// Validates that a domain is safe to perform DNS lookups on.
+// RFC 1123 compliant domain pattern (ASCII only): labels separated by dots, each label 1-63 chars,
+// alphanumeric or hyphen (not starting/ending with hyphen), total max 253 chars.
+const RFC1123_DOMAIN_PATTERN =
+  /^(?=.{1,253}$)([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
+
+// Validates that a domain is RFC-compliant and safe for external DNS lookups.
 function isValidExternalDomain(domain: string): boolean {
-  if (!domain || !domain.trim()) {
+  if (!domain) {
     return false;
   }
 
-  // Reject if domain looks like an IP address (v4 or v6).
-  const ipv4Pattern = /^(\d{1,3}\.){3}\d{1,3}$/;
-  const ipv6Pattern = /^[\da-fA-F:]+$/;
-  if (ipv4Pattern.test(domain) || ipv6Pattern.test(domain)) {
+  // Reject control characters, whitespace, or any non-ASCII (including punycode bypass attempts).
+  // eslint-disable-next-line no-control-regex
+  if (/[\x00-\x1f\x7f-\xff\s]/.test(domain)) {
     return false;
   }
 
-  // Reject localhost variants.
+  // Reject if it contains port-like patterns (e.g., "example.com:8080").
+  if (domain.includes(":")) {
+    return false;
+  }
+
+  // Must be RFC 1123 compliant (ASCII).
+  if (!RFC1123_DOMAIN_PATTERN.test(domain)) {
+    return false;
+  }
+
+  // Reject localhost and .local (mDNS).
   if (domain === "localhost" || domain.endsWith(".localhost")) {
     return false;
   }
-
-  // Require at least one dot (rejects single-label domains).
-  if (!domain.includes(".")) {
+  if (domain.endsWith(".local")) {
     return false;
   }
 

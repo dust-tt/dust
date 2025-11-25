@@ -397,7 +397,7 @@ export async function createOnboardingConversationIfNeeded(
   const userJson = user.toJSON();
   const emailProvider = await detectEmailProvider(
     userJson.email,
-    `user-${user.id}`
+    `user-${userJson.sId}`
   );
 
   // Store the detection result as user metadata for future reference.
