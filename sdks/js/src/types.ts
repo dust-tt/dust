@@ -960,6 +960,11 @@ const UserMessageContextSchema = z.object({
   lastTriggerRunAt: z.number().optional().nullable(),
 });
 
+const AgenticMessageDataSchema = z.object({
+  type: z.union([z.literal("run_agent"), z.literal("agent_handover")]),
+  originMessageId: z.string(),
+});
+
 const UserMessageSchema = z.object({
   id: ModelIdSchema,
   created: z.number(),
@@ -971,6 +976,7 @@ const UserMessageSchema = z.object({
   mentions: z.array(MentionSchema),
   content: z.string(),
   context: UserMessageContextSchema,
+  agenticMessageData: AgenticMessageDataSchema.optional().nullable(),
 });
 export type UserMessageType = z.infer<typeof UserMessageSchema>;
 
@@ -1947,6 +1953,7 @@ export const PublicPostMessagesRequestBodySchema = z.intersection(
     context: UserMessageContextSchema.extend({
       clientSideMCPServerIds: z.array(z.string()).optional().nullable(),
     }),
+    agenticMessageData: AgenticMessageDataSchema.optional(),
   }),
   z
     .object({
@@ -2045,6 +2052,7 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
           content: z.string().min(1),
           mentions: z.array(MentionSchema),
           context: UserMessageContextSchema,
+          agenticMessageData: AgenticMessageDataSchema.optional(),
         }),
         z
           .object({

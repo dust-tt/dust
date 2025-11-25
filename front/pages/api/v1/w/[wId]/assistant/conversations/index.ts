@@ -27,6 +27,7 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type {
+  AgenticMessageData,
   ContentFragmentType,
   UserMessageContext,
   UserMessageType,
@@ -209,9 +210,7 @@ async function handler(
           }
         }
 
-        const isRunAgent =
-          message.context.origin === "run_agent" ||
-          message.context.origin === "agent_handover";
+        const isRunAgent = !!message.agenticMessageData;
         if (isRunAgent && !auth.isSystemKey()) {
           return apiError(req, res, {
             status_code: 401,
@@ -219,6 +218,20 @@ async function handler(
               type: "invalid_request_error",
               message:
                 "Messages from run_agent or agent_handover must come from a system key.",
+            },
+          });
+        }
+
+        if (
+          message.context.origin === "agent_handover" ||
+          message.context.origin === "run_agent" ||
+          message.context.originMessageId
+        ) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "use agenticMessageData instead of origin.",
             },
           });
         }
@@ -362,8 +375,10 @@ async function handler(
           profilePictureUrl: message.context.profilePictureUrl ?? null,
           timezone: message.context.timezone,
           username: message.context.username,
-          originMessageId: message.context.originMessageId ?? null,
         };
+
+        const agenticMessageData: AgenticMessageData | undefined =
+          message.agenticMessageData ?? undefined;
 
         // If tools are enabled, we need to add the MCP server views to the conversation before posting the message.
         if (message.context.selectedMCPServerViewIds) {
@@ -397,6 +412,7 @@ async function handler(
             ? await postUserMessageAndWaitForCompletion(auth, {
                 content: message.content,
                 context: ctx,
+                agenticMessageData,
                 conversation,
                 mentions: message.mentions,
                 skipToolsValidation: skipToolsValidation ?? false,
@@ -404,6 +420,7 @@ async function handler(
             : await postUserMessage(auth, {
                 content: message.content,
                 context: ctx,
+                agenticMessageData,
                 conversation,
                 mentions: message.mentions,
                 skipToolsValidation: skipToolsValidation ?? false,

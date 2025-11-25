@@ -245,8 +245,9 @@ describe("createAgentMessages", () => {
         workspace,
         conversation,
         content: `Hello @${agentConfig1.name}`,
-        origin: "agent_handover",
-        originMessageId,
+        origin: "web",
+        agenticMessageType: "agent_handover",
+        agenticOriginMessageId: originMessageId,
       });
 
     const mentions: MentionType[] = [

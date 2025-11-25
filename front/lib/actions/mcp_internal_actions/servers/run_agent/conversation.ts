@@ -20,8 +20,9 @@ import type {
   AgentMessageType,
   ConversationType,
   Result,
+  UserMessageOrigin,
 } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, isUserMessageType, Ok } from "@app/types";
 
 export async function getOrCreateConversation(
   api: DustAPI,
@@ -120,7 +121,17 @@ export async function getOrCreateConversation(
     }
   }
 
+  let parentOrigin: UserMessageOrigin | null = null;
+  const parentMessage = mainConversation.content
+    .flat()
+    .find((m) => m.sId === originMessage.parentMessageId);
+  if (parentMessage && isUserMessageType(parentMessage)) {
+    parentOrigin = parentMessage.context.origin ?? null;
+  }
+
   if (conversationId) {
+    const agenticMessageType =
+      mainConversation.sId !== conversationId ? "run_agent" : "agent_handover";
     const messageRes = await api.postUserMessage({
       conversationId,
       message: {
@@ -132,12 +143,12 @@ export async function getOrCreateConversation(
           fullName: `@${mainAgent.name}`,
           email: null,
           profilePictureUrl: mainAgent.pictureUrl,
-          // `run_agent` origin will skip adding the conversation to the user history.
-          origin:
-            mainConversation.sId !== conversationId
-              ? "run_agent"
-              : "agent_handover",
+          origin: parentOrigin,
           selectedMCPServerViewIds: toolsetsToAdd,
+        },
+        agenticMessageData: {
+          // `run_agent` type will skip adding the conversation to the user history.
+          type: agenticMessageType,
           originMessageId: originMessage.sId,
         },
       },
@@ -199,9 +210,13 @@ export async function getOrCreateConversation(
         fullName: `@${mainAgent.name}`,
         email: null,
         profilePictureUrl: mainAgent.pictureUrl,
-        // `run_agent` origin will skip adding the conversation to the user history.
-        origin: "run_agent",
+        origin: parentOrigin,
         selectedMCPServerViewIds: toolsetsToAdd,
+        originMessageId: originMessage.sId,
+      },
+      agenticMessageData: {
+        // `run_agent` type will skip adding the conversation to the user history.
+        type: "run_agent",
         originMessageId: originMessage.sId,
       },
     },

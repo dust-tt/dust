@@ -57,6 +57,7 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type {
+  AgenticMessageData,
   AgentMessageType,
   APIErrorWithStatusCode,
   ContentFragmentContextType,
@@ -542,12 +543,14 @@ export async function postUserMessage(
     content,
     mentions,
     context,
+    agenticMessageData,
     skipToolsValidation,
   }: {
     conversation: ConversationType;
     content: string;
     mentions: MentionType[];
     context: UserMessageContext;
+    agenticMessageData?: AgenticMessageData;
     skipToolsValidation: boolean;
   }
 ): Promise<
@@ -603,7 +606,7 @@ export async function postUserMessage(
     (() => {
       // If the origin of the user message is "run_agent", we do not want to update the
       // participation of the user so that the conversation does not appear in the user's history.
-      if (context.origin === "run_agent") {
+      if (agenticMessageData?.type === "run_agent") {
         return;
       }
 
@@ -687,11 +690,12 @@ export async function postUserMessage(
         })) ?? -1) + 1;
 
       // Fetch originMessage to ensure it exists
-      const originMessage = context.originMessageId
+      const originMessageId = agenticMessageData?.originMessageId;
+      const originMessage = originMessageId
         ? await Message.findOne({
             where: {
               workspaceId: owner.id,
-              sId: context.originMessageId,
+              sId: originMessageId,
             },
           })
         : null;
@@ -715,10 +719,11 @@ export async function postUserMessage(
                   userContextEmail: context.email,
                   userContextProfilePictureUrl: context.profilePictureUrl,
                   userContextOrigin: context.origin,
-                  userContextOriginMessageId: originMessage?.sId ?? null,
                   userContextLastTriggerRunAt: context.lastTriggerRunAt
                     ? new Date(context.lastTriggerRunAt)
                     : null,
+                  agenticMessageType: agenticMessageData?.type,
+                  agenticOriginMessageId: originMessage?.sId ?? null,
                   userId: user
                     ? user.id
                     : (
@@ -751,7 +756,14 @@ export async function postUserMessage(
         user: user?.toJSON() ?? null,
         mentions,
         content,
-        context,
+        context: {
+          ...context,
+          // TODO(2025-11-24 PPUL): Remove once extensions have been updated - return real user origin and no originMessageId
+          origin: agenticMessageData?.type ?? context.origin,
+          originMessageId:
+            agenticMessageData?.originMessageId ?? context.originMessageId,
+        },
+        agenticMessageData,
         rank: m.rank,
       };
 
