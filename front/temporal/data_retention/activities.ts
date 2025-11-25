@@ -12,6 +12,7 @@ import logger from "@app/logger/logger";
 import type { ModelId } from "@app/types";
 
 const WORKSPACE_CONVERSATIONS_BATCH_SIZE = 200;
+const HEARTBEAT_INTERVAL = 50;
 
 /**
  * Get workspace ids with conversations retention policy.
@@ -69,29 +70,29 @@ export async function purgeConversationsBatchActivity({
 
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    let conversations: ConversationResource[];
-    let nbConversationsDeleted = 0;
+    const conversations = await ConversationResource.listAllBeforeDate(auth, {
+      batchSize: WORKSPACE_CONVERSATIONS_BATCH_SIZE,
+      cutoffDate,
+      includeDeleted: true,
+      includeTest: true,
+    });
 
-    do {
-      conversations = await ConversationResource.listAllBeforeDate(auth, {
-        batchSize: WORKSPACE_CONVERSATIONS_BATCH_SIZE,
+    logger.info(
+      {
+        workspaceId,
+        retentionDays,
         cutoffDate,
-        includeDeleted: true,
-        includeTest: true,
-      });
+        nbConversations: conversations.length,
+      },
+      "Purging conversations for workspace."
+    );
 
-      logger.info(
-        {
-          workspaceId,
-          retentionDays,
-          cutoffDate,
-          nbConversations: conversations.length,
-        },
-        "Purging conversations for workspace."
-      );
+    // Process deletions in batches to heartbeat regularly.
+    for (let i = 0; i < conversations.length; i += HEARTBEAT_INTERVAL) {
+      const batch = conversations.slice(i, i + HEARTBEAT_INTERVAL);
 
       await concurrentExecutor(
-        conversations,
+        batch,
         async (c) => {
           const result = await destroyConversation(auth, {
             conversationId: c.sId,
@@ -116,14 +117,13 @@ export async function purgeConversationsBatchActivity({
         }
       );
 
-      nbConversationsDeleted += conversations.length;
       heartbeat();
-    } while (conversations.length === WORKSPACE_CONVERSATIONS_BATCH_SIZE);
+    }
 
     res.push({
       workspaceModelId: workspace.id,
       workspaceId: workspace.sId,
-      nbConversationsDeleted,
+      nbConversationsDeleted: conversations.length,
     });
   }
 

@@ -100,18 +100,22 @@ describe("ConversationResource", () => {
       const convo1 = await ConversationFactory.create(auth, {
         agentConfigurationId: agents[0].sId,
         messagesCreatedAt: [dateFromDaysAgo(10), dateFromDaysAgo(8)],
+        conversationCreatedAt: dateFromDaysAgo(10),
       });
       const convo2 = await ConversationFactory.create(auth, {
         agentConfigurationId: agents[1].sId,
         messagesCreatedAt: [dateFromDaysAgo(100), dateFromDaysAgo(1)],
+        conversationCreatedAt: dateFromDaysAgo(100),
       });
       const convo3 = await ConversationFactory.create(auth, {
         agentConfigurationId: agents[0].sId,
         messagesCreatedAt: [dateFromDaysAgo(100), dateFromDaysAgo(91)],
+        conversationCreatedAt: dateFromDaysAgo(100),
       });
       const convo4 = await ConversationFactory.create(auth, {
         agentConfigurationId: agents[1].sId,
         messagesCreatedAt: [dateFromDaysAgo(150), dateFromDaysAgo(110)],
+        conversationCreatedAt: dateFromDaysAgo(150),
       });
 
       convo1Id = convo1.sId;
@@ -133,6 +137,7 @@ describe("ConversationResource", () => {
       const anotherConvo = await ConversationFactory.create(anotherAuth, {
         agentConfigurationId: anotherAgents[0].sId,
         messagesCreatedAt: [dateFromDaysAgo(800)],
+        conversationCreatedAt: dateFromDaysAgo(800),
       });
       anotherConvoId = anotherConvo.sId;
     });
