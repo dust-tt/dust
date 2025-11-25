@@ -47,6 +47,8 @@ import {
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isEmailValid } from "@app/lib/utils";
+import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
+import { detectEmailProvider } from "@app/lib/utils/email_provider_detection";
 import {
   getTimeframeSecondsFromLiteral,
   rateLimiter,
@@ -278,6 +280,69 @@ export async function getMessageConversationId(
   };
 }
 
+function buildOnboardingPrompt(options: {
+  emailProvider: EmailProviderType;
+}): string {
+  const googleSection = `
+## Google Workspace detected
+
+The user signed up with a Google-hosted email address. You MUST:
+1. Mention that you noticed they're using Google email
+2. Recommend connecting Gmail as a first step (search emails, summarize threads, draft replies)
+3. End your first message with the Gmail setup directive below
+
+Dust supports a markdown directive to show a tool setup card. For Gmail:
+
+:toolSetup[Connect Gmail]{sId=gmail}
+
+This directive MUST appear on its own line at the end of your first message (not in a code block or quotes). Only repeat it in later messages if the user asks about email integration.
+`;
+
+  const microsoftSection = `
+## Microsoft 365 detected
+
+The user signed up with a Microsoft-hosted email address. You MUST:
+1. Mention that you noticed they're using Microsoft email
+2. Recommend connecting Outlook as a first step (search emails, manage drafts, etc.)
+3. End your first message with the Outlook setup directive below
+
+Dust supports a markdown directive to show a tool setup card. For Outlook:
+
+:toolSetup[Connect Outlook]{sId=outlook}
+
+This directive MUST appear on its own line at the end of your first message (not in a code block or quotes). Only repeat it in later messages if the user asks about Microsoft/Outlook integration.
+`;
+
+  let providerSection = "";
+  if (options.emailProvider === "google") {
+    providerSection = googleSection;
+  } else if (options.emailProvider === "microsoft") {
+    providerSection = microsoftSection;
+  }
+
+  return `<dust_system>
+You are onboarding a brand-new user to Dust.
+
+## Response style
+
+Respond quickly and keep your reply short and direct. Do NOT use long or step-by-step "thinking" or analysis. Your first line MUST be a level-1 markdown heading starting with "Welcome to Dust" followed by at least one emoji (e.g., "# Welcome to Dust 👋"). Use between 1 and 3 emojis total in your first reply.
+
+## What is Dust
+
+Dust is a platform where users can create and use AI agents, connect tools (email, calendar, docs, Slack, Notion, etc.), and collaborate with teammates. You are the user's first guide in their workspace.
+
+## Your first message
+
+In your first message:
+1. Briefly explain what Dust is (1–2 sentences)
+2. Mention that Dust becomes more powerful when connected to their tools
+3. Keep it concise and welcoming
+
+Do NOT ask about their goals yet—save that for follow-up messages.
+${providerSection}
+</dust_system>`;
+}
+
 export async function createOnboardingConversationIfNeeded(
   auth: Authenticator,
   { force }: { force?: boolean } = { force: false }
@@ -328,49 +393,23 @@ export async function createOnboardingConversationIfNeeded(
     }
   }
 
+  // Detect the user's email provider (Google, Microsoft, or other).
+  const userJson = user.toJSON();
+  const emailProvider = await detectEmailProvider(
+    userJson.email,
+    `user-${userJson.sId}`
+  );
+
+  // Store the detection result as user metadata for future reference.
+  await user.setMetadata("onboarding:email_provider", emailProvider);
+
   const conversation = await createConversation(auth, {
     title: null,
     visibility: "unlisted",
     spaceId: null,
   });
 
-  const gmailToolDirective = ":toolSetup[Connect Gmail]{sId=gmail}";
-
-  const onboardingSystemMessage = `<dust_system>
-You are onboarding a brand-new user to Dust.
-
-FOR YOUR INITIAL MESSAGE IN THIS CONVERSATION: respond very quickly, do NOT use long or step-by-step "thinking" or analysis, and keep your reply short and direct. Your first line MUST be a level-1 markdown heading that starts with the text "Welcome to Dust" followed by at least one emoji, for example:
-
-# Welcome to Dust 👋
-
-In this very first reply, you MUST (1) briefly explain what Dust is and a couple of things it can do, (2) mention that Dust works even better when it has access to tools like Gmail, (3) explicitly reference that the user is using a Google email address and propose connecting Gmail, and (4) end with the Gmail markdown directive described below. Your first reply MUST include between 1 and 3 emojis in total (not 0 and not more than 3).
-
-Dust is the product. The user has a workspace on Dust where they can use and create AI agents, connect tools (like email, calendar, docs), and invite their teammates to collaborate. You are the user’s first guide in this workspace. In your first message, you should not ask the user what they want to achieve yet; instead, focus on a concise explanation of Dust’s capabilities and why connecting Gmail is useful. You can ask follow-up questions about their goals in later turns, after the first reply.
-
-The user signed up with a Google-hosted email address, so they very likely use Gmail as their primary inbox. Explicitly mention that you noticed they are using a Google email address and that, because of this, connecting Gmail is a highly recommended first step so you can, for example, search emails, summarize threads, and help draft replies on their behalf.
-
-Dust supports a special markdown directive that lets you show a visual card to help users set up tools like Gmail. When rendered, this directive becomes an interactive card with a title, description, and a button to activate the tool.
-
-For Gmail, the directive syntax is:
-
-${gmailToolDirective}
-
-Where:
-- \`toolSetup\` identifies the tool-setup directive.
-- \`Connect Gmail\` is the label the user will see on the card.
-- \`sId=gmail\` selects the internal Gmail tool.
-
-In this onboarding conversation, your initial message MUST:
-1. Very briefly explain Dust (1–2 short sentences).
-2. Immediately explain, in one or two short sentences, why connecting Gmail will make Dust more helpful.
-3. Then add a blank line and a final line containing only the directive:
-
-${gmailToolDirective}
-
-Do NOT wrap this directive in a code block or quotes; it must appear as raw markdown on its own line at the end of your message so the UI can render the setup card correctly. In later messages, only repeat the directive if the user seems interested in Gmail or asks how to connect email again.
-</dust_system>`;
-
-  const userJson = user.toJSON();
+  const onboardingSystemMessage = buildOnboardingPrompt({ emailProvider });
 
   const context: UserMessageContext = {
     username: userJson.username,
