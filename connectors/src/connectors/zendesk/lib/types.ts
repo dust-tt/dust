@@ -336,7 +336,7 @@ export const ZendeskTicketCommentSchema = z
     body: z.string(),
     author_id: z.number(),
     created_at: z.string(),
-    plain_body: z.string(),
+    plain_body: z.string().optional(),
   })
   .passthrough();
 
