@@ -8,6 +8,7 @@ import type {
 import { fn, literal, Op, where } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
+import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import {
