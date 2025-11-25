@@ -16,7 +16,7 @@ import { Button } from "@dust-tt/sparkle";
 import { useMemo, useRef } from "react";
 import { useState } from "react";
 
-import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { ConnectorProvider, UserType, WorkspaceType } from "@app/types";
 import { isBuilder } from "@app/types";
@@ -168,7 +168,7 @@ export function WelcomeTourGuide({
     !isBuilder(owner);
 
   const connections = useMemo(() => {
-    return Object.values(CONNECTOR_CONFIGURATIONS)
+    return Object.values(CONNECTOR_UI_CONFIGURATIONS)
       .filter((connector) =>
         CONNECTIONS_IN_TOUR_GUIDE.includes(connector.connectorProvider)
       )

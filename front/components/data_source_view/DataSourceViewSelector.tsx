@@ -24,7 +24,7 @@ import type {
 import { ContentNodeTree } from "@app/components/ContentNodeTree";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useDebounce } from "@app/hooks/useDebounce";
-import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import {
   getViewTypeForURLNodeCandidateAccountingForNotion,

@@ -1,7 +1,7 @@
 import { classNames, Input, SliderToggle, TextArea } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
-import type { ConnectorOauthExtraConfigProps } from "@app/lib/connector_providers";
+import type { ConnectorOauthExtraConfigProps } from "@app/lib/connector_providers_ui";
 
 export function MicrosoftOAuthExtraConfig({
   extraConfig,

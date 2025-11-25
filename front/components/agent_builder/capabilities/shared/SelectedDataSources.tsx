@@ -24,7 +24,7 @@ import {
   DATA_WAREHOUSE_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import {
   CHANNEL_INTERNAL_MIME_TYPES,
   DATABASE_INTERNAL_MIME_TYPES,

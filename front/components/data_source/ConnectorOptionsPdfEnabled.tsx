@@ -1,7 +1,7 @@
 import { ContextItem, SliderToggle } from "@dust-tt/sparkle";
 import { GooglePdfLogo as GenericPdfLogo } from "@dust-tt/sparkle";
 
-import type { ConnectorOptionsProps } from "@app/lib/connector_providers";
+import type { ConnectorOptionsProps } from "@app/lib/connector_providers_ui";
 import {
   useConnectorConfig,
   useTogglePdfEnabled,

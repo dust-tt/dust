@@ -17,7 +17,7 @@ import {
   isPastedFile,
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
-import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import {
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
