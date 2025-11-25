@@ -48,7 +48,18 @@ If using custom analyzers with ICU tokenization:
 
 - **ICU Analysis Plugin:** Required for `icu_tokenizer`, `icu_folding`, and Unicode-aware text processing
 - **Installation:** Usually pre-installed on managed Elasticsearch services
-- **Verify:** Check available analyzers with `GET /_analyze` API
+- **Verify:** Check if ICU plugin is installed with:
+  ```bash
+  # Check installed plugins
+  curl -u $ELASTICSEARCH_USERNAME:$ELASTICSEARCH_PASSWORD \
+    "$ELASTICSEARCH_URL/_cat/plugins?v"
+
+  # Or test ICU analyzer availability
+  curl -XPOST -u $ELASTICSEARCH_USERNAME:$ELASTICSEARCH_PASSWORD \
+    "$ELASTICSEARCH_URL/_analyze" \
+    -H "Content-Type: application/json" \
+    -d '{"tokenizer": "icu_tokenizer", "text": "test"}'
+  ```
 
 **Note:** Simple analytics indices do not require any plugins.
 
@@ -87,7 +98,7 @@ The core codebase has indices for data source search:
 - **Purpose:** Full-text search across connected data sources
 - **Complexity:** Custom analyzers (ICU, edge n-grams), multi-field mappings, normalizers
 
-### Key Files
+### Key Files (front)
 
 - **Client:** `lib/api/elasticsearch.ts` - Singleton client with error handling
 - **Front Index Definitions:** `lib/analytics/indices/` - Mappings and settings per version
@@ -395,7 +406,7 @@ tsx front/scripts/create_elasticsearch_index.ts \
 ```bash
 # Check index exists
 curl -u $ELASTICSEARCH_USERNAME:$ELASTICSEARCH_PASSWORD \
-  "$ELASTICSEARCH_URL/front.your_index_name"
+  "$ELASTICSEARCH_URL/front.your_index_name_1"
 
 # Check alias
 curl -u $ELASTICSEARCH_USERNAME:$ELASTICSEARCH_PASSWORD \
@@ -1167,8 +1178,16 @@ buckets.forEach((bucket) => {
 **Symptoms:** Script returns error "Index already exists"
 
 **Solution:**
-1. Check if index exists: `curl -u $USER:$PASS "$URL/front.your_index_name_1"`
-2. Delete if needed: `curl -XDELETE -u $USER:$PASS "$URL/front.your_index_name_1"`
+1. Check if index exists:
+   ```bash
+   curl -u $ELASTICSEARCH_USERNAME:$ELASTICSEARCH_PASSWORD \
+     "$ELASTICSEARCH_URL/front.your_index_name_1"
+   ```
+2. Delete if needed:
+   ```bash
+   curl -XDELETE -u $ELASTICSEARCH_USERNAME:$ELASTICSEARCH_PASSWORD \
+     "$ELASTICSEARCH_URL/front.your_index_name_1"
+   ```
 3. Run script again
 
 ### Issue: Data not appearing in queries
@@ -1478,34 +1497,44 @@ Update TypeScript types if schema changed.
 
 ```bash
 # List indices
-curl -u $USER:$PASS "$URL/_cat/indices?v"
+curl -u $ELASTICSEARCH_USERNAME:$ELASTICSEARCH_PASSWORD \
+  "$ELASTICSEARCH_URL/_cat/indices?v"
 
 # Get index details
-curl -u $USER:$PASS "$URL/front.your_index_name"
+curl -u $ELASTICSEARCH_USERNAME:$ELASTICSEARCH_PASSWORD \
+  "$ELASTICSEARCH_URL/front.your_index_name"
 
 # Check alias
-curl -u $USER:$PASS "$URL/_alias/front.your_index_name"
+curl -u $ELASTICSEARCH_USERNAME:$ELASTICSEARCH_PASSWORD \
+  "$ELASTICSEARCH_URL/_alias/front.your_index_name"
 
 # Get mapping
-curl -u $USER:$PASS "$URL/front.your_index_name/_mapping"
+curl -u $ELASTICSEARCH_USERNAME:$ELASTICSEARCH_PASSWORD \
+  "$ELASTICSEARCH_URL/front.your_index_name/_mapping"
 
 # Get settings
-curl -u $USER:$PASS "$URL/front.your_index_name/_settings"
+curl -u $ELASTICSEARCH_USERNAME:$ELASTICSEARCH_PASSWORD \
+  "$ELASTICSEARCH_URL/front.your_index_name/_settings"
 
 # Document count
-curl -u $USER:$PASS "$URL/front.your_index_name/_count"
+curl -u $ELASTICSEARCH_USERNAME:$ELASTICSEARCH_PASSWORD \
+  "$ELASTICSEARCH_URL/front.your_index_name/_count"
 
 # Get document by ID
-curl -u $USER:$PASS "$URL/front.your_index_name/_doc/YOUR_DOC_ID"
+curl -u $ELASTICSEARCH_USERNAME:$ELASTICSEARCH_PASSWORD \
+  "$ELASTICSEARCH_URL/front.your_index_name/_doc/YOUR_DOC_ID"
 
 # Delete document
-curl -XDELETE -u $USER:$PASS "$URL/front.your_index_name/_doc/YOUR_DOC_ID"
+curl -XDELETE -u $ELASTICSEARCH_USERNAME:$ELASTICSEARCH_PASSWORD \
+  "$ELASTICSEARCH_URL/front.your_index_name/_doc/YOUR_DOC_ID"
 
 # Refresh index (make documents searchable now)
-curl -XPOST -u $USER:$PASS "$URL/front.your_index_name/_refresh"
+curl -XPOST -u $ELASTICSEARCH_USERNAME:$ELASTICSEARCH_PASSWORD \
+  "$ELASTICSEARCH_URL/front.your_index_name/_refresh"
 
 # Delete index (careful!)
-curl -XDELETE -u $USER:$PASS "$URL/front.your_index_name_1"
+curl -XDELETE -u $ELASTICSEARCH_USERNAME:$ELASTICSEARCH_PASSWORD \
+  "$ELASTICSEARCH_URL/front.your_index_name_1"
 ```
 
 ### File Checklist
@@ -1533,7 +1562,8 @@ Before deploying an index with custom analyzers, test the analyzer behavior:
 
 ```bash
 # Test an analyzer on your index
-curl -XPOST -u $USER:$PASS "$URL/front.your_index_name/_analyze" \
+curl -XPOST -u $ELASTICSEARCH_USERNAME:$ELASTICSEARCH_PASSWORD \
+  "$ELASTICSEARCH_URL/front.your_index_name/_analyze" \
   -H "Content-Type: application/json" \
   -d '{
     "analyzer": "edge_analyzer",
@@ -1541,7 +1571,8 @@ curl -XPOST -u $USER:$PASS "$URL/front.your_index_name/_analyze" \
   }'
 
 # Test with a specific field (uses the field's analyzer)
-curl -XPOST -u $USER:$PASS "$URL/front.your_index_name/_analyze" \
+curl -XPOST -u $ELASTICSEARCH_USERNAME:$ELASTICSEARCH_PASSWORD \
+  "$ELASTICSEARCH_URL/front.your_index_name/_analyze" \
   -H "Content-Type: application/json" \
   -d '{
     "field": "title.edge",
