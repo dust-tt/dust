@@ -104,7 +104,7 @@ ${agentList
 </ul>
 `;
   } else {
-    body = `
+    body += `
 <h3>What happens next</h3>
 
 <p><strong>Automatic migration (no action required):</strong></p>
