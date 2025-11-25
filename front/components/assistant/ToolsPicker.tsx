@@ -14,7 +14,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
 
-import { CreateMCPServerSheet } from "@app/components/actions/mcp/CreateMCPServerSheet";
+import { CreateMCPServerDialog } from "@app/components/actions/mcp/CreateMCPServerSheet";
 import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
@@ -384,7 +384,7 @@ export function ToolsPicker({
       </DropdownMenu>
 
       {shouldShowSetupSheet && (
-        <CreateMCPServerSheet
+        <CreateMCPServerDialog
           owner={owner}
           internalMCPServer={setupSheetServer ?? undefined}
           defaultServerConfig={setupSheetRemoteServerConfig ?? undefined}

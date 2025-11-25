@@ -8,7 +8,7 @@
 import { Button, ContentMessage } from "@dust-tt/sparkle";
 import React, { useMemo, useState } from "react";
 
-import { CreateMCPServerSheet } from "@app/components/actions/mcp/CreateMCPServerSheet";
+import { CreateMCPServerDialog } from "@app/components/actions/mcp/CreateMCPServerSheet";
 import { getIcon } from "@app/components/resources/resources_icons";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isInternalMCPServerOfName } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -171,7 +171,7 @@ export function ToolSetupCard({ toolName, toolId, owner }: ToolSetupCardProps) {
       </ContentMessage>
 
       {matchingMCPServer && (
-        <CreateMCPServerSheet
+        <CreateMCPServerDialog
           owner={owner}
           internalMCPServer={matchingMCPServer}
           setMCPServerToShow={handleSetupComplete}
