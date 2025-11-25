@@ -101,6 +101,12 @@ const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
     cache_creation_input_tokens: 3.75,
     cache_read_input_tokens: 0.3,
   },
+  "claude-opus-4-5-20251101": {
+    input: 5.0,
+    output: 25.0,
+    cache_creation_input_tokens: 6.25,
+    cache_read_input_tokens: 0.5,
+  },
   "claude-3-opus-20240229": {
     input: 15.0,
     output: 75.0,
