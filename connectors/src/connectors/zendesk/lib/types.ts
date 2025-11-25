@@ -51,11 +51,13 @@ export const ZendeskTicketSchema = z
     email_cc_ids: z.array(z.number()).optional(),
     due_at: z.string().nullable(),
     has_incidents: z.boolean(),
-    satisfaction_rating: z.object({
-      comment: z.string(),
-      id: z.number(),
-      score: z.string(),
-    }),
+    satisfaction_rating: z
+      .object({
+        comment: z.string().optional(),
+        id: z.number().optional(),
+        score: z.string(),
+      })
+      .optional(),
     submitter_id: z.number(),
   })
   .passthrough();
