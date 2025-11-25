@@ -34,7 +34,7 @@ interface ToolsListProps {
 interface ToolItemProps {
   tool: { name: string; description: string };
   mayUpdate: boolean;
-  availableStakeLevels: readonly MCPToolStakeLevelType[];
+  availableStakeLevels: MCPToolStakeLevelType[];
   metadata?: {
     enabled: boolean;
     permission: MCPToolStakeLevelType;
@@ -147,21 +147,18 @@ export function ToolsList({
 
   const getAvailableStakeLevelsForTool = (
     toolName: string
-  ): readonly MCPToolStakeLevelType[] => {
+  ): MCPToolStakeLevelType[] => {
     if (isRemoteMCPServerType(mcpServerView.server)) {
       const defaultRemoteServer = getDefaultRemoteMCPServerByURL(
         mcpServerView.server.url
       );
       // We only allow users to set the "never_ask" stake level for tools that are configured with it in the default server.
       if (defaultRemoteServer?.toolStakes?.[toolName] === "never_ask") {
-        return [
-          ...CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS,
-          "never_ask",
-        ] as readonly MCPToolStakeLevelType[];
+        return [...CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS, "never_ask"];
       }
-      return CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS as readonly MCPToolStakeLevelType[];
+      return [...CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS];
     }
-    return MCP_TOOL_STAKE_LEVELS;
+    return [...MCP_TOOL_STAKE_LEVELS];
   };
 
   return (
@@ -174,7 +171,7 @@ export function ToolsList({
           title="User Approval Settings"
         >
           <p className="text-sm">
-            Tune stake levels to control when Dust pauses for confirmation.
+            Tune stake levels to control when Dust asks for approval.
           </p>
           <p>
             <b>High</b> requires explicit approval, <b>low</b> can be trusted by

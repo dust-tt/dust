@@ -144,9 +144,8 @@ export function getToolExtraFields(
       return r;
     }
     const serverName = r.value.name;
-    toolsStakes = {
-      ...(INTERNAL_MCP_SERVERS[serverName].tools_stakes ?? {}),
-    };
+    const defaultStakes = INTERNAL_MCP_SERVERS[serverName].tools_stakes ?? {};
+    toolsStakes = { ...defaultStakes };
     toolsRetryPolicies = INTERNAL_MCP_SERVERS[serverName].tools_retry_policies;
     serverTimeoutMs = INTERNAL_MCP_SERVERS[serverName]?.timeoutMs;
 

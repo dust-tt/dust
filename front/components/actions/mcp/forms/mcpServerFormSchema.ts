@@ -42,14 +42,14 @@ export type MCPServerFormValues = ServerSettings & {
 };
 
 function getDefaultInternalToolStakeLevel(
-  serverName: string,
+  server: MCPServerViewType["server"],
   toolName: string
 ): MCPToolStakeLevelType {
-  if (!isInternalMCPServerName(serverName)) {
+  if (isRemoteMCPServerType(server) || !isInternalMCPServerName(server.name)) {
     return FALLBACK_MCP_TOOL_STAKE_LEVEL;
   }
 
-  const serverConfig = INTERNAL_MCP_SERVERS[serverName];
+  const serverConfig = INTERNAL_MCP_SERVERS[server.name];
   const serverToolStakes = serverConfig.tools_stakes as
     | Record<string, MCPToolStakeLevelType>
     | undefined;
@@ -80,9 +80,7 @@ export function getMCPServerFormDefaults(
     const metadata = view.toolsMetadata?.find((m) => m.toolName === tool.name);
     const defaultPermission =
       metadata?.permission ??
-      (isRemoteMCPServerType(view.server)
-        ? FALLBACK_MCP_TOOL_STAKE_LEVEL
-        : getDefaultInternalToolStakeLevel(view.server.name, tool.name));
+      getDefaultInternalToolStakeLevel(view.server, tool.name);
     toolSettings[tool.name] = {
       enabled: metadata?.enabled ?? true,
       permission: defaultPermission,
