@@ -93,7 +93,7 @@ export function SearchMembersDropdown({
             value={searchTerm}
             onChange={setSearchTerm}
             name="search"
-            placeholder="Search members (email)"
+            placeholder="Search members"
           />
         }
       >
