@@ -24,23 +24,24 @@ const firebaseApp = initializeApp();
 
 // Synchronizes GCS config file update with cache
 export const syncWebhookRouterConfig = onObjectFinalized({ bucket, serviceAccount }, async (event) => {
-  const { name: filePath, bucket: fileBucket } = event.data;
+  const { name: webhookRouterConfigFilePath, bucket: webhookRouterConfigBucket } = event.data;
 
-  if (filePath !== CONFIG.DUST_WEBHOOK_ROUTER_CONFIG_FILE_PATH) {
+  if (webhookRouterConfigFilePath !== CONFIG.DUST_WEBHOOK_ROUTER_CONFIG_FILE_PATH) {
     // Ignore other files updates
     return;
   }
 
   try {
-    const file = new Storage().bucket(fileBucket).file(filePath);
-    const [contents] = await file.download();
+    const webhookRouterConfigFile = new Storage().bucket(webhookRouterConfigBucket).file(webhookRouterConfigFilePath);
+    const [rawConfig] = await webhookRouterConfigFile.download();
 
-    const parsed = JSON.parse(contents.toString("utf-8"));
-    if (typeof parsed !== "object") {
+    const parsedConfig = JSON.parse(rawConfig.toString("utf-8"));
+    if (typeof parsedConfig !== "object") {
       throw new Error("Invalid webhook configuration format. Expected an object.");
     }
 
-    await getDatabase(firebaseApp).ref().set(parsed);
+    // We set the updated webhook router configuration at the root of Firebase Realtime Database
+    await getDatabase(firebaseApp).ref().set(parsedConfig);
 
     console.log("Webhook router configuration sync succeeded", { component: "webhook-router-config-sync" });
   } catch (error) {

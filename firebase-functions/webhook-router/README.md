@@ -71,7 +71,7 @@ The emulator runs the following services:
 
 **Local Environment Setup:**
 
-Create a `.env.local` file with:
+Create a `.env.local` file in the root folder with:
 
 ```bash
 GCP_WEBHOOK_ROUTER_CONFIG_BUCKET=dust-infra.firebasestorage.app
