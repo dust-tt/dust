@@ -12,6 +12,7 @@ import {
   getMcpServerViewDisplayName,
 } from "@app/lib/actions/mcp_helper";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { OAUTH_USE_CASE_TO_LABEL } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
 import type { LightWorkspaceType, PokeMCPServerViewType } from "@app/types";
 
 interface ViewMCPServerViewTableProps {
@@ -50,6 +51,14 @@ export function ViewMCPServerViewTable({
                 <PokeTableHead>Server Description</PokeTableHead>
                 <PokeTableCell>
                   {getMcpServerViewDescription(mcpServerView)}
+                </PokeTableCell>
+              </PokeTableRow>
+              <PokeTableRow>
+                <PokeTableHead>Credentials Type</PokeTableHead>
+                <PokeTableCell>
+                  {mcpServerView.oAuthUseCase
+                    ? `${OAUTH_USE_CASE_TO_LABEL[mcpServerView.oAuthUseCase]} credentials`
+                    : "Not configured"}
                 </PokeTableCell>
               </PokeTableRow>
               <PokeTableRow>
