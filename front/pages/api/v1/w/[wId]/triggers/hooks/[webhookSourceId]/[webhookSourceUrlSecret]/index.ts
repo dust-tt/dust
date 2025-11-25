@@ -198,11 +198,6 @@ async function handler(
   });
 
   if (result.isErr()) {
-    statsDClient.increment("webhook_error.count", 1, [
-      `provider:${provider}`,
-      `workspace_id:${workspace.sId}`,
-    ]);
-
     return apiError(req, res, {
       status_code: 500,
       api_error: {

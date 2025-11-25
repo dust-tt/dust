@@ -661,18 +661,20 @@ async function trigger(command: string, args: parseArgs.ParsedArgs) {
       );
 
       for (const webhookRequest of failedWebhooks) {
+        const localLogger = logger.child({
+          webhookRequestId: webhookRequest.id,
+          webhookSourceId: webhookRequest.webhookSourceId,
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          createdAt: webhookRequest.createdAt,
+          initialErrorMessage: webhookRequest.errorMessage,
+        });
         if (execute) {
           const res = await getWebhookRequestPayloadFromGCS(auth, {
             webhookRequest,
           });
           if (res.isErr()) {
-            logger.error(
-              {
-                webhookRequestId: webhookRequest.id,
-                webhookSourceId: webhookRequest.webhookSourceId,
-                errorMessage: res.error.message,
-                createdAt: webhookRequest.createdAt,
-              },
+            localLogger.error(
+              { errorMessage: res.error.message },
               `Failed to get webhook payload from GCS: ${res.error.message}`
             );
             continue;
@@ -686,41 +688,29 @@ async function trigger(command: string, args: parseArgs.ParsedArgs) {
           );
 
           if (!webhookSource) {
-            logger.error(
-              {
-                webhookRequestId: webhookRequest.id,
-                webhookSourceId: webhookRequest.webhookSourceId,
-                errorMessage: "Webhook source not found",
-                createdAt: webhookRequest.createdAt,
-              },
+            localLogger.error(
+              { errorMessage: "Webhook source not found" },
               `Webhook source not found for webhook request.`
             );
             continue;
           }
 
-          await processWebhookRequest(auth, {
+          const result = await processWebhookRequest(auth, {
             webhookRequest,
             webhookSource,
             headers,
             body,
           });
-          logger.info(
-            {
-              webhookRequestId: webhookRequest.id,
-              webhookSourceId: webhookRequest.webhookSourceId,
-              errorMessage: webhookRequest.errorMessage,
-              createdAt: webhookRequest.createdAt,
-            },
-            "Webhook workflow launched successfully."
-          );
+          if (result.isErr()) {
+            localLogger.error(
+              { error: result.error.message },
+              `Failed to process webhook request: ${result.error.message}`
+            );
+            continue;
+          }
+          logger.info("Webhook workflow launched successfully.");
         } else {
           logger.info(
-            {
-              webhookRequestId: webhookRequest.id,
-              webhookSourceId: webhookRequest.webhookSourceId,
-              errorMessage: webhookRequest.errorMessage,
-              createdAt: webhookRequest.createdAt,
-            },
             "[DRY RUN] Would launch workflow for this webhook request."
           );
         }
