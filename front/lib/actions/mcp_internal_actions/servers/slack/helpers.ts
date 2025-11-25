@@ -408,6 +408,14 @@ export async function executePostMessage(
   );
   message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${agentLoopContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
 
+  const authResult = await slackClient.auth.test();
+  if (
+    !authResult.ok ||
+    !authResult.response_metadata?.scopes?.includes("files:write")
+  ) {
+    fileId = undefined;
+  }
+
   // If a file is provided, upload it as attachment of the original message.
   if (fileId) {
     const file = await FileResource.fetchById(auth, fileId);
