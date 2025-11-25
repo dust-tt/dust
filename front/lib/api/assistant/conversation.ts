@@ -395,7 +395,10 @@ export async function createOnboardingConversationIfNeeded(
 
   // Detect the user's email provider (Google, Microsoft, or other).
   const userJson = user.toJSON();
-  const emailProvider = await detectEmailProvider(userJson.email);
+  const emailProvider = await detectEmailProvider(
+    userJson.email,
+    `user-${user.id}`
+  );
 
   // Store the detection result as user metadata for future reference.
   await user.setMetadata("onboarding:email_provider", emailProvider);
