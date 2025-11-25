@@ -9,7 +9,6 @@ import { DataSourceLinkExtension } from "@app/components/assistant/conversation/
 import { KeyboardShortcutsExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/KeyboardShortcutsExtension";
 import { MarkdownStyleExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MarkdownStyleExtension";
 import { MentionExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionExtension";
-import { MentionStorageExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionStorageExtension";
 import { PastedAttachmentExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/PastedAttachmentExtension";
 import { URLDetectionExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/URLDetectionExtension";
 import { createMarkdownSerializer } from "@app/components/assistant/conversation/input_bar/editor/markdownSerializer";
@@ -17,7 +16,6 @@ import {
   createMentionSuggestion,
   mentionPluginKey,
 } from "@app/components/assistant/conversation/input_bar/editor/mentionSuggestion";
-import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { extractFromEditorJSON } from "@app/lib/mentions/format";
@@ -183,10 +181,10 @@ export interface CustomEditorProps {
     clearEditor: () => void,
     setLoading: (loading: boolean) => void
   ) => void;
-  suggestions: EditorSuggestions;
   disableAutoFocus: boolean;
   onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
   owner: WorkspaceType;
+  conversationId: string | null;
   // If provided, large pasted text will be routed to this callback along with selection bounds
   onLongTextPaste?: (payload: {
     text: string;
@@ -199,10 +197,10 @@ export interface CustomEditorProps {
 
 const useCustomEditor = ({
   onEnterKeyDown,
-  suggestions,
   disableAutoFocus,
   onUrlDetected,
   owner,
+  conversationId,
   onLongTextPaste,
   longTextPasteCharsThreshold,
   onInlineText,
@@ -213,7 +211,6 @@ const useCustomEditor = ({
       hardBreak: false, // Disable the built-in Shift+Enter. We handle it ourselves in the keymap extension
       strike: false,
     }),
-    MentionStorageExtension,
     DataSourceLinkExtension,
     MentionExtension.configure({
       owner,
@@ -221,7 +218,7 @@ const useCustomEditor = ({
         class:
           "min-w-0 px-0 py-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-highlight-500 font-semibold",
       },
-      suggestion: createMentionSuggestion(),
+      suggestion: createMentionSuggestion({ owner, conversationId }),
     }),
     Placeholder.configure({
       placeholder: "Ask an @agent a question, or get some @help",
@@ -268,13 +265,6 @@ const useCustomEditor = ({
     },
     immediatelyRender: false,
   });
-
-  // Sync the extension's MentionStorage suggestions whenever the local suggestions state updates.
-  useEffect(() => {
-    if (editor) {
-      editor.storage.MentionStorage.suggestions = suggestions;
-    }
-  }, [suggestions, editor]);
 
   const editorService = useEditorService(editor);
 
