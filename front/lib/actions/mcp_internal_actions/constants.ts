@@ -109,6 +109,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "run_dust_app",
   "salesforce",
   "salesloft",
+  "slab",
   "slack",
   "slack_bot",
   "sound_studio",
@@ -1289,6 +1290,33 @@ The directive should be used to display a clickable version of the agent name in
       developerSecretSelection: "required",
     },
   },
+  slab: {
+    id: 43,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("slab_mcp");
+    },
+    isPreview: true,
+    requiresBearerToken: true,
+    tools_stakes: {
+      search_posts: "never_ask",
+      get_post_contents: "never_ask",
+      get_topics: "never_ask",
+      get_post_metadata: "never_ask",
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "slab",
+      version: "1.0.0",
+      description: "Search and read from your Slab knowledge base",
+      authorization: null,
+      icon: "ActionDocumentTextIcon",
+      documentationUrl: null,
+      instructions: null,
+    },
+  },
   [SEARCH_SERVER_NAME]: {
     id: 1006,
     availability: "auto",
@@ -1636,6 +1664,7 @@ The directive should be used to display a clickable version of the agent name in
     tools_stakes: Record<string, MCPToolStakeLevelType> | undefined;
     tools_retry_policies: Record<string, MCPToolRetryPolicyType> | undefined;
     timeoutMs: number | undefined;
+    requiresBearerToken?: boolean;
     serverInfo: InternalMCPServerDefinitionType & { name: K };
   };
 };

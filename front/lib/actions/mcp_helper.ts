@@ -177,6 +177,29 @@ export function getMcpServerDisplayName(
   return displayName;
 }
 
+export function doesInternalMCPServerRequireBearerToken(
+  serverId: string
+): boolean {
+  const res = getInternalMCPServerNameAndWorkspaceId(serverId);
+  if (res.isErr()) {
+    return false;
+  }
+  const serverConfig = INTERNAL_MCP_SERVERS[res.value.name];
+  return (
+    "requiresBearerToken" in serverConfig &&
+    serverConfig.requiresBearerToken === true
+  );
+}
+
+export function requiresBearerTokenConfiguration(
+  server: MCPServerType
+): boolean {
+  if (isRemoteMCPServerType(server)) {
+    return true;
+  }
+  return doesInternalMCPServerRequireBearerToken(server.sId);
+}
+
 // Only includes action types that are actually used in templates.
 const TEMPLATE_ACTION_TO_MCP_SERVER: Record<
   MultiActionPreset,

@@ -3,6 +3,7 @@ import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { isCustomResourceIconType } from "@app/components/resources/resources_icons";
+import { requiresBearerTokenConfiguration } from "@app/lib/actions/mcp_helper";
 import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import {
   allowsMultipleInstancesOfInternalMCPServerByName,
@@ -66,6 +67,11 @@ const PostQueryParamsSchema = t.union([
     ]),
     connectionId: t.union([t.string, t.undefined]),
     includeGlobal: t.union([t.boolean, t.undefined]),
+    sharedSecret: t.union([t.string, t.undefined]),
+    customHeaders: t.union([
+      t.array(t.type({ key: t.string, value: t.string })),
+      t.undefined,
+    ]),
   }),
 ]);
 
@@ -342,6 +348,28 @@ async function handler(
             serverType: "internal",
             internalMCPServerId: newInternalMCPServer.id,
           });
+        }
+
+        if (
+          requiresBearerTokenConfiguration(newInternalMCPServer.toJSON()) &&
+          (body.sharedSecret !== undefined || body.customHeaders !== undefined)
+        ) {
+          const sanitizedRecord = headersArrayToRecord(body.customHeaders, {
+            stripAuthorization: true,
+          });
+          const customHeaders =
+            Object.keys(sanitizedRecord).length > 0 ? sanitizedRecord : null;
+
+          const upsertResult = await newInternalMCPServer.upsertCredentials(
+            auth,
+            {
+              sharedSecret: body.sharedSecret,
+              customHeaders,
+            }
+          );
+          if (upsertResult.isErr()) {
+            throw upsertResult.error;
+          }
         }
 
         if (body.includeGlobal) {

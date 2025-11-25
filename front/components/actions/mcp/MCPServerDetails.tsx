@@ -11,8 +11,11 @@ import {
 import { MCPServerDetailsSheet } from "@app/components/actions/mcp/MCPServerDetailsSheet";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
-import { isRemoteMCPServerType } from "@app/lib/actions/mcp_helper";
+import {
+  getMcpServerDisplayName,
+  isRemoteMCPServerType,
+  requiresBearerTokenConfiguration,
+} from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useMCPServers, useMCPServerViews } from "@app/lib/swr/mcp_servers";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
@@ -165,14 +168,14 @@ export function MCPServerDetails({
 
   const applyInfoChanges = async (diff: {
     serverView?: { name: string; description: string };
-    remoteIcon?: string;
-    remoteSharedSecret?: string;
-    remoteCustomHeaders?: any;
+    icon?: string;
+    authSharedSecret?: string;
+    authCustomHeaders?: any;
   }) => {
     const hasServerViewChanges = diff.serverView !== undefined;
-    const hasIconChanges = diff.remoteIcon !== undefined;
-    const hasSecretChanges = diff.remoteSharedSecret !== undefined;
-    const hasHeaderChanges = diff.remoteCustomHeaders !== undefined;
+    const hasIconChanges = diff.icon !== undefined;
+    const hasSecretChanges = diff.authSharedSecret !== undefined;
+    const hasHeaderChanges = diff.authCustomHeaders !== undefined;
     const hasRemoteChanges =
       hasIconChanges || hasSecretChanges || hasHeaderChanges;
 
@@ -199,14 +202,14 @@ export function MCPServerDetails({
     // Patch remote server settings if needed.
     if (hasRemoteChanges) {
       const patchBody: any = {};
-      if (diff.remoteIcon) {
-        patchBody.icon = diff.remoteIcon;
+      if (diff.icon) {
+        patchBody.icon = diff.icon;
       }
-      if (diff.remoteSharedSecret) {
-        patchBody.sharedSecret = diff.remoteSharedSecret;
+      if (diff.authSharedSecret) {
+        patchBody.sharedSecret = diff.authSharedSecret;
       }
-      if (diff.remoteCustomHeaders !== undefined) {
-        patchBody.customHeaders = diff.remoteCustomHeaders;
+      if (diff.authCustomHeaders !== undefined) {
+        patchBody.customHeaders = diff.authCustomHeaders;
       }
 
       const response = await fetch(
@@ -234,11 +237,12 @@ export function MCPServerDetails({
       async (values) => {
         try {
           // Calculate what changed.
-          const diff = diffMCPServerForm(
-            defaults,
-            values,
-            isRemoteMCPServerType(mcpServerView.server)
-          );
+          const diff = diffMCPServerForm(defaults, values, {
+            isRemote: isRemoteMCPServerType(mcpServerView.server),
+            requiresBearerToken: requiresBearerTokenConfiguration(
+              mcpServerView.server
+            ),
+          });
 
           // Apply tool changes if any.
           if (diff.toolChanges && diff.toolChanges.length > 0) {
