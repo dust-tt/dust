@@ -9,7 +9,7 @@ export type AgentMcpConfigurationSummary = {
 };
 
 export async function listAgentMcpConfigurationsForAgent(params: {
-  workspaceId: string;
+  workspaceId: number;
   agentConfigurationSId: string;
 }): Promise<AgentMcpConfigurationSummary[]> {
   const { workspaceId, agentConfigurationSId } = params;

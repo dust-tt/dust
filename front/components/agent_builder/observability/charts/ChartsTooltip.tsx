@@ -9,15 +9,12 @@ import {
   ChartTooltipCard,
   LegendDot,
 } from "@app/components/agent_builder/observability/shared/ChartTooltip";
-import { normalizeVersionLabel } from "@app/components/agent_builder/observability/shared/tooltipHelpers";
-import type { ToolChartModeType } from "@app/components/agent_builder/observability/types";
 import { isToolChartUsagePayload } from "@app/components/agent_builder/observability/types";
 import { getIndexedColor } from "@app/components/agent_builder/observability/utils";
 import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 
 export interface ToolUsageTooltipProps
   extends TooltipContentProps<number, string> {
-  mode: ToolChartModeType;
   topTools: string[];
   hoveredTool?: string | null;
 }
@@ -25,8 +22,6 @@ export interface ToolUsageTooltipProps
 export function ChartsTooltip({
   active,
   payload,
-  label,
-  mode,
   topTools,
   hoveredTool,
 }: ToolUsageTooltipProps) {
@@ -55,11 +50,6 @@ export function ChartsTooltip({
   }
 
   const colorClassName = getIndexedColor(toolName, topTools);
-
-  const title =
-    mode === "step"
-      ? `Step ${String(label)}`
-      : normalizeVersionLabel(String(label));
 
   // If there's a breakdown, show the configurations as bullet points
   if (data.breakdown && data.breakdown.length > 0) {
@@ -97,6 +87,9 @@ export function ChartsTooltip({
         <div className="mb-2 flex items-center gap-2">
           <LegendDot className={colorClassName} />
           <Label>{toolName}</Label>
+          <span className="ml-1 text-muted-foreground dark:text-muted-foreground-night">
+            ({data.percent}%)
+          </span>
         </div>
         <div className="space-y-1.5">
           {breakdownRows.map((b) => (
@@ -117,19 +110,27 @@ export function ChartsTooltip({
     );
   }
 
-  // No breakdown - show single tool
   return (
-    <ChartTooltipCard
-      title={title}
-      rows={[
-        {
-          label: toolName,
-          value: data.count,
-          percent: data.percent,
-          colorClassName,
-        },
-      ]}
-    />
+    <div
+      role="tooltip"
+      className="min-w-32 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl dark:border-border-night/50 dark:bg-background-night"
+    >
+      <div className="mb-1.5 flex items-center gap-2">
+        <LegendDot className={colorClassName} />
+        <Label>{toolName}</Label>
+        <span className="ml-1 text-muted-foreground dark:text-muted-foreground-night">
+          ({data.percent}%)
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="ml-auto font-mono font-medium tabular-nums text-foreground dark:text-foreground-night">
+          {data.count}
+        </span>
+        <span className="text-muted-foreground dark:text-muted-foreground-night">
+          ({data.percent}%)
+        </span>
+      </div>
+    </div>
   );
 }
 

@@ -84,12 +84,11 @@ export function ToolUsageChart({
     (payload: TooltipContentProps<number, string>) => (
       <ChartsTooltip
         {...payload}
-        mode={toolMode}
         topTools={topTools}
         hoveredTool={hoveredTool}
       />
     ),
-    [toolMode, topTools, hoveredTool]
+    [topTools, hoveredTool]
   );
 
   return (
