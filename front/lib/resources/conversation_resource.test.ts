@@ -185,17 +185,6 @@ describe("ConversationResource", () => {
       expect(oldConversationIds).toContain(convo3Id);
       expect(oldConversationIds).toContain(convo4Id);
     });
-
-    it("should return all old conversations no matter the batch size", async () => {
-      const oldConversations = await ConversationResource.listAllBeforeDate(
-        auth,
-        {
-          batchSize: 1,
-          cutoffDate: dateFromDaysAgo(1),
-        }
-      );
-      expect(oldConversations.length).toBe(4);
-    });
   });
 });
 

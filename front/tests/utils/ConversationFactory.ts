@@ -8,6 +8,7 @@ import {
   Message,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type {
@@ -80,6 +81,25 @@ export class ConversationFactory {
         rank: i * 2 + 1,
         t,
       });
+    }
+
+    // Update the conversation's updatedAt to match the most recent message's createdAt
+    if (messagesCreatedAt.length > 0) {
+      const mostRecentMessageDate = new Date(
+        Math.max(...messagesCreatedAt.map((d) => d.getTime()))
+      );
+      // Use raw SQL to bypass Sequelize's automatic updatedAt timestamp handling
+      // eslint-disable-next-line dust/no-raw-sql
+      await frontSequelize.query(
+        `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
+        {
+          replacements: {
+            updatedAt: mostRecentMessageDate,
+            id: conversation.id,
+          },
+          transaction: t,
+        }
+      );
     }
 
     return conversation;

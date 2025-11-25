@@ -5,7 +5,7 @@ import type {
   InferAttributes,
   Transaction,
 } from "sequelize";
-import { col, fn, literal, Op, QueryTypes, Sequelize, where } from "sequelize";
+import { col, literal, Op, QueryTypes, Sequelize } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationMCPServerViewModel } from "@app/lib/models/assistant/actions/conversation_mcp_server_view";
@@ -379,47 +379,18 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   static async listAllBeforeDate(
     auth: Authenticator,
     options?: FetchConversationOptions & {
-      batchSize?: number;
       cutoffDate: Date;
     }
   ): Promise<ConversationResource[]> {
-    const workspaceId = auth.getNonNullableWorkspace().id;
+    const { cutoffDate } = options ?? {};
 
-    const { batchSize = 1000, cutoffDate } = options ?? {};
-
-    const inactiveConversations = await Message.findAll({
-      attributes: [
-        "conversationId",
-        [fn("MAX", col("createdAt")), "lastMessageDate"],
-      ],
+    return this.baseFetchWithAuthorization(auth, options, {
       where: {
-        workspaceId,
+        updatedAt: {
+          [Op.lt]: cutoffDate,
+        },
       },
-      group: ["conversationId"],
-      having: where(fn("MAX", col("createdAt")), "<", cutoffDate),
-      order: [[fn("MAX", col("createdAt")), "DESC"]],
     });
-
-    // We batch to avoid a big where in clause.
-    const results: ConversationResource[] = [];
-    for (let i = 0; i < inactiveConversations.length; i += batchSize) {
-      const batch = inactiveConversations.slice(i, i + batchSize);
-      const conversations = await this.baseFetchWithAuthorization(
-        auth,
-        options,
-        {
-          where: {
-            id: {
-              [Op.in]: batch.map((m) => m.conversationId),
-            },
-          },
-        }
-      );
-
-      results.push(...conversations);
-    }
-
-    return results;
   }
 
   static async listConversationWithAgentCreatedBeforeDate(
