@@ -1,6 +1,14 @@
 import { context as otelContext, trace } from "@opentelemetry/api";
 import type { ReadableSpan } from "@opentelemetry/sdk-trace-base";
-import type { Options, QueryOptions, QueryOptionsWithType } from "sequelize";
+import type {
+  ColumnsDescription,
+  Model,
+  Options,
+  QueryOptions,
+  QueryOptionsWithModel,
+  QueryOptionsWithType,
+  QueryTypes,
+} from "sequelize";
 import { Sequelize } from "sequelize";
 
 /**
@@ -21,6 +29,65 @@ export class SequelizeWithComments extends Sequelize {
   /**
    * Overrides the query method to inject SQL comments with trace and route information
    */
+  public query(
+    sql: string | { query: string; values: unknown[] },
+    options: QueryOptionsWithType<QueryTypes.UPDATE>
+  ): Promise<[undefined, number]>;
+  public query(
+    sql: string | { query: string; values: unknown[] },
+    options: QueryOptionsWithType<QueryTypes.BULKUPDATE>
+  ): Promise<number>;
+  public query(
+    sql: string | { query: string; values: unknown[] },
+    options: QueryOptionsWithType<QueryTypes.INSERT>
+  ): Promise<[number, number]>;
+  public query(
+    sql: string | { query: string; values: unknown[] },
+    options: QueryOptionsWithType<QueryTypes.UPSERT>
+  ): Promise<number>;
+  public query(
+    sql: string | { query: string; values: unknown[] },
+    options: QueryOptionsWithType<QueryTypes.DELETE>
+  ): Promise<void>;
+  public query(
+    sql: string | { query: string; values: unknown[] },
+    options: QueryOptionsWithType<QueryTypes.BULKDELETE>
+  ): Promise<number>;
+  public query(
+    sql: string | { query: string; values: unknown[] },
+    options: QueryOptionsWithType<QueryTypes.SHOWTABLES>
+  ): Promise<string[]>;
+  public query(
+    sql: string | { query: string; values: unknown[] },
+    options: QueryOptionsWithType<QueryTypes.DESCRIBE>
+  ): Promise<ColumnsDescription>;
+  public query<M extends Model>(
+    sql: string | { query: string; values: unknown[] },
+    options: QueryOptionsWithModel<M> & { plain: true }
+  ): Promise<M | null>;
+  public query<M extends Model>(
+    sql: string | { query: string; values: unknown[] },
+    options: QueryOptionsWithModel<M>
+  ): Promise<M[]>;
+  public query<T extends object>(
+    sql: string | { query: string; values: unknown[] },
+    options: QueryOptionsWithType<QueryTypes.SELECT> & { plain: true }
+  ): Promise<T | null>;
+  public query<T extends object>(
+    sql: string | { query: string; values: unknown[] },
+    options: QueryOptionsWithType<QueryTypes.SELECT>
+  ): Promise<T[]>;
+  public query(
+    sql: string | { query: string; values: unknown[] },
+    options: (QueryOptions | QueryOptionsWithType<QueryTypes.RAW>) & {
+      plain: true;
+    }
+  ): Promise<{ [key: string]: unknown } | null>;
+  public query(
+    sql: string | { query: string; values: unknown[] },
+    options?: QueryOptions | QueryOptionsWithType<QueryTypes.RAW>
+  ): Promise<[unknown[], unknown]>;
+
   override async query(
     sql: string | { query: string; values: unknown[] },
     options?: QueryOptions | QueryOptionsWithType<any>
