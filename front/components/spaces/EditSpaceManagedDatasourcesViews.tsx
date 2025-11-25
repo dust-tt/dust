@@ -26,7 +26,6 @@ import { RequestDataSourceModal } from "@app/components/data_source/RequestDataS
 import SpaceManagedDatasourcesViewsModal from "@app/components/spaces/SpaceManagedDatasourcesViewsModal";
 import { useAwaitableDialog } from "@app/hooks/useAwaitableDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import { getDisplayNameForDataSource, isManaged } from "@app/lib/data_sources";
 import { useKillSwitches } from "@app/lib/swr/kill";
