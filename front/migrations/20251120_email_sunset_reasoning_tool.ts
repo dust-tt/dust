@@ -63,9 +63,7 @@ async function sendReasoningToolRemovalEmail(
     throw new Error("DUST_CLIENT_FACING_URL is not defined");
   }
 
-  let body = `<p>Hi ${record.author_first_name},</p>
-
-<p>We're reaching out because you've built the following agents that use the Reasoning tool, which we'll be removing from Dust on Friday, November 28th.</p>
+  let body = `<p>We're reaching out because you've built the following agents that use the Reasoning tool, which we'll be removing from Dust on Friday, November 28th.</p>
 
 <ul>
 ${agentList
