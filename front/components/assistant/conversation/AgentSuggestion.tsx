@@ -6,8 +6,6 @@ import {
   Page,
   RobotIcon,
 } from "@dust-tt/sparkle";
-import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
-import uniq from "lodash/uniq";
 import { useRouter } from "next/router";
 import {
   useCallback,
@@ -20,8 +18,6 @@ import {
 
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
-import { isUserMessage } from "@app/components/assistant/conversation/types";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { serializeMention } from "@app/lib/mentions/format";
@@ -36,10 +32,6 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { GLOBAL_AGENTS_SID } from "@app/types";
-
-// We auto-use the Dust agent if there are less than 2 humans in the conversation.
-export const autoUseDustAgent = (messages: VirtuosoMessage[]) =>
-  uniq(messages.filter(isUserMessage).map((m) => m.user?.sId)).length < 2;
 
 interface AgentSuggestionProps {
   conversationId: string;
@@ -59,8 +51,6 @@ export function AgentSuggestion({
     agentsGetView: "list",
     includes: ["authors", "usage"],
   });
-
-  const methods = useVirtuosoMethods<VirtuosoMessage>();
 
   const {
     suggestedAgentConfigurations,
@@ -164,8 +154,7 @@ export function AgentSuggestion({
     if (
       !dustAgent ||
       userMessage.id === -1 ||
-      userMessage.sId === autoSelectedMessageIdRef.current ||
-      !autoUseDustAgent(methods.data.get())
+      userMessage.sId === autoSelectedMessageIdRef.current
     ) {
       return;
     }

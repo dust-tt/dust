@@ -5,12 +5,17 @@ import {
   Markdown,
   Tooltip,
 } from "@dust-tt/sparkle";
+import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import { useCallback, useMemo } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
-import { isTriggeredOrigin } from "@app/components/assistant/conversation/types";
+import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
+import {
+  hasHumansInteracting,
+  isTriggeredOrigin,
+} from "@app/components/assistant/conversation/types";
 import {
   CiteBlock,
   getCiteDirective,
@@ -74,6 +79,16 @@ export function UserMessage({
     return <div>{name}</div>;
   }, []);
 
+  const methods = useVirtuosoMethods<VirtuosoMessage>();
+
+  const showAgentSuggestions = useMemo(() => {
+    return (
+      message.mentions.length === 0 &&
+      isLastMessage &&
+      !hasHumansInteracting(methods.data.get())
+    );
+  }, [message.mentions.length, isLastMessage, methods.data]);
+
   return (
     <div className="flex flex-grow flex-col">
       <div className="min-w-60 max-w-full self-end">
@@ -102,7 +117,7 @@ export function UserMessage({
           />
         </ConversationMessage>
       </div>
-      {message.mentions.length === 0 && isLastMessage && (
+      {showAgentSuggestions && (
         <AgentSuggestion
           conversationId={conversationId}
           owner={owner}

@@ -1,3 +1,5 @@
+import uniq from "lodash/uniq";
+
 import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import type { ToolNotificationEvent } from "@app/lib/actions/mcp";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -143,3 +145,6 @@ export const areSameRank = (
 ) => {
   return getMessageRank(messageA) === getMessageRank(messageB);
 };
+
+export const hasHumansInteracting = (messages: VirtuosoMessage[]) =>
+  uniq(messages.filter(isUserMessage).map((m) => m.user?.sId)).length >= 2;

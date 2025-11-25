@@ -16,7 +16,6 @@ import React, {
 } from "react";
 
 import { AgentInputBar } from "@app/components/assistant/conversation/AgentInputBar";
-import { autoUseDustAgent } from "@app/components/assistant/conversation/AgentSuggestion";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
 import {
   createPlaceholderAgentMessage,
@@ -31,6 +30,7 @@ import type {
 import {
   areSameRank,
   getMessageRank,
+  hasHumansInteracting,
   isHiddenContextOrigin,
   isMessageTemporayState,
   isUserMessage,
@@ -499,8 +499,12 @@ export const ConversationViewer = ({
         }
       }
 
+      // Objective is to dermine if an agent is going to answer immediately to change the scroll behavior.
       const isMentioningAgent =
-        (mentions.length === 0 && autoUseDustAgent(ref.current.data.get())) ||
+        //TODO(mentions v2) if dust agent is disabled at the workspace level, hasMoreThan2HumansInteracting might say false but we wouldn't have an auto mention of dust.
+        (mentions.length === 0 &&
+          !hasHumansInteracting(ref.current.data.get())) ||
+        // An agent is mentioned manually.
         mentions.some(isRichAgentMention);
 
       const nbMessages = ref.current.data.get().length;

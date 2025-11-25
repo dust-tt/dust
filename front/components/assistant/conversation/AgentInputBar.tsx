@@ -17,6 +17,7 @@ import type {
   VirtuosoMessageListContext,
 } from "@app/components/assistant/conversation/types";
 import {
+  hasHumansInteracting,
   isHiddenContextOrigin,
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
@@ -71,11 +72,15 @@ export const AgentInputBar = ({
     if (context.agentBuilderContext?.draftAgent) {
       return [{ configurationId: context.agentBuilderContext.draftAgent.sId }];
     }
-    if (!lastUserMessage || !isUserMessage(lastUserMessage)) {
+    if (
+      !lastUserMessage ||
+      !isUserMessage(lastUserMessage) ||
+      hasHumansInteracting(methods.data.get())
+    ) {
       return emptyArray<AgentMention>();
     }
     return lastUserMessage.mentions.filter(isAgentMention);
-  }, [lastUserMessage, context.agentBuilderContext?.draftAgent]);
+  }, [lastUserMessage, context.agentBuilderContext?.draftAgent, methods.data]);
 
   const { bottomOffset } = useVirtuosoLocation();
   const distanceUntilButtonVisible = 100;
