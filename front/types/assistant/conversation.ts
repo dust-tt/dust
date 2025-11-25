@@ -42,12 +42,6 @@ export type LightMessageType =
   | UserMessageType
   | ContentFragmentType;
 
-export type MessageWithContentFragmentsType =
-  | LightAgentMessageType
-  | (UserMessageType & {
-      contentFragments?: ContentFragmentType[];
-    });
-
 /**
  * User messages
  */
