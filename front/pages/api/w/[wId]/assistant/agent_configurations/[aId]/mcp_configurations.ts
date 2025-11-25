@@ -1,9 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import type {AgentMcpConfigurationSummary} from "@app/lib/api/assistant/mcp_configurations";
 import {
-  listAgentMcpConfigurationsForAgent,
-  type AgentMcpConfigurationSummary,
+  listAgentMcpConfigurationsForAgent
 } from "@app/lib/api/assistant/mcp_configurations";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
