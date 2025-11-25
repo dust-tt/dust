@@ -1,4 +1,4 @@
-// This file should remain synchronized with connectors/src/connectors/zendesk/lib/zendesk_shared_types.ts
+// This file should remain synchronized with connectors/src/connectors/zendesk/lib/types.ts
 
 import z from "zod";
 
@@ -51,11 +51,13 @@ export const ZendeskTicketSchema = z
     email_cc_ids: z.array(z.number()).optional(),
     due_at: z.string().nullable(),
     has_incidents: z.boolean(),
-    satisfaction_rating: z.object({
-      comment: z.string(),
-      id: z.number(),
-      score: z.string(),
-    }),
+    satisfaction_rating: z
+      .object({
+        comment: z.string().optional().nullable(),
+        id: z.number().optional().nullable(),
+        score: z.string(),
+      })
+      .optional(),
     submitter_id: z.number(),
   })
   .passthrough();
@@ -168,6 +170,8 @@ export const ZendeskBrandSchema = z
   })
   .passthrough();
 
+export type ZendeskBrand = z.infer<typeof ZendeskBrandSchema>;
+
 export const ZendeskBrandResponseSchema = z.object({
   brand: ZendeskBrandSchema,
 });
@@ -194,6 +198,8 @@ export const ZendeskArticleSchema = z
   })
   .passthrough();
 
+export type ZendeskArticle = z.infer<typeof ZendeskArticleSchema>;
+
 export const ZendeskArticleResponseSchema = z.object({
   article: ZendeskArticleSchema,
 });
@@ -203,7 +209,7 @@ export const ZendeskArticlesResponseSchema = z.object({
   next_page: z.string().nullable().optional(),
   end_time: z.number().optional(),
   meta: z.object({ has_more: z.boolean() }).optional(),
-  links: z.object({ next: z.string().nullable() }).optional(),
+  links: z.object({ next: z.string().optional() }).optional(),
 });
 
 // Category schemas
@@ -220,6 +226,8 @@ export const ZendeskCategorySchema = z
   })
   .passthrough();
 
+export type ZendeskCategory = z.infer<typeof ZendeskCategorySchema>;
+
 export const ZendeskCategoryResponseSchema = z.object({
   category: ZendeskCategorySchema,
 });
@@ -227,7 +235,7 @@ export const ZendeskCategoryResponseSchema = z.object({
 export const ZendeskCategoriesResponseSchema = z.object({
   categories: z.array(ZendeskCategorySchema),
   meta: z.object({ has_more: z.boolean() }).optional(),
-  links: z.object({ next: z.string().nullable() }).optional(),
+  links: z.object({ next: z.string().optional() }).optional(),
 });
 
 // Section schemas
@@ -238,9 +246,11 @@ export const ZendeskSectionSchema = z
     name: z.string(),
     locale: z.string(),
     category_id: z.number().optional(),
-    description: z.string().optional(),
+    description: z.string().optional().nullable(),
   })
   .passthrough();
+
+export type ZendeskSection = z.infer<typeof ZendeskSectionSchema>;
 
 export const ZendeskSectionResponseSchema = z.object({
   section: ZendeskSectionSchema,
@@ -256,13 +266,15 @@ export const ZendeskUserSchema = z
     id: z.number(),
     url: z.string(),
     name: z.string(),
-    email: z.string(),
+    email: z.string().nullable(),
     created_at: z.string(),
     updated_at: z.string(),
     active: z.boolean(),
     role: z.enum(["end-user", "agent", "admin"]),
   })
   .passthrough();
+
+export type ZendeskUser = z.infer<typeof ZendeskUserSchema>;
 
 export const ZendeskUserResponseSchema = z.object({
   user: ZendeskUserSchema,
@@ -283,6 +295,8 @@ export const ZendeskOrganizationSchema = z
     created_at: z.string(),
   })
   .passthrough();
+
+export type ZendeskOrganization = z.infer<typeof ZendeskOrganizationSchema>;
 
 export const ZendeskOrganizationResponseSchema = z.object({
   organization: ZendeskOrganizationSchema,
@@ -306,12 +320,12 @@ export const ZendeskTicketFieldSchema = z
 
 export type ZendeskTicketField = z.infer<typeof ZendeskTicketFieldSchema>;
 
-export const ZendeskTicketFieldsResponseSchema = z.object({
-  ticket_fields: z.array(ZendeskTicketFieldSchema),
+export const ZendeskTicketFieldResponseSchema = z.object({
+  ticket_field: ZendeskTicketFieldSchema,
 });
 
-export type ZendeskTicketFieldsResponse = z.infer<
-  typeof ZendeskTicketFieldsResponseSchema
+export type ZendeskTicketFieldResponse = z.infer<
+  typeof ZendeskTicketFieldResponseSchema
 >;
 
 // Ticket comment schemas
@@ -321,9 +335,11 @@ export const ZendeskTicketCommentSchema = z
     body: z.string(),
     author_id: z.number(),
     created_at: z.string(),
-    plain_body: z.string(),
+    plain_body: z.string().optional(),
   })
   .passthrough();
+
+export type ZendeskTicketComment = z.infer<typeof ZendeskTicketCommentSchema>;
 
 export const ZendeskTicketCommentsResponseSchema = z.object({
   comments: z.array(ZendeskTicketCommentSchema),
