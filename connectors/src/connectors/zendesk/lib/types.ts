@@ -324,6 +324,18 @@ export const ZendeskTicketFieldResponseSchema = z.object({
   ticket_field: ZendeskTicketFieldSchema,
 });
 
+export type ZendeskTicketFieldResponse = z.infer<
+  typeof ZendeskTicketFieldResponseSchema
+>;
+
+export const ZendeskTicketFieldsResponseSchema = z.object({
+  ticket_fields: z.array(ZendeskTicketFieldSchema),
+});
+
+export type ZendeskTicketFieldsResponse = z.infer<
+  typeof ZendeskTicketFieldsResponseSchema
+>;
+
 // Ticket comment schemas
 export const ZendeskTicketCommentSchema = z
   .object({
