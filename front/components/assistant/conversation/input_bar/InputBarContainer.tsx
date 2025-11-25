@@ -530,7 +530,9 @@ const InputBarContainer = ({
       }}
     >
       <div className="flex w-0 flex-grow flex-col">
-        <Toolbar editor={editor} className="hidden sm:flex" />
+        {userMentionsEnabled && (
+          <Toolbar editor={editor} className="hidden sm:flex" />
+        )}
         <EditorContent
           disabled={disableTextInput}
           editor={editor}
@@ -577,13 +579,15 @@ const InputBarContainer = ({
           </div>
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <InputBarToolbarToggle
-                className="flex sm:hidden"
-                isOpen={isToolbarOpen}
-                setIsOpen={setIsToolbarOpen}
-                buttonSize={buttonSize}
-                editor={editor}
-              />
+              {userMentionsEnabled && (
+                <InputBarToolbarToggle
+                  className="flex sm:hidden"
+                  isOpen={isToolbarOpen}
+                  setIsOpen={setIsToolbarOpen}
+                  buttonSize={buttonSize}
+                  editor={editor}
+                />
+              )}
               {actions.includes("attachment") && !isToolbarOpen && (
                 <>
                   <input
