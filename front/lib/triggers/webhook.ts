@@ -780,7 +780,7 @@ export async function processWebhookRequest(
   if (eventValidationResult.isErr()) {
     await webhookRequest.markAsFailed(eventValidationResult.error.message);
     localLogger.error(eventValidationResult.error.message);
-    return eventValidationResult;
+    return new Ok(undefined); // We consider event validation errors as non-retryable.
   }
 
   const { skipReason, receivedEventValue } = eventValidationResult.value;
@@ -799,7 +799,7 @@ export async function processWebhookRequest(
   if (filteredTriggersResult.isErr()) {
     await webhookRequest.markAsFailed(filteredTriggersResult.error.message);
     localLogger.error(filteredTriggersResult.error.message);
-    return filteredTriggersResult;
+    return new Ok(undefined); // We consider filtering errors as non-retryable.
   }
 
   const filteredTriggers = filteredTriggersResult.value;
@@ -819,7 +819,7 @@ export async function processWebhookRequest(
   if (launchResult.isErr()) {
     await webhookRequest.markAsFailed(launchResult.error.message);
     localLogger.error(launchResult.error.message);
-    return launchResult;
+    return new Ok(undefined); // We consider launch errors as non-retryable.
   }
 
   await webhookRequest.markAsProcessed();
