@@ -7,9 +7,9 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import type { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
+import logger from "@app/logger/logger";
 import { QUEUE_NAME as COMMON_QUEUE_NAME } from "@app/temporal/triggers/common/config";
 import { agentTriggerWorkflow } from "@app/temporal/triggers/common/workflows";
-import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 import type { ScheduleTriggerType } from "@app/types/assistant/triggers";

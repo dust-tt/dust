@@ -4,9 +4,9 @@ import {
 } from "@temporalio/client";
 
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
+import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/triggers/webhook/config";
 import { webhookCleanupWorkflow } from "@app/temporal/triggers/webhook/workflows";
-import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
