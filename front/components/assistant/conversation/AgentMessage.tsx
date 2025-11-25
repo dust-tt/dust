@@ -50,6 +50,10 @@ import {
 import { getImgPlugin, imgDirective } from "@app/components/markdown/Image";
 import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
 import {
+  getStartTourPlugin,
+  startTourDirective,
+} from "@app/components/markdown/StartTourBlock";
+import {
   getToolSetupPlugin,
   toolDirective,
 } from "@app/components/markdown/tool/tool";
@@ -611,6 +615,7 @@ function AgentMessageContent({
       mention_user: getUserMentionPlugin(owner),
       dustimg: getImgPlugin(owner),
       toolSetup: getToolSetupPlugin(owner),
+      startTour: getStartTourPlugin(),
     }),
     [owner, conversationId, sId, agentConfiguration.sId]
   );
@@ -623,6 +628,7 @@ function AgentMessageContent({
       visualizationDirective,
       imgDirective,
       toolDirective,
+      startTourDirective,
     ],
     []
   );

@@ -25,7 +25,6 @@ import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideP
 import { ErrorBoundary } from "@app/components/error_boundary/ErrorBoundary";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import { useURLSheet } from "@app/hooks/useURLSheet";
-import { ONBOARDING_CONVERSATION_ENABLED } from "@app/lib/onboarding";
 import { useConversation } from "@app/lib/swr/conversations";
 import type {
   ConversationError,
@@ -111,24 +110,37 @@ const ConversationLayoutContent = ({
     return null;
   }, [router.query.userDetails]);
 
-  // Logic for the welcome tour guide. We display it if the welcome query param is set to true.
-  const { startConversationRef, spaceMenuButtonRef, createAgentButtonRef } =
-    useWelcomeTourGuide();
+  // Logic for the welcome tour guide. We display it if:
+  // 1. The welcome query param is set to true (from welcome flow), OR
+  // 2. The user clicked a :startTour button in the onboarding conversation
+  const {
+    startConversationRef,
+    spaceMenuButtonRef,
+    createAgentButtonRef,
+    showTourGuide,
+    endTour,
+  } = useWelcomeTourGuide();
 
-  const shouldDisplayWelcomeTourGuide = useMemo(() => {
-    // Only show the welcome tour guide if onboarding chat is disabled.
-    return (
-      router.query.welcome === "true" &&
-      !activeConversationId &&
-      !ONBOARDING_CONVERSATION_ENABLED
-    );
+  const shouldDisplayWelcomeTourGuideFromWelcomeFlow = useMemo(() => {
+    // Show the welcome tour guide if the user came from the welcome flow and has no active
+    // conversation. The server-side logic in getServerSideProps already handles redirecting to the
+    // onboarding conversation if one was created - so if we reach here with ?welcome=true and no
+    // conversation, the user didn't get an onboarding conversation and should see the tour guide.
+    return router.query.welcome === "true" && !activeConversationId;
   }, [router.query.welcome, activeConversationId]);
 
+  const shouldDisplayWelcomeTourGuide =
+    shouldDisplayWelcomeTourGuideFromWelcomeFlow || showTourGuide;
+
   const onTourGuideEnd = () => {
-    void router.push(router.asPath.replace("?welcome=true", ""), undefined, {
-      shallow: true,
-    });
-    // Focus back on input bar
+    // If triggered from URL param, remove it
+    if (router.query.welcome === "true") {
+      void router.push(router.asPath.replace("?welcome=true", ""), undefined, {
+        shallow: true,
+      });
+    }
+    // If triggered from the directive button, reset the state
+    endTour();
   };
 
   return (
