@@ -127,12 +127,6 @@ export const INTERNAL_SERVERS_WITH_WEBSEARCH = [
   "http_client",
 ] as const;
 
-// Internal servers where the admin's OAuth connection should be automatically
-// duplicated as their personal connection during setup. This avoids requiring
-// the admin to re-authenticate when they first use the tool.
-export const INTERNAL_SERVERS_WITH_AUTO_CONNECTION_DUPLICATION: InternalMCPServerNameType[] =
-  ["gmail", "outlook"];
-
 // Whether the server is available by default in the global space.
 // Hidden servers are available by default in the global space but are not visible in the assistant builder.
 const MCP_SERVER_AVAILABILITY = [

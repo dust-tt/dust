@@ -6,7 +6,6 @@ import { isCustomResourceIconType } from "@app/components/resources/resources_ic
 import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import {
   allowsMultipleInstancesOfInternalMCPServerByName,
-  INTERNAL_SERVERS_WITH_AUTO_CONNECTION_DUPLICATION,
   isInternalMCPServerName,
   isInternalMCPServerOfName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -324,23 +323,9 @@ async function handler(
           });
 
         if (body.connectionId) {
-          // We create a connection to the internal MCP server to allow the user to use the MCP server in the future.
-          // The connexion is of type "workspace" because it is created by the admin.
-          // If the server can use personal connections, we rely on this "workspace" connection to get the related credentials.
-          await MCPServerConnectionResource.makeNew(auth, {
-            connectionId: body.connectionId,
-            connectionType: "workspace",
-            serverType: "internal",
-            internalMCPServerId: newInternalMCPServer.id,
-          });
-
-          // For certain personal-only servers (Gmail, Outlook), automatically duplicate
-          // the admin's workspace connection as their personal connection to avoid
-          // requiring them to re-authenticate when they first use the tool.
-          if (
-            body.useCase === "personal_actions" &&
-            INTERNAL_SERVERS_WITH_AUTO_CONNECTION_DUPLICATION.includes(name)
-          ) {
+          // For personal tools, automatically create a personal connection for the admin
+          // so they don't need to re-authenticate when they first use the tool.
+          if (body.useCase === "personal_actions") {
             await MCPServerConnectionResource.makeNew(auth, {
               connectionId: body.connectionId,
               connectionType: "personal",
@@ -348,6 +333,15 @@ async function handler(
               internalMCPServerId: newInternalMCPServer.id,
             });
           }
+
+          // We create a workspace connection to the internal MCP server.
+          // This connection is used to get the related credentials for personal connections.
+          await MCPServerConnectionResource.makeNew(auth, {
+            connectionId: body.connectionId,
+            connectionType: "workspace",
+            serverType: "internal",
+            internalMCPServerId: newInternalMCPServer.id,
+          });
         }
 
         if (body.includeGlobal) {
