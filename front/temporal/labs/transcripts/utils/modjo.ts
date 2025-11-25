@@ -156,8 +156,9 @@ const CALL_BUFFER_HOURS = 6; // Increased buffer for very long calls (meetings c
 const MIN_LOOKBACK_HOURS = 24; // Minimum lookback even if last sync was recent
 const MODJO_API_URL = "https://api.modjo.ai";
 
-// Batch configuration for first sync to avoid timeouts
+// Batch configuration to avoid activity timeouts
 // Process 50 pages per activity call (50 * 15 = 750 calls max per batch)
+// This ensures the activity completes well within the 20-minute timeout
 const MAX_PAGES_PER_BATCH = 50;
 const MODJO_PAGE_SIZE = 15;
 
@@ -278,8 +279,8 @@ export async function retrieveModjoTranscripts(
   let nextCursor: number | null = null;
 
   while (hasMorePages) {
-    // For first sync, limit pages per batch to avoid timeouts
-    if (isFirstSync && pagesProcessedInBatch >= MAX_PAGES_PER_BATCH) {
+    // Limit pages per batch to avoid activity timeouts
+    if (pagesProcessedInBatch >= MAX_PAGES_PER_BATCH) {
       nextCursor = page;
       localLogger.info(
         {
@@ -287,7 +288,7 @@ export async function retrieveModjoTranscripts(
           nextCursor,
           fileIdsFoundInBatch: fileIdsToProcess.length,
         },
-        "[retrieveModjoTranscripts] First sync batch limit reached - returning cursor for next batch"
+        "[retrieveModjoTranscripts] Batch limit reached - returning cursor for next batch"
       );
       break;
     }
