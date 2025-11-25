@@ -212,7 +212,6 @@ export async function getOrCreateConversation(
         profilePictureUrl: mainAgent.pictureUrl,
         origin: parentOrigin,
         selectedMCPServerViewIds: toolsetsToAdd,
-        originMessageId: originMessage.sId,
       },
       agenticMessageData: {
         // `run_agent` type will skip adding the conversation to the user history.
