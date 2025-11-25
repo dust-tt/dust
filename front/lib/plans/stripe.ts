@@ -732,9 +732,11 @@ export async function attachCreditPurchaseToSubscription({
 export async function makeCreditPurchaseInvoice({
   stripeSubscriptionId,
   amountCents,
+  couponId,
 }: {
   stripeSubscriptionId: string;
   amountCents: number;
+  couponId?: string;
 }): Promise<Result<Stripe.Invoice, { error_message: string }>> {
   const stripe = getStripeClient();
 
@@ -766,6 +768,7 @@ export async function makeCreditPurchaseInvoice({
         customerId,
         amountCents,
         invoice: invoice.id,
+        couponId,
       })
     );
 
