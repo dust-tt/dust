@@ -331,6 +331,7 @@ export async function createOnboardingConversationIfNeeded(
   const conversation = await createConversation(auth, {
     title: null,
     visibility: "unlisted",
+    spaceId: null,
   });
 
   const gmailToolDirective = ":toolSetup[Connect Gmail]{sId=gmail}";
