@@ -53,8 +53,8 @@ export const ZendeskTicketSchema = z
     has_incidents: z.boolean(),
     satisfaction_rating: z
       .object({
-        comment: z.string().optional(),
-        id: z.number().optional(),
+        comment: z.string().optional().nullable(),
+        id: z.number().optional().nullable(),
         score: z.string(),
       })
       .optional(),
