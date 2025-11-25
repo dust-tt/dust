@@ -1,5 +1,3 @@
-import type { IncomingHttpHeaders } from "node:http";
-
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import { hasReachedPublicAPILimits } from "@app/lib/api/programmatic_usage_tracking";
 import { Authenticator } from "@app/lib/auth";
@@ -40,10 +38,7 @@ import type {
   WebhookTriggerType,
 } from "@app/types/assistant/triggers";
 import { isWebhookTrigger } from "@app/types/assistant/triggers";
-import type {
-  WebhookProvider,
-  WebhookSourceForAdminType,
-} from "@app/types/triggers/webhooks";
+import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 
