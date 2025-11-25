@@ -5,12 +5,14 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   ZendeskSearchResponse,
   ZendeskTicket,
+  ZendeskTicketComment,
   ZendeskTicketField,
   ZendeskTicketMetrics,
 } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/types";
 import {
   isValidZendeskSubdomain,
   ZendeskSearchResponseSchema,
+  ZendeskTicketCommentsResponseSchema,
   ZendeskTicketFieldsResponseSchema,
   ZendeskTicketMetricsResponseSchema,
   ZendeskTicketResponseSchema,
@@ -230,5 +232,20 @@ class ZendeskClient {
     }
 
     return new Ok(result.value.ticket_fields.filter((f) => f.active));
+  }
+
+  async getTicketComments(
+    ticketId: number
+  ): Promise<Result<ZendeskTicketComment[], Error>> {
+    const result = await this.request(
+      `tickets/${ticketId}/comments`,
+      ZendeskTicketCommentsResponseSchema
+    );
+
+    if (result.isErr()) {
+      return new Err(result.error);
+    }
+
+    return new Ok(result.value.comments);
   }
 }

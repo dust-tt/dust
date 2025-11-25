@@ -1,5 +1,6 @@
 import type {
   ZendeskTicket,
+  ZendeskTicketComment,
   ZendeskTicketField,
   ZendeskTicketMetrics,
 } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/types";
@@ -174,6 +175,27 @@ export function renderTicketMetrics(metrics: ZendeskTicketMetrics): string {
     lines.push(
       `Initially Assigned At: ${new Date(metrics.initially_assigned_at).toISOString()}`
     );
+  }
+
+  return lines.join("\n");
+}
+
+export function renderConversation(comments: ZendeskTicketComment[]): string {
+  if (comments.length === 0) {
+    return "\n=== Conversation ===\nNo comments found.";
+  }
+
+  const lines = ["\n=== Conversation ==="];
+
+  const sortedComments = [...comments].sort(
+    (a, b) =>
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
+
+  for (const comment of sortedComments) {
+    const date = new Date(comment.created_at).toISOString();
+    const body = comment.plain_body || comment.body;
+    lines.push(`\n[${date}] Author ID: ${comment.author_id}\n${body}`);
   }
 
   return lines.join("\n");

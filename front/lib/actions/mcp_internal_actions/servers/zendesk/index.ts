@@ -7,6 +7,7 @@ import {
   getZendeskClient,
 } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/client";
 import {
+  renderConversation,
   renderTicket,
   renderTicketMetrics,
 } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/rendering";
@@ -28,7 +29,8 @@ function createServer(
     "get_ticket",
     "Retrieve a Zendesk ticket by its ID. Returns the ticket details including subject, " +
       "description, status, priority, assignee, and other metadata. Optionally include ticket metrics " +
-      "such as resolution times, wait times, and reply counts.",
+      "such as resolution times, wait times, and reply counts. Optionally include the full conversation " +
+      "with all comments.",
     {
       ticketId: z
         .number()
@@ -41,6 +43,12 @@ function createServer(
         .describe(
           "Whether to include ticket metrics (resolution times, wait times, reopens, replies, etc.). Defaults to false."
         ),
+      includeConversation: z
+        .boolean()
+        .optional()
+        .describe(
+          "Whether to include the full conversation (all comments) for the ticket. Defaults to false."
+        ),
     },
     withToolLogging(
       auth,
@@ -48,7 +56,10 @@ function createServer(
         toolNameForMonitoring: ZENDESK_TOOL_NAME,
         agentLoopContext,
       },
-      async ({ ticketId, includeMetrics }, { authInfo }) => {
+      async (
+        { ticketId, includeMetrics, includeConversation },
+        { authInfo }
+      ) => {
         const clientResult = getZendeskClient(authInfo);
         if (clientResult.isErr()) {
           return clientResult;
@@ -84,6 +95,20 @@ function createServer(
           }
 
           ticketText += "\n" + renderTicketMetrics(metricsResult.value);
+        }
+
+        if (includeConversation) {
+          const commentsResult = await client.getTicketComments(ticketId);
+
+          if (commentsResult.isErr()) {
+            return new Err(
+              new MCPError(
+                `Failed to retrieve ticket conversation: ${commentsResult.error.message}`
+              )
+            );
+          }
+
+          ticketText += renderConversation(commentsResult.value);
         }
 
         return new Ok([
