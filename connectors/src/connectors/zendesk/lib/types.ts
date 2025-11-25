@@ -208,7 +208,7 @@ export const ZendeskArticlesResponseSchema = z.object({
   next_page: z.string().nullable().optional(),
   end_time: z.number().optional(),
   meta: z.object({ has_more: z.boolean() }).optional(),
-  links: z.object({ next: z.string().nullable() }).optional(),
+  links: z.object({ next: z.string().optional() }).optional(),
 });
 
 // Category schemas
@@ -234,7 +234,7 @@ export const ZendeskCategoryResponseSchema = z.object({
 export const ZendeskCategoriesResponseSchema = z.object({
   categories: z.array(ZendeskCategorySchema),
   meta: z.object({ has_more: z.boolean() }).optional(),
-  links: z.object({ next: z.string().nullable() }).optional(),
+  links: z.object({ next: z.string().optional() }).optional(),
 });
 
 // Section schemas
