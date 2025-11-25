@@ -6,6 +6,7 @@ import { isCustomResourceIconType } from "@app/components/resources/resources_ic
 import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import {
   allowsMultipleInstancesOfInternalMCPServerByName,
+  INTERNAL_SERVERS_WITH_AUTO_CONNECTION_DUPLICATION,
   isInternalMCPServerName,
   isInternalMCPServerOfName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -332,6 +333,21 @@ async function handler(
             serverType: "internal",
             internalMCPServerId: newInternalMCPServer.id,
           });
+
+          // For certain personal-only servers (Gmail, Outlook), automatically duplicate
+          // the admin's workspace connection as their personal connection to avoid
+          // requiring them to re-authenticate when they first use the tool.
+          if (
+            body.useCase === "personal_actions" &&
+            INTERNAL_SERVERS_WITH_AUTO_CONNECTION_DUPLICATION.includes(name)
+          ) {
+            await MCPServerConnectionResource.makeNew(auth, {
+              connectionId: body.connectionId,
+              connectionType: "personal",
+              serverType: "internal",
+              internalMCPServerId: newInternalMCPServer.id,
+            });
+          }
         }
 
         if (body.includeGlobal) {
