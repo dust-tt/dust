@@ -3,9 +3,9 @@ import TurndownService from "turndown";
 import { filterCustomTags } from "@connectors/connectors/shared/tags";
 import { getTicketInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
 import type {
-  ZendeskFetchedTicket,
-  ZendeskFetchedTicketComment,
-  ZendeskFetchedUser,
+  ZendeskTicket,
+  ZendeskTicketComment,
+  ZendeskUser,
 } from "@connectors/connectors/zendesk/lib/types";
 import {
   deleteDataSourceDocument,
@@ -18,8 +18,7 @@ import type { ConnectorResource } from "@connectors/resources/connector_resource
 import type { ZendeskConfigurationResource } from "@connectors/resources/zendesk_resources";
 import { ZendeskTicketResource } from "@connectors/resources/zendesk_resources";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
-import { stripNullBytes } from "@connectors/types";
-import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import { INTERNAL_MIME_TYPES, stripNullBytes } from "@connectors/types";
 
 const turndownService = new TurndownService();
 
@@ -28,7 +27,7 @@ function apiUrlToDocumentUrl(apiUrl: string): string {
 }
 
 export function shouldSyncTicket(
-  ticket: ZendeskFetchedTicket,
+  ticket: ZendeskTicket,
   configuration: ZendeskConfigurationResource,
   {
     brandId,
@@ -179,7 +178,7 @@ export async function syncTicket({
   comments,
   users,
 }: {
-  ticket: ZendeskFetchedTicket;
+  ticket: ZendeskTicket;
   connector: ConnectorResource;
   configuration: ZendeskConfigurationResource;
   dataSourceConfig: DataSourceConfig;
@@ -187,8 +186,8 @@ export async function syncTicket({
   currentSyncDateMs: number;
   loggerArgs: Record<string, string | number | null>;
   forceResync: boolean;
-  comments: ZendeskFetchedTicketComment[];
-  users: ZendeskFetchedUser[];
+  comments: ZendeskTicketComment[];
+  users: ZendeskUser[];
 }) {
   const connectorId = connector.id;
 
