@@ -5,10 +5,9 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
-import { Op } from "sequelize";
+import { fn, literal, Op, where } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
-import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import {
@@ -182,20 +181,13 @@ export class UserResource extends BaseResource<UserModel> {
     return users.map((user) => new UserResource(UserModel, user.get()));
   }
 
-  static async listUsersWithEmailPredicat(
+  static async listUsersWithSearchPredicat(
     owner: LightWorkspaceType,
     options: {
-      email?: string;
+      searchTerm?: string;
     },
     paginationParams: SearchMembersPaginationParams
   ): Promise<{ users: UserResource[]; total: number }> {
-    const userWhereClause: WhereOptions<UserModel> = {};
-    if (options.email) {
-      userWhereClause.email = {
-        [Op.iLike]: `%${options.email}%`,
-      };
-    }
-
     const memberships = await MembershipModel.findAll({
       where: {
         workspaceId: owner.id,
@@ -203,8 +195,47 @@ export class UserResource extends BaseResource<UserModel> {
         endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }] },
       },
     });
-    userWhereClause.id = {
-      [Op.in]: memberships.map((m) => m.userId),
+
+    const userWhereClause: WhereOptions<UserModel> = {
+      id: {
+        [Op.in]: memberships.map((m) => m.userId),
+      },
+      ...(options.searchTerm && {
+        // Use the GIN index with immutable_unaccent for searching across email, firstName, and
+        // lastName This query will be efficiently indexed by idx_users_search_unaccent. Using
+        // where() with fn() ensures Sequelize properly escapes and parameterizes all values. Note
+        // on `immutable_unaccent` this is not so great. unaccent is not stable across PG versions
+        // so we could possibly mess the index up if we upgrade PG. Upgrades are rare enough that we
+        // can likely rebuild that index if we run into issues.
+        [Op.and]: [
+          where(
+            fn(
+              "concat",
+              fn(
+                "immutable_unaccent",
+                fn("lower", fn("coalesce", literal("email"), ""))
+              ),
+              " ",
+              fn(
+                "immutable_unaccent",
+                fn("lower", fn("coalesce", literal('"firstName"'), ""))
+              ),
+              " ",
+              fn(
+                "immutable_unaccent",
+                fn("lower", fn("coalesce", literal('"lastName"'), ""))
+              )
+            ),
+            Op.like,
+            fn(
+              "concat",
+              "%",
+              fn("immutable_unaccent", fn("lower", options.searchTerm)),
+              "%"
+            )
+          ),
+        ],
+      }),
     };
 
     // Create a map of userId to membership for consistent lookup.

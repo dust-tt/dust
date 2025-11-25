@@ -218,10 +218,10 @@ export async function searchMembers(
     );
     total = users.length;
   } else {
-    const results = await UserResource.listUsersWithEmailPredicat(
+    const results = await UserResource.listUsersWithSearchPredicat(
       owner,
       {
-        email: options.searchTerm,
+        searchTerm: options.searchTerm,
       },
       paginationParams
     );
