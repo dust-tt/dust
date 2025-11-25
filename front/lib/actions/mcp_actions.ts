@@ -144,10 +144,14 @@ export function getToolExtraFields(
       return r;
     }
     const serverName = r.value.name;
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    toolsStakes = INTERNAL_MCP_SERVERS[serverName].tools_stakes || {};
+    const defaultStakes = INTERNAL_MCP_SERVERS[serverName].tools_stakes ?? {};
+    toolsStakes = { ...defaultStakes };
     toolsRetryPolicies = INTERNAL_MCP_SERVERS[serverName].tools_retry_policies;
     serverTimeoutMs = INTERNAL_MCP_SERVERS[serverName]?.timeoutMs;
+
+    metadata.forEach(
+      ({ toolName, permission }) => (toolsStakes[toolName] = permission)
+    );
   } else {
     metadata.forEach(
       ({ toolName, permission }) => (toolsStakes[toolName] = permission)

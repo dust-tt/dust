@@ -2,10 +2,19 @@ import { z } from "zod";
 
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
+  FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL,
+  FALLBACK_MCP_TOOL_STAKE_LEVEL,
+  MCP_TOOL_STAKE_LEVELS,
+} from "@app/lib/actions/constants";
+import {
   getMcpServerViewDescription,
   isRemoteMCPServerType,
   requiresBearerTokenConfiguration,
 } from "@app/lib/actions/mcp_helper";
+import {
+  INTERNAL_MCP_SERVERS,
+  isInternalMCPServerName,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { HeaderRow } from "@app/types";
 import { sanitizeHeadersArray } from "@app/types";
@@ -34,6 +43,48 @@ export type MCPServerFormValues = ServerSettings & {
   sharingSettings: Record<string, boolean>;
 };
 
+function isToolStakesRecord(
+  value: unknown
+): value is Record<string, MCPToolStakeLevelType> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+
+  return Object.values(value).every((v): v is MCPToolStakeLevelType =>
+    MCP_TOOL_STAKE_LEVELS.includes(v as MCPToolStakeLevelType)
+  );
+}
+
+function getToolStake(
+  stakes: Record<string, MCPToolStakeLevelType>,
+  toolName: string
+): MCPToolStakeLevelType | undefined {
+  return toolName in stakes ? stakes[toolName] : undefined;
+}
+
+function getDefaultInternalToolStakeLevel(
+  server: MCPServerViewType["server"],
+  toolName: string
+): MCPToolStakeLevelType {
+  if (isRemoteMCPServerType(server) || !isInternalMCPServerName(server.name)) {
+    return FALLBACK_MCP_TOOL_STAKE_LEVEL;
+  }
+
+  const serverConfig = INTERNAL_MCP_SERVERS[server.name];
+  const serverToolStakes = serverConfig.tools_stakes;
+
+  if (isToolStakesRecord(serverToolStakes)) {
+    const configuredStake = getToolStake(serverToolStakes, toolName);
+    if (configuredStake) {
+      return configuredStake;
+    }
+  }
+
+  return serverConfig.availability === "manual"
+    ? FALLBACK_MCP_TOOL_STAKE_LEVEL
+    : FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL;
+}
+
 export function getMCPServerFormDefaults(
   view: MCPServerViewType,
   mcpServerWithViews?: { views: Array<{ spaceId: string }> },
@@ -45,9 +96,12 @@ export function getMCPServerFormDefaults(
   const toolSettings: Record<string, ToolSettings> = {};
   for (const tool of view.server.tools ?? []) {
     const metadata = view.toolsMetadata?.find((m) => m.toolName === tool.name);
+    const defaultPermission =
+      metadata?.permission ??
+      getDefaultInternalToolStakeLevel(view.server, tool.name);
     toolSettings[tool.name] = {
       enabled: metadata?.enabled ?? true,
-      permission: metadata?.permission ?? "high",
+      permission: defaultPermission,
     };
   }
 
