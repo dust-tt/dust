@@ -17,7 +17,6 @@ import logger from "@app/logger/logger";
 import type {
   ConversationWithoutContentType,
   ToolErrorEvent,
-  UserMessageOrigin,
 } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { getAgentLoopData } from "@app/types/assistant/agent_run";

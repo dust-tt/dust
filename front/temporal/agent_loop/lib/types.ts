@@ -12,7 +12,6 @@ import type {
   ModelConversationTypeMultiActions,
   Ok,
   Result,
-  UserMessageOrigin,
   UserMessageType,
 } from "@app/types";
 import type {
