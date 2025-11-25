@@ -44,6 +44,7 @@ export class ConversationFactory {
     const conversation = await createConversation(auth, {
       title: "Test Conversation",
       visibility,
+      spaceId: null,
     });
 
     if (conversationCreatedAt) {

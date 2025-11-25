@@ -1,4 +1,5 @@
 import DOMPurify from "isomorphic-dompurify";
+import moment from "moment-timezone";
 
 import type { OutlookEvent } from "@app/lib/actions/mcp_internal_actions/servers/outlook/outlook_api_helper";
 import { pluralize } from "@app/types";
@@ -36,37 +37,47 @@ function decodeHtmlEntities(text: string): string {
     .replace(/&apos;/g, "'");
 }
 
+function parseDateTimeInTimezone(
+  dateTime: string,
+  sourceTimezone: string,
+  targetTimezone: string
+): moment.Moment {
+  return moment.tz(dateTime, sourceTimezone).tz(targetTimezone);
+}
+
 function enrichEventWithDayOfWeek(
   event: OutlookEvent,
   userTimezone?: string
 ): EnrichedOutlookEvent {
-  const enrichedEvent: EnrichedOutlookEvent = {
+  const startTz = userTimezone ?? event.start.timeZone ?? "UTC";
+  const endTz = userTimezone ?? event.end.timeZone ?? "UTC";
+
+  const startMoment = parseDateTimeInTimezone(
+    event.start.dateTime,
+    event.start.timeZone ?? "UTC",
+    startTz
+  );
+  const endMoment = parseDateTimeInTimezone(
+    event.end.dateTime,
+    event.end.timeZone ?? "UTC",
+    endTz
+  );
+
+  return {
     ...event,
     start: {
       dateTime: event.start.dateTime,
       timeZone: event.start.timeZone,
       isAllDay: event.isAllDay ?? false,
+      eventDayOfWeek: startMoment.format("dddd"),
     },
     end: {
       dateTime: event.end.dateTime,
       timeZone: event.end.timeZone,
       isAllDay: event.isAllDay ?? false,
+      eventDayOfWeek: endMoment.format("dddd"),
     },
   };
-
-  const startDate = new Date(event.start.dateTime);
-  enrichedEvent.start.eventDayOfWeek = startDate.toLocaleDateString("en-US", {
-    weekday: "long",
-    timeZone: userTimezone ?? event.start.timeZone ?? undefined,
-  });
-
-  const endDate = new Date(event.end.dateTime);
-  enrichedEvent.end.eventDayOfWeek = endDate.toLocaleDateString("en-US", {
-    weekday: "long",
-    timeZone: userTimezone ?? event.end.timeZone ?? undefined,
-  });
-
-  return enrichedEvent;
 }
 
 export function renderOutlookEvent(
@@ -74,6 +85,7 @@ export function renderOutlookEvent(
   userTimezone?: string
 ): string {
   const enrichedEvent = enrichEventWithDayOfWeek(event, userTimezone);
+
   const lines: string[] = [];
 
   lines.push(`# ${enrichedEvent.subject ?? "Untitled event"}`);
@@ -83,49 +95,38 @@ export function renderOutlookEvent(
 
   if (enrichedEvent.start) {
     const start = enrichedEvent.start;
+    const targetTz = userTimezone ?? start.timeZone ?? "UTC";
+    const startMoment = parseDateTimeInTimezone(
+      start.dateTime,
+      start.timeZone ?? "UTC",
+      targetTz
+    );
+
     if (start.isAllDay) {
-      const startDate = new Date(start.dateTime);
-      const dateStr = startDate.toLocaleDateString("en-US", {
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-      });
+      const dateStr = startMoment.format("MMMM D, YYYY");
       lines.push(`Date: ${start.eventDayOfWeek}, ${dateStr} (All day)`);
     } else {
-      const startDate = new Date(start.dateTime);
-      const timeStr = startDate.toLocaleTimeString("en-US", {
-        hour: "numeric",
-        minute: "2-digit",
-        timeZone: userTimezone ?? start.timeZone ?? undefined,
-      });
-      const dateStr = startDate.toLocaleDateString("en-US", {
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-        timeZone: userTimezone ?? start.timeZone ?? undefined,
-      });
+      const timeStr = startMoment.format("h:mm A");
+      const dateStr = startMoment.format("MMMM D, YYYY");
       lines.push(
-        `Start: ${start.eventDayOfWeek}, ${dateStr} at ${timeStr}${start.timeZone ? ` (${start.timeZone})` : ""}`
+        `Start: ${start.eventDayOfWeek}, ${dateStr} at ${timeStr} (${targetTz})`
       );
     }
   }
 
   if (enrichedEvent.end && !enrichedEvent.isAllDay) {
     const end = enrichedEvent.end;
-    const endDate = new Date(end.dateTime);
-    const timeStr = endDate.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      timeZone: userTimezone ?? end.timeZone ?? undefined,
-    });
-    const dateStr = endDate.toLocaleDateString("en-US", {
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-      timeZone: userTimezone ?? end.timeZone ?? undefined,
-    });
+    const targetTz = userTimezone ?? end.timeZone ?? "UTC";
+    const endMoment = parseDateTimeInTimezone(
+      end.dateTime,
+      end.timeZone ?? "UTC",
+      targetTz
+    );
+
+    const timeStr = endMoment.format("h:mm A");
+    const dateStr = endMoment.format("MMMM D, YYYY");
     lines.push(
-      `End: ${end.eventDayOfWeek}, ${dateStr} at ${timeStr}${end.timeZone ? ` (${end.timeZone})` : ""}`
+      `End: ${end.eventDayOfWeek}, ${dateStr} at ${timeStr} (${targetTz})`
     );
   }
 

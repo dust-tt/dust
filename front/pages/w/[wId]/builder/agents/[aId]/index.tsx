@@ -1,5 +1,6 @@
 import tracer from "dd-trace";
 import type { InferGetServerSidePropsType } from "next";
+import Head from "next/head";
 
 import AgentBuilder from "@app/components/agent_builder/AgentBuilder";
 import { AgentBuilderProvider } from "@app/components/agent_builder/AgentBuilderContext";
@@ -83,6 +84,9 @@ export default function EditAgent({
 
   return (
     <AgentBuilderProvider owner={owner} user={user} assistantTemplate={null}>
+      <Head>
+        <title>{`Dust - @${agentConfiguration.name}`}</title>
+      </Head>
       <AgentBuilder agentConfiguration={agentConfiguration} />
     </AgentBuilderProvider>
   );

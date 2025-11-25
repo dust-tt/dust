@@ -63,6 +63,7 @@ const API_ERROR_TYPES = [
   "agent_message_error",
   "message_not_found",
   "plan_message_limit_exceeded",
+  "model_disabled",
   "global_agent_error",
   "stripe_invalid_product_id_error",
   "rate_limit_error",

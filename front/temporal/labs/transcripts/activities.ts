@@ -48,9 +48,16 @@ import { CoreAPI } from "@app/types";
 
 class TranscriptNonRetryableError extends Error {}
 
+export interface RetrieveTranscriptsResult {
+  fileIds: string[];
+  nextCursor: number | null;
+  isFirstSync: boolean;
+}
+
 export async function retrieveNewTranscriptsActivity(
-  transcriptsConfigurationId: string
-): Promise<string[]> {
+  transcriptsConfigurationId: string,
+  modjoCursor: number | null = null
+): Promise<RetrieveTranscriptsResult> {
   const transcriptsConfiguration =
     await LabsTranscriptsConfigurationResource.fetchById(
       transcriptsConfigurationId
@@ -63,7 +70,7 @@ export async function retrieveNewTranscriptsActivity(
       },
       "[retrieveNewTranscripts] Transcript configuration not found. Skipping."
     );
-    return [];
+    return { fileIds: [], nextCursor: null, isFirstSync: false };
   }
 
   const localLogger = mainLogger.child({
@@ -103,10 +110,8 @@ export async function retrieveNewTranscriptsActivity(
     );
   }
 
-  const transcriptsIdsToProcess: string[] = [];
-
   switch (transcriptsConfiguration.provider) {
-    case "google_drive":
+    case "google_drive": {
       const googleTranscriptsRes = await retrieveGoogleTranscripts(
         auth,
         transcriptsConfiguration,
@@ -118,27 +123,39 @@ export async function retrieveNewTranscriptsActivity(
           `Error retrieving Google transcripts: ${googleTranscriptsRes.error.message}`
         );
       }
-      const googleTranscriptsIds = googleTranscriptsRes.value;
-      transcriptsIdsToProcess.push(...googleTranscriptsIds);
-      break;
+      return {
+        fileIds: googleTranscriptsRes.value,
+        nextCursor: null,
+        isFirstSync: false,
+      };
+    }
 
-    case "gong":
+    case "gong": {
       const gongTranscriptsIds = await retrieveGongTranscripts(
         auth,
         transcriptsConfiguration,
         localLogger
       );
-      transcriptsIdsToProcess.push(...gongTranscriptsIds);
-      break;
+      return {
+        fileIds: gongTranscriptsIds,
+        nextCursor: null,
+        isFirstSync: false,
+      };
+    }
 
-    case "modjo":
+    case "modjo": {
       try {
-        const modjoTranscriptsIds = await retrieveModjoTranscripts(
+        const modjoResult = await retrieveModjoTranscripts(
           auth,
           transcriptsConfiguration,
-          localLogger
+          localLogger,
+          modjoCursor
         );
-        transcriptsIdsToProcess.push(...modjoTranscriptsIds);
+        return {
+          fileIds: modjoResult.fileIds,
+          nextCursor: modjoResult.nextCursor,
+          isFirstSync: modjoResult.isFirstSync,
+        };
       } catch (error) {
         if (error instanceof ModjoAuthenticationError) {
           localLogger.error(
@@ -151,17 +168,15 @@ export async function retrieveNewTranscriptsActivity(
             await sendModjoDisconnectionEmail(user.email, workspace.name);
           }
 
-          return [];
+          return { fileIds: [], nextCursor: null, isFirstSync: false };
         }
         throw error;
       }
-      break;
+    }
 
     default:
       assertNever(transcriptsConfiguration.provider);
   }
-
-  return transcriptsIdsToProcess;
 }
 
 export async function processTranscriptActivity(
@@ -574,6 +589,7 @@ export async function processTranscriptActivity(
     const initialConversation = await createConversation(auth, {
       title: transcriptTitle,
       visibility: "unlisted",
+      spaceId: null,
     });
 
     const baseContext: UserMessageContext = {

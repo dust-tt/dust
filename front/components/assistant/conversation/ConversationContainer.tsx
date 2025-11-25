@@ -34,7 +34,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { conjugate, Err, Ok, pluralize } from "@app/types";
+import { conjugate, Err, Ok, pluralize, toMentionType } from "@app/types";
 
 interface ConversationContainerProps {
   owner: WorkspaceType;
@@ -97,9 +97,7 @@ export function ConversationContainerVirtuoso({
         user,
         messageData: {
           input,
-          mentions: mentions.map((mention) => ({
-            configurationId: mention.id,
-          })),
+          mentions: mentions.map(toMentionType),
           contentFragments,
           selectedMCPServerViewIds,
         },

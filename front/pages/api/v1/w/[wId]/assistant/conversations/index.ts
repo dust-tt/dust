@@ -287,6 +287,7 @@ async function handler(
         // Temporary translation layer for deprecated "workspace" visibility.
         visibility: visibility === "workspace" ? "unlisted" : visibility,
         depth,
+        spaceId: null,
       });
 
       let newContentFragment: ContentFragmentType | null = null;

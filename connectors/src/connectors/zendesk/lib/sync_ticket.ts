@@ -286,7 +286,7 @@ export async function syncTicket({
         }
         const author =
           users.find((user) => user.id === comment.author_id) ?? null;
-        return `[${comment?.created_at}] ${author ? `${author.name} (${author.email})` : "Unknown User"}:\n${commentContent}`;
+        return `[${comment?.created_at}] ${author ? `${author.name} (${author.email ?? "Unknown email"})` : "Unknown User"}:\n${commentContent}`;
       })
       .join("\n")}`.trim();
 
@@ -305,8 +305,8 @@ export async function syncTicket({
       ...(ticket.due_at
         ? [`dueDate:${new Date(ticket.due_at).toISOString()}`]
         : []),
-      ...(ticket.satisfaction_rating.score !== "unoffered" // Special value when no rating was provided.
-        ? [`satisfactionRating:${ticket.satisfaction_rating.score}`]
+      ...(ticket.satisfaction_rating?.score !== "unoffered" // Special value when no rating was provided.
+        ? [`satisfactionRating:${ticket.satisfaction_rating?.score}`]
         : []),
       `hasIncidents:${ticket.has_incidents ? "Yes" : "No"}`,
     ];
