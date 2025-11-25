@@ -123,11 +123,11 @@ export function ChartsTooltip({
         </span>
       </div>
       <div className="flex items-center gap-2">
+        <span className="text-muted-foreground dark:text-muted-foreground-night">
+          {toolName}
+        </span>
         <span className="ml-auto font-mono font-medium tabular-nums text-foreground dark:text-foreground-night">
           {data.count}
-        </span>
-        <span className="text-muted-foreground dark:text-muted-foreground-night">
-          ({data.percent}%)
         </span>
       </div>
     </div>
