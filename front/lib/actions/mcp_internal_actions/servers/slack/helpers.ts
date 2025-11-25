@@ -378,6 +378,17 @@ function buildFilteredListResponse<T, U = T>(
   ]);
 }
 
+export async function hasSlackScope(
+  accessToken: string,
+  scope: string
+): Promise<boolean> {
+  const slackClient = await getSlackClient(accessToken);
+  const authResult = await slackClient.auth.test();
+  return (
+    authResult.ok && !!authResult.response_metadata?.scopes?.includes(scope)
+  );
+}
+
 // Post message function.
 export async function executePostMessage(
   auth: Authenticator,
@@ -407,6 +418,10 @@ export async function executePostMessage(
     config.getClientFacingUrl()
   );
   message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${agentLoopContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
+
+  if (!(await hasSlackScope(accessToken, "files:write"))) {
+    fileId = undefined;
+  }
 
   // If a file is provided, upload it as attachment of the original message.
   if (fileId) {
