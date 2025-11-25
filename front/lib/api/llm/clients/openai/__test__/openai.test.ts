@@ -1,11 +1,13 @@
 import { vi } from "vitest";
 
 import type {
-  ModelConfig,
   OpenAIModelFamily,
   OpenAIWhitelistedModelId,
 } from "@app/lib/api/llm/clients/openai/types";
-import { OPENAI_MODEL_FAMILY_CONFIGS } from "@app/lib/api/llm/clients/openai/types";
+import {
+  getOpenAIModelFamilyFromModelId,
+  OPENAI_WHITELISTED_MODEL_IDS,
+} from "@app/lib/api/llm/clients/openai/types";
 import {
   TEST_CONVERSATIONS,
   TEST_STRUCTURED_OUTPUT_CONVERSATIONS,
@@ -23,24 +25,21 @@ const OPENAI_MODEL_FAMILY_TO_TEST_CONFIGS: Record<
   ConfigParams[]
 > = {
   o3: [
+    { reasoningEffort: "none" },
+    { reasoningEffort: "light" },
     { reasoningEffort: "medium" },
     { reasoningEffort: "high" },
     ...TEST_STRUCTURED_OUTPUT_KEYS.map((testStructuredOutputKey) => ({
       testStructuredOutputKey,
     })),
   ],
-  "o3-no-vision": [{ reasoningEffort: "medium" }, { reasoningEffort: "high" }],
-  reasoning: [
-    { reasoningEffort: "medium", temperature: 1 },
-    { reasoningEffort: "high" },
-  ],
-  "gpt-5": [
+  "o3-no-vision": [
     { reasoningEffort: "none" },
-    { reasoningEffort: "light", temperature: 0 },
-    { reasoningEffort: "medium", temperature: 1 },
+    { reasoningEffort: "light" },
+    { reasoningEffort: "medium" },
     { reasoningEffort: "high" },
   ],
-  "gpt-5.1": [
+  reasoning: [
     { reasoningEffort: "none" },
     { reasoningEffort: "light", temperature: 0 },
     { reasoningEffort: "medium", temperature: 1 },
@@ -84,42 +83,9 @@ vi.mock("@app/types", async (importOriginal) => {
     dustManagedCredentials: vi.fn(() => ({
       OPENAI_API_KEY: process.env.VITE_DUST_MANAGED_OPENAI_API_KEY ?? "",
       OPENAI_BASE_URL: "https://api.openai.com/v1",
-      DUST_REGION: "us-central1",
     })),
   };
 });
-
-// Inject Region
-vi.mock("@app/lib/api/regions/config", async (importOriginal) => {
-  const actual = await importOriginal();
-
-  return {
-    // @ts-expect-error actual is unknown
-    ...actual,
-    config: {
-      // @ts-expect-error importOriginal does not preserve types
-      ...actual.config,
-      getCurrentRegion: vi.fn(() => ({
-        DUST_REGION: "us-central1",
-      })),
-    },
-  };
-});
-
-function getOpenAIModelFamilyFromModelId(
-  modelId: OpenAIWhitelistedModelId
-): OpenAIModelFamily {
-  const family = Object.entries(OPENAI_MODEL_FAMILY_CONFIGS).find(
-    ([_family, config]: [string, ModelConfig]) =>
-      config.modelIds.includes(modelId)
-  )?.[0];
-  if (!family) {
-    throw new Error(
-      `Model ID ${modelId} does not belong to any OpenAI model family`
-    );
-  }
-  return family as OpenAIModelFamily;
-}
 
 /**
  * Open AI LLM Client Test Suite.
@@ -133,12 +99,10 @@ function getOpenAIModelFamilyFromModelId(
  */
 class OpenAiTestSuite extends LLMClientTestSuite {
   protected provider = "openai" as const;
-  // The models to test
-  protected models = [];
+  protected models = OPENAI_WHITELISTED_MODEL_IDS;
 
   protected getTestConfig(modelId: OpenAIWhitelistedModelId): TestConfig[] {
     const family = getOpenAIModelFamilyFromModelId(modelId);
-
     return OPENAI_MODEL_FAMILY_TO_TEST_CONFIGS[family].map((configParams) => ({
       ...configParams,
       modelId,
