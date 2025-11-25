@@ -228,18 +228,14 @@ async function handler(
           message.context.origin === "run_agent" ||
           message.context.originMessageId
         ) {
-          logger.error({
-            message: "use agenticMessageData instead of origin.",
-            origin: message.context.origin,
-            originMessageId: message.context.originMessageId,
-          });
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: "use agenticMessageData instead of origin.",
+          logger.error(
+            {
+              panic: true,
+              origin: message.context.origin,
+              originMessageId: message.context.originMessageId,
             },
-          });
+            "use agenticMessageData instead of origin."
+          );
         }
       }
 

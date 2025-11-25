@@ -129,6 +129,17 @@ export async function getOrCreateConversation(
     parentOrigin = parentMessage.context.origin ?? null;
   }
 
+  if (parentOrigin === "run_agent" || parentOrigin === "agent_handover") {
+    logger.error(
+      {
+        parentMessage: parentMessage?.sId,
+        origin: parentOrigin,
+        originMessageId: originMessage.sId,
+      },
+      "Invalid parent origin."
+    );
+  }
+
   if (conversationId) {
     const agenticMessageType =
       mainConversation.sId !== conversationId ? "run_agent" : "agent_handover";
@@ -228,7 +239,6 @@ export async function getOrCreateConversation(
       {
         error: convRes.error,
         stepContext,
-        mainConversation: mainConversation.sId,
       },
       "Failed to create conversation"
     );
