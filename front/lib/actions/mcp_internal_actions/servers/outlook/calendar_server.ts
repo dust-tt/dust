@@ -192,7 +192,6 @@ function createServer(
         }
 
         const formattedText = renderOutlookEventList(result.events, {
-          userTimezone,
           hasMore: result.nextLink !== undefined,
         });
 
@@ -246,7 +245,7 @@ function createServer(
           return new Err(new MCPError(result.error));
         }
 
-        const formattedText = renderOutlookEvent(result, userTimezone);
+        const formattedText = renderOutlookEvent(result);
 
         return new Ok([{ type: "text" as const, text: formattedText }]);
       }
@@ -354,7 +353,7 @@ function createServer(
           return new Err(new MCPError(result.error));
         }
 
-        const formattedText = renderOutlookEvent(result, userTimezone);
+        const formattedText = renderOutlookEvent(result);
 
         return new Ok([
           {
@@ -461,7 +460,7 @@ function createServer(
           return new Err(new MCPError(result.error));
         }
 
-        const formattedText = renderOutlookEvent(result, userTimezone);
+        const formattedText = renderOutlookEvent(result);
 
         return new Ok([
           {

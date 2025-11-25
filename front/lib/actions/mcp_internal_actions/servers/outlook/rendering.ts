@@ -36,10 +36,7 @@ function decodeHtmlEntities(text: string): string {
     .replace(/&apos;/g, "'");
 }
 
-function enrichEventWithDayOfWeek(
-  event: OutlookEvent,
-  userTimezone?: string
-): EnrichedOutlookEvent {
+function enrichEventWithDayOfWeek(event: OutlookEvent): EnrichedOutlookEvent {
   const enrichedEvent: EnrichedOutlookEvent = {
     ...event,
     start: {
@@ -57,23 +54,20 @@ function enrichEventWithDayOfWeek(
   const startDate = new Date(event.start.dateTime);
   enrichedEvent.start.eventDayOfWeek = startDate.toLocaleDateString("en-US", {
     weekday: "long",
-    timeZone: userTimezone ?? event.start.timeZone ?? undefined,
+    timeZone: event.start.timeZone,
   });
 
   const endDate = new Date(event.end.dateTime);
   enrichedEvent.end.eventDayOfWeek = endDate.toLocaleDateString("en-US", {
     weekday: "long",
-    timeZone: userTimezone ?? event.end.timeZone ?? undefined,
+    timeZone: event.end.timeZone,
   });
 
   return enrichedEvent;
 }
 
-export function renderOutlookEvent(
-  event: OutlookEvent,
-  userTimezone?: string
-): string {
-  const enrichedEvent = enrichEventWithDayOfWeek(event, userTimezone);
+export function renderOutlookEvent(event: OutlookEvent): string {
+  const enrichedEvent = enrichEventWithDayOfWeek(event);
   const lines: string[] = [];
 
   lines.push(`# ${enrichedEvent.subject ?? "Untitled event"}`);
@@ -96,13 +90,13 @@ export function renderOutlookEvent(
       const timeStr = startDate.toLocaleTimeString("en-US", {
         hour: "numeric",
         minute: "2-digit",
-        timeZone: userTimezone ?? start.timeZone ?? undefined,
+        timeZone: start.timeZone,
       });
       const dateStr = startDate.toLocaleDateString("en-US", {
         month: "long",
         day: "numeric",
         year: "numeric",
-        timeZone: userTimezone ?? start.timeZone ?? undefined,
+        timeZone: start.timeZone,
       });
       lines.push(
         `Start: ${start.eventDayOfWeek}, ${dateStr} at ${timeStr}${start.timeZone ? ` (${start.timeZone})` : ""}`
@@ -116,13 +110,13 @@ export function renderOutlookEvent(
     const timeStr = endDate.toLocaleTimeString("en-US", {
       hour: "numeric",
       minute: "2-digit",
-      timeZone: userTimezone ?? end.timeZone ?? undefined,
+      timeZone: end.timeZone,
     });
     const dateStr = endDate.toLocaleDateString("en-US", {
       month: "long",
       day: "numeric",
       year: "numeric",
-      timeZone: userTimezone ?? end.timeZone ?? undefined,
+      timeZone: end.timeZone,
     });
     lines.push(
       `End: ${end.eventDayOfWeek}, ${dateStr} at ${timeStr}${end.timeZone ? ` (${end.timeZone})` : ""}`
@@ -191,10 +185,8 @@ export function renderOutlookEvent(
 export function renderOutlookEventList(
   events: OutlookEvent[],
   {
-    userTimezone,
     hasMore,
   }: {
-    userTimezone?: string;
     hasMore: boolean;
   }
 ): string {
@@ -210,7 +202,7 @@ export function renderOutlookEventList(
 
   for (const event of events) {
     lines.push("\n---");
-    lines.push(renderOutlookEvent(event, userTimezone));
+    lines.push(renderOutlookEvent(event));
   }
 
   return lines.join("\n");
