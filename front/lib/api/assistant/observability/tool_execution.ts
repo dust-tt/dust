@@ -5,15 +5,20 @@ import { asDisplayToolName } from "@app/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
+import { buildConfigBreakdown, MISSING_CONFIG_NAME } from "./tool_breakdown";
+
 const DEFAULT_METRIC_VALUE = 0;
+
+type ToolExecutionToolMetrics = {
+  count: number;
+  successRate: number;
+  mcpViewBreakdown?: Record<string, number>;
+};
 
 export type ToolExecutionByVersion = {
   version: string;
   tools: {
-    [toolName: string]: {
-      count: number;
-      successRate: number;
-    };
+    [toolName: string]: ToolExecutionToolMetrics;
   };
 };
 
@@ -22,13 +27,16 @@ type TermBucket = {
   doc_count: number;
 };
 
-type ToolBucket = TermBucket & {
+type ConfigBucket = TermBucket;
+
+type ServerBucket = TermBucket & {
   statuses?: estypes.AggregationsMultiBucketAggregateBase<TermBucket>;
+  configs?: estypes.AggregationsMultiBucketAggregateBase<ConfigBucket>;
 };
 
 type VersionBucket = TermBucket & {
   tools?: {
-    tool_names?: estypes.AggregationsMultiBucketAggregateBase<ToolBucket>;
+    servers?: estypes.AggregationsMultiBucketAggregateBase<ServerBucket>;
   };
   first_seen?: estypes.AggregationsMinAggregate;
 };
@@ -55,14 +63,21 @@ export async function fetchToolExecutionMetrics(
         tools: {
           nested: { path: "tools_used" },
           aggs: {
-            tool_names: {
+            servers: {
               terms: {
-                field: "tools_used.tool_name",
+                field: "tools_used.server_name",
                 size: 50,
               },
               aggs: {
                 statuses: {
                   terms: { field: "tools_used.status" },
+                },
+                configs: {
+                  terms: {
+                    field: "tools_used.mcp_server_configuration_sid",
+                    size: 50,
+                    missing: MISSING_CONFIG_NAME,
+                  },
                 },
               },
             },
@@ -86,24 +101,32 @@ export async function fetchToolExecutionMetrics(
   );
 
   const byVersion: ToolExecutionByVersion[] = versionBuckets.map((vb) => {
-    const toolBuckets = bucketsToArray<ToolBucket>(
-      vb.tools?.tool_names?.buckets
+    const serverBuckets = bucketsToArray<ServerBucket>(
+      vb.tools?.servers?.buckets
     );
 
     const tools: ToolExecutionByVersion["tools"] = {};
 
-    toolBuckets.forEach((tb) => {
-      const total = tb.doc_count || DEFAULT_METRIC_VALUE;
-      const statuses = bucketsToArray<TermBucket>(tb.statuses?.buckets);
+    serverBuckets.forEach((sb) => {
+      const total = sb.doc_count || DEFAULT_METRIC_VALUE;
+      const statuses = bucketsToArray<TermBucket>(sb.statuses?.buckets);
       const succeeded =
         statuses.find((s) => s.key === "succeeded")?.doc_count ??
         DEFAULT_METRIC_VALUE;
 
-      const successRate = total > 0 ? Math.round((succeeded / total) * 100) : 0;
+      const successRate =
+        total > 0
+          ? Math.round((succeeded / total) * 100)
+          : DEFAULT_METRIC_VALUE;
 
-      tools[asDisplayToolName(tb.key)] = {
+      const serverDisplayName = asDisplayToolName(sb.key);
+      const breakdown = buildConfigBreakdown(sb.configs);
+
+      tools[serverDisplayName] = {
         count: total,
         successRate,
+        mcpViewBreakdown:
+          Object.keys(breakdown).length > 0 ? breakdown : undefined,
       };
     });
 
