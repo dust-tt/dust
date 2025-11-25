@@ -49,9 +49,8 @@ function isToolStakesRecord(
     return false;
   }
 
-  return Object.values(value).every(
-    (v): v is MCPToolStakeLevelType =>
-      MCP_TOOL_STAKE_LEVELS.includes(v as MCPToolStakeLevelType)
+  return Object.values(value).every((v): v is MCPToolStakeLevelType =>
+    MCP_TOOL_STAKE_LEVELS.includes(v as MCPToolStakeLevelType)
   );
 }
 
