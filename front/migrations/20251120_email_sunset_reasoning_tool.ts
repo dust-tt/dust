@@ -15,7 +15,7 @@ const { DUST_CLIENT_FACING_URL } = process.env;
 const CsvRecordSchema = z.object({
   author_first_name: z.string(),
   email: z.string(),
-  agent_list: z.string(),
+  agents: z.string(),
   min_reasoning_effort: z.string().optional(),
   workspace_id: z.string(),
 });
@@ -54,7 +54,7 @@ async function sendReasoningToolRemovalEmail(
   const childLogger = logger.child({ email: record.email });
 
   const email = record.email.trim().toLowerCase();
-  const agentList = record.agent_list.trim();
+  const agentList = record.agents.trim();
   const minReasoningEffort = record.min_reasoning_effort?.trim().toLowerCase();
   const workspaceId = record.workspace_id.trim();
 
@@ -177,7 +177,7 @@ makeScript(
     csvPath: {
       alias: "csv",
       describe:
-        "Path to the CSV file containing email, agent_list, and min_reasoning_effort",
+        "Path to the CSV file containing email, agents, and min_reasoning_effort",
       type: "string",
       demandOption: true,
     },
@@ -198,7 +198,7 @@ makeScript(
     const validRecords = records.filter((record) => {
       if (
         !isString(record.email) ||
-        !isString(record.agent_list) ||
+        !isString(record.agents) ||
         !isString(record.min_reasoning_effort)
       ) {
         logger.warn({ record }, "Skipping record with invalid data");
