@@ -73,7 +73,7 @@ ${agentList
   .map((agent) => {
     const [agentId, agentName] = agent.trim().split("|");
     const agentUrl = `${baseUrl}/w/${workspaceId}/builder/agents/${agentId}`;
-    return `  <li><a href="${agentUrl.replace('"', "")}">${agentName}</a></li>`;
+    return `  <li><a href=${agentUrl}>${agentName}</a></li>`;
   })
   .join("\n")}
 </ul>
