@@ -12,9 +12,6 @@ const DEFAULT_METRIC_VALUE = 0;
 type ToolExecutionToolMetrics = {
   count: number;
   successRate: number;
-  /**
-   * Optional breakdown of this tool/server by underlying MCP view tools.
-   */
   mcpViewBreakdown?: Record<string, number>;
 };
 
