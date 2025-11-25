@@ -154,7 +154,7 @@ export function ConversationContainerVirtuoso({
         <>
           <div
             id="agent-input-header"
-            className="flex h-fit min-h-[20vh] w-full max-w-3xl flex-col justify-end gap-8 py-4"
+            className="flex h-fit min-h-[20vh] w-full max-w-4xl flex-col justify-end gap-8 py-4"
             ref={startConversationRef}
           >
             <Page.Header title={greeting} />
@@ -163,7 +163,7 @@ export function ConversationContainerVirtuoso({
             className={classNames(
               "max-h-dvh sticky bottom-0 z-20 flex w-full",
               "pb-2",
-              "sm:w-full sm:max-w-3xl sm:pb-4"
+              "sm:w-full sm:max-w-4xl sm:pb-4"
             )}
           >
             <InputBar

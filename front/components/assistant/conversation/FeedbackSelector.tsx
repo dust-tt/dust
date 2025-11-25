@@ -162,9 +162,7 @@ export function FeedbackSelector({
       icon={HandThumbDownIcon}
       // We enforce written feedback for thumbs down.
       // -> Not saving the reaction until then.
-      className={
-        feedback?.thumb === "down" ? "" : "text-muted-foreground"
-      }
+      className={feedback?.thumb === "down" ? "" : "text-muted-foreground"}
     />
   );
 
