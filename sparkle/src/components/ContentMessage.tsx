@@ -46,8 +46,8 @@ const contentMessageVariants = cva(
       variant: sharedVariantStyles,
       size: {
         lg: "",
-        md: "s-max-w-[500px]",
-        sm: "s-max-w-[380px]",
+        md: "s-max-w-xl",
+        sm: "s-max-w-sm",
       },
     },
     defaultVariants: {
