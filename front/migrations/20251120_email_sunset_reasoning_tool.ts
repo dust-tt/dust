@@ -140,10 +140,9 @@ ${agentList
 
 <p>If you have any concerns, please reach out to us at support@dust.tt</p>
 
-<p>Thank you for building with Dust!</p>
+<p>Thank you for building with Dust!</p><br/>
 
-<p>Best regards,<br>
-The Dust Team</p>`;
+<p>Best regards,`;
 
   if (execute) {
     const emailResult = await sendEmailWithTemplate({
