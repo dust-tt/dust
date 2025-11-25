@@ -1,3 +1,4 @@
+import { OAUTH_USE_CASE_TO_LABEL } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
 import {
   PokeTable,
   PokeTableBody,
@@ -12,7 +13,6 @@ import {
   getMcpServerViewDisplayName,
 } from "@app/lib/actions/mcp_helper";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import { OAUTH_USE_CASE_TO_LABEL } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
 import type { LightWorkspaceType, PokeMCPServerViewType } from "@app/types";
 
 interface ViewMCPServerViewTableProps {
