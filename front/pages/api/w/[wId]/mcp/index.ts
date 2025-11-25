@@ -323,9 +323,19 @@ async function handler(
           });
 
         if (body.connectionId) {
-          // We create a connection to the internal MCP server to allow the user to use the MCP server in the future.
-          // The connexion is of type "workspace" because it is created by the admin.
-          // If the server can use personal connections, we rely on this "workspace" connection to get the related credentials.
+          // For personal tools, automatically create a personal connection for the admin
+          // so they don't need to re-authenticate when they first use the tool.
+          if (body.useCase === "personal_actions") {
+            await MCPServerConnectionResource.makeNew(auth, {
+              connectionId: body.connectionId,
+              connectionType: "personal",
+              serverType: "internal",
+              internalMCPServerId: newInternalMCPServer.id,
+            });
+          }
+
+          // We create a workspace connection to the internal MCP server.
+          // This connection is used to get the related credentials for personal connections.
           await MCPServerConnectionResource.makeNew(auth, {
             connectionId: body.connectionId,
             connectionType: "workspace",
