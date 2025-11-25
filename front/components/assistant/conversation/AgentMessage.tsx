@@ -6,7 +6,6 @@ import {
   ClipboardIcon,
   ConversationMessage,
   InteractiveImageGrid,
-  Markdown,
   Separator,
   StopIcon,
   useCopyToClipboard,
@@ -14,8 +13,6 @@ import {
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import { marked } from "marked";
 import React, { useCallback, useMemo } from "react";
-import type { Components } from "react-markdown";
-import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import { AgentHandle } from "@app/components/assistant/conversation/AgentHandle";
@@ -31,6 +28,7 @@ import { FeedbackSelectorPopoverContent } from "@app/components/assistant/conver
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/interactive_content/useAutoOpenInteractiveContent";
 import { MCPServerPersonalAuthenticationRequired } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationRequired";
+import { renderAgentMessageContent } from "@app/components/assistant/conversation/renderAgentMessageContent";
 import type {
   AgentMessageStateWithControlEvent,
   MessageTemporaryState,
@@ -42,41 +40,16 @@ import {
   isHandoverUserMessage,
   isMessageTemporayState,
 } from "@app/components/assistant/conversation/types";
-import {
-  CitationsContext,
-  CiteBlock,
-  getCiteDirective,
-} from "@app/components/markdown/CiteBlock";
-import { getImgPlugin, imgDirective } from "@app/components/markdown/Image";
+import { CitationsContext } from "@app/components/markdown/CiteBlock";
 import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
-import {
-  getQuickReplyPlugin,
-  quickReplyDirective,
-} from "@app/components/markdown/QuickReplyBlock";
-import {
-  getToolSetupPlugin,
-  toolDirective,
-} from "@app/components/markdown/tool/tool";
-import {
-  getVisualizationPlugin,
-  sanitizeVisualizationContent,
-  visualizationDirective,
-} from "@app/components/markdown/VisualizationBlock";
+import { sanitizeVisualizationContent } from "@app/components/markdown/VisualizationBlock";
 import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { DustError } from "@app/lib/error";
-import {
-  agentMentionDirective,
-  getAgentMentionPlugin,
-  getUserMentionPlugin,
-  userMentionDirective,
-} from "@app/lib/mentions/markdown/plugin";
-import {
-  useCancelMessage,
-  useConversationMessage,
-  usePostOnboardingFollowUp,
-} from "@app/lib/swr/conversations";
+import { usePostOnboardingFollowUp } from "@app/lib/swr/conversations";
+import { useCancelMessage } from "@app/lib/swr/conversations";
+import { useConversationMessage } from "@app/lib/swr/conversations";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type {
   ContentFragmentsType,
@@ -566,8 +539,8 @@ function AgentMessageContent({
   isLastMessage,
   messageStreamState,
   references,
-  streaming,
-  lastTokenClassification,
+  streaming: _streaming,
+  lastTokenClassification: _lastTokenClassification,
   owner,
   conversationId,
   activeReferences,
@@ -668,52 +641,19 @@ function AgentMessageContent({
     [postFollowUp]
   );
 
-  const additionalMarkdownComponents: Components = React.useMemo(
-    () => ({
-      visualization: getVisualizationPlugin(
-        owner,
-        agentConfiguration.sId,
-        conversationId,
-        sId
-      ),
-      sup: CiteBlock,
-      // Warning: we can't rename easily `mention` to agent_mention, because the messages DB contains this name
-      mention: getAgentMentionPlugin(owner),
-      mention_user: getUserMentionPlugin(owner),
-      dustimg: getImgPlugin(owner),
-      quickReply: getQuickReplyPlugin(onQuickReplySend, isLastMessage),
-      toolSetup: getToolSetupPlugin(
-        owner,
-        conversationId,
-        isLastMessage,
-        handleToolSetupComplete,
-        handleToolSetupSkipped
-      ),
-    }),
-    [
-      owner,
-      conversationId,
-      isLastMessage,
-      sId,
-      agentConfiguration.sId,
-      onQuickReplySend,
-      isLastMessage,
-      handleToolSetupComplete,
-      handleToolSetupSkipped,
-    ]
-  );
-
-  const additionalMarkdownPlugins: PluggableList = React.useMemo(
-    () => [
-      agentMentionDirective,
-      userMentionDirective,
-      getCiteDirective(),
-      visualizationDirective,
-      imgDirective,
-      toolDirective,
-      quickReplyDirective,
-    ],
-    []
+  // Render agent message content using TipTap's React renderer
+  const renderedContent = useMemo(
+    () =>
+      agentMessage.content
+        ? renderAgentMessageContent({
+            markdown: sanitizeVisualizationContent(agentMessage.content),
+            owner,
+            agentConfigurationId: agentConfiguration.sId,
+            conversationId,
+            messageId: sId,
+          })
+        : null,
+    [agentMessage.content, owner, agentConfiguration.sId, conversationId, sId]
   );
 
   // Auto-open interactive content drawer when interactive files are available.
@@ -814,13 +754,9 @@ function AgentMessageContent({
               updateActiveReferences,
             }}
           >
-            <Markdown
-              content={sanitizeVisualizationContent(agentMessage.content)}
-              isStreaming={streaming && lastTokenClassification === "tokens"}
-              isLastMessage={isLastMessage}
-              additionalMarkdownComponents={additionalMarkdownComponents}
-              additionalMarkdownPlugins={additionalMarkdownPlugins}
-            />
+            <div className="prose dark:prose-invert max-w-none">
+              {renderedContent}
+            </div>
           </CitationsContext.Provider>
         </div>
       )}

@@ -4,9 +4,9 @@ import Mention from "@tiptap/extension-mention";
 import { Plugin, TextSelection } from "@tiptap/pm/state";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 
-import { createMarkdownSerializer } from "@app/components/assistant/conversation/input_bar/editor/markdownSerializer";
 import {
   AGENT_MENTION_REGEX_BEGINNING,
+  serializeMention,
   USER_MENTION_REGEX_BEGINNING,
 } from "@app/lib/mentions/format";
 import logger from "@app/logger/logger";
@@ -138,6 +138,13 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
     };
   },
 
+  renderMarkdown: (node) => {
+    return serializeMention({
+      name: node.attrs?.label,
+      sId: node.attrs?.id,
+    });
+  },
+
   addProseMirrorPlugins(this) {
     const { owner } = this.options;
     const editor = this.editor;
@@ -160,14 +167,9 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
           const { state } = view;
           const { from, to } = state.selection;
 
-          const serializer = createMarkdownSerializer(state.schema);
+          const markdown = editor.getMarkdown();
 
-          // Convert the pasted slice to markdown.
-          // Create a temporary document node to wrap the fragment.
-          const tempDoc = state.schema.topNodeType.create(null, slice.content);
-          const markdown = serializer.serialize(tempDoc);
-
-          // Send to backend to parse mentions.
+          // Sending to the backend to parse mentions.
           parseMentionsOnBackend(markdown, owner.sId)
             .then((processedMarkdown: string) => {
               // Use Tiptap's insertContent with JSON structure.

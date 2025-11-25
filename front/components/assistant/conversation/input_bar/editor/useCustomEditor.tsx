@@ -12,7 +12,6 @@ import { MarkdownStyleExtension } from "@app/components/assistant/conversation/i
 import { MentionExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionExtension";
 import { PastedAttachmentExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/PastedAttachmentExtension";
 import { URLDetectionExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/URLDetectionExtension";
-import { createMarkdownSerializer } from "@app/components/assistant/conversation/input_bar/editor/markdownSerializer";
 import {
   createMentionSuggestion,
   mentionPluginKey,
@@ -21,8 +20,7 @@ import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { extractFromEditorJSON } from "@app/lib/mentions/format";
 import { isMobile } from "@app/lib/utils";
-import type { RichMention } from "@app/types";
-import type { WorkspaceType } from "@app/types";
+import type { RichMention, WorkspaceType } from "@app/types";
 
 import { URLStorageExtension } from "./extensions/URLStorageExtension";
 
@@ -34,15 +32,7 @@ function isLongTextPaste(text: string, maxCharThreshold?: number) {
 }
 
 const useEditorService = (editor: Editor | null) => {
-  const markdownSerializer = useMemo(() => {
-    if (!editor?.schema) {
-      return null;
-    }
-
-    return createMarkdownSerializer(editor.schema);
-  }, [editor]);
-
-  const editorService = useMemo(() => {
+  return useMemo(() => {
     // Return the service object with utility functions.
     return {
       // Insert text helper function.
@@ -111,19 +101,6 @@ const useEditorService = (editor: Editor | null) => {
         return editor?.isEmpty ?? true;
       },
 
-      getJSONContent() {
-        return editor?.getJSON();
-      },
-
-      getTextAndMentions() {
-        const { mentions, text } = extractFromEditorJSON(editor?.getJSON());
-
-        return {
-          mentions,
-          text: text.trim(),
-        };
-      },
-
       getMarkdownAndMentions() {
         if (!editor?.state.doc) {
           return {
@@ -133,13 +110,13 @@ const useEditorService = (editor: Editor | null) => {
         }
 
         return {
-          markdown: markdownSerializer?.serialize(editor.state.doc) ?? "",
-          mentions: this.getTextAndMentions().mentions,
+          markdown: editor?.getMarkdown() ?? "",
+          mentions: extractFromEditorJSON(editor?.getJSON()).mentions,
         };
       },
 
       hasMention(mention: RichMention) {
-        const { mentions } = this.getTextAndMentions();
+        const { mentions } = extractFromEditorJSON(editor?.getJSON());
         return mentions.some(
           (m) => m.id === mention.id && m.type === mention.type
         );
@@ -166,9 +143,7 @@ const useEditorService = (editor: Editor | null) => {
         return editor?.setEditable(!loading);
       },
     };
-  }, [editor, markdownSerializer]);
-
-  return editorService;
+  }, [editor]);
 };
 
 export type EditorService = ReturnType<typeof useEditorService>;

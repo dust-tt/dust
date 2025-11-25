@@ -1,39 +1,14 @@
-import {
-  BoltIcon,
-  ConversationMessage,
-  Icon,
-  Markdown,
-  Tooltip,
-} from "@dust-tt/sparkle";
+import { BoltIcon, ConversationMessage, Icon, Tooltip } from "@dust-tt/sparkle";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import { useCallback, useMemo } from "react";
-import type { Components } from "react-markdown";
-import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
+import { renderMessageContent } from "@app/components/assistant/conversation/renderMessageContent";
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
 import {
   hasHumansInteracting,
   isTriggeredOrigin,
 } from "@app/components/assistant/conversation/types";
-import {
-  CiteBlock,
-  getCiteDirective,
-} from "@app/components/markdown/CiteBlock";
-import {
-  ContentNodeMentionBlock,
-  contentNodeMentionDirective,
-} from "@app/components/markdown/ContentNodeMentionBlock";
-import {
-  PastedAttachmentBlock,
-  pastedAttachmentDirective,
-} from "@app/components/markdown/PastedAttachmentBlock";
-import {
-  agentMentionDirective,
-  getAgentMentionPlugin,
-  getUserMentionPlugin,
-  userMentionDirective,
-} from "@app/lib/mentions/markdown/plugin";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type { UserMessageType, WorkspaceType } from "@app/types";
 
@@ -52,27 +27,10 @@ export function UserMessage({
   message,
   owner,
 }: UserMessageProps) {
-  const additionalMarkdownComponents: Components = useMemo(
-    () => ({
-      sup: CiteBlock,
-      // Warning: we can't rename easily `mention` to agent_mention, because the messages DB contains this name
-      mention: getAgentMentionPlugin(owner),
-      mention_user: getUserMentionPlugin(owner),
-      content_node_mention: ContentNodeMentionBlock,
-      pasted_attachment: PastedAttachmentBlock,
-    }),
-    [owner]
-  );
-
-  const additionalMarkdownPlugins: PluggableList = useMemo(
-    () => [
-      getCiteDirective(),
-      agentMentionDirective,
-      userMentionDirective,
-      contentNodeMentionDirective,
-      pastedAttachmentDirective,
-    ],
-    []
+  // Render message content using TipTap's React renderer
+  const renderedContent = useMemo(
+    () => renderMessageContent(message.content, owner),
+    [message.content, owner]
   );
 
   const renderName = useCallback((name: string | null) => {
@@ -93,8 +51,7 @@ export function UserMessage({
     <div className="flex flex-grow flex-col">
       <div className="min-w-60 max-w-full self-end">
         <ConversationMessage
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          pictureUrl={message.context.profilePictureUrl || message.user?.image}
+          pictureUrl={message.context.profilePictureUrl ?? message.user?.image}
           name={message.context.fullName ?? undefined}
           renderName={renderName}
           timestamp={formatTimestring(message.created)}
@@ -108,13 +65,9 @@ export function UserMessage({
           type="user"
           citations={citations}
         >
-          <Markdown
-            content={message.content}
-            isStreaming={false}
-            isLastMessage={isLastMessage}
-            additionalMarkdownComponents={additionalMarkdownComponents}
-            additionalMarkdownPlugins={additionalMarkdownPlugins}
-          />
+          <div className="prose dark:prose-invert max-w-none">
+            {renderedContent}
+          </div>
         </ConversationMessage>
       </div>
       {showAgentSuggestions && (
