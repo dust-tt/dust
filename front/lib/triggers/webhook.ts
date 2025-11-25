@@ -11,6 +11,7 @@ import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
+import type { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { FathomClient } from "@app/lib/triggers/built-in-webhooks/fathom/fathom_client";
 import { checkTriggerForExecutionPerDayLimit } from "@app/lib/triggers/common";
@@ -40,7 +41,6 @@ import type {
 import { isWebhookTrigger } from "@app/types/assistant/triggers";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
-import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 
 const WORKSPACE_MESSAGE_LIMIT_MULTIPLIER = 0.5; // 50% of workspace message limit
 

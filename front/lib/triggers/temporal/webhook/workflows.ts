@@ -1,13 +1,28 @@
 import { proxyActivities } from "@temporalio/workflow";
 
-import type * as activities from "@app/lib/triggers/temporal/webhook/activities";
+import type * as activities from "./activities";
 
-const { webhookCleanupActivity } = proxyActivities<typeof activities>({
+const { runTriggerWebhookActivity, webhookCleanupActivity } = proxyActivities<
+  typeof activities
+>({
   startToCloseTimeout: "5 minutes",
   retry: {
     nonRetryableErrorTypes: ["TriggerNonRetryableError"],
   },
 });
+
+export async function agentTriggerWebhookWorkflow({
+  workspaceId,
+  webhookRequestId,
+}: {
+  workspaceId: string;
+  webhookRequestId: number;
+}) {
+  await runTriggerWebhookActivity({
+    workspaceId,
+    webhookRequestId,
+  });
+}
 
 export async function webhookCleanupWorkflow() {
   await webhookCleanupActivity();

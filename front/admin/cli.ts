@@ -24,8 +24,13 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
+import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { tokenCountForTexts } from "@app/lib/tokenization";
+import {
+  getWebhookRequestPayloadFromGCS,
+  processWebhookRequest,
+} from "@app/lib/triggers/webhook";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import {
@@ -40,11 +45,6 @@ import {
   removeNulls,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
-import {
-  getWebhookRequestPayloadFromGCS,
-  processWebhookRequest,
-} from "@app/lib/triggers/webhook";
-import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 
 // `cli` takes an object type and a command as first two arguments and then a list of arguments.
 const workspace = async (command: string, args: parseArgs.ParsedArgs) => {

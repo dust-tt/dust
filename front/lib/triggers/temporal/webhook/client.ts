@@ -3,15 +3,55 @@ import {
   ScheduleOverlapPolicy,
 } from "@temporalio/client";
 
+import type { Authenticator } from "@app/lib/auth";
+import type { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import { QUEUE_NAME } from "@app/lib/triggers/temporal/webhook/config";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
-import { webhookCleanupWorkflow } from "@app/lib/triggers/temporal/webhook/workflows";
+import {
+  agentTriggerWebhookWorkflow,
+  webhookCleanupWorkflow,
+} from "./workflows";
 
 export const WEBHOOK_CLEANUP_SCHEDULE_ID = "webhook-cleanup-schedule";
+
+/**
+ * Handle the processing of a received webhook request.
+ */
+export async function launchAgentTriggerWebhookWorkflow({
+  auth,
+  webhookRequest,
+}: {
+  auth: Authenticator;
+  webhookRequest: WebhookRequestResource;
+}): Promise<Result<undefined, Error>> {
+  const client = await getTemporalClientForAgentNamespace();
+
+  const workflowId = makeAgentTriggerWebhookWorkflowId(auth, webhookRequest);
+
+  await client.workflow.start(agentTriggerWebhookWorkflow, {
+    args: [
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        webhookRequestId: webhookRequest.id,
+      },
+    ],
+    taskQueue: QUEUE_NAME,
+    workflowId,
+  });
+
+  return new Ok(undefined);
+}
+
+function makeAgentTriggerWebhookWorkflowId(
+  auth: Authenticator,
+  webhookRequest: WebhookRequestResource
+): string {
+  return `agent-trigger-webhook-${webhookRequest.id}-${auth.getNonNullableWorkspace().sId}-${Date.now()}`;
+}
 
 export async function createOrUpdateWebhookCleanupSchedule(): Promise<
   Result<void, Error>
