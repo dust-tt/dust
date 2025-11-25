@@ -883,6 +883,8 @@ const ContentFragmentNodeData = z.object({
   spaceName: z.string(),
 });
 
+const ContentFragmentExpiredReasonSchema = z.literal("data_source_deleted");
+
 const BaseContentFragmentSchema = z.object({
   type: z.literal("content_fragment"),
   id: ModelIdSchema,
@@ -901,22 +903,45 @@ const BaseContentFragmentSchema = z.object({
   ]),
 });
 
-const FileContentFragmentSchema = BaseContentFragmentSchema.extend({
-  contentFragmentType: z.literal("file"),
-  fileId: z.string().nullable(),
-  snippet: z.string().nullable(),
-  generatedTables: z.array(z.string()),
-  textUrl: z.string(),
-  textBytes: z.number().nullable(),
-});
+const FileContentFragmentSchema = z.union([
+  BaseContentFragmentSchema.extend({
+    contentFragmentType: z.literal("file"),
+    expiredReason: z.null(),
+    fileId: z.string().nullable(),
+    snippet: z.string().nullable(),
+    generatedTables: z.array(z.string()),
+    textUrl: z.string(),
+    textBytes: z.number().nullable(),
+  }),
+  BaseContentFragmentSchema.extend({
+    contentFragmentType: z.literal("file"),
+    expiredReason: ContentFragmentExpiredReasonSchema,
+    fileId: z.null(),
+    snippet: z.null(),
+    generatedTables: z.array(z.never()),
+    textUrl: z.null(),
+    textBytes: z.null(),
+  }),
+]);
 
-const ContentNodeContentFragmentSchema = BaseContentFragmentSchema.extend({
-  contentFragmentType: z.literal("content_node"),
-  nodeId: z.string(),
-  nodeDataSourceViewId: z.string(),
-  nodeType: ContentNodeTypeSchema,
-  contentNodeData: ContentFragmentNodeData,
-});
+const ContentNodeContentFragmentSchema = z.union([
+  BaseContentFragmentSchema.extend({
+    contentFragmentType: z.literal("content_node"),
+    expiredReason: z.null(),
+    nodeId: z.string(),
+    nodeDataSourceViewId: z.string(),
+    nodeType: ContentNodeTypeSchema,
+    contentNodeData: ContentFragmentNodeData,
+  }),
+  BaseContentFragmentSchema.extend({
+    contentFragmentType: z.literal("content_node"),
+    expiredReason: ContentFragmentExpiredReasonSchema,
+    nodeId: z.null(),
+    nodeDataSourceViewId: z.null(),
+    nodeType: z.null(),
+    contentNodeData: z.null(),
+  }),
+]);
 
 const ContentFragmentSchema = z.union([
   FileContentFragmentSchema,
