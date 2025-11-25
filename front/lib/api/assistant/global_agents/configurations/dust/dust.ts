@@ -35,8 +35,8 @@ import type {
   ReasoningEffort,
 } from "@app/types";
 import {
+  CLAUDE_4_5_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
-  GEMINI_3_PRO_MODEL_CONFIG,
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
   GLOBAL_AGENTS_SID,
@@ -601,7 +601,7 @@ export function _getDustEdgeGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_EDGE,
     name: "dust-edge",
-    preferredModelConfiguration: GEMINI_3_PRO_MODEL_CONFIG,
-    preferredReasoningEffort: "light",
+    preferredModelConfiguration: CLAUDE_4_5_OPUS_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "medium",
   });
 }
