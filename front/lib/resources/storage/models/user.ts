@@ -102,6 +102,8 @@ UserModel.init(
       },
       { unique: true, fields: ["sId"] },
       { fields: ["email"] },
+      // A GIN index on the concatenation of firstName and lastName and email for faster search was
+      // added by migration_418.sql.
     ],
   }
 );
