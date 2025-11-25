@@ -2,6 +2,7 @@ import { promises as dns } from "dns";
 
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
+import { normalizeError } from "@app/types";
 
 // Known consumer email domains by provider - no MX lookup needed.
 const KNOWN_GOOGLE_DOMAINS = new Set(["gmail.com", "googlemail.com"]);
@@ -75,7 +76,7 @@ async function resolveMxRecords(
     ]);
   } catch (err) {
     logger.warn(
-      { domain, error: err },
+      { domain, error: normalizeError(err) },
       "Failed to resolve MX records for email provider detection"
     );
     return null;
