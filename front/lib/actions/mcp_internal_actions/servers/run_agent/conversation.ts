@@ -228,6 +228,7 @@ export async function getOrCreateConversation(
       {
         error: convRes.error,
         stepContext,
+        mainConversation: mainConversation.sId,
       },
       "Failed to create conversation"
     );

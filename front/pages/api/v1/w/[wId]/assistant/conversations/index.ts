@@ -25,6 +25,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type {
   AgenticMessageData,
@@ -227,6 +228,11 @@ async function handler(
           message.context.origin === "run_agent" ||
           message.context.originMessageId
         ) {
+          logger.error({
+            message: "use agenticMessageData instead of origin.",
+            origin: message.context.origin,
+            originMessageId: message.context.originMessageId,
+          });
           return apiError(req, res, {
             status_code: 400,
             api_error: {
