@@ -49,6 +49,7 @@ If using custom analyzers with ICU tokenization:
 - **ICU Analysis Plugin:** Required for `icu_tokenizer`, `icu_folding`, and Unicode-aware text processing
 - **Installation:** Usually pre-installed on managed Elasticsearch services
 - **Verify:** Check if ICU plugin is installed with:
+
   ```bash
   # Check installed plugins
   curl -u $ELASTICSEARCH_USERNAME:$ELASTICSEARCH_PASSWORD \
@@ -122,9 +123,9 @@ import type { ElasticsearchBaseDocument } from "@/lib/api/elasticsearch";
 
 // ElasticsearchBaseDocument provides: workspace_id (for workspace isolation)
 export interface YourIndexData extends ElasticsearchBaseDocument {
-  version: string;               // Required for versioning
-  your_entity_id: string;        // Your primary identifier
-  timestamp: string;             // ISO date string
+  version: string; // Required for versioning
+  your_entity_id: string; // Your primary identifier
+  timestamp: string; // ISO date string
 
   // Your custom fields
   status: "success" | "failed";
@@ -269,6 +270,7 @@ Create settings files for each region. Settings can include basic index configur
 For simple analytics indices without full-text search requirements:
 
 **`lib/analytics/indices/your_index_name_1.settings.local.json`:**
+
 ```json
 {
   "number_of_shards": 1,
@@ -278,6 +280,7 @@ For simple analytics indices without full-text search requirements:
 ```
 
 **`lib/analytics/indices/your_index_name_1.settings.us-central1.json`:**
+
 ```json
 {
   "number_of_shards": 3,
@@ -287,6 +290,7 @@ For simple analytics indices without full-text search requirements:
 ```
 
 **`lib/analytics/indices/your_index_name_1.settings.europe-west1.json`:**
+
 ```json
 {
   "number_of_shards": 3,
@@ -307,6 +311,7 @@ For simple analytics indices without full-text search requirements:
 For indices requiring advanced text search (like data source nodes in core), include custom analyzers and tokenizers in the settings:
 
 **`lib/analytics/indices/your_index_name_1.settings.us-central1.json`:**
+
 ```json
 {
   "number_of_shards": 2,
@@ -360,11 +365,13 @@ For indices requiring advanced text search (like data source nodes in core), inc
 - **Normalizer:** Like analyzer but for keyword fields (doesn't tokenize, only applies filters)
 
 **Common Analyzers:**
+
 - `standard`: Default analyzer, basic tokenization
 - `icu_analyzer`: Unicode-aware, handles international text, applies case/accent folding
 - `edge_analyzer`: For prefix/autocomplete search using edge n-grams
 
 **Common Filters:**
+
 - `lowercase`: Converts to lowercase
 - `asciifolding`: Converts accented characters to ASCII (é → e)
 - `icu_folding`: Unicode case/accent folding
@@ -398,6 +405,7 @@ tsx front/scripts/create_elasticsearch_index.ts \
 4. Creates alias: `front.your_index_name` pointing to `front.your_index_name_1` with `is_write_index: true`
 
 **Optional Flags:**
+
 - `--skip-confirmation` - Skip confirmation prompts
 - `--remove-previous-alias` - Remove alias from previous version (use when migrating)
 
@@ -586,9 +594,7 @@ export async function storeYourAnalyticsActivity({
   const result = await storeYourData(document);
 
   if (result.isErr()) {
-    throw new Error(
-      `Failed to store analytics: ${result.error.message}`
-    );
+    throw new Error(`Failed to store analytics: ${result.error.message}`);
   }
 }
 ```
@@ -613,7 +619,10 @@ Create `lib/api/your_feature/queries/your_query.ts`:
 ```typescript
 import type { Result } from "@/lib/result";
 import type { ElasticsearchError } from "@/lib/api/elasticsearch";
-import { searchAnalytics, YOUR_INDEX_ALIAS_NAME } from "@/lib/api/elasticsearch";
+import {
+  searchAnalytics,
+  YOUR_INDEX_ALIAS_NAME,
+} from "@/lib/api/elasticsearch";
 import type { YourIndexData } from "@/types/your_feature/your_index";
 
 interface YourQueryParams {
@@ -635,9 +644,7 @@ export async function queryYourData({
   entityId,
 }: YourQueryParams): Promise<Result<YourQueryResult, ElasticsearchError>> {
   // Build base filters
-  const filters: any[] = [
-    { term: { workspace_id: workspaceId } },
-  ];
+  const filters: any[] = [{ term: { workspace_id: workspaceId } }];
 
   if (entityId) {
     filters.push({ term: { your_entity_id: entityId } });
@@ -836,10 +843,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ): Promise<void> {
-  const auth = await Authenticator.fromSuperUserSession(
-    req,
-    res
-  );
+  const auth = await Authenticator.fromSuperUserSession(req, res);
 
   if (!auth.workspace()) {
     return apiError(req, res, {
@@ -895,12 +899,14 @@ export default withSessionAuthentication(handler);
 ### 1. Choosing Between Simple and Advanced Index Configurations
 
 **Use Simple Mappings (keyword/text) When:**
+
 - Building analytics/metrics indices
 - Only need exact-match queries and aggregations
 - No full-text search requirements
 - Examples: agent message analytics, tracking metrics, event logs
 
 **Use Custom Analyzers When:**
+
 - Implementing full-text search
 - Need prefix/autocomplete functionality (edge n-grams)
 - Supporting international text (ICU analyzers)
@@ -908,12 +914,14 @@ export default withSessionAuthentication(handler);
 - Examples: document search, user search, data source content search
 
 **Cost Considerations:**
+
 - Custom analyzers increase index size (multiple tokens per term)
 - Edge n-grams significantly increase index size (1-20 character prefixes)
 - Multi-field mappings multiply storage requirements
 - Start simple, add complexity only when needed
 
 **Reference:**
+
 - Simple: `front/lib/analytics/indices/agent_message_analytics_*.json`
 - Advanced: `core/src/search_stores/indices/data_sources_nodes_*.json`
 
@@ -958,6 +966,7 @@ const document: YourIndexData = {
 ```
 
 This allows you to:
+
 - Migrate schemas over time
 - Re-index documents with new schema versions
 - Filter queries by version if needed
@@ -1072,9 +1081,7 @@ export function buildYourBaseQuery({
   days?: number;
   status?: string;
 }) {
-  const filters: any[] = [
-    { term: { workspace_id: workspaceId } },
-  ];
+  const filters: any[] = [{ term: { workspace_id: workspaceId } }];
 
   if (entityId) {
     filters.push({ term: { your_entity_id: entityId } });
@@ -1178,6 +1185,7 @@ buckets.forEach((bucket) => {
 **Symptoms:** Script returns error "Index already exists"
 
 **Solution:**
+
 1. Check if index exists:
    ```bash
    curl -u $ELASTICSEARCH_USERNAME:$ELASTICSEARCH_PASSWORD \
@@ -1202,6 +1210,7 @@ buckets.forEach((bucket) => {
 4. **Date range:** Check timestamp format (must be ISO 8601)
 
 **Debug:**
+
 ```typescript
 // Check if document exists
 const result = await client.get({
@@ -1218,6 +1227,7 @@ await client.indices.refresh({ index: YOUR_INDEX_ALIAS_NAME });
 **Symptoms:** Nested aggregation has no results
 
 **Solution:**
+
 ```typescript
 // Make sure nested path is correct
 const aggregations = {
@@ -1244,6 +1254,7 @@ const aggregations = {
 **Solutions:**
 
 1. **Add filters before aggregations:**
+
    ```typescript
    // Good: Filter first
    const query = {
@@ -1257,6 +1268,7 @@ const aggregations = {
    ```
 
 2. **Limit aggregation size:**
+
    ```typescript
    terms: {
      field: "your_field",
@@ -1265,6 +1277,7 @@ const aggregations = {
    ```
 
 3. **Use cardinality for counts:**
+
    ```typescript
    // Fast: Approximate count
    { cardinality: { field: "your_entity_id" } }
@@ -1282,6 +1295,7 @@ const aggregations = {
 **Solution:**
 
 1. Field type mismatch - check your mapping matches data:
+
    ```typescript
    // If mapping says "integer" but you send "string"
    metadata: {
@@ -1303,6 +1317,7 @@ const aggregations = {
 **Solution:**
 
 1. Check environment variables are set:
+
    ```bash
    echo $ELASTICSEARCH_URL
    echo $ELASTICSEARCH_USERNAME
@@ -1310,6 +1325,7 @@ const aggregations = {
    ```
 
 2. Verify credentials work:
+
    ```bash
    curl -u $ELASTICSEARCH_USERNAME:$ELASTICSEARCH_PASSWORD "$ELASTICSEARCH_URL/"
    ```
@@ -1483,6 +1499,7 @@ This removes write alias from v1 and adds it to v2.
 ### Step 4: Update Code
 
 Update constant in code:
+
 ```typescript
 export const YOUR_INDEX_VERSION = "2";
 ```
@@ -1552,6 +1569,7 @@ When creating a new index, create these files:
 - [ ] Update `lib/api/elasticsearch.ts` - Add index alias constant
 
 **For indices with custom analyzers:**
+
 - [ ] Test analyzers before deploying (see Testing Analyzers section below)
 - [ ] Document the analyzer behavior for future maintenance
 - [ ] Consider re-indexing strategy if updating analyzers later
@@ -1581,6 +1599,7 @@ curl -XPOST -u $ELASTICSEARCH_USERNAME:$ELASTICSEARCH_PASSWORD \
 ```
 
 **Example Output:**
+
 ```json
 {
   "tokens": [
@@ -1595,6 +1614,7 @@ curl -XPOST -u $ELASTICSEARCH_USERNAME:$ELASTICSEARCH_PASSWORD \
 ```
 
 **What to Verify:**
+
 - Tokens are generated as expected
 - Case folding works (uppercase → lowercase)
 - Special characters are handled correctly
@@ -1602,6 +1622,7 @@ curl -XPOST -u $ELASTICSEARCH_USERNAME:$ELASTICSEARCH_PASSWORD \
 - Edge n-grams produce correct prefixes
 
 **Common Issues:**
+
 - Too many tokens (check edge n-gram max_gram setting)
 - Unexpected splits (check word_delimiter settings)
 - Missing accent folding (ensure icu_folding or asciifolding is in filter chain)
@@ -1629,6 +1650,7 @@ export const YOUR_INDEX_ALIAS_NAME = "front.your_index_name";
 ## Support
 
 For questions or issues:
+
 1. Check existing indices in `lib/analytics/indices/` for examples
 2. Review query patterns in `lib/api/assistant/observability/`
 3. Look at agent message analytics implementation as reference
