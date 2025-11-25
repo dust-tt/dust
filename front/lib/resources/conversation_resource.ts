@@ -4,11 +4,15 @@ import type {
   CreationAttributes,
   InferAttributes,
   Transaction,
+  WhereOptions,
 } from "sequelize";
 import { col, fn, literal, Op, QueryTypes, Sequelize, where } from "sequelize";
 
+import { getMaximalVersionAgentStepContent } from "@app/lib/api/assistant/configuration/steps";
+import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationMCPServerViewModel } from "@app/lib/models/assistant/actions/conversation_mcp_server_view";
+import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import {
   AgentMessage,
   ConversationModel,
@@ -25,6 +29,7 @@ import {
 } from "@app/lib/resources/permission_utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
@@ -37,6 +42,7 @@ import type {
   ConversationType,
   ConversationWithoutContentType,
   LightAgentConfigurationType,
+  ModelId,
   ParticipantActionType,
   Result,
   UserType,
@@ -931,6 +937,113 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
 
     return new Ok(message);
+  }
+
+  /**
+   * This function retrieves the latest version of each message for the current page,
+   * because there's no easy way to fetch only the latest version of a message.
+   */
+  private async getMaxRankMessages(
+    auth: Authenticator,
+    paginationParams: PaginationParams
+  ): Promise<ModelId[]> {
+    const { limit, orderColumn, orderDirection, lastValue } = paginationParams;
+
+    const where: WhereOptions<Message> = {
+      conversationId: this.id,
+      workspaceId: auth.getNonNullableWorkspace().id,
+    };
+
+    if (lastValue) {
+      const op = orderDirection === "desc" ? Op.lt : Op.gt;
+
+      where[orderColumn as any] = {
+        [op]: lastValue,
+      };
+    }
+
+    // Retrieve the latest version and corresponding Id of each message for the current page,
+    // grouped by rank and limited to the desired page size plus one to detect the presence of a next page.
+    const messages = await Message.findAll({
+      attributes: [
+        [Sequelize.fn("MAX", Sequelize.col("version")), "maxVersion"],
+        [Sequelize.fn("MAX", Sequelize.col("id")), "id"],
+      ],
+      where,
+      group: ["rank"],
+      order: [[orderColumn, orderDirection === "desc" ? "DESC" : "ASC"]],
+      limit: limit + 1,
+    });
+
+    return messages.map((m) => m.id);
+  }
+
+  async fetchMessagesForPage(
+    auth: Authenticator,
+    paginationParams: PaginationParams
+  ): Promise<{ hasMore: boolean; messages: Message[] }> {
+    const { orderColumn, orderDirection, limit } = paginationParams;
+
+    const messageIds = await this.getMaxRankMessages(auth, paginationParams);
+
+    const hasMore = messageIds.length > limit;
+    const relevantMessageIds = hasMore
+      ? messageIds.slice(0, limit)
+      : messageIds;
+
+    // Then fetch all those messages and their associated resources.
+    const messages = await Message.findAll({
+      where: {
+        conversationId: this.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        id: {
+          [Op.in]: relevantMessageIds,
+        },
+      },
+      order: [[orderColumn, orderDirection === "desc" ? "DESC" : "ASC"]],
+      include: [
+        {
+          model: UserMessage,
+          as: "userMessage",
+          required: false,
+        },
+        {
+          model: AgentMessage,
+          as: "agentMessage",
+          required: false,
+          include: [
+            {
+              model: AgentStepContentModel,
+              as: "agentStepContents",
+              required: false,
+            },
+          ],
+        },
+        // We skip ContentFragmentResource here for efficiency reasons (retrieving contentFragments
+        // along with messages in one query). Only once we move to a MessageResource will we be able
+        // to properly abstract this.
+        {
+          model: ContentFragmentModel,
+          as: "contentFragment",
+          required: false,
+        },
+      ],
+    });
+
+    // Filter to only keep the step content with the maximum version for each step and index combination.
+    for (const message of messages) {
+      if (message.agentMessage && message.agentMessage.agentStepContents) {
+        message.agentMessage.agentStepContents =
+          getMaximalVersionAgentStepContent(
+            message.agentMessage.agentStepContents
+          );
+      }
+    }
+
+    return {
+      hasMore,
+      messages,
+    };
   }
 
   static async updateRequirements(
