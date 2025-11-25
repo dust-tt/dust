@@ -572,27 +572,8 @@ export function CreateMCPServerDialog({
               />
             )}
 
-          {internalMCPServer &&
-            requiresBearerTokenConfiguration(internalMCPServer) && (
-              <>
-                <p className="text-sm text-muted-foreground">
-                  {internalMCPServer.description}
-                  {internalMCPServer.documentationUrl && (
-                    <>
-                      {" "}
-                      <a
-                        href={internalMCPServer.documentationUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary hover:underline"
-                      >
-                        See {getMcpServerDisplayName(internalMCPServer)}{" "}
-                        documentation.
-                      </a>
-                    </>
-                  )}
-                </p>
-
+            {internalMCPServer &&
+              requiresBearerTokenConfiguration(internalMCPServer) && (
                 <div className="space-y-2">
                   <div className="flex items-center space-x-2">
                     <Label htmlFor="bearerToken">
@@ -620,36 +601,11 @@ export function CreateMCPServerDialog({
                     }
                   />
                 </div>
-              </>
-            )}
+              )}
 
-          {!defaultServerConfig &&
-            (!internalMCPServer ||
-              requiresBearerTokenConfiguration(internalMCPServer)) && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Label htmlFor="customHeaders">Use custom headers</Label>
-                  <Tooltip
-                    trigger={
-                      <Icon
-                        visual={InformationCircleIcon}
-                        size="xs"
-                        className="text-gray-400"
-                      />
-                    }
-                    label="Custom headers can be added for advanced networking such as firewalls."
-                  />
-                </div>
-                <SliderToggle
-                  disabled={false}
-                  selected={useCustomHeaders}
-                  onClick={() => setUseCustomHeaders(!useCustomHeaders)}
-                />
-              </div>
-            </div>
-          )}
-            {!defaultServerConfig && !internalMCPServer && (
+            {!defaultServerConfig &&
+              (!internalMCPServer ||
+                requiresBearerTokenConfiguration(internalMCPServer)) && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
@@ -704,10 +660,10 @@ export function CreateMCPServerDialog({
               !isOAuthFormValid ||
               (authorization && !useCase) ||
               (defaultServerConfig?.authMethod === "bearer" && !sharedSecret) ||
-                (internalMCPServer &&
-                  !authorization &&
-                  requiresBearerTokenConfiguration(internalMCPServer) &&
-                  !sharedSecret) ||
+              (internalMCPServer &&
+                !authorization &&
+                requiresBearerTokenConfiguration(internalMCPServer) &&
+                !sharedSecret) ||
               (!internalMCPServer && !validateUrl(remoteServerUrl).valid) ||
               isLoading,
             /* eslint-enable @typescript-eslint/prefer-nullish-coalescing */
