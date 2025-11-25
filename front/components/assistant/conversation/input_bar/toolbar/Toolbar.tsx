@@ -44,7 +44,10 @@ export function Toolbar({ editor, className, toggleToolbar }: ToolbarProps) {
         )}
         <ToolbarIcon
           icon={HeadingIcon}
-          onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+          onClick={() =>
+            editor.chain().focus().toggleHeading({ level: 1 }).run()
+          }
+          active={editor.isActive("heading")}
           tooltip="Heading"
         />
         <ToolbarIcon
@@ -78,7 +81,14 @@ export function Toolbar({ editor, className, toggleToolbar }: ToolbarProps) {
         />
         <ToolbarIcon
           icon={QuoteTextIcon}
-          onClick={() => editor.chain().focus().toggleBlockquote().run()}
+          onClick={() => {
+            // If code block is active, turn it off first
+            if (editor.isActive("codeBlock")) {
+              editor.chain().focus().toggleCodeBlock().toggleBlockquote().run();
+            } else {
+              editor.chain().focus().toggleBlockquote().run();
+            }
+          }}
           active={editor.isActive("blockquote")}
           tooltip="Blockquote"
         />
@@ -92,7 +102,14 @@ export function Toolbar({ editor, className, toggleToolbar }: ToolbarProps) {
         />
         <ToolbarIcon
           icon={CodeBlockIcon}
-          onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+          onClick={() => {
+            // If blockquote is active, turn it off first
+            if (editor.isActive("blockquote")) {
+              editor.chain().focus().toggleBlockquote().toggleCodeBlock().run();
+            } else {
+              editor.chain().focus().toggleCodeBlock().run();
+            }
+          }}
           active={editor.isActive("codeBlock")}
           tooltip="Code block"
         />

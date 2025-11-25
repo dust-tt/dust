@@ -18,7 +18,12 @@ interface ToolbarLinkProps {
   editor: Editor;
 }
 
-const getLinkPos = (state: EditorState, from: number, to: number, href: string) => {
+const getLinkPos = (
+  state: EditorState,
+  from: number,
+  to: number,
+  href: string
+) => {
   const linkMarkType = state.schema.marks.link;
 
   // Start with the current cursor position
@@ -30,7 +35,7 @@ const getLinkPos = (state: EditorState, from: number, to: number, href: string) 
     const $testPos = state.doc.resolve(pos);
     const marks = $testPos.marks();
     const hasMatchingLink = marks.some(
-      mark => mark.type === linkMarkType && mark.attrs.href === href
+      (mark) => mark.type === linkMarkType && mark.attrs.href === href
     );
     if (hasMatchingLink) {
       linkStart = pos - 1;
@@ -44,7 +49,7 @@ const getLinkPos = (state: EditorState, from: number, to: number, href: string) 
     const $testPos = state.doc.resolve(pos);
     const marks = $testPos.marks();
     const hasMatchingLink = marks.some(
-      mark => mark.type === linkMarkType && mark.attrs.href === href
+      (mark) => mark.type === linkMarkType && mark.attrs.href === href
     );
     if (hasMatchingLink) {
       linkEnd = pos;
@@ -53,15 +58,15 @@ const getLinkPos = (state: EditorState, from: number, to: number, href: string) 
     }
   }
 
-  return {linkStart, linkEnd};
-}
+  return { linkStart, linkEnd };
+};
 
 export function ToolbarLink({ editor }: ToolbarLinkProps) {
   const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
   const [linkText, setLinkText] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
-  const [linkPos, setLinkPos] = useState({from: 0, to: 0});
-  
+  const [linkPos, setLinkPos] = useState({ from: 0, to: 0 });
+
   const handleLinkDialogOpen = () => {
     const { state } = editor;
     const { from, to } = state.selection;
@@ -70,18 +75,18 @@ export function ToolbarLink({ editor }: ToolbarLinkProps) {
 
     if (linkMark.href) {
       // We're inside or on a link, need to find the full link range
-      const {linkStart, linkEnd} = getLinkPos(state, from, to, linkMark.href);
+      const { linkStart, linkEnd } = getLinkPos(state, from, to, linkMark.href);
 
       const fullLinkText = state.doc.textBetween(linkStart, linkEnd);
       setLinkUrl(linkMark.href);
       setLinkText(fullLinkText);
-      setLinkPos({from: linkStart, to: linkEnd});
+      setLinkPos({ from: linkStart, to: linkEnd });
     } else {
       // No link, just use selected text
       const selectedText = state.doc.textBetween(from, to);
       setLinkUrl("");
       setLinkText(selectedText);
-      setLinkPos({from, to});
+      setLinkPos({ from, to });
     }
     setIsLinkDialogOpen(true);
   };
@@ -92,7 +97,7 @@ export function ToolbarLink({ editor }: ToolbarLinkProps) {
       linkUrl.startsWith("http://") || linkUrl.startsWith("https://")
         ? linkUrl
         : `https://${linkUrl}`;
-    
+
     if (!finalText) {
       // If no text is provided, insert the link URL as the text
       finalText = linkUrl;
@@ -102,18 +107,23 @@ export function ToolbarLink({ editor }: ToolbarLinkProps) {
       .chain()
       .focus()
       .deleteRange(linkPos)
-      .insertContent({
-        type: "text",
-        text: finalText,
-        marks: linkUrl ? [{ type: "link", attrs: { href: urlWithProtocol } }] : [],
-      }, { updateSelection: true })
+      .insertContent(
+        {
+          type: "text",
+          text: finalText,
+          marks: linkUrl
+            ? [{ type: "link", attrs: { href: urlWithProtocol } }]
+            : [],
+        },
+        { updateSelection: true }
+      )
       .run();
 
     setIsLinkDialogOpen(false);
   };
 
   return (
-    <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen} >
+    <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
       <div className="flex items-center justify-center">
         <ToolbarIcon
           icon={LinkMIcon}
