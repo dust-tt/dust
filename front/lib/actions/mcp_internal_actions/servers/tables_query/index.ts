@@ -118,7 +118,6 @@ function createServer(
       {
         toolNameForMonitoring: GET_DATABASE_SCHEMA_TOOL_NAME,
         agentLoopContext,
-        enableAlerting: true,
       },
       async ({ tables }) => {
         // Fetch table configurations
