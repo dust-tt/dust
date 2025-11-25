@@ -91,6 +91,10 @@ function createChartData(
   includeOthers: boolean,
   configurationNames?: Map<string, string>
 ): ChartDatum[] {
+  const topToolSet = new Set(
+    displayTools.filter((toolName) => toolName !== OTHER_LABEL.label)
+  );
+
   return items.map((item) => {
     const total =
       item.total ??
@@ -98,11 +102,7 @@ function createChartData(
 
     const values: Record<string, ToolChartUsageDatum> = {};
     let topToolsCount = 0;
-    for (const toolName of displayTools) {
-      if (toolName === OTHER_LABEL.label) {
-        continue;
-      }
-
+    for (const toolName of topToolSet) {
       const toolData = item.tools[toolName];
       const count = toolData?.count ?? 0;
       if (count > 0) {
@@ -130,9 +130,24 @@ function createChartData(
       const othersCount = total - topToolsCount;
 
       if (othersCount > 0) {
+        const othersBreakdownEntries = Object.entries(item.tools).filter(
+          ([toolName, toolData]) =>
+            !topToolSet.has(toolName) && (toolData?.count ?? 0) > 0
+        );
+
+        const othersBreakdown =
+          othersBreakdownEntries.length > 0
+            ? othersBreakdownEntries.map(([toolName, toolData]) => ({
+                label: toolName,
+                count: toolData.count,
+                percent: calculatePercentage(toolData.count, othersCount),
+              }))
+            : undefined;
+
         values[OTHER_LABEL.label] = {
           percent: calculatePercentage(othersCount, total),
           count: othersCount,
+          breakdown: othersBreakdown,
         };
       }
     }
