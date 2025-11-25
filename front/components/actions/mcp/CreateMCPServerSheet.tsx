@@ -364,29 +364,7 @@ export function CreateMCPServerDialog({
         </DialogHeader>
         <DialogContainer>
           <div className="space-y-4">
-            {internalMCPServer && (
-            <div className="mb-4">
-              <p className="text-sm text-muted-foreground">
-                {internalMCPServer.description}
-                {internalMCPServer.documentationUrl && (
-                  <>
-                    {" "}
-                    <a
-                      href={internalMCPServer.documentationUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline"
-                    >
-                      See {getMcpServerDisplayName(internalMCPServer)}{" "}
-                      documentation.
-                    </a>
-                  </>
-                )}
-              </p>
-            </div>
-          )}
-
-          {!internalMCPServer &&
+            {!internalMCPServer &&
               (!authorization || authorization.provider === "mcp_static") && (
                 <>
                   {defaultServerConfig && (
