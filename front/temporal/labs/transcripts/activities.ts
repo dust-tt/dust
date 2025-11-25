@@ -56,7 +56,8 @@ export interface RetrieveTranscriptsResult {
 
 export async function retrieveNewTranscriptsActivity(
   transcriptsConfigurationId: string,
-  modjoCursor: number | null = null
+  modjoCursor: number | null = null,
+  modjoIsFirstSync: boolean | null = null
 ): Promise<RetrieveTranscriptsResult> {
   const transcriptsConfiguration =
     await LabsTranscriptsConfigurationResource.fetchById(
@@ -149,7 +150,8 @@ export async function retrieveNewTranscriptsActivity(
           auth,
           transcriptsConfiguration,
           localLogger,
-          modjoCursor
+          modjoCursor,
+          modjoIsFirstSync
         );
         return {
           fileIds: modjoResult.fileIds,
