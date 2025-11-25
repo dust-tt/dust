@@ -139,7 +139,6 @@ export class SequelizeWithComments extends Sequelize {
         )
         .join(",");
       sql = `${sql} /*${commentStr}*/`;
-      console.log(">> sql:" + sql);
     }
 
     return super.query(sql, options);
