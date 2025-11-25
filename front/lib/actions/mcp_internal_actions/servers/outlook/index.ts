@@ -489,17 +489,18 @@ function createServer(
           }));
         }
 
-        const response = await fetchFromOutlook(endpoint, accessToken, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(replyMessage),
-        });
+        // Create the empty draft
+        const createDraftResponse = await fetchFromOutlook(
+          endpoint,
+          accessToken,
+          {
+            method: "POST",
+          }
+        );
 
-        if (!response.ok) {
-          const errorText = await getErrorText(response);
-          if (response.status === 404) {
+        if (!createDraftResponse.ok) {
+          const errorText = await getErrorText(createDraftResponse);
+          if (createDraftResponse.status === 404) {
             return new Err(
               new MCPError(`Message not found: ${messageId}`, {
                 tracked: false,
@@ -508,12 +509,55 @@ function createServer(
           }
           return new Err(
             new MCPError(
-              `Failed to create reply draft: ${response.status} ${response.statusText} - ${errorText}`
+              `Failed to create reply draft: ${createDraftResponse.status} ${createDraftResponse.statusText} - ${errorText}`
             )
           );
         }
 
-        const result = await response.json();
+        const createDraftResult = await createDraftResponse.json();
+
+        // Get the existing body content from the created draft (includes quoted original message)
+        const existingBody = createDraftResult.body?.content || "";
+
+        // Prepend the new body to the existing HTML content
+        // If contentType is HTML, we need to properly insert the new content
+        let combinedBody: string;
+        if (contentType === "html") {
+          // For HTML, add the new body as a paragraph before the existing content
+          combinedBody = `<div>${body}</div><br><br>${existingBody}`;
+        } else {
+          // For plain text, convert to HTML and combine
+          const escapedBody = body
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/\n/g, "<br>");
+          combinedBody = `<div>${escapedBody}</div><br><br>${existingBody}`;
+        }
+
+        const updateDraftResponse = await fetchFromOutlook(
+          `/me/messages/${createDraftResult.id}`,
+          accessToken,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              body: {
+                contentType: "html",
+                content: combinedBody,
+              },
+            }),
+          }
+        );
+
+        if (!updateDraftResponse.ok) {
+          const errorText = await getErrorText(updateDraftResponse);
+          return new Err(
+            new MCPError(`Failed to update the draft: ${errorText}`)
+          );
+        }
 
         return new Ok([
           { type: "text" as const, text: "Reply draft created successfully" },
@@ -521,10 +565,10 @@ function createServer(
             type: "text" as const,
             text: JSON.stringify(
               {
-                messageId: result.id,
-                conversationId: result.conversationId,
+                messageId: createDraftResult.id,
+                conversationId: createDraftResult.conversationId,
                 originalMessageId: messageId,
-                subject: result.subject,
+                subject: createDraftResult.subject,
               },
               null,
               2
