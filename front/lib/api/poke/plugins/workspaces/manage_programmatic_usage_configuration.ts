@@ -42,7 +42,7 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
         type: "number",
         label: "Default Discount (%)",
         description:
-          "Discount percentage applied when computing usage costs (0-100%). Defaults to 0.",
+          "Discount percentage applied when purchasing programmatic usage credit. Default to 0.",
         async: true,
       },
     },
