@@ -6,7 +6,6 @@ import type {
   NavigationHistoryEntryType,
   NodeSelectionState,
 } from "@app/components/data_source_view/context/types";
-import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
