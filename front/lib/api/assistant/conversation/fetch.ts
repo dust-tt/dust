@@ -1,7 +1,5 @@
-import {
-  batchRenderMessages,
-  getMaximalVersionAgentStepContent,
-} from "@app/lib/api/assistant/messages";
+import { getMaximalVersionAgentStepContent } from "@app/lib/api/assistant/configuration/steps";
+import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import {
