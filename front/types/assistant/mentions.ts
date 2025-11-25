@@ -5,6 +5,8 @@
  * the application, including API formats, UI representations, and type guards.
  */
 
+import { assertNever } from "@app/types/shared/utils/assert_never";
+
 /**
  * Base mention structure used in API requests and database storage.
  * This is the minimal representation of an agent mention.
@@ -100,20 +102,21 @@ export function isRichUserMention(
  * Used when sending data to the API.
  */
 export function toMentionType(rich: RichMention): MentionType {
-  if (rich.type === "agent") {
-    return {
-      configurationId: rich.id,
-    };
+  switch (rich.type) {
+    case "agent": {
+      return {
+        configurationId: rich.id,
+      } satisfies AgentMention;
+    }
+    case "user": {
+      return {
+        type: "user",
+        userId: rich.id,
+      } satisfies UserMention;
+    }
+    default:
+      assertNever(rich.type);
   }
-
-  if (rich.type === "user") {
-    return {
-      type: "user",
-      userId: rich.id,
-    };
-  }
-
-  throw new Error(`Unsupported mention type: ${rich.type}`);
 }
 
 /**

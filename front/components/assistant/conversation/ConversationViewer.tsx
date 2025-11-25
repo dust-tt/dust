@@ -16,6 +16,7 @@ import React, {
 } from "react";
 
 import { AgentInputBar } from "@app/components/assistant/conversation/AgentInputBar";
+import { autoUseDustAgent } from "@app/components/assistant/conversation/AgentSuggestion";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
 import {
   createPlaceholderAgentMessage,
@@ -53,7 +54,6 @@ import {
 import { classNames } from "@app/lib/utils";
 import type {
   AgentGenerationCancelledEvent,
-  AgentMention,
   AgentMessageDoneEvent,
   AgentMessageNewEvent,
   ContentFragmentsType,
@@ -62,12 +62,11 @@ import type {
   LightMessageType,
   Result,
   RichMention,
-  UserMention,
   UserMessageNewEvent,
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { assertNever, isRichAgentMention } from "@app/types";
+import { isRichAgentMention, toMentionType } from "@app/types";
 import { Err, isContentFragmentType, isUserMessageType, Ok } from "@app/types";
 
 const DEFAULT_PAGE_LIMIT = 50;
@@ -288,11 +287,18 @@ export const ConversationViewer = ({
               const exists = ref.current.data.find(predicate);
 
               if (!exists) {
-                ref.current.data.append([
-                  { ...event.message, contentFragments: [] },
-                ]);
-              } else {
-                // We don't update if it already exists as if it already exists, it means we have received the message from the backend.
+                ref.current.data.append(
+                  [{ ...event.message, contentFragments: [] }],
+                  true
+                );
+                // Using else if with the type guard just to please the type checker as we already know it's a user message from the predicate.
+              } else if (isUserMessage(exists)) {
+                // We only update if the version is greater than the existing version.
+                if (exists.version < event.message.version) {
+                  ref.current.data.map((m) =>
+                    areSameRank(m, userMessage) ? userMessage : m
+                  );
+                }
               }
 
               void mutateConversationParticipants(
@@ -446,23 +452,7 @@ export const ConversationViewer = ({
       }
       const messageData = {
         input,
-        mentions: mentions.map((mention) => {
-          switch (mention.type) {
-            case "agent": {
-              return {
-                configurationId: mention.id,
-              } satisfies AgentMention;
-            }
-            case "user": {
-              return {
-                type: "user",
-                userId: mention.id,
-              } satisfies UserMention;
-            }
-            default:
-              assertNever(mention.type);
-          }
-        }),
+        mentions: mentions.map(toMentionType),
         contentFragments,
       };
 
@@ -478,6 +468,7 @@ export const ConversationViewer = ({
         contentFragments.uploaded.length +
         // +1 for the user message
         1;
+
       const placeholderUserMsg: VirtuosoMessage = createPlaceholderUserMessage({
         input,
         mentions,
@@ -497,10 +488,14 @@ export const ConversationViewer = ({
         }
       }
 
+      const isMentioningAgent =
+        (mentions.length === 0 && autoUseDustAgent(ref.current.data.get())) ||
+        mentions.some(isRichAgentMention);
+
       const nbMessages = ref.current.data.get().length;
       ref.current.data.append(
         [placeholderUserMsg, ...placeholderAgentMessages],
-        mentions.some(isRichAgentMention)
+        isMentioningAgent
           ? () => {
               return {
                 index: nbMessages, // Avoid jumping around when the agent message is generated.

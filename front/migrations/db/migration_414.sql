@@ -1,4 +1,5 @@
--- Migration created on Nov 24, 2025
+-- Migration created on Oct 24, 2025
+ALTER TABLE "public"."conversations"
+ADD COLUMN "spaceId" BIGINT DEFAULT NULL REFERENCES "vaults" ("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
-CREATE INDEX CONCURRENTLY IF NOT EXISTS "group_memberships_group_workspace_status_start_idx"
-ON "group_memberships" ("groupId", "workspaceId", "status", "startAt");
+CREATE INDEX CONCURRENTLY "conversations_workspace_id_space_id" ON "conversations" ("workspaceId", "spaceId");

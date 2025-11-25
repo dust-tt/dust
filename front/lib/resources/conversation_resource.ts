@@ -1,4 +1,6 @@
+import uniq from "lodash/uniq";
 import type {
+  Attributes,
   CreationAttributes,
   InferAttributes,
   Transaction,
@@ -66,12 +68,45 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   // User-specific participation fields (populated when conversations are listed for a user).
   private userParticipation?: UserParticipation;
+  constructor(
+    model: ModelStaticWorkspaceAware<ConversationModel>,
+    blob: Attributes<ConversationModel>,
+    private readonly _space: SpaceResource | null
+  ) {
+    super(ConversationModel, blob);
+  }
+
+  get space(): SpaceResource | null {
+    if (this.spaceId && !this._space) {
+      throw new Error(
+        "This conversation is associated with a space but the related space is not loaded. Action: make sure to load the space when fetching the conversation."
+      );
+    }
+    return this._space;
+  }
 
   static async makeNew(
     auth: Authenticator,
-    blob: Omit<CreationAttributes<ConversationModel>, "workspaceId">
+    blob: Omit<CreationAttributes<ConversationModel>, "workspaceId">,
+    space: SpaceResource | null
   ): Promise<ConversationResource> {
     const workspace = auth.getNonNullableWorkspace();
+
+    // Check if the user has access to the space.
+    // Note, using canRead because spaces members do not have write access to the space as write is tied with datasources.
+    if (space && !space.canRead(auth)) {
+      throw new Error(
+        "Cannot create conversation in a space you do not have access to."
+      );
+    }
+
+    // Check if the space match the workspace.
+    if (space && space.workspaceId !== workspace.id) {
+      throw new Error(
+        "Cannot create conversation in a space that does not belong to the workspace."
+      );
+    }
+
     const conversation = await this.model.create({
       ...blob,
       workspaceId: workspace.id,
@@ -79,7 +114,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     return new ConversationResource(
       ConversationResource.model,
-      conversation.get()
+      conversation.get(),
+      space
     );
   }
 
@@ -116,30 +152,53 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       limit: options.limit,
     });
 
-    const uniqueSpaceIds = Array.from(
-      new Set(conversations.flatMap((c) => c.requestedSpaceIds))
-    );
+    const uniqueSpaceIds = uniq([
+      // Include requestedSpaceIds from conversations.
+      ...conversations.flatMap((c) => c.requestedSpaceIds),
 
-    // Only fetch spaces if there are any requestedSpaceIds.
+      // Include spaceId of the conversations if it exists.
+      ...conversations.flatMap((c) => c.spaceId ?? []),
+    ]);
+
+    // Only fetch spaces if there are any used spaces.
     const spaces =
       uniqueSpaceIds.length === 0
         ? []
         : await SpaceResource.fetchByModelIds(auth, uniqueSpaceIds);
 
+    const spaceIdToSpaceMap = new Map(spaces.map((s) => [s.id, s]));
+
     if (fetchConversationOptions?.dangerouslySkipPermissionFiltering) {
-      return conversations.map((c) => new this(this.model, c.get()));
+      return conversations.map(
+        (c) =>
+          new this(
+            this.model,
+            c.get(),
+            c.spaceId ? (spaceIdToSpaceMap.get(c.spaceId) ?? null) : null
+          )
+      );
     }
 
     // Filter out conversations that reference missing/deleted spaces.
     // There are two reasons why a space may be missing here:
     // 1. When a space is deleted, conversations referencing it won't be deleted but should not be accessible.
     // 2. When a space belongs to another workspace (should not happen), conversations referencing it won't be accessible.
+
+    // Note from seb, for Space Conversations, we probably want to be more subtle about the conversation accessible logic.
+    // We should probably only filter out conversations where the spaceId is deleted but keep the one that referenced a deleted space.
     const foundSpaceIds = new Set(spaces.map((s) => s.id));
     const validConversations = conversations
       .filter((c) =>
         c.requestedSpaceIds.every((id) => foundSpaceIds.has(Number(id)))
       )
-      .map((c) => new this(this.model, c.get()));
+      .map(
+        (c) =>
+          new this(
+            this.model,
+            c.get(),
+            c.spaceId ? (spaceIdToSpaceMap.get(c.spaceId) ?? null) : null
+          )
+      );
 
     // Create space-to-groups mapping once for efficient permission checks.
     const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
@@ -445,7 +504,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       unread,
       hasError: conversation.hasError,
       requestedGroupIds: [],
-      requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(auth),
+      requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(),
+      spaceId: conversation.space?.sId ?? null,
     });
   }
 
@@ -566,7 +626,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           unread,
           hasError: c.hasError,
           requestedGroupIds: [],
-          requestedSpaceIds: c.getRequestedSpaceIdsFromModel(auth),
+          requestedSpaceIds: c.getRequestedSpaceIdsFromModel(),
+          spaceId: c.space?.sId ?? null,
         };
       })
     );
@@ -1138,15 +1199,20 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
   }
 
-  getRequestedSpaceIdsFromModel(auth: Authenticator) {
-    const workspace = auth.getNonNullableWorkspace();
-
-    return this.requestedSpaceIds.map((id) =>
+  getRequestedSpaceIdsFromModel() {
+    const spaceIds = this.requestedSpaceIds.map((id) =>
       SpaceResource.modelIdToSId({
         id,
-        workspaceId: workspace.id,
+        workspaceId: this.workspaceId,
       })
     );
+
+    // Add the main space (if any).
+    if (this.space) {
+      spaceIds.push(this.space.sId);
+    }
+
+    return spaceIds;
   }
 
   toJSON(): ConversationWithoutContentType {
@@ -1160,16 +1226,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       actionRequired: participation.actionRequired,
       created: this.createdAt.getTime(),
       updated: this.updatedAt.getTime(),
+      spaceId: this.space?.sId ?? null,
       hasError: this.hasError,
       id: this.id,
       // TODO(REQUESTED_SPACE_IDS 2025-10-24): Stop exposing this once all logic is centralized
       // in baseFetchWithAuthorization.
-      requestedSpaceIds: this.requestedSpaceIds.map((id) =>
-        SpaceResource.modelIdToSId({
-          id,
-          workspaceId: this.workspaceId,
-        })
-      ),
+      requestedSpaceIds: this.getRequestedSpaceIdsFromModel(),
       sId: this.sId,
       title: this.title,
       unread: participation.unread,

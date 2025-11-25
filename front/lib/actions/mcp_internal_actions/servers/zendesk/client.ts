@@ -9,6 +9,7 @@ import type {
   ZendeskTicketMetrics,
 } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/types";
 import {
+  isValidZendeskSubdomain,
   ZendeskSearchResponseSchema,
   ZendeskTicketFieldsResponseSchema,
   ZendeskTicketMetricsResponseSchema,
@@ -16,7 +17,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/types";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import { Err, isValidZendeskSubdomain, Ok } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 const MAX_CUSTOM_FIELDS_TO_FETCH = 50;
 

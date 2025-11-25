@@ -305,8 +305,8 @@ export async function syncTicket({
       ...(ticket.due_at
         ? [`dueDate:${new Date(ticket.due_at).toISOString()}`]
         : []),
-      ...(ticket.satisfaction_rating.score !== "unoffered" // Special value when no rating was provided.
-        ? [`satisfactionRating:${ticket.satisfaction_rating.score}`]
+      ...(ticket.satisfaction_rating?.score !== "unoffered" // Special value when no rating was provided.
+        ? [`satisfactionRating:${ticket.satisfaction_rating?.score}`]
         : []),
       `hasIncidents:${ticket.has_incidents ? "Yes" : "No"}`,
     ];

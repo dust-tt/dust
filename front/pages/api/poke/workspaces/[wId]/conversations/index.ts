@@ -78,7 +78,8 @@ async function handler(
             actionRequired: false, // We don't care about actionRequired/unread, so set to false
             unread: false,
             hasError: c.hasError,
-            requestedSpaceIds: c.getRequestedSpaceIdsFromModel(auth),
+            requestedSpaceIds: c.getRequestedSpaceIdsFromModel(),
+            spaceId: c.space?.sId ?? null,
           };
         });
 

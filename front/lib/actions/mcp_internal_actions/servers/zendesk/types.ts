@@ -1,5 +1,15 @@
+// This file should remain synchronized with connectors/src/connectors/zendesk/lib/zendesk_shared_types.ts
+
 import z from "zod";
 
+// Subdomain validation function
+export function isValidZendeskSubdomain(s: unknown): s is string {
+  return (
+    typeof s === "string" && /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(s)
+  );
+}
+
+// Ticket schemas
 export const ZendeskTicketSchema = z
   .object({
     id: z.number(),
@@ -39,6 +49,14 @@ export const ZendeskTicketSchema = z
     collaborator_ids: z.array(z.number()).optional(),
     follower_ids: z.array(z.number()).optional(),
     email_cc_ids: z.array(z.number()).optional(),
+    due_at: z.string().nullable(),
+    has_incidents: z.boolean(),
+    satisfaction_rating: z.object({
+      comment: z.string(),
+      id: z.number(),
+      score: z.string(),
+    }),
+    submitter_id: z.number(),
   })
   .passthrough();
 
@@ -50,6 +68,19 @@ export const ZendeskTicketResponseSchema = z.object({
 
 export type ZendeskTicketResponse = z.infer<typeof ZendeskTicketResponseSchema>;
 
+export const ZendeskTicketsResponseSchema = z.object({
+  tickets: z.array(ZendeskTicketSchema),
+  next_page: z.string().nullable().optional(),
+  previous_page: z.string().nullable().optional(),
+  count: z.number().optional(),
+  end_of_stream: z.boolean().optional(),
+  after_url: z.string().nullable().optional(),
+});
+
+export type ZendeskTicketsResponse = z.infer<
+  typeof ZendeskTicketsResponseSchema
+>;
+
 export const ZendeskSearchResponseSchema = z.object({
   results: z.array(ZendeskTicketSchema),
   count: z.number(),
@@ -59,6 +90,7 @@ export const ZendeskSearchResponseSchema = z.object({
 
 export type ZendeskSearchResponse = z.infer<typeof ZendeskSearchResponseSchema>;
 
+// Ticket metrics schemas
 export const ZendeskTicketMetricsSchema = z.object({
   id: z.number(),
   ticket_id: z.number(),
@@ -124,20 +156,177 @@ export type ZendeskTicketMetricsResponse = z.infer<
   typeof ZendeskTicketMetricsResponseSchema
 >;
 
-export const ZendeskTicketFieldSchema = z.object({
-  id: z.number(),
-  title: z.string(),
-  active: z.boolean(),
-  created_at: z.string(),
-  updated_at: z.string(),
+// Brand schemas
+export const ZendeskBrandSchema = z
+  .object({
+    id: z.number(),
+    url: z.string(),
+    name: z.string(),
+    subdomain: z.string(),
+    brand_url: z.string(),
+    has_help_center: z.boolean(),
+  })
+  .passthrough();
+
+export const ZendeskBrandResponseSchema = z.object({
+  brand: ZendeskBrandSchema,
 });
 
-export type ZendeskTicketField = z.infer<typeof ZendeskTicketFieldSchema>;
-
-export const ZendeskTicketFieldsResponseSchema = z.object({
-  ticket_fields: z.array(ZendeskTicketFieldSchema),
+export const ZendeskBrandsResponseSchema = z.object({
+  brands: z.array(ZendeskBrandSchema),
 });
 
-export type ZendeskTicketFieldsResponse = z.infer<
-  typeof ZendeskTicketFieldsResponseSchema
->;
+// Article schemas
+export const ZendeskArticleSchema = z
+  .object({
+    id: z.number(),
+    url: z.string(),
+    title: z.string(),
+    body: z.string().nullable(),
+    section_id: z.number(),
+    created_at: z.string(),
+    updated_at: z.string(),
+    html_url: z.string(),
+    author_id: z.number(),
+    vote_sum: z.number(),
+    name: z.string(),
+    label_names: z.array(z.string()).optional(),
+  })
+  .passthrough();
+
+export const ZendeskArticleResponseSchema = z.object({
+  article: ZendeskArticleSchema,
+});
+
+export const ZendeskArticlesResponseSchema = z.object({
+  articles: z.array(ZendeskArticleSchema),
+  next_page: z.string().nullable().optional(),
+  end_time: z.number().optional(),
+  meta: z.object({ has_more: z.boolean() }).optional(),
+  links: z.object({ next: z.string().nullable() }).optional(),
+});
+
+// Category schemas
+export const ZendeskCategorySchema = z
+  .object({
+    id: z.number(),
+    url: z.string(),
+    name: z.string(),
+    locale: z.string(),
+    created_at: z.string(),
+    updated_at: z.string(),
+    html_url: z.string(),
+    description: z.string(),
+  })
+  .passthrough();
+
+export const ZendeskCategoryResponseSchema = z.object({
+  category: ZendeskCategorySchema,
+});
+
+export const ZendeskCategoriesResponseSchema = z.object({
+  categories: z.array(ZendeskCategorySchema),
+  meta: z.object({ has_more: z.boolean() }).optional(),
+  links: z.object({ next: z.string().nullable() }).optional(),
+});
+
+// Section schemas
+export const ZendeskSectionSchema = z
+  .object({
+    id: z.number().optional(),
+    url: z.string().optional(),
+    name: z.string(),
+    locale: z.string(),
+    category_id: z.number().optional(),
+    description: z.string().optional(),
+  })
+  .passthrough();
+
+export const ZendeskSectionResponseSchema = z.object({
+  section: ZendeskSectionSchema,
+});
+
+export const ZendeskSectionsResponseSchema = z.object({
+  sections: z.array(ZendeskSectionSchema),
+});
+
+// User schemas
+export const ZendeskUserSchema = z
+  .object({
+    id: z.number(),
+    url: z.string(),
+    name: z.string(),
+    email: z.string(),
+    created_at: z.string(),
+    updated_at: z.string(),
+    active: z.boolean(),
+    role: z.enum(["end-user", "agent", "admin"]),
+  })
+  .passthrough();
+
+export const ZendeskUserResponseSchema = z.object({
+  user: ZendeskUserSchema,
+});
+
+export const ZendeskUsersResponseSchema = z.object({
+  users: z.array(ZendeskUserSchema),
+  next_page: z.string().nullable().optional(),
+});
+
+// Organization schemas
+export const ZendeskOrganizationSchema = z
+  .object({
+    id: z.number(),
+    url: z.string(),
+    name: z.string(),
+    tags: z.array(z.string()),
+    created_at: z.string(),
+  })
+  .passthrough();
+
+export const ZendeskOrganizationResponseSchema = z.object({
+  organization: ZendeskOrganizationSchema,
+});
+
+export const ZendeskOrganizationsResponseSchema = z.object({
+  organizations: z.array(ZendeskOrganizationSchema),
+  next_page: z.string().nullable().optional(),
+});
+
+// Ticket field schemas
+export const ZendeskTicketFieldSchema = z
+  .object({
+    id: z.number(),
+    title: z.string(),
+    active: z.boolean(),
+    created_at: z.string(),
+    updated_at: z.string(),
+  })
+  .passthrough();
+
+export const ZendeskTicketFieldResponseSchema = z.object({
+  ticket_field: ZendeskTicketFieldSchema,
+});
+
+// Ticket comment schemas
+export const ZendeskTicketCommentSchema = z
+  .object({
+    id: z.number(),
+    body: z.string(),
+    author_id: z.number(),
+    created_at: z.string(),
+    plain_body: z.string(),
+  })
+  .passthrough();
+
+export const ZendeskTicketCommentsResponseSchema = z.object({
+  comments: z.array(ZendeskTicketCommentSchema),
+  next_page: z.string().nullable().optional(),
+  hasMore: z.boolean().optional(),
+  nextLink: z.string().optional(),
+});
+
+// Search count schema
+export const ZendeskSearchCountResponseSchema = z.object({
+  count: z.string(),
+});

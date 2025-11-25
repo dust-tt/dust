@@ -81,7 +81,7 @@ makeScript(
         conversationExists: true,
         userHasAccess: true,
         visibility: conversation.visibility,
-        requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(auth),
+        requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(),
       });
       return;
     }

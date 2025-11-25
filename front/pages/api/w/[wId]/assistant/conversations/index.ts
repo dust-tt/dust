@@ -102,6 +102,7 @@ async function handler(
       let conversation = await createConversation(auth, {
         title,
         visibility,
+        spaceId: null,
       });
 
       const newContentFragments: ContentFragmentType[] = [];
