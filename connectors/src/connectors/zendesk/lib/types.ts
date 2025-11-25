@@ -267,7 +267,7 @@ export const ZendeskUserSchema = z
     id: z.number(),
     url: z.string(),
     name: z.string(),
-    email: z.string(),
+    email: z.string().nullable(),
     created_at: z.string(),
     updated_at: z.string(),
     active: z.boolean(),

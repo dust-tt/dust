@@ -286,7 +286,7 @@ export async function syncTicket({
         }
         const author =
           users.find((user) => user.id === comment.author_id) ?? null;
-        return `[${comment?.created_at}] ${author ? `${author.name} (${author.email})` : "Unknown User"}:\n${commentContent}`;
+        return `[${comment?.created_at}] ${author ? `${author.name} (${author.email ?? "Unknown email"})` : "Unknown User"}:\n${commentContent}`;
       })
       .join("\n")}`.trim();
 
