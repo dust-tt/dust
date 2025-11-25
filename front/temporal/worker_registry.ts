@@ -1,5 +1,5 @@
-import { runAgentTriggerWorker } from "@app/lib/triggers/temporal/common/worker";
-import { runAgentTriggerWebhookWorker } from "@app/lib/triggers/temporal/webhook/worker";
+import { runAgentTriggerWorker } from "@app/temporal/triggers/common/worker";
+import { runAgentTriggerWebhookWorker } from "@app/temporal/triggers/webhook/worker";
 import { runPokeWorker } from "@app/poke/temporal/worker";
 import { runAgentLoopWorker } from "@app/temporal/agent_loop/worker";
 import { runAnalyticsWorker } from "@app/temporal/analytics_queue/worker";

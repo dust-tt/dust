@@ -24,7 +24,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import {
   createOrUpdateAgentSchedule,
   deleteTriggerSchedule,
-} from "@app/lib/triggers/temporal/schedule/client";
+} from "@app/temporal/triggers/schedule/client";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { ModelId, Result, UserType } from "@app/types";
 import {

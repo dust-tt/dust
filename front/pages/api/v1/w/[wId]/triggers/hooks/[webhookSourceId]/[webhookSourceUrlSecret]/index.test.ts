@@ -23,7 +23,7 @@ vi.mock("@app/logger/statsDClient", () => ({
 }));
 
 // Mock temporal client to avoid workflow execution
-vi.mock("@app/lib/triggers/temporal/common/client", () => ({
+vi.mock("@app/temporal/triggers/common/client", () => ({
   launchAgentTriggerWorkflow: vi.fn(async () => ({
     isOk: () => true,
     isErr: () => false,
@@ -31,7 +31,7 @@ vi.mock("@app/lib/triggers/temporal/common/client", () => ({
   })),
 }));
 
-vi.mock("@app/lib/triggers/temporal/webhook/client", () => ({
+vi.mock("@app/temporal/triggers/webhook/client", () => ({
   launchAgentTriggerWebhookWorkflow: vi.fn(async () => ({
     isOk: () => true,
     isErr: () => false,
