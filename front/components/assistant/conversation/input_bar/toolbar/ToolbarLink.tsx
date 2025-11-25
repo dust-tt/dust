@@ -119,19 +119,19 @@ export function ToolbarLink({ editor }: ToolbarLinkProps) {
       )
       .run();
 
+    setLinkText("");
+    setLinkUrl("");
     setIsLinkDialogOpen(false);
   };
 
   return (
     <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
-      <div className="flex items-center justify-center">
-        <ToolbarIcon
-          icon={LinkMIcon}
-          onClick={handleLinkDialogOpen}
-          active={editor.isActive("link")}
-          tooltip="Link"
-        />
-      </div>
+      <ToolbarIcon
+        icon={LinkMIcon}
+        onClick={handleLinkDialogOpen}
+        active={editor.isActive("link")}
+        tooltip="Link"
+      />
       <DialogContent onClick={(e) => e.stopPropagation()}>
         <DialogHeader>
           <DialogTitle>Insert Link</DialogTitle>
