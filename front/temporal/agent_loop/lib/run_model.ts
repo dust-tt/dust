@@ -604,7 +604,6 @@ export async function runModelActivity(
       step,
       modelInteractionDurationMs:
         modelInteractionEndDate - modelInteractionStartDate,
-      userMessageOrigin: userMessage.context.origin,
     });
     localLogger.info("Agent message generation succeeded");
 
