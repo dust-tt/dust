@@ -126,24 +126,26 @@ export function MCPServerOAuthConnexion({
     authorization.supported_use_cases.includes("personal_actions");
   const supportsPlatformActions =
     authorization.supported_use_cases.includes("platform_actions");
+  const supportBoth = supportsPersonalActions && supportsPlatformActions;
 
   return (
     <div className="flex flex-col items-center gap-4">
       <>
         <div className="w-full space-y-4">
           <div className="heading-lg text-foreground dark:text-foreground-night">
-            How do you want to connect {toolName}?
+            {supportBoth ? "How do you want to connect?" : "Connection type"}
           </div>
           <CardGrid>
             <ConditionalTooltip
               showTooltip={!supportsPersonalActions}
-              label={`${toolName} does not support indiviual connection.`}
+              label={`${toolName} does not support individual connection.`}
             >
               <Card
                 variant={supportsPersonalActions ? "secondary" : "primary"}
                 selected={useCase === "personal_actions"}
                 disabled={!supportsPersonalActions}
                 className={cn(
+                  "h-full",
                   supportsPersonalActions
                     ? "cursor-pointer"
                     : "cursor-not-allowed"
@@ -175,7 +177,7 @@ export function MCPServerOAuthConnexion({
                       {OAUTH_USE_CASE_TO_LABEL["personal_actions"]}
                     </span>
                   </div>
-                  <span className="text-muted-foreground dark:text-muted-foreground-night">
+                  <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                     {OAUTH_USE_CASE_TO_DESCRIPTION["personal_actions"]}
                   </span>
                 </div>
@@ -190,6 +192,7 @@ export function MCPServerOAuthConnexion({
                 selected={useCase === "platform_actions"}
                 disabled={!supportsPlatformActions}
                 className={cn(
+                  "h-full",
                   supportsPlatformActions
                     ? "cursor-pointer"
                     : "cursor-not-allowed"
@@ -221,7 +224,7 @@ export function MCPServerOAuthConnexion({
                       {OAUTH_USE_CASE_TO_LABEL["platform_actions"]}
                     </span>
                   </div>
-                  <span className="text-muted-foreground dark:text-muted-foreground-night">
+                  <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                     {OAUTH_USE_CASE_TO_DESCRIPTION["platform_actions"]}
                   </span>
                 </div>
@@ -230,25 +233,8 @@ export function MCPServerOAuthConnexion({
           </CardGrid>
         </div>
 
-        <div className="w-full">
-          {useCase === "platform_actions" && (
-            <span>
-              Members will all use the credentials you provide to access{" "}
-              {toolName}.
-            </span>
-          )}
-          {useCase === "personal_actions" && (
-            <span>
-              Members will connect their own {toolName} account for this tool.
-            </span>
-          )}
-        </div>
-
         {inputs && (
-          <div className="w-full space-y-4 pt-6">
-            <div className="heading-lg text-foreground dark:text-foreground-night">
-              Required information to connect {toolName}
-            </div>
+          <div className="w-full space-y-4 pt-4">
             {inputs &&
               Object.entries(inputs).map(([key, inputData]) => {
                 if (inputData.value) {
@@ -292,7 +278,7 @@ export function MCPServerOAuthConnexion({
         )}
 
         {documentationUrl && (
-          <div className="w-full pt-6 text-muted-foreground dark:text-muted-foreground-night">
+          <div className="w-full pt-6 text-sm text-muted-foreground dark:text-muted-foreground-night">
             Questions ? Read{" "}
             <Hoverable
               href={documentationUrl}
@@ -319,7 +305,7 @@ function ConditionalTooltip({
   children: React.ReactElement;
 }) {
   if (showTooltip) {
-    return <Tooltip label={label} trigger={children} />;
+    return <Tooltip label={label} trigger={children} tooltipTriggerAsChild />;
   }
   return children;
 }

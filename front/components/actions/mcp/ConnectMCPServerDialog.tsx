@@ -224,7 +224,7 @@ export function ConnectMCPServerDialog({
           <DialogTitle>
             <div className="flex items-center gap-2">
               {getAvatarFromIcon(toolIcon, "sm")}
-              <span>Configure {toolName}</span>
+              <span>Connect {toolName}</span>
             </div>
           </DialogTitle>
         </DialogHeader>
