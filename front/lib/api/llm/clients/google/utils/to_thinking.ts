@@ -15,9 +15,14 @@ export function toThinkingConfig(
   reasoningEffort: ReasoningEffort | null,
   useNativeLightReasoning?: boolean
 ): ThinkingConfig | undefined {
-  if (!reasoningEffort || reasoningEffort === "none") {
+  if (!reasoningEffort) {
     return undefined;
   }
+
+  if (reasoningEffort === "none") {
+    return { includeThoughts: false, thinkingBudget: 0 };
+  }
+
   if (reasoningEffort !== "light") {
     return {
       includeThoughts: true,
@@ -34,5 +39,5 @@ export function toThinkingConfig(
     };
   }
 
-  return undefined;
+  return { includeThoughts: false, thinkingBudget: 0 };
 }

@@ -207,7 +207,8 @@ export const GPT_5_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: true,
   generationTokensCount: 128_000,
   supportsVision: true,
-  minimumReasoningEffort: "none",
+  // Does not support "none", lowest reasoning effort is "minimal" which can be misleading for user
+  minimumReasoningEffort: "light",
   maximumReasoningEffort: "high",
   defaultReasoningEffort: "medium",
   useNativeLightReasoning: true,

@@ -6,8 +6,8 @@ import {
 } from "@app/lib/api/llm/clients/anthropic/utils";
 
 describe("toThinkingConfig", () => {
-  it('returns undefined for "light" when native light reasoning is false', () => {
-    expect(toThinkingConfig("light", false)).toBeUndefined();
+  it('returns disabled for "light" when native light reasoning is false', () => {
+    expect(toThinkingConfig("light", false)).toEqual({ type: "disabled" });
   });
 
   it('returns configured budget tokens for "medium"', () => {
