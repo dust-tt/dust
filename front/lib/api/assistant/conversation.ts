@@ -53,6 +53,7 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type {
+  AgenticMessageData,
   AgentMessageType,
   APIErrorWithStatusCode,
   ContentFragmentContextType,
@@ -67,7 +68,6 @@ import type {
   ModelId,
   PlanType,
   Result,
-  AgenticMessageData,
   UserMessageContext,
   UserMessageType,
   UserType,
