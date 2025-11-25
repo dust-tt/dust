@@ -220,7 +220,7 @@ const useCustomEditor = ({
       levels: [1],
     }),
     Link.extend({
-      renderHTML({ HTMLAttributes }) {
+      renderHTML({ HTMLAttributes }: { HTMLAttributes: { href: string } }) {
         const href = HTMLAttributes.href || "";
         return [
           "a",
