@@ -31,6 +31,7 @@ import type {
 import {
   areSameRank,
   getMessageRank,
+  isHiddenContextOrigin,
   isMessageTemporayState,
   isUserMessage,
   makeInitialMessageStreamState,
@@ -182,9 +183,13 @@ export const ConversationViewer = ({
     // Switch to conversation B, wait till A is done streaming, then switch back to A.
     // Without waiting for revalidation, we would use whatever data was in the swr cache and see the last message as "streaming" (old data, no more streaming events).
     if (!initialListData && messages.length > 0 && !isValidating) {
-      const messagesToRender = convertLightMessageTypeToVirtuosoMessages(
-        messages.flatMap((m) => m.messages)
-      );
+      const raw = messages
+        .flatMap((m) => m.messages)
+        .filter((m) =>
+          isUserMessageType(m) ? !isHiddenContextOrigin(m.context.origin) : true
+        );
+
+      const messagesToRender = convertLightMessageTypeToVirtuosoMessages(raw);
 
       setInitialListData(messagesToRender);
     }
@@ -209,8 +214,11 @@ export const ConversationViewer = ({
     );
 
     if (olderMessagesFromBackend.length > 0) {
+      const filtered = olderMessagesFromBackend.filter((m) =>
+        isUserMessageType(m) ? !isHiddenContextOrigin(m.context.origin) : true
+      );
       ref.current.data.prepend(
-        convertLightMessageTypeToVirtuosoMessages(olderMessagesFromBackend)
+        convertLightMessageTypeToVirtuosoMessages(filtered)
       );
     }
 
@@ -277,6 +285,9 @@ export const ConversationViewer = ({
         switch (event.type) {
           case "user_message_new":
             if (ref.current) {
+              if (isHiddenContextOrigin(event.message.context.origin)) {
+                break;
+              }
               const userMessage: VirtuosoMessage = {
                 ...event.message,
                 contentFragments: [],

@@ -138,4 +138,8 @@ export const USER_MESSAGE_ORIGIN_LABELS: Record<
     label: "Zendesk",
     color: "text-blue-800 dark:text-blue-800-night",
   },
+  onboarding_conversation: {
+    label: "Onboarding",
+    color: "info-muted dark:info-muted-night",
+  },
 };

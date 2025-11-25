@@ -119,6 +119,21 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
   }
 
+  static async countForWorkspace(
+    auth: Authenticator,
+    options?: FetchConversationOptions
+  ): Promise<number> {
+    const workspace = auth.getNonNullableWorkspace();
+    const { where } = this.getOptions(options);
+
+    return this.model.count({
+      where: {
+        ...where,
+        workspaceId: workspace.id,
+      },
+    });
+  }
+
   private static getOptions(
     options?: FetchConversationOptions
   ): ResourceFindOptions<ConversationModel> {

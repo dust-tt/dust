@@ -33,6 +33,7 @@ import {
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
 import { triggerConversationUnreadNotifications } from "@app/lib/notifications/workflows/conversation-unread";
+import { ONBOARDING_CONVERSATION_ENABLED } from "@app/lib/onboarding";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -77,6 +78,7 @@ import {
   assertNever,
   ConversationError,
   Err,
+  GLOBAL_AGENTS_SID,
   isAgentMention,
   isContentFragmentInputWithContentNode,
   isContentFragmentType,
@@ -274,6 +276,130 @@ export async function getMessageConversationId(
     conversationId: messageRow?.conversation?.sId ?? null,
     messageId: messageRow?.sId ?? null,
   };
+}
+
+export async function createOnboardingConversationIfNeeded(
+  auth: Authenticator,
+  { force }: { force?: boolean } = { force: false }
+): Promise<Result<string | null, APIErrorWithStatusCode>> {
+  const owner = auth.workspace();
+  const subscription = auth.subscription();
+  const user = auth.user();
+
+  if (!owner || !subscription || !user) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "Cannot create onboarding conversation without workspace, user and subscription.",
+      },
+    });
+  }
+
+  if (!force && !ONBOARDING_CONVERSATION_ENABLED) {
+    return new Ok(null);
+  }
+
+  // Only create onboarding conversation for brand-new workspaces (only one member,
+  // no conversations) unless force flag is set.
+  if (!force) {
+    const existingMetadata = await user.getMetadata("onboarding:conversation");
+
+    if (existingMetadata?.value) {
+      // User already has an onboarding conversation.
+      return new Ok(null);
+    }
+
+    const { total: membersTotal } =
+      await MembershipResource.getMembershipsForWorkspace({
+        workspace: owner,
+      });
+
+    if (membersTotal > 1) {
+      return new Ok(null);
+    }
+
+    const conversationsCount =
+      await ConversationResource.countForWorkspace(auth);
+
+    if (conversationsCount > 0) {
+      return new Ok(null);
+    }
+  }
+
+  const conversation = await createConversation(auth, {
+    title: null,
+    visibility: "unlisted",
+    spaceId: null,
+  });
+
+  const gmailToolDirective = ":toolSetup[Connect Gmail]{sId=gmail}";
+
+  const onboardingSystemMessage = `<dust_system>
+You are onboarding a brand-new user to Dust.
+
+FOR YOUR INITIAL MESSAGE IN THIS CONVERSATION: respond very quickly, do NOT use long or step-by-step "thinking" or analysis, and keep your reply short and direct. Your first line MUST be a level-1 markdown heading that starts with the text "Welcome to Dust" followed by at least one emoji, for example:
+
+# Welcome to Dust 👋
+
+In this very first reply, you MUST (1) briefly explain what Dust is and a couple of things it can do, (2) mention that Dust works even better when it has access to tools like Gmail, (3) explicitly reference that the user is using a Google email address and propose connecting Gmail, and (4) end with the Gmail markdown directive described below. Your first reply MUST include between 1 and 3 emojis in total (not 0 and not more than 3).
+
+Dust is the product. The user has a workspace on Dust where they can use and create AI agents, connect tools (like email, calendar, docs), and invite their teammates to collaborate. You are the user’s first guide in this workspace. In your first message, you should not ask the user what they want to achieve yet; instead, focus on a concise explanation of Dust’s capabilities and why connecting Gmail is useful. You can ask follow-up questions about their goals in later turns, after the first reply.
+
+The user signed up with a Google-hosted email address, so they very likely use Gmail as their primary inbox. Explicitly mention that you noticed they are using a Google email address and that, because of this, connecting Gmail is a highly recommended first step so you can, for example, search emails, summarize threads, and help draft replies on their behalf.
+
+Dust supports a special markdown directive that lets you show a visual card to help users set up tools like Gmail. When rendered, this directive becomes an interactive card with a title, description, and a button to activate the tool.
+
+For Gmail, the directive syntax is:
+
+${gmailToolDirective}
+
+Where:
+- \`toolSetup\` identifies the tool-setup directive.
+- \`Connect Gmail\` is the label the user will see on the card.
+- \`sId=gmail\` selects the internal Gmail tool.
+
+In this onboarding conversation, your initial message MUST:
+1. Very briefly explain Dust (1–2 short sentences).
+2. Immediately explain, in one or two short sentences, why connecting Gmail will make Dust more helpful.
+3. Then add a blank line and a final line containing only the directive:
+
+${gmailToolDirective}
+
+Do NOT wrap this directive in a code block or quotes; it must appear as raw markdown on its own line at the end of your message so the UI can render the setup card correctly. In later messages, only repeat the directive if the user seems interested in Gmail or asks how to connect email again.
+</dust_system>`;
+
+  const userJson = user.toJSON();
+
+  const context: UserMessageContext = {
+    username: userJson.username,
+    fullName: userJson.fullName,
+    email: userJson.email,
+    profilePictureUrl: userJson.image,
+    timezone: "UTC",
+    origin: "onboarding_conversation",
+  };
+
+  const postRes = await postUserMessage(auth, {
+    conversation,
+    content: onboardingSystemMessage,
+    mentions: [
+      {
+        configurationId: GLOBAL_AGENTS_SID.DUST,
+      },
+    ],
+    context,
+    skipToolsValidation: false,
+  });
+
+  if (postRes.isErr()) {
+    return postRes;
+  }
+
+  await user.setMetadata("onboarding:conversation", conversation.sId);
+
+  return new Ok(conversation.sId);
 }
 
 export async function getLastUserMessage(
