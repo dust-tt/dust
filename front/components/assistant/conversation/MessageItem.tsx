@@ -101,6 +101,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
         : null,
       onSubmitThumb,
       isSubmittingThumb,
+      owner: context.owner,
     };
 
     const citations =
