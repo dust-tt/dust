@@ -24,9 +24,13 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
+import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { tokenCountForTexts } from "@app/lib/tokenization";
-import { launchAgentTriggerWebhookWorkflow } from "@app/lib/triggers/temporal/webhook/client";
+import {
+  getWebhookRequestPayloadFromGCS,
+  processWebhookRequest,
+} from "@app/lib/triggers/webhook";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import {
@@ -658,9 +662,47 @@ async function trigger(command: string, args: parseArgs.ParsedArgs) {
 
       for (const webhookRequest of failedWebhooks) {
         if (execute) {
-          await launchAgentTriggerWebhookWorkflow({
-            auth,
+          const res = await getWebhookRequestPayloadFromGCS(auth, {
             webhookRequest,
+          });
+          if (res.isErr()) {
+            logger.error(
+              {
+                webhookRequestId: webhookRequest.id,
+                webhookSourceId: webhookRequest.webhookSourceId,
+                errorMessage: res.error.message,
+                createdAt: webhookRequest.createdAt,
+              },
+              `Failed to get webhook payload from GCS: ${res.error.message}`
+            );
+            continue;
+          }
+
+          const { headers, body } = res.value;
+
+          const webhookSource = await WebhookSourceResource.findByPk(
+            auth,
+            webhookRequest.webhookSourceId
+          );
+
+          if (!webhookSource) {
+            logger.error(
+              {
+                webhookRequestId: webhookRequest.id,
+                webhookSourceId: webhookRequest.webhookSourceId,
+                errorMessage: "Webhook source not found",
+                createdAt: webhookRequest.createdAt,
+              },
+              `Webhook source not found for webhook request.`
+            );
+            continue;
+          }
+
+          await processWebhookRequest(auth, {
+            webhookRequest,
+            webhookSource,
+            headers,
+            body,
           });
           logger.info(
             {
