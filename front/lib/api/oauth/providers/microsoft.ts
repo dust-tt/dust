@@ -43,7 +43,6 @@ export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
         state: connection.connection_id,
         redirect_uri: finalizeUriForProvider("microsoft"),
         scope: scopes.join(" "),
-        prompt: "consent",
       });
       return `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${qs}`;
     }
