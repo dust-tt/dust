@@ -54,6 +54,13 @@ function isToolStakesRecord(
   );
 }
 
+function getToolStake(
+  stakes: Record<string, MCPToolStakeLevelType>,
+  toolName: string
+): MCPToolStakeLevelType | undefined {
+  return toolName in stakes ? stakes[toolName] : undefined;
+}
+
 function getDefaultInternalToolStakeLevel(
   server: MCPServerViewType["server"],
   toolName: string
@@ -66,13 +73,7 @@ function getDefaultInternalToolStakeLevel(
   const serverToolStakes = serverConfig.tools_stakes;
 
   if (isToolStakesRecord(serverToolStakes)) {
-    // Type guard narrows to Record<string, MCPToolStakeLevelType>, but TypeScript
-    // still sees the union type. Cast to the narrowed type for indexing.
-    const stakesRecord = serverToolStakes as Record<
-      string,
-      MCPToolStakeLevelType
-    >;
-    const configuredStake = stakesRecord[toolName];
+    const configuredStake = getToolStake(serverToolStakes, toolName);
     if (configuredStake) {
       return configuredStake;
     }
