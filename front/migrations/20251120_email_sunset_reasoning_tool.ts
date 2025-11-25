@@ -16,7 +16,7 @@ const CsvRecordSchema = z.object({
   author_first_name: z.string(),
   email: z.string(),
   agent_list: z.string(),
-  min_reasoning_effort: z.string(),
+  min_reasoning_effort: z.string().optional(),
   workspace_id: z.string(),
 });
 
@@ -55,7 +55,7 @@ async function sendReasoningToolRemovalEmail(
 
   const email = record.email.trim().toLowerCase();
   const agentList = record.agent_list.trim();
-  const minReasoningEffort = record.min_reasoning_effort.trim().toLowerCase();
+  const minReasoningEffort = record.min_reasoning_effort?.trim().toLowerCase();
   const workspaceId = record.workspace_id.trim();
 
   const baseUrl = DUST_CLIENT_FACING_URL;
@@ -117,7 +117,7 @@ ${agentList
 
 <p><strong>Recommended: Maintain strong reasoning capabilities</strong></p>
 
-<p>Since your agent currently uses the Reasoning tool and has ${minReasoningEffort === "none" ? "no" : minReasoningEffort} reasoning effort configured, we recommend one of these options to maintain strong reasoning:</p>
+<p>Since your agent currently uses the Reasoning tool${minReasoningEffort ? ` and has ${minReasoningEffort === "none" ? "no" : minReasoningEffort} reasoning effort configured` : ""}, we recommend one of these options to maintain strong reasoning:</p>
 
 <p><strong>Option 1: Increase reasoning effort</strong> - Edit your agent and set <code>reasoningEffort</code> to "medium" or "high" in the model settings of Agent Builder if the underlying model supports it</p>
 
