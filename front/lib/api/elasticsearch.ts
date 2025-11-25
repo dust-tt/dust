@@ -135,26 +135,31 @@ export function formatUTCDateFromMillis(ms: number): string {
 }
 
 /**
- * Groups data by keeping top N groups and aggregating the rest into "Others".
+ * Ensures at most N groups by keeping top N-1 groups and aggregating the rest into "Others".
+ * If there are N groups or less, returns them as is. Otherwise aggregates the last ones
+ * to make one single group.
  * The input must already be sorted by the desired criteria.
  *
  * @param groups - Array of groups with parsed points, already sorted by priority (e.g., by total cost)
- * @param topN - Number of top groups to keep individually (default: 5)
+ * @param max - Maximum number of groups to return (default: 5)
  * @param valueKey - Key of the numeric value to aggregate (e.g., "costCents")
- * @returns Array with top N groups + optional "others" group
+ * @returns Array with at most N groups (top N-1 + optional "others" group)
  */
-export function groupTopNAndAggregateOthers<
+export function ensureAtMostNGroups<
   T extends { timestamp: number; [key: string]: number },
 >(
   groups: Array<{ groupKey: string; points: T[] }>,
-  topN: number = 5,
+  max: number = 5,
   valueKey: keyof T
 ): Array<{ groupKey: string; points: T[] }> {
-  // Keep top N groups
-  const topGroups = groups.slice(0, topN);
-  const otherGroups = groups.slice(topN);
+  if (groups.length <= max) {
+    return groups;
+  }
+  // Keep top N-1 groups, last groups will be aggregated into "Others".
+  const topGroups = groups.slice(0, max - 1);
+  const otherGroups = groups.slice(max - 1);
 
-  // If no groups beyond topN, return as-is
+  // If no groups beyond max, return as-is
   if (otherGroups.length === 0) {
     return topGroups;
   }

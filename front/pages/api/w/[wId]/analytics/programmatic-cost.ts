@@ -5,13 +5,12 @@ import { z } from "zod";
 import type { MetricsBucket } from "@app/lib/api/assistant/observability/messages_metrics";
 import {
   buildMetricAggregates,
-  fetchMessageMetrics,
   parseMetricsFromBucket,
 } from "@app/lib/api/assistant/observability/messages_metrics";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import {
   bucketsToArray,
-  groupTopNAndAggregateOthers,
+  ensureAtMostNGroups,
   searchAnalytics,
 } from "@app/lib/api/elasticsearch";
 import { getShouldTrackTokenUsageCostsESFilter } from "@app/lib/api/programmatic_usage_tracking";
@@ -21,8 +20,35 @@ import { CreditResource } from "@app/lib/resources/credit_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
+const GROUP_BY_KEYS = ["agent", "origin", "apiKey"] as const;
+
+export type GroupByType = (typeof GROUP_BY_KEYS)[number];
+
+const GROUP_BY_KEY_TO_ES_FIELD: Record<GroupByType, string> = {
+  agent: "agent_id",
+  origin: "context_origin",
+  apiKey: "api_key_name",
+};
+
+const FilterSchema = z.record(z.enum(GROUP_BY_KEYS), z.string().array());
+
 const QuerySchema = z.object({
-  groupBy: z.enum(["agent", "origin", "apiKey"]).optional(),
+  groupBy: z.enum(GROUP_BY_KEYS).optional(),
+  groupByCount: z.number().optional().default(5),
+  filter: z
+    .string()
+    .optional()
+    .transform((val) => {
+      if (!val) {
+        return undefined;
+      }
+      try {
+        return JSON.parse(val);
+      } catch {
+        return val; // Return original to trigger validation error
+      }
+    })
+    .pipe(FilterSchema.optional()),
   selectedMonth: z.string().optional(),
 });
 
@@ -30,17 +56,22 @@ export type WorkspaceProgrammaticCostPoint = {
   timestamp: number;
   groups: {
     groupKey: string;
-    groupLabel: string;
     costCents: number;
-    programmaticCostCents?: number;
+    cumulatedCostCents?: number;
   }[];
   totalInitialCreditsCents: number;
   totalConsumedCreditsCents: number;
   totalRemainingCreditsCents: number;
 };
 
+export type AvailableGroup = {
+  groupKey: string;
+  groupLabel: string;
+};
+
 export type GetWorkspaceProgrammaticCostResponse = {
   points: WorkspaceProgrammaticCostPoint[];
+  availableGroups: AvailableGroup[]; // All available groups (without filters applied)
 };
 
 // Reuse the MetricsBucket type from messages_metrics to ensure compatibility
@@ -55,6 +86,7 @@ type GroupBucket = {
 
 type GroupedAggs = {
   by_group?: estypes.AggregationsMultiBucketAggregateBase<GroupBucket>;
+  by_day?: estypes.AggregationsMultiBucketAggregateBase<DailyBucket>;
 };
 
 /**
@@ -117,6 +149,62 @@ function getDatesInRange(startOfMonth: Date, endDate: Date): number[] {
   return dates;
 }
 
+function getSelectedFilterClauses(
+  filterParams: Partial<Record<GroupByType, string[]>> | undefined,
+  excluded?: GroupByType
+) {
+  if (!filterParams) {
+    return [];
+  }
+
+  return GROUP_BY_KEYS.filter(
+    (key) => key !== excluded && filterParams[key]
+  ).map((filterKey) => ({
+    terms: {
+      [GROUP_BY_KEY_TO_ES_FIELD[filterKey]]: filterParams[
+        filterKey
+      ] as string[],
+    },
+  }));
+}
+
+function buildAggregation(
+  groupBy: GroupByType,
+  groupByCount: number,
+  includeDailyBreakdown: boolean
+): Record<string, estypes.AggregationsAggregationContainer> {
+  const groupField = GROUP_BY_KEY_TO_ES_FIELD[groupBy];
+  return {
+    by_group: {
+      terms: {
+        field: groupField,
+        size: groupByCount,
+        missing: "unknown",
+        // Sort by total cost across all days (descending)
+        order: { total_cost: "desc" },
+      },
+      aggs: {
+        // Total cost aggregation for sorting (sum across all documents in this group)
+        total_cost: {
+          sum: { field: "tokens.cost_cents" },
+        },
+        ...(includeDailyBreakdown
+          ? {
+              // Daily breakdown
+              by_day: {
+                date_histogram: {
+                  field: "timestamp",
+                  calendar_interval: "day",
+                },
+                aggs: buildMetricAggregates(["costCents"]),
+              },
+            }
+          : {}),
+      },
+    },
+  };
+}
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
@@ -137,8 +225,14 @@ async function handler(
         });
       }
 
-      const { groupBy, selectedMonth } = q.data;
+      const {
+        groupBy,
+        groupByCount,
+        selectedMonth,
+        filter: filterParams,
+      } = q.data;
 
+      // Get selected date range
       const now = new Date();
       const startOfMonth = selectedMonth
         ? new Date(selectedMonth)
@@ -149,23 +243,6 @@ async function handler(
 
       const timestamps = getDatesInRange(startOfMonth, endOfMonth);
 
-      // Build query for the current month
-      const baseQuery = {
-        bool: {
-          filter: [
-            getShouldTrackTokenUsageCostsESFilter(auth),
-            {
-              range: {
-                timestamp: {
-                  gte: startOfMonth.toISOString(),
-                  lt: endOfMonth.toISOString(),
-                },
-              },
-            },
-          ],
-        },
-      };
-
       // Fetch all credits for the workspace
       const credits = await CreditResource.listActive(auth, endOfMonth);
 
@@ -174,104 +251,75 @@ async function handler(
         credits,
         timestamps
       );
-      const groupLabels: Record<string, string> = {};
-      const groupValues: Record<string, Map<number, number>> = {};
-      if (!groupBy) {
-        // Fetch usage metrics
-        const usageMetricsResult = await fetchMessageMetrics(baseQuery, "day", [
-          "costCents",
-        ]);
 
-        if (usageMetricsResult.isErr()) {
-          return apiError(req, res, {
-            status_code: 500,
-            api_error: {
-              type: "internal_server_error",
-              message: `Failed to retrieve programmatic cost: ${usageMetricsResult.error.message}`,
-            },
-          });
-        }
-
-        groupLabels["total"] = "Cumulative Cost";
-        groupValues["total"] = new Map<number, number>();
-        usageMetricsResult.value.forEach((point) => {
-          groupValues["total"]?.set(point.timestamp, point.costCents);
-        });
-      } else {
-        let groupField: string;
-        // Grouped view (agent or origin)
-        switch (groupBy) {
-          case "agent":
-            groupField = "agent_id";
-            break;
-          case "origin":
-            groupField = "context_origin";
-            break;
-          case "apiKey":
-            groupField = "api_key_name";
-            break;
-        }
-
-        // Use the extracted helper to build metric aggregates
-        const metricAggregates = buildMetricAggregates(["costCents"]);
-
-        const result = await searchAnalytics<never, GroupedAggs>(baseQuery, {
-          aggregations: {
-            by_group: {
-              terms: {
-                field: groupField,
-                size: 10, // Fetch slightly more than 5 to have candidates for "Others"
-                missing: "unknown",
-                // Sort by total cost across all days (descending)
-                order: { total_cost: "desc" },
-              },
-              aggs: {
-                // Total cost aggregation for sorting (sum across all documents in this group)
-                total_cost: {
-                  sum: { field: "tokens.cost_cents" },
-                },
-                // Daily breakdown
-                by_day: {
-                  date_histogram: {
-                    field: "timestamp",
-                    calendar_interval: "day",
-                  },
-                  aggs: metricAggregates,
-                },
-              },
+      // Build base filter clauses with date range
+      const baseFilterClauses: estypes.QueryDslQueryContainer[] = [
+        getShouldTrackTokenUsageCostsESFilter(auth),
+        {
+          range: {
+            timestamp: {
+              gte: startOfMonth.toISOString(),
+              lt: endOfMonth.toISOString(),
             },
           },
-          size: 0,
-        });
+        },
+      ];
 
-        if (result.isErr()) {
-          return apiError(req, res, {
-            status_code: 500,
-            api_error: {
-              type: "internal_server_error",
-              message: `Failed to retrieve grouped programmatic cost: ${result.error.message}`,
+      const baseQuery = {
+        bool: {
+          filter: [
+            ...baseFilterClauses,
+            ...getSelectedFilterClauses(filterParams),
+          ],
+        },
+      };
+
+      const availableGroups: AvailableGroup[] = [];
+      const groupValues: Record<string, Map<number, number>> = {};
+
+      const result = await searchAnalytics<never, GroupedAggs>(baseQuery, {
+        aggregations: {
+          total_cost: {
+            sum: { field: "tokens.cost_cents" },
+          },
+          by_day: {
+            date_histogram: {
+              field: "timestamp",
+              calendar_interval: "day",
             },
-          });
-        }
+            aggs: buildMetricAggregates(["costCents"]),
+          },
+          ...(groupBy ? buildAggregation(groupBy, groupByCount, true) : {}),
+        },
 
+        size: 0,
+      });
+
+      if (result.isErr()) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: `Failed to retrieve grouped programmatic cost: ${result.error.message}`,
+          },
+        });
+      }
+
+      const totalBuckets = bucketsToArray<MetricsBucket>(
+        result.value.aggregations?.by_day?.buckets
+      );
+
+      // Add total points to groupValues
+      groupValues["total"] = new Map<number, number>();
+      totalBuckets.forEach((bucket) => {
+        const point = parseMetricsFromBucket(bucket, ["costCents"]);
+        groupValues["total"]?.set(point.timestamp, point.costCents);
+      });
+
+      if (result.value.aggregations?.by_group) {
         const groupBuckets = bucketsToArray(
           result.value.aggregations?.by_group?.buckets
         );
-
-        // Fetch agent names if grouping by agent
-        const agentNames: Record<string, string> = {};
-        if (groupBy === "agent") {
-          const agentIds = groupBuckets.map((b) => b.key);
-          const agents = await AgentConfiguration.findAll({
-            where: {
-              sId: agentIds,
-            },
-            attributes: ["sId", "name"],
-          });
-          agents.forEach((agent) => {
-            agentNames[agent.sId] = agent.name;
-          });
-        }
 
         // ES already sorted by total cost, just parse and split into top 5 vs others
         const groupsWithParsedPoints = groupBuckets.map((groupBucket) => {
@@ -284,8 +332,8 @@ async function handler(
           };
         });
 
-        // Group top 5 and aggregate others using extracted helper
-        const allGroupsToProcess = groupTopNAndAggregateOthers(
+        // Keep at most 5 groups
+        const allGroupsToProcess = ensureAtMostNGroups(
           groupsWithParsedPoints,
           5,
           "costCents"
@@ -293,43 +341,116 @@ async function handler(
 
         // Process all groups (top 5 + "Others") with single loop
         for (const { groupKey, points } of allGroupsToProcess) {
-          // Determine group name
-          if (groupKey === "others") {
-            groupLabels["others"] = "Others";
-          } else if (groupKey === "unknown") {
-            groupLabels["unknown"] = "Unknown";
-          } else if (groupBy === "agent") {
-            groupLabels[groupKey] = agentNames[groupKey] || groupKey;
-          } else {
-            groupLabels[groupKey] = groupKey;
-          }
           groupValues[groupKey] = new Map(
             points.map((point) => [point.timestamp, point.costCents])
           );
         }
+
+        let availableGroupBuckets = groupBuckets;
+        if (filterParams && groupBy) {
+          const availableGroupsResult = await searchAnalytics<
+            never,
+            GroupedAggs
+          >(
+            {
+              bool: {
+                filter: [
+                  ...baseFilterClauses,
+                  ...getSelectedFilterClauses(filterParams, groupBy),
+                ],
+              },
+            },
+            {
+              aggregations: buildAggregation(groupBy, groupByCount, false),
+              size: 0,
+            }
+          );
+
+          if (availableGroupsResult.isErr()) {
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message: `Failed to retrieve grouped programmatic cost: ${availableGroupsResult.error.message}`,
+              },
+            });
+          }
+
+          availableGroupBuckets = bucketsToArray(
+            availableGroupsResult.value.aggregations?.by_group?.buckets
+          );
+        }
+
+        // Fetch agent names if grouping by agent
+        const agentNames: Record<string, string> = {};
+        if (groupBy === "agent") {
+          const agentIds = availableGroupBuckets.map((b) => b.key);
+          const agents = await AgentConfiguration.findAll({
+            where: {
+              sId: agentIds,
+            },
+            attributes: ["sId", "name"],
+          });
+          agents.forEach((agent) => {
+            agentNames[agent.sId] = agent.name;
+          });
+        }
+
+        availableGroupBuckets.forEach((bucket) => {
+          let groupLabel = bucket.key;
+          if (bucket.key === "unknown") {
+            groupLabel = "Unknown";
+          } else if (groupBy === "agent" && agentNames[bucket.key]) {
+            groupLabel = agentNames[bucket.key];
+          }
+          availableGroups.push({
+            groupKey: bucket.key,
+            groupLabel,
+          });
+        });
       }
 
-      const programmaticCostCents: Record<string, number> = {};
+      const cumulatedCostCents: Record<string, number> = {};
       Object.keys(groupValues).forEach((group) => {
-        programmaticCostCents[group] = 0;
+        cumulatedCostCents[group] = 0;
       });
 
       const points = timestamps.map((timestamp) => {
-        const groups = Object.entries(groupValues).map(
-          ([groupKey, costMap]) => {
+        const groups = Object.entries(groupValues)
+          .filter(([groupKey]) => !groupBy || groupKey !== "total")
+          .map(([groupKey, costMap]) => {
             const cost = costMap?.get(timestamp);
-            const programmaticCost =
-              (programmaticCostCents[groupKey] ?? 0) + (cost ?? 0);
-            programmaticCostCents[groupKey] = programmaticCost;
+            const cumulatedCost =
+              (cumulatedCostCents[groupKey] ?? 0) + (cost ?? 0);
+            cumulatedCostCents[groupKey] = cumulatedCost;
             return {
               groupKey,
-              groupLabel: groupLabels[groupKey],
               costCents: cost ?? 0,
-              programmaticCostCents:
-                timestamp <= now.getTime() ? programmaticCost : undefined,
+              cumulatedCostCents:
+                timestamp <= now.getTime() ? cumulatedCost : undefined,
             };
-          }
-        );
+          });
+
+        if (groupBy) {
+          const costForAll = groups.reduce(
+            (acc, group) => acc + group.costCents,
+            0
+          );
+
+          // Include "others" group
+          const totalCost = groupValues.total?.get(timestamp) ?? 0;
+          const otherCost = totalCost - costForAll;
+          const cumulatedOtherCost =
+            (cumulatedCostCents["others"] ?? 0) + (otherCost ?? 0);
+          cumulatedCostCents["others"] = cumulatedOtherCost;
+
+          groups.push({
+            groupKey: "others",
+            costCents: otherCost,
+            cumulatedCostCents:
+              timestamp <= now.getTime() ? cumulatedOtherCost : undefined,
+          });
+        }
 
         const credit = creditTotalsMap.get(timestamp);
         return {
@@ -341,8 +462,24 @@ async function handler(
         };
       });
 
+      if (cumulatedCostCents["others"] > 0) {
+        availableGroups.push({
+          groupKey: "others",
+          groupLabel: "Others",
+        });
+      }
+
+      if (!groupBy) {
+        // Add "total" to available groups
+        availableGroups.push({
+          groupKey: "total",
+          groupLabel: "Cumulative Cost",
+        });
+      }
+
       return res.status(200).json({
         points,
+        availableGroups,
       });
     }
     default:
