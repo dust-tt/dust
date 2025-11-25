@@ -111,7 +111,6 @@ async function updateAgenticFields(
         const originalUserContextOrigin = userMessage.userContextOrigin;
 
         if (execute) {
-          // Use set and save to bypass type checking, or cast the update object
           await userMessage.update({
             userContextOrigin: rootContextOrigin,
             agenticOriginMessageId: userMessage.userContextOriginMessageId,
@@ -131,7 +130,7 @@ async function updateAgenticFields(
           );
         }
 
-        totalUpdated += batchMessages.length;
+        totalUpdated += 1;
       }
 
       // Log progress every 10 batches
