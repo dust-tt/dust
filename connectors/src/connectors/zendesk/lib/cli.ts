@@ -41,6 +41,7 @@ import type {
   ZendeskOrganizationTagResponseType,
 } from "@connectors/types";
 import { normalizeError } from "@connectors/types";
+import { removeNulls } from "@connectors/types/shared/utils/general";
 
 function getTagsArgs(args: ZendeskCommandType["args"]) {
   const tag = args.tag;
@@ -409,12 +410,12 @@ export const zendesk = async ({
 
       const userIds = Array.from(
         new Set(
-          [
+          removeNulls([
             ticket.requester_id,
             ticket.assignee_id,
             ticket.submitter_id,
             ...comments.map((comment) => comment.author_id),
-          ].filter(Boolean)
+          ])
         )
       );
 
