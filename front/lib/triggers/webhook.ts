@@ -17,7 +17,6 @@ import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_v
 import { FathomClient } from "@app/lib/triggers/built-in-webhooks/fathom/fathom_client";
 import { checkTriggerForExecutionPerDayLimit } from "@app/lib/triggers/common";
 import { launchAgentTriggerWorkflow } from "@app/lib/triggers/temporal/common/client";
-import { launchAgentTriggerWebhookWorkflow } from "@app/lib/triggers/temporal/webhook/client";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
   getTimeframeSecondsFromLiteral,
@@ -30,6 +29,7 @@ import type { ContentFragmentInputWithFileIdType, Result } from "@app/types";
 import {
   assertNever,
   Err,
+  errorToString,
   isString,
   normalizeError,
   Ok,
@@ -45,13 +45,14 @@ import type {
   WebhookSourceForAdminType,
 } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
+import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 
 const WORKSPACE_MESSAGE_LIMIT_MULTIPLIER = 0.5; // 50% of workspace message limit
 
 /**
  * To avoid storing sensitive information, only these headers are allowed to be stored in GCS.
  */
-const HEADERS_ALLOWED_LIST = [
+export const HEADERS_ALLOWED_LIST = [
   ...removeNulls(
     Object.values(WEBHOOK_PRESETS)
       .filter((preset) => preset.eventCheck?.type === "headers")
@@ -640,36 +641,26 @@ export async function launchTriggersWorkflows({
   return new Ok(undefined);
 }
 
-export async function processWebhookRequest(
+export async function storePayloadInGCS(
   auth: Authenticator,
   {
     webhookSource,
+    webhookRequest,
     headers,
     body,
   }: {
-    webhookSource: WebhookSourceForAdminType;
-    headers: IncomingHttpHeaders;
-    body: unknown;
+    webhookSource: WebhookSourceResource;
+    webhookRequest: WebhookRequestResource;
+    headers: Record<string, string>;
+    body: Record<string, unknown>;
   }
 ): Promise<Result<void, Error>> {
-  // Store on GCS as a file
   const content = JSON.stringify({
-    headers: Object.fromEntries(
-      Object.entries(headers).filter(([key]) =>
-        HEADERS_ALLOWED_LIST.includes(key.toLowerCase())
-      )
-    ),
+    headers,
     body,
   });
 
   const bucket = getWebhookRequestsBucket();
-
-  // Store in DB
-  const webhookRequest = await WebhookRequestResource.makeNew({
-    workspaceId: auth.getNonNullableWorkspace().id,
-    webhookSourceId: webhookSource.id,
-    status: "received",
-  });
 
   const gcsPath = WebhookRequestResource.getGcsPath({
     workspaceId: auth.getNonNullableWorkspace().sId,
@@ -684,11 +675,6 @@ export async function processWebhookRequest(
       contentType: "application/json",
       filePath: gcsPath,
     });
-
-    await launchAgentTriggerWebhookWorkflow({
-      auth,
-      webhookRequest,
-    });
   } catch (error: unknown) {
     const normalizedError = normalizeError(error);
     await webhookRequest.markAsFailed(normalizedError.message);
@@ -697,10 +683,151 @@ export async function processWebhookRequest(
         webhookRequestId: webhookRequest.id,
         error,
       },
-      "Failed to launch agent workflow on webhook request"
+      "Failed to store webhook request"
     );
     return new Err(normalizedError);
   }
+
+  return new Ok(undefined);
+}
+
+export async function getWebhookRequestPayloadFromGCS(
+  auth: Authenticator,
+  {
+    webhookRequest,
+  }: {
+    webhookRequest: WebhookRequestResource;
+  }
+): Promise<
+  Result<
+    {
+      headers: Record<string, string>;
+      body: Record<string, unknown>;
+    },
+    Error
+  >
+> {
+  try {
+    const bucket = getWebhookRequestsBucket();
+    const file = bucket.file(
+      WebhookRequestResource.getGcsPath({
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        webhookSourceId: webhookRequest.webhookSourceId,
+        webRequestId: webhookRequest.id,
+      })
+    );
+    const [content] = await file.download();
+    const { headers: h, body: b } = JSON.parse(content.toString());
+
+    return new Ok({ headers: h, body: b });
+  } catch (error) {
+    const errorAsString = errorToString(error);
+    const errorMessage = "Unable to fetch webhook request content from GCS.";
+    await webhookRequest.markAsFailed(errorMessage + " " + errorAsString);
+    logger.error(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        webhookRequestId: webhookRequest.id,
+        error: errorAsString,
+      },
+      errorMessage
+    );
+    return new Err(normalizeError(errorMessage));
+  }
+}
+
+export async function processWebhookRequest(
+  auth: Authenticator,
+  {
+    webhookSource,
+    webhookRequest,
+    headers,
+    body,
+  }: {
+    webhookSource: WebhookSourceResource;
+    webhookRequest: WebhookRequestResource;
+    headers: Record<string, string>;
+    body: Record<string, unknown>;
+  }
+): Promise<Result<void, Error>> {
+  const localLogger = logger.child({
+    webhookRequestId: webhookRequest.id,
+    webhookSourceId: webhookSource.id,
+    workspaceId: auth.getNonNullableWorkspace().sId,
+  });
+
+  if (webhookSource.secret) {
+    const signatureCheckResult = checkSignature({
+      headerName: webhookSource.signatureHeader,
+      algorithm: webhookSource.signatureAlgorithm,
+      secret: webhookSource.secret,
+      headers,
+      body,
+      provider: webhookSource.provider,
+    });
+
+    if (signatureCheckResult.isErr()) {
+      await webhookRequest.markAsFailed(signatureCheckResult.error.message);
+      localLogger.error(signatureCheckResult.error.message);
+      return signatureCheckResult;
+    }
+  }
+
+  const eventValidationResult = await validateEventSubscription({
+    webhookSource,
+    headers,
+    body,
+    webhookRequest,
+    workspaceId: auth.getNonNullableWorkspace().sId,
+    webhookRequestId: webhookRequest.id,
+  });
+
+  if (eventValidationResult.isErr()) {
+    await webhookRequest.markAsFailed(eventValidationResult.error.message);
+    localLogger.error(eventValidationResult.error.message);
+    return eventValidationResult;
+  }
+
+  const { skipReason, receivedEventValue } = eventValidationResult.value;
+  if (skipReason) {
+    return new Ok(undefined);
+  }
+
+  const filteredTriggersResult = await filterTriggers({
+    auth,
+    webhookSource,
+    receivedEventValue,
+    webhookRequest,
+    body,
+  });
+
+  if (filteredTriggersResult.isErr()) {
+    await webhookRequest.markAsFailed(filteredTriggersResult.error.message);
+    localLogger.error(filteredTriggersResult.error.message);
+    return filteredTriggersResult;
+  }
+
+  const filteredTriggers = filteredTriggersResult.value;
+  if (filteredTriggers.length === 0) {
+    await webhookRequest.markAsProcessed();
+    return new Ok(undefined);
+  }
+
+  const launchResult = await launchTriggersWorkflows({
+    auth,
+    filteredTriggers,
+    webhookSource,
+    body,
+    webhookRequest,
+  });
+
+  if (launchResult.isErr()) {
+    await webhookRequest.markAsFailed(launchResult.error.message);
+    localLogger.error(launchResult.error.message);
+    return launchResult;
+  }
+
+  await webhookRequest.markAsProcessed();
 
   return new Ok(undefined);
 }

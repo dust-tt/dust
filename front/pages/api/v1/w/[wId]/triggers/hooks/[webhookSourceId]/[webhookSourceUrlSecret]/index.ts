@@ -4,11 +4,16 @@ import type { NextApiResponse } from "next";
 import { Authenticator } from "@app/lib/auth";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { processWebhookRequest } from "@app/lib/triggers/webhook";
+import {
+  HEADERS_ALLOWED_LIST,
+  processWebhookRequest,
+  storePayloadInGCS,
+} from "@app/lib/triggers/webhook";
 import { statsDClient } from "@app/logger/statsDClient";
 import type { NextApiRequestWithContext } from "@app/logger/withlogging";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import { isString, type WithAPIErrorResponse } from "@app/types";
+import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 
 /**
  * @swagger
@@ -148,9 +153,46 @@ async function handler(
     `workspace_id:${workspace.sId}`,
   ]);
 
+  const webhookRequest = await WebhookRequestResource.makeNew({
+    workspaceId: auth.getNonNullableWorkspace().id,
+    webhookSourceId: webhookSource.id,
+    status: "received",
+  });
+
+  const filteredHeaders: Record<string, string> = Object.fromEntries(
+    Object.entries(headers).filter(
+      ([key]) =>
+        HEADERS_ALLOWED_LIST.includes(key.toLowerCase()) &&
+        isString(headers[key])
+    ) as [string, string][] // Type assertion to satisfy TypeScript, we've already filtered to strings
+  );
+
+  const storeResult = await storePayloadInGCS(auth, {
+    webhookSource,
+    webhookRequest,
+    headers: filteredHeaders,
+    body,
+  });
+
+  if (storeResult.isErr()) {
+    statsDClient.increment("webhook_error.count", 1, [
+      `provider:${provider}`,
+      `workspace_id:${workspace.sId}`,
+    ]);
+
+    return apiError(req, res, {
+      status_code: 500,
+      api_error: {
+        type: "webhook_storage_error",
+        message: storeResult.error.message,
+      },
+    });
+  }
+
   const result = await processWebhookRequest(auth, {
-    webhookSource: webhookSource.toJSONForAdmin(),
-    headers,
+    webhookSource: webhookSource,
+    webhookRequest,
+    headers: filteredHeaders,
     body,
   });
 
