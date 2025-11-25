@@ -53,8 +53,8 @@ export const ZendeskTicketSchema = z
     has_incidents: z.boolean(),
     satisfaction_rating: z
       .object({
-        comment: z.string().optional(),
-        id: z.number().optional(),
+        comment: z.string().optional().nullable(),
+        id: z.number().optional().nullable(),
         score: z.string(),
       })
       .optional(),
@@ -267,7 +267,7 @@ export const ZendeskUserSchema = z
     id: z.number(),
     url: z.string(),
     name: z.string(),
-    email: z.string(),
+    email: z.string().nullable(),
     created_at: z.string(),
     updated_at: z.string(),
     active: z.boolean(),
@@ -336,7 +336,7 @@ export const ZendeskTicketCommentSchema = z
     body: z.string(),
     author_id: z.number(),
     created_at: z.string(),
-    plain_body: z.string(),
+    plain_body: z.string().optional(),
   })
   .passthrough();
 
