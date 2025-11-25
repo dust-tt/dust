@@ -4,6 +4,7 @@ import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
   FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL,
   FALLBACK_MCP_TOOL_STAKE_LEVEL,
+  MCP_TOOL_STAKE_LEVELS,
 } from "@app/lib/actions/constants";
 import {
   getMcpServerViewDescription,
@@ -41,6 +42,19 @@ export type MCPServerFormValues = ServerSettings & {
   sharingSettings: Record<string, boolean>;
 };
 
+function isToolStakesRecord(
+  value: unknown
+): value is Record<string, MCPToolStakeLevelType> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+
+  return Object.values(value).every(
+    (v): v is MCPToolStakeLevelType =>
+      MCP_TOOL_STAKE_LEVELS.includes(v as MCPToolStakeLevelType)
+  );
+}
+
 function getDefaultInternalToolStakeLevel(
   server: MCPServerViewType["server"],
   toolName: string
@@ -50,12 +64,19 @@ function getDefaultInternalToolStakeLevel(
   }
 
   const serverConfig = INTERNAL_MCP_SERVERS[server.name];
-  const serverToolStakes = serverConfig.tools_stakes as
-    | Record<string, MCPToolStakeLevelType>
-    | undefined;
-  const configuredStake = serverToolStakes?.[toolName];
-  if (configuredStake) {
-    return configuredStake;
+  const serverToolStakes = serverConfig.tools_stakes;
+
+  if (isToolStakesRecord(serverToolStakes)) {
+    // Type guard narrows to Record<string, MCPToolStakeLevelType>, but TypeScript
+    // still sees the union type. Cast to the narrowed type for indexing.
+    const stakesRecord = serverToolStakes as Record<
+      string,
+      MCPToolStakeLevelType
+    >;
+    const configuredStake = stakesRecord[toolName];
+    if (configuredStake) {
+      return configuredStake;
+    }
   }
 
   return serverConfig.availability === "manual"

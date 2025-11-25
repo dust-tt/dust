@@ -170,12 +170,11 @@ export function ToolsList({
           icon={InformationCircleIcon}
           title="User Approval Settings"
         >
-          <p className="text-sm">
-            Tune stake levels to control when Dust asks for approval.
-          </p>
           <p>
-            <b>High</b> requires explicit approval, <b>low</b> can be trusted by
-            users, and <b>never ask</b> runs automatically.
+            <b>High stake</b> tools need explicit user approval. <br />
+            Users can disable confirmations for <b>low stake</b> tools.
+            <br />
+            <b>Never ask</b> tools run automatically.
           </p>
         </ContentMessage>
       )}
