@@ -207,7 +207,9 @@ export const GPT_5_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: true,
   generationTokensCount: 128_000,
   supportsVision: true,
-  minimumReasoningEffort: "none",
+  // gpt-5 does not support "none" but "minimal"
+  // so we set the minimum to "light" to avoid confusion
+  minimumReasoningEffort: "light",
   maximumReasoningEffort: "high",
   defaultReasoningEffort: "medium",
   useNativeLightReasoning: true,
@@ -278,7 +280,7 @@ export const GPT_5_MINI_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: true,
   generationTokensCount: 128_000,
   supportsVision: true,
-  minimumReasoningEffort: "none",
+  minimumReasoningEffort: "light",
   maximumReasoningEffort: "high",
   defaultReasoningEffort: "medium",
   useNativeLightReasoning: true,
@@ -301,7 +303,7 @@ export const GPT_5_NANO_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: true,
   generationTokensCount: 128_000,
   supportsVision: true,
-  minimumReasoningEffort: "none",
+  minimumReasoningEffort: "light",
   maximumReasoningEffort: "high",
   defaultReasoningEffort: "medium",
   useNativeLightReasoning: true,
