@@ -76,7 +76,7 @@ export class OpenAIResponsesLLM extends LLM {
       };
     }
 
-    // In this case, use CoT
+    // In this case, use CoT meta prompt
     return {
       effort: "none",
       summary: "auto",
