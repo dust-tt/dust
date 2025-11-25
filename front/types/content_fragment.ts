@@ -127,19 +127,10 @@ export function isContentNodeContentFragment(
   return arg.contentFragmentType === "content_node";
 }
 
-// Type guard to check if content fragment is expired
 export function isExpiredContentFragment(
   arg: ContentFragmentType
 ): arg is ContentFragmentType & {
   expiredReason: ContentFragmentExpiredReason;
 } {
   return arg.expiredReason !== null;
-}
-
-// Type guard to filter out expired content fragments
-// Use this in API responses where complete data is required
-export function isNonExpiredContentFragment(
-  arg: ContentFragmentType
-): arg is ContentFragmentType & { expiredReason: null } {
-  return arg.expiredReason === null;
 }

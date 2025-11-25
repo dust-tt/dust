@@ -22,6 +22,7 @@ import {
   assertNever,
   DATA_SOURCE_NODE_ID,
   isContentNodeContentFragment,
+  isExpiredContentFragment,
   isFileContentFragment,
 } from "@app/types";
 
@@ -92,20 +93,17 @@ export function getAttachmentFromContentFragment(
   cf: ContentFragmentType
 ): ConversationAttachmentType | null {
   // Expired content fragments cannot be converted to attachments
-  if (cf.expiredReason) {
+  if (isExpiredContentFragment(cf)) {
     return null;
   }
 
-  // After this check, we know expiredReason is null
-  const nonExpiredCf = cf as ContentFragmentType & { expiredReason: null };
-
-  if (isContentNodeContentFragment(nonExpiredCf)) {
-    return getAttachmentFromContentNodeContentFragment(nonExpiredCf);
+  if (isContentNodeContentFragment(cf)) {
+    return getAttachmentFromContentNodeContentFragment(cf);
   }
-  if (isFileContentFragment(nonExpiredCf)) {
-    return getAttachmentFromFileContentFragment(nonExpiredCf);
+  if (isFileContentFragment(cf)) {
+    return getAttachmentFromFileContentFragment(cf);
   }
-  assertNever(nonExpiredCf);
+  assertNever(cf);
 }
 
 export function getAttachmentFromContentNodeContentFragment(
