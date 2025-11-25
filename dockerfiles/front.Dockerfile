@@ -81,7 +81,7 @@ RUN BUILD_WITH_SOURCE_MAPS=${DATADOG_API_KEY:+true} \
 
 RUN npm run sitemap
 
-# Production stage (only standalone output)
+# Production stage (supports both Next.js frontend and front-workers)
 FROM node:20.19.2-slim AS runtime
 
 RUN apt-get update && \
@@ -90,10 +90,16 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-# Copy the standalone output and necessary static files/assets from build stage
+# Copy Next.js standalone output (for frontend deployment)
+# - Copy standalone/ files
+# - Copy static/ files and assets
 COPY --from=front /app/.next/standalone ./
 COPY --from=front /app/.next/static ./.next/static
 COPY --from=front /app/public ./public
+
+# Copy worker assets (for front-workers deployment)
+# - dist/: compiled TypeScript workers via esbuild (including Temporal bundles)
+COPY --from=front /app/dist ./dist
 
 # Preload jemalloc for all processes:
 ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
@@ -101,4 +107,6 @@ ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
 ENV DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust/
 ENV DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
 
+# Default command runs Next.js frontend server
+# For front-workers deployment, override with: CMD ["node", "start_worker.js"]
 CMD ["node", "server.js"]
