@@ -1145,7 +1145,7 @@ The directive should be used to display a clickable version of the agent name in
         provider: "microsoft_tools" as const,
         supported_use_cases: ["personal_actions"] as const,
         scope:
-          "User.Read User.ReadBasic.All Team.ReadBasic.All Chat.Read Chat.ReadWrite ChatMessage.Read ChatMessage.Send ChannelMessage.Read.All ChannelMessage.Send offline_access" as const,
+          "User.Read User.ReadBasic.All Team.ReadBasic.All Channel.ReadBasic.All Chat.Read Chat.ReadWrite ChatMessage.Read ChatMessage.Send ChannelMessage.Read.All ChannelMessage.Send offline_access" as const,
       },
       icon: "MicrosoftTeamsLogo",
       documentationUrl: "https://docs.dust.tt/docs/microsoft-teams-tool-setup",
