@@ -164,13 +164,13 @@ export async function removeMissingArticleBatchActivity({
         articleId,
       });
       if (!article) {
-        await deleteArticle(
+        await deleteArticle({
           connectorId,
           brandId,
           articleId,
           dataSourceConfig,
-          loggerArgs
-        );
+          loggerArgs,
+        });
       }
     },
     { concurrency: 10 }
