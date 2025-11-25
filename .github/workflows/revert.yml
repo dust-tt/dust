@@ -78,6 +78,9 @@ jobs:
           is_revert: true
 
   revert:
+    permissions:
+      contents: read
+      id-token: write
     needs: [notify-start]
     runs-on: ubuntu-latest
     steps:
