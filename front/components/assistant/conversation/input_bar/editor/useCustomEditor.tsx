@@ -1,4 +1,3 @@
-import Heading from "@tiptap/extension-heading";
 import Link from "@tiptap/extension-link";
 import { Placeholder } from "@tiptap/extensions";
 import { Markdown } from "@tiptap/markdown";
@@ -213,17 +212,17 @@ const useCustomEditor = ({
     StarterKit.configure({
       hardBreak: false, // Disable the built-in Shift+Enter. We handle it ourselves in the keymap extension
       strike: false,
+      heading: {
+        levels: [1],
+      },
     }),
     Markdown,
     DataSourceLinkExtension,
-    Heading.configure({
-      levels: [1],
-    }),
     Link.extend({
       renderHTML({ HTMLAttributes }: { HTMLAttributes: { href: string } }) {
         const href = HTMLAttributes.href || "";
         return [
-          "a",
+          "span",
           {
             ...HTMLAttributes,
             title: href, // Add title attribute to show URL as tooltip
@@ -266,7 +265,7 @@ const useCustomEditor = ({
   const editor = useEditor({
     autofocus: disableAutoFocus ? false : "end",
     extensions,
-    shouldRerenderOnTransaction: true,
+    shouldRerenderOnTransaction: true, // necessary to update the editor state (and so the toolbar icons "activation") in real time
     editorProps: {
       attributes: {
         class:
@@ -275,11 +274,6 @@ const useCustomEditor = ({
       // cleans up incoming HTML to remove all style that could mess up with our theme
       transformPastedHTML(html: string) {
         return cleanupPastedHTML(html);
-      },
-      handleClick: (view, pos, event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        return false;
       },
       handlePaste: (view, event) => {
         const text = event.clipboardData?.getData("text/plain") ?? "";

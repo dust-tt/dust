@@ -4,7 +4,7 @@ import type { ComponentType } from "react";
 import { cn } from "@app/components/poke/shadcn/lib/utils";
 
 interface ToolbarIconProps {
-  icon?: ComponentType<{ className?: string }>;
+  icon: ComponentType<{ className?: string }>;
   onClick: () => void;
   active?: boolean;
   tooltip: string;
@@ -30,7 +30,7 @@ export function ToolbarIcon({
             onClick();
           }}
         >
-          {icon && <Icon size="xs" visual={icon} />}
+          <Icon size="xs" visual={icon} />
         </div>
       }
       label={tooltip}
