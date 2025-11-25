@@ -247,7 +247,7 @@ export const ZendeskSectionSchema = z
     name: z.string(),
     locale: z.string(),
     category_id: z.number().optional(),
-    description: z.string().optional(),
+    description: z.string().optional().nullable(),
   })
   .passthrough();
 
