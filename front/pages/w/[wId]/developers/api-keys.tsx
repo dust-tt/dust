@@ -42,6 +42,7 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { useKeys } from "@app/lib/swr/apps";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import type {
   GroupType,
@@ -56,7 +57,6 @@ import {
   GLOBAL_SPACE_NAME,
   SPACE_GROUP_PREFIX,
 } from "@app/types";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;

@@ -17,7 +17,6 @@ import {
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { AppType, WhitelistableFeature, WorkspaceType } from "@app/types";
 import { isAdmin, isBuilder } from "@app/types";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 /**
  * NavigationIds are typed ids we use to identify which navigation item is currently active. We need

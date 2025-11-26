@@ -24,9 +24,9 @@ import {
   serviceProviders,
 } from "@app/lib/providers";
 import { useProviders } from "@app/lib/swr/apps";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { SubscriptionType, UserType, WorkspaceType } from "@app/types";
 import { redactString } from "@app/types";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;

@@ -39,6 +39,7 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { useConnectorConfig, useToggleChatBot } from "@app/lib/swr/connectors";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import logger from "@app/logger/logger";
 import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 import type {
@@ -51,7 +52,6 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { ConnectorsAPI, Err, Ok, setupOAuthConnection } from "@app/types";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
