@@ -1,5 +1,5 @@
 import esbuild from "esbuild";
-import fs from 'fs';
+import fs from "fs";
 
 async function buildWorker() {
   try {
@@ -24,7 +24,7 @@ async function buildWorker() {
       `📦 Bundle size: ${(result.metafile.outputs["dist/start_worker.js"].bytes / 1024 / 1024).toFixed(2)} MB`
     );
 
-    fs.writeFileSync('dist/meta.json', JSON.stringify(result.metafile))
+    fs.writeFileSync("dist/meta.json", JSON.stringify(result.metafile));
 
     // Log any warnings
     if (result.warnings.length > 0) {
