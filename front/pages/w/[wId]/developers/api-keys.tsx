@@ -56,6 +56,7 @@ import {
   GLOBAL_SPACE_NAME,
   SPACE_GROUP_PREFIX,
 } from "@app/types";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -506,11 +507,17 @@ export default function APIKeysPage({
   subscription,
   groups,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+
   return (
     <AppCenteredLayout
       subscription={subscription}
       owner={owner}
-      subNavigation={subNavigationAdmin({ owner, current: "api_keys" })}
+      subNavigation={subNavigationAdmin({
+        owner,
+        current: "api_keys",
+        featureFlags,
+      })}
     >
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header

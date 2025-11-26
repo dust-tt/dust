@@ -31,6 +31,7 @@ import type {
   SubscriptionType,
   WorkspaceType,
 } from "@app/types";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -69,6 +70,8 @@ export default function SecretsPage({
   const [isNewSecretPromptOpen, setIsNewSecretPromptOpen] = useState(false);
   const [isInputNameDisabled, setIsInputNameDisabled] = useState(false);
   const sendNotification = useSendNotification();
+
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
 
   const { secrets } = useDustAppSecrets(owner);
 
@@ -225,7 +228,11 @@ export default function SecretsPage({
       <AppCenteredLayout
         subscription={subscription}
         owner={owner}
-        subNavigation={subNavigationAdmin({ owner, current: "dev_secrets" })}
+        subNavigation={subNavigationAdmin({
+          owner,
+          current: "dev_secrets",
+          featureFlags,
+        })}
       >
         <Page.Vertical gap="xl" align="stretch">
           <Page.Header

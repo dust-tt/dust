@@ -122,7 +122,7 @@ export default function CreditsUsagePage({
   subscription,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [showBuyCreditDialog, setShowBuyCreditDialog] = useState(false);
-  const { hasFeature } = useFeatureFlags({
+  const { hasFeature, featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
   });
 
@@ -140,7 +140,11 @@ export default function CreditsUsagePage({
     <AppCenteredLayout
       subscription={subscription}
       owner={owner}
-      subNavigation={subNavigationAdmin({ owner, current: "credits_usage" })}
+      subNavigation={subNavigationAdmin({
+        owner,
+        current: "credits_usage",
+        featureFlags,
+      })}
     >
       <BuyCreditDialog
         isOpen={showBuyCreditDialog}

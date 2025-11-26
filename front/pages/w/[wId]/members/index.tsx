@@ -37,6 +37,7 @@ import type {
   WorkspaceDomain,
   WorkspaceType,
 } from "@app/types";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   user: UserType;
@@ -95,6 +96,8 @@ export default function WorkspaceAdmin({
   const isProvisioningEnabled =
     plan.limits.users.isSCIMAllowed && hasVerifiedDomains;
 
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+
   const onInviteClick = useCallback(
     (event: MouseEvent) => {
       if (!isUpgraded(plan)) {
@@ -115,7 +118,11 @@ export default function WorkspaceAdmin({
     <AppCenteredLayout
       subscription={subscription}
       owner={owner}
-      subNavigation={subNavigationAdmin({ owner, current: "members" })}
+      subNavigation={subNavigationAdmin({
+        owner,
+        current: "members",
+        featureFlags,
+      })}
     >
       <div className="mb-4">
         <Page.Vertical gap="lg" align="stretch">

@@ -8,7 +8,10 @@ import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ActivityReport } from "@app/components/workspace/ActivityReport";
 import { QuickInsights } from "@app/components/workspace/Analytics";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { useWorkspaceSubscriptions } from "@app/lib/swr/workspaces";
+import {
+  useFeatureFlags,
+  useWorkspaceSubscriptions,
+} from "@app/lib/swr/workspaces";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
@@ -41,6 +44,8 @@ export default function Analytics({
   const { subscriptions } = useWorkspaceSubscriptions({
     owner,
   });
+
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
 
   const handleDownload = async (selectedMonth: string | null) => {
     if (!selectedMonth) {
@@ -150,7 +155,11 @@ export default function Analytics({
       <AppCenteredLayout
         subscription={subscription}
         owner={owner}
-        subNavigation={subNavigationAdmin({ owner, current: "analytics" })}
+        subNavigation={subNavigationAdmin({
+          owner,
+          current: "analytics",
+          featureFlags,
+        })}
       >
         <Page.Vertical align="stretch" gap="xl">
           <Page.Header

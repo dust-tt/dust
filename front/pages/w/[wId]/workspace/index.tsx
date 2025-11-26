@@ -51,6 +51,7 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { ConnectorsAPI, Err, Ok, setupOAuthConnection } from "@app/types";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -134,6 +135,8 @@ export default function WorkspaceAdmin({
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+
   const formValidation = useCallback(() => {
     if (workspaceName === owner.name) {
       return false;
@@ -191,7 +194,11 @@ export default function WorkspaceAdmin({
     <AppCenteredLayout
       subscription={subscription}
       owner={owner}
-      subNavigation={subNavigationAdmin({ owner, current: "workspace" })}
+      subNavigation={subNavigationAdmin({
+        owner,
+        current: "workspace",
+        featureFlags,
+      })}
     >
       <Page.Vertical align="stretch" gap="xl">
         <Page.Header title="Workspace Settings" icon={GlobeAltIcon} />

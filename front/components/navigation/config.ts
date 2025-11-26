@@ -175,19 +175,19 @@ export const subNavigationAdmin = ({
   current,
   subMenuLabel,
   subMenu,
+  featureFlags,
 }: {
   owner: WorkspaceType;
   current: SubNavigationAdminId;
   subMenuLabel?: string;
   subMenu?: AppLayoutNavigation[];
+  featureFlags: WhitelistableFeature[];
 }) => {
   const nav: SidebarNavigation[] = [];
 
   if (!isBuilder(owner)) {
     return nav;
   }
-
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
 
   const hasApiAndProgrammaticSection = featureFlags.includes("ppul");
 

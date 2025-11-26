@@ -26,6 +26,7 @@ import {
 import { useProviders } from "@app/lib/swr/apps";
 import type { SubscriptionType, UserType, WorkspaceType } from "@app/types";
 import { redactString } from "@app/types";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
@@ -226,11 +227,17 @@ export default function ProvidersPage({
   owner,
   subscription,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+
   return (
     <AppCenteredLayout
       subscription={subscription}
       owner={owner}
-      subNavigation={subNavigationAdmin({ owner, current: "providers" })}
+      subNavigation={subNavigationAdmin({
+        owner,
+        current: "providers",
+        featureFlags,
+      })}
     >
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header

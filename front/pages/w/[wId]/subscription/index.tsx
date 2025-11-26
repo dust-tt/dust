@@ -38,6 +38,7 @@ import type {
   SubscriptionType,
   WorkspaceType,
 } from "@app/types";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -103,6 +104,8 @@ export default function Subscription({
   const [showSkipFreeTrialDialog, setShowSkipFreeTrialDialog] = useState(false);
   const [showCancelFreeTrialDialog, setShowCancelFreeTrialDialog] =
     useState(false);
+
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
 
   useEffect(() => {
     if (router.query.type === "succeeded") {
@@ -263,7 +266,11 @@ export default function Subscription({
     <AppCenteredLayout
       subscription={subscription}
       owner={owner}
-      subNavigation={subNavigationAdmin({ owner, current: "subscription" })}
+      subNavigation={subNavigationAdmin({
+        owner,
+        current: "subscription",
+        featureFlags,
+      })}
     >
       {perSeatPricing && (
         <>
