@@ -15,7 +15,6 @@ import type { WebhookSourceResource } from "@app/lib/resources/webhook_source_re
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { FathomClient } from "@app/lib/triggers/built-in-webhooks/fathom/fathom_client";
 import { checkTriggerForExecutionPerDayLimit } from "@app/lib/triggers/common";
-import { launchAgentTriggerWorkflow } from "@app/lib/triggers/temporal/common/client";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
   getTimeframeSecondsFromLiteral,
@@ -24,6 +23,7 @@ import {
 import { verifySignature } from "@app/lib/webhookSource";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
+import { launchAgentTriggerWorkflow } from "@app/temporal/triggers/common/client";
 import type { ContentFragmentInputWithFileIdType, Result } from "@app/types";
 import {
   assertNever,
