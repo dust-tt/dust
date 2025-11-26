@@ -40,6 +40,10 @@ import {
   getConnectorConfigAPIHandler,
   setConnectorConfigAPIHandler,
 } from "./api/connector_config";
+import {
+  addWebhookRouterEntryHandler,
+  deleteWebhookRouterEntryHandler,
+} from "./api/webhook_router_config";
 import { webhookFirecrawlAPIHandler } from "./api/webhooks/webhook_firecrawl";
 
 export function startServer(port: number) {
@@ -171,6 +175,15 @@ export function startServer(port: number) {
   app.post(
     "/webhooks/:webhook_secret/microsoft_teams_bot",
     webhookTeamsAPIHandler
+  );
+
+  app.post(
+    "/webhooks_router_entries/:webhook_secret/:provider/:appId",
+    addWebhookRouterEntryHandler
+  );
+  app.delete(
+    "/webhooks_router_entries/:webhook_secret/:provider/:appId",
+    deleteWebhookRouterEntryHandler
   );
 
   // /configuration/ is the new configration method, replacing the old /config/ method
