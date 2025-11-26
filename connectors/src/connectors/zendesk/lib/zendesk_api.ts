@@ -336,7 +336,7 @@ export class ZendeskClient {
     brandSubdomain: string;
     ticketId: number;
   }): Promise<ZendeskTicketComment[]> {
-    const comments = [];
+    const comments: ZendeskTicketComment[] = [];
     let url = `https://${brandSubdomain}.zendesk.com/api/v2/tickets/${ticketId}/comments?page[size]=${COMMENT_PAGE_SIZE}`;
     let hasMore = true;
 
@@ -347,8 +347,9 @@ export class ZendeskClient {
           ZendeskTicketCommentsResponseSchema
         );
         comments.push(...response.comments);
-        hasMore = response.hasMore ?? false;
-        url = response.nextLink ?? "";
+        hasMore =
+          (response.meta.has_more ?? false) && response.links.next !== url;
+        url = response.links.next ?? "";
       } catch (e) {
         if (isZendeskNotFoundError(e)) {
           return [];
@@ -620,7 +621,8 @@ export class ZendeskClient {
       );
       return {
         articles: response.articles,
-        hasMore: response.next_page !== null && response.articles.length !== 0,
+        hasMore:
+          (response.meta?.has_more ?? false) && response.articles.length !== 0,
         endTime: response.end_time ?? startTime,
       };
     } catch (e) {
