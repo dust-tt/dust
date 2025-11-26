@@ -35,7 +35,7 @@ export function BlockquoteBlock({
 
   // Convert array content to string if necessary
   const contentAsString = Array.isArray(childrenContent)
-    ? childrenContent.join("")
+    ? childrenContent.filter((c) => typeof c === "string").join("")
     : childrenContent;
 
   // Only pass content if it exists
