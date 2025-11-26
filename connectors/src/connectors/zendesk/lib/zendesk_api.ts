@@ -327,8 +327,8 @@ export class ZendeskClient {
         );
         comments.push(...response.comments);
         hasMore =
-          (response.meta?.has_more ?? false) && response.links.next !== url;
-        url = response.links.next ?? "";
+          (response.meta?.has_more ?? false) && response.links?.next !== url;
+        url = response.links?.next ?? "";
       } catch (e) {
         if (isZendeskNotFoundError(e)) {
           return [];
@@ -485,7 +485,7 @@ export class ZendeskClient {
       return {
         categories: response.categories,
         hasMore: response.meta?.has_more ?? false,
-        nextLink: response.links.next ?? null,
+        nextLink: response.links?.next ?? null,
       };
     } catch (e) {
       if (isZendeskNotFoundError(e)) {
@@ -516,7 +516,7 @@ export class ZendeskClient {
       return {
         articles: response.articles,
         hasMore: response.meta?.has_more ?? false,
-        nextLink: response.links.next ?? null,
+        nextLink: response.links?.next ?? null,
       };
     } catch (e) {
       if (isZendeskNotFoundError(e)) {

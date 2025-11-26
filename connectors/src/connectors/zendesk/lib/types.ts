@@ -17,10 +17,12 @@ export const ZendeskPaginatedResponseSchema = z.object({
       before_cursor: z.string().nullable().optional(),
     })
     .optional(),
-  links: z.object({
-    prev: z.string().nullable().optional(),
-    next: z.string().nullable().optional(),
-  }),
+  links: z
+    .object({
+      prev: z.string().nullable().optional(),
+      next: z.string().nullable().optional(),
+    })
+    .optional(),
 });
 
 // Ticket schemas
