@@ -140,7 +140,7 @@ export interface YourIndexData extends ElasticsearchBaseDocument {
 
   // It is recommended to store the date at which the document was created/updated. Useful for
   // potential future migrations
-  updated_at: Date; 
+  updated_at: Date;
 }
 ```
 
