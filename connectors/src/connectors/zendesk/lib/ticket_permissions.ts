@@ -6,7 +6,6 @@ import {
   ZendeskConfigurationResource,
 } from "@connectors/resources/zendesk_resources";
 import type { ModelId } from "@connectors/types";
-import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 /**
  * Marks the node "Tickets" of a Brand as permission "read".

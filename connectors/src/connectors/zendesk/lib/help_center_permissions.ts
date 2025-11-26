@@ -7,7 +7,6 @@ import {
   ZendeskConfigurationResource,
 } from "@connectors/resources/zendesk_resources";
 import type { ModelId } from "@connectors/types";
-import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 /**
  * Marks a help center as permission "read".
