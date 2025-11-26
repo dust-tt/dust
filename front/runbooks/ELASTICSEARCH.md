@@ -283,6 +283,8 @@ Where `email_analyzer` would be defined in your index settings with:
 }
 ```
 
+A good example of this can be found under `front/lib/user_search`.
+
 **Querying Multi-Fields:**
 
 ```typescript
