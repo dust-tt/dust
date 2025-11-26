@@ -53,12 +53,17 @@ const config = {
     serverMinification: false,
     esmExternals: false,
     instrumentationHook: true,
-    // Ensure dd-trace and other dependencies are included in standalone build
+    // Ensure dd-trace and other dependencies are included in standalone build.
     outputFileTracingIncludes: {
       "/**": [
         "./node_modules/dd-trace/**/*",
-        "./node_modules/@datadog/**/*", 
-        "./node_modules/@reduxjs/toolkit/**/*"
+        "./node_modules/@datadog/**/*",
+        // Include entire Redux ecosystem to avoid issues with partial inclusion.
+        "./node_modules/redux/**/*",
+        "./node_modules/@reduxjs/**/*",
+        "./node_modules/immer/**/*",
+        "./node_modules/reselect/**/*",
+        "./node_modules/redux-thunk/**/*",
       ],
     },
   },
