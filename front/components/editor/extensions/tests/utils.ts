@@ -5,6 +5,10 @@ import { StarterKit } from "@tiptap/starter-kit";
 
 export const EditorFactory = (extensions: Extensions) => {
   return new Editor({
-    extensions: [StarterKit, ...extensions, Markdown],
+    extensions: [
+      StarterKit.configure({ bold: false, italic: false }),
+      ...extensions,
+      Markdown,
+    ],
   });
 };
