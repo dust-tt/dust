@@ -395,13 +395,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     // Step 1: Retrieve conversation IDs started before the cutoff date.
     // This pre-filters conversations so we don't scan all messages in the workspace.
-    const conversationsStartedBeforeCutoff = await this.model.findAll({
-      attributes: ["id"],
-      where: {
-        workspaceId,
-        createdAt: { [Op.lt]: cutoffDate },
-      },
-    });
+    const conversationsStartedBeforeCutoff =
+      await this.baseFetchWithAuthorization(auth, options, {
+        where: {
+          workspaceId,
+          createdAt: { [Op.lt]: cutoffDate },
+        },
+      });
 
     if (conversationsStartedBeforeCutoff.length === 0) {
       return [];
@@ -413,7 +413,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     // Step 2: Query messages in batches to find inactive conversations
     // (those with no messages after the cutoff date).
-    const inactiveConversationIds: number[] = [];
+    const inactiveConversationIds: Set<number> = new Set();
 
     for (let i = 0; i < candidateConversationIds.length; i += batchSize) {
       const batchIds = candidateConversationIds.slice(i, i + batchSize);
@@ -431,35 +431,18 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         having: where(fn("MAX", col("createdAt")), "<", cutoffDate),
       });
 
-      inactiveConversationIds.push(
-        ...inactiveInBatch.map((m) => m.conversationId)
+      inactiveInBatch.forEach((m) =>
+        inactiveConversationIds.add(m.conversationId)
       );
     }
 
-    if (inactiveConversationIds.length === 0) {
+    if (inactiveConversationIds.size === 0) {
       return [];
     }
 
-    // Step 3: Fetch conversation resources in batches to avoid large WHERE IN clauses.
-    const results: ConversationResource[] = [];
-    for (let i = 0; i < inactiveConversationIds.length; i += batchSize) {
-      const batch = inactiveConversationIds.slice(i, i + batchSize);
-      const conversations = await this.baseFetchWithAuthorization(
-        auth,
-        options,
-        {
-          where: {
-            id: {
-              [Op.in]: batch,
-            },
-          },
-        }
-      );
-
-      results.push(...conversations);
-    }
-
-    return results;
+    return conversationsStartedBeforeCutoff.filter((c) =>
+      inactiveConversationIds.has(c.id)
+    );
   }
 
   static async listConversationWithAgentCreatedBeforeDate(
