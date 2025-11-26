@@ -13,28 +13,25 @@ import { Err, GLOBAL_AGENTS_SID, Ok } from "@app/types";
 
 import { createConversation, postUserMessage } from "./conversation";
 
-// Shared constants for tool recommendations by role
 const TOOL_RECOMMENDATIONS_BY_ROLE = `
 Tool recommendations by role:
-- Engineering: GitHub, Jira, Confluence
-- Sales/Customer Success: Salesforce, HubSpot, Slack
+- Engineering: GitHub, Jira, Notion
+- Sales/Customer Success: HubSpot, Slack, Notion
 - Product/Design: Notion, Jira, Slack
-- Marketing: HubSpot, Google Sheets, Notion
-- Data: Google Sheets, Salesforce, GitHub
-- Operations/Finance: Google Sheets, Monday, Slack`;
+- Marketing: HubSpot, Notion, Slack
+- Data: GitHub, Notion, Slack
+- Operations/Finance: Notion, Slack, HubSpot`;
 
-// Full list of available tools for personal connection
 const AVAILABLE_TOOLS_LIST = `
 Available tools for personal connection (sId in parentheses):
 - Gmail (gmail), Outlook (outlook) - email
 - Google Calendar (google_calendar), Outlook Calendar (outlook_calendar) - calendar
-- Notion (notion), Confluence (confluence), Slab (slab) - knowledge bases
+- Notion (notion) - knowledge base
 - GitHub (github), Jira (jira) - development
 - Slack (slack), Microsoft Teams (microsoft_teams) - messaging
 - Google Drive (google_drive), Microsoft Drive (microsoft_drive) - file storage
-- Google Sheets (google_sheets), Microsoft Excel (microsoft_excel) - spreadsheets
-- Salesforce (salesforce), HubSpot (hubspot) - CRM
-- Monday (monday), Freshservice (freshservice) - project management`;
+- Microsoft Excel (microsoft_excel) - spreadsheets
+- HubSpot (hubspot) - CRM`;
 
 function buildOnboardingPrompt(options: {
   emailProvider: EmailProviderType;
