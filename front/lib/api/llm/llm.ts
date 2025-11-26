@@ -257,7 +257,7 @@ export abstract class LLM {
           type: "stream_error",
           message: `LLM did not complete successfully for ${this.metadata.clientId}/${this.metadata.modelId}.`,
           isRetryable: true,
-          originalError: { lastEvent },
+          originalError: { lastEventType: lastEvent?.type },
         },
         this.metadata
       );
