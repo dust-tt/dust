@@ -45,7 +45,6 @@ const _deleteWebhookRouterEntryHandler = async (
       "Failed to delete webhook router entry"
     );
 
-    // Check if it's a not found error
     if (error instanceof WebhookRouterEntryNotFoundError) {
       return apiError(req, res, {
         status_code: 404,
