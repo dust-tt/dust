@@ -15,10 +15,10 @@ import {
   HandThumbUpIcon,
   Hoverable,
   Icon,
-  NavigationListLabel,
   Spinner,
+  Timeline,
 } from "@dust-tt/sparkle";
-import { memo, useCallback, useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { useInView } from "react-intersection-observer";
 
 import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
@@ -42,6 +42,22 @@ type FeedbackFilter = "unseen" | "all";
 interface FeedbacksSectionProps {
   owner: LightWorkspaceType;
   agentConfigurationId: string;
+}
+
+function getAgentConfigurationVersionString(
+  config: LightAgentConfigurationType,
+  isLatestVersion: boolean
+): string {
+  if (isLatestVersion) {
+    return "Latest production version. All feedback is processed.";
+  }
+  if (!config.versionCreatedAt) {
+    return `v${config.version}`;
+  }
+  const versionDate = new Date(config.versionCreatedAt);
+  return (
+    "Version: " + formatTimestampToFriendlyDate(versionDate.getTime(), "long")
+  );
 }
 
 export const FeedbacksSection = ({
@@ -176,19 +192,34 @@ export const FeedbacksSection = ({
           No feedback yet.
         </div>
       ) : (
-        <div className="flex flex-col gap-4">
+        <Timeline>
           {versionsInOrder.map((version) => {
             const versionFeedbacks = feedbacksByVersion[version];
             const agentConfig = agentConfigByVersion[version];
             const isLatestVersion = version === latestVersion;
 
+            const versionTitle = agentConfig
+              ? getAgentConfigurationVersionString(agentConfig, isLatestVersion)
+              : `v${version}`;
+
+            const feedbackCount = versionFeedbacks?.length || 0;
+            const meta =
+              feedbackCount === 1
+                ? "1 feedback item"
+                : `${feedbackCount} feedback items`;
+
+            const description = agentConfig?.versionAuthor
+              ? `Updated by ${agentConfig.versionAuthor}`
+              : undefined;
+
             return (
-              <div key={version} className="flex flex-col gap-4">
-                <AgentConfigurationVersionHeader
-                  agentConfiguration={agentConfig}
-                  agentConfigurationVersion={version}
-                  isLatestVersion={isLatestVersion}
-                />
+              <Timeline.Item
+                key={version}
+                variant={isLatestVersion ? "complete" : "upcoming"}
+                title={versionTitle}
+                meta={meta}
+                description={description}
+              >
                 <div className="@container">
                   <div className="grid grid-cols-1 gap-4 @md:grid-cols-2">
                     {versionFeedbacks?.map((feedback) => (
@@ -206,55 +237,16 @@ export const FeedbacksSection = ({
                     ))}
                   </div>
                 </div>
-              </div>
+              </Timeline.Item>
             );
           })}
-        </div>
+        </Timeline>
       )}
       {/* Invisible div to act as a scroll anchor for detecting when the user has scrolled to the bottom */}
       <div ref={bottomRef} className="h-1.5" />
     </TabContentChildSectionLayout>
   );
 };
-
-interface AgentConfigurationVersionHeaderProps {
-  agentConfigurationVersion: number;
-  agentConfiguration: LightAgentConfigurationType | undefined;
-  isLatestVersion: boolean;
-}
-
-function AgentConfigurationVersionHeader({
-  agentConfigurationVersion,
-  agentConfiguration,
-  isLatestVersion,
-}: AgentConfigurationVersionHeaderProps) {
-  const getAgentConfigurationVersionString = useCallback(
-    (config: LightAgentConfigurationType) => {
-      if (isLatestVersion) {
-        return "Latest version";
-      }
-      if (!config.versionCreatedAt) {
-        return `v${config.version}`;
-      }
-      const versionDate = new Date(config.versionCreatedAt);
-      return (
-        "Version: " +
-        formatTimestampToFriendlyDate(versionDate.getTime(), "long")
-      );
-    },
-    [isLatestVersion]
-  );
-
-  return (
-    <NavigationListLabel
-      label={
-        agentConfiguration
-          ? getAgentConfigurationVersionString(agentConfiguration)
-          : `v${agentConfigurationVersion}`
-      }
-    />
-  );
-}
 
 interface FeedbackCardProps {
   owner: LightWorkspaceType;
