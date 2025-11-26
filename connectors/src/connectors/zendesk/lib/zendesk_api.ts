@@ -328,7 +328,7 @@ export class ZendeskClient {
         comments.push(...response.comments);
         hasMore =
           (response.meta?.has_more ?? false) &&
-          response.links?.next &&
+          !!response.links?.next &&
           response.links?.next !== url;
         url = response.links?.next ?? "";
       } catch (e) {
