@@ -16,8 +16,10 @@ import {
   UserModel,
 } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
 import type { LightWorkspaceType, ModelId, Result, UserType } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
+import type { UserSearchDocument } from "@app/types/user_search/user_search";
 
 export interface SearchMembersPaginationParams {
   orderColumn: "name";
@@ -57,7 +59,18 @@ export class UserResource extends BaseResource<UserModel> {
   ): Promise<UserResource> {
     const lowerCaseEmail = blob.email?.toLowerCase();
     const user = await UserModel.create({ ...blob, email: lowerCaseEmail });
-    return new this(UserModel, user.get());
+    const userResource = new this(UserModel, user.get());
+
+    // Update user search index across all workspaces.
+    const workflowResult = await launchIndexUserSearchWorkflow({
+      userId: userResource.sId,
+    });
+    if (workflowResult.isErr()) {
+      // Throw if it fails to launch (unexpected).
+      throw workflowResult.error;
+    }
+
+    return userResource;
   }
 
   static async fetchByIds(userIds: string[]): Promise<UserResource[]> {
@@ -253,10 +266,21 @@ export class UserResource extends BaseResource<UserModel> {
     if (lastName) {
       lastName = escape(lastName);
     }
-    return this.update({
+    const result = await this.update({
       firstName,
       lastName,
     });
+
+    // Update user search index across all workspaces.
+    const workflowResult = await launchIndexUserSearchWorkflow({
+      userId: this.sId,
+    });
+    if (workflowResult.isErr()) {
+      // Throw if it fails to launch (unexpected).
+      throw workflowResult.error;
+    }
+
+    return result;
   }
 
   async updateImage(imageUrl: string | null) {
@@ -277,13 +301,24 @@ export class UserResource extends BaseResource<UserModel> {
       lastName = escape(lastName);
     }
     const lowerCaseEmail = email.toLowerCase();
-    return this.update({
+    const result = await this.update({
       username,
       firstName,
       lastName,
       email: lowerCaseEmail,
       workOSUserId,
     });
+
+    // Update user search index across all workspaces.
+    const workflowResult = await launchIndexUserSearchWorkflow({
+      userId: this.sId,
+    });
+    if (workflowResult.isErr()) {
+      // Throw if it fails to launch (unexpected).
+      throw workflowResult.error;
+    }
+
+    return result;
   }
 
   async recordLoginActivity(date?: Date) {
@@ -439,6 +474,16 @@ export class UserResource extends BaseResource<UserModel> {
 
   fullName(): string {
     return [this.firstName, this.lastName].filter(Boolean).join(" ");
+  }
+
+  toUserSearchDocument(workspace: LightWorkspaceType): UserSearchDocument {
+    return {
+      workspace_id: workspace.sId,
+      user_id: this.sId,
+      email: this.email,
+      full_name: this.fullName(),
+      updated_at: this.updatedAt,
+    };
   }
 
   toJSON(): UserType {
