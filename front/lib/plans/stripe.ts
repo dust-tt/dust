@@ -53,12 +53,6 @@ export const getStripeClient = () => {
   });
 };
 
-export async function getStripeAccountId(): Promise<string> {
-  const stripe = getStripeClient();
-  const account = await stripe.accounts.retrieve();
-  return account.id;
-}
-
 async function getDefautPriceFromMetadata(
   productId: string,
   key: string

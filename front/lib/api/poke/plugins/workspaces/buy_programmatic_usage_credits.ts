@@ -5,7 +5,6 @@ import { createPlugin } from "@app/lib/api/poke/types";
 import { createEnterpriseCreditPurchase } from "@app/lib/credits/purchase";
 import {
   getCustomerId,
-  getStripeAccountId,
   getStripeSubscription,
   isEnterpriseSubscription,
 } from "@app/lib/plans/stripe";
@@ -37,14 +36,16 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
     args: {
       amountDollars: {
         type: "number",
-        label: "Amount ($)",
-        description: "Amount in US dollars to purchase",
+        label: "Credit Amount ($)",
+        description:
+          "Programmatic usage credits amount, in usd, not billed amount. So without VAT, currency conversion and discounts",
       },
       discountPercent: {
         type: "number",
         async: true,
-        label: "Discount (%)",
-        description: "Discount percentage to apply (0-100)",
+        label: "Billing Discount (%)",
+        description:
+          "Discount percentage to apply (0-100) on the billed amount",
       },
       confirm: {
         type: "boolean",
@@ -112,17 +113,13 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
     }
 
     const customerId = getCustomerId(stripeSubscription);
-    const stripeAccountId = await getStripeAccountId();
-    const invoiceUrl = `https://dashboard.stripe.com/${stripeAccountId}/customers/${customerId}/upcoming_invoice/${subscription.stripeSubscriptionId}`;
+    const invoiceUrl = `https://dashboard.stripe.com/customers/${customerId}/upcoming_invoice/${subscription.stripeSubscriptionId}`;
 
     const originalAmount = validatedArgs.amountDollars;
-    const discountAmount =
-      (originalAmount * validatedArgs.discountPercent) / 100;
-    const finalAmount = originalAmount - discountAmount;
 
     return new Ok({
       display: "textWithLink",
-      value: `Successfully added credit purchase of $${finalAmount.toFixed(2)} (original: $${originalAmount.toFixed(2)}, discount: ${validatedArgs.discountPercent}%) to the subscription. The charge will appear on the next billing cycle.`,
+      value: `Successfully added credit purchase of $${originalAmount.toFixed(2)} to the subscription. The charge will appear on the next billing cycle. See upcoming invoice for actual billed amount`,
       link: invoiceUrl,
       linkText: "View Upcoming Invoice in Stripe",
     });
