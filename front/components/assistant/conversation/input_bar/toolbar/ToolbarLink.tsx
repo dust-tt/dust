@@ -117,6 +117,7 @@ export function ToolbarLink({ editor }: ToolbarLinkProps) {
         },
         { updateSelection: true }
       )
+      .insertContent(linkUrl ? " " : "")
       .run();
 
     setLinkText("");

@@ -234,6 +234,7 @@ const useCustomEditor = ({
       HTMLAttributes: {
         class: "text-blue-600 hover:underline hover:text-blue-800",
       },
+      autolink: false,
     }),
     MentionExtension.configure({
       owner,
