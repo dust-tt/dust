@@ -3,12 +3,15 @@ import { describe, it, vi } from "vitest";
 import {
   runConversation,
   TEST_CONVERSATIONS,
+  TEST_STRUCTURED_OUTPUT_CONVERSATIONS,
+  TEST_VISION_CONVERSATIONS,
 } from "@app/lib/api/llm/tests/conversations";
 import type {
   RunnabletestConversation as RunnableTestConversation,
   TestConfig,
   TestConversation,
 } from "@app/lib/api/llm/tests/types";
+import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { ModelIdType, ModelProviderIdType } from "@app/types";
 import { GEMINI_3_PRO_MODEL_ID } from "@app/types";
 
@@ -108,14 +111,31 @@ class LLMClientTestSuite {
       provider: this.provider,
     }));
   }
+
   protected getSupportedConversations(
-    _modelId: ModelIdType
+    modelId: ModelIdType
   ): TestConversation[] {
-    return TEST_CONVERSATIONS;
+    const conversationsToTest = TEST_CONVERSATIONS;
+    const modelConfig = getSupportedModelConfig({
+      modelId,
+      providerId: this.provider,
+    });
+    if (modelConfig.supportsVision) {
+      conversationsToTest.push(...TEST_VISION_CONVERSATIONS);
+    }
+    if (modelConfig.supportsResponseFormat) {
+      conversationsToTest.push(...TEST_STRUCTURED_OUTPUT_CONVERSATIONS);
+    }
+
+    return conversationsToTest;
   }
 
-  protected getConversationsToRun(): RunnableTestConversation[] {
-    return TEST_CONVERSATIONS.map((conversation) => ({
+  protected getConversationsToRun(
+    modelId: ModelIdType
+  ): RunnableTestConversation[] {
+    const conversationsToTest = this.getSupportedConversations(modelId);
+
+    return conversationsToTest.map((conversation) => ({
       name: conversation.name,
       run: async (config: TestConfig) => {
         await runConversation(conversation, config);
@@ -129,7 +149,7 @@ class LLMClientTestSuite {
         describe(`Model: ${model}`, () => {
           this.getTestConfig(model).forEach((config) => {
             describe(`Config: temperature=${config.temperature}, reasoningEffort=${config.reasoningEffort}, responseFormat=${config.testStructuredOutputKey}`, () => {
-              this.getConversationsToRun().forEach((conversation) => {
+              this.getConversationsToRun(model).forEach((conversation) => {
                 it(
                   `should handle: ${conversation.name}`,
                   { concurrent: true, timeout: TIMEOUT },

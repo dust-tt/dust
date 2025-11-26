@@ -202,6 +202,9 @@ export const TEST_CONVERSATIONS: TestConversation[] = [
       },
     ],
   },
+];
+
+export const TEST_VISION_CONVERSATIONS: TestConversation[] = [
   {
     id: "image-description",
     name: "Image description",
