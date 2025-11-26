@@ -13,20 +13,20 @@
         "type": "custom",
         "tokenizer": "icu_tokenizer",
         "filter": [
+          "preserve_word_delimiter",
           "icu_folding",
           "lowercase",
-          "asciifolding",
-          "preserve_word_delimiter"
+          "asciifolding"
         ]
       },
       "edge_analyzer": {
         "type": "custom",
         "tokenizer": "icu_tokenizer",
         "filter": [
+          "preserve_word_delimiter",
           "icu_folding",
           "lowercase",
           "asciifolding",
-          "preserve_word_delimiter",
           "edge_ngram_filter"
         ]
       }
