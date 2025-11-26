@@ -5,6 +5,7 @@ import type { AnthropicWhitelistedModelId } from "@app/lib/api/llm/clients/anthr
 import type { GoogleAIStudioWhitelistedModelId } from "@app/lib/api/llm/clients/google/types";
 import type { MistralWhitelistedModelId } from "@app/lib/api/llm/clients/mistral/types";
 import type { OpenAIWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
+import type { ConversationId } from "@app/lib/api/llm/tests/conversations";
 import {
   runConversation,
   TEST_CONVERSATIONS,
@@ -169,6 +170,12 @@ const MODELS: Record<
   [O4_MINI_MODEL_ID]: { runTest: false, providerId: "openai" },
 };
 
+// When not empty, filter the conversations to run
+const FILTER_CONVERSATION_IDS: ConversationId[] = [];
+
+// When set to true, run all model tests regardless of their `runTest` flag
+const RUN_ALL_MODEL_TESTS = false;
+
 function getSupportedConversations({
   modelId,
   providerId,
@@ -188,6 +195,11 @@ function getSupportedConversations({
     conversationsToTest.push(...TEST_STRUCTURED_OUTPUT_CONVERSATIONS);
   }
 
+  if (FILTER_CONVERSATION_IDS.length > 0) {
+    return conversationsToTest.filter((conversation) =>
+      FILTER_CONVERSATION_IDS.includes(conversation.id)
+    );
+  }
   return conversationsToTest;
 }
 
@@ -223,31 +235,33 @@ function getConversationsToRun({
  * 2. Run tests (requires API keys):
  *    RUN_LLM_TEST=true npx vitest --config lib/api/llm/tests/vite.config.js lib/api/llm/tests/llm.test.ts --run
  */
-describe
-  .runIf(process.env.RUN_LLM_TEST === "true")
-  .each(Object.entries(MODELS))(
-  "$providerId / $modelId",
-  (modelId, { providerId, runTest }) => {
-    if (!isModelProviderId(providerId)) {
-      throw new Error(`Invalid providerId: ${providerId}`);
-    }
-    describe.runIf(runTest).concurrent.each(
-      getConversationsToRun({
-        modelId: modelId as ModelIdType,
-        providerId,
-      })
-    )("should handle: $name", (conversation) => {
-      it.concurrent.each(conversation.configs)(
-        "temperature: $temperature, reasoningEffort: $reasoningEffort, testStructuredOutputKey: $testStructuredOutputKey",
-        async (config) => {
-          await conversation.run({
-            modelId: modelId as ModelIdType,
-            provider: providerId,
-            ...config,
-          });
-        },
-        TIMEOUT
-      );
-    });
+describe.runIf(process.env.RUN_LLM_TEST === "true").each(
+  Object.entries(MODELS)
+    .filter(([, config]) => config.runTest || RUN_ALL_MODEL_TESTS)
+    .map(([modelId, config]) => ({
+      modelId,
+      ...config,
+    }))
+)("$providerId / $modelId", ({ modelId, providerId }) => {
+  if (!isModelProviderId(providerId)) {
+    throw new Error(`Invalid providerId: ${providerId}`);
   }
-);
+  describe.concurrent.each(
+    getConversationsToRun({
+      modelId: modelId as ModelIdType,
+      providerId,
+    })
+  )("should handle: $name", (conversation) => {
+    it.concurrent.each(conversation.configs)(
+      "temperature: $temperature, reasoningEffort: $reasoningEffort, testStructuredOutputKey: $testStructuredOutputKey",
+      async (config) => {
+        await conversation.run({
+          modelId: modelId as ModelIdType,
+          provider: providerId,
+          ...config,
+        });
+      },
+      TIMEOUT
+    );
+  });
+});

@@ -289,6 +289,11 @@ export const TEST_STRUCTURED_OUTPUT_CONVERSATIONS: (Omit<
   },
 ];
 
+export type ConversationId =
+  | (typeof TEST_CONVERSATIONS)[number]["id"]
+  | (typeof TEST_VISION_CONVERSATIONS)[number]["id"]
+  | (typeof TEST_STRUCTURED_OUTPUT_CONVERSATIONS)[number]["id"];
+
 export const runConversation = async (
   conversation: TestConversation,
   config: TestConfig
