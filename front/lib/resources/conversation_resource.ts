@@ -9,7 +9,6 @@ import type {
 import { col, fn, literal, Op, QueryTypes, Sequelize, where } from "sequelize";
 
 import { getMaximalVersionAgentStepContent } from "@app/lib/api/assistant/configuration/steps";
-import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationMCPServerViewModel } from "@app/lib/models/assistant/actions/conversation_mcp_server_view";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
@@ -943,24 +942,23 @@ export class ConversationResource extends BaseResource<ConversationModel> {
    * This function retrieves the latest version of each message for the current page,
    * because there's no easy way to fetch only the latest version of a message.
    * Content fragment messages are not counted toward the limit.
+   * It's sort by rank in descending order.
    */
   private async getMaxRankMessages(
     auth: Authenticator,
-    paginationParams: PaginationParams
+    { limit, lastRank }: { limit: number; lastRank?: number | null }
   ): Promise<{
     allMessageIds: ModelId[];
     nonContentFragmentMessageIds: ModelId[];
     hasMore: boolean;
   }> {
-    const { limit, orderColumn, orderDirection, lastValue } = paginationParams;
-
     const allMessageIds: ModelId[] = [];
     const nonContentFragmentMessageIds: ModelId[] = [];
     const messageIdToRank = new Map<ModelId, number>();
     const cfMessageIds = new Set<ModelId>();
     let nonContentFragmentCount = 0;
     const targetNonContentFragmentCount = limit + 1;
-    let currentLastValue = lastValue;
+    let currentLastRank = lastRank ?? undefined;
     let batchSize = Math.min(limit * 3, 300);
 
     // Keep fetching batches until we have limit + 1 non-content-fragment messages
@@ -971,10 +969,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         workspaceId: auth.getNonNullableWorkspace().id,
       };
 
-      if (currentLastValue) {
-        const op = orderDirection === "desc" ? Op.lt : Op.gt;
-        where[orderColumn as any] = {
-          [op]: currentLastValue,
+      if (currentLastRank) {
+        where["rank"] = {
+          [Op.lt]: currentLastRank,
         };
       }
 
@@ -990,7 +987,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         ],
         where,
         group: ["rank"],
-        order: [[orderColumn, orderDirection === "desc" ? "DESC" : "ASC"]],
+        order: [["rank", "DESC"]],
         limit: batchSize,
       });
 
@@ -1017,10 +1014,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           // This ensures CFs are bundled with their associated user/agent messages
           if (lastIncludedNonCfRank !== null) {
             // Check if this CF comes before the last included non-CF message
-            const comesBefore =
-              orderDirection === "desc"
-                ? messageRank < lastIncludedNonCfRank
-                : messageRank > lastIncludedNonCfRank;
+            const comesBefore = messageRank < lastIncludedNonCfRank;
+
             if (comesBefore) {
               allMessageIds.push(message.id);
             }
@@ -1043,7 +1038,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         }
 
         // Update currentLastValue to the last processed message's rank
-        currentLastValue = messageRank;
+        currentLastRank = messageRank;
       }
 
       // If we've reached our target, stop fetching
@@ -1108,10 +1103,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
             if (cfRank === undefined) {
               return false; // Shouldn't happen, but keep it to be safe
             }
-            const comesAfter =
-              orderDirection === "desc"
-                ? cfRank < lastIncludedNonCfRank
-                : cfRank > lastIncludedNonCfRank;
+            const comesAfter = cfRank < lastIncludedNonCfRank;
+
             return comesAfter;
           });
 
@@ -1134,14 +1127,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   async fetchMessagesForPage(
     auth: Authenticator,
-    paginationParams: PaginationParams
+    { limit, lastRank }: { limit: number; lastRank?: number | null }
   ): Promise<{ hasMore: boolean; messages: Message[] }> {
-    const { orderColumn, orderDirection } = paginationParams;
-
-    const { allMessageIds, hasMore } = await this.getMaxRankMessages(
-      auth,
-      paginationParams
-    );
+    const { allMessageIds, hasMore } = await this.getMaxRankMessages(auth, {
+      limit,
+      lastRank,
+    });
 
     // Fetch all messages (including content fragments and up to limit non-content-fragment messages)
     const messages = await Message.findAll({
@@ -1152,7 +1143,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           [Op.in]: allMessageIds,
         },
       },
-      order: [[orderColumn, orderDirection === "desc" ? "DESC" : "ASC"]],
+      order: [["rank", "DESC"]],
       include: [
         {
           model: UserMessage,

@@ -2135,8 +2135,6 @@ describe("Space Handling", () => {
       // because content fragments don't count toward limit
       const page1 = await conversationResource.fetchMessagesForPage(auth, {
         limit: 2,
-        orderColumn: "rank",
-        orderDirection: "desc",
       });
 
       // Should get all 4 messages (3 content fragments + 1 user message)
@@ -2218,8 +2216,6 @@ describe("Space Handling", () => {
       // because we have exactly 2 non-content-fragment messages (user + agent) which equals limit
       const page1 = await conversationResource.fetchMessagesForPage(auth, {
         limit: 2,
-        orderColumn: "rank",
-        orderDirection: "desc",
       });
 
       expect(page1.hasMore).toBe(false);
@@ -2263,8 +2259,6 @@ describe("Space Handling", () => {
       // Test with limit 2: should get only 2 messages (normal pagination behavior)
       const page1 = await conversationResource.fetchMessagesForPage(auth, {
         limit: 2,
-        orderColumn: "rank",
-        orderDirection: "desc",
       });
 
       expect(page1.hasMore).toBe(true);
@@ -2319,8 +2313,6 @@ describe("Space Handling", () => {
       // hasMore should be true because there's 1 more non-content-fragment message (user message 1)
       const page1 = await conversationResource.fetchMessagesForPage(auth, {
         limit: 2,
-        orderColumn: "rank",
-        orderDirection: "desc",
       });
 
       // Verify we have exactly 2 non-content-fragment messages (the limit)
@@ -2334,12 +2326,10 @@ describe("Space Handling", () => {
       expect(page1.messages[2].rank).toBe(3); // User message 2
       // May include additional content fragments depending on batch processing
 
-      // Test pagination with lastValue (starting from rank 2)
+      // Test pagination with lastRank (starting from rank 2)
       const page2 = await conversationResource.fetchMessagesForPage(auth, {
         limit: 2,
-        orderColumn: "rank",
-        orderDirection: "desc",
-        lastValue: 2, // Start from content fragment 2
+        lastRank: 2, // Start from content fragment 2
       });
 
       // Should get user message 1 + content fragment 1 (2 messages: 1 non-content-fragment)
@@ -2349,7 +2339,7 @@ describe("Space Handling", () => {
       expect(page2.messages[1].rank).toBe(0); // Content fragment 1
     });
 
-    it("should handle pagination when lastValue is a content fragment", async () => {
+    it("should handle pagination when lastRank is a content fragment", async () => {
       const conversationResource = await ConversationResource.fetchById(
         auth,
         conversation.sId
@@ -2398,8 +2388,6 @@ describe("Space Handling", () => {
       // Note: CF(1) should NOT be included on page 1 as it should be bundled with User(1) on page 2
       const page1 = await conversationResource.fetchMessagesForPage(auth, {
         limit: 1,
-        orderColumn: "rank",
-        orderDirection: "desc",
       });
 
       expect(page1.hasMore).toBe(true); // There's 1 more non-content-fragment message (user message 1)
@@ -2415,9 +2403,7 @@ describe("Space Handling", () => {
       // Second page: paginate from content fragment 1 (rank 1)
       const page2 = await conversationResource.fetchMessagesForPage(auth, {
         limit: 1,
-        orderColumn: "rank",
-        orderDirection: "desc",
-        lastValue: 1, // lastValue is a content fragment
+        lastRank: 1, // lastRank is a content fragment
       });
 
       // Should get user message 1 (rank 0)
@@ -2472,8 +2458,6 @@ describe("Space Handling", () => {
       // Page 1 with limit 2: should get User(7), CF(6), User(5), CF(4) (4 messages: 2 non-CF)
       const page1 = await conversationResource.fetchMessagesForPage(auth, {
         limit: 2,
-        orderColumn: "rank",
-        orderDirection: "desc",
       });
 
       expect(page1.hasMore).toBe(true);
@@ -2490,9 +2474,7 @@ describe("Space Handling", () => {
       // Page 2: paginate from CF(4) - should get remaining messages
       const page2 = await conversationResource.fetchMessagesForPage(auth, {
         limit: 2,
-        orderColumn: "rank",
-        orderDirection: "desc",
-        lastValue: 4,
+        lastRank: 4,
       });
 
       // Should get User(3), CF(2), User(1), CF(0) (4 messages: 2 non-CF)
@@ -2558,8 +2540,6 @@ describe("Space Handling", () => {
       // So final: User(6), CF(5), CF(4), Agent(3)
       const page1 = await conversationResource.fetchMessagesForPage(auth, {
         limit: 2,
-        orderColumn: "rank",
-        orderDirection: "desc",
       });
 
       expect(page1.hasMore).toBe(true);

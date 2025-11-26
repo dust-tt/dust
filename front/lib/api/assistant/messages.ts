@@ -5,7 +5,6 @@ import {
 } from "@app/lib/api/assistant/agent_message_content_parser";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
-import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMessage,
@@ -565,8 +564,11 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
 
 export async function fetchConversationMessages(
   auth: Authenticator,
-  conversationId: string,
-  paginationParams: PaginationParams
+  {
+    conversationId,
+    limit,
+    lastRank,
+  }: { conversationId: string; limit: number; lastRank: number | null }
 ): Promise<Result<FetchConversationMessagesResponse, Error>> {
   const owner = auth.workspace();
   if (!owner) {
@@ -582,10 +584,10 @@ export async function fetchConversationMessages(
     return new Err(new ConversationError("conversation_not_found"));
   }
 
-  const { hasMore, messages } = await conversation.fetchMessagesForPage(
-    auth,
-    paginationParams
-  );
+  const { hasMore, messages } = await conversation.fetchMessagesForPage(auth, {
+    limit,
+    lastRank,
+  });
 
   const renderedMessagesRes = await batchRenderMessages(
     auth,
