@@ -374,25 +374,6 @@ async function handler(
                 "[Stripe Webhook] Error processing credit purchase"
               );
             }
-          } else if (invoice.billing_reason === "subscription_cycle") {
-            const freeCreditsResult =
-              await grantFreeCreditsOnSubscriptionRenewal({
-                auth,
-                invoice,
-                stripeSubscription,
-              });
-
-            if (freeCreditsResult.isErr()) {
-              logger.error(
-                {
-                  error: freeCreditsResult.error,
-                  invoiceId: invoice.id,
-                  stripeSubscriptionId: invoice.subscription,
-                  workspaceId: subscription.workspace.sId,
-                },
-                "[Stripe Webhook] Error granting free credits on renewal"
-              );
-            }
           } else if (!isCreditPurchaseInvoice(invoice)) {
             await subscription.update({ paymentFailingSince: null });
           }
@@ -534,6 +515,45 @@ async function handler(
           if (!previousAttributes) {
             break;
           } // should not happen by definition of the subscription.updated event
+
+          // Billing cycle changed - grant free credits based on eligibility
+          if ("current_period_start" in previousAttributes) {
+            const subscription = await Subscription.findOne({
+              where: { stripeSubscriptionId: stripeSubscription.id },
+              include: [WorkspaceModel],
+            });
+
+            if (subscription) {
+              const auth = await Authenticator.internalAdminForWorkspace(
+                subscription.workspace.sId
+              );
+
+              const freeCreditsResult =
+                await grantFreeCreditsOnSubscriptionRenewal({
+                  auth,
+                  stripeSubscription,
+                });
+
+              if (freeCreditsResult.isErr()) {
+                logger.error(
+                  {
+                    error: freeCreditsResult.error,
+                    subscriptionId: stripeSubscription.id,
+                    workspaceId: subscription.workspace.sId,
+                  },
+                  "[Stripe Webhook] Error granting free credits on renewal"
+                );
+              }
+            } else {
+              logger.warn(
+                {
+                  event,
+                  stripeSubscriptionId: stripeSubscription.id,
+                },
+                "[Stripe Webhook] Subscription not found for billing cycle change."
+              );
+            }
+          }
 
           if (stripeSubscription.status === "trialing") {
             // We check if the trialing subscription is being canceled.
