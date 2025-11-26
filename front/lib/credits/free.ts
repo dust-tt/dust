@@ -68,6 +68,13 @@ export async function countElligibleUsersForFreeCredits(
   });
 }
 
+/**
+ * For enterprise: always eligible
+ * For pro:
+ *    if you are a new (incl. trial) or returning customer (subscription started 2 months ago), eligible
+ *    else, if you are a "good payer" (last paid subscription invoice less than 2 months ago), eligible
+ * Otherwise, not eligible
+ */
 export async function isSubscriptionEligibleForFreeCredits(
   stripeSubscription: Stripe.Subscription
 ): Promise<boolean> {
@@ -179,12 +186,11 @@ export async function grantFreeCreditsOnSubscriptionRenewal({
       },
       "[Free Credits] Calculated credit amount using brackets system"
     );
+    assert(
+      creditAmountCents > 0,
+      "Unexpected programmatic usage free credit amount equal to zero"
+    );
   }
-
-  assert(
-    creditAmountCents > 0,
-    "Unexpected programmatic usage free credit amount equal to zero"
-  );
 
   const expirationDate = new Date(stripeSubscription.current_period_end * 1000);
   const credit = await CreditResource.makeNew(auth, {
@@ -211,6 +217,7 @@ export async function grantFreeCreditsOnSubscriptionRenewal({
   if (startResult.isErr()) {
     logger.error(
       {
+        panic: true,
         workspaceId: workspaceSId,
         creditId: credit.id,
         error: startResult.error,

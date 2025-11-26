@@ -537,6 +537,8 @@ async function handler(
               if (freeCreditsResult.isErr()) {
                 logger.error(
                   {
+                    panic: true,
+                    stripeError: true,
                     error: freeCreditsResult.error,
                     subscriptionId: stripeSubscription.id,
                     workspaceId: subscription.workspace.sId,
@@ -547,7 +549,8 @@ async function handler(
             } else {
               logger.warn(
                 {
-                  event,
+                  stripeEventId: event.id,
+                  stripeEventType: event.type,
                   stripeSubscriptionId: stripeSubscription.id,
                 },
                 "[Stripe Webhook] Subscription not found for billing cycle change."
