@@ -43,6 +43,21 @@ export class ConcurrentModificationError extends Error {
 }
 
 /**
+ * Error thrown when attempting to merge with a different signing secret.
+ */
+export class SigningSecretMismatchError extends Error {
+  constructor(
+    public readonly provider: string,
+    public readonly appId: string
+  ) {
+    super(
+      `Cannot merge webhook router entry: signing secret does not match existing entry for provider '${provider}' and appId '${appId}'`
+    );
+    this.name = "SigningSecretMismatchError";
+  }
+}
+
+/**
  * Service for managing webhook router configuration in GCS.
  * Handles concurrent writes using GCS preconditions with generation numbers.
  */
@@ -273,6 +288,11 @@ export class WebhookRouterConfigService {
         const existingEntry = config[provider]![providerWorkspaceId];
 
         if (merge && existingEntry) {
+          // Validate signing secret matches when merging
+          if (existingEntry.signing_secret !== entry.signing_secret) {
+            throw new SigningSecretMismatchError(provider, providerWorkspaceId);
+          }
+
           // Merge regions: combine existing and new regions, removing duplicates
           const mergedRegions = Array.from(
             new Set([...existingEntry.regions, ...entry.regions])

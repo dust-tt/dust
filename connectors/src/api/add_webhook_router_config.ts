@@ -5,7 +5,10 @@ import * as reporter from "io-ts-reporters";
 
 import { connectorsConfig } from "@connectors/connectors/shared/config";
 import { NotionConnectorState } from "@connectors/lib/models/notion";
-import { WebhookRouterConfigService } from "@connectors/lib/webhook_router_config";
+import {
+  SigningSecretMismatchError,
+  WebhookRouterConfigService,
+} from "@connectors/lib/webhook_router_config";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
@@ -141,6 +144,17 @@ const _addWebhookRouterEntryHandler = async (
       { error, provider, providerWorkspaceId, merge },
       `Failed to add webhook router entry`
     );
+
+    // Check if it's a signing secret mismatch error (only during merge)
+    if (error instanceof SigningSecretMismatchError) {
+      return apiError(req, res, {
+        status_code: 409,
+        api_error: {
+          type: "invalid_request_error",
+          message: error.message,
+        },
+      });
+    }
 
     return apiError(req, res, {
       status_code: 500,
