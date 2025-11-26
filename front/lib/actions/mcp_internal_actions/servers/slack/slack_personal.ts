@@ -529,7 +529,7 @@ async function createServer(
                     const channelName = match.channel_id
                       ? channelIdToName.get(match.channel_id)
                       : undefined;
-                    return `From ${username || "Unknown"} (${match.user_id || "unknown"}) in ${channelName || "#Unknown"} (${match.channel_id || "unknown"}):\n${match.text ?? ""}`;
+                    return `From ${username ?? "Unknown"} (${match.user_id ?? "unknown"}) in ${channelName ?? "#Unknown"} (${match.channel_id ?? "unknown"}):\n${match.text ?? ""}`;
                   },
                   id: (match) => match.ts ?? "",
                   content: (match) => match.text ?? "",
@@ -653,7 +653,7 @@ async function createServer(
                       (_m, _id, username) => `@${username}`
                     );
 
-                    return `From ${username || "Unknown"} (${match.user_id || "unknown"}) in ${channelName || "#Unknown"} (${match.channel_id || "unknown"}):\n${content}`;
+                    return `From ${username ?? "Unknown"} (${match.user_id ?? "unknown"}) in ${channelName ?? "#Unknown"} (${match.channel_id ?? "unknown"}):\n${content}`;
                   },
                   id: (match) => match.ts ?? "",
                   content: (match) => match.text ?? "",
