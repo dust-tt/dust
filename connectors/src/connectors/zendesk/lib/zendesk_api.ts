@@ -148,20 +148,12 @@ export class ZendeskClient {
     const rateLimitConfig = this.createRateLimitConfig();
 
     const runFetch = async () => {
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${this.accessToken}`,
-          "Content-Type": "application/json",
-        },
-      });
-
       const tags = [`subdomain:${subdomain}`, `endpoint:${endpoint}`];
-      statsDClient.increment("zendesk_api.requests.count", 1, tags);
-
       let retryCount = 0;
-      let rawResponse = response;
-      while (await this.handleZendeskRateLimit(rawResponse, url)) {
+      let rawResponse: Response;
+      let isRateLimited: boolean;
+
+      do {
         rawResponse = await fetch(url, {
           method: "GET",
           headers: {
@@ -169,8 +161,10 @@ export class ZendeskClient {
             "Content-Type": "application/json",
           },
         });
-        retryCount++;
-        if (retryCount >= RATE_LIMIT_MAX_RETRIES) {
+        statsDClient.increment("zendesk_api.requests.count", 1, tags);
+
+        isRateLimited = await this.handleZendeskRateLimit(rawResponse, url);
+        if (isRateLimited && retryCount >= RATE_LIMIT_MAX_RETRIES) {
           logger.info(
             { response: rawResponse },
             `Rate limit hit more than ${RATE_LIMIT_MAX_RETRIES}, aborting.`
@@ -179,7 +173,8 @@ export class ZendeskClient {
             `Zendesk rate limit hit more than ${RATE_LIMIT_MAX_RETRIES} times, aborting.`
           );
         }
-      }
+        retryCount++;
+      } while (isRateLimited);
 
       let jsonResponse;
       try {
@@ -284,7 +279,7 @@ export class ZendeskClient {
         url,
         ZendeskTicketFieldResponseSchema
       );
-      return response?.ticket_field ?? null;
+      return response.ticket_field ?? null;
     } catch (e) {
       if (isZendeskNotFoundError(e)) {
         return null;
@@ -341,7 +336,7 @@ export class ZendeskClient {
     brandSubdomain: string;
     ticketId: number;
   }): Promise<ZendeskTicketComment[]> {
-    const comments = [];
+    const comments: ZendeskTicketComment[] = [];
     let url = `https://${brandSubdomain}.zendesk.com/api/v2/tickets/${ticketId}/comments?page[size]=${COMMENT_PAGE_SIZE}`;
     let hasMore = true;
 
@@ -352,8 +347,9 @@ export class ZendeskClient {
           ZendeskTicketCommentsResponseSchema
         );
         comments.push(...response.comments);
-        hasMore = response.hasMore ?? false;
-        url = response.nextLink ?? "";
+        hasMore =
+          (response.meta.has_more ?? false) && response.links.next !== url;
+        url = response.links.next ?? "";
       } catch (e) {
         if (isZendeskNotFoundError(e)) {
           return [];
@@ -509,8 +505,8 @@ export class ZendeskClient {
       );
       return {
         categories: response.categories,
-        hasMore: response.meta?.has_more ?? false,
-        nextLink: response.links?.next ?? null,
+        hasMore: response.meta.has_more ?? false,
+        nextLink: response.links.next ?? null,
       };
     } catch (e) {
       if (isZendeskNotFoundError(e)) {
@@ -540,8 +536,8 @@ export class ZendeskClient {
       );
       return {
         articles: response.articles,
-        hasMore: response.meta?.has_more ?? false,
-        nextLink: response.links?.next ?? null,
+        hasMore: response.meta.has_more ?? false,
+        nextLink: response.links.next ?? null,
       };
     } catch (e) {
       if (isZendeskNotFoundError(e)) {
@@ -625,7 +621,8 @@ export class ZendeskClient {
       );
       return {
         articles: response.articles,
-        hasMore: response.next_page !== null && response.articles.length !== 0,
+        hasMore:
+          (response.meta.has_more ?? false) && response.articles.length !== 0,
         endTime: response.end_time ?? startTime,
       };
     } catch (e) {
