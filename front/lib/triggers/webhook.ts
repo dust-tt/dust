@@ -262,9 +262,10 @@ async function checkWorkspaceRateLimit({
   let errorMessage: string | null = null;
 
   if (!trigger.executionMode || trigger.executionMode === "fair_use") {
-    const globalRateLimitRes = await checkWebhookRequestForRateLimit(auth);
-    if (globalRateLimitRes.isErr()) {
-      errorMessage = globalRateLimitRes.error.message;
+    const { rateLimited, message } =
+      await checkWebhookRequestForRateLimit(auth);
+    if (rateLimited) {
+      errorMessage = message;
     }
   } else {
     const publicAPILimit = await hasReachedPublicAPILimits(auth, true);
@@ -279,7 +280,15 @@ async function checkWorkspaceRateLimit({
       `provider:${provider}`,
       `workspace_id:${workspaceId}`,
     ]);
-    logger.error({ workspaceId, webhookRequestId }, errorMessage);
+    logger.error(
+      {
+        workspaceId,
+        webhookRequestId,
+        triggerId: trigger.sId,
+        provider,
+      },
+      errorMessage
+    );
     return true;
   }
 
@@ -305,10 +314,10 @@ async function checkTriggerRateLimit({
 }): Promise<boolean> {
   const res = await checkTriggerForExecutionPerDayLimit(auth, { trigger });
 
-  if (res.isErr()) {
+  if (res.rateLimited) {
     logger.warn(
       { workspaceId, webhookRequestId, triggerId: trigger.sId },
-      res.error.message
+      res.message
     );
     statsDClient.increment("webhook_trigger_rate_limit.hit.count", 1, [
       `provider:${provider}`,
