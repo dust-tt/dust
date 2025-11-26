@@ -49,22 +49,40 @@ export const validateRelativePath = (
     return { valid: false, sanitizedPath: null };
   }
 
+  // Safely decode percent-encoded input to prevent bypasses such as /%2F%2Fattacker.com
+  // Decode iteratively to handle double-encoding (e.g., %252F -> %2F)
+  let decodedPath = path;
+  try {
+    for (let i = 0; i < 5; i++) {
+      const next = decodeURIComponent(decodedPath);
+      if (next === decodedPath) break;
+      decodedPath = next;
+    }
+  } catch {
+    // Malformed percent-encoding - reject
+    return { valid: false, sanitizedPath: null };
+  }
+
   // Must start with / (relative path)
-  if (!path.startsWith("/")) {
+  if (!decodedPath.startsWith("/")) {
     return { valid: false, sanitizedPath: null };
   }
 
   // Reject protocol-relative URLs (//example.com)
-  if (path.startsWith("//")) {
+  if (decodedPath.startsWith("//")) {
     return { valid: false, sanitizedPath: null };
   }
 
   // Try to parse as URL to extract only pathname and search
   // This also validates the URL structure
   try {
-    const url = new URL(path, "http://localhost");
+    const url = new URL(decodedPath, "http://localhost");
     // Ensure no host was somehow injected
     if (url.hostname !== "localhost") {
+      return { valid: false, sanitizedPath: null };
+    }
+    // Ensure normalized pathname does not start with protocol-relative marker
+    if (url.pathname.startsWith("//")) {
       return { valid: false, sanitizedPath: null };
     }
     // Return only the pathname and search params (no host, protocol, etc.)
