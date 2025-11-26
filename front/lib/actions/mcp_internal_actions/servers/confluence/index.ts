@@ -5,6 +5,7 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   createPage,
   getCurrentUser,
+  getPage,
   listPages,
   updatePage,
   withAuth,
@@ -99,6 +100,64 @@ function createServer(
                   result.value.results.length === 0
                     ? "No pages found"
                     : `Found ${result.value.results.length} page(s)`,
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify(result.value, null, 2),
+              },
+            ]);
+          },
+          authInfo,
+        });
+      }
+    )
+  );
+
+  server.tool(
+    "get_page",
+    "Get a single Confluence page by its ID. Returns the page metadata and optionally the page body content.",
+    {
+      pageId: z.string().describe("The ID of the page to retrieve"),
+      includeBody: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe(
+          "Whether to include the page body content (default: false). When true, returns body in storage format."
+        ),
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: CONFLUENCE_TOOL_NAME,
+        agentLoopContext,
+      },
+      async (params, { authInfo }) => {
+        return withAuth({
+          action: async (baseUrl, accessToken) => {
+            const result = await getPage(
+              baseUrl,
+              accessToken,
+              params.pageId,
+              params.includeBody
+            );
+            if (result.isErr()) {
+              return new Err(
+                new MCPError(`Error getting page: ${result.error}`)
+              );
+            }
+            if (result.value === null) {
+              return new Ok([
+                {
+                  type: "text" as const,
+                  text: `Page with ID ${params.pageId} not found`,
+                },
+              ]);
+            }
+            return new Ok([
+              {
+                type: "text" as const,
+                text: "Page retrieved successfully",
               },
               {
                 type: "text" as const,

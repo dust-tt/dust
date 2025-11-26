@@ -93,6 +93,54 @@ export const ConfluencePageSchema = z
 
 export type ConfluencePage = z.infer<typeof ConfluencePageSchema>;
 
+// Schema for v1 API search response (used for CQL queries)
+export const ConfluenceV1SearchPageSchema = z
+  .object({
+    id: z.string(),
+    type: z.literal("page"),
+    status: z.string(),
+    title: z.string(),
+    space: z
+      .object({
+        id: z.union([z.string(), z.number()]),
+        key: z.string().optional(),
+      })
+      .optional(),
+    ancestors: z
+      .array(
+        z.object({
+          id: z.string(),
+          type: z.string(),
+        })
+      )
+      .optional(),
+    body: z
+      .object({
+        storage: z
+          .object({
+            value: z.string(),
+            representation: z.literal("storage"),
+          })
+          .optional(),
+      })
+      .optional(),
+  })
+  .passthrough();
+
+export const ConfluenceV1SearchResultSchema = z.object({
+  results: z.array(ConfluenceV1SearchPageSchema),
+  _links: z
+    .object({
+      next: z.string().optional(),
+      base: z.string().optional(),
+    })
+    .optional(),
+});
+
+export type ConfluenceV1SearchResult = z.infer<
+  typeof ConfluenceV1SearchResultSchema
+>;
+
 export const ConfluenceListPagesResultSchema = z.object({
   results: z.array(ConfluencePageSchema),
   _links: z
