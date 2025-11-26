@@ -114,6 +114,7 @@ type BlockedActionsContextType = {
   }) => void;
   showBlockedActionsDialog: () => void;
   hasBlockedActions: boolean;
+  hasPendingValidations: boolean;
   totalBlockedActions: number;
 };
 
@@ -318,6 +319,7 @@ export function BlockedActionsProvider({
         showBlockedActionsDialog,
         enqueueBlockedAction,
         hasBlockedActions: blockedActionsQueue.length > 0,
+        hasPendingValidations: pendingValidations.length > 0,
         totalBlockedActions: blockedActionsQueue.length,
       }}
     >

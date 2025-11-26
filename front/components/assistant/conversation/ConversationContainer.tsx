@@ -50,8 +50,12 @@ export function ConversationContainerVirtuoso({
 
   const { setSelectedAgent } = useContext(InputBarContext);
 
-  const { hasBlockedActions, totalBlockedActions, showBlockedActionsDialog } =
-    useBlockedActionsContext();
+  const {
+    hasBlockedActions,
+    hasPendingValidations,
+    totalBlockedActions,
+    showBlockedActionsDialog,
+  } = useBlockedActionsContext();
 
   const router = useRouter();
 
@@ -171,12 +175,16 @@ export function ConversationContainerVirtuoso({
                 {pluralize(totalBlockedActions)}
               </span>{" "}
               require{conjugate(totalBlockedActions)} a manual action
-              <ContentMessageAction
-                label="Review actions"
-                variant="outline"
-                size="xs"
-                onClick={() => showBlockedActionsDialog()}
-              />
+              {/* If there are pending validations, we show a button allowing to open the dialog
+              from where they can be approved/denied */}
+              {hasPendingValidations && (
+                <ContentMessageAction
+                  label="Review actions"
+                  variant="outline"
+                  size="xs"
+                  onClick={() => showBlockedActionsDialog()}
+                />
+              )}
             </ContentMessageInline>
           )}
         </>
