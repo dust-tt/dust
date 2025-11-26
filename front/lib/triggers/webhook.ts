@@ -425,7 +425,7 @@ export async function filterTriggers({
   for (const trigger of triggers) {
     const { event } = trigger.configuration;
 
-    // Check 1: Event matching
+    // Check 1: Event matching.
     if (event && receivedEventValue && event !== receivedEventValue) {
       await webhookRequest.markRelatedTrigger({
         trigger,
@@ -434,7 +434,7 @@ export async function filterTriggers({
       continue;
     }
 
-    // Check 2: Payload filter
+    // Check 2: Payload filter.
     const payloadMatches = matchesPayloadFilter({
       trigger,
       body,
