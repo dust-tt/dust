@@ -338,5 +338,5 @@ async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
     ? validatedReturnTo.sanitizedPath
     : "/";
 
-  res.redirect(sanitizedReturnTo as string);
+  res.redirect(sanitizedReturnTo);
 }
