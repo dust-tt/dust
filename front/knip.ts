@@ -14,6 +14,7 @@ const config: KnipConfig = {
     binaries: "off",
     exports: "off",
   },
+  ignoreDependencies: ["@vitest/coverage-v8"],
   paths: {
     "@app/*": ["./*"],
   },
