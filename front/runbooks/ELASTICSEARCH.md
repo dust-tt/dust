@@ -146,7 +146,7 @@ export interface YourIndexData extends ElasticsearchBaseDocument {
 
 ### Step 2: Create Mappings File
 
-Create `lib/analytics/indices/your_index_name_1.mappings.json`:
+Create `lib/your_feature/indices/your_index_name_1.mappings.json`:
 
 ```json
 {
@@ -263,16 +263,21 @@ If you intend to index email addresses, you should use the `uax_url_email` token
 }
 ```
 
-Where `email_analyzer` would be defined in your settings with:
+Where `email_analyzer` would be defined in your index settings with:
 
 ```json
 {
   "analysis": {
+    "tokenizer": {
+      "uax_url_email_tokenizer": {
+        "type": "uax_url_email",
+        "filter": ["lowercase", "asciifolding"]
+      }
+    },
     "analyzer": {
-      "email_analyzer": {
+      "uax_analyzer": {
         "type": "custom",
-        "tokenizer": "uax_url_email",
-        "filter": ["lowercase"]
+        "tokenizer": "uax_url_email_tokenizer"
       }
     }
   }
@@ -301,11 +306,11 @@ Where `email_analyzer` would be defined in your settings with:
 
 Create settings files for each region. Settings can include basic index configuration (shards, replicas, refresh) and optionally custom analyzers/tokenizers for advanced text search.
 
-#### Basic Settings (Analytics Use Case)
+#### Basic Settings (Simple Use Case)
 
-For simple analytics indices without full-text search requirements:
+For simple indices without full-text search requirements:
 
-**`lib/analytics/indices/your_index_name_1.settings.local.json`:**
+**`lib/your_feature/indices/your_index_name_1.settings.local.json`:**
 
 ```json
 {
@@ -315,7 +320,7 @@ For simple analytics indices without full-text search requirements:
 }
 ```
 
-**`lib/analytics/indices/your_index_name_1.settings.us-central1.json`:**
+**`lib/your_feature/indices/your_index_name_1.settings.us-central1.json`:**
 
 ```json
 {
@@ -325,7 +330,7 @@ For simple analytics indices without full-text search requirements:
 }
 ```
 
-**`lib/analytics/indices/your_index_name_1.settings.europe-west1.json`:**
+**`lib/your_feature/indices/your_index_name_1.settings.europe-west1.json`:**
 
 ```json
 {
@@ -346,7 +351,7 @@ For simple analytics indices without full-text search requirements:
 
 For indices requiring advanced text search (like data source nodes in core), include custom analyzers and tokenizers in the settings:
 
-**`lib/analytics/indices/your_index_name_1.settings.us-central1.json`:**
+**`lib/your_feature/indices/your_index_name_1.settings.us-central1.json`:**
 
 ```json
 {
@@ -463,7 +468,7 @@ curl -u $ELASTICSEARCH_USERNAME:$ELASTICSEARCH_PASSWORD \
 
 ### Step 1: Create Indexing Function
 
-Create a file `lib/analytics/your_index.ts`:
+Create a file `lib/your_feature/your_index.ts`:
 
 ```typescript
 import type { Result } from "@/lib/result";
@@ -545,12 +550,14 @@ export async function bulkStoreYourData(
 }
 ```
 
+See examples in `lib/analytics/agent_message_analytics.ts`.
+
 ### Step 2: Build Your Document
 
 Example from application code:
 
 ```typescript
-import { storeYourData } from "@/lib/analytics/your_index";
+import { storeYourData } from "@/lib/your_feature/your_index";
 import type { YourIndexData } from "@/types/your_feature/your_index";
 
 async function processYourEntity(entity: YourEntity, workspace: Workspace) {
