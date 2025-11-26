@@ -9,6 +9,7 @@ import {
 } from "@app/lib/api/llm/traces/buffer";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
+import { EventError } from "@app/lib/api/llm/types/events";
 import type {
   LLMClientMetadata,
   LLMParameters,
@@ -239,11 +240,28 @@ export abstract class LLM {
     prompt,
     specifications,
   }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
-    yield* this.streamWithTracing({
+    let lastEvent: LLMEvent | null = null;
+
+    for await (const event of this.streamWithTracing({
       conversation,
       prompt,
       specifications,
-    });
+    })) {
+      lastEvent = event;
+      yield event;
+    }
+
+    if (lastEvent?.type !== "success" && lastEvent?.type !== "error") {
+      yield new EventError(
+        {
+          type: "stream_error",
+          message: `LLM did not complete successfully for ${this.metadata.clientId}/${this.metadata.modelId}.`,
+          isRetryable: true,
+          originalError: { lastEvent },
+        },
+        this.metadata
+      );
+    }
   }
 
   protected abstract internalStream({
