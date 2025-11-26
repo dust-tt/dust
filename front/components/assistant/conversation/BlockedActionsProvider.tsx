@@ -275,8 +275,8 @@ export function BlockedActionsProvider({
     }
   }, [blockedActionsQueue.length, pendingValidations.length]);
 
-  const hasBlockedActions = pendingValidations.length > 0;
-  const totalBlockedActions = pendingValidations.length;
+  const hasBlockedActions = blockedActionsQueue.length > 0;
+  const totalBlockedActions = blockedActionsQueue.length;
 
   const pages = useMemo(() => {
     if (pendingValidations.length > 0) {

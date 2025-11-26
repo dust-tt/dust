@@ -170,7 +170,7 @@ export function ConversationContainerVirtuoso({
                 {totalBlockedActions} action
                 {pluralize(totalBlockedActions)}
               </span>{" "}
-              require{conjugate(totalBlockedActions)} manual approval
+              require{conjugate(totalBlockedActions)} a manual action
               <ContentMessageAction
                 label="Review actions"
                 variant="outline"
