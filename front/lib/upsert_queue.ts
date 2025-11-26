@@ -135,8 +135,6 @@ async function enqueueUpsert({
       upsertQueueId: string;
       launchWorkflowFn: typeof launchUpsertTableWorkflow;
     }): Promise<Result<string, Error>> {
-  const now = Date.now();
-
   try {
     const storage = new Storage({ keyFilename: config.getServiceAccount() });
     const bucket = storage.bucket(config.getGcsUpsertQueueBucket());
