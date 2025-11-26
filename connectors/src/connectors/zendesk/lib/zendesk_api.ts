@@ -148,20 +148,12 @@ export class ZendeskClient {
     const rateLimitConfig = this.createRateLimitConfig();
 
     const runFetch = async () => {
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${this.accessToken}`,
-          "Content-Type": "application/json",
-        },
-      });
-
       const tags = [`subdomain:${subdomain}`, `endpoint:${endpoint}`];
-      statsDClient.increment("zendesk_api.requests.count", 1, tags);
-
       let retryCount = 0;
-      let rawResponse = response;
-      while (await this.handleZendeskRateLimit(rawResponse, url)) {
+      let rawResponse: Response;
+      let isRateLimited: boolean;
+
+      do {
         rawResponse = await fetch(url, {
           method: "GET",
           headers: {
@@ -169,8 +161,10 @@ export class ZendeskClient {
             "Content-Type": "application/json",
           },
         });
-        retryCount++;
-        if (retryCount >= RATE_LIMIT_MAX_RETRIES) {
+        statsDClient.increment("zendesk_api.requests.count", 1, tags);
+
+        isRateLimited = await this.handleZendeskRateLimit(rawResponse, url);
+        if (isRateLimited && retryCount >= RATE_LIMIT_MAX_RETRIES) {
           logger.info(
             { response: rawResponse },
             `Rate limit hit more than ${RATE_LIMIT_MAX_RETRIES}, aborting.`
@@ -179,7 +173,8 @@ export class ZendeskClient {
             `Zendesk rate limit hit more than ${RATE_LIMIT_MAX_RETRIES} times, aborting.`
           );
         }
-      }
+        retryCount++;
+      } while (isRateLimited);
 
       let jsonResponse;
       try {
