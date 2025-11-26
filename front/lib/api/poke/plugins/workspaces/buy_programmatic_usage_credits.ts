@@ -2,7 +2,7 @@ import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 
 import { createPlugin } from "@app/lib/api/poke/types";
-import { createEnterpriseCreditPurchase } from "@app/lib/credits/purchase";
+import { createEnterpriseCreditPurchase } from "@app/lib/credits/committed";
 import {
   getCustomerId,
   getStripeSubscription,
