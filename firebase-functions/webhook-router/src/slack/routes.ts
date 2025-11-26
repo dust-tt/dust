@@ -2,8 +2,8 @@ import express from "express";
 
 import { WebhookForwarder } from "../forwarder.js";
 import type { SecretManager } from "../secrets.js";
-import type { WebhookRouterConfigManager } from "../webhookRouterConfig.js";
-import { ALL_REGIONS } from "../webhookRouterConfig.js";
+import type { WebhookRouterConfigManager } from "../webhook-router-config.js";
+import { ALL_REGIONS } from "../webhook-router-config.js";
 import { createSlackVerificationMiddleware } from "./verification.js";
 
 export function createSlackBotRoutes(

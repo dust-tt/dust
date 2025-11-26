@@ -16,7 +16,7 @@ type WebhookRouterConfigEntry = {
  * Example valid object:
  * {
  *   signingSecret: "abc123def456",
- *   regions: ["US", "EU"]
+ *   regions: ["us-central1", "europe-west1"]
  * }
  */
 function isValidWebhookRouterConfigEntry(value: unknown): value is WebhookRouterConfigEntry {

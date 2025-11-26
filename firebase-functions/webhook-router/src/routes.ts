@@ -7,7 +7,7 @@ import { createNotionVerificationMiddleware } from "./notion/verification.js";
 import type { SecretManager } from "./secrets.js";
 import { createSlackBotRoutes, createSlackDataSyncRoutes } from "./slack/routes.js";
 import { createSlackVerificationMiddleware } from "./slack/verification.js";
-import type { WebhookRouterConfigManager } from "./webhookRouterConfig.js";
+import type { WebhookRouterConfigManager } from "./webhook-router-config.js";
 
 // Webhook secret validation middleware (shared by all platforms)
 function createWebhookSecretMiddleware(secretManager: SecretManager) {

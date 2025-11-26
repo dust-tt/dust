@@ -3,7 +3,7 @@ import type { Request, RequestHandler } from "express";
 import rawBody from "raw-body";
 
 import type { SecretManager } from "../secrets.js";
-import type { WebhookRouterConfigManager } from "../webhookRouterConfig.js";
+import type { WebhookRouterConfigManager } from "../webhook-router-config.js";
 
 class ReceiverAuthenticityError extends Error {
   constructor(message: string) {

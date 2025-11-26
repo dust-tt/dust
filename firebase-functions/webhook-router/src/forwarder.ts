@@ -2,7 +2,7 @@ import type { IncomingHttpHeaders } from "http";
 
 import { CONFIG } from "./config.js";
 import type { Secrets } from "./secrets.js";
-import type { Region } from "./webhookRouterConfig.js";
+import type { Region } from "./webhook-router-config.js";
 
 type WebhookTarget = { region: Region; url: string; secret: string };
 

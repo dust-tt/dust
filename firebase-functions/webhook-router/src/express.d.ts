@@ -1,4 +1,4 @@
-import type { Region } from "./webhookRouterConfig.js";
+import type { Region } from "./webhook-router-config.js";
 
 declare global {
   namespace Express {
