@@ -1,8 +1,8 @@
 # Build stage
-FROM node:20.19.2 AS front
+FROM node:20.19.2 AS deps
 
 RUN apt-get update && \
-  apt-get install -y vim redis-tools postgresql-client htop libjemalloc2 libjemalloc-dev
+  apt-get install -y libjemalloc2 libjemalloc-dev
 
 ARG COMMIT_HASH
 ARG COMMIT_HASH_LONG
@@ -81,8 +81,8 @@ RUN BUILD_WITH_SOURCE_MAPS=${DATADOG_API_KEY:+true} \
 
 RUN npm run sitemap
 
-# Production stage (supports both Next.js frontend and front-workers)
-FROM node:20.19.2-slim AS runtime
+# Frontend image (Next.js standalone) for front deployment
+FROM node:20.19.2-slim AS front
 
 RUN apt-get update && \
   apt-get install -y redis-tools postgresql-client libjemalloc2 && \
@@ -90,16 +90,10 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-# Copy Next.js standalone output (for frontend deployment)
-# - Copy standalone/ files
-# - Copy static/ files and assets
-COPY --from=front /app/.next/standalone ./
-COPY --from=front /app/.next/static ./.next/static
-COPY --from=front /app/public ./public
-
-# Copy worker assets (for front-workers deployment)
-# - dist/: compiled TypeScript workers via esbuild (including Temporal bundles)
-COPY --from=front /app/dist ./dist
+# Copy Next.js standalone output
+COPY --from=deps /app/.next/standalone ./
+COPY --from=deps /app/.next/static ./.next/static
+COPY --from=deps /app/public ./public
 
 # Preload jemalloc for all processes:
 ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
@@ -107,6 +101,26 @@ ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
 ENV DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust/
 ENV DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
 
-# Default command runs Next.js frontend server
-# For front-workers deployment, override with: CMD ["node", "start_worker.js"]
 CMD ["node", "server.js"]
+
+# Workers image (Full Node.js environment) for front-workers deployment
+FROM node:20.19.2-slim AS workers
+
+RUN apt-get update && \
+  apt-get install -y redis-tools postgresql-client libjemalloc2 && \
+  rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy worker assets and full dependencies
+COPY --from=deps /app/dist ./dist
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/package.json ./package.json
+
+# Preload jemalloc for all processes:
+ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
+
+ENV DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust/
+ENV DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
+
+CMD ["node", "dist/start_worker.js"]
