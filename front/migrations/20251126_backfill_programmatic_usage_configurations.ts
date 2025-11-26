@@ -64,7 +64,7 @@ async function backfillWorkspace(
 
   if (!publicApiLimits || !publicApiLimits.enabled) {
     workspaceLogger.info(
-      { enabled: (publicApiLimits as any)?.enabled },
+      { enabled: publicApiLimits?.enabled },
       "Skipping: publicApiLimits not enabled or invalid"
     );
     return;
