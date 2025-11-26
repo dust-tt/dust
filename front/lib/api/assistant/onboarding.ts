@@ -124,8 +124,12 @@ ${AVAILABLE_TOOLS_LIST}
 
 Structure:
 1. Start with "# Welcome to Dust" and an emoji (e.g., "# Welcome to Dust 👋")
-2. Briefly explain what Dust is (1-2 sentences)${options.userJobType ? `
-3. Acknowledge their role and mention how Dust can help them` : ""}
+2. Briefly explain what Dust is (1-2 sentences)${
+    options.userJobType
+      ? `
+3. Acknowledge their role and mention how Dust can help them`
+      : ""
+  }
 3. Mention that Dust becomes more powerful when connected to their tools
 4. ${firstToolInstruction}
 5. End with the tool setup directive (NO quick replies)
