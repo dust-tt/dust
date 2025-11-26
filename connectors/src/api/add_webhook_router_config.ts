@@ -77,7 +77,7 @@ const _addWebhookRouterEntryHandler = async (
         },
       });
     }
-  } else if (provider == "slack") {
+  } else if (provider === "slack") {
     // Make sure providerWorkspaceId is a valid Slack team id
     const slackConfig =
       await SlackConfigurationResource.fetchByTeamId(providerWorkspaceId);
