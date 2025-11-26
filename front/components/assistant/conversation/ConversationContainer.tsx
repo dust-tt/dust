@@ -9,7 +9,7 @@ import { useCallback, useContext, useEffect, useState } from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { AgentBrowserContainer } from "@app/components/assistant/conversation/AgentBrowserContainer";
-import { useActionValidationContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
+import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
@@ -51,7 +51,7 @@ export function ConversationContainerVirtuoso({
   const { setSelectedAgent } = useContext(InputBarContext);
 
   const { hasBlockedActions, totalBlockedActions, showBlockedActionsDialog } =
-    useActionValidationContext();
+    useBlockedActionsContext();
 
   const router = useRouter();
 

@@ -107,7 +107,7 @@ function useBlockedActionsQueue({
   };
 }
 
-type ActionValidationContextType = {
+type BlockedActionsContextType = {
   enqueueBlockedAction: (params: {
     messageId: string;
     blockedAction: BlockedToolExecution;
@@ -117,15 +117,15 @@ type ActionValidationContextType = {
   totalBlockedActions: number;
 };
 
-const ActionValidationContext = createContext<
-  ActionValidationContextType | undefined
+const BlockedActionsContext = createContext<
+  BlockedActionsContextType | undefined
 >(undefined);
 
-export function useActionValidationContext() {
-  const context = useContext(ActionValidationContext);
+export function useBlockedActionsContext() {
+  const context = useContext(BlockedActionsContext);
   if (!context) {
     throw new Error(
-      "useActionValidationContext must be used within an ActionValidationContext"
+      "useActionValidationContext must be used within an BlockedActionsContext"
     );
   }
 
@@ -316,7 +316,7 @@ export function BlockedActionsProvider({
   }, [pages, currentValidationIndex, pendingValidations]);
 
   return (
-    <ActionValidationContext.Provider
+    <BlockedActionsContext.Provider
       value={{
         showBlockedActionsDialog,
         enqueueBlockedAction,
@@ -363,6 +363,6 @@ export function BlockedActionsProvider({
           />
         )}
       </MultiPageDialog>
-    </ActionValidationContext.Provider>
+    </BlockedActionsContext.Provider>
   );
 }

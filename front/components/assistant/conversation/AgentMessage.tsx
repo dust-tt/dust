@@ -23,7 +23,7 @@ import { AgentMessageCompletionStatus } from "@app/components/assistant/conversa
 import { AgentMessageInteractiveContentGeneratedFiles } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
-import { useActionValidationContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
+import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
@@ -136,7 +136,7 @@ export function AgentMessage({
   );
 
   const { showBlockedActionsDialog, enqueueBlockedAction } =
-    useActionValidationContext();
+    useBlockedActionsContext();
 
   const { mutateMessage } = useConversationMessage({
     conversationId,
