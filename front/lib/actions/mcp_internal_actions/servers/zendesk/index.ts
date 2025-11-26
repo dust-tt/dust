@@ -7,14 +7,16 @@ import {
   getZendeskClient,
 } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/client";
 import {
-  renderConversation,
   renderTicket,
+  renderTicketComments,
   renderTicketMetrics,
 } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/rendering";
+import type { ZendeskUser } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/types";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
+import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types";
 
 const ZENDESK_TOOL_NAME = "zendesk";
@@ -108,7 +110,27 @@ function createServer(
             );
           }
 
-          ticketText += renderConversation(commentsResult.value);
+          const comments = commentsResult.value;
+          const authorIds = Array.from(
+            new Set(comments.map((comment) => comment.author_id))
+          );
+
+          let users: ZendeskUser[] = [];
+          if (authorIds.length > 0) {
+            const usersResult = await client.getUsersByIds(authorIds);
+            if (usersResult.isErr()) {
+              logger.warn(
+                {
+                  error: usersResult.error.message,
+                },
+                "[Zendesk] Failed to retrieve user information for comments"
+              );
+            } else {
+              users = usersResult.value;
+            }
+          }
+
+          ticketText += renderTicketComments(comments, users);
         }
 
         return new Ok([

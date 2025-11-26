@@ -3,6 +3,7 @@ import type {
   ZendeskTicketComment,
   ZendeskTicketField,
   ZendeskTicketMetrics,
+  ZendeskUser,
 } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/types";
 import type { Result } from "@app/types";
 
@@ -120,7 +121,7 @@ function formatMinutes(minutes: number | null): string {
 }
 
 export function renderTicketMetrics(metrics: ZendeskTicketMetrics): string {
-  const lines = ["\n--- Metrics ---"];
+  const lines = ["\n## Metrics"];
 
   lines.push(`Reopens: ${metrics.reopens}`);
   lines.push(`Replies: ${metrics.replies}`);
@@ -180,12 +181,15 @@ export function renderTicketMetrics(metrics: ZendeskTicketMetrics): string {
   return lines.join("\n");
 }
 
-export function renderConversation(comments: ZendeskTicketComment[]): string {
+export function renderTicketComments(
+  comments: ZendeskTicketComment[],
+  users: ZendeskUser[] = []
+): string {
   if (comments.length === 0) {
-    return "\n=== Conversation ===\nNo comments found.";
+    return "\n## Conversation\n\nNo comments found.";
   }
 
-  const lines = ["\n=== Conversation ==="];
+  const lines = ["\n## Conversation"];
 
   const sortedComments = [...comments].sort(
     (a, b) =>
@@ -195,7 +199,11 @@ export function renderConversation(comments: ZendeskTicketComment[]): string {
   for (const comment of sortedComments) {
     const date = new Date(comment.created_at).toISOString();
     const body = comment.plain_body || comment.body;
-    lines.push(`\n[${date}] Author ID: ${comment.author_id}\n${body}`);
+    const author = users.find((user) => user.id === comment.author_id) ?? null;
+    const authorLabel = author
+      ? `${author.name} (${author.email ?? "Unknown email"})`
+      : `Unknown User (ID: ${comment.author_id})`;
+    lines.push(`\n[${date}] ${authorLabel}:\n${body}`);
   }
 
   return lines.join("\n");
