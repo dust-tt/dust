@@ -198,7 +198,7 @@ export function renderTicketComments(
 
   for (const comment of sortedComments) {
     const date = new Date(comment.created_at).toISOString();
-    const body = comment.plain_body || comment.body;
+    const body = comment.plain_body ?? comment.body;
     const author = users.find((user) => user.id === comment.author_id) ?? null;
     const authorLabel = author
       ? `${author.name} (${author.email ?? "Unknown email"})`
