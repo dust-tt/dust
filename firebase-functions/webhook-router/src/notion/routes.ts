@@ -3,7 +3,7 @@ import express from "express";
 
 import { WebhookForwarder } from "../forwarder.js";
 import type { SecretManager } from "../secrets.js";
-import { ALL_REGIONS } from "../webookConfig.js";
+import { ALL_REGIONS } from "../webhookRouterConfig.js";
 
 export function createNotionRoutes(secretManager: SecretManager, notionVerification: RequestHandler) {
   const router = express.Router();

@@ -4,7 +4,7 @@ import { getDatabase } from "firebase-admin/database";
 
 import { createRoutes } from "./routes.js";
 import { SecretManager } from "./secrets.js";
-import { WebhookRouterConfigManager } from "./webookRouterConfig.js";
+import { WebhookRouterConfigManager } from "./webhookRouterConfig.js";
 
 /**
  * Creates and configures the Express application
