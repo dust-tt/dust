@@ -26,9 +26,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
   const featureFlags = await getFeatureFlags(owner);
-  const hasProgrammaticUsageMetrics = featureFlags.includes(
-    "programmatic_usage_metrics"
-  );
+  const hasProgrammaticUsageMetrics = featureFlags.includes("ppul");
 
   return {
     props: {

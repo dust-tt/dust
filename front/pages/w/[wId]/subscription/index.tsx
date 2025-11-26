@@ -111,7 +111,7 @@ export default function Subscription({
 
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const isEnterprise = isEntreprisePlan(subscription.plan.code);
-  const isPPULEnabled = hasFeature("ppul_credits_purchase_flow");
+  const isPPULEnabled = hasFeature("ppul");
   const { credits, isCreditsLoading } = useCredits({
     workspaceId: owner.sId,
     disabled: !isPPULEnabled,
