@@ -3,11 +3,23 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   ArrowUpIcon,
   AttachmentIcon,
+  BoldIcon,
   BoltIcon,
   Button,
+  ButtonGroup,
   cn,
+  CodeBlock,
+  CodeBlockIcon,
+  CodeSlashIcon,
+  FontSizeAiIcon,
+  ItalicIcon,
+  LinkIcon,
+  LinkMIcon,
+  ListCheckIcon,
+  ListOrdered2Icon,
   MicIcon,
   PlusIcon,
+  QuoteTextIcon,
   RainbowEffect,
   RobotIcon,
   SquareIcon,
@@ -142,7 +154,26 @@ export const Demo = () => {
   };
 
   return (
-    <div className="s-flex s-h-[600px] s-w-full s-items-end s-justify-center s-border s-border-warning/20 sm:s-p-0 md:s-p-6">
+    <div className="s-flex s-h-[600px] s-w-full s-flex-col s-items-end s-justify-center s-border s-border-warning/20 sm:s-p-0 md:s-p-6">
+      <div className="s-mb-4 s-h-full s-w-full">
+        <div className="s-inline-flex s-gap-1 s-rounded-2xl s-border s-border-border/50 s-bg-background s-p-1 s-shadow-md dark:s-border-border-night/50 dark:s-bg-background-night">
+          <ButtonGroup variant="outline" size="sm">
+            <Button icon={FontSizeAiIcon} />
+            <Button icon={BoldIcon} />
+            <Button icon={ItalicIcon} />
+          </ButtonGroup>
+          <Button icon={LinkMIcon} variant={"outline"} />
+          <ButtonGroup variant="outline" size="sm">
+            <Button icon={ListCheckIcon} />
+            <Button icon={ListOrdered2Icon} />
+            <Button icon={QuoteTextIcon} />
+          </ButtonGroup>
+          <ButtonGroup variant="outline" size="sm">
+            <Button icon={CodeSlashIcon} />
+            <Button icon={CodeBlockIcon} />
+          </ButtonGroup>
+        </div>
+      </div>
       <div className="s-flex s-w-full s-max-w-[900px] s-flex-1 s-p-0">
         <RainbowEffect
           containerClassName="s-w-full"
