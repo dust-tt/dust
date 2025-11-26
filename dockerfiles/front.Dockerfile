@@ -119,8 +119,8 @@ WORKDIR /app
 COPY --from=deps /app/dist ./dist
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/package.json ./package.json
-# Copy built SDK that workers depend on
-COPY --from=deps /sdks ./sdks
+# Copy built SDK that workers depend on (symlink points to ../../../sdks/js)
+COPY --from=deps /sdks/js ./sdks/js
 
 # Preload jemalloc for all processes:
 ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2

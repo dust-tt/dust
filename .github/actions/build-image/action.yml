@@ -131,7 +131,7 @@ runs:
           build_args+=("--build-arg NEXT_PUBLIC_DATADOG_SERVICE=$COMPONENT")
         fi
 
-        # Special handling for front component - build both front and workers targets
+        # Special handling for front component, build both front and workers targets
         if [[ "$BASE_COMPONENT" == "front" ]]; then
           echo "🏗️ Building front component with dual targets (front + workers)"
 
