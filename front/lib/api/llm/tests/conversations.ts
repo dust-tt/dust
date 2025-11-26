@@ -113,6 +113,18 @@ function hasToolCall(
   };
 }
 
+const TEST_CONFIGS: Pick<TestConfig, "temperature" | "reasoningEffort">[] = [
+  { reasoningEffort: null },
+  { reasoningEffort: "none" },
+  { reasoningEffort: "light" },
+  { reasoningEffort: "medium" },
+  { reasoningEffort: "high" },
+  { temperature: 1 },
+  { temperature: 0.7 },
+  { temperature: 0 },
+  { temperature: 0.7, reasoningEffort: "medium" },
+];
+
 function checkJsonResponse(key: TestStructuredOutputKey): ResponseChecker {
   return {
     type: "check_json_output",
@@ -129,6 +141,7 @@ export const TEST_CONVERSATIONS: TestConversation[] = [
       userMessage("Be concise. What is 2+2? Just give the number."),
     ],
     expectedInResponses: [containsTextChecker(["4"])],
+    configs: TEST_CONFIGS,
   },
   {
     id: "yes-no-question",
@@ -202,6 +215,9 @@ export const TEST_CONVERSATIONS: TestConversation[] = [
       },
     ],
   },
+];
+
+export const TEST_VISION_CONVERSATIONS: TestConversation[] = [
   {
     id: "image-description",
     name: "Image description",
@@ -230,10 +246,15 @@ export const TEST_STRUCTURED_OUTPUT_CONVERSATIONS: (Omit<
       ),
     ],
     expectedInResponses: [checkJsonResponse("user-profile")],
+    configs: [
+      {
+        testStructuredOutputKey: "user-profile",
+      },
+    ],
   },
   {
     id: "data-extraction",
-    name: "Structured output - user profile",
+    name: "Structured output - data extraction",
     systemPrompt: SYSTEM_PROMPT,
     conversationActions: [
       userMessage(
@@ -241,6 +262,11 @@ export const TEST_STRUCTURED_OUTPUT_CONVERSATIONS: (Omit<
       ),
     ],
     expectedInResponses: [checkJsonResponse("data-extraction")],
+    configs: [
+      {
+        testStructuredOutputKey: "data-extraction",
+      },
+    ],
   },
 ];
 

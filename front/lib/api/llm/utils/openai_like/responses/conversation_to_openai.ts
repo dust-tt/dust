@@ -9,10 +9,12 @@ import type {
 } from "openai/resources/responses/responses";
 import type {
   Reasoning,
-  ReasoningEffort as OpenAiReasoningEffort,
+  ReasoningEffort as OpenAIReasoningEffort,
 } from "openai/resources/shared";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import type { OpenAIWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
+import { OPENAI_MODEL_CONFIGS } from "@app/lib/api/llm/clients/openai/types";
 import {
   extractEncryptedContentFromMetadata,
   extractIdFromMetadata,
@@ -168,31 +170,31 @@ export function toTool(tool: AgentActionSpecification): FunctionTool {
   };
 }
 
-const REASONING_EFFORT_TO_OPENAI_REASONING: {
-  [key in ReasoningEffort]: OpenAiReasoningEffort;
-} = {
-  none: null,
-  light: "low",
-  medium: "medium",
-  high: "high",
-};
+const REASONING_CONFIG_MAPPING: Record<ReasoningEffort, OpenAIReasoningEffort> =
+  {
+    none: "none",
+    light: "low",
+    medium: "medium",
+    high: "high",
+  };
 
 export function toReasoning(
-  reasoningEffort: ReasoningEffort | null,
-  useNativeLightReasoning?: boolean
+  modelId: OpenAIWhitelistedModelId,
+  reasoningEffort: ReasoningEffort | null
 ): Reasoning | null {
-  if (!reasoningEffort || reasoningEffort === "none") {
+  if (!reasoningEffort) {
     return null;
   }
 
-  if (reasoningEffort !== "light" || useNativeLightReasoning) {
-    // For light, we might not use native reasoning but Chain of Thought instead
-    return {
-      effort: REASONING_EFFORT_TO_OPENAI_REASONING[reasoningEffort],
-      summary: "auto",
-    };
-  }
-  return null;
+  const reasoningConfigMapping = {
+    ...REASONING_CONFIG_MAPPING,
+    ...OPENAI_MODEL_CONFIGS[modelId].reasoningConfigMapping,
+  };
+
+  return {
+    effort: reasoningConfigMapping[reasoningEffort],
+    summary: "auto",
+  };
 }
 
 export function toResponseFormat(

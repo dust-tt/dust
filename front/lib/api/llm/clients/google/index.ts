@@ -22,12 +22,14 @@ import { handleError } from "./utils/errors";
 
 export class GoogleLLM extends LLM {
   private client: GoogleGenAI;
+  protected modelId: GoogleAIStudioWhitelistedModelId;
 
   constructor(
     auth: Authenticator,
     llmParameters: LLMParameters & { modelId: GoogleAIStudioWhitelistedModelId }
   ) {
     super(auth, overwriteLLMParameters(llmParameters));
+    this.modelId = llmParameters.modelId;
     const { GOOGLE_AI_STUDIO_API_KEY } = dustManagedCredentials();
     if (!GOOGLE_AI_STUDIO_API_KEY) {
       throw new Error(
@@ -60,10 +62,11 @@ export class GoogleLLM extends LLM {
             systemInstruction: { text: prompt },
             // We only need one
             candidateCount: 1,
-            thinkingConfig: toThinkingConfig(
-              this.reasoningEffort,
-              this.modelConfig.useNativeLightReasoning
-            ),
+            thinkingConfig: toThinkingConfig({
+              modelId: this.modelId,
+              reasoningEffort: this.reasoningEffort,
+              useNativeLightReasoning: this.modelConfig.useNativeLightReasoning,
+            }),
           },
         });
 

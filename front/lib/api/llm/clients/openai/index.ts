@@ -24,6 +24,7 @@ import { handleGenericError } from "../../types/errors";
 
 export class OpenAIResponsesLLM extends LLM {
   private client: OpenAI;
+  protected modelId: OpenAIWhitelistedModelId;
   protected metadata: LLMClientMetadata = {
     clientId: "openai_responses",
     modelId: this.modelId,
@@ -34,6 +35,7 @@ export class OpenAIResponsesLLM extends LLM {
     llmParameters: LLMParameters & { modelId: OpenAIWhitelistedModelId }
   ) {
     super(auth, overwriteLLMParameters(llmParameters));
+    this.modelId = llmParameters.modelId;
 
     const { OPENAI_API_KEY, OPENAI_BASE_URL } = dustManagedCredentials();
     if (!OPENAI_API_KEY) {
@@ -52,10 +54,7 @@ export class OpenAIResponsesLLM extends LLM {
     specifications,
   }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
     try {
-      const reasoning = toReasoning(
-        this.reasoningEffort,
-        this.modelConfig.useNativeLightReasoning
-      );
+      const reasoning = toReasoning(this.modelId, this.reasoningEffort);
       const events = await this.client.responses.create({
         model: this.modelId,
         input: toInput(prompt, conversation),

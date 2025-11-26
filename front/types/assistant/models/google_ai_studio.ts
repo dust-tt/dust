@@ -24,6 +24,7 @@ export const GEMINI_2_5_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
   minimumReasoningEffort: "none",
   maximumReasoningEffort: "light",
   defaultReasoningEffort: "light",
+  useNativeLightReasoning: true,
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
 };
 export const GEMINI_2_5_FLASH_MODEL_CONFIG: ModelConfigurationType = {
@@ -43,6 +44,7 @@ export const GEMINI_2_5_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   minimumReasoningEffort: "none",
   maximumReasoningEffort: "light",
   defaultReasoningEffort: "light",
+  useNativeLightReasoning: true,
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
 };
 export const GEMINI_2_5_PRO_MODEL_CONFIG: ModelConfigurationType = {
@@ -62,6 +64,7 @@ export const GEMINI_2_5_PRO_MODEL_CONFIG: ModelConfigurationType = {
   minimumReasoningEffort: "light",
   maximumReasoningEffort: "high",
   defaultReasoningEffort: "light",
+  useNativeLightReasoning: true,
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
 };
 export const GEMINI_3_PRO_MODEL_CONFIG: ModelConfigurationType = {
