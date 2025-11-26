@@ -76,7 +76,7 @@ if (
         );
 
         console.log(
-          "%c👉 Check out our open positions: %chttps://dust.tt/home/about ",
+          "%c👉 Learn more about us: %chttps://dust.tt/home/about",
           "color: #277644; font-size: 16px; font-weight: bold;",
           "color: #54B47D; font-size: 16px; font-weight: bold; text-decoration: underline;"
         );
