@@ -1,6 +1,10 @@
 import { getWorkspacePublicAPILimits } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { isEntreprisePlan } from "@app/lib/plans/plan_codes";
+import {
+  getStripeSubscription,
+  isEnterpriseSubscription,
+} from "@app/lib/plans/stripe";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -10,14 +14,15 @@ import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types";
 
-const BASE_TOKEN_MARKUP = 1.3;
+const BASE_TOKEN_MARKUP_PERCENT = 30;
 
-function calculateDefaultDiscountPercent(markup: number): number {
-  // Formula: defaultDiscountPercent = (1 - (1 + markup/100) / 1.3) * 100
+function calculateDefaultDiscountPercent(markupPercent: number): number {
+  // Formula: defaultDiscountPercent = (1 - (100 + markupPercent) / (100 + 30) * 100
   // Input markup is in percentage (e.g., 20 for 20%)
-  // Base markup is 1.3 (30%)
-  // Example: markup=20 → (1 - (1 + 20/100) /1.3) * 100 = (1-1.2/1.3) * 100 = 7.69%
-  const discountPercent = (1 - (1 + markup / 100) / BASE_TOKEN_MARKUP) * 100;
+  // Base markup is 30%
+  // Example: markup=20 → (1 - (100 + 20) / (100 + 30)) * 100 = (1-120/130) * 100 = 7.69%
+  const discountPercent =
+    (1 - (100 + markupPercent) / (100 + BASE_TOKEN_MARKUP_PERCENT)) * 100;
   return Math.round(discountPercent); // Round, PUC model uses integer percent
 }
 
@@ -32,7 +37,25 @@ async function backfillWorkspace(
   const subscription =
     await SubscriptionResource.fetchActiveByWorkspace(workspace);
 
-  if (!isEntreprisePlan(subscription.getPlan().code)) {
+  if (!subscription || !subscription.stripeSubscriptionId) {
+    workspaceLogger.info("Skipping: no active subscription found");
+    return;
+  }
+
+  const stripeSubscription = await getStripeSubscription(
+    subscription.stripeSubscriptionId
+  );
+  if (!stripeSubscription) {
+    workspaceLogger.info(
+      {
+        stripeSubscriptionId: subscription.stripeSubscriptionId,
+      },
+      "Skipping: stripe subscription not found"
+    );
+    return;
+  }
+
+  if (!isEnterpriseSubscription(stripeSubscription)) {
     return;
   }
 
@@ -61,7 +84,7 @@ async function backfillWorkspace(
 
   const defaultDiscountPercent = calculateDefaultDiscountPercent(markup);
   const paygCapCents = Math.round(monthlyLimit * 100);
-  const freeCreditCents = 0; // Setting free credit to 0 cents as default
+  const freeCreditCents = undefined; // Setting free credit to 0 cents as default
 
   if (defaultDiscountPercent < 0 || defaultDiscountPercent > 100) {
     workspaceLogger.error(
@@ -77,7 +100,6 @@ async function backfillWorkspace(
       monthlyLimit,
       defaultDiscountPercent,
       paygCapCents,
-      freeCreditCents,
       execute,
     },
     execute
