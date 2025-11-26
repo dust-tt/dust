@@ -18,7 +18,7 @@ import type {
 } from "@app/components/assistant/conversation/types";
 import {
   hasHumansInteracting,
-  isHiddenContextOrigin,
+  isHiddenMessage,
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
 import { useCancelMessage, useConversation } from "@app/lib/swr/conversations";
@@ -63,7 +63,7 @@ export const AgentInputBar = ({
         isUserMessage(m) &&
         m.user?.id === context.user.id &&
         m.visibility !== "deleted" &&
-        !isHiddenContextOrigin(m)
+        !isHiddenMessage(m)
     );
 
   const agentMentions = useMemo(() => {

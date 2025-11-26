@@ -31,7 +31,7 @@ import {
   areSameRank,
   getMessageRank,
   hasHumansInteracting,
-  isHiddenContextOrigin,
+  isHiddenMessage,
   isMessageTemporayState,
   isUserMessage,
   makeInitialMessageStreamState,
@@ -186,9 +186,7 @@ export const ConversationViewer = ({
     if (!initialListData && messages.length > 0 && !isValidating) {
       const raw = messages
         .flatMap((m) => m.messages)
-        .filter((m) =>
-          isUserMessageType(m) ? !isHiddenContextOrigin(m) : true
-        );
+        .filter((m) => (isUserMessageType(m) ? !isHiddenMessage(m) : true));
 
       const messagesToRender = convertLightMessageTypeToVirtuosoMessages(raw);
 
@@ -216,7 +214,7 @@ export const ConversationViewer = ({
 
     if (olderMessagesFromBackend.length > 0) {
       const filtered = olderMessagesFromBackend.filter((m) =>
-        isUserMessageType(m) ? !isHiddenContextOrigin(m) : true
+        isUserMessageType(m) ? !isHiddenMessage(m) : true
       );
       ref.current.data.prepend(
         convertLightMessageTypeToVirtuosoMessages(filtered)
@@ -286,7 +284,7 @@ export const ConversationViewer = ({
         switch (event.type) {
           case "user_message_new":
             if (ref.current) {
-              if (isHiddenContextOrigin(event.message)) {
+              if (isHiddenMessage(event.message)) {
                 break;
               }
               const userMessage: VirtuosoMessage = {
