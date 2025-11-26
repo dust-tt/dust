@@ -290,20 +290,14 @@ export const ConversationViewer = ({
               if (isHiddenMessage(event.message)) {
                 break;
               }
-              const userMessage: VirtuosoMessage = {
-                ...event.message,
-                contentFragments: [],
-              };
+              const userMessage = event.message;
               const predicate = (m: VirtuosoMessage) =>
                 isUserMessage(m) && areSameRank(m, userMessage);
 
               const exists = ref.current.data.find(predicate);
 
               if (!exists) {
-                ref.current.data.append(
-                  [{ ...event.message, contentFragments: [] }],
-                  true
-                );
+                ref.current.data.append([userMessage], true);
                 // Using else if with the type guard just to please the type checker as we already know it's a user message from the predicate.
               } else if (isUserMessage(exists)) {
                 // We only update if the version is greater than the existing version.

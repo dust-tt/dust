@@ -23,7 +23,7 @@ import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action
 import type {
   AgentConfigurationType,
   AgentMessageType,
-  ConversationType,
+  ConversationWithoutContentType,
   OAuthProvider,
 } from "@app/types";
 
@@ -97,7 +97,7 @@ export async function getExitOrPauseEvents({
   action: AgentMCPActionResource;
   agentConfiguration: AgentConfigurationType;
   agentMessage: AgentMessageType;
-  conversation: ConversationType;
+  conversation: ConversationWithoutContentType;
 }): Promise<
   (
     | MCPApproveExecutionEvent

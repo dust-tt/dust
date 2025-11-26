@@ -104,9 +104,7 @@ async function handler(
         conversationId,
         limit: paginationRes.value.limit,
         lastRank: paginationRes.value.lastValue,
-        viewType: useNewResponseFormat
-          ? ("light" as const)
-          : ("legacy-light" as const),
+        viewType: useNewResponseFormat ? "light" : "legacy-light",
       });
 
       if (messagesRes.isErr()) {

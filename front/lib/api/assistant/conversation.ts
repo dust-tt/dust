@@ -220,7 +220,7 @@ export async function deleteOrLeaveConversation(
 
 export async function getConversationMessageType(
   auth: Authenticator,
-  conversation: ConversationType | ConversationWithoutContentType,
+  conversation: ConversationWithoutContentType,
   messageId: string
 ): Promise<"user_message" | "agent_message" | "content_fragment" | null> {
   if (!auth.workspace()) {
@@ -366,6 +366,36 @@ async function attributeUserFromWorkspaceAndEmail(
     });
 
   return membership ? matchingUser.toJSON() : null;
+}
+
+export function getRelatedContentFragments(
+  conversation: ConversationType,
+  message: UserMessageType
+): ContentFragmentType[] {
+  const potentialContentFragments = conversation.content
+    // Only the latest version of each message.
+    .map((versions) => versions[versions.length - 1])
+    // Only the content fragments.
+    .filter(isContentFragmentType)
+    // That are preceding the message by rank in the conversation.
+    .filter((m) => m.rank < message.rank)
+    // Sort by rank descending.
+    .toSorted((a, b) => b.rank - a.rank);
+
+  const relatedContentFragments: ContentFragmentType[] = [];
+  let lastRank = message.rank;
+
+  // Add until we reach a gap in ranks.
+  for (const contentFragment of potentialContentFragments) {
+    if (contentFragment.rank === lastRank - 1) {
+      relatedContentFragments.push(contentFragment);
+      lastRank = contentFragment.rank;
+    } else {
+      break;
+    }
+  }
+
+  return relatedContentFragments;
 }
 
 // This method is in charge of creating a new user message in database, running the necessary agents
@@ -683,7 +713,10 @@ export async function postUserMessage(
   // we should move this to a dedicated real-time sync mechanism.
   await publishMessageEventsOnMessagePostOrEdit(
     conversation,
-    userMessage,
+    {
+      ...userMessage,
+      contentFragments: getRelatedContentFragments(conversation, userMessage),
+    },
     agentMessages
   );
 
@@ -1056,7 +1089,10 @@ export async function editUserMessage(
   // we should move this to a dedicated real-time sync mechanism.
   await publishMessageEventsOnMessagePostOrEdit(
     conversation,
-    userMessage,
+    {
+      ...userMessage,
+      contentFragments: getRelatedContentFragments(conversation, userMessage),
+    },
     agentMessages
   );
 

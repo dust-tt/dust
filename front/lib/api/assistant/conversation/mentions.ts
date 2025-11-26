@@ -11,10 +11,9 @@ import {
 import { triggerConversationAddedAsParticipantNotification } from "@app/lib/notifications/workflows/conversation-added-as-participant";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
-import type { MentionType } from "@app/types";
+import type { ConversationWithoutContentType, MentionType } from "@app/types";
 import type {
   AgentMessageType,
-  ConversationType,
   LightAgentConfigurationType,
   UserMessageType,
   WorkspaceType,
@@ -31,7 +30,7 @@ export const createUserMentions = async (
   }: {
     mentions: MentionType[];
     message: Message;
-    conversation: ConversationType;
+    conversation: ConversationWithoutContentType;
     transaction?: Transaction;
   }
 ) => {
@@ -88,7 +87,7 @@ export const createAgentMessages = async ({
   owner: WorkspaceType;
   skipToolsValidation: boolean;
   nextMessageRank: number;
-  conversation: ConversationType;
+  conversation: ConversationWithoutContentType;
   userMessage: UserMessageType;
   transaction?: Transaction;
 }) => {

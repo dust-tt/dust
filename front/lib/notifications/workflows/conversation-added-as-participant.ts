@@ -9,7 +9,7 @@ import { renderEmail } from "@app/lib/notifications/email-templates/default";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { ConversationType, Result } from "@app/types";
+import type { ConversationWithoutContentType, Result } from "@app/types";
 import { Err } from "@app/types";
 import { Ok } from "@app/types";
 
@@ -187,7 +187,7 @@ export const triggerConversationAddedAsParticipantNotification = async (
     conversation,
     addedUserId,
   }: {
-    conversation: ConversationType;
+    conversation: ConversationWithoutContentType;
     addedUserId: string;
   }
 ): Promise<Result<void, DustError<"internal_error">>> => {

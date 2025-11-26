@@ -258,6 +258,7 @@ export type ConversationWithoutContentType = {
   sId: string;
   title: string | null;
   spaceId: string | null;
+  depth: number;
 
   // Ideally, this property should be moved to the ConversationType.
   requestedSpaceIds: string[];
@@ -270,7 +271,6 @@ export type ConversationWithoutContentType = {
 export type ConversationType = ConversationWithoutContentType & {
   owner: WorkspaceType;
   visibility: ConversationVisibility;
-  depth: number;
   content: (UserMessageType[] | AgentMessageType[] | ContentFragmentType[])[];
 };
 
@@ -337,7 +337,7 @@ export type UserMessageNewEvent = {
   type: "user_message_new";
   created: number;
   messageId: string;
-  message: UserMessageType;
+  message: UserMessageTypeWithContentFragments;
 };
 
 // Event sent when the user message is created.

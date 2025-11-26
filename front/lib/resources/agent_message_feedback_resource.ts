@@ -26,7 +26,6 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import type {
   AgentConfigurationType,
   AgentMessageType,
-  ConversationType,
   ConversationWithoutContentType,
   LightAgentConfigurationType,
   MessageType,
@@ -359,7 +358,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
 
   static async getConversationFeedbacksForUser(
     auth: Authenticator,
-    conversation: ConversationType | ConversationWithoutContentType
+    conversation: ConversationWithoutContentType
   ) {
     const user = auth.getNonNullableUser();
 
@@ -420,7 +419,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
   }: {
     auth: Authenticator;
     messageId: string;
-    conversation: ConversationType | ConversationWithoutContentType;
+    conversation: ConversationWithoutContentType;
     user: UserType;
   }): Promise<
     Result<

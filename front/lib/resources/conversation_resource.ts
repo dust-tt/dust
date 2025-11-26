@@ -38,7 +38,6 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
   ConversationMCPServerViewType,
-  ConversationType,
   ConversationWithoutContentType,
   LightAgentConfigurationType,
   ModelId,
@@ -526,6 +525,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       requestedGroupIds: [],
       requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(),
       spaceId: conversation.space?.sId ?? null,
+      depth: conversation.depth,
     });
   }
 
@@ -648,6 +648,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           requestedGroupIds: [],
           requestedSpaceIds: c.getRequestedSpaceIdsFromModel(),
           spaceId: c.space?.sId ?? null,
+          depth: c.depth,
         };
       })
     );
@@ -801,7 +802,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       action,
       user,
     }: {
-      conversation: ConversationWithoutContentType | ConversationType;
+      conversation: ConversationWithoutContentType;
       action: ParticipantActionType;
       user: UserType | null;
     }
@@ -1506,6 +1507,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       sId: this.sId,
       title: this.title,
       unread: participation.unread,
+      depth: this.depth,
     };
   }
 }

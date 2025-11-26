@@ -30,7 +30,7 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type {
-  ConversationType,
+  ConversationWithoutContentType,
   LightAgentConfigurationType,
   LightWorkspaceType,
 } from "@app/types";
@@ -1827,7 +1827,7 @@ describe("Space Handling", () => {
 
   describe("getMessageById", () => {
     let auth: Authenticator;
-    let conversation: ConversationType;
+    let conversation: ConversationWithoutContentType;
     let agents: LightAgentConfigurationType[];
     let conversationIds: string[];
 
@@ -2077,7 +2077,7 @@ describe("Space Handling", () => {
 
   describe("fetchMessagesForPage", () => {
     let auth: Authenticator;
-    let conversation: ConversationType;
+    let conversation: ConversationWithoutContentType;
     let agents: LightAgentConfigurationType[];
 
     beforeEach(async () => {

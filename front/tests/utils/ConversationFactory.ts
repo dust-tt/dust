@@ -13,8 +13,8 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import type {
-  ConversationType,
   ConversationVisibility,
+  ConversationWithoutContentType,
   ModelId,
   SupportedContentFragmentType,
   UserMessageOrigin,
@@ -40,7 +40,7 @@ export class ConversationFactory {
       visibility?: ConversationVisibility;
       t?: Transaction;
     }
-  ): Promise<ConversationType> {
+  ): Promise<ConversationWithoutContentType> {
     const user = auth.getNonNullableUser();
     const workspace = auth.getNonNullableWorkspace();
 
@@ -102,7 +102,7 @@ export class ConversationFactory {
   }: {
     auth: Authenticator;
     workspace: WorkspaceType;
-    conversation: ConversationType;
+    conversation: ConversationWithoutContentType;
     content: string;
     origin?: UserMessageOrigin;
     agenticMessageType?: "run_agent" | "agent_handover";
