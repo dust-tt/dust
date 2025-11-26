@@ -13,7 +13,7 @@ export const ZendeskPaginatedResponseSchema = z.object({
   meta: z.object({
     has_more: z.boolean(),
     after_cursor: z.string().nullable().optional(),
-    before_cursor: z.string().nullable().optional()
+    before_cursor: z.string().nullable().optional(),
   }),
   links: z.object({
     prev: z.string().nullable().optional(),
