@@ -7,7 +7,12 @@ import type {
   Result,
   UserMessageType,
 } from "@dust-tt/client";
-import { DustAPI, Err, Ok } from "@dust-tt/client";
+import {
+  DustAPI,
+  Err,
+  isMCPServerPersonalAuthRequiredError,
+  Ok,
+} from "@dust-tt/client";
 import type { Activity, TurnContext } from "botbuilder";
 import removeMarkdown from "remove-markdown";
 
@@ -28,6 +33,7 @@ import { getHeaderFromUserEmail } from "@connectors/types";
 
 import {
   createBasicToolApprovalAdaptiveCard,
+  createPersonalAuthenticationAdaptiveCard,
   createResponseAdaptiveCard,
   createStreamingAdaptiveCard,
 } from "./adaptive_cards";
@@ -429,6 +435,27 @@ async function streamAgentResponse({
       case "agent_action_success":
         actions.push(event.action);
         break;
+      case "tool_error": {
+        if (isMCPServerPersonalAuthRequiredError(event.error)) {
+          const conversationUrl = makeConversationUrl(
+            connector.workspaceId,
+            conversation.sId
+          );
+          await updateActivity(context, {
+            id: agentActivityId,
+            ...createPersonalAuthenticationAdaptiveCard({
+              conversationUrl,
+              workspaceId: connector.workspaceId,
+            }),
+          });
+          break;
+        }
+        return new Err(
+          new Error(
+            `Tool message error: code: ${event.error.code} message: ${event.error.message}`
+          )
+        );
+      }
       case "tool_approve_execution": {
         // Find the MicrosoftBotMessage to get the microsoftBotMessageId
         const microsoftBotMessage = await MicrosoftBotMessage.findOne({
