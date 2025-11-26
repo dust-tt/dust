@@ -12,12 +12,12 @@ export function isValidZendeskSubdomain(s: unknown): s is string {
 export const ZendeskPaginatedResponseSchema = z.object({
   meta: z.object({
     has_more: z.boolean(),
-    after_cursor: z.string(),
-    before_cursor: z.string(),
+    after_cursor: z.string().nullable(),
+    before_cursor: z.string().nullable(),
   }),
   links: z.object({
-    prev: z.string().optional(),
-    next: z.string().optional(),
+    prev: z.string().nullable().optional(),
+    next: z.string().nullable().optional(),
   }),
 });
 
@@ -242,9 +242,10 @@ export const ZendeskCategoryResponseSchema = z.object({
   category: ZendeskCategorySchema,
 });
 
-export const ZendeskCategoriesResponseSchema = ZendeskPaginatedResponseSchema.extend({
-  categories: z.array(ZendeskCategorySchema),
-});
+export const ZendeskCategoriesResponseSchema =
+  ZendeskPaginatedResponseSchema.extend({
+    categories: z.array(ZendeskCategorySchema),
+  });
 
 // Section schemas
 export const ZendeskSectionSchema = z

@@ -12,12 +12,12 @@ export function isValidZendeskSubdomain(s: unknown): s is string {
 export const ZendeskPaginatedResponseSchema = z.object({
   meta: z.object({
     has_more: z.boolean(),
-    after_cursor: z.string(),
-    before_cursor: z.string(),
+    after_cursor: z.string().nullable(),
+    before_cursor: z.string().nullable(),
   }),
   links: z.object({
-    prev: z.string(),
-    next: z.string(),
+    prev: z.string().nullable().optional(),
+    next: z.string().nullable().optional(),
   }),
 });
 
