@@ -17,6 +17,7 @@ import { MembershipInvitationResource } from "@app/lib/resources/membership_invi
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { isString } from "@app/types";
+import { validateRelativePath } from "@app/types/shared/utils/url_utils";
 
 function isValidScreenHint(
   screenHint: string | string[] | undefined
@@ -76,8 +77,14 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
       }
     }
 
+    // Validate and sanitize returnTo to ensure it's a relative path
+    const validatedReturnTo = validateRelativePath(returnTo);
+    const sanitizedReturnTo = validatedReturnTo.valid
+      ? validatedReturnTo.sanitizedPath
+      : null;
+
     const state = {
-      ...(returnTo ? { returnTo } : {}),
+      ...(sanitizedReturnTo ? { returnTo: sanitizedReturnTo } : {}),
       ...(organizationIdToUse ? { organizationId: organizationIdToUse } : {}),
     };
 
@@ -190,12 +197,18 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
     // If user has a region, redirect to the region page.
     const userSessionRegion = sessionCookie.region;
 
+    // Validate returnTo from state to ensure it's a relative path
+    const validatedReturnTo = validateRelativePath(stateObj.returnTo);
+    const sanitizedReturnTo = validatedReturnTo.valid
+      ? validatedReturnTo.sanitizedPath
+      : null;
+
     let invite: MembershipInvitationResource | null = null;
     if (
-      isString(stateObj.returnTo) &&
-      stateObj.returnTo.startsWith("/api/login?inviteToken=")
+      sanitizedReturnTo &&
+      sanitizedReturnTo.startsWith("/api/login?inviteToken=")
     ) {
-      const inviteUrl = new URL(stateObj.returnTo, config.getClientFacingUrl());
+      const inviteUrl = new URL(sanitizedReturnTo, config.getClientFacingUrl());
       const inviteToken = inviteUrl.searchParams.get("inviteToken");
       if (inviteToken) {
         const inviteRes =
@@ -253,15 +266,8 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       const targetRegionInfo = multiRegionsConfig.getOtherRegionInfo();
       const params = new URLSearchParams();
 
-      let returnTo = "/";
-      try {
-        if (isString(stateObj.returnTo)) {
-          const url = new URL(stateObj.returnTo);
-          returnTo = url.pathname + url.search;
-        }
-      } catch {
-        // Fallback if URL parsing fails
-      }
+      // Use sanitizedReturnTo if available, otherwise default to "/"
+      const returnTo = sanitizedReturnTo ?? "/";
 
       params.set("returnTo", returnTo);
       if (organizationId) {
@@ -286,8 +292,8 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       ]);
     }
 
-    if (isString(stateObj.returnTo)) {
-      res.redirect(stateObj.returnTo);
+    if (sanitizedReturnTo) {
+      res.redirect(sanitizedReturnTo as string);
       return;
     }
 
@@ -300,9 +306,6 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
 }
 
 async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const returnTo = req.query.returnTo || config.getClientFacingUrl();
-
   const session = await getSession(req, res);
 
   if (session && session.type === "workos") {
@@ -328,5 +331,12 @@ async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
     ]);
   }
 
-  res.redirect(returnTo as string);
+  // Validate and sanitize returnTo parameter
+  const { returnTo } = req.query;
+  const validatedReturnTo = validateRelativePath(returnTo);
+  const sanitizedReturnTo = validatedReturnTo.valid
+    ? validatedReturnTo.sanitizedPath
+    : "/";
+
+  res.redirect(sanitizedReturnTo as string);
 }
