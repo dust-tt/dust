@@ -1,0 +1,145 @@
+import { Authenticator } from "@app/lib/auth";
+import { isEntreprisePlan } from "@app/lib/plans/plan_codes";
+import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
+import type { Logger } from "@app/logger/logger";
+import { makeScript } from "@app/scripts/helpers";
+import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
+import type { LightWorkspaceType } from "@app/types";
+import { getWorkspacePublicAPILimits } from "@app/lib/api/workspace";
+
+const BASE_TOKEN_MARKUP = 1.3;
+
+function calculateDefaultDiscountPercent(markup: number): number {
+  // Formula: defaultDiscountPercent = (1 - (1 + markup/100) / 1.3) * 100
+  // Input markup is in percentage (e.g., 20 for 20%)
+  // Base markup is 1.3 (30%)
+  // Example: markup=20 → (1 - (1 + 20/100) /1.3) * 100 = (1-1.2/1.3) * 100 = 7.69%
+  const discountPercent = (1 - (1 + markup / 100) / BASE_TOKEN_MARKUP) * 100;
+  return Math.round(discountPercent); // Round, PUC model uses integer percent
+}
+
+async function backfillWorkspace(
+  workspace: LightWorkspaceType,
+  execute: boolean,
+  logger: Logger
+): Promise<void> {
+  const workspaceLogger = logger.child({ workspaceId: workspace.sId });
+
+  // Get active subscription and check if it's enterprise.
+  const subscription =
+    await SubscriptionResource.fetchActiveByWorkspace(workspace);
+
+  if (!isEntreprisePlan(subscription.getPlan().code)) {
+    return;
+  }
+
+  // Check if workspace has enabled publicApiLimits.
+  const publicApiLimits = getWorkspacePublicAPILimits(workspace);
+
+  if (!publicApiLimits || !publicApiLimits.enabled) {
+    workspaceLogger.info(
+      { enabled: (publicApiLimits as any)?.enabled },
+      "Skipping: publicApiLimits not enabled or invalid"
+    );
+    return;
+  }
+
+  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+  // Compute configuration data.
+  const { markup, monthlyLimit } = publicApiLimits;
+  if (markup < 0 || monthlyLimit <= 0) {
+    workspaceLogger.warn(
+      { markup, monthlyLimit },
+      "Skipping: invalid markup or monthlyLimit values"
+    );
+    return;
+  }
+
+  const defaultDiscountPercent = calculateDefaultDiscountPercent(markup);
+  const paygCapCents = Math.round(monthlyLimit * 100);
+  const freeCreditCents = 0; // Setting free credit to 0 cents as default
+
+  if (defaultDiscountPercent < 0 || defaultDiscountPercent > 100) {
+    workspaceLogger.error(
+      { markup, defaultDiscountPercent },
+      "Skipping: calculated discount percent out of range"
+    );
+    return;
+  }
+
+  workspaceLogger.info(
+    {
+      markup,
+      monthlyLimit,
+      defaultDiscountPercent,
+      paygCapCents,
+      freeCreditCents,
+      execute,
+    },
+    execute
+      ? "Creating programmatic usage configuration"
+      : "Would create programmatic usage configuration (dry run)"
+  );
+
+  if (execute) {
+    const result = await ProgrammaticUsageConfigurationResource.makeNew(auth, {
+      freeCreditCents,
+      defaultDiscountPercent,
+      paygCapCents,
+    });
+
+    if (result.isErr()) {
+      workspaceLogger.error(
+        { error: result.error },
+        "Failed to create configuration"
+      );
+      return;
+    }
+
+    workspaceLogger.info("Successfully created configuration");
+  }
+}
+
+makeScript(
+  {
+    wId: {
+      type: "string",
+      demandOption: false,
+      describe:
+        "Workspace sId to backfill (optional, processes all if omitted)",
+    },
+  },
+  async ({ wId, execute }, logger) => {
+    logger.info(
+      { execute, workspaceId: wId ?? "all" },
+      "Starting programmatic usage configuration backfill"
+    );
+
+    if (wId) {
+      const workspace = await WorkspaceModel.findOne({ where: { sId: wId } });
+
+      if (!workspace) {
+        throw new Error(`Workspace not found: ${wId}`);
+      }
+
+      await backfillWorkspace(
+        renderLightWorkspaceType({ workspace }),
+        execute,
+        logger
+      );
+    } else {
+      await runOnAllWorkspaces(
+        async (workspace) => {
+          await backfillWorkspace(workspace, execute, logger);
+        },
+        { concurrency: 8 }
+      );
+    }
+
+    logger.info("Programmatic usage configuration backfill completed");
+  }
+);
