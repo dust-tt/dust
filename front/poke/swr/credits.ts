@@ -15,7 +15,7 @@ export function usePokeCredits({ disabled, owner }: PokeConditionalFetchProps) {
 
   return {
     data: data?.credits ?? emptyArray(),
-    isLoading: !error && !data,
+    isLoading: !error && !data && !disabled,
     isError: error,
     mutate,
   };
