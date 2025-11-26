@@ -7,17 +7,11 @@
       "type": "keyword"
     },
     "email": {
-      "type": "keyword",
-      "normalizer": "lowercase_normalizer",
+      "type": "text",
+      "analyzer": "email_analyzer",
       "fields": {
-        "text": {
-          "type": "text",
-          "analyzer": "standard"
-        },
-        "edge": {
-          "type": "text",
-          "analyzer": "edge_analyzer",
-          "search_analyzer": "standard"
+        "keyword": {
+          "type": "keyword"
         }
       }
     },

@@ -4,16 +4,15 @@
   "refresh_interval": "1s",
   "analysis": {
     "analyzer": {
+      "email_analyzer": {
+        "type": "custom",
+        "tokenizer": "uax_url_email",
+        "filter": ["lowercase", "asciifolding"]
+      },
       "edge_analyzer": {
         "type": "custom",
         "tokenizer": "standard",
         "filter": ["lowercase", "edge_ngram_filter"]
-      }
-    },
-    "normalizer": {
-      "lowercase_normalizer": {
-        "type": "custom",
-        "filter": ["lowercase", "asciifolding"]
       }
     },
     "filter": {
