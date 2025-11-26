@@ -161,11 +161,9 @@ export const zendesk = async ({
   const { subdomain, accessToken } = await getZendeskSubdomainAndAccessToken(
     connector.connectionId
   );
-
-  const zendeskClient = new ZendeskClient(
+  const zendeskClient = await ZendeskClient.createClient(
     accessToken,
-    connector.id,
-    configuration.rateLimitTransactionsPerSecond
+    connector.id
   );
 
   // Run the command.

@@ -1,12 +1,8 @@
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import { ZendeskClient } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import logger from "@connectors/logger/logger";
-import {
-  ZendeskBrandResource,
-  ZendeskConfigurationResource,
-} from "@connectors/resources/zendesk_resources";
+import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 import type { ModelId } from "@connectors/types";
-import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 /**
  * Marks the node "Tickets" of a Brand as permission "read".
@@ -20,12 +16,6 @@ export async function allowSyncZendeskTickets({
   connectionId: string;
   brandId: number;
 }): Promise<boolean> {
-  const configuration =
-    await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
-  if (!configuration) {
-    throw new Error(`[Zendesk] Configuration not found.`);
-  }
-
   const brand = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
     brandId,
@@ -38,11 +28,9 @@ export async function allowSyncZendeskTickets({
   // fetching the brand from Zendesk
   const { subdomain, accessToken } =
     await getZendeskSubdomainAndAccessToken(connectionId);
-
-  const zendeskClient = new ZendeskClient(
+  const zendeskClient = await ZendeskClient.createClient(
     accessToken,
-    connectorId,
-    configuration.rateLimitTransactionsPerSecond
+    connectorId
   );
   const fetchedBrand = await zendeskClient.fetchBrand({
     brandId,
