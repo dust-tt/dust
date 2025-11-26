@@ -151,7 +151,7 @@ export async function createEnterpriseCreditPurchase({
     type: "committed",
     initialAmountCents: amountCents,
     consumedAmountCents: 0,
-    discount: null,
+    discount: discountPercent,
     invoiceOrLineItemId: invoiceItemId,
   });
 
@@ -240,7 +240,7 @@ export async function createProCreditPurchase({
     type: "committed",
     initialAmountCents: amountCents,
     consumedAmountCents: 0,
-    discount: null,
+    discount: discountPercent,
     invoiceOrLineItemId: invoice.id,
   });
 
