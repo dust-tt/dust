@@ -299,11 +299,6 @@ export class WebhookRouterConfigService {
         // Delete the entry
         delete config[provider]![providerWorkspaceId];
 
-        // Clean up empty provider object
-        if (Object.keys(config[provider]!).length === 0) {
-          delete config[provider];
-        }
-
         return config;
       },
       "delete",
