@@ -126,7 +126,7 @@ const TimelineItem = React.forwardRef<HTMLDivElement, TimelineItemProps>(
         </div>
         <div className="s-flex s-flex-col s-gap-1 s-pb-4">
           {title && (
-            <div className="s-heading-xs s-text-foreground dark:s-text-foreground-night">
+            <div className="s-heading-sm s-text-foreground dark:s-text-foreground-night">
               {title}
             </div>
           )}
