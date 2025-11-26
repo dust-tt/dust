@@ -36,6 +36,10 @@ const withBundleAnalyzer = bundleAnalyzer({
 });
 
 const config = {
+  // Standalone output creates self-contained server with minimal dependencies for Docker. It
+  // creates standalone folder that copies only the necessary files for a production deployment
+  // including select files in node_modules.
+  output: "standalone",
   transpilePackages: ["@uiw/react-textarea-code-editor"],
   // As of Next 14.2.3 swc minification creates a bug in the generated client side files.
   swcMinify: false,
@@ -49,6 +53,19 @@ const config = {
     serverMinification: false,
     esmExternals: false,
     instrumentationHook: true,
+    // Ensure dd-trace and other dependencies are included in standalone build.
+    outputFileTracingIncludes: {
+      "/**": [
+        "./node_modules/dd-trace/**/*",
+        "./node_modules/@datadog/**/*",
+        // Include entire Redux ecosystem to avoid issues with partial inclusion.
+        "./node_modules/redux/**/*",
+        "./node_modules/@reduxjs/**/*",
+        "./node_modules/immer/**/*",
+        "./node_modules/reselect/**/*",
+        "./node_modules/redux-thunk/**/*",
+      ],
+    },
   },
   async redirects() {
     return [
