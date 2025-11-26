@@ -30,7 +30,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   // Check if the feature flag is enabled
   const featureFlags = await getFeatureFlags(owner);
-  if (!featureFlags.includes("api_and_programmatic_admin_section")) {
+  if (!featureFlags.includes("ppul")) {
     return { notFound: true };
   }
 
@@ -127,9 +127,7 @@ export default function CreditsUsagePage({
   });
 
   const isEnterprise = isEntreprisePlan(subscription.plan.code);
-  const isApiAndProgrammaticEnabled = hasFeature(
-    "api_and_programmatic_admin_section"
-  );
+  const isApiAndProgrammaticEnabled = hasFeature("ppul");
   const { credits, isCreditsLoading } = useCredits({
     workspaceId: owner.sId,
     disabled: !isApiAndProgrammaticEnabled,

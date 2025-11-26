@@ -234,7 +234,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable notifications",
     stage: "dust_only",
   },
-  api_and_programmatic_admin_section: {
+  ppul: {
     description:
       "Enable the API & Programmatic section in the admin panel with credits purchase flow, usage metrics, and cost charts",
     stage: "dust_only",

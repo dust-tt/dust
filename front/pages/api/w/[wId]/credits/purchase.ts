@@ -61,7 +61,7 @@ async function handler(
   const workspace = auth.getNonNullableWorkspace();
   const featureFlags = await getFeatureFlags(workspace);
 
-  if (!featureFlags.includes("api_and_programmatic_admin_section")) {
+  if (!featureFlags.includes("ppul")) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {

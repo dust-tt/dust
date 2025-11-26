@@ -189,9 +189,7 @@ export const subNavigationAdmin = ({
 
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
 
-  const hasApiAndProgrammaticSection = featureFlags.includes(
-    "api_and_programmatic_admin_section"
-  );
+  const hasApiAndProgrammaticSection = featureFlags.includes("ppul");
 
   if (isAdmin(owner)) {
     nav.push({
