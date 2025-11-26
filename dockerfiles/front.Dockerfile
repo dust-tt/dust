@@ -140,6 +140,12 @@ COPY --from=base-deps /app/package.json ./package.json
 # Copy built SDK that workers depend on (maintain absolute path for symlink resolution)
 COPY --from=base-deps /sdks/js /sdks/js
 
+# Re-declare build arg needed at runtime
+ARG NEXT_PUBLIC_DUST_CLIENT_FACING_URL
+
+# Set as environment variable for runtime
+ENV NEXT_PUBLIC_DUST_CLIENT_FACING_URL=$NEXT_PUBLIC_DUST_CLIENT_FACING_URL
+
 # Preload jemalloc for all processes:
 ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
 
