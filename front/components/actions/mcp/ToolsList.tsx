@@ -142,7 +142,7 @@ export function ToolsList({
     [mcpServerView.server.tools]
   );
 
-  const getAvailableStakeLevelsForTool = (): MCPToolStakeLevelType[] => {
+  const getAvailableStakeLevels = (): MCPToolStakeLevelType[] => {
     return [...MCP_TOOL_STAKE_LEVELS];
   };
 
@@ -168,7 +168,7 @@ export function ToolsList({
           <div className="flex flex-col gap-4">
             {tools.map(
               (tool: { name: string; description: string }, index: number) => {
-                const availableStakeLevels = getAvailableStakeLevelsForTool();
+                const availableStakeLevels = getAvailableStakeLevels();
                 const metadata = mcpServerView.toolsMetadata?.find(
                   (m) => m.toolName === tool.name
                 );
