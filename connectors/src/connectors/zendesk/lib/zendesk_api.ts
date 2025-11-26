@@ -728,6 +728,19 @@ export class ZendeskClient {
     }
     return brand.subdomain;
   }
+
+  async fetchCurrentUser({
+    subdomain,
+  }: {
+    subdomain: string;
+  }): Promise<ZendeskUser> {
+    const url = `https://${subdomain}.zendesk.com/api/v2/users/me`;
+    const response = await this.fetchFromZendeskWithRetries(
+      url,
+      ZendeskUserResponseSchema
+    );
+    return response.user;
+  }
 }
 
 function extractMetadataFromZendeskUrl(url: string): {
@@ -753,28 +766,4 @@ function extractMetadataFromZendeskUrl(url: string): {
 
 export function isUserAdmin(user: ZendeskUser): boolean {
   return user.active && user.role === "admin";
-}
-
-export async function fetchZendeskCurrentUser({
-  subdomain,
-  accessToken,
-}: {
-  subdomain: string;
-  accessToken: string;
-}): Promise<ZendeskUser> {
-  const url = `https://${subdomain}.zendesk.com/api/v2/users/me`;
-  const response = await fetch(url, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch current user: ${response.statusText}`);
-  }
-
-  const jsonResponse = await response.json();
-  return jsonResponse.user;
 }

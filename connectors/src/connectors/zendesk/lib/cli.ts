@@ -12,7 +12,6 @@ import {
 import type { ZendeskTicket } from "@connectors/connectors/zendesk/lib/types";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
-  fetchZendeskCurrentUser,
   isUserAdmin,
   ZendeskClient,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
@@ -171,7 +170,7 @@ export const zendesk = async ({
   // Run the command.
   switch (command) {
     case "check-is-admin": {
-      const user = await fetchZendeskCurrentUser({ subdomain, accessToken });
+      const user = await zendeskClient.fetchCurrentUser({ subdomain });
       logger.info({ user }, "User returned by /users/me");
       return {
         userActive: user.active,
