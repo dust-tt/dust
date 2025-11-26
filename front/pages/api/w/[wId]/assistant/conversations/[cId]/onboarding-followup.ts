@@ -11,7 +11,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { AgentMessageType, WithAPIErrorResponse } from "@app/types";
-import { GLOBAL_AGENTS_SID } from "@app/types";
+import { GLOBAL_AGENTS_SID, isString } from "@app/types";
 
 export type PostOnboardingFollowupResponseBody = {
   agentMessages: AgentMessageType[];
@@ -25,8 +25,9 @@ async function handler(
   auth: Authenticator
 ): Promise<void> {
   const user = auth.getNonNullableUser();
+  const { cId: conversationId } = req.query;
 
-  if (typeof req.query.cId !== "string") {
+  if (!isString(conversationId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -35,8 +36,6 @@ async function handler(
       },
     });
   }
-
-  const conversationId = req.query.cId;
 
   if (req.method !== "POST") {
     return apiError(req, res, {
@@ -50,7 +49,7 @@ async function handler(
 
   const { toolId } = req.body;
 
-  if (typeof toolId !== "string" || !isInternalMCPServerName(toolId)) {
+  if (!isString(toolId) || !isInternalMCPServerName(toolId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
