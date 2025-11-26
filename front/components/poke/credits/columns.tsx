@@ -4,7 +4,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 
 import type { PokeCreditType } from "@app/pages/api/poke/workspaces/[wId]/credits";
 import { dateToHumanReadable } from "@app/types";
-import { CreditType } from "@app/types/credits";
+import type { CreditType } from "@app/types/credits";
 
 function formatCentsToUSD(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
