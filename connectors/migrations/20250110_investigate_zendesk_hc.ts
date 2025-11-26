@@ -22,10 +22,7 @@ makeScript({}, async ({ execute }, logger) => {
       connector.connectionId
     );
     const user = await fetchZendeskCurrentUser({ accessToken, subdomain });
-    const zendeskClient = await ZendeskClient.createClient(
-      accessToken,
-      connectorId
-    );
+    const zendeskClient = new ZendeskClient(accessToken, connectorId, null);
     const brandsOnDb = await ZendeskBrandResource.fetchByConnector(connector);
     for (const brandOnDb of brandsOnDb) {
       const { brandId } = brandOnDb;
