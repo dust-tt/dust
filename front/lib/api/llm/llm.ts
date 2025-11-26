@@ -140,7 +140,7 @@ export abstract class LLM {
       }
 
       if (currentEvent?.type !== "success" && currentEvent?.type !== "error") {
-        yield new EventError(
+        const eventError = new EventError(
           {
             type: "stream_error",
             message: `LLM did not complete successfully for ${this.metadata.clientId}/${this.metadata.modelId}.`,
@@ -149,6 +149,8 @@ export abstract class LLM {
           },
           this.metadata
         );
+        buffer.addEvent(eventError);
+        yield eventError;
       }
     } finally {
       if (currentEvent?.type === "error") {
