@@ -8,7 +8,7 @@ import { ConversationLayout } from "@app/components/assistant/conversation/Conve
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import { createOnboardingConversationIfNeeded } from "@app/lib/api/assistant/conversation";
+import { createOnboardingConversationIfNeeded } from "@app/lib/api/assistant/onboarding";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isString } from "@app/types";

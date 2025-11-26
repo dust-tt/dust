@@ -1,11 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { isInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
+import { postUserMessage } from "@app/lib/api/assistant/conversation";
 import {
   buildOnboardingFollowUpPrompt,
   buildOnboardingSkippedPrompt,
-  postUserMessage,
-} from "@app/lib/api/assistant/conversation";
+} from "@app/lib/api/assistant/onboarding";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
