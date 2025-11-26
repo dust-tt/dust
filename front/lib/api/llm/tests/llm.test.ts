@@ -75,6 +75,28 @@ vi.mock("openai", async (importOriginal) => {
   };
 });
 
+// Mock the @anthropic-ai/sdk module to inject dangerouslyAllowBrowser: true
+vi.mock("@anthropic-ai/sdk", async (importOriginal) => {
+  const actual = await importOriginal();
+  // @ts-expect-error actual is unknown
+  const OriginalAnthropic = actual.default;
+
+  class AnthropicWithBrowserSupport extends OriginalAnthropic {
+    constructor(config: ConstructorParameters<typeof OriginalAnthropic>[0]) {
+      super({
+        ...config,
+        dangerouslyAllowBrowser: true,
+      });
+    }
+  }
+
+  return {
+    // @ts-expect-error actual is unknown
+    ...actual,
+    default: AnthropicWithBrowserSupport,
+  };
+});
+
 /**
  * Test suite for LLM clients.
  *
