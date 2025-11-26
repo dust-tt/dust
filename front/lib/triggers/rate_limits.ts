@@ -31,7 +31,7 @@ export async function checkWebhookRequestForRateLimit(
       key: `workspace:${workspace.sId}:webhook_triggers:${maxMessagesTimeframe}`,
       maxPerTimeframe: webhookLimit,
       timeframeSeconds: getTimeframeSecondsFromLiteral(maxMessagesTimeframe),
-      logger: logger,
+      logger,
     });
 
     if (remaining <= 0) {
@@ -66,7 +66,7 @@ export async function checkTriggerForExecutionPerDayLimit(
       key: `workspace:${workspace.sId}:trigger:${trigger.sId}:day`,
       maxPerTimeframe: maxMessages,
       timeframeSeconds: getTimeframeSecondsFromLiteral("day"),
-      logger: logger,
+      logger,
     });
 
     if (remaining <= 0) {
