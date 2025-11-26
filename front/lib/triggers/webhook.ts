@@ -262,6 +262,11 @@ async function checkWorkspaceRateLimit({
 }): Promise<RateLimitCheckResult> {
   let errorMessage: string | null = null;
 
+  /**
+   * Check for workspace-level rate limits
+   * - for fair use execution mode, check global rate limits
+   * - for programmatic usage mode, check public API limits
+   */
   if (!trigger.executionMode || trigger.executionMode === "fair_use") {
     const { rateLimited, message } =
       await checkWebhookRequestForRateLimit(auth);
