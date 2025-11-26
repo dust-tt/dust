@@ -384,14 +384,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   static async listAllBeforeDate(
     auth: Authenticator,
+    cutoffDate: Date,
     options?: FetchConversationOptions & {
       batchSize?: number;
-      cutoffDate: Date;
     }
   ): Promise<ConversationResource[]> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    const { batchSize = 1000, cutoffDate } = options ?? {};
+    const { batchSize = 1000 } = options ?? {};
 
     // Step 1: Retrieve conversation IDs started before the cutoff date.
     // This pre-filters conversations so we don't scan all messages in the workspace.

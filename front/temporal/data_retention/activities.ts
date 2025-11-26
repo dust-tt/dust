@@ -70,12 +70,15 @@ export async function purgeConversationsBatchActivity({
 
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    const conversations = await ConversationResource.listAllBeforeDate(auth, {
-      batchSize: WORKSPACE_CONVERSATIONS_BATCH_SIZE,
+    const conversations = await ConversationResource.listAllBeforeDate(
+      auth,
       cutoffDate,
-      includeDeleted: true,
-      includeTest: true,
-    });
+      {
+        batchSize: WORKSPACE_CONVERSATIONS_BATCH_SIZE,
+        includeDeleted: true,
+        includeTest: true,
+      }
+    );
 
     logger.info(
       {

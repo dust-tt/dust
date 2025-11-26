@@ -163,7 +163,7 @@ describe("ConversationResource", () => {
     it("should return only conversations with all messages before cutoff date: 90 days ago", async () => {
       const oldConversations = await ConversationResource.listAllBeforeDate(
         auth,
-        { cutoffDate: dateFromDaysAgo(90) }
+        dateFromDaysAgo(90)
       );
       expect(oldConversations.length).toBe(2);
       const oldConversationIds = oldConversations.map((c) => c.sId);
@@ -174,7 +174,7 @@ describe("ConversationResource", () => {
     it("should return only conversations with all messages before cutoff date: 200 days ago", async () => {
       const oldConversations = await ConversationResource.listAllBeforeDate(
         auth,
-        { cutoffDate: dateFromDaysAgo(200) }
+        dateFromDaysAgo(200)
       );
       expect(oldConversations.length).toBe(0);
     });
@@ -182,7 +182,7 @@ describe("ConversationResource", () => {
     it("should return only conversations with all messages before cutoff date: 5 days ago", async () => {
       const oldConversations = await ConversationResource.listAllBeforeDate(
         auth,
-        { cutoffDate: dateFromDaysAgo(5) }
+        dateFromDaysAgo(5)
       );
       expect(oldConversations.length).toBe(3);
       const oldConversationIds = oldConversations.map((c) => c.sId);
@@ -194,9 +194,9 @@ describe("ConversationResource", () => {
     it("should return all old conversations no matter the batch size", async () => {
       const oldConversations = await ConversationResource.listAllBeforeDate(
         auth,
+        dateFromDaysAgo(1),
         {
           batchSize: 1,
-          cutoffDate: dateFromDaysAgo(1),
         }
       );
       expect(oldConversations.length).toBe(4);
