@@ -33,6 +33,7 @@ Temporal client configuration is in `lib/temporal.ts`. Workflows run in the "fro
 ### Key Files Structure
 
 For each queue, you'll have:
+
 ```
 temporal/your_queue/
 ├── config.ts          # Queue name and version
@@ -64,16 +65,13 @@ export const QUEUE_NAME = `your-queue-v${QUEUE_VERSION}`;
 Create `temporal/your_queue/helpers.ts`:
 
 ```typescript
-export function makeYourWorkflowId({
-  entityId,
-}: {
-  entityId: string;
-}): string {
+export function makeYourWorkflowId({ entityId }: { entityId: string }): string {
   return `your-workflow-${entityId}`;
 }
 ```
 
 **Important:** Workflow IDs should be:
+
 - Unique per logical operation
 - Deterministic (same inputs = same ID)
 - Used for idempotency (prevents duplicate runs)
@@ -103,16 +101,14 @@ export async function yourActivity({
   const result = await entity.doSomething();
 
   if (result.isErr()) {
-    logger.error(
-      { entityId, error: result.error },
-      "Failed to process entity"
-    );
+    logger.error({ entityId, error: result.error }, "Failed to process entity");
     throw new Error(`Failed to process: ${result.error.message}`);
   }
 }
 ```
 
 **Activities Guidelines:**
+
 - Activities perform side effects (DB, API calls, Elasticsearch, etc.)
 - Can throw errors - Temporal will retry automatically
 - Should be idempotent when possible
@@ -143,17 +139,19 @@ export async function yourWorkflow({
 ```
 
 **Workflow Guidelines:**
+
 - Workflows are deterministic - don't use `Math.random()`, `Date.now()`, etc.
 - Use `proxyActivities` to call activities
 - Set appropriate timeouts based on expected execution time
 - Keep workflows simple - complex logic goes in activities
 
 **Timeout Options:**
+
 ```typescript
 const { yourActivity } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "5 minutes",  // Max time for activity to complete
+  startToCloseTimeout: "5 minutes", // Max time for activity to complete
   retry: {
-    maximumAttempts: 3,              // Optional: limit retries
+    maximumAttempts: 3, // Optional: limit retries
   },
 });
 ```
@@ -214,6 +212,7 @@ export async function launchYourWorkflow({
 ```
 
 **Client Guidelines:**
+
 - Returns `Result<undefined, Error>` for error handling
 - Catches `WorkflowExecutionAlreadyStartedError` (not an error - workflow already running)
 - Logs failures for monitoring
@@ -266,6 +265,7 @@ export async function runYourQueueWorker() {
 ```
 
 **Worker Guidelines:**
+
 - Worker is the process that executes workflows and activities
 - `maxConcurrentActivityTaskExecutions: 16` - controls parallelism
 - `ActivityInboundLogInterceptor` - adds logging to all activities
@@ -284,7 +284,7 @@ export type WorkerName =
   | "agent_loop"
   | "analytics_queue"
   // ... other workers
-  | "your_queue"  // <- Add this
+  | "your_queue" // <- Add this
   | "workos_events_queue";
 
 // 3. Add to workerFunctions mapping
@@ -292,12 +292,13 @@ export const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   agent_loop: runAgentLoopWorker,
   analytics_queue: runAnalyticsWorker,
   // ... other workers
-  your_queue: runYourQueueWorker,  // <- Add this
+  your_queue: runYourQueueWorker, // <- Add this
   workos_events_queue: runWorkOSEventsWorker,
 };
 ```
 
 **Registration Guidelines:**
+
 - Worker name must match exactly in type and mapping
 - Workers are started by deployment scripts
 - All registered workers appear in `ALL_WORKERS` array
@@ -336,20 +337,22 @@ function makeWorkflowId({ entityId }: { entityId: string }): string {
 const { yourActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
   retry: {
-    maximumAttempts: 3,              // Limit retries
-    initialInterval: "1s",           // First retry after 1s
-    backoffCoefficient: 2,           // Double interval each retry
-    maximumInterval: "1m",           // Cap retry interval
+    maximumAttempts: 3, // Limit retries
+    initialInterval: "1s", // First retry after 1s
+    backoffCoefficient: 2, // Double interval each retry
+    maximumInterval: "1m", // Cap retry interval
     nonRetryableErrorTypes: ["ValidationError"], // Don't retry these
   },
 });
 ```
 
 **When to limit retries:**
+
 - Operations that should fail fast (user-facing errors)
 - Operations where success is critical and you want to catch failures
 
 **When to use unlimited retries:**
+
 - Best-effort operations (analytics, indexing)
 - Operations that will eventually succeed (rate limits, transient errors)
 
@@ -404,10 +407,7 @@ logger.error(
 **Add prefixes for searchability:**
 
 ```typescript
-logger.warn(
-  { userId, workspaceId },
-  "[user_search] Failed to de-index user"
-);
+logger.warn({ userId, workspaceId }, "[user_search] Failed to de-index user");
 ```
 
 ### 5. Workflow Timeouts
@@ -443,8 +443,8 @@ await client.workflow.start(yourWorkflow, {
   taskQueue: QUEUE_NAME,
   workflowId,
   memo: {
-    entityId,        // Useful for debugging
-    workspaceId,     // Useful for filtering in UI
+    entityId, // Useful for debugging
+    workspaceId, // Useful for filtering in UI
   },
 });
 ```
