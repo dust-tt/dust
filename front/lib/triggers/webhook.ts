@@ -1,5 +1,5 @@
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
-import { hasReachedPublicAPILimits } from "@app/lib/api/programmatic_usage_tracking";
+import { hasReachedProgrammaticUsageLimits } from "@app/lib/api/programmatic_usage_tracking";
 import { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { getWebhookRequestsBucket } from "@app/lib/file_storage";
@@ -325,7 +325,7 @@ async function checkTriggerRateLimits({
       workspaceRateLimitErrorMessage = globalRateLimitRes.error.message;
     }
   } else {
-    const publicAPILimit = await hasReachedPublicAPILimits(auth, true);
+    const publicAPILimit = await hasReachedProgrammaticUsageLimits(auth, true);
     if (publicAPILimit) {
       workspaceRateLimitErrorMessage =
         "Workspace has reached its public API limits for the current billing period.";
