@@ -123,9 +123,7 @@ import type { ElasticsearchBaseDocument } from "@/lib/api/elasticsearch";
 
 // ElasticsearchBaseDocument provides: workspace_id (for workspace isolation)
 export interface YourIndexData extends ElasticsearchBaseDocument {
-  version: string; // Required for versioning
   your_entity_id: string; // Your primary identifier
-  timestamp: string; // ISO date string
 
   // Your custom fields
   status: "success" | "failed";
@@ -139,6 +137,10 @@ export interface YourIndexData extends ElasticsearchBaseDocument {
     item_id: string;
     value: number;
   }>;
+
+  // It is recommended to store the date at which the document was created/updated. Useful for
+  // potential future migrations
+  updated_at: Date;
 }
 ```
 
@@ -152,9 +154,6 @@ Create `lib/your_feature/indices/your_index_name_1.mappings.json`:
 {
   "properties": {
     "workspace_id": {
-      "type": "keyword"
-    },
-    "version": {
       "type": "keyword"
     },
     "your_entity_id": {
@@ -283,6 +282,8 @@ Where `email_analyzer` would be defined in your index settings with:
   }
 }
 ```
+
+A good example of this can be found under `front/lib/user_search`.
 
 **Querying Multi-Fields:**
 
@@ -480,13 +481,11 @@ import type { YourIndexData } from "@/types/your_feature/your_index";
 function makeYourDocumentId({
   workspaceId,
   entityId,
-  version,
 }: {
   workspaceId: string;
   entityId: string;
-  version: string;
 }): string {
-  return `${workspaceId}_${entityId}_${version}`;
+  return `${workspaceId}_${entityId}`;
 }
 
 // Store document to Elasticsearch
@@ -496,7 +495,6 @@ export async function storeYourData(
   const documentId = makeYourDocumentId({
     workspaceId: document.workspace_id,
     entityId: document.your_entity_id,
-    version: document.version,
   });
 
   return withEs(async (client) => {
@@ -533,7 +531,6 @@ export async function bulkStoreYourData(
       const documentId = makeYourDocumentId({
         workspaceId: doc.workspace_id,
         entityId: doc.your_entity_id,
-        version: doc.version,
       });
 
       return [
@@ -564,7 +561,6 @@ async function processYourEntity(entity: YourEntity, workspace: Workspace) {
   // Build the document
   const document: YourIndexData = {
     workspace_id: workspace.sId,
-    version: "1", // Document schema version
     your_entity_id: entity.sId,
     timestamp: new Date().toISOString(),
     status: entity.status,
@@ -627,7 +623,6 @@ export async function storeYourAnalyticsActivity({
   // Build document
   const document: YourIndexData = {
     workspace_id: workspaceId,
-    version: "1",
     your_entity_id: entityId,
     timestamp: new Date().toISOString(),
     // ... build your document

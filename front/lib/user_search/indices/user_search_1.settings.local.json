@@ -1,0 +1,47 @@
+{
+  "number_of_shards": 1,
+  "number_of_replicas": 0,
+  "refresh_interval": "1s",
+  "analysis": {
+    "analyzer": {
+      "email_analyzer": {
+        "type": "custom",
+        "tokenizer": "uax_url_email",
+        "filter": ["lowercase", "asciifolding"]
+      },
+      "icu_analyzer": {
+        "type": "custom",
+        "tokenizer": "icu_tokenizer",
+        "filter": [
+          "preserve_word_delimiter",
+          "icu_folding",
+          "lowercase",
+          "asciifolding"
+        ]
+      },
+      "edge_analyzer": {
+        "type": "custom",
+        "tokenizer": "icu_tokenizer",
+        "filter": [
+          "preserve_word_delimiter",
+          "icu_folding",
+          "lowercase",
+          "asciifolding",
+          "edge_ngram_filter"
+        ]
+      }
+    },
+    "filter": {
+      "preserve_word_delimiter": {
+        "type": "word_delimiter",
+        "split_on_numerics": false,
+        "split_on_case_change": false
+      },
+      "edge_ngram_filter": {
+        "type": "edge_ngram",
+        "min_gram": 1,
+        "max_gram": 30
+      }
+    }
+  }
+}
