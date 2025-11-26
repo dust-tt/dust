@@ -12,11 +12,11 @@ import {
 import { useMemo } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
-import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
+import type {MCPServerFormValues} from "@app/components/actions/mcp/forms/mcpServerFormSchema";
+import { getDefaultInternalToolStakeLevel  } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
   CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS,
-  FALLBACK_MCP_TOOL_STAKE_LEVEL,
   MCP_TOOL_STAKE_LEVELS,
 } from "@app/lib/actions/constants";
 import { isRemoteMCPServerType } from "@app/lib/actions/mcp_helper";
@@ -39,6 +39,7 @@ interface ToolItemProps {
     enabled: boolean;
     permission: MCPToolStakeLevelType;
   };
+  defaultPermission: MCPToolStakeLevelType;
 }
 
 function ToolItem({
@@ -46,6 +47,7 @@ function ToolItem({
   mayUpdate,
   availableStakeLevels,
   metadata,
+  defaultPermission,
 }: ToolItemProps) {
   const { control } = useFormContext<MCPServerFormValues>();
   const { field } = useController({
@@ -53,7 +55,7 @@ function ToolItem({
     name: `toolSettings.${tool.name}`,
     defaultValue: {
       enabled: metadata?.enabled ?? true,
-      permission: metadata?.permission ?? FALLBACK_MCP_TOOL_STAKE_LEVEL,
+      permission: metadata?.permission ?? defaultPermission,
     },
   });
 
@@ -190,6 +192,8 @@ export function ToolsList({
                   (m) => m.toolName === tool.name
                 );
 
+                const defaultPermission = getDefaultInternalToolStakeLevel(mcpServerView.server, tool.name);
+
                 return (
                   <ToolItem
                     key={index}
@@ -197,6 +201,7 @@ export function ToolsList({
                     mayUpdate={mayUpdate}
                     availableStakeLevels={availableStakeLevels}
                     metadata={metadata}
+                    defaultPermission={defaultPermission}
                   />
                 );
               }
