@@ -37,20 +37,9 @@ import type {
 
 const FEEDBACKS_PAGE_SIZE = 50;
 
-type FeedbackFilter = "unseen" | "all";
-
-interface FeedbacksSectionProps {
-  owner: LightWorkspaceType;
-  agentConfigurationId: string;
-}
-
-function getAgentConfigurationVersionString(
-  config: LightAgentConfigurationType,
-  isLatestVersion: boolean
-): string {
-  if (isLatestVersion) {
-    return "Latest production version. All feedback is processed.";
-  }
+const getAgentConfigurationVersionString = (
+  config: LightAgentConfigurationType
+) => {
   if (!config.versionCreatedAt) {
     return `v${config.version}`;
   }
@@ -58,6 +47,13 @@ function getAgentConfigurationVersionString(
   return (
     "Version: " + formatTimestampToFriendlyDate(versionDate.getTime(), "long")
   );
+};
+
+type FeedbackFilter = "unseen" | "all";
+
+interface FeedbacksSectionProps {
+  owner: LightWorkspaceType;
+  agentConfigurationId: string;
 }
 
 export const FeedbacksSection = ({
@@ -159,8 +155,6 @@ export const FeedbacksSection = ({
       {} as Record<number, LightAgentConfigurationType>
     ) || {};
 
-  const latestVersion = agentConfigurationHistory[0].version;
-
   return (
     <TabContentChildSectionLayout
       title="Feedback"
@@ -196,29 +190,26 @@ export const FeedbacksSection = ({
           {versionsInOrder.map((version) => {
             const versionFeedbacks = feedbacksByVersion[version];
             const agentConfig = agentConfigByVersion[version];
-            const isLatestVersion = version === latestVersion;
-
-            const versionTitle = agentConfig
-              ? getAgentConfigurationVersionString(agentConfig, isLatestVersion)
-              : `v${version}`;
-
-            const feedbackCount = versionFeedbacks?.length || 0;
-            const meta =
-              feedbackCount === 1
-                ? "1 feedback item"
-                : `${feedbackCount} feedback items`;
-
-            const description = agentConfig?.versionAuthor
-              ? `Updated by ${agentConfig.versionAuthor}`
-              : undefined;
 
             return (
               <Timeline.Item
                 key={version}
-                variant={isLatestVersion ? "complete" : "upcoming"}
-                title={versionTitle}
-                meta={meta}
-                description={description}
+                variant="upcoming"
+                title={
+                  agentConfig
+                    ? getAgentConfigurationVersionString(agentConfig)
+                    : `v${version}`
+                }
+                meta={
+                  agentConfig?.versionCreatedAt
+                    ? timeAgoFrom(
+                        new Date(agentConfig.versionCreatedAt).getTime(),
+                        {
+                          useLongFormat: true,
+                        }
+                      ) + " ago"
+                    : undefined
+                }
               >
                 <div className="@container">
                   <div className="grid grid-cols-1 gap-4 @md:grid-cols-2">
