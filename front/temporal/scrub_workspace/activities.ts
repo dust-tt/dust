@@ -185,7 +185,7 @@ export async function deleteAllConversations(auth: Authenticator) {
       }
     },
     {
-      concurrency: 12,
+      concurrency: 8,
     }
   );
 }

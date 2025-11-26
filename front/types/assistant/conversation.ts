@@ -42,18 +42,32 @@ export type LightMessageType =
   | UserMessageType
   | ContentFragmentType;
 
-export type MessageWithContentFragmentsType =
-  | LightAgentMessageType
-  | (UserMessageType & {
-      contentFragments?: ContentFragmentType[];
-    });
-
 /**
  * User messages
  */
 
+/**
+ * User message origins indicate which means the user (be it human or program)
+ * used to send the message.
+ *
+ * They should be mutually exclusive and commonly exhaustive, i.e. any new
+ * origin here should not overlap with another existing origin and all user
+ * messages should have an origin.
+ *
+ * Avoid adding an origin that:
+ * - is not directly linked to how the original user sent the message;
+ * - overlaps with existing origins (e.g. "linux" and "mac-os" would be terrible
+ *   orgins in that respect, overlapping with almost all origins).
+ *
+ * Origins are also used for programmatic usage tracking, so ideally a new
+ * origin should be easily categorizable as either "programmatic" or "user".
+ *
+ */
 export type UserMessageOrigin =
-  | "agent_handover"
+  // TODO(2025-11-24 PPUL): Remove run_agent and agent_handover from allowed origin values.
+  | "agent_handover" // soon to be removed (not a fitting origin).
+  // "api" is Custom API usage, while e.g. extension, gsheets and many other origins
+  // below are API usages dedicated to standard product features.
   | "api"
   | "email"
   | "excel"
@@ -64,7 +78,7 @@ export type UserMessageOrigin =
   | "n8n"
   | "powerpoint"
   | "raycast"
-  | "run_agent"
+  | "run_agent" // soon to be removed (not a fitting origin).
   | "slack"
   | "teams"
   | "transcript"
@@ -72,7 +86,8 @@ export type UserMessageOrigin =
   | "triggered"
   | "web"
   | "zapier"
-  | "zendesk";
+  | "zendesk"
+  | "onboarding_conversation";
 
 export type UserMessageContext = {
   username: string;
@@ -87,6 +102,11 @@ export type UserMessageContext = {
   selectedMCPServerViewIds?: string[];
 };
 
+export type AgenticMessageData = {
+  type: "run_agent" | "agent_handover";
+  originMessageId: string;
+};
+
 export type UserMessageType = {
   id: ModelId;
   created: number;
@@ -99,6 +119,7 @@ export type UserMessageType = {
   mentions: MentionType[];
   content: string;
   context: UserMessageContext;
+  agenticMessageData?: AgenticMessageData;
 };
 
 export function isUserMessageType(
@@ -220,6 +241,7 @@ export type ConversationWithoutContentType = {
   hasError: boolean;
   sId: string;
   title: string | null;
+  spaceId: string | null;
 
   // Ideally, this property should be moved to the ConversationType.
   requestedSpaceIds: string[];

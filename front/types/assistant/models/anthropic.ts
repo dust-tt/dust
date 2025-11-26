@@ -19,6 +19,8 @@ export const CLAUDE_3_5_HAIKU_20241022_MODEL_ID =
   "claude-3-5-haiku-20241022" as const;
 export const CLAUDE_4_5_HAIKU_20251001_MODEL_ID =
   "claude-haiku-4-5-20251001" as const;
+export const CLAUDE_4_5_OPUS_20251101_MODEL_ID =
+  "claude-opus-4-5-20251101" as const;
 
 export const ANTHROPIC_TOKEN_COUNT_ADJUSTMENT = 1.3;
 
@@ -175,6 +177,30 @@ export const CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
   nativeReasoningMetaPrompt: CLAUDE_4_NATIVE_REASONING_META_PROMPT,
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
+  tokenizer: { type: "tiktoken", base: "anthropic_base" },
+};
+export const CLAUDE_4_5_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "anthropic",
+  modelId: CLAUDE_4_5_OPUS_20251101_MODEL_ID,
+  displayName: "Claude 4.5 Opus",
+  contextSize: 200_000,
+  recommendedTopK: 16,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description:
+    "Anthropic's Claude 4.5 Opus model, the most advanced model with state-of-the-art coding and reasoning (200k context).",
+  shortDescription: "Anthropic's most advanced model.",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 64_000,
+  supportsVision: true,
+  minimumReasoningEffort: "light",
+  maximumReasoningEffort: "high",
+  defaultReasoningEffort: "light",
+  nativeReasoningMetaPrompt: CLAUDE_4_NATIVE_REASONING_META_PROMPT,
+  tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
+  supportsPromptCaching: true,
+  featureFlag: "claude_4_5_opus_feature",
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
 };
 

@@ -20,10 +20,7 @@ import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import type { DustError } from "@app/lib/error";
-import {
-  useConversationMessages,
-  useConversations,
-} from "@app/lib/swr/conversations";
+import { useConversations } from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type {
@@ -34,7 +31,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { conjugate, Err, Ok, pluralize } from "@app/types";
+import { conjugate, Err, Ok, pluralize, toMentionType } from "@app/types";
 
 interface ConversationContainerProps {
   owner: WorkspaceType;
@@ -67,12 +64,6 @@ export function ConversationContainerVirtuoso({
     },
   });
 
-  const { isMessagesError } = useConversationMessages({
-    conversationId: activeConversationId,
-    workspaceId: owner.sId,
-    limit: 50,
-  });
-
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleConversationCreation = useCallback(
@@ -97,9 +88,7 @@ export function ConversationContainerVirtuoso({
         user,
         messageData: {
           input,
-          mentions: mentions.map((mention) => ({
-            configurationId: mention.id,
-          })),
+          mentions: mentions.map(toMentionType),
           contentFragments,
           selectedMCPServerViewIds,
         },
@@ -157,23 +146,6 @@ export function ConversationContainerVirtuoso({
   }, [user]);
 
   const { startConversationRef } = useWelcomeTourGuide();
-
-  if (isMessagesError) {
-    return (
-      <div className="flex h-full w-full items-center justify-center">
-        <div className="flex flex-col gap-3 text-center">
-          <div>
-            <span className="text-4xl leading-10 text-foreground dark:text-foreground-night">
-              🚫
-            </span>
-            <p className="copy-sm leading-tight text-muted-foreground dark:text-muted-foreground-night">
-              You don't have access to this conversation.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   const body = (
     <DropzoneContainer

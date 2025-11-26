@@ -7,6 +7,9 @@ import { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wra
 import type { SpaceKind } from "@app/types";
 import { isUniqueSpaceKind } from "@app/types";
 
+// Note, "Spaces" used to be called "Vaults" in the first release but where renamed to "Spaces" right after.
+// This is why the model is called "SpaceModel" but the table is called "vaults" and foreign key are called "vaultId" in ResourceWithSpace.
+// TODO We need to migrate the database as some point.
 export class SpaceModel extends SoftDeletableWorkspaceAwareModel<SpaceModel> {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
@@ -14,6 +17,9 @@ export class SpaceModel extends SoftDeletableWorkspaceAwareModel<SpaceModel> {
 
   declare name: string;
   declare kind: SpaceKind;
+
+  // This is a bit confusing as "group" means that we use provisioned groups to manage the space members instead of individual members in the UI.
+  // But in both modes we have "groups" associated to the space to hold the members.
   declare managementMode: CreationOptional<"manual" | "group">;
 
   declare groups: NonAttribute<GroupModel[]>;

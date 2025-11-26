@@ -58,8 +58,10 @@ async function isAncestorConversation(
     ],
   });
 
+  // TODO(2025-11-24 PPUL): Rely on agenticOriginMessageId only once data has been backfilled
   const originMessageId =
-    firstUserMessage?.userMessage?.userContextOriginMessageId;
+    firstUserMessage?.userMessage?.userContextOriginMessageId ??
+    firstUserMessage?.userMessage?.agenticOriginMessageId;
   if (!originMessageId) {
     return false;
   }

@@ -3,9 +3,9 @@ import TurndownService from "turndown";
 import { filterCustomTags } from "@connectors/connectors/shared/tags";
 import { getTicketInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
 import type {
-  ZendeskFetchedTicket,
-  ZendeskFetchedTicketComment,
-  ZendeskFetchedUser,
+  ZendeskTicket,
+  ZendeskTicketComment,
+  ZendeskUser,
 } from "@connectors/connectors/zendesk/lib/types";
 import {
   deleteDataSourceDocument,
@@ -18,8 +18,7 @@ import type { ConnectorResource } from "@connectors/resources/connector_resource
 import type { ZendeskConfigurationResource } from "@connectors/resources/zendesk_resources";
 import { ZendeskTicketResource } from "@connectors/resources/zendesk_resources";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
-import { stripNullBytes } from "@connectors/types";
-import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import { INTERNAL_MIME_TYPES, stripNullBytes } from "@connectors/types";
 
 const turndownService = new TurndownService();
 
@@ -28,7 +27,7 @@ function apiUrlToDocumentUrl(apiUrl: string): string {
 }
 
 export function shouldSyncTicket(
-  ticket: ZendeskFetchedTicket,
+  ticket: ZendeskTicket,
   configuration: ZendeskConfigurationResource,
   {
     brandId,
@@ -179,7 +178,7 @@ export async function syncTicket({
   comments,
   users,
 }: {
-  ticket: ZendeskFetchedTicket;
+  ticket: ZendeskTicket;
   connector: ConnectorResource;
   configuration: ZendeskConfigurationResource;
   dataSourceConfig: DataSourceConfig;
@@ -187,8 +186,8 @@ export async function syncTicket({
   currentSyncDateMs: number;
   loggerArgs: Record<string, string | number | null>;
   forceResync: boolean;
-  comments: ZendeskFetchedTicketComment[];
-  users: ZendeskFetchedUser[];
+  comments: ZendeskTicketComment[];
+  users: ZendeskUser[];
 }) {
   const connectorId = connector.id;
 
@@ -286,7 +285,7 @@ export async function syncTicket({
         }
         const author =
           users.find((user) => user.id === comment.author_id) ?? null;
-        return `[${comment?.created_at}] ${author ? `${author.name} (${author.email})` : "Unknown User"}:\n${commentContent}`;
+        return `[${comment?.created_at}] ${author ? `${author.name} (${author.email ?? "Unknown email"})` : "Unknown User"}:\n${commentContent}`;
       })
       .join("\n")}`.trim();
 
@@ -305,8 +304,8 @@ export async function syncTicket({
       ...(ticket.due_at
         ? [`dueDate:${new Date(ticket.due_at).toISOString()}`]
         : []),
-      ...(ticket.satisfaction_rating.score !== "unoffered" // Special value when no rating was provided.
-        ? [`satisfactionRating:${ticket.satisfaction_rating.score}`]
+      ...(ticket.satisfaction_rating?.score !== "unoffered" // Special value when no rating was provided.
+        ? [`satisfactionRating:${ticket.satisfaction_rating?.score}`]
         : []),
       `hasIncidents:${ticket.has_incidents ? "Yes" : "No"}`,
     ];

@@ -40,9 +40,19 @@ export function toolDirective() {
  * in ReactMarkdown to render the tool HTML elements.
  *
  * @param owner - The workspace context for tool interactions
+ * @param conversationId - Optional conversation ID for triggering follow-up messages
+ * @param isLastMessage - Whether this is the last message in the conversation
+ * @param onSetupComplete - Optional callback when tool setup completes
+ * @param onSetupSkipped - Optional callback when tool setup is skipped
  * @returns A React component for rendering tool cards
  */
-export function getToolSetupPlugin(owner: WorkspaceType) {
+export function getToolSetupPlugin(
+  owner: WorkspaceType,
+  conversationId?: string,
+  isLastMessage?: boolean,
+  onSetupComplete?: (toolId: string) => void,
+  onSetupSkipped?: (toolId: string) => void
+) {
   const ToolSetupPlugin = ({
     toolName,
     toolId,
@@ -53,7 +63,17 @@ export function getToolSetupPlugin(owner: WorkspaceType) {
     if (!toolId || !isInternalMCPServerName(toolId)) {
       return null;
     }
-    return <ToolSetupCard toolName={toolName} toolId={toolId} owner={owner} />;
+    return (
+      <ToolSetupCard
+        toolName={toolName}
+        toolId={toolId}
+        owner={owner}
+        conversationId={conversationId}
+        isLastMessage={isLastMessage}
+        onSetupComplete={onSetupComplete}
+        onSetupSkipped={onSetupSkipped}
+      />
+    );
   };
 
   return ToolSetupPlugin;

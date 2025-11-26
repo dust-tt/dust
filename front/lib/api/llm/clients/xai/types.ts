@@ -5,6 +5,8 @@ import type { ModelIdType } from "@app/types";
 import {
   GROK_3_MINI_MODEL_ID,
   GROK_3_MODEL_ID,
+  GROK_4_1_FAST_NON_REASONING_MODEL_ID,
+  GROK_4_1_FAST_REASONING_MODEL_ID,
   GROK_4_FAST_NON_REASONING_MODEL_ID,
   GROK_4_MODEL_ID,
 } from "@app/types";
@@ -28,11 +30,15 @@ export const XAI_MODEL_FAMILIES_CONFIGS: Record<
     overwrites: { reasoningEffort: null },
   },
   "non-reasoning": {
-    modelIds: [GROK_4_FAST_NON_REASONING_MODEL_ID, GROK_4_MODEL_ID],
+    modelIds: [
+      GROK_4_FAST_NON_REASONING_MODEL_ID,
+      GROK_4_MODEL_ID,
+      GROK_4_1_FAST_NON_REASONING_MODEL_ID,
+    ],
     overwrites: { reasoningEffort: null },
   },
   reasoning: {
-    modelIds: [],
+    modelIds: [GROK_4_1_FAST_REASONING_MODEL_ID],
     overwrites: {},
   },
 };

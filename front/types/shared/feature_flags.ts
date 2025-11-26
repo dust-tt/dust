@@ -33,6 +33,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to Claude 4 Opus model in the agent builder",
     stage: "on_demand",
   },
+  claude_4_5_opus_feature: {
+    description: "Access to Claude 4.5 Opus model in the agent builder",
+    stage: "on_demand",
+  },
   confluence_tool: {
     description: "Confluence MCP tool",
     stage: "on_demand",
@@ -194,6 +198,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Slack semantic search feature",
     stage: "on_demand",
   },
+  slab_mcp: {
+    description: "Slab MCP server",
+    stage: "on_demand",
+  },
   web_summarization: {
     description: "AI-powered web page summarization in the web browser tool",
     stage: "on_demand",
@@ -229,10 +237,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   notifications: {
     description: "Enable notifications",
-    stage: "dust_only",
-  },
-  jit_tool_setup: {
-    description: "Enable setup flow of new tools in JIT tool dropdown",
     stage: "dust_only",
   },
   programmatic_usage_metrics: {

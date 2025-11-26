@@ -16,7 +16,11 @@ import type {
   VirtuosoMessage,
   VirtuosoMessageListContext,
 } from "@app/components/assistant/conversation/types";
-import { isUserMessage } from "@app/components/assistant/conversation/types";
+import {
+  hasHumansInteracting,
+  isHiddenContextOrigin,
+  isUserMessage,
+} from "@app/components/assistant/conversation/types";
 import { useCancelMessage, useConversation } from "@app/lib/swr/conversations";
 import { emptyArray } from "@app/lib/swr/swr";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
@@ -59,7 +63,7 @@ export const AgentInputBar = ({
         isUserMessage(m) &&
         m.user?.id === context.user.id &&
         m.visibility !== "deleted" &&
-        m.context.origin !== "agent_handover"
+        !isHiddenContextOrigin(m.context.origin)
     );
 
   const agentMentions = useMemo(() => {
@@ -68,11 +72,15 @@ export const AgentInputBar = ({
     if (context.agentBuilderContext?.draftAgent) {
       return [{ configurationId: context.agentBuilderContext.draftAgent.sId }];
     }
-    if (!lastUserMessage || !isUserMessage(lastUserMessage)) {
+    if (
+      !lastUserMessage ||
+      !isUserMessage(lastUserMessage) ||
+      hasHumansInteracting(methods.data.get())
+    ) {
       return emptyArray<AgentMention>();
     }
     return lastUserMessage.mentions.filter(isAgentMention);
-  }, [lastUserMessage, context.agentBuilderContext?.draftAgent]);
+  }, [lastUserMessage, context.agentBuilderContext?.draftAgent, methods.data]);
 
   const { bottomOffset } = useVirtuosoLocation();
   const distanceUntilButtonVisible = 100;

@@ -298,7 +298,7 @@ const ContentFragmentView = ({ message }: ContentFragmentViewProps) => {
         </a>
       )}{" "}
       <a
-        href={isFileContentFragment(message) ? message.textUrl : ""}
+        href={isFileContentFragment(message) ? (message.textUrl ?? "") : ""}
         target="_blank"
         className="text-highlight-500"
       >

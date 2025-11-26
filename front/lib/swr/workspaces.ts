@@ -3,7 +3,10 @@ import type { Fetcher } from "swr";
 
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetWorkspaceResponseBody } from "@app/pages/api/w/[wId]";
-import type { GetWorkspaceProgrammaticCostResponse } from "@app/pages/api/w/[wId]/analytics/programmatic-cost";
+import type {
+  GetWorkspaceProgrammaticCostResponse,
+  GroupByType,
+} from "@app/pages/api/w/[wId]/analytics/programmatic-cost";
 import type { GetWorkspaceFeatureFlagsResponseType } from "@app/pages/api/w/[wId]/feature-flags";
 import type { GetSubscriptionsResponseBody } from "@app/pages/api/w/[wId]/subscriptions";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
@@ -149,17 +152,17 @@ export function useFeatureFlags({
   };
 }
 
-export type GroupByType = "agent" | "origin" | "apiKey";
-
 export function useWorkspaceProgrammaticCost({
   workspaceId,
   groupBy,
   selectedMonth,
+  filter,
   disabled,
 }: {
   workspaceId: string;
   groupBy?: GroupByType;
   selectedMonth?: string;
+  filter?: Partial<Record<GroupByType, string[]>>;
   disabled?: boolean;
 }) {
   const fetcherFn: Fetcher<GetWorkspaceProgrammaticCostResponse> = fetcher;
@@ -171,7 +174,11 @@ export function useWorkspaceProgrammaticCost({
   if (groupBy) {
     queryParams.set("groupBy", groupBy);
   }
-  const key = `/api/w/${workspaceId}/analytics/programmatic-cost?${queryParams.toString()}`;
+  if (filter && Object.keys(filter).length > 0) {
+    queryParams.set("filter", JSON.stringify(filter));
+  }
+  const queryString = queryParams.toString();
+  const key = `/api/w/${workspaceId}/analytics/programmatic-cost${queryString ? `?${queryString}` : ""}`;
 
   const { data, error, isValidating } = useSWRWithDefaults(
     disabled ? null : key,

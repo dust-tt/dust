@@ -109,6 +109,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "run_dust_app",
   "salesforce",
   "salesloft",
+  "slab",
   "slack",
   "slack_bot",
   "sound_studio",
@@ -1070,7 +1071,7 @@ The directive should be used to display a clickable version of the agent name in
   },
   speech_generator: {
     id: 34,
-    availability: "manual",
+    availability: "auto",
     allowMultipleInstances: false,
     isRestricted: undefined,
     isPreview: true,
@@ -1085,7 +1086,7 @@ The directive should be used to display a clickable version of the agent name in
       version: "1.0.0",
       description: "Turn written text into spoken audio or dialog",
       authorization: null,
-      icon: "ActionMegaphoneIcon",
+      icon: "ActionSpeakIcon",
       documentationUrl: null,
       instructions: null,
     },
@@ -1145,7 +1146,7 @@ The directive should be used to display a clickable version of the agent name in
         provider: "microsoft_tools" as const,
         supported_use_cases: ["personal_actions"] as const,
         scope:
-          "User.Read User.ReadBasic.All Team.ReadBasic.All Chat.Read Chat.ReadWrite ChatMessage.Read ChatMessage.Send ChannelMessage.Read.All ChannelMessage.Send offline_access" as const,
+          "User.Read User.ReadBasic.All Team.ReadBasic.All Channel.ReadBasic.All Chat.Read Chat.ReadWrite ChatMessage.Read ChatMessage.Send ChannelMessage.Read.All ChannelMessage.Send offline_access" as const,
       },
       icon: "MicrosoftTeamsLogo",
       documentationUrl: "https://docs.dust.tt/docs/microsoft-teams-tool-setup",
@@ -1169,7 +1170,7 @@ The directive should be used to display a clickable version of the agent name in
       version: "1.0.0",
       description: "Create music tracks and sound effects",
       authorization: null,
-      icon: "ActionMegaphoneIcon",
+      icon: "ActionNoiseIcon",
       documentationUrl: null,
       instructions: null,
     },
@@ -1287,6 +1288,33 @@ The directive should be used to display a clickable version of the agent name in
       documentationUrl: null,
       instructions: null,
       developerSecretSelection: "required",
+    },
+  },
+  slab: {
+    id: 43,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("slab_mcp");
+    },
+    isPreview: true,
+    requiresBearerToken: true,
+    tools_stakes: {
+      search_posts: "never_ask",
+      get_post_contents: "never_ask",
+      get_topics: "never_ask",
+      get_post_metadata: "never_ask",
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "slab",
+      version: "1.0.0",
+      description: "Search and read from your Slab knowledge base",
+      authorization: null,
+      icon: "ActionDocumentTextIcon",
+      documentationUrl: null,
+      instructions: null,
     },
   },
   [SEARCH_SERVER_NAME]: {
@@ -1636,6 +1664,7 @@ The directive should be used to display a clickable version of the agent name in
     tools_stakes: Record<string, MCPToolStakeLevelType> | undefined;
     tools_retry_policies: Record<string, MCPToolRetryPolicyType> | undefined;
     timeoutMs: number | undefined;
+    requiresBearerToken?: boolean;
     serverInfo: InternalMCPServerDefinitionType & { name: K };
   };
 };

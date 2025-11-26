@@ -40,6 +40,9 @@ export const shouldSendNotificationForAgentAnswer = (
     case "agent_handover":
     case "extension":
       return true;
+    case "onboarding_conversation":
+      // Internal bootstrap conversations shouldn't trigger unread notifications.
+      return false;
     case "api":
     case "email":
     case "excel":

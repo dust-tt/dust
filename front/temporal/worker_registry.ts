@@ -1,5 +1,3 @@
-import { runAgentTriggerWorker } from "@app/lib/triggers/temporal/common/worker";
-import { runAgentTriggerWebhookWorker } from "@app/lib/triggers/temporal/webhook/worker";
 import { runPokeWorker } from "@app/poke/temporal/worker";
 import { runAgentLoopWorker } from "@app/temporal/agent_loop/worker";
 import { runAnalyticsWorker } from "@app/temporal/analytics_queue/worker";
@@ -15,6 +13,8 @@ import {
   runTrackerNotificationWorker,
   runTrackerWorker,
 } from "@app/temporal/tracker/worker";
+import { runAgentTriggerWorker } from "@app/temporal/triggers/common/worker";
+import { runAgentTriggerWebhookWorker } from "@app/temporal/triggers/webhook/worker";
 import { runUpsertQueueWorker } from "@app/temporal/upsert_queue/worker";
 import { runUpsertTableQueueWorker } from "@app/temporal/upsert_tables/worker";
 import { runUpdateWorkspaceUsageWorker } from "@app/temporal/usage_queue/worker";

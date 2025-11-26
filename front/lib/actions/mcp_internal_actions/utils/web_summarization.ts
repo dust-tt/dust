@@ -5,8 +5,8 @@ import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { Err, getHeaderFromUserEmail, Ok } from "@app/types";
+import type { Result, UserMessageOrigin } from "@app/types";
+import { Err, getHeaderFromUserEmail, isUserMessageType, Ok } from "@app/types";
 
 const MAX_CHARACTERS_TO_SUMMARIZE = 100_000;
 
@@ -37,6 +37,15 @@ export async function summarizeWithAgent({
   const mainConversation = agentLoopRunContext.conversation;
   const toSummarize = content.slice(0, MAX_CHARACTERS_TO_SUMMARIZE);
 
+  const originMessage = agentLoopRunContext.agentMessage;
+  let parentOrigin: UserMessageOrigin | null = null;
+  const parentMessage = mainConversation.content
+    .flat()
+    .find((m) => m.sId === originMessage.parentMessageId);
+  if (parentMessage && isUserMessageType(parentMessage)) {
+    parentOrigin = parentMessage.context.origin ?? null;
+  }
+
   const convRes = await api.createConversation({
     title: `Summary of web page content (main conversation: ${mainConversation.sId})`,
     visibility: "unlisted",
@@ -50,8 +59,13 @@ export async function summarizeWithAgent({
         fullName: `@${mainAgent.name}`,
         email: null,
         profilePictureUrl: mainAgent.pictureUrl,
-        origin: "run_agent",
+        origin: parentOrigin,
         selectedMCPServerViewIds: null,
+      },
+      agenticMessageData: {
+        // `run_agent` type will skip adding the conversation to the user history.
+        type: "run_agent",
+        originMessageId: originMessage.sId,
       },
     },
   });

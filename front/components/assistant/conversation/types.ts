@@ -1,3 +1,5 @@
+import uniq from "lodash/uniq";
+
 import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import type { ToolNotificationEvent } from "@app/lib/actions/mcp";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -84,6 +86,14 @@ export const isTriggeredOrigin = (origin?: UserMessageOrigin | null) => {
   );
 };
 
+// Central helper to control which user message origins should be hidden in the UI.
+// Extend this list as we introduce more bootstrap/system user messages.
+export const isHiddenContextOrigin = (
+  origin?: UserMessageOrigin | null
+): boolean => {
+  return origin === "onboarding_conversation" || origin === "agent_handover";
+};
+
 export const isUserMessage = (
   msg: VirtuosoMessage
 ): msg is UserMessageType & { contentFragments: ContentFragmentType[] } =>
@@ -135,3 +145,6 @@ export const areSameRank = (
 ) => {
   return getMessageRank(messageA) === getMessageRank(messageB);
 };
+
+export const hasHumansInteracting = (messages: VirtuosoMessage[]) =>
+  uniq(messages.filter(isUserMessage).map((m) => m.user?.sId)).length >= 2;

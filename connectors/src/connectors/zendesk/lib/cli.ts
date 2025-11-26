@@ -9,7 +9,7 @@ import {
   shouldSyncTicket,
   syncTicket,
 } from "@connectors/connectors/zendesk/lib/sync_ticket";
-import type { ZendeskFetchedTicket } from "@connectors/connectors/zendesk/lib/types";
+import type { ZendeskTicket } from "@connectors/connectors/zendesk/lib/types";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
   fetchZendeskCurrentUser,
@@ -41,6 +41,7 @@ import type {
   ZendeskOrganizationTagResponseType,
 } from "@connectors/types";
 import { normalizeError } from "@connectors/types";
+import { removeNulls } from "@connectors/types/shared/utils/general";
 
 function getTagsArgs(args: ZendeskCommandType["args"]) {
   const tag = args.tag;
@@ -63,7 +64,7 @@ function getTagsArgs(args: ZendeskCommandType["args"]) {
 }
 
 async function checkTicketShouldBeSynced(
-  ticket: ZendeskFetchedTicket | null,
+  ticket: ZendeskTicket | null,
   configuration: ZendeskConfigurationResource,
   {
     brandId,
@@ -409,12 +410,12 @@ export const zendesk = async ({
 
       const userIds = Array.from(
         new Set(
-          [
+          removeNulls([
             ticket.requester_id,
             ticket.assignee_id,
             ticket.submitter_id,
             ...comments.map((comment) => comment.author_id),
-          ].filter(Boolean)
+          ])
         )
       );
 

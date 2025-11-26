@@ -35,8 +35,8 @@ import type {
   ReasoningEffort,
 } from "@app/types";
 import {
+  CLAUDE_4_5_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
-  GEMINI_3_PRO_MODEL_CONFIG,
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
   GLOBAL_AGENTS_SID,
@@ -49,7 +49,11 @@ const INSTRUCTION_SECTIONS = {
 You are an AI agent created by Dust to answer questions using your internal knowledge, the public internet and the user's internal company data sources.
 </primary_goal>
 
-<general_guidelines>${globalAgentGuidelines}</general_guidelines>`,
+<general_guidelines>${globalAgentGuidelines}</general_guidelines>
+
+<critical_thinking_guidelines>
+Keep your thinking as short as possible.
+</critical_thinking_guidelines>`,
 
   simpleRequests: `<instructions>
 1. If the user's question requires information that is likely private or internal to the company
@@ -601,7 +605,7 @@ export function _getDustEdgeGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_EDGE,
     name: "dust-edge",
-    preferredModelConfiguration: GEMINI_3_PRO_MODEL_CONFIG,
+    preferredModelConfiguration: CLAUDE_4_5_OPUS_DEFAULT_MODEL_CONFIG,
     preferredReasoningEffort: "light",
   });
 }

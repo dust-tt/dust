@@ -43,6 +43,10 @@ const meta = {
       control: "text",
       description: "Additional CSS classes to apply",
     },
+    selected: {
+      control: "boolean",
+      description: "Visually highlight the card as selected",
+    },
     children: {
       control: "text",
       description: "Content to display inside the card",
@@ -58,6 +62,7 @@ export const Playground: Story = {
     variant: "primary",
     size: "md",
     disabled: false,
+    selected: false,
     children: "Card Content",
   },
   render: (args) => <Card {...args} />,
@@ -93,6 +98,15 @@ export const DisabledCard: Story = {
     size: "md",
     disabled: true,
     children: "Disabled Card",
+  },
+};
+
+export const SelectedCard: Story = {
+  args: {
+    variant: "secondary",
+    size: "md",
+    selected: true,
+    children: "Selected Card",
   },
 };
 
@@ -220,4 +234,66 @@ export const WithActions: Story = {
       ))}
     </CardGrid>
   ),
+};
+
+export const SelectableGrid: Story = {
+  render: () => {
+    const [selected, setSelected] = React.useState(0);
+
+    return (
+      <CardGrid>
+        {cardData.slice(0, 4).map((card, index) => (
+          <Card
+            key={card.title}
+            variant="primary"
+            size="md"
+            selected={selected === index}
+            onClick={() => setSelected(index)}
+            action={<CardActionButton size="mini" icon={XMarkIcon} />}
+          >
+            <div className="s-flex s-w-full s-flex-col s-gap-1 s-text-sm">
+              <div className="s-flex s-w-full s-gap-1 s-font-semibold s-text-foreground">
+                <Icon visual={card.icon} size="sm" />
+                <div className="s-w-full">{card.title}</div>
+              </div>
+              <div className="s-w-full s-truncate s-text-sm s-text-muted-foreground">
+                {card.description}
+              </div>
+            </div>
+          </Card>
+        ))}
+      </CardGrid>
+    );
+  },
+};
+
+export const DualSelectable: Story = {
+  render: () => {
+    const [selectedIndex, setSelectedIndex] = React.useState(0);
+    const duoCards = cardData.slice(0, 2);
+
+    return (
+      <div className="s-flex s-gap-4">
+        {duoCards.map((card, index) => (
+          <Card
+            key={card.title}
+            variant="secondary"
+            size="md"
+            selected={selectedIndex === index}
+            onClick={() => setSelectedIndex(index)}
+          >
+            <div className="s-flex s-w-full s-flex-col s-gap-1 s-text-sm">
+              <div className="s-flex s-w-full s-gap-1 s-font-semibold s-text-foreground">
+                <Icon visual={card.icon} size="sm" />
+                <div className="s-w-full">{card.title}</div>
+              </div>
+              <div className="s-w-full s-truncate s-text-sm s-text-muted-foreground">
+                {card.description}
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+    );
+  },
 };

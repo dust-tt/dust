@@ -48,6 +48,7 @@ const config = {
     // Prevents minification of the temporalio client workflow ids.
     serverMinification: false,
     esmExternals: false,
+    instrumentationHook: true,
   },
   async redirects() {
     return [

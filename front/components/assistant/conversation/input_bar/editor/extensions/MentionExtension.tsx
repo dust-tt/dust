@@ -1,21 +1,31 @@
 import type { NodeViewProps } from "@tiptap/core";
 import type { MentionOptions } from "@tiptap/extension-mention";
 import Mention from "@tiptap/extension-mention";
-import { TextSelection } from "@tiptap/pm/state";
-import type { PasteRuleMatch } from "@tiptap/react";
+import { Plugin, TextSelection } from "@tiptap/pm/state";
 import { ReactNodeViewRenderer } from "@tiptap/react";
-import { nodePasteRule } from "@tiptap/react";
-import escapeRegExp from "lodash/escapeRegExp";
 
+import { createMarkdownSerializer } from "@app/components/assistant/conversation/input_bar/editor/markdownSerializer";
+import {
+  AGENT_MENTION_REGEX_BEGINNING,
+  USER_MENTION_REGEX_BEGINNING,
+} from "@app/lib/mentions/format";
+import logger from "@app/logger/logger";
 import type { WorkspaceType } from "@app/types";
 
 import { MentionComponent } from "../MentionComponent";
 
 interface MentionExtensionOptions extends MentionOptions {
-  owner?: WorkspaceType;
+  owner: WorkspaceType;
 }
 
 export const MentionExtension = Mention.extend<MentionExtensionOptions>({
+  addOptions() {
+    return {
+      ...this.parent?.(),
+      owner: {} as WorkspaceType,
+    } as MentionExtensionOptions;
+  },
+
   addAttributes() {
     return {
       ...this.parent?.(),
@@ -75,62 +85,115 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
     ));
   },
 
-  addPasteRules() {
-    const pasteRule = nodePasteRule({
-      find: (text) => {
-        // Note: the `suggestions` object should be available from the MentionStorage extension but it might takes some time to load.
-        const suggestions = this.editor.storage.MentionStorage.suggestions;
+  // define a custom Markdown tokenizer to recognize :mention: syntax
+  markdownTokenizer: {
+    name: "mention",
+    level: "inline", // inline element
+    // fast hint for the lexer to find candidate positions
+    start: (src) => src.indexOf(":mention"),
+    tokenize: (src) => {
+      const matchAgent = AGENT_MENTION_REGEX_BEGINNING.exec(src);
+      const matchUser = USER_MENTION_REGEX_BEGINNING.exec(src);
+      if (!matchAgent && !matchUser) {
+        return undefined;
+      }
 
-        const results: PasteRuleMatch[] = suggestions.suggestions.flatMap(
-          (suggestion) => {
-            return [
-              ...text.matchAll(
-                // Note: matching the @ that are found either at the start of a line or after a whitespace character.
-                // and that also are followed by a newline, a whitespace character or the end of the string.
-                new RegExp(
-                  `((^@|\\s@)${escapeRegExp(suggestion.label)})(\\s|$)`,
-                  "g"
-                )
-              ),
-            ].map((match) => {
-              return {
-                index: match.index,
-                text: match[1],
-                replaceWith: suggestion.label,
-                data: {
-                  type: suggestion.type,
-                  id: suggestion.id,
-                  label: suggestion.label,
-                  description: suggestion.description,
-                  pictureUrl: suggestion.pictureUrl,
-                },
-              };
-            });
-          }
-        );
-        return results;
-      },
-      type: this.type,
-      getAttributes: (match: {
-        data: {
-          type: "agent" | "user";
-          label: string;
-          id: string;
-          description: string;
-          pictureUrl: string;
-        };
-      }) => {
+      if (matchAgent) {
         return {
-          type: match.data.type,
-          label: match.data.label,
-          id: match.data.id,
-          description: match.data.description,
-          pictureUrl: match.data.pictureUrl,
+          type: "mention", // token type (must match name)
+          raw: matchAgent[0], // full matched string
+          mentionType: "agent",
+          attrs: {
+            id: matchAgent[2],
+            label: matchAgent[1],
+          },
         };
+      }
+
+      if (matchUser) {
+        return {
+          type: "mention", // token type (must match name)
+          raw: matchUser[0], // full matched string
+          mentionType: "user",
+          attrs: {
+            id: matchUser[2],
+            label: matchUser[1],
+          },
+        };
+      }
+
+      return undefined;
+    },
+  },
+
+  // Parse Markdown token to Tiptap JSON
+  parseMarkdown: (token) => {
+    return {
+      type: "mention",
+      attrs: {
+        type: token.mentionType,
+        id: token.attrs.id,
+        label: token.attrs.label,
+      },
+    };
+  },
+
+  addProseMirrorPlugins(this) {
+    const { owner } = this.options;
+    const editor = this.editor;
+
+    const parentPlugins = this.parent?.();
+    const addedPlugin = new Plugin({
+      props: {
+        handlePaste: (view, event, slice) => {
+          // Get text from the slice after TipTap processing.
+          const text = slice.content.textBetween(0, slice.content.size, "\n");
+
+          // Only process if text contains @.
+          if (!text.includes("@")) {
+            return false;
+          }
+
+          // Prevent default and handle manually.
+          event.preventDefault();
+
+          const { state } = view;
+          const { from, to } = state.selection;
+
+          const serializer = createMarkdownSerializer(state.schema);
+
+          // Convert the pasted slice to markdown.
+          // Create a temporary document node to wrap the fragment.
+          const tempDoc = state.schema.topNodeType.create(null, slice.content);
+          const markdown = serializer.serialize(tempDoc);
+
+          // Send to backend to parse mentions.
+          parseMentionsOnBackend(markdown, owner.sId)
+            .then((processedMarkdown: string) => {
+              // Use Tiptap's insertContent with JSON structure.
+              // This uses Tiptap's built-in content parsing and validation.
+              editor
+                .chain()
+                .focus()
+                .deleteRange({ from, to })
+                .insertContentAt(from, processedMarkdown, {
+                  contentType: "markdown",
+                })
+                .run();
+            })
+            .catch((error: unknown) => {
+              logger.error("Failed to parse mentions:", error);
+              // Fallback to the default paste behavior.
+              const transaction = state.tr.replaceRange(from, to, slice);
+              view.dispatch(transaction);
+            });
+
+          return true;
+        },
       },
     });
 
-    return [pasteRule];
+    return parentPlugins ? [...parentPlugins, addedPlugin] : [addedPlugin];
   },
 
   // Override Backspace behavior so it removes a single character from the
@@ -182,3 +245,36 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
     };
   },
 });
+
+const MAX_MARKDOWN_LENGTH = 10_000; // 10 KB
+
+async function parseMentionsOnBackend(
+  text: string,
+  ownerSId: string
+): Promise<string> {
+  // Prevent sending very large markdown payloads to the server which may
+  // iterate over all workspace members and cause high CPU usage. If the text
+  // exceeds the limit, skip backend parsing and return the original text to
+  // avoid triggering a server-side denial-of-service.
+  if (text.length > MAX_MARKDOWN_LENGTH) {
+    logger.warn(
+      `Skipping backend mention parsing: markdown length ${text.length} exceeds limit ${MAX_MARKDOWN_LENGTH}`
+    );
+    return text;
+  }
+
+  const response = await fetch(`/api/w/${ownerSId}/assistant/mentions/parse`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ markdown: text }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to parse mentions");
+  }
+
+  const data = await response.json();
+  return data.markdown;
+}

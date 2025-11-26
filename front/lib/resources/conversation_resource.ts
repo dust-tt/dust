@@ -1,12 +1,18 @@
+import uniq from "lodash/uniq";
 import type {
+  Attributes,
   CreationAttributes,
   InferAttributes,
   Transaction,
+  WhereOptions,
 } from "sequelize";
 import { col, fn, literal, Op, QueryTypes, Sequelize, where } from "sequelize";
 
+import { getMaximalVersionAgentStepContent } from "@app/lib/api/assistant/configuration/steps";
+import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationMCPServerViewModel } from "@app/lib/models/assistant/actions/conversation_mcp_server_view";
+import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import {
   AgentMessage,
   ConversationModel,
@@ -23,6 +29,7 @@ import {
 } from "@app/lib/resources/permission_utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
@@ -35,6 +42,7 @@ import type {
   ConversationType,
   ConversationWithoutContentType,
   LightAgentConfigurationType,
+  ModelId,
   ParticipantActionType,
   Result,
   UserType,
@@ -66,12 +74,45 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   // User-specific participation fields (populated when conversations are listed for a user).
   private userParticipation?: UserParticipation;
+  constructor(
+    model: ModelStaticWorkspaceAware<ConversationModel>,
+    blob: Attributes<ConversationModel>,
+    private readonly _space: SpaceResource | null
+  ) {
+    super(ConversationModel, blob);
+  }
+
+  get space(): SpaceResource | null {
+    if (this.spaceId && !this._space) {
+      throw new Error(
+        "This conversation is associated with a space but the related space is not loaded. Action: make sure to load the space when fetching the conversation."
+      );
+    }
+    return this._space;
+  }
 
   static async makeNew(
     auth: Authenticator,
-    blob: Omit<CreationAttributes<ConversationModel>, "workspaceId">
+    blob: Omit<CreationAttributes<ConversationModel>, "workspaceId">,
+    space: SpaceResource | null
   ): Promise<ConversationResource> {
     const workspace = auth.getNonNullableWorkspace();
+
+    // Check if the user has access to the space.
+    // Note, using canRead because spaces members do not have write access to the space as write is tied with datasources.
+    if (space && !space.canRead(auth)) {
+      throw new Error(
+        "Cannot create conversation in a space you do not have access to."
+      );
+    }
+
+    // Check if the space match the workspace.
+    if (space && space.workspaceId !== workspace.id) {
+      throw new Error(
+        "Cannot create conversation in a space that does not belong to the workspace."
+      );
+    }
+
     const conversation = await this.model.create({
       ...blob,
       workspaceId: workspace.id,
@@ -79,8 +120,24 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     return new ConversationResource(
       ConversationResource.model,
-      conversation.get()
+      conversation.get(),
+      space
     );
+  }
+
+  static async countForWorkspace(
+    auth: Authenticator,
+    options?: FetchConversationOptions
+  ): Promise<number> {
+    const workspace = auth.getNonNullableWorkspace();
+    const { where } = this.getOptions(options);
+
+    return this.model.count({
+      where: {
+        ...where,
+        workspaceId: workspace.id,
+      },
+    });
   }
 
   private static getOptions(
@@ -116,30 +173,53 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       limit: options.limit,
     });
 
-    const uniqueSpaceIds = Array.from(
-      new Set(conversations.flatMap((c) => c.requestedSpaceIds))
-    );
+    const uniqueSpaceIds = uniq([
+      // Include requestedSpaceIds from conversations.
+      ...conversations.flatMap((c) => c.requestedSpaceIds),
 
-    // Only fetch spaces if there are any requestedSpaceIds.
+      // Include spaceId of the conversations if it exists.
+      ...conversations.flatMap((c) => c.spaceId ?? []),
+    ]);
+
+    // Only fetch spaces if there are any used spaces.
     const spaces =
       uniqueSpaceIds.length === 0
         ? []
         : await SpaceResource.fetchByModelIds(auth, uniqueSpaceIds);
 
+    const spaceIdToSpaceMap = new Map(spaces.map((s) => [s.id, s]));
+
     if (fetchConversationOptions?.dangerouslySkipPermissionFiltering) {
-      return conversations.map((c) => new this(this.model, c.get()));
+      return conversations.map(
+        (c) =>
+          new this(
+            this.model,
+            c.get(),
+            c.spaceId ? (spaceIdToSpaceMap.get(c.spaceId) ?? null) : null
+          )
+      );
     }
 
     // Filter out conversations that reference missing/deleted spaces.
     // There are two reasons why a space may be missing here:
     // 1. When a space is deleted, conversations referencing it won't be deleted but should not be accessible.
     // 2. When a space belongs to another workspace (should not happen), conversations referencing it won't be accessible.
+
+    // Note from seb, for Space Conversations, we probably want to be more subtle about the conversation accessible logic.
+    // We should probably only filter out conversations where the spaceId is deleted but keep the one that referenced a deleted space.
     const foundSpaceIds = new Set(spaces.map((s) => s.id));
     const validConversations = conversations
       .filter((c) =>
         c.requestedSpaceIds.every((id) => foundSpaceIds.has(Number(id)))
       )
-      .map((c) => new this(this.model, c.get()));
+      .map(
+        (c) =>
+          new this(
+            this.model,
+            c.get(),
+            c.spaceId ? (spaceIdToSpaceMap.get(c.spaceId) ?? null) : null
+          )
+      );
 
     // Create space-to-groups mapping once for efficient permission checks.
     const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
@@ -445,7 +525,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       unread,
       hasError: conversation.hasError,
       requestedGroupIds: [],
-      requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(auth),
+      requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(),
+      spaceId: conversation.space?.sId ?? null,
     });
   }
 
@@ -566,7 +647,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           unread,
           hasError: c.hasError,
           requestedGroupIds: [],
-          requestedSpaceIds: c.getRequestedSpaceIdsFromModel(auth),
+          requestedSpaceIds: c.getRequestedSpaceIdsFromModel(),
+          spaceId: c.space?.sId ?? null,
         };
       })
     );
@@ -857,6 +939,113 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok(message);
   }
 
+  /**
+   * This function retrieves the latest version of each message for the current page,
+   * because there's no easy way to fetch only the latest version of a message.
+   */
+  private async getMaxRankMessages(
+    auth: Authenticator,
+    paginationParams: PaginationParams
+  ): Promise<ModelId[]> {
+    const { limit, orderColumn, orderDirection, lastValue } = paginationParams;
+
+    const where: WhereOptions<Message> = {
+      conversationId: this.id,
+      workspaceId: auth.getNonNullableWorkspace().id,
+    };
+
+    if (lastValue) {
+      const op = orderDirection === "desc" ? Op.lt : Op.gt;
+
+      where[orderColumn as any] = {
+        [op]: lastValue,
+      };
+    }
+
+    // Retrieve the latest version and corresponding Id of each message for the current page,
+    // grouped by rank and limited to the desired page size plus one to detect the presence of a next page.
+    const messages = await Message.findAll({
+      attributes: [
+        [Sequelize.fn("MAX", Sequelize.col("version")), "maxVersion"],
+        [Sequelize.fn("MAX", Sequelize.col("id")), "id"],
+      ],
+      where,
+      group: ["rank"],
+      order: [[orderColumn, orderDirection === "desc" ? "DESC" : "ASC"]],
+      limit: limit + 1,
+    });
+
+    return messages.map((m) => m.id);
+  }
+
+  async fetchMessagesForPage(
+    auth: Authenticator,
+    paginationParams: PaginationParams
+  ): Promise<{ hasMore: boolean; messages: Message[] }> {
+    const { orderColumn, orderDirection, limit } = paginationParams;
+
+    const messageIds = await this.getMaxRankMessages(auth, paginationParams);
+
+    const hasMore = messageIds.length > limit;
+    const relevantMessageIds = hasMore
+      ? messageIds.slice(0, limit)
+      : messageIds;
+
+    // Then fetch all those messages and their associated resources.
+    const messages = await Message.findAll({
+      where: {
+        conversationId: this.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        id: {
+          [Op.in]: relevantMessageIds,
+        },
+      },
+      order: [[orderColumn, orderDirection === "desc" ? "DESC" : "ASC"]],
+      include: [
+        {
+          model: UserMessage,
+          as: "userMessage",
+          required: false,
+        },
+        {
+          model: AgentMessage,
+          as: "agentMessage",
+          required: false,
+          include: [
+            {
+              model: AgentStepContentModel,
+              as: "agentStepContents",
+              required: false,
+            },
+          ],
+        },
+        // We skip ContentFragmentResource here for efficiency reasons (retrieving contentFragments
+        // along with messages in one query). Only once we move to a MessageResource will we be able
+        // to properly abstract this.
+        {
+          model: ContentFragmentModel,
+          as: "contentFragment",
+          required: false,
+        },
+      ],
+    });
+
+    // Filter to only keep the step content with the maximum version for each step and index combination.
+    for (const message of messages) {
+      if (message.agentMessage && message.agentMessage.agentStepContents) {
+        message.agentMessage.agentStepContents =
+          getMaximalVersionAgentStepContent(
+            message.agentMessage.agentStepContents
+          );
+      }
+    }
+
+    return {
+      hasMore,
+      messages,
+    };
+  }
+
   static async updateRequirements(
     auth: Authenticator,
     sId: string,
@@ -1138,15 +1327,20 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
   }
 
-  getRequestedSpaceIdsFromModel(auth: Authenticator) {
-    const workspace = auth.getNonNullableWorkspace();
-
-    return this.requestedSpaceIds.map((id) =>
+  getRequestedSpaceIdsFromModel() {
+    const spaceIds = this.requestedSpaceIds.map((id) =>
       SpaceResource.modelIdToSId({
         id,
-        workspaceId: workspace.id,
+        workspaceId: this.workspaceId,
       })
     );
+
+    // Add the main space (if any).
+    if (this.space) {
+      spaceIds.push(this.space.sId);
+    }
+
+    return spaceIds;
   }
 
   toJSON(): ConversationWithoutContentType {
@@ -1160,16 +1354,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       actionRequired: participation.actionRequired,
       created: this.createdAt.getTime(),
       updated: this.updatedAt.getTime(),
+      spaceId: this.space?.sId ?? null,
       hasError: this.hasError,
       id: this.id,
       // TODO(REQUESTED_SPACE_IDS 2025-10-24): Stop exposing this once all logic is centralized
       // in baseFetchWithAuthorization.
-      requestedSpaceIds: this.requestedSpaceIds.map((id) =>
-        SpaceResource.modelIdToSId({
-          id,
-          workspaceId: this.workspaceId,
-        })
-      ),
+      requestedSpaceIds: this.getRequestedSpaceIdsFromModel(),
       sId: this.sId,
       title: this.title,
       unread: participation.unread,

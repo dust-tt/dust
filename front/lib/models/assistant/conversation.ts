@@ -6,6 +6,7 @@ import type { AgentStepContentModel } from "@app/lib/models/assistant/agent_step
 import { TriggerModel } from "@app/lib/models/assistant/triggers/triggers";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
@@ -28,6 +29,10 @@ export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
   declare hasError: CreationOptional<boolean>;
 
   declare requestedSpaceIds: number[];
+
+  // Note: Using spaceId for the FK instead of vaultId as it is not a "ResourceWithSpace" and it's aligned with "requestedSpaceIds".
+  declare spaceId: ForeignKey<SpaceModel["id"]> | null;
+  declare space: NonAttribute<SpaceModel>;
 }
 
 ConversationModel.init(
@@ -81,6 +86,9 @@ ConversationModel.init(
       {
         fields: ["workspaceId", "triggerId"],
       },
+      {
+        fields: ["workspaceId", "spaceId"],
+      },
     ],
     sequelize: frontSequelize,
   }
@@ -102,6 +110,19 @@ TriggerModel.hasMany(ConversationModel, {
     allowNull: true,
   },
   onDelete: "SET NULL",
+});
+
+ConversationModel.belongsTo(SpaceModel, {
+  as: "space",
+  foreignKey: {
+    name: "spaceId",
+    allowNull: true,
+  },
+  onDelete: "RESTRICT",
+});
+
+SpaceModel.hasMany(ConversationModel, {
+  as: "conversations",
 });
 
 export class ConversationParticipantModel extends WorkspaceAwareModel<ConversationParticipantModel> {
@@ -193,7 +214,11 @@ export class UserMessage extends WorkspaceAwareModel<UserMessage> {
   declare userContextEmail: string | null;
   declare userContextProfilePictureUrl: string | null;
   declare userContextOrigin: UserMessageOrigin | null;
+  // TODO(2025-11-24 PPUL): Remove this once data has been backfilled
   declare userContextOriginMessageId: string | null;
+
+  declare agenticMessageType: "run_agent" | "agent_handover" | null;
+  declare agenticOriginMessageId: string | null;
 
   declare userContextLastTriggerRunAt: Date | null;
 
@@ -253,6 +278,7 @@ UserMessage.init(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    // TODO: Remove this once backfilled
     userContextOriginMessageId: {
       type: DataTypes.STRING(32),
       allowNull: true,
@@ -261,6 +287,14 @@ UserMessage.init(
       type: DataTypes.DATE,
       allowNull: true,
       defaultValue: null,
+    },
+    agenticMessageType: {
+      type: DataTypes.STRING(16),
+      allowNull: true,
+    },
+    agenticOriginMessageId: {
+      type: DataTypes.STRING(32),
+      allowNull: true,
     },
   },
   {
@@ -281,6 +315,17 @@ UserMessage.init(
         name: "user_messages_workspace_id_date_created_at_user_id_idx",
       },
     ],
+    hooks: {
+      beforeValidate: (userMessage) => {
+        const hasAgenticMessageType = !!userMessage.agenticMessageType;
+        const hasAgenticOriginMessageId = !!userMessage.agenticOriginMessageId;
+        if (hasAgenticMessageType !== hasAgenticOriginMessageId) {
+          throw new Error(
+            "agenticMessageType and agenticOriginMessageId must be set together"
+          );
+        }
+      },
+    },
   }
 );
 

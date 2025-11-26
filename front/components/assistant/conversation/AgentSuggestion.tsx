@@ -154,7 +154,6 @@ export function AgentSuggestion({
     if (
       !dustAgent ||
       userMessage.id === -1 ||
-      userMessage.sId.startsWith("placeholder") ||
       userMessage.sId === autoSelectedMessageIdRef.current
     ) {
       return;

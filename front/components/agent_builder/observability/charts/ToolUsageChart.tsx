@@ -22,6 +22,7 @@ import type {
   ToolChartModeType,
 } from "@app/components/agent_builder/observability/types";
 import { getIndexedColor } from "@app/components/agent_builder/observability/utils";
+import { useAgentMcpConfigurations } from "@app/lib/swr/assistants";
 
 export function ToolUsageChart({
   workspaceId,
@@ -32,6 +33,25 @@ export function ToolUsageChart({
 }) {
   const { period, mode, selectedVersion } = useObservabilityContext();
   const [toolMode, setToolMode] = useState<ToolChartModeType>("version");
+  const [hoveredTool, setHoveredTool] = useState<string | null>(null);
+
+  const { configurations: mcpConfigurations } = useAgentMcpConfigurations({
+    workspaceId,
+    agentConfigurationId,
+  });
+
+  const configurationNames = useMemo(() => {
+    if (!mcpConfigurations) {
+      return new Map<string, string>();
+    }
+    const map = new Map<string, string>();
+    for (const config of mcpConfigurations) {
+      if (config.sId && config.name) {
+        map.set(config.sId, config.name);
+      }
+    }
+    return map;
+  }, [mcpConfigurations]);
 
   const {
     chartData,
@@ -47,6 +67,7 @@ export function ToolUsageChart({
     period,
     mode: toolMode,
     filterVersion: mode === "version" ? selectedVersion?.version : undefined,
+    configurationNames,
   });
 
   const legendItems = useMemo(
@@ -61,9 +82,13 @@ export function ToolUsageChart({
 
   const renderToolUsageTooltip = useCallback(
     (payload: TooltipContentProps<number, string>) => (
-      <ChartsTooltip {...payload} mode={toolMode} topTools={topTools} />
+      <ChartsTooltip
+        {...payload}
+        topTools={topTools}
+        hoveredTool={hoveredTool}
+      />
     ),
-    [toolMode, topTools]
+    [topTools, hoveredTool]
   );
 
   return (
@@ -155,6 +180,8 @@ export function ToolUsageChart({
             shape={
               <RoundedTopBarShape toolName={toolName} stackOrder={topTools} />
             }
+            onMouseEnter={() => setHoveredTool(toolName)}
+            onMouseLeave={() => setHoveredTool(null)}
           />
         ))}
       </BarChart>

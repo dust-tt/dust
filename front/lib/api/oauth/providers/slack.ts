@@ -38,6 +38,7 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
               "im:history",
               "mpim:history",
               "channels:read",
+              "files:write",
               "groups:read",
               "im:read",
               "mpim:read",

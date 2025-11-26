@@ -11,6 +11,11 @@ export function isToolChartMode(mode: string): mode is ToolChartModeType {
 export type ToolChartUsageDatum = {
   percent: number;
   count: number;
+  breakdown?: {
+    label: string;
+    count: number;
+    percent: number;
+  }[];
 };
 
 export type ChartDatum = {

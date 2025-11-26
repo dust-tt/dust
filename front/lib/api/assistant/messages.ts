@@ -1,6 +1,3 @@
-import type { WhereOptions } from "sequelize";
-import { Op, Sequelize } from "sequelize";
-
 import {
   AgentMessageContentParser,
   getCoTDelimitersConfiguration,
@@ -10,7 +7,6 @@ import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/cit
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import {
   AgentMessage,
   Mention,
@@ -21,7 +17,6 @@ import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_reso
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
@@ -30,12 +25,10 @@ import type {
   AgentMessageType,
   ContentFragmentType,
   ConversationWithoutContentType,
-  FetchConversationMessagesResponse,
   LightAgentConfigurationType,
   LightAgentMessageType,
   LightMessageType,
   MessageType,
-  ModelId,
   Result,
   UserMention,
   UserMessageType,
@@ -52,22 +45,10 @@ import {
   isAgentReasoningContent,
   isAgentTextContent,
 } from "@app/types/assistant/agent_message_content";
-import type { ParsedContentItem } from "@app/types/assistant/conversation";
-
-export function getMaximalVersionAgentStepContent(
-  agentStepContents: AgentStepContentModel[]
-): AgentStepContentModel[] {
-  const maxVersionStepContents = agentStepContents.reduce((acc, current) => {
-    const key = `${current.step}-${current.index}`;
-    const existing = acc.get(key);
-    if (!existing || current.version > existing.version) {
-      acc.set(key, current);
-    }
-    return acc;
-  }, new Map<string, AgentStepContentModel>());
-
-  return Array.from(maxVersionStepContents.values());
-}
+import type {
+  FetchConversationMessagesResponse,
+  ParsedContentItem,
+} from "@app/types/assistant/conversation";
 
 export async function generateParsedContents(
   actions: AgentMCPActionWithOutputType[],
@@ -225,12 +206,23 @@ async function batchRenderUserMessages(
         fullName: userMessage.userContextFullName,
         email: userMessage.userContextEmail,
         profilePictureUrl: userMessage.userContextProfilePictureUrl,
-        origin: userMessage.userContextOrigin,
-        originMessageId: userMessage.userContextOriginMessageId,
+        // TODO(2025-11-24 PPUL): Return real user origin even in case of run_agent, once extensions have been updated
+        origin: userMessage.agenticMessageType ?? userMessage.userContextOrigin,
+        // TODO(2025-11-24 PPUL): Remove once extensions have been updated
+        originMessageId:
+          userMessage.agenticOriginMessageId ??
+          userMessage.userContextOriginMessageId,
         clientSideMCPServerIds: userMessage.clientSideMCPServerIds,
         lastTriggerRunAt:
           userMessage.userContextLastTriggerRunAt?.getTime() ?? null,
       },
+      agenticMessageData:
+        userMessage.agenticMessageType && userMessage.agenticOriginMessageId
+          ? {
+              type: userMessage.agenticMessageType,
+              originMessageId: userMessage.agenticOriginMessageId,
+            }
+          : undefined,
     } satisfies UserMessageType;
   });
 }
@@ -429,6 +421,8 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         : null;
 
       let parentAgentMessage: Message | null = null;
+
+      // TODO(2025-11-24 PPUL): Remove this block once data has been backfilled
       if (
         parentMessage &&
         parentMessage?.userMessage &&
@@ -439,6 +433,18 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
           messagesBySId.get(
             parentMessage.userMessage.userContextOriginMessageId
           ) ?? null;
+      }
+      // END TODO
+
+      if (
+        parentMessage &&
+        parentMessage?.userMessage &&
+        parentMessage.userMessage.agenticMessageType === "agent_handover" &&
+        parentMessage.userMessage.agenticOriginMessageId
+      ) {
+        parentAgentMessage =
+          messagesBySId.get(parentMessage.userMessage.agenticOriginMessageId) ??
+          null;
       }
 
       const m = {
@@ -508,10 +514,6 @@ async function batchRenderContentFragment(
   return Promise.all(
     messagesWithContentFragment.map(async (message: Message) => {
       const contentFragment = ContentFragmentResource.fromMessage(message);
-      if (contentFragment.expiredReason) {
-        // ignore expired content fragments
-        return null;
-      }
       const render = await contentFragment.renderFromMessage({
         auth,
         conversationId,
@@ -520,118 +522,7 @@ async function batchRenderContentFragment(
 
       return render;
     })
-  ).then((results) => removeNulls(results));
-}
-
-/**
- * This function retrieves the latest version of each message for the current page,
- * because there's no easy way to fetch only the latest version of a message.
- */
-async function getMaxRankMessages(
-  auth: Authenticator,
-  conversation: ConversationResource,
-  paginationParams: PaginationParams
-): Promise<ModelId[]> {
-  const { limit, orderColumn, orderDirection, lastValue } = paginationParams;
-
-  const where: WhereOptions<Message> = {
-    conversationId: conversation.id,
-    workspaceId: auth.getNonNullableWorkspace().id,
-  };
-
-  if (lastValue) {
-    const op = orderDirection === "desc" ? Op.lt : Op.gt;
-
-    where[orderColumn as any] = {
-      [op]: lastValue,
-    };
-  }
-
-  // Retrieve the latest version and corresponding Id of each message for the current page,
-  // grouped by rank and limited to the desired page size plus one to detect the presence of a next page.
-  const messages = await Message.findAll({
-    attributes: [
-      [Sequelize.fn("MAX", Sequelize.col("version")), "maxVersion"],
-      [Sequelize.fn("MAX", Sequelize.col("id")), "id"],
-    ],
-    where,
-    group: ["rank"],
-    order: [[orderColumn, orderDirection === "desc" ? "DESC" : "ASC"]],
-    limit: limit + 1,
-  });
-
-  return messages.map((m) => m.id);
-}
-
-async function fetchMessagesForPage(
-  auth: Authenticator,
-  conversation: ConversationResource,
-  paginationParams: PaginationParams
-): Promise<{ hasMore: boolean; messages: Message[] }> {
-  const { orderColumn, orderDirection, limit } = paginationParams;
-
-  const messageIds = await getMaxRankMessages(
-    auth,
-    conversation,
-    paginationParams
   );
-
-  const hasMore = messageIds.length > limit;
-  const relevantMessageIds = hasMore ? messageIds.slice(0, limit) : messageIds;
-
-  // Then fetch all those messages and their associated resources.
-  const messages = await Message.findAll({
-    where: {
-      conversationId: conversation.id,
-      workspaceId: auth.getNonNullableWorkspace().id,
-      id: {
-        [Op.in]: relevantMessageIds,
-      },
-    },
-    order: [[orderColumn, orderDirection === "desc" ? "DESC" : "ASC"]],
-    include: [
-      {
-        model: UserMessage,
-        as: "userMessage",
-        required: false,
-      },
-      {
-        model: AgentMessage,
-        as: "agentMessage",
-        required: false,
-        include: [
-          {
-            model: AgentStepContentModel,
-            as: "agentStepContents",
-            required: false,
-          },
-        ],
-      },
-      // We skip ContentFragmentResource here for efficiency reasons (retrieving contentFragments
-      // along with messages in one query). Only once we move to a MessageResource will we be able
-      // to properly abstract this.
-      {
-        model: ContentFragmentModel,
-        as: "contentFragment",
-        required: false,
-      },
-    ],
-  });
-
-  // Filter to only keep the step content with the maximum version for each step and index combination.
-  for (const message of messages) {
-    if (message.agentMessage && message.agentMessage.agentStepContents) {
-      message.agentMessage.agentStepContents =
-        getMaximalVersionAgentStepContent(
-          message.agentMessage.agentStepContents
-        );
-    }
-  }
-
-  return {
-    hasMore,
-    messages,
-  };
 }
 
 type RenderMessageVariant = "light" | "full";
@@ -689,9 +580,9 @@ export async function fetchConversationMessages(
     return new Err(new ConversationError("conversation_not_found"));
   }
 
-  const { hasMore, messages } = await fetchMessagesForPage(
+  const { hasMore, messages } = await conversation.fetchMessagesForPage(
     auth,
-    conversation,
+
     paginationParams
   );
 

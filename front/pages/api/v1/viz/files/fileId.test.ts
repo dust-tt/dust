@@ -557,6 +557,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
         workspace,
         key,
       } = await createPublicApiMockRequest({
+        systemKey: true,
         method: "POST",
       });
 
@@ -594,6 +595,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
 
       const { req: childReq, res: childRes } = await createPublicApiMockRequest(
         {
+          systemKey: true,
           method: "POST",
         }
       );
@@ -622,7 +624,10 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
             email: "test@example.com",
             profilePictureUrl: null,
             origin: "web",
-            originMessageId: parentMessageId, // This creates the hierarchy!
+          },
+          agenticMessageData: {
+            type: "run_agent",
+            originMessageId: parentMessageId,
           },
         },
       };

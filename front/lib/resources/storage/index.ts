@@ -1,7 +1,7 @@
 import assert from "assert";
-//import { default as cls } from "cls-hooked";
-import { Sequelize } from "sequelize";
+import type { Sequelize } from "sequelize";
 
+import { SequelizeWithComments } from "@app/lib/api/database";
 import { dbConfig } from "@app/lib/resources/storage/config";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import { isDevelopment } from "@app/types";
@@ -36,7 +36,7 @@ types.setTypeParser(types.builtins.INT8, function (val: unknown) {
 export const statsDClient = getStatsDClient();
 const CONNECTION_ACQUISITION_THRESHOLD_MS = 100;
 
-export const frontSequelize = new Sequelize(
+export const frontSequelize = new SequelizeWithComments(
   dbConfig.getRequiredFrontDatabaseURI(),
   {
     pool: {
@@ -68,7 +68,7 @@ let frontReplicaDbInstance: Sequelize | null = null;
 
 export function getFrontReplicaDbConnection() {
   if (!frontReplicaDbInstance) {
-    frontReplicaDbInstance = new Sequelize(
+    frontReplicaDbInstance = new SequelizeWithComments(
       dbConfig.getRequiredFrontReplicaDatabaseURI() as string,
       {
         logging: false,

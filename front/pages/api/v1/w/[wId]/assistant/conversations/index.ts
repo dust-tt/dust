@@ -25,8 +25,10 @@ import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type {
+  AgenticMessageData,
   ContentFragmentType,
   UserMessageContext,
   UserMessageType,
@@ -209,9 +211,7 @@ async function handler(
           }
         }
 
-        const isRunAgent =
-          message.context.origin === "run_agent" ||
-          message.context.origin === "agent_handover";
+        const isRunAgent = !!message.agenticMessageData;
         if (isRunAgent && !auth.isSystemKey()) {
           return apiError(req, res, {
             status_code: 401,
@@ -221,6 +221,21 @@ async function handler(
                 "Messages from run_agent or agent_handover must come from a system key.",
             },
           });
+        }
+
+        if (
+          message.context.origin === "agent_handover" ||
+          message.context.origin === "run_agent" ||
+          message.context.originMessageId
+        ) {
+          logger.error(
+            {
+              panic: true,
+              origin: message.context.origin,
+              originMessageId: message.context.originMessageId,
+            },
+            "use agenticMessageData instead of origin."
+          );
         }
       }
 
@@ -274,6 +289,7 @@ async function handler(
         // Temporary translation layer for deprecated "workspace" visibility.
         visibility: visibility === "workspace" ? "unlisted" : visibility,
         depth,
+        spaceId: null,
       });
 
       let newContentFragment: ContentFragmentType | null = null;
@@ -361,8 +377,10 @@ async function handler(
           profilePictureUrl: message.context.profilePictureUrl ?? null,
           timezone: message.context.timezone,
           username: message.context.username,
-          originMessageId: message.context.originMessageId ?? null,
         };
+
+        const agenticMessageData: AgenticMessageData | undefined =
+          message.agenticMessageData ?? undefined;
 
         // If tools are enabled, we need to add the MCP server views to the conversation before posting the message.
         if (message.context.selectedMCPServerViewIds) {
@@ -396,6 +414,7 @@ async function handler(
             ? await postUserMessageAndWaitForCompletion(auth, {
                 content: message.content,
                 context: ctx,
+                agenticMessageData,
                 conversation,
                 mentions: message.mentions,
                 skipToolsValidation: skipToolsValidation ?? false,
@@ -403,6 +422,7 @@ async function handler(
             : await postUserMessage(auth, {
                 content: message.content,
                 context: ctx,
+                agenticMessageData,
                 conversation,
                 mentions: message.mentions,
                 skipToolsValidation: skipToolsValidation ?? false,

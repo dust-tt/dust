@@ -22,6 +22,7 @@ import {
   assertNever,
   DATA_SOURCE_NODE_ID,
   isContentNodeContentFragment,
+  isExpiredContentFragment,
   isFileContentFragment,
 } from "@app/types";
 
@@ -91,6 +92,11 @@ export function conversationAttachmentId(
 export function getAttachmentFromContentFragment(
   cf: ContentFragmentType
 ): ConversationAttachmentType | null {
+  // Expired content fragments cannot be converted to attachments
+  if (isExpiredContentFragment(cf)) {
+    return null;
+  }
+
   if (isContentNodeContentFragment(cf)) {
     return getAttachmentFromContentNodeContentFragment(cf);
   }
@@ -101,7 +107,7 @@ export function getAttachmentFromContentFragment(
 }
 
 export function getAttachmentFromContentNodeContentFragment(
-  cf: ContentNodeContentFragmentType
+  cf: ContentNodeContentFragmentType & { expiredReason: null }
 ): ContentNodeAttachmentType {
   const isQueryable =
     isQueryableContentType(cf.contentType) || cf.nodeType === "table";

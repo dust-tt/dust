@@ -4,6 +4,7 @@ import type { ReactElement } from "react";
 import { ConversationDataTable } from "@app/components/poke/conversation/table";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import PokeLayout from "@app/components/poke/PokeLayout";
+import { PokeRecentWebhookRequests } from "@app/components/poke/triggers/RecentWebhookRequests";
 import { ViewTriggerTable } from "@app/components/poke/triggers/view";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
@@ -78,7 +79,22 @@ export default function TriggerPage({
               workspace: owner,
             }}
           />
-          <ConversationDataTable owner={owner} triggerId={trigger.sId} />
+          {trigger.kind === "webhook" && (
+            <PokeRecentWebhookRequests owner={owner} trigger={trigger} />
+          )}
+          {trigger.customPrompt && (
+            <div className="border-material-200 my-4 flex min-h-24 flex-col rounded-lg border bg-muted-background dark:bg-muted-background-night">
+              <div className="flex justify-between gap-3 rounded-t-lg bg-primary-300 p-4 dark:bg-primary-300-night">
+                <h2 className="text-md font-bold">Custom Prompt</h2>
+              </div>
+              <div className="flex flex-grow flex-col justify-center p-4">
+                <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                  {trigger.customPrompt}
+                </p>
+              </div>
+            </div>
+          )}
+          <ConversationDataTable owner={owner} trigger={trigger} />
         </div>
       </div>
     </>

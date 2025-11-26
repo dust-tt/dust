@@ -48,11 +48,13 @@ export const INDEXED_COLORS = [
 export const MAX_TOOLS_DISPLAYED = 5;
 
 export const OTHER_LABEL = {
+  key: "others",
   label: "Others",
   color: "text-blue-300 dark:text-blue-300-night",
 };
 
 export const UNKNOWN_LABEL = {
+  key: "unknown",
   label: "Unknown",
   color: "text-gray-400 dark:text-gray-400-night",
 };
@@ -135,5 +137,9 @@ export const USER_MESSAGE_ORIGIN_LABELS: Record<
   zendesk: {
     label: "Zendesk",
     color: "text-blue-800 dark:text-blue-800-night",
+  },
+  onboarding_conversation: {
+    label: "Onboarding",
+    color: "info-muted dark:info-muted-night",
   },
 };

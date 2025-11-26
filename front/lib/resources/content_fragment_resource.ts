@@ -313,6 +313,33 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       expiredReason: this.expiredReason,
     };
 
+    if (this.expiredReason) {
+      if (contentFragmentType === "file") {
+        return {
+          ...baseContentFragment,
+          contentFragmentType: "file",
+          expiredReason: this.expiredReason,
+          fileId: null,
+          snippet: null,
+          generatedTables: [],
+          textUrl: null,
+          textBytes: null,
+        };
+      } else if (contentFragmentType === "content_node") {
+        return {
+          ...baseContentFragment,
+          contentFragmentType: "content_node",
+          expiredReason: this.expiredReason,
+          nodeId: null,
+          nodeDataSourceViewId: null,
+          nodeType: null,
+          contentNodeData: null,
+        };
+      } else {
+        assertNever(contentFragmentType);
+      }
+    }
+
     if (contentFragmentType === "file") {
       const location = fileAttachmentLocation({
         workspaceId: owner.sId,
@@ -338,6 +365,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       return {
         ...baseContentFragment,
         contentFragmentType: "file",
+        expiredReason: null,
         fileId: fileStringId,
         snippet,
         generatedTables,
@@ -400,6 +428,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       return {
         ...baseContentFragment,
         contentFragmentType: "content_node",
+        expiredReason: null,
         nodeId,
         nodeDataSourceViewId,
         nodeType,

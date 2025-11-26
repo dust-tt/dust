@@ -24,9 +24,13 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
+import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { tokenCountForTexts } from "@app/lib/tokenization";
-import { launchAgentTriggerWebhookWorkflow } from "@app/lib/triggers/temporal/webhook/client";
+import {
+  getWebhookRequestPayloadFromGCS,
+  processWebhookRequest,
+} from "@app/lib/triggers/webhook";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import {
@@ -657,28 +661,56 @@ async function trigger(command: string, args: parseArgs.ParsedArgs) {
       );
 
       for (const webhookRequest of failedWebhooks) {
+        const localLogger = logger.child({
+          webhookRequestId: webhookRequest.id,
+          webhookSourceId: webhookRequest.webhookSourceId,
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          createdAt: webhookRequest.createdAt,
+          initialErrorMessage: webhookRequest.errorMessage,
+        });
         if (execute) {
-          await launchAgentTriggerWebhookWorkflow({
-            auth,
+          const res = await getWebhookRequestPayloadFromGCS(auth, {
             webhookRequest,
           });
-          logger.info(
-            {
-              webhookRequestId: webhookRequest.id,
-              webhookSourceId: webhookRequest.webhookSourceId,
-              errorMessage: webhookRequest.errorMessage,
-              createdAt: webhookRequest.createdAt,
-            },
-            "Webhook workflow launched successfully."
+          if (res.isErr()) {
+            localLogger.error(
+              { errorMessage: res.error.message },
+              `Failed to get webhook payload from GCS: ${res.error.message}`
+            );
+            continue;
+          }
+
+          const { headers, body } = res.value;
+
+          const webhookSource = await WebhookSourceResource.findByPk(
+            auth,
+            webhookRequest.webhookSourceId
           );
+
+          if (!webhookSource) {
+            localLogger.error(
+              { errorMessage: "Webhook source not found" },
+              `Webhook source not found for webhook request.`
+            );
+            continue;
+          }
+
+          const result = await processWebhookRequest(auth, {
+            webhookRequest,
+            webhookSource,
+            headers,
+            body,
+          });
+          if (result.isErr()) {
+            localLogger.error(
+              { error: result.error.message },
+              `Failed to process webhook request: ${result.error.message}`
+            );
+            continue;
+          }
+          logger.info("Webhook workflow launched successfully.");
         } else {
           logger.info(
-            {
-              webhookRequestId: webhookRequest.id,
-              webhookSourceId: webhookRequest.webhookSourceId,
-              errorMessage: webhookRequest.errorMessage,
-              createdAt: webhookRequest.createdAt,
-            },
             "[DRY RUN] Would launch workflow for this webhook request."
           );
         }

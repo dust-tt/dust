@@ -12,7 +12,6 @@ import type {
   ModelConversationTypeMultiActions,
   Ok,
   Result,
-  UserMessageOrigin,
   UserMessageType,
 } from "@app/types";
 import type {
@@ -64,14 +63,12 @@ export type GetOutputRequestParams = {
       conversation,
       step,
       modelInteractionDurationMs,
-      userMessageOrigin,
     }: {
       event: AgentMessageEvents;
       agentMessageRow: AgentMessage;
       conversation: ConversationWithoutContentType;
       step: number;
       modelInteractionDurationMs?: number;
-      userMessageOrigin?: UserMessageOrigin | null;
     }
   ) => Promise<void>;
 };

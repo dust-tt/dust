@@ -41,7 +41,7 @@ export function getProPlanStripeProductId(owner: WorkspaceType) {
 
 export function getCreditPurchasePriceId() {
   const devCreditPurchasePriceId = "price_1SUoyQDKd2JRwZF6FBHIGbwC";
-  const prodCreditPurchasePriceId = "price_prod_credit_purchase_TODO";
+  const prodCreditPurchasePriceId = "price_1SVYsjDKd2JRwZF6zdIW29mC";
 
   return isDevelopment() ? devCreditPurchasePriceId : prodCreditPurchasePriceId;
 }
@@ -650,11 +650,7 @@ export async function attachCreditPurchaseToSubscription({
   }
 }
 
-/**
- * Creates and pays a one-off invoice for credit purchase.
- * The invoice is created, finalized, and immediately paid.
- */
-export async function makeAndMaybePayCreditPurchaseInvoice({
+export async function makeCreditPurchaseInvoice({
   stripeSubscriptionId,
   amountCents,
 }: {
@@ -680,7 +676,7 @@ export async function makeAndMaybePayCreditPurchaseInvoice({
       credit_purchase: "true",
       credit_amount_cents: amountCents.toString(),
     },
-    auto_advance: false,
+    auto_advance: true,
   };
 
   try {
@@ -694,23 +690,7 @@ export async function makeAndMaybePayCreditPurchaseInvoice({
       })
     );
 
-    const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
-    // Why this double try-catch ?
-    // The customer's invoice payment MAY fail, but we are OK with it,
-    // we still want to create the credit purchase on our side,
-    // and IF the payment succeeds, we will activate it via stripe `invoice.paid` webhook.
-    try {
-      // Try to pay the invoice immediately.
-      await stripe.invoices.pay(finalizedInvoice.id);
-    } catch (error) {
-      logger.info(
-        {
-          invoiceStripeId: finalizedInvoice.id,
-        },
-        "[Credit Purchase] Invoice payment failed."
-      );
-    }
-    return new Ok(finalizedInvoice);
+    return new Ok(invoice);
   } catch (error) {
     logger.error(
       {
@@ -721,6 +701,27 @@ export async function makeAndMaybePayCreditPurchaseInvoice({
     );
     return new Err({
       error_message: `Failed to create invoice credit purchase: ${normalizeError(error).message}`,
+    });
+  }
+}
+
+export async function finalizeCreditPurchaseInvoice(
+  invoice: Stripe.Invoice
+): Promise<Result<undefined, { error_message: string }>> {
+  const stripe = getStripeClient();
+  try {
+    await stripe.invoices.finalizeInvoice(invoice.id);
+    return new Ok(undefined);
+  } catch (error) {
+    logger.error(
+      {
+        stripeInvoiceId: invoice.id,
+        stripeError: true,
+      },
+      "[Credit Purchase] Failed to create Stripe invoice"
+    );
+    return new Err({
+      error_message: `Failed to finalize invoice credit purchase: ${normalizeError(error).message}`,
     });
   }
 }

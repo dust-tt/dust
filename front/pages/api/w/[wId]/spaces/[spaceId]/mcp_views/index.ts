@@ -65,18 +65,15 @@ async function handler(
 
       const { availability = "manual" } = r.right;
 
-      const mcpServerViews = await MCPServerViewResource.listBySpace(
-        auth,
-        space
-      );
+      const serverViews = (
+        await MCPServerViewResource.listBySpace(auth, space)
+      ).map((view) => view.toJSON());
       return res.status(200).json({
         success: true,
-        serverViews: mcpServerViews
-          .map((mcpServerView) => mcpServerView.toJSON())
-          .filter(
-            (s) =>
-              availability === "all" || s.server.availability === availability
-          ),
+        serverViews: serverViews.filter(
+          (s) =>
+            availability === "all" || s.server.availability === availability
+        ),
       });
     }
     case "POST": {
@@ -138,9 +135,10 @@ async function handler(
         space,
       });
 
+      const serverView = mcpServerView.toJSON();
       return res.status(200).json({
         success: true,
-        serverView: mcpServerView.toJSON(),
+        serverView,
       });
     }
   }

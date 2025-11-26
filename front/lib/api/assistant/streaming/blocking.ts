@@ -5,7 +5,7 @@ import {
 } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
-import type { MentionType } from "@app/types";
+import type { AgenticMessageData, MentionType } from "@app/types";
 import type {
   AgentMessageType,
   ConversationType,
@@ -143,12 +143,14 @@ export async function postUserMessageAndWaitForCompletion(
   {
     content,
     context,
+    agenticMessageData,
     conversation,
     mentions,
     skipToolsValidation,
   }: {
     content: string;
     context: UserMessageContext;
+    agenticMessageData?: AgenticMessageData;
     conversation: ConversationType;
     mentions: MentionType[];
     skipToolsValidation: boolean;
@@ -165,6 +167,7 @@ export async function postUserMessageAndWaitForCompletion(
   const postResult = await postUserMessage(auth, {
     content,
     context,
+    agenticMessageData,
     conversation,
     mentions,
     skipToolsValidation,

@@ -8,7 +8,7 @@
 import { Button, ContentMessage } from "@dust-tt/sparkle";
 import React, { useMemo, useState } from "react";
 
-import { CreateMCPServerSheet } from "@app/components/actions/mcp/CreateMCPServerSheet";
+import { CreateMCPServerDialog } from "@app/components/actions/mcp/CreateMCPServerSheet";
 import { getIcon } from "@app/components/resources/resources_icons";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isInternalMCPServerOfName } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -25,11 +25,23 @@ interface ToolSetupCardProps {
   toolName: string;
   toolId: InternalMCPServerNameType;
   owner: WorkspaceType;
+  conversationId?: string;
+  isLastMessage?: boolean;
+  onSetupComplete?: (toolId: string) => void;
+  onSetupSkipped?: (toolId: string) => void;
 }
 
-export function ToolSetupCard({ toolName, toolId, owner }: ToolSetupCardProps) {
+export function ToolSetupCard({
+  toolName,
+  toolId,
+  owner,
+  isLastMessage,
+  onSetupComplete,
+  onSetupSkipped,
+}: ToolSetupCardProps) {
   const [isActivating, setIsActivating] = useState(false);
   const [isSetupSheetOpen, setIsSetupSheetOpen] = useState(false);
+  const [isSkipped, setIsSkipped] = useState(false);
   const isAdmin = owner.role === "admin";
 
   const { spaces: spacesAsUser } = useSpaces({
@@ -122,6 +134,7 @@ export function ToolSetupCard({ toolName, toolId, owner }: ToolSetupCardProps) {
     await addToSpace(matchingMCPServer, globalSpace);
     await mutateMCPServers();
     setIsActivating(false);
+    onSetupComplete?.(toolId);
   };
 
   const handleActivateClick = async () => {
@@ -133,7 +146,18 @@ export function ToolSetupCard({ toolName, toolId, owner }: ToolSetupCardProps) {
     setIsActivating(true);
     await mutateMCPServers();
     setIsActivating(false);
+    onSetupComplete?.(toolId);
   };
+
+  const handleSkip = () => {
+    setIsSkipped(true);
+    onSetupSkipped?.(toolId);
+  };
+
+  const showSkipButton =
+    isAdmin && !isToolActivatedInGlobalSpace && !isActivating;
+
+  const isSkipDisabled = !isLastMessage || isSkipped;
 
   return (
     <>
@@ -147,31 +171,44 @@ export function ToolSetupCard({ toolName, toolId, owner }: ToolSetupCardProps) {
           <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
             {matchingMCPServer.description}
           </span>
-          <div className="flex justify-end gap-2">
-            {matchingMCPServer.documentationUrl && (
+          <div className="flex justify-between gap-2">
+            <div>
+              {matchingMCPServer.documentationUrl && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  label="About"
+                  href={matchingMCPServer.documentationUrl}
+                  target="_blank"
+                />
+              )}
+            </div>
+            <div className="flex gap-2">
+              {showSkipButton && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  label={isSkipped ? "Skipped" : "Skip"}
+                  onClick={handleSkip}
+                  disabled={isSkipDisabled}
+                />
+              )}
               <Button
-                variant="outline"
+                variant="highlight"
                 size="sm"
-                label="About"
-                href={matchingMCPServer.documentationUrl}
-                target="_blank"
+                label={getButtonLabel()}
+                onClick={getButtonClickHandler()}
+                disabled={
+                  !isAdmin || isToolActivatedInGlobalSpace || isActivating
+                }
               />
-            )}
-            <Button
-              variant="highlight"
-              size="sm"
-              label={getButtonLabel()}
-              onClick={getButtonClickHandler()}
-              disabled={
-                !isAdmin || isToolActivatedInGlobalSpace || isActivating
-              }
-            />
+            </div>
           </div>
         </div>
       </ContentMessage>
 
       {matchingMCPServer && (
-        <CreateMCPServerSheet
+        <CreateMCPServerDialog
           owner={owner}
           internalMCPServer={matchingMCPServer}
           setMCPServerToShow={handleSetupComplete}

@@ -18,6 +18,7 @@ import {
 import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
 import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
+import type { GetAgentMcpConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/mcp_configurations";
 import type { GetErrorRateResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/error_rate";
 import type { GetFeedbackDistributionResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/feedback-distribution";
 import type { GetLatencyResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/latency";
@@ -40,6 +41,34 @@ import type {
   UserType,
 } from "@app/types";
 import { normalizeError } from "@app/types";
+
+export function useAgentMcpConfigurations({
+  workspaceId,
+  agentConfigurationId,
+  disabled,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  disabled?: boolean;
+}) {
+  const mcpConfigurationsFetcher: Fetcher<GetAgentMcpConfigurationsResponseBody> =
+    fetcher;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled
+      ? null
+      : `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/mcp_configurations`,
+    mcpConfigurationsFetcher,
+    { disabled }
+  );
+
+  return {
+    configurations: data?.configurations ?? emptyArray(),
+    isAgentMcpConfigurationsLoading: !error && !data && !disabled,
+    isAgentMcpConfigurationsError: error,
+    isAgentMcpConfigurationsValidating: isValidating,
+  };
+}
 
 export function useAssistantTemplates() {
   const assistantTemplatesFetcher: Fetcher<FetchAssistantTemplatesResponse> =

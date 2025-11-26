@@ -30,6 +30,8 @@ import type {
 import {
   areSameRank,
   getMessageRank,
+  hasHumansInteracting,
+  isHiddenContextOrigin,
   isMessageTemporayState,
   isUserMessage,
   makeInitialMessageStreamState,
@@ -53,7 +55,6 @@ import {
 import { classNames } from "@app/lib/utils";
 import type {
   AgentGenerationCancelledEvent,
-  AgentMention,
   AgentMessageDoneEvent,
   AgentMessageNewEvent,
   ContentFragmentsType,
@@ -62,12 +63,11 @@ import type {
   LightMessageType,
   Result,
   RichMention,
-  UserMention,
   UserMessageNewEvent,
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { assertNever, isRichAgentMention } from "@app/types";
+import { isRichAgentMention, toMentionType } from "@app/types";
 import { Err, isContentFragmentType, isUserMessageType, Ok } from "@app/types";
 
 const DEFAULT_PAGE_LIMIT = 50;
@@ -154,6 +154,7 @@ export const ConversationViewer = ({
   const {
     isLoadingInitialData,
     isMessagesLoading,
+    isMessagesError,
     isValidating,
     messages,
     setSize,
@@ -183,9 +184,13 @@ export const ConversationViewer = ({
     // Switch to conversation B, wait till A is done streaming, then switch back to A.
     // Without waiting for revalidation, we would use whatever data was in the swr cache and see the last message as "streaming" (old data, no more streaming events).
     if (!initialListData && messages.length > 0 && !isValidating) {
-      const messagesToRender = convertLightMessageTypeToVirtuosoMessages(
-        messages.flatMap((m) => m.messages)
-      );
+      const raw = messages
+        .flatMap((m) => m.messages)
+        .filter((m) =>
+          isUserMessageType(m) ? !isHiddenContextOrigin(m.context.origin) : true
+        );
+
+      const messagesToRender = convertLightMessageTypeToVirtuosoMessages(raw);
 
       setInitialListData(messagesToRender);
     }
@@ -210,8 +215,11 @@ export const ConversationViewer = ({
     );
 
     if (olderMessagesFromBackend.length > 0) {
+      const filtered = olderMessagesFromBackend.filter((m) =>
+        isUserMessageType(m) ? !isHiddenContextOrigin(m.context.origin) : true
+      );
       ref.current.data.prepend(
-        convertLightMessageTypeToVirtuosoMessages(olderMessagesFromBackend)
+        convertLightMessageTypeToVirtuosoMessages(filtered)
       );
     }
 
@@ -278,6 +286,9 @@ export const ConversationViewer = ({
         switch (event.type) {
           case "user_message_new":
             if (ref.current) {
+              if (isHiddenContextOrigin(event.message.context.origin)) {
+                break;
+              }
               const userMessage: VirtuosoMessage = {
                 ...event.message,
                 contentFragments: [],
@@ -288,11 +299,18 @@ export const ConversationViewer = ({
               const exists = ref.current.data.find(predicate);
 
               if (!exists) {
-                ref.current.data.append([
-                  { ...event.message, contentFragments: [] },
-                ]);
-              } else {
-                // We don't update if it already exists as if it already exists, it means we have received the message from the backend.
+                ref.current.data.append(
+                  [{ ...event.message, contentFragments: [] }],
+                  true
+                );
+                // Using else if with the type guard just to please the type checker as we already know it's a user message from the predicate.
+              } else if (isUserMessage(exists)) {
+                // We only update if the version is greater than the existing version.
+                if (exists.version < event.message.version) {
+                  ref.current.data.map((m) =>
+                    areSameRank(m, userMessage) ? userMessage : m
+                  );
+                }
               }
 
               void mutateConversationParticipants(
@@ -446,23 +464,7 @@ export const ConversationViewer = ({
       }
       const messageData = {
         input,
-        mentions: mentions.map((mention) => {
-          switch (mention.type) {
-            case "agent": {
-              return {
-                configurationId: mention.id,
-              } satisfies AgentMention;
-            }
-            case "user": {
-              return {
-                type: "user",
-                userId: mention.id,
-              } satisfies UserMention;
-            }
-            default:
-              assertNever(mention.type);
-          }
-        }),
+        mentions: mentions.map(toMentionType),
         contentFragments,
       };
 
@@ -478,6 +480,7 @@ export const ConversationViewer = ({
         contentFragments.uploaded.length +
         // +1 for the user message
         1;
+
       const placeholderUserMsg: VirtuosoMessage = createPlaceholderUserMessage({
         input,
         mentions,
@@ -497,10 +500,18 @@ export const ConversationViewer = ({
         }
       }
 
+      // Objective is to dermine if an agent is going to answer immediately to change the scroll behavior.
+      const isMentioningAgent =
+        //TODO(mentions v2) if dust agent is disabled at the workspace level, hasMoreThan2HumansInteracting might say false but we wouldn't have an auto mention of dust.
+        (mentions.length === 0 &&
+          !hasHumansInteracting(ref.current.data.get())) ||
+        // An agent is mentioned manually.
+        mentions.some(isRichAgentMention);
+
       const nbMessages = ref.current.data.get().length;
       ref.current.data.append(
         [placeholderUserMsg, ...placeholderAgentMessages],
-        mentions.some(isRichAgentMention)
+        isMentioningAgent
           ? () => {
               return {
                 index: nbMessages, // Avoid jumping around when the agent message is generated.
@@ -662,8 +673,10 @@ export const ConversationViewer = ({
 
   return (
     <>
-      {conversationError && (
-        <ConversationErrorDisplay error={conversationError} />
+      {(conversationError || isMessagesError) && (
+        <ConversationErrorDisplay
+          error={conversationError || isMessagesError}
+        />
       )}
       <VirtuosoMessageListLicense
         licenseKey={process.env.NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY ?? ""}

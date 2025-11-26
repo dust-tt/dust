@@ -22,11 +22,13 @@ const { retrieveNewTranscriptsActivity, processTranscriptActivity } =
 export async function retrieveNewTranscriptsWorkflow({
   workspaceId,
   transcriptsConfigurationId,
-  startIndex = 0,
+  modjoCursor = null,
+  modjoIsFirstSync = null,
 }: {
   workspaceId: string;
   transcriptsConfigurationId: string;
-  startIndex?: number;
+  modjoCursor?: number | null;
+  modjoIsFirstSync?: boolean | null; // null = auto-detect, true/false = preserve across continueAsNew
 }) {
   if (!transcriptsConfigurationId) {
     throw new Error(
@@ -34,28 +36,33 @@ export async function retrieveNewTranscriptsWorkflow({
     );
   }
 
-  const filesToProcess = await retrieveNewTranscriptsActivity(
-    transcriptsConfigurationId
-  );
-
   const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
 
-  for (let i = startIndex; i < filesToProcess.length; i++) {
+  const result = await retrieveNewTranscriptsActivity(
+    transcriptsConfigurationId,
+    modjoCursor,
+    modjoIsFirstSync
+  );
+
+  const filesToProcess = result.fileIds;
+  const nextCursor = result.nextCursor;
+  const isFirstSync = result.isFirstSync;
+
+  for (const fileId of filesToProcess) {
     const hasReachedWorkflowLimits =
       workflowInfo().historyLength > TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH ||
       workflowInfo().historySize >
         TEMPORAL_WORKFLOW_MAX_HISTORY_SIZE_MB * 1024 * 1024;
     if (hasReachedWorkflowLimits) {
-      // Continue from where we left off to avoid OOM when processing many files
       await continueAsNew<typeof retrieveNewTranscriptsWorkflow>({
         workspaceId,
         transcriptsConfigurationId,
-        startIndex: i,
+        modjoCursor,
+        modjoIsFirstSync: isFirstSync,
       });
       return;
     }
 
-    const fileId = filesToProcess[i];
     const workflowId = makeProcessTranscriptWorkflowId({
       workspaceId,
       transcriptsConfigurationId,
@@ -71,6 +78,15 @@ export async function retrieveNewTranscriptsWorkflow({
         },
       ],
       memo,
+    });
+  }
+
+  if (nextCursor !== null) {
+    await continueAsNew<typeof retrieveNewTranscriptsWorkflow>({
+      workspaceId,
+      transcriptsConfigurationId,
+      modjoCursor: nextCursor,
+      modjoIsFirstSync: isFirstSync,
     });
   }
 }

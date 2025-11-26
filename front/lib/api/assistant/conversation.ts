@@ -33,10 +33,12 @@ import {
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
 import { triggerConversationUnreadNotifications } from "@app/lib/notifications/workflows/conversation-unread";
+import { ONBOARDING_CONVERSATION_ENABLED } from "@app/lib/onboarding";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import {
   generateRandomModelSId,
@@ -45,6 +47,8 @@ import {
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isEmailValid } from "@app/lib/utils";
+import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
+import { detectEmailProvider } from "@app/lib/utils/email_provider_detection";
 import {
   getTimeframeSecondsFromLiteral,
   rateLimiter,
@@ -53,6 +57,7 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type {
+  AgenticMessageData,
   AgentMessageType,
   APIErrorWithStatusCode,
   ContentFragmentContextType,
@@ -76,6 +81,7 @@ import {
   assertNever,
   ConversationError,
   Err,
+  GLOBAL_AGENTS_SID,
   isAgentMention,
   isContentFragmentInputWithContentNode,
   isContentFragmentType,
@@ -97,23 +103,41 @@ export async function createConversation(
     visibility,
     depth = 0,
     triggerId,
+    spaceId,
   }: {
     title: string | null;
     visibility: ConversationVisibility;
     depth?: number;
     triggerId?: ModelId | null;
+    spaceId: ModelId | null;
   }
 ): Promise<ConversationType> {
   const owner = auth.getNonNullableWorkspace();
+  let space: SpaceResource | null = null;
 
-  const conversation = await ConversationResource.makeNew(auth, {
-    sId: generateRandomModelSId(),
-    title,
-    visibility,
-    depth,
-    triggerId,
-    requestedSpaceIds: [],
-  });
+  if (spaceId) {
+    const spaces = await SpaceResource.fetchByModelIds(auth, [spaceId]);
+
+    // Check if the space exists.
+    if (spaces.length < 1) {
+      throw new Error("Cannot create conversation in a non-existent space.");
+    }
+    space = spaces[0];
+  }
+
+  const conversation = await ConversationResource.makeNew(
+    auth,
+    {
+      sId: generateRandomModelSId(),
+      title,
+      visibility,
+      depth,
+      triggerId,
+      spaceId,
+      requestedSpaceIds: [],
+    },
+    space
+  );
 
   return {
     id: conversation.id,
@@ -128,7 +152,8 @@ export async function createConversation(
     actionRequired: false,
     hasError: false,
     visibility: conversation.visibility,
-    requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(auth),
+    requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(),
+    spaceId: space?.sId ?? null,
   };
 }
 
@@ -256,6 +281,218 @@ export async function getMessageConversationId(
   };
 }
 
+function buildOnboardingPrompt(options: {
+  emailProvider: EmailProviderType;
+}): string {
+  const googleSection = `
+## Google Workspace detected
+
+The user signed up with a Google-hosted email address. You MUST:
+1. Mention that you noticed they're using Google email
+2. Recommend connecting Gmail as a first step (search emails, summarize threads, draft replies)
+3. End your first message with the Gmail setup directive below
+
+Dust supports a markdown directive to show a tool setup card. For Gmail:
+
+:toolSetup[Connect Gmail]{sId=gmail}
+
+This directive MUST appear on its own line at the end of your first message (not in a code block or quotes). Only repeat it in later messages if the user asks about email integration.
+`;
+
+  const microsoftSection = `
+## Microsoft 365 detected
+
+The user signed up with a Microsoft-hosted email address. You MUST:
+1. Mention that you noticed they're using Microsoft email
+2. Recommend connecting Outlook as a first step (search emails, manage drafts, etc.)
+3. End your first message with the Outlook setup directive below
+
+Dust supports a markdown directive to show a tool setup card. For Outlook:
+
+:toolSetup[Connect Outlook]{sId=outlook}
+
+This directive MUST appear on its own line at the end of your first message (not in a code block or quotes). Only repeat it in later messages if the user asks about Microsoft/Outlook integration.
+`;
+
+  let providerSection = "";
+  if (options.emailProvider === "google") {
+    providerSection = googleSection;
+  } else if (options.emailProvider === "microsoft") {
+    providerSection = microsoftSection;
+  }
+
+  return `<dust_system>
+You are onboarding a brand-new user to Dust.
+
+## Response style
+
+Respond quickly and keep your reply short and direct. Do NOT use long or step-by-step "thinking" or analysis. Your first line MUST be a level-1 markdown heading starting with "Welcome to Dust" followed by at least one emoji (e.g., "# Welcome to Dust 👋"). Use between 1 and 3 emojis total in your first reply.
+
+## What is Dust
+
+Dust is a platform where users can create and use AI agents, connect tools (email, calendar, docs, Slack, Notion, etc.), and collaborate with teammates. You are the user's first guide in their workspace.
+
+## Your first message
+
+In your first message:
+1. Briefly explain what Dust is (1–2 sentences)
+2. Mention that Dust becomes more powerful when connected to their tools
+3. Keep it concise and welcoming
+
+Do NOT ask about their goals yet—save that for follow-up messages.
+${providerSection}
+</dust_system>`;
+}
+
+export function buildOnboardingFollowUpPrompt(toolId: string): string {
+  const toolSuggestions: Record<string, string> = {
+    gmail: `The user just connected Gmail. Suggest 2-3 specific things they can now do:
+- Search for recent emails (e.g., "find emails from my manager this week")
+- Summarize email threads or their inbox
+- Draft replies to emails
+Keep it brief and action-oriented.`,
+    outlook: `The user just connected Outlook. Suggest 2-3 specific things they can now do:
+- Search for emails by sender, date, or topic
+- Summarize email threads or inbox highlights
+- Draft email replies
+Keep it brief and action-oriented.`,
+  };
+
+  const suggestions =
+    toolSuggestions[toolId] ||
+    `The user just connected the tool. Briefly suggest 2-3 things they can now do with it. Keep it action-oriented.`;
+
+  return `<dust_system>
+You are continuing an onboarding conversation. The user just successfully connected a tool.
+
+## Response style
+
+Keep your response short and encouraging. Use 1-2 emojis. Do NOT repeat the welcome message.
+
+## What to do
+
+${suggestions}
+
+End by asking if they'd like to try one of these, or if they have something specific they want to do.
+</dust_system>`;
+}
+
+export function buildOnboardingSkippedPrompt(): string {
+  return `<dust_system>
+The user chose to skip connecting the tool for now.
+
+## Response style
+
+Keep your response short and understanding. Use 1 emoji. Do NOT repeat the welcome message.
+
+## What to do
+
+1. Acknowledge their choice - it's totally fine to skip for now
+2. Briefly mention they can always connect tools later from Settings
+3. Ask what they'd like to explore or try with Dust instead (e.g., ask a question, learn about features, etc.)
+
+Keep it friendly and move the conversation forward.
+</dust_system>`;
+}
+
+export async function createOnboardingConversationIfNeeded(
+  auth: Authenticator,
+  { force }: { force?: boolean } = { force: false }
+): Promise<Result<string | null, APIErrorWithStatusCode>> {
+  const owner = auth.workspace();
+  const subscription = auth.subscription();
+  const user = auth.user();
+
+  if (!owner || !subscription || !user) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "Cannot create onboarding conversation without workspace, user and subscription.",
+      },
+    });
+  }
+
+  if (!force && !ONBOARDING_CONVERSATION_ENABLED) {
+    return new Ok(null);
+  }
+
+  // Only create onboarding conversation for brand-new workspaces (only one member,
+  // no conversations) unless force flag is set.
+  if (!force) {
+    const existingMetadata = await user.getMetadata("onboarding:conversation");
+
+    if (existingMetadata?.value) {
+      // User already has an onboarding conversation.
+      return new Ok(null);
+    }
+
+    const { total: membersTotal } =
+      await MembershipResource.getMembershipsForWorkspace({
+        workspace: owner,
+      });
+
+    if (membersTotal > 1) {
+      return new Ok(null);
+    }
+
+    const conversationsCount =
+      await ConversationResource.countForWorkspace(auth);
+
+    if (conversationsCount > 0) {
+      return new Ok(null);
+    }
+  }
+
+  // Detect the user's email provider (Google, Microsoft, or other).
+  const userJson = user.toJSON();
+  const emailProvider = await detectEmailProvider(
+    userJson.email,
+    `user-${userJson.sId}`
+  );
+
+  // Store the detection result as user metadata for future reference.
+  await user.setMetadata("onboarding:email_provider", emailProvider);
+
+  const conversation = await createConversation(auth, {
+    title: null,
+    visibility: "unlisted",
+    spaceId: null,
+  });
+
+  const onboardingSystemMessage = buildOnboardingPrompt({ emailProvider });
+
+  const context: UserMessageContext = {
+    username: userJson.username,
+    fullName: userJson.fullName,
+    email: userJson.email,
+    profilePictureUrl: userJson.image,
+    timezone: "UTC",
+    origin: "onboarding_conversation",
+  };
+
+  const postRes = await postUserMessage(auth, {
+    conversation,
+    content: onboardingSystemMessage,
+    mentions: [
+      {
+        configurationId: GLOBAL_AGENTS_SID.DUST,
+      },
+    ],
+    context,
+    skipToolsValidation: false,
+  });
+
+  if (postRes.isErr()) {
+    return postRes;
+  }
+
+  await user.setMetadata("onboarding:conversation", conversation.sId);
+
+  return new Ok(conversation.sId);
+}
+
 export async function getLastUserMessage(
   auth: Authenticator,
   conversation: ConversationWithoutContentType
@@ -357,12 +594,14 @@ export async function postUserMessage(
     content,
     mentions,
     context,
+    agenticMessageData,
     skipToolsValidation,
   }: {
     conversation: ConversationType;
     content: string;
     mentions: MentionType[];
     context: UserMessageContext;
+    agenticMessageData?: AgenticMessageData;
     skipToolsValidation: boolean;
   }
 ): Promise<
@@ -418,7 +657,7 @@ export async function postUserMessage(
     (() => {
       // If the origin of the user message is "run_agent", we do not want to update the
       // participation of the user so that the conversation does not appear in the user's history.
-      if (context.origin === "run_agent") {
+      if (agenticMessageData?.type === "run_agent") {
         return;
       }
 
@@ -449,7 +688,7 @@ export async function postUserMessage(
       return new Err({
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "model_disabled",
           message:
             `Assistant ${agentConfig.name} is based on a model that was disabled ` +
             `by your workspace admin. Please edit the agent to use another model ` +
@@ -502,11 +741,12 @@ export async function postUserMessage(
         })) ?? -1) + 1;
 
       // Fetch originMessage to ensure it exists
-      const originMessage = context.originMessageId
+      const originMessageId = agenticMessageData?.originMessageId;
+      const originMessage = originMessageId
         ? await Message.findOne({
             where: {
               workspaceId: owner.id,
-              sId: context.originMessageId,
+              sId: originMessageId,
             },
           })
         : null;
@@ -530,10 +770,11 @@ export async function postUserMessage(
                   userContextEmail: context.email,
                   userContextProfilePictureUrl: context.profilePictureUrl,
                   userContextOrigin: context.origin,
-                  userContextOriginMessageId: originMessage?.sId ?? null,
                   userContextLastTriggerRunAt: context.lastTriggerRunAt
                     ? new Date(context.lastTriggerRunAt)
                     : null,
+                  agenticMessageType: agenticMessageData?.type,
+                  agenticOriginMessageId: originMessage?.sId ?? null,
                   userId: user
                     ? user.id
                     : (
@@ -566,7 +807,14 @@ export async function postUserMessage(
         user: user?.toJSON() ?? null,
         mentions,
         content,
-        context,
+        context: {
+          ...context,
+          // TODO(2025-11-24 PPUL): Remove once extensions have been updated - return real user origin and no originMessageId
+          origin: agenticMessageData?.type ?? context.origin,
+          originMessageId:
+            agenticMessageData?.originMessageId ?? context.originMessageId,
+        },
+        agenticMessageData,
         rank: m.rank,
       };
 
@@ -811,7 +1059,7 @@ export async function editUserMessage(
       return new Err({
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "model_disabled",
           message:
             `Assistant ${agentConfig.name} is based on a model that was disabled ` +
             `by your workspace admin. Please edit the agent to use another model ` +

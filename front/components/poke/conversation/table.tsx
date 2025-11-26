@@ -4,20 +4,21 @@ import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import type { PokeConversationsFetchProps } from "@app/poke/swr/conversation";
 import { usePokeConversations } from "@app/poke/swr/conversation";
 import type { LightWorkspaceType } from "@app/types";
+import type { TriggerType } from "@app/types/assistant/triggers";
 
 interface ConversationDataTableProps {
   owner: LightWorkspaceType;
-  triggerId: string;
+  trigger: TriggerType;
   loadOnInit?: boolean;
 }
 
 export function ConversationDataTable({
   owner,
-  triggerId,
+  trigger,
   loadOnInit,
 }: ConversationDataTableProps) {
   const useConversationsWithTrigger = (props: PokeConversationsFetchProps) =>
-    usePokeConversations({ ...props, triggerId });
+    usePokeConversations({ ...props, triggerId: trigger.sId });
 
   return (
     <PokeDataTableConditionalFetch

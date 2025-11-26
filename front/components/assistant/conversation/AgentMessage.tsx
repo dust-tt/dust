@@ -50,6 +50,10 @@ import {
 import { getImgPlugin, imgDirective } from "@app/components/markdown/Image";
 import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
 import {
+  getQuickReplyPlugin,
+  quickReplyDirective,
+} from "@app/components/markdown/QuickReplyBlock";
+import {
   getToolSetupPlugin,
   toolDirective,
 } from "@app/components/markdown/tool/tool";
@@ -59,21 +63,29 @@ import {
   visualizationDirective,
 } from "@app/components/markdown/VisualizationBlock";
 import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { DustError } from "@app/lib/error";
 import {
   agentMentionDirective,
   getAgentMentionPlugin,
   getUserMentionPlugin,
   userMentionDirective,
 } from "@app/lib/mentions/markdown/plugin";
-import { useCancelMessage } from "@app/lib/swr/conversations";
-import { useConversationMessage } from "@app/lib/swr/conversations";
+import {
+  useCancelMessage,
+  useConversationMessage,
+  usePostOnboardingFollowUp,
+} from "@app/lib/swr/conversations";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type {
+  ContentFragmentsType,
   LightAgentMessageType,
   LightAgentMessageWithActionsType,
   LightWorkspaceType,
   PersonalAuthenticationRequiredErrorContent,
+  Result,
+  RichMention,
   UserType,
   WorkspaceType,
 } from "@app/types";
@@ -93,6 +105,11 @@ interface AgentMessageProps {
   messageFeedback: FeedbackSelectorProps;
   owner: WorkspaceType;
   user: UserType;
+  handleSubmit: (
+    input: string,
+    mentions: RichMention[],
+    contentFragments: ContentFragmentsType
+  ) => Promise<Result<undefined, DustError>>;
 }
 
 export function AgentMessage({
@@ -101,6 +118,7 @@ export function AgentMessage({
   messageStreamState,
   messageFeedback,
   owner,
+  handleSubmit,
 }: AgentMessageProps) {
   const sId = getMessageSId(messageStreamState);
 
@@ -111,6 +129,7 @@ export function AgentMessage({
     { index: number; document: MCPReferenceCitation }[]
   >([]);
   const [isCopied, copy] = useCopyToClipboard();
+  const sendNotification = useSendNotification();
 
   const isGlobalAgent = Object.values(GLOBAL_AGENTS_SID).includes(
     messageStreamState.message.configuration.sId as GLOBAL_AGENTS_SID
@@ -428,6 +447,32 @@ export function AgentMessage({
     [activeReferences, conversationId, owner]
   );
 
+  const handleQuickReply = React.useCallback(
+    async (reply: string) => {
+      const mention: RichMention = {
+        id: agentMessageToRender.configuration.sId,
+        type: "agent",
+        label: agentMessageToRender.configuration.name,
+        pictureUrl: agentMessageToRender.configuration.pictureUrl ?? "",
+        description: "",
+      };
+
+      const result = await handleSubmit(reply, [mention], {
+        uploaded: [],
+        contentNodes: [],
+      });
+
+      if (result.isErr()) {
+        sendNotification({
+          type: "error",
+          title: "Message not sent",
+          description: result.error.message,
+        });
+      }
+    },
+    [agentMessageToRender.configuration, handleSubmit, sendNotification]
+  );
+
   const canMention = agentConfiguration.canRead;
   const isArchived = agentConfiguration.status === "archived";
 
@@ -500,6 +545,7 @@ export function AgentMessage({
           isLastMessage={isLastMessage}
           messageStreamState={messageStreamState}
           references={references}
+          onQuickReplySend={handleQuickReply}
           streaming={shouldStream}
           lastTokenClassification={
             messageStreamState.agentState === "thinking" ? "tokens" : null
@@ -523,6 +569,7 @@ function AgentMessageContent({
   activeReferences,
   setActiveReferences,
   retryHandler,
+  onQuickReplySend,
 }: {
   isLastMessage: boolean;
   owner: LightWorkspaceType;
@@ -543,6 +590,7 @@ function AgentMessageContent({
       document: MCPReferenceCitation;
     }[]
   ) => void;
+  onQuickReplySend: (message: string) => Promise<void>;
 }) {
   const methods = useVirtuosoMethods<
     VirtuosoMessage,
@@ -550,6 +598,11 @@ function AgentMessageContent({
   >();
   const agentMessage = messageStreamState.message;
   const { sId, configuration: agentConfiguration } = agentMessage;
+
+  const { postFollowUp } = usePostOnboardingFollowUp({
+    workspaceId: owner.sId,
+    conversationId,
+  });
 
   const retryHandlerWithResetState = useCallback(
     async (error: PersonalAuthenticationRequiredErrorContent) => {
@@ -597,6 +650,20 @@ function AgentMessageContent({
     }
   }
 
+  const handleToolSetupComplete = React.useCallback(
+    (toolId: string) => {
+      void postFollowUp(toolId, "completed");
+    },
+    [postFollowUp]
+  );
+
+  const handleToolSetupSkipped = React.useCallback(
+    (toolId: string) => {
+      void postFollowUp(toolId, "skipped");
+    },
+    [postFollowUp]
+  );
+
   const additionalMarkdownComponents: Components = React.useMemo(
     () => ({
       visualization: getVisualizationPlugin(
@@ -610,9 +677,26 @@ function AgentMessageContent({
       mention: getAgentMentionPlugin(owner),
       mention_user: getUserMentionPlugin(owner),
       dustimg: getImgPlugin(owner),
-      toolSetup: getToolSetupPlugin(owner),
+      quickReply: getQuickReplyPlugin(onQuickReplySend, isLastMessage),
+      toolSetup: getToolSetupPlugin(
+        owner,
+        conversationId,
+        isLastMessage,
+        handleToolSetupComplete,
+        handleToolSetupSkipped
+      ),
     }),
-    [owner, conversationId, sId, agentConfiguration.sId]
+    [
+      owner,
+      conversationId,
+      isLastMessage,
+      sId,
+      agentConfiguration.sId,
+      onQuickReplySend,
+      isLastMessage,
+      handleToolSetupComplete,
+      handleToolSetupSkipped,
+    ]
   );
 
   const additionalMarkdownPlugins: PluggableList = React.useMemo(
@@ -623,6 +707,7 @@ function AgentMessageContent({
       visualizationDirective,
       imgDirective,
       toolDirective,
+      quickReplyDirective,
     ],
     []
   );
