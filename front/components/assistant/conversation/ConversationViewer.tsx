@@ -60,7 +60,7 @@ import type {
   ContentFragmentsType,
   ContentFragmentType,
   ConversationTitleEvent,
-  LightMessageType,
+  LegacyLightMessageType,
   Result,
   RichMention,
   UserMessageNewEvent,
@@ -190,7 +190,8 @@ export const ConversationViewer = ({
           isUserMessageType(m) ? !isHiddenContextOrigin(m.context.origin) : true
         );
 
-      const messagesToRender = convertLightMessageTypeToVirtuosoMessages(raw);
+      const messagesToRender =
+        convertLegacyLightMessageTypeToVirtuosoMessages(raw);
 
       setInitialListData(messagesToRender);
     }
@@ -219,7 +220,7 @@ export const ConversationViewer = ({
         isUserMessageType(m) ? !isHiddenContextOrigin(m.context.origin) : true
       );
       ref.current.data.prepend(
-        convertLightMessageTypeToVirtuosoMessages(filtered)
+        convertLegacyLightMessageTypeToVirtuosoMessages(filtered)
       );
     }
 
@@ -231,7 +232,9 @@ export const ConversationViewer = ({
 
     if (recentMessagesFromBackend.length > 0) {
       ref.current.data.append(
-        convertLightMessageTypeToVirtuosoMessages(recentMessagesFromBackend)
+        convertLegacyLightMessageTypeToVirtuosoMessages(
+          recentMessagesFromBackend
+        )
       );
     }
   }, [messages]);
@@ -724,8 +727,8 @@ export const ConversationViewer = ({
   );
 };
 
-const convertLightMessageTypeToVirtuosoMessages = (
-  messages: LightMessageType[]
+const convertLegacyLightMessageTypeToVirtuosoMessages = (
+  messages: LegacyLightMessageType[]
 ) => {
   const output: VirtuosoMessage[] = [];
   let tempContentFragments: ContentFragmentType[] = [];

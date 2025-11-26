@@ -37,7 +37,8 @@ export type MessageType =
   | UserMessageType
   | ContentFragmentType;
 
-export type LightMessageType =
+// This is the old format where content fragments are separated from the user messages.
+export type LegacyLightMessageType =
   | LightAgentMessageType
   | UserMessageType
   | ContentFragmentType;
@@ -104,7 +105,7 @@ export type UserMessageType = {
 };
 
 export function isUserMessageType(
-  arg: MessageType | LightMessageType
+  arg: MessageType | LegacyLightMessageType
 ): arg is UserMessageType {
   return arg.type === "user_message";
 }
@@ -296,7 +297,7 @@ export type SubmitMessageError = {
 export interface FetchConversationMessagesResponse {
   hasMore: boolean;
   lastValue: number | null;
-  messages: LightMessageType[];
+  messages: LegacyLightMessageType[];
 }
 
 /**
