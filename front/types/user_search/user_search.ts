@@ -1,4 +1,4 @@
-import type { ElasticsearchBaseDocument } from "@/lib/api/elasticsearch";
+import type { ElasticsearchBaseDocument } from "@app/lib/api/elasticsearch";
 
 /**
  * Elasticsearch document for user search.
