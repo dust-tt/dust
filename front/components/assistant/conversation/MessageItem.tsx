@@ -156,6 +156,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               messageStreamState={data}
               messageFeedback={messageFeedbackWithSubmit}
               owner={context.owner}
+              handleSubmit={context.handleSubmit}
             />
           )}
         </div>
