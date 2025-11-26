@@ -3,6 +3,10 @@ import type { Fetcher, SWRConfiguration } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
+import type {
+  SearchForAttachResponseBody,
+  ToolContentNode,
+} from "@app/lib/actions/mcp_attachments";
 import {
   getMcpServerViewDisplayName,
   mcpServerViewSortingFn,
@@ -1276,4 +1280,42 @@ export function useMCPServerViewsWithPersonalConnections({
           }),
     [connections, mcpServerViewsWithPersonalConnections]
   );
+}
+
+export type { ToolContentNode };
+
+export function useToolAttachmentSearch({
+  owner,
+  query,
+  pageSize = 25,
+  disabled = false,
+}: {
+  owner: LightWorkspaceType;
+  query: string;
+  pageSize?: number;
+  disabled?: boolean;
+}) {
+  const searchFetcher: Fetcher<SearchForAttachResponseBody> = fetcher;
+
+  const url =
+    query && query.length >= 3 && !disabled
+      ? `/api/w/${owner.sId}/mcp/attachments/search?query=${encodeURIComponent(query)}&pageSize=${pageSize}`
+      : null;
+
+  const { data, error, isLoading, isValidating } = useSWRWithDefaults(
+    url,
+    searchFetcher,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+    }
+  );
+
+  return {
+    searchResults: data?.nodes ?? emptyArray<ToolContentNode>(),
+    resultsCount: data?.resultsCount ?? 0,
+    isSearchLoading: isLoading,
+    isSearchValidating: isValidating,
+    isSearchError: error,
+  };
 }

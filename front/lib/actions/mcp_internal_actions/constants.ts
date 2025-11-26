@@ -912,10 +912,13 @@ The directive should be used to display a clickable version of the agent name in
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
+    supportsAttachments: true,
     tools_stakes: {
       list_drives: "never_ask",
       search_files: "never_ask",
       get_file_content: "never_ask",
+      search_for_attach: "never_ask",
+      get_file_to_attach: "never_ask",
     },
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
@@ -1668,6 +1671,7 @@ The directive should be used to display a clickable version of the agent name in
     tools_retry_policies: Record<string, MCPToolRetryPolicyType> | undefined;
     timeoutMs: number | undefined;
     requiresBearerToken?: boolean;
+    supportsAttachments?: boolean;
     serverInfo: InternalMCPServerDefinitionType & { name: K };
   };
 };
@@ -1725,6 +1729,29 @@ export const allowsMultipleInstancesOfInternalMCPServerById = (
   }
   return !!INTERNAL_MCP_SERVERS[r.value.name].allowMultipleInstances;
 };
+
+export const supportsAttachmentsByInternalMCPServerName = (
+  name: InternalMCPServerNameType
+): boolean => {
+  return !!INTERNAL_MCP_SERVERS[name].supportsAttachments;
+};
+
+export const supportsAttachmentsByInternalMCPServerId = (
+  sId: string
+): boolean => {
+  const r = getInternalMCPServerNameAndWorkspaceId(sId);
+  if (r.isErr()) {
+    return false;
+  }
+  return supportsAttachmentsByInternalMCPServerName(r.value.name);
+};
+
+export const getInternalMCPServerNamesThatSupportAttachments =
+  (): InternalMCPServerNameType[] => {
+    return AVAILABLE_INTERNAL_MCP_SERVER_NAMES.filter((name) =>
+      supportsAttachmentsByInternalMCPServerName(name)
+    );
+  };
 
 export const getInternalMCPServerNameAndWorkspaceId = (
   sId: string

@@ -19,8 +19,20 @@ const SUPPORTED_MIMETYPES = [
   "text/csv",
 ];
 
+// Supported mime types for attachment (can include more formats)
+const SUPPORTED_ATTACH_MIMETYPES = [
+  "application/vnd.google-apps.document",
+  "application/vnd.google-apps.presentation",
+  "application/vnd.google-apps.spreadsheet",
+  "text/plain",
+  "text/markdown",
+  "text/csv",
+  "application/pdf",
+];
+
 const MAX_CONTENT_SIZE = 32000; // Max characters to return for file content
-const MAX_FILE_SIZE = 64 * 1024 * 1024; // 10 MB max original file size
+const MAX_FILE_SIZE = 64 * 1024 * 1024; // 64 MB max original file size
+const MAX_ATTACH_FILE_SIZE = 10 * 1024 * 1024; // 10 MB max for attachment
 
 function createServer(
   auth: Authenticator,
@@ -354,6 +366,259 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
             new MCPError(
               // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               normalizeError(err).message || "Failed to get file content"
+            )
+          );
+        }
+      }
+    )
+  );
+
+  server.tool(
+    "search_for_attach",
+    "Search for files in Google Drive to attach to a conversation. Returns results in a format suitable for the attachment picker.",
+    {
+      query: z
+        .string()
+        .describe("Search query to find files by name or content."),
+      pageSize: z
+        .number()
+        .default(25)
+        .describe("Maximum number of files to return (max 100)."),
+      pageToken: z.string().optional().describe("Page token for pagination."),
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: "google_drive",
+        agentLoopContext,
+      },
+      async ({ query, pageSize, pageToken }, { authInfo }) => {
+        const drive = await getDriveClient(authInfo);
+        if (!drive) {
+          return new Err(
+            new MCPError("Failed to authenticate with Google Drive")
+          );
+        }
+
+        try {
+          // Build search query - search in file name and full text
+          const searchQuery = `(name contains '${query.replace(/'/g, "\\'")}' or fullText contains '${query.replace(/'/g, "\\'")}') and trashed = false`;
+
+          const res = await drive.files.list({
+            q: searchQuery,
+            pageToken,
+            pageSize: Math.min(pageSize, 100),
+            fields:
+              "nextPageToken, files(id, name, mimeType, modifiedTime, parents, webViewLink, shared)",
+            includeItemsFromAllDrives: true,
+            supportsAllDrives: true,
+            corpora: "allDrives",
+            orderBy: "modifiedTime desc",
+          });
+
+          // Transform Google Drive results to ContentNode format
+          const nodes = (res.data.files ?? []).map((file) => ({
+            expandable: false,
+            internalId: file.id ?? "",
+            lastUpdatedAt: file.modifiedTime
+              ? new Date(file.modifiedTime).getTime()
+              : null,
+            mimeType: file.mimeType ?? "application/octet-stream",
+            parentInternalId: file.parents?.[0] ?? null,
+            permission: "read" as const,
+            providerVisibility: file.shared ? ("public" as const) : null,
+            sourceUrl: file.webViewLink ?? null,
+            title: file.name ?? "Untitled",
+            type:
+              file.mimeType === "application/vnd.google-apps.folder"
+                ? ("folder" as const)
+                : ("document" as const),
+            parentInternalIds: file.parents ?? null,
+            parentTitle: null,
+          }));
+
+          return new Ok([
+            {
+              type: "text" as const,
+              text: JSON.stringify(
+                {
+                  nodes,
+                  nextPageToken: res.data.nextPageToken ?? null,
+                  resultsCount: nodes.length,
+                },
+                null,
+                2
+              ),
+            },
+          ]);
+        } catch (err) {
+          const error = normalizeError(err);
+          return new Err(
+            new MCPError(error.message || "Failed to search files for attach", {
+              cause: error,
+            })
+          );
+        }
+      }
+    )
+  );
+
+  server.tool(
+    "get_file_to_attach",
+    `Get a Google Drive file's content for attachment to a conversation. ` +
+      `Returns the file content as base64-encoded data. ` +
+      `Supported mimeTypes: ${SUPPORTED_ATTACH_MIMETYPES.join(", ")}.`,
+    {
+      fileId: z
+        .string()
+        .describe("The ID of the file to retrieve for attachment."),
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: "google_drive",
+        agentLoopContext,
+      },
+      async ({ fileId }, { authInfo }) => {
+        const drive = await getDriveClient(authInfo);
+        if (!drive) {
+          return new Err(
+            new MCPError("Failed to authenticate with Google Drive")
+          );
+        }
+
+        try {
+          // First, get file metadata
+          const fileMetadata = await drive.files.get({
+            fileId,
+            supportsAllDrives: true,
+            fields: "id, name, mimeType, size",
+          });
+          const file = fileMetadata.data;
+
+          if (
+            !file.mimeType ||
+            !SUPPORTED_ATTACH_MIMETYPES.includes(file.mimeType)
+          ) {
+            return new Err(
+              new MCPError(
+                `Unsupported file type: ${file.mimeType}. Supported types: ${SUPPORTED_ATTACH_MIMETYPES.join(", ")}`,
+                { tracked: false }
+              )
+            );
+          }
+
+          if (file.size && parseInt(file.size, 10) > MAX_ATTACH_FILE_SIZE) {
+            return new Err(
+              new MCPError(
+                `File size exceeds the maximum limit of ${MAX_ATTACH_FILE_SIZE / (1024 * 1024)} MB for attachments.`,
+                { tracked: false }
+              )
+            );
+          }
+
+          let content: string;
+          let exportedMimeType: string;
+          let fileName = file.name ?? "untitled";
+
+          switch (file.mimeType) {
+            case "application/vnd.google-apps.document": {
+              // Export Google Docs as plain text
+              const exportRes = await drive.files.export(
+                { fileId, mimeType: "text/plain" },
+                { responseType: "text" }
+              );
+              content = exportRes.data as string;
+              exportedMimeType = "text/plain";
+              // Append .txt extension if not present
+              if (!fileName.endsWith(".txt")) {
+                fileName = `${fileName}.txt`;
+              }
+              break;
+            }
+            case "application/vnd.google-apps.presentation": {
+              // Export Google Slides as plain text
+              const exportRes = await drive.files.export(
+                { fileId, mimeType: "text/plain" },
+                { responseType: "text" }
+              );
+              content = exportRes.data as string;
+              exportedMimeType = "text/plain";
+              if (!fileName.endsWith(".txt")) {
+                fileName = `${fileName}.txt`;
+              }
+              break;
+            }
+            case "application/vnd.google-apps.spreadsheet": {
+              // Export Google Sheets as CSV
+              const exportRes = await drive.files.export(
+                { fileId, mimeType: "text/csv" },
+                { responseType: "text" }
+              );
+              content = exportRes.data as string;
+              exportedMimeType = "text/csv";
+              if (!fileName.endsWith(".csv")) {
+                fileName = `${fileName}.csv`;
+              }
+              break;
+            }
+            case "application/pdf": {
+              // Download PDF as binary
+              const downloadRes = await drive.files.get(
+                { fileId, alt: "media" },
+                { responseType: "arraybuffer" }
+              );
+              const buffer = Buffer.from(downloadRes.data as ArrayBuffer);
+              content = buffer.toString("base64");
+              exportedMimeType = "application/pdf";
+              break;
+            }
+            case "text/plain":
+            case "text/markdown":
+            case "text/csv": {
+              // Download regular text files
+              const downloadRes = await drive.files.get(
+                { fileId, alt: "media" },
+                { responseType: "text" }
+              );
+              content = downloadRes.data as string;
+              exportedMimeType = file.mimeType;
+              break;
+            }
+            default:
+              return new Err(
+                new MCPError(`Unsupported file type: ${file.mimeType}`, {
+                  tracked: false,
+                })
+              );
+          }
+
+          // For text content, encode as base64 for consistent handling
+          const isBase64 = file.mimeType === "application/pdf";
+          const contentBase64 = isBase64
+            ? content
+            : Buffer.from(content, "utf-8").toString("base64");
+
+          return new Ok([
+            {
+              type: "text" as const,
+              text: JSON.stringify({
+                fileId,
+                fileName,
+                originalMimeType: file.mimeType,
+                exportedMimeType,
+                contentBase64,
+                contentSize: isBase64
+                  ? Buffer.from(content, "base64").length
+                  : content.length,
+              }),
+            },
+          ]);
+        } catch (err) {
+          return new Err(
+            new MCPError(
+              normalizeError(err).message ||
+                "Failed to get file content for attachment"
             )
           );
         }
