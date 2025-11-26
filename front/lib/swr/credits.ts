@@ -129,11 +129,6 @@ export function usePurchaseCredits({ workspaceId }: { workspaceId: string }) {
 
         // If payment requires additional action, redirect to Stripe's hosted invoice page.
         if (responseData.paymentUrl) {
-          sendNotification({
-            type: "info",
-            title: "Complete payment",
-            description: "Redirecting to payment page...",
-          });
           window.location.href = responseData.paymentUrl;
           return true;
         }
