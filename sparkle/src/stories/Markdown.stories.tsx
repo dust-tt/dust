@@ -112,9 +112,25 @@ footnote [^1]
 
 
 
-### Some lateX
+### Some LaTeX
 
 $$ \\sigma(z_i) = \\frac{e^{z_{i}}}{\\sum_{j=1}^K e^{z_{j}}} \\ \\ \\ for\\ i=1,2,\\dots,K $$
+
+### Some inline LaTeX
+
+**Example**: Linear attention is a 2-level optimization:
+- Inner level: Memory matrix $\\mathcal{M}_t = \\mathcal{M}_{t-1} + \\mathbf{v}_t \\mathbf{k}_t^\\top$ (updates every token)
+- Outer level: Projection matrices $W_k, W_v, W_q$ (updates during pre-training)
+
+Even **optimizers** are associative memories. Momentum with gradient descent is 2-level:
+- Momentum $\\mathbf{m}_t$ compresses past gradients
+- Weights $W_t$ are updated by momentum
+
+The result is $a=2+t$
+
+### Some text with dollars
+
+One want to import $USER_WORKSPACE but it will cost them $3.5 or $100 $1000
 
 ### This is a CSV:
 

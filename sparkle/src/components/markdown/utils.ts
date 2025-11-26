@@ -39,3 +39,37 @@ export function detectLanguage(children: React.ReactNode) {
 
   return "text";
 }
+
+/**
+ * Preprocesses content to escape dollar signs that are likely NOT LaTeX math. This helps prevent
+ * false positives when enabling single $ math rendering.
+ *
+ * Patterns that are escaped:
+ * 1. Currency amounts: $100, $5.99, $1,000, $50k, $2.5M, $1 billion
+ * 2. Shell/code variables: $HOME, $PATH, ${variable}
+ * 3. Price ranges: "$50 to $100", "$5-$10"
+ */
+export function preprocessDollarSigns(content: string): string {
+  let processed = content;
+
+  // 1. Protect currency patterns
+  // Matches: $100, $5.99, $1,000.50, $50k, $2.5M, $1 billion, etc.
+  processed = processed.replace(
+    /\$(\d+(?:,\d{3})*(?:\.\d{1,2})?(?:\s*(?:USD|EUR|CAD|GBP|million|billion|thousand|[kKmMbB]))?)\b/g,
+    '\\$$$1'
+  );
+
+  // 2. Protect shell/code variables
+  // Matches: $HOME, $PATH, $USER, ${variable}, ${foo.bar}
+  processed = processed.replace(
+    /\$([A-Z_][A-Z0-9_]*)\b/g,
+    '\\$$$1'
+  );
+
+  processed = processed.replace(
+    /\$\{([^}]+)\}/g,
+    '\\${$1}'
+  );
+
+  return processed;
+}
