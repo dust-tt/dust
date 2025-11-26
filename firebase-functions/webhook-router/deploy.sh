@@ -29,7 +29,7 @@ npm run build
 echo "🚀 Deploying webhook-router to Firebase Functions..."
 
 # Deploy to Firebase Functions and Hosting
-firebase deploy --exclude storage
+firebase deploy --except storage
 
 echo "✅ Deployment complete!"
 echo "🌍 Function available at: https://us-central1-dust-infra.cloudfunctions.net/webhookRouter"
