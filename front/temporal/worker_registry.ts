@@ -62,7 +62,7 @@ export const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   update_workspace_usage: runUpdateWorkspaceUsageWorker,
   upsert_queue: runUpsertQueueWorker,
   upsert_table_queue: runUpsertTableQueueWorker,
-  es_indexation_search_queue: runESIndexationQueueWorker,
+  es_indexation_queue: runESIndexationQueueWorker,
   workos_events_queue: runWorkOSEventsWorker,
 };
 
