@@ -1,12 +1,19 @@
-import type { RequestHandler } from "express";
 import express from "express";
 
 import { WebhookForwarder } from "../forwarder.js";
 import type { SecretManager } from "../secrets.js";
+import type { WebhookRouterConfigManager } from "../webhookRouterConfig.js";
 import { ALL_REGIONS } from "../webhookRouterConfig.js";
+import { createSlackVerificationMiddleware } from "./verification.js";
 
-export function createSlackRoutes(secretManager: SecretManager, slackVerification: RequestHandler) {
+export function createSlackBotRoutes(
+  secretManager: SecretManager,
+  webhookRouterConfigManager: WebhookRouterConfigManager
+) {
   const router = express.Router();
+  const slackVerification = createSlackVerificationMiddleware(secretManager, webhookRouterConfigManager, {
+    useClientCredentials: false,
+  });
 
   // Slack webhook endpoints with Slack verification only (webhook secret already validated)
   router.post("/events", slackVerification, async (req, res) => {
@@ -20,14 +27,20 @@ export function createSlackRoutes(secretManager: SecretManager, slackVerificatio
   return router;
 }
 
-export function createSlackSyncRoutes(secretManager: SecretManager, slackDataSyncVerification: RequestHandler) {
+export function createSlackDataSyncRoutes(
+  secretManager: SecretManager,
+  webhookRouterConfigManager: WebhookRouterConfigManager
+) {
   const router = express.Router();
+  const slackVerification = createSlackVerificationMiddleware(secretManager, webhookRouterConfigManager, {
+    useClientCredentials: true,
+  });
 
-  router.post("/events", slackDataSyncVerification, async (req, res) => {
+  router.post("/events", slackVerification, async (req, res) => {
     await handleSlackWebhook(req, res, "slack", secretManager);
   });
 
-  router.post("/interactions", slackDataSyncVerification, async (req, res) => {
+  router.post("/interactions", slackVerification, async (req, res) => {
     await handleSlackWebhook(req, res, "slack_interaction", secretManager);
   });
 
