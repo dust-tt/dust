@@ -6,13 +6,16 @@ import { StarterKit } from "@tiptap/starter-kit";
 import { useEffect, useMemo } from "react";
 
 import { cleanupPastedHTML } from "@app/components/assistant/conversation/input_bar/editor/cleanupPastedHTML";
+import {
+  CustomBold,
+  CustomItalic,
+} from "@app/components/assistant/conversation/input_bar/editor/extensions/CustomMarks";
 import { DataSourceLinkExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/DataSourceLinkExtension";
 import { KeyboardShortcutsExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/KeyboardShortcutsExtension";
 import { MarkdownStyleExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MarkdownStyleExtension";
 import { MentionExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionExtension";
 import { PastedAttachmentExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/PastedAttachmentExtension";
 import { URLDetectionExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/URLDetectionExtension";
-import { createMarkdownSerializer } from "@app/components/assistant/conversation/input_bar/editor/markdownSerializer";
 import {
   createMentionSuggestion,
   mentionPluginKey,
@@ -21,10 +24,10 @@ import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { extractFromEditorJSON } from "@app/lib/mentions/format";
 import { isMobile } from "@app/lib/utils";
-import type { RichMention } from "@app/types";
-import type { WorkspaceType } from "@app/types";
+import type { RichMention, WorkspaceType } from "@app/types";
 
 import { URLStorageExtension } from "./extensions/URLStorageExtension";
+import { markdownStyles } from "@dust-tt/sparkle";
 
 const DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD = 16000;
 
@@ -34,15 +37,7 @@ function isLongTextPaste(text: string, maxCharThreshold?: number) {
 }
 
 const useEditorService = (editor: Editor | null) => {
-  const markdownSerializer = useMemo(() => {
-    if (!editor?.schema) {
-      return null;
-    }
-
-    return createMarkdownSerializer(editor.schema);
-  }, [editor]);
-
-  const editorService = useMemo(() => {
+  return useMemo(() => {
     // Return the service object with utility functions.
     return {
       // Insert text helper function.
@@ -111,19 +106,6 @@ const useEditorService = (editor: Editor | null) => {
         return editor?.isEmpty ?? true;
       },
 
-      getJSONContent() {
-        return editor?.getJSON();
-      },
-
-      getTextAndMentions() {
-        const { mentions, text } = extractFromEditorJSON(editor?.getJSON());
-
-        return {
-          mentions,
-          text: text.trim(),
-        };
-      },
-
       getMarkdownAndMentions() {
         if (!editor?.state.doc) {
           return {
@@ -133,13 +115,13 @@ const useEditorService = (editor: Editor | null) => {
         }
 
         return {
-          markdown: markdownSerializer?.serialize(editor.state.doc) ?? "",
-          mentions: this.getTextAndMentions().mentions,
+          markdown: editor.getMarkdown(),
+          mentions: extractFromEditorJSON(editor?.getJSON()).mentions,
         };
       },
 
       hasMention(mention: RichMention) {
-        const { mentions } = this.getTextAndMentions();
+        const { mentions } = extractFromEditorJSON(editor?.getJSON());
         return mentions.some(
           (m) => m.id === mention.id && m.type === mention.type
         );
@@ -166,9 +148,7 @@ const useEditorService = (editor: Editor | null) => {
         return editor?.setEditable(!loading);
       },
     };
-  }, [editor, markdownSerializer]);
-
-  return editorService;
+  }, [editor]);
 };
 
 export type EditorService = ReturnType<typeof useEditorService>;
@@ -196,22 +176,58 @@ export interface CustomEditorProps {
   onInlineText?: (fileId: string, textContent: string) => void;
 }
 
-const useCustomEditor = ({
-  onEnterKeyDown,
-  disableAutoFocus,
-  onUrlDetected,
+export const buildEditorExtensions = ({
   owner,
   conversationId,
-  onLongTextPaste,
-  longTextPasteCharsThreshold,
   onInlineText,
-}: CustomEditorProps) => {
+  onUrlDetected,
+}: {
+  owner: WorkspaceType;
+  conversationId: string | null;
+  onInlineText?: (fileId: string, textContent: string) => void;
+  onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
+}) => {
   const extensions = [
     KeyboardShortcutsExtension,
     StarterKit.configure({
       hardBreak: false, // Disable the built-in Shift+Enter. We handle it ourselves in the keymap extension
       strike: false,
+      bold: false, // Disable default bold, we use a custom one
+      italic: false, // Disable default italic, we use a custom one
+      // Markdown styles configuration.
+      blockquote: {
+        HTMLAttributes: {
+          class: markdownStyles.blockquote(),
+        },
+      },
+      codeBlock: {
+        HTMLAttributes: {
+          class: markdownStyles.code(),
+        },
+      },
+      bulletList: {
+        HTMLAttributes: {
+          class: markdownStyles.unorderedList(),
+        },
+      },
+      listItem: {
+        HTMLAttributes: {
+          class: markdownStyles.list(),
+        },
+      },
+      orderedList: {
+        HTMLAttributes: {
+          class: markdownStyles.orderedList(),
+        },
+      },
+      paragraph: {
+        HTMLAttributes: {
+          class: markdownStyles.paragraph(),
+        },
+      },
     }),
+    CustomBold,
+    CustomItalic,
     Markdown,
     DataSourceLinkExtension,
     MentionExtension.configure({
@@ -241,9 +257,27 @@ const useCustomEditor = ({
     );
   }
 
+  return extensions;
+};
+
+const useCustomEditor = ({
+  onEnterKeyDown,
+  disableAutoFocus,
+  onUrlDetected,
+  owner,
+  conversationId,
+  onLongTextPaste,
+  longTextPasteCharsThreshold,
+  onInlineText,
+}: CustomEditorProps) => {
   const editor = useEditor({
     autofocus: disableAutoFocus ? false : "end",
-    extensions,
+    extensions: buildEditorExtensions({
+      owner,
+      conversationId,
+      onInlineText,
+      onUrlDetected,
+    }),
     editorProps: {
       attributes: {
         class: "border-0 outline-none overflow-y-auto h-full scrollbar-hide",
