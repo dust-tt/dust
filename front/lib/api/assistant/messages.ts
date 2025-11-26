@@ -25,9 +25,9 @@ import type {
   AgentMessageType,
   ContentFragmentType,
   ConversationWithoutContentType,
+  LegacyLightMessageType,
   LightAgentConfigurationType,
   LightAgentMessageType,
-  LightMessageType,
   MessageType,
   Result,
   UserMention,
@@ -525,7 +525,7 @@ async function batchRenderContentFragment(
   );
 }
 
-type RenderMessageVariant = "light" | "full";
+type RenderMessageVariant = "legacy-light" | "full";
 
 export async function batchRenderMessages<V extends RenderMessageVariant>(
   auth: Authenticator,
@@ -534,7 +534,7 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
   viewType: V
 ): Promise<
   Result<
-    V extends "full" ? MessageType[] : LightMessageType[],
+    V extends "full" ? MessageType[] : LegacyLightMessageType[],
     ConversationError
   >
 > {
@@ -557,7 +557,9 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
   ].sort((a, b) => a.rank - b.rank || a.version - b.version);
 
   return new Ok(
-    renderedMessages as V extends "full" ? MessageType[] : LightMessageType[]
+    renderedMessages as V extends "full"
+      ? MessageType[]
+      : LegacyLightMessageType[]
   );
 }
 
@@ -589,7 +591,7 @@ export async function fetchConversationMessages(
     auth,
     conversation,
     messages,
-    "light"
+    "legacy-light"
   );
 
   if (renderedMessagesRes.isErr()) {
