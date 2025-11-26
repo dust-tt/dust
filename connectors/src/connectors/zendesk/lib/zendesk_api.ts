@@ -279,7 +279,7 @@ export class ZendeskClient {
         url,
         ZendeskTicketFieldResponseSchema
       );
-      return response?.ticket_field ?? null;
+      return response.ticket_field ?? null;
     } catch (e) {
       if (isZendeskNotFoundError(e)) {
         return null;
@@ -505,8 +505,8 @@ export class ZendeskClient {
       );
       return {
         categories: response.categories,
-        hasMore: response.meta?.has_more ?? false,
-        nextLink: response.links?.next ?? null,
+        hasMore: response.meta.has_more ?? false,
+        nextLink: response.links.next ?? null,
       };
     } catch (e) {
       if (isZendeskNotFoundError(e)) {
@@ -536,8 +536,8 @@ export class ZendeskClient {
       );
       return {
         articles: response.articles,
-        hasMore: response.meta?.has_more ?? false,
-        nextLink: response.links?.next ?? null,
+        hasMore: response.meta.has_more ?? false,
+        nextLink: response.links.next ?? null,
       };
     } catch (e) {
       if (isZendeskNotFoundError(e)) {
@@ -622,7 +622,7 @@ export class ZendeskClient {
       return {
         articles: response.articles,
         hasMore:
-          (response.meta?.has_more ?? false) && response.articles.length !== 0,
+          (response.meta.has_more ?? false) && response.articles.length !== 0,
         endTime: response.end_time ?? startTime,
       };
     } catch (e) {
