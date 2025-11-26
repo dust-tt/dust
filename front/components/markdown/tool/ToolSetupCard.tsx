@@ -26,6 +26,7 @@ interface ToolSetupCardProps {
   toolId: InternalMCPServerNameType;
   owner: WorkspaceType;
   conversationId?: string;
+  isLastMessage?: boolean;
   onSetupComplete?: (toolId: string) => void;
   onSetupSkipped?: (toolId: string) => void;
 }
@@ -34,6 +35,7 @@ export function ToolSetupCard({
   toolName,
   toolId,
   owner,
+  isLastMessage,
   onSetupComplete,
   onSetupSkipped,
 }: ToolSetupCardProps) {
@@ -153,7 +155,9 @@ export function ToolSetupCard({
   };
 
   const showSkipButton =
-    isAdmin && !isToolActivatedInGlobalSpace && !isActivating && !isSkipped;
+    isAdmin && !isToolActivatedInGlobalSpace && !isActivating;
+
+  const isSkipDisabled = !isLastMessage || isSkipped;
 
   return (
     <>
@@ -167,36 +171,38 @@ export function ToolSetupCard({
           <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
             {matchingMCPServer.description}
           </span>
-          <div className="flex justify-end gap-2">
-            {matchingMCPServer.documentationUrl && (
+          <div className="flex justify-between gap-2">
+            <div>
+              {matchingMCPServer.documentationUrl && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  label="About"
+                  href={matchingMCPServer.documentationUrl}
+                  target="_blank"
+                />
+              )}
+            </div>
+            <div className="flex gap-2">
+              {showSkipButton && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  label={isSkipped ? "Skipped" : "Skip"}
+                  onClick={handleSkip}
+                  disabled={isSkipDisabled}
+                />
+              )}
               <Button
-                variant="outline"
+                variant="highlight"
                 size="sm"
-                label="About"
-                href={matchingMCPServer.documentationUrl}
-                target="_blank"
+                label={getButtonLabel()}
+                onClick={getButtonClickHandler()}
+                disabled={
+                  !isAdmin || isToolActivatedInGlobalSpace || isActivating
+                }
               />
-            )}
-            {showSkipButton && (
-              <Button
-                variant="outline"
-                size="sm"
-                label="Skip"
-                onClick={handleSkip}
-              />
-            )}
-            <Button
-              variant="highlight"
-              size="sm"
-              label={isSkipped ? "Skipped" : getButtonLabel()}
-              onClick={getButtonClickHandler()}
-              disabled={
-                !isAdmin ||
-                isToolActivatedInGlobalSpace ||
-                isActivating ||
-                isSkipped
-              }
-            />
+            </div>
           </div>
         </div>
       </ContentMessage>

@@ -681,6 +681,7 @@ function AgentMessageContent({
       toolSetup: getToolSetupPlugin(
         owner,
         conversationId,
+        isLastMessage,
         handleToolSetupComplete,
         handleToolSetupSkipped
       ),
@@ -688,6 +689,7 @@ function AgentMessageContent({
     [
       owner,
       conversationId,
+      isLastMessage,
       sId,
       agentConfiguration.sId,
       onQuickReplySend,
