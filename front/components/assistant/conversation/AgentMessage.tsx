@@ -658,7 +658,14 @@ function AgentMessageContent({
       toolSetup: getToolSetupPlugin(owner),
       quickReply: getQuickReplyPlugin(onQuickReplySend, isLastMessage),
     }),
-    [owner, conversationId, sId, agentConfiguration.sId, onQuickReplySend, isLastMessage]
+    [
+      owner,
+      conversationId,
+      sId,
+      agentConfiguration.sId,
+      onQuickReplySend,
+      isLastMessage,
+    ]
   );
 
   const additionalMarkdownPlugins: PluggableList = React.useMemo(

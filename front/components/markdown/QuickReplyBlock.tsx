@@ -2,12 +2,12 @@ import { Button } from "@dust-tt/sparkle";
 import React, { useState } from "react";
 import { visit } from "unist-util-visit";
 
-type QuickReplyBlockProps = {
+interface QuickReplyBlockProps {
   label: string;
   message: string;
   disabled: boolean;
   onSend: (message: string) => Promise<void>;
-};
+}
 
 export function QuickReplyBlock({
   label,

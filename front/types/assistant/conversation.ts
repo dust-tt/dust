@@ -64,7 +64,7 @@ export type LightMessageType =
  *
  */
 export type UserMessageOrigin =
-   // TODO(2025-11-24 PPUL): Remove run_agent and agent_handover from allowed origin values.
+  // TODO(2025-11-24 PPUL): Remove run_agent and agent_handover from allowed origin values.
   | "agent_handover" // soon to be removed (not a fitting origin).
   // "api" is Custom API usage, while e.g. extension, gsheets and many other origins
   // below are API usages dedicated to standard product features.
