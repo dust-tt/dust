@@ -7,8 +7,6 @@ import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ActivityReport } from "@app/components/workspace/ActivityReport";
 import { QuickInsights } from "@app/components/workspace/Analytics";
-import { ProgrammaticCostChart } from "@app/components/workspace/ProgrammaticCostChart";
-import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useWorkspaceSubscriptions } from "@app/lib/swr/workspaces";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
@@ -16,7 +14,6 @@ import type { SubscriptionType, WorkspaceType } from "@app/types";
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
-  hasProgrammaticUsageMetrics: boolean;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -25,16 +22,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       notFound: true,
     };
   }
-  const featureFlags = await getFeatureFlags(owner);
-  const hasProgrammaticUsageMetrics = featureFlags.includes(
-    "programmatic_usage_metrics"
-  );
 
   return {
     props: {
       owner,
       subscription,
-      hasProgrammaticUsageMetrics,
     },
   };
 });
@@ -42,7 +34,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function Analytics({
   owner,
   subscription,
-  hasProgrammaticUsageMetrics,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [downloadingMonth, setDownloadingMonth] = useState<string | null>(null);
   const [includeInactive, setIncludeInactive] = useState(true);
@@ -177,11 +168,6 @@ export default function Analytics({
               onIncludeInactiveChange={setIncludeInactive}
             />
           </div>
-          {hasProgrammaticUsageMetrics && (
-            <div className="grid w-full grid-cols-1 gap-4">
-              <ProgrammaticCostChart workspaceId={owner.sId} />
-            </div>
-          )}
         </Page.Vertical>
       </AppCenteredLayout>
     </>

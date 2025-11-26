@@ -24,17 +24,13 @@ import { subNavigationAdmin } from "@app/components/navigation/config";
 import { PricePlans } from "@app/components/plans/PlansTables";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import { BuyCreditDialog } from "@app/components/workspace/BuyCreditDialog";
-import { CreditsList } from "@app/components/workspace/CreditsList";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { isEntreprisePlan, isUpgraded } from "@app/lib/plans/plan_codes";
+import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
-import { useCredits, usePurchaseCredits } from "@app/lib/swr/credits";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { PatchSubscriptionRequestBody } from "@app/pages/api/w/[wId]/subscriptions";
 import type {
@@ -107,18 +103,7 @@ export default function Subscription({
   const [showSkipFreeTrialDialog, setShowSkipFreeTrialDialog] = useState(false);
   const [showCancelFreeTrialDialog, setShowCancelFreeTrialDialog] =
     useState(false);
-  const [showBuyCreditDialog, setShowBuyCreditDialog] = useState(false);
 
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-  const isEnterprise = isEntreprisePlan(subscription.plan.code);
-  const isPPULEnabled = hasFeature("ppul_credits_purchase_flow");
-  const { credits, isCreditsLoading } = useCredits({
-    workspaceId: owner.sId,
-    disabled: !isPPULEnabled,
-  });
-  const { isLoading: isPurchasingCredits } = usePurchaseCredits({
-    workspaceId: owner.sId,
-  });
   useEffect(() => {
     if (router.query.type === "succeeded") {
       if (subscription.plan.code === router.query.plan_code) {
@@ -303,13 +288,6 @@ export default function Subscription({
         </>
       )}
 
-      <BuyCreditDialog
-        isOpen={showBuyCreditDialog}
-        onClose={() => setShowBuyCreditDialog(false)}
-        workspaceId={owner.sId}
-        isEnterprise={isEnterprise}
-      />
-
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
           title="Subscription"
@@ -442,34 +420,6 @@ export default function Subscription({
                   )}
                 />
               </div>
-            </Page.Vertical>
-          )}
-          {isPPULEnabled && subscription.stripeSubscriptionId && (
-            <Page.Vertical gap="sm">
-              <div className="flex w-full items-center justify-between">
-                <Page.H variant="h5">Programmatic Usage Credits</Page.H>
-                <Button
-                  label="Buy Credits"
-                  variant="primary"
-                  disabled={subscription.trialing || isPurchasingCredits}
-                  isLoading={isPurchasingCredits}
-                  onClick={withTracking(
-                    TRACKING_AREAS.AUTH,
-                    "subscription_buy_credits",
-                    () => {
-                      setShowBuyCreditDialog(true);
-                    }
-                  )}
-                />
-              </div>
-              <Page.P>Purchase credits for programmatic API usage</Page.P>
-              <CreditsList credits={credits} isLoading={isCreditsLoading} />
-              {subscription.trialing && (
-                <ContentMessage title="Available after trial" variant="info">
-                  Credit purchases are available once you upgrade to a paid
-                  plan.
-                </ContentMessage>
-              )}
             </Page.Vertical>
           )}
           {displayPricingTable && (

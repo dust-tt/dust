@@ -1,6 +1,7 @@
 import {
   BarChartIcon,
   BracesIcon,
+  CardIcon,
   ChatBubbleLeftRightIcon,
   Cog6ToothIcon,
   CommandLineIcon,
@@ -16,6 +17,7 @@ import {
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { AppType, WhitelistableFeature, WorkspaceType } from "@app/types";
 import { isAdmin, isBuilder } from "@app/types";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 /**
  * NavigationIds are typed ids we use to identify which navigation item is currently active. We need
@@ -51,7 +53,8 @@ export type SubNavigationAdminId =
   | "api_keys"
   | "dev_secrets"
   | "analytics"
-  | "actions";
+  | "actions"
+  | "credits_usage";
 
 export type SubNavigationAppId =
   | "specification"
@@ -101,7 +104,13 @@ export type TabAppLayoutNavigation = {
 };
 
 export type SidebarNavigation = {
-  id: "assistants" | "data_sources" | "workspace" | "developers" | "help";
+  id:
+    | "assistants"
+    | "data_sources"
+    | "workspace"
+    | "developers"
+    | "help"
+    | "api";
   label: string | null;
   variant: "primary" | "secondary";
   menus: AppLayoutNavigation[];
@@ -149,6 +158,7 @@ export const getTopNavigationTabs = (
           "/w/[wId]/subscription",
           "/w/[wId]/analytics",
           "/w/[wId]/actions",
+          "/w/[wId]/developers/credits-usage",
           "/w/[wId]/developers/providers",
           "/w/[wId]/developers/api-keys",
           "/w/[wId]/developers/dev-secrets",
@@ -177,10 +187,16 @@ export const subNavigationAdmin = ({
     return nav;
   }
 
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+
+  const hasApiAndProgrammaticSection = featureFlags.includes(
+    "api_and_programmatic_admin_section"
+  );
+
   if (isAdmin(owner)) {
     nav.push({
       id: "workspace",
-      label: "Workspace Management",
+      label: "Workspace",
       variant: "primary",
       menus: [
         {
@@ -222,9 +238,39 @@ export const subNavigationAdmin = ({
       ],
     });
 
+    // API & Programmatic section (feature flagged)
+    if (hasApiAndProgrammaticSection) {
+      nav.push({
+        id: "api",
+        label: "API & Programmatic",
+        variant: "primary",
+        menus: [
+          {
+            id: "api_keys",
+            label: "API Keys",
+            icon: LockIcon,
+            href: `/w/${owner.sId}/developers/api-keys`,
+            current: current === "api_keys",
+            subMenuLabel: current === "api_keys" ? subMenuLabel : undefined,
+            subMenu: current === "api_keys" ? subMenu : undefined,
+          },
+          {
+            id: "credits_usage",
+            label: "Credits & Usage",
+            icon: CardIcon,
+            href: `/w/${owner.sId}/developers/credits-usage`,
+            current: current === "credits_usage",
+            subMenuLabel:
+              current === "credits_usage" ? subMenuLabel : undefined,
+            subMenu: current === "credits_usage" ? subMenu : undefined,
+          },
+        ],
+      });
+    }
+
     nav.push({
       id: "developers",
-      label: "Builder Tools Management",
+      label: "Builder Tools",
       variant: "primary",
       menus: [
         {
@@ -236,15 +282,20 @@ export const subNavigationAdmin = ({
           subMenuLabel: current === "providers" ? subMenuLabel : undefined,
           subMenu: current === "providers" ? subMenu : undefined,
         },
-        {
-          id: "api_keys",
-          label: "API Keys",
-          icon: LockIcon,
-          href: `/w/${owner.sId}/developers/api-keys`,
-          current: current === "api_keys",
-          subMenuLabel: current === "api_keys" ? subMenuLabel : undefined,
-          subMenu: current === "api_keys" ? subMenu : undefined,
-        },
+        // Only show API keys here if the new section is not enabled
+        ...(hasApiAndProgrammaticSection
+          ? []
+          : [
+              {
+                id: "api_keys" as const,
+                label: "API Keys",
+                icon: LockIcon,
+                href: `/w/${owner.sId}/developers/api-keys`,
+                current: current === "api_keys",
+                subMenuLabel: current === "api_keys" ? subMenuLabel : undefined,
+                subMenu: current === "api_keys" ? subMenu : undefined,
+              },
+            ]),
         {
           id: "dev_secrets",
           label: "Secrets",

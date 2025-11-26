@@ -112,11 +112,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "OpenAI tool for tracking API consumption and costs",
     stage: "on_demand",
   },
-  ppul_credits_purchase_flow: {
-    description:
-      "Purchase credits flow for workspace admins via Stripe invoices",
-    stage: "dust_only",
-  },
   salesforce_synced_queries: {
     description: "Salesforce Connection: retrieval on Synchronized queries",
     stage: "on_demand",
@@ -239,8 +234,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable notifications",
     stage: "dust_only",
   },
-  programmatic_usage_metrics: {
-    description: "Enable programmatic usage metrics",
+  api_and_programmatic_admin_section: {
+    description:
+      "Enable the API & Programmatic section in the admin panel with credits purchase flow, usage metrics, and cost charts",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;
