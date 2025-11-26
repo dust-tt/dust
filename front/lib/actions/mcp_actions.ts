@@ -295,6 +295,13 @@ export async function* tryCallMCPTool(
 
   const conversationId = agentLoopRunContext.conversation.sId;
   const messageId = agentLoopRunContext.agentMessage.sId;
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+  const toolLogContext = {
+    conversationId,
+    messageId,
+    toolName: toolConfiguration.originalName,
+    workspaceId,
+  };
 
   const connectionParamsRes = await getMCPClientConnectionParams(
     auth,
@@ -398,12 +405,14 @@ export async function* tryCallMCPTool(
     const getHeartbeatPromise = (): Promise<void> =>
       new Promise((resolve) => {
         setTimeout(() => {
+          logger.info(toolLogContext, "MCP tool heartbeat");
           heartbeat();
           resolve();
           // Reasonable delay to react to cancellation under 10s.
         }, 10_000);
       });
 
+    logger.info(toolLogContext, "Starting MCP tool notification loop");
     while (!toolDone) {
       const notificationOrDone = await Promise.race([
         notificationPromise,
@@ -434,7 +443,9 @@ export async function* tryCallMCPTool(
 
     let toolCallResult: Awaited<typeof toolPromise>;
     try {
+      logger.info(toolLogContext, "Awaiting MCP tool promise");
       toolCallResult = await toolPromise;
+      logger.info(toolLogContext, "MCP tool promise resolved");
     } catch (toolError) {
       if (abortSignal?.aborted) {
         return makeMCPToolExit({
