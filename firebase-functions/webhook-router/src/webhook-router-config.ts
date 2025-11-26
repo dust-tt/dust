@@ -34,15 +34,19 @@ function isValidWebhookRouterConfigEntry(value: unknown): value is WebhookRouter
 export class WebhookRouterConfigManager {
   constructor(private client: Database) {}
 
-  async getEntry(provider: ProviderWithSigningSecret, appId: string): Promise<WebhookRouterConfigEntry> {
-    const configSnapshot = await this.client.ref(`${provider}/${appId}`).get();
+  async getEntry(provider: ProviderWithSigningSecret, providerWorkspaceId: string): Promise<WebhookRouterConfigEntry> {
+    const configSnapshot = await this.client.ref(`${provider}/${providerWorkspaceId}`).get();
     if (!configSnapshot.exists()) {
-      throw new Error(`No ${provider} webhook router configuration found in database for appId ${appId}`);
+      throw new Error(
+        `No ${provider} webhook router configuration found in database for providerWorkspaceId ${providerWorkspaceId}`
+      );
     }
 
     const configEntry = configSnapshot.val();
     if (!isValidWebhookRouterConfigEntry(configEntry)) {
-      throw new Error(`Invalid ${provider} webhook router configuration found for appId ${appId}`);
+      throw new Error(
+        `Invalid ${provider} webhook router configuration found for providerWorkspaceId ${providerWorkspaceId}`
+      );
     }
 
     return {

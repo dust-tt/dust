@@ -36,7 +36,7 @@ export const syncWebhookRouterConfig = onObjectFinalized({ bucket, serviceAccoun
     const [rawConfig] = await webhookRouterConfigFile.download();
 
     const parsedConfig = JSON.parse(rawConfig.toString("utf-8"));
-    if (typeof parsedConfig !== "object") {
+    if (parsedConfig === null || typeof parsedConfig !== "object") {
       throw new Error("Invalid webhook configuration format. Expected an object.");
     }
 

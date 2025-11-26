@@ -68,7 +68,7 @@ async function parseExpressRequestRawBody(req: Request): Promise<string> {
 }
 
 function isUrlVerification(body: any): boolean {
-  return typeof body === "object" && body.type === "url_verification" && "challenge" in body;
+  return body !== null && typeof body === "object" && body.type === "url_verification" && "challenge" in body;
 }
 
 export function createSlackVerificationMiddleware(
