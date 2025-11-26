@@ -12,8 +12,6 @@ import logger from "@app/logger/logger";
 import type { ModelId } from "@app/types";
 
 const WORKSPACE_CONVERSATIONS_BATCH_SIZE = 200;
-const HEARTBEAT_INTERVAL = 50;
-
 /**
  * Get workspace ids with conversations retention policy.
  */
@@ -90,38 +88,33 @@ export async function purgeConversationsBatchActivity({
       "Purging conversations for workspace."
     );
 
-    // Process deletions in batches to heartbeat regularly.
-    for (let i = 0; i < conversations.length; i += HEARTBEAT_INTERVAL) {
-      const batch = conversations.slice(i, i + HEARTBEAT_INTERVAL);
-
-      await concurrentExecutor(
-        batch,
-        async (c) => {
-          const result = await destroyConversation(auth, {
-            conversationId: c.sId,
-          });
-          if (result.isErr()) {
-            if (result.error.type === "conversation_not_found") {
-              logger.warn(
-                {
-                  workspaceId,
-                  conversationId: c.sId,
-                  error: result.error,
-                },
-                "Attempting to delete a non-existing conversation."
-              );
-              return;
-            }
-            throw result.error;
+    await concurrentExecutor(
+      conversations,
+      async (c) => {
+        const result = await destroyConversation(auth, {
+          conversationId: c.sId,
+        });
+        if (result.isErr()) {
+          if (result.error.type === "conversation_not_found") {
+            logger.warn(
+              {
+                workspaceId,
+                conversationId: c.sId,
+                error: result.error,
+              },
+              "Attempting to delete a non-existing conversation."
+            );
+            return;
           }
-        },
-        {
-          concurrency: 2,
+          throw result.error;
         }
-      );
+      },
+      {
+        concurrency: 2,
+      }
+    );
 
-      heartbeat();
-    }
+    heartbeat();
 
     res.push({
       workspaceModelId: workspace.id,
