@@ -268,6 +268,30 @@ export const getStripeSubscription = async (
   }
 };
 
+export async function getSubscriptionInvoices(
+  subscriptionId: string,
+  options?: {
+    status?: Stripe.InvoiceListParams["status"];
+    createdSince?: Date;
+    limit?: number;
+  }
+): Promise<Stripe.Invoice[]> {
+  const stripe = getStripeClient();
+  const invoices = await stripe.invoices.list({
+    subscription: subscriptionId,
+    status: options?.status,
+    created: options?.createdSince
+      ? { gte: Math.floor(options.createdSince.getTime() / 1000) }
+      : undefined,
+    limit: options?.limit ?? 100,
+  });
+  return invoices.data.filter(
+    (inv) =>
+      inv.billing_reason === "subscription_cycle" ||
+      inv.billing_reason === "subscription_create"
+  );
+}
+
 const DAY_IN_SECONDS = 24 * 60 * 60;
 
 export const extendStripeSubscriptionTrial = async (
