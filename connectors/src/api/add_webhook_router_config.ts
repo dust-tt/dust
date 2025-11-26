@@ -39,10 +39,10 @@ type AddWebhookRouterEntryReqBody = t.TypeOf<
 >;
 
 /**
- * POST /webhooks/router_entries/:provider/:providerWorkspaceId
+ * POST /webhooks_router_entries/:provider/:providerWorkspaceId
  * Add or update a webhook router configuration entry.
  *
- * PATCH /webhooks/router_entries/:provider/:providerWorkspaceId
+ * PATCH /webhooks_router_entries/:provider/:providerWorkspaceId
  * Merge regions with existing entry (or create if doesn't exist).
  */
 const _addWebhookRouterEntryHandler = async (

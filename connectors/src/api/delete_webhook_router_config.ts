@@ -18,7 +18,7 @@ type WebhookRouterEntryResBody = WithConnectorsAPIErrorReponse<{
 }>;
 
 /**
- * DELETE /webhooks/router_entries/:provider/:providerWorkspaceId
+ * DELETE /webhooks_router_entries/:provider/:providerWorkspaceId
  * Delete a webhook router configuration entry.
  */
 const _deleteWebhookRouterEntryHandler = async (
