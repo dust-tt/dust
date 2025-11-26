@@ -462,6 +462,7 @@ export async function filterTriggers({
         trigger,
         status: "rate_limited",
       });
+      // If it's a workspace-level rate limit, return an error immediately.
       return new Err(new Error("Workspace rate limit exceeded"));
     }
 
