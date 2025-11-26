@@ -141,7 +141,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           className={classNames(
             "mx-auto min-w-60",
             userMentionsEnabled ? "mb-4" : "pt-6 md:pt-10",
-            "max-w-3xl"
+            "max-w-4xl"
           )}
         >
           {isUserMessage(data) && (
