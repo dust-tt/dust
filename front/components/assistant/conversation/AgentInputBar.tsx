@@ -63,7 +63,7 @@ export const AgentInputBar = ({
         isUserMessage(m) &&
         m.user?.id === context.user.id &&
         m.visibility !== "deleted" &&
-        !isHiddenContextOrigin(m.context.origin)
+        !isHiddenContextOrigin(m)
     );
 
   const agentMentions = useMemo(() => {

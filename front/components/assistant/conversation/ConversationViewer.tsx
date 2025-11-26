@@ -187,7 +187,7 @@ export const ConversationViewer = ({
       const raw = messages
         .flatMap((m) => m.messages)
         .filter((m) =>
-          isUserMessageType(m) ? !isHiddenContextOrigin(m.context.origin) : true
+          isUserMessageType(m) ? !isHiddenContextOrigin(m) : true
         );
 
       const messagesToRender = convertLightMessageTypeToVirtuosoMessages(raw);
@@ -216,7 +216,7 @@ export const ConversationViewer = ({
 
     if (olderMessagesFromBackend.length > 0) {
       const filtered = olderMessagesFromBackend.filter((m) =>
-        isUserMessageType(m) ? !isHiddenContextOrigin(m.context.origin) : true
+        isUserMessageType(m) ? !isHiddenContextOrigin(m) : true
       );
       ref.current.data.prepend(
         convertLightMessageTypeToVirtuosoMessages(filtered)
@@ -286,7 +286,7 @@ export const ConversationViewer = ({
         switch (event.type) {
           case "user_message_new":
             if (ref.current) {
-              if (isHiddenContextOrigin(event.message.context.origin)) {
+              if (isHiddenContextOrigin(event.message)) {
                 break;
               }
               const userMessage: VirtuosoMessage = {

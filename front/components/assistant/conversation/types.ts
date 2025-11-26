@@ -88,10 +88,11 @@ export const isTriggeredOrigin = (origin?: UserMessageOrigin | null) => {
 
 // Central helper to control which user message origins should be hidden in the UI.
 // Extend this list as we introduce more bootstrap/system user messages.
-export const isHiddenContextOrigin = (
-  origin?: UserMessageOrigin | null
-): boolean => {
-  return origin === "onboarding_conversation" || origin === "agent_handover";
+export const isHiddenContextOrigin = (message: UserMessageType): boolean => {
+  return (
+    message.context.origin === "onboarding_conversation" ||
+    message?.agenticMessageData?.type === "agent_handover"
+  );
 };
 
 export const isUserMessage = (
