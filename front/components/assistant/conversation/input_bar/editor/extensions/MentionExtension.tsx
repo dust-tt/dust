@@ -126,6 +126,17 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
     },
   },
 
+  renderMarkdown: (node) => {
+    const mentionType = node.attrs?.type ?? "agent";
+    const id = node.attrs?.id ?? "";
+    const label = node.attrs?.label ?? "";
+
+    if (mentionType === "user") {
+      return `:mention_user[${label}]{sId=${id}}`;
+    }
+    return `:mention[${label}]{sId=${id}}`;
+  },
+
   // Parse Markdown token to Tiptap JSON
   parseMarkdown: (token) => {
     return {
