@@ -250,24 +250,46 @@ export class WebhookRouterConfigService {
    * @param provider - The provider name (e.g., "slack", "notion")
    * @param providerWorkspaceId - The provider workspace/team ID
    * @param entry - The entry configuration
-   * @param maxRetries - Maximum number of retries on concurrent modification (default: 5)
+   * @param options - Optional configuration
+   * @param options.merge - If true, merge regions with existing entry. If false, replace entire entry (default: false)
+   * @param options.maxRetries - Maximum number of retries on concurrent modification (default: 5)
    */
   async addEntry(
     provider: string,
     providerWorkspaceId: string,
     entry: WebhookRouterEntry,
-    maxRetries: number = 5
+    options: { merge?: boolean; maxRetries?: number } = {}
   ): Promise<void> {
+    const { merge = false, maxRetries = 5 } = options;
+
     return this.executeWithRetry(
       async (config) => {
-        // Update config
+        // Initialize provider object if it doesn't exist
         if (!config[provider]) {
           config[provider] = {};
         }
-        config[provider]![providerWorkspaceId] = entry;
+
+        // Get existing entry if any
+        const existingEntry = config[provider]![providerWorkspaceId];
+
+        if (merge && existingEntry) {
+          // Merge regions: combine existing and new regions, removing duplicates
+          const mergedRegions = Array.from(
+            new Set([...existingEntry.regions, ...entry.regions])
+          );
+
+          config[provider]![providerWorkspaceId] = {
+            signing_secret: entry.signing_secret,
+            regions: mergedRegions,
+          };
+        } else {
+          // Replace entire entry (POST behavior or PATCH when entry doesn't exist)
+          config[provider]![providerWorkspaceId] = entry;
+        }
+
         return config;
       },
-      "add",
+      merge ? "merge" : "add",
       provider,
       providerWorkspaceId,
       maxRetries

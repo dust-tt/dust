@@ -36,7 +36,10 @@ import logger from "@connectors/logger/logger";
 import { authMiddleware } from "@connectors/middleware/auth";
 import { rateLimiter, setupGlobalErrorHandler } from "@connectors/types";
 
-import { addWebhookRouterEntryHandler } from "./api/add_webhook_router_config";
+import {
+  addWebhookRouterEntryHandler,
+  patchWebhookRouterEntryHandler,
+} from "./api/add_webhook_router_config";
 import {
   getConnectorConfigAPIHandler,
   setConnectorConfigAPIHandler,
@@ -178,6 +181,10 @@ export function startServer(port: number) {
   app.post(
     "/webhooks_router_entries/:webhook_secret/:provider/:providerWorkspaceId",
     addWebhookRouterEntryHandler
+  );
+  app.patch(
+    "/webhooks_router_entries/:webhook_secret/:provider/:providerWorkspaceId",
+    patchWebhookRouterEntryHandler
   );
   app.delete(
     "/webhooks_router_entries/:webhook_secret/:provider/:providerWorkspaceId",

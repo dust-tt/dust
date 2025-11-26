@@ -36,6 +36,9 @@ type AddWebhookRouterEntryReqBody = t.TypeOf<
 /**
  * POST /webhooks/router_entries/:provider/:providerWorkspaceId
  * Add or update a webhook router configuration entry.
+ *
+ * PATCH /webhooks/router_entries/:provider/:providerWorkspaceId
+ * Merge regions with existing entry (or create if doesn't exist).
  */
 const _addWebhookRouterEntryHandler = async (
   req: Request<
@@ -43,7 +46,8 @@ const _addWebhookRouterEntryHandler = async (
     WebhookRouterEntryResBody,
     AddWebhookRouterEntryReqBody
   >,
-  res: Response<WebhookRouterEntryResBody>
+  res: Response<WebhookRouterEntryResBody>,
+  merge: boolean = false
 ) => {
   const { provider, providerWorkspaceId } = req.params;
 
@@ -114,14 +118,19 @@ const _addWebhookRouterEntryHandler = async (
 
   try {
     const service = new WebhookRouterConfigService();
-    await service.addEntry(provider, providerWorkspaceId, {
-      signing_secret,
-      regions,
-    });
+    await service.addEntry(
+      provider,
+      providerWorkspaceId,
+      {
+        signing_secret,
+        regions,
+      },
+      { merge }
+    );
 
     logger.info(
-      { provider, providerWorkspaceId },
-      "Successfully added webhook router entry"
+      { provider, providerWorkspaceId, merge },
+      `Successfully added webhook router entry`
     );
 
     return res.status(200).json({
@@ -129,8 +138,8 @@ const _addWebhookRouterEntryHandler = async (
     });
   } catch (error) {
     logger.error(
-      { error, provider, providerWorkspaceId },
-      "Failed to add webhook router entry"
+      { error, provider, providerWorkspaceId, merge },
+      `Failed to add webhook router entry`
     );
 
     return apiError(req, res, {
@@ -140,12 +149,30 @@ const _addWebhookRouterEntryHandler = async (
         message:
           error instanceof Error
             ? error.message
-            : "Failed to add webhook router entry",
+            : `Failed to add webhook router entry`,
       },
     });
   }
 };
 
 export const addWebhookRouterEntryHandler = withLogging(
-  _addWebhookRouterEntryHandler
+  (
+    req: Request<
+      WebhookRouterEntryParams,
+      WebhookRouterEntryResBody,
+      AddWebhookRouterEntryReqBody
+    >,
+    res: Response<WebhookRouterEntryResBody>
+  ) => _addWebhookRouterEntryHandler(req, res, false)
+);
+
+export const patchWebhookRouterEntryHandler = withLogging(
+  (
+    req: Request<
+      WebhookRouterEntryParams,
+      WebhookRouterEntryResBody,
+      AddWebhookRouterEntryReqBody
+    >,
+    res: Response<WebhookRouterEntryResBody>
+  ) => _addWebhookRouterEntryHandler(req, res, true)
 );
