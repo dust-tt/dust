@@ -94,10 +94,13 @@ WORKDIR /app
 COPY --from=deps /app/.next/standalone ./
 COPY --from=deps /app/.next/static ./.next/static
 COPY --from=deps /app/public ./public
+# Copy built SDK that front depends on
+COPY --from=deps /sdks ./sdks
 
 # Preload jemalloc for all processes:
 ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
 
+ARG COMMIT_HASH_LONG
 ENV DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust/
 ENV DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
 
@@ -116,10 +119,13 @@ WORKDIR /app
 COPY --from=deps /app/dist ./dist
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/package.json ./package.json
+# Copy built SDK that workers depend on
+COPY --from=deps /sdks ./sdks
 
 # Preload jemalloc for all processes:
 ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
 
+ARG COMMIT_HASH_LONG
 ENV DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust/
 ENV DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
 
