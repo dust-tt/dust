@@ -293,7 +293,7 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
     }
 
     if (sanitizedReturnTo) {
-      res.redirect(sanitizedReturnTo as string);
+      res.redirect(sanitizedReturnTo);
       return;
     }
 
