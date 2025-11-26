@@ -81,11 +81,12 @@ async function handler(
         );
       }
 
-      const messagesRes = await fetchConversationMessages(
-        auth,
+      // Note that we don't use the order column and order direction here because we enforce sorting by rank in descending order.
+      const messagesRes = await fetchConversationMessages(auth, {
         conversationId,
-        paginationRes.value
-      );
+        limit: paginationRes.value.limit,
+        lastRank: paginationRes.value.lastValue,
+      });
 
       if (messagesRes.isErr()) {
         return apiErrorForConversation(req, res, messagesRes.error);

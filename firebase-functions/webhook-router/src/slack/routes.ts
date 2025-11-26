@@ -1,14 +1,19 @@
-import type { RequestHandler } from "express";
 import express from "express";
 
 import { WebhookForwarder } from "../forwarder.js";
 import type { SecretManager } from "../secrets.js";
+import type { WebhookRouterConfigManager } from "../webhook-router-config.js";
+import { ALL_REGIONS } from "../webhook-router-config.js";
+import { createSlackVerificationMiddleware } from "./verification.js";
 
-export function createSlackRoutes(
+export function createSlackBotRoutes(
   secretManager: SecretManager,
-  slackVerification: RequestHandler
+  webhookRouterConfigManager: WebhookRouterConfigManager
 ) {
   const router = express.Router();
+  const slackVerification = createSlackVerificationMiddleware(secretManager, webhookRouterConfigManager, {
+    useClientCredentials: false,
+  });
 
   // Slack webhook endpoints with Slack verification only (webhook secret already validated)
   router.post("/events", slackVerification, async (req, res) => {
@@ -22,14 +27,24 @@ export function createSlackRoutes(
   return router;
 }
 
-function isUrlVerification(req: express.Request): boolean {
-  return (
-    req.body &&
-    typeof req.body === "object" &&
-    "type" in req.body &&
-    req.body.type === "url_verification" &&
-    "challenge" in req.body
-  );
+export function createSlackDataSyncRoutes(
+  secretManager: SecretManager,
+  webhookRouterConfigManager: WebhookRouterConfigManager
+) {
+  const router = express.Router();
+  const slackVerification = createSlackVerificationMiddleware(secretManager, webhookRouterConfigManager, {
+    useClientCredentials: true,
+  });
+
+  router.post("/events", slackVerification, async (req, res) => {
+    await handleSlackWebhook(req, res, "slack", secretManager);
+  });
+
+  router.post("/interactions", slackVerification, async (req, res) => {
+    await handleSlackWebhook(req, res, "slack_interaction", secretManager);
+  });
+
+  return router;
 }
 
 async function handleSlackWebhook(
@@ -39,16 +54,6 @@ async function handleSlackWebhook(
   secretManager: SecretManager
 ): Promise<void> {
   try {
-    // Handle Slack URL verification challenge.
-    if (isUrlVerification(req)) {
-      console.log("Handling URL verification challenge", {
-        component: "slack-routes",
-        endpoint,
-      });
-      res.status(200).json({ challenge: req.body.challenge });
-      return;
-    }
-
     // Respond immediately to Slack.
     res.status(200).send();
 
@@ -61,6 +66,7 @@ async function handleSlackWebhook(
       endpoint,
       headers: req.headers,
       method: req.method,
+      regions: req.regions ?? ALL_REGIONS,
     });
   } catch (error) {
     console.error("Slack webhook router error", {

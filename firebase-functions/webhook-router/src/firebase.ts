@@ -64,7 +64,7 @@ export const webhookRouter = onRequest(
   },
   async (req, res) => {
     // Firebase automatically provides req.rawBody for signature verification.
-    const app = await createApp();
+    const app = await createApp(firebaseApp);
     app(req, res);
   }
 );

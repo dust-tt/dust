@@ -112,6 +112,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "OpenAI tool for tracking API consumption and costs",
     stage: "on_demand",
   },
+  ppul: {
+    description:
+      "Enable the API & Programmatic section in the admin panel with credits purchase flow, usage metrics, and cost charts",
+    stage: "dust_only",
+  },
   salesforce_synced_queries: {
     description: "Salesforce Connection: retrieval on Synchronized queries",
     stage: "on_demand",
@@ -232,11 +237,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   notifications: {
     description: "Enable notifications",
-    stage: "dust_only",
-  },
-  ppul: {
-    description:
-      "Enable the API & Programmatic section in the admin panel with credits purchase flow, usage metrics, and cost charts",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;

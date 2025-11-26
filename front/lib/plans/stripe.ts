@@ -705,23 +705,39 @@ export async function makeCreditPurchaseInvoice({
   }
 }
 
-export async function finalizeCreditPurchaseInvoice(
+export async function finalizeAndPayCreditPurchaseInvoice(
   invoice: Stripe.Invoice
-): Promise<Result<undefined, { error_message: string }>> {
+): Promise<Result<{ paymentUrl: string | null }, { error_message: string }>> {
   const stripe = getStripeClient();
+  const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
+
+  // Attempt to pay the invoice.
   try {
-    await stripe.invoices.finalizeInvoice(invoice.id);
-    return new Ok(undefined);
-  } catch (error) {
-    logger.error(
+    const paidInvoice = await stripe.invoices.pay(finalizedInvoice.id);
+
+    if (paidInvoice.status === "paid") {
+      return new Ok({ paymentUrl: null });
+    }
+  } catch (payError) {
+    // Payment failed or requires action (e.g., 3D Secure).
+    // We'll return the hosted invoice URL for the customer to complete payment.
+    logger.info(
       {
         stripeInvoiceId: invoice.id,
-        stripeError: true,
+        error: normalizeError(payError).message,
       },
-      "[Credit Purchase] Failed to create Stripe invoice"
+      "[Credit Purchase] Payment requires additional action or failed"
     );
-    return new Err({
-      error_message: `Failed to finalize invoice credit purchase: ${normalizeError(error).message}`,
-    });
   }
+
+  // Payment not completed - return hosted URL for customer to complete.
+  const invoiceWithUrl = await stripe.invoices.retrieve(finalizedInvoice.id);
+  if (invoiceWithUrl.hosted_invoice_url) {
+    return new Ok({ paymentUrl: invoiceWithUrl.hosted_invoice_url });
+  }
+
+  return new Err({
+    error_message:
+      "Invoice created but payment could not be processed. Please contact support.",
+  });
 }

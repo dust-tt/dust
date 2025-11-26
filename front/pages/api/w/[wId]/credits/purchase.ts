@@ -26,6 +26,7 @@ type PostCreditPurchaseResponseBody = {
   success: boolean;
   creditsAdded: number;
   invoiceId: string | null;
+  paymentUrl: string | null;
 };
 
 async function handler(
@@ -144,6 +145,7 @@ async function handler(
           success: true,
           creditsAdded: amountCents,
           invoiceId: null,
+          paymentUrl: null,
         });
       }
       const result = await createProCreditPurchase({
@@ -166,6 +168,7 @@ async function handler(
         success: true,
         creditsAdded: amountCents,
         invoiceId: result.value.invoiceId,
+        paymentUrl: result.value.paymentUrl,
       });
     }
 
