@@ -47,13 +47,12 @@ function isExpired(credit: CreditDisplayData): boolean {
   return credit.expirationDate !== null && credit.expirationDate <= now;
 }
 
-function CreditsSummary({
-  credits,
-  isLoading,
-}: {
+interface CreditsSummaryProps {
   credits: CreditDisplayData[];
   isLoading: boolean;
-}) {
+}
+
+function CreditsSummary({ credits, isLoading }: CreditsSummaryProps) {
   const { totalRemaining, nextExpiration } = useMemo(() => {
     const activeCredits = credits.filter((c) => !isExpired(c));
 
