@@ -71,10 +71,12 @@ const _addWebhookRouterEntryHandler = async (
       });
     }
   } else if (provider === "slack") {
-    // Make sure providerWorkspaceId is a valid Slack team id
+    // Make sure providerWorkspaceId is a valid Slack team id. Technically, this should
+    // only check connectors of type slack and not slack_bot, but this check is just
+    // a sanity, as the caller in Frontend should only call this for valid Slack teams.
     const slackConfig =
-      await SlackConfigurationResource.fetchByTeamId(providerWorkspaceId);
-    if (!slackConfig) {
+      await SlackConfigurationResource.listForTeamId(providerWorkspaceId);
+    if (slackConfig.length === 0) {
       logger.info(
         { slackTeamId: providerWorkspaceId },
         "Received request to add webhook router entry for unknown Slack team"
