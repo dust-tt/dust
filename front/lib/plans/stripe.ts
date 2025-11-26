@@ -46,6 +46,13 @@ export function getCreditPurchasePriceId() {
   return isDevelopment() ? devCreditPurchasePriceId : prodCreditPurchasePriceId;
 }
 
+export function getPAYGCreditPriceId() {
+  const devPAYGPriceId = "price_DUMMY_DEV_PAYG";
+  const prodPAYGPriceId = "price_DUMMY_PROD_PAYG";
+
+  return isDevelopment() ? devPAYGPriceId : prodPAYGPriceId;
+}
+
 export const getStripeClient = () => {
   return new Stripe(config.getStripeSecretKey(), {
     apiVersion: "2023-10-16",
@@ -822,4 +829,86 @@ export async function finalizeAndPayCreditPurchaseInvoice(
     error_message:
       "Invoice created but payment could not be processed. Please contact support.",
   });
+}
+
+export async function makeCreditsPAYGInvoice({
+  stripeSubscription,
+  amountCents,
+  periodStartSeconds,
+  periodEndSeconds,
+  idempotencyKey,
+}: {
+  stripeSubscription: Stripe.Subscription;
+  amountCents: number;
+  periodStartSeconds: number;
+  periodEndSeconds: number;
+  idempotencyKey: string;
+}): Promise<
+  Result<
+    Stripe.Invoice,
+    { error_type: "idempotency" | "other"; error_message: string }
+  >
+> {
+  const stripe = getStripeClient();
+  const customerId = getCustomerId(stripeSubscription);
+
+  const periodStartDate = new Date(periodStartSeconds * 1000);
+  const periodEndDate = new Date(periodEndSeconds * 1000);
+  const amountDollars = amountCents / 100;
+
+  const invoiceParams: Stripe.InvoiceCreateParams = {
+    customer: customerId,
+    subscription: stripeSubscription.id,
+    collection_method: "send_invoice",
+    metadata: {
+      credits_payg: "true",
+      arrears_invoice: "true",
+      credits_amount_cents: amountCents.toString(),
+      credits_period_start: periodStartSeconds.toString(),
+      credits_period_end: periodEndSeconds.toString(),
+    },
+    auto_advance: true,
+  };
+
+  try {
+    const invoice = await stripe.invoices.create(invoiceParams, {
+      idempotencyKey,
+    });
+
+    await stripe.invoiceItems.create({
+      customer: customerId,
+      price: getPAYGCreditPriceId(),
+      quantity: amountCents,
+      description: `Pay-as-you-go programmatic usage from ${periodStartDate.toISOString().split("T")[0]} to ${periodEndDate.toISOString().split("T")[0]}: $${amountDollars.toFixed(2)}`,
+      invoice: invoice.id,
+    });
+
+    await stripe.invoices.finalizeInvoice(invoice.id);
+
+    return new Ok(invoice);
+  } catch (error) {
+    const isIdempotencyError =
+      error instanceof Stripe.errors.StripeError &&
+      error.code === "idempotency_key_in_use";
+
+    if (isIdempotencyError) {
+      return new Err({
+        error_type: "idempotency",
+        error_message: `Idempotency key already used: ${idempotencyKey}`,
+      });
+    }
+
+    logger.error(
+      {
+        panic: true,
+        stripeSubscriptionId: stripeSubscription.id,
+        stripeError: true,
+      },
+      "[Credit PAYG] Failed to create Stripe invoice"
+    );
+    return new Err({
+      error_type: "other",
+      error_message: `Failed to create PAYG invoice: ${normalizeError(error).message}`,
+    });
+  }
 }

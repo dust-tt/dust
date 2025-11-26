@@ -11,6 +11,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { CreditModel } from "@app/lib/resources/storage/models/credits";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok, removeNulls } from "@app/types";
@@ -29,6 +30,10 @@ export class CreditResource extends BaseResource<CreditModel> {
 
   constructor(_model: ModelStatic<CreditModel>, blob: Attributes<CreditModel>) {
     super(CreditModel, blob);
+  }
+
+  get sId(): string {
+    return makeSId("credit", { id: this.id, workspaceId: this.workspaceId });
   }
 
   // Create a new credit line for a workspace.
@@ -150,6 +155,22 @@ export class CreditResource extends BaseResource<CreditModel> {
     const [row] = await this.baseFetch(auth, {
       where: {
         invoiceOrLineItemId,
+      },
+    });
+    return row ?? null;
+  }
+
+  static async fetchByTypeAndDates(
+    auth: Authenticator,
+    type: (typeof CREDIT_TYPES)[number],
+    startDate: Date,
+    expirationDate: Date
+  ) {
+    const [row] = await this.baseFetch(auth, {
+      where: {
+        type,
+        startDate,
+        expirationDate,
       },
     });
     return row ?? null;
