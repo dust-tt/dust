@@ -93,7 +93,7 @@ RUN FRONT_DATABASE_URI="sqlite:foo.sqlite" npm run build:temporal-bundles
 RUN npm run build:workers
 
 # Frontend image (Next.js standalone) for front deployment
-FROM node:20.19.2-slim AS front
+FROM node:20.19.2 AS front
 
 RUN apt-get update && \
   apt-get install -y redis-tools postgresql-client libjemalloc2 && \
@@ -108,6 +108,12 @@ COPY --from=front-nextjs-build /app/public ./public
 # Copy built SDK from base dependencies (maintain absolute path for symlink resolution)
 COPY --from=base-deps /sdks /sdks
 
+# Re-declare build arg needed at runtime
+ARG NEXT_PUBLIC_DUST_CLIENT_FACING_URL
+
+# Set as environment variable for runtime
+ENV NEXT_PUBLIC_DUST_CLIENT_FACING_URL=$NEXT_PUBLIC_DUST_CLIENT_FACING_URL
+
 # Preload jemalloc for all processes:
 ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
 
@@ -118,7 +124,7 @@ ENV DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
 CMD ["node", "server.js"]
 
 # Workers image (Full Node.js environment) for front-workers deployment
-FROM node:20.19.2-slim AS workers
+FROM node:20.19.2 AS workers
 
 RUN apt-get update && \
   apt-get install -y redis-tools postgresql-client libjemalloc2 && \
