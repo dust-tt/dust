@@ -1,6 +1,6 @@
 import type { Database } from "firebase-admin/database";
 
-export const ALL_REGIONS = ["US", "EU"] as const;
+export const ALL_REGIONS = ["us-central1", "europe-west1"] as const;
 export type Region = (typeof ALL_REGIONS)[number];
 
 type ProviderWithSigningSecret = "slack" | "notion";

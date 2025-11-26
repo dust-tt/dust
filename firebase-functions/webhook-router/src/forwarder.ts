@@ -24,12 +24,12 @@ export class WebhookForwarder {
   }): Promise<PromiseSettledResult<Response>[]> {
     const targets: WebhookTarget[] = [
       {
-        region: "US",
+        region: "us-central1",
         url: CONFIG.US_CONNECTOR_URL,
         secret: this.secrets.usSecret,
       },
       {
-        region: "EU",
+        region: "europe-west1",
         url: CONFIG.EU_CONNECTOR_URL,
         secret: this.secrets.euSecret,
       },
