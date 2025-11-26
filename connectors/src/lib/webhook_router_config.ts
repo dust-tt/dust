@@ -13,7 +13,7 @@ export interface WebhookRouterEntry {
 
 export interface WebhookRouterConfig {
   [provider: string]: {
-    [appId: string]: WebhookRouterEntry;
+    [providerWorkspaceId: string]: WebhookRouterEntry;
   };
 }
 
@@ -23,10 +23,10 @@ export interface WebhookRouterConfig {
 export class WebhookRouterEntryNotFoundError extends Error {
   constructor(
     public readonly provider: string,
-    public readonly appId: string
+    public readonly providerWorkspaceId: string
   ) {
     super(
-      `Webhook router entry not found for provider '${provider}' and appId '${appId}'`
+      `Webhook router entry not found for provider '${provider}' and providerWorkspaceId '${providerWorkspaceId}'`
     );
     this.name = "WebhookRouterEntryNotFoundError";
   }
@@ -186,7 +186,7 @@ export class WebhookRouterConfigService {
    * @param operation - Function that takes config and generation, modifies config, and returns it
    * @param operationName - Name of the operation for logging (e.g., "add", "delete")
    * @param provider - The provider name for logging
-   * @param appId - The application/team ID for logging
+   * @param providerWorkspaceId - The provider workspace/team ID for logging
    * @param maxRetries - Maximum number of retries on concurrent modification (default: 5)
    */
   private async executeWithRetry(
@@ -196,7 +196,7 @@ export class WebhookRouterConfigService {
     ) => Promise<WebhookRouterConfig>,
     operationName: string,
     provider: string,
-    appId: string,
+    providerWorkspaceId: string,
     maxRetries: number = 5
   ): Promise<void> {
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -211,7 +211,7 @@ export class WebhookRouterConfigService {
         await this.writeConfig(updatedConfig, generation);
 
         logger.info(
-          { provider, appId },
+          { provider, providerWorkspaceId },
           `Successfully ${operationName} webhook router entry`
         );
         return;
@@ -221,7 +221,12 @@ export class WebhookRouterConfigService {
           attempt < maxRetries
         ) {
           logger.info(
-            { provider, appId, attempt: attempt + 1, maxRetries },
+            {
+              provider,
+              providerWorkspaceId,
+              attempt: attempt + 1,
+              maxRetries,
+            },
             `Retrying ${operationName} operation due to concurrent modification`
           );
           // Brief exponential backoff before retry
@@ -243,13 +248,13 @@ export class WebhookRouterConfigService {
    * Add or update a webhook router entry with retry logic for concurrent modifications.
    *
    * @param provider - The provider name (e.g., "slack", "notion")
-   * @param appId - The application/team ID
+   * @param providerWorkspaceId - The provider workspace/team ID
    * @param entry - The entry configuration
    * @param maxRetries - Maximum number of retries on concurrent modification (default: 5)
    */
   async addEntry(
     provider: string,
-    appId: string,
+    providerWorkspaceId: string,
     entry: WebhookRouterEntry,
     maxRetries: number = 5
   ): Promise<void> {
@@ -259,12 +264,12 @@ export class WebhookRouterConfigService {
         if (!config[provider]) {
           config[provider] = {};
         }
-        config[provider]![appId] = entry;
+        config[provider]![providerWorkspaceId] = entry;
         return config;
       },
       "add",
       provider,
-      appId,
+      providerWorkspaceId,
       maxRetries
     );
   }
@@ -273,23 +278,26 @@ export class WebhookRouterConfigService {
    * Delete a webhook router entry with retry logic for concurrent modifications.
    *
    * @param provider - The provider name
-   * @param appId - The application/team ID
+   * @param providerWorkspaceId - The provider workspace/team ID
    * @param maxRetries - Maximum number of retries on concurrent modification (default: 5)
    */
   async deleteEntry(
     provider: string,
-    appId: string,
+    providerWorkspaceId: string,
     maxRetries: number = 5
   ): Promise<void> {
     return this.executeWithRetry(
       async (config) => {
         // Check if entry exists
-        if (!config[provider] || !config[provider]?.[appId]) {
-          throw new WebhookRouterEntryNotFoundError(provider, appId);
+        if (!config[provider] || !config[provider]?.[providerWorkspaceId]) {
+          throw new WebhookRouterEntryNotFoundError(
+            provider,
+            providerWorkspaceId
+          );
         }
 
         // Delete the entry
-        delete config[provider]![appId];
+        delete config[provider]![providerWorkspaceId];
 
         // Clean up empty provider object
         if (Object.keys(config[provider]!).length === 0) {
@@ -300,7 +308,7 @@ export class WebhookRouterConfigService {
       },
       "delete",
       provider,
-      appId,
+      providerWorkspaceId,
       maxRetries
     );
   }

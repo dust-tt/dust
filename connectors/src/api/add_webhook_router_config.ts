@@ -5,10 +5,7 @@ import * as reporter from "io-ts-reporters";
 
 import { connectorsConfig } from "@connectors/connectors/shared/config";
 import { NotionConnectorState } from "@connectors/lib/models/notion";
-import {
-  WebhookRouterConfigService,
-  WebhookRouterEntryNotFoundError,
-} from "@connectors/lib/webhook_router_config";
+import { WebhookRouterConfigService } from "@connectors/lib/webhook_router_config";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
@@ -37,59 +34,7 @@ type AddWebhookRouterEntryReqBody = t.TypeOf<
 >;
 
 /**
- * Wrapper for webhook router operations that handles errors and logging.
- */
-async function executeWebhookRouterOperation(
-  req: Request<WebhookRouterEntryParams>,
-  res: Response<WebhookRouterEntryResBody>,
-  operation: () => Promise<void>,
-  operationName: string
-): Promise<Response<WebhookRouterEntryResBody> | void> {
-  const { provider, providerWorkspaceId: appId } = req.params;
-
-  try {
-    await operation();
-
-    logger.info(
-      { provider, appId },
-      `${operationName} webhook router entry operation was successful`
-    );
-
-    return res.status(200).json({
-      success: true,
-    });
-  } catch (error) {
-    logger.error(
-      { error, provider, appId },
-      `Failed to ${operationName} webhook router entry`
-    );
-
-    // Check if it's a not found error
-    if (error instanceof WebhookRouterEntryNotFoundError) {
-      return apiError(req, res, {
-        status_code: 404,
-        api_error: {
-          type: "not_found",
-          message: error.message,
-        },
-      });
-    }
-
-    return apiError(req, res, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message:
-          error instanceof Error
-            ? error.message
-            : `Failed to ${operationName} webhook router entry`,
-      },
-    });
-  }
-}
-
-/**
- * POST /webhooks/router_entries/:provider/:appId
+ * POST /webhooks/router_entries/:provider/:providerWorkspaceId
  * Add or update a webhook router configuration entry.
  */
 const _addWebhookRouterEntryHandler = async (
@@ -167,18 +112,38 @@ const _addWebhookRouterEntryHandler = async (
   const { signing_secret, regions: bodyRegions } = bodyValidation.right;
   const regions = bodyRegions ?? [connectorsConfig.getCurrentShortRegion()];
 
-  return executeWebhookRouterOperation(
-    req,
-    res,
-    async () => {
-      const service = new WebhookRouterConfigService();
-      await service.addEntry(provider, providerWorkspaceId, {
-        signing_secret,
-        regions,
-      });
-    },
-    "add"
-  );
+  try {
+    const service = new WebhookRouterConfigService();
+    await service.addEntry(provider, providerWorkspaceId, {
+      signing_secret,
+      regions,
+    });
+
+    logger.info(
+      { provider, providerWorkspaceId },
+      "Successfully added webhook router entry"
+    );
+
+    return res.status(200).json({
+      success: true,
+    });
+  } catch (error) {
+    logger.error(
+      { error, provider, providerWorkspaceId },
+      "Failed to add webhook router entry"
+    );
+
+    return apiError(req, res, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to add webhook router entry",
+      },
+    });
+  }
 };
 
 export const addWebhookRouterEntryHandler = withLogging(

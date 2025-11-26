@@ -10,7 +10,7 @@ import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
 
 type WebhookRouterEntryParams = {
   provider: "slack" | "notion";
-  appId: string;
+  providerWorkspaceId: string;
 };
 
 type WebhookRouterEntryResBody = WithConnectorsAPIErrorReponse<{
@@ -18,22 +18,22 @@ type WebhookRouterEntryResBody = WithConnectorsAPIErrorReponse<{
 }>;
 
 /**
- * Wrapper for webhook router operations that handles errors and logging.
+ * DELETE /webhooks/router_entries/:provider/:providerWorkspaceId
+ * Delete a webhook router configuration entry.
  */
-async function executeWebhookRouterOperation(
-  req: Request<WebhookRouterEntryParams>,
-  res: Response<WebhookRouterEntryResBody>,
-  operation: () => Promise<void>,
-  operationName: string
-): Promise<Response<WebhookRouterEntryResBody> | void> {
-  const { provider, appId } = req.params;
+const _deleteWebhookRouterEntryHandler = async (
+  req: Request<WebhookRouterEntryParams, WebhookRouterEntryResBody, never>,
+  res: Response<WebhookRouterEntryResBody>
+) => {
+  const { provider, providerWorkspaceId } = req.params;
 
   try {
-    await operation();
+    const service = new WebhookRouterConfigService();
+    await service.deleteEntry(provider, providerWorkspaceId);
 
     logger.info(
-      { provider, appId },
-      `${operationName} webhook router entry operation was successful`
+      { provider, providerWorkspaceId },
+      "Successfully deleted webhook router entry"
     );
 
     return res.status(200).json({
@@ -41,8 +41,8 @@ async function executeWebhookRouterOperation(
     });
   } catch (error) {
     logger.error(
-      { error, provider, appId },
-      `Failed to ${operationName} webhook router entry`
+      { error, provider, providerWorkspaceId },
+      "Failed to delete webhook router entry"
     );
 
     // Check if it's a not found error
@@ -63,31 +63,10 @@ async function executeWebhookRouterOperation(
         message:
           error instanceof Error
             ? error.message
-            : `Failed to ${operationName} webhook router entry`,
+            : "Failed to delete webhook router entry",
       },
     });
   }
-}
-
-/**
- * DELETE /webhooks/router_entries/:provider/:appId
- * Delete a webhook router configuration entry.
- */
-const _deleteWebhookRouterEntryHandler = async (
-  req: Request<WebhookRouterEntryParams, WebhookRouterEntryResBody, never>,
-  res: Response<WebhookRouterEntryResBody>
-) => {
-  const { provider, appId } = req.params;
-
-  return executeWebhookRouterOperation(
-    req,
-    res,
-    async () => {
-      const service = new WebhookRouterConfigService();
-      await service.deleteEntry(provider, appId);
-    },
-    "delete"
-  );
 };
 
 export const deleteWebhookRouterEntryHandler = withLogging(
