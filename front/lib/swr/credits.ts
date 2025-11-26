@@ -125,6 +125,14 @@ export function usePurchaseCredits({ workspaceId }: { workspaceId: string }) {
           return false;
         }
 
+        const responseData = await response.json();
+
+        // If payment requires additional action, redirect to Stripe's hosted invoice page.
+        if (responseData.paymentUrl) {
+          window.location.href = responseData.paymentUrl;
+          return true;
+        }
+
         resetPostPurchaseRefreshCount(workspaceId);
 
         sendNotification({
