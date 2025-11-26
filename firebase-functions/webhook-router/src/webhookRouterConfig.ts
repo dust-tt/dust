@@ -10,6 +10,27 @@ type WebhookRouterConfigEntry = {
   regions: Region[];
 };
 
+/**
+ * Type guard to validate webhook router configuration entries.
+ *
+ * Example valid object:
+ * {
+ *   signingSecret: "abc123def456",
+ *   regions: ["US", "EU"]
+ * }
+ */
+function isValidWebhookRouterConfigEntry(value: unknown): value is WebhookRouterConfigEntry {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    "signingSecret" in value &&
+    typeof value.signingSecret === "string" &&
+    "regions" in value &&
+    Array.isArray(value.regions) &&
+    value.regions.every((region: unknown) => typeof region === "string" && ALL_REGIONS.includes(region as Region))
+  );
+}
+
 export class WebhookRouterConfigManager {
   constructor(private client: Database) {}
 
@@ -20,14 +41,7 @@ export class WebhookRouterConfigManager {
     }
 
     const configEntry = configSnapshot.val();
-    if (
-      !(
-        configEntry &&
-        typeof configEntry.signingSecret === "string" &&
-        Array.isArray(configEntry.regions) &&
-        configEntry.regions.every((region: Region) => ALL_REGIONS.includes(region))
-      )
-    ) {
+    if (!isValidWebhookRouterConfigEntry(configEntry)) {
       throw new Error(`Invalid ${provider} webhook router configuration found for appId ${appId}`);
     }
 
