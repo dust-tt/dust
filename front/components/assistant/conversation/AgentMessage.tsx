@@ -693,7 +693,6 @@ function AgentMessageContent({
     [
       owner,
       conversationId,
-      isLastMessage,
       sId,
       agentConfiguration.sId,
       onQuickReplySend,
