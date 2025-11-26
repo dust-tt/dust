@@ -116,6 +116,7 @@ type BlockedActionsContextType = {
   hasBlockedActions: boolean;
   hasPendingValidations: boolean;
   totalBlockedActions: number;
+  mutateBlockedActions: () => void;
 };
 
 const BlockedActionsContext = createContext<
@@ -147,7 +148,7 @@ export function BlockedActionsProvider({
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const conversationId = conversation?.sId || null;
 
-  const { blockedActions } = useBlockedActions({
+  const { blockedActions, mutate: mutateBlockedActions } = useBlockedActions({
     conversationId,
     workspaceId: owner.sId,
   });
@@ -318,6 +319,7 @@ export function BlockedActionsProvider({
       value={{
         showBlockedActionsDialog,
         enqueueBlockedAction,
+        mutateBlockedActions,
         hasBlockedActions: blockedActionsQueue.length > 0,
         hasPendingValidations: pendingValidations.length > 0,
         totalBlockedActions: blockedActionsQueue.length,

@@ -600,6 +600,7 @@ function AgentMessageContent({
     VirtuosoMessage,
     VirtuosoMessageListContext
   >();
+  const { mutateBlockedActions } = useBlockedActionsContext();
   const agentMessage = messageStreamState.message;
   const { sId, configuration: agentConfiguration } = agentMessage;
 
@@ -725,6 +726,7 @@ function AgentMessageContent({
   if (agentMessage.status === "failed") {
     const { error } = agentMessage;
     if (isPersonalAuthenticationRequiredErrorContent(error)) {
+      void mutateBlockedActions();
       return (
         <MCPServerPersonalAuthenticationRequired
           owner={owner}
