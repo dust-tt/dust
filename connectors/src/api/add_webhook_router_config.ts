@@ -23,16 +23,9 @@ type WebhookRouterEntryResBody = WithConnectorsAPIErrorReponse<{
   success: boolean;
 }>;
 
-const AddWebhookRouterEntryBodySchema = t.intersection([
-  t.type({
-    signing_secret: t.string,
-  }),
-  t.partial({
-    regions: t.array(
-      t.union([t.literal("us-central1"), t.literal("europe-west1")])
-    ),
-  }),
-]);
+const AddWebhookRouterEntryBodySchema = t.type({
+  signing_secret: t.string,
+});
 
 type AddWebhookRouterEntryReqBody = t.TypeOf<
   typeof AddWebhookRouterEntryBodySchema
@@ -117,9 +110,8 @@ const _addWebhookRouterEntryHandler = async (
     });
   }
 
-  // If no regions are specified, default to the current region
-  const { signing_secret, regions: bodyRegions } = bodyValidation.right;
-  const regions = bodyRegions ?? [connectorsConfig.getCurrentRegion()];
+  const { signing_secret } = bodyValidation.right;
+  const regions = [connectorsConfig.getCurrentRegion()];
 
   try {
     const service = new WebhookRouterConfigService();
