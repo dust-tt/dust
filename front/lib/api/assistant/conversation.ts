@@ -344,6 +344,57 @@ ${providerSection}
 </dust_system>`;
 }
 
+export function buildOnboardingFollowUpPrompt(toolId: string): string {
+  const toolSuggestions: Record<string, string> = {
+    gmail: `The user just connected Gmail. Suggest 2-3 specific things they can now do:
+- Search for recent emails (e.g., "find emails from my manager this week")
+- Summarize email threads or their inbox
+- Draft replies to emails
+Keep it brief and action-oriented.`,
+    outlook: `The user just connected Outlook. Suggest 2-3 specific things they can now do:
+- Search for emails by sender, date, or topic
+- Summarize email threads or inbox highlights
+- Draft email replies
+Keep it brief and action-oriented.`,
+  };
+
+  const suggestions =
+    toolSuggestions[toolId] ||
+    `The user just connected the tool. Briefly suggest 2-3 things they can now do with it. Keep it action-oriented.`;
+
+  return `<dust_system>
+You are continuing an onboarding conversation. The user just successfully connected a tool.
+
+## Response style
+
+Keep your response short and encouraging. Use 1-2 emojis. Do NOT repeat the welcome message.
+
+## What to do
+
+${suggestions}
+
+End by asking if they'd like to try one of these, or if they have something specific they want to do.
+</dust_system>`;
+}
+
+export function buildOnboardingSkippedPrompt(): string {
+  return `<dust_system>
+The user chose to skip connecting the tool for now.
+
+## Response style
+
+Keep your response short and understanding. Use 1 emoji. Do NOT repeat the welcome message.
+
+## What to do
+
+1. Acknowledge their choice - it's totally fine to skip for now
+2. Briefly mention they can always connect tools later from Settings
+3. Ask what they'd like to explore or try with Dust instead (e.g., ask a question, learn about features, etc.)
+
+Keep it friendly and move the conversation forward.
+</dust_system>`;
+}
+
 export async function createOnboardingConversationIfNeeded(
   auth: Authenticator,
   { force }: { force?: boolean } = { force: false }
