@@ -942,62 +942,214 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   /**
    * This function retrieves the latest version of each message for the current page,
    * because there's no easy way to fetch only the latest version of a message.
+   * Content fragment messages are not counted toward the limit.
    */
   private async getMaxRankMessages(
     auth: Authenticator,
     paginationParams: PaginationParams
-  ): Promise<ModelId[]> {
+  ): Promise<{
+    allMessageIds: ModelId[];
+    nonContentFragmentMessageIds: ModelId[];
+    hasMore: boolean;
+  }> {
     const { limit, orderColumn, orderDirection, lastValue } = paginationParams;
 
-    const where: WhereOptions<Message> = {
-      conversationId: this.id,
-      workspaceId: auth.getNonNullableWorkspace().id,
-    };
+    const allMessageIds: ModelId[] = [];
+    const nonContentFragmentMessageIds: ModelId[] = [];
+    const messageIdToRank = new Map<ModelId, number>();
+    const cfMessageIds = new Set<ModelId>();
+    let nonContentFragmentCount = 0;
+    const targetNonContentFragmentCount = limit + 1;
+    let currentLastValue = lastValue;
+    let batchSize = Math.min(limit * 3, 300);
 
-    if (lastValue) {
-      const op = orderDirection === "desc" ? Op.lt : Op.gt;
-
-      where[orderColumn as any] = {
-        [op]: lastValue,
+    // Keep fetching batches until we have limit + 1 non-content-fragment messages
+    // or we've processed all messages
+    while (nonContentFragmentCount < targetNonContentFragmentCount) {
+      const where: WhereOptions<Message> = {
+        conversationId: this.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
       };
+
+      if (currentLastValue) {
+        const op = orderDirection === "desc" ? Op.lt : Op.gt;
+        where[orderColumn as any] = {
+          [op]: currentLastValue,
+        };
+      }
+
+      const messages = await Message.findAll({
+        attributes: [
+          [Sequelize.fn("MAX", Sequelize.col("version")), "maxVersion"],
+          [Sequelize.fn("MAX", Sequelize.col("id")), "id"],
+          [
+            Sequelize.fn("MAX", Sequelize.col("contentFragmentId")),
+            "contentFragmentId",
+          ],
+          [Sequelize.fn("MAX", Sequelize.col("rank")), "rank"],
+        ],
+        where,
+        group: ["rank"],
+        order: [[orderColumn, orderDirection === "desc" ? "DESC" : "ASC"]],
+        limit: batchSize,
+      });
+
+      // If no more messages, break
+      if (messages.length === 0) {
+        break;
+      }
+
+      // Process messages: include content fragments only if they come before an included non-CF message
+      // + up to limit + 1 non-content-fragment messages
+      let lastIncludedNonCfRank: number | null = null;
+
+      for (const message of messages) {
+        const isContentFragment = message.contentFragmentId !== null;
+        const messageRank = (message as any).rank;
+
+        // Track rank for all messages we process
+        messageIdToRank.set(message.id, messageRank);
+
+        if (isContentFragment) {
+          // Track CF IDs
+          cfMessageIds.add(message.id);
+          // Only include content fragments that come before the last included non-CF message
+          // This ensures CFs are bundled with their associated user/agent messages
+          if (lastIncludedNonCfRank !== null) {
+            // Check if this CF comes before the last included non-CF message
+            const comesBefore =
+              orderDirection === "desc"
+                ? messageRank < lastIncludedNonCfRank
+                : messageRank > lastIncludedNonCfRank;
+            if (comesBefore) {
+              allMessageIds.push(message.id);
+            }
+          } else {
+            // If lastIncludedNonCfRank is null, we haven't included any non-CF messages yet,
+            // so include CFs as we encounter them (they'll be before the first non-CF we include)
+            allMessageIds.push(message.id);
+          }
+        } else {
+          // Include non-content-fragment messages up to limit + 1
+          if (nonContentFragmentCount < targetNonContentFragmentCount) {
+            allMessageIds.push(message.id);
+            nonContentFragmentMessageIds.push(message.id);
+            nonContentFragmentCount++;
+            lastIncludedNonCfRank = messageRank;
+          } else {
+            // We've reached our target, stop processing
+            break;
+          }
+        }
+
+        // Update currentLastValue to the last processed message's rank
+        currentLastValue = messageRank;
+      }
+
+      // If we've reached our target, stop fetching
+      if (nonContentFragmentCount >= targetNonContentFragmentCount) {
+        break;
+      }
+
+      // If we got fewer messages than requested, we've reached the end
+      if (messages.length < batchSize) {
+        break;
+      }
+
+      // Check if the last message was a content fragment
+      // If so, we need to fetch more to see if there are more non-CF messages
+      const lastMessage = messages[messages.length - 1];
+      if (
+        lastMessage.contentFragmentId !== null &&
+        nonContentFragmentCount < targetNonContentFragmentCount
+      ) {
+        // Last message is a CF and we haven't reached our target, continue fetching
+        // Increase batch size for next iteration if needed
+        batchSize = Math.min(batchSize * 2, 300);
+      } else {
+        // Last message is not a CF, or we've reached our target, we're done
+        break;
+      }
     }
 
-    // Retrieve the latest version and corresponding Id of each message for the current page,
-    // grouped by rank and limited to the desired page size plus one to detect the presence of a next page.
-    const messages = await Message.findAll({
-      attributes: [
-        [Sequelize.fn("MAX", Sequelize.col("version")), "maxVersion"],
-        [Sequelize.fn("MAX", Sequelize.col("id")), "id"],
-      ],
-      where,
-      group: ["rank"],
-      order: [[orderColumn, orderDirection === "desc" ? "DESC" : "ASC"]],
-      limit: limit + 1,
-    });
+    // Determine hasMore: true if we got limit + 1 non-content-fragment messages
+    const hasMore = nonContentFragmentMessageIds.length > limit;
 
-    return messages.map((m) => m.id);
+    // If we have more than limit non-content-fragment messages, remove the extra one(s)
+    // and slice nonContentFragmentMessageIds to limit
+    let finalAllMessageIds = allMessageIds;
+    let finalNonContentFragmentMessageIds = nonContentFragmentMessageIds;
+
+    if (hasMore) {
+      // Keep only the first 'limit' non-content-fragment messages
+      finalNonContentFragmentMessageIds = nonContentFragmentMessageIds.slice(
+        0,
+        limit
+      );
+      const extraNonCfIds = new Set(nonContentFragmentMessageIds.slice(limit));
+      // Remove extra non-CF messages from allMessageIds
+      finalAllMessageIds = allMessageIds.filter((id) => !extraNonCfIds.has(id));
+
+      // Also need to remove any CFs that come after the last included non-CF message
+      if (finalNonContentFragmentMessageIds.length > 0) {
+        const lastIncludedNonCfId =
+          finalNonContentFragmentMessageIds[
+            finalNonContentFragmentMessageIds.length - 1
+          ];
+        const lastIncludedNonCfRank = messageIdToRank.get(lastIncludedNonCfId);
+
+        if (lastIncludedNonCfRank !== undefined) {
+          // Filter out CFs that come after the last included non-CF message
+          const cfIdsToRemove = finalAllMessageIds.filter((id) => {
+            if (!cfMessageIds.has(id)) {
+              return false; // Not a CF, keep it
+            }
+            const cfRank = messageIdToRank.get(id);
+            if (cfRank === undefined) {
+              return false; // Shouldn't happen, but keep it to be safe
+            }
+            const comesAfter =
+              orderDirection === "desc"
+                ? cfRank < lastIncludedNonCfRank
+                : cfRank > lastIncludedNonCfRank;
+            return comesAfter;
+          });
+
+          if (cfIdsToRemove.length > 0) {
+            const cfIdsToRemoveSet = new Set(cfIdsToRemove);
+            finalAllMessageIds = finalAllMessageIds.filter(
+              (id) => !cfIdsToRemoveSet.has(id)
+            );
+          }
+        }
+      }
+    }
+
+    return {
+      allMessageIds: finalAllMessageIds,
+      nonContentFragmentMessageIds: finalNonContentFragmentMessageIds,
+      hasMore,
+    };
   }
 
   async fetchMessagesForPage(
     auth: Authenticator,
     paginationParams: PaginationParams
   ): Promise<{ hasMore: boolean; messages: Message[] }> {
-    const { orderColumn, orderDirection, limit } = paginationParams;
+    const { orderColumn, orderDirection } = paginationParams;
 
-    const messageIds = await this.getMaxRankMessages(auth, paginationParams);
+    const { allMessageIds, hasMore } = await this.getMaxRankMessages(
+      auth,
+      paginationParams
+    );
 
-    const hasMore = messageIds.length > limit;
-    const relevantMessageIds = hasMore
-      ? messageIds.slice(0, limit)
-      : messageIds;
-
-    // Then fetch all those messages and their associated resources.
+    // Fetch all messages (including content fragments and up to limit non-content-fragment messages)
     const messages = await Message.findAll({
       where: {
         conversationId: this.id,
         workspaceId: auth.getNonNullableWorkspace().id,
         id: {
-          [Op.in]: relevantMessageIds,
+          [Op.in]: allMessageIds,
         },
       },
       order: [[orderColumn, orderDirection === "desc" ? "DESC" : "ASC"]],

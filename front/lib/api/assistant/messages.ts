@@ -582,7 +582,6 @@ export async function fetchConversationMessages(
 
   const { hasMore, messages } = await conversation.fetchMessagesForPage(
     auth,
-
     paginationParams
   );
 
