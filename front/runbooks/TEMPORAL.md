@@ -40,7 +40,7 @@ temporal/your_queue/
 ├── helpers.ts         # Workflow ID generators
 ├── activities.ts      # Activity implementations (DB access, side effects)
 ├── workflows.ts       # Workflow orchestration
-├── worker.ts       i  # Worker setup
+├── worker.ts          # Worker setup
 └── client.ts          # Workflow launcher functions
 ```
 
