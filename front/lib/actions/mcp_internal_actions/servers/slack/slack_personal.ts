@@ -520,28 +520,17 @@ async function createServer(
                 refs,
                 {
                   permalink: (match) => match.permalink,
-                  text: (match) =>
-                    JSON.stringify(
-                      {
-                        from: {
-                          id: match.user_id,
-                          username: match.user_id
-                            ? userIdToName.get(match.user_id)
-                            : undefined,
-                        },
-                        channel: {
-                          id: match.channel_id,
-                          name: match.channel_id
-                            ? channelIdToName.get(match.channel_id)
-                            : undefined,
-                        },
-                        content: match.text,
-                        ts: match.ts,
-                        permalink: match.permalink,
-                      },
-                      null,
-                      2
-                    ),
+                  text: (match) => {
+                    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+                    const username = match.user_id
+                      ? userIdToName.get(match.user_id)
+                      : undefined;
+                    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+                    const channelName = match.channel_id
+                      ? channelIdToName.get(match.channel_id)
+                      : undefined;
+                    return `From ${username || "Unknown"} (${match.user_id || "unknown"}) in ${channelName || "#Unknown"} (${match.channel_id || "unknown"}):\n${match.text ?? ""}`;
+                  },
                   id: (match) => match.ts ?? "",
                   content: (match) => match.text ?? "",
                 }
@@ -643,6 +632,14 @@ async function createServer(
                   permalink: (match) => match.permalink,
                   text: (match) => {
                     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+                    const username = match.user_id
+                      ? userIdToName.get(match.user_id)
+                      : undefined;
+                    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+                    const channelName = match.channel_id
+                      ? channelIdToName.get(match.channel_id)
+                      : undefined;
+                    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                     let content = match.text || "";
 
                     // assistant.search.context wraps search words in \uE000 and \uE001.
@@ -653,31 +650,10 @@ async function createServer(
                     // Replace <@U050CALAKFD|someone> with just @someone.
                     content = content.replace(
                       /<@([A-Z0-9]+)\|([^>]+)>/g,
-                      (_m: string, _id: string, username: string) =>
-                        `@${username}`
+                      (_m, _id, username) => `@${username}`
                     );
 
-                    return JSON.stringify(
-                      {
-                        from: {
-                          id: match.user_id,
-                          username: match.user_id
-                            ? userIdToName.get(match.user_id)
-                            : undefined,
-                        },
-                        channel: {
-                          id: match.channel_id,
-                          name: match.channel_id
-                            ? channelIdToName.get(match.channel_id)
-                            : undefined,
-                        },
-                        content: content,
-                        ts: match.ts,
-                        permalink: match.permalink,
-                      },
-                      null,
-                      2
-                    );
+                    return `From ${username || "Unknown"} (${match.user_id || "unknown"}) in ${channelName || "#Unknown"} (${match.channel_id || "unknown"}):\n${content}`;
                   },
                   id: (match) => match.ts ?? "",
                   content: (match) => match.text ?? "",
