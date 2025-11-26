@@ -65,14 +65,13 @@ export class WebhookRouterConfigService {
   private storage: Storage;
   private bucketName: string;
 
-  constructor(bucketName?: string) {
+  constructor() {
     this.storage = new Storage({
       keyFilename: isDevelopment()
         ? connectorsConfig.getServiceAccount()
         : undefined,
     });
-    this.bucketName =
-      bucketName || connectorsConfig.getWebhookRouterConfigBucket();
+    this.bucketName = connectorsConfig.getWebhookRouterConfigBucket();
   }
 
   /**
