@@ -117,6 +117,19 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     );
   }
 
+  static async fetchByTeamId(slackTeamId: string) {
+    const blob = await this.model.findOne({
+      where: {
+        slackTeamId,
+      },
+    });
+    if (!blob) {
+      return null;
+    }
+
+    return new this(this.model, blob.get());
+  }
+
   static async findChannelWithAutoRespond(
     connectorId: ModelId,
     slackChannelId: string

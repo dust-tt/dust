@@ -259,7 +259,7 @@ export class WebhookRouterConfigService {
         if (!config[provider]) {
           config[provider] = {};
         }
-        config[provider][appId] = entry;
+        config[provider]![appId] = entry;
         return config;
       },
       "add",
@@ -285,16 +285,14 @@ export class WebhookRouterConfigService {
       async (config) => {
         // Check if entry exists
         if (!config[provider] || !config[provider]?.[appId]) {
-          throw new Error(
-            `Webhook router entry not found for provider '${provider}' and appId '${appId}'`
-          );
+          throw new WebhookRouterEntryNotFoundError(provider, appId);
         }
 
         // Delete the entry
-        delete config[provider][appId];
+        delete config[provider]![appId];
 
         // Clean up empty provider object
-        if (Object.keys(config[provider]).length === 0) {
+        if (Object.keys(config[provider]!).length === 0) {
           delete config[provider];
         }
 

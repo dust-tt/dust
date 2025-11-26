@@ -11,11 +11,12 @@ import {
 } from "@connectors/lib/webhook_router_config";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
+import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
 
 type WebhookRouterEntryParams = {
   provider: "slack" | "notion";
-  appId: string;
+  providerWorkspaceId: string;
 };
 
 type WebhookRouterEntryResBody = WithConnectorsAPIErrorReponse<{
@@ -44,7 +45,7 @@ async function executeWebhookRouterOperation(
   operation: () => Promise<void>,
   operationName: string
 ): Promise<Response<WebhookRouterEntryResBody> | void> {
-  const { provider, appId } = req.params;
+  const { provider, providerWorkspaceId: appId } = req.params;
 
   try {
     await operation();
@@ -99,31 +100,46 @@ const _addWebhookRouterEntryHandler = async (
   >,
   res: Response<WebhookRouterEntryResBody>
 ) => {
-  const { provider, appId } = req.params;
+  const { provider, providerWorkspaceId } = req.params;
 
   if (provider === "notion") {
     // Validate that the Notion workspace exists. It's a normal condition for it
     // not to exist, since firebase will send this request to all regions, and
     // only one region will have the Notion workspace.
     const notionConnectorState = await NotionConnectorState.findOne({
-      where: { notionWorkspaceId: appId },
+      where: { notionWorkspaceId: providerWorkspaceId },
     });
 
     if (!notionConnectorState) {
       logger.info(
-        { notionWorkspaceId: appId },
+        { notionWorkspaceId: providerWorkspaceId },
         "Received request to add webhook router entry for unknown Notion workspace"
       );
       return apiError(req, res, {
         status_code: 404,
         api_error: {
           type: "not_found",
-          message: `Notion workspace ${appId} not found`,
+          message: `Notion workspace ${providerWorkspaceId} not found`,
         },
       });
     }
   } else if (provider == "slack") {
-    // TODO: make sure appId is valid Slack app ID
+    // Make sure providerWorkspaceId is a valid Slack team id
+    const slackConfig =
+      await SlackConfigurationResource.fetchByTeamId(providerWorkspaceId);
+    if (!slackConfig) {
+      logger.info(
+        { slackTeamId: providerWorkspaceId },
+        "Received request to add webhook router entry for unknown Slack team"
+      );
+      return apiError(req, res, {
+        status_code: 404,
+        api_error: {
+          type: "not_found",
+          message: `Slack team ${providerWorkspaceId} not found`,
+        },
+      });
+    }
   } else {
     return apiError(req, res, {
       status_code: 400,
@@ -156,7 +172,7 @@ const _addWebhookRouterEntryHandler = async (
     res,
     async () => {
       const service = new WebhookRouterConfigService();
-      await service.addEntry(provider, appId, {
+      await service.addEntry(provider, providerWorkspaceId, {
         signing_secret,
         regions,
       });
@@ -165,32 +181,6 @@ const _addWebhookRouterEntryHandler = async (
   );
 };
 
-/**
- * DELETE /webhooks/router_entries/:provider/:appId
- * Delete a webhook router configuration entry.
- */
-const _deleteWebhookRouterEntryHandler = async (
-  req: Request<WebhookRouterEntryParams, WebhookRouterEntryResBody, never>,
-  res: Response<WebhookRouterEntryResBody>
-) => {
-  const { provider, appId } = req.params;
-
-  return executeWebhookRouterOperation(
-    req,
-    res,
-    async () => {
-      const service = new WebhookRouterConfigService();
-      await service.deleteEntry(provider, appId);
-    },
-    "delete"
-  );
-};
-
-// Export handlers wrapped with logging
 export const addWebhookRouterEntryHandler = withLogging(
   _addWebhookRouterEntryHandler
-);
-
-export const deleteWebhookRouterEntryHandler = withLogging(
-  _deleteWebhookRouterEntryHandler
 );

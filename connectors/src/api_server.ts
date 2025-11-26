@@ -36,14 +36,12 @@ import logger from "@connectors/logger/logger";
 import { authMiddleware } from "@connectors/middleware/auth";
 import { rateLimiter, setupGlobalErrorHandler } from "@connectors/types";
 
+import { addWebhookRouterEntryHandler } from "./api/add_webhook_router_config";
 import {
   getConnectorConfigAPIHandler,
   setConnectorConfigAPIHandler,
 } from "./api/connector_config";
-import {
-  addWebhookRouterEntryHandler,
-  deleteWebhookRouterEntryHandler,
-} from "./api/webhook_router_config";
+import { deleteWebhookRouterEntryHandler } from "./api/delete_webhook_router_config";
 import { webhookFirecrawlAPIHandler } from "./api/webhooks/webhook_firecrawl";
 
 export function startServer(port: number) {
@@ -178,11 +176,11 @@ export function startServer(port: number) {
   );
 
   app.post(
-    "/webhooks_router_entries/:webhook_secret/:provider/:appId",
+    "/webhooks_router_entries/:webhook_secret/:provider/:providerWorkspaceId",
     addWebhookRouterEntryHandler
   );
   app.delete(
-    "/webhooks_router_entries/:webhook_secret/:provider/:appId",
+    "/webhooks_router_entries/:webhook_secret/:provider/:providerWorkspaceId",
     deleteWebhookRouterEntryHandler
   );
 
