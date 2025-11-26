@@ -60,10 +60,7 @@ const _deleteWebhookRouterEntryHandler = async (
       status_code: 500,
       api_error: {
         type: "internal_server_error",
-        message:
-          error instanceof Error
-            ? error.message
-            : "Failed to delete webhook router entry",
+        message: "Failed to delete webhook router entry",
       },
     });
   }

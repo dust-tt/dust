@@ -146,10 +146,7 @@ const _addWebhookRouterEntryHandler = async (
       status_code: 500,
       api_error: {
         type: "internal_server_error",
-        message:
-          error instanceof Error
-            ? error.message
-            : `Failed to add webhook router entry`,
+        message: "Failed to add webhook router entry",
       },
     });
   }
