@@ -78,7 +78,6 @@ import {
   assertNever,
   ConversationError,
   Err,
-  GLOBAL_AGENTS_SID,
   isAgentMention,
   isContentFragmentInputWithContentNode,
   isContentFragmentType,
