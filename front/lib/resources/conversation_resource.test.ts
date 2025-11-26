@@ -2074,4 +2074,512 @@ describe("Space Handling", () => {
       }
     });
   });
+
+  describe("fetchMessagesForPage", () => {
+    let auth: Authenticator;
+    let conversation: ConversationType;
+    let agents: LightAgentConfigurationType[];
+
+    beforeEach(async () => {
+      const workspace = await WorkspaceFactory.basic();
+      const user = await UserFactory.basic();
+      auth = await Authenticator.fromUserIdAndWorkspaceId(
+        user.sId,
+        workspace.sId
+      );
+      agents = await setupTestAgents(workspace, user);
+
+      conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agents[0].sId,
+        messagesCreatedAt: [],
+      });
+    });
+
+    it("should handle content fragments spanning across pages", async () => {
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      assert(conversationResource, "Conversation resource not found");
+
+      const workspace = auth.getNonNullableWorkspace();
+
+      // Create messages: CF(0), CF(1), CF(2), User(3)
+      const [
+        contentFragment1,
+        contentFragment2,
+        contentFragment3,
+        userMessage,
+      ] = await Promise.all([
+        ...Array.from({ length: 3 }, (_, i) =>
+          ConversationFactory.createContentFragmentMessage({
+            auth,
+            workspace,
+            conversationId: conversationResource.id,
+            rank: i,
+            title: `Content Fragment ${i + 1}`,
+            fileName: `fragment${i + 1}.txt`,
+          })
+        ),
+        ConversationFactory.createUserMessageWithRank({
+          auth,
+          workspace,
+          conversationId: conversationResource.id,
+          rank: 3,
+          content: "User message content",
+        }),
+      ]);
+
+      // Test pagination with page size 2
+      // With 3 content fragments + 1 user message, limit 2 should return all 4 messages
+      // because content fragments don't count toward limit
+      const page1 = await conversationResource.fetchMessagesForPage(auth, {
+        limit: 2,
+        orderColumn: "rank",
+        orderDirection: "desc",
+      });
+
+      // Should get all 4 messages (3 content fragments + 1 user message)
+      // hasMore should be false because we only have 1 non-content-fragment message (< limit 2)
+      expect(page1.hasMore).toBe(false);
+      expect(page1.messages).toHaveLength(4);
+      expect(page1.messages[0].rank).toBe(3); // User message
+      expect(page1.messages[0].userMessageId).toBe(userMessage.userMessageId);
+      expect(page1.messages[1].rank).toBe(2); // Content fragment 3
+      expect(page1.messages[1].contentFragmentId).toBe(
+        contentFragment3.contentFragmentId
+      );
+      expect(page1.messages[2].rank).toBe(1); // Content fragment 2
+      expect(page1.messages[2].contentFragmentId).toBe(
+        contentFragment2.contentFragmentId
+      );
+      expect(page1.messages[3].rank).toBe(0); // Content fragment 1
+      expect(page1.messages[3].contentFragmentId).toBe(
+        contentFragment1.contentFragmentId
+      );
+
+      // Verify content fragments are properly included
+      for (const message of page1.messages) {
+        if (message.contentFragmentId) {
+          expect(message.contentFragment).toBeDefined();
+          expect(message.contentFragment).not.toBeNull();
+        }
+        if (message.userMessageId) {
+          expect(message.userMessage).toBeDefined();
+          expect(message.userMessage).not.toBeNull();
+        }
+      }
+    });
+
+    it("should exclude content fragments from limit but include them in results", async () => {
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      assert(conversationResource, "Conversation resource not found");
+
+      const workspace = auth.getNonNullableWorkspace();
+
+      // Create messages: CF(0), CF(1), User(2), Agent(3)
+      const [contentFragment1, contentFragment2, userMessage] =
+        await Promise.all([
+          ConversationFactory.createContentFragmentMessage({
+            auth,
+            workspace,
+            conversationId: conversationResource.id,
+            rank: 0,
+            title: "Content Fragment 1",
+            fileName: "fragment1.txt",
+          }),
+          ConversationFactory.createContentFragmentMessage({
+            auth,
+            workspace,
+            conversationId: conversationResource.id,
+            rank: 1,
+            title: "Content Fragment 2",
+            fileName: "fragment2.txt",
+          }),
+          ConversationFactory.createUserMessageWithRank({
+            auth,
+            workspace,
+            conversationId: conversationResource.id,
+            rank: 2,
+            content: "User message",
+          }),
+          ConversationFactory.createAgentMessageWithRank({
+            workspace,
+            conversationId: conversationResource.id,
+            rank: 3,
+            agentConfigurationId: agents[0].sId,
+          }),
+        ]);
+
+      // Test with limit 2: should get all 4 messages (2 content fragments + 2 non-content-fragment)
+      // because we have exactly 2 non-content-fragment messages (user + agent) which equals limit
+      const page1 = await conversationResource.fetchMessagesForPage(auth, {
+        limit: 2,
+        orderColumn: "rank",
+        orderDirection: "desc",
+      });
+
+      expect(page1.hasMore).toBe(false);
+      expect(page1.messages).toHaveLength(4);
+      expect(page1.messages[0].rank).toBe(3); // Agent message
+      expect(page1.messages[0].agentMessageId).toBeDefined();
+      expect(page1.messages[1].rank).toBe(2); // User message
+      expect(page1.messages[1].userMessageId).toBe(userMessage.userMessageId);
+      expect(page1.messages[2].rank).toBe(1); // Content fragment 2
+      expect(page1.messages[2].contentFragmentId).toBe(
+        contentFragment2.contentFragmentId
+      );
+      expect(page1.messages[3].rank).toBe(0); // Content fragment 1
+      expect(page1.messages[3].contentFragmentId).toBe(
+        contentFragment1.contentFragmentId
+      );
+    });
+
+    it("should respect limit for non-content-fragment messages only", async () => {
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      assert(conversationResource, "Conversation resource not found");
+
+      const workspace = auth.getNonNullableWorkspace();
+
+      // Create 3 user messages (no content fragments)
+      await Promise.all(
+        [1, 2, 3].map((i, rank) =>
+          ConversationFactory.createUserMessageWithRank({
+            auth,
+            workspace,
+            conversationId: conversationResource.id,
+            rank,
+            content: `User message ${i}`,
+          })
+        )
+      );
+
+      // Test with limit 2: should get only 2 messages (normal pagination behavior)
+      const page1 = await conversationResource.fetchMessagesForPage(auth, {
+        limit: 2,
+        orderColumn: "rank",
+        orderDirection: "desc",
+      });
+
+      expect(page1.hasMore).toBe(true);
+      expect(page1.messages).toHaveLength(2);
+      expect(page1.messages[0].rank).toBe(2); // User message 3
+      expect(page1.messages[1].rank).toBe(1); // User message 2
+    });
+
+    it("should handle pagination with lastValue correctly when content fragments are present", async () => {
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      assert(conversationResource, "Conversation resource not found");
+
+      const workspace = auth.getNonNullableWorkspace();
+
+      // Create messages in pattern: CF(0), User(1), CF(2), User(3), CF(4), User(5)
+      const messageConfigs = [
+        { type: "cf" as const, index: 0, rank: 0 },
+        { type: "user" as const, content: "User message 1", rank: 1 },
+        { type: "cf" as const, index: 1, rank: 2 },
+        { type: "user" as const, content: "User message 2", rank: 3 },
+        { type: "cf" as const, index: 2, rank: 4 },
+        { type: "user" as const, content: "User message 3", rank: 5 },
+      ];
+
+      await Promise.all(
+        messageConfigs.map((config) =>
+          config.type === "cf"
+            ? ConversationFactory.createContentFragmentMessage({
+                auth,
+                workspace,
+                conversationId: conversationResource.id,
+                rank: config.rank,
+                title: `Content Fragment ${config.index + 1}`,
+                fileName: `fragment${config.index + 1}.txt`,
+              })
+            : ConversationFactory.createUserMessageWithRank({
+                auth,
+                workspace,
+                conversationId: conversationResource.id,
+                rank: config.rank,
+                content: config.content,
+              })
+        )
+      );
+
+      // First page with limit 2: should get user message 3 + content fragment 3 + user message 2 + content fragment 2 + content fragment 1
+      // (5 messages total: 2 non-content-fragment messages which equals limit)
+      // We include CF(1) because it comes before User(1) in the sequence
+      // hasMore should be true because there's 1 more non-content-fragment message (user message 1)
+      const page1 = await conversationResource.fetchMessagesForPage(auth, {
+        limit: 2,
+        orderColumn: "rank",
+        orderDirection: "desc",
+      });
+
+      // Verify we have exactly 2 non-content-fragment messages (the limit)
+      const nonCfCount1 = page1.messages.filter(
+        (m) => m.contentFragmentId === null
+      ).length;
+      expect(nonCfCount1).toBe(2);
+      expect(page1.hasMore).toBe(true); // There's 1 more non-content-fragment message (user message 1)
+      expect(page1.messages[0].rank).toBe(5); // User message 3
+      expect(page1.messages[1].rank).toBe(4); // Content fragment 3
+      expect(page1.messages[2].rank).toBe(3); // User message 2
+      // May include additional content fragments depending on batch processing
+
+      // Test pagination with lastValue (starting from rank 2)
+      const page2 = await conversationResource.fetchMessagesForPage(auth, {
+        limit: 2,
+        orderColumn: "rank",
+        orderDirection: "desc",
+        lastValue: 2, // Start from content fragment 2
+      });
+
+      // Should get user message 1 + content fragment 1 (2 messages: 1 non-content-fragment)
+      expect(page2.hasMore).toBe(false);
+      expect(page2.messages).toHaveLength(2);
+      expect(page2.messages[0].rank).toBe(1); // User message 1
+      expect(page2.messages[1].rank).toBe(0); // Content fragment 1
+    });
+
+    it("should handle pagination when lastValue is a content fragment", async () => {
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      assert(conversationResource, "Conversation resource not found");
+
+      const workspace = auth.getNonNullableWorkspace();
+
+      // Create messages: User(0), CF(1), User(2), CF(3)
+      const [userMessage1] = await Promise.all([
+        ConversationFactory.createUserMessageWithRank({
+          auth,
+          workspace,
+          conversationId: conversationResource.id,
+          rank: 0,
+          content: "User message 1",
+        }),
+        ConversationFactory.createContentFragmentMessage({
+          auth,
+          workspace,
+          conversationId: conversationResource.id,
+          rank: 1,
+          title: "Content Fragment 1",
+          fileName: "fragment1.txt",
+        }),
+        ConversationFactory.createUserMessageWithRank({
+          auth,
+          workspace,
+          conversationId: conversationResource.id,
+          rank: 2,
+          content: "User message 2",
+        }),
+        ConversationFactory.createContentFragmentMessage({
+          auth,
+          workspace,
+          conversationId: conversationResource.id,
+          rank: 3,
+          title: "Content Fragment 2",
+          fileName: "fragment2.txt",
+        }),
+      ]);
+
+      // First page with limit 1: should get content fragment 2 + user message 2
+      // (2 messages total: 1 non-content-fragment message which equals limit)
+      // hasMore should be true because there's 1 more non-content-fragment message (user message 1)
+      // Note: CF(1) should NOT be included on page 1 as it should be bundled with User(1) on page 2
+      const page1 = await conversationResource.fetchMessagesForPage(auth, {
+        limit: 1,
+        orderColumn: "rank",
+        orderDirection: "desc",
+      });
+
+      expect(page1.hasMore).toBe(true); // There's 1 more non-content-fragment message (user message 1)
+      expect(page1.messages.length).toBeGreaterThanOrEqual(2);
+      expect(page1.messages[0].rank).toBe(3); // Content fragment 2
+      expect(page1.messages[1].rank).toBe(2); // User message 2
+      // Verify we have exactly 1 non-content-fragment message
+      const nonCfCount = page1.messages.filter(
+        (m) => m.contentFragmentId === null
+      ).length;
+      expect(nonCfCount).toBe(1);
+
+      // Second page: paginate from content fragment 1 (rank 1)
+      const page2 = await conversationResource.fetchMessagesForPage(auth, {
+        limit: 1,
+        orderColumn: "rank",
+        orderDirection: "desc",
+        lastValue: 1, // lastValue is a content fragment
+      });
+
+      // Should get user message 1 (rank 0)
+      expect(page2.hasMore).toBe(false);
+      expect(page2.messages).toHaveLength(1);
+      expect(page2.messages[0].rank).toBe(0); // User message 1
+      expect(page2.messages[0].userMessageId).toBe(userMessage1.userMessageId);
+    });
+
+    it("should handle pagination with multiple pages correctly", async () => {
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      assert(conversationResource, "Conversation resource not found");
+
+      const workspace = auth.getNonNullableWorkspace();
+
+      // Create messages in order: CF(0), User(1), CF(2), User(3), CF(4), User(5), CF(6), User(7)
+      const messageConfigs = [
+        { type: "cf" as const, index: 0, rank: 0 },
+        { type: "user" as const, content: "User message 1", rank: 1 },
+        { type: "cf" as const, index: 1, rank: 2 },
+        { type: "user" as const, content: "User message 2", rank: 3 },
+        { type: "cf" as const, index: 2, rank: 4 },
+        { type: "user" as const, content: "User message 3", rank: 5 },
+        { type: "cf" as const, index: 3, rank: 6 },
+        { type: "user" as const, content: "User message 4", rank: 7 },
+      ];
+
+      await Promise.all(
+        messageConfigs.map((config) =>
+          config.type === "cf"
+            ? ConversationFactory.createContentFragmentMessage({
+                auth,
+                workspace,
+                conversationId: conversationResource.id,
+                rank: config.rank,
+                title: `Content Fragment ${config.index + 1}`,
+                fileName: `fragment${config.index + 1}.txt`,
+              })
+            : ConversationFactory.createUserMessageWithRank({
+                auth,
+                workspace,
+                conversationId: conversationResource.id,
+                rank: config.rank,
+                content: config.content,
+              })
+        )
+      );
+
+      // Page 1 with limit 2: should get User(7), CF(6), User(5), CF(4) (4 messages: 2 non-CF)
+      const page1 = await conversationResource.fetchMessagesForPage(auth, {
+        limit: 2,
+        orderColumn: "rank",
+        orderDirection: "desc",
+      });
+
+      expect(page1.hasMore).toBe(true);
+      // Verify we have exactly 2 non-content-fragment messages
+      const nonCfCount2 = page1.messages.filter(
+        (m) => m.contentFragmentId === null
+      ).length;
+      expect(nonCfCount2).toBe(2);
+      expect(page1.messages[0].rank).toBe(7); // User message 4
+      expect(page1.messages[1].rank).toBe(6); // Content fragment 4
+      expect(page1.messages[2].rank).toBe(5); // User message 3
+      // May include additional content fragments depending on batch processing
+
+      // Page 2: paginate from CF(4) - should get remaining messages
+      const page2 = await conversationResource.fetchMessagesForPage(auth, {
+        limit: 2,
+        orderColumn: "rank",
+        orderDirection: "desc",
+        lastValue: 4,
+      });
+
+      // Should get User(3), CF(2), User(1), CF(0) (4 messages: 2 non-CF)
+      expect(page2.hasMore).toBe(false);
+      const nonCfCount3 = page2.messages.filter(
+        (m) => m.contentFragmentId === null
+      ).length;
+      expect(nonCfCount3).toBe(2);
+      expect(page2.messages[0].rank).toBe(3); // User message 2
+      expect(page2.messages[1].rank).toBe(2); // Content fragment 2
+      expect(page2.messages[2].rank).toBe(1); // User message 1
+      expect(page2.messages[3].rank).toBe(0); // Content fragment 1
+    });
+
+    it("should not include content fragments that come after the last included non-CF message", async () => {
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      assert(conversationResource, "Conversation resource not found");
+
+      const workspace = auth.getNonNullableWorkspace();
+
+      // Create messages in order: CF(0), CF(1), User(2), Agent(3), CF(4), CF(5), User(6)
+      const messageConfigs = [
+        { type: "cf" as const, index: 0, rank: 0 },
+        { type: "cf" as const, index: 1, rank: 1 },
+        { type: "user" as const, content: "User message 1", rank: 2 },
+        { type: "agent" as const, rank: 3 },
+        { type: "cf" as const, index: 2, rank: 4 },
+        { type: "cf" as const, index: 3, rank: 5 },
+        { type: "user" as const, content: "User message 2", rank: 6 },
+      ];
+
+      await Promise.all(
+        messageConfigs.map((config) =>
+          config.type === "cf"
+            ? ConversationFactory.createContentFragmentMessage({
+                auth,
+                workspace,
+                conversationId: conversationResource.id,
+                rank: config.rank,
+                title: `Content Fragment ${config.index + 1}`,
+                fileName: `fragment${config.index + 1}.txt`,
+              })
+            : config.type === "user"
+              ? ConversationFactory.createUserMessageWithRank({
+                  auth,
+                  workspace,
+                  conversationId: conversationResource.id,
+                  rank: config.rank,
+                  content: config.content,
+                })
+              : ConversationFactory.createAgentMessageWithRank({
+                  workspace,
+                  conversationId: conversationResource.id,
+                  rank: config.rank,
+                  agentConfigurationId: agents[0].sId,
+                })
+        )
+      );
+
+      // So final: User(6), CF(5), CF(4), Agent(3)
+      const page1 = await conversationResource.fetchMessagesForPage(auth, {
+        limit: 2,
+        orderColumn: "rank",
+        orderDirection: "desc",
+      });
+
+      expect(page1.hasMore).toBe(true);
+      // Should have User(6), CF(5), CF(4), Agent(3) - 2 non-CF, 2 CF
+      expect(page1.messages.length).toBe(4);
+      expect(page1.messages[0].rank).toBe(6); // User message 2
+      expect(page1.messages[1].rank).toBe(5); // Content fragment 4
+      expect(page1.messages[2].rank).toBe(4); // Content fragment 3
+      expect(page1.messages[3].rank).toBe(3); // Agent message
+
+      // Verify CF(1) and CF(0) are NOT included (they come after Agent(3))
+      const includedRanks = page1.messages.map((m) => m.rank);
+      expect(includedRanks).not.toContain(1);
+      expect(includedRanks).not.toContain(0);
+
+      // Verify we have exactly 2 non-content-fragment messages
+      const nonCfCount = page1.messages.filter(
+        (m) => m.contentFragmentId === null
+      ).length;
+      expect(nonCfCount).toBe(2);
+    });
+  });
 });
