@@ -16,8 +16,8 @@ export const ZendeskPaginatedResponseSchema = z.object({
     before_cursor: z.string(),
   }),
   links: z.object({
-    prev: z.string(),
-    next: z.string(),
+    prev: z.string().optional(),
+    next: z.string().optional(),
   }),
 });
 
