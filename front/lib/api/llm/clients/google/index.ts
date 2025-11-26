@@ -62,10 +62,11 @@ export class GoogleLLM extends LLM {
             systemInstruction: { text: prompt },
             // We only need one
             candidateCount: 1,
-            thinkingConfig: toThinkingConfig(
-              this.modelId,
-              this.reasoningEffort
-            ),
+            thinkingConfig: toThinkingConfig({
+              modelId: this.modelId,
+              reasoningEffort: this.reasoningEffort,
+              useNativeLightReasoning: this.modelConfig.useNativeLightReasoning,
+            }),
           },
         });
 
