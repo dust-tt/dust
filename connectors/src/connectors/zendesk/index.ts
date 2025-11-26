@@ -31,6 +31,7 @@ import {
 } from "@connectors/connectors/zendesk/lib/ticket_permissions";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
+  fetchZendeskCurrentUser,
   isUserAdmin,
   ZendeskClient,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
@@ -82,10 +83,10 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
   }): Promise<Result<string, ConnectorManagerError<CreateConnectorErrorCode>>> {
     const { subdomain, accessToken } =
       await getZendeskSubdomainAndAccessToken(connectionId);
-    // Using a placeholder connectorId since the connector doesn't exist yet.
-    // fetchCurrentUser doesn't use connectorId or rate limiting internally.
-    const zendeskClient = new ZendeskClient(accessToken, 0, null);
-    const zendeskUser = await zendeskClient.fetchCurrentUser({ subdomain });
+    const zendeskUser = await fetchZendeskCurrentUser({
+      subdomain,
+      accessToken,
+    });
     if (!isUserAdmin(zendeskUser)) {
       throw new ExternalOAuthTokenError(
         new Error(`Zendesk user is not an admin: connectionId=${connectionId}`)
@@ -181,13 +182,9 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         );
       }
 
-      const zendeskClient = new ZendeskClient(
-        accessToken,
-        connectorId,
-        configuration.rateLimitTransactionsPerSecond
-      );
-      const zendeskUser = await zendeskClient.fetchCurrentUser({
+      const zendeskUser = await fetchZendeskCurrentUser({
         subdomain: newSubdomain,
+        accessToken,
       });
       if (!isUserAdmin(zendeskUser)) {
         return new Err(

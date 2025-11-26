@@ -2,7 +2,10 @@ import { makeScript } from "scripts/helpers";
 
 import { isZendeskNotFoundError } from "@connectors/connectors/zendesk/lib/errors";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
-import { ZendeskClient } from "@connectors/connectors/zendesk/lib/zendesk_api";
+import {
+  fetchZendeskCurrentUser,
+  ZendeskClient,
+} from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { ZENDESK_BATCH_SIZE } from "@connectors/connectors/zendesk/temporal/config";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
@@ -18,8 +21,8 @@ makeScript({}, async ({ execute }, logger) => {
     const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
       connector.connectionId
     );
+    const user = await fetchZendeskCurrentUser({ accessToken, subdomain });
     const zendeskClient = new ZendeskClient(accessToken, connectorId, null);
-    const user = await zendeskClient.fetchCurrentUser({ subdomain });
     const brandsOnDb = await ZendeskBrandResource.fetchByConnector(connector);
     for (const brandOnDb of brandsOnDb) {
       const { brandId } = brandOnDb;
