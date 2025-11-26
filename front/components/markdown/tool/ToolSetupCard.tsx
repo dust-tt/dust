@@ -27,6 +27,7 @@ interface ToolSetupCardProps {
   owner: WorkspaceType;
   conversationId?: string;
   onSetupComplete?: (toolId: string) => void;
+  onSetupSkipped?: (toolId: string) => void;
 }
 
 export function ToolSetupCard({
@@ -34,9 +35,11 @@ export function ToolSetupCard({
   toolId,
   owner,
   onSetupComplete,
+  onSetupSkipped,
 }: ToolSetupCardProps) {
   const [isActivating, setIsActivating] = useState(false);
   const [isSetupSheetOpen, setIsSetupSheetOpen] = useState(false);
+  const [isSkipped, setIsSkipped] = useState(false);
   const isAdmin = owner.role === "admin";
 
   const { spaces: spacesAsUser } = useSpaces({
@@ -144,6 +147,14 @@ export function ToolSetupCard({
     onSetupComplete?.(toolId);
   };
 
+  const handleSkip = () => {
+    setIsSkipped(true);
+    onSetupSkipped?.(toolId);
+  };
+
+  const showSkipButton =
+    isAdmin && !isToolActivatedInGlobalSpace && !isActivating && !isSkipped;
+
   return (
     <>
       <ContentMessage
@@ -166,13 +177,24 @@ export function ToolSetupCard({
                 target="_blank"
               />
             )}
+            {showSkipButton && (
+              <Button
+                variant="outline"
+                size="sm"
+                label="Skip"
+                onClick={handleSkip}
+              />
+            )}
             <Button
               variant="highlight"
               size="sm"
-              label={getButtonLabel()}
+              label={isSkipped ? "Skipped" : getButtonLabel()}
               onClick={getButtonClickHandler()}
               disabled={
-                !isAdmin || isToolActivatedInGlobalSpace || isActivating
+                !isAdmin ||
+                isToolActivatedInGlobalSpace ||
+                isActivating ||
+                isSkipped
               }
             />
           </div>

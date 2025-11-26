@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { isInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   buildOnboardingFollowUpPrompt,
+  buildOnboardingSkippedPrompt,
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
@@ -47,7 +48,7 @@ async function handler(
     });
   }
 
-  const { toolId } = req.body;
+  const { toolId, action } = req.body;
 
   if (!isString(toolId) || !isInternalMCPServerName(toolId)) {
     return apiError(req, res, {
@@ -55,6 +56,17 @@ async function handler(
       api_error: {
         type: "invalid_request_error",
         message: "Invalid request body, `toolId` (valid tool id) is required.",
+      },
+    });
+  }
+
+  if (!isString(action) || !["completed", "skipped"].includes(action)) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "Invalid request body, `action` must be 'completed' or 'skipped'.",
       },
     });
   }
@@ -67,7 +79,10 @@ async function handler(
 
   const conversation = conversationRes.value;
 
-  const followUpPrompt = buildOnboardingFollowUpPrompt(toolId);
+  const followUpPrompt =
+    action === "skipped"
+      ? buildOnboardingSkippedPrompt()
+      : buildOnboardingFollowUpPrompt(toolId);
 
   const messageRes = await postUserMessage(auth, {
     conversation,

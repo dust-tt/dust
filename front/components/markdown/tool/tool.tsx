@@ -42,12 +42,14 @@ export function toolDirective() {
  * @param owner - The workspace context for tool interactions
  * @param conversationId - Optional conversation ID for triggering follow-up messages
  * @param onSetupComplete - Optional callback when tool setup completes
+ * @param onSetupSkipped - Optional callback when tool setup is skipped
  * @returns A React component for rendering tool cards
  */
 export function getToolSetupPlugin(
   owner: WorkspaceType,
   conversationId?: string,
-  onSetupComplete?: (toolId: string) => void
+  onSetupComplete?: (toolId: string) => void,
+  onSetupSkipped?: (toolId: string) => void
 ) {
   const ToolSetupPlugin = ({
     toolName,
@@ -66,6 +68,7 @@ export function getToolSetupPlugin(
         owner={owner}
         conversationId={conversationId}
         onSetupComplete={onSetupComplete}
+        onSetupSkipped={onSetupSkipped}
       />
     );
   };

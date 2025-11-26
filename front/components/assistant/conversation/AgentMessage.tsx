@@ -652,7 +652,14 @@ function AgentMessageContent({
 
   const handleToolSetupComplete = React.useCallback(
     (toolId: string) => {
-      void postFollowUp(toolId);
+      void postFollowUp(toolId, "completed");
+    },
+    [postFollowUp]
+  );
+
+  const handleToolSetupSkipped = React.useCallback(
+    (toolId: string) => {
+      void postFollowUp(toolId, "skipped");
     },
     [postFollowUp]
   );
@@ -674,7 +681,8 @@ function AgentMessageContent({
       toolSetup: getToolSetupPlugin(
         owner,
         conversationId,
-        handleToolSetupComplete
+        handleToolSetupComplete,
+        handleToolSetupSkipped
       ),
     }),
     [
@@ -685,6 +693,7 @@ function AgentMessageContent({
       onQuickReplySend,
       isLastMessage,
       handleToolSetupComplete,
+      handleToolSetupSkipped,
     ]
   );
 
