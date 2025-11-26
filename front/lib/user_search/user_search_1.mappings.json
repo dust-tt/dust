@@ -1,0 +1,42 @@
+{
+  "properties": {
+    "workspace_id": {
+      "type": "keyword"
+    },
+    "user_id": {
+      "type": "keyword"
+    },
+    "email": {
+      "type": "keyword",
+      "normalizer": "lowercase_normalizer",
+      "fields": {
+        "text": {
+          "type": "text",
+          "analyzer": "standard"
+        },
+        "edge": {
+          "type": "text",
+          "analyzer": "edge_analyzer",
+          "search_analyzer": "standard"
+        }
+      }
+    },
+    "full_name": {
+      "type": "text",
+      "analyzer": "standard",
+      "fields": {
+        "edge": {
+          "type": "text",
+          "analyzer": "edge_analyzer",
+          "search_analyzer": "standard"
+        },
+        "keyword": {
+          "type": "keyword"
+        }
+      }
+    },
+    "updated_at": {
+      "type": "date"
+    }
+  }
+}
