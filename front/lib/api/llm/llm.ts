@@ -138,6 +138,18 @@ export abstract class LLM {
 
         yield event;
       }
+
+      if (currentEvent?.type !== "success" && currentEvent?.type !== "error") {
+        yield new EventError(
+          {
+            type: "stream_error",
+            message: `LLM did not complete successfully for ${this.metadata.clientId}/${this.metadata.modelId}.`,
+            isRetryable: true,
+            originalError: { lastEventType: currentEvent?.type },
+          },
+          this.metadata
+        );
+      }
     } finally {
       if (currentEvent?.type === "error") {
         generation.updateTrace({
@@ -163,17 +175,6 @@ export abstract class LLM {
             traceId: this.traceId,
           },
           "LLM Success"
-        );
-      } else {
-        logger.warn(
-          {
-            llmEventType: "uncategorized",
-            lastEventType: currentEvent?.type,
-            modelId: this.modelId,
-            context: this.context,
-            traceId: this.traceId,
-          },
-          "LLM uncategorized"
         );
       }
 
@@ -240,28 +241,11 @@ export abstract class LLM {
     prompt,
     specifications,
   }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
-    let lastEvent: LLMEvent | null = null;
-
-    for await (const event of this.streamWithTracing({
+    yield* this.streamWithTracing({
       conversation,
       prompt,
       specifications,
-    })) {
-      lastEvent = event;
-      yield event;
-    }
-
-    if (lastEvent?.type !== "success" && lastEvent?.type !== "error") {
-      yield new EventError(
-        {
-          type: "stream_error",
-          message: `LLM did not complete successfully for ${this.metadata.clientId}/${this.metadata.modelId}.`,
-          isRetryable: true,
-          originalError: { lastEventType: lastEvent?.type },
-        },
-        this.metadata
-      );
-    }
+    });
   }
 
   protected abstract internalStream({
