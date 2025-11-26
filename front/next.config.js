@@ -53,6 +53,8 @@ const config = {
     serverMinification: false,
     esmExternals: false,
     instrumentationHook: true,
+    // Ensure dd-trace is included in standalone build for NODE_OPTIONS preload
+    serverComponentsExternalPackages: ["dd-trace"],
   },
   async redirects() {
     return [
