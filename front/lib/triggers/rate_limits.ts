@@ -10,7 +10,7 @@ import { DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT } from "@app/types/assis
 
 const WORKSPACE_MESSAGE_LIMIT_MULTIPLIER = 0.5; // 50% of workspace message limit
 
-type RateLimitCheckResult =
+export type RateLimitCheckResult =
   | { rateLimited: false; message?: undefined }
   | { rateLimited: true; message: string };
 

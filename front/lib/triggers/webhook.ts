@@ -13,6 +13,7 @@ import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resou
 import type { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { FathomClient } from "@app/lib/triggers/built-in-webhooks/fathom/fathom_client";
+import type { RateLimitCheckResult } from "@app/lib/triggers/rate_limits";
 import {
   checkTriggerForExecutionPerDayLimit,
   checkWebhookRequestForRateLimit,
@@ -258,7 +259,7 @@ async function checkWorkspaceRateLimit({
   workspaceId: string;
   webhookRequestId: number;
   provider: WebhookProvider | null;
-}): Promise<boolean> {
+}): Promise<RateLimitCheckResult> {
   let errorMessage: string | null = null;
 
   if (!trigger.executionMode || trigger.executionMode === "fair_use") {
@@ -289,16 +290,12 @@ async function checkWorkspaceRateLimit({
       },
       errorMessage
     );
-    return true;
+    return { rateLimited: true, message: errorMessage };
   }
 
-  return false;
+  return { rateLimited: false };
 }
 
-/**
- * Checks trigger-specific rate limits.
- * Returns true if the trigger is rate limited.
- */
 async function checkTriggerRateLimit({
   auth,
   trigger,
@@ -311,23 +308,22 @@ async function checkTriggerRateLimit({
   workspaceId: string;
   webhookRequestId: number;
   provider: WebhookProvider | null;
-}): Promise<boolean> {
-  const res = await checkTriggerForExecutionPerDayLimit(auth, { trigger });
+}): Promise<RateLimitCheckResult> {
+  const result = await checkTriggerForExecutionPerDayLimit(auth, { trigger });
 
-  if (res.rateLimited) {
+  if (result.rateLimited) {
     logger.warn(
       { workspaceId, webhookRequestId, triggerId: trigger.sId },
-      res.message
+      result.message
     );
     statsDClient.increment("webhook_trigger_rate_limit.hit.count", 1, [
       `provider:${provider}`,
       `workspace_id:${workspaceId}`,
       `trigger_id:${trigger.sId}`,
     ]);
-    return true;
   }
 
-  return false;
+  return result;
 }
 
 /**
@@ -450,34 +446,36 @@ export async function filterTriggers({
     }
 
     // Check 3: Workspace-level rate limit.
-    const isWorkspaceRateLimited = await checkWorkspaceRateLimit({
+    const workspaceRateLimitResult = await checkWorkspaceRateLimit({
       auth,
       trigger,
       workspaceId,
       webhookRequestId,
       provider,
     });
-    if (isWorkspaceRateLimited) {
+    if (workspaceRateLimitResult.rateLimited) {
       await webhookRequest.markRelatedTrigger({
         trigger,
         status: "rate_limited",
+        errorMessage: workspaceRateLimitResult.message,
       });
       // If it's a workspace-level rate limit, return an error immediately.
-      return new Err(new Error("Workspace rate limit exceeded"));
+      return new Err(new Error(workspaceRateLimitResult.message));
     }
 
     // Check 4: Trigger-specific rate limit.
-    const isTriggerRateLimited = await checkTriggerRateLimit({
+    const triggerRateLimitResult = await checkTriggerRateLimit({
       auth,
       trigger,
       workspaceId,
       webhookRequestId,
       provider,
     });
-    if (isTriggerRateLimited) {
+    if (triggerRateLimitResult.rateLimited) {
       await webhookRequest.markRelatedTrigger({
         trigger,
         status: "rate_limited",
+        errorMessage: triggerRateLimitResult.message,
       });
       continue;
     }
