@@ -656,9 +656,9 @@ function AgentMessageContent({
       mention_user: getUserMentionPlugin(owner),
       dustimg: getImgPlugin(owner),
       toolSetup: getToolSetupPlugin(owner),
-      quickReply: getQuickReplyPlugin(onQuickReplySend),
+      quickReply: getQuickReplyPlugin(onQuickReplySend, isLastMessage),
     }),
-    [owner, conversationId, sId, agentConfiguration.sId, onQuickReplySend]
+    [owner, conversationId, sId, agentConfiguration.sId, onQuickReplySend, isLastMessage]
   );
 
   const additionalMarkdownPlugins: PluggableList = React.useMemo(
