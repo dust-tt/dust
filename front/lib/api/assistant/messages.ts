@@ -205,12 +205,7 @@ async function batchRenderUserMessages(
         fullName: userMessage.userContextFullName,
         email: userMessage.userContextEmail,
         profilePictureUrl: userMessage.userContextProfilePictureUrl,
-        // TODO(2025-11-24 PPUL): Return real user origin even in case of run_agent, once extensions have been updated
-        origin: userMessage.agenticMessageType ?? userMessage.userContextOrigin,
-        // TODO(2025-11-24 PPUL): Remove once extensions have been updated
-        originMessageId:
-          userMessage.agenticOriginMessageId ??
-          userMessage.userContextOriginMessageId,
+        origin: userMessage.userContextOrigin,
         clientSideMCPServerIds: userMessage.clientSideMCPServerIds,
         lastTriggerRunAt:
           userMessage.userContextLastTriggerRunAt?.getTime() ?? null,

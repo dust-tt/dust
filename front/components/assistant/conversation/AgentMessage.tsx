@@ -370,7 +370,11 @@ export function AgentMessage({
 
   const isAgentMessageHandingOver = methods.data
     .get()
-    .some((m) => isHandoverUserMessage(m) && m.context.originMessageId === sId);
+    .some(
+      (m) =>
+        isHandoverUserMessage(m) &&
+        m.agenticMessageData?.originMessageId === sId
+    );
 
   if (
     agentMessageToRender.status !== "created" &&

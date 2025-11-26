@@ -807,13 +807,7 @@ export async function postUserMessage(
         user: user?.toJSON() ?? null,
         mentions,
         content,
-        context: {
-          ...context,
-          // TODO(2025-11-24 PPUL): Remove once extensions have been updated - return real user origin and no originMessageId
-          origin: agenticMessageData?.type ?? context.origin,
-          originMessageId:
-            agenticMessageData?.originMessageId ?? context.originMessageId,
-        },
+        context,
         agenticMessageData,
         rank: m.rank,
       };
