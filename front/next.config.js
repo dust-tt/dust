@@ -53,9 +53,13 @@ const config = {
     serverMinification: false,
     esmExternals: false,
     instrumentationHook: true,
-    // Ensure dd-trace is included in standalone build for NODE_OPTIONS preload
+    // Ensure dd-trace and other dependencies are included in standalone build
     outputFileTracingIncludes: {
-      "/**": ["./node_modules/dd-trace/**/*", "./node_modules/@datadog/**/*"],
+      "/**": [
+        "./node_modules/dd-trace/**/*",
+        "./node_modules/@datadog/**/*", 
+        "./node_modules/@reduxjs/toolkit/**/*"
+      ],
     },
   },
   async redirects() {
