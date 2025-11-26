@@ -3,7 +3,7 @@ import type Stripe from "stripe";
 import type { Authenticator } from "@app/lib/auth";
 import {
   attachCreditPurchaseToSubscription,
-  finalizeCreditPurchaseInvoice,
+  finalizeAndPayCreditPurchaseInvoice,
   getCreditAmountFromInvoice,
   isCreditPurchaseInvoice,
   isEnterpriseSubscription,
@@ -167,7 +167,7 @@ export async function createProCreditPurchase({
   auth: Authenticator;
   stripeSubscriptionId: string;
   amountCents: number;
-}): Promise<Result<{ invoiceId: string }, Error>> {
+}): Promise<Result<{ invoiceId: string; paymentUrl: string | null }, Error>> {
   const workspace = auth.getNonNullableWorkspace();
 
   // Create and pay one-off invoice
@@ -199,7 +199,7 @@ export async function createProCreditPurchase({
     invoiceOrLineItemId: invoice.id,
   });
 
-  const finalizeResult = await finalizeCreditPurchaseInvoice(invoice);
+  const finalizeResult = await finalizeAndPayCreditPurchaseInvoice(invoice);
   if (finalizeResult.isErr()) {
     logger.error(
       {
@@ -213,14 +213,17 @@ export async function createProCreditPurchase({
     return new Err(new Error(finalizeResult.error.error_message));
   }
 
+  const { paymentUrl } = finalizeResult.value;
+
   logger.info(
     {
       workspaceId: workspace.sId,
       amountCents,
       invoiceId: invoice.id,
+      requiresAction: paymentUrl !== null,
     },
     "[Credit Purchase] Credit purchase invoice created, credit will be started via webhook"
   );
 
-  return new Ok({ invoiceId: invoice.id });
+  return new Ok({ invoiceId: invoice.id, paymentUrl });
 }
