@@ -13,6 +13,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Access to dust-edge global agent that we use internally to test other models on dust",
     stage: "dust_only",
   },
+  dust_quick_global_agent: {
+    description:
+      "Access to dust-quick global agent running Gemini 3 with minimal reasoning",
+    stage: "dust_only",
+  },
   notion_private_integration: {
     description: "Setup Notion private integration tokens",
     stage: "on_demand",

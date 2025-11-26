@@ -108,6 +108,7 @@ export enum GLOBAL_AGENTS_SID {
   HELPER = "helper",
   DUST = "dust",
   DUST_EDGE = "dust-edge",
+  DUST_QUICK = "dust-quick",
   DEEP_DIVE = "deep-dive",
   DUST_TASK = "dust-task",
   DUST_BROWSER_SUMMARY = "dust-browser-summary",
