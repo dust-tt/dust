@@ -127,12 +127,12 @@ Slack/Teams → Firebase Hosting → Firebase Function → [US Endpoint, EU Endp
 
 **Security Flow:**
 
-1. Validates webhook secret from URL parameter
+1. Validates webhook secret from URL parameter (standard routes) or fetches from config (data sync routes)
 2. Platform-specific verification:
-   - **Slack**: HMAC signature validation
+   - **Slack**: HMAC signature validation using Dust secret (standard) or client secret (data sync)
    - **Teams**: Bot Framework JWT token validation
 3. Handles platform-specific challenges (Slack URL verification)
-4. Forwards to regional endpoints asynchronously
+4. Forwards to regional endpoints based on configuration
 
 **Body Handling:**
 
@@ -183,8 +183,13 @@ export NOTION_SIGNING_SECRET="your-notion-signing-secret"
 
 ### Slack Endpoints
 
+**Standard Routes** (use Dust signing secret):
 - `POST /:webhookSecret/slack/events` - Slack events
 - `POST /:webhookSecret/slack/interactions` - Slack interactions
+
+**Data Sync Routes** (use client-specific signing secrets from config):
+- `POST /slack_data_sync/events` - Slack events with per-team validation
+- `POST /slack_data_sync/interactions` - Slack interactions with per-team validation
 
 ### Microsoft Teams Endpoints
 

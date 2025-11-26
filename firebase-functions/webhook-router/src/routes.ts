@@ -5,8 +5,9 @@ import { createTeamsVerificationMiddleware } from "./microsoft/verification.js";
 import { createNotionRoutes } from "./notion/routes.js";
 import { createNotionVerificationMiddleware } from "./notion/verification.js";
 import type { SecretManager } from "./secrets.js";
-import { createSlackRoutes } from "./slack/routes.js";
+import { createSlackBotRoutes, createSlackDataSyncRoutes } from "./slack/routes.js";
 import { createSlackVerificationMiddleware } from "./slack/verification.js";
+import type { WebhookRouterConfigManager } from "./webhook-router-config.js";
 
 // Webhook secret validation middleware (shared by all platforms)
 function createWebhookSecretMiddleware(secretManager: SecretManager) {
@@ -38,20 +39,22 @@ function createWebhookSecretMiddleware(secretManager: SecretManager) {
   };
 }
 
-export function createRoutes(secretManager: SecretManager) {
+export function createRoutes(secretManager: SecretManager, webhookRouterConfigManager: WebhookRouterConfigManager) {
   const router = express.Router();
 
   // Create shared webhook secret validation middleware
   const webhookSecretValidation = createWebhookSecretMiddleware(secretManager);
 
   // Create platform-specific verification middlewares (without webhook secret validation)
-  const slackVerification = createSlackVerificationMiddleware(secretManager);
   const teamsVerification = createTeamsVerificationMiddleware(secretManager);
   const notionVerification = createNotionVerificationMiddleware(secretManager);
 
   // Mount platform routes with webhook secret validation first
-  const slackRoutes = createSlackRoutes(secretManager, slackVerification);
-  router.use("/:webhookSecret/slack", webhookSecretValidation, slackRoutes);
+  const slackDataSyncRoutes = createSlackDataSyncRoutes(secretManager, webhookRouterConfigManager);
+  router.use("/slack_data_sync", slackDataSyncRoutes);
+
+  const slackBotRoutes = createSlackBotRoutes(secretManager, webhookRouterConfigManager);
+  router.use("/:webhookSecret/slack", webhookSecretValidation, slackBotRoutes);
 
   const teamsRoutes = createTeamsRoutes(secretManager, teamsVerification);
   router.use("/:webhookSecret/microsoft", webhookSecretValidation, teamsRoutes);
