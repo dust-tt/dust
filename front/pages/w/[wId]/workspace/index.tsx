@@ -39,6 +39,7 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { useConnectorConfig, useToggleChatBot } from "@app/lib/swr/connectors";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import logger from "@app/logger/logger";
 import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 import type {
@@ -134,6 +135,8 @@ export default function WorkspaceAdmin({
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+
   const formValidation = useCallback(() => {
     if (workspaceName === owner.name) {
       return false;
@@ -191,7 +194,11 @@ export default function WorkspaceAdmin({
     <AppCenteredLayout
       subscription={subscription}
       owner={owner}
-      subNavigation={subNavigationAdmin({ owner, current: "workspace" })}
+      subNavigation={subNavigationAdmin({
+        owner,
+        current: "workspace",
+        featureFlags,
+      })}
     >
       <Page.Vertical align="stretch" gap="xl">
         <Page.Header title="Workspace Settings" icon={GlobeAltIcon} />
