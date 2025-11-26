@@ -12,8 +12,8 @@ import {
 import { useMemo } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
-import type {MCPServerFormValues} from "@app/components/actions/mcp/forms/mcpServerFormSchema";
-import { getDefaultInternalToolStakeLevel  } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
+import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
+import { getDefaultInternalToolStakeLevel } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
   CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS,
@@ -192,7 +192,10 @@ export function ToolsList({
                   (m) => m.toolName === tool.name
                 );
 
-                const defaultPermission = getDefaultInternalToolStakeLevel(mcpServerView.server, tool.name);
+                const defaultPermission = getDefaultInternalToolStakeLevel(
+                  mcpServerView.server,
+                  tool.name
+                );
 
                 return (
                   <ToolItem
