@@ -23,6 +23,7 @@ import type { ReactElement } from "react";
 
 import { AppDataTable } from "@app/components/poke/apps/table";
 import { AssistantsDataTable } from "@app/components/poke/assistants/table";
+import { CreditsDataTable } from "@app/components/poke/credits/table";
 import { DataSourceViewsDataTable } from "@app/components/poke/data_source_views/table";
 import { DataSourceDataTable } from "@app/components/poke/data_sources/table";
 import { FeatureFlagsDataTable } from "@app/components/poke/features/table";
@@ -280,6 +281,7 @@ const WorkspacePage = ({
               <TabsTrigger value="spaces" label="Spaces" />
 
               <TabsTrigger value="triggers" label="Triggers" />
+              <TabsTrigger value="credits" label="Credits" />
 
               {/* Plugin Logs on the far right */}
               <TabsTrigger value="plugins" label="Plugins Logs" />
@@ -320,6 +322,9 @@ const WorkspacePage = ({
 
             <TabsContent value="triggers">
               <TriggerDataTable owner={owner} loadOnInit />
+            </TabsContent>
+            <TabsContent value="credits">
+              <CreditsDataTable owner={owner} loadOnInit />
             </TabsContent>
             <TabsContent value="plugins">
               <PluginRunsDataTable owner={owner} loadOnInit />
