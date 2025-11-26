@@ -120,7 +120,7 @@ const getConversationDetails = async ({
           auth,
           conversation,
           [messageRes.value],
-          "legacy-light"
+          "light"
         );
 
         if (rendered.isOk() && rendered.value.length === 1) {

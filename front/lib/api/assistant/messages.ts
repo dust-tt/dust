@@ -32,7 +32,14 @@ import type {
   UserMention,
   UserMessageType,
 } from "@app/types";
-import { ConversationError, Err, Ok, removeNulls } from "@app/types";
+import {
+  ConversationError,
+  Err,
+  isContentFragmentType,
+  isUserMessageType,
+  Ok,
+  removeNulls,
+} from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
   AgentContentItemType,
@@ -45,8 +52,9 @@ import {
   isAgentTextContent,
 } from "@app/types/assistant/agent_message_content";
 import type {
-  FetchConversationMessagesResponse,
+  LightMessageType,
   ParsedContentItem,
+  UserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
 
 export async function generateParsedContents(
@@ -519,7 +527,7 @@ async function batchRenderContentFragment(
   );
 }
 
-type RenderMessageVariant = "legacy-light" | "full";
+type RenderMessageVariant = "legacy-light" | "full" | "light";
 
 export async function batchRenderMessages<V extends RenderMessageVariant>(
   auth: Authenticator,
@@ -528,7 +536,13 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
   viewType: V
 ): Promise<
   Result<
-    V extends "full" ? MessageType[] : LegacyLightMessageType[],
+    V extends "full"
+      ? MessageType[]
+      : V extends "legacy-light"
+        ? LegacyLightMessageType[]
+        : V extends "light"
+          ? LightMessageType[]
+          : never,
     ConversationError
   >
 > {
@@ -544,27 +558,81 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
 
   const agentMessages = agentMessagesRes.value;
 
-  const renderedMessages = [
+  let renderedMessages = [
     ...userMessages,
     ...agentMessages,
     ...contentFragments,
   ].sort((a, b) => a.rank - b.rank || a.version - b.version);
 
+  if (viewType === "light") {
+    // We need to attach the content fragments to the user messages.
+    const output: LightMessageType[] = [];
+    let tempContentFragments: ContentFragmentType[] = [];
+
+    renderedMessages.forEach((message) => {
+      if (isContentFragmentType(message)) {
+        tempContentFragments.push(message); // Collect content fragments.
+      } else {
+        let messageWithContentFragments: UserMessageTypeWithContentFragments;
+        if (isUserMessageType(message)) {
+          // Attach collected content fragments to the user message.
+          messageWithContentFragments = {
+            ...message,
+            contentFragments: tempContentFragments,
+          };
+          tempContentFragments = []; // Reset the collected content fragments.
+
+          // Start a new group for user messages.
+          output.push(messageWithContentFragments);
+        } else {
+          // I know this is safe because we are in the light view.
+          output.push(message as LightAgentMessageType);
+        }
+      }
+    });
+
+    renderedMessages = output;
+  }
+
   return new Ok(
     renderedMessages as V extends "full"
       ? MessageType[]
-      : LegacyLightMessageType[]
+      : V extends "legacy-light"
+        ? LegacyLightMessageType[]
+        : V extends "light"
+          ? LightMessageType[]
+          : never
   );
 }
 
-export async function fetchConversationMessages(
+type MessageVariant = "legacy-light" | "light";
+export async function fetchConversationMessages<V extends MessageVariant>(
   auth: Authenticator,
   {
     conversationId,
     limit,
     lastRank,
-  }: { conversationId: string; limit: number; lastRank: number | null }
-): Promise<Result<FetchConversationMessagesResponse, Error>> {
+    viewType,
+  }: {
+    conversationId: string;
+    limit: number;
+    lastRank: number | null;
+    viewType: V;
+  }
+): Promise<
+  Result<
+    {
+      hasMore: boolean;
+      lastValue: number | null;
+      messages: V extends "legacy-light"
+        ? LegacyLightMessageType[]
+        : V extends "light"
+          ? LightMessageType[]
+          : never;
+    },
+    Error
+  >
+> {
   const owner = auth.workspace();
   if (!owner) {
     return new Err(new Error("Unexpected `auth` without `workspace`."));
@@ -588,7 +656,7 @@ export async function fetchConversationMessages(
     auth,
     conversation,
     messages,
-    "legacy-light"
+    viewType
   );
 
   if (renderedMessagesRes.isErr()) {
@@ -600,7 +668,11 @@ export async function fetchConversationMessages(
   return new Ok({
     hasMore,
     lastValue: renderedMessages.at(0)?.rank ?? null,
-    messages: renderedMessages,
+    messages: renderedMessages as V extends "legacy-light"
+      ? LegacyLightMessageType[]
+      : V extends "light"
+        ? LightMessageType[]
+        : never,
   });
 }
 

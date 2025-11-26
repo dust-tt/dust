@@ -43,6 +43,11 @@ export type LegacyLightMessageType =
   | UserMessageType
   | ContentFragmentType;
 
+// This is the new format where content fragments are attached to the user messages.
+export type LightMessageType =
+  | LightAgentMessageType
+  | UserMessageTypeWithContentFragments;
+
 /**
  * User messages
  */
@@ -123,10 +128,20 @@ export type UserMessageType = {
   agenticMessageData?: AgenticMessageData;
 };
 
+export type UserMessageTypeWithContentFragments = UserMessageType & {
+  contentFragments: ContentFragmentType[];
+};
+
 export function isUserMessageType(
-  arg: MessageType | LegacyLightMessageType
+  arg: MessageType | LegacyLightMessageType | LightMessageType
 ): arg is UserMessageType {
   return arg.type === "user_message";
+}
+
+export function isUserMessageTypeWithContentFragments(
+  arg: MessageType | LightMessageType
+): arg is UserMessageTypeWithContentFragments {
+  return arg.type === "user_message" && "contentFragments" in arg;
 }
 
 /**
@@ -312,12 +327,6 @@ export type SubmitMessageError = {
   title: string;
   message: string;
 };
-
-export interface FetchConversationMessagesResponse {
-  hasMore: boolean;
-  lastValue: number | null;
-  messages: LegacyLightMessageType[];
-}
 
 /**
  * Conversation events.

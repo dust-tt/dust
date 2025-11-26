@@ -58,17 +58,20 @@ import type {
   AgentMessageDoneEvent,
   AgentMessageNewEvent,
   ContentFragmentsType,
-  ContentFragmentType,
   ConversationTitleEvent,
-  LegacyLightMessageType,
+  LightMessageType,
   Result,
   RichMention,
   UserMessageNewEvent,
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { isRichAgentMention, toMentionType } from "@app/types";
-import { Err, isContentFragmentType, isUserMessageType, Ok } from "@app/types";
+import {
+  isRichAgentMention,
+  isUserMessageTypeWithContentFragments,
+  toMentionType,
+} from "@app/types";
+import { Err, isUserMessageType, Ok } from "@app/types";
 
 const DEFAULT_PAGE_LIMIT = 50;
 
@@ -188,8 +191,7 @@ export const ConversationViewer = ({
         .flatMap((m) => m.messages)
         .filter((m) => (isUserMessageType(m) ? !isHiddenMessage(m) : true));
 
-      const messagesToRender =
-        convertLegacyLightMessageTypeToVirtuosoMessages(raw);
+      const messagesToRender = convertLightMessageTypeToVirtuosoMessages(raw);
 
       setInitialListData(messagesToRender);
     }
@@ -218,7 +220,7 @@ export const ConversationViewer = ({
         isUserMessageType(m) ? !isHiddenMessage(m) : true
       );
       ref.current.data.prepend(
-        convertLegacyLightMessageTypeToVirtuosoMessages(filtered)
+        convertLightMessageTypeToVirtuosoMessages(filtered)
       );
     }
 
@@ -230,9 +232,7 @@ export const ConversationViewer = ({
 
     if (recentMessagesFromBackend.length > 0) {
       ref.current.data.append(
-        convertLegacyLightMessageTypeToVirtuosoMessages(
-          recentMessagesFromBackend
-        )
+        convertLightMessageTypeToVirtuosoMessages(recentMessagesFromBackend)
       );
     }
   }, [messages]);
@@ -725,32 +725,11 @@ export const ConversationViewer = ({
   );
 };
 
-const convertLegacyLightMessageTypeToVirtuosoMessages = (
-  messages: LegacyLightMessageType[]
-) => {
-  const output: VirtuosoMessage[] = [];
-  let tempContentFragments: ContentFragmentType[] = [];
-
-  messages.forEach((message) => {
-    if (isContentFragmentType(message)) {
-      tempContentFragments.push(message); // Collect content fragments.
-    } else {
-      let messageWithContentFragments: VirtuosoMessage;
-      if (isUserMessageType(message)) {
-        // Attach collected content fragments to the user message.
-        messageWithContentFragments = {
-          ...message,
-          contentFragments: tempContentFragments,
-        };
-        tempContentFragments = []; // Reset the collected content fragments.
-
-        // Start a new group for user messages.
-        output.push(messageWithContentFragments);
-      } else {
-        messageWithContentFragments = makeInitialMessageStreamState(message);
-        output.push(messageWithContentFragments);
-      }
-    }
-  });
-  return output;
-};
+const convertLightMessageTypeToVirtuosoMessages = (
+  messages: LightMessageType[]
+) =>
+  messages.map((message) =>
+    isUserMessageTypeWithContentFragments(message)
+      ? message
+      : makeInitialMessageStreamState(message)
+  );
