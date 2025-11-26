@@ -28,7 +28,9 @@ const AddWebhookRouterEntryBodySchema = t.intersection([
     signing_secret: t.string,
   }),
   t.partial({
-    regions: t.array(t.union([t.literal("US"), t.literal("EU")])),
+    regions: t.array(
+      t.union([t.literal("us-central1"), t.literal("europe-west1")])
+    ),
   }),
 ]);
 
@@ -117,7 +119,7 @@ const _addWebhookRouterEntryHandler = async (
 
   // If no regions are specified, default to the current region
   const { signing_secret, regions: bodyRegions } = bodyValidation.right;
-  const regions = bodyRegions ?? [connectorsConfig.getCurrentShortRegion()];
+  const regions = bodyRegions ?? [connectorsConfig.getCurrentRegion()];
 
   try {
     const service = new WebhookRouterConfigService();

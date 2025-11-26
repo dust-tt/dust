@@ -16,7 +16,4 @@ export const connectorsConfig = {
   getCurrentRegion: (): RegionType => {
     return EnvironmentConfig.getEnvVariable("DUST_REGION") as RegionType;
   },
-  getCurrentShortRegion: (): "US" | "EU" => {
-    return connectorsConfig.getCurrentRegion() === "us-central1" ? "US" : "EU";
-  },
 };
