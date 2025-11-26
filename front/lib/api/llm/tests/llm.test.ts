@@ -1,5 +1,10 @@
+import clone from "lodash/clone";
 import { describe, it, vi } from "vitest";
 
+import type { AnthropicWhitelistedModelId } from "@app/lib/api/llm/clients/anthropic/types";
+import type { GoogleAIStudioWhitelistedModelId } from "@app/lib/api/llm/clients/google/types";
+import type { MistralWhitelistedModelId } from "@app/lib/api/llm/clients/mistral/types";
+import type { OpenAIWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
 import {
   runConversation,
   TEST_CONVERSATIONS,
@@ -13,45 +18,45 @@ import type {
 } from "@app/lib/api/llm/tests/types";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { ModelIdType, ModelProviderIdType } from "@app/types";
-import { GEMINI_3_PRO_MODEL_ID } from "@app/types";
+import {
+  // Anthropic models
+  CLAUDE_3_5_HAIKU_20241022_MODEL_ID,
+  CLAUDE_3_OPUS_2024029_MODEL_ID,
+  CLAUDE_4_5_HAIKU_20251001_MODEL_ID,
+  CLAUDE_4_5_OPUS_20251101_MODEL_ID,
+  CLAUDE_4_5_SONNET_20250929_MODEL_ID,
+  CLAUDE_4_OPUS_20250514_MODEL_ID,
+  CLAUDE_4_SONNET_20250514_MODEL_ID,
+  // Google models
+  GEMINI_2_5_FLASH_LITE_MODEL_ID,
+  GEMINI_2_5_FLASH_MODEL_ID,
+  GEMINI_2_5_PRO_MODEL_ID,
+  GEMINI_3_PRO_MODEL_ID,
+  // OpenAI models
+  GPT_3_5_TURBO_MODEL_ID,
+  GPT_4_1_MINI_MODEL_ID,
+  GPT_4_1_MODEL_ID,
+  GPT_4_TURBO_MODEL_ID,
+  GPT_4O_20240806_MODEL_ID,
+  GPT_4O_MINI_MODEL_ID,
+  GPT_4O_MODEL_ID,
+  GPT_5_1_MODEL_ID,
+  GPT_5_MINI_MODEL_ID,
+  GPT_5_MODEL_ID,
+  GPT_5_NANO_MODEL_ID,
+  isModelProviderId,
+  // Mistral models
+  MISTRAL_CODESTRAL_MODEL_ID,
+  MISTRAL_LARGE_MODEL_ID,
+  MISTRAL_MEDIUM_MODEL_ID,
+  MISTRAL_SMALL_MODEL_ID,
+  O1_MODEL_ID,
+  O3_MINI_MODEL_ID,
+  O3_MODEL_ID,
+  O4_MINI_MODEL_ID,
+} from "@app/types";
 
 const TIMEOUT = 60 * 1000; // 60 seconds
-
-const RUN_LLM_TESTS = process.env.VITE_RUN_LLM_TESTS === "true";
-
-const TEST_CONFIGS = [
-  [
-    { reasoningEffort: null },
-    { reasoningEffort: "none" },
-    { reasoningEffort: "light" },
-    { reasoningEffort: "medium" },
-    { reasoningEffort: "high" },
-    { temperature: 1 },
-    { temperature: 0.7 },
-    { temperature: 0 },
-    { temperature: 0.7, reasoningEffort: "medium" },
-  ],
-];
-
-// Inject Dust managed Anthropic credentials for testing
-vi.mock("@app/types", async (importOriginal) => {
-  const actual = await importOriginal();
-
-  return {
-    // @ts-expect-error actual is unknown
-    ...actual,
-    dustManagedCredentials: vi.fn(() => ({
-      ANTHROPIC_API_KEY: process.env.VITE_DUST_MANAGED_ANTHROPIC_API_KEY ?? "",
-      OPENAI_API_KEY: process.env.VITE_DUST_MANAGED_OPENAI_API_KEY ?? "",
-      OPENAI_BASE_URL: "https://api.openai.com/v1",
-      GOOGLE_AI_STUDIO_API_KEY:
-        process.env.VITE_DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY ?? "",
-      MISTRAL_API_KEY: process.env.VITE_DUST_MANAGED_MISTRAL_API_KEY ?? "",
-      FIREWORKS_API_KEY: process.env.VITE_DUST_MANAGED_FIREWORKS_API_KEY ?? "",
-      XAI_API_KEY: process.env.VITE_DUST_MANAGED_XAI_API_KEY ?? "",
-    })),
-  };
-});
 
 // Mock the openai module to inject dangerouslyAllowBrowser: true
 vi.mock("openai", async (importOriginal) => {
@@ -97,95 +102,152 @@ vi.mock("@anthropic-ai/sdk", async (importOriginal) => {
   };
 });
 
-/**
- * Test suite for LLM clients.
- *
- * Generates and runs tests for different models, configurations and conversations for a given LLM provider.
- *
- * These tests are disabled by default as we don't want to run them on every CI run (dues to costs of LLM usage).
- * To enable them, set the environment variable VITE_RUN_LLM_TESTS to "true".
- * Additionally, make sure to provide the necessary API keys via environment variables.
- *
- * Example of running the tests with OpenAI:
- *
- * ```bash
- * VITE_RUN_LLM_TESTS=true NODE_ENV=test VITE_DUST_MANAGED_OPENAI_API_KEY=$DUST_MANAGED_OPENAI_API_KEY npm run test -- lib/api/llm/tests/llm.test.ts
- * VITE_RUN_LLM_TESTS=true NODE_ENV=test VITE_DUST_MANAGED_ANTHROPIC_API_KEY=$DUST_MANAGED_ANTHROPIC_API_KEY npm run test -- lib/api/llm/tests/llm.test.ts
- * VITE_RUN_LLM_TESTS=true NODE_ENV=test VITE_DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY=$DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY npm run test -- lib/api/llm/tests/llm.test.ts
- * VITE_RUN_LLM_TESTS=true NODE_ENV=test VITE_DUST_MANAGED_MISTRAL_API_KEY=$DUST_MANAGED_MISTRAL_API_KEY npm run test -- lib/api/llm/tests/llm.test.ts
- * VITE_RUN_LLM_TESTS=true NODE_ENV=test VITE_DUST_MANAGED_FIREWORKS_API_KEY=$DUST_MANAGED_FIREWORKS_API_KEY npm run test -- lib/api/llm/tests/llm.test.ts
- * VITE_RUN_LLM_TESTS=true NODE_ENV=test VITE_DUST_MANAGED_XAI_API_KEY=$DUST_MANAGED_XAI_API_KEY npm run test -- lib/api/llm/tests/llm.test.ts
- * ```
- *
- * It is recommended to run these tests locally before pushing changes that affect LLM clients,
- * for instance, when adding a new model.
- */
-class LLMClientTestSuite {
-  // Set the right provider
-  protected provider: ModelProviderIdType = "google_ai_studio";
-  // Add the models to test here
-  protected models: ModelIdType[] = [GEMINI_3_PRO_MODEL_ID];
+const MODELS: Record<
+  | OpenAIWhitelistedModelId
+  | AnthropicWhitelistedModelId
+  | GoogleAIStudioWhitelistedModelId
+  | MistralWhitelistedModelId,
+  { runTest: boolean; providerId: ModelProviderIdType }
+> = {
+  // Anthropic models
+  [CLAUDE_3_5_HAIKU_20241022_MODEL_ID]: {
+    runTest: false,
+    providerId: "anthropic",
+  },
+  [CLAUDE_3_OPUS_2024029_MODEL_ID]: { runTest: false, providerId: "anthropic" },
+  [CLAUDE_4_5_HAIKU_20251001_MODEL_ID]: {
+    runTest: false,
+    providerId: "anthropic",
+  },
+  [CLAUDE_4_5_OPUS_20251101_MODEL_ID]: {
+    runTest: false,
+    providerId: "anthropic",
+  },
+  [CLAUDE_4_5_SONNET_20250929_MODEL_ID]: {
+    runTest: false,
+    providerId: "anthropic",
+  },
+  [CLAUDE_4_OPUS_20250514_MODEL_ID]: {
+    runTest: false,
+    providerId: "anthropic",
+  },
+  [CLAUDE_4_SONNET_20250514_MODEL_ID]: {
+    runTest: false,
+    providerId: "anthropic",
+  },
+  // Google models
+  [GEMINI_2_5_FLASH_LITE_MODEL_ID]: {
+    runTest: false,
+    providerId: "google_ai_studio",
+  },
+  [GEMINI_2_5_FLASH_MODEL_ID]: {
+    runTest: false,
+    providerId: "google_ai_studio",
+  },
+  [GEMINI_2_5_PRO_MODEL_ID]: { runTest: false, providerId: "google_ai_studio" },
+  [GEMINI_3_PRO_MODEL_ID]: { runTest: false, providerId: "google_ai_studio" },
+  // Mistral models
+  [MISTRAL_CODESTRAL_MODEL_ID]: { runTest: false, providerId: "mistral" },
+  [MISTRAL_LARGE_MODEL_ID]: { runTest: false, providerId: "mistral" },
+  [MISTRAL_MEDIUM_MODEL_ID]: { runTest: false, providerId: "mistral" },
+  [MISTRAL_SMALL_MODEL_ID]: { runTest: false, providerId: "mistral" },
+  // OpenAI models
+  [GPT_3_5_TURBO_MODEL_ID]: { runTest: false, providerId: "openai" },
+  [GPT_4_1_MINI_MODEL_ID]: { runTest: false, providerId: "openai" },
+  [GPT_4_1_MODEL_ID]: { runTest: false, providerId: "openai" },
+  [GPT_4_TURBO_MODEL_ID]: { runTest: false, providerId: "openai" },
+  [GPT_4O_20240806_MODEL_ID]: { runTest: false, providerId: "openai" },
+  [GPT_4O_MINI_MODEL_ID]: { runTest: false, providerId: "openai" },
+  [GPT_4O_MODEL_ID]: { runTest: false, providerId: "openai" },
+  [GPT_5_1_MODEL_ID]: { runTest: false, providerId: "openai" },
+  [GPT_5_MINI_MODEL_ID]: { runTest: false, providerId: "openai" },
+  [GPT_5_MODEL_ID]: { runTest: false, providerId: "openai" },
+  [GPT_5_NANO_MODEL_ID]: { runTest: false, providerId: "openai" },
+  [O1_MODEL_ID]: { runTest: false, providerId: "openai" },
+  [O3_MINI_MODEL_ID]: { runTest: false, providerId: "openai" },
+  [O3_MODEL_ID]: { runTest: false, providerId: "openai" },
+  [O4_MINI_MODEL_ID]: { runTest: false, providerId: "openai" },
+};
 
-  protected getTestConfig(modelId: ModelIdType): TestConfig[] {
-    return TEST_CONFIGS.map((configParams) => ({
-      ...configParams,
-      modelId,
-      provider: this.provider,
-    }));
+function getSupportedConversations({
+  modelId,
+  providerId,
+}: {
+  modelId: ModelIdType;
+  providerId: ModelProviderIdType;
+}): TestConversation[] {
+  const conversationsToTest = clone(TEST_CONVERSATIONS);
+  const modelConfig = getSupportedModelConfig({
+    modelId,
+    providerId,
+  });
+  if (modelConfig.supportsVision) {
+    conversationsToTest.push(...TEST_VISION_CONVERSATIONS);
+  }
+  if (modelConfig.supportsResponseFormat) {
+    conversationsToTest.push(...TEST_STRUCTURED_OUTPUT_CONVERSATIONS);
   }
 
-  protected getSupportedConversations(
-    modelId: ModelIdType
-  ): TestConversation[] {
-    const conversationsToTest = TEST_CONVERSATIONS;
-    const modelConfig = getSupportedModelConfig({
-      modelId,
-      providerId: this.provider,
-    });
-    if (modelConfig.supportsVision) {
-      conversationsToTest.push(...TEST_VISION_CONVERSATIONS);
-    }
-    if (modelConfig.supportsResponseFormat) {
-      conversationsToTest.push(...TEST_STRUCTURED_OUTPUT_CONVERSATIONS);
-    }
-
-    return conversationsToTest;
-  }
-
-  protected getConversationsToRun(
-    modelId: ModelIdType
-  ): RunnableTestConversation[] {
-    const conversationsToTest = this.getSupportedConversations(modelId);
-
-    return conversationsToTest.map((conversation) => ({
-      name: conversation.name,
-      run: async (config: TestConfig) => {
-        await runConversation(conversation, config);
-      },
-    }));
-  }
-
-  public generateTests(): void {
-    describe.runIf(RUN_LLM_TESTS)(`${this.provider} LLM provider tests`, () => {
-      this.models.forEach((model) => {
-        describe(`Model: ${model}`, () => {
-          this.getTestConfig(model).forEach((config) => {
-            describe(`Config: temperature=${config.temperature}, reasoningEffort=${config.reasoningEffort}, responseFormat=${config.testStructuredOutputKey}`, () => {
-              this.getConversationsToRun(model).forEach((conversation) => {
-                it(
-                  `should handle: ${conversation.name}`,
-                  { concurrent: true, timeout: TIMEOUT },
-                  async () => {
-                    await conversation.run(config);
-                  }
-                );
-              });
-            });
-          });
-        });
-      });
-    });
-  }
+  return conversationsToTest;
 }
 
-new LLMClientTestSuite().generateTests();
+function getConversationsToRun({
+  modelId,
+  providerId,
+}: {
+  modelId: ModelIdType;
+  providerId: ModelProviderIdType;
+}): RunnableTestConversation[] {
+  const conversationsToTest = getSupportedConversations({
+    modelId,
+    providerId,
+  });
+
+  return conversationsToTest.map((conversation) => ({
+    name: conversation.name,
+    configs: conversation.configs ?? [{}],
+    run: async (config: TestConfig) => {
+      await runConversation(conversation, config);
+    },
+  }));
+}
+
+/**
+ * LLM Integration Tests
+ *
+ * To run these tests from the front directory:
+ *
+ * 1. Skip tests (default):
+ *    npx vitest --config lib/api/llm/tests/vite.config.js lib/api/llm/tests/llm.test.ts --run
+ *
+ * 2. Run tests (requires API keys):
+ *    RUN_LLM_TEST=true npx vitest --config lib/api/llm/tests/vite.config.js lib/api/llm/tests/llm.test.ts --run
+ */
+describe
+  .runIf(process.env.RUN_LLM_TEST === "true")
+  .each(Object.entries(MODELS))(
+  "$providerId / $modelId",
+  (modelId, { providerId, runTest }) => {
+    if (!isModelProviderId(providerId)) {
+      throw new Error(`Invalid providerId: ${providerId}`);
+    }
+    describe.runIf(runTest).concurrent.each(
+      getConversationsToRun({
+        modelId: modelId as ModelIdType,
+        providerId,
+      })
+    )("should handle: $name", (conversation) => {
+      it.concurrent.each(conversation.configs)(
+        "temperature: $temperature, reasoningEffort: $reasoningEffort, testStructuredOutputKey: $testStructuredOutputKey",
+        async (config) => {
+          await conversation.run({
+            modelId: modelId as ModelIdType,
+            provider: providerId,
+            ...config,
+          });
+        },
+        TIMEOUT
+      );
+    });
+  }
+);
