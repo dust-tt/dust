@@ -25,9 +25,16 @@ interface ToolSetupCardProps {
   toolName: string;
   toolId: InternalMCPServerNameType;
   owner: WorkspaceType;
+  conversationId?: string;
+  onSetupComplete?: (toolId: string) => void;
 }
 
-export function ToolSetupCard({ toolName, toolId, owner }: ToolSetupCardProps) {
+export function ToolSetupCard({
+  toolName,
+  toolId,
+  owner,
+  onSetupComplete,
+}: ToolSetupCardProps) {
   const [isActivating, setIsActivating] = useState(false);
   const [isSetupSheetOpen, setIsSetupSheetOpen] = useState(false);
   const isAdmin = owner.role === "admin";
@@ -122,6 +129,7 @@ export function ToolSetupCard({ toolName, toolId, owner }: ToolSetupCardProps) {
     await addToSpace(matchingMCPServer, globalSpace);
     await mutateMCPServers();
     setIsActivating(false);
+    onSetupComplete?.(toolId);
   };
 
   const handleActivateClick = async () => {
@@ -133,6 +141,7 @@ export function ToolSetupCard({ toolName, toolId, owner }: ToolSetupCardProps) {
     setIsActivating(true);
     await mutateMCPServers();
     setIsActivating(false);
+    onSetupComplete?.(toolId);
   };
 
   return (

@@ -72,8 +72,11 @@ import {
   getUserMentionPlugin,
   userMentionDirective,
 } from "@app/lib/mentions/markdown/plugin";
-import { useCancelMessage } from "@app/lib/swr/conversations";
-import { useConversationMessage } from "@app/lib/swr/conversations";
+import {
+  useCancelMessage,
+  useConversationMessage,
+  usePostOnboardingFollowUp,
+} from "@app/lib/swr/conversations";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type {
   ContentFragmentsType,
@@ -596,6 +599,11 @@ function AgentMessageContent({
   const agentMessage = messageStreamState.message;
   const { sId, configuration: agentConfiguration } = agentMessage;
 
+  const { postFollowUp } = usePostOnboardingFollowUp({
+    workspaceId: owner.sId,
+    conversationId,
+  });
+
   const retryHandlerWithResetState = useCallback(
     async (error: PersonalAuthenticationRequiredErrorContent) => {
       methods.data.map((m) =>
@@ -642,6 +650,13 @@ function AgentMessageContent({
     }
   }
 
+  const handleToolSetupComplete = React.useCallback(
+    (toolId: string) => {
+      void postFollowUp(toolId);
+    },
+    [postFollowUp]
+  );
+
   const additionalMarkdownComponents: Components = React.useMemo(
     () => ({
       visualization: getVisualizationPlugin(
@@ -655,8 +670,12 @@ function AgentMessageContent({
       mention: getAgentMentionPlugin(owner),
       mention_user: getUserMentionPlugin(owner),
       dustimg: getImgPlugin(owner),
-      toolSetup: getToolSetupPlugin(owner),
       quickReply: getQuickReplyPlugin(onQuickReplySend, isLastMessage),
+      toolSetup: getToolSetupPlugin(
+        owner,
+        conversationId,
+        handleToolSetupComplete
+      ),
     }),
     [
       owner,
@@ -665,6 +684,7 @@ function AgentMessageContent({
       agentConfiguration.sId,
       onQuickReplySend,
       isLastMessage,
+      handleToolSetupComplete,
     ]
   );
 
