@@ -55,7 +55,7 @@ export const validateRelativePath = (
   try {
     for (let i = 0; i < 5; i++) {
       const next = decodeURIComponent(decodedPath);
-      if (next === decodedPath) break;
+      if (next === decodedPath) {break;}
       decodedPath = next;
     }
   } catch {
