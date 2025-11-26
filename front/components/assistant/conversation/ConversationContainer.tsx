@@ -200,7 +200,7 @@ export function ConversationContainerVirtuoso({
               owner={owner}
               onSubmit={handleConversationCreation}
               conversationId={null}
-              disable={false}
+              disable={hasBlockedActions}
               disableAutoFocus={false}
             />
           </div>
