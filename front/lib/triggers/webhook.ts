@@ -487,6 +487,21 @@ export async function filterTriggers({
       continue;
     }
 
+    const matchesFilter = applyPayloadFilter({
+      trigger,
+      body,
+      provider,
+      workspaceId,
+    });
+
+    if (!matchesFilter) {
+      await webhookRequest.markRelatedTrigger({
+        trigger,
+        status: "not_matched",
+      });
+      continue;
+    }
+
     const rateLimitError = await checkTriggerRateLimits({
       auth,
       trigger,
@@ -505,16 +520,7 @@ export async function filterTriggers({
       continue;
     }
 
-    const matchesFilter = applyPayloadFilter({
-      trigger,
-      body,
-      provider,
-      workspaceId,
-    });
-
-    if (matchesFilter) {
-      filteredTriggers.push(trigger);
-    }
+    filteredTriggers.push(trigger);
   }
 
   return new Ok(filteredTriggers);
