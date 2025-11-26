@@ -46,6 +46,7 @@ interface InputBarProps {
   disableAutoFocus: boolean;
   isFloating?: boolean;
   isFloatingWithoutMargin?: boolean;
+  isSubmitting?: boolean;
   disable?: boolean;
 }
 
@@ -64,9 +65,10 @@ export const InputBar = React.memo(function InputBar({
   actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
   isFloating = true,
+  isSubmitting = false,
   disable = false,
 }: InputBarProps) {
-  const [disableSendButton, setDisableSendButton] = useState(disable);
+  const [isLocalSubmitting, setIsLocalSubmitting] = useState(isSubmitting);
 
   const [attachedNodes, setAttachedNodes] = useState<
     DataSourceViewContentNode[]
@@ -224,7 +226,7 @@ export const InputBar = React.memo(function InputBar({
     // spinner and in case of error, re-enable the input bar
     if (!conversationId) {
       setLoading(true);
-      setDisableSendButton(true);
+      setIsLocalSubmitting(true);
 
       const r = await onSubmit(
         markdown,
@@ -245,7 +247,7 @@ export const InputBar = React.memo(function InputBar({
       );
 
       setLoading(false);
-      setDisableSendButton(false);
+      setIsLocalSubmitting(false);
       if (r.isOk()) {
         resetEditorText();
         fileUploaderService.resetUpload();
@@ -282,8 +284,8 @@ export const InputBar = React.memo(function InputBar({
   };
 
   useEffect(() => {
-    setDisableSendButton(disable);
-  }, [disable]);
+    setIsLocalSubmitting(isSubmitting);
+  }, [isSubmitting]);
 
   return (
     <div className="flex w-full flex-col">
@@ -331,10 +333,10 @@ export const InputBar = React.memo(function InputBar({
             onEnterKeyDown={handleSubmit}
             stickyMentions={stickyMentions}
             fileUploaderService={fileUploaderService}
-            disableSendButton={
-              disableSendButton || fileUploaderService.isProcessingFiles
+            isSubmitting={
+              isLocalSubmitting || fileUploaderService.isProcessingFiles
             }
-            disableTextInput={disable}
+            disableInput={disable}
             onNodeSelect={handleNodesAttachmentSelect}
             onNodeUnselect={handleNodesAttachmentRemove}
             selectedMCPServerViews={selectedMCPServerViews}

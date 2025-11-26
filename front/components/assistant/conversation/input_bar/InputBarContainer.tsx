@@ -65,8 +65,8 @@ export interface InputBarContainerProps {
   stickyMentions?: AgentMention[];
   actions: InputBarAction[];
   disableAutoFocus: boolean;
-  disableSendButton: boolean;
-  disableTextInput: boolean;
+  isSubmitting: boolean;
+  disableInput: boolean;
   fileUploaderService: FileUploaderService;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
@@ -86,8 +86,8 @@ const InputBarContainer = ({
   stickyMentions,
   actions,
   disableAutoFocus,
-  disableSendButton,
-  disableTextInput,
+  isSubmitting,
+  disableInput,
   fileUploaderService,
   onNodeSelect,
   onNodeUnselect,
@@ -383,6 +383,8 @@ const InputBarContainer = ({
     };
   }, [editor, editorService]);
 
+  const disableTextInput = isSubmitting || disableInput;
+
   // Disable the editor when disableTextInput is true.
   useEffect(() => {
     if (editor) {
@@ -633,14 +635,14 @@ const InputBarContainer = ({
               <Button
                 size={buttonSize}
                 isLoading={
-                  disableSendButton &&
+                  isSubmitting &&
                   voiceTranscriberService.status !== "transcribing"
                 }
                 icon={ArrowUpIcon}
                 variant="highlight"
                 disabled={
                   isEmpty ||
-                  disableSendButton ||
+                  disableTextInput ||
                   voiceTranscriberService.status !== "idle"
                 }
                 onClick={async (e: React.MouseEvent<HTMLButtonElement>) => {

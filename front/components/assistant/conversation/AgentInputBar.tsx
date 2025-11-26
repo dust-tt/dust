@@ -190,10 +190,8 @@ export const AgentInputBar = ({
         conversationId={context.conversationId}
         disableAutoFocus={isMobile}
         actions={context.agentBuilderContext?.actionsToShow}
-        disable={
-          context.agentBuilderContext?.isSavingDraftAgent === true ||
-          hasBlockedActions
-        }
+        isSubmitting={context.agentBuilderContext?.isSavingDraftAgent === true}
+        disable={hasBlockedActions}
       />
     </div>
   );
