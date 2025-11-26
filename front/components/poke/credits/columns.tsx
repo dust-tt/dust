@@ -34,13 +34,10 @@ export function makeColumnsForCredits(): ColumnDef<PokeCreditType>[] {
       },
       cell: ({ row }) => {
         const { type } = row.original;
-        const colorMap: Record<
-          CreditType,
-          "success" | "warning" | "highlight"
-        > = {
-          free: "success",
-          payg: "highlight",
-          committed: "warning",
+        const colorMap: Record<CreditType, "blue" | "primary" | "green"> = {
+          free: "blue",
+          payg: "primary",
+          committed: "green",
         };
         return (
           <Chip color={colorMap[type] ?? "highlight"} size="xs">
@@ -134,7 +131,7 @@ export function makeColumnsForCredits(): ColumnDef<PokeCreditType>[] {
       cell: ({ row }) => {
         const { startDate } = row.original;
         if (!startDate) {
-          return <span className="text-gray-400">Not started</span>;
+          return <span className="text-warning">Not started</span>;
         }
         return (
           <span className="text-sm">
@@ -162,12 +159,12 @@ export function makeColumnsForCredits(): ColumnDef<PokeCreditType>[] {
       cell: ({ row }) => {
         const { expirationDate } = row.original;
         if (!expirationDate) {
-          return <span className="text-gray-400">No expiration</span>;
+          return <span className="text-warning">No expiration</span>;
         }
         const expDate = new Date(expirationDate);
         const isExpired = expDate < new Date();
         return (
-          <span className={`text-sm ${isExpired ? "text-red-600" : ""}`}>
+          <span className={`text-sm ${isExpired ? "text-warning" : ""}`}>
             {dateToHumanReadable(expDate)}
             {isExpired && " (Expired)"}
           </span>
@@ -176,7 +173,7 @@ export function makeColumnsForCredits(): ColumnDef<PokeCreditType>[] {
     },
     {
       accessorKey: "discount",
-      header: "Discount",
+      header: "Billed Discount",
       cell: ({ row }) => {
         const { discount } = row.original;
         if (discount === null) {
