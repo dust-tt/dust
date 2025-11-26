@@ -203,8 +203,13 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     const groupAgent = groupAgents[0];
     const groupModel = await groupAgent.getGroup();
-    const group = new GroupResource(GroupModel, groupModel.get());
+    if (!groupModel) {
+      return new Err(
+        new DustError("group_not_found", "Editor group not found for agent.")
+      );
+    }
 
+    const group = new GroupResource(GroupModel, groupModel.get());
     if (group.kind !== "agent_editors") {
       // Should not happen based on creation logic, but good to check.
       // Might change when we allow other group kinds to be associated with agents.
