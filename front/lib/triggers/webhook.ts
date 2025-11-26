@@ -16,7 +16,7 @@ import { FathomClient } from "@app/lib/triggers/built-in-webhooks/fathom/fathom_
 import {
   checkTriggerForExecutionPerDayLimit,
   checkWebhookRequestForRateLimit,
-} from "@app/lib/triggers/common";
+} from "@app/lib/triggers/rate_limits";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { verifySignature } from "@app/lib/webhookSource";
 import logger from "@app/logger/logger";
@@ -425,23 +425,7 @@ export async function filterTriggers({
       continue;
     }
 
-    const matchesFilter = applyPayloadFilter({
-      trigger,
-      body,
-      provider,
-      workspaceId,
-    });
-
-    if (!matchesFilter) {
-      await webhookRequest.markRelatedTrigger({
-        trigger,
-        status: "not_matched",
-      });
-      continue;
-    }
-
-
-    // Check 4: Payload filter
+    // Check 2: Payload filter
     const payloadMatches = matchesPayloadFilter({
       trigger,
       body,
@@ -455,7 +439,8 @@ export async function filterTriggers({
       });
       continue;
     }
-    // Check 2: Workspace-level rate limit
+
+    // Check 3: Workspace-level rate limit.
     const isWorkspaceRateLimited = await checkWorkspaceRateLimit({
       auth,
       trigger,
@@ -471,7 +456,7 @@ export async function filterTriggers({
       return new Err(new Error("Workspace rate limit exceeded"));
     }
 
-    // Check 3: Trigger-specific rate limit
+    // Check 4: Trigger-specific rate limit.
     const isTriggerRateLimited = await checkTriggerRateLimit({
       auth,
       trigger,
