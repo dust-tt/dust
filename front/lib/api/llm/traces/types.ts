@@ -101,6 +101,7 @@ export interface LLMTrace {
   output?: LLMTraceOutput;
   traceId: string;
   workspaceId: string;
+  modelInteractionId?: string;
 }
 
 /**
