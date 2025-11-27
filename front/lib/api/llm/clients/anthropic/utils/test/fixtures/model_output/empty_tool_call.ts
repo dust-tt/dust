@@ -25,6 +25,8 @@ export const emptyToolCallModelEvents: BetaRawMessageStreamEvent[] = [
         service_tier: "standard",
         server_tool_use: null,
       },
+      container: null,
+      context_management: null,
     },
   },
   {
@@ -54,7 +56,9 @@ export const emptyToolCallModelEvents: BetaRawMessageStreamEvent[] = [
     delta: {
       stop_reason: "tool_use",
       stop_sequence: null,
+      container: null,
     },
+    context_management: null,
     usage: {
       input_tokens: 100,
       cache_creation_input_tokens: 0,

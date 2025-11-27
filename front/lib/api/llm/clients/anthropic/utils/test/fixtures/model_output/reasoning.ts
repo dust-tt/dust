@@ -25,6 +25,8 @@ export const reasoningModelEvents: BetaRawMessageStreamEvent[] = [
         service_tier: "standard",
         server_tool_use: null,
       },
+      container: null,
+      context_management: null,
     },
   },
   {
@@ -90,7 +92,9 @@ export const reasoningModelEvents: BetaRawMessageStreamEvent[] = [
     delta: {
       stop_reason: "end_turn",
       stop_sequence: null,
+      container: null,
     },
+    context_management: null,
     usage: {
       input_tokens: 2500,
       cache_creation_input_tokens: 0,
