@@ -39,18 +39,20 @@ vi.mock("@app/lib/user_search/search", () => ({
       });
 
       // Filter by search term (case-insensitive matching on email or full name)
-      const filteredUsers = searchTerm
-        ? users.filter((user) => {
-            const lowerSearchTerm = searchTerm.toLowerCase();
-            const email = user.email?.toLowerCase() || "";
-            const fullName =
-              `${user.firstName || ""} ${user.lastName || ""}`.toLowerCase();
-            return (
-              email.includes(lowerSearchTerm) ||
-              fullName.includes(lowerSearchTerm)
-            );
-          })
-        : users;
+      // If searchTerm is empty or undefined, return all users
+      const filteredUsers =
+        searchTerm && searchTerm.trim()
+          ? users.filter((user) => {
+              const lowerSearchTerm = searchTerm.toLowerCase();
+              const email = user.email?.toLowerCase() || "";
+              const fullName =
+                `${user.firstName || ""} ${user.lastName || ""}`.toLowerCase();
+              return (
+                email.includes(lowerSearchTerm) ||
+                fullName.includes(lowerSearchTerm)
+              );
+            })
+          : users;
 
       // Apply pagination
       const paginatedUsers = filteredUsers.slice(offset, offset + limit);
@@ -238,5 +240,37 @@ describe("GET /api/w/[wId]/members/search", () => {
     const data = res._getJSONData();
     expect(data.total).toBe(0);
     expect(data.members).toHaveLength(0);
+  });
+
+  it("returns all members when searchTerm is empty string", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
+
+    // Create additional users
+    const users = await Promise.all([
+      UserFactory.basic(),
+      UserFactory.basic(),
+      UserFactory.basic(),
+    ]);
+
+    await Promise.all(
+      users.map((user) =>
+        MembershipFactory.associate(workspace, user, { role: "user" })
+      )
+    );
+
+    req.query.searchTerm = "";
+    req.query.offset = "0";
+    req.query.limit = "25";
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    // Should return all 4 users (3 created + 1 from createPrivateApiMockRequest)
+    expect(data.total).toBe(4);
+    expect(data.members).toHaveLength(4);
   });
 });

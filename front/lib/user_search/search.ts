@@ -28,29 +28,33 @@ export async function searchUsers({
   limit: number;
 }): Promise<Result<SearchUsersResult, ElasticsearchError>> {
   return withEs(async (client) => {
-    // Build the query
+    // If searchTerm is empty or only whitespace, return all users from the workspace.
+    const hasSearchTerm = searchTerm && searchTerm.trim().length > 0;
+
     const query: estypes.QueryDslQueryContainer = {
       bool: {
         filter: [{ term: { workspace_id: owner.sId } }],
-        should: [
-          // Prefix matching on full_name using edge n-grams
-          {
-            match_phrase_prefix: {
-              "full_name.edge": {
-                query: searchTerm,
+        ...(hasSearchTerm && {
+          should: [
+            // Prefix matching on full_name using edge n-grams
+            {
+              match_phrase_prefix: {
+                "full_name.edge": {
+                  query: searchTerm,
+                },
               },
             },
-          },
-          // Token matching on email (works with email tokenizer)
-          {
-            match_phrase_prefix: {
-              email: {
-                query: searchTerm,
+            // Token matching on email (works with email tokenizer)
+            {
+              match_phrase_prefix: {
+                email: {
+                  query: searchTerm,
+                },
               },
             },
-          },
-        ],
-        minimum_should_match: 1,
+          ],
+          minimum_should_match: 1,
+        }),
       },
     };
 
