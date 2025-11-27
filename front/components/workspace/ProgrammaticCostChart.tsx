@@ -347,29 +347,34 @@ export function ProgrammaticCostChart({
   }, [filter]);
 
   // Util function to get label for a filter key based on type
-  function getFilterLabel(type: GroupByType, key: string): string {
-    if (key === "others") {
-      return OTHER_LABEL.label;
-    }
-    if (type === "origin" && isUserMessageOrigin(key)) {
-      return USER_MESSAGE_ORIGIN_LABELS[key].label;
-    }
-    // Fallback to cached label if present, else original key
-    return labelCache[type]?.[key] ?? key;
-  }
+  const getFilterLabel = useCallback(
+    (type: GroupByType, key: string): string => {
+      if (key === "others") {
+        return OTHER_LABEL.label;
+      }
+      if (type === "origin" && isUserMessageOrigin(key)) {
+        return USER_MESSAGE_ORIGIN_LABELS[key].label;
+      }
+      // Fallback to cached label if present, else original key
+      return labelCache[type]?.[key] ?? key;
+    },
+    [labelCache]
+  );
 
   // Build active filter chips for all groupBy types
   const activeFilterChips = useMemo(() => {
     return GROUP_BY_TYPE_OPTIONS.flatMap(({ value: type }) => {
       const filterKeys = filter[type];
-      if (!filterKeys) return [];
+      if (!filterKeys) {
+        return [];
+      }
       return filterKeys.map((key) => ({
         groupByType: type,
         filterKey: key,
         label: getFilterLabel(type, key),
       }));
     });
-  }, [filter, labelCache]);
+  }, [filter, labelCache, getFilterLabel]);
 
   // Remove a specific filter
   const handleRemoveFilter = useCallback(
@@ -475,11 +480,12 @@ export function ProgrammaticCostChart({
             {activeFilterChips.map((chip) => (
               <Chip
                 key={`${chip.groupByType}:${chip.filterKey}`}
-                label={chip.label}
+                label={`${chip.groupByType}: ${chip.label}`}
                 size="xs"
                 onRemove={() =>
                   handleRemoveFilter(chip.groupByType, chip.filterKey)
                 }
+                className="capitalize"
               />
             ))}
           </div>
