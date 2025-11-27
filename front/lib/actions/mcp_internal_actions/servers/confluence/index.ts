@@ -10,6 +10,10 @@ import {
   updatePage,
   withAuth,
 } from "@app/lib/actions/mcp_internal_actions/servers/confluence/confluence_api_helper";
+import {
+  renderConfluencePage,
+  renderConfluencePageList,
+} from "@app/lib/actions/mcp_internal_actions/servers/confluence/rendering";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -93,17 +97,16 @@ function createServer(
                 new MCPError(`Error listing pages: ${result.error}`)
               );
             }
+            const formattedResults = renderConfluencePageList(
+              result.value.results,
+              {
+                hasMore: Boolean(result.value._links?.next),
+              }
+            );
             return new Ok([
               {
                 type: "text" as const,
-                text:
-                  result.value.results.length === 0
-                    ? "No pages found"
-                    : `Found ${result.value.results.length} page(s)`,
-              },
-              {
-                type: "text" as const,
-                text: JSON.stringify(result.value, null, 2),
+                text: formattedResults,
               },
             ]);
           },
@@ -154,14 +157,13 @@ function createServer(
                 },
               ]);
             }
+            const formattedPage = renderConfluencePage(result.value, {
+              includeBody: params.includeBody ?? false,
+            });
             return new Ok([
               {
                 type: "text" as const,
-                text: "Page retrieved successfully",
-              },
-              {
-                type: "text" as const,
-                text: JSON.stringify(result.value, null, 2),
+                text: formattedPage,
               },
             ]);
           },

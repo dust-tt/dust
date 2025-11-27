@@ -127,6 +127,10 @@ export const ConfluenceV1SearchPageSchema = z
   })
   .passthrough();
 
+export type ConfluenceV1SearchPage = z.infer<
+  typeof ConfluenceV1SearchPageSchema
+>;
+
 export const ConfluenceV1SearchResultSchema = z.object({
   results: z.array(ConfluenceV1SearchPageSchema),
   _links: z
@@ -238,3 +242,54 @@ export const UpdatePagePayloadSchema = z.object({
 });
 
 export type UpdatePagePayload = z.infer<typeof UpdatePagePayloadSchema>;
+
+export type ConfluenceUser = {
+  accountId?: string;
+  displayName?: string;
+  publicName?: string;
+  email?: string;
+};
+
+export type ConfluenceLinks = {
+  base?: string;
+  webui?: string;
+  tinyui?: string;
+};
+
+export type ConfluenceVersionInfo = {
+  number?: number;
+  message?: string;
+  authorId?: string;
+  createdAt?: string;
+  createdBy?: ConfluenceUser;
+};
+
+export type ConfluenceLabel = {
+  name?: string;
+};
+
+export type ConfluenceSpace = {
+  id?: string | number;
+  key?: string;
+  name?: string;
+};
+
+export type ConfluenceAncestor = {
+  id: string;
+  title?: string;
+};
+
+export type RenderablePage = (ConfluencePage | ConfluenceV1SearchPage) & {
+  _links?: ConfluenceLinks;
+  createdAt?: string;
+  updatedAt?: string;
+  createdBy?: ConfluenceUser;
+  version?: ConfluenceVersionInfo;
+  labels?: { results?: ConfluenceLabel[] };
+  space?: ConfluenceSpace;
+  ancestors?: ConfluenceAncestor[];
+};
+
+export type RenderConfluencePageOptions = {
+  includeBody?: boolean;
+};
