@@ -1,4 +1,6 @@
 import esbuild from "esbuild";
+import { writeFile } from "fs/promises";
+import path from "path";
 
 async function buildWorker() {
   try {
@@ -30,6 +32,11 @@ async function buildWorker() {
     console.log(
       `📦 Bundle size: ${(result.metafile.outputs["dist/start_worker.js"].bytes / 1024 / 1024).toFixed(2)} MB`
     );
+
+    // Write metafile to meta.json
+    const metaPath = path.join(__dirname, "../dist/meta.json");
+    await writeFile(metaPath, JSON.stringify(result.metafile, null, 2));
+    console.log(`📄 Metafile written to ${metaPath}`);
 
     // Log any warnings
     if (result.warnings.length > 0) {
