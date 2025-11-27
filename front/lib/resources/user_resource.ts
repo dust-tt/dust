@@ -16,7 +16,7 @@ import {
   UserModel,
 } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-// import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
+import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
 import type { LightWorkspaceType, ModelId, Result, UserType } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 import type { UserSearchDocument } from "@app/types/user_search/user_search";
@@ -62,13 +62,13 @@ export class UserResource extends BaseResource<UserModel> {
     const userResource = new this(UserModel, user.get());
 
     // Update user search index across all workspaces.
-    // const workflowResult = await launchIndexUserSearchWorkflow({
-    //   userId: userResource.sId,
-    // });
-    // if (workflowResult.isErr()) {
-    //   // Throw if it fails to launch (unexpected).
-    //   throw workflowResult.error;
-    // }
+    const workflowResult = await launchIndexUserSearchWorkflow({
+      userId: userResource.sId,
+    });
+    if (workflowResult.isErr()) {
+      // Throw if it fails to launch (unexpected).
+      throw workflowResult.error;
+    }
 
     return userResource;
   }
@@ -272,13 +272,13 @@ export class UserResource extends BaseResource<UserModel> {
     });
 
     // Update user search index across all workspaces.
-    // const workflowResult = await launchIndexUserSearchWorkflow({
-    //   userId: this.sId,
-    // });
-    // if (workflowResult.isErr()) {
-    //   // Throw if it fails to launch (unexpected).
-    //   throw workflowResult.error;
-    // }
+    const workflowResult = await launchIndexUserSearchWorkflow({
+      userId: this.sId,
+    });
+    if (workflowResult.isErr()) {
+      // Throw if it fails to launch (unexpected).
+      throw workflowResult.error;
+    }
 
     return result;
   }
@@ -310,13 +310,13 @@ export class UserResource extends BaseResource<UserModel> {
     });
 
     // Update user search index across all workspaces.
-    // const workflowResult = await launchIndexUserSearchWorkflow({
-    //   userId: this.sId,
-    // });
-    // if (workflowResult.isErr()) {
-    //   // Throw if it fails to launch (unexpected).
-    //   throw workflowResult.error;
-    // }
+    const workflowResult = await launchIndexUserSearchWorkflow({
+      userId: this.sId,
+    });
+    if (workflowResult.isErr()) {
+      // Throw if it fails to launch (unexpected).
+      throw workflowResult.error;
+    }
 
     return result;
   }
