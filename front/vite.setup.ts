@@ -8,50 +8,68 @@ import { afterEach, beforeEach, vi } from "vitest";
 
 import { frontSequelize } from "@app/lib/resources/storage";
 
+// Mock Redis - must be at module level
+vi.mock("@app/lib/api/redis", () => ({
+  getRedisClient: vi.fn().mockResolvedValue({
+    get: vi.fn(),
+    set: vi.fn(),
+    ttl: vi.fn(),
+    zAdd: vi.fn(),
+    expire: vi.fn(),
+    zRange: vi.fn(),
+    hGetAll: vi.fn().mockResolvedValue([]),
+  }),
+  runOnRedis: vi
+    .fn()
+    .mockImplementation(
+      async (opts: unknown, fn: (client: any) => Promise<unknown>) => {
+        // Mock Redis client
+        const mockRedisClient = {
+          get: vi.fn(),
+          set: vi.fn(),
+          ttl: vi.fn(),
+          zAdd: vi.fn(),
+          expire: vi.fn(),
+          zRange: vi.fn(),
+          hGetAll: vi.fn().mockResolvedValue([]),
+        };
+
+        return fn(mockRedisClient);
+      }
+    ),
+}));
+
+// Mock Temporal - must be at module level
+vi.mock("@app/lib/temporal", () => ({
+  getTemporalClientForAgentNamespace: vi.fn().mockResolvedValue({
+    schedule: {
+      getHandle: vi.fn().mockReturnValue({
+        update: vi.fn(),
+      }),
+    },
+  }),
+  getTemporalClientForFrontNamespace: vi.fn().mockResolvedValue({
+    workflow: {
+      start: vi.fn().mockResolvedValue(undefined),
+    },
+  }),
+}));
+
+// Mock Temporal indexation workflow - must be at module level
+vi.mock("@app/temporal/es_indexation/client", async (importOriginal) => {
+  const mod = (await importOriginal()) as Record<string, unknown>;
+  return {
+    ...mod,
+    launchIndexUserSearchWorkflow: vi.fn(async () => {
+      const { Ok } = await import("@app/types");
+      return new Ok(undefined);
+    }),
+  };
+});
+
 beforeEach(async (c) => {
   vi.clearAllMocks();
 
-  // Mock Redis
-  vi.mock("@app/lib/api/redis", () => ({
-    getRedisClient: vi.fn().mockResolvedValue({
-      get: vi.fn(),
-      set: vi.fn(),
-      ttl: vi.fn(),
-      zAdd: vi.fn(),
-      expire: vi.fn(),
-      zRange: vi.fn(),
-      hGetAll: vi.fn().mockResolvedValue([]),
-    }),
-    runOnRedis: vi
-      .fn()
-      .mockImplementation(
-        async (opts: unknown, fn: (client: any) => Promise<unknown>) => {
-          // Mock Redis client
-          const mockRedisClient = {
-            get: vi.fn(),
-            set: vi.fn(),
-            ttl: vi.fn(),
-            zAdd: vi.fn(),
-            expire: vi.fn(),
-            zRange: vi.fn(),
-            hGetAll: vi.fn().mockResolvedValue([]),
-          };
-
-          return fn(mockRedisClient);
-        }
-      ),
-  }));
-
-  // Mock Temporal
-  vi.mock("@app/lib/temporal", () => ({
-    getTemporalClientForAgentNamespace: vi.fn().mockResolvedValue({
-      schedule: {
-        getHandle: vi.fn().mockReturnValue({
-          update: vi.fn(),
-        }),
-      },
-    }),
-  }));
   const namespace = cls.createNamespace("test-namespace");
 
   // We use CLS to create a namespace and a transaction to isolate each test.
