@@ -65,6 +65,14 @@ function* handleMessageStreamEvent(
 ): Generator<LLMEvent> {
   switch (messageStreamEvent.type) {
     case "message_start":
+      yield {
+        type: "interaction_id",
+        content: {
+          modelInteractionId: messageStreamEvent.message.id,
+        },
+        metadata,
+      };
+      break;
     case "message_stop":
       // Nothing to do for now
       break;

@@ -9,6 +9,13 @@ export type Text = {
   text: string;
 };
 
+// Provider response identification event
+export interface ResponseIdEvent {
+  type: "interaction_id";
+  content: { modelInteractionId: string };
+  metadata: LLMClientMetadata;
+}
+
 // Stream events
 export interface TextDeltaEvent {
   type: "text_delta";
@@ -92,6 +99,7 @@ export class EventError extends Error {
 }
 
 export type LLMEvent =
+  | ResponseIdEvent
   | TextDeltaEvent
   | ReasoningDeltaEvent
   | ToolCallEvent

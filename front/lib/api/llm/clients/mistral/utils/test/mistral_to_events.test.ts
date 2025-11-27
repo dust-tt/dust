@@ -148,6 +148,11 @@ const metadata = {
 
 const finishStopLLMEvents = [
   {
+    type: "interaction_id",
+    content: { modelInteractionId: "25b708fd990f4a3b8d6fc7166e4b8db2" },
+    metadata,
+  },
+  {
     type: "text_delta",
     content: {
       delta: "Hello, ",
@@ -202,6 +207,11 @@ const finishStopLLMEvents = [
 ];
 
 const finishToolCallLLMEvents = [
+  {
+    type: "interaction_id",
+    content: { modelInteractionId: "c02315a0f93e47ba87c64fe6479c219c" },
+    metadata,
+  },
   {
     type: "text_delta",
     content: {

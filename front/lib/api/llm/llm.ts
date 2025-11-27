@@ -136,6 +136,15 @@ export abstract class LLM {
         currentEvent = event;
         buffer.addEvent(event);
 
+        if (event.type === "interaction_id") {
+          buffer.setModelInteractionId(event.content.modelInteractionId);
+          generation.updateTrace({
+            metadata: {
+              modelInteractionId: event.content.modelInteractionId,
+            },
+          });
+        }
+
         yield event;
       }
 
