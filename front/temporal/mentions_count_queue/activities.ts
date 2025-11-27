@@ -10,7 +10,7 @@ export async function mentionsCountActivity(workspaceId: string) {
   if (!owner) {
     throw new Error(`Workspace ${workspaceId} not found`);
   }
-  const agentMessageCounts = await agentMentionsCount(owner.id);
+  const agentMessageCounts = await agentMentionsCount(owner.sId);
 
   await runOnRedis({ origin: "mentions_count" }, (redis) =>
     storeCountsInRedis(workspaceId, agentMessageCounts, redis)

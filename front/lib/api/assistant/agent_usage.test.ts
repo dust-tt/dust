@@ -1,62 +1,89 @@
-import { describe, expect, it } from "vitest";
+import { Ok } from "@dust-tt/types";
+import { describe, expect, it, vi } from "vitest";
 
 import { agentMentionsCount } from "@app/lib/api/assistant/agent_usage";
-import { Mention } from "@app/lib/models/assistant/conversation";
-import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
-import { UserFactory } from "@app/tests/utils/UserFactory";
 
-process.env.FRONT_DATABASE_READ_REPLICA_URI =
-  process.env.FRONT_DATABASE_URI ?? process.env.TEST_FRONT_DATABASE_URI;
+vi.mock("@app/lib/api/elasticsearch", () => ({
+  searchAnalytics: vi.fn(),
+}));
+
+import { searchAnalytics } from "@app/lib/api/elasticsearch";
 
 describe("agentMentionsCount", () => {
-  it("should only count agent mentions, not user mentions", async () => {
-    const { workspace, authenticator: auth } = await createResourceTest({});
+  it("should return aggregated mentions from Elasticsearch", async () => {
+    const mockSearchAnalytics = vi.mocked(searchAnalytics);
+    mockSearchAnalytics.mockResolvedValue(
+      new Ok({
+        took: 1,
+        timed_out: false,
+        _shards: { total: 1, successful: 1, skipped: 0, failed: 0 },
+        hits: { total: { value: 0, relation: "eq" }, hits: [] },
+        aggregations: {
+          by_agent: {
+            buckets: [
+              {
+                key: "agent-123",
+                doc_count: 5,
+                conversation_count: { value: 3 },
+                user_count: { value: 2 },
+              },
+              {
+                key: "agent-456",
+                doc_count: 2,
+                conversation_count: { value: 1 },
+                user_count: { value: 1 },
+              },
+            ],
+          },
+        },
+      })
+    );
 
-    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
-      name: "Test Agent",
-      description: "Test agent for mention counting",
-    });
+    const result = await agentMentionsCount("workspace-sId");
 
-    // Create conversation with message
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: agentConfig.sId,
-      messagesCreatedAt: [],
-      visibility: "unlisted",
-    });
+    expect(result).toHaveLength(2);
+    expect(result[0].agentId).toBe("agent-123");
+    expect(result[0].messageCount).toBe(5);
+    expect(result[0].conversationCount).toBe(3);
+    expect(result[0].userCount).toBe(2);
+    expect(result[1].agentId).toBe("agent-456");
+    expect(result[1].messageCount).toBe(2);
 
-    const { messageRow } = await ConversationFactory.createUserMessage({
-      auth,
-      workspace,
-      conversation,
-      content: "Test message",
-    });
+    // Verify the query structure
+    expect(mockSearchAnalytics).toHaveBeenCalledWith(
+      expect.objectContaining({
+        bool: {
+          filter: expect.arrayContaining([
+            { term: { workspace_id: "workspace-sId" } },
+            { exists: { field: "agent_id" } },
+          ]),
+        },
+      }),
+      expect.objectContaining({
+        aggregations: expect.any(Object),
+        size: 0,
+      })
+    );
+  });
 
-    // Create AGENT mention (agentConfigurationId NOT NULL)
-    await Mention.create({
-      workspaceId: workspace.id,
-      messageId: messageRow.id,
-      agentConfigurationId: agentConfig.sId,
-      userId: null,
-    });
+  it("should return empty array when no aggregations", async () => {
+    const mockSearchAnalytics = vi.mocked(searchAnalytics);
+    mockSearchAnalytics.mockResolvedValue(
+      new Ok({
+        took: 1,
+        timed_out: false,
+        _shards: { total: 1, successful: 1, skipped: 0, failed: 0 },
+        hits: { total: { value: 0, relation: "eq" }, hits: [] },
+        aggregations: {
+          by_agent: {
+            buckets: [],
+          },
+        },
+      })
+    );
 
-    // Create USER mention (agentConfigurationId IS NULL)
-    const user = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, user, { role: "user" });
-    await Mention.create({
-      workspaceId: workspace.id,
-      messageId: messageRow.id,
-      agentConfigurationId: null,
-      userId: user.id,
-    });
+    const result = await agentMentionsCount("workspace-sId");
 
-    // Query should only return agent mention
-    const result = await agentMentionsCount(workspace.id);
-
-    expect(result).toHaveLength(1);
-    expect(result[0].agentId).toBe(agentConfig.sId);
-    expect(result[0].messageCount).toBe(1); // Only agent mention, not user mention
+    expect(result).toHaveLength(0);
   });
 });
