@@ -57,7 +57,7 @@ vi.mock("@app/lib/temporal", () => ({
 
 // Mock Temporal indexation workflow - must be at module level
 vi.mock("@app/temporal/es_indexation/client", async (importOriginal) => {
-  const mod = await importOriginal();
+  const mod = (await importOriginal()) as Record<string, unknown>;
   return {
     ...mod,
     launchIndexUserSearchWorkflow: vi.fn(async () => {
