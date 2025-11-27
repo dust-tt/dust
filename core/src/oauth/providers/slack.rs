@@ -54,6 +54,7 @@ impl SlackConnectionProvider {
         related_credentials: Option<Credential>,
     ) -> Result<String> {
         let (client_id, client_secret) = match app_type {
+            // related_credentials refers to customers using their own Slack app
             SlackUseCase::Connection => match related_credentials {
                 Some(credentials) => Self::get_credentials(credentials)?,
                 None => (
