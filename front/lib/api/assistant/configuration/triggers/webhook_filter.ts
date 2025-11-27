@@ -305,6 +305,7 @@ export async function getWebhookFilterGeneration(
       },
       prompt: INSTRUCTIONS,
       specifications,
+      forceToolCall: SET_FILTER_FUNCTION_NAME,
     },
     {
       context: {

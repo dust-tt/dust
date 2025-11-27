@@ -251,11 +251,13 @@ export abstract class LLM {
     conversation,
     prompt,
     specifications,
+    forceToolCall,
   }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
     yield* this.streamWithTracing({
       conversation,
       prompt,
       specifications,
+      forceToolCall,
     });
   }
 
@@ -263,5 +265,6 @@ export abstract class LLM {
     conversation,
     prompt,
     specifications,
+    forceToolCall,
   }: LLMStreamParameters): AsyncGenerator<LLMEvent>;
 }

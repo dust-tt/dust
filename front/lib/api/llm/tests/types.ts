@@ -46,6 +46,7 @@ export interface TestConversation {
     TestConfig,
     "temperature" | "reasoningEffort" | "testStructuredOutputKey"
   >[];
+  forceToolCall?: string;
 }
 
 export interface RunnabletestConversation {

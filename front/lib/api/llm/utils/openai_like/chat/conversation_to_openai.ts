@@ -5,6 +5,7 @@ import type {
   ChatCompletionContentPartText,
   ChatCompletionMessageParam,
   ChatCompletionTool,
+  ChatCompletionToolChoiceOption,
 } from "openai/resources/chat/completions";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
@@ -196,4 +197,13 @@ export function toReasoningParam(
     return effort;
   }
   return undefined;
+}
+
+export function toToolChoiceParam(
+  specifications: AgentActionSpecification[],
+  forceToolCall: string | undefined
+): ChatCompletionToolChoiceOption {
+  return forceToolCall && specifications.some((s) => s.name === forceToolCall)
+    ? { type: "function", function: { name: forceToolCall } }
+    : ("auto" as const);
 }

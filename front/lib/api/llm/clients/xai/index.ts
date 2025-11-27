@@ -13,6 +13,7 @@ import { handleError } from "@app/lib/api/llm/utils/openai_like/errors";
 import {
   toInput,
   toTool,
+  toToolOption,
 } from "@app/lib/api/llm/utils/openai_like/responses/conversation_to_openai";
 import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_like/responses/openai_to_events";
 import type { Authenticator } from "@app/lib/auth";
@@ -43,6 +44,7 @@ export class XaiLLM extends LLM {
     conversation,
     prompt,
     specifications,
+    forceToolCall,
   }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
     try {
       const events = await this.client.responses.create({
@@ -54,6 +56,7 @@ export class XaiLLM extends LLM {
         temperature: this.temperature,
         tools: specifications.map(toTool),
         include: ["reasoning.encrypted_content"],
+        tool_choice: toToolOption(specifications, forceToolCall),
       });
 
       yield* streamLLMEvents(events, this.metadata);

@@ -2,7 +2,10 @@ import Anthropic, { APIError } from "@anthropic-ai/sdk";
 
 import type { AnthropicWhitelistedModelId } from "@app/lib/api/llm/clients/anthropic/types";
 import { overwriteLLMParameters } from "@app/lib/api/llm/clients/anthropic/types";
-import { toThinkingConfig } from "@app/lib/api/llm/clients/anthropic/utils";
+import {
+  toThinkingConfig,
+  toToolChoiceParam,
+} from "@app/lib/api/llm/clients/anthropic/utils";
 import { streamLLMEvents } from "@app/lib/api/llm/clients/anthropic/utils/anthropic_to_events";
 import {
   toMessage,
@@ -41,6 +44,7 @@ export class AnthropicLLM extends LLM {
     conversation,
     prompt,
     specifications,
+    forceToolCall,
   }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
     try {
       const messages = conversation.messages.map(toMessage);
@@ -65,6 +69,7 @@ export class AnthropicLLM extends LLM {
         stream: true,
         tools: specifications.map(toTool),
         max_tokens: this.modelConfig.generationTokensCount,
+        tool_choice: toToolChoiceParam(specifications, forceToolCall),
       });
 
       yield* streamLLMEvents(events, this.metadata);

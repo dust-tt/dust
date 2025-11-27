@@ -215,6 +215,25 @@ export const TEST_CONVERSATIONS: TestConversation[] = [
       },
     ],
   },
+  {
+    id: "force-tool-usage",
+    name: "Force tool usage",
+    systemPrompt: SYSTEM_PROMPT,
+    conversationActions: [userMessage("What is the current date?")],
+    expectedInResponses: [hasToolCall("GetCurrentDate", {})],
+    specifications: [
+      {
+        name: "GetCurrentDate",
+        description: "Get the current date.",
+        inputSchema: {
+          type: "object",
+          properties: {},
+          required: [],
+        },
+      },
+    ],
+    forceToolCall: "GetCurrentDate",
+  },
 ];
 
 export const TEST_VISION_CONVERSATIONS: TestConversation[] = [
@@ -302,6 +321,7 @@ export const runConversation = async (
       conversation: { messages: conversationHistory },
       prompt: conversation.systemPrompt,
       specifications: conversation.specifications ?? [],
+      forceToolCall: conversation.forceToolCall,
     });
 
     let responseFromDeltas = "";

@@ -41,9 +41,11 @@ You must always use the field from the "id" attribute of the agent.
 Here is the list of available agents:
 `;
 
+const FUNCTION_NAME = "suggest_agents";
+
 const SUGGEST_AGENTS_FUNCTION_SPECIFICATIONS: AgentActionSpecification[] = [
   {
-    name: "suggest_agents",
+    name: FUNCTION_NAME,
     description:
       "Get the most relevant agents' ids to answer the user message.",
     inputSchema: {
@@ -115,7 +117,7 @@ export async function getSuggestedAgentsForContent(
     {
       providerId: model.providerId,
       modelId: model.modelId,
-      functionCall: "suggest_agents",
+      functionCall: FUNCTION_NAME,
       temperature: 0.7,
       useCache: true,
     },
@@ -131,6 +133,7 @@ export async function getSuggestedAgentsForContent(
       },
       prompt: `${INSTRUCTIONS}${formattedAgents}`,
       specifications: SUGGEST_AGENTS_FUNCTION_SPECIFICATIONS,
+      forceToolCall: FUNCTION_NAME,
     },
     {
       tracingRecords,

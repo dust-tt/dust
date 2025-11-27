@@ -15,6 +15,7 @@ import {
   toReasoning,
   toResponseFormat,
   toTool,
+  toToolOption,
 } from "@app/lib/api/llm/utils/openai_like/responses/conversation_to_openai";
 import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_like/responses/openai_to_events";
 import type { Authenticator } from "@app/lib/auth";
@@ -52,6 +53,7 @@ export class OpenAIResponsesLLM extends LLM {
     conversation,
     prompt,
     specifications,
+    forceToolCall,
   }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
     try {
       const reasoning = toReasoning(this.modelId, this.reasoningEffort);
@@ -65,6 +67,7 @@ export class OpenAIResponsesLLM extends LLM {
         text: { format: toResponseFormat(this.responseFormat) },
         // Only models supporting reasoning can do encrypted content for reasoning.
         include: reasoning !== null ? ["reasoning.encrypted_content"] : [],
+        tool_choice: toToolOption(specifications, forceToolCall),
       });
 
       yield* streamLLMEvents(events, this.metadata);
