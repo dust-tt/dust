@@ -301,15 +301,16 @@ fn main() {
         .route("/tokenize/batch", post(tokenize::tokenize_batch))
         .route("/tokenize/batch/count", post(tokenize::tokenize_batch_count))
         .layer(OtelInResponseLayer::default())
-        // Start OpenTelemetry trace on incoming request.
-        .layer(OtelAxumLayer::default())
-        // Extensions
-        .layer(DefaultBodyLimit::disable())
+        // TraceLayer must come before OtelAxumLayer to ensure make_span is called
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(CoreRequestMakeSpan::new())
                 .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
         )
+        // Start OpenTelemetry trace on incoming request.
+        .layer(OtelAxumLayer::default())
+        // Extensions
+        .layer(DefaultBodyLimit::disable())
         .layer(from_fn(validate_api_key))
         .with_state(state.clone());
 
