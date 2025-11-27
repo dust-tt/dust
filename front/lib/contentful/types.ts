@@ -1,0 +1,69 @@
+import type { Document } from "@contentful/rich-text-types";
+import type { Asset, EntrySkeletonType } from "contentful";
+
+// ============================================
+// Contentful Entry Types
+// ============================================
+
+export interface BlogPageFields {
+  title: string;
+  slug?: string;
+  description?: string;
+  body: Document;
+  tags?: string[];
+  image?: Asset;
+  publishedAt?: string;
+}
+
+export interface BlogPageSkeleton extends EntrySkeletonType {
+  contentTypeId: "blogPage";
+  fields: BlogPageFields;
+}
+
+// ============================================
+// Application Types (transformed from Contentful)
+// ============================================
+
+export interface BlogImage {
+  url: string;
+  alt: string;
+  width: number;
+  height: number;
+}
+
+export interface BlogPost {
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  body: Document;
+  tags: string[];
+  image: BlogImage | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BlogPostSummary {
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  tags: string[];
+  image: BlogImage | null;
+  createdAt: string;
+}
+
+// ============================================
+// Page Props Types
+// ============================================
+
+export interface BlogListingPageProps {
+  posts: BlogPostSummary[];
+  gtmTrackingId: string | null;
+}
+
+export interface BlogPostPageProps {
+  post: BlogPost;
+  relatedPosts: BlogPostSummary[];
+  gtmTrackingId: string | null;
+}
