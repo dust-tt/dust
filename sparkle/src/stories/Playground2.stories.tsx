@@ -181,7 +181,7 @@ export const Demo = () => {
                 <div
                   id="TextStyle"
                   className={cn(
-                    "s-duration-600 s-absolute s-left-0 s-top-0 s-z-10 s-inline-flex s-h-11 s-items-center s-justify-start s-gap-3 s-overflow-hidden s-bg-primary-50 s-py-1 s-pl-3 s-pr-1 s-transition-all s-ease-in-out",
+                    "s-duration-600 s-absolute s-left-0 s-top-0 s-z-10 s-inline-flex s-h-11 s-items-center s-justify-start s-gap-3 s-overflow-hidden s-bg-primary-50 s-py-1 s-pl-3 s-transition-all s-ease-in-out",
                     isTextStyleOpen
                       ? "s-pointer-events-auto s-w-full s-opacity-100"
                       : "s-pointer-events-none s-w-[120px] s-opacity-0"
@@ -196,11 +196,13 @@ export const Demo = () => {
                       setIsTextStyleOpen(false);
                     }}
                   />
-                  <Separator orientation="vertical" />
-                  <ScrollArea orientation="horizontal">
+                  <ScrollArea
+                    orientation="horizontal"
+                    className="s-h-full s-border-l s-border-border"
+                  >
                     <div
                       id="Scrollable"
-                      className="s-flex s-h-full s-w-max s-flex-row s-items-center s-gap-3 s-pr-3"
+                      className="s-flex s-h-full s-w-max s-flex-row s-items-center s-gap-3 s-px-3"
                     >
                       <Button
                         size="mini"
