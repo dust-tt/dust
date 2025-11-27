@@ -950,178 +950,88 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     { limit, lastRank }: { limit: number; lastRank?: number | null }
   ): Promise<{
     allMessageIds: ModelId[];
-    nonContentFragmentMessageIds: ModelId[];
     hasMore: boolean;
   }> {
-    const allMessageIds: ModelId[] = [];
-    const nonContentFragmentMessageIds: ModelId[] = [];
-    const messageIdToRank = new Map<ModelId, number>();
-    const cfMessageIds = new Set<ModelId>();
-    let nonContentFragmentCount = 0;
-    const targetNonContentFragmentCount = limit + 1;
-    let currentLastRank = lastRank ?? undefined;
-    let batchSize = Math.min(limit * 3, 300);
+    // Step 1: Fetch all NON content fragments with size = limit + 1
+    const whereNonCf: WhereOptions<Message> = {
+      conversationId: this.id,
+      workspaceId: auth.getNonNullableWorkspace().id,
+      contentFragmentId: { [Op.is]: null },
+    };
 
-    // Keep fetching batches until we have limit + 1 non-content-fragment messages
-    // or we've processed all messages
-    while (nonContentFragmentCount < targetNonContentFragmentCount) {
-      const where: WhereOptions<Message> = {
+    if (lastRank !== null && lastRank !== undefined) {
+      whereNonCf["rank"] = {
+        [Op.lt]: lastRank,
+      };
+    }
+
+    const nonContentFragmentMessages = await Message.findAll({
+      attributes: [
+        [Sequelize.fn("MAX", Sequelize.col("version")), "maxVersion"],
+        [Sequelize.fn("MAX", Sequelize.col("id")), "id"],
+        [Sequelize.fn("MAX", Sequelize.col("rank")), "rank"],
+      ],
+      where: whereNonCf,
+      group: ["rank"],
+      order: [["rank", "DESC"]],
+      limit: limit + 1,
+    });
+
+    const nonContentFragmentMessageIds = nonContentFragmentMessages.map(
+      (m) => m.id
+    );
+    const hasMore = nonContentFragmentMessageIds.length > limit;
+
+    // Determine the rank range for content fragments
+    // We include CFs where rank is between minRank and maxRank (inclusive)
+    // This includes CFs that come between the lowest and highest ranked non-CF messages
+    // Use ALL nonContentFragmentMessages (including the extra one) to determine the range
+    let minRank: number | undefined;
+    let maxRank: number | undefined;
+    let ranksHaveGaps: boolean = false;
+    if (nonContentFragmentMessages.length > 0) {
+      const ranks = nonContentFragmentMessages.map((m) => m.rank);
+      minRank = !hasMore ? 0 : Math.min(...ranks);
+      maxRank = Math.max(...ranks);
+
+      // Ranks must be contiguous, otherwise we have gaps so we must have the right amount of messages between the min and max rank.
+      ranksHaveGaps =
+        maxRank - minRank !== nonContentFragmentMessages.length - 1;
+    }
+
+    const allMessageIds: ModelId[] = hasMore
+      ? nonContentFragmentMessageIds.slice(0, limit)
+      : nonContentFragmentMessageIds;
+
+    // Step 2: Fetch content fragments where rank is between minRank and maxRank
+    // For single non-CF message: include CFs that come after it (rank < maxRank in DESC order)
+    // For multiple non-CF messages: include CFs between minRank and maxRank (inclusive)
+
+    if (minRank !== undefined && maxRank !== undefined && ranksHaveGaps) {
+      const whereCf: WhereOptions<Message> = {
         conversationId: this.id,
         workspaceId: auth.getNonNullableWorkspace().id,
+        contentFragmentId: { [Op.ne]: null },
+        rank: { [Op.between]: [minRank, maxRank] },
       };
 
-      if (currentLastRank) {
-        where["rank"] = {
-          [Op.lt]: currentLastRank,
-        };
-      }
-
-      const messages = await Message.findAll({
+      const contentFragmentMessages = await Message.findAll({
         attributes: [
           [Sequelize.fn("MAX", Sequelize.col("version")), "maxVersion"],
           [Sequelize.fn("MAX", Sequelize.col("id")), "id"],
-          [
-            Sequelize.fn("MAX", Sequelize.col("contentFragmentId")),
-            "contentFragmentId",
-          ],
           [Sequelize.fn("MAX", Sequelize.col("rank")), "rank"],
         ],
-        where,
+        where: whereCf,
         group: ["rank"],
         order: [["rank", "DESC"]],
-        limit: batchSize,
       });
 
-      // If no more messages, break
-      if (messages.length === 0) {
-        break;
-      }
-
-      // Process messages: include content fragments only if they come before an included non-CF message
-      // + up to limit + 1 non-content-fragment messages
-      let lastIncludedNonCfRank: number | null = null;
-
-      for (const message of messages) {
-        const isContentFragment = message.contentFragmentId !== null;
-        const messageRank = (message as any).rank;
-
-        // Track rank for all messages we process
-        messageIdToRank.set(message.id, messageRank);
-
-        if (isContentFragment) {
-          // Track CF IDs
-          cfMessageIds.add(message.id);
-          // Only include content fragments that come before the last included non-CF message
-          // This ensures CFs are bundled with their associated user/agent messages
-          if (lastIncludedNonCfRank !== null) {
-            // Check if this CF comes before the last included non-CF message
-            const comesBefore = messageRank < lastIncludedNonCfRank;
-
-            if (comesBefore) {
-              allMessageIds.push(message.id);
-            }
-          } else {
-            // If lastIncludedNonCfRank is null, we haven't included any non-CF messages yet,
-            // so include CFs as we encounter them (they'll be before the first non-CF we include)
-            allMessageIds.push(message.id);
-          }
-        } else {
-          // Include non-content-fragment messages up to limit + 1
-          if (nonContentFragmentCount < targetNonContentFragmentCount) {
-            allMessageIds.push(message.id);
-            nonContentFragmentMessageIds.push(message.id);
-            nonContentFragmentCount++;
-            lastIncludedNonCfRank = messageRank;
-          } else {
-            // We've reached our target, stop processing
-            break;
-          }
-        }
-
-        // Update currentLastValue to the last processed message's rank
-        currentLastRank = messageRank;
-      }
-
-      // If we've reached our target, stop fetching
-      if (nonContentFragmentCount >= targetNonContentFragmentCount) {
-        break;
-      }
-
-      // If we got fewer messages than requested, we've reached the end
-      if (messages.length < batchSize) {
-        break;
-      }
-
-      // Check if the last message was a content fragment
-      // If so, we need to fetch more to see if there are more non-CF messages
-      const lastMessage = messages[messages.length - 1];
-      if (
-        lastMessage.contentFragmentId !== null &&
-        nonContentFragmentCount < targetNonContentFragmentCount
-      ) {
-        // Last message is a CF and we haven't reached our target, continue fetching
-        // Increase batch size for next iteration if needed
-        batchSize = Math.min(batchSize * 2, 300);
-      } else {
-        // Last message is not a CF, or we've reached our target, we're done
-        break;
-      }
-    }
-
-    // Determine hasMore: true if we got limit + 1 non-content-fragment messages
-    const hasMore = nonContentFragmentMessageIds.length > limit;
-
-    // If we have more than limit non-content-fragment messages, remove the extra one(s)
-    // and slice nonContentFragmentMessageIds to limit
-    let finalAllMessageIds = allMessageIds;
-    let finalNonContentFragmentMessageIds = nonContentFragmentMessageIds;
-
-    if (hasMore) {
-      // Keep only the first 'limit' non-content-fragment messages
-      finalNonContentFragmentMessageIds = nonContentFragmentMessageIds.slice(
-        0,
-        limit
-      );
-      const extraNonCfIds = new Set(nonContentFragmentMessageIds.slice(limit));
-      // Remove extra non-CF messages from allMessageIds
-      finalAllMessageIds = allMessageIds.filter((id) => !extraNonCfIds.has(id));
-
-      // Also need to remove any CFs that come after the last included non-CF message
-      if (finalNonContentFragmentMessageIds.length > 0) {
-        const lastIncludedNonCfId =
-          finalNonContentFragmentMessageIds[
-            finalNonContentFragmentMessageIds.length - 1
-          ];
-        const lastIncludedNonCfRank = messageIdToRank.get(lastIncludedNonCfId);
-
-        if (lastIncludedNonCfRank !== undefined) {
-          // Filter out CFs that come after the last included non-CF message
-          const cfIdsToRemove = finalAllMessageIds.filter((id) => {
-            if (!cfMessageIds.has(id)) {
-              return false; // Not a CF, keep it
-            }
-            const cfRank = messageIdToRank.get(id);
-            if (cfRank === undefined) {
-              return false; // Shouldn't happen, but keep it to be safe
-            }
-            const comesAfter = cfRank < lastIncludedNonCfRank;
-
-            return comesAfter;
-          });
-
-          if (cfIdsToRemove.length > 0) {
-            const cfIdsToRemoveSet = new Set(cfIdsToRemove);
-            finalAllMessageIds = finalAllMessageIds.filter(
-              (id) => !cfIdsToRemoveSet.has(id)
-            );
-          }
-        }
-      }
+      const cfMessageIds = contentFragmentMessages.map((m) => m.id);
+      allMessageIds.push(...cfMessageIds);
     }
 
     return {
-      allMessageIds: finalAllMessageIds,
-      nonContentFragmentMessageIds: finalNonContentFragmentMessageIds,
+      allMessageIds,
       hasMore,
     };
   }
