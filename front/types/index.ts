@@ -10,6 +10,7 @@ export * from "./assistant/assistant";
 export * from "./assistant/avatar";
 export * from "./assistant/builder";
 export * from "./assistant/conversation";
+export * from "./assistant/creativity";
 export * from "./assistant/generation";
 export * from "./assistant/mentions";
 export * from "./assistant/models/anthropic";

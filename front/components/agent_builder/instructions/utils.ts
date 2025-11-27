@@ -1,14 +1,12 @@
-import type { AgentCreativityLevel } from "@app/components/agent_builder/types";
-import {
-  AGENT_CREATIVITY_LEVEL_DISPLAY_NAMES,
-  AGENT_CREATIVITY_LEVEL_TEMPERATURES,
-} from "@app/components/agent_builder/types";
+import { AGENT_CREATIVITY_LEVEL_DISPLAY_NAMES } from "@app/components/agent_builder/types";
 import type {
+  AgentCreativityLevel,
   ModelConfigurationType,
   ModelIdType,
   ModelProviderIdType,
 } from "@app/types";
 import {
+  AGENT_CREATIVITY_LEVEL_TEMPERATURES,
   CLAUDE_4_5_SONNET_20250929_MODEL_ID,
   GEMINI_2_5_PRO_MODEL_ID,
   GPT_5_MODEL_ID,
