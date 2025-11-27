@@ -6,7 +6,6 @@ import {
 import type {
   ConversationError,
   ConversationMessageReactions,
-  ConversationType,
   ConversationWithoutContentType,
   MessageReactionType,
   Result,
@@ -19,7 +18,7 @@ import { Ok } from "@app/types";
  */
 export async function getMessageReactions(
   auth: Authenticator,
-  conversation: ConversationType | ConversationWithoutContentType
+  conversation: ConversationWithoutContentType
 ): Promise<Result<ConversationMessageReactions, ConversationError>> {
   const owner = auth.workspace();
   if (!owner) {
@@ -94,7 +93,7 @@ export async function createMessageReaction(
     reaction,
   }: {
     messageId: string;
-    conversation: ConversationType | ConversationWithoutContentType;
+    conversation: ConversationWithoutContentType;
     user: UserType | null;
     context: {
       username: string;
@@ -142,7 +141,7 @@ export async function deleteMessageReaction(
     reaction,
   }: {
     messageId: string;
-    conversation: ConversationType | ConversationWithoutContentType;
+    conversation: ConversationWithoutContentType;
     user: UserType | null;
     context: {
       username: string;

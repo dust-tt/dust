@@ -12,9 +12,9 @@ import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type {
   AgentMessageNewEvent,
   AgentMessageType,
-  ConversationType,
+  ConversationWithoutContentType,
   UserMessageNewEvent,
-  UserMessageType,
+  UserMessageTypeWithContentFragments,
 } from "@app/types";
 import { assertNever } from "@app/types";
 
@@ -143,8 +143,8 @@ export async function publishConversationRelatedEvent(
 }
 
 export async function publishMessageEventsOnMessagePostOrEdit(
-  conversation: ConversationType,
-  userMessage: UserMessageType,
+  conversation: ConversationWithoutContentType,
+  userMessage: UserMessageTypeWithContentFragments,
   agentMessages: AgentMessageType[]
 ) {
   const userMessageEvent: UserMessageNewEvent = {
@@ -181,7 +181,7 @@ export async function publishMessageEventsOnMessagePostOrEdit(
 }
 
 export async function publishAgentMessageEventOnMessageRetry(
-  conversation: ConversationType,
+  conversation: ConversationWithoutContentType,
   agentMessage: AgentMessageType
 ) {
   const agentMessageEvent: AgentMessageNewEvent = {

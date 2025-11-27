@@ -17,7 +17,7 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type {
   AgentMention,
-  ConversationType,
+  ConversationWithoutContentType,
   LightAgentConfigurationType,
   MentionType,
   WorkspaceType,
@@ -26,7 +26,7 @@ import type {
 describe("createAgentMessages", () => {
   let workspace: WorkspaceType;
   let auth: Authenticator;
-  let conversation: ConversationType;
+  let conversation: ConversationWithoutContentType;
   let agentConfig1: LightAgentConfigurationType;
   let agentConfig2: LightAgentConfigurationType;
 
@@ -346,7 +346,7 @@ describe("createAgentMessages", () => {
 describe("createUserMentions", () => {
   let workspace: WorkspaceType;
   let auth: Authenticator;
-  let conversation: ConversationType;
+  let conversation: ConversationWithoutContentType;
 
   beforeEach(async () => {
     // Create workspace, user, spaces, and groups using the helper
