@@ -2391,9 +2391,9 @@ describe("Space Handling", () => {
       });
 
       expect(page1.hasMore).toBe(true); // There's 1 more non-content-fragment message (user message 1)
-      expect(page1.messages.length).toBeGreaterThanOrEqual(2);
-      expect(page1.messages[0].rank).toBe(3); // Content fragment 2
-      expect(page1.messages[1].rank).toBe(2); // User message 2
+      expect(page1.messages.length).toEqual(2);
+      expect(page1.messages[0].rank).toBe(2); // Content fragment 1
+      expect(page1.messages[1].rank).toBe(1); // User message 2
       // Verify we have exactly 1 non-content-fragment message
       const nonCfCount = page1.messages.filter(
         (m) => m.contentFragmentId === null
@@ -2483,6 +2483,7 @@ describe("Space Handling", () => {
         (m) => m.contentFragmentId === null
       ).length;
       expect(nonCfCount3).toBe(2);
+      expect(page2.messages).toHaveLength(4);
       expect(page2.messages[0].rank).toBe(3); // User message 2
       expect(page2.messages[1].rank).toBe(2); // Content fragment 2
       expect(page2.messages[2].rank).toBe(1); // User message 1
