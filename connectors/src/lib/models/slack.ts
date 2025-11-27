@@ -19,6 +19,7 @@ export class SlackConfigurationModel extends ConnectorBaseModel<SlackConfigurati
   declare whitelistedDomains?: readonly string[];
   declare autoReadChannelPatterns: SlackAutoReadPattern[];
   declare feedbackVisibleToAuthorOnly: boolean;
+  declare privateIntegrationCredentialId?: string | null;
 }
 
 SlackConfigurationModel.init(
@@ -60,6 +61,10 @@ SlackConfigurationModel.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: true,
+    },
+    privateIntegrationCredentialId: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
   },
   {
