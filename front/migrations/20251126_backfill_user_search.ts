@@ -1,7 +1,7 @@
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
-import { indexUserDocument } from "@app/lib/user_search";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { deleteUserDocument, indexUserDocument } from "@app/lib/user_search";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
@@ -22,21 +22,20 @@ async function backfillUserSearch(
   );
 
   // Get all active memberships for this workspace
-  const { memberships, total } =
-    await MembershipResource.getMembershipsForWorkspace({
-      workspace,
-      includeUser: false,
-    });
+  const { memberships, total } = await MembershipResource.getLatestMemberships({
+    workspace,
+  });
 
   // Filter out revoked memberships
   const activeMemberships = memberships.filter((m) => !m.isRevoked());
+  const revokedMemberships = memberships.filter((m) => m.isRevoked());
 
   logger.info(
     {
       workspaceId: workspace.sId,
       totalMemberships: total,
       activeMemberships: activeMemberships.length,
-      revokedMemberships: total - activeMemberships.length,
+      revokedMemberships: revokedMemberships.length,
     },
     "Found memberships to process"
   );
@@ -45,6 +44,7 @@ async function backfillUserSearch(
   let errorCount = 0;
 
   if (execute) {
+    // Index active
     await concurrentExecutor(
       activeMemberships,
       async (membership) => {
@@ -91,7 +91,59 @@ async function backfillUserSearch(
               workspaceId: workspace.sId,
               error: err,
             },
-            "Failed to process membership"
+            "Failed to process active membership"
+          );
+        }
+      },
+      { concurrency: 10 }
+    );
+
+    // Delete revoked (so that we can re-run this to re-index if needed)
+    await concurrentExecutor(
+      revokedMemberships,
+      async (membership) => {
+        try {
+          // Get the user for this membership
+          const user = await UserResource.fetchByModelId(membership.userId);
+          if (!user) {
+            logger.warn(
+              {
+                membershipId: membership.id,
+                userId: membership.userId,
+                workspaceId: workspace.sId,
+              },
+              "User not found for membership"
+            );
+            errorCount++;
+            return;
+          }
+
+          const result = await deleteUserDocument({
+            workspaceId: workspace.sId,
+            userId: user.sId,
+          });
+          if (result.isErr()) {
+            logger.error(
+              {
+                userId: user.sId,
+                workspaceId: workspace.sId,
+                error: result.error,
+              },
+              "Failed to delete user document"
+            );
+            errorCount++;
+          } else {
+            successCount++;
+          }
+        } catch (err) {
+          errorCount++;
+          logger.error(
+            {
+              membershipId: membership.id,
+              workspaceId: workspace.sId,
+              error: err,
+            },
+            "Failed to process revoked membership"
           );
         }
       },
@@ -102,6 +154,7 @@ async function backfillUserSearch(
       {
         workspaceId: workspace.sId,
         usersToIndex: activeMemberships.length,
+        usersToDelete: revokedMemberships.length,
       },
       "Would index these users (dry run)"
     );
@@ -112,7 +165,8 @@ async function backfillUserSearch(
       workspaceId: workspace.sId,
       successCount,
       errorCount,
-      totalProcessed: activeMemberships.length,
+      totalIndexed: activeMemberships.length,
+      totalRemoved: revokedMemberships.length,
     },
     "Completed user search backfill for workspace"
   );
@@ -129,12 +183,7 @@ makeScript(
   async ({ execute, workspaceId }, logger) => {
     if (workspaceId) {
       // Run on a single workspace
-      const workspace = await WorkspaceModel.findOne({
-        where: {
-          sId: workspaceId,
-        },
-      });
-
+      const workspace = await WorkspaceResource.fetchById(workspaceId);
       if (!workspace) {
         throw new Error(`Workspace not found: ${workspaceId}`);
       }
