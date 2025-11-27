@@ -55,7 +55,7 @@ makeScript(
     const region =
       EnvironmentConfig.getOptionalEnvVariable("NODE_ENV") === "development"
         ? "local"
-        : EnvironmentConfig.getEnvVariable("DUST_REGION");
+        : EnvironmentConfig.getEnvVariable("REGION");
 
     logger.info("Configuration:");
     logger.info(`  Index name: ${indexFullname}`);
