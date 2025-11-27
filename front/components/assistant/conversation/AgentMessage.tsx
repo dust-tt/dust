@@ -584,6 +584,7 @@ export function AgentMessage({
         citations={citations}
       >
         <AgentMessageContent
+          onQuickReplySend={handleQuickReply}
           owner={owner}
           conversationId={conversationId}
           retryHandler={retryHandler}
