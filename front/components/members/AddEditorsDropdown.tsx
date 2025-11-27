@@ -68,7 +68,7 @@ export function AddEditorDropdown({
               key={member.sId}
               label={member.fullName}
               description={member.email}
-              icon={() => <Avatar size="sm" visual={member.image} />}
+              icon={() => <Avatar size="sm" visual={member.image} isRounded />}
               onClick={async () => {
                 setSearchTerm("");
                 setIsEditorPickerOpen(false);

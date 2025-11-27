@@ -305,6 +305,7 @@ export function ConversationMenu({
                           size="xs"
                           visual={user.pictureUrl}
                           name={user.fullName ?? user.username}
+                          isRounded
                         />
                       }
                       className="!text-foreground dark:!text-foreground-night"
