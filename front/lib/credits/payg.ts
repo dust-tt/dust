@@ -1,7 +1,7 @@
 import assert from "assert";
 import type Stripe from "stripe";
 
-import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags, type Authenticator } from "@app/lib/auth";
 import {
   isEnterpriseSubscription,
   makeCreditsPAYGInvoice,
@@ -46,6 +46,19 @@ export async function allocatePAYGCreditsOnCycleRenewal({
     );
     return new Ok(undefined);
   }
+  const featureFlags = await getFeatureFlags(workspace);
+  if (!featureFlags.includes("ppul")) {
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        initialAmountCents: config.paygCapCents,
+        periodStart: nextPeriodStartDate.toISOString(),
+        periodEnd: nextPeriodEndDate.toISOString(),
+      },
+      "[Credit PAYG] PPUL flag OFF - stopping here."
+    );
+    return new Ok(undefined);
+  }
 
   const credit = await CreditResource.makeNew(auth, {
     type: "payg",
@@ -55,13 +68,15 @@ export async function allocatePAYGCreditsOnCycleRenewal({
     invoiceOrLineItemId: null,
   });
 
-  const startResult = await credit.start(nextPeriodStartDate, nextPeriodEndDate);
+  const startResult = await credit.start(
+    nextPeriodStartDate,
+    nextPeriodEndDate
+  );
   assert(startResult.isOk(), "Failed to start PAYG credit");
 
   logger.info(
     {
       workspaceId: workspace.sId,
-      creditId: credit.id,
       initialAmountCents: config.paygCapCents,
       periodStart: nextPeriodStartDate.toISOString(),
       periodEnd: nextPeriodEndDate.toISOString(),
