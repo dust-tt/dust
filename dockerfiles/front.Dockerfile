@@ -91,8 +91,9 @@ FROM base-deps AS workers-build
 # Build temporal workers and esbuild workers (workers only)
 RUN FRONT_DATABASE_URI="sqlite:foo.sqlite" npm run build:temporal-bundles
 RUN npm run build:workers
+
 # New experimental workers build
-RUN cd workers-build && npm ci && FRONT_DATABASE_URI="sqlite:foo.sqlite" npm run build
+RUN cd workers-build && npm ci && npm run build:workers
 
 # Frontend image (Next.js standalone) for front deployment
 FROM node:20.19.2 AS front
@@ -169,6 +170,7 @@ RUN apt-get update && \
 WORKDIR /app
 
 COPY --from=workers-build /app/workers-build ./
+COPY --from=workers-build /app/dist/temporal-bundles ./dist/temporal-bundles
 
 # Re-declare build arg needed at runtime
 ARG NEXT_PUBLIC_DUST_CLIENT_FACING_URL
