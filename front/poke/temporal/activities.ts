@@ -580,7 +580,13 @@ export async function deleteWorkspaceActivity({
 }: {
   workspaceId: string;
 }) {
-  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  let auth: Authenticator;
+  try {
+    auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  } catch (err) {
+    hardDeleteLogger.warn({ workspaceId }, "Workspace not found.");
+    return;
+  }
   const workspace = auth.getNonNullableWorkspace();
 
   await Subscription.destroy({
