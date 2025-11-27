@@ -6,6 +6,7 @@ import type {
   ConfluenceCreatePageRequest,
   ConfluenceCurrentUser,
   ConfluenceErrorResult,
+  ConfluenceListSpacesResult,
   ConfluencePage,
   ConfluenceSearchRequest,
   ConfluenceUpdatePageRequest,
@@ -16,6 +17,7 @@ import type {
 import {
   AtlassianResourceSchema,
   ConfluenceCurrentUserSchema,
+  ConfluenceListSpacesResultSchema,
   ConfluencePageSchema,
   ConfluenceV1SearchResultSchema,
   CreatePagePayloadSchema,
@@ -224,6 +226,30 @@ export async function listPages(
       accessToken,
     },
     ConfluenceV1SearchResultSchema,
+    {
+      baseUrl,
+    }
+  );
+
+  if (result.isErr()) {
+    return new Err(result.error);
+  }
+
+  return new Ok(result.value);
+}
+
+export async function listSpaces(
+  baseUrl: string,
+  accessToken: string
+): Promise<Result<ConfluenceListSpacesResult, string>> {
+  const endpoint = `/wiki/api/v2/spaces`;
+
+  const result = await confluenceApiCall(
+    {
+      endpoint,
+      accessToken,
+    },
+    ConfluenceListSpacesResultSchema,
     {
       baseUrl,
     }

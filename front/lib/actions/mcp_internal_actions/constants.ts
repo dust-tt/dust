@@ -1050,6 +1050,7 @@ The directive should be used to display a clickable version of the agent name in
       get_current_user: "never_ask",
       get_page: "never_ask",
       get_pages: "never_ask",
+      get_spaces: "never_ask",
 
       // Write operations - ask
       create_page: "low",
