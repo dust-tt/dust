@@ -1,3 +1,4 @@
+import type { BetaJSONOutputFormat } from "@anthropic-ai/sdk/resources/beta.mjs";
 import type {
   ThinkingConfigParam,
   ToolChoice,
@@ -5,7 +6,7 @@ import type {
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type { ReasoningEffort } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever, ResponseFormatSchema, safeParseJSON } from "@app/types";
 
 // thinking.enabled.budget_tokens: Input should be greater than or equal to 1024
 const ANTHROPIC_MINIMUM_THINKING_BUDGET = 1024;
@@ -55,4 +56,30 @@ export function toToolChoiceParam(
         name: forceToolCall,
       }
     : { type: "auto" };
+}
+
+export function toOutputFormatParam(
+  responseFormat: string | null
+): BetaJSONOutputFormat | undefined {
+  if (!responseFormat) {
+    return;
+  }
+
+  const responseFormatJson = safeParseJSON(responseFormat);
+  if (responseFormatJson.isErr() || responseFormatJson.value === null) {
+    return;
+  }
+
+  const responseFormatResult = ResponseFormatSchema.safeParse(
+    responseFormatJson.value
+  );
+
+  if (responseFormatResult.error) {
+    return;
+  }
+
+  return {
+    type: "json_schema",
+    schema: responseFormatResult.data.json_schema.schema,
+  };
 }

@@ -1,5 +1,6 @@
 import assert from "node:assert";
 
+import type { BetaRawMessageStreamEvent } from "@anthropic-ai/sdk/resources/beta.mjs";
 import type {
   MessageDeltaUsage,
   MessageStreamEvent,
@@ -24,7 +25,7 @@ import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
 import { assertNever } from "@app/types";
 
 export async function* streamLLMEvents(
-  messageStreamEvents: AsyncIterable<MessageStreamEvent>,
+  messageStreamEvents: AsyncIterable<BetaRawMessageStreamEvent>,
   metadata: LLMClientMetadata
 ): AsyncGenerator<LLMEvent> {
   const stateContainer = { state: null };
@@ -59,7 +60,7 @@ export async function* streamLLMEvents(
 }
 
 function* handleMessageStreamEvent(
-  messageStreamEvent: MessageStreamEvent,
+  messageStreamEvent: BetaRawMessageStreamEvent,
   stateContainer: { state: StreamState },
   metadata: LLMClientMetadata
 ): Generator<LLMEvent> {
@@ -108,7 +109,7 @@ function* handleMessageStreamEvent(
 }
 
 function handleContentBlockStart(
-  event: Extract<MessageStreamEvent, { type: "content_block_start" }>,
+  event: Extract<BetaRawMessageStreamEvent, { type: "content_block_start" }>,
   stateContainer: { state: StreamState }
 ): void {
   assert(
@@ -141,7 +142,15 @@ function handleContentBlockStart(
       break;
     case "server_tool_use":
     case "web_search_tool_result":
-      // We don't use these Antropic tools
+    case "web_fetch_tool_result":
+    case "code_execution_tool_result":
+    case "bash_code_execution_tool_result":
+    case "text_editor_code_execution_tool_result":
+    case "tool_search_tool_result":
+    case "mcp_tool_use":
+    case "mcp_tool_result":
+    case "container_upload":
+      // We don't use these Anthropic tools
       break;
     default:
       assertNever(blockType);
@@ -209,7 +218,7 @@ function* handleContentBlockStop(
 }
 
 function* handleMessageDelta(
-  event: Extract<MessageStreamEvent, { type: "message_delta" }>,
+  event: Extract<BetaRawMessageStreamEvent, { type: "message_delta" }>,
   metadata: LLMClientMetadata
 ): Generator<LLMEvent> {
   yield tokenUsage(event.usage, metadata);
