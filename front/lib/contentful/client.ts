@@ -35,7 +35,7 @@ function getClient() {
   return client.withoutUnresolvableLinks;
 }
 
-function transformImage(
+function contentfulAssetToBlogImage(
   asset: Asset | undefined,
   fallbackAlt: string
 ): BlogImage | null {
@@ -74,7 +74,7 @@ function isAsset(value: unknown): value is Asset {
   return typeof value === "object" && value !== null && "sys" in value;
 }
 
-function transformBlogPost(entry: Entry<BlogPageSkeleton>): BlogPost {
+function contentfulEntryToBlogPost(entry: Entry<BlogPageSkeleton>): BlogPost {
   const { fields, sys } = entry;
 
   const titleField = fields.title;
@@ -87,7 +87,8 @@ function transformBlogPost(entry: Entry<BlogPageSkeleton>): BlogPost {
   const tags = Array.isArray(tagsField) ? tagsField : [];
 
   const publishedAtField = fields.publishedAt;
-  const publishedAt = typeof publishedAtField === "string" ? publishedAtField : sys.createdAt;
+  const publishedAt =
+    typeof publishedAtField === "string" ? publishedAtField : sys.createdAt;
 
   const body = isDocument(fields.body) ? fields.body : EMPTY_DOCUMENT;
   const image = isAsset(fields.image) ? fields.image : undefined;
@@ -99,13 +100,13 @@ function transformBlogPost(entry: Entry<BlogPageSkeleton>): BlogPost {
     description: null,
     body,
     tags,
-    image: transformImage(image, title),
+    image: contentfulAssetToBlogImage(image, title),
     createdAt: publishedAt,
     updatedAt: sys.updatedAt,
   };
 }
 
-function toSummary(post: BlogPost): BlogPostSummary {
+function contentfulEntryToBlogPostSummary(post: BlogPost): BlogPostSummary {
   return {
     id: post.id,
     slug: post.slug,
@@ -126,9 +127,12 @@ export async function getAllBlogPosts(): Promise<BlogPostSummary[]> {
   });
 
   return response.items
-    .map(transformBlogPost)
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .map(toSummary);
+    .map(contentfulEntryToBlogPost)
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )
+    .map(contentfulEntryToBlogPostSummary);
 }
 
 export async function getBlogPostBySlug(
@@ -146,28 +150,10 @@ export async function getBlogPostBySlug(
     await contentfulClient.getEntries<BlogPageSkeleton>(queryParams);
 
   if (response.items.length > 0) {
-    return transformBlogPost(response.items[0]);
+    return contentfulEntryToBlogPost(response.items[0]);
   }
 
   return null;
-}
-
-export async function getAllBlogSlugs(): Promise<string[]> {
-  const contentfulClient = getClient();
-
-  const response = await contentfulClient.getEntries<BlogPageSkeleton>({
-    content_type: "blogPage",
-    select: ["fields.slug", "fields.title"],
-    limit: 1000,
-  });
-
-  return response.items.map((item: Entry<BlogPageSkeleton>) => {
-    const fields = item.fields;
-    const titleField = fields.title;
-    const title = typeof titleField === "string" ? titleField : "";
-    const slugField = fields.slug;
-    return typeof slugField === "string" ? slugField : slugify(title);
-  });
 }
 
 export async function getRelatedPosts(
@@ -191,8 +177,8 @@ export async function getRelatedPosts(
     await contentfulClient.getEntries<BlogPageSkeleton>(queryParams);
 
   return response.items
-    .map(transformBlogPost)
+    .map(contentfulEntryToBlogPost)
     .filter((post: BlogPost) => post.slug !== currentSlug)
     .slice(0, limit)
-    .map(toSummary);
+    .map(contentfulEntryToBlogPostSummary);
 }

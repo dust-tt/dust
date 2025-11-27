@@ -1,4 +1,4 @@
-import type { GetStaticPaths, GetStaticProps } from "next";
+import type { GetStaticProps } from "next";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
@@ -8,31 +8,10 @@ import { BlogBlock } from "@app/components/home/ContentBlocks";
 import { Grid, H1, H2, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import {
-  getAllBlogSlugs,
-  getBlogPostBySlug,
-  getRelatedPosts,
-} from "@app/lib/contentful/client";
+import { getBlogPostBySlug, getRelatedPosts } from "@app/lib/contentful/client";
 import { renderRichText } from "@app/lib/contentful/richTextRenderer";
 import type { BlogPostPageProps } from "@app/lib/contentful/types";
 import { classNames } from "@app/lib/utils";
-
-export const getStaticPaths: GetStaticPaths = async () => {
-  try {
-    const slugs = await getAllBlogSlugs();
-
-    return {
-      paths: slugs.map((slug) => ({ params: { slug } })),
-      fallback: "blocking",
-    };
-  } catch (error) {
-    console.error("Error fetching blog slugs:", error);
-    return {
-      paths: [],
-      fallback: "blocking",
-    };
-  }
-};
 
 export const getStaticProps: GetStaticProps<BlogPostPageProps> = async ({
   params,
