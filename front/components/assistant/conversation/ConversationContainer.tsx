@@ -1,9 +1,4 @@
-import {
-  ContentMessageAction,
-  ContentMessageInline,
-  InformationCircleIcon,
-  Page,
-} from "@dust-tt/sparkle";
+import { Page } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useState } from "react";
 
@@ -31,7 +26,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { conjugate, Err, Ok, pluralize, toMentionType } from "@app/types";
+import { Err, Ok, toMentionType } from "@app/types";
 
 interface ConversationContainerProps {
   owner: WorkspaceType;
@@ -50,12 +45,7 @@ export function ConversationContainerVirtuoso({
 
   const { setSelectedAgent } = useContext(InputBarContext);
 
-  const {
-    hasBlockedActions,
-    hasPendingValidations,
-    totalBlockedActions,
-    showBlockedActionsDialog,
-  } = useBlockedActionsContext();
+  const { hasBlockedActions } = useBlockedActionsContext();
 
   const router = useRouter();
 
@@ -157,37 +147,12 @@ export function ConversationContainerVirtuoso({
       title="Attach files to the conversation"
     >
       {activeConversationId ? (
-        <>
-          <ConversationViewer
-            owner={owner}
-            user={user}
-            conversationId={activeConversationId}
-            setPlanLimitReached={setPlanLimitReached}
-          />
-          {hasBlockedActions && (
-            <ContentMessageInline
-              icon={InformationCircleIcon}
-              variant="primary"
-              className="max-h-dvh mb-5 flex w-full sm:w-full sm:max-w-3xl"
-            >
-              <span className="font-bold">
-                {totalBlockedActions} action
-                {pluralize(totalBlockedActions)}
-              </span>{" "}
-              require{conjugate(totalBlockedActions)} a manual action
-              {/* If there are pending validations, we show a button allowing to open the dialog
-              from where they can be approved/denied */}
-              {hasPendingValidations && (
-                <ContentMessageAction
-                  label="Review actions"
-                  variant="outline"
-                  size="xs"
-                  onClick={() => showBlockedActionsDialog()}
-                />
-              )}
-            </ContentMessageInline>
-          )}
-        </>
+        <ConversationViewer
+          owner={owner}
+          user={user}
+          conversationId={activeConversationId}
+          setPlanLimitReached={setPlanLimitReached}
+        />
       ) : (
         <>
           <div
