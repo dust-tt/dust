@@ -12,7 +12,6 @@ import logger from "@app/logger/logger";
 import type { ModelId } from "@app/types";
 
 const WORKSPACE_CONVERSATIONS_BATCH_SIZE = 200;
-
 /**
  * Get workspace ids with conversations retention policy.
  */
@@ -69,61 +68,58 @@ export async function purgeConversationsBatchActivity({
 
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    let conversations: ConversationResource[];
-    let nbConversationsDeleted = 0;
-
-    do {
-      conversations = await ConversationResource.listAllBeforeDate(auth, {
+    const conversations = await ConversationResource.listAllBeforeDate(
+      auth,
+      cutoffDate,
+      {
         batchSize: WORKSPACE_CONVERSATIONS_BATCH_SIZE,
-        cutoffDate,
         includeDeleted: true,
         includeTest: true,
-      });
+      }
+    );
 
-      logger.info(
-        {
-          workspaceId,
-          retentionDays,
-          cutoffDate,
-          nbConversations: conversations.length,
-        },
-        "Purging conversations for workspace."
-      );
+    logger.info(
+      {
+        workspaceId,
+        retentionDays,
+        cutoffDate,
+        nbConversations: conversations.length,
+      },
+      "Purging conversations for workspace."
+    );
 
-      await concurrentExecutor(
-        conversations,
-        async (c) => {
-          const result = await destroyConversation(auth, {
-            conversationId: c.sId,
-          });
-          if (result.isErr()) {
-            if (result.error.type === "conversation_not_found") {
-              logger.warn(
-                {
-                  workspaceId,
-                  conversationId: c.sId,
-                  error: result.error,
-                },
-                "Attempting to delete a non-existing conversation."
-              );
-              return;
-            }
-            throw result.error;
+    await concurrentExecutor(
+      conversations,
+      async (c) => {
+        const result = await destroyConversation(auth, {
+          conversationId: c.sId,
+        });
+        if (result.isErr()) {
+          if (result.error.type === "conversation_not_found") {
+            logger.warn(
+              {
+                workspaceId,
+                conversationId: c.sId,
+                error: result.error,
+              },
+              "Attempting to delete a non-existing conversation."
+            );
+            return;
           }
-        },
-        {
-          concurrency: 2,
+          throw result.error;
         }
-      );
+      },
+      {
+        concurrency: 2,
+      }
+    );
 
-      nbConversationsDeleted += conversations.length;
-      heartbeat();
-    } while (conversations.length === WORKSPACE_CONVERSATIONS_BATCH_SIZE);
+    heartbeat();
 
     res.push({
       workspaceModelId: workspace.id,
       workspaceId: workspace.sId,
-      nbConversationsDeleted,
+      nbConversationsDeleted: conversations.length,
     });
   }
 
