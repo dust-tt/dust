@@ -160,7 +160,7 @@ ENV DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
 CMD ["node", "dist/start_worker.js"]
 
 # Workers image (Full Node.js environment) for front-workers deployment
-FROM node:20.19.2 AS workers-exp
+FROM node:20.19.2 AS workers-optimized
 
 RUN apt-get update && \
   apt-get install -y redis-tools postgresql-client libjemalloc2 && \
