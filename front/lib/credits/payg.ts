@@ -114,5 +114,7 @@ export async function invoiceEnterprisePAYGCreditsArrears({
     return new Err(new Error("Failed to create Credits PAYG invoice"));
   }
 
+  await paygCredit.markAsPaid(invoiceResult.value.id);
+
   return new Ok(undefined);
 }

@@ -12,7 +12,7 @@ import { getPriceAsString } from "@app/lib/client/subscription";
 import type { CreditDisplayData, CreditType } from "@app/types/credits";
 
 type RowData = {
-  id: number;
+  sId: string;
   type: CreditType;
   initialAmount: string;
   consumedAmount: string;
@@ -75,7 +75,7 @@ function isExpired(credit: CreditDisplayData): boolean {
 
 function getTableRows(credits: CreditDisplayData[]): RowData[] {
   return credits.map((credit) => ({
-    id: credit.id,
+    sId: credit.sId,
     type: credit.type,
     initialAmount: getPriceAsString({
       currency: "usd",
