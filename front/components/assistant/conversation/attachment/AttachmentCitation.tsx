@@ -17,8 +17,7 @@ import {
   isTextualContentType,
 } from "@app/components/assistant/conversation/attachment/utils";
 import type { LightWorkspaceType } from "@app/types";
-import { getFileFormat } from "@app/types";
-import { isSupportedImageContentType } from "@app/types";
+import { getFileFormat, isSupportedImageContentType } from "@app/types";
 
 interface AttachmentCitationProps {
   owner: LightWorkspaceType;
@@ -87,9 +86,7 @@ export function AttachmentCitation({
                 <CitationClose
                   onClick={(e) => {
                     e.stopPropagation();
-                    // eslint-disable-next-line no-unused-expressions
-                    attachmentCitation.onRemove &&
-                      attachmentCitation.onRemove();
+                    attachmentCitation.onRemove?.();
                   }}
                 />
               )

@@ -539,22 +539,31 @@ const InputBarContainer = ({
           <div className="mb-1 flex flex-wrap items-center">
             {selectedMCPServerViews.map((msv) => (
               <React.Fragment key={msv.sId}>
+                {/* Two Chips: one for larger screens (desktop), one for smaller screens (mobile). */}
                 <Chip
                   size="xs"
                   label={getMcpServerViewDisplayName(msv)}
                   icon={getIcon(msv.server.icon)}
                   className="m-0.5 hidden bg-background text-foreground dark:bg-background-night dark:text-foreground-night md:flex"
-                  onRemove={() => {
-                    onMCPServerViewDeselect(msv);
-                  }}
+                  onRemove={
+                    disableInput
+                      ? undefined
+                      : () => {
+                          onMCPServerViewDeselect(msv);
+                        }
+                  }
                 />
                 <Chip
                   size="xs"
                   icon={getIcon(msv.server.icon)}
                   className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night md:hidden"
-                  onRemove={() => {
-                    onMCPServerViewDeselect(msv);
-                  }}
+                  onRemove={
+                    disableInput
+                      ? undefined
+                      : () => {
+                          onMCPServerViewDeselect(msv);
+                        }
+                  }
                 />
               </React.Fragment>
             ))}
