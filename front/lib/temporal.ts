@@ -49,9 +49,9 @@ export async function getConnectionOptions(
   const { NODE_ENV = "development" } = process.env;
   const isDeployed = ["production", "staging"].includes(NODE_ENV);
 
-  if (!isDeployed) {
-    return {};
-  }
+  // if (isDeployed) {
+  return {};
+  // }
 
   const { TEMPORAL_CERT_PATH, TEMPORAL_CERT_KEY_PATH } = process.env;
   const TEMPORAL_NAMESPACE = process.env[envVarForTemporalNamespace];

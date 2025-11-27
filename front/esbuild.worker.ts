@@ -13,9 +13,17 @@ async function buildWorker() {
       alias: {
         "@app": ".",
       },
-      packages: "external",
+      packages: "bundle",
       logLevel: "info",
       metafile: true,
+      external: [
+        "@temporalio/worker",
+        "@temporalio/common",
+        "blake3",
+        "dd-trace",
+        "isomorphic-dompurify",
+        "tsconfig-paths-webpack-plugin",
+      ],
     });
 
     console.log("✅ Worker built successfully!");
