@@ -70,7 +70,7 @@ export const GEMINI_2_5_PRO_MODEL_CONFIG: ModelConfigurationType = {
 export const GEMINI_3_PRO_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
   modelId: GEMINI_3_PRO_MODEL_ID,
-  displayName: "Gemini 3 Pro",
+  displayName: "Gemini 3 Pro (Preview)",
   contextSize: 1_000_000,
   recommendedTopK: 64,
   recommendedExhaustiveTopK: 64,
@@ -86,5 +86,4 @@ export const GEMINI_3_PRO_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
   useNativeLightReasoning: true,
-  featureFlag: "google_ai_studio_experimental_models_feature",
 };

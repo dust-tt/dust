@@ -41,6 +41,7 @@ interface InputBarAttachmentsProps {
   files: FileAttachmentsProps;
   nodes?: NodeAttachmentsProps;
   conversationId: string | null;
+  disable?: boolean;
 }
 
 export function InputBarAttachments({
@@ -48,6 +49,7 @@ export function InputBarAttachments({
   files,
   nodes,
   conversationId,
+  disable = false,
 }: InputBarAttachmentsProps) {
   const { spaces } = useSpaces({
     workspaceId: owner.sId,
@@ -87,11 +89,13 @@ export function InputBarAttachments({
           isUploading: blob.isUploading,
           description: uploadDate,
           fileId: blob.id,
-          onRemove: () => files.service.removeFile(blob.id),
+          onRemove: disable
+            ? undefined
+            : () => files.service.removeFile(blob.id),
         };
       }) ?? []
     );
-  }, [files?.service]);
+  }, [files?.service, disable]);
 
   // Convert content nodes to NodeAttachment objects
   const nodeAttachments: NodeAttachment[] = useMemo(() => {
@@ -125,11 +129,11 @@ export function InputBarAttachments({
           spaceIcon: spacesMap[node.dataSourceView.spaceId].icon,
           path: getLocationForDataSourceViewContentNode(node),
           visual,
-          onRemove: () => nodes.onRemove(node),
+          onRemove: disable ? undefined : () => nodes.onRemove(node),
         };
       }) ?? []
     );
-  }, [nodes, spacesMap]);
+  }, [nodes, spacesMap, disable]);
 
   const allAttachments: Attachment[] = [...fileAttachments, ...nodeAttachments];
 
@@ -138,20 +142,18 @@ export function InputBarAttachments({
   }
 
   return (
-    <>
-      <CitationGrid className="border-b border-separator px-3 pb-3 pt-3 dark:border-separator-night">
-        {allAttachments.map((attachment, index) => {
-          const attachmentCitation = attachmentToAttachmentCitation(attachment);
-          return (
-            <AttachmentCitation
-              key={index}
-              owner={owner}
-              attachmentCitation={attachmentCitation}
-              conversationId={conversationId}
-            />
-          );
-        })}
-      </CitationGrid>
-    </>
+    <CitationGrid className="border-b border-separator px-3 pb-3 pt-3 dark:border-separator-night">
+      {allAttachments.map((attachment, index) => {
+        const attachmentCitation = attachmentToAttachmentCitation(attachment);
+        return (
+          <AttachmentCitation
+            key={index}
+            owner={owner}
+            attachmentCitation={attachmentCitation}
+            conversationId={conversationId}
+          />
+        );
+      })}
+    </CitationGrid>
   );
 }

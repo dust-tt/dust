@@ -12,7 +12,7 @@ export type FileAttachment = {
   title: string;
   contentType: SupportedFileContentType;
   isUploading: boolean;
-  onRemove: () => void;
+  onRemove?: () => void;
   description?: string;
   sourceUrl?: string;
 };
@@ -25,7 +25,7 @@ export type NodeAttachment = {
   spaceIcon: React.ComponentType;
   visual: React.ReactNode;
   path: string;
-  onRemove: () => void;
+  onRemove?: () => void;
   url: string | null;
 };
 

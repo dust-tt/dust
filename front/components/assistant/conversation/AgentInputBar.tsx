@@ -10,6 +10,7 @@ import {
 } from "@virtuoso.dev/message-list";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
+import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import type {
@@ -35,6 +36,7 @@ export const AgentInputBar = ({
   context: VirtuosoMessageListContext;
 }) => {
   const generationContext = useContext(GenerationContext);
+  const { hasBlockedActions } = useBlockedActionsContext();
 
   if (!generationContext) {
     throw new Error(
@@ -188,7 +190,8 @@ export const AgentInputBar = ({
         conversationId={context.conversationId}
         disableAutoFocus={isMobile}
         actions={context.agentBuilderContext?.actionsToShow}
-        disable={context.agentBuilderContext?.isSavingDraftAgent}
+        isSubmitting={context.agentBuilderContext?.isSavingDraftAgent === true}
+        disable={hasBlockedActions}
       />
     </div>
   );

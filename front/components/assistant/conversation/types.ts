@@ -18,6 +18,7 @@ import type {
   RichMention,
   UserMessageOrigin,
   UserMessageType,
+  UserMessageTypeWithContentFragments,
   UserType,
 } from "@app/types";
 import { isLightAgentMessageWithActionsType } from "@app/types";
@@ -58,9 +59,7 @@ export type AgentMessageStateWithControlEvent =
 
 export type VirtuosoMessage =
   | MessageTemporaryState
-  | (UserMessageType & {
-      contentFragments: ContentFragmentType[];
-    });
+  | UserMessageTypeWithContentFragments;
 
 export type VirtuosoMessageListContext = {
   owner: LightWorkspaceType;

@@ -9,7 +9,7 @@ import { useCallback, useContext, useEffect, useState } from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { AgentBrowserContainer } from "@app/components/assistant/conversation/AgentBrowserContainer";
-import { useActionValidationContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
+import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
@@ -50,8 +50,12 @@ export function ConversationContainerVirtuoso({
 
   const { setSelectedAgent } = useContext(InputBarContext);
 
-  const { hasBlockedActions, totalBlockedActions, showBlockedActionsDialog } =
-    useActionValidationContext();
+  const {
+    hasBlockedActions,
+    hasPendingValidations,
+    totalBlockedActions,
+    showBlockedActionsDialog,
+  } = useBlockedActionsContext();
 
   const router = useRouter();
 
@@ -170,13 +174,17 @@ export function ConversationContainerVirtuoso({
                 {totalBlockedActions} action
                 {pluralize(totalBlockedActions)}
               </span>{" "}
-              require{conjugate(totalBlockedActions)} manual approval
-              <ContentMessageAction
-                label="Review actions"
-                variant="outline"
-                size="xs"
-                onClick={() => showBlockedActionsDialog()}
-              />
+              require{conjugate(totalBlockedActions)} a manual action
+              {/* If there are pending validations, we show a button allowing to open the dialog
+              from where they can be approved/denied */}
+              {hasPendingValidations && (
+                <ContentMessageAction
+                  label="Review actions"
+                  variant="outline"
+                  size="xs"
+                  onClick={() => showBlockedActionsDialog()}
+                />
+              )}
             </ContentMessageInline>
           )}
         </>
@@ -200,7 +208,7 @@ export function ConversationContainerVirtuoso({
               owner={owner}
               onSubmit={handleConversationCreation}
               conversationId={null}
-              disable={false}
+              disable={hasBlockedActions}
               disableAutoFocus={false}
             />
           </div>

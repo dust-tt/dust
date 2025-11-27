@@ -19,6 +19,7 @@ import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrapp
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger, { auditLog } from "@app/logger/logger";
+// import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
 import type {
   LightWorkspaceType,
   MembershipOriginType,
@@ -546,6 +547,15 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       newRole: role,
     });
 
+    // Update user search index across all workspaces
+    // const workflowResult = await launchIndexUserSearchWorkflow({
+    //   userId: user.sId,
+    // });
+    // if (workflowResult.isErr()) {
+    //   // Throw if it fails to launch (unexpected).
+    //   throw workflowResult.error;
+    // }
+
     return new MembershipResource(MembershipModel, newMembership.get());
   }
 
@@ -629,6 +639,15 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         );
       }
     }
+
+    // Update user search index across all workspaces
+    // const workflowResult = await launchIndexUserSearchWorkflow({
+    //   userId: user.sId,
+    // });
+    // if (workflowResult.isErr()) {
+    //   // Throw if it fails to launch (unexpected).
+    //   throw workflowResult.error;
+    // }
 
     return new Ok({
       role: membership.role,
@@ -746,6 +765,16 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       },
       "Membership role updated"
     );
+
+    // Update user search index across all workspaces
+    // const workflowResult = await launchIndexUserSearchWorkflow({
+    //   userId: user.sId,
+    // });
+    // if (workflowResult.isErr()) {
+    //   // Throw if it fails to launch (unexpected).
+    //   throw workflowResult.error;
+    // }
+
     return new Ok({ previousRole, newRole });
   }
 

@@ -1074,7 +1074,7 @@ The directive should be used to display a clickable version of the agent name in
     availability: "auto",
     allowMultipleInstances: false,
     isRestricted: undefined,
-    isPreview: true,
+    isPreview: false,
     tools_stakes: {
       text_to_speech: "low",
       text_to_dialogue: "low",
@@ -1158,7 +1158,7 @@ The directive should be used to display a clickable version of the agent name in
     availability: "manual",
     allowMultipleInstances: false,
     isRestricted: undefined,
-    isPreview: true,
+    isPreview: false,
     tools_stakes: {
       generate_music: "low",
       generate_sound_effects: "low",

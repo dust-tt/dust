@@ -23,7 +23,7 @@ import { AgentMessageCompletionStatus } from "@app/components/assistant/conversa
 import { AgentMessageInteractiveContentGeneratedFiles } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
-import { useActionValidationContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
+import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
@@ -135,8 +135,11 @@ export function AgentMessage({
     messageStreamState.message.configuration.sId as GLOBAL_AGENTS_SID
   );
 
-  const { showBlockedActionsDialog, enqueueBlockedAction } =
-    useActionValidationContext();
+  const {
+    showBlockedActionsDialog,
+    enqueueBlockedAction,
+    mutateBlockedActions,
+  } = useBlockedActionsContext();
 
   const { mutateMessage } = useConversationMessage({
     conversationId,
@@ -181,9 +184,19 @@ export function AgentMessage({
               metadata: eventPayload.data.metadata,
             },
           });
+        } else if (
+          eventType === "tool_error" &&
+          isPersonalAuthenticationRequiredErrorContent(eventPayload.data.error)
+        ) {
+          void mutateBlockedActions();
         }
       },
-      [showBlockedActionsDialog, enqueueBlockedAction, sId]
+      [
+        showBlockedActionsDialog,
+        enqueueBlockedAction,
+        sId,
+        mutateBlockedActions,
+      ]
     ),
     streamId: `message-${sId}`,
     useFullChainOfThought: false,
@@ -600,6 +613,7 @@ function AgentMessageContent({
     VirtuosoMessage,
     VirtuosoMessageListContext
   >();
+
   const agentMessage = messageStreamState.message;
   const { sId, configuration: agentConfiguration } = agentMessage;
 

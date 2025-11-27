@@ -105,6 +105,8 @@ WORKDIR /app
 COPY --from=front-nextjs-build /app/.next/standalone ./
 COPY --from=front-nextjs-build /app/.next/static ./.next/static
 COPY --from=front-nextjs-build /app/public ./public
+# Copy admin directory (contains prestop.sh and other scripts)
+COPY --from=base-deps /app/admin ./admin
 # Copy built SDK from base dependencies (maintain absolute path for symlink resolution)
 COPY --from=base-deps /sdks /sdks
 

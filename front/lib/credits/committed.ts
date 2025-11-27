@@ -5,6 +5,7 @@ import {
   attachCreditPurchaseToSubscription,
   finalizeAndPayCreditPurchaseInvoice,
   getCreditAmountFromInvoice,
+  getCreditPurchaseCouponId,
   isCreditPurchaseInvoice,
   isEnterpriseSubscription,
   makeCreditPurchaseInvoice,
@@ -95,17 +96,39 @@ export async function createEnterpriseCreditPurchase({
   auth,
   stripeSubscriptionId,
   amountCents,
+  discountPercent,
 }: {
   auth: Authenticator;
   stripeSubscriptionId: string;
   amountCents: number;
+  discountPercent?: number;
 }): Promise<Result<{ credit: CreditResource; invoiceItemId: string }, Error>> {
   const workspace = auth.getNonNullableWorkspace();
+
+  let couponId;
+  if (discountPercent) {
+    const couponResult = await getCreditPurchaseCouponId(discountPercent);
+    if (couponResult.isErr()) {
+      logger.error(
+        {
+          error: couponResult.error.message,
+          workspaceId: workspace.sId,
+          discountPercent,
+        },
+        "[Credit Purchase] Failed to create or retrieve coupon"
+      );
+      return couponResult;
+    }
+    couponId = couponResult.value;
+  } else {
+    couponId = undefined;
+  }
 
   // Attach credit purchase to subscription
   const attachResult = await attachCreditPurchaseToSubscription({
     stripeSubscriptionId,
     amountCents,
+    couponId,
   });
 
   if (attachResult.isErr()) {
@@ -114,6 +137,7 @@ export async function createEnterpriseCreditPurchase({
         error: attachResult.error.error_message,
         workspaceId: workspace.sId,
         amountCents,
+        discountPercent,
       },
       "[Credit Purchase] Failed to attach credit purchase to subscription"
     );
@@ -150,6 +174,7 @@ export async function createEnterpriseCreditPurchase({
     {
       workspaceId: workspace.sId,
       amountCents,
+      discountPercent,
       invoiceItemId,
       expirationDate: credit.expirationDate,
     },

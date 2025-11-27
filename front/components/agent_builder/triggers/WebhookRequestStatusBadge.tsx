@@ -1,4 +1,5 @@
 import { Chip } from "@dust-tt/sparkle";
+import type { ComponentProps } from "react";
 
 import type { WebhookRequestTriggerStatus } from "@app/lib/models/assistant/triggers/webhook_request_trigger";
 
@@ -11,7 +12,7 @@ export function WebhookRequestStatusBadge({
 }: WebhookRequestStatusBadgeProps) {
   const statusConfig: Record<
     WebhookRequestTriggerStatus,
-    { label: string; variant: "success" | "warning" | "info" }
+    { label: string; variant: ComponentProps<typeof Chip>["color"] }
   > = {
     workflow_start_succeeded: {
       label: "Succeeded",

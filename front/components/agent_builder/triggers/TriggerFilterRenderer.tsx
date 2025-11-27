@@ -165,7 +165,7 @@ export function TriggerFilterRenderer({ data }: TriggerFilterRendererProps) {
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border px-4 py-4">
+    <div className="overflow-hidden rounded-xl border border-border px-4 py-4 dark:border-border-night">
       <div className="max-w-full overflow-x-auto text-sm">
         <ExpressionNode expression={parseResult.value} />
       </div>

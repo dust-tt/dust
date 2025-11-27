@@ -227,4 +227,21 @@ export class CreditResource extends BaseResource<CreditModel> {
       invoiceOrLineItemId: this.invoiceOrLineItemId,
     };
   }
+
+  toJSON() {
+    return {
+      id: this.id,
+      createdAt: this.createdAt.toISOString(),
+      type: this.type,
+      initialAmountCents: this.initialAmountCents,
+      consumedAmountCents: this.consumedAmountCents,
+      remainingAmountCents: this.initialAmountCents - this.consumedAmountCents,
+      startDate: this.startDate ? this.startDate.toISOString() : null,
+      expirationDate: this.expirationDate
+        ? this.expirationDate.toISOString()
+        : null,
+      discount: this.discount,
+      invoiceOrLineItemId: this.invoiceOrLineItemId,
+    };
+  }
 }

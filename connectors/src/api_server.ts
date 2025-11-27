@@ -37,9 +37,14 @@ import { authMiddleware } from "@connectors/middleware/auth";
 import { rateLimiter, setupGlobalErrorHandler } from "@connectors/types";
 
 import {
+  addWebhookRouterEntryHandler,
+  patchWebhookRouterEntryHandler,
+} from "./api/add_webhook_router_config";
+import {
   getConnectorConfigAPIHandler,
   setConnectorConfigAPIHandler,
 } from "./api/connector_config";
+import { deleteWebhookRouterEntryHandler } from "./api/delete_webhook_router_config";
 import { webhookFirecrawlAPIHandler } from "./api/webhooks/webhook_firecrawl";
 
 export function startServer(port: number) {
@@ -171,6 +176,19 @@ export function startServer(port: number) {
   app.post(
     "/webhooks/:webhook_secret/microsoft_teams_bot",
     webhookTeamsAPIHandler
+  );
+
+  app.post(
+    "/webhooks_router_entries/:webhook_secret/:provider/:providerWorkspaceId",
+    addWebhookRouterEntryHandler
+  );
+  app.patch(
+    "/webhooks_router_entries/:webhook_secret/:provider/:providerWorkspaceId",
+    patchWebhookRouterEntryHandler
+  );
+  app.delete(
+    "/webhooks_router_entries/:webhook_secret/:provider/:providerWorkspaceId",
+    deleteWebhookRouterEntryHandler
   );
 
   // /configuration/ is the new configration method, replacing the old /config/ method

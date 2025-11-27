@@ -65,8 +65,8 @@ export interface InputBarContainerProps {
   stickyMentions?: AgentMention[];
   actions: InputBarAction[];
   disableAutoFocus: boolean;
-  disableSendButton: boolean;
-  disableTextInput: boolean;
+  isSubmitting: boolean;
+  disableInput: boolean;
   fileUploaderService: FileUploaderService;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
@@ -86,8 +86,8 @@ const InputBarContainer = ({
   stickyMentions,
   actions,
   disableAutoFocus,
-  disableSendButton,
-  disableTextInput,
+  isSubmitting,
+  disableInput,
   fileUploaderService,
   onNodeSelect,
   onNodeUnselect,
@@ -383,6 +383,8 @@ const InputBarContainer = ({
     };
   }, [editor, editorService]);
 
+  const disableTextInput = isSubmitting || disableInput;
+
   // Disable the editor when disableTextInput is true.
   useEffect(() => {
     if (editor) {
@@ -537,22 +539,31 @@ const InputBarContainer = ({
           <div className="mb-1 flex flex-wrap items-center">
             {selectedMCPServerViews.map((msv) => (
               <React.Fragment key={msv.sId}>
+                {/* Two Chips: one for larger screens (desktop), one for smaller screens (mobile). */}
                 <Chip
                   size="xs"
                   label={getMcpServerViewDisplayName(msv)}
                   icon={getIcon(msv.server.icon)}
                   className="m-0.5 hidden bg-background text-foreground dark:bg-background-night dark:text-foreground-night md:flex"
-                  onRemove={() => {
-                    onMCPServerViewDeselect(msv);
-                  }}
+                  onRemove={
+                    disableInput
+                      ? undefined
+                      : () => {
+                          onMCPServerViewDeselect(msv);
+                        }
+                  }
                 />
                 <Chip
                   size="xs"
                   icon={getIcon(msv.server.icon)}
                   className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night md:hidden"
-                  onRemove={() => {
-                    onMCPServerViewDeselect(msv);
-                  }}
+                  onRemove={
+                    disableInput
+                      ? undefined
+                      : () => {
+                          onMCPServerViewDeselect(msv);
+                        }
+                  }
                 />
               </React.Fragment>
             ))}
@@ -633,14 +644,14 @@ const InputBarContainer = ({
               <Button
                 size={buttonSize}
                 isLoading={
-                  disableSendButton &&
+                  isSubmitting &&
                   voiceTranscriberService.status !== "transcribing"
                 }
                 icon={ArrowUpIcon}
                 variant="highlight"
                 disabled={
                   isEmpty ||
-                  disableSendButton ||
+                  disableTextInput ||
                   voiceTranscriberService.status !== "idle"
                 }
                 onClick={async (e: React.MouseEvent<HTMLButtonElement>) => {

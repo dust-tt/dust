@@ -107,25 +107,27 @@ function useBlockedActionsQueue({
   };
 }
 
-type ActionValidationContextType = {
+type BlockedActionsContextType = {
   enqueueBlockedAction: (params: {
     messageId: string;
     blockedAction: BlockedToolExecution;
   }) => void;
   showBlockedActionsDialog: () => void;
   hasBlockedActions: boolean;
+  hasPendingValidations: boolean;
   totalBlockedActions: number;
+  mutateBlockedActions: () => void;
 };
 
-const ActionValidationContext = createContext<
-  ActionValidationContextType | undefined
+const BlockedActionsContext = createContext<
+  BlockedActionsContextType | undefined
 >(undefined);
 
-export function useActionValidationContext() {
-  const context = useContext(ActionValidationContext);
+export function useBlockedActionsContext() {
+  const context = useContext(BlockedActionsContext);
   if (!context) {
     throw new Error(
-      "useActionValidationContext must be used within an ActionValidationContext"
+      "useActionValidationContext must be used within an BlockedActionsContext"
     );
   }
 
@@ -146,7 +148,7 @@ export function BlockedActionsProvider({
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const conversationId = conversation?.sId || null;
 
-  const { blockedActions } = useBlockedActions({
+  const { blockedActions, mutate: mutateBlockedActions } = useBlockedActions({
     conversationId,
     workspaceId: owner.sId,
   });
@@ -275,9 +277,6 @@ export function BlockedActionsProvider({
     }
   }, [blockedActionsQueue.length, pendingValidations.length]);
 
-  const hasBlockedActions = pendingValidations.length > 0;
-  const totalBlockedActions = pendingValidations.length;
-
   const pages = useMemo(() => {
     if (pendingValidations.length > 0) {
       return pendingValidations.map((item) => {
@@ -316,12 +315,14 @@ export function BlockedActionsProvider({
   }, [pages, currentValidationIndex, pendingValidations]);
 
   return (
-    <ActionValidationContext.Provider
+    <BlockedActionsContext.Provider
       value={{
         showBlockedActionsDialog,
         enqueueBlockedAction,
-        hasBlockedActions,
-        totalBlockedActions,
+        mutateBlockedActions,
+        hasBlockedActions: blockedActionsQueue.length > 0,
+        hasPendingValidations: pendingValidations.length > 0,
+        totalBlockedActions: blockedActionsQueue.length,
       }}
     >
       {children}
@@ -363,6 +364,6 @@ export function BlockedActionsProvider({
           />
         )}
       </MultiPageDialog>
-    </ActionValidationContext.Provider>
+    </BlockedActionsContext.Provider>
   );
 }
