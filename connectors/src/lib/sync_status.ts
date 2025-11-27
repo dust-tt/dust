@@ -7,6 +7,7 @@ import type {
   ConnectorSyncStatus,
 } from "@connectors/types";
 import type { ModelId } from "@connectors/types";
+import { getActivityLogger } from "@connectors/logger/logger";
 
 async function syncFinished({
   connectorId,
@@ -51,6 +52,8 @@ export async function reportInitialSyncProgress(
   if (!connector) {
     return new Err(new Error("Connector not found"));
   }
+  const localLogger = getActivityLogger(connector);
+  localLogger.info({ progress }, "Reporting initial sync progress");
 
   await connector.update({
     firstSyncProgress: progress,
