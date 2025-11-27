@@ -9,7 +9,7 @@ import type { WithAPIErrorResponse } from "@app/types";
 
 export type DeclineBlockedActionsResponse = {
   success: true;
-  totalFailed: number;
+  totalFailedActions: number;
 };
 
 export const DismissAllActionsQuerySchema = z.object({
@@ -81,7 +81,7 @@ async function handler(
 
   return res.status(200).json({
     success: true,
-    totalFailed: result.value.failedActionCount,
+    totalFailedActions: result.value.failedActionCount,
   });
 }
 
