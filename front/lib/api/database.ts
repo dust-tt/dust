@@ -1,6 +1,5 @@
 import { context as otelContext, trace } from "@opentelemetry/api";
 import type { ReadableSpan } from "@opentelemetry/sdk-trace-base";
-import { cons } from "fp-ts/lib/ReadonlyNonEmptyArray";
 import type {
   ColumnsDescription,
   Model,
