@@ -2,23 +2,6 @@
 
 This runbook provides step-by-step instructions for creating a new Elasticsearch index in the Dust front codebase and integrating it into the application.
 
-## Table of Contents
-
-1. [Prerequisites](#prerequisites)
-2. [Overview of Current Architecture](#overview-of-current-architecture)
-3. [Step-by-Step: Creating a New Index](#step-by-step-creating-a-new-index)
-   - [Multi-Field Mappings with Custom Analyzers](#multi-field-mappings-with-custom-analyzers)
-   - [Advanced Settings with Custom Analyzers](#advanced-settings-with-custom-analyzers-search-use-case)
-4. [Step-by-Step: Indexing Data](#step-by-step-indexing-data)
-5. [Step-by-Step: Querying Data](#step-by-step-querying-data)
-6. [Best Practices](#best-practices)
-7. [Common Patterns](#common-patterns)
-8. [Troubleshooting](#troubleshooting)
-9. [Updating Analyzers on Existing Indices](#updating-analyzers-on-existing-indices)
-10. [Index Migration (v1 → v2)](#index-migration-v1--v2)
-11. [Quick Reference](#quick-reference)
-    - [Testing Analyzers](#testing-analyzers)
-
 ---
 
 ## Prerequisites
@@ -70,10 +53,7 @@ If using custom analyzers with ICU tokenization:
 
 ### Scope of This Runbook
 
-This runbook currently focuses on Elasticsearch indices managed in the `front` codebase, particularly analytics indices. However, the patterns and techniques documented here apply to all Elasticsearch indices across the codebase:
-
-- **Front Analytics Indices:** Located in `front/lib/analytics/indices/` (simpler indices for metrics/analytics)
-- **Core Search Indices:** Located in `core/src/search_stores/indices/` (more complex indices with custom analyzers for full-text search)
+This runbook currently focuses on Elasticsearch indices managed in the `front` codebase, particularly analytics indices. However, the patterns and techniques documented here apply to all Elasticsearch indices across the codebase.
 
 **Note:** Consider consolidating all Elasticsearch index management under a shared location in the future to centralize patterns and reduce duplication.
 
@@ -102,12 +82,9 @@ The core codebase has indices for data source search:
 ### Key Files (front)
 
 - **Client:** `lib/api/elasticsearch.ts` - Singleton client with error handling
-- **Front Index Definitions:** `lib/analytics/indices/` - Mappings and settings per version
-- **Core Index Definitions:** `core/src/search_stores/indices/` - Advanced mappings with custom analyzers
+- **Front Index Definitions:** `lib/you_feature/indices/` - Mappings and settings per version
 - **Index Creation Script:** `scripts/create_elasticsearch_index.ts`
-- **Indexing Logic:** `temporal/analytics_queue/activities.ts`
-- **Query Utilities:** `lib/api/assistant/observability/` (11 query modules)
-- **Type Definitions:** `types/assistant/analytics.ts`
+- **Indexing Logic:** `temporal/es_indexation_queue/activities.ts` - Shared queue for ES indexation
 
 ---
 
@@ -145,6 +122,8 @@ export interface YourIndexData extends ElasticsearchBaseDocument {
 ```
 
 **Note:** The `workspace_id` field is automatically provided by `ElasticsearchBaseDocument` and should not be redeclared.
+
+**Example:** See `types/user_search/user_search.ts`.
 
 ### Step 2: Create Mappings File
 
@@ -189,6 +168,8 @@ Create `lib/your_feature/indices/your_index_name_1.mappings.json`:
   }
 }
 ```
+
+**Example:** See `lib/user_search/indices`
 
 **Important Mapping Decisions:**
 
@@ -283,7 +264,7 @@ Where `email_analyzer` would be defined in your index settings with:
 }
 ```
 
-A good example of this can be found under `front/lib/user_search`.
+**Example:** See `front/lib/user_search/indices`.
 
 **Querying Multi-Fields:**
 
@@ -301,7 +282,7 @@ A good example of this can be found under `front/lib/user_search`.
 { term: { "username": "John" } } // matches "john", "JOHN", etc.
 ```
 
-**Reference:** See `core/src/search_stores/indices/data_sources_nodes_4.mappings.json` for production multi-field examples.
+**Example:** See `core/src/search_stores/indices/data_sources_nodes_4.mappings.json` for production multi-field examples.
 
 ### Step 3: Create Settings Files (Regional)
 
@@ -428,6 +409,12 @@ Add to `lib/api/elasticsearch.ts`:
 
 ```typescript
 export const YOUR_INDEX_ALIAS_NAME = "front.your_index_name";
+
+export const INDEX_DIRECTORIES: Record<string, string> = {
+  ...
+  your_index_name: "lib/your_feature/indices",
+  ...
+};
 ```
 
 ### Step 5: Run Index Creation Script
@@ -441,8 +428,8 @@ tsx front/scripts/create_elasticsearch_index.ts \
 
 **What this script does (from `scripts/create_elasticsearch_index.ts:1-201`):**
 
-1. Reads settings from `lib/analytics/indices/your_index_name_1.settings.{region}.json`
-2. Reads mappings from `lib/analytics/indices/your_index_name_1.mappings.json`
+1. Reads settings from `lib/*/indices/your_index_name_1.settings.{region}.json`
+2. Reads mappings from `lib/*/indices/your_index_name_1.mappings.json`
 3. Creates index named: `front.your_index_name_1`
 4. Creates alias: `front.your_index_name` pointing to `front.your_index_name_1` with `is_write_index: true`
 
@@ -547,58 +534,13 @@ export async function bulkStoreYourData(
 }
 ```
 
-See examples in `lib/analytics/agent_message_analytics.ts`.
+See examples in `lib/user_search/index.ts`.
 
-### Step 2: Build Your Document
+### Step 2: Integrate with Temporal (Optional but Recommended)
 
-Example from application code:
+For asynchronous, reliable indexing, use the shared temporal `es_indexation` queue.
 
-```typescript
-import { storeYourData } from "@/lib/your_feature/your_index";
-import type { YourIndexData } from "@/types/your_feature/your_index";
-
-async function processYourEntity(entity: YourEntity, workspace: Workspace) {
-  // Build the document
-  const document: YourIndexData = {
-    workspace_id: workspace.sId,
-    your_entity_id: entity.sId,
-    timestamp: new Date().toISOString(),
-    status: entity.status,
-    metadata: {
-      field1: entity.field1,
-      field2: entity.field2,
-    },
-    nested_data: entity.items.map((item) => ({
-      item_id: item.id,
-      value: item.value,
-    })),
-  };
-
-  // Store to Elasticsearch
-  const result = await storeYourData(document);
-
-  if (result.isErr()) {
-    // Handle error (log, retry, etc.)
-    logger.error(
-      {
-        error: result.error,
-        entityId: entity.sId,
-      },
-      "Failed to store analytics data"
-    );
-    return;
-  }
-
-  // Success
-  logger.info({ entityId: entity.sId }, "Analytics data stored");
-}
-```
-
-### Step 3: Integrate with Temporal (Optional but Recommended)
-
-For asynchronous, reliable indexing, use Temporal workflows:
-
-**Create activity file:** `temporal/your_feature_queue/activities.ts`
+**Create activity file:** `temporal/es_indexation_queue/activities.ts`
 
 ```typescript
 import { storeYourData } from "@/lib/analytics/your_index";
