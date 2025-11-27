@@ -1,5 +1,9 @@
+import type { Document } from "@contentful/rich-text-types";
+import { BLOCKS } from "@contentful/rich-text-types";
 import type { Asset, ContentfulClientApi, Entry } from "contentful";
 import { createClient } from "contentful";
+
+import { slugify } from "@app/types/shared/utils/string_utils";
 
 import type {
   BlogImage,
@@ -7,10 +11,6 @@ import type {
   BlogPost,
   BlogPostSummary,
 } from "./types";
-
-// ============================================
-// Client Singleton
-// ============================================
 
 let client: ContentfulClientApi<undefined> | null = null;
 
@@ -35,18 +35,10 @@ function getClient(): ContentfulClientApi<undefined> {
   return client;
 }
 
-// ============================================
-// Utility Functions
-// ============================================
-
-function slugify(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-}
-
-function transformImage(asset: Asset | undefined, fallbackAlt: string): BlogImage | null {
+function transformImage(
+  asset: Asset | undefined,
+  fallbackAlt: string
+): BlogImage | null {
   if (!asset?.fields?.file) {
     return null;
   }
@@ -61,24 +53,66 @@ function transformImage(asset: Asset | undefined, fallbackAlt: string): BlogImag
 
   return {
     url: `https:${file.url}`,
-    alt: typeof asset.fields.title === "string" ? asset.fields.title : fallbackAlt,
+    alt:
+      typeof asset.fields.title === "string" ? asset.fields.title : fallbackAlt,
     width: imageDetails?.width ?? 1200,
     height: imageDetails?.height ?? 630,
   };
 }
 
+// Helper to safely extract a field value, handling Contentful's union types
+function getFieldValue<T>(
+  field: T | { [locale: string]: T } | undefined
+): T | undefined {
+  if (!field) {
+    return undefined;
+  }
+  // Check if it's a Document (has nodeType)
+  if (
+    typeof field === "object" &&
+    !Array.isArray(field) &&
+    "nodeType" in field
+  ) {
+    return field as T;
+  }
+  // Check if it's an Asset (has sys)
+  if (typeof field === "object" && !Array.isArray(field) && "sys" in field) {
+    return field as T;
+  }
+  // Check if it's a simple value (string or array)
+  if (typeof field === "string" || Array.isArray(field)) {
+    return field as T;
+  }
+  return undefined;
+}
+
+// Create an empty Document for fallback
+const EMPTY_DOCUMENT: Document = {
+  nodeType: BLOCKS.DOCUMENT,
+  data: {},
+  content: [],
+};
+
 function transformBlogPost(entry: Entry<BlogPageSkeleton>): BlogPost {
   const fields = entry.fields;
 
+  const title = getFieldValue(fields.title) ?? "";
+  const slug = getFieldValue(fields.slug) ?? slugify(title);
+  const description = getFieldValue(fields.description) ?? null;
+  const tags = getFieldValue(fields.tags) ?? [];
+  const publishedAt = getFieldValue(fields.publishedAt) ?? entry.sys.createdAt;
+  const body = getFieldValue(fields.body) ?? EMPTY_DOCUMENT;
+  const image = getFieldValue(fields.image);
+
   return {
     id: entry.sys.id,
-    slug: (fields.slug as string) ?? slugify(fields.title as string),
-    title: fields.title as string,
-    description: (fields.description as string) ?? null,
-    body: fields.body,
-    tags: (fields.tags as string[]) ?? [],
-    image: transformImage(fields.image as Asset, fields.title as string),
-    createdAt: (fields.publishedAt as string) ?? entry.sys.createdAt,
+    slug,
+    title,
+    description,
+    body,
+    tags,
+    image: transformImage(image, title),
+    createdAt: publishedAt,
     updatedAt: entry.sys.updatedAt,
   };
 }
@@ -95,10 +129,6 @@ function toSummary(post: BlogPost): BlogPostSummary {
   };
 }
 
-// ============================================
-// Public API Functions
-// ============================================
-
 export async function getAllBlogPosts(): Promise<BlogPostSummary[]> {
   const contentfulClient = getClient();
 
@@ -109,19 +139,26 @@ export async function getAllBlogPosts(): Promise<BlogPostSummary[]> {
 
   return response.items
     .map(transformBlogPost)
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )
     .map(toSummary);
 }
 
-export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> {
+export async function getBlogPostBySlug(
+  slug: string
+): Promise<BlogPost | null> {
   const contentfulClient = getClient();
 
-  // Query directly by slug field
-  const response = await contentfulClient.getEntries<BlogPageSkeleton>({
+  const queryParams = {
     content_type: "blogPage",
     "fields.slug": slug,
     limit: 1,
-  });
+  };
+
+  const response =
+    await contentfulClient.getEntries<BlogPageSkeleton>(queryParams);
 
   if (response.items.length > 0) {
     return transformBlogPost(response.items[0]);
@@ -139,9 +176,12 @@ export async function getAllBlogSlugs(): Promise<string[]> {
     limit: 1000,
   });
 
-  return response.items.map(
-    (item) => (item.fields.slug as string) ?? slugify(item.fields.title as string)
-  );
+  return response.items.map((item) => {
+    const fields = item.fields;
+    const title = "title" in fields && fields.title ? fields.title : "";
+    const slug = "slug" in fields && fields.slug ? fields.slug : slugify(title);
+    return slug;
+  });
 }
 
 export async function getRelatedPosts(
@@ -155,11 +195,14 @@ export async function getRelatedPosts(
 
   const contentfulClient = getClient();
 
-  const response = await contentfulClient.getEntries<BlogPageSkeleton>({
+  const queryParams = {
     content_type: "blogPage",
     "fields.tags[in]": tags.join(","),
     limit: limit + 1,
-  });
+  };
+
+  const response =
+    await contentfulClient.getEntries<BlogPageSkeleton>(queryParams);
 
   return response.items
     .map(transformBlogPost)

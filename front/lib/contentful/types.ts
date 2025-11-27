@@ -15,10 +15,7 @@ export interface BlogPageFields {
   publishedAt?: string;
 }
 
-export interface BlogPageSkeleton extends EntrySkeletonType {
-  contentTypeId: "blogPage";
-  fields: BlogPageFields;
-}
+export type BlogPageSkeleton = EntrySkeletonType<BlogPageFields, "blogPage">;
 
 // ============================================
 // Application Types (transformed from Contentful)
@@ -52,10 +49,6 @@ export interface BlogPostSummary {
   image: BlogImage | null;
   createdAt: string;
 }
-
-// ============================================
-// Page Props Types
-// ============================================
 
 export interface BlogListingPageProps {
   posts: BlogPostSummary[];
