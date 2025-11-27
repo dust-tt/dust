@@ -8,7 +8,6 @@ import type { Asset, EntrySkeletonType } from "contentful";
 export interface BlogPageFields {
   title: string;
   slug?: string;
-  description?: string;
   body: Document;
   tags?: string[];
   image?: Asset;

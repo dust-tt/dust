@@ -14,7 +14,7 @@ import type {
 
 let client: ContentfulClientApi<undefined> | null = null;
 
-function getClient(): ContentfulClientApi<undefined> {
+function getClient() {
   if (!client) {
     const spaceId = process.env.CONTENTFUL_SPACE_ID;
     const accessToken = process.env.CONTENTFUL_ACCESS_TOKEN;
@@ -32,7 +32,7 @@ function getClient(): ContentfulClientApi<undefined> {
       environment: process.env.CONTENTFUL_ENVIRONMENT ?? "master",
     });
   }
-  return client;
+  return client.withoutUnresolvableLinks;
 }
 
 function transformImage(
@@ -60,60 +60,48 @@ function transformImage(
   };
 }
 
-// Helper to safely extract a field value, handling Contentful's union types
-function getFieldValue<T>(
-  field: T | { [locale: string]: T } | undefined
-): T | undefined {
-  if (!field) {
-    return undefined;
-  }
-  // Check if it's a Document (has nodeType)
-  if (
-    typeof field === "object" &&
-    !Array.isArray(field) &&
-    "nodeType" in field
-  ) {
-    return field as T;
-  }
-  // Check if it's an Asset (has sys)
-  if (typeof field === "object" && !Array.isArray(field) && "sys" in field) {
-    return field as T;
-  }
-  // Check if it's a simple value (string or array)
-  if (typeof field === "string" || Array.isArray(field)) {
-    return field as T;
-  }
-  return undefined;
-}
-
-// Create an empty Document for fallback
 const EMPTY_DOCUMENT: Document = {
   nodeType: BLOCKS.DOCUMENT,
   data: {},
   content: [],
 };
 
-function transformBlogPost(entry: Entry<BlogPageSkeleton>): BlogPost {
-  const fields = entry.fields;
+function isDocument(value: unknown): value is Document {
+  return typeof value === "object" && value !== null && "nodeType" in value;
+}
 
-  const title = getFieldValue(fields.title) ?? "";
-  const slug = getFieldValue(fields.slug) ?? slugify(title);
-  const description = getFieldValue(fields.description) ?? null;
-  const tags = getFieldValue(fields.tags) ?? [];
-  const publishedAt = getFieldValue(fields.publishedAt) ?? entry.sys.createdAt;
-  const body = getFieldValue(fields.body) ?? EMPTY_DOCUMENT;
-  const image = getFieldValue(fields.image);
+function isAsset(value: unknown): value is Asset {
+  return typeof value === "object" && value !== null && "sys" in value;
+}
+
+function transformBlogPost(entry: Entry<BlogPageSkeleton>): BlogPost {
+  const { fields, sys } = entry;
+
+  const titleField = fields.title;
+  const title = typeof titleField === "string" ? titleField : "";
+
+  const slugField = fields.slug;
+  const slug = typeof slugField === "string" ? slugField : slugify(title);
+
+  const tagsField = fields.tags;
+  const tags = Array.isArray(tagsField) ? tagsField : [];
+
+  const publishedAtField = fields.publishedAt;
+  const publishedAt = typeof publishedAtField === "string" ? publishedAtField : sys.createdAt;
+
+  const body = isDocument(fields.body) ? fields.body : EMPTY_DOCUMENT;
+  const image = isAsset(fields.image) ? fields.image : undefined;
 
   return {
-    id: entry.sys.id,
+    id: sys.id,
     slug,
     title,
-    description,
+    description: null,
     body,
     tags,
     image: transformImage(image, title),
     createdAt: publishedAt,
-    updatedAt: entry.sys.updatedAt,
+    updatedAt: sys.updatedAt,
   };
 }
 
@@ -139,10 +127,7 @@ export async function getAllBlogPosts(): Promise<BlogPostSummary[]> {
 
   return response.items
     .map(transformBlogPost)
-    .sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    )
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .map(toSummary);
 }
 
@@ -176,11 +161,12 @@ export async function getAllBlogSlugs(): Promise<string[]> {
     limit: 1000,
   });
 
-  return response.items.map((item) => {
+  return response.items.map((item: Entry<BlogPageSkeleton>) => {
     const fields = item.fields;
-    const title = "title" in fields && fields.title ? fields.title : "";
-    const slug = "slug" in fields && fields.slug ? fields.slug : slugify(title);
-    return slug;
+    const titleField = fields.title;
+    const title = typeof titleField === "string" ? titleField : "";
+    const slugField = fields.slug;
+    return typeof slugField === "string" ? slugField : slugify(title);
   });
 }
 
@@ -206,7 +192,7 @@ export async function getRelatedPosts(
 
   return response.items
     .map(transformBlogPost)
-    .filter((post) => post.slug !== currentSlug)
+    .filter((post: BlogPost) => post.slug !== currentSlug)
     .slice(0, limit)
     .map(toSummary);
 }
