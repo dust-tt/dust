@@ -29,6 +29,10 @@ export default defineConfig(() => {
           process.env.DUST_MANAGED_FIREWORKS_API_KEY ?? "",
         DUST_MANAGED_XAI_API_KEY: process.env.DUST_MANAGED_XAI_API_KEY ?? "",
         OPENAI_BASE_URL: "https://api.openai.com/v1",
+        // When not empty, filter the conversations to run (comma-separated list of conversation IDs)
+        FILTER_CONVERSATION_IDS: process.env.FILTER_CONVERSATION_IDS ?? "",
+        // When set to "true", run all model tests regardless of their `runTest` flag
+        RUN_ALL_MODEL_TESTS: process.env.RUN_ALL_MODEL_TESTS ?? "false",
       },
     },
   });

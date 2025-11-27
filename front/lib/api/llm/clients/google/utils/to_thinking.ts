@@ -1,11 +1,11 @@
-import type { ThinkingConfig, ToolConfig } from "@google/genai";
+import type { SchemaUnion, ThinkingConfig, ToolConfig } from "@google/genai";
 import { FunctionCallingConfigMode } from "@google/genai";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type { GoogleAIStudioWhitelistedModelId } from "@app/lib/api/llm/clients/google/types";
 import { GOOGLE_AI_STUDIO_MODEL_CONFIGS } from "@app/lib/api/llm/clients/google/types";
 import type { ReasoningEffort } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever, ResponseFormatSchema, safeParseJSON } from "@app/types";
 
 const THINKING_BUDGET_CONFIG_MAPPING: Record<ReasoningEffort, number> = {
   // Budget of 0 would throw for some thinking models,
@@ -65,4 +65,27 @@ export function toToolConfigParam(
         },
       }
     : undefined;
+}
+
+export function toResponseSchemaParam(
+  responseSchema: string | null
+): SchemaUnion | undefined {
+  if (!responseSchema) {
+    return;
+  }
+
+  const responseFormatJson = safeParseJSON(responseSchema);
+  if (responseFormatJson.isErr() || responseFormatJson.value === null) {
+    return;
+  }
+
+  const responseFormatResult = ResponseFormatSchema.safeParse(
+    responseFormatJson.value
+  );
+  if (responseFormatResult.error) {
+    return;
+  }
+
+  // Return the schema part directly for Gemini
+  return responseFormatResult.data.json_schema.schema;
 }

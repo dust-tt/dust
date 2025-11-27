@@ -8,6 +8,7 @@ import {
 } from "@app/lib/api/llm/clients/google/utils/conversation_to_google";
 import { streamLLMEvents } from "@app/lib/api/llm/clients/google/utils/google_to_events";
 import {
+  toResponseSchemaParam,
   toThinkingConfig,
   toToolConfigParam,
 } from "@app/lib/api/llm/clients/google/utils/to_thinking";
@@ -55,7 +56,6 @@ export class GoogleLLM extends LLM {
       const contents = await Promise.all(
         conversation.messages.map((message) => toContent(message, this.modelId))
       );
-
       const generateContentResponses =
         await this.client.models.generateContentStream({
           model: this.modelId,
@@ -72,6 +72,11 @@ export class GoogleLLM extends LLM {
               useNativeLightReasoning: this.modelConfig.useNativeLightReasoning,
             }),
             toolConfig: toToolConfigParam(specifications, forceToolCall),
+            // Structured response format
+            responseMimeType: this.responseFormat
+              ? "application/json"
+              : undefined,
+            responseSchema: toResponseSchemaParam(this.responseFormat),
           },
         });
 
