@@ -30,7 +30,7 @@ export const getStaticPaths: GetStaticPaths = async () => {
 export const getStaticProps: GetStaticProps<BlogPostPageProps> = async ({
   params,
 }) => {
-  const slug = params?.slug as string;
+  const slug = isString(params?.slug) ? params.slug : "";
 
   try {
     const post = await getBlogPostBySlug(slug);

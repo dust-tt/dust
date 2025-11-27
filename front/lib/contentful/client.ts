@@ -44,7 +44,7 @@ function contentfulAssetToBlogImage(
   }
 
   const file = asset.fields.file;
-  if (typeof file.url !== "string") {
+  if (!isString(file.url)) {
     return null;
   }
 
@@ -54,7 +54,7 @@ function contentfulAssetToBlogImage(
   return {
     url: `https:${file.url}`,
     alt:
-      typeof asset.fields.title === "string" ? asset.fields.title : fallbackAlt,
+      isString(asset.fields.title) ? asset.fields.title : fallbackAlt,
     width: imageDetails?.width ?? 1200,
     height: imageDetails?.height ?? 630,
   };
@@ -78,17 +78,17 @@ function contentfulEntryToBlogPost(entry: Entry<BlogPageSkeleton>): BlogPost {
   const { fields, sys } = entry;
 
   const titleField = fields.title;
-  const title = typeof titleField === "string" ? titleField : "";
+  const title = isString(titleField) ? titleField : "";
 
   const slugField = fields.slug;
-  const slug = typeof slugField === "string" ? slugField : slugify(title);
+  const slug = isString(slugField) ? slugField : slugify(title);
 
   const tagsField = fields.tags;
   const tags = Array.isArray(tagsField) ? tagsField : [];
 
   const publishedAtField = fields.publishedAt;
   const publishedAt =
-    typeof publishedAtField === "string" ? publishedAtField : sys.createdAt;
+    isString(publishedAtField) ? publishedAtField : sys.createdAt;
 
   const body = isDocument(fields.body) ? fields.body : EMPTY_DOCUMENT;
   const image = isAsset(fields.image) ? fields.image : undefined;
