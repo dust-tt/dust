@@ -2770,7 +2770,10 @@ async function renderPageSection({
   orderedParentIds.reverse();
 
   localLogger.info(
-    { pagesCount: visitedNodes.size },
+    {
+      pagesCount: visitedNodes.size,
+      orderedParentIdsCount: orderedParentIds.length,
+    },
     "Rendered page sections."
   );
 
@@ -2778,6 +2781,7 @@ async function renderPageSection({
     string,
     NotionConnectorBlockCacheEntry[]
   > = {};
+  let now = Date.now();
 
   for (const parentId of orderedParentIds) {
     const blocks = blocksByParentId[
@@ -2830,6 +2834,15 @@ async function renderPageSection({
       }
     }
   }
+
+  // Only log big pages to avoid noise
+  if (visitedNodes.size > 1000) {
+    localLogger.info(
+      { elapsedTime: Date.now() - now },
+      "Done computing adapted blocks by parent ID."
+    );
+  }
+  now = Date.now();
 
   const renderingStack = new Set<string>();
 
@@ -2921,7 +2934,7 @@ async function renderPageSection({
   }
 
   localLogger.info(
-    { blocksCount: topLevelBlocks.length },
+    { blocksCount: topLevelBlocks.length, elapsedTime: Date.now() - now },
     "Rendered block sections."
   );
 
