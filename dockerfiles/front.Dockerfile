@@ -89,7 +89,7 @@ RUN npm run sitemap
 FROM base-deps AS workers-build
 
 # Build temporal workers and esbuild workers (workers only)
-RUN FRONT_DATABASE_URI="sqlite:foo.sqlite" npm run build:temporal-bundles
+# RUN FRONT_DATABASE_URI="sqlite:foo.sqlite" npm run build:temporal-bundles
 RUN npm run build:workers
 # New experimental workers build
 RUN cd workers-build && npm ci && FRONT_DATABASE_URI="sqlite:foo.sqlite" npm run build
