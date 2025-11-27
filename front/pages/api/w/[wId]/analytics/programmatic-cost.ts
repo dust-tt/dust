@@ -19,8 +19,6 @@ import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { randInt } from "three/src/math/MathUtils.js";
-import { cos } from "mathjs";
 
 const GROUP_BY_KEYS = ["agent", "origin", "apiKey"] as const;
 
@@ -479,110 +477,9 @@ async function handler(
         });
       }
 
-      // Generate dummy data for testing
-      const dummyGroupsByType: Record<GroupByType, AvailableGroup[]> = {
-        agent: [
-          { groupKey: "agent-1", groupLabel: "Sales Assistant" },
-          { groupKey: "agent-2", groupLabel: "Support Bot" },
-          { groupKey: "agent-3", groupLabel: "Code Helper" },
-        ],
-        origin: [
-          { groupKey: "slack", groupLabel: "Slack" },
-          { groupKey: "web", groupLabel: "Web" },
-          { groupKey: "api", groupLabel: "API" },
-        ],
-        apiKey: [
-          { groupKey: "api_key_1", groupLabel: "Production API" },
-          { groupKey: "api_key_2", groupLabel: "Staging API" },
-        ],
-      };
-
-      // Get groups for current groupBy mode
-      let dummyAvailableGroups: AvailableGroup[] = [];
-      let activeGroupKeys: string[] = [];
-
-      // Define fixed costs per group (these don't change with filtering)
-      const fixedGroupCosts: Record<GroupByType, Record<string, number>> = {
-        agent: {
-          "agent-1": 0.4,
-          "agent-2": 0.35,
-          "agent-3": 0.2,
-          others: 0.05,
-        },
-        origin: {
-          slack: 0.5,
-          web: 0.3,
-          api: 0.15,
-          others: 0.05,
-        },
-        apiKey: {
-          api_key_1: 0.6,
-          api_key_2: 0.35,
-          others: 0.05,
-        },
-      };
-
-      if (groupBy) {
-        dummyAvailableGroups = [...dummyGroupsByType[groupBy]];
-        // Add "others" group to available groups
-        dummyAvailableGroups.push({ groupKey: "others", groupLabel: "Others" });
-
-        // Apply filter for the current groupBy mode
-        const currentFilter = filterParams?.[groupBy];
-        if (currentFilter && currentFilter.length > 0) {
-          activeGroupKeys = currentFilter;
-        } else {
-          // By default, show all except "others"
-          activeGroupKeys = dummyGroupsByType[groupBy].map((g) => g.groupKey);
-        }
-      } else {
-        // Global mode - show total
-        dummyAvailableGroups = [
-          { groupKey: "total", groupLabel: "Cumulative Cost" },
-        ];
-        activeGroupKeys = ["total"];
-      }
-
-      const cumulatedCosts: Record<string, number> = {};
-      activeGroupKeys.forEach((key) => {
-        cumulatedCosts[key] = 0;
-      });
-
-      const dummyPoints: WorkspaceProgrammaticCostPoint[] = timestamps.map(
-        (timestamp, index) => {
-          const dayOfMonth = index + 1;
-          const baseCost = 10000 + cos(dayOfMonth + 1) * 10000; // Increasing cost over the month
-
-          const groups = activeGroupKeys.map((groupKey) => {
-            // Use fixed cost ratios - filtering changes which groups are shown, not the costs
-            const costRatio = groupBy
-              ? (fixedGroupCosts[groupBy][groupKey] ?? 0.1)
-              : 1;
-            const groupCost = Math.floor(baseCost * costRatio);
-            cumulatedCosts[groupKey] += groupCost;
-            return {
-              groupKey,
-              costCents: groupCost,
-              cumulatedCostCents:
-                timestamp <= now.getTime()
-                  ? cumulatedCosts[groupKey]
-                  : undefined,
-            };
-          });
-
-          return {
-            timestamp,
-            groups,
-            totalInitialCreditsCents: 100000, // $1000 in credits
-            totalConsumedCreditsCents: Math.floor(baseCost),
-            totalRemainingCreditsCents: 100000 - Math.floor(baseCost),
-          };
-        }
-      );
-
       return res.status(200).json({
-        points: dummyPoints,
-        availableGroups: dummyAvailableGroups,
+        points,
+        availableGroups,
       });
     }
     default:
