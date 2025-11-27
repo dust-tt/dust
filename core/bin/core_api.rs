@@ -6,11 +6,11 @@ use axum::{
     Router,
 };
 use axum_tracing_opentelemetry::middleware::{OtelAxumLayer, OtelInResponseLayer};
-use dust::api::api_state::APIState;
 use dust::api::{
     data_sources, databases, datasets, folders, nodes, projects, runs, specifications,
     sqlite_workers, tables, tags, tokenize,
 };
+use dust::{api::api_state::APIState, utils::CoreRequestMakeSpan};
 use dust::{
     api_keys::validate_api_key,
     data_sources::qdrant::QdrantClients,
@@ -24,13 +24,15 @@ use dust::{
         store::{self},
     },
 };
+
 use std::sync::Arc;
 use tikv_jemallocator::Jemalloc;
 use tokio::{
     net::TcpListener,
     signal::unix::{signal, SignalKind},
 };
-use tracing::{error, info};
+use tower_http::trace::{self, TraceLayer};
+use tracing::{error, info, Level};
 
 #[global_allocator]
 static GLOBAL: Jemalloc = Jemalloc;
@@ -303,6 +305,11 @@ fn main() {
         .layer(OtelAxumLayer::default())
         // Extensions
         .layer(DefaultBodyLimit::disable())
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(CoreRequestMakeSpan::new())
+                .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
+        )
         .layer(from_fn(validate_api_key))
         .with_state(state.clone());
 
