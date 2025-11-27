@@ -247,7 +247,10 @@ export function ProgrammaticCostChart({
   };
 
   // Getting list of all available groups.
-  const availableGroupsArray = programmaticCostData?.availableGroups ?? [];
+  const availableGroupsArray = useMemo(
+    () => programmaticCostData?.availableGroups ?? [],
+    [programmaticCostData]
+  );
   const allGroupKeys = availableGroupsArray.map((g) => g.groupKey);
 
   // Cache labels when availableGroupsArray changes
@@ -374,7 +377,7 @@ export function ProgrammaticCostChart({
         label: getFilterLabel(type, key),
       }));
     });
-  }, [filter, labelCache, getFilterLabel]);
+  }, [filter, getFilterLabel]);
 
   // Remove a specific filter
   const handleRemoveFilter = useCallback(
