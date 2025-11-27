@@ -4,7 +4,6 @@ import { useCallback, useContext, useEffect, useState } from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { AgentBrowserContainer } from "@app/components/assistant/conversation/AgentBrowserContainer";
-import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
@@ -44,8 +43,6 @@ export function ConversationContainerVirtuoso({
   const [planLimitReached, setPlanLimitReached] = useState(false);
 
   const { setSelectedAgent } = useContext(InputBarContext);
-
-  const { hasBlockedActions } = useBlockedActionsContext();
 
   const router = useRouter();
 
@@ -173,7 +170,6 @@ export function ConversationContainerVirtuoso({
               owner={owner}
               onSubmit={handleConversationCreation}
               conversationId={null}
-              disable={hasBlockedActions}
               disableAutoFocus={false}
             />
           </div>
