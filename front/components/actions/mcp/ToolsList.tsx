@@ -106,6 +106,7 @@ function ToolItem({
                 <Button
                   variant="outline"
                   label={toolPermissionLabel[toolPermission]}
+                  isSelect
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent>
@@ -150,17 +151,23 @@ export function ToolsList({
     <>
       {tools && tools.length > 0 && (
         <ContentMessage
-          className="mb-4 w-fit"
+          className="mb-4 w-full"
           variant="blue"
+          size="lg"
           icon={InformationCircleIcon}
           title="User Approval Settings"
         >
-          <p>
-            <b>High stake</b> tools need explicit user approval. <br />
-            Users can disable confirmations for <b>low stake</b> tools.
-            <br />
-            <b>Never ask</b> tools run automatically.
-          </p>
+          <ul>
+            <li>
+              <b>High stake</b> tools need explicit user approval.
+            </li>
+            <li>
+              Users can disable confirmations for <b>low stake</b> tools.
+            </li>
+            <li>
+              <b>Never ask</b> tools run automatically.
+            </li>
+          </ul>
         </ContentMessage>
       )}
       <div>

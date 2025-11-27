@@ -179,6 +179,7 @@ export { default as Spinner } from "./Spinner";
 export { FlexSplitButton } from "./SplitButton";
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "./Tabs";
 export { ReadOnlyTextArea, TextArea } from "./TextArea";
+export { Timeline, TimelineItem } from "./Timeline";
 export {
   Tooltip,
   TooltipContent,
