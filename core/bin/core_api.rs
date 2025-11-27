@@ -10,7 +10,10 @@ use dust::api::{
     data_sources, databases, datasets, folders, nodes, projects, runs, specifications,
     sqlite_workers, tables, tags, tokenize,
 };
-use dust::{api::api_state::APIState, utils::CoreRequestMakeSpan};
+use dust::{
+    api::api_state::APIState,
+    utils::{CoreRequestMakeSpan, CoreRequestOnResponse},
+};
 use dust::{
     api_keys::validate_api_key,
     data_sources::qdrant::QdrantClients,
@@ -31,8 +34,8 @@ use tokio::{
     net::TcpListener,
     signal::unix::{signal, SignalKind},
 };
-use tower_http::trace::{self, TraceLayer};
-use tracing::{error, info, Level};
+use tower_http::trace::TraceLayer;
+use tracing::{error, info};
 
 #[global_allocator]
 static GLOBAL: Jemalloc = Jemalloc;
@@ -305,7 +308,7 @@ fn main() {
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(CoreRequestMakeSpan::new())
-                .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
+                .on_response(CoreRequestOnResponse::new()),
         )
         // Start OpenTelemetry trace on incoming request.
         .layer(OtelAxumLayer::default())
