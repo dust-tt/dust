@@ -2,12 +2,13 @@ import {
   Button,
   ChevronLeftIcon,
   ChevronRightIcon,
+  Chip,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -52,15 +53,19 @@ type ChartDataPoint = {
   [key: string]: string | number | undefined;
 };
 
-const GROUP_BY_OPTIONS: {
-  value: "global" | GroupByType;
+const GROUP_BY_TYPE_OPTIONS: {
+  value: GroupByType;
   label: string;
 }[] = [
-  { value: "global", label: "Global" },
   { value: "agent", label: "By Agent" },
   { value: "origin", label: "By Source" },
   { value: "apiKey", label: "By Api Key" },
 ];
+
+const GROUP_BY_OPTIONS: {
+  value: "global" | GroupByType;
+  label: string;
+}[] = [{ value: "global", label: "Global" }, ...GROUP_BY_TYPE_OPTIONS];
 
 function getColorClassName(
   groupBy: GroupByType | undefined,
@@ -145,6 +150,10 @@ export function ProgrammaticCostChart({
   const [filter, setFilter] = useState<Partial<Record<GroupByType, string[]>>>(
     {}
   );
+  // Cache labels for each groupBy type so they persist when switching modes
+  const [labelCache, setLabelCache] = useState<
+    Partial<Record<GroupByType, Record<string, string>>>
+  >({});
 
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState<string>(formatMonth(now));
@@ -241,6 +250,21 @@ export function ProgrammaticCostChart({
   const availableGroupsArray = programmaticCostData?.availableGroups ?? [];
   const allGroupKeys = availableGroupsArray.map((g) => g.groupKey);
 
+  // Cache labels when availableGroupsArray changes
+  // Otherwise, labels would be lost when switching groupBy types, and would display raw keys instead
+  useEffect(() => {
+    if (groupBy && availableGroupsArray.length > 0) {
+      const newLabels: Record<string, string> = {};
+      for (const group of availableGroupsArray) {
+        newLabels[group.groupKey] = group.groupLabel;
+      }
+      setLabelCache((prev) => ({
+        ...prev,
+        [groupBy]: { ...prev[groupBy], ...newLabels },
+      }));
+    }
+  }, [groupBy, availableGroupsArray]);
+
   // Extract visible group keys from filtered data.
   const visibleGroupKeys = new Set<string>();
   const points = programmaticCostData?.points ?? [];
@@ -322,6 +346,52 @@ export function ProgrammaticCostChart({
     );
   }, [filter]);
 
+  // Util function to get label for a filter key based on type
+  function getFilterLabel(type: GroupByType, key: string): string {
+    if (key === "others") {
+      return OTHER_LABEL.label;
+    }
+    if (type === "origin" && isUserMessageOrigin(key)) {
+      return USER_MESSAGE_ORIGIN_LABELS[key].label;
+    }
+    // Fallback to cached label if present, else original key
+    return labelCache[type]?.[key] ?? key;
+  }
+
+  // Build active filter chips for all groupBy types
+  const activeFilterChips = useMemo(() => {
+    return GROUP_BY_TYPE_OPTIONS.flatMap(({ value: type }) => {
+      const filterKeys = filter[type];
+      if (!filterKeys) return [];
+      return filterKeys.map((key) => ({
+        groupByType: type,
+        filterKey: key,
+        label: getFilterLabel(type, key),
+      }));
+    });
+  }, [filter, labelCache]);
+
+  // Remove a specific filter
+  const handleRemoveFilter = useCallback(
+    (groupByType: GroupByType, filterKey: string) => {
+      setFilter((prev) => {
+        const currentFilter = prev[groupByType] ?? [];
+        const newFilter = currentFilter.filter((k) => k !== filterKey);
+        if (newFilter.length === 0) {
+          return {
+            ...prev,
+            [groupByType]: undefined,
+          };
+        }
+        return {
+          ...prev,
+          [groupByType]: newFilter,
+        };
+      });
+    },
+    []
+  );
+
   return (
     <ChartContainer
       title={
@@ -398,6 +468,22 @@ export function ProgrammaticCostChart({
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+      }
+      bottomControls={
+        activeFilterChips.length > 0 ? (
+          <div className="flex items-center gap-2">
+            {activeFilterChips.map((chip) => (
+              <Chip
+                key={`${chip.groupByType}:${chip.filterKey}`}
+                label={chip.label}
+                size="xs"
+                onRemove={() =>
+                  handleRemoveFilter(chip.groupByType, chip.filterKey)
+                }
+              />
+            ))}
+          </div>
+        ) : undefined
       }
       height={CHART_HEIGHT}
       legendItems={legendItems}

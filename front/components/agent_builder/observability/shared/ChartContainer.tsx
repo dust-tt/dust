@@ -24,6 +24,7 @@ interface ChartContainerProps {
   emptyMessage?: string;
   children: ReactElement;
   additionalControls?: ReactNode;
+  bottomControls?: ReactNode;
   statusChip?: ReactNode;
   height?: number;
   description?: string;
@@ -38,6 +39,7 @@ export function ChartContainer({
   emptyMessage,
   children,
   additionalControls,
+  bottomControls,
   statusChip,
   height,
   description,
@@ -92,6 +94,7 @@ export function ChartContainer({
             <ResponsiveContainer width="100%" height={height}>
               {children}
             </ResponsiveContainer>
+            {bottomControls}
             {legendItems && <ChartLegend items={legendItems} />}
           </>
         )}
@@ -114,6 +117,7 @@ export function ChartContainer({
                   >
                     {children}
                   </ResponsiveContainer>
+                  {bottomControls}
                   {legendItems && <ChartLegend items={legendItems} />}
                 </div>
               </div>
