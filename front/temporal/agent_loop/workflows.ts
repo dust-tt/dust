@@ -110,7 +110,9 @@ const { notifyWorkflowError, finalizeCancellationActivity } = proxyActivities<
   },
 });
 
-const { trackUsageActivity } = proxyActivities<typeof usageTrackingActivities>({
+const { trackProgrammaticUsageActivity: trackUsageActivity } = proxyActivities<
+  typeof usageTrackingActivities
+>({
   startToCloseTimeout: "2 minutes",
   retry: {
     maximumAttempts: 5,
