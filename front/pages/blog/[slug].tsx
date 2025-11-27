@@ -1,4 +1,4 @@
-import type { GetStaticProps } from "next";
+import type { GetStaticPaths, GetStaticProps } from "next";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
@@ -8,10 +8,24 @@ import { BlogBlock } from "@app/components/home/ContentBlocks";
 import { Grid, H1, H2, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import { getBlogPostBySlug, getRelatedPosts } from "@app/lib/contentful/client";
+import {
+  getAllBlogPosts,
+  getBlogPostBySlug,
+  getRelatedPosts,
+} from "@app/lib/contentful/client";
 import { renderRichTextFromContentful } from "@app/lib/contentful/richTextRenderer";
 import type { BlogPostPageProps } from "@app/lib/contentful/types";
-import { classNames } from "@app/lib/utils";
+import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
+import logger from "@app/logger/logger";
+
+export const getStaticPaths: GetStaticPaths = async () => {
+  const posts = await getAllBlogPosts();
+
+  return {
+    paths: posts.map((post) => ({ params: { slug: post.slug } })),
+    fallback: "blocking",
+  };
+};
 
 export const getStaticProps: GetStaticProps<BlogPostPageProps> = async ({
   params,
@@ -36,18 +50,10 @@ export const getStaticProps: GetStaticProps<BlogPostPageProps> = async ({
       revalidate: 300,
     };
   } catch (error) {
-    console.error(`Error fetching blog post "${slug}":`, error);
+    logger.error({ slug, error }, `Error fetching blog post "${slug}"`);
     return { notFound: true };
   }
 };
-
-function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-}
 
 const CONTENT_CLASSES = classNames(
   "col-span-12",
@@ -151,7 +157,10 @@ export default function BlogPost({ post, relatedPosts }: BlogPostPageProps) {
             <H1 mono>{post.title}</H1>
 
             <div className="mt-4 text-muted-foreground">
-              {formatDate(post.createdAt)}
+              {formatTimestampToFriendlyDate(
+                  new Date(post.createdAt).getTime(),
+                  "short"
+                )}
             </div>
 
             {post.description && (

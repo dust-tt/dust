@@ -8,9 +8,12 @@ import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { getAllBlogPosts } from "@app/lib/contentful/client";
 import type { BlogListingPageProps } from "@app/lib/contentful/types";
-import { classNames } from "@app/lib/utils";
+import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
+import logger from "@app/logger/logger";
 
-export const getStaticProps: GetStaticProps<BlogListingPageProps> = async () => {
+export const getStaticProps: GetStaticProps<
+  BlogListingPageProps
+> = async () => {
   try {
     const posts = await getAllBlogPosts();
 
@@ -22,7 +25,7 @@ export const getStaticProps: GetStaticProps<BlogListingPageProps> = async () => 
       revalidate: 60,
     };
   } catch (error) {
-    console.error("Error fetching blog posts from Contentful:", error);
+    logger.error({ error }, "Error fetching blog posts from Contentful");
 
     return {
       props: {
@@ -33,14 +36,6 @@ export const getStaticProps: GetStaticProps<BlogListingPageProps> = async () => 
     };
   }
 };
-
-function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-}
 
 export default function BlogListing({ posts }: BlogListingPageProps) {
   return (
@@ -81,7 +76,10 @@ export default function BlogListing({ posts }: BlogListingPageProps) {
                       </span>
                     )}
                     <span className="block text-xs text-muted-foreground">
-                      {formatDate(post.createdAt)}
+                      {formatTimestampToFriendlyDate(
+                        new Date(post.createdAt).getTime(),
+                        "short"
+                      )}
                     </span>
                     {post.tags.length > 0 && (
                       <span className="mt-1 flex flex-wrap gap-1">
@@ -101,7 +99,7 @@ export default function BlogListing({ posts }: BlogListingPageProps) {
               >
                 {post.image && (
                   <img
-                    src={post.image.url}
+                    src={`${post.image.url}?w=600`}
                     alt={post.image.alt}
                     className="aspect-video w-full object-cover"
                   />
