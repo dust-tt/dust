@@ -17,6 +17,7 @@ import { renderRichTextFromContentful } from "@app/lib/contentful/richTextRender
 import type { BlogPostPageProps } from "@app/lib/contentful/types";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 import logger from "@app/logger/logger";
+import { isString } from "@app/types";
 
 export const getStaticPaths: GetStaticPaths = async () => {
   const posts = await getAllBlogPosts();
@@ -158,9 +159,9 @@ export default function BlogPost({ post, relatedPosts }: BlogPostPageProps) {
 
             <div className="mt-4 text-muted-foreground">
               {formatTimestampToFriendlyDate(
-                  new Date(post.createdAt).getTime(),
-                  "short"
-                )}
+                new Date(post.createdAt).getTime(),
+                "short"
+              )}
             </div>
 
             {post.description && (
