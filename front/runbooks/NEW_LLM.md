@@ -19,6 +19,7 @@ Before adding a new model, ensure you have:
 ### Environment Setup
 
 Model configurations are managed across multiple services:
+
 - **Front**: Model definitions, pricing, UI configuration
 - **Core**: Token counting
 - **SDKs**: Shared types for API compatibility
@@ -65,7 +66,8 @@ Add the model configuration in [front/types/assistant/models/openai.ts](front/ty
 
 ```typescript
 // Add model ID constant
-export const GPT_4_TURBO_2024_04_09_MODEL_ID = "gpt-4-turbo-2024-04-09" as const;
+export const GPT_4_TURBO_2024_04_09_MODEL_ID =
+  "gpt-4-turbo-2024-04-09" as const;
 
 // Add model configuration
 export const GPT_4_TURBO_2024_04_09_MODEL_CONFIG: ModelConfigurationType = {
@@ -91,6 +93,7 @@ export const GPT_4_TURBO_2024_04_09_MODEL_CONFIG: ModelConfigurationType = {
 ```
 
 **Model Configuration Properties:**
+
 - `providerId`: Provider identifier (e.g., "openai", "anthropic")
 - `modelId`: Exact model identifier used by the provider
 - `displayName`: Human-readable name for UI display
@@ -118,15 +121,16 @@ Update token pricing in [front/lib/api/assistant/token_pricing.ts](front/lib/api
 const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
   // ... existing pricing
   "gpt-4-turbo-2024-04-09": {
-    input: 10.0,    // Price per million input tokens in USD
-    output: 30.0,   // Price per million output tokens in USD
-    cache_read_input_tokens: 1.0,    // Optional: Price per million cached input tokens read
+    input: 10.0, // Price per million input tokens in USD
+    output: 30.0, // Price per million output tokens in USD
+    cache_read_input_tokens: 1.0, // Optional: Price per million cached input tokens read
     cache_creation_input_tokens: 12.5, // Optional: Price per million tokens when creating cache
   },
 };
 ```
 
 **Pricing Guidelines:**
+
 - Prices are per **million tokens** in USD (not per individual token)
 - Check provider documentation for current pricing
 - Input and output tokens often have different prices
@@ -174,14 +178,13 @@ export const OPENAI_WHITELISTED_MODEL_IDS = [
 Add the model to the schema in [sdks/js/src/types.ts](sdks/js/src/types.ts):
 
 ```typescript
-const ModelLLMIdSchema = FlexibleEnumSchema<
-  // ... existing model IDs
-  | "gpt-4-turbo-2024-04-09"  // Add your new model ID here
-  // ... other model IDs
->();
+const ModelLLMIdSchema = FlexibleEnumSchema<// ... existing model IDs
+"gpt-4-turbo-2024-04-09">(); // Add your new model ID here
+// ... other model IDs
 ```
 
 **SDK Guidelines:**
+
 - SDK types are shared between front and connectors
 - Changes here affect public API compatibility
 - Use exact model ID strings, not computed values
@@ -204,6 +207,7 @@ export const USED_MODEL_CONFIGS: readonly ModelConfig[] = [
 ```
 
 **UI Configuration:**
+
 - Simply add your model configuration constant to the `USED_MODEL_CONFIGS` array
 - The model configuration already contains all necessary UI properties (displayName, description, etc.)
 - No need to duplicate configuration - just reference the exported model config
@@ -241,6 +245,7 @@ RUN_LLM_TEST=true npx vitest --config lib/api/llm/tests/vite.config.js lib/api/l
 ```
 
 **What the test validates:**
+
 - Model API connectivity
 - Token counting accuracy
 - Response format compliance
@@ -300,18 +305,19 @@ For providers like Google, Mistral, or others:
 
 ```typescript
 // Good: Use the imported constant
-GPT_4_TURBO_2024_04_09_MODEL_ID
+GPT_4_TURBO_2024_04_09_MODEL_ID;
 
 // Bad: Hardcoded string
-"gpt-4-turbo-2024-04-09"
+("gpt-4-turbo-2024-04-09");
 
 // Also bad: Custom naming
-"gpt4-turbo"
+("gpt4-turbo");
 ```
 
 ### 2. Pricing Updates
 
 **Regularly verify pricing information:**
+
 - Check provider documentation for current rates
 - Monitor for pricing changes that could affect costs
 - Consider adding pricing update dates in comments
@@ -323,8 +329,8 @@ GPT_4_TURBO_2024_04_09_MODEL_ID
 ```typescript
 export const GPT_4_TURBO_2024_04_09_MODEL_CONFIG: ModelConfigurationType = {
   // ... other properties
-  supportsVision: true,              // Image understanding
-  supportsResponseFormat: true,      // Structured output (JSON, etc.)
+  supportsVision: true, // Image understanding
+  supportsResponseFormat: true, // Structured output (JSON, etc.)
   // Note: All models support chat and function calling by default
 };
 ```
@@ -332,6 +338,7 @@ export const GPT_4_TURBO_2024_04_09_MODEL_CONFIG: ModelConfigurationType = {
 ### 4. Context Window Management
 
 **Set appropriate context sizes:**
+
 - Use exact values from provider documentation
 - Consider practical limits vs theoretical maximums
 - Account for output token reserves
@@ -339,6 +346,7 @@ export const GPT_4_TURBO_2024_04_09_MODEL_CONFIG: ModelConfigurationType = {
 ### 5. Testing Strategy
 
 **Test thoroughly before production:**
+
 - Run integration tests with real API calls
 - Validate token counting accuracy
 - Test error handling and rate limiting
@@ -368,20 +376,24 @@ Before marking model integration complete:
 ### Common Issues
 
 **Model not available in UI:**
+
 - Check `USED_MODEL_CONFIGS` in [front/components/providers/types.ts](front/components/providers/types.ts)
 - Verify model is included in central registry
 
 **API calls failing:**
+
 - Ensure model ID matches provider's exact identifier
 - Check router types whitelist configuration
 - Verify API credentials and permissions
 
 **Token counting errors:**
+
 - Validate context window sizes in model config
 - Check input/output token limits
 - Review tokenizer compatibility
 
 **Pricing calculation issues:**
+
 - Verify pricing values in token_pricing.ts
 - Check for input vs output token price differences
 - Ensure pricing uses correct decimal places
@@ -398,6 +410,7 @@ Before marking model integration complete:
 ## Examples in Codebase
 
 See existing model configurations:
+
 - [front/types/assistant/models/openai.ts](front/types/assistant/models/openai.ts)
 - [front/types/assistant/models/anthropic.ts](front/types/assistant/models/anthropic.ts)
 - [front/lib/api/llm/tests/llm.test.ts](front/lib/api/llm/tests/llm.test.ts)
