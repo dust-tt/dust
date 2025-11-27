@@ -2,7 +2,6 @@ import {
   Dialog,
   DialogContainer,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -85,10 +84,8 @@ export function ConfirmDialog({
         <DialogHeader hideButton>
           <DialogTitle>{confirmData?.title ?? ""}</DialogTitle>
         </DialogHeader>
-        <DialogContainer>
-          <DialogDescription className="whitespace-normal break-words">
-            {confirmData?.message ?? ""}
-          </DialogDescription>
+        <DialogContainer className="whitespace-normal break-words">
+          {confirmData?.message ?? ""}
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
