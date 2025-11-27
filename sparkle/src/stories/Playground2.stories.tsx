@@ -18,12 +18,15 @@ import {
   QuoteTextIcon,
   RainbowEffect,
   RobotIcon,
+  ScrollArea,
   Separator,
   SquareIcon,
+  TextIcon,
+  XMarkIcon,
 } from "../index_with_tw_base";
 
 export default {
-  title: "Playground/Playground",
+  title: "Playground/Playground2",
 };
 
 export const Demo = () => {
@@ -33,6 +36,7 @@ export const Demo = () => {
   >("idle");
   const [isPressAndHold, setIsPressAndHold] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [isTextStyleOpen, setIsTextStyleOpen] = useState(false);
   const divRef = useRef<HTMLDivElement>(null);
   const recordButtonRef = useRef<HTMLButtonElement>(null);
   const mouseDownTimeRef = useRef<number>(0);
@@ -151,26 +155,11 @@ export const Demo = () => {
   };
 
   return (
-    <div className="s-flex s-h-[600px] s-w-full s-flex-col s-items-end s-justify-center s-border s-border-warning/20 sm:s-p-0 md:s-p-6">
-      <div className="s-flex s-h-full s-w-full s-items-end sm:s-p-2">
-        <div className="s-inline-flex s-gap-1 s-border-b s-border-t s-border-border s-bg-background s-p-1 dark:s-border-border-night/50 dark:s-bg-background-night sm:s-rounded-2xl sm:s-border sm:s-border-border/50 sm:s-shadow-md">
-          <Button size="mini" variant="ghost" icon={FontSizeAiIcon} />
-          <Button size="mini" variant="ghost" icon={BoldIcon} />
-          <Button size="mini" variant="ghost" icon={ItalicIcon} />
-          <Separator orientation="vertical" />
-          <Button size="mini" variant="ghost" icon={LinkMIcon} />
-          <Separator orientation="vertical" />
-          <Button size="mini" variant="ghost" icon={ListCheckIcon} />
-          <Button size="mini" variant="ghost" icon={ListOrdered2Icon} />
-          <Button size="mini" variant="ghost" icon={QuoteTextIcon} />
-          <Separator orientation="vertical" />
-          <Button size="mini" variant="ghost" icon={CodeSlashIcon} />
-          <Button size="mini" variant="ghost" icon={CodeBlockIcon} />
-        </div>
-      </div>
+    <div className="s-flex s-h-[600px] s-w-full s-flex-col s-items-end s-justify-center s-overflow-hidden s-rounded-4xl s-border s-border-warning/20 sm:s-p-0 md:s-p-6">
+      <div className="s-flex s-h-full s-w-full s-items-end sm:s-p-2"></div>
       <div className="s-flex s-w-full s-max-w-[900px] s-flex-1 s-p-0">
         <RainbowEffect
-          containerClassName="s-w-full"
+          containerClassName="s-w-full s-border-t s-border-border"
           className="s-w-full"
           size={isFocused ? "large" : "medium"}
         >
@@ -179,35 +168,106 @@ export const Demo = () => {
             onClick={handleFocus}
             className={cn(
               "s-relative s-flex s-w-full s-flex-row",
-              "s-border s-border-border/0 s-bg-primary-50 s-transition-all md:s-rounded-3xl",
-              isFocused
-                ? "s-border-border md:s-ring-2 md:s-ring-highlight-300 md:s-ring-offset-2"
-                : ""
+              "s-border s-border-border/0 s-bg-primary-50 s-transition-all",
+              isFocused ? "s-border-border" : ""
             )}
           >
             <div className="s-flex s-w-full s-flex-col">
               <div className="s-h-full s-w-full s-p-5">Ask a question</div>
-              <div className="s-flex s-w-full s-gap-2 s-p-4">
+              <div
+                id="CommandBar"
+                className="s-relative s-flex s-w-full s-items-center s-gap-3 s-py-1 s-pb-4 s-pl-3 s-pr-2"
+              >
+                <div
+                  id="TextStyle"
+                  className={cn(
+                    "s-duration-600 s-absolute s-left-0 s-top-0 s-z-10 s-inline-flex s-h-11 s-items-center s-justify-start s-gap-3 s-overflow-hidden s-bg-primary-50 s-py-1 s-pl-3 s-pr-1 s-transition-all s-ease-in-out",
+                    isTextStyleOpen
+                      ? "s-pointer-events-auto s-w-full s-opacity-100"
+                      : "s-pointer-events-none s-w-[120px] s-opacity-0"
+                  )}
+                >
+                  <Button
+                    size="mini"
+                    variant="outline"
+                    icon={XMarkIcon}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsTextStyleOpen(false);
+                    }}
+                  />
+                  <Separator orientation="vertical" />
+                  <ScrollArea orientation="horizontal">
+                    <div
+                      id="Scrollable"
+                      className="s-flex s-h-full s-w-max s-flex-row s-items-center s-gap-3 s-pr-3"
+                    >
+                      <Button
+                        size="mini"
+                        variant="ghost"
+                        icon={FontSizeAiIcon}
+                      />
+                      <Button size="mini" variant="ghost" icon={BoldIcon} />
+                      <Button size="mini" variant="ghost" icon={ItalicIcon} />
+                      <Separator orientation="vertical" />
+                      <Button size="mini" variant="ghost" icon={LinkMIcon} />
+                      <Separator orientation="vertical" />
+                      <Button
+                        size="mini"
+                        variant="ghost"
+                        icon={ListCheckIcon}
+                      />
+                      <Button
+                        size="mini"
+                        variant="ghost"
+                        icon={ListOrdered2Icon}
+                      />
+                      <Button
+                        size="mini"
+                        variant="ghost"
+                        icon={QuoteTextIcon}
+                      />
+                      <Separator orientation="vertical" />
+                      <Button
+                        size="mini"
+                        variant="ghost"
+                        icon={CodeSlashIcon}
+                      />
+                      <Button
+                        size="mini"
+                        variant="ghost"
+                        icon={CodeBlockIcon}
+                      />
+                    </div>
+                  </ScrollArea>
+                </div>
                 <Button
-                  variant="ghost"
+                  variant="ghost-secondary"
+                  icon={TextIcon}
+                  size="mini"
+                  tooltip="Attach a document"
+                  onClick={() => setIsTextStyleOpen(true)}
+                />
+                <Button
+                  variant="ghost-secondary"
                   icon={AttachmentIcon}
-                  size="xs"
+                  size="mini"
                   tooltip="Attach a document"
                 />
                 <Button
-                  variant="ghost"
+                  variant="ghost-secondary"
                   icon={BoltIcon}
-                  size="xs"
+                  size="mini"
                   tooltip="Add functionality"
                 />
                 <Button
-                  variant="ghost"
+                  variant="ghost-secondary"
                   icon={RobotIcon}
-                  size="xs"
+                  size="mini"
                   tooltip="Mention an Agent"
                 />
                 <div className="s-grow" />
-                <div className="s-flex s-items-center s-gap-2 md:s-gap-1">
+                <div className="s-flex s-items-center s-gap-1 s-gap-2">
                   <div
                     id="Recording"
                     className={cn(
@@ -236,68 +296,20 @@ export const Demo = () => {
                       <div className="s-h-[22%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
                     </div>
                   </div>
-                  {/* Large */}
                   <Button
                     id={
                       recordState === "recording"
                         ? "Stop Recording Button"
                         : "Record Button"
                     }
-                    className="s-hidden md:s-flex"
                     ref={recordButtonRef}
                     variant={
-                      recordState === "recording" ? "highlight" : "ghost"
+                      recordState === "recording"
+                        ? "warning-secondary"
+                        : "ghost"
                     }
                     icon={recordState === "recording" ? SquareIcon : MicIcon}
-                    size="xs"
-                    tooltip={
-                      recordState === "recording"
-                        ? "Stop recording"
-                        : recordState === "pressAndHold"
-                          ? ""
-                          : "Click, or Press & Hold to record"
-                    }
-                    label={recordState === "recording" ? "Stop" : undefined}
-                    onClick={handleRecordClick}
-                    onMouseDown={
-                      recordState === "recording"
-                        ? undefined
-                        : handleRecordMouseDown
-                    }
-                    onMouseUp={
-                      recordState === "recording"
-                        ? undefined
-                        : handleRecordMouseUp
-                    }
-                    onMouseLeave={
-                      recordState === "recording"
-                        ? undefined
-                        : handleRecordMouseLeave
-                    }
-                  />
-                  <Button
-                    variant="highlight"
-                    icon={ArrowUpIcon}
                     size="mini"
-                    tooltip="Send message"
-                    isRounded
-                    disabled={recordState === "recording"}
-                    className="s-hidden md:s-flex"
-                  />
-                  {/* Small */}
-                  <Button
-                    id={
-                      recordState === "recording"
-                        ? "Stop Recording Button"
-                        : "Record Button"
-                    }
-                    className="md:s-hidden"
-                    ref={recordButtonRef}
-                    variant={
-                      recordState === "recording" ? "highlight" : "ghost"
-                    }
-                    icon={recordState === "recording" ? SquareIcon : MicIcon}
-                    size="xs"
                     tooltip={
                       recordState === "recording"
                         ? "Stop recording"
@@ -305,7 +317,6 @@ export const Demo = () => {
                           ? ""
                           : "Click, or Press & Hold to record"
                     }
-                    label={recordState === "recording" ? "Stop" : undefined}
                     onClick={handleRecordClick}
                     onMouseDown={
                       recordState === "recording"
@@ -326,11 +337,10 @@ export const Demo = () => {
                   <Button
                     variant="highlight"
                     icon={ArrowUpIcon}
-                    size="xs"
+                    size="sm"
                     tooltip="Send message"
                     isRounded
                     disabled={recordState === "recording"}
-                    className="md:s-hidden"
                   />
                 </div>
               </div>
