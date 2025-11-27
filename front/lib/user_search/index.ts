@@ -38,65 +38,21 @@ export async function indexUserDocument(
 }
 
 /**
- * Update an existing user document with partial data.
- */
-export async function updateUserDocument(
-  workspaceId: string,
-  userId: string,
-  partialUpdate: Partial<UserSearchDocument>
-): Promise<Result<void, ElasticsearchError>> {
-  const documentId = makeUserDocumentId({ workspaceId, userId });
-
-  return withEs(async (client) => {
-    await client.update({
-      index: USER_SEARCH_ALIAS_NAME,
-      id: documentId,
-      body: {
-        doc: partialUpdate,
-      },
-    });
-  });
-}
-
-/**
  * Delete a user document from Elasticsearch.
  */
-export async function deleteUserDocument(
-  workspaceId: string,
-  userId: string
-): Promise<Result<void, ElasticsearchError>> {
+export async function deleteUserDocument({
+  workspaceId,
+  userId,
+}: {
+  workspaceId: string;
+  userId: string;
+}): Promise<Result<void, ElasticsearchError>> {
   const documentId = makeUserDocumentId({ workspaceId, userId });
 
   return withEs(async (client) => {
     await client.delete({
       index: USER_SEARCH_ALIAS_NAME,
       id: documentId,
-    });
-  });
-}
-
-/**
- * Bulk index user documents for batch operations.
- */
-export async function bulkIndexUserDocuments(
-  documents: UserSearchDocument[]
-): Promise<Result<void, ElasticsearchError>> {
-  return withEs(async (client) => {
-    const body = documents.flatMap((doc) => {
-      const documentId = makeUserDocumentId({
-        workspaceId: doc.workspace_id,
-        userId: doc.user_id,
-      });
-
-      return [
-        { index: { _index: USER_SEARCH_ALIAS_NAME, _id: documentId } },
-        doc,
-      ];
-    });
-
-    await client.bulk({
-      body,
-      refresh: false, // Don't force refresh for performance
     });
   });
 }
