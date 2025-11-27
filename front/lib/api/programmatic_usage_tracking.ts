@@ -142,20 +142,22 @@ export async function hasReachedProgrammaticUsageLimits(
   });
 }
 
+// TODO(PPUL): remove this method once we switch to new credits tracking system.
+const TEMP_FAKE_LIMITS: PublicAPILimitsType & { enabled: true } = {
+  monthlyLimit: 1_000_000, // 10_000 USD
+  markup: 30,
+  billingDay: 1,
+  enabled: true,
+};
 async function decreaseProgrammaticCredits(
   workspace: LightWorkspaceType,
   amount: number
 ): Promise<void> {
   const rawLimits = getWorkspacePublicAPILimits(workspace);
 
-  const limits: PublicAPILimitsType = !rawLimits?.enabled
-    ? {
-        monthlyLimit: 0,
-        markup: 30,
-        billingDay: 1,
-        enabled: true,
-      }
-    : rawLimits;
+  const limits: PublicAPILimitsType = rawLimits?.enabled
+    ? rawLimits
+    : TEMP_FAKE_LIMITS;
 
   // Apply markup.
   const amountWithMarkup = amount * (1 + limits.markup / 100);
@@ -168,7 +170,7 @@ async function decreaseProgrammaticCredits(
     if (remainingCredits === null) {
       await initializeCredits(redis, workspace, limits.monthlyLimit);
 
-      return limits.monthlyLimit;
+      return;
     }
 
     // We track credit consumption in a best-effort manner. If a message consumes more credits than
@@ -181,17 +183,17 @@ async function decreaseProgrammaticCredits(
   });
 }
 
+// TODO(PPUL): remove this method once we switch to new credits tracking system.
 async function initializeCredits(
   redis: RedisClientType,
   workspace: LightWorkspaceType,
   monthlyLimit: number
 ): Promise<void> {
   const key = getRedisKey(workspace);
-  const limits = getWorkspacePublicAPILimits(workspace);
-
-  if (!limits?.enabled) {
-    return;
-  }
+  const rawLimits = getWorkspacePublicAPILimits(workspace);
+  const limits: PublicAPILimitsType = rawLimits?.enabled
+    ? rawLimits
+    : TEMP_FAKE_LIMITS;
 
   // Calculate expiry time (end of current billing period).
   const now = moment();
