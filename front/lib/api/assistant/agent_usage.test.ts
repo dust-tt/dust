@@ -1,4 +1,4 @@
-import { Ok } from "@dust-tt/types";
+import { Ok } from "@dust-tt/client";
 import { describe, expect, it, vi } from "vitest";
 
 import { agentMentionsCount } from "@app/lib/api/assistant/agent_usage";
