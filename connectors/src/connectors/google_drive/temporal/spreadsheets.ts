@@ -175,22 +175,16 @@ async function processSheet(
   if (!sheet.values) {
     return false;
   }
-  const localLogger = getActivityLogger(connector);
   const { id, spreadsheet, title } = sheet;
-  const loggerArgs = {
-    connectorType: "google_drive",
-    connectorId: connector.id,
+  const localLogger = getActivityLogger(connector).child({
     sheet: {
       id,
       spreadsheet,
       title,
     },
-  };
+  });
 
-  localLogger.info(
-    loggerArgs,
-    "[Spreadsheet] Processing sheet in Google Spreadsheet."
-  );
+  localLogger.info("[Spreadsheet] Processing sheet in Google Spreadsheet.");
 
   const rows = getValidRows(sheet.values, localLogger);
   // Assuming the first line as headers, at least one additional data line is required.
@@ -207,13 +201,13 @@ async function processSheet(
     } catch (err) {
       if (err instanceof TablesError) {
         localLogger.warn(
-          { ...loggerArgs, error: err },
+          { error: err },
           "[Spreadsheet] Tables error - skipping (but not failing)."
         );
         upsertError = err;
       } else {
         localLogger.error(
-          { ...loggerArgs, error: err },
+          { error: err },
           "[Spreadsheet] Failed to upsert table."
         );
         throw err;
@@ -226,7 +220,6 @@ async function processSheet(
   }
 
   localLogger.info(
-    loggerArgs,
     "[Spreadsheet] Failed to import sheet. Will be deleted if already synced."
   );
 

@@ -199,12 +199,12 @@ export function ViewDataSourceTable({
                     <PokeTableRow>
                       <PokeTableCell>First sync progress</PokeTableCell>
                       <PokeTableCell>
-                        {connector?.lastSyncStatus ? (
+                        {connector?.firstSyncProgress ? (
                           <span className="font-bold">
                             {connector?.firstSyncProgress}
                           </span>
                         ) : (
-                          <span className="font-bold">N/A</span>
+                          <span>N/A</span>
                         )}
                       </PokeTableCell>
                     </PokeTableRow>
