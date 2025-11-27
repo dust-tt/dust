@@ -46,7 +46,7 @@ vi.mock("@app/lib/user_search/search", () => ({
               const lowerSearchTerm = searchTerm.toLowerCase();
               const email = user.email?.toLowerCase() || "";
               const fullName =
-                `${user.firstName || ""} ${user.lastName || ""}`.toLowerCase();
+                `${user.firstName ?? ""} ${user.lastName ?? ""}`.toLowerCase();
               return (
                 email.includes(lowerSearchTerm) ||
                 fullName.includes(lowerSearchTerm)
@@ -61,7 +61,7 @@ vi.mock("@app/lib/user_search/search", () => ({
       const userDocs = paginatedUsers.map((user) => ({
         user_id: user.sId,
         email: user.email,
-        full_name: `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+        full_name: `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim(),
         updated_at: user.updatedAt,
       }));
 
