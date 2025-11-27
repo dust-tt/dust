@@ -109,6 +109,7 @@ jobs:
         working-directory: front
         run: |
           explanations=$(cat << EOF
+          
           Relying on transitive dependencies is bad because:
           * Fragility: Your direct dependencies can remove or update their dependencies at any time, breaking your code without warning
           * No version control: You can't lock or manage versions of packages you don't explicitly declare
