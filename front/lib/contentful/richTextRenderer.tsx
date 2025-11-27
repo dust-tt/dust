@@ -1,6 +1,11 @@
 import type { Options } from "@contentful/rich-text-react-renderer";
 import { documentToReactComponents } from "@contentful/rich-text-react-renderer";
-import type { Block, Document, Inline, Text } from "@contentful/rich-text-types";
+import type {
+  Block,
+  Document,
+  Inline,
+  Text,
+} from "@contentful/rich-text-types";
 import { BLOCKS, INLINES, MARKS } from "@contentful/rich-text-types";
 import Image from "next/image";
 import type { ReactNode } from "react";
@@ -54,6 +59,7 @@ function getParagraphText(node: Block | Inline): string {
   return text;
 }
 
+// Use our styling for the rich text renderer.
 const renderOptions: Options = {
   renderMark: {
     [MARKS.BOLD]: (text: ReactNode) => (
@@ -95,7 +101,7 @@ const renderOptions: Options = {
       }
 
       return (
-        <div className="mb-4 whitespace-pre-line font-sans text-muted-foreground copy-lg">
+        <div className="copy-lg mb-4 whitespace-pre-line font-sans text-muted-foreground">
           {children}
         </div>
       );
@@ -182,7 +188,7 @@ const renderOptions: Options = {
   },
 };
 
-export function renderRichText(document: Document): ReactNode {
+export function renderRichTextFromContentful(document: Document): ReactNode {
   if (!document) {
     return null;
   }

@@ -9,7 +9,7 @@ import { Grid, H1, H2, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { getBlogPostBySlug, getRelatedPosts } from "@app/lib/contentful/client";
-import { renderRichText } from "@app/lib/contentful/richTextRenderer";
+import { renderRichTextFromContentful } from "@app/lib/contentful/richTextRenderer";
 import type { BlogPostPageProps } from "@app/lib/contentful/types";
 import { classNames } from "@app/lib/utils";
 
@@ -175,7 +175,7 @@ export default function BlogPost({ post, relatedPosts }: BlogPostPageProps) {
           )}
 
           <div className={classNames(CONTENT_CLASSES, "mt-12")}>
-            {renderRichText(post.body)}
+            {renderRichTextFromContentful(post.body)}
           </div>
         </Grid>
       </article>
