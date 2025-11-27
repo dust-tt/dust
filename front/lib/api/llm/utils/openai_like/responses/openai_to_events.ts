@@ -53,7 +53,7 @@ function textDelta(delta: string, metadata: LLMClientMetadata): LLMEvent {
 
 function responseId(id: string, metadata: LLMClientMetadata): LLMEvent {
   return {
-    type: "response_id",
+    type: "interaction_id",
     content: {
       modelInteractionId: id,
     },

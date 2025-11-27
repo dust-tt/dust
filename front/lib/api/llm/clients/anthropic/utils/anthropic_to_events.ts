@@ -66,7 +66,7 @@ function* handleMessageStreamEvent(
   switch (messageStreamEvent.type) {
     case "message_start":
       yield {
-        type: "response_id",
+        type: "interaction_id",
         content: {
           modelInteractionId: messageStreamEvent.message.id,
         },

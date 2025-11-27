@@ -20,7 +20,7 @@ export async function* streamLLMEvents(
   for await (const chunk of chatCompletionStream) {
     if (!hasYieldedResponseId) {
       yield {
-        type: "response_id",
+        type: "interaction_id",
         content: {
           modelInteractionId: chunk.id,
         },

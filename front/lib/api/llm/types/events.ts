@@ -11,7 +11,7 @@ export type Text = {
 
 // Provider response identification event
 export interface ResponseIdEvent {
-  type: "response_id";
+  type: "interaction_id";
   content: { modelInteractionId: string };
   metadata: LLMClientMetadata;
 }

@@ -53,7 +53,7 @@ export async function* streamLLMEvents({
     const modelInteractionId = completionEvent.data.id;
     if (!hasYieldedResponseId) {
       yield {
-        type: "response_id",
+        type: "interaction_id",
         content: {
           modelInteractionId,
         },

@@ -3,7 +3,7 @@ import { CLAUDE_4_SONNET_20250514_MODEL_ID } from "@app/types";
 
 export const toolUseLLMEvents: LLMEvent[] = [
   {
-    type: "response_id",
+    type: "interaction_id",
     content: { modelInteractionId: "msg_017KE6ziN29Ks5KyL3jGE7RR" },
     metadata: {
       clientId: "anthropic" as const,
