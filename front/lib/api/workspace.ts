@@ -226,7 +226,7 @@ export async function searchMembers(
     });
 
     if (results.isErr()) {
-      logger.error("Error searching users: " + results.error.message);
+      logger.error({ err: results.error }, "Error searching users");
       return { members: [], total: 0 };
     }
 
