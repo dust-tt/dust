@@ -135,8 +135,11 @@ export function AgentMessage({
     messageStreamState.message.configuration.sId as GLOBAL_AGENTS_SID
   );
 
-  const { showBlockedActionsDialog, enqueueBlockedAction } =
-    useBlockedActionsContext();
+  const {
+    showBlockedActionsDialog,
+    enqueueBlockedAction,
+    mutateBlockedActions,
+  } = useBlockedActionsContext();
 
   const { mutateMessage } = useConversationMessage({
     conversationId,
@@ -181,9 +184,19 @@ export function AgentMessage({
               metadata: eventPayload.data.metadata,
             },
           });
+        } else if (
+          eventType === "tool_error" &&
+          isPersonalAuthenticationRequiredErrorContent(eventPayload.data.error)
+        ) {
+          void mutateBlockedActions();
         }
       },
-      [showBlockedActionsDialog, enqueueBlockedAction, sId]
+      [
+        showBlockedActionsDialog,
+        enqueueBlockedAction,
+        sId,
+        mutateBlockedActions,
+      ]
     ),
     streamId: `message-${sId}`,
     useFullChainOfThought: false,
@@ -600,7 +613,7 @@ function AgentMessageContent({
     VirtuosoMessage,
     VirtuosoMessageListContext
   >();
-  const { mutateBlockedActions } = useBlockedActionsContext();
+
   const agentMessage = messageStreamState.message;
   const { sId, configuration: agentConfiguration } = agentMessage;
 
@@ -726,7 +739,6 @@ function AgentMessageContent({
   if (agentMessage.status === "failed") {
     const { error } = agentMessage;
     if (isPersonalAuthenticationRequiredErrorContent(error)) {
-      void mutateBlockedActions();
       return (
         <MCPServerPersonalAuthenticationRequired
           owner={owner}
