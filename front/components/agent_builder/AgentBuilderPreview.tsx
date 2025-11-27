@@ -111,7 +111,7 @@ function PreviewContent({
         {!conversation && (
           <div className="mx-4 flex-shrink-0 py-4">
             <InputBar
-              disable={isSavingDraftAgent}
+              isSubmitting={isSavingDraftAgent}
               owner={owner}
               onSubmit={createConversation}
               stickyMentions={
