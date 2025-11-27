@@ -2,7 +2,10 @@
   "name": "front-worker",
   "version": "0.1.0",
   "scripts": {
-    "start": "node ./start_worker.js"
+    "build": "npm run build:temporal-bundles && npm run build:workers",
+    "build:temporal-bundles": "tsx ../scripts/temporal-build/build-temporal-bundles.ts",
+    "build:workers": "tsx scripts/esbuild.worker.ts",
+    "start": "node ./dist/start_worker.js"
   },
   "dependencies": {
     "@temporalio/common": "^1.12.1",
