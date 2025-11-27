@@ -12,6 +12,66 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
+export async function allocatePAYGCreditsOnCycleRenewal({
+  auth,
+  nextPeriodStartSeconds,
+  nextPeriodEndSeconds,
+}: {
+  auth: Authenticator;
+  nextPeriodStartSeconds: number;
+  nextPeriodEndSeconds: number;
+}): Promise<Result<undefined, Error>> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const config =
+    await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
+  if (!config || config.paygCapCents === null) {
+    return new Ok(undefined);
+  }
+
+  const nextPeriodStartDate = new Date(nextPeriodStartSeconds * 1000);
+  const nextPeriodEndDate = new Date(nextPeriodEndSeconds * 1000);
+
+  const existingCredit = await CreditResource.fetchByTypeAndDates(
+    auth,
+    "payg",
+    nextPeriodStartDate,
+    nextPeriodEndDate
+  );
+
+  if (existingCredit) {
+    logger.info(
+      { workspaceId: workspace.sId, creditId: existingCredit.id },
+      "[Credit PAYG] Credit already exists for this period, skipping allocation"
+    );
+    return new Ok(undefined);
+  }
+
+  const credit = await CreditResource.makeNew(auth, {
+    type: "payg",
+    initialAmountCents: config.paygCapCents,
+    consumedAmountCents: 0,
+    discount: config.defaultDiscountPercent,
+    invoiceOrLineItemId: null,
+  });
+
+  const startResult = await credit.start(nextPeriodStartDate, nextPeriodEndDate);
+  assert(startResult.isOk(), "Failed to start PAYG credit");
+
+  logger.info(
+    {
+      workspaceId: workspace.sId,
+      creditId: credit.id,
+      initialAmountCents: config.paygCapCents,
+      periodStart: nextPeriodStartDate.toISOString(),
+      periodEnd: nextPeriodEndDate.toISOString(),
+    },
+    "[Credit PAYG] Allocated new PAYG credit for billing cycle"
+  );
+
+  return new Ok(undefined);
+}
+
 export async function isPAYGEnabled(auth: Authenticator): Promise<boolean> {
   const config =
     await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
