@@ -92,7 +92,7 @@ FROM base-deps AS workers-build
 # RUN FRONT_DATABASE_URI="sqlite:foo.sqlite" npm run build:temporal-bundles
 RUN npm run build:workers
 # New experimental workers build
-RUN cd workers-build && npm ci && FRONT_DATABASE_URI="sqlite:foo.sqlite" npm run build
+#RUN cd workers-build && npm ci && FRONT_DATABASE_URI="sqlite:foo.sqlite" npm run build
 
 # Frontend image (Next.js standalone) for front deployment
 FROM node:20.19.2 AS front
