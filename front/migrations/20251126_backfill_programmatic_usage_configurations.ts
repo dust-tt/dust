@@ -8,10 +8,10 @@ import {
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types";
 
 const BASE_TOKEN_MARKUP_PERCENT = 30;
@@ -154,9 +154,22 @@ makeScript(
         logger
       );
     } else {
-      await runOnAllWorkspaces(
+      const workspaces = await WorkspaceModel.findAll({
+        where: {
+          "metadata.publicApiLimits.enabled": true,
+        },
+      });
+
+      logger.info("Found %d workspaces to process", workspaces.length);
+
+      await concurrentExecutor(
+        workspaces,
         async (workspace) => {
-          await backfillWorkspace(workspace, execute, logger);
+          await backfillWorkspace(
+            renderLightWorkspaceType({ workspace }),
+            execute,
+            logger
+          );
         },
         { concurrency: 8 }
       );
