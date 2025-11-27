@@ -91,6 +91,7 @@
     "@tiptap/react": "^3.11.0",
     "@tiptap/starter-kit": "^3.11.0",
     "@tiptap/suggestion": "^3.11.0",
+    "@tiptap/static-renderer": "^3.11.0",
     "@types/adm-zip": "^0.5.7",
     "@types/cls-hooked": "^4.3.9",
     "@types/json-schema": "^7.0.15",

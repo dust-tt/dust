@@ -1,3 +1,4 @@
+import { markdownStyles } from "@dust-tt/sparkle";
 import { Placeholder } from "@tiptap/extensions";
 import { Markdown } from "@tiptap/markdown";
 import type { Editor } from "@tiptap/react";
@@ -12,7 +13,6 @@ import {
 } from "@app/components/assistant/conversation/input_bar/editor/extensions/CustomMarks";
 import { DataSourceLinkExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/DataSourceLinkExtension";
 import { KeyboardShortcutsExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/KeyboardShortcutsExtension";
-import { MarkdownStyleExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MarkdownStyleExtension";
 import { MentionExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionExtension";
 import { PastedAttachmentExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/PastedAttachmentExtension";
 import { URLDetectionExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/URLDetectionExtension";
@@ -183,7 +183,7 @@ export const buildEditorExtensions = ({
   onUrlDetected,
 }: {
   owner: WorkspaceType;
-  conversationId: string | null;
+  conversationId?: string | null;
   onInlineText?: (fileId: string, textContent: string) => void;
   onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
 }) => {
@@ -194,7 +194,10 @@ export const buildEditorExtensions = ({
       strike: false,
       bold: false, // Disable default bold, we use a custom one
       italic: false, // Disable default italic, we use a custom one
+<<<<<<< HEAD
       // Markdown styles configuration.
+=======
+>>>>>>> d5eeec9296 (feat(front): use tiptap renderer for user messages)
       blockquote: {
         HTMLAttributes: {
           class: markdownStyles.blockquote(),
@@ -243,7 +246,7 @@ export const buildEditorExtensions = ({
       emptyNodeClass:
         "first:before:text-gray-400 first:before:float-left first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:h-0",
     }),
-    MarkdownStyleExtension,
+    // MarkdownStyleExtension,
     PastedAttachmentExtension.configure({
       onInlineText,
     }),

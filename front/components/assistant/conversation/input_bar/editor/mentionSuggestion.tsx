@@ -20,7 +20,7 @@ export function createMentionSuggestion({
   conversationId,
 }: {
   owner: WorkspaceType;
-  conversationId: string | null;
+  conversationId?: string | null;
 }) {
   return {
     pluginKey: mentionPluginKey,
