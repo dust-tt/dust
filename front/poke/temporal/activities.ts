@@ -632,13 +632,13 @@ export async function deleteWorkspaceActivity({
 
   hardDeleteLogger.info({ workspaceId }, "Deleting Workspace");
 
+  await AgentDataRetentionModel.destroy({
+    where: { workspaceId: workspace.id },
+  });
   await WorkspaceModel.destroy({
     where: {
       id: workspace.id,
     },
-  });
-  await AgentDataRetentionModel.destroy({
-    where: { workspaceId: workspace.id },
   });
 }
 
