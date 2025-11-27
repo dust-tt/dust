@@ -17,7 +17,7 @@ const {
   DUST_MANAGED_XAI_API_KEY = "",
   DUST_MANAGED_FIRECRAWL_API_KEY = "",
   DUST_MANAGED_ELEVENLABS_API_KEY = "",
-  DUST_REGION = "",
+  REGION = "",
 } = process.env;
 
 export const credentialsFromProviders = (
@@ -95,7 +95,7 @@ export const dustManagedCredentials = (): CredentialsType => {
     OPENAI_API_KEY: DUST_MANAGED_OPENAI_API_KEY,
     OPENAI_BASE_URL: DUST_MANAGED_OPENAI_BASE_URL,
     // In Core this will determine the openai endpoint we use (EU vs US).
-    OPENAI_USE_EU_ENDPOINT: DUST_REGION === "europe-west1" ? "true" : "false",
+    OPENAI_USE_EU_ENDPOINT: REGION === "europe-west1" ? "true" : "false",
     TEXTSYNTH_API_KEY: DUST_MANAGED_TEXTSYNTH_API_KEY,
     GOOGLE_AI_STUDIO_API_KEY: DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY,
     SERP_API_KEY: DUST_MANAGED_SERP_API_KEY,

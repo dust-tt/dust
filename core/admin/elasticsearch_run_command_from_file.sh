@@ -21,7 +21,7 @@ if ! echo "$ES_BODY" | jq . >/dev/null 2>&1; then
     exit 1
 fi
 
-read -p "Run command from file ${1} in region ${DUST_REGION}? [y/N] " response
+read -p "Run command from file ${1} in region ${REGION}? [y/N] " response
 if [[ ! $response =~ ^[Yy]$ ]]; then
     echo "Operation cancelled"
     exit 0
