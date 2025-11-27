@@ -1,10 +1,6 @@
 import type { Document } from "@contentful/rich-text-types";
 import type { Asset, EntrySkeletonType } from "contentful";
 
-// ============================================
-// Contentful Entry Types
-// ============================================
-
 export interface BlogPageFields {
   title: string;
   slug?: string;
@@ -15,10 +11,6 @@ export interface BlogPageFields {
 }
 
 export type BlogPageSkeleton = EntrySkeletonType<BlogPageFields, "blogPage">;
-
-// ============================================
-// Application Types (transformed from Contentful)
-// ============================================
 
 export interface BlogImage {
   url: string;
