@@ -197,6 +197,18 @@ export function ViewDataSourceTable({
                       </PokeTableCell>
                     </PokeTableRow>
                     <PokeTableRow>
+                      <PokeTableCell>First sync progress</PokeTableCell>
+                      <PokeTableCell>
+                        {connector?.firstSyncProgress ? (
+                          <span className="font-bold">
+                            {connector?.firstSyncProgress}
+                          </span>
+                        ) : (
+                          <span>N/A</span>
+                        )}
+                      </PokeTableCell>
+                    </PokeTableRow>
+                    <PokeTableRow>
                       <PokeTableCell>Last sync start</PokeTableCell>
                       <PokeTableCell>
                         {connector?.lastSyncStartTime ? (

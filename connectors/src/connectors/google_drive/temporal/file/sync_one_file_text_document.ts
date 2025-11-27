@@ -12,7 +12,6 @@ import { getInternalId } from "@connectors/connectors/google_drive/temporal/util
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import type { GoogleDriveConfig } from "@connectors/lib/models/google_drive";
 import type { Logger } from "@connectors/logger/logger";
-import logger from "@connectors/logger/logger";
 import type {
   DataSourceConfig,
   GoogleDriveObjectType,
@@ -60,7 +59,7 @@ export async function syncOneFileTextDocument(
       );
     } catch (e) {
       if (e instanceof WithRetriesError) {
-        logger.warn(
+        localLogger.warn(
           { error: e },
           "Couldn't export the file after multiple retries. Skipping."
         );
