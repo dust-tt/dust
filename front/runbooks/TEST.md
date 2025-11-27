@@ -2,23 +2,34 @@
 
 ## Running Tests
 
+### Run all tests
+
+```
+npm test
+```
+
+Typical run time 30s agents should favour running specific test files.
+
 ### Run all tests (watch-mode)
 
 ```bash
-NODE_ENV=test ./admin/test.sh
+./admin/test.sh
 ```
 
-Agents should generally not attempt to run all tests as this command will initiate watch-mode, which
-is not suitable for CI environments.
+Agents should generally not attempt to this command directly, as watch-mode is not suitable for CI environments.
 
 ### Run a specific test file
+
 ```bash
-FRONT_DATABASE_URI=$TEST_FRONT_DATABASE_URI NODE_ENV=test npx vitest run --reporter verbose path/to/test.test.ts
+npm test path/to/test.test.ts
 ```
 
-Example:
+You can pass vitest CLI options after `npm test`.
+
+**Example:**
+
 ```bash
-FRONT_DATABASE_URI=$TEST_FRONT_DATABASE_URI NODE_ENV=test npx vitest run --reporter verbose pages/api/w/\[wId\]/members/search.test.ts
+npm test --reporter verbose pages/api/w/\[wId\]/members/search.test.ts
 ```
 
 Note: Use backslashes to escape special characters like brackets in file paths.
