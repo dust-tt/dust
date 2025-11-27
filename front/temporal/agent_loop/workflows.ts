@@ -110,7 +110,7 @@ const { notifyWorkflowError, finalizeCancellationActivity } = proxyActivities<
   },
 });
 
-const { trackProgrammaticUsageActivity } = proxyActivities<
+const { trackProgrammaticUsageActivity: trackUsageActivity } = proxyActivities<
   typeof usageTrackingActivities
 >({
   startToCloseTimeout: "2 minutes",
@@ -247,7 +247,7 @@ export async function agentLoopWorkflow({
       await CancellationScope.nonCancellable(async () => {
         await Promise.all([
           launchAgentMessageAnalyticsActivity(authType, agentLoopArgs),
-          trackProgrammaticUsageActivity(authType, agentLoopArgs),
+          trackUsageActivity(authType, agentLoopArgs),
           conversationUnreadNotificationActivity(authType, agentLoopArgs),
         ]);
       });
@@ -265,7 +265,7 @@ export async function agentLoopWorkflow({
         // Ensure analytics runs even when workflow is cancelled
         await Promise.all([
           launchAgentMessageAnalyticsActivity(authType, agentLoopArgs),
-          trackProgrammaticUsageActivity(authType, agentLoopArgs),
+          trackUsageActivity(authType, agentLoopArgs),
           finalizeCancellationActivity(authType, agentLoopArgs),
         ]);
         return;
@@ -273,7 +273,7 @@ export async function agentLoopWorkflow({
         // Ensure analytics runs even when workflow errors
         await Promise.all([
           launchAgentMessageAnalyticsActivity(authType, agentLoopArgs),
-          trackProgrammaticUsageActivity(authType, agentLoopArgs),
+          trackUsageActivity(authType, agentLoopArgs),
           notifyWorkflowError(authType, {
             conversationId: agentLoopArgs.conversationId,
             agentMessageId: agentLoopArgs.agentMessageId,
