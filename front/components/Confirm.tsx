@@ -14,7 +14,8 @@ export type ConfirmDataType = {
   title: string | ReactNode;
   message: string | ReactNode;
   validateLabel?: string;
-  validateVariant?: "primary" | "warning";
+  validateVariant?: "highlight" | "warning";
+  cancelLabel?: string;
 };
 
 export const ConfirmContext = createContext<
@@ -91,7 +92,7 @@ export function ConfirmDialog({
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: confirmData?.cancelLabel ?? "Cancel",
             variant: "outline",
             onClick: () => resolveConfirm(false),
           }}
