@@ -20,7 +20,10 @@ export function getWorkflowConfig({
   workerName: WorkerName;
   getWorkflowsPath: () => string;
 }) {
-  if (process.env.NODE_ENV === "production") {
+  if (
+    process.env.NODE_ENV === "production" ||
+    process.env.USE_TEMPORAL_BUNDLES === "true"
+  ) {
     const bundlePath = path.join(
       __dirname,
       "../dist/temporal-bundles",
