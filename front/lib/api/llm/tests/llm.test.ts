@@ -234,6 +234,13 @@ function getConversationsToRun({
   }));
 }
 
+const modelsToTest = Object.entries(MODELS)
+  .filter(([, config]) => config.runTest || RUN_ALL_MODEL_TESTS)
+  .map(([modelId, config]) => ({
+    modelId,
+    ...config,
+  }));
+
 /**
  * LLM Integration Tests
  *
@@ -249,33 +256,33 @@ function getConversationsToRun({
  * - FILTER_CONVERSATION_IDS: Comma-separated list of conversation IDs to run (e.g., "simple-math,image-description")
  * - RUN_ALL_MODEL_TESTS: Set to "true" to run tests for all models, regardless of their individual runTest settings.
  */
-describe.runIf(process.env.RUN_LLM_TEST === "true").each(
-  Object.entries(MODELS)
-    .filter(([, config]) => config.runTest || RUN_ALL_MODEL_TESTS)
-    .map(([modelId, config]) => ({
-      modelId,
-      ...config,
-    }))
-)("$providerId / $modelId", ({ modelId, providerId }) => {
-  if (!isModelProviderId(providerId)) {
-    throw new Error(`Invalid providerId: ${providerId}`);
-  }
-  describe.concurrent.each(
-    getConversationsToRun({
-      modelId: modelId as ModelIdType,
-      providerId,
-    })
-  )("should handle: $name", (conversation) => {
-    it.concurrent.each(conversation.configs)(
-      "temperature: $temperature, reasoningEffort: $reasoningEffort, testStructuredOutputKey: $testStructuredOutputKey",
-      async (config) => {
-        await conversation.run({
+describe.skipIf(
+  process.env.RUN_LLM_TEST !== "true" || modelsToTest.length === 0
+)("LLM Integration Tests", () => {
+  describe.each(modelsToTest)(
+    "$providerId / $modelId",
+    ({ modelId, providerId }) => {
+      if (!isModelProviderId(providerId)) {
+        throw new Error(`Invalid providerId: ${providerId}`);
+      }
+      describe.concurrent.each(
+        getConversationsToRun({
           modelId: modelId as ModelIdType,
-          provider: providerId,
-          ...config,
-        });
-      },
-      TIMEOUT
-    );
-  });
+          providerId,
+        })
+      )("should handle: $name", (conversation) => {
+        it.concurrent.each(conversation.configs)(
+          "temperature: $temperature, reasoningEffort: $reasoningEffort, testStructuredOutputKey: $testStructuredOutputKey",
+          async (config) => {
+            await conversation.run({
+              modelId: modelId as ModelIdType,
+              provider: providerId,
+              ...config,
+            });
+          },
+          TIMEOUT
+        );
+      });
+    }
+  );
 });
