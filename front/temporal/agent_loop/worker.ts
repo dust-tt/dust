@@ -48,7 +48,7 @@ export async function runAgentLoopWorker() {
       publishDeferredEventsActivity,
       runModelAndCreateActionsActivity,
       runToolActivity,
-      trackUsageActivity: trackProgrammaticUsageActivity,
+      trackProgrammaticUsageActivity,
     },
     taskQueue: QUEUE_NAME,
     connection,
