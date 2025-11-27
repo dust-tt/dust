@@ -10,6 +10,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getAssistantUsageData } from "@app/lib/workspace_usage";
 import { launchMentionsCountWorkflow } from "@app/temporal/mentions_count_queue/client";
 import type { LightAgentConfigurationType } from "@app/types";
+import { USER_USAGE_ORIGINS } from "@app/lib/api/programmatic_usage_tracking";
 
 // Ranking of agents is done over a 30 days period.
 const RANKING_USAGE_DAYS = 30;
@@ -145,6 +146,10 @@ export async function agentMentionsCount(
     throw new Error("Invalid ranking usage days");
   }
 
+  const userOriginatedMessageOriginsString = USER_USAGE_ORIGINS.map(
+    (origin) => `'${origin}'`
+  ).join(", ");
+
   // eslint-disable-next-line dust/no-raw-sql -- Leggit
   const mentions = await readReplica.query(
     `
@@ -164,6 +169,7 @@ export async function agentMentionsCount(
         AND mentions."agentConfigurationId" IS NOT NULL
         AND mentions."createdAt" > NOW() - INTERVAL '${rankingUsageDays} days'
         AND ((:agentConfigurationId)::VARCHAR IS NULL OR mentions."agentConfigurationId" = :agentConfigurationId)
+        AND um."userContextOrigin" IN (${userOriginatedMessageOriginsString})
       GROUP BY mentions."agentConfigurationId"
       ORDER BY message_count DESC
     )

@@ -37,6 +37,13 @@ export const USAGE_ORIGINS_CLASSIFICATION: Record<
   onboarding_conversation: "user",
 };
 
+export const USER_USAGE_ORIGINS = Object.keys(
+  USAGE_ORIGINS_CLASSIFICATION
+).filter(
+  (origin) =>
+    USAGE_ORIGINS_CLASSIFICATION[origin as UserMessageOrigin] === "user"
+);
+
 const PROGRAMMATIC_USAGE_ORIGINS = Object.keys(
   USAGE_ORIGINS_CLASSIFICATION
 ).filter(
