@@ -199,6 +199,7 @@ async fn connections_finalize(
                             "provider": c.provider(),
                             "status": c.status(),
                             "metadata": c.metadata(),
+                            "related_credential_id": c.related_credential_id(),
                         },
                     })),
                 }),
