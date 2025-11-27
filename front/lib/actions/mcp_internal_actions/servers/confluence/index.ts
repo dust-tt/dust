@@ -7,12 +7,14 @@ import {
   getCurrentUser,
   getPage,
   listPages,
+  listSpaces,
   updatePage,
   withAuth,
 } from "@app/lib/actions/mcp_internal_actions/servers/confluence/confluence_api_helper";
 import {
   renderConfluencePage,
   renderConfluencePageList,
+  renderConfluenceSpacesList,
 } from "@app/lib/actions/mcp_internal_actions/servers/confluence/rendering";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
@@ -55,6 +57,44 @@ function createServer(
               {
                 type: "text" as const,
                 text: JSON.stringify(result.value, null, 2),
+              },
+            ]);
+          },
+          authInfo,
+        });
+      }
+    )
+  );
+
+  server.tool(
+    "get_spaces",
+    "Get a list of Confluence spaces. Returns a list of spaces with their IDs, keys, names, types, and statuses.",
+    {},
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: CONFLUENCE_TOOL_NAME,
+        agentLoopContext,
+      },
+      async (params, { authInfo }) => {
+        return withAuth({
+          action: async (baseUrl, accessToken) => {
+            const result = await listSpaces(baseUrl, accessToken);
+            if (result.isErr()) {
+              return new Err(
+                new MCPError(`Error listing spaces: ${result.error}`)
+              );
+            }
+            const formattedResults = renderConfluenceSpacesList(
+              result.value.results,
+              {
+                hasMore: Boolean(result.value._links?.next),
+              }
+            );
+            return new Ok([
+              {
+                type: "text" as const,
+                text: formattedResults,
               },
             ]);
           },

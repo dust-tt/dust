@@ -268,11 +268,47 @@ export type ConfluenceLabel = {
   name?: string;
 };
 
-export type ConfluenceSpace = {
-  id?: string | number;
-  key?: string;
-  name?: string;
-};
+export const ConfluenceSpaceSchema = z
+  .object({
+    id: z.string(),
+    key: z.string(),
+    name: z.string(),
+    type: z.string().optional(),
+    status: z.string().optional(),
+    homepageId: z.string().optional(),
+  })
+  .passthrough();
+
+export type ConfluenceSpace = z.infer<typeof ConfluenceSpaceSchema>;
+
+export const ConfluenceListSpacesResultSchema = z.object({
+  results: z.array(ConfluenceSpaceSchema),
+  _links: z
+    .object({
+      next: z.string().optional(),
+      base: z.string().optional(),
+    })
+    .optional(),
+});
+
+export type ConfluenceListSpacesResult = z.infer<
+  typeof ConfluenceListSpacesResultSchema
+>;
+
+export const ConfluenceListSpacesRequestSchema = z.object({
+  limit: z
+    .number()
+    .optional()
+    .describe("Number of results per page (default 25)"),
+  cursor: z
+    .string()
+    .optional()
+    .describe("Pagination cursor from previous response for next page"),
+});
+
+export type ConfluenceListSpacesRequest = z.infer<
+  typeof ConfluenceListSpacesRequestSchema
+>;
 
 export type ConfluenceAncestor = {
   id: string;
@@ -286,7 +322,14 @@ export type RenderablePage = (ConfluencePage | ConfluenceV1SearchPage) & {
   createdBy?: ConfluenceUser;
   version?: ConfluenceVersionInfo;
   labels?: { results?: ConfluenceLabel[] };
-  space?: ConfluenceSpace;
+  space?: {
+    id: string | number;
+    key?: string;
+    name?: string;
+    type?: string;
+    status?: string;
+    homepageId?: string;
+  };
   ancestors?: ConfluenceAncestor[];
 };
 
