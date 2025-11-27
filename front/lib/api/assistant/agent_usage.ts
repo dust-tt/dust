@@ -199,7 +199,7 @@ export async function agentMentionsCount(
 
   return buckets
     .map((bucket) => ({
-      agentId: bucket.key as string,
+      agentId: bucket.key,
       messageCount: bucket.doc_count,
       conversationCount: bucket.conversation_count?.value ?? 0,
       userCount: bucket.user_count?.value ?? 0,
