@@ -59,6 +59,7 @@ const Citation = React.forwardRef<HTMLDivElement, CitationProps>(
           "s-pt-[min(8%,theme(spacing.3))]",
           className
         )}
+        containerClassName="h-full"
         {...props}
       >
         {contentWithDescription}

@@ -623,23 +623,21 @@ export function AgentMessage({
       type="agent"
       citations={citations}
     >
-      <div>
-        <AgentMessageContent
-          owner={owner}
-          conversationId={conversationId}
-          retryHandler={retryHandler}
-          isLastMessage={isLastMessage}
-          messageStreamState={messageStreamState}
-          references={references}
-          onQuickReplySend={handleQuickReply}
-          streaming={shouldStream}
-          lastTokenClassification={
-            messageStreamState.agentState === "thinking" ? "tokens" : null
-          }
-          activeReferences={activeReferences}
-          setActiveReferences={setActiveReferences}
-        />
-      </div>
+      <AgentMessageContent
+        owner={owner}
+        conversationId={conversationId}
+        retryHandler={retryHandler}
+        isLastMessage={isLastMessage}
+        messageStreamState={messageStreamState}
+        references={references}
+        onQuickReplySend={handleQuickReply}
+        streaming={shouldStream}
+        lastTokenClassification={
+          messageStreamState.agentState === "thinking" ? "tokens" : null
+        }
+        activeReferences={activeReferences}
+        setActiveReferences={setActiveReferences}
+      />
     </ConversationMessage>
   );
 }

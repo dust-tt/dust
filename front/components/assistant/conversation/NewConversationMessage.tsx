@@ -37,7 +37,7 @@ const wrapperVariants = cva("flex flex-col min-w-60 w-full @container", {
     messageType: "agent",
   },
 });
-const messageVariants = cva("flex rounded-2xl", {
+const messageVariants = cva("flex rounded-2xl max-w-full", {
   variants: {
     type: {
       user: "bg-muted-background dark:bg-muted-background-night px-4 py-4 gap-2",
@@ -134,20 +134,18 @@ export const NewConversationMessage = React.forwardRef<
 
           <div
             className={cn(
-              "flex w-full flex-col",
+              "flex w-full min-w-0 flex-col",
               type === "user" ? "gap-1" : "gap-3"
             )}
           >
-            <div className="heading-sm hidden @sm:block">
-              <ConversationMessageTitle
-                name={name}
-                timestamp={timestamp}
-                infoChip={infoChip}
-                completionStatus={completionStatus}
-                renderName={renderName}
-              />
-            </div>
-
+            <ConversationMessageTitle
+              className="heading-sm hidden @sm:block"
+              name={name}
+              timestamp={timestamp}
+              infoChip={infoChip}
+              completionStatus={completionStatus}
+              renderName={renderName}
+            />
             <ConversationMessageContent citations={citations} type={type}>
               {children}
             </ConversationMessageContent>
@@ -164,7 +162,7 @@ export const NewConversationMessage = React.forwardRef<
   }
 );
 
-NewConversationMessage.displayName = "ConversationMessage";
+NewConversationMessage.displayName = "NewConversationMessage";
 
 interface ConversationMessageContentProps
   extends React.HTMLAttributes<HTMLDivElement> {
@@ -179,7 +177,11 @@ const ConversationMessageContent = React.forwardRef<
   ConversationMessageContentProps
 >(({ children, citations, className, ...props }, ref) => {
   return (
-    <div ref={ref} className={cn("flex flex-col gap-1", className)} {...props}>
+    <div
+      ref={ref}
+      className={cn("flex w-full min-w-0 flex-col gap-1", className)}
+      {...props}
+    >
       <div className="text-base text-foreground dark:text-foreground-night">
         {children}
       </div>
