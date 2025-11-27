@@ -584,7 +584,10 @@ export async function deleteWorkspaceActivity({
   try {
     auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   } catch (err) {
-    hardDeleteLogger.warn({ workspaceId }, "Workspace not found.");
+    hardDeleteLogger.warn(
+      { workspaceId },
+      "Workspace not found, nothing to delete."
+    );
     return;
   }
   const workspace = auth.getNonNullableWorkspace();
