@@ -3,6 +3,7 @@ import { BLOCKS } from "@contentful/rich-text-types";
 import type { Asset, ContentfulClientApi, Entry } from "contentful";
 import { createClient } from "contentful";
 
+import { isString } from "@app/types";
 import { slugify } from "@app/types/shared/utils/string_utils";
 
 import type {
@@ -53,8 +54,7 @@ function contentfulAssetToBlogImage(
 
   return {
     url: `https:${file.url}`,
-    alt:
-      isString(asset.fields.title) ? asset.fields.title : fallbackAlt,
+    alt: isString(asset.fields.title) ? asset.fields.title : fallbackAlt,
     width: imageDetails?.width ?? 1200,
     height: imageDetails?.height ?? 630,
   };
@@ -87,8 +87,9 @@ function contentfulEntryToBlogPost(entry: Entry<BlogPageSkeleton>): BlogPost {
   const tags = Array.isArray(tagsField) ? tagsField : [];
 
   const publishedAtField = fields.publishedAt;
-  const publishedAt =
-    isString(publishedAtField) ? publishedAtField : sys.createdAt;
+  const publishedAt = isString(publishedAtField)
+    ? publishedAtField
+    : sys.createdAt;
 
   const body = isDocument(fields.body) ? fields.body : EMPTY_DOCUMENT;
   const image = isAsset(fields.image) ? fields.image : undefined;
