@@ -176,7 +176,7 @@ export const Demo = () => {
               <div className="s-h-full s-w-full s-p-5">Ask a question</div>
               <div
                 id="CommandBar"
-                className="s-relative s-flex s-w-full s-items-center s-gap-3 s-py-1 s-pb-4 s-pl-3 s-pr-2"
+                className="s-relative s-flex s-w-full s-items-center s-justify-end s-gap-3 s-py-1 s-pb-4 s-pl-3 s-pr-2"
               >
                 <div
                   id="TextStyle"
@@ -243,33 +243,44 @@ export const Demo = () => {
                     </div>
                   </ScrollArea>
                 </div>
-                <Button
-                  variant="ghost-secondary"
-                  icon={TextIcon}
-                  size="mini"
-                  tooltip="Attach a document"
-                  onClick={() => setIsTextStyleOpen(true)}
-                />
-                <Button
-                  variant="ghost-secondary"
-                  icon={AttachmentIcon}
-                  size="mini"
-                  tooltip="Attach a document"
-                />
-                <Button
-                  variant="ghost-secondary"
-                  icon={BoltIcon}
-                  size="mini"
-                  tooltip="Add functionality"
-                />
-                <Button
-                  variant="ghost-secondary"
-                  icon={RobotIcon}
-                  size="mini"
-                  tooltip="Mention an Agent"
-                />
+                <div
+                  id="CommandLeft"
+                  className={cn(
+                    "s-flex s-items-center s-gap-3 s-transition-opacity s-ease-in-out",
+                    recordState === "recording" && "s-opacity-0"
+                  )}
+                >
+                  <Button
+                    variant="ghost-secondary"
+                    icon={TextIcon}
+                    size="mini"
+                    tooltip="Attach a document"
+                    onClick={() => setIsTextStyleOpen(true)}
+                  />
+                  <Button
+                    variant="ghost-secondary"
+                    icon={AttachmentIcon}
+                    size="mini"
+                    tooltip="Attach a document"
+                  />
+                  <Button
+                    variant="ghost-secondary"
+                    icon={BoltIcon}
+                    size="mini"
+                    tooltip="Add functionality"
+                  />
+                  <Button
+                    variant="ghost-secondary"
+                    icon={RobotIcon}
+                    size="mini"
+                    tooltip="Mention an Agent"
+                  />
+                </div>
                 <div className="s-grow" />
-                <div className="s-flex s-items-center s-gap-1 s-gap-2">
+                <div
+                  id="CommandRight"
+                  className="s-flex s-items-center s-gap-1 s-gap-2"
+                >
                   <div
                     id="Recording"
                     className={cn(
@@ -305,13 +316,10 @@ export const Demo = () => {
                         : "Record Button"
                     }
                     ref={recordButtonRef}
-                    variant={
-                      recordState === "recording"
-                        ? "warning-secondary"
-                        : "ghost"
-                    }
+                    variant={recordState === "recording" ? "warning" : "ghost"}
                     icon={recordState === "recording" ? SquareIcon : MicIcon}
-                    size="mini"
+                    size="sm"
+                    isRounded
                     tooltip={
                       recordState === "recording"
                         ? "Stop recording"
