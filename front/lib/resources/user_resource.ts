@@ -253,14 +253,9 @@ export class UserResource extends BaseResource<UserModel> {
           panic: true,
           workspaceId: owner.sId,
           missingUserSIds: missingUserIds,
+          owner: "spolu",
         },
         "[user_search] Found revoked users in search results"
-      );
-
-      return new Err(
-        new Error(
-          `Found ${missingUserIds.length} revoked user(s) in search results for workspace ${owner.sId}`
-        )
       );
     }
 
