@@ -11,7 +11,7 @@ import { cva } from "class-variance-authority";
 import Head from "next/head";
 import Link from "next/link";
 import Script from "next/script";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
 
 import { A } from "@app/components/home/ContentComponents";
@@ -392,33 +392,17 @@ export const PublicWebsiteLogo = ({
   utmParam,
 }: PublicWebsiteLogoProps) => {
   const className = logoVariants({ size });
-  const [isMounted, setIsMounted] = useState(false);
 
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  const logoContent = useMemo(
-    () => (
-      <>
+  return (
+    <Link href={`/${utmParam ? `?${utmParam}` : ""}`}>
+      <Hover3D className={`relative ${className}`}>
         <Div3D depth={0} className={className}>
           <DustLogoLayer1 className={className} />
         </Div3D>
         <Div3D depth={25} className="absolute top-0">
           <DustLogoLayer2 className={className} />
         </Div3D>
-      </>
-    ),
-    [className]
-  );
-
-  return (
-    <Link href={`/${utmParam ? `?${utmParam}` : ""}`}>
-      {isMounted ? (
-        <Hover3D className={`relative ${className}`}>{logoContent}</Hover3D>
-      ) : (
-        <div className={`relative ${className}`}>{logoContent}</div>
-      )}
+      </Hover3D>
     </Link>
   );
 };
