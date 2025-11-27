@@ -321,6 +321,7 @@ export const InputBar = React.memo(function InputBar({
               onRemove: handleNodesAttachmentRemove,
             }}
             conversationId={conversationId}
+            disable={disable}
           />
           <InputBarContainer
             actions={actions}
