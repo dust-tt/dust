@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { pipeline, Writable } from "stream";
 import type Stripe from "stripe";
 import { promisify } from "util";
+import { z } from "zod";
 
 import apiConfig from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
@@ -14,6 +15,7 @@ import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { startCreditFromProOneOffInvoice } from "@app/lib/credits/committed";
 import { grantFreeCreditsOnSubscriptionRenewal } from "@app/lib/credits/free";
+import { invoiceEnterprisePAYGCredits } from "@app/lib/credits/payg";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import {
   assertStripeSubscriptionIsValid,
@@ -52,6 +54,11 @@ export const config = {
     bodyParser: false, // Disable the default body parser
   },
 };
+
+export const StripeBillingPeriodSchema = z.object({
+  current_period_start: z.number(),
+  current_period_end: z.number(),
+});
 
 async function handler(
   req: NextApiRequest,
@@ -545,6 +552,34 @@ async function handler(
                   },
                   "[Stripe Webhook] Error granting free credits on renewal"
                 );
+              }
+
+              // Invoice PAYG credits in arrears for enterprise subscriptions
+              const previousPeriod =
+                StripeBillingPeriodSchema.safeParse(previousAttributes);
+
+              if (previousPeriod.success) {
+                const previousPeriodStartSeconds =
+                  previousPeriod.data.current_period_start;
+                const previousPeriodEndSeconds =
+                  previousPeriod.data.current_period_end;
+                const paygResult = await invoiceEnterprisePAYGCredits({
+                  auth,
+                  stripeSubscription,
+                  previousPeriodStartSeconds,
+                  previousPeriodEndSeconds,
+                });
+
+                if (paygResult.isErr()) {
+                  logger.error(
+                    {
+                      error: paygResult.error,
+                      subscriptionId: stripeSubscription.id,
+                      workspaceId: subscription.workspace.sId,
+                    },
+                    "[Stripe Webhook] Error invoicing PAYG credits"
+                  );
+                }
               }
             } else {
               logger.warn(

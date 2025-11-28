@@ -50,18 +50,7 @@ async function handler(
       // Transform credits to display format with computed consumed amount.
       const creditsData: CreditDisplayData[] = credits
         .filter((credit) => !!credit.startDate)
-        .map((credit) => ({
-          id: credit.id,
-          type: credit.type,
-          initialAmount: credit.initialAmountCents,
-          remainingAmount:
-            credit.initialAmountCents - credit.consumedAmountCents,
-          consumedAmount: credit.consumedAmountCents,
-          startDate: credit.startDate ? credit.startDate.getTime() : null,
-          expirationDate: credit.expirationDate
-            ? credit.expirationDate.getTime()
-            : null,
-        }));
+        .map((credit) => credit.toJSON());
 
       return res.status(200).json({
         credits: creditsData,

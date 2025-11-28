@@ -39,6 +39,7 @@ const RESOURCES_PREFIX = {
   agent_message_feedback: "amf",
   onboarding_task: "obt",
   programmatic_usage_configuration: "puc",
+  credit: "crd",
 
   // Resource relative to triggers.
   trigger: "trg",

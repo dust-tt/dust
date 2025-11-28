@@ -11,9 +11,12 @@ import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { CreditModel } from "@app/lib/resources/storage/models/credits";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import type { PokeCreditType } from "@app/pages/api/poke/workspaces/[wId]/credits";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok, removeNulls } from "@app/types";
+import type { CreditDisplayData } from "@app/types/credits";
 import {
   CREDIT_EXPIRATION_DAYS,
   CREDIT_TYPES,
@@ -29,6 +32,10 @@ export class CreditResource extends BaseResource<CreditModel> {
 
   constructor(_model: ModelStatic<CreditModel>, blob: Attributes<CreditModel>) {
     super(CreditModel, blob);
+  }
+
+  get sId(): string {
+    return makeSId("credit", { id: this.id, workspaceId: this.workspaceId });
   }
 
   // Create a new credit line for a workspace.
@@ -155,6 +162,22 @@ export class CreditResource extends BaseResource<CreditModel> {
     return row ?? null;
   }
 
+  static async fetchByTypeAndDates(
+    auth: Authenticator,
+    type: (typeof CREDIT_TYPES)[number],
+    startDate: Date,
+    expirationDate: Date
+  ) {
+    const [row] = await this.baseFetch(auth, {
+      where: {
+        type,
+        startDate,
+        expirationDate,
+      },
+    });
+    return row ?? null;
+  }
+
   async consume(
     amountInCents: number,
     { transaction }: { transaction?: Transaction } = {}
@@ -198,6 +221,19 @@ export class CreditResource extends BaseResource<CreditModel> {
     return new Ok(undefined);
   }
 
+  async markAsPaid(
+    invoiceOrLineItemId: string,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    await this.model.update(
+      { invoiceOrLineItemId },
+      {
+        where: { id: this.id, workspaceId: this.workspaceId },
+        transaction,
+      }
+    );
+  }
+
   async delete(
     _auth: Authenticator,
     { transaction }: { transaction?: Transaction }
@@ -211,6 +247,20 @@ export class CreditResource extends BaseResource<CreditModel> {
     } catch (err) {
       return new Err(normalizeError(err));
     }
+  }
+
+  toJSON(): CreditDisplayData {
+    return {
+      sId: this.sId,
+      type: this.type,
+      initialAmount: this.initialAmountCents,
+      remainingAmount: this.initialAmountCents - this.consumedAmountCents,
+      consumedAmount: this.consumedAmountCents,
+      startDate: this.startDate ? this.startDate.getTime() : null,
+      expirationDate: this.expirationDate
+        ? this.expirationDate.getTime()
+        : null,
+    };
   }
 
   toLogJSON() {
@@ -228,7 +278,7 @@ export class CreditResource extends BaseResource<CreditModel> {
     };
   }
 
-  toJSON() {
+  toPokeJSON(): PokeCreditType {
     return {
       id: this.id,
       createdAt: this.createdAt.toISOString(),
