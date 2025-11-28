@@ -99,7 +99,7 @@ export default function BlogListing({ posts }: BlogListingPageProps) {
               >
                 {post.image && (
                   <img
-                    src={`${post.image.url}?w=600`}
+                    src={`${post.image.url}?w=900`}
                     alt={post.image.alt}
                     className="aspect-video w-full object-cover"
                   />
