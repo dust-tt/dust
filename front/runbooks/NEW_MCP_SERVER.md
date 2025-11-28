@@ -417,7 +417,7 @@ Before marking implementation complete:
 - [ ] Server registered in `servers/index.ts` switch statement
 - [ ] API helper functions created with proper error handling
 - [ ] All tools defined with appropriate stakes
-- [ ] Response pruning implemented (only return necessary fields)
+- [ ] Response pruning implemented (only return the necessary fields)
 - [ ] OAuth provider configured (if needed)
 - [ ] Temporary icon set (request final icon from designer)
 - [ ] Feature flag configured (if preview)
