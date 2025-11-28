@@ -74,8 +74,7 @@ export class CreditResource extends BaseResource<CreditModel> {
       expirationDate ??
       new Date(Date.now() + CREDIT_EXPIRATION_DAYS * 24 * 60 * 60 * 1000);
 
-    // Update only if startDate is null (ensures idempotency)
-    await this.model.update(
+    const [, affectedRows] = await this.model.update(
       {
         startDate: effectiveStartDate,
         expirationDate: effectiveExpirationDate,
@@ -87,8 +86,13 @@ export class CreditResource extends BaseResource<CreditModel> {
           startDate: null,
         },
         transaction,
+        returning: true,
       }
     );
+
+    if (affectedRows.length === 0) {
+      return new Err(new Error("Credit already started"));
+    }
 
     return new Ok(undefined);
   }

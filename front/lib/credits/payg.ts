@@ -2,6 +2,7 @@ import assert from "assert";
 import type Stripe from "stripe";
 
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import {
   isEnterpriseSubscription,
   makeCreditsPAYGInvoice,
@@ -11,6 +12,91 @@ import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/progr
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
+
+export async function allocatePAYGCreditsOnCycleRenewal({
+  auth,
+  nextPeriodStartSeconds,
+  nextPeriodEndSeconds,
+}: {
+  auth: Authenticator;
+  nextPeriodStartSeconds: number;
+  nextPeriodEndSeconds: number;
+}): Promise<void> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const config =
+    await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
+  if (!config || config.paygCapCents === null) {
+    return;
+  }
+
+  const nextPeriodStartDate = new Date(nextPeriodStartSeconds * 1000);
+  const nextPeriodEndDate = new Date(nextPeriodEndSeconds * 1000);
+
+  const existingCredit = await CreditResource.fetchByTypeAndDates(
+    auth,
+    "payg",
+    nextPeriodStartDate,
+    nextPeriodEndDate
+  );
+
+  if (existingCredit) {
+    logger.info(
+      { workspaceId: workspace.sId, creditId: existingCredit.id },
+      "[Credit PAYG] Credit already exists for this period, skipping allocation"
+    );
+    return;
+  }
+  const featureFlags = await getFeatureFlags(workspace);
+  if (!featureFlags.includes("ppul")) {
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        initialAmountCents: config.paygCapCents,
+        periodStart: nextPeriodStartDate.toISOString(),
+        periodEnd: nextPeriodEndDate.toISOString(),
+      },
+      "[Credit PAYG] PPUL flag OFF - stopping here."
+    );
+    return;
+  }
+
+  const credit = await CreditResource.makeNew(auth, {
+    type: "payg",
+    initialAmountCents: config.paygCapCents,
+    consumedAmountCents: 0,
+    discount: config.defaultDiscountPercent,
+    invoiceOrLineItemId: null,
+  });
+
+  const startResult = await credit.start(
+    nextPeriodStartDate,
+    nextPeriodEndDate
+  );
+  if (startResult.isErr()) {
+    logger.warn(
+      {
+        workspaceId: workspace.sId,
+        creditId: credit.id,
+        error: startResult.error.message,
+      },
+      "[Credit PAYG] Credit already started, skipping"
+    );
+    return;
+  }
+
+  logger.info(
+    {
+      workspaceId: workspace.sId,
+      initialAmountCents: config.paygCapCents,
+      periodStart: nextPeriodStartDate.toISOString(),
+      periodEnd: nextPeriodEndDate.toISOString(),
+    },
+    "[Credit PAYG] Allocated new PAYG credit for billing cycle"
+  );
+
+  return;
+}
 
 export async function isPAYGEnabled(auth: Authenticator): Promise<boolean> {
   const config =
