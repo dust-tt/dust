@@ -9,12 +9,14 @@ This runbook provides step-by-step instructions for creating new internal MCP se
 ### Minimal Files Needed
 
 1. `lib/actions/mcp_internal_actions/constants.ts` - Add server to `AVAILABLE_INTERNAL_MCP_SERVER_NAMES` and `INTERNAL_MCP_SERVERS`
-2. `lib/actions/mcp_internal_actions/servers/{provider}/index.ts` - Server implementation with tools
-3. `lib/actions/mcp_internal_actions/servers/{provider}/{provider}_api_helper.ts` - API client wrapper
-4. `lib/actions/mcp_internal_actions/servers/{provider}/{provider}_utils.ts` - Helper utilities (optional)
-5. `lib/actions/mcp_internal_actions/servers/index.ts` - Register server in switch statement
+2. `lib/actions/mcp_internal_actions/servers/{provider}.ts` - Server implementation with tools
+3. `lib/actions/mcp_internal_actions/servers/index.ts` - Register server in switch statement
 
-### OAuth Requirements (if platform requires OAuth)
+If the server code does not fit in one file, it can be split into multiple files.
+In that case, they should be placed into a folder that contains a file `index.ts` from where
+the `createServer` function that creates the server will be default exported.
+
+### OAuth Requirements (if the platform requires OAuth)
 
 - OAuth provider must already exist in `front/lib/api/oauth/providers/{provider}.ts`
 - OAuth core implementation must exist in `core/src/oauth/providers/{provider}.rs`
@@ -23,7 +25,7 @@ This runbook provides step-by-step instructions for creating new internal MCP se
 
 ### Common Gotchas
 
-- Don't forget to add the server to `AVAILABLE_INTERNAL_MCP_SERVER_NAMES` array
+- Do not forget to add the server to `AVAILABLE_INTERNAL_MCP_SERVER_NAMES` array
 - Server IDs must be stable and unique - never change them once deployed
 - Tool stakes must be configured appropriately (never_ask, low, high)
 - Always implement proper error handling with Result types
@@ -302,45 +304,26 @@ your_provider: {
 
 ---
 
-## Testing
-
-### Manual Testing Checklist
-
-1. **OAuth Connection** (if applicable)
-   - [ ] Navigate to agent builder and add the tool
-   - [ ] Click "Connect" and complete OAuth flow
-   - [ ] Verify connection appears as "Connected"
-
-2. **Tool Execution**
-   - [ ] Test each read tool returns expected data
-   - [ ] Test write tools create/update correctly
-   - [ ] Verify error handling for invalid inputs
-   - [ ] Test with expired tokens (should auto-refresh)
-
-3. **Edge Cases**
-   - [ ] Empty results handling
-   - [ ] Rate limit handling
-   - [ ] Large result set pagination
-   - [ ] Permission errors
-
----
-
 ## Best Practices
 
 ### 1. Error Handling
 
 Always use Result types and provide meaningful error messages. Don't expose raw API errors to users - translate them into actionable messages.
 
-### 2. Response Pruning (Important for Token Efficiency)
+### 2. Response Rendering (Important for Token Efficiency)
 
-**Always prune API responses before returning them to the LLM.** External APIs often return many fields that are irrelevant for the agent's task. Returning everything wastes tokens and can confuse the model.
+Always implement functions that convert the output from the API into a clean, focused, and Markdown-formatted text.
+See `lib/actions/mcp_internal_actions/servers/zendesk/rendering.ts` for an example.
+External APIs often return many fields that are irrelevant and hard to interpret for the agent.
+The rendering serves two purposes: selecting the relevant fields and formatting them for the LLM.
 
 **Do:**
 
 - Select only the fields the LLM needs to complete its task
 - Remove internal IDs, timestamps, and metadata unless specifically needed
-- Flatten nested structures when possible
-- Use helper functions to transform API responses into clean, focused data
+- Start with a brief summary (e.g., "Found 5 items matching your query")
+- Follow with the structured data
+- Use consistent formats across similar tools
 
 **Don't:**
 
@@ -348,28 +331,70 @@ Always use Result types and provide meaningful error messages. Don't expose raw 
 - Include pagination metadata, rate limit info, or API versioning details
 - Return the same data in multiple formats
 
-Example: If an API returns 50 fields per item but the agent only needs `id`, `name`, `status`, and `assignee`, create a mapping function that extracts just those fields.
-
-### 3. Response Formatting
-
-Format responses for LLM consumption:
-
-- Start with a brief summary (e.g., "Found 5 items matching your query")
-- Follow with the structured data
-- Use consistent formats across similar tools
-
-### 4. Tool Descriptions
+### 3. Tool Descriptions
 
 Write clear, actionable descriptions that help the LLM understand when to use each tool. Include:
 
 - What the tool does
-- What parameters are required vs optional
+- What parameters are required vs. optional
 - What the tool returns
 - Any limitations or prerequisites
 
-### 5. Input Validation
+### 4. Input Validation
 
 Use Zod schemas with `.describe()` for each parameter. This helps the LLM understand what values are expected and improves tool calling accuracy.
+
+### 5. Validate External API Responses
+
+Always validate data returned from external APIs using Zod schemas.
+External APIs can change without notice, return unexpected data, or have undocumented edge cases.
+Validation ensures your code fails fast with clear error messages rather than propagating malformed data.
+
+**Pattern:**
+
+```typescript
+// In types.ts - define schemas for API responses
+const ItemSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  status: z.string(),
+}).passthrough(); // Use .passthrough() to allow extra fields from the API
+
+const ItemResponseSchema = z.object({
+  item: ItemSchema,
+});
+
+// In client.ts - validate every API response
+private async request<T extends z.Schema>(
+  endpoint: string,
+  schema: T
+): Promise<Result<z.infer<T>, Error>> {
+  const response = await fetch(url, { ... });
+  const rawData = await response.json();
+
+  const parseResult = schema.safeParse(rawData);
+  if (!parseResult.success) {
+    logger.error(
+      { endpoint, error: parseResult.error.message },
+      "[Provider] Invalid API response format"
+    );
+    return new Err(
+      new Error(`Invalid API response format: ${parseResult.error.message}`)
+    );
+  }
+
+  return new Ok(parseResult.data);
+}
+```
+
+**Benefits:**
+
+- Catches API contract changes early
+- Provides clear error messages for debugging
+- Prevents runtime errors from unexpected data shapes
+- Documents the expected API response structure
+
+See `servers/zendesk/types.ts` and `servers/zendesk/client.ts` for a complete example.
 
 ---
 
@@ -392,7 +417,7 @@ Before marking implementation complete:
 - [ ] Server registered in `servers/index.ts` switch statement
 - [ ] API helper functions created with proper error handling
 - [ ] All tools defined with appropriate stakes
-- [ ] Response pruning implemented (only return necessary fields)
+- [ ] Response pruning implemented (only return the necessary fields)
 - [ ] OAuth provider configured (if needed)
 - [ ] Temporary icon set (request final icon from designer)
 - [ ] Feature flag configured (if preview)
