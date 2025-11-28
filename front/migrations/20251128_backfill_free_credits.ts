@@ -3,11 +3,13 @@ import readline from "readline";
 import { Authenticator } from "@app/lib/auth";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { CreditModel } from "@app/lib/resources/storage/models/credits";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
+import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
+import type { LightWorkspaceType } from "@app/types";
 
 const DEFAULT_EXPIRATION_DAYS = 5;
+const CONCURRENCY = 16;
 
 const DISCLAIMER = `
 ================================================================================
@@ -38,51 +40,111 @@ async function confirmExecution(message: string): Promise<boolean> {
   });
 }
 
+function getIdempotencyKey(
+  workspaceId: number,
+  expirationDate: Date
+): string {
+  return `backfill-free-${workspaceId}-${expirationDate.toISOString().split("T")[0]}`;
+}
+
+async function checkWorkspaceCredit(
+  workspace: LightWorkspaceType,
+  expirationDate: Date
+): Promise<"exists" | "to_add"> {
+  const idempotencyKey = getIdempotencyKey(workspace.id, expirationDate);
+
+  const existingCredit = await CreditModel.findOne({
+    where: {
+      workspaceId: workspace.id,
+      invoiceOrLineItemId: idempotencyKey,
+    },
+  });
+
+  if (existingCredit) {
+    logger.info(
+      { workspaceSId: workspace.sId, workspaceId: workspace.id },
+      "Skipping workspace: credit already exists"
+    );
+    return "exists";
+  }
+
+  logger.info(
+    { workspaceSId: workspace.sId, workspaceId: workspace.id },
+    "Would add credit to workspace"
+  );
+  return "to_add";
+}
+
+async function addCreditToWorkspace(
+  workspace: LightWorkspaceType,
+  amountCents: number,
+  expirationDate: Date
+): Promise<void> {
+  const idempotencyKey = getIdempotencyKey(workspace.id, expirationDate);
+
+  // Double-check credit doesn't exist (idempotency)
+  const existingCredit = await CreditModel.findOne({
+    where: {
+      workspaceId: workspace.id,
+      invoiceOrLineItemId: idempotencyKey,
+    },
+  });
+
+  if (existingCredit) {
+    return;
+  }
+
+  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  const credit = await CreditResource.makeNew(auth, {
+    type: "free",
+    initialAmountCents: amountCents,
+    consumedAmountCents: 0,
+    discount: null,
+    invoiceOrLineItemId: idempotencyKey,
+  });
+
+  await credit.start(new Date(), expirationDate);
+
+  logger.info(
+    {
+      creditId: credit.id,
+      workspaceSId: workspace.sId,
+      workspaceId: workspace.id,
+    },
+    "Added credit to workspace"
+  );
+}
+
 async function addFreeCredits(
   execute: boolean,
   amountCents: number,
   expirationDate: Date
 ) {
-  const workspaces = await WorkspaceModel.findAll();
-
   logger.info(
     {
       execute,
-      workspaceCount: workspaces.length,
       amountCents,
       expirationDate: expirationDate.toISOString(),
+      concurrency: CONCURRENCY,
     },
-    `Adding free credits to ${workspaces.length} workspaces`
+    "Adding free credits"
   );
 
-  // Count how many would be added
+  // First pass: count how many would be added
   let toAddCount = 0;
   let skippedCount = 0;
 
-  for (const workspace of workspaces) {
-    const idempotencyKey = `backfill-free-${workspace.id}-${expirationDate.toISOString().split("T")[0]}`;
-
-    const existingCredit = await CreditModel.findOne({
-      where: {
-        workspaceId: workspace.id,
-        invoiceOrLineItemId: idempotencyKey,
-      },
-    });
-
-    if (existingCredit) {
-      logger.info(
-        { workspaceSId: workspace.sId, workspaceId: workspace.id },
-        "Skipping workspace: credit already exists"
-      );
-      skippedCount++;
-    } else {
-      logger.info(
-        { workspaceSId: workspace.sId, workspaceId: workspace.id },
-        "Would add credit to workspace"
-      );
-      toAddCount++;
-    }
-  }
+  await runOnAllWorkspaces(
+    async (workspace) => {
+      const result = await checkWorkspaceCredit(workspace, expirationDate);
+      if (result === "exists") {
+        skippedCount++;
+      } else {
+        toAddCount++;
+      }
+    },
+    { concurrency: CONCURRENCY }
+  );
 
   logger.info({ toAddCount, skippedCount }, "Summary");
 
@@ -98,42 +160,16 @@ async function addFreeCredits(
     return;
   }
 
+  // Second pass: actually add the credits
   let addedCount = 0;
-  for (const workspace of workspaces) {
-    const idempotencyKey = `backfill-free-${workspace.id}-${expirationDate.toISOString().split("T")[0]}`;
 
-    const existingCredit = await CreditModel.findOne({
-      where: {
-        workspaceId: workspace.id,
-        invoiceOrLineItemId: idempotencyKey,
-      },
-    });
-
-    if (existingCredit) {
-      continue;
-    }
-
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    const credit = await CreditResource.makeNew(auth, {
-      type: "free",
-      initialAmountCents: amountCents,
-      consumedAmountCents: 0,
-      discount: null,
-      invoiceOrLineItemId: idempotencyKey,
-    });
-
-    await credit.start(new Date(), expirationDate);
-
-    logger.info(
-      {
-        creditId: credit.id,
-        workspaceSId: workspace.sId,
-        workspaceId: workspace.id,
-      },
-      "Added credit to workspace"
-    );
-    addedCount++;
-  }
+  await runOnAllWorkspaces(
+    async (workspace) => {
+      await addCreditToWorkspace(workspace, amountCents, expirationDate);
+      addedCount++;
+    },
+    { concurrency: CONCURRENCY }
+  );
 
   logger.info({ addedCount }, "Done adding credits");
 }
