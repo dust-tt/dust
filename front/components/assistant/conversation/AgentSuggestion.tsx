@@ -85,7 +85,7 @@ export function AgentSuggestion({
   const { submit: handleSelectSuggestion } = useSubmitFunction(
     async (agent: LightAgentConfigurationType) => {
       // Ensure proper formatting: if content starts with markdown that requires being at
-      // the beginning of a line (code blocks, list items, etc.), add a newline before the
+      // the beginning of a line (code blocks, list items, etc.), add a newline after the
       // mention so the markdown remains valid.
       const contentStartsWithLineStartMarkdown = userMessage.content.match(
         /^(\s*)(```|`|---|\*\*\*|#{1,6}\s|[-*+]\s|>\s|\d+\.\s)/
