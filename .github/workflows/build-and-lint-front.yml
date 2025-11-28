@@ -10,7 +10,7 @@ on:
 permissions:
   contents: read
   actions: read
-  checks: write
+  checks: read
 
 jobs:
   tests:
@@ -20,13 +20,16 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: 20.13.0
-          cache: "npm"
-          cache-dependency-path: |
-            ./front/package-lock.json
-            ./sdks/js/package-lock.json
+      - name: Cache npm dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: npm-cache-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            npm-cache-${{ runner.os }}-
       - name: Build SDK/JS
         working-directory: sdks/js
-        run: npm install && npm run build
+        run: npm ci && npm run build
       - name: Build Front
         working-directory: front
         run: npm ci
@@ -69,13 +72,16 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: 20.13.0
-          cache: "npm"
-          cache-dependency-path: |
-            ./front/package-lock.json
-            ./sdks/js/package-lock.json
+      - name: Cache npm dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: npm-cache-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            npm-cache-${{ runner.os }}-
       - name: Build SDK/JS
         working-directory: sdks/js
-        run: npm install && npm run build
+        run: npm ci && npm run build
       - name: Build Front
         working-directory: front
         run: npm ci
@@ -89,10 +95,13 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: 20.13.0
-          cache: "npm"
-          cache-dependency-path: |
-            ./front/package-lock.json
-            ./sdks/js/package-lock.json
+      - name: Cache npm dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: npm-cache-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            npm-cache-${{ runner.os }}-
       - name: Cache ESLint
         uses: actions/cache@v3
         with:
@@ -102,10 +111,10 @@ jobs:
             eslint-cache-${{ runner.os }}-
       - name: Install SDK/JS
         working-directory: sdks/js
-        run: npm install
+        run: npm ci
       - name: Install Front
         working-directory: front
-        run: npm install
+        run: npm ci
       - name: Lint, Format, and Biome Check (parallel)
         working-directory: front
         env:
