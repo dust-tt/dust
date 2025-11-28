@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Result};
 use cloud_storage::{ErrorList, GoogleErrorResponse, Object};
 use serde::{Deserialize, Serialize};
-use tracing::info;
+use tracing::{error, info};
 
 use crate::utils;
 
@@ -86,11 +86,33 @@ impl FileStorageDocument {
         );
         let bucket = FileStorageDocument::get_bucket().await?;
 
-        let bytes = Object::download(&bucket, &file_path).await?;
-
-        match String::from_utf8(bytes) {
-            Ok(content) => Ok(serde_json::from_str(&content)?),
-            Err(err) => Err(anyhow!("Failed to retrieve stored document: {}", err)),
+        let now = utils::now();
+        match Object::download(&bucket, &file_path).await {
+            Ok(bytes) => {
+                info!(
+                    data_source_internal_id = data_source.internal_id(),
+                    document_id_hash = document_id_hash,
+                    duration = utils::now() - now,
+                    size_bytes = bytes.len(),
+                    blob_url = format!("gs://{}/{}", bucket, file_path),
+                    "Downloaded document blob"
+                );
+                match String::from_utf8(bytes) {
+                    Ok(content) => Ok(serde_json::from_str(&content)?),
+                    Err(e) => Err(anyhow!("Failed to retrieve stored document: {}", e)),
+                }
+            }
+            Err(e) => {
+                error!(
+                    data_source_internal_id = data_source.internal_id(),
+                    document_id_hash = document_id_hash,
+                    duration = utils::now() - now,
+                    error = %e,
+                    blob_url = format!("gs://{}/{}", bucket, file_path),
+                    "Failed to download document blob"
+                );
+                Err(e)?
+            }
         }
     }
 
