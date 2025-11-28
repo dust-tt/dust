@@ -5,6 +5,7 @@ import { deleteConversation } from "@app/components/assistant/conversation/lib";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import { getVisualizationRetryMessage } from "@app/lib/client/visualization";
+import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
   fetcher,
@@ -286,7 +287,7 @@ export function useCancelMessage({
         return;
       }
       try {
-        await fetch(
+        await clientFetch(
           `/api/w/${owner.sId}/assistant/conversations/${conversationId}/cancel`,
           {
             method: "POST",
@@ -325,7 +326,7 @@ export function useAddDeleteConversationTool({
       }
 
       try {
-        const response = await fetch(
+        const response = await clientFetch(
           `/api/w/${workspaceId}/assistant/conversations/${conversationId}/tools`,
           {
             method: "POST",
@@ -366,7 +367,7 @@ export function useAddDeleteConversationTool({
       }
 
       try {
-        const response = await fetch(
+        const response = await clientFetch(
           `/api/w/${workspaceId}/assistant/conversations/${conversationId}/tools`,
           {
             method: "POST",
@@ -419,7 +420,7 @@ export function useVisualizationRevert({
       agentConfigurationId: string;
     }): Promise<boolean> => {
       try {
-        const response = await fetch(
+        const response = await clientFetch(
           `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages`,
           {
             method: "POST",
@@ -479,7 +480,7 @@ export function useVisualizationRetry({
       }
 
       try {
-        const response = await fetch(
+        const response = await clientFetch(
           `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages`,
           {
             method: "POST",
@@ -612,7 +613,7 @@ export function useConversationMarkAsRead({
      */
     async (conversationId: string, mutateList: boolean): Promise<void> => {
       try {
-        const response = await fetch(
+        const response = await clientFetch(
           `/api/w/${workspaceId}/assistant/conversations/${conversationId}`,
           {
             method: "PATCH",
@@ -629,13 +630,16 @@ export function useConversationMarkAsRead({
           throw new Error("Failed to mark conversation as read");
         }
         if (mutateList) {
-          void mutateConversations((prevState) => ({
-            ...prevState,
-            conversations:
-              prevState?.conversations.map((c) =>
-                c.sId === conversationId ? { ...c, unread: false } : c
-              ) ?? [],
-          }));
+          void mutateConversations(
+            (prevState) => ({
+              ...prevState,
+              conversations:
+                prevState?.conversations.map((c) =>
+                  c.sId === conversationId ? { ...c, unread: false } : c
+                ) ?? [],
+            }),
+            { revalidate: false }
+          );
         }
       } catch (error) {
         console.error("Error marking conversation as read:", error);
@@ -734,7 +738,7 @@ export const useJoinConversation = ({
       return false;
     }
     try {
-      const response = await fetch(
+      const response = await clientFetch(
         `/api/w/${ownerId}/assistant/conversations/${conversationId}/participants`,
         {
           method: "POST",
@@ -802,7 +806,7 @@ export function usePostOnboardingFollowUp({
         return false;
       }
       try {
-        const response = await fetch(
+        const response = await clientFetch(
           `/api/w/${workspaceId}/assistant/conversations/${conversationId}/onboarding-followup`,
           {
             method: "POST",

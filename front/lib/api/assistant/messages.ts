@@ -445,39 +445,34 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
             {
               model: UserMessage,
               as: "userMessage",
-              required: false,
+              required: true,
             },
           ],
         });
       }
 
-      assert(parentMessage !== null, "Parent message must be found.");
+      assert(!!parentMessage, "Parent message must be found.");
+      const userMessage = parentMessage.userMessage;
+      assert(!!userMessage, "Parent message must be a userMessage.");
 
       let parentAgentMessage: Message | null = null;
 
       // TODO(2025-11-24 PPUL): Remove this block once data has been backfilled
       if (
-        parentMessage &&
-        parentMessage?.userMessage &&
-        parentMessage.userMessage.userContextOrigin === "agent_handover" &&
-        parentMessage.userMessage.userContextOriginMessageId
+        userMessage.userContextOrigin === "agent_handover" &&
+        userMessage.userContextOriginMessageId
       ) {
         parentAgentMessage =
-          messagesBySId.get(
-            parentMessage.userMessage.userContextOriginMessageId
-          ) ?? null;
+          messagesBySId.get(userMessage.userContextOriginMessageId) ?? null;
       }
       // END TODO
 
       if (
-        parentMessage &&
-        parentMessage?.userMessage &&
-        parentMessage.userMessage.agenticMessageType === "agent_handover" &&
-        parentMessage.userMessage.agenticOriginMessageId
+        userMessage.agenticMessageType === "agent_handover" &&
+        userMessage.agenticOriginMessageId
       ) {
         parentAgentMessage =
-          messagesBySId.get(parentMessage.userMessage.agenticOriginMessageId) ??
-          null;
+          messagesBySId.get(userMessage.agenticOriginMessageId) ?? null;
       }
 
       const m = {

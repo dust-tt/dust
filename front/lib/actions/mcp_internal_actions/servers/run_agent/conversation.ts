@@ -135,9 +135,16 @@ export async function getOrCreateConversation(
   const parentMessage = mainConversation.content
     .flat()
     .find((m) => m.sId === originMessage.parentMessageId);
-  if (parentMessage && isUserMessageType(parentMessage)) {
-    parentOrigin = parentMessage.context.origin ?? null;
+
+  if (!parentMessage) {
+    return new Err(new MCPError("Parent message not found."));
   }
+
+  if (!isUserMessageType(parentMessage)) {
+    return new Err(new MCPError("Parent message is not a user message."));
+  }
+
+  parentOrigin = parentMessage.context.origin ?? null;
 
   if (parentOrigin === "run_agent" || parentOrigin === "agent_handover") {
     logger.error(

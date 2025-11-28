@@ -25,6 +25,11 @@ import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import {
+  AGENT_MENTION_REGEX,
+  serializeMention,
+  USER_MENTION_REGEX,
+} from "@app/lib/mentions/format";
+import {
   AgentMessage,
   ConversationModel,
   Message,
@@ -58,6 +63,7 @@ import type {
   ConversationWithoutContentType,
   LightAgentConfigurationType,
   MentionType,
+  MessageType,
   ModelId,
   PlanType,
   Result,
@@ -70,6 +76,7 @@ import {
   ConversationError,
   Err,
   isAgentMention,
+  isAgentMessageType,
   isContentFragmentInputWithContentNode,
   isContentFragmentType,
   isProviderWhitelisted,
@@ -78,6 +85,32 @@ import {
   Ok,
   removeNulls,
 } from "@app/types";
+
+import { getConversation } from "./conversation/fetch";
+
+function findOriginalParentUserMessage(
+  agentMessage: AgentMessageType,
+  conversation: ConversationType
+): UserMessageType {
+  const messagesBySId = new Map<string, MessageType>();
+  for (const message of conversation.content.flat()) {
+    messagesBySId.set(message.sId, message);
+  }
+
+  const parentMessage = messagesBySId.get(agentMessage.parentMessageId);
+  if (!parentMessage) {
+    throw new Error("Unreachable: parent message not found");
+  } else if (isUserMessageType(parentMessage)) {
+    return parentMessage;
+  } else if (
+    isAgentMessageType(parentMessage) ||
+    isContentFragmentType(parentMessage)
+  ) {
+    throw new Error("Unreachable: parent message must be a user message");
+  } else {
+    assertNever(parentMessage);
+  }
+}
 
 /**
  * Conversation Creation, update and deletion
@@ -312,7 +345,8 @@ export async function getLastUserMessage(
  * resulting in a potential deadlock when the pool is fully occupied.
  */
 async function getConversationRankVersionLock(
-  conversation: ConversationType,
+  auth: Authenticator,
+  conversation: ConversationWithoutContentType,
   t: Transaction
 ) {
   const now = new Date();
@@ -328,7 +362,7 @@ async function getConversationRankVersionLock(
 
   logger.info(
     {
-      workspaceId: conversation.owner.sId,
+      workspaceId: auth.getNonNullableWorkspace().sId,
       conversationId: conversation.sId,
       duration: new Date().getTime() - now.getTime(),
       lockKey,
@@ -503,7 +537,7 @@ export async function postUserMessage(
     // Since we are getting a transaction level lock, we can't execute any other SQL query outside of
     // this transaction, otherwise this other query will be competing for a connection in the database
     // connection pool, resulting in a deadlock.
-    await getConversationRankVersionLock(conversation, t);
+    await getConversationRankVersionLock(auth, conversation, t);
 
     // We clear the hasError flag of a conversation when posting a new user message.
     if (conversation.hasError) {
@@ -766,7 +800,7 @@ export async function editUserMessage(
       // Since we are getting a transaction level lock, we can't execute any other SQL query outside of
       // this transaction, otherwise this other query will be competing for a connection in the database
       // connection pool, resulting in a deadlock.
-      await getConversationRankVersionLock(conversation, t);
+      await getConversationRankVersionLock(auth, conversation, t);
 
       const messageRow = await Message.findOne({
         where: {
@@ -899,6 +933,99 @@ export async function editUserMessage(
 
 class AgentMessageError extends Error {}
 
+export async function handleAgentMessage(
+  auth: Authenticator,
+  {
+    conversation,
+    agentMessage,
+  }: {
+    conversation: ConversationWithoutContentType;
+    agentMessage: AgentMessageType;
+  }
+) {
+  if (!agentMessage.content) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Agent message content is required",
+      },
+    });
+  }
+  const agentMentions = [
+    ...agentMessage.content.matchAll(AGENT_MENTION_REGEX),
+  ].map((match) => ({ name: match[1], sId: match[2] }));
+  const userMentions = [
+    ...agentMessage.content.matchAll(USER_MENTION_REGEX),
+  ].map((match) => ({ name: match[1], sId: match[2] }));
+
+  if (agentMentions.length > 0 || userMentions.length > 0) {
+    const r = await getConversation(auth, conversation.sId);
+    if (r.isErr()) {
+      return new Err({
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Failed to get conversation",
+        },
+      });
+    }
+    const fullConversation = r.value;
+    await withTransaction(async (t) => {
+      // Create a handover user message for the agent mentions.
+      if (agentMentions.length > 0) {
+        const userMessage = await findOriginalParentUserMessage(
+          agentMessage,
+          fullConversation
+        );
+
+        const query = `${agentMentions
+          .map((m) => serializeMention({ name: m.name, sId: m.sId }))
+          .join(
+            " "
+          )} The user's query is being handed off to you from @${agentMessage.configuration.name} within the same conversation. The calling agent's instructions are: <caller_agent_instructions>${agentMessage.configuration.instructions ?? ""}</caller_agent_instructions>.`;
+
+        const messageRes = await postUserMessage(auth, {
+          conversation: fullConversation,
+          content: query,
+          mentions: agentMentions.map((m) => ({ configurationId: m.sId })),
+          context: {
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            username: agentMessage.configuration.name,
+            fullName: `@${agentMessage.configuration.name}`,
+            email: null,
+            profilePictureUrl: agentMessage.configuration.pictureUrl,
+            origin: userMessage.context.origin,
+          },
+          agenticMessageData: {
+            type: "agent_handover",
+            originMessageId: agentMessage.sId,
+          },
+          skipToolsValidation: false,
+        });
+        if (messageRes.isErr()) {
+          return new Err({
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Failed to post handoveruser message",
+            },
+          });
+        }
+      }
+
+      for (const m of userMentions) {
+        await createUserMentions(auth, {
+          mentions: [{ type: "user", userId: m.sId }],
+          message: agentMessage,
+          conversation,
+          transaction: t,
+        });
+      }
+    });
+  }
+}
+
 // This method is in charge of re-running an agent interaction (generating a new
 // AgentMessage as a result)
 export async function retryAgentMessage(
@@ -916,7 +1043,7 @@ export async function retryAgentMessage(
   } | null = null;
   try {
     agentMessageResult = await withTransaction(async (t) => {
-      await getConversationRankVersionLock(conversation, t);
+      await getConversationRankVersionLock(auth, conversation, t);
 
       // We clear the hasError flag of a conversation when retrying an agent message.
       if (conversation.hasError) {
@@ -1031,7 +1158,7 @@ export async function retryAgentMessage(
 
   const agentConfiguration = await getAgentConfiguration(auth, {
     agentId: agentMessage.configuration.sId,
-    variant: "full",
+    variant: "light",
   });
 
   assert(
@@ -1107,7 +1234,7 @@ export async function postNewContentFragment(
   }
 
   const { contentFragment, messageRow } = await withTransaction(async (t) => {
-    await getConversationRankVersionLock(conversation, t);
+    await getConversationRankVersionLock(auth, conversation, t);
 
     const fullBlob = {
       ...cfBlobRes.value,

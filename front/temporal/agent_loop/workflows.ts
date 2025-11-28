@@ -17,6 +17,7 @@ import type * as analyticsActivities from "@app/temporal/agent_loop/activities/a
 import type * as commonActivities from "@app/temporal/agent_loop/activities/common";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import type * as instrumentationActivities from "@app/temporal/agent_loop/activities/instrumentation";
+import type * as mentionsActivities from "@app/temporal/agent_loop/activities/mentions";
 import type * as notificationActivities from "@app/temporal/agent_loop/activities/notification";
 import type * as publishDeferredEventsActivities from "@app/temporal/agent_loop/activities/publish_deferred_events";
 import type * as runModelAndCreateWrapperActivities from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
@@ -88,6 +89,10 @@ const { conversationUnreadNotificationActivity } = proxyActivities<
   retry: {
     maximumAttempts: 1,
   },
+});
+
+const { handleMentionsActivity } = proxyActivities<typeof mentionsActivities>({
+  startToCloseTimeout: "3 minutes",
 });
 
 const { ensureConversationTitleActivity } = proxyActivities<
@@ -249,6 +254,7 @@ export async function agentLoopWorkflow({
           launchAgentMessageAnalyticsActivity(authType, agentLoopArgs),
           trackProgrammaticUsageActivity(authType, agentLoopArgs),
           conversationUnreadNotificationActivity(authType, agentLoopArgs),
+          handleMentionsActivity(authType, agentLoopArgs),
         ]);
       });
     });

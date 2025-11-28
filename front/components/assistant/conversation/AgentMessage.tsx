@@ -100,7 +100,6 @@ import type {
 import {
   assertNever,
   GLOBAL_AGENTS_SID,
-  isAgentMessageType,
   isInteractiveContentFileContentType,
   isPersonalAuthenticationRequiredErrorContent,
   isSupportedImageContentType,
@@ -156,15 +155,6 @@ export function AgentMessage({
     workspaceId: owner.sId,
     messageId: sId,
     options: { disabled: true },
-  });
-
-  const parentAgentMessage = useConversationMessage({
-    conversationId,
-    workspaceId: owner.sId,
-    messageId: messageStreamState.message.parentAgentMessageId,
-    options: {
-      disabled: messageStreamState.message.parentAgentMessageId === null,
-    },
   });
 
   const { shouldStream } = useAgentMessageStream({
@@ -401,9 +391,23 @@ export function AgentMessage({
     .get()
     .some(
       (m) =>
+        isUserMessage(m) &&
         isHandoverUserMessage(m) &&
         m.agenticMessageData?.originMessageId === sId
     );
+
+  const parentAgentMessage = methods.data
+    .get()
+    .find(
+      (m) =>
+        isMessageTemporayState(m) &&
+        m.message.sId === messageStreamState.message.parentAgentMessageId
+    );
+
+  const parentAgent =
+    parentAgentMessage && isMessageTemporayState(parentAgentMessage)
+      ? parentAgentMessage.message.configuration
+      : null;
 
   if (
     !isDeleted &&
@@ -548,14 +552,6 @@ export function AgentMessage({
 
   const canMention = agentConfiguration.canRead;
   const isArchived = agentConfiguration.status === "archived";
-
-  let parentAgent = null;
-  if (
-    parentAgentMessage.message &&
-    isAgentMessageType(parentAgentMessage.message)
-  ) {
-    parentAgent = parentAgentMessage.message.configuration;
-  }
 
   const renderName = useCallback(
     () => (
