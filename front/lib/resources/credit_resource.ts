@@ -194,9 +194,6 @@ export class CreditResource extends BaseResource<CreditModel> {
     if (amountInCents <= 0) {
       return new Err(new Error("Amount to consume must be strictly positive."));
     }
-    if (this.consumedAmountCents > this.initialAmountCents) {
-      return new Err(new Error("Credit has already been consumed."));
-    }
     const now = new Date();
     // Note: Sequelize's increment() returns [affectedRows[], affectedCount] but
     // affectedCount is unreliable for PostgreSQL. We check affectedRows.length instead.
@@ -205,6 +202,8 @@ export class CreditResource extends BaseResource<CreditModel> {
       where: {
         id: this.id,
         workspaceId: this.workspaceId,
+        // Credit must not be over-consumed (atomic check to avoid race conditions)
+        consumedAmountCents: { [Op.lte]: Sequelize.col("initialAmountCents") },
         // Credit must be started (startDate not null and <= now)
         startDate: { [Op.ne]: null, [Op.lte]: now },
         // Credit must not be expired
@@ -218,7 +217,7 @@ export class CreditResource extends BaseResource<CreditModel> {
     if (!affectedRows || affectedRows.length < 1) {
       return new Err(
         new Error(
-          "Insufficient credit on this line, or credit not yet started/already expired."
+          "Credit already consumed, not yet started, or already expired."
         )
       );
     }
