@@ -569,27 +569,13 @@ async function handler(
                   currentPeriod.success,
                   "Unexpected current period missing or malformed"
                 );
-                const paygAllocationResult =
-                  await allocatePAYGCreditsOnCycleRenewal({
-                    auth,
-                    nextPeriodStartSeconds:
-                      currentPeriod.data.current_period_start,
-                    nextPeriodEndSeconds: currentPeriod.data.current_period_end,
-                  });
+                await allocatePAYGCreditsOnCycleRenewal({
+                  auth,
+                  nextPeriodStartSeconds:
+                    currentPeriod.data.current_period_start,
+                  nextPeriodEndSeconds: currentPeriod.data.current_period_end,
+                });
 
-                if (paygAllocationResult.isErr()) {
-                  logger.error(
-                    {
-                      panic: true,
-                      stripeError: true,
-                      error: paygAllocationResult.error,
-                      subscriptionId: stripeSubscription.id,
-                      workspaceId: subscription.workspace.sId,
-                    },
-                    "[Stripe Webhook] Error allocating PAYG credits for new cycle"
-                  );
-                }
-                // Invoice PAYG credits in arrears for enterprise subscriptions
                 const previousPeriod =
                   StripeBillingPeriodSchema.safeParse(previousAttributes);
                 assert(

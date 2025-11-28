@@ -21,13 +21,13 @@ export async function allocatePAYGCreditsOnCycleRenewal({
   auth: Authenticator;
   nextPeriodStartSeconds: number;
   nextPeriodEndSeconds: number;
-}): Promise<Result<undefined, Error>> {
+}): Promise<void> {
   const workspace = auth.getNonNullableWorkspace();
 
   const config =
     await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
   if (!config || config.paygCapCents === null) {
-    return new Ok(undefined);
+    return;
   }
 
   const nextPeriodStartDate = new Date(nextPeriodStartSeconds * 1000);
@@ -45,7 +45,7 @@ export async function allocatePAYGCreditsOnCycleRenewal({
       { workspaceId: workspace.sId, creditId: existingCredit.id },
       "[Credit PAYG] Credit already exists for this period, skipping allocation"
     );
-    return new Ok(undefined);
+    return;
   }
   const featureFlags = await getFeatureFlags(workspace);
   if (!featureFlags.includes("ppul")) {
@@ -58,7 +58,7 @@ export async function allocatePAYGCreditsOnCycleRenewal({
       },
       "[Credit PAYG] PPUL flag OFF - stopping here."
     );
-    return new Ok(undefined);
+    return;
   }
 
   const credit = await CreditResource.makeNew(auth, {
@@ -82,7 +82,7 @@ export async function allocatePAYGCreditsOnCycleRenewal({
       },
       "[Credit PAYG] Credit already started, skipping"
     );
-    return new Ok(undefined);
+    return;
   }
 
   logger.info(
@@ -95,7 +95,7 @@ export async function allocatePAYGCreditsOnCycleRenewal({
     "[Credit PAYG] Allocated new PAYG credit for billing cycle"
   );
 
-  return new Ok(undefined);
+  return;
 }
 
 export async function isPAYGEnabled(auth: Authenticator): Promise<boolean> {
