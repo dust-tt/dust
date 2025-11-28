@@ -1,4 +1,3 @@
-import assert from "assert";
 import type {
   Attributes,
   CreationAttributes,
@@ -118,7 +117,6 @@ export class CreditResource extends BaseResource<CreditModel> {
 
   static async listActive(auth: Authenticator, fromDate: Date = new Date()) {
     const now = new Date();
-    assert(this.model.sequelize, "Unexpected sequelize undefined");
     return this.baseFetch(auth, {
       where: {
         // Credit must have remaining balance (consumed < initial)
