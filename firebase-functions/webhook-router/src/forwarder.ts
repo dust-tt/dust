@@ -37,7 +37,9 @@ export class WebhookForwarder {
 
     const requests = targets
       .filter(({ region }) => regions.includes(region))
-      .map((target) => this.forwardToTarget({ target, endpoint, method, body, headers }));
+      .map((target) =>
+        this.forwardToTarget({ target, endpoint, method, body, headers })
+      );
 
     return Promise.allSettled(requests);
   }

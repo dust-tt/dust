@@ -19,7 +19,9 @@ type WebhookRouterConfigEntry = {
  *   regions: ["us-central1", "europe-west1"]
  * }
  */
-function isValidWebhookRouterConfigEntry(value: unknown): value is WebhookRouterConfigEntry {
+function isValidWebhookRouterConfigEntry(
+  value: unknown
+): value is WebhookRouterConfigEntry {
   return (
     value !== null &&
     typeof value === "object" &&
@@ -27,15 +29,23 @@ function isValidWebhookRouterConfigEntry(value: unknown): value is WebhookRouter
     typeof value.signingSecret === "string" &&
     "regions" in value &&
     Array.isArray(value.regions) &&
-    value.regions.every((region: unknown) => typeof region === "string" && ALL_REGIONS.includes(region as Region))
+    value.regions.every(
+      (region: unknown) =>
+        typeof region === "string" && ALL_REGIONS.includes(region as Region)
+    )
   );
 }
 
 export class WebhookRouterConfigManager {
   constructor(private client: Database) {}
 
-  async getEntry(provider: ProviderWithSigningSecret, providerWorkspaceId: string): Promise<WebhookRouterConfigEntry> {
-    const configSnapshot = await this.client.ref(`${provider}/${providerWorkspaceId}`).get();
+  async getEntry(
+    provider: ProviderWithSigningSecret,
+    providerWorkspaceId: string
+  ): Promise<WebhookRouterConfigEntry> {
+    const configSnapshot = await this.client
+      .ref(`${provider}/${providerWorkspaceId}`)
+      .get();
     if (!configSnapshot.exists()) {
       throw new Error(
         `No ${provider} webhook router configuration found in database for providerWorkspaceId ${providerWorkspaceId}`
