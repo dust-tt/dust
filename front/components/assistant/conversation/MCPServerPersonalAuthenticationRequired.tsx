@@ -6,7 +6,9 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+import { getIcon } from "@app/components/resources/resources_icons";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
+import type { MCPServerType } from "@app/lib/api/mcp";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import {
   useCreatePersonalConnection,
@@ -33,6 +35,7 @@ export function MCPServerPersonalAuthenticationRequired({
     owner,
     serverId: mcpServerId,
   });
+
   const { createPersonalConnection } = useCreatePersonalConnection(owner);
 
   const { submit: retry } = useSubmitFunction(async () => retryHandler());
@@ -40,47 +43,63 @@ export function MCPServerPersonalAuthenticationRequired({
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [isConnecting, setIsConnecting] = useState<boolean>(false);
 
+  const icon = mcpServer?.icon
+    ? getIcon(mcpServer.icon)
+    : InformationCircleIcon;
+
+  const onConnectClick = async (mcpServer: MCPServerType) => {
+    setIsConnecting(true);
+
+    const success = await createPersonalConnection({
+      mcpServerId: mcpServer.sId,
+      mcpServerDisplayName: getMcpServerDisplayName(mcpServer),
+      provider,
+      useCase: "personal_actions",
+      scope,
+    });
+
+    setIsConnecting(false);
+
+    if (!success) {
+      setIsConnected(false);
+    } else {
+      setIsConnected(true);
+      await retry();
+    }
+  };
+
   return (
     <ContentMessage
       title={
         isConnected
           ? "Connected successfully"
-          : "Personal authentication required"
+          : `${mcpServer && mcpServer.name ? getMcpServerDisplayName(mcpServer) : "Personal authentication required"}`
       }
-      variant={isConnected ? "success" : "info"}
-      className="flex flex-col gap-3"
-      icon={InformationCircleIcon}
+      variant={isConnected ? "success" : "primary"}
+      className="flex w-80 flex-col gap-3"
+      icon={icon}
     >
-      <div className="whitespace-normal break-words">
-        {isConnected
-          ? "You are now connected. Automatically retrying..."
-          : "The agent took an action that requires personal authentication."}
+      <div className="font-sm whitespace-normal break-words text-foreground dark:text-foreground-night">
+        {isConnected && "You are now connected. Automatically retrying..."}
+        {!isConnected && (
+          <>
+            {`Your agent is trying to use ${mcpServer && mcpServer.name ? getMcpServerDisplayName(mcpServer) : "a tool"}.`}
+            <br />
+            <span className="font-semibold">
+              Connect your account to continue.
+            </span>
+          </>
+        )}
       </div>
       {!isConnected && mcpServer && (
-        <div className="flex flex-col gap-2 pt-3 sm:flex-row">
+        <div className="mt-3 flex flex-col justify-end sm:flex-row">
           <Button
             label="Connect"
-            variant="outline"
+            variant="highlight"
             size="xs"
             icon={CloudArrowLeftRightIcon}
             disabled={isConnecting}
-            onClick={async () => {
-              setIsConnecting(true);
-              const success = await createPersonalConnection({
-                mcpServerId: mcpServer.sId,
-                mcpServerDisplayName: getMcpServerDisplayName(mcpServer),
-                provider,
-                useCase: "personal_actions",
-                scope,
-              });
-              setIsConnecting(false);
-              if (!success) {
-                setIsConnected(false);
-              } else {
-                setIsConnected(true);
-                await retry();
-              }
-            }}
+            onClick={() => void onConnectClick(mcpServer)}
           />
         </div>
       )}
