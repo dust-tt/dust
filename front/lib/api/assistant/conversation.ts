@@ -736,15 +736,18 @@ export async function postUserMessage(
       }
 
       const agentMessagesResult = await createAgentMessages({
-        mentions,
-        agentConfigurations,
-        message: m,
         owner,
-        transaction: t,
-        skipToolsValidation,
-        nextMessageRank,
         conversation,
-        userMessage,
+        metadata: {
+          type: "create",
+          mentions,
+          agentConfigurations,
+          message: m,
+          skipToolsValidation,
+          nextMessageRank,
+          userMessage,
+        },
+        transaction: t,
       });
 
       await updateConversationRequirements(auth, {
@@ -1053,15 +1056,18 @@ export async function editUserMessage(
       });
 
       const agentMessagesResult = await createAgentMessages({
-        mentions,
-        agentConfigurations,
-        message: m,
         owner,
-        transaction: t,
-        skipToolsValidation,
-        nextMessageRank,
         conversation,
-        userMessage,
+        metadata: {
+          type: "create",
+          mentions,
+          agentConfigurations,
+          message: m,
+          skipToolsValidation,
+          nextMessageRank,
+          userMessage,
+        },
+        transaction: t,
       });
 
       await updateConversationRequirements(auth, {
