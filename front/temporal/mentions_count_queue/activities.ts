@@ -8,7 +8,7 @@ export async function mentionsCountActivity(workspaceId: string) {
   const r = await agentMentionsCount(workspaceId);
 
   if (r.isErr()) {
-    return;
+    throw r.error;
   }
 
   await runOnRedis({ origin: "mentions_count" }, (redis) =>
