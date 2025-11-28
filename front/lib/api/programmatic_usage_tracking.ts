@@ -215,8 +215,12 @@ export async function decreaseProgrammaticCreditsV2(
     if (!credit) {
       // A simple warn suffices; tokens have already been consumed.
       logger.warn(
-        { amount, workspaceId: auth.getNonNullableWorkspace().sId },
-        "Message cost exceeded remaining credits."
+        {
+          initialAmount: amount,
+          remainingAmount,
+          workspaceId: auth.getNonNullableWorkspace().sId,
+        },
+        "No more credits available for this message cost."
       );
       break;
     }
@@ -224,7 +228,19 @@ export async function decreaseProgrammaticCreditsV2(
       remainingAmount,
       credit.initialAmountCents - credit.consumedAmountCents
     );
-    await credit.consume(amountToConsume);
+    const result = await credit.consume(amountToConsume);
+    if (result.isErr()) {
+      logger.error(
+        {
+          amount: amountToConsume,
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          panic: true,
+          error: result.error,
+        },
+        "Error consuming credit."
+      );
+      break;
+    }
     remainingAmount -= amountToConsume;
   }
 }
@@ -298,7 +314,9 @@ export async function trackProgrammaticCost(
     auth.getNonNullableWorkspace(),
     runsCostCents
   );
-  const costWithMarkup = runsCostCents * (1 + DUST_MARKUP_PERCENT / 100);
+  const costWithMarkup = Math.ceil(
+    runsCostCents * (1 + DUST_MARKUP_PERCENT / 100)
+  );
   await decreaseProgrammaticCreditsV2(auth, costWithMarkup);
 }
 
@@ -347,10 +365,10 @@ export function compareCreditsForConsumption(
     return 1;
   }
   if (a.type === "committed" && b.type !== "committed") {
-    return 1;
+    return -1;
   }
   if (a.type !== "committed" && b.type === "committed") {
-    return -1;
+    return 1;
   }
 
   // TODO(PPUL): in following PR, we will make expiration date non-nullable.

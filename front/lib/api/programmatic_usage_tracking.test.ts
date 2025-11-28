@@ -39,12 +39,12 @@ describe("compareCreditsForConsumption", () => {
       expect(compareCreditsForConsumption(committed, free)).toBeGreaterThan(0);
     });
 
-    it("should prioritize payg over committed", () => {
-      const payg = makeMockCredit("payg", NOW);
+    it("should prioritize committed over payg", () => {
       const committed = makeMockCredit("committed", NOW);
+      const payg = makeMockCredit("payg", NOW);
 
-      expect(compareCreditsForConsumption(payg, committed)).toBeLessThan(0);
-      expect(compareCreditsForConsumption(committed, payg)).toBeGreaterThan(0);
+      expect(compareCreditsForConsumption(committed, payg)).toBeLessThan(0);
+      expect(compareCreditsForConsumption(payg, committed)).toBeGreaterThan(0);
     });
   });
 
@@ -95,19 +95,19 @@ describe("compareCreditsForConsumption", () => {
       expect(compareCreditsForConsumption(free, payg)).toBeLessThan(0);
     });
 
-    it("should prioritize payg over committed even with later expiration", () => {
-      const payg = makeMockCredit(
-        "payg",
+    it("should prioritize committed over payg even with later expiration", () => {
+      const committed = makeMockCredit(
+        "committed",
         new Date(NOW.getTime() + 30 * ONE_DAY)
       );
-      const committed = makeMockCredit("committed", NOW);
+      const payg = makeMockCredit("payg", NOW);
 
-      expect(compareCreditsForConsumption(payg, committed)).toBeLessThan(0);
+      expect(compareCreditsForConsumption(committed, payg)).toBeLessThan(0);
     });
   });
 
   describe("sorting an array of credits", () => {
-    it("should sort credits correctly: free first, then payg, then committed, by expiration", () => {
+    it("should sort credits correctly: free first, then committed, then payg, by expiration", () => {
       const credits = [
         makeMockCredit("committed", new Date(NOW.getTime() + ONE_DAY)),
         makeMockCredit("payg", new Date(NOW.getTime() + 2 * ONE_DAY)),
@@ -124,15 +124,15 @@ describe("compareCreditsForConsumption", () => {
       expect(sorted[0].expirationDate).toEqual(NOW);
       expect(sorted[1].type).toBe("free");
 
-      // Then payg (by expiration)
-      expect(sorted[2].type).toBe("payg");
-      expect(sorted[2].expirationDate).toEqual(NOW);
-      expect(sorted[3].type).toBe("payg");
-
       // Then committed (by expiration)
-      expect(sorted[4].type).toBe("committed");
+      expect(sorted[2].type).toBe("committed");
+      expect(sorted[2].expirationDate).toEqual(NOW);
+      expect(sorted[3].type).toBe("committed");
+
+      // Then payg (by expiration)
+      expect(sorted[4].type).toBe("payg");
       expect(sorted[4].expirationDate).toEqual(NOW);
-      expect(sorted[5].type).toBe("committed");
+      expect(sorted[5].type).toBe("payg");
     });
   });
 });
@@ -250,40 +250,40 @@ describe("decreaseProgrammaticCreditsV2", () => {
       expect(refreshedPayg.consumedAmountCents).toBe(0);
     });
 
-    it("should consume payg credits before committed", async () => {
-      const paygCredit = await createCredit(
-        "payg",
+    it("should consume committed credits before payg", async () => {
+      const committedCredit = await createCredit(
+        "committed",
         500,
         new Date(Date.now() + ONE_YEAR)
       );
-      const committedCredit = await createCredit(
-        "committed",
+      const paygCredit = await createCredit(
+        "payg",
         500,
         new Date(Date.now() + ONE_YEAR)
       );
 
       await decreaseProgrammaticCreditsV2(auth, 300);
 
-      const refreshedPayg = await refreshCredit(paygCredit);
       const refreshedCommitted = await refreshCredit(committedCredit);
+      const refreshedPayg = await refreshCredit(paygCredit);
 
-      expect(refreshedPayg.consumedAmountCents).toBe(300);
-      expect(refreshedCommitted.consumedAmountCents).toBe(0);
+      expect(refreshedCommitted.consumedAmountCents).toBe(300);
+      expect(refreshedPayg.consumedAmountCents).toBe(0);
     });
 
-    it("should consume in order: free -> payg -> committed", async () => {
+    it("should consume in order: free -> committed -> payg", async () => {
       const freeCredit = await createCredit(
         "free",
         200,
         new Date(Date.now() + ONE_YEAR)
       );
-      const paygCredit = await createCredit(
-        "payg",
+      const committedCredit = await createCredit(
+        "committed",
         200,
         new Date(Date.now() + ONE_YEAR)
       );
-      const committedCredit = await createCredit(
-        "committed",
+      const paygCredit = await createCredit(
+        "payg",
         200,
         new Date(Date.now() + ONE_YEAR)
       );
@@ -291,12 +291,12 @@ describe("decreaseProgrammaticCreditsV2", () => {
       await decreaseProgrammaticCreditsV2(auth, 500);
 
       const refreshedFree = await refreshCredit(freeCredit);
-      const refreshedPayg = await refreshCredit(paygCredit);
       const refreshedCommitted = await refreshCredit(committedCredit);
+      const refreshedPayg = await refreshCredit(paygCredit);
 
       expect(refreshedFree.consumedAmountCents).toBe(200);
-      expect(refreshedPayg.consumedAmountCents).toBe(200);
-      expect(refreshedCommitted.consumedAmountCents).toBe(100);
+      expect(refreshedCommitted.consumedAmountCents).toBe(200);
+      expect(refreshedPayg.consumedAmountCents).toBe(100);
     });
   });
 
@@ -396,24 +396,24 @@ describe("decreaseProgrammaticCreditsV2", () => {
         new Date(Date.now() + ONE_MONTH)
       );
 
-      // Consume 350 cents - should go through:
+      // Consume 350 cents - should go through (order: free -> committed -> payg):
       // 1. freeEarlier (100)
       // 2. freeLater (100)
-      // 3. paygEarlier (100)
-      // 4. paygLater (50)
+      // 3. committedEarlier (100)
+      // 4. paygEarlier (50)
       await decreaseProgrammaticCreditsV2(auth, 350);
 
       const refreshedFreeEarlier = await refreshCredit(freeEarlier);
       const refreshedFreeLater = await refreshCredit(freeLater);
+      const refreshedCommittedEarlier = await refreshCredit(committedEarlier);
       const refreshedPaygEarlier = await refreshCredit(paygEarlier);
       const refreshedPaygLater = await refreshCredit(paygLater);
-      const refreshedCommittedEarlier = await refreshCredit(committedEarlier);
 
       expect(refreshedFreeEarlier.consumedAmountCents).toBe(100);
       expect(refreshedFreeLater.consumedAmountCents).toBe(100);
-      expect(refreshedPaygEarlier.consumedAmountCents).toBe(100);
-      expect(refreshedPaygLater.consumedAmountCents).toBe(50);
-      expect(refreshedCommittedEarlier.consumedAmountCents).toBe(0);
+      expect(refreshedCommittedEarlier.consumedAmountCents).toBe(100);
+      expect(refreshedPaygEarlier.consumedAmountCents).toBe(50);
+      expect(refreshedPaygLater.consumedAmountCents).toBe(0);
     });
   });
 });

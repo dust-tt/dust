@@ -180,12 +180,22 @@ export class CreditResource extends BaseResource<CreditModel> {
     return row ?? null;
   }
 
+  /**
+   * Consume a given amount of credits, allowing for over-consumption.
+   * This is because users consume credits after Dust has spent the tokens,
+   * so it's not possible to preemptively block consumption.
+   *
+   * Over-consumption should however stay minimal
+   */
   async consume(
     amountInCents: number,
     { transaction }: { transaction?: Transaction } = {}
   ) {
     if (amountInCents <= 0) {
       return new Err(new Error("Amount to consume must be strictly positive."));
+    }
+    if (this.consumedAmountCents > this.initialAmountCents) {
+      return new Err(new Error("Credit has already been consumed."));
     }
     const now = new Date();
     const [, affectedCount] = await this.model.increment(
@@ -195,13 +205,6 @@ export class CreditResource extends BaseResource<CreditModel> {
         where: {
           id: this.id,
           workspaceId: this.workspaceId,
-          // Ensure sufficient remaining balance (consumed + amount <= initial)
-          [Op.and]: [
-            Sequelize.where(
-              Sequelize.literal('"initialAmountCents" - "consumedAmountCents"'),
-              { [Op.gte]: amountInCents }
-            ),
-          ],
           // Credit must be started (startDate not null and <= now)
           startDate: { [Op.ne]: null, [Op.lte]: now },
           // Credit must not be expired
