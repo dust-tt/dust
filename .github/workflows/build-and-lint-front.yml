@@ -22,8 +22,24 @@ jobs:
           node-version: 20.13.0
           cache: "npm"
           cache-dependency-path: |
-            ./front/package-lock.json
-            ./sdks/js/package-lock.json
+            sdks/js/package-lock.json
+            front/package-lock.json
+      - name: Cache SDK/JS node_modules
+        id: cache-sdkjs-tests
+        uses: actions/cache@v3
+        with:
+          path: sdks/js/node_modules
+          key: sdkjs-node-modules-${{ runner.os }}-${{ hashFiles('sdks/js/package-lock.json') }}
+          restore-keys: |
+            sdkjs-node-modules-${{ runner.os }}-
+      - name: Cache Front node_modules
+        id: cache-front-tests
+        uses: actions/cache@v3
+        with:
+          path: front/node_modules
+          key: front-node-modules-${{ runner.os }}-${{ hashFiles('front/package-lock.json') }}
+          restore-keys: |
+            front-node-modules-${{ runner.os }}-
       - name: Build SDK/JS
         working-directory: sdks/js
         run: npm install && npm run build
@@ -71,8 +87,24 @@ jobs:
           node-version: 20.13.0
           cache: "npm"
           cache-dependency-path: |
-            ./front/package-lock.json
-            ./sdks/js/package-lock.json
+            sdks/js/package-lock.json
+            front/package-lock.json
+      - name: Cache SDK/JS node_modules
+        id: cache-sdkjs-tsc
+        uses: actions/cache@v3
+        with:
+          path: sdks/js/node_modules
+          key: sdkjs-node-modules-${{ runner.os }}-${{ hashFiles('sdks/js/package-lock.json') }}
+          restore-keys: |
+            sdkjs-node-modules-${{ runner.os }}-
+      - name: Cache Front node_modules
+        id: cache-front-tsc
+        uses: actions/cache@v3
+        with:
+          path: front/node_modules
+          key: front-node-modules-${{ runner.os }}-${{ hashFiles('front/package-lock.json') }}
+          restore-keys: |
+            front-node-modules-${{ runner.os }}-
       - name: Build SDK/JS
         working-directory: sdks/js
         run: npm install && npm run build
@@ -91,8 +123,24 @@ jobs:
           node-version: 20.13.0
           cache: "npm"
           cache-dependency-path: |
-            ./front/package-lock.json
-            ./sdks/js/package-lock.json
+            sdks/js/package-lock.json
+            front/package-lock.json
+      - name: Cache SDK/JS node_modules
+        id: cache-sdkjs-lint
+        uses: actions/cache@v3
+        with:
+          path: sdks/js/node_modules
+          key: sdkjs-node-modules-${{ runner.os }}-${{ hashFiles('sdks/js/package-lock.json') }}
+          restore-keys: |
+            sdkjs-node-modules-${{ runner.os }}-
+      - name: Cache Front node_modules
+        id: cache-front-lint
+        uses: actions/cache@v3
+        with:
+          path: front/node_modules
+          key: front-node-modules-${{ runner.os }}-${{ hashFiles('front/package-lock.json') }}
+          restore-keys: |
+            front-node-modules-${{ runner.os }}-
       - name: Cache ESLint
         uses: actions/cache@v3
         with:
