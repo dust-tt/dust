@@ -77,7 +77,25 @@ jobs:
         working-directory: front
         env:
           NODE_OPTIONS: "--max-old-space-size=8192"
-        run: npm run lint && npm run format:check
+        run: |
+          set -e
+          npm run lint &
+          lint_pid=$!
+          npm run format:check &
+          format_pid=$!
+          npm run circular &
+          biome_pid=$!
+
+          wait $lint_pid
+          lint_exit=$?
+          wait $format_pid
+          format_exit=$?
+          wait $biome_pid
+          biome_exit=$?
+
+          if [ $lint_exit -ne 0 ] || [ $format_exit -ne 0 ] || [ $biome_exit -ne 0 ]; then
+            exit 1
+          fi
       - name: Knip - unlisted dependencies
         working-directory: front
         run: |
