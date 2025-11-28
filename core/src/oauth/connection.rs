@@ -2,7 +2,7 @@ use crate::oauth::{
     credential::CredentialProvider,
     encryption::{seal_str, unseal_str},
     providers::{
-        confluence::ConfluenceConnectionProvider,
+        asana::AsanaConnectionProvider, confluence::ConfluenceConnectionProvider,
         confluence_tools::ConfluenceToolsConnectionProvider, discord::DiscordConnectionProvider,
         fathom::FathomConnectionProvider, freshservice::FreshserviceConnectionProvider,
         github::GithubConnectionProvider, gmail::GmailConnectionProvider,
@@ -96,6 +96,7 @@ impl std::error::Error for ConnectionError {}
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ConnectionProvider {
+    Asana,
     Confluence,
     ConfluenceTools,
     Discord,
@@ -241,6 +242,7 @@ pub trait Provider {
 
 pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
     match t {
+        ConnectionProvider::Asana => Box::new(AsanaConnectionProvider::new()),
         ConnectionProvider::Confluence => Box::new(ConfluenceConnectionProvider::new()),
         ConnectionProvider::ConfluenceTools => Box::new(ConfluenceToolsConnectionProvider::new()),
         ConnectionProvider::Discord => Box::new(DiscordConnectionProvider::new()),
