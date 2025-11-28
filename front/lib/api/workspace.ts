@@ -218,15 +218,20 @@ export async function searchMembers(
     );
     total = users.length;
   } else {
-    const results = await UserResource.listUsersWithEmailPredicat(
+    const results = await UserResource.searchUsers({
       owner,
-      {
-        email: options.searchTerm,
-      },
-      paginationParams
-    );
-    users = results.users;
-    total = results.total;
+      searchTerm: options.searchTerm ?? "",
+      offset: paginationParams.offset,
+      limit: paginationParams.limit,
+    });
+
+    if (results.isErr()) {
+      logger.error({ err: results.error }, "Error searching users");
+      return { members: [], total: 0 };
+    }
+
+    users = results.value.users;
+    total = results.value.total;
   }
 
   const usersWithWorkspace = await Promise.all(

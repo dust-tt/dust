@@ -15,12 +15,7 @@ import { useController, useFormContext } from "react-hook-form";
 import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import { getDefaultInternalToolStakeLevel } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
-import {
-  CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS,
-  MCP_TOOL_STAKE_LEVELS,
-} from "@app/lib/actions/constants";
-import { isRemoteMCPServerType } from "@app/lib/actions/mcp_helper";
-import { getDefaultRemoteMCPServerByURL } from "@app/lib/actions/mcp_internal_actions/remote_servers";
+import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { LightWorkspaceType } from "@app/types";
 import { asDisplayName, isAdmin } from "@app/types";
@@ -148,19 +143,7 @@ export function ToolsList({
     [mcpServerView.server.tools]
   );
 
-  const getAvailableStakeLevelsForTool = (
-    toolName: string
-  ): MCPToolStakeLevelType[] => {
-    if (isRemoteMCPServerType(mcpServerView.server)) {
-      const defaultRemoteServer = getDefaultRemoteMCPServerByURL(
-        mcpServerView.server.url
-      );
-      // We only allow users to set the "never_ask" stake level for tools that are configured with it in the default server.
-      if (defaultRemoteServer?.toolStakes?.[toolName] === "never_ask") {
-        return [...CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS, "never_ask"];
-      }
-      return [...CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS];
-    }
+  const getAvailableStakeLevels = (): MCPToolStakeLevelType[] => {
     return [...MCP_TOOL_STAKE_LEVELS];
   };
 
@@ -192,9 +175,7 @@ export function ToolsList({
           <div className="flex flex-col gap-4">
             {tools.map(
               (tool: { name: string; description: string }, index: number) => {
-                const availableStakeLevels = getAvailableStakeLevelsForTool(
-                  tool.name
-                );
+                const availableStakeLevels = getAvailableStakeLevels();
                 const metadata = mcpServerView.toolsMetadata?.find(
                   (m) => m.toolName === tool.name
                 );

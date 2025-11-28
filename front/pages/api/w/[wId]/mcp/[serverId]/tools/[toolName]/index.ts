@@ -2,16 +2,11 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
-import {
-  CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS,
-  MCP_TOOL_STAKE_LEVELS,
-} from "@app/lib/actions/constants";
+import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
-import { getDefaultRemoteMCPServerByURL } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
-import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
@@ -67,7 +62,7 @@ async function handler(
 
   switch (req.method) {
     case "PATCH": {
-      const { serverType, id } = getServerTypeAndIdFromSId(serverId);
+      const { id } = getServerTypeAndIdFromSId(serverId);
       if (!id) {
         return apiError(req, res, {
           status_code: 400,
@@ -89,36 +84,6 @@ async function handler(
       }
 
       const { permission, enabled } = r.data;
-
-      if (serverType === "remote" && permission !== undefined) {
-        if (!CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS.includes(permission as any)) {
-          const remoteMCPServer = await RemoteMCPServerResource.findByPk(
-            auth,
-            id
-          );
-          if (!remoteMCPServer) {
-            return apiError(req, res, {
-              status_code: 404,
-              api_error: {
-                type: "data_source_not_found",
-                message: "Remote MCP server not found.",
-              },
-            });
-          }
-          const defaultServerConfig = getDefaultRemoteMCPServerByURL(
-            remoteMCPServer.url
-          );
-          if (defaultServerConfig?.toolStakes?.[toolName] !== permission) {
-            return apiError(req, res, {
-              status_code: 400,
-              api_error: {
-                type: "invalid_request_error",
-                message: `The '${permission}' permission is only allowed for tools pre-configured with this setting in default servers.`,
-              },
-            });
-          }
-        }
-      }
 
       await RemoteMCPServerToolMetadataResource.updateOrCreateSettings(auth, {
         serverSId: serverId,
