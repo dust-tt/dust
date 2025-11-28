@@ -125,7 +125,11 @@ async function addFreeCredits(
     await credit.start(new Date(), expirationDate);
 
     logger.info(
-      { creditId: credit.id, workspaceSId: workspace.sId, workspaceId: workspace.id },
+      {
+        creditId: credit.id,
+        workspaceSId: workspace.sId,
+        workspaceId: workspace.id,
+      },
       "Added credit to workspace"
     );
     addedCount++;
@@ -209,9 +213,7 @@ makeScript(
 
       const expirationDate = endDate
         ? parseDate(endDate)
-        : new Date(
-            Date.now() + DEFAULT_EXPIRATION_DAYS * 24 * 60 * 60 * 1000
-          );
+        : new Date(Date.now() + DEFAULT_EXPIRATION_DAYS * 24 * 60 * 60 * 1000);
 
       await addFreeCredits(execute, amountCents, expirationDate);
     } else if (action === "remove") {
