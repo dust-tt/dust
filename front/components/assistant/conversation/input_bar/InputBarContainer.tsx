@@ -48,6 +48,7 @@ import type {
 } from "@app/types";
 import { assertNever, normalizeError } from "@app/types";
 import { getSupportedFileExtensions } from "@app/types";
+import { MobileToolbar } from "@app/components/assistant/conversation/input_bar/toolbar/MobileToolbar";
 
 export const INPUT_BAR_ACTIONS = [
   "tools",
@@ -596,19 +597,27 @@ const InputBarContainer = ({
             ))}
           </div>
           <div className="relative flex w-full items-center justify-between">
-            {userMentionsEnabled && <Toolbar
-              editor={editor}
-              className={
-                isToolbarOpen
-                  ? "pointer-events-auto w-full"
-                  : "pointer-events-none w-[120px] hidden"
-              }
-              onClose={(e: React.MouseEvent<HTMLButtonElement>) => {
-                e.stopPropagation();
-                setIsToolbarOpen(false);
-              }}
-            />}
-            <div className={cn("flex items-center px-2 w-full", isToolbarOpen && "opacity-0")}>
+            {userMentionsEnabled && (
+              <MobileToolbar
+                editor={editor}
+                className={cn(
+                  "sm:hidden",
+                  isToolbarOpen
+                    ? "pointer-events-auto w-full"
+                    : "pointer-events-none hidden w-[120px]"
+                )}
+                onClose={(e: React.MouseEvent<HTMLButtonElement>) => {
+                  e.stopPropagation();
+                  setIsToolbarOpen(false);
+                }}
+              />
+            )}
+            <div
+              className={cn(
+                "flex w-full items-center px-2",
+                isToolbarOpen && "opacity-0"
+              )}
+            >
               <div className="flex items-center">
                 {userMentionsEnabled && (
                   <Button
@@ -711,7 +720,9 @@ const InputBarContainer = ({
                       // wait a bit for the keyboard to be closed on mobile
                       if (isMobile) {
                         editorService.setLoading(true);
-                        await new Promise((resolve) => setTimeout(resolve, 500));
+                        await new Promise((resolve) =>
+                          setTimeout(resolve, 500)
+                        );
                         editorService.setLoading(false);
                       }
                     }
