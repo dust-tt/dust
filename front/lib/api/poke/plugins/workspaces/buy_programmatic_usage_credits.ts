@@ -1,3 +1,4 @@
+import { addYears, format } from "date-fns";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 
@@ -16,6 +17,9 @@ const BuyCreditPurchaseArgsSchema = z.object({
     .number()
     .positive("Amount must be greater than $0")
     .finite("Amount must be a valid number"),
+  startDate: z.string().min(1, "Start date is required"),
+  expirationDate: z.string().min(1, "Expiration date is required"),
+  overrideDiscount: z.boolean(),
   discountPercent: z
     .number()
     .min(0, "Discount must be at least 0%")
@@ -29,29 +33,48 @@ const BuyCreditPurchaseArgsSchema = z.object({
 export const buyProgrammaticUsageCreditsPlugin = createPlugin({
   manifest: {
     id: "buy-programmatic-usage-credits",
-    name: "Buy Programmatic Usage Credits",
+    name: "Buy Committed Credits",
     description:
-      "Purchase programmatic usage credits for enterprise customers. The purchase will be added to the customer's subscription and paid on the next billing cycle.",
+      "Purchase committed credits for enterprise customers. Committed credits are consumed after free credits and before pay-as-you-go (PAYG) credits. The purchase will be added to the customer's subscription and paid on the next billing cycle.",
     resourceTypes: ["workspaces"],
     args: {
       amountDollars: {
         type: "number",
         label: "Credit Amount ($)",
         description:
-          "Programmatic usage credits amount, in usd, not billed amount. So without VAT, currency conversion and discounts",
+          "Committed credits amount in USD (not billed amount). Excludes VAT, currency conversion and discounts",
+      },
+      overrideDiscount: {
+        type: "boolean",
+        variant: "toggle",
+        label: "Override Default Discount",
+        async: true,
+        asyncDescription: true,
       },
       discountPercent: {
         type: "number",
         async: true,
         label: "Billing Discount (%)",
-        description:
-          "Discount percentage to apply (0-100) on the billed amount",
+        description: "Discount applied to the actual credit purchase",
+        dependsOn: { field: "overrideDiscount", value: true },
+      },
+      startDate: {
+        type: "date",
+        async: true,
+        label: "Start Date",
+        description: "When the credits become active. Default: today",
+      },
+      expirationDate: {
+        type: "date",
+        async: true,
+        label: "Expiration Date",
+        description: "When the credits expire. Default: 1 year from start date",
       },
       confirm: {
         type: "boolean",
         label: "Confirm Purchase",
         description:
-          "I understand that running this plugin will add a purchase in the customer's subscription, which will be paid on next billing cycle",
+          "I understand that running this plugin will add committed credits to the customer's subscription, which will be paid on next billing cycle (next month 99% of the time).",
       },
     },
   },
@@ -60,7 +83,15 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
       await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
     const defaultDiscount = config?.defaultDiscountPercent ?? 0;
 
+    const overrideDiscountDescription = `Override the customer's default discount. Current default: ${defaultDiscount}%`;
+
+    const today = new Date();
+    const oneYearFromNow = addYears(today, 1);
+
     return new Ok({
+      overrideDiscount_description: overrideDiscountDescription,
+      startDate: format(today, "yyyy-MM-dd"),
+      expirationDate: format(oneYearFromNow, "yyyy-MM-dd"),
       discountPercent: defaultDiscount,
     });
   },
@@ -98,14 +129,33 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
 
     const amountCents = Math.round(validatedArgs.amountDollars * 100);
 
+    const startDate = new Date(validatedArgs.startDate);
+    const expirationDate = new Date(validatedArgs.expirationDate);
+
+    if (expirationDate <= startDate) {
+      return new Err(new Error("Expiration date must be after start date."));
+    }
+
+    let discountPercent: number | undefined;
+    if (validatedArgs.overrideDiscount) {
+      discountPercent =
+        validatedArgs.discountPercent > 0
+          ? validatedArgs.discountPercent
+          : undefined;
+    } else {
+      const config =
+        await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
+      const defaultDiscount = config?.defaultDiscountPercent ?? 0;
+      discountPercent = defaultDiscount > 0 ? defaultDiscount : undefined;
+    }
+
     const result = await createEnterpriseCreditPurchase({
       auth,
       stripeSubscriptionId: subscription.stripeSubscriptionId,
       amountCents,
-      discountPercent:
-        validatedArgs.discountPercent > 0
-          ? validatedArgs.discountPercent
-          : undefined,
+      discountPercent,
+      startDate,
+      expirationDate,
     });
 
     if (result.isErr()) {
@@ -119,7 +169,7 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
 
     return new Ok({
       display: "textWithLink",
-      value: `Successfully added credit purchase of $${originalAmount.toFixed(2)} to the subscription. The charge will appear on the next billing cycle. See upcoming invoice for actual billed amount`,
+      value: `Successfully added committed credits of $${originalAmount.toFixed(2)} to the subscription (${validatedArgs.startDate} to ${validatedArgs.expirationDate}). The charge will appear on the next billing cycle. See upcoming invoice for actual billed amount`,
       link: invoiceUrl,
       linkText: "View Upcoming Invoice in Stripe",
     });
