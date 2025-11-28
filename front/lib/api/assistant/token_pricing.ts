@@ -9,6 +9,7 @@ type PricingEntry = {
   cache_read_input_tokens?: number;
 };
 
+export const DUST_MARKUP_PERCENT = 30;
 // Pricing (in USD) per million of tokens for current models.
 // This record must contain all BaseModelIdType values.
 const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {

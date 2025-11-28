@@ -13,6 +13,9 @@ import type {
   PublicAPILimitsType,
   UserMessageOrigin,
 } from "@app/types";
+import { CreditResource } from "@app/lib/resources/credit_resource";
+import assert from "node:assert";
+import { DUST_MARKUP_PERCENT } from "@app/lib/api/assistant/token_pricing";
 
 export const USAGE_ORIGINS_CLASSIFICATION: Record<
   UserMessageOrigin,
@@ -194,6 +197,36 @@ async function decreaseProgrammaticCredits(
     await redis.set(key, newCredits.toString(), { KEEPTTL: true });
   });
 }
+// There's a race condition here if many messages are running at the same time.
+// This method might be called with credits depleted. In that case we log amounts
+// for tracking but do not take any other action.
+export async function decreaseProgrammaticCreditsV2(
+  auth: Authenticator,
+  amount: number
+): Promise<void> {
+  const activeCredits = await CreditResource.listActive(auth);
+
+  const sortedCredits = activeCredits.sort(compareCreditsForConsumption);
+
+  let remainingAmount = amount;
+  while (remainingAmount > 0) {
+    const credit = sortedCredits.shift();
+    if (!credit) {
+      // A simple warn suffices; tokens have already been consumed.
+      logger.warn(
+        { amount, workspaceId: auth.getNonNullableWorkspace().sId },
+        "Message cost exceeded remaining credits."
+      );
+      break;
+    }
+    const amountToConsume = Math.min(
+      remainingAmount,
+      credit.initialAmountCents - credit.consumedAmountCents
+    );
+    await credit.consume(amountToConsume);
+    remainingAmount -= amountToConsume;
+  }
+}
 
 // TODO(PPUL): remove this method once we switch to new credits tracking system.
 async function initializeCredits(
@@ -264,6 +297,8 @@ export async function trackProgrammaticCost(
     auth.getNonNullableWorkspace(),
     runsCostCents
   );
+  const costWithMarkup = runsCostCents * (1 + DUST_MARKUP_PERCENT / 100);
+  await decreaseProgrammaticCreditsV2(auth, costWithMarkup);
 }
 
 export async function resetCredits(
@@ -298,4 +333,26 @@ export async function getRemainingCredits(
       remainingCredits: parseFloat(remainingCredits),
     };
   });
+}
+// First free credits, then committed credits, lastly pay-as-you-go, by expiration date (earliest first).
+export function compareCreditsForConsumption(
+  a: CreditResource,
+  b: CreditResource
+): number {
+  if (a.type === "free" && b.type !== "free") {
+    return -1;
+  }
+  if (a.type !== "free" && b.type === "free") {
+    return 1;
+  }
+  if (a.type === "committed" && b.type !== "committed") {
+    return 1;
+  }
+  if (a.type !== "committed" && b.type === "committed") {
+    return -1;
+  }
+
+  // TODO(PPUL): in following PR, we will make expiration date non-nullable.
+  assert(a.expirationDate && b.expirationDate, "Expiration date is required");
+  return a.expirationDate.getTime() - b.expirationDate.getTime();
 }
