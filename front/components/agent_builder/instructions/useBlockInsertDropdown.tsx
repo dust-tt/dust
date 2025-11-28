@@ -10,6 +10,7 @@ import type {
   SuggestionOptions,
   SuggestionProps,
 } from "@tiptap/suggestion";
+import type { ComponentType, MutableRefObject } from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
 
 type CompatibleEditor = CoreEditor | ReactEditor;
@@ -32,7 +33,7 @@ function isSelectionInInstructionBlock(
 export interface BlockSuggestion {
   id: string;
   label: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: ComponentType<{ className?: string }>;
   command: (
     editor: CompatibleEditor,
     range: { from: number; to: number }
@@ -85,7 +86,7 @@ export type BlockInsertDropdownView = Pick<
 >;
 
 export const useBlockInsertDropdown = (
-  editorRef: React.MutableRefObject<ReactEditor | null>
+  editorRef: MutableRefObject<ReactEditor | null>
 ) => {
   const [state, setState] = useState<BlockInsertDropdownState>({
     isOpen: false,
@@ -174,11 +175,7 @@ export const useBlockInsertDropdown = (
 
         const $from = state.doc.resolve(range.from);
 
-        if ($from.parent.type.name === "codeBlock") {
-          return false;
-        }
-
-        return true;
+        return $from.parent.type.name !== "codeBlock";
       },
       command: ({ editor, range, props }) => {
         const suggestion = props as Partial<BlockSuggestion>;
