@@ -40,9 +40,9 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
     args: {
       amountDollars: {
         type: "number",
-        label: "Credit Amount ($)",
+        label: "Credit Amount (US$)",
         description:
-          "Committed credits amount in USD (not billed amount). Excludes VAT, currency conversion and discounts",
+          "Committed credits amount in USD. Note: this is different from billed amount, as it  excludes VAT, currency conversion and discounts",
       },
       overrideDiscount: {
         type: "boolean",
@@ -62,19 +62,19 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
         type: "date",
         async: true,
         label: "Start Date",
-        description: "When the credits become active. Default: today",
+        description: "When the credits become active.",
       },
       expirationDate: {
         type: "date",
         async: true,
         label: "Expiration Date",
-        description: "When the credits expire. Default: 1 year from start date",
+        description: "When the credits expire.",
       },
       confirm: {
         type: "boolean",
         label: "Confirm Purchase",
         description:
-          "I understand that running this plugin will add committed credits to the customer's subscription, which will be paid on next billing cycle (next month 99% of the time).",
+          "I understand that running this plugin will add committed credits to the customer's subscription, which will be paid on next billing cycle.",
       },
     },
   },
@@ -82,8 +82,9 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
     const config =
       await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
     const defaultDiscount = config?.defaultDiscountPercent ?? 0;
+    const workspace = auth.getNonNullableWorkspace();
 
-    const overrideDiscountDescription = `Override the customer's default discount. Current default: ${defaultDiscount}%`;
+    const overrideDiscountDescription = `Override the customer's default discount. Current default for ${workspace.name}: ${defaultDiscount}%`;
 
     const today = new Date();
     const oneYearFromNow = addYears(today, 1);

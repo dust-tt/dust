@@ -106,14 +106,14 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
       paygEnabled: {
         type: "boolean",
         variant: "toggle",
-        label: "PAYG",
+        label: "Pay-as-you-go",
         description:
           "Enable pay-as-you-go billing (enterprise only). When enabled, programmatic usage will not stops after free and committed credits are exhausted. Requires a spending cap.",
         async: true,
       },
       paygCapDollars: {
         type: "number",
-        label: "PAYG Spending Cap (USD)",
+        label: "Pay-as-you-go Spending Cap (US$)",
         description: `Maximum monthly PAYG spending (required to enable PAYG). Range: $1-$${MAX_PAYG_CAP_DOLLARS.toLocaleString()}.`,
         async: true,
         dependsOn: { field: "paygEnabled", value: true },
