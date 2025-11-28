@@ -16,7 +16,7 @@ export function Toolbar({ editor, className }: ToolbarProps) {
   return (
     <div
       className={cn(
-        "hidden gap-1 border-b border-t border-border bg-background p-1 dark:border-border-night/50 dark:bg-background-night sm:inline-flex sm:rounded-2xl sm:border sm:border-border/50 sm:shadow-md",
+        "gap-1 border-b border-t border-border bg-background p-1 dark:border-border-night/50 dark:bg-background-night sm:rounded-2xl sm:border sm:border-border/50 sm:shadow-md",
         className
       )}
     >

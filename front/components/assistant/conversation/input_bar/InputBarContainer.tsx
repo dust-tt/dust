@@ -547,7 +547,7 @@ const InputBarContainer = ({
         />
         {userMentionsEnabled && (
           <BubbleMenu editor={editor ?? undefined} className="hidden sm:flex">
-            <Toolbar editor={editor} />
+            <Toolbar editor={editor} className="hidden sm:inline-flex" />
           </BubbleMenu>
         )}
         <div className="flex w-full flex-col py-1.5 sm:pb-2">

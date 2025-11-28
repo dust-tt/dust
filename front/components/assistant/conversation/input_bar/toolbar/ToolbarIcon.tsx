@@ -1,3 +1,4 @@
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { Button } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 interface ToolbarIconProps {
@@ -13,6 +14,8 @@ export function ToolbarIcon({
   active,
   tooltip,
 }: ToolbarIconProps) {
+  const isMobile = useIsMobile();
+  const buttonSize = isMobile ? "xs" : "mini";
   return (
     <Button
       tooltip={tooltip}
@@ -22,7 +25,7 @@ export function ToolbarIcon({
         e.stopPropagation(); // Prevents event from bubbling to InputBarContainer. Otherwise, focusEnd is triggered.
         onClick();
       }}
-      size="mini"
+      size={buttonSize}
       variant={active ? "ghost" : "ghost-secondary"}
     />
   );

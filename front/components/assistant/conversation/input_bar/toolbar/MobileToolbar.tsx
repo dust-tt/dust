@@ -17,7 +17,7 @@ export function MobileToolbar({ editor, className, onClose }: ToolbarProps) {
   return (
     <div
       className={cn(
-        "absolute left-0 top-0 z-10 inline-flex items-center justify-start gap-3 overflow-hidden rounded-xl bg-primary-50 py-1 pl-3 duration-700 ease-in-out sm:hidden",
+        "absolute left-0 top-0 z-10 inline-flex items-center justify-start gap-3 overflow-hidden rounded-xl bg-primary-50 py-1 pl-3 duration-700 ease-in-out",
         className
       )}
     >
