@@ -195,17 +195,20 @@ export class UserResource extends BaseResource<UserModel> {
     return users.map((user) => new UserResource(UserModel, user.get()));
   }
 
-  static async searchUsers({
-    owner,
-    searchTerm,
-    offset,
-    limit,
-  }: {
-    owner: LightWorkspaceType;
-    searchTerm: string;
-    offset: number;
-    limit: number;
-  }): Promise<Result<{ users: UserResource[]; total: number }, Error>> {
+  static async searchUsers(
+    auth: Authenticator,
+    {
+      searchTerm,
+      offset,
+      limit,
+    }: {
+      searchTerm: string;
+      offset: number;
+      limit: number;
+    }
+  ): Promise<Result<{ users: UserResource[]; total: number }, Error>> {
+    const owner = auth.getNonNullableWorkspace();
+
     // Search users in Elasticsearch
     const searchResult = await searchUsers({
       owner,
