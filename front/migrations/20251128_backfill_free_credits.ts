@@ -4,9 +4,17 @@ import { Authenticator } from "@app/lib/auth";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { CreditModel } from "@app/lib/resources/storage/models/credits";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
 const DEFAULT_EXPIRATION_DAYS = 5;
+
+const DISCLAIMER = `
+================================================================================
+⚠️  WARNING: SCRIPT CREATED FOR PROGRAMMATIC USAGE (PPUL) TESTING
+    DO NOT REUSE AFTER RELEASE UNLESS YOU KNOW WHAT YOU ARE DOING
+================================================================================
+`;
 
 function parseDate(dateStr: string): Date {
   const date = new Date(dateStr);
@@ -37,11 +45,15 @@ async function addFreeCredits(
 ) {
   const workspaces = await WorkspaceModel.findAll();
 
-  console.log(
-    `[execute=${execute}] Adding free credits to ${workspaces.length} workspaces`
+  logger.info(
+    {
+      execute,
+      workspaceCount: workspaces.length,
+      amountCents,
+      expirationDate: expirationDate.toISOString(),
+    },
+    `Adding free credits to ${workspaces.length} workspaces`
   );
-  console.log(`  Amount: ${amountCents} cents ($${amountCents / 100})`);
-  console.log(`  Expiration: ${expirationDate.toISOString()}`);
 
   // Count how many would be added
   let toAddCount = 0;
@@ -58,21 +70,21 @@ async function addFreeCredits(
     });
 
     if (existingCredit) {
-      console.log(
-        `  Skipping workspace ${workspace.sId} (${workspace.id}): credit already exists`
+      logger.info(
+        { workspaceSId: workspace.sId, workspaceId: workspace.id },
+        "Skipping workspace: credit already exists"
       );
       skippedCount++;
     } else {
-      console.log(
-        `  Would add credit to workspace ${workspace.sId} (${workspace.id})`
+      logger.info(
+        { workspaceSId: workspace.sId, workspaceId: workspace.id },
+        "Would add credit to workspace"
       );
       toAddCount++;
     }
   }
 
-  console.log(`\nSummary:`);
-  console.log(`  To add: ${toAddCount}`);
-  console.log(`  Skipped (already exists): ${skippedCount}`);
+  logger.info({ toAddCount, skippedCount }, "Summary");
 
   if (!execute || toAddCount === 0) {
     return;
@@ -82,7 +94,7 @@ async function addFreeCredits(
     `About to add ${toAddCount} free credits (${amountCents}¢ each). Continue?`
   );
   if (!confirmed) {
-    console.log("Aborted.");
+    logger.info("Aborted.");
     return;
   }
 
@@ -112,18 +124,20 @@ async function addFreeCredits(
 
     await credit.start(new Date(), expirationDate);
 
-    console.log(
-      `  Added credit ${credit.id} to workspace ${workspace.sId} (${workspace.id})`
+    logger.info(
+      { creditId: credit.id, workspaceSId: workspace.sId, workspaceId: workspace.id },
+      "Added credit to workspace"
     );
     addedCount++;
   }
 
-  console.log(`\nDone: added ${addedCount} credits.`);
+  logger.info({ addedCount }, "Done adding credits");
 }
 
 async function removeFreeCredits(execute: boolean, expirationDate: Date) {
-  console.log(
-    `[execute=${execute}] Removing free credits with expirationDate = ${expirationDate.toISOString()}`
+  logger.info(
+    { execute, expirationDate: expirationDate.toISOString() },
+    "Removing free credits"
   );
 
   const creditsToRemove = await CreditModel.findAll({
@@ -133,11 +147,17 @@ async function removeFreeCredits(execute: boolean, expirationDate: Date) {
     },
   });
 
-  console.log(`  Found ${creditsToRemove.length} credits to remove`);
+  logger.info({ count: creditsToRemove.length }, "Found credits to remove");
 
   for (const credit of creditsToRemove) {
-    console.log(
-      `  Credit ${credit.id}: workspaceId=${credit.workspaceId}, expirationDate=${credit.expirationDate?.toISOString()}, amount=${credit.initialAmountCents}c`
+    logger.info(
+      {
+        creditId: credit.id,
+        workspaceId: credit.workspaceId,
+        expirationDate: credit.expirationDate?.toISOString(),
+        amountCents: credit.initialAmountCents,
+      },
+      "Credit to remove"
     );
   }
 
@@ -149,7 +169,7 @@ async function removeFreeCredits(execute: boolean, expirationDate: Date) {
     `About to delete ${creditsToRemove.length} free credits. Continue?`
   );
   if (!confirmed) {
-    console.log("Aborted.");
+    logger.info("Aborted.");
     return;
   }
 
@@ -159,7 +179,7 @@ async function removeFreeCredits(execute: boolean, expirationDate: Date) {
       expirationDate,
     },
   });
-  console.log(`\nDone: deleted ${deletedCount} credits.`);
+  logger.info({ deletedCount }, "Done deleting credits");
 }
 
 makeScript(
@@ -179,6 +199,9 @@ makeScript(
     },
   },
   async ({ execute, action, amountCents, endDate }) => {
+    // eslint-disable-next-line no-console
+    console.log(DISCLAIMER);
+
     if (action === "add") {
       if (!amountCents || amountCents <= 0) {
         throw new Error("amountCents is required and must be positive for add");
