@@ -282,7 +282,6 @@ const Header = () => {
 
   return (
     <Head>
-      <title>Accelerate your entire organization with custom AI agents</title>
       <link rel="icon" type="image/png" href={faviconPath} />
       <link
         rel="preload"
@@ -354,18 +353,6 @@ const Header = () => {
         sizes="228x228"
         href="/static/AppIcon_228.png"
       />
-
-      <meta
-        id="meta-description"
-        name="description"
-        content="The way we work is changing. Break down knowledge silos and amplify team performance with data-augmented, customizable and secure AI agents."
-      />
-      <meta
-        id="og-title"
-        property="og:title"
-        content="Dust - Accelerate your entire organization with custom AI agents"
-      />
-      <meta id="og-image" property="og:image" content="/static/og_image.png" />
     </Head>
   );
 };
