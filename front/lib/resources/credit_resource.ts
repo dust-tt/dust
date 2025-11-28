@@ -198,25 +198,24 @@ export class CreditResource extends BaseResource<CreditModel> {
       return new Err(new Error("Credit has already been consumed."));
     }
     const now = new Date();
-    const [, affectedCount] = await this.model.increment(
-      "consumedAmountCents",
-      {
-        by: amountInCents,
-        where: {
-          id: this.id,
-          workspaceId: this.workspaceId,
-          // Credit must be started (startDate not null and <= now)
-          startDate: { [Op.ne]: null, [Op.lte]: now },
-          // Credit must not be expired
-          [Op.or]: [
-            { expirationDate: null },
-            { expirationDate: { [Op.gt]: now } },
-          ],
-        },
-        transaction,
-      }
-    );
-    if (!affectedCount || affectedCount < 1) {
+    // Note: Sequelize's increment() returns [affectedRows[], affectedCount] but
+    // affectedCount is unreliable for PostgreSQL. We check affectedRows.length instead.
+    const [affectedRows] = await this.model.increment("consumedAmountCents", {
+      by: amountInCents,
+      where: {
+        id: this.id,
+        workspaceId: this.workspaceId,
+        // Credit must be started (startDate not null and <= now)
+        startDate: { [Op.ne]: null, [Op.lte]: now },
+        // Credit must not be expired
+        [Op.or]: [
+          { expirationDate: null },
+          { expirationDate: { [Op.gt]: now } },
+        ],
+      },
+      transaction,
+    });
+    if (!affectedRows || affectedRows.length < 1) {
       return new Err(
         new Error(
           "Insufficient credit on this line, or credit not yet started/already expired."

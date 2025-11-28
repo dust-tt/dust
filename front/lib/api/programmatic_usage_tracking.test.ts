@@ -6,6 +6,7 @@ import {
 } from "@app/lib/api/programmatic_usage_tracking";
 import { Authenticator } from "@app/lib/auth";
 import { CreditResource } from "@app/lib/resources/credit_resource";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
@@ -149,6 +150,7 @@ describe("decreaseProgrammaticCreditsV2", () => {
     workspace = await WorkspaceFactory.basic();
     const user = await UserFactory.basic();
     await MembershipFactory.associate(workspace, user, { role: "admin" });
+    await GroupFactory.defaults(workspace);
     auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
       workspace.sId
@@ -165,7 +167,9 @@ describe("decreaseProgrammaticCreditsV2", () => {
       initialAmountCents,
       consumedAmountCents: 0,
     });
-    await credit.start(new Date(), expirationDate);
+    // Use a start date clearly in the past to avoid timing issues
+    const startDate = new Date(Date.now() - 1000);
+    await credit.start(startDate, expirationDate);
     return credit;
   }
 
@@ -288,6 +292,10 @@ describe("decreaseProgrammaticCreditsV2", () => {
         new Date(Date.now() + ONE_YEAR)
       );
 
+      // Consume 500 cents - should go through:
+      // 1. freeCredit (200)
+      // 2. committedCredit (200)
+      // 3. paygCredit (100)
       await decreaseProgrammaticCreditsV2(auth, 500);
 
       const refreshedFree = await refreshCredit(freeCredit);
