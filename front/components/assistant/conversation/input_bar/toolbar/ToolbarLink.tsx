@@ -18,12 +18,12 @@ interface ToolbarLinkProps {
   editor: Editor;
 }
 
-const getLinkPos = (
+const getLinkPosition = (
   state: EditorState,
   from: number,
   to: number,
   href: string
-) => {
+): { linkStart: number; linkEnd: number } => {
   const linkMarkType = state.schema.marks.link;
 
   // Start with the current cursor position
@@ -75,7 +75,12 @@ export function ToolbarLink({ editor }: ToolbarLinkProps) {
 
     if (linkMark.href) {
       // We're inside or on a link, need to find the full link range
-      const { linkStart, linkEnd } = getLinkPos(state, from, to, linkMark.href);
+      const { linkStart, linkEnd } = getLinkPosition(
+        state,
+        from,
+        to,
+        linkMark.href
+      );
 
       const fullLinkText = state.doc.textBetween(linkStart, linkEnd);
       setLinkUrl(linkMark.href);
