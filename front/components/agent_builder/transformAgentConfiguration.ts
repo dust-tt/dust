@@ -102,7 +102,7 @@ export function getDefaultAgentFormData({
 }
 
 /**
- * Transforms an assistant template into agent builder form data with defaults.
+ * Transforms an agent template into agent builder form data with defaults.
  * Merges template presets with default form data to create a complete configuration.
  */
 export function transformTemplateToFormData(

@@ -33,8 +33,6 @@ export const COST_PALETTE = {
   totalCredits: "text-green-500 dark:text-green-500-night",
 } as const;
 
-export const COST_LEGEND = [{ key: "costCents", label: "Cost" }] as const;
-
 export const CHART_HEIGHT = 260;
 
 export const INDEXED_COLORS = [

@@ -1,12 +1,9 @@
-import { AGENT_CREATIVITY_LEVEL_DISPLAY_NAMES } from "@app/components/agent_builder/types";
 import type {
-  AgentCreativityLevel,
   ModelConfigurationType,
   ModelIdType,
   ModelProviderIdType,
 } from "@app/types";
 import {
-  AGENT_CREATIVITY_LEVEL_TEMPERATURES,
   CLAUDE_4_5_SONNET_20250929_MODEL_ID,
   GEMINI_2_5_PRO_MODEL_ID,
   GPT_5_MODEL_ID,
@@ -19,13 +16,6 @@ export const BEST_PERFORMING_MODELS_ID: ModelIdType[] = [
   MISTRAL_LARGE_MODEL_ID,
   GEMINI_2_5_PRO_MODEL_ID,
 ] as const;
-
-export const CREATIVITY_LEVELS = Object.entries(
-  AGENT_CREATIVITY_LEVEL_TEMPERATURES
-).map(([k, v]) => ({
-  label: AGENT_CREATIVITY_LEVEL_DISPLAY_NAMES[k as AgentCreativityLevel],
-  value: v,
-}));
 
 export function isBestPerformingModel(modelId: ModelIdType): boolean {
   return BEST_PERFORMING_MODELS_ID.includes(modelId);

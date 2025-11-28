@@ -1,6 +1,7 @@
 import type { Icon } from "@dust-tt/sparkle";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import uniqueId from "lodash/uniqueId";
+import type { ComponentProps } from "react";
 import { z } from "zod";
 
 import type { agentBuilderFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
@@ -26,13 +27,6 @@ type AgentBuilderFormData = z.infer<typeof agentBuilderFormSchema>;
 
 export type AgentBuilderAction = AgentBuilderFormData["actions"][number];
 
-export const AGENT_CREATIVITY_LEVEL_DISPLAY_NAMES = {
-  deterministic: "Deterministic",
-  factual: "Factual",
-  balanced: "Balanced",
-  creative: "Creative",
-} as const;
-
 export const BUILDER_FLOWS = [
   "workspace_assistants",
   "personal_assistants",
@@ -56,28 +50,6 @@ export const TOOLS_SHEET_PAGE_IDS = {
 
 export type ConfigurationPagePageId =
   (typeof TOOLS_SHEET_PAGE_IDS)[keyof typeof TOOLS_SHEET_PAGE_IDS];
-
-// Zod validation schema for data source configuration - defines the contract/shape
-export const dataSourceConfigurationSchema = z.object({
-  sId: z.string().optional(),
-  workspaceId: z.string(),
-  dataSourceViewId: z.string().min(1, "DataSourceViewId cannot be empty"),
-  filter: z.object({
-    parents: z
-      .object({
-        in: z.array(z.string()),
-        not: z.array(z.string()),
-      })
-      .nullable(),
-    tags: z
-      .object({
-        in: z.array(z.string()),
-        not: z.array(z.string()),
-        mode: z.enum(["custom", "auto"]),
-      })
-      .nullable(),
-  }),
-});
 
 // TODO: merge this with MCP form schema. Right now it only validates two fields.
 export const capabilityFormSchema = z
@@ -194,8 +166,8 @@ export function isDefaultActionName(action: AgentBuilderAction) {
 export interface ActionSpecification {
   label: string;
   description: string;
-  dropDownIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
-  cardIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
+  dropDownIcon: NonNullable<ComponentProps<typeof Icon>["visual"]>;
+  cardIcon: NonNullable<ComponentProps<typeof Icon>["visual"]>;
   flag: WhitelistableFeature | null;
 }
 
