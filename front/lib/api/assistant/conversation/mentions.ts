@@ -11,9 +11,13 @@ import {
 import { triggerConversationAddedAsParticipantNotification } from "@app/lib/notifications/workflows/conversation-added-as-participant";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
-import type { ConversationWithoutContentType, MentionType } from "@app/types";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
   AgentMessageType,
+  ConversationWithoutContentType,
+  MentionType,
+} from "@app/types";
+import type {
   LightAgentConfigurationType,
   UserMessageType,
   WorkspaceType,
@@ -81,6 +85,8 @@ export const createAgentMessages = async ({
   metadata:
     | {
         type: "retry";
+        message: Message;
+        agentMessage: AgentMessageType;
       }
     | {
         type: "create";
@@ -93,22 +99,67 @@ export const createAgentMessages = async ({
       };
   transaction?: Transaction;
 }) => {
+  const results: {
+    agentMessageRow: AgentMessage;
+    messageRow: Message;
+    configuration: LightAgentConfigurationType;
+    parentMessageId: string | null;
+    parentAgentMessageId: string | null;
+  }[] = [];
+
   switch (metadata.type) {
     case "retry":
-      throw new Error("Not implemented");
+      {
+        const previousAgentMessage = metadata.message.agentMessage;
+        if (!previousAgentMessage) {
+          throw new Error("Previous agent message not found");
+        }
+        const agentMessageRow = await AgentMessage.create(
+          {
+            status: "created",
+            agentConfigurationId: previousAgentMessage.agentConfigurationId,
+            agentConfigurationVersion:
+              previousAgentMessage.agentConfigurationVersion,
+            workspaceId: owner.id,
+            skipToolsValidation: previousAgentMessage.skipToolsValidation,
+          },
+          { transaction }
+        );
+        const messageRow = await Message.create(
+          {
+            sId: generateRandomModelSId(),
+            rank: metadata.message.rank,
+            conversationId: conversation.id,
+            parentId: metadata.message.parentId,
+            version: metadata.message.version + 1,
+            agentMessageId: agentMessageRow.id,
+            workspaceId: owner.id,
+          },
+          {
+            transaction,
+          }
+        );
+
+        results.push({
+          agentMessageRow,
+          messageRow,
+          parentMessageId: metadata.agentMessage.parentMessageId,
+          parentAgentMessageId: metadata.agentMessage.parentAgentMessageId,
+          configuration: metadata.agentMessage.configuration,
+        });
+      }
+      break;
 
     case "create":
-      const results = await Promise.all(
-        metadata.mentions.filter(isAgentMention).map((mention) => {
-          // For each assistant/agent mention, create an "empty" agent message.
-          return (async () => {
-            // `getAgentConfiguration` checks that we're only pulling a configuration from the
-            // same workspace or a global one.
+      {
+        await concurrentExecutor(
+          metadata.mentions.filter(isAgentMention),
+          async (mention) => {
             const configuration = metadata.agentConfigurations.find(
               (ac) => ac.sId === mention.configurationId
             );
             if (!configuration) {
-              return null;
+              return;
             }
 
             await Mention.create(
@@ -148,44 +199,57 @@ export const createAgentMessages = async ({
                   null)
                 : null;
 
-            return {
-              row: agentMessageRow,
-              m: {
-                id: messageRow.id,
-                agentMessageId: agentMessageRow.id,
-                created: agentMessageRow.createdAt.getTime(),
-                completedTs: agentMessageRow.completedAt?.getTime() ?? null,
-                sId: messageRow.sId,
-                type: "agent_message",
-                visibility: "visible",
-                version: 0,
-                parentMessageId: metadata.userMessage.sId,
-                parentAgentMessageId,
-                status: "created",
-                actions: [],
-                content: null,
-                chainOfThought: null,
-                rawContents: [],
-                error: null,
-                configuration,
-                rank: messageRow.rank,
-                skipToolsValidation: agentMessageRow.skipToolsValidation,
-                contents: [],
-                parsedContents: {},
-                modelInteractionDurationMs:
-                  agentMessageRow.modelInteractionDurationMs,
-              } satisfies AgentMessageType,
-            };
-          })();
-        })
-      );
-
-      return results.filter((r) => r !== null) as {
-        row: AgentMessage;
-        m: AgentMessageType;
-      }[];
+            results.push({
+              agentMessageRow,
+              messageRow,
+              parentAgentMessageId,
+              parentMessageId: metadata.userMessage.sId,
+              configuration,
+            });
+          },
+          {
+            concurrency: 10,
+          }
+        );
+      }
       break;
     default:
       assertNever(metadata);
   }
+
+  return results.map(
+    ({
+      agentMessageRow,
+      messageRow,
+      parentMessageId,
+      parentAgentMessageId,
+      configuration,
+    }) => ({
+      row: agentMessageRow,
+      m: {
+        id: messageRow.id,
+        agentMessageId: agentMessageRow.id,
+        created: agentMessageRow.createdAt.getTime(),
+        completedTs: agentMessageRow.completedAt?.getTime() ?? null,
+        sId: messageRow.sId,
+        type: "agent_message",
+        visibility: "visible",
+        version: messageRow.version,
+        parentMessageId,
+        parentAgentMessageId,
+        status: "created",
+        actions: [],
+        content: null,
+        chainOfThought: null,
+        rawContents: [],
+        error: null,
+        configuration,
+        rank: messageRow.rank,
+        skipToolsValidation: agentMessageRow.skipToolsValidation,
+        contents: [],
+        parsedContents: {},
+        modelInteractionDurationMs: agentMessageRow.modelInteractionDurationMs,
+      } satisfies AgentMessageType,
+    })
+  );
 };
