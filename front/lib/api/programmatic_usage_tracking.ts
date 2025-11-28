@@ -234,6 +234,12 @@ export async function decreaseProgrammaticCreditsV2(
         {
           amount: amountToConsume,
           workspaceId: auth.getNonNullableWorkspace().sId,
+          // For eng on-call: this error should be investigated since it likely
+          // reveals an underlying issue in our billing / credit logic. The only
+          // legitimate case this error could happen would be a race condition
+          // in which two messages consume the same credit at exactly the same
+          // time--in which case it's a no-op, but at time of writing this is
+          // considered very unlikely, so to be confirmed first before skipping.
           panic: true,
           error: result.error,
         },
