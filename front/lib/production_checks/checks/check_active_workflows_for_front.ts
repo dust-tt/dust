@@ -11,6 +11,7 @@ async function isWorkflowRunning(client: Client, workflowId: string) {
       client.workflow.getHandle(workflowId);
     const description = await workflowHandle.describe();
     return description.status.name === "RUNNING";
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (err) {
     return false;
   }

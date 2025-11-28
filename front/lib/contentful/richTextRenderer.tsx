@@ -128,20 +128,24 @@ const renderOptions: Options = {
       }
 
       const { url, details } = file;
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const { width, height } = details?.image || { width: 800, height: 400 };
 
       return (
         <figure className="my-8">
           <Image
             src={`https:${url}`}
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             alt={title || description || "Blog image"}
             width={width}
             height={height}
             className="rounded-lg"
             loading="lazy"
           />
+          {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
           {(title || description) && (
             <figcaption className="mt-2 text-center text-sm text-muted-foreground">
+              {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
               {description || title}
             </figcaption>
           )}

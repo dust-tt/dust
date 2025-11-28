@@ -93,6 +93,7 @@ export const isSupportedContentNodeFragmentContentType = (
   ).includes(contentType);
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const ContentFragmentInputWithContentSchema = t.intersection([
   ContentFragmentBaseSchema,
   t.type({

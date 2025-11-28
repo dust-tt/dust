@@ -77,6 +77,7 @@ export const AgentInputBar = ({
         !isHiddenMessage(m)
     );
 
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const agentMentions = useMemo(() => {
     // If we are in the agent builder, we show the draft agent as the sticky mention, all the time.
     // Especially since the draft agent have a new sId every time it is updated.
@@ -143,6 +144,7 @@ export const AgentInputBar = ({
         (m) => m.conversationId === context.conversationId
       )
     ) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsStopping(false);
     }
   }, [

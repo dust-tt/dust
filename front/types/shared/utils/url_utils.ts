@@ -12,6 +12,7 @@ export const validateUrl = (
   let url: URL;
   try {
     url = new URL(urlString);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (e) {
     return { valid: false, standardized: null };
   }

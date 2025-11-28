@@ -15,6 +15,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const { dsId } = context.params || {};
   if (typeof dsId !== "string") {
     return {
@@ -108,6 +109,7 @@ export default function DataSourceQueryPage({
 
       if (!response.ok) {
         const errorData = await response.json();
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         throw new Error(errorData.error?.message || "Failed to execute query");
       }
 

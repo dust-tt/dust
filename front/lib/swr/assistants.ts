@@ -100,6 +100,7 @@ export function useAssistantTemplate({
   );
 
   return {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     assistantTemplate: data ? data : null,
     isAssistantTemplateLoading: !error && !data,
     isAssistantTemplateError: error,
@@ -472,6 +473,7 @@ export function useAgentAnalytics({
   });
 
   return {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     agentAnalytics: data ? data : null,
     isAgentAnalyticsLoading: !error && !data && !disabled,
     isAgentAnalyticsError: error,
@@ -711,6 +713,7 @@ export function useUpdateUserFavorite({
         sendNotification({
           title: `Error updating agent list.`,
           description:
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             normalizeError(error).message || "An unknown error occurred",
           type: "error",
         });

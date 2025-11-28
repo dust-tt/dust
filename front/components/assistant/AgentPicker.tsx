@@ -55,6 +55,7 @@ export function AgentPicker({
       }}
     >
       <DropdownMenuTrigger asChild>
+        {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
         {pickerButton ? (
           pickerButton
         ) : (

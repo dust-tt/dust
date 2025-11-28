@@ -25,6 +25,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     };
   }
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const { groupId } = context.params || {};
   if (typeof groupId !== "string") {
     return {

@@ -84,6 +84,7 @@ async function getDefautPriceFromMetadata(
   return null;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const SUPPORTED_PAYMENT_METHODS = ["card", "sepa_debit"] as const;
 
 type SupportedPaymentMethod = (typeof SUPPORTED_PAYMENT_METHODS)[number];
@@ -270,6 +271,7 @@ export const getStripeSubscription = async (
     } else {
       return await stripe.subscriptions.retrieve(stripeSubscriptionId);
     }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     return null;
   }

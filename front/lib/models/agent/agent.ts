@@ -126,6 +126,7 @@ AgentConfiguration.init(
               if (parsed && typeof parsed !== "object") {
                 throw new Error("Response format is invalid JSON");
               }
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
             } catch (e) {
               throw new Error("Response format is invalid JSON");
             }

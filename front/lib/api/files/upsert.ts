@@ -110,6 +110,7 @@ const upsertSectionDocumentToDatasource: ProcessingFunction = async (
   let section: CoreAPIDataSourceDocumentSection | null = null;
   try {
     section = JSON.parse(content);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (e) {
     return new Err<DustError>({
       name: "dust_error",

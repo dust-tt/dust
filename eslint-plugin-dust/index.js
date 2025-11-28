@@ -7,7 +7,7 @@ const noDirectSparkleNotification = require("./rules/no-direct-sparkle-notificat
 const noBulkLodash = require("./rules/no-bulk-lodash.js");
 const enforceClientTypesInPublicApi = require("./rules/enforce-client-types-in-public-api");
 
-module.exports = {
+const plugin = {
   meta: {
     name: "eslint-plugin-dust",
     version: "0.0.0",
@@ -21,3 +21,7 @@ module.exports = {
     "enforce-client-types-in-public-api": enforceClientTypesInPublicApi,
   },
 };
+
+// Support both CommonJS and ESM
+module.exports = plugin;
+module.exports.default = plugin;

@@ -225,6 +225,7 @@ async function handler(
       const offset = req.query.offset
         ? parseInt(req.query.offset as string)
         : 0;
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const runType = req.query.runType ? req.query.runType : "local";
 
       const userRuns = await RunResource.listByAppAndRunType(

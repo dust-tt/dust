@@ -41,6 +41,7 @@ export function ZendeskRateLimitConfig({
   // Initialize input state based on current config
   useEffect(() => {
     if (rateLimitTransactionsPerSecond) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setRateLimitInput(rateLimitTransactionsPerSecond);
     } else {
       setRateLimitInput("");
@@ -75,6 +76,7 @@ export function ZendeskRateLimitConfig({
         type: "info",
         title: "Failed to edit Zendesk configuration",
         description:
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           err.error?.connectors_error.message || "An unknown error occurred",
       });
     }

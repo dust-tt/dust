@@ -36,6 +36,7 @@ export const getStoredUTMParams = (): { [key: string]: string } => {
   try {
     const storedData = sessionStorage?.getItem("utm_data");
     return storedData ? JSON.parse(storedData) : {};
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     return {};
   }

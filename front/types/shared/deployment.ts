@@ -26,6 +26,7 @@ export async function sendInitDbMessage({
 
   try {
     commitId = child_process.execSync("git rev-parse HEAD").toString().trim();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     logger.error({}, "Failed to get commit id");
   }

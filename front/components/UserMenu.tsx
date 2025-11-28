@@ -91,6 +91,7 @@ export function UserMenu({
           <Avatar
             size="sm"
             visual={
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               user.image
                 ? user.image
                 : "https://gravatar.com/avatar/anonymous?d=mp"

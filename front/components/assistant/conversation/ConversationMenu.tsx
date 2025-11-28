@@ -277,6 +277,7 @@ export function ConversationMenu({
             icon={PencilSquareIcon}
           />
 
+          {/* eslint-disable-next-line react-hooks/static-components */}
           <ConversationActionMenuItem />
 
           {shareLink && (

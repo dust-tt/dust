@@ -27,6 +27,7 @@ async function getRedisClient({
     throw new Error("REDIS_URI is not defined");
   }
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!rateLimiterRedisClient) {
     rateLimiterRedisClient = await redisClient({
       origin,

@@ -86,6 +86,7 @@ export function useValidateAction({
           }
         }
         return { success: true };
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         onError("Failed to assess action approval. Please try again.");
         return { success: false };

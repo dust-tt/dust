@@ -145,6 +145,7 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
   updateAttributes,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     node.attrs.isCollapsed || false
   );
 
@@ -836,10 +837,12 @@ export const InstructionBlockExtension =
                   const innerParts: string[] = [];
                   child.forEach((node) => {
                     if (node.type.name === "heading") {
+                      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                       const level = node.attrs?.level || 1;
                       const prefix = "#".repeat(level) + " ";
                       innerParts.push(prefix + node.textContent);
                     } else if (node.type.name === "codeBlock") {
+                      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                       const language = node.attrs?.language || "";
                       const code = node.textContent;
                       innerParts.push(`\`\`\`${language}\n${code}\`\`\``);
@@ -851,10 +854,12 @@ export const InstructionBlockExtension =
                   });
                   parts.push(innerParts.join("\n"));
                 } else if (child.type.name === "heading") {
+                  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                   const level = child.attrs?.level || 1;
                   const prefix = "#".repeat(level) + " ";
                   parts.push(prefix + child.textContent);
                 } else if (child.type.name === "codeBlock") {
+                  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                   const language = child.attrs?.language || "";
                   const code = child.textContent;
                   parts.push(`\`\`\`${language}\n${code}\`\`\``);

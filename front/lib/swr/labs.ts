@@ -111,6 +111,7 @@ export function useUpdateTranscriptsConfiguration({
       sendNotification({
         type: "error",
         title: "Failed to update transcript configuration",
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         description: error.error?.message || "Unknown error",
       });
       return new Err(normalizeError(error));

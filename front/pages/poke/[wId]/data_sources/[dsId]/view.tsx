@@ -14,6 +14,7 @@ import { CoreAPI } from "@app/types";
 export const getServerSideProps = withSuperUserAuthRequirements<{
   document: CoreAPIDocument;
 }>(async (context, auth) => {
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const { dsId } = context.params || {};
   if (typeof dsId !== "string") {
     return {

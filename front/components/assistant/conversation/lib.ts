@@ -261,6 +261,7 @@ export async function submitMessage({
         return new Err({
           type: "attachment_upload_error",
           title: "Error uploading file.",
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           message: data.error.message || "Please try again or contact us.",
         });
       }
@@ -302,6 +303,7 @@ export async function submitMessage({
           ? "plan_limit_reached_error"
           : "message_send_error",
       title: "Your message could not be sent.",
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       message: data.error.message || "Please try again or contact us.",
     });
   }
@@ -428,6 +430,7 @@ export async function createConversationWithMessage({
           ? "plan_limit_reached_error"
           : "message_send_error",
       title: "Your message could not be sent.",
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       message: data.error.message || "Please try again or contact us.",
     });
   }

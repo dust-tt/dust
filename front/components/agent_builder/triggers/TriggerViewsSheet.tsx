@@ -213,6 +213,7 @@ export function TriggerViewsSheet({
     if (mode?.type === "edit") {
       switch (mode.trigger.kind) {
         case "schedule": {
+          // eslint-disable-next-line react-hooks/set-state-in-effect
           return setCurrentPageId(TRIGGERS_SHEET_PAGE_IDS.SCHEDULE);
         }
         case "webhook": {
@@ -226,6 +227,7 @@ export function TriggerViewsSheet({
 
   useEffect(() => {
     if (mode) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setOpen(true);
     }
   }, [mode]);

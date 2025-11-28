@@ -57,6 +57,7 @@ async function waitForAgentCompletion(
       subscriptions.forEach((unsub) => {
         try {
           unsub();
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (error) {
           // Ignore individual unsubscribe errors to ensure all subscriptions are cleaned up.
         }
@@ -113,6 +114,7 @@ async function waitForAgentCompletion(
           );
 
           subscriptions.push(unsubscribe);
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (error) {
           expectedMessageIds.delete(agentMessage.sId);
         }

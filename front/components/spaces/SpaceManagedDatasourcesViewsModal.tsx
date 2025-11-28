@@ -31,6 +31,7 @@ function useStabilizedValue<T>(
   const [value, setValue] = useState<T | undefined>();
   useEffect(() => {
     if (isOpen && !value) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setValue(initialValue);
     } else if (!isOpen) {
       setValue(undefined);
@@ -130,6 +131,7 @@ export default function SpaceManagedDataSourcesViewsModal({
         },
         {} as DataSourceViewSelectionConfigurations
       );
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectionConfigurations(converted);
     }
   }, [initialConfigurations, spaceDataSourceViews]);

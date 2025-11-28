@@ -28,6 +28,7 @@ export const useNovuClient = () => {
         subscriberHash: user.subscriberHash,
       };
 
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setNovuClient(new Novu(config));
     }
   }, [user?.subscriberHash, user?.sId]);

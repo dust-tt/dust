@@ -151,6 +151,7 @@ async function checkWorkflowStuck(
   try {
     const handle = client.workflow.getHandle(workflowId);
     description = await handle.describe();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     return null;
   }

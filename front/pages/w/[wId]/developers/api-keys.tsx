@@ -125,6 +125,7 @@ export function APIKeys({
           },
           body: JSON.stringify({
             name,
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             group_id: group?.sId ? group.sId : globalGroup?.sId,
           }),
         });
@@ -422,6 +423,7 @@ export function APIKeys({
                             )}
                           >
                             Name:{" "}
+                            {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
                             <strong>{key.name ? key.name : "Unnamed"}</strong>
                           </p>
                           <p

@@ -86,6 +86,7 @@ export default function Block({
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     nameValidation(block.name);
     if (canUseCache && block.config.use_cache === undefined) {
       handleUseCacheChange(true);

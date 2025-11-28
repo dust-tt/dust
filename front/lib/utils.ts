@@ -18,6 +18,7 @@ export function classNames(...classes: (string | null | boolean)[]) {
 export const shallowBlockClone = (block: any) => {
   const b = Object.assign({}, block);
   b.spec = Object.assign({}, block.spec);
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   b.config = Object.assign({}, block.config || {});
   return b;
 };

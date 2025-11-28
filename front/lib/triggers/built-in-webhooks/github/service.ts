@@ -197,6 +197,7 @@ export class GitHubWebhookService implements RemoteWebhookService<"github"> {
       });
     } catch (error: any) {
       return new Err(
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         new Error(error.message || "Failed to create GitHub webhooks")
       );
     }
@@ -250,6 +251,7 @@ export class GitHubWebhookService implements RemoteWebhookService<"github"> {
       const legacyRepository = remoteMetadata.repository;
 
       // Build webhookIds object, including legacy format if present
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       let webhookIds = remoteMetadata.webhookIds || {};
 
       if (isString(legacyWebhookId) && isString(legacyRepository)) {
@@ -317,6 +319,7 @@ export class GitHubWebhookService implements RemoteWebhookService<"github"> {
       return new Ok(undefined);
     } catch (error: any) {
       return new Err(
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         new Error(error.message || "Failed to delete webhook from GitHub")
       );
     }
