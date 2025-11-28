@@ -521,6 +521,7 @@ const InputBarContainer = ({
   );
 
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
+  const isRecording = voiceTranscriberService.status === "recording";
 
   return (
     <div
@@ -584,7 +585,7 @@ const InputBarContainer = ({
             ))}
           </div>
           <div className="relative flex w-full items-center justify-between">
-            {userMentionsEnabled && (
+            {!isRecording && userMentionsEnabled && (
               <MobileToolbar
                 editor={editor}
                 className={cn(
@@ -605,77 +606,79 @@ const InputBarContainer = ({
                 isToolbarOpen && "opacity-0"
               )}
             >
-              <div className="flex items-center">
-                {userMentionsEnabled && (
-                  <Button
-                    variant="ghost-secondary"
-                    icon={TextIcon}
-                    size={buttonSize}
-                    className="flex sm:hidden"
-                    onClick={setIsToolbarOpen}
-                  />
-                )}
-                {actions.includes("attachment") && (
-                  <>
-                    <input
-                      accept={getSupportedFileExtensions().join(",")}
-                      onChange={async (e) => {
-                        await fileUploaderService.handleFileChange(e);
-                        if (fileInputRef.current) {
-                          fileInputRef.current.value = "";
-                        }
-                        editorService.focusEnd();
-                      }}
-                      ref={fileInputRef}
-                      style={{ display: "none" }}
-                      type="file"
-                      multiple={true}
+              {!isRecording && (
+                <div className="flex items-center">
+                  {userMentionsEnabled && (
+                    <Button
+                      variant="ghost-secondary"
+                      icon={TextIcon}
+                      size={buttonSize}
+                      className="flex sm:hidden"
+                      onClick={setIsToolbarOpen}
                     />
-                    <InputBarAttachmentsPicker
-                      fileUploaderService={fileUploaderService}
+                  )}
+                  {actions.includes("attachment") && (
+                    <>
+                      <input
+                        accept={getSupportedFileExtensions().join(",")}
+                        onChange={async (e) => {
+                          await fileUploaderService.handleFileChange(e);
+                          if (fileInputRef.current) {
+                            fileInputRef.current.value = "";
+                          }
+                          editorService.focusEnd();
+                        }}
+                        ref={fileInputRef}
+                        style={{ display: "none" }}
+                        type="file"
+                        multiple={true}
+                      />
+                      <InputBarAttachmentsPicker
+                        fileUploaderService={fileUploaderService}
+                        owner={owner}
+                        isLoading={false}
+                        onNodeSelect={onNodeSelect}
+                        onNodeUnselect={onNodeUnselect}
+                        attachedNodes={attachedNodes}
+                        disabled={disableTextInput}
+                        buttonSize={buttonSize}
+                      />
+                    </>
+                  )}
+                  {actions.includes("tools") && (
+                    <ToolsPicker
                       owner={owner}
-                      isLoading={false}
-                      onNodeSelect={onNodeSelect}
-                      onNodeUnselect={onNodeUnselect}
-                      attachedNodes={attachedNodes}
+                      selectedMCPServerViews={selectedMCPServerViews}
+                      onSelect={onMCPServerViewSelect}
+                      onDeselect={onMCPServerViewDeselect}
                       disabled={disableTextInput}
                       buttonSize={buttonSize}
                     />
-                  </>
-                )}
-                {actions.includes("tools") && (
-                  <ToolsPicker
-                    owner={owner}
-                    selectedMCPServerViews={selectedMCPServerViews}
-                    onSelect={onMCPServerViewSelect}
-                    onDeselect={onMCPServerViewDeselect}
-                    disabled={disableTextInput}
-                    buttonSize={buttonSize}
-                  />
-                )}
-                {(actions.includes("agents-list") ||
-                  actions.includes("agents-list-with-actions")) && (
-                  <AgentPicker
-                    owner={owner}
-                    size={buttonSize}
-                    onItemClick={(c) => {
-                      editorService.insertMention({
-                        type: "agent",
-                        id: c.sId,
-                        label: c.name,
-                        description: c.description,
-                        pictureUrl: c.pictureUrl,
-                      });
-                    }}
-                    agents={allAgents}
-                    showDropdownArrow={false}
-                    showFooterButtons={actions.includes(
-                      "agents-list-with-actions"
-                    )}
-                    disabled={disableTextInput}
-                  />
-                )}
-              </div>
+                  )}
+                  {(actions.includes("agents-list") ||
+                    actions.includes("agents-list-with-actions")) && (
+                    <AgentPicker
+                      owner={owner}
+                      size={buttonSize}
+                      onItemClick={(c) => {
+                        editorService.insertMention({
+                          type: "agent",
+                          id: c.sId,
+                          label: c.name,
+                          description: c.description,
+                          pictureUrl: c.pictureUrl,
+                        });
+                      }}
+                      agents={allAgents}
+                      showDropdownArrow={false}
+                      showFooterButtons={actions.includes(
+                        "agents-list-with-actions"
+                      )}
+                      disabled={disableTextInput}
+                    />
+                  )}
+                </div>
+              )}
               <div className="grow" />
               <div className="flex items-center gap-2 md:gap-1">
                 {owner.metadata?.allowVoiceTranscription !== false &&
