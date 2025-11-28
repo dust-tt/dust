@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { suggestionsOfMentions } from "@app/lib/api/assistant/conversation/mention_suggestions";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { RichMention, WithAPIErrorResponse } from "@app/types";
@@ -47,10 +48,31 @@ async function handler(
     }
   }
 
+  const { select: selectParam } = req.query;
+
   const { query: queryParam } = req.query;
   const query = isString(queryParam) ? queryParam.trim().toLowerCase() : "";
+
+  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+  const mentions_v2_enabled = featureFlags.includes("mentions_v2");
+
+  // Parse select parameter: can be "agents", "users", ["agents", "users"], or undefined.
+  const select = (() => {
+    if (!selectParam) {
+      // Default behavior: agents always, users only if mentions_v2 enabled.
+      return { agents: true, users: mentions_v2_enabled };
+    }
+
+    const selectValues = isString(selectParam) ? [selectParam] : selectParam;
+    const agents = selectValues.includes("agents");
+    const users = selectValues.includes("users") && mentions_v2_enabled;
+
+    return { agents, users };
+  })();
+
   const suggestions = await suggestionsOfMentions(auth, {
     query,
+    select,
   });
 
   return res.status(200).json({ suggestions });

@@ -13,11 +13,16 @@ export function useMentionSuggestions({
   workspaceId,
   conversationId,
   query = "",
+  select,
   disabled = false,
 }: {
   workspaceId: string;
   conversationId: string | null;
   query?: string;
+  select: {
+    agents: boolean;
+    users: boolean;
+  };
   disabled?: boolean;
 }) {
   const suggestionsFetcher: Fetcher<MentionSuggestionsResponseBody> = fetcher;
@@ -36,6 +41,12 @@ export function useMentionSuggestions({
   const searchParams = new URLSearchParams({ query: debouncedSearchQuery });
   if (conversationId) {
     searchParams.append("conversationId", conversationId);
+  }
+  if (select.agents) {
+    searchParams.append("select", "agents");
+  }
+  if (select.users) {
+    searchParams.append("select", "users");
   }
 
   const { data, error, mutate } = useSWRWithDefaults(
