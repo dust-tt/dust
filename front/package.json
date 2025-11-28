@@ -233,7 +233,6 @@
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.14",
     "concurrently": "^9.0.1",
-    "contentful-management": "^11.63.1",
     "danger": "^13.0.4",
     "esbuild": "^0.25.0",
     "eslint": "^8.57.1",
