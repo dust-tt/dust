@@ -125,7 +125,7 @@ export function createSlackVerificationMiddleware(
         );
         // Set the regions for the forwarder
         req.regions = slackWebhookConfig.regions;
-        signingSecret = slackWebhookConfig.signingSecret;
+        signingSecret = slackWebhookConfig.signing_secret;
       } else {
         const secrets = await secretManager.getSecrets();
         signingSecret = secrets.slackSigningSecret;
