@@ -1,7 +1,6 @@
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import {
   filterAndSortEditorSuggestionAgents,
   filterAndSortUserSuggestions,
@@ -18,37 +17,49 @@ export const suggestionsOfMentions = async (
   auth: Authenticator,
   {
     query,
+    select = {
+      agents: true,
+      users: true,
+    },
   }: {
     query: string;
+    select?: {
+      agents: boolean;
+      users: boolean;
+    };
   }
 ): Promise<RichMention[]> => {
-  // Fetch agent configurations.
-  const agentConfigurations = await getAgentConfigurationsForView({
-    auth,
-    agentsGetView: "list",
-    variant: "light",
-  });
-
-  // Convert to RichAgentMention format.
-  const agentSuggestions: RichAgentMention[] = agentConfigurations
-    .filter((a) => a.status === "active")
-    .sort(compareAgentsForSort)
-    .map((agent) => ({
-      type: "agent",
-      id: agent.sId,
-      label: agent.name,
-      pictureUrl: agent.pictureUrl,
-      userFavorite: agent.userFavorite,
-      description: agent.description,
-    }));
-
-  // Fetch workspace members if mentions_v2 is enabled.
+  const agentSuggestions: RichAgentMention[] = [];
   const userSuggestions: RichUserMention[] = [];
-  const workspace = auth.getNonNullableWorkspace();
-  const featureFlags = await getFeatureFlags(workspace);
-  const mentions_v2_enabled = featureFlags.includes("mentions_v2");
 
-  if (mentions_v2_enabled) {
+  if (select.agents) {
+    // Fetch agent configurations.
+    const agentConfigurations = await getAgentConfigurationsForView({
+      auth,
+      agentsGetView: "list",
+      variant: "light",
+    });
+
+    // Convert to RichAgentMention format.
+    agentSuggestions.push(
+      ...agentConfigurations
+        .filter((a) => a.status === "active")
+        .sort(compareAgentsForSort)
+        .map(
+          (agent) =>
+            ({
+              type: "agent",
+              id: agent.sId,
+              label: agent.name,
+              pictureUrl: agent.pictureUrl,
+              userFavorite: agent.userFavorite,
+              description: agent.description,
+            }) satisfies RichAgentMention
+        )
+    );
+  }
+
+  if (select.users) {
     const { members } = await getMembers(auth, { activeOnly: true });
 
     userSuggestions.push(
@@ -65,17 +76,14 @@ export const suggestionsOfMentions = async (
     );
   }
 
-  // Filter and sort agents.
   const filteredAgents = filterAndSortEditorSuggestionAgents(
     query,
     agentSuggestions
   );
 
-  // Filter and sort users.
   const filteredUsers = filterAndSortUserSuggestions(query, userSuggestions);
 
   // Combine results: agents first, then users.
   const totalResults = [...filteredAgents, ...filteredUsers];
-  const suggestions = totalResults.slice(0, SUGGESTION_DISPLAY_LIMIT);
-  return suggestions as RichMention[];
+  return totalResults.slice(0, SUGGESTION_DISPLAY_LIMIT);
 };
