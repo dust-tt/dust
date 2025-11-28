@@ -6,7 +6,7 @@ export type Region = (typeof ALL_REGIONS)[number];
 type ProviderWithSigningSecret = "slack" | "notion";
 
 type WebhookRouterConfigEntry = {
-  signingSecret: string;
+  signing_secret: string;
   regions: Region[];
 };
 
@@ -25,8 +25,8 @@ function isValidWebhookRouterConfigEntry(
   return (
     value !== null &&
     typeof value === "object" &&
-    "signingSecret" in value &&
-    typeof value.signingSecret === "string" &&
+    "signing_secret" in value &&
+    typeof value.signing_secret === "string" &&
     "regions" in value &&
     Array.isArray(value.regions) &&
     value.regions.every(
@@ -60,7 +60,7 @@ export class WebhookRouterConfigManager {
     }
 
     return {
-      signingSecret: configEntry.signingSecret,
+      signing_secret: configEntry.signing_secret,
       regions: configEntry.regions,
     };
   }

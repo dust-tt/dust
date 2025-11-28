@@ -107,7 +107,7 @@ export function createNotionVerificationMiddleware(
         );
         // Set the regions for the forwarder
         req.regions = notionWebhookConfig.regions;
-        signingSecret = notionWebhookConfig.signingSecret;
+        signingSecret = notionWebhookConfig.signing_secret;
       } else {
         // Get secrets for Notion signature verification (webhook secret already validated)
         const secrets = await secretManager.getSecrets();
