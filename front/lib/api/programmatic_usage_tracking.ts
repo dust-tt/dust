@@ -8,7 +8,11 @@ import type { Authenticator } from "@app/lib/auth";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { LightWorkspaceType, UserMessageOrigin } from "@app/types";
+import type {
+  LightWorkspaceType,
+  PublicAPILimitsType,
+  UserMessageOrigin,
+} from "@app/types";
 
 export const USAGE_ORIGINS_CLASSIFICATION: Record<
   UserMessageOrigin,
@@ -61,24 +65,16 @@ function getRedisKey(workspace: LightWorkspaceType): string {
 
 const USERS_HAVE_BEEN_WARNED = false;
 
-function shouldTrackTokenUsageCosts(
+export function isProgrammaticUsage(
   auth: Authenticator,
   { userMessageOrigin }: { userMessageOrigin?: UserMessageOrigin | null } = {}
 ): boolean {
-  const workspace = auth.getNonNullableWorkspace();
-  const limits = getWorkspacePublicAPILimits(workspace);
-
-  // Don't track on workspaces without limits.
-  if (!limits?.enabled) {
-    return false;
-  }
-
   // Track for API keys, listed programmatic origins or unspecified user message origins.
   // This must be in sync with the getShouldTrackTokenUsageCostsESFilter function.
-
+  // TODO(PPUL): enforce passing non-null userMessageOrigin.
   if (!userMessageOrigin) {
     logger.warn(
-      { workspaceId: workspace.sId },
+      { workspaceId: auth.getNonNullableWorkspace().sId },
       "No user message origin provided, assuming non-programmatic usage for now"
     );
     return false;
@@ -125,11 +121,11 @@ export function getShouldTrackTokenUsageCostsESFilter(
   };
 }
 
-export async function hasReachedPublicAPILimits(
+export async function hasReachedProgrammaticUsageLimits(
   auth: Authenticator,
   shouldTrack: boolean = false
 ): Promise<boolean> {
-  if (!shouldTrackTokenUsageCosts(auth) && !shouldTrack) {
+  if (!isProgrammaticUsage(auth) && !shouldTrack) {
     return false;
   }
 
@@ -153,19 +149,27 @@ export async function hasReachedPublicAPILimits(
   });
 }
 
-export async function trackTokenUsageCost(
+// TODO(PPUL): remove this method once we switch to new credits tracking system.
+const TEMP_FAKE_LIMITS: PublicAPILimitsType & { enabled: true } = {
+  monthlyLimit: 1_000_000, // 10_000 USD
+  markup: 30,
+  billingDay: 1,
+  enabled: true,
+};
+async function decreaseProgrammaticCredits(
   workspace: LightWorkspaceType,
   amount: number
-): Promise<number> {
-  const limits = getWorkspacePublicAPILimits(workspace);
-  if (!limits?.enabled) {
-    return Infinity; // No limits means unlimited credits.
-  }
+): Promise<void> {
+  const rawLimits = getWorkspacePublicAPILimits(workspace);
+
+  const limits: PublicAPILimitsType = rawLimits?.enabled
+    ? rawLimits
+    : TEMP_FAKE_LIMITS;
 
   // Apply markup.
   const amountWithMarkup = amount * (1 + limits.markup / 100);
 
-  return runOnRedis({ origin: REDIS_ORIGIN }, async (redis) => {
+  await runOnRedis({ origin: REDIS_ORIGIN }, async (redis) => {
     const key = getRedisKey(workspace);
     const remainingCredits = await redis.get(key);
 
@@ -173,7 +177,7 @@ export async function trackTokenUsageCost(
     if (remainingCredits === null) {
       await initializeCredits(redis, workspace, limits.monthlyLimit);
 
-      return limits.monthlyLimit;
+      return;
     }
 
     // We track credit consumption in a best-effort manner. If a message consumes more credits than
@@ -183,21 +187,20 @@ export async function trackTokenUsageCost(
     const newCredits = parseFloat(remainingCredits) - amountWithMarkup;
     // Preserve the TTL of the key.
     await redis.set(key, newCredits.toString(), { KEEPTTL: true });
-    return newCredits;
   });
 }
 
+// TODO(PPUL): remove this method once we switch to new credits tracking system.
 async function initializeCredits(
   redis: RedisClientType,
   workspace: LightWorkspaceType,
   monthlyLimit: number
 ): Promise<void> {
   const key = getRedisKey(workspace);
-  const limits = getWorkspacePublicAPILimits(workspace);
-
-  if (!limits?.enabled) {
-    return;
-  }
+  const rawLimits = getWorkspacePublicAPILimits(workspace);
+  const limits: PublicAPILimitsType = rawLimits?.enabled
+    ? rawLimits
+    : TEMP_FAKE_LIMITS;
 
   // Calculate expiry time (end of current billing period).
   const now = moment();
@@ -218,14 +221,14 @@ async function initializeCredits(
   await redis.expire(key, secondsUntilEnd);
 }
 
-export async function maybeTrackTokenUsageCost(
+export async function trackProgrammaticCost(
   auth: Authenticator,
   {
     dustRunIds,
     userMessageOrigin,
   }: { dustRunIds: string[]; userMessageOrigin?: UserMessageOrigin | null }
 ) {
-  if (!shouldTrackTokenUsageCosts(auth, { userMessageOrigin })) {
+  if (!isProgrammaticUsage(auth, { userMessageOrigin })) {
     return;
   }
 
@@ -252,7 +255,10 @@ export async function maybeTrackTokenUsageCost(
     .reduce((acc, usage) => acc + usage.costUsd, 0);
   const runsCostCents = runsCostUsd > 0 ? Math.ceil(runsCostUsd * 100) : 0;
 
-  await trackTokenUsageCost(auth.getNonNullableWorkspace(), runsCostCents);
+  await decreaseProgrammaticCredits(
+    auth.getNonNullableWorkspace(),
+    runsCostCents
+  );
 }
 
 export async function resetCredits(

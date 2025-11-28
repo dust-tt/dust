@@ -14,8 +14,8 @@ import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMCPActionModel,
   AgentMCPActionOutputItem,
-} from "@app/lib/models/assistant/actions/mcp";
-import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
+} from "@app/lib/models/agent/actions/mcp";
+import { AgentMessage, Message } from "@app/lib/models/agent/conversation";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";

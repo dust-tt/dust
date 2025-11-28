@@ -1,7 +1,7 @@
 import { Op } from "sequelize";
 
-import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentMCPServerConfiguration } from "@app/lib/models/agent/actions/mcp";
+import { AgentConfiguration } from "@app/lib/models/agent/agent";
 
 export type AgentMcpConfigurationSummary = {
   sId: string;

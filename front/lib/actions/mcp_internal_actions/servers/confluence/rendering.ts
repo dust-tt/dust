@@ -2,6 +2,7 @@ import TurndownService from "turndown";
 
 import type {
   ConfluenceLinks,
+  ConfluenceSpace,
   ConfluenceUser,
   ConfluenceV1SearchPage,
   RenderablePage,
@@ -100,6 +101,30 @@ export function renderConfluencePageList(
   const sections = pages.map((page) => {
     const includeBody = Boolean(page.body?.storage?.value);
     return ["---", renderConfluencePage(page, { includeBody })].join("\n");
+  });
+
+  return [header, ...sections].join("\n\n");
+}
+
+export function renderConfluenceSpacesList(
+  spaces: ConfluenceSpace[],
+  { hasMore }: { hasMore: boolean }
+): string {
+  if (spaces.length === 0) {
+    return "No spaces found.";
+  }
+
+  const header = `Found ${spaces.length} space${spaces.length === 1 ? "" : "s"}${hasMore ? " (more available)" : ""}`;
+  const sections = spaces.map((space) => {
+    return [
+      `### ${space.name} (${space.key})`,
+      `ID: ${space.id}`,
+      space.type ? `Type: ${space.type}` : null,
+      space.status ? `Status: ${space.status}` : null,
+      space.homepageId ? `Homepage ID: ${space.homepageId}` : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
   });
 
   return [header, ...sections].join("\n\n");

@@ -1,8 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
-import {
-  Message,
-  MessageReaction,
-} from "@app/lib/models/assistant/conversation";
+import { Message, MessageReaction } from "@app/lib/models/agent/conversation";
 import type {
   ConversationError,
   ConversationMessageReactions,

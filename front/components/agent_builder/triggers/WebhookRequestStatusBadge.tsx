@@ -1,7 +1,7 @@
 import { Chip } from "@dust-tt/sparkle";
 import type { ComponentProps } from "react";
 
-import type { WebhookRequestTriggerStatus } from "@app/lib/models/assistant/triggers/webhook_request_trigger";
+import type { WebhookRequestTriggerStatus } from "@app/lib/models/agent/triggers/webhook_request_trigger";
 
 interface WebhookRequestStatusBadgeProps {
   status: WebhookRequestTriggerStatus;

@@ -4,7 +4,6 @@ import type {
   MessageDeltaUsage,
   MessageStreamEvent,
 } from "@anthropic-ai/sdk/resources/messages/messages.mjs";
-import { assertNever } from "@dust-tt/sparkle";
 import cloneDeep from "lodash/cloneDeep";
 
 import { validateContentBlockIndex } from "@app/lib/api/llm/clients/anthropic/utils/predicates";
@@ -22,6 +21,7 @@ import type {
 import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
+import { assertNever } from "@app/types";
 
 export async function* streamLLMEvents(
   messageStreamEvents: AsyncIterable<MessageStreamEvent>,

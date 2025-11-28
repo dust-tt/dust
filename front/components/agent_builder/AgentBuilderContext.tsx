@@ -1,4 +1,5 @@
-import { createContext, useContext, useMemo, useState } from "react";
+import type { ReactNode } from "react";
+import React, { createContext, useContext, useMemo, useState } from "react";
 
 import { DataSourceViewsProvider } from "@app/components/agent_builder/DataSourceViewsContext";
 import { MCPServerViewsProvider } from "@app/components/agent_builder/MCPServerViewsContext";
@@ -23,7 +24,7 @@ interface AgentBuilderProviderProps {
   owner: WorkspaceType;
   user: UserType;
   assistantTemplate: FetchAgentTemplateResponse | null;
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 export function AgentBuilderProvider({

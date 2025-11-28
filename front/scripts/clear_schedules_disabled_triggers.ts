@@ -1,5 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
-import { TriggerModel } from "@app/lib/models/assistant/triggers/triggers";
+import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { makeScript } from "@app/scripts/helpers";

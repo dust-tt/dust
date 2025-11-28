@@ -1,7 +1,6 @@
 import { startObservation } from "@langfuse/tracing";
 import { randomUUID } from "crypto";
 
-import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/components/agent_builder/types";
 import type { LLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import {
   createLLMTraceId,
@@ -25,6 +24,7 @@ import type {
   ReasoningEffort,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
+import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types";
 
 export abstract class LLM {
   protected modelId: ModelIdType;

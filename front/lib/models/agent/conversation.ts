@@ -2,8 +2,8 @@ import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes, literal } from "sequelize";
 
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
-import type { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
-import { TriggerModel } from "@app/lib/models/assistant/triggers/triggers";
+import type { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
+import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";

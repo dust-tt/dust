@@ -1,13 +1,13 @@
-import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
+import { AgentDataSourceConfiguration } from "@app/lib/models/agent/actions/data_sources";
 import {
   AgentChildAgentConfiguration,
   AgentMCPServerConfiguration,
-} from "@app/lib/models/assistant/actions/mcp";
-import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
-import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { Mention } from "@app/lib/models/assistant/conversation";
-import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
+} from "@app/lib/models/agent/actions/mcp";
+import { AgentReasoningConfiguration } from "@app/lib/models/agent/actions/reasoning";
+import { AgentTablesQueryConfigurationTable } from "@app/lib/models/agent/actions/tables_query";
+import { AgentConfiguration } from "@app/lib/models/agent/agent";
+import { Mention } from "@app/lib/models/agent/conversation";
+import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";

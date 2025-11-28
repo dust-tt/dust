@@ -21,7 +21,7 @@ import type {
   DeveloperSecretSelectionType,
   MCPServerViewType,
 } from "@app/lib/api/mcp";
-import type { AdditionalConfigurationValueType } from "@app/lib/models/assistant/actions/mcp";
+import type { AdditionalConfigurationValueType } from "@app/lib/models/agent/actions/mcp";
 import {
   areSchemasEqual,
   ensurePathExists,

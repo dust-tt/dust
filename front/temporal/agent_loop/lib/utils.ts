@@ -7,7 +7,7 @@ import {
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentMessage } from "@app/lib/models/assistant/conversation";
+import type { AgentMessage } from "@app/lib/models/agent/conversation";
 import { compareOutputs } from "@app/temporal/agent_loop/lib/compare_outputs";
 import { getOutputFromAction } from "@app/temporal/agent_loop/lib/get_output_from_action";
 import { getOutputFromLLMStream } from "@app/temporal/agent_loop/lib/get_output_from_llm";

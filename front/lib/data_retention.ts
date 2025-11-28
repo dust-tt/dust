@@ -1,7 +1,7 @@
 import assert from "assert";
 
 import type { Authenticator } from "@app/lib/auth";
-import { AgentDataRetentionModel } from "@app/lib/models/assistant/agent_data_retention";
+import { AgentDataRetentionModel } from "@app/lib/models/agent/agent_data_retention";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 
 export const getWorkspaceDataRetention = async (
