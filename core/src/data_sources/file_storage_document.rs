@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Result};
 use cloud_storage::{ErrorList, GoogleErrorResponse, Object};
 use serde::{Deserialize, Serialize};
-use tracing::info;
+use tracing::{error, info};
 
 use crate::utils;
 
@@ -103,7 +103,7 @@ impl FileStorageDocument {
                 }
             }
             Err(e) => {
-                info!(
+                error!(
                     data_source_internal_id = data_source.internal_id(),
                     document_id_hash = document_id_hash,
                     duration = utils::now() - now,
