@@ -304,29 +304,6 @@ your_provider: {
 
 ---
 
-## Testing
-
-### Manual Testing Checklist
-
-1. **OAuth Connection** (if applicable)
-   - [ ] Navigate to agent builder and add the tool
-   - [ ] Click "Connect" and complete OAuth flow
-   - [ ] Verify connection appears as "Connected"
-
-2. **Tool Execution**
-   - [ ] Test each read tool returns expected data
-   - [ ] Test write tools create/update correctly
-   - [ ] Verify error handling for invalid inputs
-   - [ ] Test with expired tokens (should auto-refresh)
-
-3. **Edge Cases**
-   - [ ] Empty results handling
-   - [ ] Rate limit handling
-   - [ ] Large result set pagination
-   - [ ] Permission errors
-
----
-
 ## Best Practices
 
 ### 1. Error Handling
