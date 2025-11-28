@@ -203,7 +203,7 @@ export class CreditResource extends BaseResource<CreditModel> {
         id: this.id,
         workspaceId: this.workspaceId,
         // Already-depleted credit should not be consumed.
-        consumedAmountCents: { [Op.lte]: Sequelize.col("initialAmountCents") },
+        consumedAmountCents: { [Op.lt]: Sequelize.col("initialAmountCents") },
         // Credit must be started (startDate not null and <= now)
         startDate: { [Op.ne]: null, [Op.lte]: now },
         // Credit must not be expired
