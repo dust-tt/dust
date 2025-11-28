@@ -24,7 +24,6 @@ module.exports = {
     //     "Use trustedFetch or untrustedFetch from @app/lib/egress instead of the global fetch to make egress intent explicit.",
     // },
     // ],
-    "import/no-cycle": "error",
     curly: ["error", "all"],
     "react/no-unescaped-entities": 0,
     "@typescript-eslint/consistent-type-imports": "error",

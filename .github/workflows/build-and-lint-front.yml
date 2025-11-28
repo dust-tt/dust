@@ -86,6 +86,9 @@ jobs:
         run: npx tsc --version && npm run tsc
   lint:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        check: [lint, format, circular]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
@@ -97,6 +100,7 @@ jobs:
             ./types/package-lock.json
             ./sdks/js/package-lock.json
       - name: Cache ESLint
+        if: matrix.check == 'lint'
         uses: actions/cache@v3
         with:
           path: front/.eslintcache
@@ -109,22 +113,31 @@ jobs:
       - name: Install Front
         working-directory: front
         run: npm install
-      - name: Lint
+      - name: Run lint
+        if: matrix.check == 'lint'
         working-directory: front
         env:
           NODE_OPTIONS: "--max-old-space-size=8192"
-        run: npm run lint && npm run format:check
+        run: npm run lint
+      - name: Run format check
+        if: matrix.check == 'format'
+        working-directory: front
+        run: npm run format:check
+      - name: Run circular dependencies check
+        if: matrix.check == 'circular'
+        working-directory: front
+        run: npm run circular
       - name: Knip - unlisted dependencies
         working-directory: front
         run: |
           explanations=$(cat << EOF
-          
+
           Relying on transitive dependencies is bad because:
           * Fragility: Your direct dependencies can remove or update their dependencies at any time, breaking your code without warning
           * No version control: You can't lock or manage versions of packages you don't explicitly declare
           * Hidden contracts: It's unclear what your project actually needs, making maintenance and onboarding harder
           * Unpredictable resolution: Package managers may hoist different versions than you expect, causing inconsistent behavior across environments
-          
+
           *Always explicitly declare what you directly import/use.* EOF
           EOF
           )
@@ -135,7 +148,7 @@ jobs:
           explanations=$(cat << EOF
 
           Keeping unused dev dependencies is problematic because:
-          
+
           1. Security surface: More packages = more potential vulnerabilities to monitor and patch, even if you're not using them
           2. Install time: Slows down `npm install` for everyone on the team and in CI/CD pipelines
           3. Confusion: Makes it unclear what tools/libraries are actually needed for development, hindering onboarding
