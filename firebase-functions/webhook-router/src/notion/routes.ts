@@ -49,6 +49,9 @@ async function handleNotionWebhook(
     let body;
     let rootUrlToken;
     if (useClientCredentials && req.body.verification_token) {
+      // Scenario where user has their own Notion integration, and this is the
+      // initial webhook registration request that gives us the signing secret.
+      // We send it to the connectors API that saves webhook router entries.
       const { providerWorkspaceId } = req.params;
       body = {
         signing_secret: req.body.verification_token,
@@ -56,6 +59,7 @@ async function handleNotionWebhook(
       endpoint = `notion/${providerWorkspaceId}`;
       rootUrlToken = "webhooks_router_entries";
     } else {
+      // In all other cases, we forward the original body to connectors.
       body = req.body;
       rootUrlToken = "webhooks";
     }

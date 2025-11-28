@@ -78,7 +78,8 @@ export function createNotionVerificationMiddleware(
       req.body = JSON.parse(stringBody);
 
       // Skip signature verification for the initial verification_token request, since
-      // that is what gives us the signing secret in the first place.
+      // that is what gives us the signing secret in the first place. This applies to
+      // both private client integrations and standard Dust integrations.
       if (req.body.verification_token) {
         return next();
       }
@@ -100,6 +101,8 @@ export function createNotionVerificationMiddleware(
 
       let signingSecret: string;
       if (useClientCredentials) {
+        // It's a private client integration, so get the signing secret and regions from
+        // the webhook router config.
         const { providerWorkspaceId } = req.params;
         const notionWebhookConfig = await webhookRouterConfigManager.getEntry(
           "notion",
