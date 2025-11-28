@@ -125,12 +125,11 @@ function UsageSection({ credits, isLoading }: UsageSectionProps) {
     for (const credit of activeCredits) {
       byType[credit.type].consumed += credit.consumedAmount;
       byType[credit.type].total += credit.initialAmount;
+
       // Keep the earliest expiration date for each type
+      const currentExpiration = byType[credit.type].expirationDate;
       if (credit.expirationDate) {
-        if (
-          !byType[credit.type].expirationDate ||
-          credit.expirationDate < byType[credit.type].expirationDate!
-        ) {
+        if (!currentExpiration || credit.expirationDate < currentExpiration) {
           byType[credit.type].expirationDate = credit.expirationDate;
         }
       }
