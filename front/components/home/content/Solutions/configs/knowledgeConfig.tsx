@@ -38,6 +38,11 @@ export const pageSettings: pageSettingsProps = {
     "Surface blockers from project discussions.",
   ],
   image: "/static/landing/knowledge/askacme.png",
+  seo: {
+    title: "AI Knowledge Agents: Make Company Knowledge Instantly Accessible",
+    description:
+      "Transform organizational knowledge into structured insights and empower teams with instant access to precise information. Get answers with context and citations.",
+  },
 };
 
 export const Hero: HeroProps = {
@@ -168,14 +173,14 @@ export const Stories: CustomerStory[] = [
     title: "Clay creates scalable knowledge hub with Dust AI agents",
     content:
       "Clay uses Dust AI agents to solve team scaling challenges with instant knowledge access for rapid growth.",
-    href: "https://blog.dust.tt/clay-scaling-gtme-team/",
+    href: "/blog/clay-scaling-gtme-team",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/06/clay_dust_agents.jpg",
   },
   {
     title: "Kyriba's adoption of Dust across all functions",
     content:
       "43% of Kyriba employees save more than 3 hours weekly leveraging Dust for RFPs.",
-    href: "https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/",
+    href: "/blog/kyriba-accelerating-innovation-with-dust",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Kyriba-__-Dust.png",
   },
   {
@@ -183,14 +188,14 @@ export const Stories: CustomerStory[] = [
       "PayFit Accelerates Content Creation and Knowledge Sharing with Dust",
     content:
       "PayFit leverages Dust AI assistants to improve their internal processes across the board.",
-    href: "https://blog.dust.tt/dust-ai-payfit-efficiency/",
+    href: "/blog/dust-ai-payfit-efficiency",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Payfit-__-Dust.png",
   },
   {
     title: "November Five's journey to minimizing routine tasks with Dust",
     content:
       "Discover how November Five accelerates work with Dust, turning 3-hour tasks into 30 minutes.",
-    href: "https://blog.dust.tt/november-five-ai-transformation-dust/",
+    href: "/blog/november-five-ai-transformation-dust",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Pennylane-__-Dust-1.jpg",
   },
 ];

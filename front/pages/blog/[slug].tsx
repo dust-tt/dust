@@ -61,8 +61,7 @@ export const getServerSideProps: GetServerSideProps<BlogPostPageProps> = async (
 
 const CONTENT_CLASSES = classNames(
   "col-span-12",
-  "lg:col-span-8 lg:col-start-3",
-  "xl:col-span-6 xl:col-start-4"
+  "lg:col-span-8 lg:col-start-3"
 );
 
 const WIDE_CLASSES = classNames("col-span-12", "lg:col-span-10 lg:col-start-2");

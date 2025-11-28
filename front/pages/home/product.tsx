@@ -1,3 +1,4 @@
+import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
 import { CapabilitySection } from "@app/components/home/content/Product/CapabilitySection";
@@ -10,6 +11,7 @@ import { H2 } from "@app/components/home/ContentComponents";
 import { FunctionsSection } from "@app/components/home/FunctionsSection";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
+import { PageMetadata } from "@app/components/home/PageMetadata";
 
 export async function getStaticProps() {
   return {
@@ -20,8 +22,15 @@ export async function getStaticProps() {
 }
 
 export function Landing() {
+  const router = useRouter();
+
   return (
     <>
+      <PageMetadata
+        title="Dust Product: AI Agents That Know Your Company"
+        description="Discover how Dust AI agents access your company knowledge, integrate with your tools, and help teams work smarter. Secure, customizable, and enterprise-ready."
+        pathname={router.asPath}
+      />
       <ProductIntroSection />
       <div className="mt-16">
         <CapabilitySection />

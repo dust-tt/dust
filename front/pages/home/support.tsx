@@ -1,4 +1,4 @@
-import Head from "next/head";
+import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
 import {
@@ -11,6 +11,7 @@ import {
 } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
+import { PageMetadata } from "@app/components/home/PageMetadata";
 import TrustedBy from "@app/components/home/TrustedBy";
 import UTMButton from "@app/components/UTMButton";
 import UTMPageWrapper from "@app/components/UTMPageWrapper";
@@ -282,26 +283,16 @@ function JustUseDustSection() {
 }
 
 export default function Support() {
+  const router = useRouter();
+
   return (
     <UTMPageWrapper>
-      <Head>
-        <title>Dust - Support & Help</title>
-        <meta
-          name="description"
-          content="Get help with Dust AI platform. Access documentation, contact support, and connect with our community."
-        />
-        <meta property="og:title" content="Dust - Support & Help" />
-        <meta
-          property="og:description"
-          content="Get help with Dust AI platform. Access documentation, contact support, and connect with our community."
-        />
-        <meta property="og:type" content="website" />
-        <meta
-          property="og:image"
-          content="https://dust.tt/static/landing/hero_dust.png"
-        />
-        <meta property="og:url" content="https://dust.tt/home/support" />
-      </Head>
+      <PageMetadata
+        title="Dust Support & Help"
+        description="Get help with Dust AI platform. Access documentation, contact support, and connect with our community."
+        pathname={router.asPath}
+        ogImage="https://dust.tt/static/landing/hero_dust.png"
+      />
 
       <div className="container flex w-full flex-col gap-4 px-2 py-2">
         <HeroSection />

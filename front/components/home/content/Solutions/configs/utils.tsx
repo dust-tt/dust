@@ -1,5 +1,10 @@
 import type { RocketIcon } from "@dust-tt/sparkle";
 
+export interface SeoConfig {
+  title: string;
+  description: string;
+}
+
 export interface pageSettingsProps {
   uptitle: string;
   title: React.ReactNode;
@@ -7,6 +12,7 @@ export interface pageSettingsProps {
   accentColor: string;
   bulletPoints: string[];
   image: string;
+  seo: SeoConfig;
 }
 
 export interface HeroProps {

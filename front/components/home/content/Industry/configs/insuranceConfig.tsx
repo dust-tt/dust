@@ -4,6 +4,11 @@ import type { IndustryPageConfig } from "@app/components/home/content/Industry/c
 import { createLayoutConfig } from "@app/components/home/content/Industry/configs/utils";
 
 export const insuranceConfig: IndustryPageConfig = {
+  seo: {
+    title: "Dust for Insurance",
+    description:
+      "The AI Solution to streamline operations & enhance member experience. Transform insurance workflows with intelligent automation while ensuring compliance and improving customer satisfaction.",
+  },
   layout: createLayoutConfig([
     "hero",
     "aiAgents",
@@ -268,28 +273,28 @@ export const insuranceConfig: IndustryPageConfig = {
           "20%+ productivity gains in Sales: Insights from Alan and Payfit",
         content:
           "Leading companies share how Dust agents deliver significant productivity improvements and measurable ROI in sales operations.",
-        href: "https://blog.dust.tt/generative-ai-insights-alan-payfit-leaders/",
+        href: "/blog/generative-ai-insights-alan-payfit-leaders",
         src: "https://blog.dust.tt/content/images/size/w2000/2025/01/Founder.jpg",
       },
       {
         title: "Wakam scales AI adoption with Dust with 130+ agents",
         content:
           "Wakam achieves 75% adoption rate with self-service AI capabilities, reducing partner processing time by up to 90%.",
-        href: "https://blog.dust.tt/wakam-empowers-teams-with-self-service-data-intelligence-while-reducing-processing-time/",
+        href: "/blog/wakam-empowers-teams-with-self-service-data-intelligence-while-reducing-processing-time",
         src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Wakam.jpg",
       },
       {
         title: "Alan's teams save 3h weekly scraping sales transcripts",
         content:
           "Alan’s sales & marketing team transforms sales conversations into intelligence with AI agents",
-        href: "https://blog.dust.tt/alans-pmm-team-transforms-sales-conversations-into-intelligence-with-ai-agents/",
+        href: "/blog/alans-pmm-team-transforms-sales-conversations-into-intelligence-with-ai-agents",
         src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Alan-__-Dust-1-1.png",
       },
       {
         title: "Wakam cuts legal contract analysis time by 50% with Dust",
         content:
           "How Wakam developed specialized AI agents to automate contract analysis, data extraction, and regulatory monitoring.",
-        href: "https://blog.dust.tt/how-wakam-cut-legal-contract-analysis-time-by-50-with-dust/",
+        href: "/blog/how-wakam-cut-legal-contract-analysis-time-by-50-with-dust",
         src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Wakam_Dust.png",
       },
     ],

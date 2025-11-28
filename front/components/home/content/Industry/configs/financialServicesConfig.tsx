@@ -4,6 +4,11 @@ import type { IndustryPageConfig } from "@app/components/home/content/Industry/c
 import { createLayoutConfig } from "@app/components/home/content/Industry/configs/utils";
 
 export const financialServicesConfig: IndustryPageConfig = {
+  seo: {
+    title: "Dust for Financial Services",
+    description:
+      "AI agents for compliance, support, and growth. Transform financial operations with intelligent automation while maintaining the highest security and regulatory standards.",
+  },
   layout: createLayoutConfig([
     "hero",
     "aiAgents",
@@ -273,21 +278,21 @@ export const financialServicesConfig: IndustryPageConfig = {
           "50,000 Hours Saved: How Qonto Revolutionized Compliance and Risk Assessment with AI",
         content:
           "Germi, Qonto’s AI assistant, analyzes German industry codes and screens prohibited activities, automating compliance checks across European markets.",
-        href: "https://blog.dust.tt/qonto-dust-ai-partnership/",
+        href: "/blog/qonto-dust-ai-partnership",
         src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Qonto-__-Dust.jpg",
       },
       {
         title: "Kyriba’s adoption of Dust across all functions",
         content:
           "43% of Kyriba employees save more than 3 hours weekly leveraging Dust for RFPs.",
-        href: "https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/",
+        href: "/blog/kyriba-accelerating-innovation-with-dust",
         src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Kyriba-__-Dust.png",
       },
       {
         title: "Pennylane’s journey to deploy Dust for Customer Care teams",
         content:
           "Dust evolved from a simple support tool into an integral part of Pennylane's operations.",
-        href: "https://blog.dust.tt/pennylane-customer-support-journey/",
+        href: "/blog/pennylane-customer-support-journey",
         src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Pennylane-__-Dust.jpg",
       },
     ],

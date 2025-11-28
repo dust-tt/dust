@@ -4,6 +4,11 @@ import type { IndustryPageConfig } from "@app/components/home/content/Industry/c
 import { createLayoutConfig } from "@app/components/home/content/Industry/configs/utils";
 
 export const retailEcommerceConfig: IndustryPageConfig = {
+  seo: {
+    title: "Dust for Retail & e-Commerce",
+    description:
+      "The AI Solution trusted by leading retail brands — say goodbye to scattered product data, operational bottlenecks, and missed market intelligence.",
+  },
   layout: createLayoutConfig([
     "hero",
     "aiAgents",
@@ -303,7 +308,7 @@ export const retailEcommerceConfig: IndustryPageConfig = {
         title: "Building a Marketing Engine from Scratch at Fleet",
         content:
           "With just two interns, Valentine created a scalable marketing operation using Dust’s AI capabilities for content and brand management.",
-        href: "https://blog.dust.tt/how-valentine-head-of-marketing-at-fleet-uses-dust/",
+        href: "/blog/how-valentine-head-of-marketing-at-fleet-uses-dust",
         src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Fleet-__-Dust.jpg",
       },
     ],
