@@ -34,7 +34,7 @@ const USER_COUNT_CUTOFF = 5 * 24 * 60 * 60 * 1000;
  * - Next 50 users (51-100): $1 each
  * - Cap at 100 users
  */
-function calculateFreeCreditAmount(userCount: number): number {
+export function calculateFreeCreditAmount(userCount: number): number {
   const usersInBracket1 = Math.min(BRACKET_1_USERS, userCount);
   const usersInBracket2 = Math.min(
     BRACKET_2_USERS,
