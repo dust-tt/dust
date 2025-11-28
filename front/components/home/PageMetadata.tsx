@@ -33,7 +33,7 @@ export function PageMetadata({
       <meta
         key="og:image"
         property="og:image"
-        content={ogImage || defaultOgImage}
+        content={ogImage ?? defaultOgImage}
       />
     </Head>
   );
