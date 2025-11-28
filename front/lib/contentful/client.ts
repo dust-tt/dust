@@ -9,7 +9,7 @@ import type {
   BlogPost,
   BlogPostSummary,
 } from "@app/lib/contentful/types";
-import { isString } from "@app/types";
+import { isString, normalizeError } from "@app/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { slugify } from "@app/types/shared/utils/string_utils";
@@ -145,7 +145,7 @@ export async function getAllBlogPosts(): Promise<
 
     return new Ok(posts);
   } catch (error) {
-    return new Err(error instanceof Error ? error : new Error(String(error)));
+    return new Err(normalizeError(error));
   }
 }
 
@@ -170,7 +170,7 @@ export async function getBlogPostBySlug(
 
     return new Ok(null);
   } catch (error) {
-    return new Err(error instanceof Error ? error : new Error(String(error)));
+    return new Err(normalizeError(error));
   }
 }
 
@@ -203,6 +203,6 @@ export async function getRelatedPosts(
 
     return new Ok(posts);
   } catch (error) {
-    return new Err(error instanceof Error ? error : new Error(String(error)));
+    return new Err(normalizeError(error));
   }
 }

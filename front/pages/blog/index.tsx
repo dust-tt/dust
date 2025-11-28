@@ -21,7 +21,12 @@ export const getServerSideProps: GetServerSideProps<
       { error: postsResult.error },
       "Error fetching blog posts from Contentful"
     );
-    throw postsResult.error;
+    return {
+      props: {
+        posts: [],
+        gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+      },
+    };
   }
 
   return {
