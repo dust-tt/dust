@@ -22,6 +22,7 @@ import {
   getDisplayNameFromPastedFileId,
   getPastedFileName,
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
+import { MobileToolbar } from "@app/components/assistant/conversation/input_bar/toolbar/MobileToolbar";
 import { Toolbar } from "@app/components/assistant/conversation/input_bar/toolbar/Toolbar";
 import { ToolsPicker } from "@app/components/assistant/ToolsPicker";
 import { VoicePicker } from "@app/components/assistant/VoicePicker";
@@ -584,13 +585,14 @@ const InputBarContainer = ({
           </div>
           <div className="relative flex w-full items-center justify-between">
             {userMentionsEnabled && (
-              <Toolbar
+              <MobileToolbar
                 editor={editor}
-                className={
+                className={cn(
+                  "sm:hidden",
                   isToolbarOpen
                     ? "pointer-events-auto w-full"
                     : "pointer-events-none hidden w-[120px]"
-                }
+                )}
                 onClose={(e: React.MouseEvent<HTMLButtonElement>) => {
                   e.stopPropagation();
                   setIsToolbarOpen(false);
