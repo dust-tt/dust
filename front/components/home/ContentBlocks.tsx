@@ -77,6 +77,7 @@ interface BlogBlockProps {
   href: string;
   className?: string;
   style?: React.CSSProperties;
+  target?: string;
 }
 
 export const BlogBlock: React.FC<BlogBlockProps> = ({
@@ -86,11 +87,12 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
   href,
   className = "",
   style,
+  target,
 }) => {
   return (
     <a
       href={href}
-      target="_blank"
+      target={target}
       className={classNames(
         className,
         "flex h-full w-full flex-col overflow-hidden rounded-xl bg-muted-background",
