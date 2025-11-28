@@ -1,6 +1,7 @@
-import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { Button } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
+
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 interface ToolbarIconProps {
   icon: ComponentType<{ className?: string }>;
   onClick: () => void;

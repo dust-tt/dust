@@ -1,17 +1,18 @@
-import { ToolbarIcon } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarIcon";
-import { ToolbarLink } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarLink";
 import {
-  Separator,
+  BoldIcon,
+  CodeBlockIcon,
+  CodeSlashIcon,
+  HeadingIcon,
+  ItalicIcon,
   ListCheckIcon,
   ListOrdered2Icon,
   QuoteTextIcon,
-  CodeSlashIcon,
-  CodeBlockIcon,
-  HeadingIcon,
-  BoldIcon,
-  ItalicIcon,
+  Separator,
 } from "@dust-tt/sparkle";
-import { Editor } from "@tiptap/react";
+import type { Editor } from "@tiptap/react";
+
+import { ToolbarIcon } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarIcon";
+import { ToolbarLink } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarLink";
 
 export function ToolBarContent({ editor }: { editor: Editor }) {
   return (

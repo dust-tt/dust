@@ -1,7 +1,7 @@
+import { cn } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
-import { cn } from "@dust-tt/sparkle";
 
 interface ToolbarProps {
   editor: Editor | null;
