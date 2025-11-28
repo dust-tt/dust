@@ -218,8 +218,7 @@ export async function searchMembers(
     );
     total = users.length;
   } else {
-    const results = await UserResource.searchUsers({
-      owner,
+    const results = await UserResource.searchUsers(auth, {
       searchTerm: options.searchTerm ?? "",
       offset: paginationParams.offset,
       limit: paginationParams.limit,

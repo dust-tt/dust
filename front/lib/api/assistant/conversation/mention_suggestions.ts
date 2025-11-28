@@ -1,11 +1,10 @@
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
-import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import {
   filterAndSortEditorSuggestionAgents,
-  filterAndSortUserSuggestions,
   SUGGESTION_DISPLAY_LIMIT,
 } from "@app/lib/mentions/editor/suggestion";
+import { UserResource } from "@app/lib/resources/user_resource";
 import type {
   RichAgentMention,
   RichMention,
@@ -60,20 +59,29 @@ export const suggestionsOfMentions = async (
   }
 
   if (select.users) {
-    const { members } = await getMembers(auth, { activeOnly: true });
+    const res = await UserResource.searchUsers(auth, {
+      searchTerm: query,
+      offset: 0,
+      limit: SUGGESTION_DISPLAY_LIMIT,
+    });
 
-    userSuggestions.push(
-      ...members.map(
-        (member) =>
-          ({
-            type: "user",
-            id: member.sId,
-            label: member.fullName || member.email,
-            pictureUrl: member.image ?? "/static/humanavatar/anonymous.png",
-            description: member.email,
-          }) satisfies RichUserMention
-      )
-    );
+    if (res.isOk()) {
+      const { users } = res.value;
+
+      userSuggestions.push(
+        ...users.map(
+          (u) =>
+            ({
+              type: "user",
+              id: u.sId,
+              label: u.fullName() || u.email,
+              pictureUrl:
+                u.toJSON().image ?? "/static/humanavatar/anonymous.png",
+              description: u.email,
+            }) satisfies RichUserMention
+        )
+      );
+    }
   }
 
   const filteredAgents = filterAndSortEditorSuggestionAgents(
@@ -81,9 +89,7 @@ export const suggestionsOfMentions = async (
     agentSuggestions
   );
 
-  const filteredUsers = filterAndSortUserSuggestions(query, userSuggestions);
-
   // Combine results: agents first, then users.
-  const totalResults = [...filteredAgents, ...filteredUsers];
+  const totalResults = [...filteredAgents, ...userSuggestions];
   return totalResults.slice(0, SUGGESTION_DISPLAY_LIMIT);
 };
