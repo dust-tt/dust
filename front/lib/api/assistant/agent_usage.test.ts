@@ -1,13 +1,12 @@
-import { Ok } from "@dust-tt/client";
 import { describe, expect, it, vi } from "vitest";
 
 import { agentMentionsCount } from "@app/lib/api/assistant/agent_usage";
+import { searchAnalytics } from "@app/lib/api/elasticsearch";
+import { Ok } from "@app/types";
 
 vi.mock("@app/lib/api/elasticsearch", () => ({
   searchAnalytics: vi.fn(),
 }));
-
-import { searchAnalytics } from "@app/lib/api/elasticsearch";
 
 describe("agentMentionsCount", () => {
   it("should return aggregated mentions from Elasticsearch", async () => {
@@ -40,14 +39,19 @@ describe("agentMentionsCount", () => {
     );
 
     const result = await agentMentionsCount("workspace-sId");
+    if (result.isErr()) {
+      throw new Error("Expected Ok result");
+    }
+
+    expect(result.isOk()).toBe(true);
 
     expect(result).toHaveLength(2);
-    expect(result[0].agentId).toBe("agent-123");
-    expect(result[0].messageCount).toBe(5);
-    expect(result[0].conversationCount).toBe(3);
-    expect(result[0].userCount).toBe(2);
-    expect(result[1].agentId).toBe("agent-456");
-    expect(result[1].messageCount).toBe(2);
+    expect(result.value[0].agentId).toBe("agent-123");
+    expect(result.value[0].messageCount).toBe(5);
+    expect(result.value[0].conversationCount).toBe(3);
+    expect(result.value[0].userCount).toBe(2);
+    expect(result.value[1].agentId).toBe("agent-456");
+    expect(result.value[1].messageCount).toBe(2);
 
     // Verify the query structure
     expect(mockSearchAnalytics).toHaveBeenCalledWith(
@@ -84,6 +88,10 @@ describe("agentMentionsCount", () => {
 
     const result = await agentMentionsCount("workspace-sId");
 
-    expect(result).toHaveLength(0);
+    if (result.isErr()) {
+      throw new Error("Expected Ok result");
+    }
+
+    expect(result.value).toHaveLength(0);
   });
 });

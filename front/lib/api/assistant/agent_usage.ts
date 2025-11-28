@@ -10,7 +10,13 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getAssistantUsageData } from "@app/lib/workspace_usage";
 import { launchMentionsCountWorkflow } from "@app/temporal/mentions_count_queue/client";
-import type { LightAgentConfigurationType } from "@app/types";
+import {
+  Err,
+  normalizeError,
+  Ok,
+  Result,
+  type LightAgentConfigurationType,
+} from "@app/types";
 
 // Ranking of agents is done over a 30 days period.
 const RANKING_USAGE_DAYS = 30;
@@ -147,7 +153,7 @@ export async function agentMentionsCount(
   workspaceId: string,
   agentConfiguration?: LightAgentConfigurationType,
   rankingUsageDays: number = RANKING_USAGE_DAYS
-): Promise<AgentUsageCount[]> {
+): Promise<Result<AgentUsageCount[], Error>> {
   const filters: estypes.QueryDslQueryContainer[] = [
     { term: { workspace_id: workspaceId } },
     { terms: { context_origin: USER_USAGE_ORIGINS } },
@@ -189,23 +195,27 @@ export async function agentMentionsCount(
   });
 
   if (result.isErr()) {
-    throw new Error(`Elasticsearch query failed: ${result.error.message}`);
+    return new Err(
+      normalizeError(`Elasticsearch query failed: ${result.error.message}`)
+    );
   }
 
   const buckets = result.value.aggregations?.by_agent?.buckets;
   if (!buckets || !Array.isArray(buckets)) {
-    return [];
+    return new Ok([]);
   }
 
-  return buckets
-    .map((bucket) => ({
-      agentId: bucket.key,
-      messageCount: bucket.doc_count,
-      conversationCount: bucket.conversation_count?.value ?? 0,
-      userCount: bucket.user_count?.value ?? 0,
-      timePeriodSec: rankingUsageDays * 24 * 60 * 60,
-    }))
-    .sort((a, b) => b.messageCount - a.messageCount);
+  return new Ok(
+    buckets
+      .map((bucket) => ({
+        agentId: bucket.key,
+        messageCount: bucket.doc_count,
+        conversationCount: bucket.conversation_count?.value ?? 0,
+        userCount: bucket.user_count?.value ?? 0,
+        timePeriodSec: rankingUsageDays * 24 * 60 * 60,
+      }))
+      .sort((a, b) => b.messageCount - a.messageCount)
+  );
 }
 
 export async function storeCountsInRedis(
