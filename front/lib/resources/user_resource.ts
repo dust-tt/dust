@@ -253,7 +253,6 @@ export class UserResource extends BaseResource<UserModel> {
 
       logger.error(
         {
-          panic: true,
           workspaceId: owner.sId,
           missingUserSIds: missingUserIds,
           owner: "spolu",
