@@ -1,4 +1,4 @@
-import type { GetStaticPaths, GetStaticProps } from "next";
+import type { GetServerSideProps } from "next";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
@@ -8,38 +8,21 @@ import { BlogBlock } from "@app/components/home/ContentBlocks";
 import { Grid, H1, H2, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import {
-  getAllBlogPosts,
-  getBlogPostBySlug,
-  getRelatedPosts,
-} from "@app/lib/contentful/client";
+import { getBlogPostBySlug, getRelatedPosts } from "@app/lib/contentful/client";
 import { renderRichTextFromContentful } from "@app/lib/contentful/richTextRenderer";
 import type { BlogPostPageProps } from "@app/lib/contentful/types";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types";
 
-export const getStaticPaths: GetStaticPaths = async () => {
-  const postsResult = await getAllBlogPosts();
+export const getServerSideProps: GetServerSideProps<BlogPostPageProps> = async (
+  context
+) => {
+  const { slug } = context.params || {};
 
-  if (postsResult.isErr()) {
-    logger.error(
-      { error: postsResult.error },
-      "Error fetching blog posts for static paths"
-    );
-    throw postsResult.error;
+  if (!isString(slug)) {
+    return { notFound: true };
   }
-
-  return {
-    paths: postsResult.value.map((post) => ({ params: { slug: post.slug } })),
-    fallback: "blocking",
-  };
-};
-
-export const getStaticProps: GetStaticProps<BlogPostPageProps> = async ({
-  params,
-}) => {
-  const slug = isString(params?.slug) ? params.slug : "";
 
   const postResult = await getBlogPostBySlug(slug);
 
@@ -73,7 +56,6 @@ export const getStaticProps: GetStaticProps<BlogPostPageProps> = async ({
       relatedPosts: relatedPostsResult.value,
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
     },
-    revalidate: 300,
   };
 };
 

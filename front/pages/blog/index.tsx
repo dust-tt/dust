@@ -1,4 +1,4 @@
-import type { GetStaticProps } from "next";
+import type { GetServerSideProps } from "next";
 import Head from "next/head";
 import type { ReactElement } from "react";
 
@@ -11,7 +11,7 @@ import type { BlogListingPageProps } from "@app/lib/contentful/types";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
-export const getStaticProps: GetStaticProps<
+export const getServerSideProps: GetServerSideProps<
   BlogListingPageProps
 > = async () => {
   const postsResult = await getAllBlogPosts();
@@ -29,7 +29,6 @@ export const getStaticProps: GetStaticProps<
       posts: postsResult.value,
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
     },
-    revalidate: 60,
   };
 };
 
