@@ -45,7 +45,7 @@ describe("agentMentionsCount", () => {
 
     expect(result.isOk()).toBe(true);
 
-    expect(result).toHaveLength(2);
+    expect(result.value).toHaveLength(2);
     expect(result.value[0].agentId).toBe("agent-123");
     expect(result.value[0].messageCount).toBe(5);
     expect(result.value[0].conversationCount).toBe(3);
