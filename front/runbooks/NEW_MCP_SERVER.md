@@ -310,16 +310,20 @@ your_provider: {
 
 Always use Result types and provide meaningful error messages. Don't expose raw API errors to users - translate them into actionable messages.
 
-### 2. Response Pruning (Important for Token Efficiency)
+### 2. Response Rendering (Important for Token Efficiency)
 
-**Always prune API responses before returning them to the LLM.** External APIs often return many fields that are irrelevant for the agent's task. Returning everything wastes tokens and can confuse the model.
+Always implement functions that convert the output from the API into a clean, focused, and Markdown-formatted text.
+See `lib/actions/mcp_internal_actions/servers/zendesk/rendering.ts` for an example.
+External APIs often return many fields that are irrelevant and hard to interpret for the agent.
+The rendering serves two purposes: selecting the relevant fields and formatting them for the LLM.
 
 **Do:**
 
 - Select only the fields the LLM needs to complete its task
 - Remove internal IDs, timestamps, and metadata unless specifically needed
-- Flatten nested structures when possible
-- Use helper functions to transform API responses into clean, focused data
+- Start with a brief summary (e.g., "Found 5 items matching your query")
+- Follow with the structured data
+- Use consistent formats across similar tools
 
 **Don't:**
 
@@ -327,26 +331,16 @@ Always use Result types and provide meaningful error messages. Don't expose raw 
 - Include pagination metadata, rate limit info, or API versioning details
 - Return the same data in multiple formats
 
-Example: If an API returns 50 fields per item but the agent only needs `id`, `name`, `status`, and `assignee`, create a mapping function that extracts just those fields.
-
-### 3. Response Formatting
-
-Format responses for LLM consumption:
-
-- Start with a brief summary (e.g., "Found 5 items matching your query")
-- Follow with the structured data
-- Use consistent formats across similar tools
-
-### 4. Tool Descriptions
+### 3. Tool Descriptions
 
 Write clear, actionable descriptions that help the LLM understand when to use each tool. Include:
 
 - What the tool does
-- What parameters are required vs optional
+- What parameters are required vs. optional
 - What the tool returns
 - Any limitations or prerequisites
 
-### 5. Input Validation
+### 4. Input Validation
 
 Use Zod schemas with `.describe()` for each parameter. This helps the LLM understand what values are expected and improves tool calling accuracy.
 
