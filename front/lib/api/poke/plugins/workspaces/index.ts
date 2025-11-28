@@ -17,6 +17,7 @@ export * from "./manage_authorized_domains";
 export * from "./manage_programmatic_usage_configuration";
 export * from "./rename_workspace";
 export * from "./reset_message_rate_limit";
+export * from "./reset_provisioned_members_not_in_directory";
 export * from "./restore_conversation";
 export * from "./revoke_users";
 export * from "./send_onboarding_conversation";
