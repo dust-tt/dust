@@ -12,6 +12,7 @@ import {
 import { asDisplayName } from "@app/shared/lib/utils";
 import { ActionDetailsWrapper } from "@app/ui/components/actions/ActionDetailsWrapper";
 import { MCPBrowseActionDetails } from "@app/ui/components/actions/mcp/details/MCPBrowseActionDetails";
+import { MCPConversationCatFileDetails } from "@app/ui/components/actions/mcp/details/MCPConversationFilesActionDetails";
 import {
   DataSourceNodeContentDetails,
   FilesystemPathDetails,
@@ -33,7 +34,6 @@ import {
   GlobeAltIcon,
   MagnifyingGlassIcon,
 } from "@dust-tt/sparkle";
-import { MCPConversationCatFileDetails } from "@app/ui/components/actions/mcp/details/MCPConversationFilesActionDetails";
 
 export interface MCPActionDetailsProps {
   action: AgentActionPublicType;
