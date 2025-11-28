@@ -27,7 +27,10 @@ RUN cd sdks/js && npm run build
 
 RUN cd connectors && npm run build
 
-RUN cd front && FRONT_DATABASE_URI="sqlite:foo.sqlite" npm run build
+RUN cd front \
+  && FRONT_DATABASE_URI="sqlite:foo.sqlite" \
+  NODE_OPTIONS="--max-old-space-size=8192" \
+  npm run build -- --no-lint
 
 # Set the default start directory to /dust when SSH into the container
 WORKDIR /dust
