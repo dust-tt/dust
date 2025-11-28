@@ -11,8 +11,7 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { Err, Ok, removeNulls } from "@app/types";
-import { MembershipsUpdateResponse } from "@hubspot/api-client/lib/codegen/crm/lists";
+import { Err, Ok } from "@app/types";
 
 export const resetProvisionedMembersNotInDirectoryPlugin = createPlugin({
   manifest: {
@@ -147,18 +146,10 @@ export const resetProvisionedMembersNotInDirectoryPlugin = createPlugin({
         value: {
           mode: "dry_run",
           message: `Found ${membersToReset.length} provisioned member${membersToReset.length > 1 ? "s" : ""} not in directory that would be reset`,
-          members: membersToReset.map(({ membership, userEmail }) => {
-            const userAttributes = membership.user;
-            const user = userAttributes
-              ? new UserResource(UserModel, userAttributes)
-              : null;
-            return {
-              email: userEmail,
-              userId: user?.sId,
-              membershipId: membership.id,
-              role: membership.role,
-            };
-          }),
+          members: membersToReset.map(({ membership, userEmail }) => ({
+            email: userEmail,
+            role: membership.role,
+          })),
           note: "No memberships were actually updated. Tick 'execute' to perform the reset.",
         },
       });
@@ -180,7 +171,7 @@ export const resetProvisionedMembersNotInDirectoryPlugin = createPlugin({
         const user = new UserResource(UserModel, userAttributes);
 
         try {
-          const { previousOrigin, newOrigin } = await membership.updateOrigin({
+          await membership.updateOrigin({
             user,
             workspace,
             newOrigin: "invited",
@@ -188,19 +179,12 @@ export const resetProvisionedMembersNotInDirectoryPlugin = createPlugin({
 
           return {
             email: userEmail,
-            userId: user.sId,
-            membershipId: membership.id,
             success: true,
-            previousOrigin,
-            newOrigin,
           };
         } catch (error) {
           return {
             email: userEmail,
-            userId: user.sId,
-            membershipId: membership.id,
             success: false,
-            error: error instanceof Error ? error.message : String(error),
           };
         }
       },
