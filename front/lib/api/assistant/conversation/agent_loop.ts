@@ -2,7 +2,7 @@ import assert from "assert";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentMessage } from "@app/lib/models/assistant/conversation";
+import type { AgentMessage } from "@app/lib/models/agent/conversation";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type {

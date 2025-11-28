@@ -26,8 +26,8 @@ import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMCPActionModel,
   AgentMCPActionOutputItem,
-} from "@app/lib/models/assistant/actions/mcp";
-import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
+} from "@app/lib/models/agent/actions/mcp";
+import { AgentMessage, Message } from "@app/lib/models/agent/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";

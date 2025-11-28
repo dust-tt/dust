@@ -1,8 +1,8 @@
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import type { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { WebhookSourcesViewModel } from "@app/lib/models/assistant/triggers/webhook_sources_view";
+import type { AgentConfiguration } from "@app/lib/models/agent/agent";
+import { WebhookSourcesViewModel } from "@app/lib/models/agent/triggers/webhook_sources_view";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";

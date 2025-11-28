@@ -2,29 +2,33 @@ import type {
   BelongsToGetAssociationMixin,
   CreationOptional,
   ForeignKey,
+  NonAttribute,
 } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentConfiguration } from "@app/lib/models/agent/agent";
+import { TagModel } from "@app/lib/models/tags";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { GroupModel } from "@app/lib/resources/storage/models/groups";
+import type { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class GroupAgentModel extends WorkspaceAwareModel<GroupAgentModel> {
+export class TagAgentModel extends WorkspaceAwareModel<TagAgentModel> {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare groupId: ForeignKey<GroupModel["id"]>;
+  declare tag: NonAttribute<TagModel>;
+  declare tagId: ForeignKey<TagModel["id"]>;
+
+  declare agentConfiguration: NonAttribute<AgentConfiguration>;
   declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
   // workspaceId is inherited from WorkspaceAwareModel
 
   declare getGroup: BelongsToGetAssociationMixin<GroupModel>;
   declare getAgentConfiguration: BelongsToGetAssociationMixin<AgentConfiguration>;
-  // getWorkspace is inherited
 }
 
-GroupAgentModel.init(
+TagAgentModel.init(
   {
     id: {
       type: DataTypes.BIGINT,
@@ -41,7 +45,7 @@ GroupAgentModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    groupId: {
+    tagId: {
       type: DataTypes.BIGINT,
       allowNull: false,
     },
@@ -49,58 +53,63 @@ GroupAgentModel.init(
       type: DataTypes.BIGINT,
       allowNull: false,
     },
-    // workspaceId is automatically added by WorkspaceAwareModel.init
   },
   {
-    modelName: "group_agents",
+    modelName: "tag_agents",
     sequelize: frontSequelize,
     indexes: [
       {
         unique: true,
-        fields: ["groupId", "agentConfigurationId"],
+        fields: ["tagId", "agentConfigurationId"],
       },
       { fields: ["agentConfigurationId"] },
-      { fields: ["workspaceId"], concurrently: true },
+      { fields: ["workspaceId", "agentConfigurationId"] },
     ],
   }
 );
 
 // Define associations
 
-// Association with Group
-GroupAgentModel.belongsTo(GroupModel, {
-  foreignKey: { name: "groupId", allowNull: false },
+// Association with Tag
+TagAgentModel.belongsTo(TagModel, {
+  foreignKey: { name: "tagId", allowNull: false },
   targetKey: "id",
+  onDelete: "RESTRICT",
 });
-GroupModel.hasMany(GroupAgentModel, {
-  foreignKey: { name: "groupId", allowNull: false },
+TagModel.hasMany(TagAgentModel, {
+  foreignKey: { name: "tagId", allowNull: false },
   sourceKey: "id",
-  as: "groupAgentLinks",
+  as: "tagAgentLinks",
+  onDelete: "RESTRICT",
 });
 
 // Association with AgentConfiguration
-GroupAgentModel.belongsTo(AgentConfiguration, {
+TagAgentModel.belongsTo(AgentConfiguration, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
   targetKey: "id",
+  onDelete: "RESTRICT",
 });
-AgentConfiguration.hasMany(GroupAgentModel, {
+AgentConfiguration.hasMany(TagAgentModel, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
   sourceKey: "id",
-  as: "agentGroupLinks",
+  as: "agentTagLinks",
+  onDelete: "RESTRICT",
 });
 
-// Many-to-Many between Group and AgentConfiguration (ensure FKs match)
-GroupModel.belongsToMany(AgentConfiguration, {
-  through: GroupAgentModel,
-  foreignKey: "groupId",
+// Many-to-Many between Tags and AgentConfiguration (ensure FKs match)
+TagModel.belongsToMany(AgentConfiguration, {
+  through: TagAgentModel,
+  foreignKey: "tagId",
   otherKey: "agentConfigurationId",
   as: "agentConfigurations",
+  onDelete: "RESTRICT",
 });
-AgentConfiguration.belongsToMany(GroupModel, {
-  through: GroupAgentModel,
+AgentConfiguration.belongsToMany(TagModel, {
+  through: TagAgentModel,
   foreignKey: "agentConfigurationId",
-  otherKey: "groupId",
-  as: "groups",
+  otherKey: "tagId",
+  as: "tags",
+  onDelete: "RESTRICT",
 });
 
 // Workspace association is handled by WorkspaceAwareModel.init

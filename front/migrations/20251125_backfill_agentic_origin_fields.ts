@@ -1,6 +1,6 @@
 import { Op } from "sequelize";
 
-import { Message, UserMessage } from "@app/lib/models/assistant/conversation";
+import { Message, UserMessage } from "@app/lib/models/agent/conversation";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { UserMessageOrigin } from "@app/types";

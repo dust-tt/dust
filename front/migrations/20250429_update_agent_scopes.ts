@@ -2,7 +2,7 @@ import type { Logger } from "pino";
 
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentConfiguration } from "@app/lib/models/agent/agent";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
