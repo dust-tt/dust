@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { ReactElement } from "react";
 
 import { BlogBlock } from "@app/components/home/ContentBlocks";
-import { Grid, H1, H2, P } from "@app/components/home/ContentComponents";
+import { Grid, H1, H2 } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { getBlogPostBySlug, getRelatedPosts } from "@app/lib/contentful/client";
@@ -165,12 +165,6 @@ export default function BlogPost({ post, relatedPosts }: BlogPostPageProps) {
                 "short"
               )}
             </div>
-
-            {post.description && (
-              <P size="lg" className="mt-6 text-muted-foreground">
-                {post.description}
-              </P>
-            )}
           </header>
 
           {post.image && (
