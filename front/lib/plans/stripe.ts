@@ -53,6 +53,11 @@ export const getStripeClient = () => {
   });
 };
 
+/**
+ * Calls the Stripe API to get the price ID for a given product ID.
+ * We use prices metata to find the default price for a given product.
+ * For the Pro plan, the metadata are "IS_DEFAULT_YEARLY_PRICE" and "IS_DEFAULT_MONHTLY_PRICE" and are set to "true".
+ */
 async function getDefautPriceFromMetadata(
   productId: string,
   key: string
@@ -727,9 +732,11 @@ export async function attachCreditPurchaseToSubscription({
 export async function makeCreditPurchaseInvoice({
   stripeSubscriptionId,
   amountCents,
+  couponId,
 }: {
   stripeSubscriptionId: string;
   amountCents: number;
+  couponId?: string;
 }): Promise<Result<Stripe.Invoice, { error_message: string }>> {
   const stripe = getStripeClient();
 
@@ -761,6 +768,7 @@ export async function makeCreditPurchaseInvoice({
         customerId,
         amountCents,
         invoice: invoice.id,
+        couponId,
       })
     );
 
