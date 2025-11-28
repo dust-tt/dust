@@ -10,13 +10,8 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getAssistantUsageData } from "@app/lib/workspace_usage";
 import { launchMentionsCountWorkflow } from "@app/temporal/mentions_count_queue/client";
-import {
-  Err,
-  normalizeError,
-  Ok,
-  Result,
-  type LightAgentConfigurationType,
-} from "@app/types";
+import type { LightAgentConfigurationType,Result } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 // Ranking of agents is done over a 30 days period.
 const RANKING_USAGE_DAYS = 30;
