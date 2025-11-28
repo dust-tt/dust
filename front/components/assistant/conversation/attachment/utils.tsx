@@ -79,7 +79,11 @@ export const IconForAttachmentCitation = ({
   const { isDark } = useTheme();
 
   if (provider === "webcrawler") {
-    return <FaviconIcon size="md" websiteUrl={sourceUrl} />;
+    return (
+      <div className="h-6 w-6">
+        <FaviconIcon size="md" websiteUrl={sourceUrl} />
+      </div>
+    );
   }
 
   if (provider && provider in CONNECTOR_CONFIGURATIONS) {
