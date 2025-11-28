@@ -609,6 +609,12 @@ export class Authenticator {
     { userEmail }: { userEmail: string }
   ): Promise<Authenticator | null> {
     if (!auth.isSystemKey()) {
+      logger.error({
+        keyId: auth.key()?.id,
+        userEmail,
+        workspaceId: auth.workspace()?.sId,
+      });
+
       throw new Error("Provided authenticator does not have a system key.");
     }
 
