@@ -41,6 +41,12 @@ inputs:
   virtuoso_license_key:
     description: "Virtuoso license key"
     required: false
+  contentful_space_id:
+    description: "Contentful space ID"
+    required: false
+  contentful_access_token:
+    description: "Contentful access token"
+    required: false
   depot_region:
     description: "Depot region"
     required: false
@@ -123,6 +129,16 @@ runs:
         # Only set the Datadog API key if provided
         if [[ -n "${{ inputs.dd_api_key }}" ]]; then
           build_args+=("--build-arg DATADOG_API_KEY=${{ inputs.dd_api_key }}")
+        fi
+
+        # Only set the Contentful space ID if provided
+        if [[ -n "${{ inputs.contentful_space_id }}" ]]; then
+          build_args+=("--build-arg CONTENTFUL_SPACE_ID=${{ inputs.contentful_space_id }}")
+        fi
+
+        # Only set the Contentful access token if provided
+        if [[ -n "${{ inputs.contentful_access_token }}" ]]; then
+          build_args+=("--build-arg CONTENTFUL_ACCESS_TOKEN=${{ inputs.contentful_access_token }}")
         fi
 
         # Only set the Datadog client token for front and front-edge builds
