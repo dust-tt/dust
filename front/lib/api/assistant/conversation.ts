@@ -368,6 +368,129 @@ async function attributeUserFromWorkspaceAndEmail(
   return membership ? matchingUser.toJSON() : null;
 }
 
+async function createMessageAndUserMessage({
+  workspace,
+  conversation,
+  metadata,
+  content,
+  transaction,
+}: {
+  workspace: WorkspaceType;
+  conversation: ConversationWithoutContentType;
+  content: string;
+  metadata:
+    | {
+        type: "edit";
+        message: Message;
+      }
+    | {
+        type: "create";
+        user: UserType | null;
+        rank: number;
+        context: UserMessageContext;
+        agenticMessageData?: AgenticMessageData;
+      };
+  transaction: Transaction;
+}) {
+  let rank = 0;
+  let version = 0;
+  let parentId: ModelId | null = null;
+  let userMessage: UserMessage | null = null;
+  switch (metadata.type) {
+    case "edit":
+      rank = metadata.message.rank;
+      version = metadata.message.version + 1;
+      parentId = metadata.message.id;
+      const userMessageToEdit = metadata.message.userMessage;
+      if (!userMessageToEdit) {
+        throw new Error(
+          "Unexpected: UserMessage to edit not found in DB. Make sure it's included in the fetch."
+        );
+      }
+      userMessage = await UserMessage.create(
+        {
+          content,
+          // TODO(MCP Clean-up): Rename field in DB.
+          clientSideMCPServerIds:
+            userMessageToEdit.clientSideMCPServerIds ?? [],
+          userContextUsername: userMessageToEdit.userContextUsername,
+          userContextTimezone: userMessageToEdit.userContextTimezone,
+          userContextFullName: userMessageToEdit.userContextFullName,
+          userContextEmail: userMessageToEdit.userContextEmail,
+          userContextProfilePictureUrl:
+            userMessageToEdit.userContextProfilePictureUrl,
+          userContextOrigin: userMessageToEdit.userContextOrigin,
+          userContextLastTriggerRunAt:
+            userMessageToEdit.userContextLastTriggerRunAt,
+          agenticMessageType: userMessageToEdit.agenticMessageType,
+          agenticOriginMessageId: userMessageToEdit.agenticOriginMessageId,
+          userId: userMessageToEdit.userId,
+          workspaceId: userMessageToEdit.workspaceId,
+        },
+        { transaction: transaction }
+      );
+      break;
+    case "create":
+      rank = metadata.rank;
+      const user =
+        metadata.user ??
+        (await attributeUserFromWorkspaceAndEmail(
+          workspace,
+          metadata.context.email
+        ));
+
+      // Fetch originMessage to ensure it exists
+      const originMessageId = metadata.agenticMessageData?.originMessageId;
+      const originMessage = originMessageId
+        ? await Message.findOne({
+            where: {
+              workspaceId: workspace.id,
+              sId: originMessageId,
+            },
+          })
+        : null;
+      userMessage = await UserMessage.create(
+        {
+          content,
+          // TODO(MCP Clean-up): Rename field in DB.
+          clientSideMCPServerIds: metadata.context.clientSideMCPServerIds ?? [],
+          userContextUsername: metadata.context.username,
+          userContextTimezone: metadata.context.timezone,
+          userContextFullName: metadata.context.fullName,
+          userContextEmail: metadata.context.email,
+          userContextProfilePictureUrl: metadata.context.profilePictureUrl,
+          userContextOrigin: metadata.context.origin,
+          userContextLastTriggerRunAt: metadata.context.lastTriggerRunAt
+            ? new Date(metadata.context.lastTriggerRunAt)
+            : null,
+          agenticMessageType: metadata.agenticMessageData?.type,
+          agenticOriginMessageId: originMessage?.sId,
+          userId: user?.id,
+          workspaceId: workspace.id,
+        },
+        { transaction: transaction }
+      );
+      break;
+    default:
+      assertNever(metadata);
+  }
+
+  return Message.create(
+    {
+      sId: generateRandomModelSId(),
+      rank,
+      conversationId: conversation.id,
+      parentId,
+      version,
+      userMessageId: userMessage.id,
+      workspaceId: workspace.id,
+    },
+    {
+      transaction,
+    }
+  );
+}
+
 export function getRelatedContentFragments(
   conversation: ConversationType,
   message: UserMessageType
@@ -554,63 +677,20 @@ export async function postUserMessage(
           transaction: t,
         })) ?? -1) + 1;
 
-      // Fetch originMessage to ensure it exists
-      const originMessageId = agenticMessageData?.originMessageId;
-      const originMessage = originMessageId
-        ? await Message.findOne({
-            where: {
-              workspaceId: owner.id,
-              sId: originMessageId,
-            },
-          })
-        : null;
+      const m = await createMessageAndUserMessage({
+        workspace: owner,
+        conversation,
+        content,
+        metadata: {
+          type: "create",
+          user: user?.toJSON() ?? null,
+          rank: nextMessageRank++,
+          context,
+          agenticMessageData,
+        },
+        transaction: t,
+      });
 
-      async function createMessageAndUserMessage(workspace: WorkspaceType) {
-        return Message.create(
-          {
-            sId: generateRandomModelSId(),
-            rank: nextMessageRank++,
-            conversationId: conversation.id,
-            parentId: null,
-            userMessageId: (
-              await UserMessage.create(
-                {
-                  content,
-                  // TODO(MCP Clean-up): Rename field in DB.
-                  clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
-                  userContextUsername: context.username,
-                  userContextTimezone: context.timezone,
-                  userContextFullName: context.fullName,
-                  userContextEmail: context.email,
-                  userContextProfilePictureUrl: context.profilePictureUrl,
-                  userContextOrigin: context.origin,
-                  userContextLastTriggerRunAt: context.lastTriggerRunAt
-                    ? new Date(context.lastTriggerRunAt)
-                    : null,
-                  agenticMessageType: agenticMessageData?.type,
-                  agenticOriginMessageId: originMessage?.sId ?? null,
-                  userId: user
-                    ? user.id
-                    : (
-                        await attributeUserFromWorkspaceAndEmail(
-                          workspace,
-                          context.email
-                        )
-                      )?.id,
-                  workspaceId: workspace.id,
-                },
-                { transaction: t }
-              )
-            ).id,
-            workspaceId: workspace.id,
-          },
-          {
-            transaction: t,
-          }
-        );
-      }
-
-      const m = await createMessageAndUserMessage(owner);
       const userMessage: UserMessageType = {
         id: m.id,
         created: m.createdAt.getTime(),
@@ -922,56 +1002,17 @@ export async function editUserMessage(
           "Invalid user message edit request, this message was already edited."
         );
       }
-      const userMessageRow = messageRow.userMessage;
-      // adding messageRow as param otherwise Ts doesn't get it can't be null
-      async function createMessageAndUserMessage(
-        workspace: WorkspaceType,
-        messageRow: Message
-      ) {
-        return Message.create(
-          {
-            sId: generateRandomModelSId(),
-            rank: messageRow.rank,
-            conversationId: conversation.id,
-            parentId: messageRow.parentId,
-            version: messageRow.version + 1,
-            userMessageId: (
-              await UserMessage.create(
-                {
-                  content,
-                  // No support for client-side MCP servers when editing/retrying a user message.
-                  clientSideMCPServerIds: [],
-                  userContextUsername: userMessageRow.userContextUsername,
-                  userContextTimezone: userMessageRow.userContextTimezone,
-                  userContextFullName: userMessageRow.userContextFullName,
-                  userContextEmail: userMessageRow.userContextEmail,
-                  userContextProfilePictureUrl:
-                    userMessageRow.userContextProfilePictureUrl,
-                  userContextOrigin: userMessageRow.userContextOrigin,
-                  userContextLastTriggerRunAt:
-                    userMessageRow.userContextLastTriggerRunAt,
-                  userId: userMessageRow.userId
-                    ? userMessageRow.userId
-                    : (
-                        await attributeUserFromWorkspaceAndEmail(
-                          workspace,
-                          userMessageRow.userContextEmail
-                        )
-                      )?.id,
-                  workspaceId: workspace.id,
-                },
-                { transaction: t }
-              )
-            ).id,
-            workspaceId: workspace.id,
-          },
-          {
-            transaction: t,
-          }
-        );
-      }
 
-      const m = await createMessageAndUserMessage(owner, messageRow);
+      const m = await createMessageAndUserMessage({
+        workspace: owner,
+        conversation,
+        content,
+        metadata: {
+          type: "edit",
+          message: messageRow,
+        },
+        transaction: t,
+      });
 
       const userMessage: UserMessageType = {
         id: m.id,
@@ -1295,6 +1336,7 @@ export async function retryAgentMessage(
       conversationTitle: conversation.title,
       userMessageId: userMessage.sId,
       userMessageVersion: userMessage.version,
+      userMessageOrigin: userMessage.context.origin,
     },
     startStep: 0,
   });
