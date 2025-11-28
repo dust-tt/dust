@@ -4,6 +4,7 @@ import React, { useMemo, useState } from "react";
 
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { BuyCreditDialog } from "@app/components/workspace/BuyCreditDialog";
 import { CreditsList } from "@app/components/workspace/CreditsList";
 import { ProgrammaticCostChart } from "@app/components/workspace/ProgrammaticCostChart";
@@ -155,9 +156,27 @@ function UsageSection({ credits, isLoading }: UsageSectionProps) {
   }, [creditsByType]);
 
   // Get current billing period dates (month boundaries)
-  const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  // Use useMemo to calculate the current billing cycle (exclusive bounds)
+  // Example: Nov 4 -> Dec 3 (if billing cycle starts on the 4th of each month)
+  // For this example, let's assume billing starts on the 4th
+  const BILLING_CYCLE_START_DAY = 4;
+  const [cycleStart, cycleEnd] = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    let start: Date, end: Date;
+
+    if (now.getDate() >= BILLING_CYCLE_START_DAY) {
+      // Billing cycle started this month, ends next month
+      start = new Date(year, month, BILLING_CYCLE_START_DAY);
+      end = new Date(year, month + 1, BILLING_CYCLE_START_DAY);
+    } else {
+      // Billing cycle started last month, ends this month
+      start = new Date(year, month - 1, BILLING_CYCLE_START_DAY);
+      end = new Date(year, month, BILLING_CYCLE_START_DAY);
+    }
+    return [start, end];
+  }, []);
 
   const formatDateShort = (date: Date) => {
     return date.toLocaleDateString(undefined, {
@@ -216,7 +235,7 @@ function UsageSection({ credits, isLoading }: UsageSectionProps) {
           <Page.P variant="secondary">Available credits and consumption</Page.P>
         </Page.Vertical>
         <Page.P variant="secondary">
-          {formatDateShort(startOfMonth)} → {formatDateShort(endOfMonth)}
+          {formatDateShort(cycleStart)} → {formatDateShort(cycleEnd)}
         </Page.P>
       </div>
 
@@ -340,3 +359,7 @@ export default function CreditsUsagePage({
     </AppCenteredLayout>
   );
 }
+
+CreditsUsagePage.getLayout = (page: React.ReactElement) => {
+  return <AppRootLayout>{page}</AppRootLayout>;
+};
