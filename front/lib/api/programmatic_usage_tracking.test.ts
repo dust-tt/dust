@@ -149,7 +149,10 @@ describe("decreaseProgrammaticCreditsV2", () => {
     workspace = await WorkspaceFactory.basic();
     const user = await UserFactory.basic();
     await MembershipFactory.associate(workspace, user, { role: "admin" });
-    auth = await Authenticator.fromUserIdAndWorkspaceId(user.sId, workspace.sId);
+    auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
   });
 
   async function createCredit(
