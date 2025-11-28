@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { agentMentionsCount } from "@app/lib/api/assistant/agent_usage";
-import { Mention } from "@app/lib/models/assistant/conversation";
+import { Mention } from "@app/lib/models/agent/conversation";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";

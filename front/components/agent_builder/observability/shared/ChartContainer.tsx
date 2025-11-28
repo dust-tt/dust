@@ -24,6 +24,7 @@ interface ChartContainerProps {
   emptyMessage?: string;
   children: ReactElement;
   additionalControls?: ReactNode;
+  bottomControls?: ReactNode;
   statusChip?: ReactNode;
   height?: number;
   description?: string;
@@ -38,6 +39,7 @@ export function ChartContainer({
   emptyMessage,
   children,
   additionalControls,
+  bottomControls,
   statusChip,
   height,
   description,
@@ -92,6 +94,7 @@ export function ChartContainer({
             <ResponsiveContainer width="100%" height={height}>
               {children}
             </ResponsiveContainer>
+            {bottomControls}
             {legendItems && <ChartLegend items={legendItems} />}
           </>
         )}
@@ -110,10 +113,11 @@ export function ChartContainer({
                 <div className="flex-1 overflow-hidden">
                   <ResponsiveContainer
                     width="100%"
-                    height={window.innerHeight - 200}
+                    height={window.innerHeight - 250}
                   >
                     {children}
                   </ResponsiveContainer>
+                  {bottomControls}
                   {legendItems && <ChartLegend items={legendItems} />}
                 </div>
               </div>

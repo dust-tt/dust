@@ -71,7 +71,7 @@ export const shouldSendNotificationForAgentAnswer = (
 const ConversationDetailsSchema = z.object({
   subject: z.string(),
   author: z.string(),
-  previewText: z.string(),
+  authorIsAgent: z.boolean(),
   avatarUrl: z.string().optional(),
   isFromTrigger: z.boolean(),
   workspaceName: z.string(),
@@ -88,7 +88,7 @@ const getConversationDetails = async ({
 }): Promise<ConversationDetailsType> => {
   let subject: string = "A dust conversation";
   let author: string = "Someone else";
-  let previewText: string = "No preview available.";
+  let authorIsAgent: boolean = false;
   let avatarUrl: string | undefined;
   let isFromTrigger: boolean = false;
   let workspaceName: string = "A workspace";
@@ -130,18 +130,14 @@ const getConversationDetails = async ({
           } else if (isUserMessageType(lightMessage)) {
             author = lightMessage.user?.fullName ?? "Someone else";
             avatarUrl = lightMessage.user?.image ?? undefined;
-            previewText = lightMessage.content;
+            authorIsAgent = false;
           } else {
             author = lightMessage.configuration.name
               ? `@${lightMessage.configuration.name}`
               : "An agent";
             avatarUrl = lightMessage.configuration.pictureUrl ?? undefined;
-            previewText = lightMessage.content ?? "No content";
+            authorIsAgent = true;
           }
-          previewText =
-            previewText.length > 1024
-              ? previewText.slice(0, 1024) + "..."
-              : previewText;
         }
       }
     }
@@ -149,7 +145,7 @@ const getConversationDetails = async ({
   return {
     subject,
     author,
-    previewText,
+    authorIsAgent,
     avatarUrl,
     isFromTrigger,
     workspaceName,
@@ -218,8 +214,10 @@ export const conversationUnreadWorkflow = workflow(
       "send-in-app",
       async () => {
         return {
-          subject: details.subject,
-          body: details.previewText,
+          subject: `New message from ${details.author}`,
+          body: details.authorIsAgent
+            ? `${details.author} replied in the conversation "${details.subject}".`
+            : `You have a new message from ${details.author} in the conversation "${details.subject}".`,
           primaryAction: {
             label: "View",
             redirect: {

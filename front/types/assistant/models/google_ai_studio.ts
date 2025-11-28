@@ -21,6 +21,7 @@ export const GEMINI_2_5_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: true,
   generationTokensCount: 64_000,
   supportsVision: true,
+  supportsResponseFormat: false, // response format not compatible with tool use
   minimumReasoningEffort: "none",
   maximumReasoningEffort: "light",
   defaultReasoningEffort: "light",
@@ -41,6 +42,7 @@ export const GEMINI_2_5_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: true,
   generationTokensCount: 64_000,
   supportsVision: true,
+  supportsResponseFormat: false, // response format not compatible with tool use
   minimumReasoningEffort: "none",
   maximumReasoningEffort: "light",
   defaultReasoningEffort: "light",
@@ -61,6 +63,7 @@ export const GEMINI_2_5_PRO_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: true,
+  supportsResponseFormat: false, // response format not compatible with tool use
   minimumReasoningEffort: "light",
   maximumReasoningEffort: "high",
   defaultReasoningEffort: "light",
@@ -81,6 +84,7 @@ export const GEMINI_3_PRO_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: true,
   generationTokensCount: 64_000,
   supportsVision: true,
+  supportsResponseFormat: true,
   minimumReasoningEffort: "light",
   maximumReasoningEffort: "high",
   defaultReasoningEffort: "light",

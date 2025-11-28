@@ -1,7 +1,7 @@
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { WebhookSourceModel } from "@app/lib/models/assistant/triggers/webhook_source";
+import { WebhookSourceModel } from "@app/lib/models/agent/triggers/webhook_source";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";

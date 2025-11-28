@@ -106,6 +106,7 @@ export async function getBuilderEmojiSuggestions(
       prompt:
         "Task Overview: Assist in the customization of a virtual assistant’s visual identity by selecting an emoji for its avatar. The assistant's design and purpose will be described in each message you receive.\n\nObjective: Your main responsibility is to choose an emoji that captures the essence of the assistant, reflecting its unique functions, personality, or the context in which it will be used.\n\nGuidelines:\n- Broaden Your Choices: Consider a wide range of emojis to find one that uniquely represents the assistant's qualities or use case. Avoid defaulting to common choices unless they are the best fit. Try to avoid the generic 🤖 that could work for all assistants, unless the topic is truly about robots.\n- Relevance is Key: Select emojis that directly relate to the assistant’s described characteristics or intended environment. For instance, a 🎨 might suit a creative design tool, while a 📚 could represent a learning aid.\n- Compatibility Consideration: Ensure that your choices adhere to the Unicode standard to guarantee that the emoji displays correctly across all platforms.",
       specifications,
+      forceToolCall: FUNCTION_NAME,
     },
     {
       context: {

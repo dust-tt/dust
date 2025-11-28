@@ -118,23 +118,11 @@ async function backfillUserSearch(
             return;
           }
 
-          const result = await deleteUserDocument({
+          // We ignore errors here - user likely not indexed
+          await deleteUserDocument({
             workspaceId: workspace.sId,
             userId: user.sId,
           });
-          if (result.isErr()) {
-            logger.error(
-              {
-                userId: user.sId,
-                workspaceId: workspace.sId,
-                error: result.error,
-              },
-              "Failed to delete user document"
-            );
-            errorCount++;
-          } else {
-            successCount++;
-          }
         } catch (err) {
           errorCount++;
           logger.error(

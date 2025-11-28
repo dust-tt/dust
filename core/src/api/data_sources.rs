@@ -7,7 +7,7 @@ use regex::Regex;
 use serde_json::json;
 use std::collections::HashSet;
 use std::sync::Arc;
-use tracing::error;
+use tracing::{error, info};
 
 use crate::api::api_state::APIState;
 use crate::{
@@ -19,7 +19,7 @@ use crate::{
     providers::provider::provider,
     run,
     search_filter::SearchFilter,
-    utils::{error_response, APIResponse},
+    utils::{self, error_response, APIResponse},
 };
 
 /// Register a new data source.
@@ -1014,17 +1014,26 @@ pub async fn data_sources_documents_retrieve_text(
     Query(query): Query<DataSourcesDocumentsRetrieveTextQuery>,
 ) -> (StatusCode, Json<APIResponse>) {
     // Call the existing retrieve function
+    let now = utils::now();
     let retrieve_query = DataSourcesDocumentsRetrieveQuery {
         version_hash: query.version_hash,
         view_filter: query.view_filter,
     };
 
     let (status, json_response) = data_sources_documents_retrieve(
-        Path((project_id, data_source_id, document_id)),
+        Path((project_id, data_source_id.clone(), document_id.clone())),
         State(state),
         Query(retrieve_query),
     )
     .await;
+
+    let retrieve_duration = utils::now() - now;
+    info!(
+        document_id = document_id,
+        retrieve_duration = retrieve_duration,
+        status = status.as_u16(),
+        "[RETRIEVE_TEXT] Retrieved document"
+    );
 
     // If the request failed, return the error as-is
     if status != StatusCode::OK {
@@ -1051,11 +1060,17 @@ pub async fn data_sources_documents_retrieve_text(
         }
     };
 
+    let text_len = text.len();
+    info!(
+        document_id = document_id,
+        text_len = text_len,
+        "[RETRIEVE_TEXT] Extracted text"
+    );
+
     // First apply character-based offset and limit
+    let offset_limit_start = utils::now();
     let offset = query.offset.unwrap_or(0);
     let limit = query.limit;
-
-    let text_len = text.len();
     let start = offset.min(text_len);
     let end = match limit {
         Some(l) => (start + l).min(text_len),
@@ -1064,7 +1079,16 @@ pub async fn data_sources_documents_retrieve_text(
 
     let text_slice = &text[start..end];
 
+    let offset_limit_duration = utils::now() - offset_limit_start;
+    info!(
+        document_id = document_id,
+        offset_limit_duration = offset_limit_duration,
+        slice_len = text_slice.len(),
+        "[RETRIEVE_TEXT] Applied offset/limit"
+    );
+
     // Then apply grep filter if provided
+    let grep_start = utils::now();
     let filtered_text = match &query.grep {
         Some(pattern) => match Regex::new(pattern) {
             Ok(re) => {
@@ -1085,6 +1109,17 @@ pub async fn data_sources_documents_retrieve_text(
         },
         None => text_slice.to_string(),
     };
+
+    let grep_duration = utils::now() - grep_start;
+    let total_duration = utils::now() - now;
+    info!(
+        document_id = document_id,
+        grep_duration = grep_duration,
+        has_grep = query.grep.is_some(),
+        filtered_len = filtered_text.len(),
+        total_duration = total_duration,
+        "[RETRIEVE_TEXT] Applied grep"
+    );
 
     (
         StatusCode::OK,

@@ -96,6 +96,13 @@ jobs:
             ./front/package-lock.json
             ./types/package-lock.json
             ./sdks/js/package-lock.json
+      - name: Cache ESLint
+        uses: actions/cache@v3
+        with:
+          path: front/.eslintcache
+          key: eslint-cache-${{ runner.os }}-${{ hashFiles('front/.eslintrc.js', 'front/tsconfig.json', 'front/package-lock.json') }}
+          restore-keys: |
+            eslint-cache-${{ runner.os }}-
       - name: Install SDK/JS
         working-directory: sdks/js
         run: npm install
@@ -104,6 +111,8 @@ jobs:
         run: npm install
       - name: Lint
         working-directory: front
+        env:
+          NODE_OPTIONS: "--max-old-space-size=8192"
         run: npm run lint && npm run format:check
       - name: Knip - unlisted dependencies
         working-directory: front
@@ -120,6 +129,20 @@ jobs:
           EOF
           )
           npm run knip -- --include unlisted || (echo "You have some unlisted dependencies. **Please add them to the package.json**\n\n${explanations}" >&2; false)
+      - name: Knip - unused devDependencies
+        working-directory: front
+        run: |
+          explanations=$(cat << EOF
+
+          Keeping unused dev dependencies is problematic because:
+          
+          1. Security surface: More packages = more potential vulnerabilities to monitor and patch, even if you're not using them
+          2. Install time: Slows down `npm install` for everyone on the team and in CI/CD pipelines
+          3. Confusion: Makes it unclear what tools/libraries are actually needed for development, hindering onboarding
+          4. Maintenance burden You'll waste time updating packages you don't actually use          
+          EOF
+          )
+          npm run knip -- --include devDependencies || (echo "You have some unused dependencies. **Please remove them to the package.json, or add them in the knip.ts in `ignoreDependencies`**\n\n${explanations}" >&2; false)
     # - name: Validate API Doc
     #   working-directory: front
     #   run: npm run docs

@@ -61,6 +61,7 @@ export async function getLLM(
       modelId,
       temperature,
       reasoningEffort,
+      responseFormat,
       bypassFeatureFlag,
       context,
     });
@@ -82,6 +83,7 @@ export async function getLLM(
       modelId,
       temperature,
       reasoningEffort,
+      responseFormat,
       bypassFeatureFlag,
       context,
     });

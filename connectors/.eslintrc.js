@@ -5,6 +5,7 @@ module.exports = {
     "plugin:@typescript-eslint/recommended",
   ],
   plugins: ["import", "simple-import-sort", "eslint-plugin-unused-imports"],
+  ignorePatterns: ["dist/"],
   rules: {
     curly: ["error", "all"],
     "simple-import-sort/imports": [

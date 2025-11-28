@@ -26,10 +26,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Export and Import agents to/from YAML format",
     stage: "dust_only",
   },
-  agent_builder_instructions_autocomplete: {
-    description: "Autocomplete feature for agent builder instructions (wip)",
-    stage: "dust_only",
-  },
   ashby_tool: {
     description: "Ashby tool for ATS integration",
     stage: "dust_only",
@@ -68,10 +64,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Prevent users from creating agents, allowing only admins and builders",
     stage: "on_demand",
   },
-  google_ai_studio_experimental_models_feature: {
-    description: "Access to experimental Google AI Studio models",
-    stage: "on_demand",
-  },
   google_sheets_tool: {
     description: "Google Sheets MCP tool",
     stage: "rolling_out",
@@ -103,10 +95,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   openai_o1_feature: {
     description: "Access to OpenAI o1 model",
-    stage: "on_demand",
-  },
-  openai_o1_high_reasoning_custom_assistants_feature: {
-    description: "OpenAI o1 high reasoning model for custom assistants",
     stage: "on_demand",
   },
   openai_o1_high_reasoning_feature: {
@@ -177,10 +165,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Subscription feature for Schedule & Triggers.",
     stage: "dust_only",
   },
-  hootl_dev_webhooks: {
-    description: "GitHub webhooks for Human Out Of The Loop (aka Triggers)",
-    stage: "dust_only",
-  },
   slack_enhanced_default_agent: {
     description:
       "Enhanced default agent feature for Slack channels - auto-respond to all messages in channel",
@@ -199,20 +183,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Slack bot MCP server for workspace-level Slack integration",
     stage: "on_demand",
   },
-  slack_semantic_search: {
-    description: "Slack semantic search feature",
-    stage: "on_demand",
-  },
   slab_mcp: {
     description: "Slab MCP server",
     stage: "on_demand",
   },
   web_summarization: {
     description: "AI-powered web page summarization in the web browser tool",
-    stage: "on_demand",
-  },
-  elevenlabs_tool: {
-    description: "Elevenlabs MCP tool for voice synthesis",
     stage: "on_demand",
   },
   legacy_dust_apps: {
@@ -231,10 +207,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   llm_comparison_mode_enabled: {
     description: "Enable LLM comparison mode.",
     stage: "on_demand",
-  },
-  use_requested_space_ids: {
-    description: "Use requested spaces Ids for permissions checking.",
-    stage: "dust_only",
   },
   mentions_v2: {
     description: "Enable mentions v2, aka mention users",

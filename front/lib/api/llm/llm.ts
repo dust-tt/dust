@@ -1,7 +1,6 @@
 import { startObservation } from "@langfuse/tracing";
 import { randomUUID } from "crypto";
 
-import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/components/agent_builder/types";
 import type { LLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import {
   createLLMTraceId,
@@ -25,6 +24,7 @@ import type {
   ReasoningEffort,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
+import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types";
 
 export abstract class LLM {
   protected modelId: ModelIdType;
@@ -149,7 +149,7 @@ export abstract class LLM {
       }
 
       if (currentEvent?.type !== "success" && currentEvent?.type !== "error") {
-        const eventError = new EventError(
+        currentEvent = new EventError(
           {
             type: "stream_error",
             message: `LLM did not complete successfully for ${this.metadata.clientId}/${this.metadata.modelId}.`,
@@ -158,8 +158,8 @@ export abstract class LLM {
           },
           this.metadata
         );
-        buffer.addEvent(eventError);
-        yield eventError;
+        buffer.addEvent(currentEvent);
+        yield currentEvent;
       }
     } finally {
       if (currentEvent?.type === "error") {
@@ -251,11 +251,13 @@ export abstract class LLM {
     conversation,
     prompt,
     specifications,
+    forceToolCall,
   }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
     yield* this.streamWithTracing({
       conversation,
       prompt,
       specifications,
+      forceToolCall,
     });
   }
 
@@ -263,5 +265,6 @@ export abstract class LLM {
     conversation,
     prompt,
     specifications,
+    forceToolCall,
   }: LLMStreamParameters): AsyncGenerator<LLMEvent>;
 }

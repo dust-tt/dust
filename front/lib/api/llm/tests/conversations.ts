@@ -132,9 +132,9 @@ function checkJsonResponse(key: TestStructuredOutputKey): ResponseChecker {
   };
 }
 
-export const TEST_CONVERSATIONS: TestConversation[] = [
+export const TEST_CONVERSATIONS = [
   {
-    id: "simple-math",
+    id: "simple-math" as const,
     name: "Simple Math",
     systemPrompt: SYSTEM_PROMPT,
     conversationActions: [
@@ -144,7 +144,7 @@ export const TEST_CONVERSATIONS: TestConversation[] = [
     configs: TEST_CONFIGS,
   },
   {
-    id: "yes-no-question",
+    id: "yes-no-question" as const,
     name: "Yes/No Question",
     systemPrompt: SYSTEM_PROMPT,
     conversationActions: [
@@ -153,7 +153,7 @@ export const TEST_CONVERSATIONS: TestConversation[] = [
     expectedInResponses: [containsTextChecker(["yes"])],
   },
   {
-    id: "multi-step-conversation",
+    id: "multi-step-conversation" as const,
     name: "2 steps conversation",
     systemPrompt: SYSTEM_PROMPT,
     conversationActions: [
@@ -163,7 +163,7 @@ export const TEST_CONVERSATIONS: TestConversation[] = [
     expectedInResponses: [null, containsTextChecker(["Stan"])],
   },
   {
-    id: "tool-usage",
+    id: "tool-usage" as const,
     name: "Tool usage required",
     systemPrompt: SYSTEM_PROMPT,
     conversationActions: [
@@ -192,7 +192,7 @@ export const TEST_CONVERSATIONS: TestConversation[] = [
     ],
   },
   {
-    id: "tool-call-without-params",
+    id: "tool-call-without-params" as const,
     name: "Tool call without params",
     systemPrompt: SYSTEM_PROMPT,
     conversationActions: [
@@ -215,11 +215,30 @@ export const TEST_CONVERSATIONS: TestConversation[] = [
       },
     ],
   },
-];
-
-export const TEST_VISION_CONVERSATIONS: TestConversation[] = [
   {
-    id: "image-description",
+    id: "force-tool-usage" as const,
+    name: "Force tool usage",
+    systemPrompt: SYSTEM_PROMPT,
+    conversationActions: [userMessage("What is the current date?")],
+    expectedInResponses: [hasToolCall("GetCurrentDate", {})],
+    specifications: [
+      {
+        name: "GetCurrentDate",
+        description: "Get the current date.",
+        inputSchema: {
+          type: "object",
+          properties: {},
+          required: [],
+        },
+      },
+    ],
+    forceToolCall: "GetCurrentDate",
+  },
+] satisfies TestConversation[];
+
+export const TEST_VISION_CONVERSATIONS = [
+  {
+    id: "image-description" as const,
     name: "Image description",
     systemPrompt: SYSTEM_PROMPT,
     conversationActions: [
@@ -230,14 +249,14 @@ export const TEST_VISION_CONVERSATIONS: TestConversation[] = [
     ],
     expectedInResponses: [containsTextChecker(["cat"])],
   },
-];
+] satisfies TestConversation[];
 
 export const TEST_STRUCTURED_OUTPUT_CONVERSATIONS: (Omit<
   TestConversation,
   "id"
 > & { id: TestStructuredOutputKey })[] = [
   {
-    id: "user-profile",
+    id: "user-profile" as const,
     name: "Structured output - user profile",
     systemPrompt: SYSTEM_PROMPT,
     conversationActions: [
@@ -253,7 +272,7 @@ export const TEST_STRUCTURED_OUTPUT_CONVERSATIONS: (Omit<
     ],
   },
   {
-    id: "data-extraction",
+    id: "data-extraction" as const,
     name: "Structured output - data extraction",
     systemPrompt: SYSTEM_PROMPT,
     conversationActions: [
@@ -268,7 +287,22 @@ export const TEST_STRUCTURED_OUTPUT_CONVERSATIONS: (Omit<
       },
     ],
   },
-];
+] satisfies TestConversation[];
+
+export type ConversationId =
+  | (typeof TEST_CONVERSATIONS)[number]["id"]
+  | (typeof TEST_VISION_CONVERSATIONS)[number]["id"]
+  | (typeof TEST_STRUCTURED_OUTPUT_CONVERSATIONS)[number]["id"];
+
+export const ALL_CONVERSATION_IDS: ConversationId[] = [
+  ...TEST_CONVERSATIONS,
+  ...TEST_VISION_CONVERSATIONS,
+  ...TEST_STRUCTURED_OUTPUT_CONVERSATIONS,
+].map((c) => c.id);
+
+export function isConversationId(id: string): id is ConversationId {
+  return ALL_CONVERSATION_IDS.some((existingId) => existingId === id);
+}
 
 export const runConversation = async (
   conversation: TestConversation,
@@ -302,6 +336,7 @@ export const runConversation = async (
       conversation: { messages: conversationHistory },
       prompt: conversation.systemPrompt,
       specifications: conversation.specifications ?? [],
+      forceToolCall: conversation.forceToolCall,
     });
 
     let responseFromDeltas = "";

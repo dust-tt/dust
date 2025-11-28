@@ -1,7 +1,10 @@
 import { APIError, OpenAI } from "openai";
 
 import type { OpenAIWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
-import { overwriteLLMParameters } from "@app/lib/api/llm/clients/openai/types";
+import {
+  OPENAI_PROVIDER_ID,
+  overwriteLLMParameters,
+} from "@app/lib/api/llm/clients/openai/types";
 import { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
@@ -15,6 +18,7 @@ import {
   toReasoning,
   toResponseFormat,
   toTool,
+  toToolOption,
 } from "@app/lib/api/llm/utils/openai_like/responses/conversation_to_openai";
 import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_like/responses/openai_to_events";
 import type { Authenticator } from "@app/lib/auth";
@@ -52,6 +56,7 @@ export class OpenAIResponsesLLM extends LLM {
     conversation,
     prompt,
     specifications,
+    forceToolCall,
   }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
     try {
       const reasoning = toReasoning(this.modelId, this.reasoningEffort);
@@ -62,9 +67,12 @@ export class OpenAIResponsesLLM extends LLM {
         temperature: this.temperature ?? undefined,
         reasoning,
         tools: specifications.map(toTool),
-        text: { format: toResponseFormat(this.responseFormat) },
+        text: {
+          format: toResponseFormat(this.responseFormat, OPENAI_PROVIDER_ID),
+        },
         // Only models supporting reasoning can do encrypted content for reasoning.
         include: reasoning !== null ? ["reasoning.encrypted_content"] : [],
+        tool_choice: toToolOption(specifications, forceToolCall),
       });
 
       yield* streamLLMEvents(events, this.metadata);

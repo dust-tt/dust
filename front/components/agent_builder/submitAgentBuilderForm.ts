@@ -8,7 +8,7 @@ import {
   getTableIdForContentNode,
 } from "@app/components/agent_builder/shared/tables";
 import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
-import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
+import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
 import { fetcherWithBody } from "@app/lib/swr/swr";
 import {
   trackEvent,

@@ -5,12 +5,12 @@ import { ANALYTICS_ALIAS_NAME, getClient } from "@app/lib/api/elasticsearch";
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
 import { getInternalMCPServerNameFromSId } from "@app/lib/actions/mcp_internal_actions/constants";
 import { Authenticator } from "@app/lib/auth";
-import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
+import { AgentMCPServerConfiguration } from "@app/lib/models/agent/actions/mcp";
 import {
   AgentMessage,
   ConversationModel,
   Message,
-} from "@app/lib/models/assistant/conversation";
+} from "@app/lib/models/agent/conversation";
 import type { Logger } from "@app/logger/logger";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";

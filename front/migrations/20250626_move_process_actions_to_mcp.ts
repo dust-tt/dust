@@ -15,9 +15,9 @@ import {
   AgentMCPActionModel,
   AgentMCPActionOutputItem,
   AgentMCPServerConfiguration,
-} from "@app/lib/models/assistant/actions/mcp";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { AgentMessage } from "@app/lib/models/assistant/conversation";
+} from "@app/lib/models/agent/actions/mcp";
+import { AgentConfiguration } from "@app/lib/models/agent/agent";
+import { AgentMessage } from "@app/lib/models/agent/conversation";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";

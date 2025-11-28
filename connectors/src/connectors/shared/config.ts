@@ -14,6 +14,6 @@ export const connectorsConfig = {
     return EnvironmentConfig.getEnvVariable("GCP_WEBHOOK_ROUTER_CONFIG_BUCKET");
   },
   getCurrentRegion: (): RegionType => {
-    return EnvironmentConfig.getEnvVariable("DUST_REGION") as RegionType;
+    return EnvironmentConfig.getEnvVariable("REGION") as RegionType;
   },
 };

@@ -5,7 +5,10 @@ import { WebhookForwarder } from "../forwarder.js";
 import type { SecretManager } from "../secrets.js";
 import { ALL_REGIONS } from "../webhook-router-config.js";
 
-export function createTeamsRoutes(secretManager: SecretManager, teamsVerification: RequestHandler) {
+export function createTeamsRoutes(
+  secretManager: SecretManager,
+  teamsVerification: RequestHandler
+) {
   const router = express.Router();
 
   // Teams webhook endpoints with Bot Framework verification only (webhook secret already validated)

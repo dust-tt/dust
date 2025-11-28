@@ -1,7 +1,13 @@
 import Document, { Head, Html, Main, NextScript } from "next/document";
 import Script from "next/script";
 
-const { NODE_ENV, REACT_SCAN } = process.env;
+import { setupGracefulShutdown } from "@app/lib/api/graceful_shutdown";
+
+const { NEXT_MANUAL_SIG_HANDLE, NODE_ENV, REACT_SCAN } = process.env;
+
+if (NEXT_MANUAL_SIG_HANDLE) {
+  setupGracefulShutdown();
+}
 
 class MyDocument extends Document {
   render() {
@@ -119,12 +125,12 @@ class MyDocument extends Document {
                 function initPrivacyMask() {
                   const stored = localStorage.getItem('privacy-mask');
                   const isEnabled = stored === 'true';
-                  
+
                   if (isEnabled) {
                     document.body.classList.add('privacy-mask-enabled');
                   }
                 }
-                
+
                 // Run on DOM ready.
                 if (document.readyState === 'loading') {
                   document.addEventListener('DOMContentLoaded', initPrivacyMask);

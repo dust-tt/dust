@@ -12,7 +12,7 @@ This runbook provides step-by-step instructions for creating a new Elasticsearch
 ELASTICSEARCH_URL=https://your-elasticsearch-instance.com:9200
 ELASTICSEARCH_USERNAME=your-username
 ELASTICSEARCH_PASSWORD=your-password
-DUST_REGION=local  # or us-central1, europe-west1
+REGION=local  # or us-central1, europe-west1
 ```
 
 These are configured in `lib/api/config.ts:316-326`.

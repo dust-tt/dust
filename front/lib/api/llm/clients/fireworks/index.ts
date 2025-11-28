@@ -12,6 +12,7 @@ import type {
 import {
   toMessages,
   toReasoningParam,
+  toToolChoiceParam,
   toTools,
 } from "@app/lib/api/llm/utils/openai_like/chat/conversation_to_openai";
 import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_like/chat/openai_to_events";
@@ -44,6 +45,7 @@ export class FireworksLLM extends LLM {
     conversation,
     prompt,
     specifications,
+    forceToolCall,
   }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
     try {
       const tools =
@@ -58,6 +60,7 @@ export class FireworksLLM extends LLM {
           this.reasoningEffort,
           this.modelConfig.useNativeLightReasoning
         ),
+        tool_choice: toToolChoiceParam(specifications, forceToolCall),
         ...(tools ? { tools } : {}),
       });
 
