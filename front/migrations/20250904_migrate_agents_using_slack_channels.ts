@@ -2,10 +2,10 @@ import { WebClient } from "@slack/web-api";
 import type { Channel } from "@slack/web-api/dist/response/ConversationsListResponse";
 
 import config from "@app/lib/api/config";
-import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
-import { MCPServerConnection } from "@app/lib/models/assistant/actions/mcp_server_connection";
-import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentMCPServerConfiguration } from "@app/lib/models/agent/actions/mcp";
+import { MCPServerConnection } from "@app/lib/models/agent/actions/mcp_server_connection";
+import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
+import { AgentConfiguration } from "@app/lib/models/agent/agent";
 import { makeScript } from "@app/scripts/helpers";
 import { OAuthAPI } from "@app/types";
 

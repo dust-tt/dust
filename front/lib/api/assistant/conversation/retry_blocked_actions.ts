@@ -3,7 +3,7 @@ import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
-import { Message } from "@app/lib/models/assistant/conversation";
+import { Message } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type { ConversationType, Result } from "@app/types";

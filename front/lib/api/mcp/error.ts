@@ -3,7 +3,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { MCPErrorEvent, MCPSuccessEvent } from "@app/lib/actions/mcp";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
-import { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
+import { AgentMCPActionOutputItem } from "@app/lib/models/agent/actions/mcp";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { AgentMessageType } from "@app/types/assistant/conversation";

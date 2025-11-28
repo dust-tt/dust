@@ -1,7 +1,7 @@
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
+import { AgentMCPServerConfiguration } from "@app/lib/models/agent/actions/mcp";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { ModelIdType, ModelProviderIdType } from "@app/types";

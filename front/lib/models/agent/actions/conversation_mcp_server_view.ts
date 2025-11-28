@@ -1,8 +1,8 @@
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
-import { ConversationModel } from "@app/lib/models/assistant/conversation";
+import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
+import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";

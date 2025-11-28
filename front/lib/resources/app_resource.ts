@@ -4,8 +4,8 @@ import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
 import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentMCPServerConfiguration } from "@app/lib/models/agent/actions/mcp";
+import { AgentConfiguration } from "@app/lib/models/agent/agent";
 import { DatasetResource } from "@app/lib/resources/dataset_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
 import { RunResource } from "@app/lib/resources/run_resource";

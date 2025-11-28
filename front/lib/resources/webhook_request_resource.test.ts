@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import type { WebhookRequestStatus } from "@app/lib/models/assistant/triggers/webhook_request";
-import { WebhookRequestModel } from "@app/lib/models/assistant/triggers/webhook_request";
+import type { WebhookRequestStatus } from "@app/lib/models/agent/triggers/webhook_request";
+import { WebhookRequestModel } from "@app/lib/models/agent/triggers/webhook_request";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { WebhookSourceFactory } from "@app/tests/utils/WebhookSourceFactory";

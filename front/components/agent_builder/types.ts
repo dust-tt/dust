@@ -13,7 +13,7 @@ import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
+import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
 import type {
   DataSourceViewSelectionConfigurations,
   DustAppRunConfigurationType,
