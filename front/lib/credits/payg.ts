@@ -1,7 +1,8 @@
 import assert from "assert";
 import type Stripe from "stripe";
 
-import { getFeatureFlags, type Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import {
   isEnterpriseSubscription,
   makeCreditsPAYGInvoice,
@@ -72,7 +73,17 @@ export async function allocatePAYGCreditsOnCycleRenewal({
     nextPeriodStartDate,
     nextPeriodEndDate
   );
-  assert(startResult.isOk(), "Failed to start PAYG credit");
+  if (startResult.isErr()) {
+    logger.warn(
+      {
+        workspaceId: workspace.sId,
+        creditId: credit.id,
+        error: startResult.error.message,
+      },
+      "[Credit PAYG] Credit already started, skipping"
+    );
+    return new Ok(undefined);
+  }
 
   logger.info(
     {

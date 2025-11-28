@@ -1,5 +1,5 @@
-import type { NextApiRequest, NextApiResponse } from "next";
 import assert from "assert";
+import type { NextApiRequest, NextApiResponse } from "next";
 import { pipeline, Writable } from "stream";
 import type Stripe from "stripe";
 import { promisify } from "util";
@@ -567,7 +567,7 @@ async function handler(
 
                 assert(
                   currentPeriod.success,
-                  "Unexpected current period missing"
+                  "Unexpected current period missing or malformed"
                 );
                 const paygAllocationResult =
                   await allocatePAYGCreditsOnCycleRenewal({
@@ -594,7 +594,7 @@ async function handler(
                   StripeBillingPeriodSchema.safeParse(previousAttributes);
                 assert(
                   previousPeriod.success,
-                  "Unexpected previous period missing"
+                  "Unexpected previous period missing or malformed"
                 );
                 const previousPeriodStartSeconds =
                   previousPeriod.data.current_period_start;
