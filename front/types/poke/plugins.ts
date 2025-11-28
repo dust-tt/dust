@@ -10,7 +10,7 @@ interface BaseArgDefinition {
   asyncDescription?: boolean;
   dependsOn?: {
     field: string;
-    value: unknown;
+    value: boolean;
   };
 }
 

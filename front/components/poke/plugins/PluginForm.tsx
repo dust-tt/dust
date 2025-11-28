@@ -142,6 +142,11 @@ export function PluginForm({
                 : arg.values;
             defaultValue = options.filter((v) => v.checked).map((v) => v.value);
           }
+          const fieldDescription =
+            arg.asyncDescription &&
+            asyncArgs?.[`${key}_description`] !== undefined
+              ? String(asyncArgs[`${key}_description`])
+              : arg.description;
 
           return (
             <PokeFormField
@@ -206,18 +211,11 @@ export function PluginForm({
                       </>
                     </PokeFormControl>
                   </div>
-                  {(() => {
-                    const description =
-                      arg.asyncDescription &&
-                      asyncArgs?.[`${key}_description`] !== undefined
-                        ? String(asyncArgs[`${key}_description`])
-                        : arg.description;
-                    return (
-                      description && (
-                        <PokeFormDescription>{description}</PokeFormDescription>
-                      )
-                    );
-                  })()}
+                  {fieldDescription && (
+                    <PokeFormDescription>
+                      {fieldDescription}
+                    </PokeFormDescription>
+                  )}
                   <PokeFormMessage />
                 </PokeFormItem>
               )}

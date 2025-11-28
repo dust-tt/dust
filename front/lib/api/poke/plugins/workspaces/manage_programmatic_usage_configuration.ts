@@ -135,7 +135,7 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
     if (!config) {
       return new Ok({
         freeCreditsOverrideEnabled: false,
-        freeCreditsOverrideEnabled_description: freeCreditsDescription,
+        freeCreditsOverrideEnabledDescription: freeCreditsDescription,
         freeCreditsDollars: undefined,
         defaultDiscountPercent: 0,
         paygEnabled: false,
@@ -148,7 +148,7 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
 
     return new Ok({
       freeCreditsOverrideEnabled: config.freeCreditCents !== null,
-      freeCreditsOverrideEnabled_description: freeCreditsDescription,
+      freeCreditsOverrideEnabledDescription: freeCreditsDescription,
       freeCreditsDollars:
         config.freeCreditCents !== null
           ? config.freeCreditCents / 100
