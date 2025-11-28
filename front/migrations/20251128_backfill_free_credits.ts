@@ -3,7 +3,6 @@ import readline from "readline";
 import { Authenticator } from "@app/lib/auth";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { CreditModel } from "@app/lib/resources/storage/models/credits";
-import type { WhereOptions } from "@app/lib/resources/storage/wrappers/workspace_models";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
@@ -41,10 +40,7 @@ async function confirmExecution(message: string): Promise<boolean> {
   });
 }
 
-function getIdempotencyKey(
-  workspaceId: number,
-  expirationDate: Date
-): string {
+function getIdempotencyKey(workspaceId: number, expirationDate: Date): string {
   return `backfill-free-${workspaceId}-${expirationDate.toISOString().split("T")[0]}`;
 }
 
@@ -163,7 +159,7 @@ async function removeFreeCredits(
     "Removing free credits"
   );
 
-  const whereClause: WhereOptions<CreditModel> = { type: "free" };
+  const whereClause: { type: "free"; expirationDate?: Date } = { type: "free" };
   if (!isAll) {
     whereClause.expirationDate = expirationDate;
   }
