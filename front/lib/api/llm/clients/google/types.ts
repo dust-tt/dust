@@ -7,7 +7,7 @@ import {
   GEMINI_3_PRO_MODEL_ID,
 } from "@app/types";
 
-const GOOGLE_AI_STUDIO_PROVIDER_ID = "google_ai_studio";
+export const GOOGLE_AI_STUDIO_PROVIDER_ID = "google_ai_studio";
 
 export const GOOGLE_AI_STUDIO_WHITELISTED_MODEL_IDS = [
   GEMINI_2_5_FLASH_MODEL_ID,

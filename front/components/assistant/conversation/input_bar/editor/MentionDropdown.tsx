@@ -37,6 +37,7 @@ export const MentionDropdown = forwardRef<
     workspaceId: owner.sId,
     conversationId,
     query,
+    select: { agents: true, users: true },
   });
 
   const triggerRef = useRef<HTMLDivElement>(null);

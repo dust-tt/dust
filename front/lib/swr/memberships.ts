@@ -115,8 +115,6 @@ export function useSearchMembers({
 
   const searchParams = new URLSearchParams({
     searchTerm: debouncedSearchTerm,
-    orderColumn: "name",
-    orderDirection: "asc",
     offset: (pageIndex * pageSize).toString(),
     limit: pageSize.toString(),
   });

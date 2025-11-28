@@ -151,7 +151,7 @@ const DialogHeader = ({
 }: NewDialogHeaderProps) => (
   <div
     className={cn(
-      "s-sticky s-top-0 s-z-50 s-flex s-flex-none s-flex-col s-gap-0 s-bg-background s-px-5 s-py-4 s-text-left dark:s-bg-background-night",
+      "s-sticky s-top-0 s-z-50 s-flex s-flex-none s-flex-col s-gap-0 s-bg-background s-px-5 s-pt-4 s-text-left dark:s-bg-background-night",
       className
     )}
     {...props}
@@ -224,7 +224,7 @@ const DialogFooter = ({
   <div className="s-flex s-flex-none s-flex-col s-gap-0">
     <div
       className={cn(
-        "s-flex s-flex-none s-flex-row s-justify-end s-gap-2 s-px-3 s-pb-3",
+        "s-flex s-flex-none s-flex-row s-justify-end s-gap-2 s-px-3 s-pb-3 s-pt-2",
         className
       )}
       {...props}

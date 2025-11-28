@@ -10,7 +10,7 @@ import {
   CLAUDE_4_SONNET_20250514_MODEL_ID,
 } from "@app/types";
 
-const ANTHROPIC_PROVIDER_ID = "anthropic";
+export const ANTHROPIC_PROVIDER_ID = "anthropic";
 
 export const ANTHROPIC_WHITELISTED_MODEL_IDS = [
   CLAUDE_3_5_HAIKU_20241022_MODEL_ID,

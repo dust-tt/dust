@@ -25,11 +25,6 @@ const GroupKindWithoutSystemCodec = t.refinement(
 );
 
 const SearchMembersQueryCodec = t.type({
-  orderColumn: withFallback(t.literal("name"), "name"),
-  orderDirection: withFallback(
-    t.union([t.literal("asc"), t.literal("desc")]),
-    "desc"
-  ),
   offset: withFallback(NumberFromString, 0),
   limit: withFallback(
     t.refinement(

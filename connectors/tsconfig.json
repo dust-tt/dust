@@ -22,5 +22,5 @@
     }
   },
   "include": ["**/*.ts", "**/*.mjs", "./.eslintrc.js"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "dist"]
 }

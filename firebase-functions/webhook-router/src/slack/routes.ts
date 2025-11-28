@@ -11,9 +11,13 @@ export function createSlackBotRoutes(
   webhookRouterConfigManager: WebhookRouterConfigManager
 ) {
   const router = express.Router();
-  const slackVerification = createSlackVerificationMiddleware(secretManager, webhookRouterConfigManager, {
-    useClientCredentials: false,
-  });
+  const slackVerification = createSlackVerificationMiddleware(
+    secretManager,
+    webhookRouterConfigManager,
+    {
+      useClientCredentials: false,
+    }
+  );
 
   // Slack webhook endpoints with Slack verification only (webhook secret already validated)
   router.post("/events", slackVerification, async (req, res) => {
@@ -32,9 +36,13 @@ export function createSlackDataSyncRoutes(
   webhookRouterConfigManager: WebhookRouterConfigManager
 ) {
   const router = express.Router();
-  const slackVerification = createSlackVerificationMiddleware(secretManager, webhookRouterConfigManager, {
-    useClientCredentials: true,
-  });
+  const slackVerification = createSlackVerificationMiddleware(
+    secretManager,
+    webhookRouterConfigManager,
+    {
+      useClientCredentials: true,
+    }
+  );
 
   router.post("/events", slackVerification, async (req, res) => {
     await handleSlackWebhook(req, res, "slack", secretManager);

@@ -1,4 +1,3 @@
-import type { RichUserMention } from "@app/types";
 import type { RichAgentMention } from "@app/types";
 import { compareAgentsForSort, GLOBAL_AGENTS_SID } from "@app/types";
 
@@ -53,22 +52,4 @@ export function filterAndSortEditorSuggestionAgents(
       const bPriority = SUGGESTION_PRIORITY[b.id] ?? Number.MAX_SAFE_INTEGER;
       return aPriority - bPriority;
     });
-}
-
-/**
- * Filters and sorts user mention suggestions based on a query string.
- */
-export function filterAndSortUserSuggestions(
-  lowerCaseQuery: string,
-  suggestions: RichUserMention[]
-): RichUserMention[] {
-  return suggestions
-    .filter((item) => subFilter(lowerCaseQuery, item.label.toLowerCase()))
-    .sort((a, b) =>
-      compareForFuzzySort(
-        lowerCaseQuery,
-        a.label.toLocaleLowerCase(),
-        b.label.toLocaleLowerCase()
-      )
-    );
 }

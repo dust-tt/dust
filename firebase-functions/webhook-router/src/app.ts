@@ -12,7 +12,9 @@ import { WebhookRouterConfigManager } from "./webhook-router-config.js";
 export async function createApp(firebase: App): Promise<express.Application> {
   // Initialize dependencies.
   const secretManager = new SecretManager();
-  const webhookRouterConfigManager = new WebhookRouterConfigManager(getDatabase(firebase));
+  const webhookRouterConfigManager = new WebhookRouterConfigManager(
+    getDatabase(firebase)
+  );
 
   // Create Express app.
   const app = express();

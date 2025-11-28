@@ -1,7 +1,10 @@
 import { APIError, OpenAI } from "openai";
 
 import type { OpenAIWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
-import { overwriteLLMParameters } from "@app/lib/api/llm/clients/openai/types";
+import {
+  OPENAI_PROVIDER_ID,
+  overwriteLLMParameters,
+} from "@app/lib/api/llm/clients/openai/types";
 import { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
@@ -64,7 +67,9 @@ export class OpenAIResponsesLLM extends LLM {
         temperature: this.temperature ?? undefined,
         reasoning,
         tools: specifications.map(toTool),
-        text: { format: toResponseFormat(this.responseFormat) },
+        text: {
+          format: toResponseFormat(this.responseFormat, OPENAI_PROVIDER_ID),
+        },
         // Only models supporting reasoning can do encrypted content for reasoning.
         include: reasoning !== null ? ["reasoning.encrypted_content"] : [],
         tool_choice: toToolOption(specifications, forceToolCall),
