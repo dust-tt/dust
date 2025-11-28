@@ -3,9 +3,13 @@ import { FunctionCallingConfigMode } from "@google/genai";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type { GoogleAIStudioWhitelistedModelId } from "@app/lib/api/llm/clients/google/types";
-import { GOOGLE_AI_STUDIO_MODEL_CONFIGS } from "@app/lib/api/llm/clients/google/types";
+import {
+  GOOGLE_AI_STUDIO_MODEL_CONFIGS,
+  GOOGLE_AI_STUDIO_PROVIDER_ID,
+} from "@app/lib/api/llm/clients/google/types";
+import { parseResponseFormatSchema } from "@app/lib/api/llm/utils";
 import type { ReasoningEffort } from "@app/types";
-import { assertNever, ResponseFormatSchema, safeParseJSON } from "@app/types";
+import { assertNever } from "@app/types";
 
 const THINKING_BUDGET_CONFIG_MAPPING: Record<ReasoningEffort, number> = {
   // Budget of 0 would throw for some thinking models,
@@ -68,24 +72,16 @@ export function toToolConfigParam(
 }
 
 export function toResponseSchemaParam(
-  responseSchema: string | null
+  responseFormat: string | null
 ): SchemaUnion | undefined {
-  if (!responseSchema) {
-    return;
-  }
-
-  const responseFormatJson = safeParseJSON(responseSchema);
-  if (responseFormatJson.isErr() || responseFormatJson.value === null) {
-    return;
-  }
-
-  const responseFormatResult = ResponseFormatSchema.safeParse(
-    responseFormatJson.value
+  const responseFormatObject = parseResponseFormatSchema(
+    responseFormat,
+    GOOGLE_AI_STUDIO_PROVIDER_ID
   );
-  if (responseFormatResult.error) {
+  if (!responseFormatObject) {
     return;
   }
 
   // Return the schema part directly for Gemini
-  return responseFormatResult.data.json_schema.schema;
+  return responseFormatObject.json_schema.schema;
 }

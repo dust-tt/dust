@@ -20,7 +20,7 @@ import {
   O4_MINI_MODEL_ID,
 } from "@app/types";
 
-const OPENAI_PROVIDER_ID = "openai";
+export const OPENAI_PROVIDER_ID = "openai";
 
 export const OPENAI_WHITELISTED_MODEL_IDS = [
   O1_MODEL_ID,

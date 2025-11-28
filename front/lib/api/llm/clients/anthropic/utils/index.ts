@@ -5,8 +5,10 @@ import type {
 } from "@anthropic-ai/sdk/resources/messages.mjs";
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import { ANTHROPIC_PROVIDER_ID } from "@app/lib/api/llm/clients/anthropic/types";
+import { parseResponseFormatSchema } from "@app/lib/api/llm/utils";
 import type { ReasoningEffort } from "@app/types";
-import { assertNever, ResponseFormatSchema, safeParseJSON } from "@app/types";
+import { assertNever } from "@app/types";
 
 // thinking.enabled.budget_tokens: Input should be greater than or equal to 1024
 const ANTHROPIC_MINIMUM_THINKING_BUDGET = 1024;
@@ -61,25 +63,15 @@ export function toToolChoiceParam(
 export function toOutputFormatParam(
   responseFormat: string | null
 ): BetaJSONOutputFormat | undefined {
-  if (!responseFormat) {
-    return;
-  }
-
-  const responseFormatJson = safeParseJSON(responseFormat);
-  if (responseFormatJson.isErr() || responseFormatJson.value === null) {
-    return;
-  }
-
-  const responseFormatResult = ResponseFormatSchema.safeParse(
-    responseFormatJson.value
+  const responseFormatObject = parseResponseFormatSchema(
+    responseFormat,
+    ANTHROPIC_PROVIDER_ID
   );
-
-  if (responseFormatResult.error) {
+  if (!responseFormatObject) {
     return;
   }
-
   return {
     type: "json_schema",
-    schema: responseFormatResult.data.json_schema.schema,
+    schema: responseFormatObject.json_schema.schema,
   };
 }
