@@ -243,7 +243,7 @@ function WebhookEditionMessageInput({
 interface WebhookEditionSheetContentProps {
   owner: LightWorkspaceType;
   trigger: AgentBuilderWebhookTriggerType | null;
-  agentConfigurationId: string | null;
+  agentConfigurationId?: string;
   webhookSourceView: WebhookSourceViewType | null;
   isEditor: boolean;
 }

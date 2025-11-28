@@ -18,7 +18,7 @@ import { WebhookRequestStatusBadge } from "./WebhookRequestStatusBadge";
 
 interface RecentWebhookRequestsProps {
   owner: LightWorkspaceType;
-  agentConfigurationId: string | null;
+  agentConfigurationId?: string;
   trigger: AgentBuilderWebhookTriggerType;
 }
 
@@ -50,7 +50,7 @@ export function RecentWebhookRequests({
 interface RecentWebhookRequestsContentProps {
   isOpen: boolean;
   owner: LightWorkspaceType;
-  agentConfigurationId: string | null;
+  agentConfigurationId?: string;
   trigger: AgentBuilderWebhookTriggerType;
 }
 

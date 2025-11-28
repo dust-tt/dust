@@ -407,7 +407,7 @@ function AgentPictureInput({ isCreatingNew }: { isCreatingNew: boolean }) {
 export function AgentBuilderSettingsBlock({
   agentConfigurationId,
 }: {
-  agentConfigurationId: string | null;
+  agentConfigurationId?: string;
 }) {
   const isCreatingNew = !agentConfigurationId;
   return (

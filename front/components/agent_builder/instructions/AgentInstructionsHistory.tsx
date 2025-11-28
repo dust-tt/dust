@@ -26,7 +26,7 @@ interface AgentInstructionsHistoryProps {
   selectedConfig: LightAgentConfigurationType | null;
   onSelect: (config: LightAgentConfigurationType) => void;
   owner: LightWorkspaceType;
-  agentConfigurationId: string | null;
+  agentConfigurationId?: string;
 }
 
 export function AgentInstructionsHistory({

@@ -100,17 +100,17 @@ export default function AgentBuilder({
 
   const { actions, isActionsLoading } = useAgentConfigurationActions(
     owner.sId,
-    duplicateAgentId ?? agentConfiguration?.sId ?? null
+    duplicateAgentId ?? agentConfiguration?.sId
   );
 
   const { triggers, isTriggersLoading, mutateTriggers } = useAgentTriggers({
     workspaceId: owner.sId,
-    agentConfigurationId: agentConfiguration?.sId ?? null,
+    agentConfigurationId: agentConfiguration?.sId,
   });
 
   const { editors } = useEditors({
     owner,
-    agentConfigurationId: agentConfiguration?.sId ?? null,
+    agentConfigurationId: agentConfiguration?.sId,
   });
 
   const { slackChannels: slackChannelsLinkedWithAgent } =
@@ -402,8 +402,7 @@ export default function AgentBuilder({
                 onClick: handleSave,
                 disabled: isSaveDisabled,
               }}
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-              agentConfigurationId={agentConfiguration?.sId || null}
+              agentConfigurationId={agentConfiguration?.sId}
               isActionsLoading={isActionsLoading}
               isTriggersLoading={isTriggersLoading}
             />

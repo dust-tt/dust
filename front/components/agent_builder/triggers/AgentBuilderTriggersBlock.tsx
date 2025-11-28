@@ -27,7 +27,7 @@ import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 interface AgentBuilderTriggersBlockProps {
   owner: LightWorkspaceType;
   isTriggersLoading?: boolean;
-  agentConfigurationId: string | null;
+  agentConfigurationId?: string;
 }
 
 const TEMP_TRIGGER_PREFIX = "temptrg";

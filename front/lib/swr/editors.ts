@@ -16,7 +16,7 @@ export function useEditors({
   disabled,
 }: {
   owner: LightWorkspaceType;
-  agentConfigurationId: string | null;
+  agentConfigurationId?: string;
   disabled?: boolean;
 }) {
   const editorsFetcher: Fetcher<GetAgentEditorsResponseBody> = fetcher;

@@ -8,7 +8,7 @@ import type { GetActionsResponseBody } from "@app/pages/api/w/[wId]/builder/assi
 
 export function useAgentConfigurationActions(
   ownerId: string,
-  agentConfigurationId: string | null
+  agentConfigurationId?: string
 ) {
   const disabled = agentConfigurationId === null;
   const actionsFetcher: Fetcher<GetActionsResponseBody> = fetcher;

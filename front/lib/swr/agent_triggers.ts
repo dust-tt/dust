@@ -31,7 +31,7 @@ export function useAgentTriggers({
   disabled,
 }: {
   workspaceId: string;
-  agentConfigurationId: string | null;
+  agentConfigurationId?: string;
   disabled?: boolean;
 }) {
   const triggersFetcher: Fetcher<GetTriggersResponseBody> = fetcher;
@@ -252,8 +252,7 @@ export function useRemoveTriggerSubscriber({
   const sendNotification = useSendNotification();
   const { mutateTriggers: mutateAgentTriggers } = useAgentTriggers({
     workspaceId,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    agentConfigurationId: agentConfigurationId || null,
+    agentConfigurationId,
     disabled: !agentConfigurationId,
   });
   const { mutateTriggers: mutateUserTriggers } = useUserTriggers({

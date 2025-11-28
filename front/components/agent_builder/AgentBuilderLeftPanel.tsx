@@ -17,7 +17,7 @@ import { AgentBuilderTriggersBlock } from "@app/components/agent_builder/trigger
 interface AgentBuilderLeftPanelProps {
   title: string;
   onCancel: () => void;
-  agentConfigurationId: string | null;
+  agentConfigurationId?: string;
   saveButtonProps?: ButtonProps;
   isActionsLoading: boolean;
   isTriggersLoading?: boolean;

@@ -47,7 +47,7 @@ interface TriggerViewsSheetProps {
   owner: LightWorkspaceType;
   mode: SheetMode | null;
   webhookSourceViews: WebhookSourceViewType[];
-  agentConfigurationId: string | null;
+  agentConfigurationId?: string;
   onAppendTriggerToCreate: (trigger: AgentBuilderTriggerType) => void;
   onAppendTriggerToUpdate: (trigger: AgentBuilderTriggerType) => void;
 }

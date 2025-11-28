@@ -443,7 +443,7 @@ export function useWebhookRequestTriggersForTrigger({
   disabled,
 }: {
   owner: LightWorkspaceType;
-  agentConfigurationId: string | null;
+  agentConfigurationId?: string;
   triggerId: string | null;
   disabled?: boolean;
 }) {

@@ -19,7 +19,7 @@ import { useAgentConfigurationHistory } from "@app/lib/swr/assistants";
 import type { LightAgentConfigurationType } from "@app/types";
 
 interface AgentBuilderInstructionsBlockProps {
-  agentConfigurationId: string | null;
+  agentConfigurationId?: string;
 }
 
 export function AgentBuilderInstructionsBlock({

@@ -369,7 +369,7 @@ export function useAgentConfigurationHistory({
   disabled,
 }: {
   workspaceId: string;
-  agentConfigurationId: string | null;
+  agentConfigurationId?: string;
   limit?: number;
   disabled?: boolean;
 }) {
