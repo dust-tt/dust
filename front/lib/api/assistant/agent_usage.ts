@@ -1,15 +1,17 @@
+import type { estypes } from "@elastic/elasticsearch";
 import _ from "lodash";
 import type { RedisClientType } from "redis";
-import { QueryTypes } from "sequelize";
 
+import { searchAnalytics } from "@app/lib/api/elasticsearch";
+import { USER_USAGE_ORIGINS } from "@app/lib/api/programmatic_usage_tracking";
 import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getAssistantUsageData } from "@app/lib/workspace_usage";
 import { launchMentionsCountWorkflow } from "@app/temporal/mentions_count_queue/client";
-import type { LightAgentConfigurationType } from "@app/types";
+import type { LightAgentConfigurationType, Result } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 // Ranking of agents is done over a 30 days period.
 const RANKING_USAGE_DAYS = 30;
@@ -133,71 +135,82 @@ export async function getAgentUsage(
     : null;
 }
 
+type MentionsCountAggs = {
+  by_agent: estypes.AggregationsTermsAggregateBase<{
+    key: string;
+    doc_count: number;
+    conversation_count: estypes.AggregationsCardinalityAggregate;
+    user_count: estypes.AggregationsCardinalityAggregate;
+  }>;
+};
+
 export async function agentMentionsCount(
-  workspaceId: number,
+  workspaceId: string,
   agentConfiguration?: LightAgentConfigurationType,
   rankingUsageDays: number = RANKING_USAGE_DAYS
-): Promise<AgentUsageCount[]> {
-  const readReplica = getFrontReplicaDbConnection();
+): Promise<Result<AgentUsageCount[], Error>> {
+  const filters: estypes.QueryDslQueryContainer[] = [
+    { term: { workspace_id: workspaceId } },
+    { terms: { context_origin: USER_USAGE_ORIGINS } },
+    { exists: { field: "agent_id" } },
+    {
+      range: {
+        timestamp: {
+          gte: `now-${rankingUsageDays}d/d`,
+        },
+      },
+    },
+  ];
 
-  if (typeof rankingUsageDays !== "number") {
-    // Prevent SQL injection
-    throw new Error("Invalid ranking usage days");
+  if (agentConfiguration) {
+    filters.push({ term: { agent_id: agentConfiguration.sId } });
   }
 
-  // eslint-disable-next-line dust/no-raw-sql -- Leggit
-  const mentions = await readReplica.query(
-    `
-    WITH message_counts AS (
-      SELECT
-        mentions."agentConfigurationId",
-        COUNT(DISTINCT mentions.id) as message_count,
-        COUNT(DISTINCT c.id) as conversation_count,
-        COUNT(DISTINCT um."userId") as user_count
-      FROM conversations c
-      INNER JOIN messages m ON m."conversationId" = c.id
-      INNER JOIN mentions ON mentions."messageId" = m.id
-      INNER JOIN user_messages um ON um.id = m."userMessageId"
-      WHERE
-        c."workspaceId" = :workspaceId
-        AND mentions."workspaceId" = :workspaceId
-        AND mentions."agentConfigurationId" IS NOT NULL
-        AND mentions."createdAt" > NOW() - INTERVAL '${rankingUsageDays} days'
-        AND ((:agentConfigurationId)::VARCHAR IS NULL OR mentions."agentConfigurationId" = :agentConfigurationId)
-      GROUP BY mentions."agentConfigurationId"
-      ORDER BY message_count DESC
-    )
-    SELECT
-      "agentConfigurationId",
-      message_count as "messageCount",
-      conversation_count as "conversationCount",
-      user_count as "userCount"
-    FROM message_counts;
-    `,
-    {
-      replacements: {
-        workspaceId,
-        agentConfigurationId: agentConfiguration?.sId ?? null,
-      },
-      type: QueryTypes.SELECT,
-    }
-  );
+  const query: estypes.QueryDslQueryContainer = {
+    bool: { filter: filters },
+  };
 
-  return mentions.map((mention) => {
-    const castMention = mention as unknown as {
-      agentConfigurationId: string;
-      messageCount: number;
-      conversationCount: number;
-      userCount: number;
+  const aggregations: Record<string, estypes.AggregationsAggregationContainer> =
+    {
+      by_agent: {
+        terms: {
+          field: "agent_id",
+          size: 1000,
+        },
+        aggs: {
+          conversation_count: { cardinality: { field: "conversation_id" } },
+          user_count: { cardinality: { field: "user_id" } },
+        },
+      },
     };
-    return {
-      agentId: castMention.agentConfigurationId,
-      messageCount: castMention.messageCount,
-      conversationCount: castMention.conversationCount,
-      userCount: castMention.userCount,
-      timePeriodSec: rankingUsageDays * 24 * 60 * 60,
-    };
+
+  const result = await searchAnalytics<never, MentionsCountAggs>(query, {
+    aggregations,
+    size: 0,
   });
+
+  if (result.isErr()) {
+    return new Err(
+      normalizeError(`Elasticsearch query failed: ${result.error.message}`)
+    );
+  }
+
+  const buckets = result.value.aggregations?.by_agent?.buckets;
+  if (!buckets || !Array.isArray(buckets)) {
+    return new Ok([]);
+  }
+
+  return new Ok(
+    buckets
+      .map((bucket) => ({
+        agentId: bucket.key,
+        messageCount: bucket.doc_count,
+        conversationCount: bucket.conversation_count?.value ?? 0,
+        userCount: bucket.user_count?.value ?? 0,
+        timePeriodSec: rankingUsageDays * 24 * 60 * 60,
+      }))
+      .sort((a, b) => b.messageCount - a.messageCount)
+  );
 }
 
 export async function storeCountsInRedis(
