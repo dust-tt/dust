@@ -142,6 +142,7 @@ pub mod oauth {
     pub mod store;
 
     pub mod providers {
+        pub mod asana;
         pub mod confluence;
         pub mod confluence_tools;
         pub mod discord;
