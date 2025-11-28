@@ -9,12 +9,14 @@ This runbook provides step-by-step instructions for creating new internal MCP se
 ### Minimal Files Needed
 
 1. `lib/actions/mcp_internal_actions/constants.ts` - Add server to `AVAILABLE_INTERNAL_MCP_SERVER_NAMES` and `INTERNAL_MCP_SERVERS`
-2. `lib/actions/mcp_internal_actions/servers/{provider}/index.ts` - Server implementation with tools
-3. `lib/actions/mcp_internal_actions/servers/{provider}/{provider}_api_helper.ts` - API client wrapper
-4. `lib/actions/mcp_internal_actions/servers/{provider}/{provider}_utils.ts` - Helper utilities (optional)
-5. `lib/actions/mcp_internal_actions/servers/index.ts` - Register server in switch statement
+2. `lib/actions/mcp_internal_actions/servers/{provider}.ts` - Server implementation with tools
+3. `lib/actions/mcp_internal_actions/servers/index.ts` - Register server in switch statement
 
-### OAuth Requirements (if platform requires OAuth)
+If the server code does not fit in one file, it can be split into multiple files.
+In that case, they should be placed into a folder that contains a file `index.ts` from where
+the `createServer` function that creates the server will be default exported.
+
+### OAuth Requirements (if the platform requires OAuth)
 
 - OAuth provider must already exist in `front/lib/api/oauth/providers/{provider}.ts`
 - OAuth core implementation must exist in `core/src/oauth/providers/{provider}.rs`
@@ -23,7 +25,7 @@ This runbook provides step-by-step instructions for creating new internal MCP se
 
 ### Common Gotchas
 
-- Don't forget to add the server to `AVAILABLE_INTERNAL_MCP_SERVER_NAMES` array
+- Do not forget to add the server to `AVAILABLE_INTERNAL_MCP_SERVER_NAMES` array
 - Server IDs must be stable and unique - never change them once deployed
 - Tool stakes must be configured appropriately (never_ask, low, high)
 - Always implement proper error handling with Result types
