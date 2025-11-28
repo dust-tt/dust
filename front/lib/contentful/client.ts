@@ -3,15 +3,16 @@ import { BLOCKS } from "@contentful/rich-text-types";
 import type { Asset, ContentfulClientApi, Entry } from "contentful";
 import { createClient } from "contentful";
 
-import { isString } from "@app/types";
-import { slugify } from "@app/types/shared/utils/string_utils";
-
 import type {
   BlogImage,
   BlogPageSkeleton,
   BlogPost,
   BlogPostSummary,
-} from "./types";
+} from "@app/lib/contentful/types";
+import { isString } from "@app/types";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { slugify } from "@app/types/shared/utils/string_utils";
 
 let client: ContentfulClientApi<undefined> | null = null;
 
@@ -52,11 +53,15 @@ function contentfulAssetToBlogImage(
   const imageDetails =
     file.details && "image" in file.details ? file.details.image : undefined;
 
+  if (!imageDetails?.width || !imageDetails?.height) {
+    return null;
+  }
+
   return {
     url: `https:${file.url}`,
     alt: isString(asset.fields.title) ? asset.fields.title : fallbackAlt,
-    width: imageDetails?.width ?? 1200,
-    height: imageDetails?.height ?? 630,
+    width: imageDetails.width,
+    height: imageDetails.height,
   };
 }
 
@@ -119,67 +124,85 @@ function contentfulEntryToBlogPostSummary(post: BlogPost): BlogPostSummary {
   };
 }
 
-export async function getAllBlogPosts(): Promise<BlogPostSummary[]> {
-  const contentfulClient = getClient();
+export async function getAllBlogPosts(): Promise<
+  Result<BlogPostSummary[], Error>
+> {
+  try {
+    const contentfulClient = getClient();
 
-  const response = await contentfulClient.getEntries<BlogPageSkeleton>({
-    content_type: "blogPage",
-    limit: 1000,
-  });
+    const response = await contentfulClient.getEntries<BlogPageSkeleton>({
+      content_type: "blogPage",
+      limit: 1000,
+    });
 
-  return response.items
-    .map(contentfulEntryToBlogPost)
-    .sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    )
-    .map(contentfulEntryToBlogPostSummary);
+    const posts = response.items
+      .map(contentfulEntryToBlogPost)
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      )
+      .map(contentfulEntryToBlogPostSummary);
+
+    return new Ok(posts);
+  } catch (error) {
+    return new Err(error instanceof Error ? error : new Error(String(error)));
+  }
 }
 
 export async function getBlogPostBySlug(
   slug: string
-): Promise<BlogPost | null> {
-  const contentfulClient = getClient();
+): Promise<Result<BlogPost | null, Error>> {
+  try {
+    const contentfulClient = getClient();
 
-  const queryParams = {
-    content_type: "blogPage",
-    "fields.slug": slug,
-    limit: 1,
-  };
+    const queryParams = {
+      content_type: "blogPage",
+      "fields.slug": slug,
+      limit: 1,
+    };
 
-  const response =
-    await contentfulClient.getEntries<BlogPageSkeleton>(queryParams);
+    const response =
+      await contentfulClient.getEntries<BlogPageSkeleton>(queryParams);
 
-  if (response.items.length > 0) {
-    return contentfulEntryToBlogPost(response.items[0]);
+    if (response.items.length > 0) {
+      return new Ok(contentfulEntryToBlogPost(response.items[0]));
+    }
+
+    return new Ok(null);
+  } catch (error) {
+    return new Err(error instanceof Error ? error : new Error(String(error)));
   }
-
-  return null;
 }
 
 export async function getRelatedPosts(
   currentSlug: string,
   tags: string[],
   limit = 3
-): Promise<BlogPostSummary[]> {
+): Promise<Result<BlogPostSummary[], Error>> {
   if (tags.length === 0) {
-    return [];
+    return new Ok([]);
   }
 
-  const contentfulClient = getClient();
+  try {
+    const contentfulClient = getClient();
 
-  const queryParams = {
-    content_type: "blogPage",
-    "fields.tags[in]": tags.join(","),
-    limit: limit + 1,
-  };
+    const queryParams = {
+      content_type: "blogPage",
+      "fields.tags[in]": tags.join(","),
+      limit: limit + 1,
+    };
 
-  const response =
-    await contentfulClient.getEntries<BlogPageSkeleton>(queryParams);
+    const response =
+      await contentfulClient.getEntries<BlogPageSkeleton>(queryParams);
 
-  return response.items
-    .map(contentfulEntryToBlogPost)
-    .filter((post: BlogPost) => post.slug !== currentSlug)
-    .slice(0, limit)
-    .map(contentfulEntryToBlogPostSummary);
+    const posts = response.items
+      .map(contentfulEntryToBlogPost)
+      .filter((post: BlogPost) => post.slug !== currentSlug)
+      .slice(0, limit)
+      .map(contentfulEntryToBlogPostSummary);
+
+    return new Ok(posts);
+  } catch (error) {
+    return new Err(error instanceof Error ? error : new Error(String(error)));
+  }
 }

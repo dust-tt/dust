@@ -20,10 +20,18 @@ import logger from "@app/logger/logger";
 import { isString } from "@app/types";
 
 export const getStaticPaths: GetStaticPaths = async () => {
-  const posts = await getAllBlogPosts();
+  const postsResult = await getAllBlogPosts();
+
+  if (postsResult.isErr()) {
+    logger.error(
+      { error: postsResult.error },
+      "Error fetching blog posts for static paths"
+    );
+    throw postsResult.error;
+  }
 
   return {
-    paths: posts.map((post) => ({ params: { slug: post.slug } })),
+    paths: postsResult.value.map((post) => ({ params: { slug: post.slug } })),
     fallback: "blocking",
   };
 };
@@ -33,27 +41,40 @@ export const getStaticProps: GetStaticProps<BlogPostPageProps> = async ({
 }) => {
   const slug = isString(params?.slug) ? params.slug : "";
 
-  try {
-    const post = await getBlogPostBySlug(slug);
+  const postResult = await getBlogPostBySlug(slug);
 
-    if (!post) {
-      return { notFound: true };
-    }
-
-    const relatedPosts = await getRelatedPosts(slug, post.tags, 3);
-
-    return {
-      props: {
-        post,
-        relatedPosts,
-        gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
-      },
-      revalidate: 300,
-    };
-  } catch (error) {
-    logger.error({ slug, error }, `Error fetching blog post "${slug}"`);
+  if (postResult.isErr()) {
+    logger.error(
+      { slug, error: postResult.error },
+      `Error fetching blog post "${slug}"`
+    );
     return { notFound: true };
   }
+
+  const post = postResult.value;
+
+  if (!post) {
+    return { notFound: true };
+  }
+
+  const relatedPostsResult = await getRelatedPosts(slug, post.tags, 3);
+
+  if (relatedPostsResult.isErr()) {
+    logger.error(
+      { slug, error: relatedPostsResult.error },
+      `Error fetching related posts for "${slug}"`
+    );
+    return { notFound: true };
+  }
+
+  return {
+    props: {
+      post,
+      relatedPosts: relatedPostsResult.value,
+      gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+    },
+    revalidate: 300,
+  };
 };
 
 const CONTENT_CLASSES = classNames(

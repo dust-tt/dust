@@ -14,27 +14,23 @@ import logger from "@app/logger/logger";
 export const getStaticProps: GetStaticProps<
   BlogListingPageProps
 > = async () => {
-  try {
-    const posts = await getAllBlogPosts();
+  const postsResult = await getAllBlogPosts();
 
-    return {
-      props: {
-        posts,
-        gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
-      },
-      revalidate: 60,
-    };
-  } catch (error) {
-    logger.error({ error }, "Error fetching blog posts from Contentful");
-
-    return {
-      props: {
-        posts: [],
-        gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
-      },
-      revalidate: 30,
-    };
+  if (postsResult.isErr()) {
+    logger.error(
+      { error: postsResult.error },
+      "Error fetching blog posts from Contentful"
+    );
+    throw postsResult.error;
   }
+
+  return {
+    props: {
+      posts: postsResult.value,
+      gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+    },
+    revalidate: 60,
+  };
 };
 
 export default function BlogListing({ posts }: BlogListingPageProps) {
