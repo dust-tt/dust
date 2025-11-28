@@ -17,7 +17,7 @@ const CONTENT_SECURITY_POLICIES = [
   `style-src 'self' 'unsafe-inline' *.fontawesome.com *.googleapis.com;`,
   `style-src-elem 'self' 'unsafe-inline' *.fontawesome.com *.googleapis.com *.gstatic.com;`,
   `img-src 'self' data: blob: webkit-fake-url: https:;`,
-  `connect-src 'self' blob: dust.tt *.dust.tt https://dust.tt https://*.dust.tt browser-intake-datadoghq.eu *.google-analytics.com *.googlesyndication.com *.googleadservices.com cdn.jsdelivr.net *.hsforms.com *.hscollectedforms.net *.hubspot.com *.hubapi.com *.hsappstatic.net *.cr-relay.com *.usercentrics.eu *.ads.linkedin.com px.ads.linkedin.com google.com *.google.com *.workos.com translate-pa.googleapis.com forms.default.com nucleus.default.com *.default.com;`,
+  `connect-src 'self' blob: dust.tt *.dust.tt https://dust.tt https://*.dust.tt browser-intake-datadoghq.eu *.google-analytics.com *.googlesyndication.com *.googleadservices.com cdn.jsdelivr.net *.hsforms.com *.hscollectedforms.net *.hubspot.com *.hubapi.com *.hsappstatic.net *.cr-relay.com *.usercentrics.eu *.ads.linkedin.com px.ads.linkedin.com google.com *.google.com *.workos.com translate-pa.googleapis.com forms.default.com nucleus.default.com *.default.com *.novu.co wss://*.novu.co;`,
   `frame-src 'self' *.wistia.net eu.viz.dust.tt viz.dust.tt *.hsforms.net *.googletagmanager.com *.doubleclick.net *.default.com *.hsforms.com${isDev ? " http://localhost:3007" : ""};`,
   `font-src 'self' data: dust.tt *.dust.tt https://dust.tt https://*.dust.tt *.gstatic.com *.wistia.net fonts.cdnfonts.com migaku-public-data.migaku.com;`,
   `media-src 'self' data:;`,
@@ -36,6 +36,10 @@ const withBundleAnalyzer = bundleAnalyzer({
 });
 
 const config = {
+  // Standalone output creates self-contained server with minimal dependencies for Docker. It
+  // creates standalone folder that copies only the necessary files for a production deployment
+  // including select files in node_modules.
+  output: "standalone",
   transpilePackages: ["@uiw/react-textarea-code-editor"],
   // As of Next 14.2.3 swc minification creates a bug in the generated client side files.
   swcMinify: false,
@@ -48,6 +52,20 @@ const config = {
     // Prevents minification of the temporalio client workflow ids.
     serverMinification: false,
     esmExternals: false,
+    instrumentationHook: true,
+    // Ensure dd-trace and other dependencies are included in standalone build.
+    outputFileTracingIncludes: {
+      "/**": [
+        "./node_modules/dd-trace/**/*",
+        "./node_modules/@datadog/**/*",
+        // Include entire Redux ecosystem to avoid issues with partial inclusion.
+        "./node_modules/redux/**/*",
+        "./node_modules/@reduxjs/**/*",
+        "./node_modules/immer/**/*",
+        "./node_modules/reselect/**/*",
+        "./node_modules/redux-thunk/**/*",
+      ],
+    },
   },
   async redirects() {
     return [
@@ -187,13 +205,13 @@ const config = {
         source: "/api/v1/w/:wId/vaults",
         destination: "/api/v1/w/:wId/spaces",
       },
-      // Posthog tracking
+      // Posthog tracking - endpoint name called "subtle1"
       {
-        source: "/ingest/static/:path*",
+        source: "/subtle1/static/:path*",
         destination: "https://eu-assets.i.posthog.com/static/:path*",
       },
       {
-        source: "/ingest/:path*",
+        source: "/subtle1/:path*",
         destination: "https://eu.i.posthog.com/:path*",
       },
     ];

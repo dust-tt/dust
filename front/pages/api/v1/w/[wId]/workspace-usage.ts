@@ -73,7 +73,6 @@ import { assertNever } from "@app/types";
  *         description: |
  *           The name of the usage table to retrieve:
  *           - "users": The list of users categorized by their activity level.
- *           - "inactive_users": The of users that didn't sent any messages
  *           - "assistant_messages": The list of messages sent by users including the mentioned agents.
  *           - "builders": The list of builders categorized by their activity level.
  *           - "assistants": The list of workspace agents and their corresponding usage.
@@ -81,7 +80,13 @@ import { assertNever } from "@app/types";
  *           - "all": A concatenation of all the above tables.
  *         schema:
  *           type: string
- *           enum: [users, inactive_users, assistant_messages, builders, assistants, feedback, all]
+ *           enum: [users, assistant_messages, builders, assistants, feedback, all]
+ *       - in: query
+ *         name: includeInactive
+ *         required: false
+ *         description: Include users and assistants with zero messages in the export (defaults to false)
+ *         schema:
+ *           type: boolean
  *     responses:
  *       200:
  *         description: The usage data in CSV or JSON format, or a ZIP of multiple CSVs if table is equal to "all"
@@ -137,6 +142,7 @@ async function handler(
       }
 
       const query = r.data;
+      const includeInactive = query.includeInactive ?? false;
 
       // Add validation for JSON format with 'all' table
       if (query.format === "json" && query.table === "all") {
@@ -156,6 +162,7 @@ async function handler(
         start: startDate,
         end: endDate,
         workspace: owner,
+        includeInactive,
       });
 
       if (query.format === "json") {
@@ -253,15 +260,21 @@ async function fetchUsageData({
   start,
   end,
   workspace,
+  includeInactive = false,
 }: {
   table: UsageTableType;
   start: Date;
   end: Date;
   workspace: WorkspaceType;
+  includeInactive?: boolean;
 }): Promise<Partial<Record<UsageTableType, string>>> {
   switch (table) {
     case "users":
-      return { users: await getUserUsageData(start, end, workspace) };
+      return {
+        users: await getUserUsageData(start, end, workspace, {
+          includeInactive,
+        }),
+      };
     case "assistant_messages":
       return {
         assistant_messages: await getMessageUsageData(start, end, workspace),
@@ -270,7 +283,9 @@ async function fetchUsageData({
       return { builders: await getBuildersUsageData(start, end, workspace) };
     case "assistants":
       return {
-        assistants: await getAssistantsUsageData(start, end, workspace),
+        assistants: await getAssistantsUsageData(start, end, workspace, {
+          includeInactive,
+        }),
       };
     case "feedback":
       return {
@@ -279,10 +294,10 @@ async function fetchUsageData({
     case "all":
       const [users, assistant_messages, builders, assistants, feedback] =
         await Promise.all([
-          getUserUsageData(start, end, workspace),
+          getUserUsageData(start, end, workspace, { includeInactive }),
           getMessageUsageData(start, end, workspace),
           getBuildersUsageData(start, end, workspace),
-          getAssistantsUsageData(start, end, workspace),
+          getAssistantsUsageData(start, end, workspace, { includeInactive }),
           getFeedbackUsageData(start, end, workspace),
         ]);
       return {

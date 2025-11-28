@@ -9,7 +9,7 @@ import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
 import { AddToolsMenu } from "@app/components/actions/mcp/AddToolsMenu";
-import { CreateMCPServerSheet } from "@app/components/actions/mcp/CreateMCPServerSheet";
+import { CreateMCPServerDialog } from "@app/components/actions/mcp/CreateMCPServerSheet";
 import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
@@ -19,6 +19,7 @@ import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
   mcpServersSortingFn,
+  requiresBearerTokenConfiguration,
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
@@ -145,7 +146,10 @@ export const AdminActionsList = ({
   };
 
   const onCreateInternalMCPServer = async (mcpServer: MCPServerType) => {
-    if (mcpServer.authorization) {
+    if (
+      mcpServer.authorization ??
+      requiresBearerTokenConfiguration(mcpServer)
+    ) {
       setInternalMCPServerToCreate(mcpServer);
       setDefaultServerConfig(undefined);
       setIsCreateOpen(true);
@@ -315,7 +319,7 @@ export const AdminActionsList = ({
         agentId={assistantSId}
         onClose={() => setAssistantSId(null)}
       />
-      <CreateMCPServerSheet
+      <CreateMCPServerDialog
         isOpen={isCreateOpen}
         internalMCPServer={internalMCPServerToCreate}
         setIsOpen={setIsCreateOpen}

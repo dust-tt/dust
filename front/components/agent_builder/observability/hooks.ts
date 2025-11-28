@@ -1,15 +1,18 @@
 import {
   MAX_TOOLS_DISPLAYED,
-  OTHER_TOOLS_LABEL,
+  OTHER_LABEL,
 } from "@app/components/agent_builder/observability/constants";
+import type { ObservabilityMode } from "@app/components/agent_builder/observability/ObservabilityContext";
 import type {
   ChartDatum,
   ToolChartModeType,
+  ToolChartUsageDatum,
 } from "@app/components/agent_builder/observability/types";
 import { selectTopTools } from "@app/components/agent_builder/observability/utils";
 import type { ToolExecutionByVersion } from "@app/lib/api/assistant/observability/tool_execution";
 import type { ToolStepIndexByStep } from "@app/lib/api/assistant/observability/tool_step_index";
 import {
+  useAgentLatency,
   useAgentToolExecution,
   useAgentToolStepIndex,
 } from "@app/lib/swr/assistants";
@@ -27,8 +30,27 @@ type ToolUsageResult = {
 
 type ToolDataItem = {
   label: string | number;
-  tools: Record<string, { count: number }>;
+  tools: Record<
+    string,
+    {
+      count: number;
+      breakdown?: Record<string, number>;
+    }
+  >;
   total?: number;
+};
+
+export type LatencyPoint = {
+  timestamp: number;
+  count: number;
+  avgLatencyMs: number;
+  percentilesLatencyMs: number;
+};
+
+type LatencyDataResult = {
+  data: LatencyPoint[];
+  isLoading: boolean;
+  errorMessage: string | undefined;
 };
 
 function calculatePercentage(count: number, total: number): number {
@@ -54,24 +76,40 @@ function aggregateToolCounts(items: ToolDataItem[]): Map<string, number> {
 function createChartData(
   items: ToolDataItem[],
   displayTools: string[],
-  includeOthers: boolean
+  includeOthers: boolean,
+  configurationNames?: Map<string, string>
 ): ChartDatum[] {
+  const topToolSet = new Set(
+    displayTools.filter((toolName) => toolName !== OTHER_LABEL.label)
+  );
+
   return items.map((item) => {
     const total =
       item.total ??
       Object.values(item.tools).reduce((acc, tool) => acc + tool.count, 0);
 
-    const values: Record<string, number> = {};
+    const values: Record<string, ToolChartUsageDatum> = {};
     let topToolsCount = 0;
-    for (const toolName of displayTools) {
-      if (toolName === OTHER_TOOLS_LABEL) {
-        continue;
-      }
-
+    for (const toolName of topToolSet) {
       const toolData = item.tools[toolName];
       const count = toolData?.count ?? 0;
       if (count > 0) {
-        values[toolName] = calculatePercentage(count, total);
+        const breakdownEntries = toolData.breakdown
+          ? Object.entries(toolData.breakdown)
+          : [];
+
+        values[toolName] = {
+          percent: calculatePercentage(count, total),
+          count,
+          breakdown:
+            breakdownEntries.length > 0
+              ? breakdownEntries.map(([sid, breakdownCount]) => ({
+                  label: configurationNames?.get(sid) ?? toolName,
+                  count: breakdownCount,
+                  percent: calculatePercentage(breakdownCount, count),
+                }))
+              : undefined,
+        };
         topToolsCount += count;
       }
     }
@@ -80,18 +118,44 @@ function createChartData(
       const othersCount = total - topToolsCount;
 
       if (othersCount > 0) {
-        values[OTHER_TOOLS_LABEL] = calculatePercentage(othersCount, total);
+        const othersBreakdownEntries = Object.entries(item.tools).filter(
+          ([toolName, toolData]) =>
+            !topToolSet.has(toolName) && (toolData?.count ?? 0) > 0
+        );
+
+        const othersBreakdown =
+          othersBreakdownEntries.length > 0
+            ? othersBreakdownEntries.map(([toolName, toolData]) => ({
+                label: toolName,
+                count: toolData.count,
+                percent: calculatePercentage(toolData.count, othersCount),
+              }))
+            : undefined;
+
+        values[OTHER_LABEL.label] = {
+          percent: calculatePercentage(othersCount, total),
+          count: othersCount,
+          breakdown: othersBreakdown,
+        };
       }
     }
 
-    return { label: item.label, values };
+    return { label: item.label, values, total };
   });
 }
 
 function normalizeVersionData(data: ToolExecutionByVersion[]): ToolDataItem[] {
   return data.map((item) => ({
     label: `v${item.version}`,
-    tools: item.tools,
+    tools: Object.fromEntries(
+      Object.entries(item.tools).map(([toolName, metrics]) => [
+        toolName,
+        {
+          count: metrics.count,
+          breakdown: metrics.mcpViewBreakdown,
+        },
+      ])
+    ),
   }));
 }
 
@@ -127,7 +191,8 @@ function processToolUsageData(
   emptyMessage: string,
   legendDescription: string,
   isLoading: boolean,
-  errorMessage: string | undefined
+  errorMessage: string | undefined,
+  configurationNames?: Map<string, string>
 ): ToolUsageResult {
   if (data.length === 0) {
     return createEmptyResult(
@@ -143,9 +208,14 @@ function processToolUsageData(
   const selectedTools = selectTopTools(counts, MAX_TOOLS_DISPLAYED);
   const includeOthers = counts.size > MAX_TOOLS_DISPLAYED;
   const topTools = includeOthers
-    ? [...selectedTools, OTHER_TOOLS_LABEL]
+    ? [...selectedTools, OTHER_LABEL.label]
     : selectedTools;
-  const chartData = createChartData(data, topTools, includeOthers);
+  const chartData = createChartData(
+    data,
+    topTools,
+    includeOthers,
+    configurationNames
+  );
 
   return {
     chartData,
@@ -164,20 +234,29 @@ export function useToolUsageData(params: {
   period: number;
   mode: ToolChartModeType;
   filterVersion?: string | null;
+  configurationNames?: Map<string, string>;
 }): ToolUsageResult {
-  const { workspaceId, agentConfigurationId, period, mode, filterVersion } =
-    params;
+  const {
+    workspaceId,
+    agentConfigurationId,
+    period,
+    mode,
+    filterVersion,
+    configurationNames,
+  } = params;
 
   const exec = useAgentToolExecution({
     workspaceId,
     agentConfigurationId,
     days: period,
+    version: filterVersion ?? undefined,
     disabled: mode !== "version",
   });
   const step = useAgentToolStepIndex({
     workspaceId,
     agentConfigurationId,
     days: period,
+    version: filterVersion ?? undefined,
     disabled: mode !== "step",
   });
 
@@ -200,9 +279,10 @@ export function useToolUsageData(params: {
         filterVersion
           ? "No tool execution data for the selected version."
           : "No tool execution data available for this period.",
-        `Shows the relative usage frequency (%) of the top ${MAX_TOOLS_DISPLAYED} tools for each agent version.`,
+        `Usage frequency of tools for each agent version.`,
         isLoading,
-        errorMessage
+        errorMessage,
+        configurationNames
       );
     }
 
@@ -211,20 +291,46 @@ export function useToolUsageData(params: {
       const normalizedData = normalizeStepData(rawData);
       const isLoading = step.isToolStepIndexLoading;
       const errorMessage = step.isToolStepIndexError
-        ? "Failed to load step index distribution."
+        ? "Failed to load step distribution."
         : undefined;
 
       return processToolUsageData(
         normalizedData,
         "Step",
-        "No tool usage by step index for this period.",
-        `Shows relative usage (%) of top ${MAX_TOOLS_DISPLAYED} tools per step index within a message.`,
+        "No tool usage by step for this period.",
+        `Usage tools per step within a message.`,
         isLoading,
-        errorMessage
+        errorMessage,
+        configurationNames
       );
     }
 
     default:
       assertNever(mode);
   }
+}
+
+export function useLatencyData(params: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  period: number;
+  mode: ObservabilityMode;
+  filterVersion?: string | null;
+}): LatencyDataResult {
+  const { workspaceId, agentConfigurationId, period, mode, filterVersion } =
+    params;
+
+  const { latency, isLatencyLoading, isLatencyError } = useAgentLatency({
+    workspaceId,
+    agentConfigurationId,
+    days: period,
+    version: mode === "version" ? (filterVersion ?? undefined) : undefined,
+    disabled: !workspaceId || !agentConfigurationId,
+  });
+
+  return {
+    data: latency,
+    isLoading: isLatencyLoading,
+    errorMessage: isLatencyError ? "Failed to load latency data." : undefined,
+  };
 }

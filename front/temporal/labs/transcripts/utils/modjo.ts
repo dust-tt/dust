@@ -9,6 +9,17 @@ import type { Logger } from "@app/logger/logger";
 import logger from "@app/logger/logger";
 import { isModjoCredentials, OAuthAPI } from "@app/types";
 
+/**
+ * Error thrown when Modjo API returns a 401 Unauthorized response,
+ * indicating the API key is invalid or the tenant is deactivated.
+ */
+export class ModjoAuthenticationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ModjoAuthenticationError";
+  }
+}
+
 const ModjoSpeakerSchema = t.partial({
   contactId: t.union([t.number, t.undefined]),
   userId: t.union([t.number, t.undefined]),
@@ -145,17 +156,31 @@ const CALL_BUFFER_HOURS = 6; // Increased buffer for very long calls (meetings c
 const MIN_LOOKBACK_HOURS = 24; // Minimum lookback even if last sync was recent
 const MODJO_API_URL = "https://api.modjo.ai";
 
+// Batch configuration to avoid activity timeouts
+// Process 50 pages per activity call (50 * 15 = 750 calls max per batch)
+// This ensures the activity completes well within the 20-minute timeout
+const MAX_PAGES_PER_BATCH = 50;
+const MODJO_PAGE_SIZE = 15;
+
+export interface ModjoTranscriptsResult {
+  fileIds: string[];
+  nextCursor: number | null;
+  isFirstSync: boolean;
+}
+
 export async function retrieveModjoTranscripts(
   auth: Authenticator,
   transcriptsConfiguration: LabsTranscriptsConfigurationResource,
-  localLogger: Logger
-): Promise<string[]> {
+  localLogger: Logger,
+  cursor: number | null = null,
+  isFirstSyncOverride: boolean | null = null
+): Promise<ModjoTranscriptsResult> {
   if (!transcriptsConfiguration) {
     localLogger.error(
       {},
       "[retrieveModjoTranscripts] No default transcripts configuration found."
     );
-    return [];
+    return { fileIds: [], nextCursor: null, isFirstSync: false };
   }
 
   if (!transcriptsConfiguration.credentialId) {
@@ -163,7 +188,7 @@ export async function retrieveModjoTranscripts(
       {},
       "[retrieveModjoTranscripts] No API key found for default configuration. Skipping."
     );
-    return [];
+    return { fileIds: [], nextCursor: null, isFirstSync: false };
   }
   const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
 
@@ -176,7 +201,7 @@ export async function retrieveModjoTranscripts(
       { error: modjoApiKeyRes.error },
       "[retrieveModjoTranscripts] Error fetching API key from Modjo. Skipping."
     );
-    return [];
+    return { fileIds: [], nextCursor: null, isFirstSync: false };
   }
 
   if (!isModjoCredentials(modjoApiKeyRes.value.credential.content)) {
@@ -185,15 +210,27 @@ export async function retrieveModjoTranscripts(
 
   const modjoApiKey = modjoApiKeyRes.value.credential.content.api_key;
 
-  // Check if this is the first sync by looking for any existing history
-  const hasAnyHistory = await transcriptsConfiguration.hasAnyHistory();
+  // Determine if this is a first sync (full historical sync) or incremental sync
+  // If isFirstSyncOverride is provided, use it (preserves state across continueAsNew)
+  // Otherwise, auto-detect based on whether any history exists
+  let isFirstSync: boolean;
+  if (isFirstSyncOverride !== null) {
+    isFirstSync = isFirstSyncOverride;
+    localLogger.info(
+      { isFirstSync, isFirstSyncOverride },
+      "[retrieveModjoTranscripts] Using explicit isFirstSync from workflow"
+    );
+  } else {
+    const hasAnyHistory = await transcriptsConfiguration.hasAnyHistory();
+    isFirstSync = !hasAnyHistory;
+  }
 
   let fromDateTime: string;
-  if (!hasAnyHistory) {
+  if (isFirstSync) {
     // First sync: no date restriction to pull all historical transcripts
     fromDateTime = new Date(0).toISOString(); // Start from epoch to get all history
     localLogger.info(
-      {},
+      { cursor },
       "[retrieveModjoTranscripts] First sync detected - retrieving all historical transcripts"
     );
   } else {
@@ -236,8 +273,10 @@ export async function retrieveModjoTranscripts(
   }
 
   const fileIdsToProcess: string[] = [];
-  let page = 1;
-  const perPage = 15;
+  // Start from cursor if provided, otherwise start from page 1
+  let page = cursor ?? 1;
+  const perPage = MODJO_PAGE_SIZE;
+  let pagesProcessedInBatch = 0;
 
   // Retry configuration
   const MAX_RETRIES_PER_PAGE = 3;
@@ -246,8 +285,22 @@ export async function retrieveModjoTranscripts(
 
   let hasMorePages = true;
   let consecutivePageFailures = 0;
+  let nextCursor: number | null = null;
 
   while (hasMorePages) {
+    // Limit pages per batch to avoid activity timeouts
+    if (pagesProcessedInBatch >= MAX_PAGES_PER_BATCH) {
+      nextCursor = page;
+      localLogger.info(
+        {
+          pagesProcessedInBatch,
+          nextCursor,
+          fileIdsFoundInBatch: fileIdsToProcess.length,
+        },
+        "[retrieveModjoTranscripts] Batch limit reached - returning cursor for next batch"
+      );
+      break;
+    }
     let pageSuccess = false;
     let retryCount = 0;
 
@@ -296,6 +349,22 @@ export async function retrieveModjoTranscripts(
         });
 
         if (!response.ok) {
+          // Handle authentication errors - don't retry, throw immediately
+          if (response.status === 401) {
+            const errorBody = await response.text();
+            localLogger.error(
+              {
+                status: response.status,
+                body: errorBody,
+                page,
+              },
+              "[retrieveModjoTranscripts] Authentication failed - API key invalid or tenant deactivated"
+            );
+            throw new ModjoAuthenticationError(
+              `Modjo API authentication failed: ${errorBody}`
+            );
+          }
+
           // Handle rate limiting specifically
           if (response.status === 429) {
             localLogger.warn(
@@ -397,6 +466,7 @@ export async function retrieveModjoTranscripts(
         // Mark page as successful
         pageSuccess = true;
         consecutivePageFailures = 0; // Reset consecutive failure counter on success
+        pagesProcessedInBatch++;
 
         if (paginationInfo?.nextPage) {
           page = paginationInfo.nextPage;
@@ -465,14 +535,20 @@ export async function retrieveModjoTranscripts(
 
   localLogger.info(
     {
-      totalPages: page - 1,
+      totalPages: pagesProcessedInBatch,
       totalTranscriptsToProcess: fileIdsToProcess.length,
-      syncType: !hasAnyHistory ? "full" : "incremental",
+      syncType: isFirstSync ? "full" : "incremental",
+      nextCursor,
+      startedAtPage: cursor ?? 1,
     },
-    "[retrieveModjoTranscripts] Pagination completed successfully"
+    "[retrieveModjoTranscripts] Batch completed"
   );
 
-  return fileIdsToProcess;
+  return {
+    fileIds: fileIdsToProcess,
+    nextCursor,
+    isFirstSync,
+  };
 }
 
 export async function retrieveModjoTranscriptContent(
@@ -549,16 +625,22 @@ export async function retrieveModjoTranscriptContent(
   });
 
   if (!response.ok) {
+    const errorText = await response.text();
     localLogger.error(
       {
         fileId,
         transcriptsConfigurationId: transcriptsConfiguration.id,
         transcriptsConfigurationSid: transcriptsConfiguration.sId,
         status: response.status,
-        error: await response.text(),
+        error: errorText,
       },
       "[processTranscriptActivity] Error fetching call from Modjo. Skipping."
     );
+    if (response.status === 401) {
+      throw new ModjoAuthenticationError(
+        `Modjo API authentication failed: ${errorText}`
+      );
+    }
     if (response.status === 404) {
       return null;
     }

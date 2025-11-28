@@ -268,7 +268,7 @@ async function startCrawlJob(
     await syncFailed(connector.id, "webcrawling_error");
   } else {
     logger.info(
-      { crawlerId: crawlerResponse.id, url },
+      { crawlerId: crawlerResponse.id, url, connectorId: connector.id },
       "Firecrawl crawler started"
     );
 
@@ -277,7 +277,11 @@ async function startCrawlJob(
     } else {
       // Shouldn't happen, but based on the types, let's make sure
       logger.warn(
-        { webCrawlerConfigId: webCrawlerConfig.id, url },
+        {
+          webCrawlerConfigId: webCrawlerConfig.id,
+          url,
+          connectorId: connector.id,
+        },
         "No ID found when creating a Firecrawl crawler"
       );
     }
@@ -301,7 +305,11 @@ async function startBatchScrapeJob(
 
   if (!mapUrlResult.success) {
     logger.error(
-      { url, connector: connector.id, webCrawlerConfigId: webCrawlerConfig.id },
+      {
+        url,
+        connectorId: connector.id,
+        webCrawlerConfigId: webCrawlerConfig.id,
+      },
       `Error mapping rootUrl: ${mapUrlResult.error}`
     );
     return;
@@ -331,7 +339,7 @@ async function startBatchScrapeJob(
     await syncFailed(connector.id, "webcrawling_error");
   } else {
     logger.info(
-      { jobId: batchScrapeResponse.id, url },
+      { jobId: batchScrapeResponse.id, url, connectorId: connector.id },
       "Firecrawl crawler started"
     );
 
@@ -340,7 +348,11 @@ async function startBatchScrapeJob(
     } else {
       // Shouldn't happen, but based on the types, let's make sure
       logger.warn(
-        { webCrawlerConfigId: webCrawlerConfig.id, url },
+        {
+          webCrawlerConfigId: webCrawlerConfig.id,
+          url,
+          connectorId: connector.id,
+        },
         "No ID found when creating a Firecrawl crawler"
       );
     }
@@ -379,7 +391,9 @@ export async function webCrawlerGarbageCollector(
       Context.current().heartbeat({
         type: "delete_page",
       });
-      await deleteDataSourceDocument(dataSourceConfig, page.documentId);
+      await deleteDataSourceDocument(dataSourceConfig, page.documentId, {
+        connectorId,
+      });
       await page.destroy();
     }
   } while (pagesToDelete.length > 0);
@@ -403,6 +417,7 @@ export async function webCrawlerGarbageCollector(
       await deleteDataSourceFolder({
         dataSourceConfig,
         folderId: folder.internalId,
+        loggerArgs: { connectorId },
       });
       await folder.destroy();
     }
@@ -647,6 +662,7 @@ export async function firecrawlCrawlPage(
         tags: [`title:${stripNullBytes(pageTitle)}`],
         parents: parentFolderIds,
         parentId: parentFolderIds[1] || null,
+        loggerArgs: { connectorId },
         upsertContext: {
           sync_type: "batch",
         },

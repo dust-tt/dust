@@ -10,6 +10,7 @@ import {
   isSupportedReportUsage,
   SUPPORTED_REPORT_USAGE,
 } from "@app/lib/plans/usage/types";
+import logger from "@app/logger/logger";
 import type {
   BillingPeriod,
   LightWorkspaceType,
@@ -18,7 +19,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { Err, isDevelopment, Ok } from "@app/types";
+import { Err, isDevelopment, normalizeError, Ok } from "@app/types";
 
 export function getProPlanStripeProductId(owner: WorkspaceType) {
   const isBusiness = owner.metadata?.isBusiness;
@@ -38,6 +39,13 @@ export function getProPlanStripeProductId(owner: WorkspaceType) {
       : prodProPlanProductId;
 }
 
+export function getCreditPurchasePriceId() {
+  const devCreditPurchasePriceId = "price_1SUoyQDKd2JRwZF6FBHIGbwC";
+  const prodCreditPurchasePriceId = "price_1SVYsjDKd2JRwZF6zdIW29mC";
+
+  return isDevelopment() ? devCreditPurchasePriceId : prodCreditPurchasePriceId;
+}
+
 export const getStripeClient = () => {
   return new Stripe(config.getStripeSecretKey(), {
     apiVersion: "2023-10-16",
@@ -45,11 +53,6 @@ export const getStripeClient = () => {
   });
 };
 
-/**
- * Calls the Stripe API to get the price ID for a given product ID.
- * We use prices metata to find the default price for a given product.
- * For the Pro plan, the metadata are "IS_DEFAULT_YEARLY_PRICE" and "IS_DEFAULT_MONHTLY_PRICE" and are set to "true".
- */
 async function getDefautPriceFromMetadata(
   productId: string,
   key: string
@@ -260,6 +263,30 @@ export const getStripeSubscription = async (
   }
 };
 
+export async function getSubscriptionInvoices(
+  subscriptionId: string,
+  options?: {
+    status?: Stripe.InvoiceListParams["status"];
+    createdSince?: Date;
+    limit?: number;
+  }
+): Promise<Stripe.Invoice[]> {
+  const stripe = getStripeClient();
+  const invoices = await stripe.invoices.list({
+    subscription: subscriptionId,
+    status: options?.status,
+    created: options?.createdSince
+      ? { gte: Math.floor(options.createdSince.getTime() / 1000) }
+      : undefined,
+    limit: options?.limit ?? 100,
+  });
+  return invoices.data.filter(
+    (inv) =>
+      inv.billing_reason === "subscription_cycle" ||
+      inv.billing_reason === "subscription_create"
+  );
+}
+
 const DAY_IN_SECONDS = 24 * 60 * 60;
 
 export const extendStripeSubscriptionTrial = async (
@@ -431,6 +458,122 @@ export function isEnterpriseSubscription(
   });
 }
 
+/**
+ * Extracts the customer ID from a Stripe subscription.
+ * Handles both string and expanded customer object.
+ */
+export function getCustomerId(subscription: Stripe.Subscription): string {
+  return typeof subscription.customer === "string"
+    ? subscription.customer
+    : subscription.customer.id;
+}
+
+/**
+ * Checks if a Stripe invoice is for a credit purchase.
+ */
+export function isCreditPurchaseInvoice(invoice: Stripe.Invoice): boolean {
+  return invoice.metadata?.credit_purchase === "true";
+}
+
+/**
+ * Extracts the credit amount in cents from a credit purchase invoice.
+ * Returns null if the invoice is not a credit purchase or if the amount is invalid.
+ */
+export function getCreditAmountFromInvoice(
+  invoice: Stripe.Invoice
+): number | null {
+  if (!isCreditPurchaseInvoice(invoice) || !invoice.metadata) {
+    return null;
+  }
+
+  const amountCents = parseInt(invoice.metadata.credit_amount_cents, 10);
+
+  if (isNaN(amountCents) || amountCents <= 0) {
+    return null;
+  }
+
+  return amountCents;
+}
+
+export function makeCreditPurchaseOnceCouponId(percentOff: number): string {
+  return `programmatic-usage-credits-once-${percentOff}`;
+}
+
+export async function getCreditPurchaseCouponId(
+  discountPercent: number
+): Promise<Result<string | undefined, Error>> {
+  const couponId = makeCreditPurchaseOnceCouponId(discountPercent);
+  const couponResult = await createCreditPurchaseCoupon(
+    couponId,
+    discountPercent
+  );
+
+  if (couponResult.isErr()) {
+    return new Err(new Error(couponResult.error.error_message));
+  }
+
+  return new Ok(couponResult.value);
+}
+
+export async function createCreditPurchaseCoupon(
+  couponId: string,
+  percentOff: number
+): Promise<Result<string, { error_message: string }>> {
+  const stripe = getStripeClient();
+
+  // why this try/catch ?
+  // Stripe will throw if the coupon does not exist (http 404)
+  try {
+    const existingCoupon = await stripe.coupons.retrieve(couponId);
+    return new Ok(existingCoupon.id);
+  } catch (error) {
+    if (
+      error instanceof Stripe.errors.StripeInvalidRequestError &&
+      error.code === "resource_missing"
+    ) {
+      const newCoupon = await stripe.coupons.create({
+        id: couponId,
+        percent_off: percentOff,
+        duration: "once",
+        name: `Programmatic Usage Credits Discount`,
+      });
+      return new Ok(newCoupon.id);
+    } else {
+      throw error;
+    }
+  }
+}
+
+/**
+ * Creates the payload for a credit purchase line item.
+ * This factors out the common parameters used when creating invoice items for credit purchases.
+ */
+function makeCreditPurchaseLineItemPayload({
+  customerId,
+  amountCents,
+  subscription,
+  invoice,
+  couponId,
+}: {
+  customerId: string;
+  amountCents: number;
+  subscription?: string;
+  invoice?: string;
+  couponId?: string;
+}): Stripe.InvoiceItemCreateParams {
+  const amountDollars = amountCents / 100;
+
+  return {
+    customer: customerId,
+    price: getCreditPurchasePriceId(),
+    quantity: amountCents,
+    description: `Programmatic usage credit: $${amountDollars.toFixed(2)}`,
+    ...(subscription && { subscription }),
+    ...(invoice && { invoice }),
+    ...(couponId && { discounts: [{ coupon: couponId }] }),
+  };
+}
+
 export function assertStripeSubscriptionItemIsValid({
   item,
   recurringRequired,
@@ -527,4 +670,148 @@ export async function reportActiveSeats(
     stripeSubscriptionItem,
     activeSeats
   );
+}
+
+/**
+ * Attaches a credit purchase as an invoice item to a subscription.
+ * The item will be included in the next regular subscription invoice.
+ * Returns the invoice item ID for idempotency tracking.
+ */
+export async function attachCreditPurchaseToSubscription({
+  stripeSubscriptionId,
+  amountCents,
+  couponId,
+}: {
+  stripeSubscriptionId: string;
+  amountCents: number;
+  couponId?: string;
+}): Promise<Result<string, { error_message: string }>> {
+  const stripe = getStripeClient();
+
+  // Get the subscription to find the customer.
+  const subscription = await getStripeSubscription(stripeSubscriptionId);
+  if (!subscription) {
+    return new Err({
+      error_message: `Subscription ${stripeSubscriptionId} not found`,
+    });
+  }
+
+  const customerId = getCustomerId(subscription);
+
+  try {
+    // Create invoice item that will be charged in the next subscription invoice.
+    const invoiceItem = await stripe.invoiceItems.create(
+      makeCreditPurchaseLineItemPayload({
+        customerId,
+        amountCents,
+        subscription: stripeSubscriptionId,
+        couponId,
+      })
+    );
+
+    return new Ok(invoiceItem.id);
+  } catch (error) {
+    logger.error(
+      {
+        stripeSubscriptionId,
+        stripeError: true,
+      },
+      "[Credit Purchase] Failed to attach line item to Stripe subscription"
+    );
+    return new Err({
+      error_message: `Failed to attach credit purchase to subscription: ${normalizeError(error).message}`,
+    });
+  }
+}
+
+export async function makeCreditPurchaseInvoice({
+  stripeSubscriptionId,
+  amountCents,
+}: {
+  stripeSubscriptionId: string;
+  amountCents: number;
+}): Promise<Result<Stripe.Invoice, { error_message: string }>> {
+  const stripe = getStripeClient();
+
+  // Get the subscription to find the customer.
+  const subscription = await getStripeSubscription(stripeSubscriptionId);
+  if (!subscription) {
+    return new Err({
+      error_message: `Subscription ${stripeSubscriptionId} not found`,
+    });
+  }
+  const customerId = getCustomerId(subscription);
+
+  const invoiceParams: Stripe.InvoiceCreateParams = {
+    customer: customerId,
+    subscription: stripeSubscriptionId,
+    collection_method: "charge_automatically",
+    metadata: {
+      credit_purchase: "true",
+      credit_amount_cents: amountCents.toString(),
+    },
+    auto_advance: true,
+  };
+
+  try {
+    const invoice = await stripe.invoices.create(invoiceParams);
+
+    await stripe.invoiceItems.create(
+      makeCreditPurchaseLineItemPayload({
+        customerId,
+        amountCents,
+        invoice: invoice.id,
+      })
+    );
+
+    return new Ok(invoice);
+  } catch (error) {
+    logger.error(
+      {
+        stripeSubscriptionId,
+        stripeError: true,
+      },
+      "[Credit Purchase] Failed to create Stripe invoice"
+    );
+    return new Err({
+      error_message: `Failed to create invoice credit purchase: ${normalizeError(error).message}`,
+    });
+  }
+}
+
+export async function finalizeAndPayCreditPurchaseInvoice(
+  invoice: Stripe.Invoice
+): Promise<Result<{ paymentUrl: string | null }, { error_message: string }>> {
+  const stripe = getStripeClient();
+  const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
+
+  // Attempt to pay the invoice.
+  try {
+    const paidInvoice = await stripe.invoices.pay(finalizedInvoice.id);
+
+    if (paidInvoice.status === "paid") {
+      return new Ok({ paymentUrl: null });
+    }
+  } catch (payError) {
+    // Payment failed or requires action (e.g., 3D Secure).
+    // We'll return the hosted invoice URL for the customer to complete payment.
+    logger.info(
+      {
+        stripeInvoiceId: invoice.id,
+        error: normalizeError(payError).message,
+      },
+      "[Credit Purchase] Payment requires additional action or failed"
+    );
+  }
+
+  // Payment not completed - return hosted URL for customer to complete.
+  const invoiceWithUrl = await stripe.invoices.retrieve(finalizedInvoice.id);
+  if (invoiceWithUrl.hosted_invoice_url) {
+    return new Ok({ paymentUrl: invoiceWithUrl.hosted_invoice_url });
+  }
+
+  return new Err({
+    error_message:
+      "Invoice created but payment could not be processed. Please contact support.",
+  });
 }

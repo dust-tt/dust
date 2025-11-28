@@ -51,52 +51,6 @@ function addItem(items: string[], newItem: string) {
 }
 ```
 
-### [GEN6] Comments must be sentences and properly wrapped
-
-Comments must be full sentences (generally starting with a capital letter and ending with a period)
-and must be consistently wrapped (see examples below).
-
-Example:
-
-```
-// BAD
-// new function
-// does something
-// interesting
-
-// BAD
-// this is a comment that is neither a full sentence nor wrapped at 100 characters (clearly higher) / it should be wrapped because otherwise it's really hard to read
-
-// BAD
-// This comment is a valid sentence but it
-// is wrapped at a much lower character count than
-// 100. It should be wrapped at ~100 characters.
-
-// BAD
-// Check if the current tag is the page selector.
-// If it is, we are inside a page.
-// This assumes that we don't have nested pages.
-
-// GOOD
-// This function is new and does something interesting.
-// TODO(xxx): improve the efficiency of this.
-
-// GOOD
-// This is a comment that is a full sentence and is wrapped at 100 characters. It is easy to read
-// and supports consistency of our code style.
-
-// GOOD
-// Permissions:
-// - "never_ask": Automatically approved
-// - "low": Ask user for approval and allow to automatically approve next time
-// - "high": Ask for approval each time
-// - undefined: Use default permission ("never_ask" for default tools, "high" for other tools)
-
-// GOOD
-// Check if the current tag is the page selector. If it is, we are inside a page. This assumes that
-// we don't have nested pages.
-```
-
 ### [GEN7] Avoid loops with quadratic or worse complexity
 
 Loops with quadratic O(n²) or worse cubic O(n³) complexity can severely hurt performance as data
@@ -168,7 +122,9 @@ When quadratic complexity cannot be avoided:
 
 ### [GEN8] Do not use console.log, console.error, etc. — always use the app logger
 
-Direct calls to `console.log`, `console.error`, `console.warn`, `console.info`, or similar console methods are prohibited in the codebase. Always use the application logger for all logging, debugging, and error reporting purposes. This ensures consistent log formatting, proper log routing, and easier log management across environments.
+Direct calls to `console.log`, `console.error`, `console.warn`, `console.info`, or similar console methods are
+prohibited in the codebase. Always use the application logger for all logging, debugging, and error reporting purposes.
+This ensures consistent log formatting, proper log routing, and easier log management across environments.
 
 Example:
 

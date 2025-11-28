@@ -3,6 +3,7 @@ import express from "express";
 
 import { WebhookForwarder } from "../forwarder.js";
 import type { SecretManager } from "../secrets.js";
+import { ALL_REGIONS } from "../webhook-router-config.js";
 
 export function createTeamsRoutes(
   secretManager: SecretManager,
@@ -34,6 +35,7 @@ async function handleTeamsWebhook(
       endpoint,
       method: req.method,
       headers: req.headers,
+      regions: ALL_REGIONS,
     });
 
     // Find one successful response that is a 200 status code

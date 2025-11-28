@@ -62,6 +62,7 @@ export class LLMTraceBuffer {
   private reasoning = "";
   private tokenUsage: TokenUsage | undefined;
   private toolCalls: ToolCall[] = [];
+  private modelInteractionId: string | undefined;
 
   constructor(
     private readonly traceId: LLMTraceId,
@@ -77,6 +78,7 @@ export class LLMTraceBuffer {
     modelId,
     prompt,
     reasoningEffort,
+    responseFormat,
     specifications,
     temperature,
   }: {
@@ -84,6 +86,7 @@ export class LLMTraceBuffer {
     modelId: ModelIdType;
     prompt: string;
     reasoningEffort: ReasoningEffort | null;
+    responseFormat: string | null;
     specifications: unknown[];
     temperature: number | null;
   }) {
@@ -92,9 +95,14 @@ export class LLMTraceBuffer {
       modelId,
       prompt,
       reasoningEffort,
+      responseFormat,
       specifications,
       temperature,
     };
+  }
+
+  setModelInteractionId(id: string) {
+    this.modelInteractionId = id;
   }
 
   /**
@@ -246,6 +254,7 @@ export class LLMTraceBuffer {
       },
       traceId: this.traceId,
       workspaceId: this.workspaceId,
+      modelInteractionId: this.modelInteractionId,
     };
 
     if (this.endingError) {
@@ -258,18 +267,7 @@ export class LLMTraceBuffer {
         timestamp: endTimestamp,
       };
     } else {
-      const processedEvents = this.getProcessedEvents();
-
-      trace.output = {
-        content: processedEvents.content,
-        finishReason: processedEvents.finishReason,
-        reasoning: processedEvents.reasoning || undefined,
-        tokenUsage: processedEvents.tokenUsage,
-        toolCalls:
-          processedEvents.toolCalls.length > 0
-            ? processedEvents.toolCalls
-            : undefined,
-      };
+      trace.output = this.currentOutput;
     }
 
     if (this.truncated) {
@@ -291,6 +289,29 @@ export class LLMTraceBuffer {
 
   get outputSize(): number {
     return this.outputByteSize;
+  }
+
+  get runTokenUsage(): TokenUsage | undefined {
+    return this.tokenUsage;
+  }
+
+  get currentOutput(): LLMTraceOutput {
+    const processedEvents = this.getProcessedEvents();
+
+    return {
+      content: processedEvents.content,
+      finishReason: processedEvents.finishReason,
+      reasoning: processedEvents.reasoning || undefined,
+      tokenUsage: processedEvents.tokenUsage,
+      toolCalls:
+        processedEvents.toolCalls.length > 0
+          ? processedEvents.toolCalls
+          : undefined,
+    };
+  }
+
+  get error(): EventError | undefined {
+    return this.endingError;
   }
 
   /**

@@ -1,12 +1,12 @@
 import type { ModelId, ModelProviderIdType } from "@app/types";
 import type { FunctionCallType } from "@app/types/assistant/generation";
 
-export type TextContentType = {
+export type AgentTextContentType = {
   type: "text_content";
   value: string;
 };
 
-export type ReasoningContentType = {
+export type AgentReasoningContentType = {
   type: "reasoning";
   value: {
     reasoning?: string;
@@ -17,12 +17,12 @@ export type ReasoningContentType = {
   };
 };
 
-export type FunctionCallContentType = {
+export type AgentFunctionCallContentType = {
   type: "function_call";
   value: FunctionCallType;
 };
 
-export type ErrorContentType = {
+export type AgentErrorContentType = {
   type: "error";
   value: {
     code: string;
@@ -32,32 +32,32 @@ export type ErrorContentType = {
 };
 
 export type AgentContentItemType =
-  | TextContentType
-  | ReasoningContentType
-  | FunctionCallContentType
-  | ErrorContentType;
+  | AgentTextContentType
+  | AgentReasoningContentType
+  | AgentFunctionCallContentType
+  | AgentErrorContentType;
 
-export function isTextContent(
+export function isAgentTextContent(
   content: AgentContentItemType
-): content is TextContentType {
+): content is AgentTextContentType {
   return content.type === "text_content";
 }
 
-export function isReasoningContent(
+export function isAgentReasoningContent(
   content: AgentContentItemType
-): content is ReasoningContentType {
+): content is AgentReasoningContentType {
   return content.type === "reasoning";
 }
 
-export function isFunctionCallContent(
+export function isAgentFunctionCallContent(
   content: AgentContentItemType
-): content is FunctionCallContentType {
+): content is AgentFunctionCallContentType {
   return content.type === "function_call";
 }
 
-export function isErrorContent(
+export function isAgentErrorContent(
   content: AgentContentItemType
-): content is ErrorContentType {
+): content is AgentErrorContentType {
   return content.type === "error";
 }
 

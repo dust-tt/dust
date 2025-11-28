@@ -107,6 +107,8 @@ export function isSupportingResponseFormat(modelId: ModelIdType) {
 export enum GLOBAL_AGENTS_SID {
   HELPER = "helper",
   DUST = "dust",
+  DUST_EDGE = "dust-edge",
+  DUST_QUICK = "dust-quick",
   DEEP_DIVE = "deep-dive",
   DUST_TASK = "dust-task",
   DUST_BROWSER_SUMMARY = "dust-browser-summary",
@@ -134,8 +136,6 @@ export enum GLOBAL_AGENTS_SID {
   CLAUDE_3_SONNET = "claude-3-sonnet",
   CLAUDE_3_HAIKU = "claude-3-haiku",
   CLAUDE_3_7_SONNET = "claude-3-7-sonnet",
-  CLAUDE_2 = "claude-2",
-  CLAUDE_INSTANT = "claude-instant-1",
   MISTRAL_LARGE = "mistral-large",
   MISTRAL_MEDIUM = "mistral-medium",
   //!\ TEMPORARY WORKAROUND: Renaming 'mistral' to 'mistral-small' is not feasible since
@@ -184,6 +184,7 @@ export function getGlobalAgentAuthorName(agentId: string): string {
 // Not exhaustive.
 const GLOBAL_AGENTS_SORT_ORDER: string[] = [
   GLOBAL_AGENTS_SID.DUST,
+  GLOBAL_AGENTS_SID.DUST_EDGE,
   GLOBAL_AGENTS_SID.DEEP_DIVE,
   GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET,
   GLOBAL_AGENTS_SID.GPT5,

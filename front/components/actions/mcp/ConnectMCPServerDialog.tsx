@@ -9,13 +9,18 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { MCPServerOAuthConnexion } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
+import type {
+  CustomResourceIconType,
+  InternalAllowedIconType,
+} from "@app/components/resources/resources_icons";
+import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
   getMcpServerDisplayName,
-  getMcpServerViewDisplayName,
   getServerTypeAndIdFromSId,
   isRemoteMCPServerType,
 } from "@app/lib/actions/mcp_helper";
+import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
@@ -69,6 +74,21 @@ export function ConnectMCPServerDialog({
     () => getServerTypeAndIdFromSId(mcpServerView.server.sId).serverType,
     [mcpServerView]
   );
+
+  const toolName: string = useMemo(() => {
+    if (mcpServerView.server) {
+      return getMcpServerDisplayName(mcpServerView.server);
+    }
+    return "MCP Server";
+  }, [mcpServerView]);
+
+  const toolIcon: InternalAllowedIconType | CustomResourceIconType =
+    useMemo(() => {
+      if (mcpServerView.server) {
+        return mcpServerView.server.icon;
+      }
+      return DEFAULT_MCP_SERVER_ICON;
+    }, [mcpServerView]);
 
   useEffect(() => {
     const discoverOAuth = async () => {
@@ -202,12 +222,16 @@ export function ConnectMCPServerDialog({
       <DialogContent size="lg">
         <DialogHeader>
           <DialogTitle>
-            Connect {getMcpServerViewDisplayName(mcpServerView)}
+            <div className="flex items-center gap-2">
+              {getAvatarFromIcon(toolIcon, "sm")}
+              <span>Connect {toolName}</span>
+            </div>
           </DialogTitle>
         </DialogHeader>
         <DialogContainer>
           {authorization && (
             <MCPServerOAuthConnexion
+              toolName={toolName}
               useCase={useCase}
               setUseCase={setUseCase}
               authorization={authorization}

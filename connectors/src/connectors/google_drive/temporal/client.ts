@@ -11,7 +11,7 @@ import type { FolderUpdatesSignal } from "@connectors/connectors/google_drive/te
 import { folderUpdatesSignal } from "@connectors/connectors/google_drive/temporal/signals";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { getTemporalClient, terminateWorkflow } from "@connectors/lib/temporal";
-import mainLogger from "@connectors/logger/logger";
+import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 import {
@@ -28,7 +28,6 @@ import {
   googleDriveGarbageCollectorWorkflowId,
   googleDriveIncrementalSync,
 } from "./workflows";
-const logger = mainLogger.child({ provider: "google" });
 
 export async function launchGoogleDriveFullSyncWorkflow(
   connectorId: ModelId,
@@ -40,6 +39,8 @@ export async function launchGoogleDriveFullSyncWorkflow(
   if (!connector) {
     return new Err(new Error(`Connector ${connectorId} not found`));
   }
+
+  const localLogger = getActivityLogger(connector);
 
   if (fromTs) {
     return new Err(
@@ -81,7 +82,7 @@ export async function launchGoogleDriveFullSyncWorkflow(
       signal: folderUpdatesSignal,
       signalArgs: [signalArgs],
     });
-    logger.info(
+    localLogger.info(
       {
         workspaceId: dataSourceConfig.workspaceId,
         workflowId,
@@ -90,7 +91,7 @@ export async function launchGoogleDriveFullSyncWorkflow(
     );
     return new Ok(workflowId);
   } catch (e) {
-    logger.error(
+    localLogger.error(
       {
         workspaceId: dataSourceConfig.workspaceId,
         workflowId,
@@ -109,6 +110,7 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
   if (!connector) {
     return new Err(new Error(`Connector ${connectorId} not found`));
   }
+  const localLogger = getActivityLogger(connector);
 
   const client = await getTemporalClient();
 
@@ -131,7 +133,7 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
       },
       startDelay: `${delay} minutes`,
     });
-    logger.info(
+    localLogger.info(
       {
         workspaceId: connector.workspaceId,
         workflowId,
@@ -140,7 +142,7 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
     );
     return new Ok(workflowId);
   } catch (e) {
-    logger.error(
+    localLogger.error(
       {
         workspaceId: connector.workspaceId,
         workflowId,
@@ -159,7 +161,7 @@ export async function launchGoogleGarbageCollector(
   if (!connector) {
     return new Err(new Error(`Connector ${connectorId} not found`));
   }
-
+  const localLogger = getActivityLogger(connector);
   const client = await getTemporalClient();
   const workflowId = googleDriveGarbageCollectorWorkflowId(connectorId);
   try {
@@ -183,7 +185,7 @@ export async function launchGoogleGarbageCollector(
         connectorId: connectorId,
       },
     });
-    logger.info(
+    localLogger.info(
       {
         workflowId,
       },
@@ -191,7 +193,7 @@ export async function launchGoogleGarbageCollector(
     );
     return new Ok(workflowId);
   } catch (e) {
-    logger.error(
+    localLogger.error(
       {
         workflowId,
         error: e,
@@ -210,6 +212,7 @@ export async function launchGoogleFixParentsConsistencyWorkflow(
   if (!connector) {
     return new Err(new Error(`Connector ${connectorId} not found`));
   }
+  const localLogger = getActivityLogger(connector);
 
   const client = await getTemporalClient();
   const workflowId = googleDriveFixParentsConsistencyWorkflowId(connectorId);
@@ -235,7 +238,7 @@ export async function launchGoogleFixParentsConsistencyWorkflow(
         connectorId: connectorId,
       },
     });
-    logger.info(
+    localLogger.info(
       {
         workflowId,
       },
@@ -243,7 +246,7 @@ export async function launchGoogleFixParentsConsistencyWorkflow(
     );
     return new Ok(workflowId);
   } catch (e) {
-    logger.error(
+    localLogger.error(
       {
         workflowId,
         error: e,

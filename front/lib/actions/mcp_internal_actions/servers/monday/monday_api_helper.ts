@@ -258,7 +258,9 @@ export const getItemDetails = async (
         }
         column_values {
           id
-          title
+          column {
+            title
+          }
           type
           value
           text
@@ -533,7 +535,9 @@ export const createItem = async (
         }
         column_values {
           id
-          title
+          column {
+            title
+          }
           type
           value
           text
@@ -584,7 +588,9 @@ export const updateItem = async (
         }
         column_values {
           id
-          title
+          column {
+            title
+          }
           type
           value
           text
@@ -676,7 +682,9 @@ export const updateItemName = async (
         }
         column_values {
           id
-          title
+          column {
+            title
+          }
           type
           value
           text
@@ -820,7 +828,9 @@ export const createSubitem = async (
         }
         column_values {
           id
-          title
+          column {
+            title
+          }
           type
           value
           text
@@ -921,7 +931,9 @@ export const updateSubitem = async (
         }
         column_values {
           id
-          title
+          column {
+            title
+          }
           type
           value
           text
@@ -1042,7 +1054,9 @@ export const getItemsByColumnValue = async (
           }
           column_values {
             id
-            title
+            column {
+              title
+            }
             type
             value
             text
@@ -1145,7 +1159,9 @@ export const getColumnValues = async (
       items(ids: [$itemId]) {
         column_values(ids: [$columnId]) {
           id
-          title
+          column {
+            title
+          }
           type
           value
           text
@@ -1172,7 +1188,9 @@ export const getFileColumnValues = async (
       items(ids: [$itemId]) {
         column_values(ids: [$columnId]) {
           id
-          title
+          column {
+            title
+          }
           type
           value
           text
@@ -1263,7 +1281,9 @@ export const getSubitemValues = async (
           }
           column_values {
             id
-            title
+            column {
+              title
+            }
             type
             value
             text

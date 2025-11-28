@@ -1,11 +1,11 @@
 import type { NotificationType } from "@dust-tt/sparkle";
 import type * as t from "io-ts";
 
-import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import type { MessageTemporaryState } from "@app/components/assistant/conversation/types";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 import type { PostMessagesResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages";
+import type { MentionType, RichMention } from "@app/types";
 import type {
   ContentFragmentsType,
   ContentFragmentType,
@@ -13,7 +13,6 @@ import type {
   ConversationVisibility,
   FileContentFragmentType,
   InternalPostConversationsRequestBodySchema,
-  MentionType,
   Result,
   SubmitMessageError,
   SupportedContentFragmentType,
@@ -22,7 +21,12 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { Err, isSupportedContentNodeFragmentContentType, Ok } from "@app/types";
+import {
+  Err,
+  isSupportedContentNodeFragmentContentType,
+  Ok,
+  toMentionType,
+} from "@app/types";
 
 export type ContentFragmentInput = {
   title: string;
@@ -38,7 +42,7 @@ export function createPlaceholderUserMessage({
   contentFragments,
 }: {
   input: string;
-  mentions: EditorMention[];
+  mentions: RichMention[];
   user: UserType;
   rank: number;
   contentFragments?: ContentFragmentsType;
@@ -50,7 +54,7 @@ export function createPlaceholderUserMessage({
     id: -1,
     content: input,
     created: createdAt,
-    mentions: mentions.map((mention) => ({ configurationId: mention.id })),
+    mentions: mentions.map((mention) => toMentionType(mention)),
     user,
     visibility: "visible",
     type: "user_message",
@@ -145,7 +149,7 @@ export function createPlaceholderAgentMessage({
   mention,
   rank,
 }: {
-  mention: EditorMention & { pictureUrl: string };
+  mention: RichMention & { pictureUrl: string };
   rank: number;
 }): MessageTemporaryState {
   const createdAt = new Date().getTime();
@@ -169,9 +173,6 @@ export function createPlaceholderAgentMessage({
         pictureUrl: mention.pictureUrl ?? "",
         status: "active",
         canRead: true,
-        // TODO(2025-10-17 thomas): Remove.
-        requestedGroupIds: [],
-        requestedSpaceIds: [],
       },
       citations: {},
       generatedFiles: [],

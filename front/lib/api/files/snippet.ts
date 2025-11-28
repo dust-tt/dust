@@ -104,6 +104,7 @@ export async function generateSnippet(
       text: content,
       providerId: model.providerId,
       modelId: model.modelId,
+      tokenizer: model.tokenizer,
     });
 
     if (resTokenize.isErr()) {

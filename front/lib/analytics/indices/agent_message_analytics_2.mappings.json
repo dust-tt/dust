@@ -19,6 +19,9 @@
       "user_id": {
         "type": "keyword"
       },
+      "context_origin": {
+        "type": "keyword"
+      },
       "timestamp": {
         "type": "date"
       },
@@ -31,6 +34,9 @@
       "content": {
         "type": "text",
         "index": "false"
+      },
+      "version": {
+        "type": "keyword"
       },
       "tokens": {
         "type": "object",
@@ -62,6 +68,9 @@
             "type": "keyword"
           },
           "tool_name": {
+            "type": "keyword"
+          },
+          "mcp_server_configuration_sid": {
             "type": "keyword"
           },
           "execution_time_ms": {

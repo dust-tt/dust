@@ -14,6 +14,7 @@ import {
   ZendeskArticleResource,
   ZendeskBrandResource,
   ZendeskCategoryResource,
+  ZendeskConfigurationResource,
   ZendeskTicketResource,
 } from "@connectors/resources/zendesk_resources";
 import type {
@@ -65,11 +66,13 @@ async function getRootLevelContentNodes({
   isReadPermissionsOnly,
   subdomain,
   accessToken,
+  rateLimitTransactionsPerSecond,
 }: {
   connectorId: ModelId;
   isReadPermissionsOnly: boolean;
   subdomain: string;
   accessToken: string;
+  rateLimitTransactionsPerSecond: number | null;
 }): Promise<ContentNode[]> {
   const brandsInDatabase =
     await ZendeskBrandResource.fetchAllReadOnly(connectorId);
@@ -85,9 +88,10 @@ async function getRootLevelContentNodes({
         ),
     ];
   } else {
-    const zendeskClient = await ZendeskClient.createClient(
+    const zendeskClient = new ZendeskClient(
       accessToken,
-      connectorId
+      connectorId,
+      rateLimitTransactionsPerSecond
     );
     const brands = await zendeskClient.listBrands({ subdomain });
     return brands.map(
@@ -119,6 +123,7 @@ async function getBrandChildren({
   parentInternalId,
   subdomain,
   accessToken,
+  rateLimitTransactionsPerSecond,
 }: {
   connectorId: ModelId;
   brandId: number;
@@ -126,6 +131,7 @@ async function getBrandChildren({
   isReadPermissionsOnly: boolean;
   subdomain: string;
   accessToken: string;
+  rateLimitTransactionsPerSecond: number | null;
 }): Promise<ContentNode[]> {
   const nodes = [];
   const brandInDb = await ZendeskBrandResource.fetchByBrandId({
@@ -133,9 +139,10 @@ async function getBrandChildren({
     brandId,
   });
 
-  const zendeskClient = await ZendeskClient.createClient(
+  const zendeskClient = new ZendeskClient(
     accessToken,
-    connectorId
+    connectorId,
+    rateLimitTransactionsPerSecond
   );
   // fetching the brand to check whether it has an enabled Help Center
   const fetchedBrand = await zendeskClient.fetchBrand({
@@ -208,6 +215,7 @@ async function getHelpCenterChildren({
   parentInternalId,
   subdomain,
   accessToken,
+  rateLimitTransactionsPerSecond,
 }: {
   connectorId: ModelId;
   brandId: number;
@@ -215,6 +223,7 @@ async function getHelpCenterChildren({
   isReadPermissionsOnly: boolean;
   subdomain: string;
   accessToken: string;
+  rateLimitTransactionsPerSecond: number | null;
 }): Promise<ContentNode[]> {
   const categoriesInDatabase = await ZendeskCategoryResource.fetchByBrandId({
     connectorId,
@@ -225,9 +234,10 @@ async function getHelpCenterChildren({
       category.toContentNode(connectorId, { expandable: true })
     );
   } else {
-    const zendeskClient = await ZendeskClient.createClient(
+    const zendeskClient = new ZendeskClient(
       accessToken,
-      connectorId
+      connectorId,
+      rateLimitTransactionsPerSecond
     );
 
     const brandSubdomain = await zendeskClient.getBrandSubdomain({
@@ -275,9 +285,18 @@ export async function retrieveChildrenNodes({
   filterPermission: ConnectorPermission | null;
   viewType: ContentNodesViewType;
 }): Promise<ContentNode[]> {
+  const configuration = await ZendeskConfigurationResource.fetchByConnectorId(
+    connector.id
+  );
+  if (!configuration) {
+    throw new Error(`[Zendesk] Configuration not found.`);
+  }
+
   const { subdomain, accessToken } = await getZendeskSubdomainAndAccessToken(
     connector.connectionId
   );
+
+  const { rateLimitTransactionsPerSecond } = configuration;
   const isReadPermissionsOnly = filterPermission === "read";
 
   if (!parentInternalId) {
@@ -286,6 +305,7 @@ export async function retrieveChildrenNodes({
       accessToken,
       connectorId: connector.id,
       isReadPermissionsOnly,
+      rateLimitTransactionsPerSecond,
     });
   }
   const { type, objectIds } = getIdsFromInternalId(
@@ -301,6 +321,7 @@ export async function retrieveChildrenNodes({
         parentInternalId,
         subdomain,
         accessToken,
+        rateLimitTransactionsPerSecond,
       });
     }
     case "help-center": {
@@ -311,6 +332,7 @@ export async function retrieveChildrenNodes({
         parentInternalId,
         subdomain,
         accessToken,
+        rateLimitTransactionsPerSecond,
       });
     }
     // If the parent is a brand's tickets, we retrieve the list of tickets for the brand.

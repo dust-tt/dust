@@ -13,6 +13,7 @@ import {
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
+import Head from "next/head";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AgentEditBar } from "@app/components/assistant/AgentEditBar";
@@ -199,7 +200,7 @@ export default function WorkspaceAssistants({
         )
         .sort((a, b) => {
           return compareForFuzzySort(
-            assistantSearch,
+            assistantSearch.toLowerCase(),
             getAgentSearchString(a),
             getAgentSearchString(b)
           );
@@ -301,6 +302,9 @@ export default function WorkspaceAssistants({
         owner={owner}
         navChildren={<AgentSidebarMenu owner={owner} />}
       >
+        <Head>
+          <title>Dust - Manage Agents</title>
+        </Head>
         <AgentDetails
           owner={owner}
           user={user}

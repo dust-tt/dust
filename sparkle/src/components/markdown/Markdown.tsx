@@ -4,7 +4,6 @@ import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import type { ReactMarkdownProps } from "react-markdown/lib/ast-to-react";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
-import rehypeKatex from "rehype-katex";
 import remarkDirective from "remark-directive";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -17,6 +16,7 @@ import { LiBlock, OlBlock, UlBlock } from "@sparkle/components/markdown/List";
 import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
 import { ParagraphBlock } from "@sparkle/components/markdown/ParagraphBlock";
 import { PreBlock } from "@sparkle/components/markdown/PreBlock";
+import { safeRehypeKatex } from "@sparkle/components/markdown/safeRehypeKatex";
 import {
   TableBlock,
   TableBodyBlock,
@@ -221,7 +221,9 @@ export function Markdown({
     [additionalMarkdownPlugins]
   );
 
-  const rehypePlugins = [[rehypeKatex, { output: "mathml" }]] as PluggableList;
+  const rehypePlugins = [
+    [safeRehypeKatex, { output: "mathml" }],
+  ] as PluggableList;
 
   try {
     return (

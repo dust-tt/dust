@@ -3,8 +3,8 @@ import assert from "assert";
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
-import { AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
-import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
+import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
+import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import { logAgentLoopStepStart } from "@app/temporal/agent_loop/activities/instrumentation";
@@ -13,7 +13,7 @@ import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_t
 import { runModelActivity } from "@app/temporal/agent_loop/lib/run_model";
 import type { ModelId } from "@app/types";
 import { MAX_ACTIONS_PER_STEP } from "@app/types/assistant/agent";
-import { isFunctionCallContent } from "@app/types/assistant/agent_message_content";
+import { isAgentFunctionCallContent } from "@app/types/assistant/agent_message_content";
 import type {
   AgentLoopArgsWithTiming,
   AgentLoopExecutionData,
@@ -109,12 +109,15 @@ export async function runModelAndCreateActionsActivity({
   const actionsToRun = actions.slice(0, MAX_ACTIONS_PER_STEP);
 
   // 2. Create tool actions.
+  // Include the new runId in the runIds array when creating actions
+  const currentRunIds = runId ? [...runIds, runId] : runIds;
   const createResult = await createToolActionsActivity(auth, {
     runAgentData,
     actions: actionsToRun,
     stepContexts,
     functionCallStepContentIds: updatedFunctionCallStepContentIds,
     step,
+    runIds: currentRunIds,
   });
 
   const needsApproval = createResult.actionBlobs.some((a) => a.needsApproval);
@@ -171,7 +174,7 @@ async function getExistingActionsAndBlobs(
       const [mcpAction] = stepContent.agentMCPActions;
 
       assert(
-        isFunctionCallContent(stepContent.value),
+        isAgentFunctionCallContent(stepContent.value),
         "Unexpected: step content is not a function call"
       );
 

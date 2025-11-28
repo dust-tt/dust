@@ -89,7 +89,7 @@ export default function SpacePage({
       </h3>
       <div className="flex flex-row gap-x-6">
         <ViewSpaceViewTable space={space} />
-        <div className="flex grow flex-col">
+        <div className="mt-4 flex grow flex-col">
           {Object.entries(members).map(([groupName, groupMembers]) => (
             <MembersDataTable
               key={groupName}

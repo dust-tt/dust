@@ -2,7 +2,7 @@ use crate::providers::anthropic::anthropic::AnthropicProvider;
 use crate::providers::azure_openai::AzureOpenAIProvider;
 use crate::providers::embedder::Embedder;
 use crate::providers::google_ai_studio::GoogleAiStudioProvider;
-use crate::providers::llm::LLM;
+use crate::providers::llm::{TokenizerSingleton, LLM};
 use crate::providers::mistral::MistralProvider;
 use crate::providers::noop::NoopProvider;
 use crate::providers::openai::OpenAIProvider;
@@ -161,7 +161,7 @@ pub trait Provider {
     fn setup(&self) -> Result<()>;
     async fn test(&self) -> Result<()>;
 
-    fn llm(&self, id: String) -> Box<dyn LLM + Sync + Send>;
+    fn llm(&self, id: String, tokenizer: Option<TokenizerSingleton>) -> Box<dyn LLM + Sync + Send>;
     fn embedder(&self, id: String) -> Box<dyn Embedder + Sync + Send>;
 }
 

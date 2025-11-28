@@ -1,4 +1,4 @@
-import { WebhookSourceModel } from "@app/lib/models/assistant/triggers/webhook_source";
+import { WebhookSourceModel } from "@app/lib/models/agent/triggers/webhook_source";
 import { generateSecureSecret } from "@app/lib/resources/string_ids";
 import { makeScript } from "@app/scripts/helpers";
 

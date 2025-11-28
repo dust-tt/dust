@@ -83,7 +83,7 @@ export function EnumSelect({
                 const isSelected = values?.includes(option.value);
                 return (
                   <PokeCommandItem
-                    value={option.value}
+                    value={option.label}
                     key={option.value}
                     onSelect={() => {
                       onValuesChange([option.value]);

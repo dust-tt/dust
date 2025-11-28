@@ -2,12 +2,15 @@ import { describe, expect, it } from "vitest";
 
 import { toContent } from "@app/lib/api/llm/clients/google/utils/conversation_to_google";
 import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types";
+import { GEMINI_2_5_PRO_MODEL_ID } from "@app/types";
 
 describe("toContent", () => {
   describe("user messages", () => {
     it("should convert user message with text and function calls.", async () => {
       const messages = await Promise.all(
-        conversationMessages.map((message) => toContent(message))
+        conversationMessages.map((message) =>
+          toContent(message, GEMINI_2_5_PRO_MODEL_ID)
+        )
       );
 
       expect(messages).toEqual(expectedGoogleMessages);

@@ -152,9 +152,11 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
 
   try {
     await adapter.process(req, res, async (context) => {
-      const connector = await getConnector(context);
+      const { connector, tenantId } = await getConnector(context);
 
       const localLogger = logger.child({
+        tenantId,
+        activityType: context.activity.type,
         connectorProvider: "microsoft_bot",
         connectorId: connector?.id,
         workspaceId: connector?.workspaceId,
@@ -213,14 +215,7 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
           break;
         case "installationUpdate":
           if (context.activity.action === "add") {
-            localLogger.info(
-              {
-                connectorProvider: "microsoft_bot",
-                activityType: context.activity.type,
-                connectorId: connector?.id,
-              },
-              "Installed app from Microsoft Teams"
-            );
+            localLogger.info("Installed app from Microsoft Teams");
 
             if (apiConfig.getIsMicrosoftPrimaryRegion()) {
               await sendActivity(context, createWelcomeAdaptiveCard());
@@ -228,14 +223,7 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
           }
 
           if (context.activity.action === "remove") {
-            localLogger.info(
-              {
-                connectorProvider: "microsoft_bot",
-                activityType: context.activity.type,
-                connectorId: connector?.id,
-              },
-              "Uninstalled app from Microsoft Teams"
-            );
+            localLogger.info("Uninstalled app from Microsoft Teams");
           }
           break;
 
@@ -268,14 +256,6 @@ async function handleMessage(
   // Send thinking message
   const thinkingCard = createThinkingAdaptiveCard();
 
-  localLogger.info(
-    {
-      serviceUrl: context.activity.serviceUrl,
-      conversationId: context.activity.conversation?.id,
-    },
-    "About to send thinking card to Bot Framework"
-  );
-
   // Use utility function for reliable messaging
   const thinkingActivity = await sendActivity(context, thinkingCard);
   if (thinkingActivity.isErr()) {
@@ -292,11 +272,6 @@ async function handleMessage(
     );
     return;
   }
-
-  localLogger.info(
-    { activityId: thinkingActivity.value },
-    "Successfully sent thinking card"
-  );
 
   const result = await botAnswerMessage(
     context,

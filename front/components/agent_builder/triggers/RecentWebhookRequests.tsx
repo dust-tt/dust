@@ -1,10 +1,13 @@
 import {
   CollapsibleComponent,
+  ContentMessageInline,
   Label,
   Markdown,
+  Separator,
   Spinner,
 } from "@dust-tt/sparkle";
 import moment from "moment";
+import Link from "next/link";
 import React, { useState } from "react";
 
 import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
@@ -24,22 +27,21 @@ export function RecentWebhookRequests({
   agentConfigurationId,
   trigger,
 }: RecentWebhookRequestsProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const defaultOpen = true;
+  const [isOpen, setIsOpen] = useState(defaultOpen);
   return (
     <CollapsibleComponent
-      rootProps={{ defaultOpen: false, onOpenChange: setIsOpen }}
+      rootProps={{ defaultOpen, onOpenChange: setIsOpen }}
       triggerChildren={
-        <Label className="cursor-pointer">Recent Requests</Label>
+        <Label className="cursor-pointer">Request history</Label>
       }
       contentChildren={
-        <div className="pt-2">
-          <RecentWebhookRequestsContent
-            isOpen={isOpen}
-            owner={owner}
-            agentConfigurationId={agentConfigurationId}
-            trigger={trigger}
-          />
-        </div>
+        <RecentWebhookRequestsContent
+          isOpen={isOpen}
+          owner={owner}
+          agentConfigurationId={agentConfigurationId}
+          trigger={trigger}
+        />
       }
     />
   );
@@ -66,10 +68,6 @@ function RecentWebhookRequestsContent({
       disabled: !trigger || !agentConfigurationId || !isOpen,
     });
 
-  const [expandedRequestId, setExpandedRequestId] = useState<number | null>(
-    null
-  );
-
   if (isWebhookRequestsLoading || !isOpen) {
     return (
       <div className="flex items-center gap-2">
@@ -83,9 +81,9 @@ function RecentWebhookRequestsContent({
 
   if (isWebhookRequestsError) {
     return (
-      <p className="text-sm text-warning">
+      <ContentMessageInline variant="warning">
         Unable to load recent webhook requests.
-      </p>
+      </ContentMessageInline>
     );
   }
 
@@ -97,51 +95,64 @@ function RecentWebhookRequestsContent({
     );
   }
 
+  const wasRateLimited = webhookRequests.some(
+    (request) => request.status === "rate_limited"
+  );
+
   return (
     <div className="space-y-2">
-      {webhookRequests.map((request) => (
-        <div
-          key={request.id}
-          className="bg-secondary dark:bg-secondary-night rounded-lg border border-border p-3 dark:border-border-night"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span
-                className="text-sm font-medium text-foreground dark:text-foreground-night"
-                title={new Date(request.timestamp).toLocaleString()}
-              >
-                {moment(new Date(request.timestamp)).fromNow()}
-              </span>
-              <WebhookRequestStatusBadge status={request.status} />
-            </div>
-            {request.payload && (
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setExpandedRequestId(
-                    expandedRequestId === request.id ? null : request.id
-                  );
-                }}
-                className="text-action-secondary hover:text-action-secondary-hover dark:text-action-secondary-night dark:hover:text-action-secondary-hover-night text-xs"
-              >
-                {expandedRequestId === request.id ? "Hide" : "View"} Payload
-              </button>
-            )}
-          </div>
-
-          {expandedRequestId === request.id && request.payload && (
-            <div className="mt-3 rounded bg-background p-2 dark:bg-background-night">
-              <pre className="max-h-48 overflow-auto text-xs text-foreground dark:text-foreground-night">
-                <Markdown
-                  forcedTextSize="xs"
-                  content={`\`\`\`json\n${JSON.stringify(request.payload.body, null, 2)}\n\`\`\``}
-                />
-              </pre>
-            </div>
-          )}
+      {wasRateLimited && (
+        <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <p>
+            Some requests were rate limited.
+            <br />
+            Contact{" "}
+            <Link
+              href="mailto:support@dust.tt?subject=Increase%20Webhook%20Trigger%20Rate%20Limit"
+              className="underline"
+            >
+              support@dust.tt
+            </Link>{" "}
+            to increase the rate limit for this trigger.
+          </p>
         </div>
-      ))}
+      )}
+      <div className="flex flex-col px-4">
+        {webhookRequests.map((request, idx) => (
+          <div key={request.id}>
+            <CollapsibleComponent
+              rootProps={{ defaultOpen: false }}
+              triggerChildren={
+                <div className="my-2 flex w-full items-center justify-between gap-4">
+                  {moment(new Date(request.timestamp)).calendar(undefined, {
+                    sameDay: "[Today at] LTS",
+                    lastDay: "[Yesterday at] LTS",
+                    lastWeek: "[Last] dddd [at] LTS",
+                  })}
+                  <WebhookRequestStatusBadge status={request.status} />
+                </div>
+              }
+              contentChildren={
+                request.payload ? (
+                  <div className="rounded">
+                    <pre className="max-h-64 overflow-auto text-xs">
+                      <Markdown
+                        forcedTextSize="xs"
+                        content={`\`\`\`json\n${JSON.stringify(request.payload.body, null, 2)}\n\`\`\``}
+                      />
+                    </pre>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                    No payload available.
+                  </p>
+                )
+              }
+            />
+            {idx < webhookRequests.length - 1 && <Separator />}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

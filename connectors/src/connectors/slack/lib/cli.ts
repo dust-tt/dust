@@ -229,15 +229,15 @@ export const slack = async ({
         }
       }
 
-      const connector = await ConnectorModel.findOne({
-        where: {
-          workspaceId: `${args.wId}`,
-          type: "slack",
-        },
-      });
+      const connector = await ConnectorResource.findByWorkspaceIdAndType(
+        `${args.wId}`,
+        "slack_bot"
+      );
 
       if (!connector) {
-        throw new Error(`Could not find connector for workspace ${args.wId}`);
+        throw new Error(
+          `Could not find Slack bot connector for workspace ${args.wId}`
+        );
       }
 
       const whitelistedDomainsArray = whitelistedDomains.split(",");
@@ -639,6 +639,23 @@ export const slack = async ({
           private: !!remoteChannel.is_private,
         },
       });
+
+      // If the channel already existed with a non-indexed permission (e.g. "write"),
+      // upgrade it to "read_write" so the sync actually indexes content.
+      if (
+        channel.permission !== "read" &&
+        channel.permission !== "read_write"
+      ) {
+        const existing = await SlackChannel.findOne({
+          where: {
+            connectorId: connector.id,
+            slackChannelId: args.channelId,
+          },
+        });
+        if (existing) {
+          await existing.update({ permission: "read_write" });
+        }
+      }
 
       const workflowRes = await launchSlackSyncWorkflow(connector.id, null, [
         channel.slackId,

@@ -30,6 +30,15 @@ inputs:
     description: "Whether reverting or deploying"
     required: false
     default: "false"
+  current_version:
+    description: "Current deployed version for comparison"
+    required: false
+  commit_diff:
+    description: "Commit diff information"
+    required: false
+  commit_count:
+    description: "Number of commits in the diff"
+    required: false
 
 outputs:
   thread_ts:
@@ -90,6 +99,74 @@ runs:
             • Commit: <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ inputs.image_tag }}>
             • Workflow: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View build>
             • Author: ${{ steps.slack_user.outputs.id != '' && format('<@{0}>', steps.slack_user.outputs.id) || format('`{0}`', steps.author.outputs.name) }}
+
+    - name: Format and Build Payload
+      if: inputs.step == 'build_success'
+      id: build_payload
+      shell: bash
+      run: |
+        # 1. Build Header Section
+        HEADER_TEXT="🔨 Build completed in ${{ inputs.region }} region"
+        DETAILS_TEXT="• Image: \`${{ inputs.image_tag }}\`"
+
+        if [ -n "${{ inputs.current_version }}" ]; then
+          DETAILS_TEXT="${DETAILS_TEXT}
+        • Changes: \`${{ inputs.current_version }}\` → \`${{ inputs.image_tag }}\` (${{ inputs.commit_count }} commits)"
+        fi
+
+        # Combine for the first block
+        MAIN_BLOCK_TEXT="$HEADER_TEXT
+        $DETAILS_TEXT"
+
+        # 2. Build Changelog Section
+        CHANGELOG_TEXT=""
+        if [ -n "${{ inputs.commit_diff }}" ]; then
+          while IFS= read -r line; do
+            if [ -n "$line" ]; then
+              COMMIT_HASH=$(echo "$line" | cut -d' ' -f1)
+              AUTHOR=$(echo "$line" | sed 's/^[^ ]* //')
+              # Slack format: <url|text>
+              LINK="<${{ github.server_url }}/${{ github.repository }}/commit/${COMMIT_HASH}|${COMMIT_HASH}>"
+              CHANGELOG_TEXT="${CHANGELOG_TEXT}• ${LINK} ${AUTHOR}
+        "
+            fi
+          done <<< "${{ inputs.commit_diff }}"
+        fi
+
+        # 3. Construct JSON Payload
+        # We construct the blocks array manually to be safe.
+
+        # Block 1: Main Info
+        BLOCK1=$(jq -c -n --arg text "$MAIN_BLOCK_TEXT" '{type: "section", text: {type: "mrkdwn", text: $text}}')
+
+        # Block 2: Changelog (only if exists)
+        BLOCKS="[$BLOCK1]"
+        if [ -n "$CHANGELOG_TEXT" ]; then
+           BLOCK2=$(jq -c -n --arg text "$CHANGELOG_TEXT" '{type: "section", text: {type: "mrkdwn", text: $text}}')
+           BLOCKS="[$BLOCK1, $BLOCK2]"
+        fi
+
+        # Final Payload
+        JSON_PAYLOAD=$(jq -c -n \
+          --arg channel "${{ inputs.channel }}" \
+          --arg ts "${{ inputs.thread_ts }}" \
+          --argjson blocks "$BLOCKS" \
+          '{
+            channel: $channel,
+            thread_ts: $ts,
+            blocks: $blocks,
+            method: "chat.postMessage"
+          }')
+
+        echo "json_payload=$JSON_PAYLOAD" >> $GITHUB_OUTPUT
+
+    - name: Notify Build Success
+      if: inputs.step == 'build_success'
+      uses: slackapi/slack-github-action@v2.0.0
+      with:
+        method: chat.postMessage
+        token: ${{ inputs.slack_token }}
+        payload: ${{ steps.build_payload.outputs.json_payload }}
 
     - name: Notify Deploy Failure
       if: inputs.step == 'failure'

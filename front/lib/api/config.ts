@@ -122,6 +122,9 @@ const config = {
         EnvironmentConfig.getOptionalEnvVariable("NODE_ENV") || "development",
     };
   },
+  getVizJwtSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("VIZ_JWT_SECRET");
+  },
   getOAuthAPIConfig: (): { url: string; apiKey: string | null } => {
     return {
       url: EnvironmentConfig.getEnvVariable("OAUTH_API"),
@@ -230,6 +233,17 @@ const config = {
   getOAuthDiscordClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_DISCORD_CLIENT_ID");
   },
+  getOAuthFathomClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_FATHOM_CLIENT_ID");
+  },
+  getDevOAuthFathomRedirectBaseUrl: (): string => {
+    return EnvironmentConfig.getEnvVariable(
+      "DEV_OAUTH_FATHOM_REDIRECT_BASE_URL"
+    );
+  },
+  getOAuthLinearClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_LINEAR_CLIENT_ID");
+  },
 
   // Text extraction.
   getTextExtractionUrl: (): string => {
@@ -309,6 +323,21 @@ const config = {
       username: EnvironmentConfig.getEnvVariable("ELASTICSEARCH_USERNAME"),
       password: EnvironmentConfig.getEnvVariable("ELASTICSEARCH_PASSWORD"),
     };
+  },
+  isLangfuseEnabled: (): boolean => {
+    const isEnabled =
+      EnvironmentConfig.getOptionalEnvVariable(
+        "LANGFUSE_ENABLED"
+      )?.toLowerCase() === "true";
+
+    if (isEnabled) {
+      // If enabled, ensure that all keys are present.
+      EnvironmentConfig.getEnvVariable("LANGFUSE_PUBLIC_KEY");
+      EnvironmentConfig.getEnvVariable("LANGFUSE_SECRET_KEY");
+      EnvironmentConfig.getOptionalEnvVariable("LANGFUSE_BASE_URL");
+    }
+
+    return isEnabled;
   },
 };
 

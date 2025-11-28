@@ -7,12 +7,14 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  ExclamationCircleIcon,
   Input,
   Label,
   Separator,
   SliderToggle,
   TextArea,
 } from "@dust-tt/sparkle";
+import Link from "next/link";
 import React, { useMemo } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
@@ -21,6 +23,7 @@ import { RecentWebhookRequests } from "@app/components/agent_builder/triggers/Re
 import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
 import { WebhookEditionFilters } from "@app/components/agent_builder/triggers/webhook/WebhookEditionFilters";
 import type { LightWorkspaceType } from "@app/types";
+import type { TriggerExecutionMode } from "@app/types/assistant/triggers";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 import type {
@@ -79,6 +82,51 @@ function WebhookEditionStatusToggle({
           onClick={() => setEnabled(!enabled)}
         />
       </div>
+    </div>
+  );
+}
+
+interface WebhookEditionExecutionLimitProps {
+  executionMode: TriggerExecutionMode;
+}
+
+function WebhookEditionExecutionLimit({
+  executionMode,
+}: WebhookEditionExecutionLimitProps) {
+  const { control } = useFormContext<TriggerViewsSheetFormValues>();
+  const {
+    field: { value: executionLimit },
+  } = useController({
+    control,
+    name: "webhook.executionPerDayLimitOverride",
+  });
+
+  return (
+    <div className="flex flex-col space-y-1">
+      <Label htmlFor="execution-limit">Rate limits</Label>
+      <p>Limits are set on a 24-hour window. </p>
+      <ContentMessage
+        variant="info"
+        size="lg"
+        icon={ExclamationCircleIcon}
+        title={`Up to ${executionLimit} requests per day`}
+      >
+        This trigger can send a limited number of messages per day. This
+        prevents a single trigger from using up your workspace's message fair
+        use quota. This trigger is currently running on your workspace's{" "}
+        {executionMode === "fair_use" ? "fair use" : "programmatic usage"}{" "}
+        quota.
+        <br /> (
+        <Link
+          href="https://docs.dust.tt/update/docs/rate-limiting#/"
+          target="_blank"
+          rel="noreferrer"
+          className="underline"
+        >
+          Learn more
+        </Link>
+        )
+      </ContentMessage>
     </div>
   );
 }
@@ -262,6 +310,11 @@ export function WebhookEditionSheetContent({
           <WebhookEditionIncludePayload isEditor={isEditor} />
         </div>
 
+        <Separator />
+
+        <WebhookEditionExecutionLimit
+          executionMode={trigger?.executionMode ?? "fair_use"}
+        />
         {trigger && (
           <div className="space-y-1">
             <RecentWebhookRequests

@@ -89,6 +89,14 @@ const whitelistedCommands = [
     majorCommand: "google_drive",
     command: "upsert-file",
   },
+  {
+    majorCommand: "intercom",
+    command: "get-conversations-sliding-window",
+  },
+  {
+    majorCommand: "intercom",
+    command: "set-conversations-sliding-window",
+  },
 ];
 
 const _adminAPIHandler = async (

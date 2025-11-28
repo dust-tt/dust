@@ -1,6 +1,5 @@
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { AuthenticatorType } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { launchStoreAgentAnalyticsWorkflow } from "@app/temporal/analytics_queue/client";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
@@ -19,11 +18,6 @@ export async function launchAgentMessageAnalyticsActivity(
       { workspaceId: authType.workspaceId },
       "Failed to fetch workspace infos for agent message analytics"
     );
-    return;
-  }
-
-  const featureFlags = await getFeatureFlags(owner);
-  if (!featureFlags.includes("agent_builder_observability")) {
     return;
   }
 

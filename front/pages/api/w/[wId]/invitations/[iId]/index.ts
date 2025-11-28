@@ -4,11 +4,8 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import {
-  getInvitation,
-  updateInvitationStatusAndRole,
-} from "@app/lib/api/invitation";
 import type { Authenticator } from "@app/lib/auth";
+import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type {
   MembershipInvitationType,
@@ -52,7 +49,10 @@ async function handler(
     });
   }
 
-  let invitation = await getInvitation(auth, { invitationId });
+  const invitation = await MembershipInvitationResource.fetchById(
+    auth,
+    invitationId
+  );
   if (!invitation) {
     return apiError(req, res, {
       status_code: 404,
@@ -78,14 +78,11 @@ async function handler(
       }
       const body = bodyValidation.right;
 
-      invitation = await updateInvitationStatusAndRole(auth, {
-        invitation,
-        status: body.status,
-        role: body.initialRole,
-      });
+      await invitation.updateStatus(body.status);
+      await invitation.updateRole(body.initialRole);
 
       res.status(200).json({
-        invitation,
+        invitation: invitation.toJSON(),
       });
       return;
 

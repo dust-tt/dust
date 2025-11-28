@@ -4,17 +4,12 @@ import { HeaderContentBlock } from "@app/components/home/ContentBlocks";
 import HubSpotForm from "@app/components/home/HubSpotForm";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import {
-  getParticleShapeIndexByName,
-  shapeNames,
-} from "@app/components/home/Particles";
 import TrustedBy from "@app/components/home/TrustedBy";
 import UTMPageWrapper from "@app/components/UTMPageWrapper";
 
 export async function getStaticProps() {
   return {
     props: {
-      shape: getParticleShapeIndexByName(shapeNames.bigSphere),
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
     },
   };

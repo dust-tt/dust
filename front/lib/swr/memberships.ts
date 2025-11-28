@@ -67,11 +67,14 @@ export function useMembers({
   };
 }
 
-export function useWorkspaceInvitations(owner: LightWorkspaceType) {
+export function useWorkspaceInvitations(
+  owner: LightWorkspaceType,
+  { includeExpired = false }: { includeExpired?: boolean } = {}
+) {
   const workspaceInvitationsFetcher: Fetcher<GetWorkspaceInvitationsResponseBody> =
     fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/invitations`,
+    `/api/w/${owner.sId}/invitations?includeExpired=${includeExpired}`,
     workspaceInvitationsFetcher
   );
 
@@ -112,8 +115,6 @@ export function useSearchMembers({
 
   const searchParams = new URLSearchParams({
     searchTerm: debouncedSearchTerm,
-    orderColumn: "name",
-    orderDirection: "asc",
     offset: (pageIndex * pageSize).toString(),
     limit: pageSize.toString(),
   });

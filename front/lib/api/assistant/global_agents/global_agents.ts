@@ -1,6 +1,5 @@
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import {
-  _getClaude2GlobalAgent,
   _getClaude3_7GlobalAgent,
   _getClaude3GlobalAgent,
   _getClaude3HaikuGlobalAgent,
@@ -8,7 +7,6 @@ import {
   _getClaude4_5HaikuGlobalAgent,
   _getClaude4_5SonnetGlobalAgent,
   _getClaude4SonnetGlobalAgent,
-  _getClaudeInstantGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/anthropic";
 import { _getDeepSeekR1GlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/deepseek";
 import {
@@ -17,7 +15,11 @@ import {
   _getDustTaskGlobalAgent,
   _getPlanningAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/deep-dive";
-import { _getDustGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
+import {
+  _getDustEdgeGlobalAgent,
+  _getDustGlobalAgent,
+  _getDustQuickGlobalAgent,
+} from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import { _getNoopAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/noop";
 import { _getGeminiProGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/google";
 import {
@@ -53,7 +55,7 @@ import type { PrefetchedDataSourcesType } from "@app/lib/api/assistant/global_ag
 import { getDataSourcesAndWorkspaceIdForGlobalAgents } from "@app/lib/api/assistant/global_agents/tools";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
+import { GlobalAgentSettings } from "@app/lib/models/agent/agent";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -61,7 +63,6 @@ import type {
   AgentConfigurationType,
   AgentFetchVariant,
   GlobalAgentStatus,
-  WhitelistableFeature,
 } from "@app/types";
 import {
   GLOBAL_AGENTS_SID,
@@ -89,7 +90,6 @@ function getGlobalAgent({
   agentMemoryMCPServerView,
   memories,
   availableToolsets,
-  featureFlags,
 }: {
   auth: Authenticator;
   sId: string | number;
@@ -109,7 +109,6 @@ function getGlobalAgent({
   agentMemoryMCPServerView: MCPServerViewResource | null;
   memories: AgentMemoryResource[];
   availableToolsets: MCPServerViewResource[];
-  featureFlags: WhitelistableFeature[];
 }): AgentConfigurationType | null {
   const settings =
     globalAgentSettings.find((settings) => settings.agentId === sId) ?? null;
@@ -209,11 +208,6 @@ function getGlobalAgent({
         interactiveContentMCPServerView,
       });
       break;
-    case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
-      agentConfiguration = _getClaudeInstantGlobalAgent({
-        settings,
-      });
-      break;
     case GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET:
       agentConfiguration = _getClaude4_5SonnetGlobalAgent({
         auth,
@@ -267,12 +261,6 @@ function getGlobalAgent({
         settings,
         webSearchBrowseMCPServerView,
         interactiveContentMCPServerView,
-      });
-      break;
-    case GLOBAL_AGENTS_SID.CLAUDE_2:
-      agentConfiguration = _getClaude2GlobalAgent({
-        auth,
-        settings,
       });
       break;
     case GLOBAL_AGENTS_SID.MISTRAL_LARGE:
@@ -350,7 +338,6 @@ function getGlobalAgent({
         preFetchedDataSources,
         agentRouterMCPServerView,
         webSearchBrowseMCPServerView,
-        searchMCPServerView,
         dataSourcesFileSystemMCPServerView,
         toolsetsMCPServerView,
         deepDiveMCPServerView,
@@ -359,7 +346,38 @@ function getGlobalAgent({
         agentMemoryMCPServerView,
         memories,
         availableToolsets,
-        featureFlags,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_EDGE:
+      agentConfiguration = _getDustEdgeGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        agentRouterMCPServerView,
+        webSearchBrowseMCPServerView,
+        dataSourcesFileSystemMCPServerView,
+        toolsetsMCPServerView,
+        deepDiveMCPServerView,
+        interactiveContentMCPServerView,
+        dataWarehousesMCPServerView,
+        agentMemoryMCPServerView,
+        memories,
+        availableToolsets,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_QUICK:
+      agentConfiguration = _getDustQuickGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        agentRouterMCPServerView,
+        webSearchBrowseMCPServerView,
+        dataSourcesFileSystemMCPServerView,
+        toolsetsMCPServerView,
+        deepDiveMCPServerView,
+        interactiveContentMCPServerView,
+        dataWarehousesMCPServerView,
+        agentMemoryMCPServerView,
+        memories,
+        availableToolsets,
       });
       break;
     case GLOBAL_AGENTS_SID.DEEP_DIVE:
@@ -416,13 +434,11 @@ function getGlobalAgent({
 // This is the list of global agents that we want to support in past conversations but we don't want
 // to be accessible to users moving forward.
 const RETIRED_GLOBAL_AGENTS_SID = [
-  GLOBAL_AGENTS_SID.CLAUDE_2,
   GLOBAL_AGENTS_SID.CLAUDE_4_SONNET,
   GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET,
   GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU,
   GLOBAL_AGENTS_SID.CLAUDE_3_OPUS,
   GLOBAL_AGENTS_SID.CLAUDE_3_SONNET,
-  GLOBAL_AGENTS_SID.CLAUDE_INSTANT,
   GLOBAL_AGENTS_SID.GITHUB,
   GLOBAL_AGENTS_SID.GOOGLE_DRIVE,
   GLOBAL_AGENTS_SID.GPT35_TURBO,
@@ -579,13 +595,25 @@ export async function getGlobalAgents(
       (sId) => sId !== GLOBAL_AGENTS_SID.DEEPSEEK_R1
     );
   }
+  if (!flags.includes("dust_edge_global_agent")) {
+    agentsIdsToFetch = agentsIdsToFetch.filter(
+      (sId) => sId !== GLOBAL_AGENTS_SID.DUST_EDGE
+    );
+  }
+  if (!flags.includes("dust_quick_global_agent")) {
+    agentsIdsToFetch = agentsIdsToFetch.filter(
+      (sId) => sId !== GLOBAL_AGENTS_SID.DUST_QUICK
+    );
+  }
 
   let memories: AgentMemoryResource[] = [];
   if (
     variant === "full" &&
     agentMemoryMCPServerView &&
     auth.user() &&
-    agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST)
+    (agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST) ||
+      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_EDGE) ||
+      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_QUICK))
   ) {
     memories = await AgentMemoryResource.findByAgentConfigurationIdAndUser(
       auth,
@@ -599,7 +627,9 @@ export async function getGlobalAgents(
   if (
     variant === "full" &&
     toolsetsMCPServerView &&
-    agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST)
+    (agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST) ||
+      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_EDGE) ||
+      agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.DUST_QUICK))
   ) {
     const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
     availableToolsets = await MCPServerViewResource.listBySpace(
@@ -630,7 +660,6 @@ export async function getGlobalAgents(
       agentMemoryMCPServerView,
       memories,
       availableToolsets,
-      featureFlags: flags,
     })
   );
 

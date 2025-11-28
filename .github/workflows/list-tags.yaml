@@ -19,7 +19,6 @@ on:
           - core
           - front
           - front-edge
-          - front-qa
           - metabase
           - oauth
           - prodbox

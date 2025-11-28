@@ -3,8 +3,8 @@ import { z } from "zod";
 
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import type { ErrorRatePoint } from "@app/lib/api/assistant/observability/error_rate";
-import { fetchErrorRate } from "@app/lib/api/assistant/observability/error_rate";
+import type { MessageMetricsPoint } from "@app/lib/api/assistant/observability/messages_metrics";
+import { fetchMessageMetrics } from "@app/lib/api/assistant/observability/messages_metrics";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -13,10 +13,14 @@ import type { WithAPIErrorResponse } from "@app/types";
 
 const QuerySchema = z.object({
   days: z.coerce.number().positive().optional(),
+  version: z.string().optional(),
 });
 
 export type GetErrorRateResponse = {
-  points: ErrorRatePoint[];
+  points: Pick<
+    MessageMetricsPoint,
+    "timestamp" | "count" | "failedMessages" | "errorRate"
+  >[];
 };
 
 async function handler(
@@ -73,6 +77,7 @@ async function handler(
       }
 
       const days = q.data.days ?? DEFAULT_PERIOD_DAYS;
+      const version = q.data.version;
 
       const owner = auth.getNonNullableWorkspace();
 
@@ -80,9 +85,13 @@ async function handler(
         workspaceId: owner.sId,
         agentId: assistant.sId,
         days,
+        version,
       });
 
-      const errorRateResult = await fetchErrorRate(baseQuery);
+      const errorRateResult = await fetchMessageMetrics(baseQuery, "day", [
+        "failedMessages",
+        "errorRate",
+      ] as const);
 
       if (errorRateResult.isErr()) {
         const e = errorRateResult.error;

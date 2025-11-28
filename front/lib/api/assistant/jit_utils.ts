@@ -24,7 +24,6 @@ export function listAttachments(
   const attachments: ConversationAttachmentType[] = [];
   for (const versions of conversation.content) {
     const m = versions[versions.length - 1];
-
     if (isContentFragmentType(m)) {
       // We don't list images.
       if (isSupportedImageContentType(m.contentType)) {

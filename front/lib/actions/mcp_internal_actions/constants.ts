@@ -108,13 +108,17 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "run_agent",
   "run_dust_app",
   "salesforce",
+  "salesloft",
+  "slab",
   "slack",
   "slack_bot",
   "sound_studio",
   "speech_generator",
   "toolsets",
   "val_town",
+  "front",
   "web_search_&_browse",
+  "zendesk",
   SEARCH_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
 ] as const;
@@ -180,7 +184,8 @@ export const INTERNAL_MCP_SERVERS = {
     serverInfo: {
       name: "image_generation",
       version: "1.0.0",
-      description: "Create visual content from text descriptions.",
+      description:
+        "Create or edit visual content from text descriptions and images.",
       icon: "ActionImageIcon",
       authorization: null,
       documentationUrl: null,
@@ -817,6 +822,7 @@ The directive should be used to display a clickable version of the agent name in
       update_event: "low",
       delete_event: "low",
       check_availability: "never_ask",
+      check_self_availability: "never_ask",
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -1042,7 +1048,9 @@ The directive should be used to display a clickable version of the agent name in
     tools_stakes: {
       // Read operations - never ask
       get_current_user: "never_ask",
+      get_page: "never_ask",
       get_pages: "never_ask",
+      get_spaces: "never_ask",
 
       // Write operations - ask
       create_page: "low",
@@ -1065,10 +1073,10 @@ The directive should be used to display a clickable version of the agent name in
   },
   speech_generator: {
     id: 34,
-    availability: "manual",
+    availability: "auto",
     allowMultipleInstances: false,
     isRestricted: undefined,
-    isPreview: true,
+    isPreview: false,
     tools_stakes: {
       text_to_speech: "low",
       text_to_dialogue: "low",
@@ -1080,7 +1088,7 @@ The directive should be used to display a clickable version of the agent name in
       version: "1.0.0",
       description: "Turn written text into spoken audio or dialog",
       authorization: null,
-      icon: "ActionMegaphoneIcon",
+      icon: "ActionSpeakIcon",
       documentationUrl: null,
       instructions: null,
     },
@@ -1140,7 +1148,7 @@ The directive should be used to display a clickable version of the agent name in
         provider: "microsoft_tools" as const,
         supported_use_cases: ["personal_actions"] as const,
         scope:
-          "User.Read User.ReadBasic.All Team.ReadBasic.All Chat.Read Chat.ReadWrite ChatMessage.Read ChatMessage.Send ChannelMessage.Read.All ChannelMessage.Send offline_access" as const,
+          "User.Read User.ReadBasic.All Team.ReadBasic.All Channel.ReadBasic.All Chat.Read Chat.ReadWrite ChatMessage.Read ChatMessage.Send ChannelMessage.Read.All ChannelMessage.Send offline_access" as const,
       },
       icon: "MicrosoftTeamsLogo",
       documentationUrl: "https://docs.dust.tt/docs/microsoft-teams-tool-setup",
@@ -1152,7 +1160,7 @@ The directive should be used to display a clickable version of the agent name in
     availability: "manual",
     allowMultipleInstances: false,
     isRestricted: undefined,
-    isPreview: true,
+    isPreview: false,
     tools_stakes: {
       generate_music: "low",
       generate_sound_effects: "low",
@@ -1164,7 +1172,7 @@ The directive should be used to display a clickable version of the agent name in
       version: "1.0.0",
       description: "Create music tracks and sound effects",
       authorization: null,
-      icon: "ActionMegaphoneIcon",
+      icon: "ActionNoiseIcon",
       documentationUrl: null,
       instructions: null,
     },
@@ -1238,9 +1246,10 @@ The directive should be used to display a clickable version of the agent name in
     },
     isPreview: false,
     tools_stakes: {
-      submit_feedback: "high",
       search_candidates: "never_ask",
       get_report_data: "never_ask",
+      get_interview_feedback: "never_ask",
+      create_candidate_note: "high",
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -1254,6 +1263,60 @@ The directive should be used to display a clickable version of the agent name in
       documentationUrl: null,
       instructions: null,
       developerSecretSelection: "required",
+    },
+  },
+  salesloft: {
+    id: 41,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("salesloft_tool");
+    },
+    isPreview: true,
+    tools_stakes: {
+      get_current_user: "never_ask",
+      get_cadences: "never_ask",
+      get_tasks: "never_ask",
+      get_actions: "never_ask",
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "salesloft",
+      version: "1.0.0",
+      description: "Access Salesloft cadences, tasks, and actions.",
+      authorization: null,
+      icon: "ActionDocumentTextIcon",
+      documentationUrl: null,
+      instructions: null,
+      developerSecretSelection: "required",
+    },
+  },
+  slab: {
+    id: 43,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("slab_mcp");
+    },
+    isPreview: true,
+    requiresBearerToken: true,
+    tools_stakes: {
+      search_posts: "never_ask",
+      get_post_contents: "never_ask",
+      get_topics: "never_ask",
+      get_post_metadata: "never_ask",
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "slab",
+      version: "1.0.0",
+      description: "Search and read from your Slab knowledge base",
+      authorization: null,
+      icon: "ActionDocumentTextIcon",
+      documentationUrl: null,
+      instructions: null,
     },
   },
   [SEARCH_SERVER_NAME]: {
@@ -1511,6 +1574,81 @@ The directive should be used to display a clickable version of the agent name in
       developerSecretSelection: "required",
     },
   },
+  front: {
+    id: 1018,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("front_tool");
+    },
+    isPreview: true,
+    tools_stakes: {
+      search_conversations: "never_ask",
+      get_conversation: "never_ask",
+      get_conversation_messages: "never_ask",
+      get_contact: "never_ask",
+      list_tags: "never_ask",
+      list_teammates: "never_ask",
+      get_customer_history: "never_ask",
+      list_inboxes: "never_ask",
+
+      create_conversation: "low",
+      create_draft: "low",
+      add_tags: "low",
+      add_comment: "low",
+      add_links: "low",
+
+      send_message: "high",
+      update_conversation_status: "high",
+      assign_conversation: "high",
+    },
+    tools_retry_policies: { default: "retry_on_interrupt" },
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "front",
+      version: "1.0.0",
+      description:
+        "Manage support conversations, messages, and customer interactions.",
+      authorization: null,
+      icon: "FrontLogo",
+      documentationUrl: "https://dev.frontapp.com/reference/introduction",
+      instructions:
+        "When handling support tickets:\n" +
+        "- Always check customer history before replying using get_customer_history\n" +
+        "- Auto-tag conversations based on issue type (bug, feature-request, billing)\n" +
+        "- Assign to teammate 'ilias' if T1 cannot resolve after three attempts\n" +
+        "- Use LLM-friendly timeline format for conversation data\n" +
+        "- Include full context (metadata, custom fields) in responses",
+      developerSecretSelection: "required",
+    },
+  },
+  zendesk: {
+    id: 42,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: undefined,
+    isPreview: false,
+    tools_stakes: {
+      get_ticket: "never_ask",
+      search_tickets: "never_ask",
+      draft_reply: "low", // Low because it's a draft.
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "zendesk",
+      version: "1.0.0",
+      description:
+        "Access and manage support tickets, help center, and customer interactions.",
+      authorization: {
+        provider: "zendesk" as const,
+        supported_use_cases: ["platform_actions"] as const,
+      },
+      icon: "ZendeskLogo",
+      documentationUrl: null,
+      instructions: null,
+    },
+  },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {
   [K in InternalMCPServerNameType]: {
@@ -1528,6 +1666,7 @@ The directive should be used to display a clickable version of the agent name in
     tools_stakes: Record<string, MCPToolStakeLevelType> | undefined;
     tools_retry_policies: Record<string, MCPToolRetryPolicyType> | undefined;
     timeoutMs: number | undefined;
+    requiresBearerToken?: boolean;
     serverInfo: InternalMCPServerDefinitionType & { name: K };
   };
 };

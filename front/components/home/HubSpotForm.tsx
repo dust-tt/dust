@@ -63,6 +63,13 @@ export default function HubSpotForm() {
             object: "hubspot_form",
             action: "submit",
           });
+          // Push event to Google Tag Manager
+          if (typeof window !== "undefined") {
+            window.dataLayer = window.dataLayer ?? [];
+            window.dataLayer.push({
+              event: "hubspot_form_submitted",
+            });
+          }
         }
       }
 
@@ -88,6 +95,13 @@ export default function HubSpotForm() {
             object: "hubspot_form",
             action: "submit",
           });
+          // Push event to Google Tag Manager
+          if (typeof window !== "undefined") {
+            window.dataLayer = window.dataLayer ?? [];
+            window.dataLayer.push({
+              event: "hubspot_form_submitted",
+            });
+          }
         }
       }
 

@@ -1,8 +1,6 @@
-// @ts-nocheck
 // This migration file references deleted process modules but has already been run in production
 import { QueryTypes } from "sequelize";
 
-import type { ProcessSchemaPropertyType } from "@app/lib/actions/process";
 import { frontSequelize } from "@app/lib/resources/storage";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
@@ -10,6 +8,7 @@ import { makeScript } from "@app/scripts/helpers";
 const BATCH_SIZE = 1024;
 
 function renderSchemaPropertiesAsJSONSchema(
+  // @ts-ignore
   schema: ProcessSchemaPropertyType[]
 ): { type: string; properties: Record<string, object>; required: string[] } {
   let properties: { [name: string]: { type: string; description: string } } =
@@ -49,11 +48,13 @@ async function migrateTableSchemas({
   tableName: string;
 }) {
   let nextId = 0;
+  // @ts-ignore
   let records: { id: number; schema: ProcessSchemaPropertyType[] }[];
 
   do {
     records = await frontSequelize.query<{
       id: number;
+      // @ts-ignore
       schema: ProcessSchemaPropertyType[];
     }>(
       `SELECT id, schema

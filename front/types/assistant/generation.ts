@@ -1,6 +1,6 @@
 import type {
   AgentContentItemType,
-  ErrorContentType,
+  AgentErrorContentType,
 } from "@app/types/assistant/agent_message_content";
 
 /**
@@ -56,6 +56,7 @@ export interface FunctionCallType {
   id: string;
   name: string;
   arguments: string; // Empty is not valid, should be at least "{}"
+  metadata?: { thoughtSignature?: string };
 }
 
 // Assistant requiring usage of function(s) call(s)
@@ -65,7 +66,7 @@ export interface AssistantFunctionCallMessageTypeModel {
   content?: string;
   /** @deprecated, use contents instead. */
   function_calls: FunctionCallType[];
-  contents: Array<Exclude<AgentContentItemType, ErrorContentType>>;
+  contents: Array<Exclude<AgentContentItemType, AgentErrorContentType>>;
 }
 
 export interface AssistantContentMessageTypeModel {
@@ -73,7 +74,7 @@ export interface AssistantContentMessageTypeModel {
   name: string;
   /** @deprecated, use contents instead. */
   content?: string;
-  contents: Array<Exclude<AgentContentItemType, ErrorContentType>>;
+  contents: Array<Exclude<AgentContentItemType, AgentErrorContentType>>;
 }
 
 // This is the output of one function call

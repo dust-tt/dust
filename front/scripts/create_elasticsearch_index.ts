@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import * as readline from "readline";
 
-import { getClient } from "@app/lib/api/elasticsearch";
+import { getClient, INDEX_DIRECTORIES } from "@app/lib/api/elasticsearch";
 import { makeScript } from "@app/scripts/helpers";
 import { EnvironmentConfig } from "@app/types";
 
@@ -12,8 +12,9 @@ import { EnvironmentConfig } from "@app/types";
  * Usage:
  * tsx front/scripts/create_elasticsearch_index.ts --index-name agent_message_analytics --index-version 1 [--skip-confirmation] [--remove-previous-alias]
  *
- * Look for index settings and mappings in front/lib/analytics/indices/[index_name]_[version].settings.[region].json
- * Create the index with the given settings and mappings at front.[index_name]_[version], and set the alias to front.[index_name]
+ * The script looks up the index directory from INDEX_DIRECTORIES in lib/api/elasticsearch.ts
+ * Then loads settings and mappings from [directory]/[index_name]_[version].settings.[region].json and [directory]/[index_name]_[version].mappings.json
+ * Creates the index at front.[index_name]_[version], and sets the alias to front.[index_name]
  */
 
 makeScript(
@@ -54,7 +55,7 @@ makeScript(
     const region =
       EnvironmentConfig.getOptionalEnvVariable("NODE_ENV") === "development"
         ? "local"
-        : EnvironmentConfig.getEnvVariable("DUST_REGION");
+        : EnvironmentConfig.getEnvVariable("REGION");
 
     logger.info("Configuration:");
     logger.info(`  Index name: ${indexFullname}`);
@@ -75,13 +76,22 @@ makeScript(
       throw new Error(`Index ${indexFullname} already exists`);
     }
 
+    // Get the directory for this index from the mapping
+    const indexDirectory = INDEX_DIRECTORIES[indexName];
+    if (!indexDirectory) {
+      throw new Error(
+        `Index '${indexName}' is not configured in INDEX_DIRECTORIES. ` +
+          `Available indices: ${Object.keys(INDEX_DIRECTORIES).join(", ")}`
+      );
+    }
+
     const settingsPath = path.join(
       __dirname,
-      `../lib/analytics/indices/${indexName}_${indexVersion}.settings.${region}.json`
+      `../${indexDirectory}/${indexName}_${indexVersion}.settings.${region}.json`
     );
     const mappingsPath = path.join(
       __dirname,
-      `../lib/analytics/indices/${indexName}_${indexVersion}.mappings.json`
+      `../${indexDirectory}/${indexName}_${indexVersion}.mappings.json`
     );
 
     let settingsRaw: string;

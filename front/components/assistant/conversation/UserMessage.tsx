@@ -5,15 +5,17 @@ import {
   Markdown,
   Tooltip,
 } from "@dust-tt/sparkle";
+import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import { useCallback, useMemo } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
+import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
 import {
-  agentMentionDirective,
-  getAgentMentionPlugin,
-} from "@app/components/markdown/AgentMentionBlock";
+  hasHumansInteracting,
+  isTriggeredOrigin,
+} from "@app/components/assistant/conversation/types";
 import {
   CiteBlock,
   getCiteDirective,
@@ -26,6 +28,12 @@ import {
   PastedAttachmentBlock,
   pastedAttachmentDirective,
 } from "@app/components/markdown/PastedAttachmentBlock";
+import {
+  agentMentionDirective,
+  getAgentMentionPlugin,
+  getUserMentionPlugin,
+  userMentionDirective,
+} from "@app/lib/mentions/markdown/plugin";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type { UserMessageType, WorkspaceType } from "@app/types";
 
@@ -49,6 +57,7 @@ export function UserMessage({
       sup: CiteBlock,
       // Warning: we can't rename easily `mention` to agent_mention, because the messages DB contains this name
       mention: getAgentMentionPlugin(owner),
+      mention_user: getUserMentionPlugin(owner),
       content_node_mention: ContentNodeMentionBlock,
       pasted_attachment: PastedAttachmentBlock,
     }),
@@ -59,6 +68,7 @@ export function UserMessage({
     () => [
       getCiteDirective(),
       agentMentionDirective,
+      userMentionDirective,
       contentNodeMentionDirective,
       pastedAttachmentDirective,
     ],
@@ -68,6 +78,16 @@ export function UserMessage({
   const renderName = useCallback((name: string | null) => {
     return <div>{name}</div>;
   }, []);
+
+  const methods = useVirtuosoMethods<VirtuosoMessage>();
+
+  const showAgentSuggestions = useMemo(() => {
+    return (
+      message.mentions.length === 0 &&
+      isLastMessage &&
+      !hasHumansInteracting(methods.data.get())
+    );
+  }, [message.mentions.length, isLastMessage, methods.data]);
 
   return (
     <div className="flex flex-grow flex-col">
@@ -79,7 +99,7 @@ export function UserMessage({
           renderName={renderName}
           timestamp={formatTimestring(message.created)}
           infoChip={
-            message.context.origin === "triggered" && (
+            isTriggeredOrigin(message.context.origin) && (
               <span className="translate-y-1 text-muted-foreground dark:text-muted-foreground-night">
                 <TriggerChip message={message} />
               </span>
@@ -97,7 +117,7 @@ export function UserMessage({
           />
         </ConversationMessage>
       </div>
-      {message.mentions.length === 0 && isLastMessage && (
+      {showAgentSuggestions && (
         <AgentSuggestion
           conversationId={conversationId}
           owner={owner}

@@ -1,14 +1,15 @@
 import assert from "node:assert";
 
+import type { BetaRawMessageStreamEvent } from "@anthropic-ai/sdk/resources/beta.mjs";
 import type {
   MessageDeltaUsage,
   MessageStreamEvent,
 } from "@anthropic-ai/sdk/resources/messages/messages.mjs";
-import { assertNever } from "@dust-tt/sparkle";
 import cloneDeep from "lodash/cloneDeep";
 
 import { validateContentBlockIndex } from "@app/lib/api/llm/clients/anthropic/utils/predicates";
 import type { StreamState } from "@app/lib/api/llm/clients/anthropic/utils/types";
+import { SuccessAggregate } from "@app/lib/api/llm/types/aggregates";
 import type {
   LLMEvent,
   ReasoningDeltaEvent,
@@ -20,13 +21,16 @@ import type {
 } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
-import { safeParseJSON } from "@app/types";
+import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
+import { assertNever } from "@app/types";
 
 export async function* streamLLMEvents(
-  messageStreamEvents: AsyncIterable<MessageStreamEvent>,
+  messageStreamEvents: AsyncIterable<BetaRawMessageStreamEvent>,
   metadata: LLMClientMetadata
 ): AsyncGenerator<LLMEvent> {
   const stateContainer = { state: null };
+  // Aggregate output items to build a SuccessCompletionEvent at the end of a turn.
+  const aggregate = new SuccessAggregate();
 
   // There is an issue in Anthropic SDK showcasing that stream events get mutated after they are yielded.
   // https://github.com/anthropics/anthropic-sdk-typescript/issues/777
@@ -34,21 +38,42 @@ export async function* streamLLMEvents(
   // To work around this, we clone each event before processing it.
   for await (const mutableMessageStreamEvent of messageStreamEvents) {
     const messageStreamEvent = cloneDeep(mutableMessageStreamEvent);
-    yield* handleMessageStreamEvent(
+
+    for (const ev of handleMessageStreamEvent(
       messageStreamEvent,
       stateContainer,
       metadata
-    );
+    )) {
+      aggregate.add(ev);
+      yield ev;
+    }
   }
+
+  yield {
+    type: "success",
+    aggregated: aggregate.aggregated,
+    textGenerated: aggregate.textGenerated,
+    reasoningGenerated: aggregate.reasoningGenerated,
+    toolCalls: aggregate.toolCalls,
+    metadata,
+  };
 }
 
 function* handleMessageStreamEvent(
-  messageStreamEvent: MessageStreamEvent,
+  messageStreamEvent: BetaRawMessageStreamEvent,
   stateContainer: { state: StreamState },
   metadata: LLMClientMetadata
 ): Generator<LLMEvent> {
   switch (messageStreamEvent.type) {
     case "message_start":
+      yield {
+        type: "interaction_id",
+        content: {
+          modelInteractionId: messageStreamEvent.message.id,
+        },
+        metadata,
+      };
+      break;
     case "message_stop":
       // Nothing to do for now
       break;
@@ -56,7 +81,7 @@ function* handleMessageStreamEvent(
     /* Content is sent as follows:
      * content_block_start (gives the type of the content block and some metadata)
      * content_block_delta (streams content) (multiple times)
-     * content_block_stop (makrs the end of the content block)
+     * content_block_stop (marks the end of the content block)
      */
     case "content_block_start":
       handleContentBlockStart(messageStreamEvent, stateContainer);
@@ -84,7 +109,7 @@ function* handleMessageStreamEvent(
 }
 
 function handleContentBlockStart(
-  event: Extract<MessageStreamEvent, { type: "content_block_start" }>,
+  event: Extract<BetaRawMessageStreamEvent, { type: "content_block_start" }>,
   stateContainer: { state: StreamState }
 ): void {
   assert(
@@ -113,9 +138,19 @@ function handleContentBlockStart(
       };
       break;
     case "redacted_thinking":
+      // "Redacted thinking" provides no actionable information, as everything is encrypted
+      break;
     case "server_tool_use":
     case "web_search_tool_result":
-      // TODO(LLM-Router) Handle these block types if needed
+    case "web_fetch_tool_result":
+    case "code_execution_tool_result":
+    case "bash_code_execution_tool_result":
+    case "text_editor_code_execution_tool_result":
+    case "tool_search_tool_result":
+    case "mcp_tool_use":
+    case "mcp_tool_result":
+    case "container_upload":
+      // We don't use these Anthropic tools
       break;
     default:
       assertNever(blockType);
@@ -148,7 +183,7 @@ function* handleContentBlockDelta(
       }
       break;
     case "citations_delta":
-      // TODO(LLM-Router) Handle these delta types if needed
+      // We don't use Anthropic citations, as we have our own citations implementation
       break;
     default:
       assertNever(event.delta);
@@ -183,7 +218,7 @@ function* handleContentBlockStop(
 }
 
 function* handleMessageDelta(
-  event: Extract<MessageStreamEvent, { type: "message_delta" }>,
+  event: Extract<BetaRawMessageStreamEvent, { type: "message_delta" }>,
   metadata: LLMClientMetadata
 ): Generator<LLMEvent> {
   yield tokenUsage(event.usage, metadata);
@@ -208,11 +243,24 @@ function* handleStopReason(
       // Nothing to do for these stop reasons
       break;
     case "max_tokens":
-    case "refusal":
       yield new EventError(
         {
           type: "stop_error",
           message: `Stop reason: ${stopReason}`,
+          isRetryable: false,
+        },
+        metadata
+      );
+      break;
+
+    case "refusal":
+      yield new EventError(
+        {
+          type: "stop_error",
+          message:
+            "Claude enhanced safety filters prevented this response. This can happen with " +
+            "certain images, document IDs, or in longer conversations. Try starting a new " +
+            "conversation or changing the agent's model to GPT-5.",
           isRetryable: false,
         },
         metadata
@@ -275,14 +323,20 @@ function tokenUsage(
   usage: MessageDeltaUsage,
   metadata: LLMClientMetadata
 ): TokenUsageEvent {
+  const cachedTokens = usage.cache_read_input_tokens ?? 0;
+  const cacheCreationTokens = usage.cache_creation_input_tokens ?? 0;
+  // Include all input tokens to keep consistency with core implementation
+  const inputTokens =
+    (usage.input_tokens ?? 0) + cachedTokens + cacheCreationTokens;
+
   return {
     type: "token_usage",
     content: {
-      inputTokens: usage.input_tokens ?? 0,
+      inputTokens,
       outputTokens: usage.output_tokens,
-      cachedTokens: usage.cache_read_input_tokens ?? 0,
-      cacheCreationTokens: usage.cache_creation_input_tokens ?? 0,
-      totalTokens: (usage.input_tokens ?? 0) + usage.output_tokens,
+      cachedTokens,
+      cacheCreationTokens,
+      totalTokens: inputTokens + usage.output_tokens,
     },
     metadata,
   };
@@ -299,16 +353,12 @@ function toolCall({
   input: string;
   metadata: LLMClientMetadata;
 }): ToolCallEvent {
-  const args = safeParseJSON(input);
-  if (args.isErr()) {
-    throw new Error(`Failed to parse tool call arguments: ${args.error}`);
-  }
   return {
     type: "tool_call",
     content: {
       id: id,
       name: name,
-      arguments: JSON.stringify(args.value),
+      arguments: parseToolArguments(input, name),
     },
     metadata,
   };

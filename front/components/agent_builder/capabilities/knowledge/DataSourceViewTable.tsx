@@ -67,8 +67,8 @@ export function DataSourceViewTable({
             : null;
 
           const icon = provider
-            ? connectorProvider?.getLogoComponent(isDark) ??
-              CATEGORY_DETAILS[dsv.category].icon
+            ? (connectorProvider?.getLogoComponent(isDark) ??
+              CATEGORY_DETAILS[dsv.category].icon)
             : FolderIcon;
 
           return {

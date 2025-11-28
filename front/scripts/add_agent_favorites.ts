@@ -1,4 +1,4 @@
-import { AgentUserRelation } from "@app/lib/models/assistant/agent";
+import { AgentUserRelation } from "@app/lib/models/agent/agent";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";

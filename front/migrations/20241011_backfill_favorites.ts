@@ -1,7 +1,7 @@
 import _ from "lodash";
 import { Op } from "sequelize";
 
-import { AgentUserRelation } from "@app/lib/models/assistant/agent";
+import { AgentUserRelation } from "@app/lib/models/agent/agent";
 import { makeScript } from "@app/scripts/helpers";
 
 makeScript({}, async ({ execute }, logger) => {

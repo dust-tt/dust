@@ -1,3 +1,4 @@
+import { OAUTH_USE_CASE_TO_LABEL } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
 import {
   PokeTable,
   PokeTableBody,
@@ -50,6 +51,14 @@ export function ViewMCPServerViewTable({
                 <PokeTableHead>Server Description</PokeTableHead>
                 <PokeTableCell>
                   {getMcpServerViewDescription(mcpServerView)}
+                </PokeTableCell>
+              </PokeTableRow>
+              <PokeTableRow>
+                <PokeTableHead>Credentials Type</PokeTableHead>
+                <PokeTableCell>
+                  {mcpServerView.oAuthUseCase
+                    ? `${OAUTH_USE_CASE_TO_LABEL[mcpServerView.oAuthUseCase]} credentials`
+                    : "Not configured"}
                 </PokeTableCell>
               </PokeTableRow>
               <PokeTableRow>

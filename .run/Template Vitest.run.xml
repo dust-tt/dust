@@ -1,0 +1,14 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="true" type="JavaScriptTestRunnerVitest">
+    <config value="$PROJECT_DIR$/front/vite.config.mjs" />
+    <node-interpreter value="project" />
+    <envs>
+      <env name="VITEST_DEBUG" value="1" />
+      <env name="CONNECTORS_DATABASE_URI" value="postgres://dev:dev@localhost:5432/dust_front_test" />
+      <env name="FRONT_DATABASE_URI" value="postgres://dev:dev@localhost:5432/dust_front_test" />
+      <env name="NODE_ENV" value="test" />
+    </envs>
+    <scope-kind value="ALL" />
+    <method v="2" />
+  </configuration>
+</component>

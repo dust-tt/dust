@@ -25,7 +25,19 @@ const iconButtonVariants = cva(
           "active:s-text-warning-600 dark:active:s-text-warning-600-night",
           "s-text-primary-500 dark:s-text-primary-500-night"
         ),
+        "warning-secondary": cn(
+          "s-text-warning-500 dark:s-text-warning-500-night",
+          "hover:s-text-warning-400 dark:hover:s-text-warning-500-night",
+          "active:s-text-warning-600 dark:active:s-text-warning-600-night",
+          "s-text-primary-500 dark:s-text-primary-500-night"
+        ),
         highlight: cn(
+          "s-text-foreground dark:s-text-foreground-night",
+          "hover:s-text-highlight-400 dark:hover:s-text-highlight-500-night",
+          "active:s-text-highlight-600 dark:active:s-text-highlight-600-night",
+          "s-text-primary-500 dark:s-text-primary-500-night"
+        ),
+        "highlight-secondary": cn(
           "s-text-foreground dark:s-text-foreground-night",
           "hover:s-text-highlight-400 dark:hover:s-text-highlight-500-night",
           "active:s-text-highlight-600 dark:active:s-text-highlight-600-night",

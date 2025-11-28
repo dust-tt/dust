@@ -337,9 +337,15 @@ export async function getAllChannels(
   return getChannels(slackClient, connectorId, false);
 }
 
-async function _getJoinedChannelsUncached(
+async function _getTypedJoinedChannelsUncached(
   slackClient: WebClient,
-  connectorId: ModelId
+  {
+    connectorId,
+    types,
+  }: {
+    connectorId: ModelId;
+    types: "public_channel" | "private_channel";
+  }
 ): Promise<Channel[]> {
   const allChannels = [];
   let nextCursor: string | undefined = undefined;
@@ -354,7 +360,7 @@ async function _getJoinedChannelsUncached(
 
     const response = await withSlackErrorHandling(() =>
       slackClient.users.conversations({
-        types: "public_channel,private_channel",
+        types,
         exclude_archived: true,
         limit: 999, // Maximum allowed by Slack API
         cursor: nextCursor,
@@ -388,13 +394,32 @@ async function _getJoinedChannelsUncached(
     }
 
     for (const channel of response.channels) {
-      if (channel && channel.id) {
+      if (channel?.id) {
         allChannels.push(channel);
       }
     }
   } while (nextCursor);
 
   return allChannels;
+}
+
+async function _getJoinedChannelsUncached(
+  slackClient: WebClient,
+  connectorId: ModelId
+): Promise<Channel[]> {
+  return Promise.all([
+    _getTypedJoinedChannelsUncached(slackClient, {
+      connectorId,
+      types: "public_channel",
+    }),
+    _getTypedJoinedChannelsUncached(slackClient, {
+      connectorId,
+      types: "private_channel",
+    }),
+  ]).then(([publicChannels, privateChannels]) => [
+    ...publicChannels,
+    ...privateChannels,
+  ]);
 }
 
 async function _getChannelsUncached(

@@ -48,37 +48,37 @@ const avatarVariants = cva(
       {
         rounded: false,
         size: "xs",
-        className: "s-rounded-lg",
+        className: "s-rounded-md",
       },
       {
         rounded: false,
         size: "sm",
-        className: "s-rounded-xl",
+        className: "s-rounded-lg",
       },
       {
         rounded: false,
         size: "md",
-        className: "s-rounded-2xl",
+        className: "s-rounded-xl",
       },
       {
         rounded: false,
         size: "lg",
-        className: "s-rounded-3xl",
+        className: "s-rounded-2xl",
       },
       {
         rounded: false,
         size: "xl",
-        className: "s-rounded-[28px]",
+        className: "s-rounded-[22px]",
       },
       {
         rounded: false,
         size: "2xl",
-        className: "s-rounded-[38px]",
+        className: "s-rounded-[32px]",
       },
       {
         rounded: false,
         size: "auto",
-        className: "s-rounded-[30%]",
+        className: "s-rounded-[24%]",
       },
     ],
     defaultVariants: {

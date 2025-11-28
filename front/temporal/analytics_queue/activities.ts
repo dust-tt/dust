@@ -1,29 +1,27 @@
-import assert from "assert";
-
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
 import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
 import { updateAnalyticsFeedback } from "@app/lib/analytics/feedback";
-import { calculateTokenUsageCost } from "@app/lib/api/assistant/token_pricing";
-import { ANALYTICS_ALIAS_NAME, getClient } from "@app/lib/api/elasticsearch";
+import { ANALYTICS_ALIAS_NAME, withEs } from "@app/lib/api/elasticsearch";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
+import { AgentMCPServerConfiguration } from "@app/lib/models/agent/actions/mcp";
+import type { AgentMessageFeedback } from "@app/lib/models/agent/conversation";
 import {
   AgentMessage,
+  ConversationModel,
   Message,
   UserMessage,
-} from "@app/lib/models/assistant/conversation";
+} from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import logger from "@app/logger/logger";
-import type { AgentMessageType } from "@app/types";
-import { normalizeError } from "@app/types";
+import type { UserMessageOrigin } from "@app/types";
 import type {
   AgentLoopArgs,
   AgentMessageRef,
 } from "@app/types/assistant/agent_run";
-import { getAgentLoopData } from "@app/types/assistant/agent_run";
 import type {
   AgentMessageAnalyticsData,
   AgentMessageAnalyticsFeedback,
@@ -42,66 +40,147 @@ export async function storeAgentAnalyticsActivity(
   const auth = await Authenticator.fromJSON(authType);
   const workspace = auth.getNonNullableWorkspace();
 
-  const runAgentDataRes = await getAgentLoopData(authType, agentLoopArgs);
-  if (runAgentDataRes.isErr()) {
-    throw runAgentDataRes.error;
+  const { agentMessageId, userMessageId } = agentLoopArgs;
+
+  // Query the Message/AgentMessage/Conversation rows.
+  const agentMessageRow = await Message.findOne({
+    where: {
+      sId: agentMessageId,
+      workspaceId: workspace.id,
+    },
+    include: [
+      {
+        model: ConversationModel,
+        as: "conversation",
+        required: true,
+      },
+      {
+        model: AgentMessage,
+        as: "agentMessage",
+        required: true,
+      },
+    ],
+  });
+
+  if (!agentMessageRow) {
+    throw new Error("Message not found");
   }
 
-  const {
-    agentConfiguration,
-    agentMessage,
-    conversation,
-    userMessage,
-    agentMessageRow,
-  } = runAgentDataRes.value;
+  const { agentMessage: agentAgentMessageRow, conversation: conversationRow } =
+    agentMessageRow;
 
+  if (!agentAgentMessageRow || !conversationRow) {
+    throw new Error("Agent message or conversation not found");
+  }
+
+  // Query the UserMessage row to get user.
+  const userMessageRow = await Message.findOne({
+    where: {
+      sId: userMessageId,
+      workspaceId: workspace.id,
+    },
+    include: [
+      {
+        model: UserMessage,
+        as: "userMessage",
+        required: true,
+        include: [
+          {
+            model: UserModel,
+            as: "user",
+            required: false,
+          },
+        ],
+      },
+    ],
+  });
+
+  if (!userMessageRow) {
+    throw new Error("User message not found");
+  }
+
+  const { userMessage: userUserMessageRow } = userMessageRow;
+
+  if (!userUserMessageRow) {
+    throw new Error("User message not found");
+  }
+
+  await storeAgentAnalytics(auth, {
+    agentMessageRow,
+    agentAgentMessageRow,
+    userModel: userUserMessageRow.user ?? null,
+    conversationRow,
+    contextOrigin: userUserMessageRow.userContextOrigin,
+  });
+}
+
+/**
+ * Build and store the complete analytics document for an agent message.
+ */
+export async function storeAgentAnalytics(
+  auth: Authenticator,
+  params: {
+    agentMessageRow: Message;
+    agentAgentMessageRow: AgentMessage;
+    userModel: UserModel | null;
+    conversationRow: ConversationModel;
+    contextOrigin: UserMessageOrigin | null;
+  }
+): Promise<void> {
+  const {
+    agentMessageRow,
+    agentAgentMessageRow,
+    userModel,
+    conversationRow,
+    contextOrigin,
+  } = params;
   // Only index agent messages if there are no blocked actions awaiting approval.
-  const hasBlockedActions = await checkForBlockedActions(auth, agentMessage);
+  const actions = await AgentMCPActionResource.listByAgentMessageIds(auth, [
+    agentAgentMessageRow.id,
+  ]);
+
+  const hasBlockedActions = actions.some((action) =>
+    isToolExecutionStatusBlocked(action.status)
+  );
+
   if (hasBlockedActions) {
     return;
   }
 
   // Collect token usage from run data.
-  const tokens = await collectTokenUsage(auth, agentMessageRow);
+  const tokens = await collectTokenUsage(auth, agentAgentMessageRow);
 
   // Collect tool usage data from the agent message actions.
-  const toolsUsed = await collectToolUsageFromMessage(auth, agentMessage);
+  const toolsUsed = await collectToolUsageFromMessage(auth, actions);
+
+  // Collect feedback from the agent message.
+  const feedbacks = agentAgentMessageRow.feedbacks
+    ? getAgentMessageFeedbackAnalytics(agentAgentMessageRow.feedbacks)
+    : [];
+
+  const apiKey = auth.key();
 
   // Build the complete analytics document.
   const document: AgentMessageAnalyticsData = {
-    agent_id: agentConfiguration.sId,
-    agent_version: agentConfiguration.version.toString(),
-    conversation_id: conversation.sId,
-    latency_ms: agentMessageRow.modelInteractionDurationMs ?? 0,
-    message_id: agentMessage.sId,
-    status: agentMessage.status,
-    // TODO(observability 21025-10-29): Use agentMessage.created timestamp to index documents
-    timestamp: new Date(userMessage.created).toISOString(),
+    agent_id: agentAgentMessageRow.agentConfigurationId,
+    agent_version: agentAgentMessageRow.agentConfigurationVersion.toString(),
+    conversation_id: conversationRow.sId,
+    context_origin: contextOrigin,
+    latency_ms: agentAgentMessageRow.modelInteractionDurationMs ?? 0,
+    message_id: agentMessageRow.sId,
+    status: agentAgentMessageRow.status,
+    timestamp: new Date(agentMessageRow.createdAt).toISOString(),
     tokens,
     tools_used: toolsUsed,
-    user_id: userMessage.user?.sId ?? "unknown",
-    workspace_id: workspace.sId,
-    feedbacks: [],
+    user_id: userModel?.sId ?? "unknown",
+    workspace_id: auth.getNonNullableWorkspace().sId,
+    feedbacks,
+    version: agentMessageRow.version.toString(),
+    auth_method: auth.authMethod(),
+    api_key_name: apiKey?.name,
   };
 
   await storeToElasticsearch(document);
-}
-
-/**
- * Check if the agent message has any blocked actions awaiting approval.
- */
-async function checkForBlockedActions(
-  auth: Authenticator,
-  agentMessage: AgentMessageType
-): Promise<boolean> {
-  const blockedActions = await AgentMCPActionResource.listByAgentMessageIds(
-    auth,
-    [agentMessage.agentMessageId]
-  );
-
-  return blockedActions.some((action) =>
-    isToolExecutionStatusBlocked(action.status)
-  );
 }
 
 /**
@@ -131,19 +210,19 @@ async function collectTokenUsage(
     { concurrency: 5 }
   );
 
+  const usageCostUsd = runUsages
+    .flat()
+    .reduce((acc, usage) => acc + usage.costUsd, 0);
+  const usageCostCents = usageCostUsd > 0 ? Math.ceil(usageCostUsd * 100) : 0;
+
   return runUsages.flat().reduce(
     (acc, usage) => {
-      const usageCostUsd = calculateTokenUsageCost([usage]);
-      // Use ceiling to ensure any non-zero cost is at least 1 cent.
-      const usageCostCents =
-        usageCostUsd > 0 ? Math.ceil(usageCostUsd * 100) : 0;
-
       return {
         prompt: acc.prompt + usage.promptTokens,
         completion: acc.completion + usage.completionTokens,
         reasoning: acc.reasoning, // No reasoning tokens in RunUsageType yet.
         cached: acc.cached + (usage.cachedTokens ?? 0),
-        cost_cents: acc.cost_cents + usageCostCents,
+        cost_cents: acc.cost_cents,
       };
     },
     {
@@ -151,7 +230,7 @@ async function collectTokenUsage(
       completion: 0,
       reasoning: 0,
       cached: 0,
-      cost_cents: 0,
+      cost_cents: usageCostCents,
     }
   );
 }
@@ -161,32 +240,53 @@ async function collectTokenUsage(
  */
 async function collectToolUsageFromMessage(
   auth: Authenticator,
-  agentMessage: AgentMessageType
+  actionResources: AgentMCPActionResource[]
 ): Promise<AgentMessageAnalyticsToolUsed[]> {
-  const res = await AgentMCPActionResource.listByAgentMessageIds(auth, [
-    agentMessage.agentMessageId,
-  ]);
+  const workspaceId = auth.getNonNullableWorkspace().id;
+  const uniqueConfigIds = Array.from(
+    new Set(actionResources.map((a) => a.mcpServerConfigurationId))
+  );
 
-  return agentMessage.actions.map((action) => {
-    // Look up the corresponding action resource to get more details.
-    const actionResource = res.find(
-      (r) =>
-        r.agentMessageId === agentMessage.agentMessageId && r.id === action.id
-    );
+  const serverConfigs = await AgentMCPServerConfiguration.findAll({
+    where: {
+      workspaceId,
+      id: uniqueConfigIds,
+    },
+  });
 
-    assert(actionResource, "Action resource not found for action");
+  const configIdToSId = new Map<string, string>();
+  for (const cfg of serverConfigs) {
+    configIdToSId.set(cfg.id.toString(), cfg.sId);
+  }
 
+  return actionResources.map((actionResource) => {
     return {
-      step_index: action.step,
+      step_index: actionResource.stepContent.step,
       server_name:
-        action.internalMCPServerName ?? action.mcpServerId ?? "unknown",
+        actionResource.metadata.internalMCPServerName ??
+        actionResource.metadata.mcpServerId ??
+        "unknown",
       tool_name:
-        action.functionCallName.split(TOOL_NAME_SEPARATOR).pop() ??
-        action.functionCallName,
+        actionResource.functionCallName.split(TOOL_NAME_SEPARATOR).pop() ??
+        actionResource.functionCallName,
+      mcp_server_configuration_sid:
+        configIdToSId.get(actionResource.mcpServerConfigurationId) ?? undefined,
       execution_time_ms: actionResource.executionDurationMs,
-      status: action.status,
+      status: actionResource.status,
     };
   });
+}
+
+function makeAgentMessageAnalyticsDocumentId({
+  messageId,
+  version,
+  workspaceId,
+}: {
+  messageId: string;
+  version: string;
+  workspaceId: string;
+}): string {
+  return `${workspaceId}_${messageId}_${version}`;
 }
 
 /**
@@ -195,29 +295,32 @@ async function collectToolUsageFromMessage(
 async function storeToElasticsearch(
   document: AgentMessageAnalyticsData
 ): Promise<void> {
-  const esClient = await getClient();
+  const documentId = makeAgentMessageAnalyticsDocumentId({
+    messageId: document.message_id,
+    version: document.version,
+    workspaceId: document.workspace_id,
+  });
 
-  const documentId = `${document.workspace_id}_${document.message_id}_${document.timestamp}`;
-
-  try {
-    await esClient.index({
+  await withEs(async (client) => {
+    await client.index({
       index: ANALYTICS_ALIAS_NAME,
       id: documentId,
       body: document,
     });
-  } catch (error) {
-    logger.error(
-      {
-        documentId,
-        error: normalizeError(error),
-        index: ANALYTICS_ALIAS_NAME,
-        messageId: document.message_id,
-      },
-      "Failed to index document in Elasticsearch"
-    );
+  });
+}
 
-    throw error;
-  }
+function getAgentMessageFeedbackAnalytics(
+  agentMessageFeedbacks: AgentMessageFeedbackResource[] | AgentMessageFeedback[]
+): AgentMessageAnalyticsFeedback[] {
+  return agentMessageFeedbacks.map((agentMessageFeedback) => ({
+    feedback_id: agentMessageFeedback.id,
+    user_id: agentMessageFeedback.user?.sId ?? "unknown",
+    thumb_direction: agentMessageFeedback.thumbDirection,
+    dismissed: agentMessageFeedback.dismissed,
+    is_conversation_shared: agentMessageFeedback.isConversationShared,
+    created_at: agentMessageFeedback.createdAt.toISOString(),
+  }));
 }
 
 export async function storeAgentMessageFeedbackActivity(
@@ -256,48 +359,20 @@ export async function storeAgentMessageFeedbackActivity(
 
   const agentMessageModel = agentMessageRow.agentMessage;
 
-  const userMessageRow = await Message.findOne({
-    where: {
-      id: agentMessageRow.parentId,
-      conversationId: agentMessageRow.conversationId,
-      workspaceId: workspace.id,
-    },
-    include: [
-      {
-        model: UserMessage,
-        as: "userMessage",
-        required: true,
-      },
-    ],
-  });
-
-  if (!userMessageRow?.userMessage) {
-    throw new Error(
-      `User message not found for agent message: ${message.agentMessageId}`
-    );
-  }
-
   const agentMessageFeedbacks =
     await AgentMessageFeedbackResource.listByAgentMessageModelId(
       auth,
       agentMessageModel.id
     );
 
-  const allFeedbacks: AgentMessageAnalyticsFeedback[] =
-    agentMessageFeedbacks.map((agentMessageFeedback) => ({
-      feedback_id: agentMessageFeedback.id,
-      user_id: agentMessageFeedback.user?.sId ?? "unknown",
-      thumb_direction: agentMessageFeedback.thumbDirection,
-      dismissed: agentMessageFeedback.dismissed,
-      is_conversation_shared: agentMessageFeedback.isConversationShared,
-      created_at: agentMessageFeedback.createdAt.toISOString(),
-    }));
-
-  await updateAnalyticsFeedback(auth, {
-    message: {
-      sId: agentMessageRow.sId,
+  await updateAnalyticsFeedback(
+    {
+      documentId: makeAgentMessageAnalyticsDocumentId({
+        messageId: message.agentMessageId,
+        version: agentMessageRow.version.toString(),
+        workspaceId: workspace.sId,
+      }),
     },
-    createdTimestamp: userMessageRow.createdAt.getTime(),
-    feedbacks: allFeedbacks,
-  });
+    getAgentMessageFeedbackAnalytics(agentMessageFeedbacks)
+  );
 }

@@ -7,7 +7,7 @@ import {
 import {
   buildInitialActions,
   getAccessibleSourcesAndAppsForActions,
-} from "@app/components/assistant_builder/server_side_props_helpers";
+} from "@app/lib/agent_builder/server_side_props_helpers";
 import { AgentYAMLConverter } from "@app/lib/agent_yaml_converter/converter";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";

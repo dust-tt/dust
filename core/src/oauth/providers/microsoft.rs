@@ -31,6 +31,27 @@ impl MicrosoftConnectionProvider {
         MicrosoftConnectionProvider {}
     }
 
+    fn delegated_scopes(&self, connection: &Connection) -> String {
+        let metadata = connection.metadata();
+        let has_selected_sites = match metadata.get("selected_sites") {
+            Some(serde_json::Value::String(s)) => !s.trim().is_empty(),
+            Some(serde_json::Value::Array(arr)) => arr.iter().any(|value| match value {
+                serde_json::Value::String(s) => !s.trim().is_empty(),
+                serde_json::Value::Null => false,
+                _ => true,
+            }),
+            _ => false,
+        };
+
+        let mut scopes = vec!["User.Read"];
+        if !has_selected_sites {
+            scopes.push("Sites.Read.All");
+        }
+        scopes.push("Files.Read.All");
+
+        scopes.join(" ")
+    }
+
     fn handle_service_principal_credentials(
         &self,
         credential: &Credential,
@@ -101,7 +122,7 @@ impl Provider for MicrosoftConnectionProvider {
                     "client_secret": *OAUTH_MICROSOFT_CLIENT_SECRET,
                     "code": code,
                     "redirect_uri": redirect_uri,
-                    "scope": "User.Read Sites.Read.All Directory.Read.All Files.Read.All Team.ReadBasic.All ChannelSettings.Read.All ChannelMessage.Read.All",
+                    "scope": self.delegated_scopes(connection),
                 }),
             ),
         };
@@ -160,7 +181,7 @@ impl Provider for MicrosoftConnectionProvider {
                         "client_id": *OAUTH_MICROSOFT_CLIENT_ID,
                         "client_secret": *OAUTH_MICROSOFT_CLIENT_SECRET,
                         "refresh_token": refresh_token,
-                        "scope": "User.Read Sites.Read.All Directory.Read.All Files.Read.All Team.ReadBasic.All ChannelSettings.Read.All ChannelMessage.Read.All",
+                        "scope": self.delegated_scopes(connection),
                     }),
                 )
             }

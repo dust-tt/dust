@@ -7,7 +7,9 @@ import { cn } from "@sparkle/lib";
 const flexSeparatorVariants: Record<ButtonVariantType, string> = {
   primary: "s-bg-background/50 dark:s-text-background-night/50",
   highlight: "s-bg-background/50 dark:s-text-background-night/50",
+  "highlight-secondary": "s-bg-separator dark:s-bg-separator-night",
   warning: "s-bg-background/50 dark:s-text-background-night/50",
+  "warning-secondary": "s-bg-separator dark:s-bg-separator-night",
   outline: "s-bg-separator dark:s-bg-separator-night",
   ghost: "s-bg-separator dark:s-bg-separator-night",
   "ghost-secondary": "s-bg-separator dark:s-bg-separator-night",

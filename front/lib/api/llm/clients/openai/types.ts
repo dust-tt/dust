@@ -1,78 +1,105 @@
-import flatMap from "lodash/flatMap";
+import type { ReasoningEffort as OpenAIReasoningEffort } from "openai/resources/shared";
 
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
-import type { ModelIdType } from "@app/types";
-import { O3_MODEL_ID } from "@app/types";
+import type { ModelIdType, ReasoningEffort } from "@app/types";
+import {
+  GPT_3_5_TURBO_MODEL_ID,
+  GPT_4_1_MINI_MODEL_ID,
+  GPT_4_1_MODEL_ID,
+  GPT_4_TURBO_MODEL_ID,
+  GPT_4O_20240806_MODEL_ID,
+  GPT_4O_MINI_MODEL_ID,
+  GPT_4O_MODEL_ID,
+  GPT_5_1_MODEL_ID,
+  GPT_5_MINI_MODEL_ID,
+  GPT_5_MODEL_ID,
+  GPT_5_NANO_MODEL_ID,
+  O1_MODEL_ID,
+  O3_MINI_MODEL_ID,
+  O3_MODEL_ID,
+  O4_MINI_MODEL_ID,
+} from "@app/types";
 
-export const OPENAI_MODEL_FAMILIES = [
-  "o3",
-  "non-reasoning",
-  "reasoning",
+export const OPENAI_PROVIDER_ID = "openai";
+
+export const OPENAI_WHITELISTED_MODEL_IDS = [
+  O1_MODEL_ID,
+  O3_MINI_MODEL_ID,
+  O3_MODEL_ID,
+  O4_MINI_MODEL_ID,
+  GPT_3_5_TURBO_MODEL_ID,
+  GPT_4_TURBO_MODEL_ID,
+  GPT_4O_MINI_MODEL_ID,
+  GPT_4O_MODEL_ID,
+  GPT_4O_20240806_MODEL_ID,
+  GPT_4_1_MINI_MODEL_ID,
+  GPT_4_1_MODEL_ID,
+  GPT_5_NANO_MODEL_ID,
+  GPT_5_MINI_MODEL_ID,
+  GPT_5_MODEL_ID,
+  GPT_5_1_MODEL_ID,
 ] as const;
-export type OpenAIModelFamily = (typeof OPENAI_MODEL_FAMILIES)[number];
+export type OpenAIWhitelistedModelId =
+  (typeof OPENAI_WHITELISTED_MODEL_IDS)[number];
 
-export const OPENAI_MODEL_FAMILY_CONFIGS: Record<
-  OpenAIModelFamily,
+const NON_THINKING_OVERWRITES: Partial<LLMParameters> = {
+  reasoningEffort: null,
+};
+const THINKING_OVERWRITES: Partial<LLMParameters> = {
+  temperature: null,
+};
+
+export const OPENAI_MODEL_CONFIGS: Record<
+  OpenAIWhitelistedModelId,
   {
-    modelIds: ModelIdType[];
-    overwrites: Partial<LLMParameters>;
+    overwrites: Omit<LLMParameters, "modelId">;
+    reasoningConfigMapping?: Partial<
+      Record<ReasoningEffort, OpenAIReasoningEffort>
+    >;
   }
 > = {
-  o3: {
-    modelIds: [O3_MODEL_ID],
-    overwrites: { temperature: null },
+  [O1_MODEL_ID]: { overwrites: THINKING_OVERWRITES },
+  [O3_MINI_MODEL_ID]: { overwrites: THINKING_OVERWRITES },
+  [O3_MODEL_ID]: { overwrites: THINKING_OVERWRITES },
+  [O4_MINI_MODEL_ID]: { overwrites: THINKING_OVERWRITES },
+  [GPT_3_5_TURBO_MODEL_ID]: { overwrites: NON_THINKING_OVERWRITES },
+  [GPT_4_TURBO_MODEL_ID]: { overwrites: NON_THINKING_OVERWRITES },
+  [GPT_4O_MINI_MODEL_ID]: { overwrites: NON_THINKING_OVERWRITES },
+  [GPT_4O_MODEL_ID]: { overwrites: NON_THINKING_OVERWRITES },
+  [GPT_4O_20240806_MODEL_ID]: { overwrites: NON_THINKING_OVERWRITES },
+  [GPT_4_1_MINI_MODEL_ID]: { overwrites: NON_THINKING_OVERWRITES },
+  [GPT_4_1_MODEL_ID]: { overwrites: NON_THINKING_OVERWRITES },
+  [GPT_5_NANO_MODEL_ID]: {
+    overwrites: THINKING_OVERWRITES,
+    reasoningConfigMapping: { none: "minimal" },
   },
-  reasoning: {
-    modelIds: [],
-    overwrites: { temperature: null },
+  [GPT_5_MINI_MODEL_ID]: {
+    overwrites: THINKING_OVERWRITES,
+    reasoningConfigMapping: { none: "minimal" },
   },
-  "non-reasoning": {
-    modelIds: [],
-    overwrites: { reasoningEffort: null },
+  [GPT_5_MODEL_ID]: {
+    overwrites: THINKING_OVERWRITES,
+    reasoningConfigMapping: { none: "minimal" },
   },
-} as const;
-
-export type OpenAIWhitelistedModelId = {
-  [K in OpenAIModelFamily]: (typeof OPENAI_MODEL_FAMILY_CONFIGS)[K]["modelIds"][number];
-}[OpenAIModelFamily];
-export const OPENAI_WHITELISTED_MODEL_IDS = flatMap<OpenAIWhitelistedModelId>(
-  Object.values(OPENAI_MODEL_FAMILY_CONFIGS).map((config) => config.modelIds)
-);
-
-export function isOpenAIResponsesWhitelistedModelId(
-  modelId: ModelIdType
-): modelId is OpenAIWhitelistedModelId {
-  return new Set<string>(OPENAI_WHITELISTED_MODEL_IDS).has(modelId);
-}
-
-export function getOpenAIModelFamilyFromModelId(
-  modelId: OpenAIWhitelistedModelId
-): OpenAIModelFamily {
-  const family = OPENAI_MODEL_FAMILIES.find((family) =>
-    OPENAI_MODEL_FAMILY_CONFIGS[family].modelIds.includes(modelId)
-  );
-  if (!family) {
-    throw new Error(
-      `Model ID ${modelId} does not belong to any OpenAI model family`
-    );
-  }
-  return family;
-}
+  [GPT_5_1_MODEL_ID]: { overwrites: THINKING_OVERWRITES },
+};
 
 export function overwriteLLMParameters(
-  llMParameters: LLMParameters & {
+  llmParameters: LLMParameters & {
     modelId: OpenAIWhitelistedModelId;
   }
 ): LLMParameters & { modelId: OpenAIWhitelistedModelId } & {
-  clientId: "openai";
+  clientId: typeof OPENAI_PROVIDER_ID;
 } {
-  const config = Object.values(OPENAI_MODEL_FAMILY_CONFIGS).find((config) =>
-    new Set<string>(config.modelIds).has(llMParameters.modelId)
-  );
-
   return {
-    ...llMParameters,
-    ...config?.overwrites,
-    clientId: "openai" as const,
+    ...llmParameters,
+    ...OPENAI_MODEL_CONFIGS[llmParameters.modelId].overwrites,
+    clientId: OPENAI_PROVIDER_ID,
   };
 }
+
+export const isOpenAIResponsesWhitelistedModelId = (
+  modelId: ModelIdType
+): modelId is OpenAIWhitelistedModelId => {
+  return (OPENAI_WHITELISTED_MODEL_IDS as readonly string[]).includes(modelId);
+};

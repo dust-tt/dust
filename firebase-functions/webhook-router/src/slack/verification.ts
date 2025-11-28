@@ -3,6 +3,7 @@ import type { Request, RequestHandler } from "express";
 import rawBody from "raw-body";
 
 import type { SecretManager } from "../secrets.js";
+import type { WebhookRouterConfigManager } from "../webhook-router-config.js";
 
 class ReceiverAuthenticityError extends Error {
   constructor(message: string) {
@@ -18,13 +19,13 @@ function verifyRequestSignature({
   signingSecret,
 }: {
   body: string;
-  requestTimestamp: string | undefined;
-  signature: string | undefined;
+  requestTimestamp: string | string[] | undefined;
+  signature: string | string[] | undefined;
   signingSecret: string;
 }): void {
-  if (signature === undefined || requestTimestamp === undefined) {
+  if (typeof signature !== "string" || typeof requestTimestamp !== "string") {
     throw new ReceiverAuthenticityError(
-      "Slack request signing verification failed. Some headers are missing."
+      "Slack request signing verification failed. Some headers are invalid."
     );
   }
 
@@ -76,48 +77,66 @@ async function parseExpressRequestRawBody(req: Request): Promise<string> {
   return (await rawBody(req)).toString();
 }
 
-// Creates middleware that verifies both webhook secret and Slack signature.
+function isUrlVerification(body: any): boolean {
+  return (
+    body !== null &&
+    typeof body === "object" &&
+    body.type === "url_verification" &&
+    "challenge" in body
+  );
+}
+
 export function createSlackVerificationMiddleware(
-  secretManager: SecretManager
+  secretManager: SecretManager,
+  webhookRouterConfigManager: WebhookRouterConfigManager,
+  { useClientCredentials }: { useClientCredentials: boolean }
 ): RequestHandler {
   return async (req, res, next): Promise<void> => {
     try {
-      // Get secrets for Slack signature verification (webhook secret already validated)
-      const secrets = await secretManager.getSecrets();
+      if (isUrlVerification(req.body)) {
+        console.log("Handling URL verification challenge", {
+          component: "slack-verification",
+          endpoint: req.path,
+        });
+        res.status(200).json({ challenge: req.body.challenge });
+        return;
+      }
 
-      // Get the raw body for Slack signature verification.
-      const stringBody = await parseExpressRequestRawBody(req);
+      const rawBody = await parseExpressRequestRawBody(req);
 
-      // Verify Slack signature.
-      const {
-        "x-slack-signature": signature,
-        "x-slack-request-timestamp": requestTimestamp,
-      } = req.headers;
+      // Functions-framework parses body as json by default, keep raw for interactions.
+      if (req.headers["content-type"] === "application/x-www-form-urlencoded") {
+        req.body = rawBody;
+      }
 
-      if (
-        typeof signature !== "string" ||
-        typeof requestTimestamp !== "string"
-      ) {
-        throw new ReceiverAuthenticityError(
-          "Slack request signing verification failed. Some headers are invalid."
+      let signingSecret: string;
+
+      if (useClientCredentials) {
+        const teamId = req.body.team_id;
+        if (!teamId) {
+          throw new ReceiverAuthenticityError(
+            "Slack request signing verification failed. Some data in the payload is invalid."
+          );
+        }
+
+        const slackWebhookConfig = await webhookRouterConfigManager.getEntry(
+          "slack",
+          teamId
         );
+        // Set the regions for the forwarder
+        req.regions = slackWebhookConfig.regions;
+        signingSecret = slackWebhookConfig.signing_secret;
+      } else {
+        const secrets = await secretManager.getSecrets();
+        signingSecret = secrets.slackSigningSecret;
       }
 
       verifyRequestSignature({
-        body: stringBody,
-        requestTimestamp,
-        signature,
-        signingSecret: secrets.slackSigningSecret,
+        body: rawBody,
+        requestTimestamp: req.headers["x-slack-request-timestamp"],
+        signature: req.headers["x-slack-signature"],
+        signingSecret,
       });
-
-      // For form-encoded (interactions), keep raw string to preserve payload field.
-      // For JSON (events), parse it so routes can access the object.
-      const contentType = req.headers["content-type"];
-      if (contentType === "application/x-www-form-urlencoded") {
-        req.body = stringBody; // Keep raw for interactions.
-      } else {
-        req.body = JSON.parse(stringBody); // Parse for events.
-      }
 
       return next();
     } catch (error) {

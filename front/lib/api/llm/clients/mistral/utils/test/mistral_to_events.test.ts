@@ -148,6 +148,11 @@ const metadata = {
 
 const finishStopLLMEvents = [
   {
+    type: "interaction_id",
+    content: { modelInteractionId: "25b708fd990f4a3b8d6fc7166e4b8db2" },
+    metadata,
+  },
+  {
     type: "text_delta",
     content: {
       delta: "Hello, ",
@@ -177,9 +182,36 @@ const finishStopLLMEvents = [
     },
     metadata,
   },
+  {
+    type: "success",
+    aggregated: [
+      {
+        type: "text_generated",
+        content: {
+          text: "Hello, how are you ?",
+        },
+        metadata,
+      },
+    ],
+    textGenerated: {
+      type: "text_generated",
+      content: {
+        text: "Hello, how are you ?",
+      },
+      metadata,
+    },
+    reasoningGenerated: undefined,
+    toolCalls: undefined,
+    metadata,
+  },
 ];
 
 const finishToolCallLLMEvents = [
+  {
+    type: "interaction_id",
+    content: { modelInteractionId: "c02315a0f93e47ba87c64fe6479c219c" },
+    metadata,
+  },
   {
     type: "text_delta",
     content: {
@@ -199,7 +231,7 @@ const finishToolCallLLMEvents = [
     content: {
       id: "DdHr7L197",
       name: "web_search_browse__websearch",
-      arguments: '{"query": "Paris France weather forecast October 23 2025"}',
+      arguments: { query: "Paris France weather forecast October 23 2025" },
     },
     metadata,
   },
@@ -210,6 +242,47 @@ const finishToolCallLLMEvents = [
       outputTokens: 128,
       totalTokens: 1894,
     },
+    metadata,
+  },
+  {
+    type: "success",
+    aggregated: [
+      {
+        type: "text_generated",
+        content: {
+          text: "Hi !",
+        },
+        metadata,
+      },
+      {
+        type: "tool_call",
+        content: {
+          id: "DdHr7L197",
+          name: "web_search_browse__websearch",
+          arguments: { query: "Paris France weather forecast October 23 2025" },
+        },
+        metadata,
+      },
+    ],
+    textGenerated: {
+      type: "text_generated",
+      content: {
+        text: "Hi !",
+      },
+      metadata,
+    },
+    reasoningGenerated: undefined,
+    toolCalls: [
+      {
+        type: "tool_call",
+        content: {
+          id: "DdHr7L197",
+          name: "web_search_browse__websearch",
+          arguments: { query: "Paris France weather forecast October 23 2025" },
+        },
+        metadata,
+      },
+    ],
     metadata,
   },
 ];

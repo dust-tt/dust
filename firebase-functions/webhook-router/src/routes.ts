@@ -2,13 +2,21 @@ import express from "express";
 
 import { createTeamsRoutes } from "./microsoft/routes.js";
 import { createTeamsVerificationMiddleware } from "./microsoft/verification.js";
+import { createNotionRoutes } from "./notion/routes.js";
 import type { SecretManager } from "./secrets.js";
-import { createSlackRoutes } from "./slack/routes.js";
-import { createSlackVerificationMiddleware } from "./slack/verification.js";
+import {
+  createSlackBotRoutes,
+  createSlackDataSyncRoutes,
+} from "./slack/routes.js";
+import type { WebhookRouterConfigManager } from "./webhook-router-config.js";
 
 // Webhook secret validation middleware (shared by all platforms)
 function createWebhookSecretMiddleware(secretManager: SecretManager) {
-  return async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  return async (
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction
+  ) => {
     try {
       const { webhookSecret } = req.params;
       if (!webhookSecret) {
@@ -36,22 +44,47 @@ function createWebhookSecretMiddleware(secretManager: SecretManager) {
   };
 }
 
-export function createRoutes(secretManager: SecretManager) {
+export function createRoutes(
+  secretManager: SecretManager,
+  webhookRouterConfigManager: WebhookRouterConfigManager
+) {
   const router = express.Router();
 
   // Create shared webhook secret validation middleware
   const webhookSecretValidation = createWebhookSecretMiddleware(secretManager);
 
   // Create platform-specific verification middlewares (without webhook secret validation)
-  const slackVerification = createSlackVerificationMiddleware(secretManager);
   const teamsVerification = createTeamsVerificationMiddleware(secretManager);
 
   // Mount platform routes with webhook secret validation first
-  const slackRoutes = createSlackRoutes(secretManager, slackVerification);
-  router.use("/:webhookSecret/slack", webhookSecretValidation, slackRoutes);
+  const slackDataSyncRoutes = createSlackDataSyncRoutes(
+    secretManager,
+    webhookRouterConfigManager
+  );
+  router.use("/slack_data_sync", slackDataSyncRoutes);
+
+  const notionInternalIntegrationRoutes = createNotionRoutes(
+    secretManager,
+    webhookRouterConfigManager,
+    true
+  );
+  router.use("/notion/:providerWorkspaceId", notionInternalIntegrationRoutes);
+
+  const slackBotRoutes = createSlackBotRoutes(
+    secretManager,
+    webhookRouterConfigManager
+  );
+  router.use("/:webhookSecret/slack", webhookSecretValidation, slackBotRoutes);
 
   const teamsRoutes = createTeamsRoutes(secretManager, teamsVerification);
   router.use("/:webhookSecret/microsoft", webhookSecretValidation, teamsRoutes);
+
+  const notionRoutes = createNotionRoutes(
+    secretManager,
+    webhookRouterConfigManager,
+    false
+  );
+  router.use("/:webhookSecret/notion", webhookSecretValidation, notionRoutes);
 
   return router;
 }

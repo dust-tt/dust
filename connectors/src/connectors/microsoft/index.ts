@@ -1,6 +1,14 @@
 import type { ConnectorProvider, Result } from "@dust-tt/client";
-import { assertNever, Err, Ok } from "@dust-tt/client";
+import {
+  assertNever,
+  Err,
+  normalizeError,
+  Ok,
+  removeNulls,
+} from "@dust-tt/client";
 import { Client } from "@microsoft/microsoft-graph-client";
+import type { Site } from "@microsoft/microsoft-graph-types";
+import { decodeJwt } from "jose";
 
 import type {
   CreateConnectorErrorCode,
@@ -12,22 +20,18 @@ import {
   ConnectorManagerError,
 } from "@connectors/connectors/interface";
 import {
-  getChannelAsContentNode,
   getDriveAsContentNode,
   getFolderAsContentNode,
   getMicrosoftNodeAsContentNode,
   getSiteAsContentNode,
-  getTeamAsContentNode,
 } from "@connectors/connectors/microsoft/lib/content_nodes";
 import {
   clientApiGet,
   getAllPaginatedEntities,
-  getChannels,
   getDrives,
   getFilesAndFolders,
   getSites,
   getSubSites,
-  getTeams,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import type { MicrosoftNodeType } from "@connectors/connectors/microsoft/lib/types";
 import {
@@ -44,6 +48,7 @@ import {
   launchMicrosoftIncrementalSyncWorkflow,
 } from "@connectors/connectors/microsoft/temporal/client";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
+import type { SelectedSiteMetadata } from "@connectors/lib/models/microsoft";
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import { syncSucceeded } from "@connectors/lib/sync_status";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
@@ -60,6 +65,8 @@ import type {
   ContentNodesViewType,
   DataSourceConfig,
 } from "@connectors/types";
+import { concurrentExecutor } from "@connectors/types/shared/utils/async_utils";
+import { isString } from "@connectors/types/shared/utils/general";
 
 export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
   readonly provider: ConnectorProvider = "microsoft";
@@ -71,25 +78,40 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
   }): Promise<Result<string, ConnectorManagerError<CreateConnectorErrorCode>>> {
-    const client = await getMicrosoftClient(connectionId);
+    const { client, tenantId, connection } =
+      await getMicrosoftConnectionData(connectionId);
 
+    const { selected_sites } = connection.metadata || {};
+
+    let resolvedSites: ResolvedSelectedSite[] = [];
     try {
-      // Sanity checks - check connectivity and permissions. User should be able to access the sites and teams list.
-      await getSites(logger, client);
+      if (selected_sites && isString(selected_sites)) {
+        resolvedSites = await resolveSelectedSites({
+          client,
+          siteInputs: selected_sites,
+        });
+      } else {
+        // Sanity checks - check connectivity and permissions. User should be able to access the sites list.
+        await getSites(logger, client);
+      }
     } catch (err) {
-      logger.error(
-        {
-          err,
-        },
-        "Error creating Microsoft connector"
+      return new Err(
+        new ConnectorManagerError(
+          "INVALID_CONFIGURATION",
+          normalizeError(err).message
+        )
       );
-      throw new Error("Error creating Microsoft connector");
     }
 
     const microsoftConfigurationBlob = {
       pdfEnabled: false,
       csvEnabled: false,
       largeFilesEnabled: false,
+      tenantId: tenantId ?? null,
+      selectedSites:
+        resolvedSites.length > 0
+          ? mapResolvedSitesToMetadata(resolvedSites)
+          : null,
     };
 
     const connector = await ConnectorResource.makeNew(
@@ -125,40 +147,26 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
 
     // Check that we don't switch tenants
     if (connectionId) {
-      try {
-        const logger = getActivityLogger(connector);
-        const client = await getMicrosoftClient(connector.connectionId);
-        const currentOrg = await clientApiGet(logger, client, "/organization");
+      const config = await MicrosoftConfigurationResource.fetchByConnectorId(
+        connector.id
+      );
+      if (!config) {
+        throw new Error(`Connector configuration not found`);
+      }
+      const { tenantId: currentTenantId } = config;
+      const { tenantId: newTenantId } =
+        await getMicrosoftConnectionData(connectionId);
 
-        const newClient = await getMicrosoftClient(connectionId);
-        const newOrg = await clientApiGet(logger, newClient, "/organization");
-
-        if (
-          !currentOrg?.value ||
-          !newOrg?.value ||
-          currentOrg.value.length === 0 ||
-          newOrg.value.length === 0
-        ) {
-          throw new Error(
-            "Error retrieving organization info to update connector"
-          );
-        }
-
-        if (currentOrg.value[0].id !== newOrg.value[0].id) {
-          return new Err(
-            new ConnectorManagerError(
-              "CONNECTOR_OAUTH_TARGET_MISMATCH",
-              "Cannot change domain of a Microsoft connector"
-            )
-          );
-        }
-      } catch (e) {
-        logger.error(
-          {
-            error: e,
-          },
-          "Error checking Microsoft organization - lets update the connector regardless"
+      if (currentTenantId && newTenantId && currentTenantId !== newTenantId) {
+        return new Err(
+          new ConnectorManagerError(
+            "CONNECTOR_OAUTH_TARGET_MISMATCH",
+            "Cannot change domain of a Microsoft connector"
+          )
         );
+      } else if (!currentTenantId && newTenantId) {
+        // Tenant ID was not set, update it
+        await config.update({ tenantId: newTenantId });
       }
 
       await connector.update({ connectionId });
@@ -261,9 +269,6 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       await MicrosoftRootResource.listRootsByConnectorId(connector.id)
     ).map((r) => r.internalId);
 
-    // at the time, we only sync sharepoint sites and drives, not team channels
-    // work on teams has been started here and in graph_api.ts but is not yet
-    // user facing
     if (!parentInternalId) {
       parentInternalId = internalIdFromTypeAndPath({
         nodeType: "sites-root",
@@ -276,26 +281,28 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     try {
       switch (nodeType) {
         case "sites-root": {
-          const sites = await getAllPaginatedEntities((nextLink) =>
-            getSites(logger, client, nextLink)
-          );
-          nodes.push(...sites.map((n) => getSiteAsContentNode(n)));
-          break;
-        }
-        case "teams-root": {
-          const teams = await getAllPaginatedEntities((nextLink) =>
-            getTeams(logger, client, nextLink)
-          );
-          nodes.push(...teams.map((n) => getTeamAsContentNode(n)));
-          break;
-        }
-        case "team": {
-          const channels = await getAllPaginatedEntities((nextLink) =>
-            getChannels(logger, client, parentInternalId, nextLink)
-          );
-          nodes.push(
-            ...channels.map((n) => getChannelAsContentNode(n, parentInternalId))
-          );
+          const config =
+            await MicrosoftConfigurationResource.fetchByConnectorId(
+              connector.id
+            );
+          if (!config) {
+            throw new Error(
+              `Connector configuration not found for ${connector.id}`
+            );
+          }
+
+          if (config.selectedSites) {
+            nodes.push(
+              ...config.selectedSites.map((site) =>
+                siteMetadataToContentNode(site)
+              )
+            );
+          } else {
+            const sites = await getAllPaginatedEntities((nextLink) =>
+              getSites(logger, client, nextLink)
+            );
+            nodes.push(...sites.map((n) => getSiteAsContentNode(n)));
+          }
           break;
         }
         case "site": {
@@ -322,7 +329,6 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
           );
           break;
         }
-        case "channel":
         case "file":
         case "page":
         case "message":
@@ -396,6 +402,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
         permissions[internalId] === "none" &&
         existing.some((e) => e.internalId === internalId)
     );
+
     if (nodeIdsToDelete.length > 0) {
       await MicrosoftRootResource.batchDelete({
         resourceIds: nodeIdsToDelete,
@@ -604,17 +611,27 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
   }
 }
 
-export async function getMicrosoftClient(connectionId: string) {
-  const { access_token: accessToken } =
-    await getOAuthConnectionAccessTokenWithThrow({
-      logger,
-      provider: "microsoft",
-      connectionId,
-    });
-
-  return Client.init({
-    authProvider: (done) => done(null, accessToken),
+export async function getMicrosoftConnectionData(connectionId: string) {
+  const tokenData = await getOAuthConnectionAccessTokenWithThrow({
+    logger,
+    provider: "microsoft",
+    connectionId,
   });
+
+  const client = Client.init({
+    authProvider: (done) => done(null, tokenData.access_token),
+  });
+
+  return {
+    client,
+    tenantId: extractTenantIdFromAccessToken(tokenData.access_token),
+    connection: tokenData.connection,
+  };
+}
+
+export async function getMicrosoftClient(connectionId: string) {
+  const { client } = await getMicrosoftConnectionData(connectionId);
+  return client;
 }
 
 export async function retrieveChildrenNodes(
@@ -631,4 +648,125 @@ export async function retrieveChildrenNodes(
       getMicrosoftNodeAsContentNode(node, expandWorksheet)
     )
   );
+}
+
+type ResolvedSelectedSite = {
+  site: Site;
+  internalId: string;
+};
+
+async function resolveSelectedSites({
+  client,
+  siteInputs,
+}: {
+  client: Client;
+  siteInputs: string;
+}): Promise<ResolvedSelectedSite[]> {
+  const siteInputsArray = siteInputs
+    .split(/\r?\n/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+
+  const seenInternalIds = new Set<string>();
+
+  const resolvedSites = await concurrentExecutor(
+    siteInputsArray,
+    async (rawInput) => {
+      const input = rawInput.trim();
+      if (!input) {
+        return null;
+      }
+
+      const resolved = await fetchSiteForIdentifier(client, input);
+
+      if (seenInternalIds.has(resolved.internalId)) {
+        return null;
+      }
+
+      seenInternalIds.add(resolved.internalId);
+      return resolved;
+    },
+    {
+      concurrency: 5,
+    }
+  );
+
+  return removeNulls(resolvedSites);
+}
+
+async function fetchSiteForIdentifier(
+  client: Client,
+  identifier: string
+): Promise<ResolvedSelectedSite> {
+  // Validate identifier to prevent path traversal and API endpoint injection
+  if (!identifier || identifier.includes("..") || identifier.includes("//")) {
+    throw new Error("Invalid site identifier: path traversal detected");
+  }
+
+  // Allow valid SharePoint site identifier formats:
+  // - hostname.sharepoint.com:/sites/sitename
+  // - hostname.sharepoint.com,{guid},{guid}
+  // - alphanumeric site IDs
+  const validIdentifierPattern = /^[a-zA-Z0-9,._:/-]+$/;
+  if (!validIdentifierPattern.test(identifier)) {
+    throw new Error("Invalid site identifier format");
+  }
+
+  const endpoint = `/sites/${identifier}`;
+
+  const site = await clientApiGet(logger, client, endpoint);
+  if (!site?.id) {
+    throw new Error("Invalid site identifier: site not found");
+  }
+
+  const internalId = internalIdFromTypeAndPath({
+    nodeType: "site",
+    itemAPIPath: `/sites/${site.id}`,
+  });
+
+  return { site, internalId };
+}
+
+function mapResolvedSitesToMetadata(
+  resolvedSites: ResolvedSelectedSite[]
+): SelectedSiteMetadata[] {
+  return resolvedSites.map(({ site, internalId }) => ({
+    siteId: site.id ?? internalId,
+    internalId,
+    displayName: site.displayName ?? site.name ?? null,
+    webUrl: site.webUrl ?? null,
+  }));
+}
+
+function siteMetadataToContentNode(
+  siteMetadata: SelectedSiteMetadata
+): ContentNode {
+  return getSiteAsContentNode({
+    id: siteMetadata.siteId,
+    displayName: siteMetadata.displayName ?? undefined,
+    name: siteMetadata.displayName ?? undefined,
+    webUrl: siteMetadata.webUrl ?? undefined,
+  });
+}
+
+export function extractTenantIdFromAccessToken(
+  accessToken: string | undefined
+) {
+  if (!accessToken) {
+    return undefined;
+  }
+
+  try {
+    const payload = decodeJwt(accessToken);
+    if (isString(payload.tid)) {
+      return payload.tid;
+    }
+  } catch (e) {
+    logger.error(
+      { error: e },
+      "Failed to extract tenant id from Microsoft access token"
+    );
+  }
+
+  return undefined;
 }

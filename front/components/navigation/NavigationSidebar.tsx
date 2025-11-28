@@ -39,7 +39,7 @@ interface NavigationSidebarProps {
   subNavigation?: SidebarNavigation[] | null;
   // TODO(2024-06-19 flav) Move subscription to a hook.
   subscription: SubscriptionType;
-  user: UserTypeWithWorkspaces | null;
+  user: (UserTypeWithWorkspaces & { subscriberHash?: string | null }) | null;
   isMobile?: boolean;
 }
 

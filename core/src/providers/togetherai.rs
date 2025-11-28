@@ -1,19 +1,17 @@
 use crate::providers::chat_messages::ChatMessage;
 use crate::providers::embedder::Embedder;
 use crate::providers::llm::ChatFunction;
+use crate::providers::llm::TokenizerSingleton;
 use crate::providers::llm::{LLMChatGeneration, LLMGeneration, LLM};
 use crate::providers::provider::{Provider, ProviderID};
-use crate::providers::tiktoken::tiktoken::{batch_tokenize_async, o200k_base_singleton, CoreBPE};
-use crate::providers::tiktoken::tiktoken::{decode_async, encode_async};
 use crate::run::Credentials;
+use crate::types::tokenizer::{TiktokenTokenizerBase, TokenizerConfig};
 use crate::utils;
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use hyper::Uri;
-use parking_lot::RwLock;
 use serde_json::Value;
-use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::helpers::strip_tools_from_chat_history;
@@ -33,21 +31,25 @@ const MODEL_IDS_WITH_TOOLS_SUPPORT: &[&str] = &[
 
 pub struct TogetherAILLM {
     id: String,
+    tokenizer: Option<TokenizerSingleton>,
     api_key: Option<String>,
 }
 
 impl TogetherAILLM {
-    pub fn new(id: String) -> Self {
-        TogetherAILLM { id, api_key: None }
+    pub fn new(id: String, tokenizer: Option<TokenizerSingleton>) -> Self {
+        TogetherAILLM {
+            id,
+            tokenizer: tokenizer.or_else(|| {
+                TokenizerSingleton::from_config(&TokenizerConfig::Tiktoken {
+                    base: TiktokenTokenizerBase::O200kBase,
+                })
+            }),
+            api_key: None,
+        }
     }
 
     fn chat_uri(&self) -> Result<Uri> {
         Ok(format!("https://api.together.xyz/v1/chat/completions",).parse::<Uri>()?)
-    }
-
-    fn tokenizer(&self) -> Arc<RwLock<CoreBPE>> {
-        // TODO(@fontanierh): TBD
-        o200k_base_singleton()
     }
 
     pub fn togetherai_context_size(_model_id: &str) -> usize {
@@ -86,15 +88,27 @@ impl LLM for TogetherAILLM {
     }
 
     async fn encode(&self, text: &str) -> Result<Vec<usize>> {
-        encode_async(self.tokenizer(), text).await
+        self.tokenizer
+            .as_ref()
+            .ok_or_else(|| anyhow!("Tokenizer not initialized"))?
+            .encode(text)
+            .await
     }
 
     async fn decode(&self, tokens: Vec<usize>) -> Result<String> {
-        decode_async(self.tokenizer(), tokens).await
+        self.tokenizer
+            .as_ref()
+            .ok_or_else(|| anyhow!("Tokenizer not initialized"))?
+            .decode(tokens)
+            .await
     }
 
     async fn tokenize(&self, texts: Vec<String>) -> Result<Vec<Vec<(usize, String)>>> {
-        batch_tokenize_async(self.tokenizer(), texts).await
+        self.tokenizer
+            .as_ref()
+            .ok_or_else(|| anyhow!("Tokenizer not initialized"))?
+            .tokenize(texts)
+            .await
     }
 
     async fn generate(
@@ -216,7 +230,13 @@ impl Provider for TogetherAIProvider {
             Err(anyhow!("User aborted OpenAI test."))?;
         }
 
-        let mut llm = self.llm(String::from("meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo"));
+        let tokenizer = TokenizerSingleton::from_config(&TokenizerConfig::Tiktoken {
+            base: TiktokenTokenizerBase::O200kBase,
+        });
+        let mut llm = self.llm(
+            String::from("meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo"),
+            tokenizer,
+        );
         llm.initialize(Credentials::new()).await?;
 
         let _ = llm
@@ -240,8 +260,8 @@ impl Provider for TogetherAIProvider {
         Ok(())
     }
 
-    fn llm(&self, id: String) -> Box<dyn LLM + Sync + Send> {
-        Box::new(TogetherAILLM::new(id))
+    fn llm(&self, id: String, tokenizer: Option<TokenizerSingleton>) -> Box<dyn LLM + Sync + Send> {
+        Box::new(TogetherAILLM::new(id, tokenizer))
     }
 
     fn embedder(&self, _id: String) -> Box<dyn Embedder + Sync + Send> {

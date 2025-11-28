@@ -2,12 +2,12 @@ import * as _ from "lodash";
 import { Op } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentConfiguration } from "@app/lib/models/agent/agent";
 import {
   AgentMessage,
   ConversationModel,
   Message,
-} from "@app/lib/models/assistant/conversation";
+} from "@app/lib/models/agent/conversation";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";

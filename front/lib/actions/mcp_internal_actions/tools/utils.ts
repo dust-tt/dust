@@ -13,8 +13,8 @@ import type {
   TableDataSourceConfiguration,
 } from "@app/lib/api/assistant/configuration/types";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
-import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
+import { AgentDataSourceConfiguration } from "@app/lib/models/agent/actions/data_sources";
+import { AgentTablesQueryConfigurationTable } from "@app/lib/models/agent/actions/tables_query";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
@@ -41,17 +41,21 @@ export type ResolvedDataSourceConfiguration = DataSourceConfiguration & {
   dataSourceView: DataSourceViewResource;
 };
 
-export function makeCoreSearchNodesFilters(
-  agentDataSourceConfigurations: ResolvedDataSourceConfiguration[],
-  additionalDynamicTags?: TagsInputType
-): CoreAPIDatasourceViewFilter[] {
+export function makeCoreSearchNodesFilters({
+  agentDataSourceConfigurations,
+  includeTagFilters = true,
+  additionalDynamicTags,
+}: {
+  agentDataSourceConfigurations: ResolvedDataSourceConfiguration[];
+  includeTagFilters?: boolean;
+  additionalDynamicTags?: TagsInputType;
+}): CoreAPIDatasourceViewFilter[] {
   return agentDataSourceConfigurations.map(
     ({ dataSource, dataSourceView, filter }) => ({
       data_source_id: dataSource.dustAPIDataSourceId,
       view_filter: dataSourceView.parentsIn ?? [],
       filter: filter.parents?.in ?? undefined,
-      // FIXME(ap): Remove additionalDynamicTags condition and add support in other file system tools.
-      ...(additionalDynamicTags
+      ...(includeTagFilters
         ? {
             tags: {
               in: [

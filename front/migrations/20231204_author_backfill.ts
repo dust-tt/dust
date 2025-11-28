@@ -1,4 +1,4 @@
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentConfiguration } from "@app/lib/models/agent/agent";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 

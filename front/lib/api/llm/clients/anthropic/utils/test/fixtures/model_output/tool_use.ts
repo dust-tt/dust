@@ -1,8 +1,8 @@
-import type { MessageStreamEvent } from "@anthropic-ai/sdk/resources/messages.mjs";
+import type { BetaRawMessageStreamEvent } from "@anthropic-ai/sdk/resources/beta.mjs";
 
 import { CLAUDE_4_SONNET_20250514_MODEL_ID } from "@app/types";
 
-export const toolUseModelEvents: MessageStreamEvent[] = [
+export const toolUseModelEvents: BetaRawMessageStreamEvent[] = [
   {
     type: "message_start",
     message: {
@@ -25,6 +25,8 @@ export const toolUseModelEvents: MessageStreamEvent[] = [
         service_tier: "standard",
         server_tool_use: null,
       },
+      container: null,
+      context_management: null,
     },
   },
   {
@@ -83,7 +85,9 @@ export const toolUseModelEvents: MessageStreamEvent[] = [
     delta: {
       stop_reason: "tool_use",
       stop_sequence: null,
+      container: null,
     },
+    context_management: null,
     usage: {
       input_tokens: 1766,
       cache_creation_input_tokens: 0,

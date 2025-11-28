@@ -1,18 +1,11 @@
-import {
-  ContentMessageAction,
-  ContentMessageInline,
-  InformationCircleIcon,
-  Page,
-} from "@dust-tt/sparkle";
+import { Page } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useState } from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { AgentBrowserContainer } from "@app/components/assistant/conversation/AgentBrowserContainer";
-import { useActionValidationContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
-import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
@@ -21,20 +14,18 @@ import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import type { DustError } from "@app/lib/error";
-import {
-  useConversationMessages,
-  useConversations,
-} from "@app/lib/swr/conversations";
+import { useConversations } from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type {
   ContentFragmentsType,
   Result,
+  RichMention,
   SubscriptionType,
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { conjugate, Err, Ok, pluralize } from "@app/types";
+import { Err, Ok, toMentionType } from "@app/types";
 
 interface ConversationContainerProps {
   owner: WorkspaceType;
@@ -53,9 +44,6 @@ export function ConversationContainerVirtuoso({
 
   const { setSelectedAgent } = useContext(InputBarContext);
 
-  const { hasBlockedActions, totalBlockedActions, showBlockedActionsDialog } =
-    useActionValidationContext();
-
   const router = useRouter();
 
   const sendNotification = useSendNotification();
@@ -67,18 +55,12 @@ export function ConversationContainerVirtuoso({
     },
   });
 
-  const { isMessagesError } = useConversationMessages({
-    conversationId: activeConversationId,
-    workspaceId: owner.sId,
-    limit: 50,
-  });
-
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleConversationCreation = useCallback(
     async (
       input: string,
-      mentions: EditorMention[],
+      mentions: RichMention[],
       contentFragments: ContentFragmentsType,
       selectedMCPServerViewIds?: string[]
     ): Promise<Result<undefined, DustError>> => {
@@ -97,9 +79,7 @@ export function ConversationContainerVirtuoso({
         user,
         messageData: {
           input,
-          mentions: mentions.map((mention) => ({
-            configurationId: mention.id,
-          })),
+          mentions: mentions.map(toMentionType),
           contentFragments,
           selectedMCPServerViewIds,
         },
@@ -158,56 +138,18 @@ export function ConversationContainerVirtuoso({
 
   const { startConversationRef } = useWelcomeTourGuide();
 
-  if (isMessagesError) {
-    return (
-      <div className="flex h-full w-full items-center justify-center">
-        <div className="flex flex-col gap-3 text-center">
-          <div>
-            <span className="text-4xl leading-10 text-foreground dark:text-foreground-night">
-              🚫
-            </span>
-            <p className="copy-sm leading-tight text-muted-foreground dark:text-muted-foreground-night">
-              You don't have access to this conversation.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   const body = (
     <DropzoneContainer
       description="Drag and drop your text files (txt, doc, pdf) and image files (jpg, png) here."
       title="Attach files to the conversation"
     >
       {activeConversationId ? (
-        <>
-          <ConversationViewer
-            owner={owner}
-            user={user}
-            conversationId={activeConversationId}
-            setPlanLimitReached={setPlanLimitReached}
-          />
-          {hasBlockedActions && (
-            <ContentMessageInline
-              icon={InformationCircleIcon}
-              variant="primary"
-              className="max-h-dvh mb-5 flex w-full sm:w-full sm:max-w-3xl"
-            >
-              <span className="font-bold">
-                {totalBlockedActions} action
-                {pluralize(totalBlockedActions)}
-              </span>{" "}
-              require{conjugate(totalBlockedActions)} manual approval
-              <ContentMessageAction
-                label="Review actions"
-                variant="outline"
-                size="xs"
-                onClick={() => showBlockedActionsDialog()}
-              />
-            </ContentMessageInline>
-          )}
-        </>
+        <ConversationViewer
+          owner={owner}
+          user={user}
+          conversationId={activeConversationId}
+          setPlanLimitReached={setPlanLimitReached}
+        />
       ) : (
         <>
           <div
@@ -228,7 +170,6 @@ export function ConversationContainerVirtuoso({
               owner={owner}
               onSubmit={handleConversationCreation}
               conversationId={null}
-              disable={false}
               disableAutoFocus={false}
             />
           </div>

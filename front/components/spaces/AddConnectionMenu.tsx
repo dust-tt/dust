@@ -30,7 +30,12 @@ import {
 } from "@app/lib/connector_providers";
 import { useSystemSpace } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import {
+  trackEvent,
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+  withTracking,
+} from "@app/lib/tracking";
 import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 import type {
   ConnectorProvider,
@@ -250,13 +255,37 @@ export const AddConnectionMenu = ({
           dataSource: DataSourceType;
           connector: ConnectorType;
         } = await res.json();
+        trackEvent({
+          area: TRACKING_AREAS.DATA_SOURCES,
+          object: "connection",
+          action: TRACKING_ACTIONS.CREATE,
+          extra: {
+            provider,
+            data_source_id: createdManagedDataSource.dataSource.sId,
+          },
+        });
         onCreated(createdManagedDataSource.dataSource);
+        // Track data source creation with ID
+        trackEvent({
+          area: TRACKING_AREAS.DATA_SOURCES,
+          object: "create",
+          action: "success",
+          extra: {
+            data_source_id: createdManagedDataSource.dataSource.sId,
+            provider: provider,
+          },
+        });
       } else {
-        const responseText = await res.text();
+        const error = await res.json();
+        const errorMessage =
+          error?.error?.connectors_error?.message ??
+          error?.error?.message ??
+          undefined;
+
         sendNotification({
           type: "error",
           title: `Failed to enable connection (${provider})`,
-          description: `Got: ${responseText}`,
+          description: errorMessage,
         });
       }
     } catch (e) {

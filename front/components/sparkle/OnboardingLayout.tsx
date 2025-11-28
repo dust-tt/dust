@@ -3,6 +3,7 @@ import Head from "next/head";
 import Script from "next/script";
 import React from "react";
 
+import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import { getFaviconPath } from "@app/lib/utils";
 import type { LightWorkspaceType } from "@app/types";
 
@@ -74,10 +75,12 @@ export default function OnboardingLayout({
         />
       </Head>
 
-      <Page>
-        <BarHeader title={headerTitle} rightActions={headerRightActions} />
-        {children}
-      </Page>
+      <ThemeProvider>
+        <Page>
+          <BarHeader title={headerTitle} rightActions={headerRightActions} />
+          {children}
+        </Page>
+      </ThemeProvider>
 
       <Script id="google-tag-manager" strategy="afterInteractive">
         {`

@@ -24,18 +24,20 @@ import {
 } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import type { Authenticator } from "@app/lib/auth";
-import { isIncludedInDefaultCompanyData } from "@app/lib/data_sources";
-import type { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
+import type { GlobalAgentSettings } from "@app/lib/models/agent/agent";
 import type { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { timeAgoFrom } from "@app/lib/utils";
 import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
-  WhitelistableFeature,
+  ModelConfigurationType,
+  ReasoningEffort,
 } from "@app/types";
 import {
+  CLAUDE_4_5_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
+  GEMINI_3_PRO_MODEL_CONFIG,
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
   GLOBAL_AGENTS_SID,
@@ -48,7 +50,11 @@ const INSTRUCTION_SECTIONS = {
 You are an AI agent created by Dust to answer questions using your internal knowledge, the public internet and the user's internal company data sources.
 </primary_goal>
 
-<general_guidelines>${globalAgentGuidelines}</general_guidelines>`,
+<general_guidelines>${globalAgentGuidelines}</general_guidelines>
+
+<critical_thinking_guidelines>
+Keep your thinking as short as possible.
+</critical_thinking_guidelines>`,
 
   simpleRequests: `<instructions>
 1. If the user's question requires information that is likely private or internal to the company
@@ -143,10 +149,19 @@ You can use the Data Warehouses tools to:
 In order to properly use the data warehouses, it is useful to also search through company data in case there is some documentation available about the tables, some additional semantic layer, or some code that may define how the tables are built in the first place.
 Tables are identified by ids in the format 'table-<dataSourceId>-<nodeId>'.
 The dataSourceId can typically be found by exploring the warehouse, each warehouse is identified by an id in the format 'warehouse-<dataSourceId>'.
+A dataSourceId typically starts with the prefix "dts_".
 </data_warehouses_guidelines>`,
 
   toolsets: (availableToolsets: MCPServerViewResource[]) => {
     const toolsetsList = availableToolsets
+      // Sort by display name to ensure consistent order for LLM cache optimization.
+      .sort((a, b) => {
+        const aView = a.toJSON();
+        const bView = b.toJSON();
+        return getMcpServerViewDisplayName(aView).localeCompare(
+          getMcpServerViewDisplayName(bView)
+        );
+      })
       .map((toolset) => {
         const mcpServerView = toolset.toJSON();
         const sId = mcpServerView.sId;
@@ -169,10 +184,12 @@ Never assume or reply that you cannot do something before checking if there's a 
 </toolsets_guidelines>`;
   },
 
-  help: `<dust_platform_help_guidelines>
-When the user asks questions specifically about how to use Dust, its features, capabilities, or needs help understanding Dust:
+  help: `<dust_platform_support_guidelines>
+Follow these guidelines when the user unambiguously asks support questions specifically about how to use Dust features, or needs help understanding Dust.
+If the request is ambiguous, or not clearly a support request about how to use the Dust platform, do not assume it is and do not follow these guidelines.
+The vast majority of the time, the user is not asking for help with Dust.
 
-1. Always perform web searches using site:dust.tt to find up-to-date information about Dust.
+1. Perform web searches using site:dust.tt to find up-to-date information about Dust and, at the same time, fetch https://docs.dust.tt/llms.txt to easily view the documentation site map.
 2. Provide clear, straightforward answers with accuracy and empathy.
 3. Use bullet points and steps to guide the user effectively.
 4. NEVER invent features or capabilities that Dust does not have.
@@ -189,7 +206,7 @@ Examples of help queries:
 - "How does Dust's memory feature work?"
 
 Remember: Always base your answers on the documentation. If you don't know the answer after searching, be honest about it.
-</dust_platform_help_guidelines>`,
+</dust_platform_support_guidelines>`,
 
   memory: (memories: AgentMemoryResource[]) => {
     const memoryList = memories.length
@@ -288,14 +305,13 @@ function buildInstructions({
   return parts.join("\n\n");
 }
 
-export function _getDustGlobalAgent(
+function _getDustLikeGlobalAgent(
   auth: Authenticator,
   {
     settings,
     preFetchedDataSources,
     agentRouterMCPServerView,
     webSearchBrowseMCPServerView,
-    searchMCPServerView,
     dataSourcesFileSystemMCPServerView,
     toolsetsMCPServerView,
     deepDiveMCPServerView,
@@ -305,13 +321,11 @@ export function _getDustGlobalAgent(
     agentMemoryMCPServerView,
     memories,
     availableToolsets,
-    featureFlags,
   }: {
     settings: GlobalAgentSettings | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     agentRouterMCPServerView: MCPServerViewResource | null;
     webSearchBrowseMCPServerView: MCPServerViewResource | null;
-    searchMCPServerView: MCPServerViewResource | null;
     dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
     toolsetsMCPServerView: MCPServerViewResource | null;
     deepDiveMCPServerView: MCPServerViewResource | null;
@@ -320,39 +334,59 @@ export function _getDustGlobalAgent(
     agentMemoryMCPServerView: MCPServerViewResource | null;
     memories: AgentMemoryResource[];
     availableToolsets: MCPServerViewResource[];
-    featureFlags: WhitelistableFeature[];
+  },
+  {
+    agentId,
+    name,
+    preferredModelConfiguration,
+    preferredReasoningEffort,
+  }: {
+    agentId: GLOBAL_AGENTS_SID;
+    name: string;
+    preferredModelConfiguration?: ModelConfigurationType | null;
+    preferredReasoningEffort?: ReasoningEffort;
   }
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
 
-  const name = "dust";
   const description = "An agent with context on your company data.";
   const pictureUrl = "https://dust.tt/static/systemavatar/dust_avatar_full.png";
+
+  let isPreferredModel = false;
 
   const modelConfiguration = (() => {
     if (!auth.isUpgraded()) {
       return getSmallWhitelistedModel(owner);
     }
 
-    if (isProviderWhitelisted(owner, "anthropic")) {
-      return CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG;
+    if (preferredModelConfiguration) {
+      if (
+        isProviderWhitelisted(owner, preferredModelConfiguration.providerId)
+      ) {
+        isPreferredModel = true;
+        return preferredModelConfiguration;
+      }
     }
 
     return getLargeWhitelistedModel(owner);
   })();
 
-  const model: AgentModelConfigurationType = modelConfiguration
-    ? {
-        providerId: modelConfiguration.providerId,
-        modelId: modelConfiguration.modelId,
-        temperature: 0.7,
-        reasoningEffort: modelConfiguration.defaultReasoningEffort,
-      }
-    : dummyModelConfiguration;
+  let model: AgentModelConfigurationType;
+  if (modelConfiguration) {
+    model = {
+      providerId: modelConfiguration.providerId,
+      modelId: modelConfiguration.modelId,
+      temperature: 0.7,
+      reasoningEffort:
+        isPreferredModel && preferredReasoningEffort
+          ? preferredReasoningEffort
+          : modelConfiguration.defaultReasoningEffort,
+    };
+  } else {
+    model = dummyModelConfiguration;
+  }
 
-  const hasFilesystemTools =
-    featureFlags.includes("dust_global_data_source_file_system") &&
-    dataSourcesFileSystemMCPServerView !== null;
+  const hasFilesystemTools = dataSourcesFileSystemMCPServerView !== null;
 
   const hasAgentMemory = agentMemoryMCPServerView !== null;
   const hasToolsets = toolsetsMCPServerView !== null;
@@ -383,7 +417,7 @@ export function _getDustGlobalAgent(
 
   const dustAgent = {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.DUST,
+    sId: agentId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
@@ -412,7 +446,7 @@ export function _getDustGlobalAgent(
       status: "disabled_by_admin",
       actions: [
         ..._getDefaultWebActionsForGlobalAgent({
-          agentId: GLOBAL_AGENTS_SID.DUST,
+          agentId,
           webSearchBrowseMCPServerView,
         }),
       ],
@@ -432,80 +466,6 @@ export function _getDustGlobalAgent(
 
   const actions: MCPServerConfigurationType[] = [];
 
-  // To be deprecated.
-  // Add search action for all data sources.
-  // Only add the action if there are data sources and the chosen MCP server is available.
-  const dataSourceViews = preFetchedDataSources.dataSourceViews.filter(
-    (dsView) => isIncludedInDefaultCompanyData(dsView.dataSource)
-  );
-  if (
-    !hasFilesystemTools &&
-    dataSourceViews.length > 0 &&
-    searchMCPServerView
-  ) {
-    // We push one action with all data sources
-    actions.push({
-      id: -1,
-      sId: GLOBAL_AGENTS_SID.DUST + "-datasource-action",
-      type: "mcp_server_configuration",
-      name: hasFilesystemTools ? "company_data" : "search_all_data_sources",
-      description: hasFilesystemTools
-        ? "The user's internal company data."
-        : "The user's entire workspace data sources",
-      mcpServerViewId: searchMCPServerView.sId,
-      internalMCPServerId: searchMCPServerView.internalMCPServerId,
-      dataSources: dataSourceViews.map((dsView) => ({
-        dataSourceViewId: dsView.sId,
-        workspaceId: preFetchedDataSources.workspaceId,
-        filter: { parents: null, tags: null },
-      })),
-      tables: null,
-      childAgentId: null,
-      reasoningModel: null,
-      additionalConfiguration: {},
-      timeFrame: null,
-      dustAppConfiguration: null,
-      jsonSchema: null,
-      secretName: null,
-    });
-    // And then one hidden action per managed data source to improve queries like "search in <data_source>".
-    dataSourceViews.forEach((dsView) => {
-      if (
-        dsView.dataSource.connectorProvider &&
-        dsView.dataSource.connectorProvider !== "webcrawler" &&
-        dsView.isInGlobalSpace
-      ) {
-        actions.push({
-          id: -1,
-          sId:
-            GLOBAL_AGENTS_SID.DUST +
-            "-datasource-action-" +
-            dsView.dataSource.sId,
-          type: "mcp_server_configuration",
-          name: "hidden_dust_search_" + dsView.dataSource.name,
-          description: `The user's ${dsView.dataSource.connectorProvider} data source.`,
-          mcpServerViewId: searchMCPServerView.sId,
-          internalMCPServerId: searchMCPServerView.internalMCPServerId,
-          dataSources: [
-            {
-              workspaceId: preFetchedDataSources.workspaceId,
-              dataSourceViewId: dsView.sId,
-              filter: { parents: null, tags: null },
-            },
-          ],
-          tables: null,
-          childAgentId: null,
-          reasoningModel: null,
-          additionalConfiguration: {},
-          timeFrame: null,
-          dustAppConfiguration: null,
-          jsonSchema: null,
-          secretName: null,
-        });
-      }
-    });
-  }
-
   // Add the filesystem tools action with all data sources in the global space.
   if (hasFilesystemTools) {
     const companyDataAction = getCompanyDataAction(
@@ -523,15 +483,15 @@ export function _getDustGlobalAgent(
 
   actions.push(
     ..._getDefaultWebActionsForGlobalAgent({
-      agentId: GLOBAL_AGENTS_SID.DUST,
+      agentId,
       webSearchBrowseMCPServerView,
     }),
     ..._getToolsetsToolsConfiguration({
-      agentId: GLOBAL_AGENTS_SID.DUST,
+      agentId,
       toolsetsMcpServerView: toolsetsMCPServerView,
     }),
     ..._getAgentRouterToolsConfiguration(
-      GLOBAL_AGENTS_SID.DUST,
+      agentId,
       agentRouterMCPServerView,
       autoInternalMCPServerNameToSId({
         name: "agent_router",
@@ -543,7 +503,7 @@ export function _getDustGlobalAgent(
   if (deepDiveMCPServerView) {
     actions.push({
       id: -1,
-      sId: GLOBAL_AGENTS_SID.DUST + "-deep-dive",
+      sId: agentId + "-deep-dive",
       type: "mcp_server_configuration",
       name: "deep_dive" satisfies InternalMCPServerNameType,
       description: `Handoff the query to the @${DEEP_DIVE_NAME} agent`,
@@ -564,7 +524,7 @@ export function _getDustGlobalAgent(
   if (hasAgentMemory) {
     actions.push({
       id: -1,
-      sId: GLOBAL_AGENTS_SID.DUST + "-agent-memory",
+      sId: agentId + "-agent-memory",
       type: "mcp_server_configuration",
       name: "agent_memory" satisfies InternalMCPServerNameType,
       description: "The agent memory tool",
@@ -584,7 +544,7 @@ export function _getDustGlobalAgent(
 
   actions.push(
     ..._getInteractiveContentToolConfiguration({
-      agentId: GLOBAL_AGENTS_SID.DUST,
+      agentId,
       interactiveContentMCPServerView,
     })
   );
@@ -600,4 +560,78 @@ export function _getDustGlobalAgent(
     actions,
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
   };
+}
+
+export function _getDustGlobalAgent(
+  auth: Authenticator,
+  args: {
+    settings: GlobalAgentSettings | null;
+    preFetchedDataSources: PrefetchedDataSourcesType | null;
+    agentRouterMCPServerView: MCPServerViewResource | null;
+    webSearchBrowseMCPServerView: MCPServerViewResource | null;
+    dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
+    toolsetsMCPServerView: MCPServerViewResource | null;
+    deepDiveMCPServerView: MCPServerViewResource | null;
+    interactiveContentMCPServerView: MCPServerViewResource | null;
+    dataWarehousesMCPServerView: MCPServerViewResource | null;
+    agentMemoryMCPServerView: MCPServerViewResource | null;
+    memories: AgentMemoryResource[];
+    availableToolsets: MCPServerViewResource[];
+  }
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST,
+    name: "dust",
+    preferredModelConfiguration: CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
+  });
+}
+
+export function _getDustEdgeGlobalAgent(
+  auth: Authenticator,
+  args: {
+    settings: GlobalAgentSettings | null;
+    preFetchedDataSources: PrefetchedDataSourcesType | null;
+    agentRouterMCPServerView: MCPServerViewResource | null;
+    webSearchBrowseMCPServerView: MCPServerViewResource | null;
+    dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
+    toolsetsMCPServerView: MCPServerViewResource | null;
+    deepDiveMCPServerView: MCPServerViewResource | null;
+    interactiveContentMCPServerView: MCPServerViewResource | null;
+    dataWarehousesMCPServerView: MCPServerViewResource | null;
+    agentMemoryMCPServerView: MCPServerViewResource | null;
+    memories: AgentMemoryResource[];
+    availableToolsets: MCPServerViewResource[];
+  }
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_EDGE,
+    name: "dust-edge",
+    preferredModelConfiguration: CLAUDE_4_5_OPUS_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "light",
+  });
+}
+
+export function _getDustQuickGlobalAgent(
+  auth: Authenticator,
+  args: {
+    settings: GlobalAgentSettings | null;
+    preFetchedDataSources: PrefetchedDataSourcesType | null;
+    agentRouterMCPServerView: MCPServerViewResource | null;
+    webSearchBrowseMCPServerView: MCPServerViewResource | null;
+    dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
+    toolsetsMCPServerView: MCPServerViewResource | null;
+    deepDiveMCPServerView: MCPServerViewResource | null;
+    interactiveContentMCPServerView: MCPServerViewResource | null;
+    dataWarehousesMCPServerView: MCPServerViewResource | null;
+    agentMemoryMCPServerView: MCPServerViewResource | null;
+    memories: AgentMemoryResource[];
+    availableToolsets: MCPServerViewResource[];
+  }
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_QUICK,
+    name: "dust-quick",
+    preferredModelConfiguration: GEMINI_3_PRO_MODEL_CONFIG,
+    preferredReasoningEffort: "light",
+  });
 }

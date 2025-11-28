@@ -4,7 +4,6 @@ import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import type {
-  ConversationType,
   ConversationWithoutContentType,
   Result,
   UserType,
@@ -46,7 +45,7 @@ export type AgentMessageFeedbackWithMetadataType = AgentMessageFeedbackType &
 
 export async function getConversationFeedbacksForUser(
   auth: Authenticator,
-  conversation: ConversationType | ConversationWithoutContentType
+  conversation: ConversationWithoutContentType
 ) {
   const feedbacksRes =
     await AgentMessageFeedbackResource.getConversationFeedbacksForUser(
@@ -76,7 +75,7 @@ export async function upsertMessageFeedback(
     isConversationShared,
   }: {
     messageId: string;
-    conversation: ConversationType | ConversationWithoutContentType;
+    conversation: ConversationWithoutContentType;
     user: UserType;
     thumbDirection: AgentMessageFeedbackDirection;
     content?: string;
@@ -141,7 +140,7 @@ export async function deleteMessageFeedback(
     user,
   }: {
     messageId: string;
-    conversation: ConversationType | ConversationWithoutContentType;
+    conversation: ConversationWithoutContentType;
     user: UserType;
   }
 ) {

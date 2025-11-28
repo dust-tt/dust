@@ -27,9 +27,10 @@ export async function getAvailableWarehouses(
   >
 > {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-  const dataSourceViewFilter = makeCoreSearchNodesFilters(
-    dataSourceConfigurations
-  ).map((view) => ({
+  const dataSourceViewFilter = makeCoreSearchNodesFilters({
+    agentDataSourceConfigurations: dataSourceConfigurations,
+    includeTagFilters: false,
+  }).map((view) => ({
     ...view,
     search_scope: "data_source_name" as const,
   }));
@@ -153,7 +154,10 @@ export async function getWarehouseNodes(
   const result = await coreAPI.searchNodes({
     query,
     filter: {
-      data_source_views: makeCoreSearchNodesFilters(configsToUse),
+      data_source_views: makeCoreSearchNodesFilters({
+        agentDataSourceConfigurations: configsToUse,
+        includeTagFilters: false,
+      }),
       parent_id: parentIdToUse ?? undefined,
       node_ids: nodeIdsToUse,
     },
@@ -293,7 +297,9 @@ export async function validateTables(
   const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
   if (!dataSource) {
     return new Err(
-      new MCPError(`Data source not found for ID: ${dataSourceId}`)
+      new MCPError(`Data source not found for ID: ${dataSourceId}`, {
+        tracked: false,
+      })
     );
   }
 
@@ -316,7 +322,10 @@ export async function validateTables(
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const searchResult = await coreAPI.searchNodes({
     filter: {
-      data_source_views: makeCoreSearchNodesFilters([relevantConfig]),
+      data_source_views: makeCoreSearchNodesFilters({
+        agentDataSourceConfigurations: [relevantConfig],
+        includeTagFilters: false,
+      }),
       node_ids: parsedTables.map((t) => t.nodeId),
     },
   });

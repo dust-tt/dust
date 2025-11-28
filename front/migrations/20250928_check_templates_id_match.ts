@@ -2,7 +2,7 @@ import assert from "assert";
 import { Op } from "sequelize";
 
 import { config } from "@app/lib/api/regions/config";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentConfiguration } from "@app/lib/models/agent/agent";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
 import { TemplateResource } from "@app/lib/resources/template_resource";

@@ -136,9 +136,11 @@ export function useMCPServer({
 export function useAvailableMCPServers({
   owner,
   space,
+  disabled = false,
 }: {
   owner: LightWorkspaceType;
   space?: SpaceType;
+  disabled?: boolean;
 }) {
   const configFetcher: Fetcher<GetMCPServersResponseBody> = fetcher;
 
@@ -146,7 +148,9 @@ export function useAvailableMCPServers({
     ? `/api/w/${owner.sId}/spaces/${space.sId}/mcp/available`
     : `/api/w/${owner.sId}/mcp/available`;
 
-  const { data, error, mutate } = useSWRWithDefaults(url, configFetcher);
+  const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
+    disabled,
+  });
 
   const availableMCPServers = useMemo(
     () =>
@@ -160,7 +164,7 @@ export function useAvailableMCPServers({
 
   return {
     availableMCPServers,
-    isAvailableMCPServersLoading: !error && !data,
+    isAvailableMCPServersLoading: !disabled && !error && !data,
     isAvailableMCPServersError: error,
     mutateAvailableMCPServers: mutate,
   };
@@ -271,10 +275,14 @@ export function useCreateInternalMCPServer(owner: LightWorkspaceType) {
     name,
     oauthConnection,
     includeGlobal,
+    sharedSecret,
+    customHeaders,
   }: {
     name: string;
     oauthConnection?: MCPConnectionType;
     includeGlobal: boolean;
+    sharedSecret?: string;
+    customHeaders?: Array<{ key: string; value: string }>;
   }): Promise<Result<CreateMCPServerResponseBody, Error>> => {
     const response = await fetch(`/api/w/${owner.sId}/mcp`, {
       method: "POST",
@@ -285,6 +293,8 @@ export function useCreateInternalMCPServer(owner: LightWorkspaceType) {
         useCase: oauthConnection?.useCase,
         connectionId: oauthConnection?.connectionId,
         includeGlobal,
+        ...(sharedSecret !== undefined ? { sharedSecret } : {}),
+        ...(customHeaders !== undefined ? { customHeaders } : {}),
       }),
     });
 

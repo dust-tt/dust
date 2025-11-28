@@ -1,0 +1,11 @@
+PUT /front.agent_message_analytics_2/_mapping
+{
+  "properties": {
+    "api_key_name": {
+      "type": "keyword"
+    },
+    "auth_method": {
+      "type": "keyword"
+    }
+  }
+}

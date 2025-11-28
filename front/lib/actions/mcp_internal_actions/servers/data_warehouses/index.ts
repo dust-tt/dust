@@ -332,7 +332,11 @@ function createServer(
         );
 
         if (!dataSource) {
-          return new Err(new MCPError("Data source not found"));
+          return new Err(
+            new MCPError("Data source not found", {
+              tracked: false,
+            })
+          );
         }
 
         const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
@@ -447,7 +451,11 @@ function createServer(
         );
 
         if (!dataSource) {
-          return new Err(new MCPError("Data source not found"));
+          return new Err(
+            new MCPError("Data source not found", {
+              tracked: false,
+            })
+          );
         }
 
         const connectorProvider = dataSource.connectorProvider;

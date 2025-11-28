@@ -1,9 +1,12 @@
 import Anthropic, { APIError } from "@anthropic-ai/sdk";
-import type { ThinkingConfigParam } from "@anthropic-ai/sdk/resources/messages/messages.mjs";
 
 import type { AnthropicWhitelistedModelId } from "@app/lib/api/llm/clients/anthropic/types";
 import { overwriteLLMParameters } from "@app/lib/api/llm/clients/anthropic/types";
-import { CLAUDE_4_THINKING_BUDGET_TOKENS } from "@app/lib/api/llm/clients/anthropic/utils";
+import {
+  toOutputFormatParam,
+  toThinkingConfig,
+  toToolChoiceParam,
+} from "@app/lib/api/llm/clients/anthropic/utils";
 import { streamLLMEvents } from "@app/lib/api/llm/clients/anthropic/utils/anthropic_to_events";
 import {
   toMessage,
@@ -15,29 +18,13 @@ import { handleGenericError } from "@app/lib/api/llm/types/errors";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
   LLMParameters,
-  StreamParameters,
+  LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
-import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import type { ReasoningEffort, SUPPORTED_MODEL_CONFIGS } from "@app/types";
 import { dustManagedCredentials } from "@app/types";
-
-function toThinkingConfig(
-  reasoningEffort: ReasoningEffort | null
-): ThinkingConfigParam | undefined {
-  if (!reasoningEffort || reasoningEffort === "none") {
-    return undefined;
-  }
-  return {
-    type: "enabled",
-    budget_tokens: CLAUDE_4_THINKING_BUDGET_TOKENS[reasoningEffort],
-  };
-}
 
 export class AnthropicLLM extends LLM {
   private client: Anthropic;
-  private readonly thinkingConfig?: ThinkingConfigParam;
-  private modelConfig: (typeof SUPPORTED_MODEL_CONFIGS)[number];
 
   constructor(
     auth: Authenticator,
@@ -49,11 +36,6 @@ export class AnthropicLLM extends LLM {
       throw new Error("ANTHROPIC_API_KEY environment variable is required");
     }
 
-    this.modelConfig = getSupportedModelConfig({
-      modelId: this.modelId,
-      providerId: "anthropic",
-    });
-
     this.client = new Anthropic({
       apiKey: ANTHROPIC_API_KEY,
     });
@@ -63,13 +45,17 @@ export class AnthropicLLM extends LLM {
     conversation,
     prompt,
     specifications,
-  }: StreamParameters): AsyncGenerator<LLMEvent> {
+    forceToolCall,
+  }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
     try {
       const messages = conversation.messages.map(toMessage);
 
-      const events = this.client.messages.stream({
+      const events = this.client.beta.messages.stream({
         model: this.modelId,
-        thinking: toThinkingConfig(this.reasoningEffort),
+        thinking: toThinkingConfig(
+          this.reasoningEffort,
+          this.modelConfig.useNativeLightReasoning
+        ),
         system: [
           {
             type: "text",
@@ -84,6 +70,11 @@ export class AnthropicLLM extends LLM {
         stream: true,
         tools: specifications.map(toTool),
         max_tokens: this.modelConfig.generationTokensCount,
+        tool_choice: toToolChoiceParam(specifications, forceToolCall),
+        // Structured output
+        // TODO(fabien): Remove beta tag and beta client when structured outputs are generally available
+        betas: ["structured-outputs-2025-11-13"],
+        output_format: toOutputFormatParam(this.responseFormat),
       });
 
       yield* streamLLMEvents(events, this.metadata);

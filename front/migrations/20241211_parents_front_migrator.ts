@@ -2,7 +2,7 @@ import _ from "lodash";
 import type { Logger } from "pino";
 import { Op } from "sequelize";
 
-import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
+import { AgentDataSourceConfiguration } from "@app/lib/models/agent/actions/data_sources";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";

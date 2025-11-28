@@ -5,6 +5,7 @@ import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type {
   LightAgentConfigurationType,
   SupportedResourceType,
@@ -19,6 +20,7 @@ export type ResourceTypeMap = {
   data_sources: DataSourceResource;
   spaces: SpaceResource;
   data_source_views: DataSourceViewResource;
+  triggers: TriggerResource;
   global: null;
 };
 
@@ -50,6 +52,9 @@ export async function fetchPluginResource<T extends SupportedResourceType>(
       break;
     case "spaces":
       result = await SpaceResource.fetchById(auth, resourceId);
+      break;
+    case "triggers":
+      result = await TriggerResource.fetchById(auth, resourceId);
       break;
     case "global":
       result = null;

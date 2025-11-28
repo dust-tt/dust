@@ -13,8 +13,7 @@ export function usePokeSearch({
   const workspacesFetcher: Fetcher<GetPokeSearchItemsResponseBody> = fetcher;
 
   const queryParams = new URLSearchParams({
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    search: search || "",
+    search: search ?? "",
   });
 
   const { data, error } = useSWRWithDefaults(

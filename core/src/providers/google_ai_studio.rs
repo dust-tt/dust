@@ -2,20 +2,17 @@ use super::{
     chat_messages::ChatMessage,
     embedder::Embedder,
     helpers::{convert_message_images_to_base64, fetch_and_encode_images_from_messages},
+    llm::TokenizerSingleton,
     llm::{ChatFunction, LLMChatGeneration, LLMGeneration, LLM},
     openai_compatible_helpers::{openai_compatible_chat_completion, TransformSystemMessages},
     provider::{Provider, ProviderID},
-    tiktoken::tiktoken::{
-        batch_tokenize_async, cl100k_base_singleton, decode_async, encode_async, CoreBPE,
-    },
 };
+use crate::types::tokenizer::{TiktokenTokenizerBase, TokenizerConfig};
 use crate::{run::Credentials, utils};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use http::Uri;
-use parking_lot::RwLock;
 use serde_json::Value;
-use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 
 pub struct GoogleAiStudioProvider {}
@@ -44,8 +41,8 @@ impl Provider for GoogleAiStudioProvider {
         ))
     }
 
-    fn llm(&self, id: String) -> Box<dyn LLM + Sync + Send> {
-        Box::new(GoogleAiStudioLLM::new(id))
+    fn llm(&self, id: String, tokenizer: Option<TokenizerSingleton>) -> Box<dyn LLM + Sync + Send> {
+        Box::new(GoogleAiStudioLLM::new(id, tokenizer))
     }
 
     fn embedder(&self, _id: String) -> Box<dyn Embedder + Sync + Send> {
@@ -56,21 +53,24 @@ impl Provider for GoogleAiStudioProvider {
 pub struct GoogleAiStudioLLM {
     id: String,
     api_key: Option<String>,
+    tokenizer: Option<TokenizerSingleton>,
 }
 
 impl GoogleAiStudioLLM {
-    pub fn new(id: String) -> Self {
-        Self { id, api_key: None }
+    pub fn new(id: String, tokenizer: Option<TokenizerSingleton>) -> Self {
+        Self {
+            id,
+            api_key: None,
+            tokenizer: tokenizer.or_else(|| {
+                TokenizerSingleton::from_config(&TokenizerConfig::Tiktoken {
+                    base: TiktokenTokenizerBase::Cl100kBase,
+                })
+            }),
+        }
     }
 
     fn model_endpoint(&self) -> Uri {
         Uri::from_static("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions")
-    }
-
-    fn tokenizer(&self) -> Arc<RwLock<CoreBPE>> {
-        // TODO: use countTokens API
-        // "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:countTokens"
-        cl100k_base_singleton()
     }
 }
 
@@ -95,15 +95,27 @@ impl LLM for GoogleAiStudioLLM {
     }
 
     async fn encode(&self, text: &str) -> Result<Vec<usize>> {
-        encode_async(self.tokenizer(), text).await
+        self.tokenizer
+            .as_ref()
+            .ok_or_else(|| anyhow!("Tokenizer not initialized"))?
+            .encode(text)
+            .await
     }
 
     async fn decode(&self, tokens: Vec<usize>) -> Result<String> {
-        decode_async(self.tokenizer(), tokens).await
+        self.tokenizer
+            .as_ref()
+            .ok_or_else(|| anyhow!("Tokenizer not initialized"))?
+            .decode(tokens)
+            .await
     }
 
     async fn tokenize(&self, texts: Vec<String>) -> Result<Vec<Vec<(usize, String)>>> {
-        batch_tokenize_async(self.tokenizer(), texts).await
+        self.tokenizer
+            .as_ref()
+            .ok_or_else(|| anyhow!("Tokenizer not initialized"))?
+            .tokenize(texts)
+            .await
     }
 
     async fn generate(

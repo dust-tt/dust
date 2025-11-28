@@ -7,17 +7,23 @@ import type {
   Result,
   UserMessageType,
 } from "@dust-tt/client";
-import { DustAPI, Err, Ok } from "@dust-tt/client";
+import {
+  DustAPI,
+  Err,
+  isMCPServerPersonalAuthRequiredError,
+  Ok,
+} from "@dust-tt/client";
 import type { Activity, TurnContext } from "botbuilder";
 import removeMarkdown from "remove-markdown";
 
 import { processFileAttachments } from "@connectors/api/webhooks/teams/content_fragments";
-import { getMicrosoftClient } from "@connectors/connectors/microsoft/index";
+import { getMicrosoftClient } from "@connectors/connectors/microsoft";
 import { getMessagesFromConversation } from "@connectors/connectors/microsoft/lib/graph_api";
 import { apiConfig } from "@connectors/lib/api/config";
 import type { MessageFootnotes } from "@connectors/lib/bot/citations";
 import { annotateCitations } from "@connectors/lib/bot/citations";
 import { makeConversationUrl } from "@connectors/lib/bot/conversation_utils";
+import type { MentionMatch } from "@connectors/lib/bot/mentions";
 import { processMessageForMention } from "@connectors/lib/bot/mentions";
 import { MicrosoftBotMessage } from "@connectors/lib/models/microsoft_bot";
 import { getActionName } from "@connectors/lib/tools_utils";
@@ -27,10 +33,11 @@ import { getHeaderFromUserEmail } from "@connectors/types";
 
 import {
   createBasicToolApprovalAdaptiveCard,
+  createPersonalAuthenticationAdaptiveCard,
   createResponseAdaptiveCard,
   createStreamingAdaptiveCard,
 } from "./adaptive_cards";
-import { sendActivity, updateActivity } from "./bot_messaging_utils";
+import { updateActivity } from "./bot_messaging_utils";
 import { validateTeamsUser } from "./user_validation";
 
 export async function botAnswerMessage(
@@ -152,7 +159,7 @@ export async function botAnswerMessage(
 
   const messageReqBody: PublicPostMessagesRequestBody = {
     content: message,
-    mentions: [{ configurationId: mention.assistantId }],
+    mentions: [{ configurationId: mention.agentId }],
     context: {
       timezone: "UTC", // Teams doesn't provide timezone info easily
       username: displayName,
@@ -282,7 +289,7 @@ export async function botAnswerMessage(
 
   const finalCard = createResponseAdaptiveCard({
     response: formattedContent,
-    assistant: mention,
+    mentionedAgent: mention,
     conversationUrl: makeConversationUrl(
       connector.workspaceId,
       conversation.sId
@@ -313,7 +320,7 @@ async function streamAgentResponse({
   dustAPI: DustAPI;
   conversation: ConversationPublicType;
   userMessage: UserMessageType;
-  mention: { assistantName: string; assistantId: string };
+  mention: MentionMatch;
   connector: ConnectorResource;
   agentActivityId: string;
   localLogger: Logger;
@@ -346,7 +353,7 @@ async function streamAgentResponse({
   let chainOfThought = "";
   let agentState = "thinking";
   const actions: AgentActionPublicType[] = [];
-  const UPDATE_INTERVAL_MS = 100; // Update every 100 millisecond
+  const UPDATE_INTERVAL_MS = 1500;
 
   for await (const event of streamRes.value.eventStream) {
     switch (event.type) {
@@ -389,17 +396,19 @@ async function streamAgentResponse({
 
             const streamingCard = createStreamingAdaptiveCard({
               response: formattedContent,
-              assistantName: mention.assistantName,
+              agentName: mention.agentName,
               conversationUrl: null,
               workspaceId: connector.workspaceId,
             });
 
             // Send streaming update to Teams app webhook endpoint
+            // Skip retry for streaming updates - if they fail, just ignore silently
             await sendTeamsResponse(
               context,
               agentActivityId,
               streamingCard,
-              localLogger
+              localLogger,
+              true // skipRetry
             );
           }
         }
@@ -409,7 +418,7 @@ async function streamAgentResponse({
         const action = getActionName(event.action);
         const streamingCard = createStreamingAdaptiveCard({
           response: action,
-          assistantName: mention.assistantName,
+          agentName: mention.agentName,
           conversationUrl: null,
           workspaceId: connector.workspaceId,
         });
@@ -426,6 +435,27 @@ async function streamAgentResponse({
       case "agent_action_success":
         actions.push(event.action);
         break;
+      case "tool_error": {
+        if (isMCPServerPersonalAuthRequiredError(event.error)) {
+          const conversationUrl = makeConversationUrl(
+            connector.workspaceId,
+            conversation.sId
+          );
+          await updateActivity(context, {
+            id: agentActivityId,
+            ...createPersonalAuthenticationAdaptiveCard({
+              conversationUrl,
+              workspaceId: connector.workspaceId,
+            }),
+          });
+          break;
+        }
+        return new Err(
+          new Error(
+            `Tool message error: code: ${event.error.code} message: ${event.error.message}`
+          )
+        );
+      }
       case "tool_approve_execution": {
         // Find the MicrosoftBotMessage to get the microsoftBotMessageId
         const microsoftBotMessage = await MicrosoftBotMessage.findOne({
@@ -511,28 +541,37 @@ async function streamAgentResponse({
 
 const sendTeamsResponse = async (
   context: TurnContext,
-  agentActivityId: string | undefined,
+  agentActivityId: string,
   adaptiveCard: Partial<Activity>,
-  localLogger: Logger
+  localLogger: Logger,
+  skipRetry = false
 ): Promise<Result<string, Error>> => {
   // Update existing message for streaming
-  if (agentActivityId) {
-    try {
-      await updateActivity(context, {
-        ...adaptiveCard,
-        id: agentActivityId,
-      });
-      return new Ok(agentActivityId);
-    } catch (updateError) {
-      localLogger.warn(
-        { error: updateError },
-        "Failed to update streaming message, sending new one"
-      );
-    }
+  const updateResult = await updateActivity(
+    context,
+    {
+      ...adaptiveCard,
+      id: agentActivityId,
+    },
+    skipRetry
+  );
+
+  if (updateResult.isOk()) {
+    return updateResult;
   }
 
-  // Send new streaming message
-  return sendActivity(context, adaptiveCard);
+  // Only log if not skipping retry (for non-streaming updates)
+  if (!skipRetry) {
+    localLogger.warn(
+      { error: updateResult.error },
+      "Failed to send response message"
+    );
+
+    return updateResult;
+  } else {
+    // For streaming updates, just silently ignore failures
+    return new Ok(agentActivityId);
+  }
 };
 
 async function makeContentFragments(

@@ -49,6 +49,7 @@ describe("INTERNAL_MCP_SERVERS", () => {
       { name: "interactive_content", id: 23 },
       { name: "slideshow", id: 28 },
       { name: "deep_dive", id: 29 },
+      { name: "speech_generator", id: 34 },
       { name: "search", id: 1006 },
       { name: "run_agent", id: 1008 },
       { name: "common_utilities", id: 1017 },
@@ -61,7 +62,7 @@ describe("INTERNAL_MCP_SERVERS", () => {
     ];
     expect(
       autoInternalTools,
-      "Internal tools with availabilty auto or auto_hidden_builder are not up to date.\nIf you are adding or removing a tool, just update the hard coded list.\nHowever, if you are changing the availability from auto(_xxx) to manual, you need to run a migration on existing agents that were configured with that tool to update their requestedGroupIds (see getAgentConfigurationGroupIdsFromActions())."
+      "Internal tools with availability auto or auto_hidden_builder are not up to date.\nIf you are adding or removing a tool, just update the hard coded list.\nHowever, if you are changing the availability from auto(_xxx) to manual, you need to run a migration on existing agents that were configured with that tool to update their requestedGroupIds (see getAgentConfigurationGroupIdsFromActions())."
     ).toEqual(HARD_CODED_AUTO_INTERNAL_TOOLS);
   });
 });

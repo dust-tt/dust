@@ -7,6 +7,7 @@ import type {
 import { CompletionResponseStreamChoiceFinishReason } from "@mistralai/mistralai/models/components";
 import compact from "lodash/compact";
 
+import { SuccessAggregate } from "@app/lib/api/llm/types/aggregates";
 import type {
   LLMEvent,
   TokenUsageEvent,
@@ -20,6 +21,7 @@ import {
   isCorrectDelta,
   isCorrectToolCall,
 } from "@app/lib/api/llm/types/predicates";
+import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types";
 
@@ -33,17 +35,33 @@ export async function* streamLLMEvents({
   // Mistral does not send a "report" with concatenated text chunks
   // So we have to aggregate it ourselves as we receive text chunks
   let textDelta = "";
+  let hasYieldedResponseId = false;
+
+  const aggregate = new SuccessAggregate();
 
   function* yieldEvents(events: LLMEvent[]) {
     for (const event of events) {
       if (event.type === "text_delta") {
         textDelta += event.content.delta;
       }
+      aggregate.add(event);
       yield event;
     }
   }
 
   for await (const completionEvent of completionEvents) {
+    const modelInteractionId = completionEvent.data.id;
+    if (!hasYieldedResponseId) {
+      yield {
+        type: "interaction_id",
+        content: {
+          modelInteractionId,
+        },
+        metadata,
+      };
+      hasYieldedResponseId = true;
+    }
+
     // Ensure we have at least 1 choice
     if (!isCorrectCompletionEvent(completionEvent)) {
       continue;
@@ -74,37 +92,43 @@ export async function* streamLLMEvents({
           metadata,
         };
         // Yield aggregated text before tool calls
-        yield textGeneratedEvent;
-        yield* yieldEvents(events);
+        yield* yieldEvents(
+          textGeneratedEvent.content.text.length > 0 ? [textGeneratedEvent] : []
+        );
         textDelta = "";
+        yield* yieldEvents(events);
         break;
       }
       case CompletionResponseStreamChoiceFinishReason.Length: {
         // yield error event after all received events
         yield* yieldEvents(events);
         textDelta = "";
-        yield new EventError(
-          {
-            type: "maximum_length",
-            isRetryable: false,
-            message: "Maximum length reached",
-          },
-          metadata
-        );
+        yield* yieldEvents([
+          new EventError(
+            {
+              type: "maximum_length",
+              isRetryable: false,
+              message: "Maximum length reached",
+            },
+            metadata
+          ),
+        ]);
         break;
       }
       case CompletionResponseStreamChoiceFinishReason.Error: {
         // yield error event after all received events
         yield* yieldEvents(events);
         textDelta = "";
-        yield new EventError(
-          {
-            type: "stop_error",
-            isRetryable: false,
-            message: "An error occurred during completion",
-          },
-          metadata
-        );
+        yield* yieldEvents([
+          new EventError(
+            {
+              type: "stop_error",
+              isRetryable: false,
+              message: "An error occurred during completion",
+            },
+            metadata
+          ),
+        ]);
 
         break;
       }
@@ -117,7 +141,9 @@ export async function* streamLLMEvents({
           metadata,
         };
         textDelta = "";
-        yield textGeneratedEvent;
+        yield* yieldEvents(
+          textGeneratedEvent.content.text.length > 0 ? [textGeneratedEvent] : []
+        );
         break;
       }
       default: {
@@ -127,8 +153,19 @@ export async function* streamLLMEvents({
     }
     // Whatever the completion, yield the token usage
     if (completionEvent.data.usage) {
-      yield toTokenUsage({ usage: completionEvent.data.usage, metadata });
+      yield* yieldEvents([
+        toTokenUsage({ usage: completionEvent.data.usage, metadata }),
+      ]);
     }
+
+    yield {
+      type: "success",
+      aggregated: aggregate.aggregated,
+      textGenerated: aggregate.textGenerated,
+      reasoningGenerated: aggregate.reasoningGenerated,
+      toolCalls: aggregate.toolCalls,
+      metadata,
+    };
   }
 }
 
@@ -184,14 +221,22 @@ function toToolEvent({
     return null;
   }
 
+  let args: Record<string, unknown>;
+  if (isString(toolCall.function.arguments)) {
+    args = parseToolArguments(
+      toolCall.function.arguments,
+      toolCall.function.name
+    );
+  } else {
+    args = toolCall.function.arguments;
+  }
+
   return {
     type: "tool_call",
     content: {
       id: toolCall.id,
       name: toolCall.function.name,
-      arguments: isString(toolCall.function.arguments)
-        ? toolCall.function.arguments
-        : JSON.stringify(toolCall.function.arguments),
+      arguments: args,
     },
     metadata,
   };
@@ -205,13 +250,15 @@ function toStreamEvents({
   metadata: LLMClientMetadata;
 }): LLMEvent[] {
   if (isString(content)) {
-    return [
-      {
-        type: "text_delta",
-        content: { delta: content },
-        metadata,
-      },
-    ];
+    return content.length > 0
+      ? [
+          {
+            type: "text_delta",
+            content: { delta: content },
+            metadata,
+          },
+        ]
+      : [];
   }
 
   return compact(
@@ -233,11 +280,13 @@ function contentChunkToLLMEvent({
 }): LLMEvent | null {
   switch (chunk.type) {
     case "text": {
-      return {
-        type: "text_delta",
-        content: { delta: chunk.text },
-        metadata,
-      };
+      return chunk.text.length > 0
+        ? {
+            type: "text_delta",
+            content: { delta: chunk.text },
+            metadata,
+          }
+        : null;
     }
     default:
       // Only support text for now

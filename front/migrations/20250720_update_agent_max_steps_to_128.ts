@@ -1,6 +1,6 @@
 import { Op } from "sequelize";
 
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentConfiguration } from "@app/lib/models/agent/agent";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types";

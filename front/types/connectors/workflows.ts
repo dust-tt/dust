@@ -13,10 +13,6 @@ export function getNotionWorkflowId(
   return wfName;
 }
 
-export function getIntercomSyncWorkflowId(connectorId: ModelId) {
-  return `intercom-sync-${connectorId}`;
-}
-
 export function getZendeskSyncWorkflowId(connectorId: ModelId): string {
   return `zendesk-sync-${connectorId}`;
 }
@@ -41,4 +37,18 @@ export function microsoftIncrementalSyncWorkflowId(connectorId: ModelId) {
 
 export function microsoftGarbageCollectionWorkflowId(connectorId: ModelId) {
   return `microsoft-garbageCollection-${connectorId}`;
+}
+
+export function makeGongSyncScheduleId(connectorId: ModelId): string {
+  return `gong-sync-${connectorId}`;
+}
+
+export function makeIntercomHelpCenterScheduleId(connectorId: ModelId): string {
+  return `intercom-help-center-sync-${connectorId}`;
+}
+
+export function makeIntercomConversationScheduleId(
+  connectorId: ModelId
+): string {
+  return `intercom-conversation-sync-${connectorId}`;
 }

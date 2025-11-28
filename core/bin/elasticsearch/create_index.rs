@@ -53,7 +53,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let region = match std::env::var("NODE_ENV").unwrap_or_default().as_str() {
         "development" => "local".to_string(),
-        _ => std::env::var("DUST_REGION").expect("DUST_REGION must be set"),
+        _ => std::env::var("REGION").expect("REGION must be set"),
     };
 
     // create ES client

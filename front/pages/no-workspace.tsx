@@ -177,11 +177,6 @@ export default function NoWorkspace({
                 </span>{" "}
                 for more informations or to add you again.
               </span>
-              <span className="copy-md text-muted-foreground dark:text-muted-foreground-night">
-                If you're looking to establish{" "}
-                <strong>a new, separate workspace</strong> continue with the
-                following step:
-              </span>
             </div>
           )}
         </div>

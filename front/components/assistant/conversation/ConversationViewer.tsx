@@ -17,7 +17,6 @@ import React, {
 
 import { AgentInputBar } from "@app/components/assistant/conversation/AgentInputBar";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
-import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import {
   createPlaceholderAgentMessage,
   createPlaceholderUserMessage,
@@ -31,11 +30,14 @@ import type {
 import {
   areSameRank,
   getMessageRank,
+  hasHumansInteracting,
+  isHiddenMessage,
   isMessageTemporayState,
   isUserMessage,
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
 import { ConversationViewerEmptyState } from "@app/components/assistant/ConversationViewerEmptyState";
+import { useEnableBrowserNotification } from "@app/hooks/useEnableBrowserNotification";
 import { useEventSource } from "@app/hooks/useEventSource";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
@@ -56,17 +58,25 @@ import type {
   AgentMessageDoneEvent,
   AgentMessageNewEvent,
   ContentFragmentsType,
-  ContentFragmentType,
   ConversationTitleEvent,
   LightMessageType,
   Result,
+  RichMention,
   UserMessageNewEvent,
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { Err, isContentFragmentType, isUserMessageType, Ok } from "@app/types";
+import {
+  isRichAgentMention,
+  isUserMessageTypeWithContentFragments,
+  toMentionType,
+} from "@app/types";
+import { Err, isUserMessageType, Ok } from "@app/types";
 
 const DEFAULT_PAGE_LIMIT = 50;
+
+// A conversation must be unread and older than that to enable the suggestion of enabling notifications.
+const DELAY_BEFORE_SUGGESTING_PUSH_NOTIFICATION_ACTIVATION = 60 * 60 * 1000; // 1 hour
 
 interface ConversationViewerProps {
   conversationId: string;
@@ -119,6 +129,24 @@ export const ConversationViewer = ({
     workspaceId: owner.sId,
   });
 
+  const { askForPermission } = useEnableBrowserNotification();
+
+  const shouldShowPushNotificationActivation = useMemo(() => {
+    if (!conversation?.sId || !conversation.unread) {
+      return false;
+    }
+
+    const delay = new Date().getTime() - conversation.updated;
+
+    return delay > DELAY_BEFORE_SUGGESTING_PUSH_NOTIFICATION_ACTIVATION;
+  }, [conversation?.sId, conversation?.unread, conversation?.updated]);
+
+  useEffect(() => {
+    if (shouldShowPushNotificationActivation) {
+      void askForPermission();
+    }
+  }, [shouldShowPushNotificationActivation, askForPermission]);
+
   const { mutateConversations } = useConversations({
     workspaceId: owner.sId,
     options: {
@@ -129,6 +157,7 @@ export const ConversationViewer = ({
   const {
     isLoadingInitialData,
     isMessagesLoading,
+    isMessagesError,
     isValidating,
     messages,
     setSize,
@@ -152,14 +181,21 @@ export const ConversationViewer = ({
 
   // Setup the initial list data when the conversation is loaded.
   useEffect(() => {
-    if (!initialListData && messages.length > 0) {
-      const messagesToRender = convertLightMessageTypeToVirtuosoMessages(
-        messages.flatMap((m) => m.messages)
-      );
+    // We also wait in case of revalidation because otherwise we might use stale data from the swr cache.
+    // Consider this scenario:
+    // Load a conversation A, send a message, answer is streaming (streaming events have a short TTL).
+    // Switch to conversation B, wait till A is done streaming, then switch back to A.
+    // Without waiting for revalidation, we would use whatever data was in the swr cache and see the last message as "streaming" (old data, no more streaming events).
+    if (!initialListData && messages.length > 0 && !isValidating) {
+      const raw = messages
+        .flatMap((m) => m.messages)
+        .filter((m) => (isUserMessageType(m) ? !isHiddenMessage(m) : true));
+
+      const messagesToRender = convertLightMessageTypeToVirtuosoMessages(raw);
 
       setInitialListData(messagesToRender);
     }
-  }, [initialListData, messages, setInitialListData]);
+  }, [initialListData, messages, setInitialListData, isValidating]);
 
   // This is to handle we just fetched more messages by scrolling up.
   useEffect(() => {
@@ -180,8 +216,11 @@ export const ConversationViewer = ({
     );
 
     if (olderMessagesFromBackend.length > 0) {
+      const filtered = olderMessagesFromBackend.filter((m) =>
+        isUserMessageType(m) ? !isHiddenMessage(m) : true
+      );
       ref.current.data.prepend(
-        convertLightMessageTypeToVirtuosoMessages(olderMessagesFromBackend)
+        convertLightMessageTypeToVirtuosoMessages(filtered)
       );
     }
 
@@ -248,21 +287,25 @@ export const ConversationViewer = ({
         switch (event.type) {
           case "user_message_new":
             if (ref.current) {
-              const userMessage: VirtuosoMessage = {
-                ...event.message,
-                contentFragments: [],
-              };
+              if (isHiddenMessage(event.message)) {
+                break;
+              }
+              const userMessage = event.message;
               const predicate = (m: VirtuosoMessage) =>
                 isUserMessage(m) && areSameRank(m, userMessage);
 
               const exists = ref.current.data.find(predicate);
 
               if (!exists) {
-                ref.current.data.append([
-                  { ...event.message, contentFragments: [] },
-                ]);
-              } else {
-                // We don't update if it already exists as if it already exists, it means we have received the message from the backend.
+                ref.current.data.append([userMessage], true);
+                // Using else if with the type guard just to please the type checker as we already know it's a user message from the predicate.
+              } else if (isUserMessage(exists)) {
+                // We only update if the version is greater than the existing version.
+                if (exists.version < event.message.version) {
+                  ref.current.data.map((m) =>
+                    areSameRank(m, userMessage) ? userMessage : m
+                  );
+                }
               }
 
               void mutateConversationParticipants(
@@ -354,10 +397,6 @@ export const ConversationViewer = ({
             // Debounce the call as we might receive multiple events for the same conversation (as we replay the events).
             void debouncedMarkAsRead(event.conversationId, false);
 
-            // Mutate the messages to be sure that the swr cache is updated.
-            // Fixes an issue where the last message of a conversation is "thinking" and not "done" the first time you switch back and forth to a conversation.
-            void mutateMessages();
-
             // Update the conversation hasError state in the local cache without making a network request.
             void mutateConversations(
               (currentData) => {
@@ -408,7 +447,7 @@ export const ConversationViewer = ({
   const handleSubmit = useCallback(
     async (
       input: string,
-      mentions: EditorMention[],
+      mentions: RichMention[],
       contentFragments: ContentFragmentsType
     ): Promise<Result<undefined, DustError>> => {
       if (!ref?.current) {
@@ -420,7 +459,7 @@ export const ConversationViewer = ({
       }
       const messageData = {
         input,
-        mentions: mentions.map((mention) => ({ configurationId: mention.id })),
+        mentions: mentions.map(toMentionType),
         contentFragments,
       };
 
@@ -436,6 +475,7 @@ export const ConversationViewer = ({
         contentFragments.uploaded.length +
         // +1 for the user message
         1;
+
       const placeholderUserMsg: VirtuosoMessage = createPlaceholderUserMessage({
         input,
         mentions,
@@ -446,23 +486,45 @@ export const ConversationViewer = ({
 
       const placeholderAgentMessages: VirtuosoMessage[] = [];
       for (const mention of mentions) {
-        // +1 per agent message mentioned
-        rank += 1;
-        placeholderAgentMessages.push(
-          createPlaceholderAgentMessage({ mention, rank })
-        );
+        if (isRichAgentMention(mention)) {
+          // +1 per agent message mentioned
+          rank += 1;
+          placeholderAgentMessages.push(
+            createPlaceholderAgentMessage({ mention, rank })
+          );
+        }
       }
+
+      // Objective is to dermine if an agent is going to answer immediately to change the scroll behavior.
+      const isMentioningAgent =
+        //TODO(mentions v2) if dust agent is disabled at the workspace level, hasMoreThan2HumansInteracting might say false but we wouldn't have an auto mention of dust.
+        (mentions.length === 0 &&
+          !hasHumansInteracting(ref.current.data.get())) ||
+        // An agent is mentioned manually.
+        mentions.some(isRichAgentMention);
 
       const nbMessages = ref.current.data.get().length;
       ref.current.data.append(
         [placeholderUserMsg, ...placeholderAgentMessages],
-        () => {
-          return {
-            index: nbMessages, // Avoid jumping around when the agent message is generated.
-            align: "start",
-            behavior: customSmoothScroll,
-          };
-        }
+        isMentioningAgent
+          ? () => {
+              return {
+                index: nbMessages, // Avoid jumping around when the agent message is generated.
+                align: "start",
+                behavior: customSmoothScroll,
+              };
+            }
+          : (params) => {
+              if (params.scrollLocation.bottomOffset >= 0) {
+                return {
+                  index: "LAST",
+                  align: "end",
+                  behavior: customSmoothScroll,
+                };
+              } else {
+                return false;
+              }
+            }
       );
 
       const result = await submitMessage({
@@ -507,7 +569,21 @@ export const ConversationViewer = ({
           : m
       );
 
-      await mutateConversations();
+      void mutateConversations(
+        (currentData) => {
+          if (!currentData?.conversations) {
+            return currentData;
+          }
+          return {
+            conversations: currentData.conversations.map((c) =>
+              c.sId === conversationId
+                ? { ...c, updated: new Date().getTime() }
+                : c
+            ),
+          };
+        },
+        { revalidate: false }
+      );
 
       return new Ok(undefined);
     },
@@ -515,9 +591,9 @@ export const ConversationViewer = ({
       user,
       owner,
       conversationId,
-      mutateConversations,
       setPlanLimitReached,
       sendNotification,
+      mutateConversations,
     ]
   );
 
@@ -592,8 +668,10 @@ export const ConversationViewer = ({
 
   return (
     <>
-      {conversationError && (
-        <ConversationErrorDisplay error={conversationError} />
+      {(conversationError || isMessagesError) && (
+        <ConversationErrorDisplay
+          error={conversationError || isMessagesError}
+        />
       )}
       <VirtuosoMessageListLicense
         licenseKey={process.env.NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY ?? ""}
@@ -643,30 +721,9 @@ export const ConversationViewer = ({
 
 const convertLightMessageTypeToVirtuosoMessages = (
   messages: LightMessageType[]
-) => {
-  const output: VirtuosoMessage[] = [];
-  let tempContentFragments: ContentFragmentType[] = [];
-
-  messages.forEach((message) => {
-    if (isContentFragmentType(message)) {
-      tempContentFragments.push(message); // Collect content fragments.
-    } else {
-      let messageWithContentFragments: VirtuosoMessage;
-      if (isUserMessageType(message)) {
-        // Attach collected content fragments to the user message.
-        messageWithContentFragments = {
-          ...message,
-          contentFragments: tempContentFragments,
-        };
-        tempContentFragments = []; // Reset the collected content fragments.
-
-        // Start a new group for user messages.
-        output.push(messageWithContentFragments);
-      } else {
-        messageWithContentFragments = makeInitialMessageStreamState(message);
-        output.push(messageWithContentFragments);
-      }
-    }
-  });
-  return output;
-};
+) =>
+  messages.map((message) =>
+    isUserMessageTypeWithContentFragments(message)
+      ? message
+      : makeInitialMessageStreamState(message)
+  );

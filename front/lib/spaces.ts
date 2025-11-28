@@ -136,7 +136,6 @@ export const CATEGORY_DETAILS: {
   triggers: {
     label: "Triggers",
     icon: BoltIcon,
-    flag: "hootl_webhooks",
   },
 };
 

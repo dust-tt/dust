@@ -12,7 +12,7 @@ import type { Authenticator } from "@app/lib/auth";
 import {
   AgentConfiguration,
   AgentUserRelation,
-} from "@app/lib/models/assistant/agent";
+} from "@app/lib/models/agent/agent";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type {
   AgentConfigurationType,

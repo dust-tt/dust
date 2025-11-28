@@ -11,7 +11,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import config from "@app/lib/api/config";
@@ -59,6 +59,18 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   };
 });
 
+interface FormData {
+  firstName: string;
+  lastName: string;
+  jobType: JobType | null;
+}
+
+interface FormErrors {
+  firstName?: string;
+  lastName?: string;
+  jobType?: string;
+}
+
 export default function Welcome({
   user,
   owner,
@@ -66,26 +78,50 @@ export default function Welcome({
   conversationId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
-  const [firstName, setFirstName] = useState<string>(user.firstName);
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const [lastName, setLastName] = useState<string>(user.lastName || "");
-  const [jobType, setJobType] = useState<JobType | undefined>(undefined);
-  const [isFormValid, setIsFormValid] = useState<boolean>(false);
-
-  const jobTypes = JOB_TYPE_OPTIONS;
-
   const { patchUser } = usePatchUser();
 
-  useEffect(() => {
-    setIsFormValid(
-      firstName !== "" &&
-        lastName !== "" &&
-        (jobTypes.some((jt) => jt.value === jobType) || jobType === undefined)
-    );
-  }, [firstName, lastName, jobType, jobTypes]);
+  const [formData, setFormData] = useState<FormData>({
+    firstName: user.firstName,
+    lastName: user.lastName ?? "",
+    jobType: null,
+  });
+
+  const [showErrors, setShowErrors] = useState(false);
+
+  const validateForm = (data: FormData): FormErrors => {
+    const errors: FormErrors = {};
+    if (!data.firstName.trim()) {
+      errors.firstName = "First name is required";
+    }
+    if (!data.lastName.trim()) {
+      errors.lastName = "Last name is required";
+    }
+    if (!data.jobType) {
+      errors.jobType = "Please select your job type";
+    }
+    return errors;
+  };
+
+  const formErrors = useMemo(() => {
+    if (!showErrors) {
+      return {};
+    }
+    return validateForm(formData);
+  }, [formData, showErrors]);
 
   const { submit, isSubmitting } = useSubmitFunction(async () => {
-    await patchUser(firstName, lastName, false, jobType);
+    setShowErrors(true);
+
+    const errors = validateForm(formData);
+    if (Object.keys(errors).length > 0) {
+      return;
+    }
+    await patchUser(
+      formData.firstName.trim(),
+      formData.lastName.trim(),
+      false,
+      formData.jobType ?? undefined
+    );
 
     // GTM signup event tracking: only fire after successful submit
     if (typeof window !== "undefined") {
@@ -106,28 +142,38 @@ export default function Welcome({
     await router.push(getConversationRoute(owner.sId, "new", queryParams));
   });
 
+  const handleSubmit = withTracking(
+    TRACKING_AREAS.AUTH,
+    "onboarding_complete",
+    () => {
+      void submit();
+    }
+  );
+
+  const selectedJobTypeLabel = useMemo(() => {
+    if (!formData.jobType) {
+      return "Select job type";
+    }
+    const jobType = JOB_TYPE_OPTIONS.find((t) => t.value === formData.jobType);
+    return jobType?.label ?? "Select job type";
+  }, [formData.jobType]);
+
   return (
     <OnboardingLayout
       owner={owner}
       headerTitle="Joining Dust"
       headerRightActions={
         <Button
-          label={"Next"}
-          disabled={!isFormValid || isSubmitting}
+          label="Next"
+          disabled={isSubmitting}
           size="sm"
-          onClick={withTracking(
-            TRACKING_AREAS.AUTH,
-            "onboarding_complete",
-            () => {
-              void submit();
-            }
-          )}
+          onClick={handleSubmit}
         />
       }
     >
       <div className="flex h-full flex-col gap-8 pt-4 md:justify-center md:pt-0">
         <Page.Header
-          title={`Hello ${firstName}!`}
+          title={`Hello ${formData.firstName || "there"}!`}
           icon={() => <DustLogoSquare className="-ml-11 h-10 w-32" />}
         />
         <p className="text-muted-foreground dark:text-muted-foreground-night">
@@ -137,7 +183,7 @@ export default function Welcome({
           <div>
             <p className="text-muted-foreground dark:text-muted-foreground-night">
               You'll be joining the workspace:{" "}
-              <span className="">{owner.name}</span>.
+              <span className="font-medium">{owner.name}</span>.
             </p>
           </div>
         )}
@@ -146,72 +192,89 @@ export default function Welcome({
             Your name is:
           </p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Input
-              name="firstName"
-              placeholder="First Name"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-            />
-            <Input
-              name="lastName"
-              placeholder="Last Name"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-            />
+            <div>
+              <Input
+                name="firstName"
+                placeholder="First Name"
+                value={formData.firstName}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    firstName: e.target.value,
+                  }))
+                }
+              />
+              {showErrors && formErrors.firstName && (
+                <p className="mt-1 text-sm text-red-500">
+                  {formErrors.firstName}
+                </p>
+              )}
+            </div>
+            <div>
+              <Input
+                name="lastName"
+                placeholder="Last Name"
+                value={formData.lastName}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, lastName: e.target.value }))
+                }
+              />
+              {showErrors && formErrors.lastName && (
+                <p className="mt-1 text-sm text-red-500">
+                  {formErrors.lastName}
+                </p>
+              )}
+            </div>
           </div>
         </div>
         <div>
-          <p className="pb-2 text-muted-foreground">
+          <p className="pb-2 text-muted-foreground dark:text-muted-foreground-night">
             Pick your job type to get relevant feature updates:
           </p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="justify-between text-muted-foreground"
-                  label={
-                    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                    jobTypes.find((t) => t.value === jobType)?.label ||
-                    "Select job type"
-                  }
-                  isSelect={true}
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
-                <DropdownMenuRadioGroup
-                  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                  value={jobType || ""}
-                  onValueChange={(value) => {
-                    if (isJobType(value)) {
-                      setJobType(value as JobType);
-                    }
-                  }}
-                >
-                  {jobTypes.map((jobTypeOption) => (
-                    <DropdownMenuRadioItem
-                      key={jobTypeOption.value}
-                      value={jobTypeOption.value}
-                      label={jobTypeOption.label}
-                    />
-                  ))}
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="justify-between text-muted-foreground dark:text-muted-foreground-night"
+                    label={selectedJobTypeLabel}
+                    isSelect={true}
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
+                  <DropdownMenuRadioGroup
+                    value={formData.jobType ?? ""}
+                    onValueChange={(value) => {
+                      if (isJobType(value)) {
+                        setFormData((prev) => ({ ...prev, jobType: value }));
+                      }
+                    }}
+                  >
+                    {JOB_TYPE_OPTIONS.map((jobTypeOption) => (
+                      <DropdownMenuRadioItem
+                        key={jobTypeOption.value}
+                        value={jobTypeOption.value}
+                        label={jobTypeOption.label}
+                      />
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              {showErrors && formErrors.jobType && (
+                <p className="mt-1 text-sm text-red-500">
+                  {formErrors.jobType}
+                </p>
+              )}
+            </div>
           </div>
         </div>
         <div className="flex justify-end">
           <Button
-            label={"Next"}
-            disabled={!isFormValid || isSubmitting}
+            label="Next"
+            disabled={isSubmitting}
             size="md"
-            onClick={withTracking(
-              TRACKING_AREAS.AUTH,
-              "onboarding_complete",
-              () => {
-                void submit();
-              }
-            )}
+            onClick={handleSubmit}
           />
         </div>
       </div>

@@ -1,100 +1,32 @@
-import Placeholder from "@tiptap/extension-placeholder";
-import type { Editor, JSONContent } from "@tiptap/react";
+import { Placeholder } from "@tiptap/extensions";
+import { Markdown } from "@tiptap/markdown";
+import type { Editor } from "@tiptap/react";
 import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
-import type { SuggestionKeyDownProps } from "@tiptap/suggestion";
 import { useEffect, useMemo } from "react";
 
 import { cleanupPastedHTML } from "@app/components/assistant/conversation/input_bar/editor/cleanupPastedHTML";
 import { DataSourceLinkExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/DataSourceLinkExtension";
+import { KeyboardShortcutsExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/KeyboardShortcutsExtension";
 import { MarkdownStyleExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MarkdownStyleExtension";
 import { MentionExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionExtension";
-import { MentionStorageExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionStorageExtension";
-import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
 import { PastedAttachmentExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/PastedAttachmentExtension";
 import { URLDetectionExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/URLDetectionExtension";
 import { createMarkdownSerializer } from "@app/components/assistant/conversation/input_bar/editor/markdownSerializer";
-import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
-import type { SuggestionProps } from "@app/components/assistant/conversation/input_bar/editor/useMentionAgentDropdown";
-import { mentionPluginKey } from "@app/components/assistant/conversation/input_bar/editor/useMentionAgentDropdown";
+import {
+  createMentionSuggestion,
+  mentionPluginKey,
+} from "@app/components/assistant/conversation/input_bar/editor/mentionSuggestion";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
-import { mentionAgent } from "@app/lib/mentions";
+import { extractFromEditorJSON } from "@app/lib/mentions/format";
 import { isMobile } from "@app/lib/utils";
+import type { RichMention } from "@app/types";
 import type { WorkspaceType } from "@app/types";
 
 import { URLStorageExtension } from "./extensions/URLStorageExtension";
 
-export type EditorMention = EditorMentionAgent | EditorMentionUser;
-
-interface BaseEditorMention {
-  id: string;
-  label: string;
-  pictureUrl: string;
-  description: string;
-}
-
-export interface EditorMentionAgent extends BaseEditorMention {
-  type: "agent";
-}
-
-export interface EditorMentionUser extends BaseEditorMention {
-  type: "user";
-}
-
 const DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD = 16000;
-
-function getTextAndMentionsFromNode(node?: JSONContent) {
-  let textContent = "";
-  let mentions: EditorMention[] = [];
-
-  if (!node) {
-    return { mentions, text: textContent };
-  }
-
-  // Check if the node is of type 'text' and concatenate its text.
-  if (node.type === "text") {
-    textContent += node.text;
-  }
-
-  // If the node is a 'mention', concatenate the mention label and add to mentions array.
-  if (node.type === "mention") {
-    // TODO: We should not expose `sId` here.
-    textContent += mentionAgent({
-      name: node.attrs?.label,
-      sId: node.attrs?.id,
-    });
-    mentions.push({
-      id: node.attrs?.id,
-      label: node.attrs?.label,
-      type: node.attrs?.type,
-      pictureUrl: node.attrs?.pictureUrl,
-      description: node.attrs?.description,
-    });
-  }
-
-  // If the node is a 'hardBreak' or a 'paragraph', add a newline character.
-  if (node.type && ["hardBreak", "paragraph"].includes(node.type)) {
-    textContent += "\n";
-  }
-
-  if (node.type === "pastedAttachment") {
-    const title = node.attrs?.title ?? "";
-    const fileId = node.attrs?.fileId ?? "";
-    textContent += `:pasted_content[${title}]{pastedId=${fileId}}`;
-  }
-
-  // If the node has content, recursively get text and mentions from each child node
-  if (node.content) {
-    node.content.forEach((childNode) => {
-      const childResult = getTextAndMentionsFromNode(childNode);
-      textContent += childResult.text;
-      mentions = mentions.concat(childResult.mentions);
-    });
-  }
-
-  return { text: textContent, mentions: mentions };
-}
 
 function isLongTextPaste(text: string, maxCharThreshold?: number) {
   const maxChars = maxCharThreshold ?? DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD;
@@ -147,7 +79,7 @@ const useEditorService = (editor: Editor | null) => {
       },
 
       resetWithMentions: (
-        mentions: EditorMention[],
+        mentions: RichMention[],
         disableAutoFocus: boolean
       ) => {
         const chainCommands = editor?.chain();
@@ -184,9 +116,7 @@ const useEditorService = (editor: Editor | null) => {
       },
 
       getTextAndMentions() {
-        const { mentions, text } = getTextAndMentionsFromNode(
-          editor?.getJSON()
-        );
+        const { mentions, text } = extractFromEditorJSON(editor?.getJSON());
 
         return {
           mentions,
@@ -208,7 +138,7 @@ const useEditorService = (editor: Editor | null) => {
         };
       },
 
-      hasMention(mention: EditorMention) {
+      hasMention(mention: RichMention) {
         const { mentions } = this.getTextAndMentions();
         return mentions.some(
           (m) => m.id === mention.id && m.type === mention.type
@@ -252,18 +182,10 @@ export interface CustomEditorProps {
     clearEditor: () => void,
     setLoading: (loading: boolean) => void
   ) => void;
-  suggestions: EditorSuggestions;
   disableAutoFocus: boolean;
   onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
-  suggestionHandler: {
-    render: () => {
-      onKeyDown: (props: SuggestionKeyDownProps) => boolean;
-      onStart: (props: SuggestionProps) => void;
-      onExit: () => void;
-      onUpdate: (props: SuggestionProps) => void;
-    };
-  };
   owner: WorkspaceType;
+  conversationId: string | null;
   // If provided, large pasted text will be routed to this callback along with selection bounds
   onLongTextPaste?: (payload: {
     text: string;
@@ -276,22 +198,21 @@ export interface CustomEditorProps {
 
 const useCustomEditor = ({
   onEnterKeyDown,
-  suggestions,
   disableAutoFocus,
   onUrlDetected,
-  suggestionHandler,
   owner,
+  conversationId,
   onLongTextPaste,
   longTextPasteCharsThreshold,
   onInlineText,
 }: CustomEditorProps) => {
   const extensions = [
+    KeyboardShortcutsExtension,
     StarterKit.configure({
-      hardBreak: false, // Disable the built-in Shift+Enter.
-      paragraph: false,
+      hardBreak: false, // Disable the built-in Shift+Enter. We handle it ourselves in the keymap extension
       strike: false,
     }),
-    MentionStorageExtension,
+    Markdown,
     DataSourceLinkExtension,
     MentionExtension.configure({
       owner,
@@ -299,9 +220,7 @@ const useCustomEditor = ({
         class:
           "min-w-0 px-0 py-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-highlight-500 font-semibold",
       },
-      // Ensure queries can contain spaces (e.g., @Sales Team → decomposes to
-      // text and keeps the dropdown active over the full label).
-      suggestion: { ...suggestionHandler, allowSpaces: true },
+      suggestion: createMentionSuggestion({ owner, conversationId }),
     }),
     Placeholder.configure({
       placeholder: "Ask an @agent a question, or get some @help",
@@ -309,7 +228,6 @@ const useCustomEditor = ({
         "first:before:text-gray-400 first:before:float-left first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:h-0",
     }),
     MarkdownStyleExtension,
-    ParagraphExtension,
     PastedAttachmentExtension.configure({
       onInlineText,
     }),
@@ -347,14 +265,8 @@ const useCustomEditor = ({
         return false;
       },
     },
+    immediatelyRender: false,
   });
-
-  // Sync the extension's MentionStorage suggestions whenever the local suggestions state updates.
-  useEffect(() => {
-    if (editor) {
-      editor.storage.MentionStorage.suggestions = suggestions;
-    }
-  }, [suggestions, editor]);
 
   const editorService = useEditorService(editor);
 

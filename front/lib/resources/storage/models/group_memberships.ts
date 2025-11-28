@@ -49,6 +49,11 @@ GroupMembershipModel.init(
     indexes: [
       { fields: ["userId", "groupId"] },
       { fields: ["workspaceId"], concurrently: true },
+      // Optimized index for common query pattern: filtering by group, workspace, status, and date ranges
+      {
+        fields: ["workspaceId", "groupId", "status", "startAt"],
+        concurrently: true,
+      },
     ],
   }
 );

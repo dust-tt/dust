@@ -40,6 +40,9 @@ export const filterWebhookSource = (
       webhookSource.name.toLowerCase().includes(filterValue.toLowerCase()) ||
       webhookSource.views.some((view) =>
         view?.customName.toLowerCase().includes(filterValue.toLowerCase())
+      ) ||
+      (webhookSource.provider?.toLowerCase() ?? "custom").includes(
+        filterValue.toLowerCase()
       )
     );
   }

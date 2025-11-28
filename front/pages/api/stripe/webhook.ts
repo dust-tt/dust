@@ -12,11 +12,16 @@ import {
 } from "@app/lib/api/email";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
+import { startCreditFromProOneOffInvoice } from "@app/lib/credits/committed";
+import { grantFreeCreditsOnSubscriptionRenewal } from "@app/lib/credits/free";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import {
   assertStripeSubscriptionIsValid,
   createCustomerPortalSession,
   getStripeClient,
+  getStripeSubscription,
+  isCreditPurchaseInvoice,
+  isEnterpriseSubscription,
 } from "@app/lib/plans/stripe";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
@@ -65,7 +70,7 @@ async function handler(
       // Collect raw body using stream pipeline
       let rawBody = Buffer.from("");
       const collector = new Writable({
-        write(chunk, encoding, callback) {
+        write(chunk, _encoding, callback) {
           rawBody = Buffer.concat([rawBody, chunk]);
           callback();
         },
@@ -79,18 +84,16 @@ async function handler(
           apiConfig.getStripeSecretWebhookKey()
         );
       } catch (error) {
-        logger.error(
-          { error, stripeError: true },
-          "Error constructing Stripe event in Webhook."
-        );
+        logger.error({ error }, "Error constructing Stripe event in Webhook.");
       }
 
       if (!event) {
         return apiError(req, res, {
-          status_code: 500,
+          status_code: 403,
           api_error: {
             type: "internal_server_error",
-            message: "Error constructing Stripe Webhook event.",
+            message:
+              "Invalid Stripe Webhook event, the signature may not be valid.",
           },
         });
       }
@@ -295,13 +298,13 @@ async function handler(
               },
             });
           }
-        case "invoice.paid":
+        case "invoice.paid": {
           // This is what confirms the subscription is active and payments are being made.
           logger.info(
             { event },
             "[Stripe Webhook] Received customer.invoice.paid event."
           );
-          invoice = event.data.object as Stripe.Invoice;
+          const invoice = event.data.object as Stripe.Invoice;
           if (typeof invoice.subscription !== "string") {
             return _returnStripeApiError(
               req,
@@ -311,11 +314,12 @@ async function handler(
             );
           }
           // Setting subscription payment status to succeeded
-          subscription = await Subscription.findOne({
+          const subscription = await Subscription.findOne({
             where: { stripeSubscriptionId: invoice.subscription },
             include: [WorkspaceModel],
           });
-          if (!subscription) {
+
+          if (!subscription || !subscription.stripeSubscriptionId) {
             logger.warn(
               {
                 event,
@@ -327,8 +331,54 @@ async function handler(
             // the warnings and create an alert if this log appears in all regions
             return res.status(200).json({ success: true });
           }
-          await subscription.update({ paymentFailingSince: null });
+
+          const stripeSubscription = await getStripeSubscription(
+            subscription.stripeSubscriptionId
+          );
+
+          if (!stripeSubscription) {
+            logger.warn(
+              {
+                event,
+                stripeSubscriptionId: invoice.subscription,
+              },
+              "[Stripe Webhook] Stripe subscription not found."
+            );
+            // We return a 200 here to handle multiple regions, DD will watch
+            // the warnings and create an alert if this log appears in all regions
+            return res.status(200).json({ success: true });
+          }
+
+          const isProCreditPurchaseInvoice =
+            isCreditPurchaseInvoice(invoice) &&
+            !isEnterpriseSubscription(stripeSubscription);
+
+          const auth = await Authenticator.internalAdminForWorkspace(
+            subscription.workspace.sId
+          );
+
+          if (isProCreditPurchaseInvoice) {
+            const creditPurchaseResult = await startCreditFromProOneOffInvoice({
+              auth,
+              invoice,
+              stripeSubscription,
+            });
+
+            if (creditPurchaseResult.isErr()) {
+              logger.error(
+                {
+                  error: creditPurchaseResult.error,
+                  invoiceId: invoice.id,
+                  stripeSubscriptionId: invoice.subscription,
+                },
+                "[Stripe Webhook] Error processing credit purchase"
+              );
+            }
+          } else if (!isCreditPurchaseInvoice(invoice)) {
+            await subscription.update({ paymentFailingSince: null });
+          }
           break;
+        }
         case "invoice.payment_failed":
           // Occurs when payment failed or the user does not have a valid payment method.
           // The stripe subscription becomes "past_due".
@@ -465,6 +515,48 @@ async function handler(
           if (!previousAttributes) {
             break;
           } // should not happen by definition of the subscription.updated event
+
+          // Billing cycle changed - grant free credits based on eligibility
+          if ("current_period_start" in previousAttributes) {
+            const subscription = await Subscription.findOne({
+              where: { stripeSubscriptionId: stripeSubscription.id },
+              include: [WorkspaceModel],
+            });
+
+            if (subscription) {
+              const auth = await Authenticator.internalAdminForWorkspace(
+                subscription.workspace.sId
+              );
+
+              const freeCreditsResult =
+                await grantFreeCreditsOnSubscriptionRenewal({
+                  auth,
+                  stripeSubscription,
+                });
+
+              if (freeCreditsResult.isErr()) {
+                logger.error(
+                  {
+                    panic: true,
+                    stripeError: true,
+                    error: freeCreditsResult.error,
+                    subscriptionId: stripeSubscription.id,
+                    workspaceId: subscription.workspace.sId,
+                  },
+                  "[Stripe Webhook] Error granting free credits on renewal"
+                );
+              }
+            } else {
+              logger.warn(
+                {
+                  stripeEventId: event.id,
+                  stripeEventType: event.type,
+                  stripeSubscriptionId: stripeSubscription.id,
+                },
+                "[Stripe Webhook] Subscription not found for billing cycle change."
+              );
+            }
+          }
 
           if (stripeSubscription.status === "trialing") {
             // We check if the trialing subscription is being canceled.

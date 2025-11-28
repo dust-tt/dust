@@ -18,12 +18,12 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/events";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
+import type { AgentMCPActionOutputItem } from "@app/lib/models/agent/actions/mcp";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type {
   AgentConfigurationType,
   AgentMessageType,
-  ConversationType,
+  ConversationWithoutContentType,
   OAuthProvider,
 } from "@app/types";
 
@@ -97,7 +97,7 @@ export async function getExitOrPauseEvents({
   action: AgentMCPActionResource;
   agentConfiguration: AgentConfigurationType;
   agentMessage: AgentMessageType;
-  conversation: ConversationType;
+  conversation: ConversationWithoutContentType;
 }): Promise<
   (
     | MCPApproveExecutionEvent

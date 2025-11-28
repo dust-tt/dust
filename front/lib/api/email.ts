@@ -31,6 +31,26 @@ export async function sendGitHubDeletionEmail(email: string): Promise<void> {
   });
 }
 
+export async function sendModjoDisconnectionEmail(
+  email: string,
+  workspaceName: string
+): Promise<void> {
+  await sendEmailWithTemplate({
+    to: email,
+    from: config.getSupportEmailAddress(),
+    subject: "[Dust] Modjo connection disconnected - action required",
+    body: `<p>Your Modjo connection for the workspace "${workspaceName}" has been automatically disconnected.</p>
+    <p>This happened because your Modjo API key is no longer valid or your Modjo tenant has been deactivated.</p>
+    <p>To resume syncing your Modjo transcripts, please:</p>
+    <ol>
+      <li>Verify that your Modjo account is still active</li>
+      <li>Generate a new API key in Modjo if needed</li>
+      <li>Reconnect your Modjo account in Dust settings</li>
+    </ol>
+    <p>Please reply to this email if you have any questions.</p>`,
+  });
+}
+
 /** Emails for cancelling / reactivating subscription */
 
 export async function sendCancelSubscriptionEmail(

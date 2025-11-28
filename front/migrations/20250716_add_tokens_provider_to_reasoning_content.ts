@@ -1,6 +1,6 @@
 import { Op } from "sequelize";
 
-import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
+import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
 import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";

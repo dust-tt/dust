@@ -42,6 +42,7 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { useKeys } from "@app/lib/swr/apps";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import type {
   GroupType,
@@ -506,11 +507,17 @@ export default function APIKeysPage({
   subscription,
   groups,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+
   return (
     <AppCenteredLayout
       subscription={subscription}
       owner={owner}
-      subNavigation={subNavigationAdmin({ owner, current: "api_keys" })}
+      subNavigation={subNavigationAdmin({
+        owner,
+        current: "api_keys",
+        featureFlags,
+      })}
     >
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header

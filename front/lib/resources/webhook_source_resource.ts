@@ -7,8 +7,8 @@ import type {
 } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
-import { WebhookSourceModel } from "@app/lib/models/assistant/triggers/webhook_source";
-import { WebhookSourcesViewModel } from "@app/lib/models/assistant/triggers/webhook_sources_view";
+import { WebhookSourceModel } from "@app/lib/models/agent/triggers/webhook_source";
+import { WebhookSourcesViewModel } from "@app/lib/models/agent/triggers/webhook_sources_view";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -157,15 +157,14 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
     >,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<void> {
-    await WebhookSourceModel.update(updates, {
-      where: {
-        id: this.id,
-      },
-      transaction,
-    });
+    await this.update(updates, transaction);
+  }
 
-    // Update the current instance
-    Object.assign(this, updates);
+  async updateSecret(
+    secret: WebhookSourceModel["secret"],
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    await this.update({ secret }, transaction);
   }
 
   async delete(

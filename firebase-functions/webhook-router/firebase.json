@@ -2,12 +2,7 @@
   "functions": {
     "source": ".",
     "runtime": "nodejs20",
-    "ignore": [
-      "node_modules",
-      ".git",
-      "firebase-debug.log",
-      "firebase-debug.*.log"
-    ],
+    "ignore": ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"],
     "predeploy": ["npm run build"]
   },
   "hosting": {
@@ -19,5 +14,29 @@
         "function": "webhookRouter"
       }
     ]
+  },
+  "emulators": {
+    "functions": {
+      "port": 5001
+    },
+    "database": {
+      "port": 9000
+    },
+    "hosting": {
+      "port": 5000
+    },
+    "storage": {
+      "port": 9199
+    },
+    "ui": {
+      "enabled": true
+    },
+    "singleProjectMode": true
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "database": {
+    "rules": "database.rules.json"
   }
 }

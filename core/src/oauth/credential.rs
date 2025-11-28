@@ -19,6 +19,7 @@ pub enum CredentialProvider {
     Bigquery,
     Databricks,
     Salesforce,
+    Slack,
     Microsoft,
     MicrosoftTools,
     Modjo,
@@ -39,6 +40,7 @@ impl From<ConnectionProvider> for CredentialProvider {
             ConnectionProvider::Microsoft => CredentialProvider::Microsoft,
             ConnectionProvider::MicrosoftTools => CredentialProvider::MicrosoftTools,
             ConnectionProvider::Salesforce => CredentialProvider::Salesforce,
+            ConnectionProvider::Slack => CredentialProvider::Slack,
             ConnectionProvider::Gmail => CredentialProvider::Gmail,
             ConnectionProvider::Jira => CredentialProvider::Jira,
             ConnectionProvider::Mcp => CredentialProvider::Mcp,
@@ -209,6 +211,9 @@ impl Credential {
                 vec!["host", "http_path", "access_token"]
             }
             CredentialProvider::Salesforce => {
+                vec!["client_id", "client_secret"]
+            }
+            CredentialProvider::Slack => {
                 vec!["client_id", "client_secret"]
             }
             CredentialProvider::Microsoft => {

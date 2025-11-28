@@ -7,7 +7,7 @@ import {
   shouldSyncTicket,
   syncTicket,
 } from "@connectors/connectors/zendesk/lib/sync_ticket";
-import type { ZendeskFetchedTicketComment } from "@connectors/connectors/zendesk/lib/types";
+import type { ZendeskTicketComment } from "@connectors/connectors/zendesk/lib/types";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import { ZendeskClient } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -106,9 +106,10 @@ export async function syncZendeskArticleUpdateBatchActivity({
     connector.connectionId
   );
 
-  const zendeskClient = await ZendeskClient.createClient(
+  const zendeskClient = new ZendeskClient(
     accessToken,
-    connectorId
+    connectorId,
+    configuration.rateLimitTransactionsPerSecond
   );
 
   const brandSubdomain = await zendeskClient.getBrandSubdomain({
@@ -243,9 +244,10 @@ export async function syncZendeskTicketUpdateBatchActivity({
     connector.connectionId
   );
 
-  const zendeskClient = await ZendeskClient.createClient(
+  const zendeskClient = new ZendeskClient(
     accessToken,
-    connectorId
+    connectorId,
+    configuration.rateLimitTransactionsPerSecond
   );
 
   const brandSubdomain = await zendeskClient.getBrandSubdomain({
@@ -257,7 +259,7 @@ export async function syncZendeskTicketUpdateBatchActivity({
     url ? { url } : { brandSubdomain, startTime }
   );
 
-  const commentsPerTicket: Record<number, ZendeskFetchedTicketComment[]> = {};
+  const commentsPerTicket: Record<number, ZendeskTicketComment[]> = {};
   await concurrentExecutor(
     tickets,
     async (ticket) => {

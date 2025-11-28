@@ -13,7 +13,7 @@ import {
   GoogleDriveFiles,
   GoogleDriveSyncToken,
 } from "@connectors/lib/models/google_drive";
-import logger from "@connectors/logger/logger";
+import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { GoogleDriveObjectType, ModelId } from "@connectors/types";
 
@@ -40,7 +40,7 @@ export async function deleteFile(googleDriveFile: GoogleDriveFiles) {
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
-  logger.info(
+  getActivityLogger(connector).info(
     {
       driveFileId: googleDriveFile.driveFileId,
       connectorId,

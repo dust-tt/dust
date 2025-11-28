@@ -5,10 +5,9 @@ import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guard
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationRequirementsFromActions } from "@app/lib/api/assistant/permissions";
 import { Authenticator } from "@app/lib/auth";
-import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentMCPServerConfiguration } from "@app/lib/models/agent/actions/mcp";
+import { AgentConfiguration } from "@app/lib/models/agent/agent";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
-import { isArrayEqual2DUnordered, normalizeArrays } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
@@ -62,20 +61,8 @@ async function updateAgentConfigurationGroupIds(
       { actions: ac.actions }
     );
 
-    // Normalize the arrays for comparison
-    const normalizedNewGroupIds = normalizeArrays(
-      newRequirements.requestedGroupIds
-    );
-    const normalizedCurrentGroupIds = normalizeArrays(agent.requestedGroupIds);
-
     // Check if the group IDs have changed
-    if (
-      isArrayEqual2DUnordered(
-        normalizedNewGroupIds,
-        normalizedCurrentGroupIds
-      ) &&
-      _.isEqual(newRequirements.requestedSpaceIds, agent.requestedSpaceIds)
-    ) {
+    if (_.isEqual(newRequirements.requestedSpaceIds, agent.requestedSpaceIds)) {
       logger.debug(
         { agentId: agent.sId },
         "Agent requirements are already up to date"
@@ -87,8 +74,6 @@ async function updateAgentConfigurationGroupIds(
       {
         agentId: agent.sId,
         agentName: agent.name,
-        currentGroupIds: normalizedCurrentGroupIds,
-        newGroupIds: normalizedNewGroupIds,
         execute,
       },
       "Updating agent configuration requirements for permissions"
@@ -97,7 +82,6 @@ async function updateAgentConfigurationGroupIds(
     if (execute) {
       await AgentConfiguration.update(
         {
-          requestedGroupIds: normalizedNewGroupIds,
           requestedSpaceIds: newRequirements.requestedSpaceIds,
         },
         { where: { sId: agent.sId } }

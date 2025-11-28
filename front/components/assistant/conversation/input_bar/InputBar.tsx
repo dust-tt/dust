@@ -2,7 +2,6 @@ import _ from "lodash";
 import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
-import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import { InputBarAttachments } from "@app/components/assistant/conversation/input_bar/InputBarAttachments";
 import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import InputBarContainer, {
@@ -25,6 +24,7 @@ import type {
   DataSourceViewContentNode,
   LightAgentConfigurationType,
   Result,
+  RichMention,
   WorkspaceType,
 } from "@app/types";
 import { compareAgentsForSort, isEqualNode, isGlobalAgentId } from "@app/types";
@@ -35,7 +35,7 @@ interface InputBarProps {
   owner: WorkspaceType;
   onSubmit: (
     input: string,
-    mentions: EditorMention[],
+    mentions: RichMention[],
     contentFragments: ContentFragmentsType,
     selectedMCPServerViewIds?: string[]
   ) => Promise<Result<undefined, DustError>>;
@@ -46,6 +46,7 @@ interface InputBarProps {
   disableAutoFocus: boolean;
   isFloating?: boolean;
   isFloatingWithoutMargin?: boolean;
+  isSubmitting?: boolean;
   disable?: boolean;
 }
 
@@ -64,9 +65,10 @@ export const InputBar = React.memo(function InputBar({
   actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
   isFloating = true,
+  isSubmitting = false,
   disable = false,
 }: InputBarProps) {
-  const [disableSendButton, setDisableSendButton] = useState(disable);
+  const [isLocalSubmitting, setIsLocalSubmitting] = useState(isSubmitting);
 
   const [attachedNodes, setAttachedNodes] = useState<
     DataSourceViewContentNode[]
@@ -204,6 +206,7 @@ export const InputBar = React.memo(function InputBar({
       object: "message_send",
       action: "submit",
       extra: {
+        conversation_id: conversationId ?? "new",
         has_attachments: attachedNodes.length > 0 || uploadedFiles.length > 0,
         has_tools: selectedMCPServerViews.length > 0,
         has_agents: mentionedAgents.length > 0,
@@ -211,8 +214,11 @@ export const InputBar = React.memo(function InputBar({
         has_custom_agent: mentionedAgents.some((a) => !isGlobalAgentId(a.sId)),
         is_new_conversation: !conversationId,
         agent_count: mentions.length,
+        agent_ids: mentionedAgents.map((a) => a.sId).join(","),
         attachment_count: attachedNodes.length + uploadedFiles.length,
         tool_count: selectedMCPServerViews.length,
+        tool_names: selectedMCPServerViews.map((t) => t.server.name).join(","),
+        message_length: markdown.length,
       },
     });
 
@@ -220,7 +226,7 @@ export const InputBar = React.memo(function InputBar({
     // spinner and in case of error, re-enable the input bar
     if (!conversationId) {
       setLoading(true);
-      setDisableSendButton(true);
+      setIsLocalSubmitting(true);
 
       const r = await onSubmit(
         markdown,
@@ -241,7 +247,7 @@ export const InputBar = React.memo(function InputBar({
       );
 
       setLoading(false);
-      setDisableSendButton(false);
+      setIsLocalSubmitting(false);
       if (r.isOk()) {
         resetEditorText();
         fileUploaderService.resetUpload();
@@ -278,8 +284,8 @@ export const InputBar = React.memo(function InputBar({
   };
 
   useEffect(() => {
-    setDisableSendButton(disable);
-  }, [disable]);
+    setIsLocalSubmitting(isSubmitting);
+  }, [isSubmitting]);
 
   return (
     <div className="flex w-full flex-col">
@@ -315,6 +321,7 @@ export const InputBar = React.memo(function InputBar({
               onRemove: handleNodesAttachmentRemove,
             }}
             conversationId={conversationId}
+            disable={disable}
           />
           <InputBarContainer
             actions={actions}
@@ -322,14 +329,15 @@ export const InputBar = React.memo(function InputBar({
             allAgents={activeAgents}
             agentConfigurations={agentConfigurations}
             owner={owner}
+            conversationId={conversationId}
             selectedAgent={selectedAgent}
             onEnterKeyDown={handleSubmit}
             stickyMentions={stickyMentions}
             fileUploaderService={fileUploaderService}
-            disableSendButton={
-              disableSendButton || fileUploaderService.isProcessingFiles
+            isSubmitting={
+              isLocalSubmitting || fileUploaderService.isProcessingFiles
             }
-            disableTextInput={disable}
+            disableInput={disable}
             onNodeSelect={handleNodesAttachmentSelect}
             onNodeUnselect={handleNodesAttachmentRemove}
             selectedMCPServerViews={selectedMCPServerViews}

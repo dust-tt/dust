@@ -5,6 +5,8 @@ import { asDisplayToolName } from "@app/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
+import { buildConfigBreakdown, MISSING_CONFIG_NAME } from "./tool_breakdown";
+
 const DEFAULT_METRIC_VALUE = 0;
 
 export type ToolStepIndexByStep = {
@@ -12,6 +14,7 @@ export type ToolStepIndexByStep = {
   tools: {
     [toolName: string]: {
       count: number;
+      breakdown?: Record<string, number>;
     };
   };
   total: number;
@@ -22,16 +25,20 @@ type TermBucket<T = string | number> = {
   doc_count: number;
 };
 
-type ToolBucket = TermBucket<string>;
+type ConfigBucket = TermBucket<string>;
+
+type ServerBucket = TermBucket<string> & {
+  configs?: estypes.AggregationsMultiBucketAggregateBase<ConfigBucket>;
+};
 
 type StepBucket = TermBucket<number> & {
-  tool_names?: estypes.AggregationsMultiBucketAggregateBase<ToolBucket>;
+  servers?: estypes.AggregationsMultiBucketAggregateBase<ServerBucket>;
 };
 
 type ToolStepIndexAggs = {
   steps?: {
     by_step?: estypes.AggregationsMultiBucketAggregateBase<StepBucket>;
-    top_tools?: estypes.AggregationsMultiBucketAggregateBase<ToolBucket>;
+    top_tools?: estypes.AggregationsMultiBucketAggregateBase<ServerBucket>;
   };
 };
 
@@ -45,7 +52,7 @@ export async function fetchToolStepIndexDistribution(
         // Global top tools across all steps (not strictly required client-side but useful if needed)
         top_tools: {
           terms: {
-            field: "tools_used.tool_name",
+            field: "tools_used.server_name",
             size: 50,
             order: { _count: "desc" },
           },
@@ -57,10 +64,19 @@ export async function fetchToolStepIndexDistribution(
             order: { _key: "asc" },
           },
           aggs: {
-            tool_names: {
+            servers: {
               terms: {
-                field: "tools_used.tool_name",
+                field: "tools_used.server_name",
                 size: 50,
+              },
+              aggs: {
+                configs: {
+                  terms: {
+                    field: "tools_used.mcp_server_configuration_sid",
+                    size: 50,
+                    missing: MISSING_CONFIG_NAME,
+                  },
+                },
               },
             },
           },
@@ -83,12 +99,15 @@ export async function fetchToolStepIndexDistribution(
   );
 
   const byStep: ToolStepIndexByStep[] = stepBuckets.map((sb) => {
-    const toolBuckets = bucketsToArray<ToolBucket>(sb.tool_names?.buckets);
+    const serverBuckets = bucketsToArray<ServerBucket>(sb.servers?.buckets);
 
     const tools: ToolStepIndexByStep["tools"] = {};
-    toolBuckets.forEach((tb) => {
-      tools[asDisplayToolName(tb.key)] = {
-        count: tb.doc_count ?? DEFAULT_METRIC_VALUE,
+    serverBuckets.forEach((serverBucket) => {
+      const breakdown = buildConfigBreakdown(serverBucket.configs);
+
+      tools[asDisplayToolName(serverBucket.key)] = {
+        count: serverBucket.doc_count ?? DEFAULT_METRIC_VALUE,
+        breakdown: Object.keys(breakdown).length > 0 ? breakdown : undefined,
       };
     });
 

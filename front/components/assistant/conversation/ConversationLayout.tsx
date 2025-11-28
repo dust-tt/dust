@@ -19,11 +19,13 @@ import { GenerationContextProvider } from "@app/components/assistant/conversatio
 import { InputBarProvider } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
+import { MemberDetails } from "@app/components/assistant/details/MemberDetails";
 import { WelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuide";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { ErrorBoundary } from "@app/components/error_boundary/ErrorBoundary";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import { useURLSheet } from "@app/hooks/useURLSheet";
+import { ONBOARDING_CONVERSATION_ENABLED } from "@app/lib/onboarding";
 import { useConversation } from "@app/lib/swr/conversations";
 import type {
   ConversationError,
@@ -86,6 +88,7 @@ const ConversationLayoutContent = ({
 }: ConversationLayoutContentProps) => {
   const router = useRouter();
   const { onOpenChange: onOpenChangeAgentModal } = useURLSheet("agentDetails");
+  const { onOpenChange: onOpenChangeUserModal } = useURLSheet("userDetails");
   const { activeConversationId } = useConversationsNavigation();
   const { conversation, conversationError } = useConversation({
     conversationId: activeConversationId,
@@ -100,12 +103,25 @@ const ConversationLayoutContent = ({
     return null;
   }, [router.query.agentDetails]);
 
+  const userSId = useMemo(() => {
+    const sid = router.query.userDetails ?? [];
+    if (isString(sid)) {
+      return sid;
+    }
+    return null;
+  }, [router.query.userDetails]);
+
   // Logic for the welcome tour guide. We display it if the welcome query param is set to true.
   const { startConversationRef, spaceMenuButtonRef, createAgentButtonRef } =
     useWelcomeTourGuide();
 
   const shouldDisplayWelcomeTourGuide = useMemo(() => {
-    return router.query.welcome === "true" && !activeConversationId;
+    // Only show the welcome tour guide if onboarding chat is disabled.
+    return (
+      router.query.welcome === "true" &&
+      !activeConversationId &&
+      !ONBOARDING_CONVERSATION_ENABLED
+    );
   }, [router.query.welcome, activeConversationId]);
 
   const onTourGuideEnd = () => {
@@ -134,6 +150,12 @@ const ConversationLayoutContent = ({
             user={user}
             agentId={agentSId}
             onClose={() => onOpenChangeAgentModal(false)}
+          />
+
+          <MemberDetails
+            owner={owner}
+            userId={userSId}
+            onClose={() => onOpenChangeUserModal(false)}
           />
 
           <ConversationSidePanelProvider>
@@ -199,7 +221,9 @@ function ConversationInnerLayout({
         >
           <ResizablePanel defaultSize={100}>
             <div className="flex h-full flex-col">
-              {activeConversationId && <ConversationTitle owner={owner} />}
+              {activeConversationId && !conversationError && (
+                <ConversationTitle owner={owner} />
+              )}
               {conversationError ? (
                 <ConversationErrorDisplay error={conversationError} />
               ) : (

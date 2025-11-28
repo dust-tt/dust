@@ -1,18 +1,19 @@
 import OpenAI, { APIError } from "openai";
 
 import type { XaiWhitelistedModelId } from "@app/lib/api/llm/clients/xai/types";
+import { overwriteLLMParameters } from "@app/lib/api/llm/clients/xai/types";
 import { LLM } from "@app/lib/api/llm/llm";
 import { handleGenericError } from "@app/lib/api/llm/types/errors";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
   LLMParameters,
-  StreamParameters,
+  LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
 import { handleError } from "@app/lib/api/llm/utils/openai_like/errors";
 import {
   toInput,
-  toReasoning,
   toTool,
+  toToolOption,
 } from "@app/lib/api/llm/utils/openai_like/responses/conversation_to_openai";
 import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_like/responses/openai_to_events";
 import type { Authenticator } from "@app/lib/auth";
@@ -23,24 +24,11 @@ export class XaiLLM extends LLM {
 
   constructor(
     auth: Authenticator,
-    {
-      bypassFeatureFlag,
-      context,
-      modelId,
-      reasoningEffort,
-      temperature,
-    }: LLMParameters & {
+    llmParameters: LLMParameters & {
       modelId: XaiWhitelistedModelId;
     }
   ) {
-    super(auth, {
-      bypassFeatureFlag,
-      context,
-      modelId,
-      reasoningEffort,
-      temperature,
-      clientId: "openai_responses",
-    });
+    super(auth, overwriteLLMParameters(llmParameters));
 
     const { XAI_API_KEY } = dustManagedCredentials();
     if (!XAI_API_KEY) {
@@ -56,15 +44,19 @@ export class XaiLLM extends LLM {
     conversation,
     prompt,
     specifications,
-  }: StreamParameters): AsyncGenerator<LLMEvent> {
+    forceToolCall,
+  }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
     try {
       const events = await this.client.responses.create({
         model: this.modelId,
         input: toInput(prompt, conversation, "system"),
         stream: true,
+        // Reasoning not supported by xai responses api yet
+        // Using default value for reasoning models
         temperature: this.temperature,
-        reasoning: toReasoning(this.reasoningEffort),
         tools: specifications.map(toTool),
+        include: ["reasoning.encrypted_content"],
+        tool_choice: toToolOption(specifications, forceToolCall),
       });
 
       yield* streamLLMEvents(events, this.metadata);

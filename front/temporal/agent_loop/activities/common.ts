@@ -8,10 +8,9 @@ import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
 import { TERMINAL_AGENT_MESSAGE_EVENT_TYPES } from "@app/lib/api/assistant/streaming/types";
-import { maybeTrackTokenUsageCost } from "@app/lib/api/public_api_limits";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { Authenticator as AuthenticatorClass } from "@app/lib/auth";
-import type { AgentMessage } from "@app/lib/models/assistant/conversation";
+import type { AgentMessage } from "@app/lib/models/agent/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
@@ -61,9 +60,19 @@ async function processEventForDatabase(
     });
   }
 
+  // Merge runIds from events that include them. This ensures runIds are persisted
+  // incrementally as events are published.
+  if ("runIds" in event && event.runIds && event.runIds.length > 0) {
+    const existingRunIds = agentMessageRow.runIds ?? [];
+    // Merge and deduplicate runIds
+    const mergedRunIds = [...new Set([...existingRunIds, ...event.runIds])];
+    await agentMessageRow.update({
+      runIds: mergedRunIds,
+    });
+  }
+
   switch (event.type) {
     case "agent_error":
-    case "tool_error":
       // Store error in database.
       await markAgentMessageAsFailed(agentMessageRow, event.error);
 
@@ -72,26 +81,33 @@ async function processEventForDatabase(
         conversation,
       });
 
-      if (event.type === "agent_error") {
-        await AgentStepContentResource.createNewVersion({
-          workspaceId: agentMessageRow.workspaceId,
-          agentMessageId: agentMessageRow.id,
-          step,
-          index: 0, // Errors are the only content for this step
+      await AgentStepContentResource.createNewVersion({
+        workspaceId: agentMessageRow.workspaceId,
+        agentMessageId: agentMessageRow.id,
+        step,
+        index: 0, // Errors are the only content for this step
+        type: "error",
+        value: {
           type: "error",
           value: {
-            type: "error",
-            value: {
-              code: event.error.code,
-              message: event.error.message,
-              metadata: {
-                ...event.error.metadata,
-                category: event.error.metadata?.category ?? "",
-              },
+            code: event.error.code,
+            message: event.error.message,
+            metadata: {
+              ...event.error.metadata,
+              category: event.error.metadata?.category ?? "",
             },
           },
-        });
-      }
+        },
+      });
+      break;
+
+    case "tool_error":
+      await markAgentMessageAsFailed(agentMessageRow, event.error);
+
+      // Mark the conversation as errored.
+      await ConversationResource.markHasError(auth, {
+        conversation,
+      });
       break;
 
     case "agent_generation_cancelled":
@@ -103,12 +119,15 @@ async function processEventForDatabase(
       break;
 
     case "agent_message_success":
-      // Store success and run IDs in database.
-      await agentMessageRow.update({
-        runIds: event.runIds,
-        status: "succeeded",
-        completedAt: new Date(),
-      });
+      await Promise.all([
+        // Store success in database. runIds are already merged above.
+        agentMessageRow.update({
+          status: "succeeded",
+          completedAt: new Date(),
+        }),
+        // Mark the conversation as updated
+        ConversationResource.markAsUpdated(auth, { conversation }),
+      ]);
 
       break;
 
@@ -151,17 +170,6 @@ async function processEventForUnreadState(
   }
 }
 
-// Process potential token usage tracking for agent events before publishing to Redis.
-async function processEventForTokenUsageTracking(
-  auth: Authenticator,
-  { event }: { event: AgentMessageEvents }
-) {
-  if (event.type === "agent_message_success") {
-    const { runIds } = event;
-    await maybeTrackTokenUsageCost(auth, { dustRunIds: runIds });
-  }
-}
-
 export async function updateResourceAndPublishEvent(
   auth: Authenticator,
   {
@@ -188,7 +196,6 @@ export async function updateResourceAndPublishEvent(
       modelInteractionDurationMs,
     }),
     processEventForUnreadState(auth, { event, conversation }),
-    processEventForTokenUsageTracking(auth, { event }),
   ]);
 
   await publishConversationRelatedEvent({
@@ -255,6 +262,8 @@ export async function notifyWorkflowError(
         errorName: error.name || "UnknownError",
       },
     },
+    // Workflow errors occur outside of LLM execution, so use existing runIds from DB
+    runIds: messageRow.agentMessage.runIds ?? [],
   };
 
   await updateResourceAndPublishEvent(auth, {

@@ -26,6 +26,7 @@ import type {
   IntercomFetchArticlesResponseType,
   IntercomFetchConversationResponseType,
   IntercomForceResyncArticlesResponseType,
+  IntercomGetConversationsSlidingWindowResponseType,
   IntercomSearchConversationsResponseType,
 } from "@connectors/types";
 
@@ -36,6 +37,7 @@ type IntercomResponse =
   | IntercomCheckMissingConversationsResponseType
   | IntercomForceResyncArticlesResponseType
   | IntercomFetchArticlesResponseType
+  | IntercomGetConversationsSlidingWindowResponseType
   | IntercomSearchConversationsResponseType;
 
 export const intercom = async ({
@@ -291,6 +293,23 @@ export const intercom = async ({
           last_closed_at: conv.statistics?.last_close_at || null,
         })),
         totalCount,
+      };
+    }
+
+    case "get-conversations-sliding-window": {
+      if (!connector) {
+        throw new Error(`Connector ${connectorId} not found`);
+      }
+      const w = await IntercomWorkspaceModel.findOne({
+        where: {
+          connectorId: connector.id,
+        },
+      });
+      if (!w) {
+        throw new Error(`No workspace found for connector ${connector.id}`);
+      }
+      return {
+        conversationsSlidingWindow: w.conversationsSlidingWindow,
       };
     }
 

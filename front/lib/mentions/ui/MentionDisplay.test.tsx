@@ -2,9 +2,8 @@ import { render, screen } from "@testing-library/react";
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType, RichMention } from "@app/types";
 
-import type { RichMention } from "../types";
 import { MentionDisplay } from "./MentionDisplay";
 
 // Mock Sparkle primitives used by MentionDisplay to simplify tooltip behavior.

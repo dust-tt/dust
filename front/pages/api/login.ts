@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getMembershipInvitationToken } from "@app/lib/api/invitation";
 import {
   handleEnterpriseSignUpFlow,
   handleMembershipInvite,
@@ -11,7 +10,7 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { createOrUpdateUser, fetchUserFromSession } from "@app/lib/iam/users";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
-import { getSignInUrl } from "@app/lib/signup";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -111,27 +110,35 @@ async function handler(
     targetWorkspace = workspace;
     targetFlow = flow;
   } else {
-    if (userCreated) {
-      // When user is just created, check whether they have a pending invitation. If they do, it is
-      // assumed they are coming from the invitation link and have seen the join page; we redirect
-      // (after workos login) to this URL with inviteToken appended. The user will then end up on the
-      // workspace's welcome page (see comment's PR)
-      const pendingInvitation =
-        await MembershipInvitationResource.getPendingForEmail(user.email);
-      if (pendingInvitation) {
-        const signUpUrl = await getSignInUrl({
-          signupCallbackUrl: `/api/login?inviteToken=${getMembershipInvitationToken(pendingInvitation.id)}`,
-          invitationEmail: pendingInvitation.inviteEmail,
-          userExists: true,
-        });
-        res.redirect(signUpUrl);
-        return;
-      }
+    const { memberships } = await MembershipResource.getActiveMemberships({
+      users: [user],
+    });
+
+    // When user has no memberships, and no invitation is already provided, check if there is a
+    // pending invitation.
+    const pendingInvitations =
+      memberships.length === 0 && !membershipInvite
+        ? await MembershipInvitationResource.listPendingForEmail({
+            email: user.email,
+          })
+        : null;
+
+    // More than one pending invitation, redirect to invite choose page - otherwise use the first one.
+    if (pendingInvitations && pendingInvitations.length > 1) {
+      res.redirect("/invite-choose");
+      return;
     }
 
-    const loginFctn = membershipInvite
-      ? async () => handleMembershipInvite(user, membershipInvite)
-      : async () => handleRegularSignupFlow(session, user, targetWorkspaceId);
+    const finalMembershipInvite = membershipInvite ?? pendingInvitations?.[0];
+    const loginFctn = finalMembershipInvite
+      ? async () => handleMembershipInvite(user, finalMembershipInvite)
+      : async () =>
+          handleRegularSignupFlow(
+            session,
+            user,
+            memberships,
+            targetWorkspaceId
+          );
 
     const result = await loginFctn();
     if (result.isErr()) {
@@ -177,21 +184,27 @@ async function handler(
     return;
   }
 
+  const redirectOptions: Parameters<typeof buildPostLoginUrl>[1] = {
+    welcome: user.lastLoginAt === null,
+  };
+
   await user.recordLoginActivity();
 
   if (targetWorkspace && targetFlow === "joined") {
     // For users joining a workspace from trying to access a conversation, we redirect to this
     // conversation after signing in.
-    if (req.query.join === "true" && req.query.cId) {
-      res.redirect(`/w/${targetWorkspace.sId}/welcome?cId=${req.query.cId}`);
-      return;
+    if (req.query.join === "true" && typeof req.query.cId === "string") {
+      redirectOptions.conversationId = req.query.cId;
     }
-    res.redirect(`/w/${targetWorkspace.sId}/welcome`);
+    res.redirect(buildPostLoginUrl(targetWorkspace.sId, redirectOptions));
     return;
   }
 
   res.redirect(
-    `/w/${targetWorkspace ? targetWorkspace.sId : u.workspaces[0].sId}`
+    buildPostLoginUrl(
+      targetWorkspace?.sId ?? u.workspaces[0].sId,
+      redirectOptions
+    )
   );
 
   return;
@@ -199,3 +212,20 @@ async function handler(
 
 // Note from seb: Should it be withSessionAuthentication?
 export default withLogging(handler);
+
+const buildPostLoginUrl = (
+  workspaceId: string,
+  options?: {
+    welcome?: boolean;
+    conversationId?: string;
+  }
+) => {
+  let path = `/w/${workspaceId}`;
+  if (options?.welcome) {
+    path += "/welcome";
+  }
+  if (options?.conversationId) {
+    path += `?cId=${options.conversationId}`;
+  }
+  return path;
+};

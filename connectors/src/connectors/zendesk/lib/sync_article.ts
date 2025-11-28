@@ -2,9 +2,9 @@ import TurndownService from "turndown";
 
 import { getArticleInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
 import type {
-  ZendeskFetchedArticle,
-  ZendeskFetchedSection,
-  ZendeskFetchedUser,
+  ZendeskArticle,
+  ZendeskSection,
+  ZendeskUser,
 } from "@connectors/connectors/zendesk/lib/types";
 import {
   deleteDataSourceDocument,
@@ -27,13 +27,19 @@ const turndownService = new TurndownService();
 /**
  * Deletes an article from the db and the data sources.
  */
-export async function deleteArticle(
-  connectorId: ModelId,
-  brandId: number,
-  articleId: number,
-  dataSourceConfig: DataSourceConfig,
-  loggerArgs: Record<string, string | number | null>
-): Promise<void> {
+export async function deleteArticle({
+  connectorId,
+  brandId,
+  articleId,
+  dataSourceConfig,
+  loggerArgs,
+}: {
+  connectorId: ModelId;
+  brandId: number;
+  articleId: number;
+  dataSourceConfig: DataSourceConfig;
+  loggerArgs: Record<string, string | number | null>;
+}): Promise<void> {
   logger.info({ ...loggerArgs, articleId }, "[Zendesk] Deleting article.");
   await deleteDataSourceDocument(
     dataSourceConfig,
@@ -61,13 +67,13 @@ export async function syncArticle({
   dataSourceConfig,
   loggerArgs,
 }: {
-  article: ZendeskFetchedArticle;
+  article: ZendeskArticle;
   connector: ConnectorResource;
   configuration: ZendeskConfigurationResource;
   dataSourceConfig: DataSourceConfig;
-  section: ZendeskFetchedSection | null;
+  section: ZendeskSection | null;
   category: ZendeskCategoryResource;
-  user: ZendeskFetchedUser | null;
+  user: ZendeskUser | null;
   helpCenterIsAllowed: boolean;
   currentSyncDateMs: number;
   loggerArgs: Record<string, string | number | null>;

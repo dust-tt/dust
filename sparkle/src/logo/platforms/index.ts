@@ -1,6 +1,7 @@
 export { default as Ai21Logo } from "./Ai21";
 export { default as AnthropicLogo } from "./Anthropic";
 export { default as AsanaLogo } from "./Asana";
+export { default as AshbyLogo } from "./Ashby";
 export { default as BigQueryLogo } from "./BigQuery";
 export { default as CanvaLogo } from "./Canva";
 export { default as ChromeLogo } from "./Chrome";
@@ -17,6 +18,7 @@ export { default as FigmaLogo } from "./Figma";
 export { default as FireworksLogo } from "./Fireworks";
 export { default as FreshdeskLogo } from "./Freshdesk";
 export { default as FreshserviceLogo } from "./Freshservice";
+export { default as FrontLogo } from "./Front";
 export { default as GcalLogo } from "./Gcal";
 export { default as GeminiLogo } from "./Gemini";
 export { default as GithubLogo } from "./Github";

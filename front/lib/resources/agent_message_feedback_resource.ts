@@ -10,14 +10,14 @@ import { Op } from "sequelize";
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentConfiguration } from "@app/lib/models/agent/agent";
 import {
   AgentMessage,
   AgentMessage as AgentMessageModel,
   AgentMessageFeedback,
   ConversationModel,
   Message,
-} from "@app/lib/models/assistant/conversation";
+} from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -26,7 +26,6 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import type {
   AgentConfigurationType,
   AgentMessageType,
-  ConversationType,
   ConversationWithoutContentType,
   LightAgentConfigurationType,
   MessageType,
@@ -359,7 +358,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
 
   static async getConversationFeedbacksForUser(
     auth: Authenticator,
-    conversation: ConversationType | ConversationWithoutContentType
+    conversation: ConversationWithoutContentType
   ) {
     const user = auth.getNonNullableUser();
 
@@ -420,7 +419,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
   }: {
     auth: Authenticator;
     messageId: string;
-    conversation: ConversationType | ConversationWithoutContentType;
+    conversation: ConversationWithoutContentType;
     user: UserType;
   }): Promise<
     Result<

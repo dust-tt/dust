@@ -85,6 +85,7 @@ export type ConnectorProviderConfiguration = {
   ) => React.JSX.Element;
   guideLink: string | null;
   selectLabel?: string; // Show in the permissions modal, above the content node tree, note that a connector might not allow to select anything
+  emptyNodeLabel?: string;
   isNested: boolean;
   isResourceSelectionDisabled?: boolean; // Whether the user cannot select distinct resources (everything is synced).
   permissions: {
@@ -333,6 +334,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     mismatchError: `You cannot select another Microsoft account.\nPlease contact us at support@dust.tt if you initially selected a wrong account.`,
     guideLink: "https://docs.dust.tt/docs/microsoft-connection",
     selectLabel: "Select folders and files",
+    emptyNodeLabel: "Select the folder to enable file synchronization.",
     getLogoComponent: () => {
       return MicrosoftLogo;
     },
@@ -352,13 +354,12 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     name: "Microsoft Teams (Bot)",
     connectorProvider: "microsoft_bot",
     status: "built",
-    rollingOutFlag: "microsoft_teams_bot",
     hide: true,
     description:
       "Enable your Microsoft Teams bot integration to interact with Dust directly from Teams.",
     limitations: "Bot must be enabled in organization settings.",
     mismatchError: `You cannot select another Microsoft tenant.\nPlease contact us at support@dust.tt if you initially selected a wrong tenant.`,
-    guideLink: "https://docs.dust.tt/docs/microsoft-teams-bot",
+    guideLink: "https://docs.dust.tt/docs/dust-in-teams",
     selectLabel: "Bot configuration",
     getLogoComponent: () => {
       return MicrosoftLogo;
@@ -586,6 +587,7 @@ export const isConnectorProviderAllowedForPlan = (
     case "salesforce":
       return !!featureFlags?.includes("salesforce_synced_queries");
     case "microsoft":
+    case "microsoft_bot":
     case "slack_bot":
     case "discord_bot":
     case "snowflake":
@@ -594,8 +596,6 @@ export const isConnectorProviderAllowedForPlan = (
     case "databricks":
     case "gong":
       return true;
-    case "microsoft_bot":
-      return !!featureFlags?.includes("microsoft_teams_bot");
     default:
       assertNever(provider);
   }

@@ -7,10 +7,10 @@ import type {
 import { literal, Op, QueryTypes } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
-import type { WebhookRequestStatus } from "@app/lib/models/assistant/triggers/webhook_request";
-import { WebhookRequestModel } from "@app/lib/models/assistant/triggers/webhook_request";
-import type { WebhookRequestTriggerStatus } from "@app/lib/models/assistant/triggers/webhook_request_trigger";
-import { WebhookRequestTriggerModel } from "@app/lib/models/assistant/triggers/webhook_request_trigger";
+import type { WebhookRequestStatus } from "@app/lib/models/agent/triggers/webhook_request";
+import { WebhookRequestModel } from "@app/lib/models/agent/triggers/webhook_request";
+import type { WebhookRequestTriggerStatus } from "@app/lib/models/agent/triggers/webhook_request_trigger";
+import { WebhookRequestTriggerModel } from "@app/lib/models/agent/triggers/webhook_request_trigger";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -69,13 +69,31 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     status: WebhookRequestTriggerStatus;
     errorMessage?: string;
   }) {
-    await WebhookRequestTriggerModel.create({
-      workspaceId: this.workspaceId,
-      webhookRequestId: this.id,
-      triggerId: trigger.id,
-      status,
-      errorMessage,
+    // Check if the record already exists (for retry scenarios)
+    const existing = await WebhookRequestTriggerModel.findOne({
+      where: {
+        workspaceId: this.workspaceId,
+        webhookRequestId: this.id,
+        triggerId: trigger.id,
+      },
     });
+
+    if (existing) {
+      // Update existing record
+      await existing.update({
+        status,
+        errorMessage,
+      });
+    } else {
+      // Create new record
+      await WebhookRequestTriggerModel.create({
+        workspaceId: this.workspaceId,
+        webhookRequestId: this.id,
+        triggerId: trigger.id,
+        status,
+        errorMessage,
+      });
+    }
   }
 
   static async makeNew(
@@ -137,6 +155,21 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
         ...options.where,
         webhookSourceId,
       },
+    });
+  }
+
+  static async fetchRecentByWebhookSourceModelId(
+    auth: Authenticator,
+    { webhookSourceId }: { webhookSourceId: ModelId },
+    opts: ResourceFindOptions<WebhookRequestModel> = {}
+  ): Promise<WebhookRequestResource[]> {
+    return this.baseFetch(auth, {
+      where: {
+        ...opts.where,
+        webhookSourceId,
+      },
+      order: opts.order,
+      limit: opts.limit,
     });
   }
 

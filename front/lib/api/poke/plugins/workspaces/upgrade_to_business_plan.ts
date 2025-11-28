@@ -1,5 +1,5 @@
 import { createPlugin } from "@app/lib/api/poke/types";
-import { upgradeWorkspaceToBusinessPlan } from "@app/lib/api/workspace";
+import { whitelistWorkspaceToBusinessPlan } from "@app/lib/api/workspace";
 import { Err, Ok } from "@app/types";
 
 export const upgradeToBusinessPlan = createPlugin({
@@ -27,7 +27,7 @@ export const upgradeToBusinessPlan = createPlugin({
     }
 
     const workspace = auth.getNonNullableWorkspace();
-    const res = await upgradeWorkspaceToBusinessPlan(auth, workspace);
+    const res = await whitelistWorkspaceToBusinessPlan(auth, workspace);
     if (res.isErr()) {
       return res;
     }

@@ -91,7 +91,7 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
     }
 
     posthog.init(POSTHOG_KEY, {
-      api_host: "/ingest",
+      api_host: "/subtle1",
       person_profiles: "identified_only",
       defaults: "2025-05-24",
       opt_out_capturing_by_default: !shouldTrack,
@@ -166,6 +166,7 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
   }, [shouldTrack, user]);
 
   // Group users by workspace and set workspace properties (admin only)
+  const lastUserRole = useRef<string | null>(null);
   useEffect(() => {
     if (!posthog.__loaded || !workspaceId || !shouldTrack) {
       return;
@@ -186,7 +187,20 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
         lastPlanPropertiesString.current = planPropsString;
       }
     }
-  }, [workspaceId, planProperties, shouldTrack, isAdmin]);
+
+    // Track user role as a person property (updates when workspace changes).
+    const userRole = currentWorkspace?.role ?? null;
+    if (userRole && userRole !== lastUserRole.current) {
+      posthog.setPersonProperties({ user_role: userRole });
+      lastUserRole.current = userRole;
+    }
+  }, [
+    workspaceId,
+    planProperties,
+    shouldTrack,
+    isAdmin,
+    currentWorkspace?.role,
+  ]);
 
   // Track pageviews on route changes.
   useEffect(() => {

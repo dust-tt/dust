@@ -281,6 +281,7 @@ export const IntercomCommandSchema = t.type({
     t.literal("check-missing-conversations"),
     t.literal("check-teams"),
     t.literal("set-conversations-sliding-window"),
+    t.literal("get-conversations-sliding-window"),
     t.literal("search-conversations"),
   ]),
   args: t.type({
@@ -357,6 +358,13 @@ export const IntercomForceResyncArticlesResponseSchema = t.type({
 });
 export type IntercomForceResyncArticlesResponseType = t.TypeOf<
   typeof IntercomForceResyncArticlesResponseSchema
+>;
+
+export const IntercomGetConversationsSlidingWindowResponseSchema = t.type({
+  conversationsSlidingWindow: t.number,
+});
+export type IntercomGetConversationsSlidingWindowResponseType = t.TypeOf<
+  typeof IntercomGetConversationsSlidingWindowResponseSchema
 >;
 
 export const IntercomSearchConversationsResponseSchema = t.type({
@@ -854,6 +862,7 @@ export const AdminResponseSchema = t.union([
   IntercomFetchArticlesResponseSchema,
   IntercomFetchConversationResponseSchema,
   IntercomForceResyncArticlesResponseSchema,
+  IntercomGetConversationsSlidingWindowResponseSchema,
   IntercomSearchConversationsResponseSchema,
   NotionApiRequestResponseSchema,
   NotionCheckUrlResponseSchema,

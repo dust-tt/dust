@@ -13,15 +13,16 @@ import {
   isFileAttachmentType,
 } from "@app/lib/api/assistant/conversation/attachments";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
-import { mentionAgent } from "@app/lib/mentions";
+import { serializeMention } from "@app/lib/mentions/format";
 import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
   AgentMessageType,
   ConversationType,
   Result,
+  UserMessageOrigin,
 } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, isUserMessageType, Ok } from "@app/types";
 
 export async function getOrCreateConversation(
   api: DustAPI,
@@ -69,7 +70,9 @@ export async function getOrCreateConversation(
       // Do not track invalid request errors, since they are user-side and should
       // not trigger an alert on our end. For user-side errors, surface the
       // underlying message to the model.
-      const isUserSide = convRes.error.type === "invalid_request_error";
+      const isUserSide =
+        convRes.error.type === "invalid_request_error" ||
+        convRes.error.type === "plan_message_limit_exceeded";
       const message = isUserSide
         ? convRes.error.message
         : "Failed to get conversation";
@@ -120,11 +123,32 @@ export async function getOrCreateConversation(
     }
   }
 
+  let parentOrigin: UserMessageOrigin | null = null;
+  const parentMessage = mainConversation.content
+    .flat()
+    .find((m) => m.sId === originMessage.parentMessageId);
+  if (parentMessage && isUserMessageType(parentMessage)) {
+    parentOrigin = parentMessage.context.origin ?? null;
+  }
+
+  if (parentOrigin === "run_agent" || parentOrigin === "agent_handover") {
+    logger.error(
+      {
+        parentMessage: parentMessage?.sId,
+        origin: parentOrigin,
+        originMessageId: originMessage.sId,
+      },
+      "Invalid parent origin."
+    );
+  }
+
   if (conversationId) {
+    const agenticMessageType =
+      mainConversation.sId !== conversationId ? "run_agent" : "agent_handover";
     const messageRes = await api.postUserMessage({
       conversationId,
       message: {
-        content: `${mentionAgent({ name: childAgentBlob.name, sId: childAgentId })} ${query}`,
+        content: `${serializeMention({ name: childAgentBlob.name, sId: childAgentId })} ${query}`,
         mentions: [{ configurationId: childAgentId }],
         context: {
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -132,12 +156,12 @@ export async function getOrCreateConversation(
           fullName: `@${mainAgent.name}`,
           email: null,
           profilePictureUrl: mainAgent.pictureUrl,
-          // `run_agent` origin will skip adding the conversation to the user history.
-          origin:
-            mainConversation.sId !== conversationId
-              ? "run_agent"
-              : "agent_handover",
+          origin: parentOrigin,
           selectedMCPServerViewIds: toolsetsToAdd,
+        },
+        agenticMessageData: {
+          // `run_agent` type will skip adding the conversation to the user history.
+          type: agenticMessageType,
           originMessageId: originMessage.sId,
         },
       },
@@ -191,7 +215,7 @@ export async function getOrCreateConversation(
     visibility: "unlisted",
     depth: mainConversation.depth + 1,
     message: {
-      content: `${mentionAgent({ name: childAgentBlob.name, sId: childAgentId })} ${query}`,
+      content: `${serializeMention({ name: childAgentBlob.name, sId: childAgentId })} ${query}`,
       mentions: [{ configurationId: childAgentId }],
       context: {
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -199,9 +223,12 @@ export async function getOrCreateConversation(
         fullName: `@${mainAgent.name}`,
         email: null,
         profilePictureUrl: mainAgent.pictureUrl,
-        // `run_agent` origin will skip adding the conversation to the user history.
-        origin: "run_agent",
+        origin: parentOrigin,
         selectedMCPServerViewIds: toolsetsToAdd,
+      },
+      agenticMessageData: {
+        // `run_agent` type will skip adding the conversation to the user history.
+        type: "run_agent",
         originMessageId: originMessage.sId,
       },
     },

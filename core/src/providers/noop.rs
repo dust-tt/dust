@@ -1,32 +1,33 @@
 use crate::providers::chat_messages::AssistantContentItem::TextContent;
 use crate::providers::chat_messages::{AssistantChatMessage, ChatMessage};
 use crate::providers::embedder::Embedder;
+use crate::providers::llm::TokenizerSingleton;
 use crate::providers::llm::{ChatFunction, ChatMessageRole, Tokens};
 use crate::providers::llm::{LLMChatGeneration, LLMGeneration, LLM};
 use crate::providers::provider::{Provider, ProviderID};
-use crate::providers::tiktoken::tiktoken::{
-    batch_tokenize_async, decode_async, encode_async, o200k_base_singleton, CoreBPE,
-};
 use crate::run::Credentials;
+use crate::types::tokenizer::{TiktokenTokenizerBase, TokenizerConfig};
 use crate::utils;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use parking_lot::RwLock;
 use serde_json::{json, Value};
-use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 
 pub struct NoopLLM {
     id: String,
+    tokenizer: Option<TokenizerSingleton>,
 }
 
 impl NoopLLM {
-    pub fn new(id: String) -> Self {
-        NoopLLM { id }
-    }
-
-    fn tokenizer(&self) -> Arc<RwLock<CoreBPE>> {
-        o200k_base_singleton()
+    pub fn new(id: String, tokenizer: Option<TokenizerSingleton>) -> Self {
+        NoopLLM {
+            id,
+            tokenizer: tokenizer.or_else(|| {
+                TokenizerSingleton::from_config(&TokenizerConfig::Tiktoken {
+                    base: TiktokenTokenizerBase::O200kBase,
+                })
+            }),
+        }
     }
 }
 
@@ -45,15 +46,27 @@ impl LLM for NoopLLM {
     }
 
     async fn encode(&self, text: &str) -> Result<Vec<usize>> {
-        encode_async(self.tokenizer(), text).await
+        self.tokenizer
+            .as_ref()
+            .ok_or_else(|| anyhow!("Tokenizer not initialized"))?
+            .encode(text)
+            .await
     }
 
     async fn decode(&self, tokens: Vec<usize>) -> Result<String> {
-        decode_async(self.tokenizer(), tokens).await
+        self.tokenizer
+            .as_ref()
+            .ok_or_else(|| anyhow!("Tokenizer not initialized"))?
+            .decode(tokens)
+            .await
     }
 
     async fn tokenize(&self, texts: Vec<String>) -> Result<Vec<Vec<(usize, String)>>> {
-        batch_tokenize_async(self.tokenizer(), texts).await
+        self.tokenizer
+            .as_ref()
+            .ok_or_else(|| anyhow!("Tokenizer not initialized"))?
+            .tokenize(texts)
+            .await
     }
 
     async fn generate(
@@ -172,8 +185,8 @@ impl Provider for NoopProvider {
         Ok(())
     }
 
-    fn llm(&self, id: String) -> Box<dyn LLM + Sync + Send> {
-        Box::new(NoopLLM::new(id))
+    fn llm(&self, id: String, tokenizer: Option<TokenizerSingleton>) -> Box<dyn LLM + Sync + Send> {
+        Box::new(NoopLLM::new(id, tokenizer))
     }
 
     fn embedder(&self, _id: String) -> Box<dyn Embedder + Sync + Send> {

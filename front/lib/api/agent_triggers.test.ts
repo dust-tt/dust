@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { TriggerModel } from "@app/lib/models/assistant/triggers/triggers";
+import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { WebhookSourceViewFactory } from "@app/tests/utils/WebhookSourceViewFactory";

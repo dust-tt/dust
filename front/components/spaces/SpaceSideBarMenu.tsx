@@ -261,7 +261,7 @@ const SYSTEM_SPACE_ITEMS: {
     label: "Triggers",
     visual: BoltIcon,
     category: "triggers",
-    flag: "hootl_webhooks",
+    flag: null,
   },
 ];
 

@@ -2,7 +2,7 @@ import _ from "lodash";
 
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
+import type { Result, TokenizerConfig } from "@app/types";
 import {
   CoreAPI,
   DEFAULT_TOKEN_COUNT_ADJUSTMENT,
@@ -22,7 +22,12 @@ const TOKENIZATION_CONCURRENCY = 3;
 
 export async function tokenCountForTexts(
   texts: string[],
-  model: { providerId: string; modelId: string; tokenCountAdjustment?: number }
+  model: {
+    providerId: string;
+    modelId: string;
+    tokenCountAdjustment?: number;
+    tokenizer: TokenizerConfig;
+  }
 ): Promise<Result<Array<number>, Error>> {
   try {
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
@@ -36,6 +41,7 @@ export async function tokenCountForTexts(
           texts: batch,
           providerId: model.providerId,
           modelId: model.modelId,
+          tokenizer: model.tokenizer,
         }),
       { concurrency: TOKENIZATION_CONCURRENCY }
     );
@@ -65,7 +71,7 @@ export async function tokenCountForTexts(
 
 export async function tokenSplit(
   text: string,
-  model: { providerId: string; modelId: string },
+  model: { providerId: string; modelId: string; tokenizer: TokenizerConfig },
   splitAt: number
 ): Promise<Result<string, Error>> {
   try {
@@ -74,6 +80,7 @@ export async function tokenSplit(
       text,
       providerId: model.providerId,
       modelId: model.modelId,
+      tokenizer: model.tokenizer,
     });
     if (res.isErr()) {
       return new Err(

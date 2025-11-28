@@ -3,7 +3,7 @@ import { QueryTypes } from "sequelize";
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
 import { Authenticator } from "@app/lib/auth";
-import { ConversationModel } from "@app/lib/models/assistant/conversation";
+import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { frontSequelize } from "@app/lib/resources/storage";

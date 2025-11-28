@@ -1,4 +1,4 @@
-import { UserMessage } from "@app/lib/models/assistant/conversation";
+import { UserMessage } from "@app/lib/models/agent/conversation";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";

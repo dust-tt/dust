@@ -21,7 +21,6 @@ import type { SheetMode } from "@app/components/agent_builder/triggers/TriggerVi
 import { TriggerViewsSheet } from "@app/components/agent_builder/triggers/TriggerViewsSheet";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useWebhookSourceViewsFromSpaces } from "@app/lib/swr/webhook_source";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightWorkspaceType } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 
@@ -63,17 +62,11 @@ export function AgentBuilderTriggersBlock({
     name: "triggersToUpdate",
   });
 
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-
   const sendNotification = useSendNotification();
   const [sheetMode, setSheetMode] = useState<SheetMode | null>(null);
 
   const { spaces } = useSpacesContext();
-  const { webhookSourceViews } = useWebhookSourceViewsFromSpaces(
-    owner,
-    spaces,
-    !hasFeature("hootl_webhooks")
-  );
+  const { webhookSourceViews } = useWebhookSourceViewsFromSpaces(owner, spaces);
 
   const accessibleSpaceIds = useMemo(
     () => new Set(spaces.map((space) => space.sId)),
@@ -209,7 +202,6 @@ export function AgentBuilderTriggersBlock({
           />
         )
       }
-      isBeta
     >
       <div className="flex-1">
         {isTriggersLoading ? (

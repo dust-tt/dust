@@ -213,22 +213,20 @@ function createServer(
         } catch (error) {
           clearTimeout(timeoutId);
 
-          if (error instanceof Error) {
-            if (error.name === "AbortError") {
-              return new Err(
-                new MCPError(`Request timed out after ${timeoutMs}ms`)
-              );
-            }
+          if (error instanceof Error && error.name === "AbortError") {
             return new Err(
-              new MCPError(
-                `HTTP request failed: ${normalizeError(error).message}`
-              )
+              new MCPError(`Request timed out after ${timeoutMs}ms`, {
+                tracked: false,
+              })
             );
           }
 
           return new Err(
             new MCPError(
-              `HTTP request failed: ${normalizeError(error).message}`
+              `HTTP request failed: ${normalizeError(error).message}`,
+              {
+                tracked: false,
+              }
             )
           );
         }

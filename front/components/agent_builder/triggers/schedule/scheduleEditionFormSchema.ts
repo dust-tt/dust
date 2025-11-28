@@ -61,13 +61,13 @@ export function formValuesToScheduleTriggerData({
       timezone: schedule.timezone.trim(),
     },
     editor:
-      editTrigger?.kind === "schedule" ? editTrigger.editor : user.id ?? null,
+      editTrigger?.kind === "schedule" ? editTrigger.editor : (user.id ?? null),
     naturalLanguageDescription:
       schedule.naturalLanguageDescription?.trim() ?? null,
     customPrompt: schedule.customPrompt?.trim() ?? null,
     editorName:
       editTrigger?.kind === "schedule"
         ? editTrigger.editorName
-        : user.fullName ?? undefined,
+        : (user.fullName ?? undefined),
   };
 }

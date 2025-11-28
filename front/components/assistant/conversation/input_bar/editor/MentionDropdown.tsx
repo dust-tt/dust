@@ -5,39 +5,52 @@ import {
   DropdownMenuTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
-import type { EditorSuggestion } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
+import type {
+  MentionDropdownOnKeyDown,
+  MentionDropdownProps,
+} from "@app/components/assistant/conversation/input_bar/editor/types";
+import { useMentionSuggestions } from "@app/lib/swr/mentions";
 import { classNames } from "@app/lib/utils";
 
-interface MentionDropdownProps {
-  mentionDropdownState: {
-    suggestions: EditorSuggestion[];
-    onSelect: (suggestion: EditorSuggestion) => void;
-    isOpen: boolean;
-    onOpenChange: (open: boolean) => void;
-    triggerRect?: DOMRect | null;
-    selectedIndex: number;
-    onSelectedIndexChange: (index: number) => void;
-    isLoading: boolean;
-  };
-}
+export const MentionDropdown = forwardRef<
+  MentionDropdownOnKeyDown,
+  MentionDropdownProps
+>(({ query, clientRect, command, onClose, owner, conversationId }, ref) => {
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const triggerRect = useMemo(
+    () => (clientRect ? clientRect() : null),
+    [clientRect]
+  );
 
-export const MentionDropdown = ({
-  mentionDropdownState: {
-    suggestions,
-    onSelect,
-    isOpen,
-    onOpenChange,
-    triggerRect,
-    selectedIndex,
-    onSelectedIndexChange,
-    isLoading,
-  },
-}: MentionDropdownProps) => {
+  // Fetch suggestions from server using the query.
+  const { suggestions, isLoading } = useMentionSuggestions({
+    workspaceId: owner.sId,
+    conversationId,
+    query,
+    select: { agents: true, users: true },
+  });
+
   const triggerRef = useRef<HTMLDivElement>(null);
   const [virtualTriggerStyle, setVirtualTriggerStyle] =
     useState<React.CSSProperties>({});
+
+  const selectItem = (index: number) => {
+    const item = suggestions[index];
+
+    if (item) {
+      command(item);
+    }
+  };
 
   const updateTriggerPosition = useCallback(() => {
     if (triggerRect && triggerRef.current) {
@@ -55,27 +68,70 @@ export const MentionDropdown = ({
     }
   }, [triggerRect]);
 
+  useImperativeHandle(ref, () => ({
+    onKeyDown: ({ event }) => {
+      if (event.key === "ArrowUp") {
+        setSelectedIndex(
+          (selectedIndex + suggestions.length - 1) % suggestions.length
+        );
+        return true;
+      }
+
+      if (event.key === "ArrowDown") {
+        setSelectedIndex((selectedIndex + 1) % suggestions.length);
+        return true;
+      }
+
+      if (event.key === "Enter" || event.key === "Tab") {
+        selectItem(selectedIndex);
+        return true;
+      }
+
+      return false;
+    },
+  }));
+
   useEffect(() => {
     updateTriggerPosition();
-  }, [triggerRect, updateTriggerPosition]);
+  }, [updateTriggerPosition]);
+
+  // Reset the selected index when items change (e.g., when query changes).
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [suggestions]);
 
   // Only render the dropdown if we have a valid trigger.
   if (!triggerRect) {
     return null;
   }
 
+  // Generate a key based on content state to force remount when content size changes significantly.
+  // This ensures Radix UI recalculates collision detection and positioning.
+  const contentKey = isLoading
+    ? "loading"
+    : suggestions.length === 0
+      ? "empty"
+      : `results-${suggestions.length}`;
+
   return (
-    <DropdownMenu open={isOpen} onOpenChange={onOpenChange}>
+    <DropdownMenu open={true}>
       <DropdownMenuTrigger asChild>
         <div ref={triggerRef} style={virtualTriggerStyle} />
       </DropdownMenuTrigger>
       <DropdownMenuContent
+        key={contentKey}
         className="w-72"
         align="start"
         side="bottom"
         sideOffset={4}
         onCloseAutoFocus={(e) => e.preventDefault()}
         onOpenAutoFocus={(e) => e.preventDefault()}
+        onEscapeKeyDown={() => {
+          onClose?.();
+        }}
+        onInteractOutside={() => {
+          onClose?.();
+        }}
       >
         {isLoading ? (
           <div className="flex h-12 w-full items-center justify-center">
@@ -93,20 +149,11 @@ export const MentionDropdown = ({
                       ? "text-highlight-500"
                       : "text-foreground dark:text-foreground-night"
                   )}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onSelect(suggestion);
+                  onClick={() => {
+                    selectItem(index);
                   }}
-                  onMouseDown={(e) => {
-                    // This prevents the browser from taking focus away from the editor when onClick is
-                    // triggered.
-                    e.preventDefault();
-                  }}
-                  onMouseEnter={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onSelectedIndexChange(index);
+                  onMouseEnter={() => {
+                    setSelectedIndex(index);
                   }}
                 >
                   <Avatar size="xs" visual={suggestion.pictureUrl} />
@@ -125,4 +172,6 @@ export const MentionDropdown = ({
       </DropdownMenuContent>
     </DropdownMenu>
   );
-};
+});
+
+MentionDropdown.displayName = "MentionDropdown";

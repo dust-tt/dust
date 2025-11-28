@@ -11,12 +11,9 @@ import React, {
 } from "react";
 
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
-import { MentionDropdown } from "@app/components/assistant/conversation/input_bar/editor/MentionDropdown";
-import useAgentSuggestions from "@app/components/assistant/conversation/input_bar/editor/useAgentSuggestions";
 import type { CustomEditorProps } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useCustomEditor from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useHandleAgentMentions from "@app/components/assistant/conversation/input_bar/editor/useHandleAgentMentions";
-import { useMentionAgentDropdown } from "@app/components/assistant/conversation/input_bar/editor/useMentionAgentDropdown";
 import useUrlHandler from "@app/components/assistant/conversation/input_bar/editor/useUrlHandler";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
@@ -63,12 +60,13 @@ export interface InputBarContainerProps {
   agentConfigurations: LightAgentConfigurationType[];
   onEnterKeyDown: CustomEditorProps["onEnterKeyDown"];
   owner: WorkspaceType;
+  conversationId: string | null;
   selectedAgent: AgentMention | null;
   stickyMentions?: AgentMention[];
   actions: InputBarAction[];
   disableAutoFocus: boolean;
-  disableSendButton: boolean;
-  disableTextInput: boolean;
+  isSubmitting: boolean;
+  disableInput: boolean;
   fileUploaderService: FileUploaderService;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
@@ -83,12 +81,13 @@ const InputBarContainer = ({
   agentConfigurations,
   onEnterKeyDown,
   owner,
+  conversationId,
   selectedAgent,
   stickyMentions,
   actions,
   disableAutoFocus,
-  disableSendButton,
-  disableTextInput,
+  isSubmitting,
+  disableInput,
   fileUploaderService,
   onNodeSelect,
   onNodeUnselect,
@@ -98,11 +97,12 @@ const InputBarContainer = ({
   selectedMCPServerViews,
 }: InputBarContainerProps) => {
   const isMobile = useIsMobile();
-  const agentSuggestions = useAgentSuggestions(agentConfigurations, owner);
+
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
     UrlCandidate | NodeCandidate | null
   >(null);
   const [pastedCount, setPastedCount] = useState(0);
+  const [isEmpty, setIsEmpty] = useState(true);
 
   const [selectedNode, setSelectedNode] =
     useState<DataSourceViewContentNode | null>(null);
@@ -259,19 +259,12 @@ const InputBarContainer = ({
     [editorRef, fileUploaderService, sendNotification]
   );
 
-  // Pass the editor ref to the mention dropdown hook
-  const agentMentionDropdown = useMentionAgentDropdown(
-    agentSuggestions,
-    editorRef
-  );
-
   const { editor, editorService } = useCustomEditor({
-    suggestions: agentSuggestions,
     onEnterKeyDown,
     disableAutoFocus,
     onUrlDetected: handleUrlDetected,
-    suggestionHandler: agentMentionDropdown.getSuggestionHandler(),
     owner,
+    conversationId,
     onInlineText: handleInlineText,
     onLongTextPaste: async ({ text, from, to }) => {
       let filename = "";
@@ -368,10 +361,29 @@ const InputBarContainer = ({
     },
   });
 
-  // Update the editor ref when the editor is created.
+  // Update the editor ref when the editor is created and listen for updates to the editor.
   useEffect(() => {
+    const handleUpdate = () => {
+      setIsEmpty(editorService.isEmpty());
+    };
+
+    if (editorRef.current) {
+      editorRef.current.off("update", handleUpdate);
+    }
+
+    if (editor) {
+      editor.on("update", handleUpdate);
+    }
     editorRef.current = editor;
-  }, [editor]);
+
+    return () => {
+      if (editor) {
+        editor.off("update", handleUpdate);
+      }
+    };
+  }, [editor, editorService]);
+
+  const disableTextInput = isSubmitting || disableInput;
 
   // Disable the editor when disableTextInput is true.
   useEffect(() => {
@@ -526,27 +538,34 @@ const InputBarContainer = ({
         <div className="flex w-full flex-col px-2 py-1.5 sm:pb-2">
           <div className="mb-1 flex flex-wrap items-center">
             {selectedMCPServerViews.map((msv) => (
-              <>
+              <React.Fragment key={msv.sId}>
+                {/* Two Chips: one for larger screens (desktop), one for smaller screens (mobile). */}
                 <Chip
-                  key={msv.sId}
                   size="xs"
                   label={getMcpServerViewDisplayName(msv)}
                   icon={getIcon(msv.server.icon)}
                   className="m-0.5 hidden bg-background text-foreground dark:bg-background-night dark:text-foreground-night md:flex"
-                  onRemove={() => {
-                    onMCPServerViewDeselect(msv);
-                  }}
+                  onRemove={
+                    disableInput
+                      ? undefined
+                      : () => {
+                          onMCPServerViewDeselect(msv);
+                        }
+                  }
                 />
                 <Chip
-                  key={`mobile-${msv.sId}`}
                   size="xs"
                   icon={getIcon(msv.server.icon)}
                   className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night md:hidden"
-                  onRemove={() => {
-                    onMCPServerViewDeselect(msv);
-                  }}
+                  onRemove={
+                    disableInput
+                      ? undefined
+                      : () => {
+                          onMCPServerViewDeselect(msv);
+                        }
+                  }
                 />
-              </>
+              </React.Fragment>
             ))}
           </div>
           <div className="flex items-center justify-between">
@@ -625,14 +644,14 @@ const InputBarContainer = ({
               <Button
                 size={buttonSize}
                 isLoading={
-                  disableSendButton &&
+                  isSubmitting &&
                   voiceTranscriberService.status !== "transcribing"
                 }
                 icon={ArrowUpIcon}
                 variant="highlight"
                 disabled={
-                  editorService.isEmpty() ||
-                  disableSendButton ||
+                  isEmpty ||
+                  disableTextInput ||
                   voiceTranscriberService.status !== "idle"
                 }
                 onClick={async (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -661,8 +680,6 @@ const InputBarContainer = ({
           </div>
         </div>
       </div>
-
-      <MentionDropdown mentionDropdownState={agentMentionDropdown} />
     </div>
   );
 };

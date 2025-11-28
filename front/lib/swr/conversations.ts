@@ -18,6 +18,7 @@ import type {
   PatchConversationsRequestBody,
 } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]";
 import type { GetConversationFilesResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/files";
+import type { FetchConversationMessagesResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages";
 import type { FetchConversationMessageResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]";
 import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/participants";
 import type {
@@ -27,7 +28,6 @@ import type {
 import type {
   ConversationError,
   ConversationWithoutContentType,
-  FetchConversationMessagesResponse,
   LightWorkspaceType,
 } from "@app/types";
 
@@ -146,10 +146,10 @@ export function useConversationMessages({
         }
 
         if (previousPageData === null) {
-          return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?orderDirection=desc&orderColumn=rank&limit=${limit}`;
+          return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?newResponseFormat=1&orderDirection=desc&orderColumn=rank&limit=${limit}`;
         }
 
-        return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?lastValue=${previousPageData.lastValue}&orderDirection=desc&orderColumn=rank&limit=${limit}`;
+        return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?newResponseFormat=1&lastValue=${previousPageData.lastValue}&orderDirection=desc&orderColumn=rank&limit=${limit}`;
       },
       messagesFetcher,
       {
@@ -783,3 +783,56 @@ export const useJoinConversation = ({
 
   return joinConversation;
 };
+
+export function usePostOnboardingFollowUp({
+  workspaceId,
+  conversationId,
+}: {
+  workspaceId: string;
+  conversationId: string | null;
+}) {
+  const sendNotification = useSendNotification();
+
+  const postFollowUp = useCallback(
+    async (
+      toolId: string,
+      action: "completed" | "skipped"
+    ): Promise<boolean> => {
+      if (!conversationId) {
+        return false;
+      }
+      try {
+        const response = await fetch(
+          `/api/w/${workspaceId}/assistant/conversations/${conversationId}/onboarding-followup`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ toolId, action }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to post onboarding follow-up");
+        }
+
+        return true;
+      } catch (error) {
+        datadogLogger.error("Error posting onboarding follow-up", {
+          error,
+          workspaceId,
+          conversationId,
+          toolId,
+          action,
+        });
+        sendNotification({
+          type: "error",
+          title: "Failed to send follow-up message",
+        });
+        return false;
+      }
+    },
+    [workspaceId, conversationId, sendNotification]
+  );
+
+  return { postFollowUp };
+}

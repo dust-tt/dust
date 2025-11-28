@@ -3,9 +3,8 @@ import userEvent from "@testing-library/user-event";
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType, RichMention } from "@app/types";
 
-import type { RichMention } from "../types";
 import { MentionDropdown } from "./MentionDropdown";
 
 // Mock Sparkle dropdown primitives to render content directly without portals.
@@ -151,7 +150,6 @@ describe("MentionDropdown", () => {
     await user.click(screen.getByRole("button", { name: "About @Alice" }));
 
     expect(openChangeMock).toHaveBeenCalledWith(true);
-    // setQueryParam(router, "agentDetails", mention.id)
     expect(setQueryParamMock).toHaveBeenCalled();
     const [routerArg, keyArg, valueArg] = setQueryParamMock.mock.calls[0];
     expect(keyArg).toBe("agentDetails");

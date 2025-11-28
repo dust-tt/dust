@@ -118,9 +118,10 @@ function getTableColumns(
     header: "Managed by",
     accessorFn: (row) =>
       isGlobalOrSystemSpace
-        ? row.dataSourceView.dataSource.editedByUser?.imageUrl ??
-          ANONYMOUS_USER_IMAGE_URL
-        : row.dataSourceView.editedByUser?.imageUrl ?? ANONYMOUS_USER_IMAGE_URL,
+        ? (row.dataSourceView.dataSource.editedByUser?.imageUrl ??
+          ANONYMOUS_USER_IMAGE_URL)
+        : (row.dataSourceView.editedByUser?.imageUrl ??
+          ANONYMOUS_USER_IMAGE_URL),
     cell: (ctx) => {
       const { dataSourceView } = ctx.row.original;
       const editedByUser = isGlobalOrSystemSpace

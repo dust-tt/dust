@@ -12,9 +12,10 @@ import {
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import type { ConnectorType, PokeItemBase } from "@app/types";
-import { ConnectorsAPI } from "@app/types";
+import { asDisplayName, ConnectorsAPI } from "@app/types";
 
 async function searchPokeWorkspaces(
   searchTerm: string
@@ -24,20 +25,22 @@ async function searchPokeWorkspaces(
     return [
       {
         id: workspaceInfos.id,
-        name: `Workspace (${workspaceInfos.name})`,
+        name: workspaceInfos.name,
         link: `${config.getClientFacingUrl()}/poke/${workspaceInfos.sId}`,
+        type: "Workspace",
       },
     ];
   }
 
-  const workspaceModelId = parseInt(searchTerm);
+  const workspaceModelId = parseInt(searchTerm, 10);
   if (!isNaN(workspaceModelId)) {
     const workspaces = await unsafeGetWorkspacesByModelId([workspaceModelId]);
     if (workspaces.length > 0) {
       return workspaces.map((w) => ({
         id: w.id,
-        name: `Workspace (${w.name})`,
+        name: w.name,
         link: `${config.getClientFacingUrl()}/poke/${w.sId}`,
+        type: "Workspace",
       }));
     }
   }
@@ -49,8 +52,9 @@ async function searchPokeWorkspaces(
       return [
         {
           id: workspaceByOrgId.id,
-          name: `Workspace (${workspaceByOrgId.name})`,
+          name: workspaceByOrgId.name,
           link: `${config.getClientFacingUrl()}/poke/${workspaceByOrgId.sId}`,
+          type: "Workspace",
         },
       ];
     }
@@ -59,8 +63,10 @@ async function searchPokeWorkspaces(
   return [];
 }
 
-async function searchConnectorModelId(searchTerm: string) {
-  const connectorModelId = parseInt(searchTerm);
+async function searchConnectorModelId(
+  searchTerm: string
+): Promise<PokeItemBase[] | null> {
+  const connectorModelId = parseInt(searchTerm, 10);
   if (!isNaN(connectorModelId)) {
     const connectorsAPI = new ConnectorsAPI(
       config.getConnectorsAPIConfig(),
@@ -73,11 +79,19 @@ async function searchConnectorModelId(searchTerm: string) {
         connectionId: null,
       };
 
+      const workspace = await WorkspaceResource.fetchById(
+        connector.workspaceId
+      );
+      if (!workspace) {
+        return null;
+      }
+
       return [
         {
-          id: parseInt(connector.id),
-          name: "Connector",
+          id: parseInt(connector.id, 10),
+          name: `${workspace.name}'s ${asDisplayName(connector.type)}`,
           link: `${config.getClientFacingUrl()}/poke/${connector.workspaceId}/data_sources/${connector.dataSourceId}`,
+          type: "Connector",
         },
       ];
     }

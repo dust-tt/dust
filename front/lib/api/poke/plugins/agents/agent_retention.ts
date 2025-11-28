@@ -1,5 +1,5 @@
 import { createPlugin } from "@app/lib/api/poke/types";
-import { AgentDataRetentionModel } from "@app/lib/models/assistant/agent_data_retention";
+import { AgentDataRetentionModel } from "@app/lib/models/agent/agent_data_retention";
 import { Err, Ok } from "@app/types";
 
 export const agentRetentionPlugin = createPlugin({

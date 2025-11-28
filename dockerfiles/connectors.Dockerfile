@@ -33,8 +33,8 @@ COPY /connectors/ .
 RUN find . -name "*.test.ts" -delete
 RUN find . -name "*.test.tsx" -delete
 
+# Build all components (server, worker, cli) with esbuild
 RUN npm run build
-
 
 EXPOSE 3002
 

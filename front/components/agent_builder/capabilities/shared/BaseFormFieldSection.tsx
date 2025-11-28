@@ -1,4 +1,4 @@
-import type { ChangeEvent } from "react";
+import type { ChangeEvent, ReactNode } from "react";
 import type { UseFormRegisterReturn } from "react-hook-form";
 import { useController, useFormContext } from "react-hook-form";
 
@@ -16,7 +16,7 @@ interface BaseFormFieldSectionProps<
     onChange: (e: ChangeEvent<E>) => void;
     errorMessage?: string;
     hasError: boolean;
-  }) => React.ReactNode;
+  }) => ReactNode;
 }
 
 export function BaseFormFieldSection<

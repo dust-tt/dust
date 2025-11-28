@@ -98,12 +98,16 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
                 whitelistedDomains: legacyConfiguration.whitelistedDomains,
                 restrictedSpaceAgentsEnabled:
                   legacyConfiguration.restrictedSpaceAgentsEnabled,
+                feedbackVisibleToAuthorOnly:
+                  legacyConfiguration.feedbackVisibleToAuthorOnly ?? true,
               }
             : {
                 autoReadChannelPatterns: configuration.autoReadChannelPatterns,
                 whitelistedDomains: configuration.whitelistedDomains,
                 restrictedSpaceAgentsEnabled:
                   configuration.restrictedSpaceAgentsEnabled ?? true,
+                feedbackVisibleToAuthorOnly:
+                  configuration.feedbackVisibleToAuthorOnly ?? true,
               }),
           botEnabled: configuration.botEnabled,
           slackTeamId,

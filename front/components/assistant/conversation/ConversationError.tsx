@@ -1,4 +1,10 @@
-import { Icon, StopSignIcon } from "@dust-tt/sparkle";
+import {
+  Button,
+  ExclamationCircleIcon,
+  Icon,
+  LoginIcon,
+} from "@dust-tt/sparkle";
+import Link from "next/link";
 import type { ComponentType } from "react";
 
 import type { ConversationError } from "@app/types";
@@ -9,7 +15,7 @@ interface ConversationErrorProps {
 }
 
 export function ConversationErrorDisplay({ error }: ConversationErrorProps) {
-  const errorMessageRes = safeParseJSON(error.message);
+  const errorMessageRes = safeParseJSON(JSON.stringify(error));
 
   if (errorMessageRes.isErr() || !isAPIErrorResponse(errorMessageRes.value)) {
     return <ConversationGenericError />;
@@ -30,12 +36,9 @@ export function ConversationErrorDisplay({ error }: ConversationErrorProps) {
 function ConversationAccessRestricted() {
   return (
     <ErrorDisplay
-      icon={StopSignIcon}
-      title="Permission Required"
-      message={[
-        "This conversation contains protected information.",
-        "Request access to view it.",
-      ]}
+      icon={ExclamationCircleIcon}
+      title="You don't have access to this page"
+      message={["This conversation may include restricted data."]}
     />
   );
 }
@@ -43,9 +46,9 @@ function ConversationAccessRestricted() {
 function ConversationNotFound() {
   return (
     <ErrorDisplay
+      icon={ExclamationCircleIcon}
       title="Conversation Not Found"
-      message="It looks like the conversation you're looking for doesn't exist or may
-        have been deleted."
+      message="This conversation may have been deleted or moved."
     />
   );
 }
@@ -72,11 +75,11 @@ interface ErrorDisplayProps {
 
 export function ErrorDisplay({ icon, message, title }: ErrorDisplayProps) {
   return (
-    <div className="h-dvh flex flex-col items-center justify-center gap-1">
+    <div className="h-dvh flex flex-col items-center justify-center gap-3">
       {icon && (
         <Icon
           visual={icon}
-          className="text-warning-400 dark:text-warning-400-night"
+          className="dark:text-golder-400-night text-golden-400"
           size="lg"
         />
       )}
@@ -90,6 +93,9 @@ export function ErrorDisplay({ icon, message, title }: ErrorDisplayProps) {
           <p>{message}</p>
         )}
       </p>
+      <Link href="/">
+        <Button variant="outline" label="Back to homepage" icon={LoginIcon} />
+      </Link>
     </div>
   );
 }

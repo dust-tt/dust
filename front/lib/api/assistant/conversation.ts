@@ -1,5 +1,5 @@
 import assert from "assert";
-import _, { isEqual, sortBy } from "lodash";
+import _ from "lodash";
 import type { Transaction } from "sequelize";
 
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
@@ -9,17 +9,17 @@ import {
 } from "@app/lib/api/assistant/configuration/agent";
 import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
-import { createAgentMessages } from "@app/lib/api/assistant/conversation/mentions";
 import {
-  getContentFragmentGroupIds,
-  getContentFragmentSpaceIds,
-} from "@app/lib/api/assistant/permissions";
+  createAgentMessages,
+  createUserMentions,
+} from "@app/lib/api/assistant/conversation/mentions";
+import { getContentFragmentSpaceIds } from "@app/lib/api/assistant/permissions";
 import {
   makeAgentMentionsRateLimitKeyForWorkspace,
   makeMessageRateLimitKeyForWorkspace,
 } from "@app/lib/api/assistant/rate_limits";
 import {
-  publishAgentMessageEventOnMessageRetry,
+  publishAgentMessagesEvents,
   publishMessageEventsOnMessagePostOrEdit,
 } from "@app/lib/api/assistant/streaming/events";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
@@ -31,12 +31,13 @@ import {
   ConversationModel,
   Message,
   UserMessage,
-} from "@app/lib/models/assistant/conversation";
+} from "@app/lib/models/agent/conversation";
+import { triggerConversationUnreadNotifications } from "@app/lib/notifications/workflows/conversation-unread";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import {
   generateRandomModelSId,
@@ -44,7 +45,7 @@ import {
 } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
-import { isEmailValid, normalizeArrays } from "@app/lib/utils";
+import { isEmailValid } from "@app/lib/utils";
 import {
   getTimeframeSecondsFromLiteral,
   rateLimiter,
@@ -53,6 +54,7 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type {
+  AgenticMessageData,
   AgentMessageType,
   APIErrorWithStatusCode,
   ContentFragmentContextType,
@@ -97,29 +99,47 @@ export async function createConversation(
     visibility,
     depth = 0,
     triggerId,
+    spaceId,
   }: {
     title: string | null;
     visibility: ConversationVisibility;
     depth?: number;
     triggerId?: ModelId | null;
+    spaceId: ModelId | null;
   }
 ): Promise<ConversationType> {
   const owner = auth.getNonNullableWorkspace();
+  let space: SpaceResource | null = null;
 
-  const conversation = await ConversationResource.makeNew(auth, {
-    sId: generateRandomModelSId(),
-    title,
-    visibility,
-    depth,
-    triggerId,
-    requestedGroupIds: [],
-    requestedSpaceIds: [],
-  });
+  if (spaceId) {
+    const spaces = await SpaceResource.fetchByModelIds(auth, [spaceId]);
+
+    // Check if the space exists.
+    if (spaces.length < 1) {
+      throw new Error("Cannot create conversation in a non-existent space.");
+    }
+    space = spaces[0];
+  }
+
+  const conversation = await ConversationResource.makeNew(
+    auth,
+    {
+      sId: generateRandomModelSId(),
+      title,
+      visibility,
+      depth,
+      triggerId,
+      spaceId,
+      requestedSpaceIds: [],
+    },
+    space
+  );
 
   return {
     id: conversation.id,
     owner,
     created: conversation.createdAt.getTime(),
+    updated: conversation.updatedAt.getTime(),
     sId: conversation.sId,
     title: conversation.title,
     depth: conversation.depth,
@@ -128,8 +148,8 @@ export async function createConversation(
     actionRequired: false,
     hasError: false,
     visibility: conversation.visibility,
-    requestedGroupIds: conversation.getRequestedGroupIdsFromModel(auth),
-    requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(auth),
+    requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(),
+    spaceId: space?.sId ?? null,
   };
 }
 
@@ -200,7 +220,7 @@ export async function deleteOrLeaveConversation(
 
 export async function getConversationMessageType(
   auth: Authenticator,
-  conversation: ConversationType | ConversationWithoutContentType,
+  conversation: ConversationWithoutContentType,
   messageId: string
 ): Promise<"user_message" | "agent_message" | "content_fragment" | null> {
   if (!auth.workspace()) {
@@ -348,6 +368,36 @@ async function attributeUserFromWorkspaceAndEmail(
   return membership ? matchingUser.toJSON() : null;
 }
 
+export function getRelatedContentFragments(
+  conversation: ConversationType,
+  message: UserMessageType
+): ContentFragmentType[] {
+  const potentialContentFragments = conversation.content
+    // Only the latest version of each message.
+    .map((versions) => versions[versions.length - 1])
+    // Only the content fragments.
+    .filter(isContentFragmentType)
+    // That are preceding the message by rank in the conversation.
+    .filter((m) => m.rank < message.rank)
+    // Sort by rank descending.
+    .toSorted((a, b) => b.rank - a.rank);
+
+  const relatedContentFragments: ContentFragmentType[] = [];
+  let lastRank = message.rank;
+
+  // Add until we reach a gap in ranks.
+  for (const contentFragment of potentialContentFragments) {
+    if (contentFragment.rank === lastRank - 1) {
+      relatedContentFragments.push(contentFragment);
+      lastRank = contentFragment.rank;
+    } else {
+      break;
+    }
+  }
+
+  return relatedContentFragments;
+}
+
 // This method is in charge of creating a new user message in database, running the necessary agents
 // in response and updating accordingly the conversation. AgentMentions must point to valid agent
 // configurations from the same workspace or whose scope is global.
@@ -358,12 +408,14 @@ export async function postUserMessage(
     content,
     mentions,
     context,
+    agenticMessageData,
     skipToolsValidation,
   }: {
     conversation: ConversationType;
     content: string;
     mentions: MentionType[];
     context: UserMessageContext;
+    agenticMessageData?: AgenticMessageData;
     skipToolsValidation: boolean;
   }
 ): Promise<
@@ -419,13 +471,14 @@ export async function postUserMessage(
     (() => {
       // If the origin of the user message is "run_agent", we do not want to update the
       // participation of the user so that the conversation does not appear in the user's history.
-      if (context.origin === "run_agent") {
+      if (agenticMessageData?.type === "run_agent") {
         return;
       }
 
       return ConversationResource.upsertParticipation(auth, {
         conversation,
         action: "posted",
+        user: user?.toJSON() ?? null,
       });
     })(),
   ]);
@@ -449,7 +502,7 @@ export async function postUserMessage(
       return new Err({
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "model_disabled",
           message:
             `Assistant ${agentConfig.name} is based on a model that was disabled ` +
             `by your workspace admin. Please edit the agent to use another model ` +
@@ -502,11 +555,12 @@ export async function postUserMessage(
         })) ?? -1) + 1;
 
       // Fetch originMessage to ensure it exists
-      const originMessage = context.originMessageId
+      const originMessageId = agenticMessageData?.originMessageId;
+      const originMessage = originMessageId
         ? await Message.findOne({
             where: {
               workspaceId: owner.id,
-              sId: context.originMessageId,
+              sId: originMessageId,
             },
           })
         : null;
@@ -530,10 +584,11 @@ export async function postUserMessage(
                   userContextEmail: context.email,
                   userContextProfilePictureUrl: context.profilePictureUrl,
                   userContextOrigin: context.origin,
-                  userContextOriginMessageId: originMessage?.sId ?? null,
                   userContextLastTriggerRunAt: context.lastTriggerRunAt
                     ? new Date(context.lastTriggerRunAt)
                     : null,
+                  agenticMessageType: agenticMessageData?.type,
+                  agenticOriginMessageId: originMessage?.sId ?? null,
                   userId: user
                     ? user.id
                     : (
@@ -567,14 +622,38 @@ export async function postUserMessage(
         mentions,
         content,
         context,
+        agenticMessageData,
         rank: m.rank,
       };
+
+      await createUserMentions(auth, {
+        mentions,
+        message: m,
+        conversation,
+        transaction: t,
+      });
 
       // Mark the conversation as unread for all participants except the user.
       await ConversationResource.markAsUnreadForOtherParticipants(auth, {
         conversation,
         excludedUser: user?.toJSON(),
       });
+
+      const featureFlags = await getFeatureFlags(owner);
+      if (featureFlags.includes("notifications")) {
+        // TODO(mentionsv2) here we fetch the conversation again to trigger the notification.
+        // We should refactor to pass the resource as the argument of the postUserMessage function.
+        const conversationRes = await ConversationResource.fetchById(
+          auth,
+          conversation.sId
+        );
+        if (conversationRes) {
+          await triggerConversationUnreadNotifications(auth, {
+            conversation: conversationRes,
+            messageId: m.sId,
+          });
+        }
+      }
 
       const agentMessagesResult = await createAgentMessages({
         mentions,
@@ -588,11 +667,13 @@ export async function postUserMessage(
         userMessage,
       });
 
-      await updateConversationRequestedGroupIds(auth, {
+      await updateConversationRequirements(auth, {
         agents: agentMessagesResult.map(({ m }) => m.configuration),
         conversation,
         t,
       });
+
+      await ConversationResource.markAsUpdated(auth, { conversation, t });
 
       return {
         userMessage,
@@ -632,7 +713,10 @@ export async function postUserMessage(
   // we should move this to a dedicated real-time sync mechanism.
   await publishMessageEventsOnMessagePostOrEdit(
     conversation,
-    userMessage,
+    {
+      ...userMessage,
+      contentFragments: getRelatedContentFragments(conversation, userMessage),
+    },
     agentMessages
   );
 
@@ -763,6 +847,7 @@ export async function editUserMessage(
     ConversationResource.upsertParticipation(auth, {
       conversation,
       action: "posted",
+      user: user?.toJSON() ?? null,
     }),
   ]);
 
@@ -785,7 +870,7 @@ export async function editUserMessage(
       return new Err({
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "model_disabled",
           message:
             `Assistant ${agentConfig.name} is based on a model that was disabled ` +
             `by your workspace admin. Please edit the agent to use another model ` +
@@ -919,6 +1004,13 @@ export async function editUserMessage(
           transaction: t,
         })) ?? -1) + 1;
 
+      await createUserMentions(auth, {
+        mentions,
+        message: m,
+        conversation,
+        transaction: t,
+      });
+
       const agentMessagesResult = await createAgentMessages({
         mentions,
         agentConfigurations,
@@ -931,11 +1023,13 @@ export async function editUserMessage(
         userMessage,
       });
 
-      await updateConversationRequestedGroupIds(auth, {
+      await updateConversationRequirements(auth, {
         agents: agentMessagesResult.map(({ m }) => m.configuration),
         conversation,
         t,
       });
+
+      await ConversationResource.markAsUpdated(auth, { conversation, t });
 
       return {
         userMessage,
@@ -995,7 +1089,10 @@ export async function editUserMessage(
   // we should move this to a dedicated real-time sync mechanism.
   await publishMessageEventsOnMessagePostOrEdit(
     conversation,
-    userMessage,
+    {
+      ...userMessage,
+      contentFragments: getRelatedContentFragments(conversation, userMessage),
+    },
     agentMessages
   );
 
@@ -1097,11 +1194,13 @@ export async function retryAgentMessage(
         }
       );
 
-      await updateConversationRequestedGroupIds(auth, {
+      await updateConversationRequirements(auth, {
         agents: [message.configuration],
         conversation,
         t,
       });
+
+      await ConversationResource.markAsUpdated(auth, { conversation, t });
 
       const agentMessage: AgentMessageType = {
         id: m.id,
@@ -1203,7 +1302,7 @@ export async function retryAgentMessage(
   // TODO(DURABLE-AGENTS 2025-07-17): Publish message events to all open tabs to maintain
   // conversation state synchronization in multiplex mode. This is a temporary solution -
   // we should move this to a dedicated real-time sync mechanism.
-  await publishAgentMessageEventOnMessageRetry(conversation, agentMessage);
+  await publishAgentMessagesEvents(conversation, [agentMessage]);
 
   return new Ok(agentMessage);
 }
@@ -1299,12 +1398,14 @@ export async function postNewContentFragment(
     );
 
     if (isContentFragmentInputWithContentNode(cf)) {
-      await updateConversationRequestedGroupIds(auth, {
+      await updateConversationRequirements(auth, {
         contentFragment: cf,
         conversation,
         t,
       });
     }
+
+    await ConversationResource.markAsUpdated(auth, { conversation, t });
 
     return { contentFragment, messageRow };
   });
@@ -1401,19 +1502,17 @@ async function isMessagesLimitReached({
 }
 
 /**
- * TODO(2025-10-17 thomas): Remove groups requirements, only handle requiredSpaces
- *
- * Update the conversation requestedGroupIds based on the mentioned agents. This function is purely
+ * Update the conversation requestedSpaceIds based on the mentioned agents. This function is purely
  * additive - requirements are never removed.
  *
- * Each agent's requestedGroupIds represents a set of requirements that must be satisfied. When an
+ * Each agent's requestedSpaceIds represents a set of requirements that must be satisfied. When an
  * agent is mentioned in a conversation, its requirements are added to the conversation's
  * requirements.
  *
  * - Within each requirement (sub-array), groups are combined with OR logic.
  * - Different requirements (different sub-arrays) are combined with AND logic.
  */
-export async function updateConversationRequestedGroupIds(
+export async function updateConversationRequirements(
   auth: Authenticator,
   {
     agents,
@@ -1427,27 +1526,11 @@ export async function updateConversationRequestedGroupIds(
     t: Transaction;
   }
 ): Promise<void> {
-  let newGroupsRequirements: string[][] = [];
   let newSpaceRequirements: string[] = [];
   if (agents) {
-    newGroupsRequirements = agents.flatMap((agent) => agent.requestedGroupIds);
     newSpaceRequirements = agents.flatMap((agent) => agent.requestedSpaceIds);
   }
   if (contentFragment) {
-    const rawRequestedGroupIds = await getContentFragmentGroupIds(
-      auth,
-      contentFragment
-    );
-    const requestedGroupIds = rawRequestedGroupIds.map((gs) =>
-      gs.map((gId) =>
-        GroupResource.modelIdToSId({
-          id: gId,
-          workspaceId: auth.getNonNullableWorkspace().id,
-        })
-      )
-    );
-    newGroupsRequirements.push(...requestedGroupIds);
-
     const requestedSpaceId = await getContentFragmentSpaceIds(
       auth,
       contentFragment
@@ -1456,43 +1539,20 @@ export async function updateConversationRequestedGroupIds(
     newSpaceRequirements.push(requestedSpaceId);
   }
 
-  // Remove duplicates and sort each requirement.
-  newGroupsRequirements = _.uniqWith(
-    newGroupsRequirements.map((r) => sortBy(r)),
-    isEqual
-  );
-
   newSpaceRequirements = _.uniq(newSpaceRequirements);
 
-  const currentGroupsRequirements = conversation.requestedGroupIds;
   const currentSpaceRequirements = conversation.requestedSpaceIds;
-
-  // Check if each new requirement already exists in current requirements.
-  const areAllGroupRequirementsPresent = newGroupsRequirements.every((newReq) =>
-    currentGroupsRequirements.some(
-      // newReq was sorted, so we need to sort currentReq as well.
-      (currentReq) => isEqual(newReq, sortBy(currentReq))
-    )
-  );
 
   const areAllSpaceRequirementsPresent = newSpaceRequirements.every((newReq) =>
     currentSpaceRequirements.includes(newReq)
   );
 
   // Early return if all new requirements are already present.
-  if (areAllGroupRequirementsPresent && areAllSpaceRequirementsPresent) {
+  if (areAllSpaceRequirementsPresent) {
     return;
   }
 
   // Get missing requirements.
-  const groupRequirementsToAdd = newGroupsRequirements.filter(
-    (newReq) =>
-      !currentGroupsRequirements.some((currentReq) =>
-        // newReq was sorted, so we need to sort currentReq as well.
-        isEqual(newReq, sortBy(currentReq))
-      )
-  );
-
   const spaceRequirementsToAdd = newSpaceRequirements.filter(
     (newReq) => !currentSpaceRequirements.includes(newReq)
   );
@@ -1510,20 +1570,14 @@ export async function updateConversationRequestedGroupIds(
     return sIdToModelId.get(sId)!;
   };
 
-  const allGroupsRequirements = [
-    ...currentGroupsRequirements.map((req) => sortBy(req.map(getModelId))),
-    ...groupRequirementsToAdd.map((req) => sortBy(req.map(getModelId))),
-  ];
-
   const allSpaceRequirements = [
     ...currentSpaceRequirements.map(getModelId),
     ...spaceRequirementsToAdd.map(getModelId),
   ];
 
-  await ConversationResource.updateRequestedGroupIds(
+  await ConversationResource.updateRequirements(
     auth,
     conversation.sId,
-    normalizeArrays(allGroupsRequirements),
     allSpaceRequirements,
     t
   );

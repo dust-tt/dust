@@ -11,16 +11,11 @@ import {
 } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import {
-  getParticleShapeIndexByName,
-  shapeNames,
-} from "@app/components/home/Particles";
 import { classNames } from "@app/lib/utils";
 
 export async function getStaticProps() {
   return {
     props: {
-      shape: getParticleShapeIndexByName(shapeNames.icosahedron),
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
     },
   };

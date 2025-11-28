@@ -26,6 +26,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useDustAppSecrets } from "@app/lib/swr/apps";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   DustAppSecretType,
   SubscriptionType,
@@ -69,6 +70,8 @@ export default function SecretsPage({
   const [isNewSecretPromptOpen, setIsNewSecretPromptOpen] = useState(false);
   const [isInputNameDisabled, setIsInputNameDisabled] = useState(false);
   const sendNotification = useSendNotification();
+
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
 
   const { secrets } = useDustAppSecrets(owner);
 
@@ -225,7 +228,11 @@ export default function SecretsPage({
       <AppCenteredLayout
         subscription={subscription}
         owner={owner}
-        subNavigation={subNavigationAdmin({ owner, current: "dev_secrets" })}
+        subNavigation={subNavigationAdmin({
+          owner,
+          current: "dev_secrets",
+          featureFlags,
+        })}
       >
         <Page.Vertical gap="xl" align="stretch">
           <Page.Header

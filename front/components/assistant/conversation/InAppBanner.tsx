@@ -4,8 +4,8 @@ import { useState } from "react";
 
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 
-const localStorageKey = "frame-announcement-dismissed";
-const docLink = "https://docs.dust.tt/docs/frames";
+const localStorageKey = "hootl-announcement-dismissed";
+const docLink = "https://docs.dust.tt/docs/triggers#/";
 
 export function InAppBanner() {
   const [showInAppBanner, setShowInAppBanner] = useState(
@@ -37,17 +37,17 @@ export function InAppBanner() {
     >
       <div className="relative p-4">
         <div className="text-md mb-2 font-medium text-foreground dark:text-foreground-night">
-          Introducing Frames ✨
+          Introducing Triggers ✨
         </div>
         <h4 className="mb-4 text-sm font-medium leading-tight text-primary dark:text-primary-night">
-          Turn conversations into interactive visuals
+          Make your agents work while you're away.
         </h4>
         <Button
           variant="highlight"
           size="xs"
           onClick={withTracking(
-            TRACKING_AREAS.FRAMES,
-            "cta_frame_banner",
+            TRACKING_AREAS.TRIGGERS,
+            "cta_triggers_banner",
             onLearnMore
           )}
           label="Learn more"

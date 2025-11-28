@@ -1,4 +1,5 @@
-import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
+import uniq from "lodash/uniq";
+
 import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import type { ToolNotificationEvent } from "@app/lib/actions/mcp";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -14,7 +15,10 @@ import type {
   LightWorkspaceType,
   ModelId,
   Result,
+  RichMention,
+  UserMessageOrigin,
   UserMessageType,
+  UserMessageTypeWithContentFragments,
   UserType,
 } from "@app/types";
 import { isLightAgentMessageWithActionsType } from "@app/types";
@@ -55,16 +59,14 @@ export type AgentMessageStateWithControlEvent =
 
 export type VirtuosoMessage =
   | MessageTemporaryState
-  | (UserMessageType & {
-      contentFragments: ContentFragmentType[];
-    });
+  | UserMessageTypeWithContentFragments;
 
 export type VirtuosoMessageListContext = {
   owner: LightWorkspaceType;
   user: UserType;
   handleSubmit: (
     input: string,
-    mentions: EditorMention[],
+    mentions: RichMention[],
     contentFragments: ContentFragmentsType
   ) => Promise<Result<undefined, DustError>>;
   conversationId: string;
@@ -77,6 +79,18 @@ export type VirtuosoMessageListContext = {
   feedbacksByMessageId: Record<string, AgentMessageFeedbackType>;
 };
 
+export const isTriggeredOrigin = (origin?: UserMessageOrigin | null) => {
+  return (
+    origin && (origin === "triggered" || origin === "triggered_programmatic")
+  );
+};
+
+// Central helper to control which user message origins should be hidden in the UI.
+// Extend this list as we introduce more bootstrap/system user messages.
+export const isHiddenMessage = (message: UserMessageType): boolean => {
+  return message.context.origin === "onboarding_conversation";
+};
+
 export const isUserMessage = (
   msg: VirtuosoMessage
 ): msg is UserMessageType & { contentFragments: ContentFragmentType[] } =>
@@ -87,7 +101,7 @@ export const isHandoverUserMessage = (
 ): msg is UserMessageType & { contentFragments: ContentFragmentType[] } =>
   "type" in msg &&
   msg.type === "user_message" &&
-  msg.context.origin === "agent_handover";
+  msg.agenticMessageData?.type === "agent_handover";
 
 export const isMessageTemporayState = (
   msg: VirtuosoMessage
@@ -128,3 +142,6 @@ export const areSameRank = (
 ) => {
   return getMessageRank(messageA) === getMessageRank(messageB);
 };
+
+export const hasHumansInteracting = (messages: VirtuosoMessage[]) =>
+  uniq(messages.filter(isUserMessage).map((m) => m.user?.sId)).length >= 2;

@@ -224,15 +224,15 @@ impl Provider for MCPConnectionProvider {
             _ => Err(anyhow!("Invalid `raw_json` stored on connection."))?,
         };
 
-        // Some MCP servers do not return a new refresh token when refreshing an access token.
-        // So we merge the new raw_json information in the existing one to preserve original
-        // refresh token.
-        match raw_json["refresh_token"].as_str() {
-            Some(refresh_token) => {
-                merged_raw_json["refresh_token"] =
-                    serde_json::Value::String(refresh_token.to_string())
+        let final_refresh_token = match raw_json["refresh_token"].as_str() {
+            Some(new_refresh_token) => new_refresh_token.to_string(),
+            None => {
+                // If the MCP server do not return a new refresh token when refreshing an access token.
+                // So we merge the new raw_json information in the existing one to preserve original
+                // refresh token.
+                merged_raw_json["refresh_token"] = serde_json::Value::String(refresh_token.clone());
+                refresh_token
             }
-            None => (),
         };
 
         // We checked above the presence of each of these fields in raw_json or the metadata.
@@ -250,7 +250,7 @@ impl Provider for MCPConnectionProvider {
             access_token_expiry: Some(
                 utils::now() + (expires_in - PROVIDER_TIMEOUT_SECONDS) * 1000,
             ),
-            refresh_token: Some(refresh_token.to_string()),
+            refresh_token: Some(final_refresh_token),
             raw_json: serde_json::Value::Object(merged_raw_json),
         })
     }

@@ -17,7 +17,7 @@ describe("renderUserMessage", () => {
 
   it("replaces :mention[name]{...} with @name", () => {
     const m = buildMessage({
-      content: "Hello :mention[John Doe]{user_123}, how are you?",
+      content: "Hello :mention[John Doe]{sId=user_123}, how are you?",
       context: {},
     });
 

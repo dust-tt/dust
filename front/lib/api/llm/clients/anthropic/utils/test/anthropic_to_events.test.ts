@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { streamLLMEvents } from "@app/lib/api/llm/clients/anthropic/utils/anthropic_to_events";
+import { emptyToolCallLLMEvents } from "@app/lib/api/llm/clients/anthropic/utils/test/fixtures/llm_events/empty_tool_call";
 import { reasoningLLMEvents } from "@app/lib/api/llm/clients/anthropic/utils/test/fixtures/llm_events/reasoning";
 import { toolUseLLMEvents } from "@app/lib/api/llm/clients/anthropic/utils/test/fixtures/llm_events/tool_use";
+import { emptyToolCallModelEvents } from "@app/lib/api/llm/clients/anthropic/utils/test/fixtures/model_output/empty_tool_call";
 import { reasoningModelEvents } from "@app/lib/api/llm/clients/anthropic/utils/test/fixtures/model_output/reasoning";
 import { toolUseModelEvents } from "@app/lib/api/llm/clients/anthropic/utils/test/fixtures/model_output/tool_use";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
@@ -39,6 +41,19 @@ describe("streamLLMEvents", () => {
         ...e,
         metadata: { ...e.metadata, ...metadata },
       }))
+    );
+  });
+
+  it("should handle empty tool call parameters", async () => {
+    const messageStreamEvents = createAsyncGenerator(emptyToolCallModelEvents);
+    const result = [];
+
+    for await (const event of streamLLMEvents(messageStreamEvents, metadata)) {
+      result.push(event);
+    }
+
+    expect(result).toEqual(
+      emptyToolCallLLMEvents.map((e) => ({ ...e, metadata }))
     );
   });
 });

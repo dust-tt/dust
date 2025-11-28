@@ -4,13 +4,11 @@ import { TemplateResource } from "@app/lib/resources/template_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
-export type FetchAssistantTemplateResponse = ReturnType<
-  TemplateResource["toJSON"]
->;
+export type FetchAgentTemplateResponse = ReturnType<TemplateResource["toJSON"]>;
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<FetchAssistantTemplateResponse>>
+  res: NextApiResponse<WithAPIErrorResponse<FetchAgentTemplateResponse>>
 ): Promise<void> {
   switch (req.method) {
     case "GET":

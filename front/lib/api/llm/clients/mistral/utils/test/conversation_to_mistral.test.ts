@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { toMessage } from "@app/lib/api/llm/clients/mistral/utils/conversation_to_mistral";
+import {
+  sanitizeToolCallId,
+  toMessage,
+} from "@app/lib/api/llm/clients/mistral/utils/conversation_to_mistral";
 import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types";
 
 describe("toMessage", () => {
@@ -11,6 +14,25 @@ describe("toMessage", () => {
       );
 
       expect(messages).toEqual(inputMessages);
+    });
+  });
+
+  describe("sanitizeToolCallId", () => {
+    it("should leave valid Mistral IDs unchanged", () => {
+      const result = sanitizeToolCallId("abc123456");
+      expect(result).toBe("abc123456");
+    });
+
+    it("should pad short IDs with leading zeros", () => {
+      const result = sanitizeToolCallId("abc");
+      expect(result).toBe("000000abc");
+    });
+
+    it("should truncate long IDs and replace invalid characters", () => {
+      // Claude-style tool call ID
+      const result = sanitizeToolCallId("toolu_01KhVuKdVHF2MMqWngPLh57f");
+      // "toolu_01KhVuKdVHF2MMqWngPLh57f" -> "toolu001K" (underscore replaced with 0, truncated to 9 chars)
+      expect(result).toBe("toolu001K");
     });
   });
 });

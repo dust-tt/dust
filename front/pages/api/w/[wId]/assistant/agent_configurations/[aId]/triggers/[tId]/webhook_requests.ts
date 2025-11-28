@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import type { WebhookRequestTriggerStatus } from "@app/lib/models/assistant/triggers/webhook_request_trigger";
+import type { WebhookRequestTriggerStatus } from "@app/lib/models/agent/triggers/webhook_request_trigger";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { fetchRecentWebhookRequestTriggersWithPayload } from "@app/lib/triggers/webhook";
 import logger from "@app/logger/logger";

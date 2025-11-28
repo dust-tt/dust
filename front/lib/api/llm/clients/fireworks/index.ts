@@ -7,15 +7,16 @@ import { handleGenericError } from "@app/lib/api/llm/types/errors";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type {
   LLMParameters,
-  StreamParameters,
+  LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
-import { handleError } from "@app/lib/api/llm/utils/openai_like/errors";
 import {
-  toInput,
-  toReasoning,
-  toTool,
-} from "@app/lib/api/llm/utils/openai_like/responses/conversation_to_openai";
-import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_like/responses/openai_to_events";
+  toMessages,
+  toReasoningParam,
+  toToolChoiceParam,
+  toTools,
+} from "@app/lib/api/llm/utils/openai_like/chat/conversation_to_openai";
+import { streamLLMEvents } from "@app/lib/api/llm/utils/openai_like/chat/openai_to_events";
+import { handleError } from "@app/lib/api/llm/utils/openai_like/errors";
 import type { Authenticator } from "@app/lib/auth";
 import { dustManagedCredentials } from "@app/types";
 
@@ -44,15 +45,23 @@ export class FireworksLLM extends LLM {
     conversation,
     prompt,
     specifications,
-  }: StreamParameters): AsyncGenerator<LLMEvent> {
+    forceToolCall,
+  }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
     try {
-      const events = await this.client.responses.create({
+      const tools =
+        specifications.length > 0 ? toTools(specifications) : undefined;
+
+      const events = await this.client.chat.completions.create({
         model: this.modelId,
-        input: toInput(prompt, conversation),
+        messages: toMessages(prompt, conversation),
         stream: true,
-        temperature: this.temperature,
-        reasoning: toReasoning(this.reasoningEffort),
-        tools: specifications.map(toTool),
+        temperature: this.temperature ?? undefined,
+        reasoning_effort: toReasoningParam(
+          this.reasoningEffort,
+          this.modelConfig.useNativeLightReasoning
+        ),
+        tool_choice: toToolChoiceParam(specifications, forceToolCall),
+        ...(tools ? { tools } : {}),
       });
 
       yield* streamLLMEvents(events, this.metadata);

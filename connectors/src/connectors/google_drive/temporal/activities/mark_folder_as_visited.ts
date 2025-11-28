@@ -9,7 +9,7 @@ import {
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
-import logger from "@connectors/logger/logger";
+import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES, stripNullBytes } from "@connectors/types";
@@ -32,7 +32,7 @@ export async function markFolderAsVisited(
   });
 
   if (!file) {
-    logger.info(
+    getActivityLogger(connector).info(
       { driveFileId },
       `Google Drive File unexpectedly not found (got 404)`
     );

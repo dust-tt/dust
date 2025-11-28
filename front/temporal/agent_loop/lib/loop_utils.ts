@@ -57,6 +57,7 @@ export function sliceConversationForAgentMessage(
     (versions, index) =>
       index === agentMessageIndex ||
       // Only check the first version - all versions have the same parentMessageId
+      versions.length === 0 ||
       !isAgentMessageType(versions[0]) ||
       versions[0].parentMessageId !== slicedAgentMessage.parentMessageId
   );

@@ -15,13 +15,13 @@ import {
   HandThumbUpIcon,
   Hoverable,
   Icon,
-  NavigationListLabel,
-  Page,
   Spinner,
+  Timeline,
 } from "@dust-tt/sparkle";
-import { memo, useCallback, useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { useInView } from "react-intersection-observer";
 
+import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
 import { useDismissFeedback } from "@app/hooks/useDismissFeedback";
 import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
 import {
@@ -36,6 +36,18 @@ import type {
 } from "@app/types";
 
 const FEEDBACKS_PAGE_SIZE = 50;
+
+const getAgentConfigurationVersionString = (
+  config: LightAgentConfigurationType
+) => {
+  if (!config.versionCreatedAt) {
+    return `v${config.version}`;
+  }
+  const versionDate = new Date(config.versionCreatedAt);
+  return (
+    "Version: " + formatTimestampToFriendlyDate(versionDate.getTime(), "long")
+  );
+};
 
 type FeedbackFilter = "unseen" | "all";
 
@@ -143,12 +155,10 @@ export const FeedbacksSection = ({
       {} as Record<number, LightAgentConfigurationType>
     ) || {};
 
-  const latestVersion = agentConfigurationHistory[0].version;
-
   return (
-    <>
-      <div className="mb-4 flex items-center justify-between">
-        <Page.H variant="h5">Feedback</Page.H>
+    <TabContentChildSectionLayout
+      title="Feedback"
+      headerAction={
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -168,26 +178,39 @@ export const FeedbacksSection = ({
             />
           </DropdownMenuContent>
         </DropdownMenu>
-      </div>
+      }
+    >
       {!agentConfigurationFeedbacks ||
       agentConfigurationFeedbacks.length === 0 ? (
         <div className="mt-3 text-sm text-muted-foreground dark:text-muted-foreground-night">
           No feedback yet.
         </div>
       ) : (
-        <div className="flex flex-col gap-4">
+        <Timeline>
           {versionsInOrder.map((version) => {
             const versionFeedbacks = feedbacksByVersion[version];
             const agentConfig = agentConfigByVersion[version];
-            const isLatestVersion = version === latestVersion;
 
             return (
-              <div key={version} className="flex flex-col gap-4">
-                <AgentConfigurationVersionHeader
-                  agentConfiguration={agentConfig}
-                  agentConfigurationVersion={version}
-                  isLatestVersion={isLatestVersion}
-                />
+              <Timeline.Item
+                key={version}
+                variant="upcoming"
+                title={
+                  agentConfig
+                    ? getAgentConfigurationVersionString(agentConfig)
+                    : `v${version}`
+                }
+                meta={
+                  agentConfig?.versionCreatedAt
+                    ? timeAgoFrom(
+                        new Date(agentConfig.versionCreatedAt).getTime(),
+                        {
+                          useLongFormat: true,
+                        }
+                      ) + " ago"
+                    : undefined
+                }
+              >
                 <div className="@container">
                   <div className="grid grid-cols-1 gap-4 @md:grid-cols-2">
                     {versionFeedbacks?.map((feedback) => (
@@ -205,55 +228,16 @@ export const FeedbacksSection = ({
                     ))}
                   </div>
                 </div>
-              </div>
+              </Timeline.Item>
             );
           })}
-        </div>
+        </Timeline>
       )}
       {/* Invisible div to act as a scroll anchor for detecting when the user has scrolled to the bottom */}
       <div ref={bottomRef} className="h-1.5" />
-    </>
+    </TabContentChildSectionLayout>
   );
 };
-
-interface AgentConfigurationVersionHeaderProps {
-  agentConfigurationVersion: number;
-  agentConfiguration: LightAgentConfigurationType | undefined;
-  isLatestVersion: boolean;
-}
-
-function AgentConfigurationVersionHeader({
-  agentConfigurationVersion,
-  agentConfiguration,
-  isLatestVersion,
-}: AgentConfigurationVersionHeaderProps) {
-  const getAgentConfigurationVersionString = useCallback(
-    (config: LightAgentConfigurationType) => {
-      if (isLatestVersion) {
-        return "Latest version";
-      }
-      if (!config.versionCreatedAt) {
-        return `v${config.version}`;
-      }
-      const versionDate = new Date(config.versionCreatedAt);
-      return (
-        "Version: " +
-        formatTimestampToFriendlyDate(versionDate.getTime(), "long")
-      );
-    },
-    [isLatestVersion]
-  );
-
-  return (
-    <NavigationListLabel
-      label={
-        agentConfiguration
-          ? getAgentConfigurationVersionString(agentConfiguration)
-          : `v${agentConfigurationVersion}`
-      }
-    />
-  );
-}
 
 interface FeedbackCardProps {
   owner: LightWorkspaceType;

@@ -1,41 +1,95 @@
 import type { Transaction } from "sequelize";
 
+import { getUserForWorkspace } from "@app/lib/api/user";
+import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import {
   AgentMessage,
   Mention,
   Message,
-} from "@app/lib/models/assistant/conversation";
+} from "@app/lib/models/agent/conversation";
+import { triggerConversationAddedAsParticipantNotification } from "@app/lib/notifications/workflows/conversation-added-as-participant";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import type { ConversationWithoutContentType, MentionType } from "@app/types";
 import type {
   AgentMessageType,
-  ConversationType,
   LightAgentConfigurationType,
-  MentionType,
   UserMessageType,
   WorkspaceType,
 } from "@app/types";
-import { isAgentMention } from "@app/types";
+import { isAgentMention, isUserMention } from "@app/types";
+
+export const createUserMentions = async (
+  auth: Authenticator,
+  {
+    mentions,
+    message,
+    conversation,
+    transaction,
+  }: {
+    mentions: MentionType[];
+    message: Message;
+    conversation: ConversationWithoutContentType;
+    transaction?: Transaction;
+  }
+) => {
+  // Store user mentions in the database
+  await Promise.all(
+    mentions.filter(isUserMention).map(async (mention) => {
+      // check if the user exists in the workspace before creating the mention
+      const user = await getUserForWorkspace(auth, { userId: mention.userId });
+      if (user) {
+        await Mention.create(
+          {
+            messageId: message.id,
+            userId: user.id,
+            workspaceId: auth.getNonNullableWorkspace().id,
+          },
+          { transaction }
+        );
+
+        const status = await ConversationResource.upsertParticipation(auth, {
+          conversation,
+          action: "subscribed",
+          user: user.toJSON(),
+        });
+
+        const featureFlags = await getFeatureFlags(
+          auth.getNonNullableWorkspace()
+        );
+
+        if (status === "added" && featureFlags.includes("notifications")) {
+          await triggerConversationAddedAsParticipantNotification(auth, {
+            conversation,
+            addedUserId: user.sId,
+          });
+        }
+      }
+    })
+  );
+};
 
 export const createAgentMessages = async ({
   mentions,
   agentConfigurations,
   message,
   owner,
-  transaction,
   skipToolsValidation,
   nextMessageRank,
   conversation,
   userMessage,
+  transaction,
 }: {
   mentions: MentionType[];
   agentConfigurations: LightAgentConfigurationType[];
   message: Message;
   owner: WorkspaceType;
-  transaction: Transaction;
   skipToolsValidation: boolean;
   nextMessageRank: number;
-  conversation: ConversationType;
+  conversation: ConversationWithoutContentType;
   userMessage: UserMessageType;
+  transaction?: Transaction;
 }) => {
   const results = await Promise.all(
     mentions.filter(isAgentMention).map((mention) => {
@@ -82,8 +136,8 @@ export const createAgentMessages = async ({
         );
 
         const parentAgentMessageId =
-          userMessage.context.origin === "agent_handover"
-            ? userMessage.context.originMessageId ?? null
+          userMessage.agenticMessageData?.type === "agent_handover"
+            ? (userMessage.agenticMessageData?.originMessageId ?? null)
             : null;
 
         return {

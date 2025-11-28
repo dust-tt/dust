@@ -1,5 +1,5 @@
 import { Checkbox, cn, Icon, Separator, Spinner } from "@dust-tt/sparkle";
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 import {
   Fragment,
   useCallback,
@@ -28,7 +28,7 @@ import { isRemoteDatabase } from "@app/lib/data_sources";
 export interface DataSourceListItem {
   id: string;
   title: string;
-  icon?: React.ComponentType;
+  icon?: ComponentType;
   entry: NavigationHistoryEntryType;
   onClick?: () => void;
 }
@@ -87,8 +87,13 @@ export function DataSourceList({
   isItemSelected,
   additionalColumns = [],
 }: DataSourceListProps) {
-  const { isRowSelected, selectNode, removeNode, navigationHistory } =
-    useDataSourceBuilderContext();
+  const {
+    isRowSelected,
+    selectNode,
+    removeNode,
+    navigationHistory,
+    isCurrentNavigationEntrySelected,
+  } = useDataSourceBuilderContext();
   const { field } = useSourcesFormController();
   const confirm = useContext(ConfirmContext);
 
@@ -168,8 +173,12 @@ export function DataSourceList({
         "partial"
     ).length;
 
+    // Check if the parent (current navigation entry) is selected
+    const parentSelected = isCurrentNavigationEntrySelected();
+
     if (selectedCount === selectableItems.length) {
-      return true;
+      // If all items are selected but parent is not explicitly selected, show partial
+      return parentSelected === true ? true : "partial";
     }
     if (selectedCount > 0 || partialCount > 0) {
       return "partial";
@@ -181,6 +190,7 @@ export function DataSourceList({
     shouldHideCheckbox,
     isRowSelected,
     isItemSelected,
+    isCurrentNavigationEntrySelected,
   ]);
 
   const handleSelectAll = useCallback(async () => {
@@ -193,22 +203,40 @@ export function DataSourceList({
     let newTreeValue = field.value;
 
     if (selectAllState === false) {
-      // Currently unchecked -> select all unselected items
-      const itemsToSelect = selectableItems.filter((item) => {
-        const selectionState = isRowSelected(item.id);
-        return selectionState !== true;
-      });
+      // If you try to select all inside the data_source or node,
+      // instead of adding each item one by one we will select its parent.
+      // This means that any new items will be automatically selected.
+      const currentPath = computeNavigationPath(navigationHistory);
+      const currentPathStr = pathToString(currentPath);
+      const currentEntry = navigationHistory[navigationHistory.length - 1];
+      const canSelectParent = ["data_source", "node"].includes(
+        currentEntry.type
+      );
 
-      // Add each node to the tree
-      for (const item of itemsToSelect) {
-        const nodePath = computeNavigationPath(navigationHistory);
-        nodePath.push(getLastNavigationHistoryEntryId(item.entry));
-
+      if (canSelectParent) {
         newTreeValue = addNodeToTree(newTreeValue, {
-          path: pathToString(nodePath),
-          name: navigationHistoryEntryTitle(item.entry),
-          ...item.entry,
+          path: currentPathStr,
+          name: navigationHistoryEntryTitle(currentEntry),
+          ...currentEntry,
         });
+      } else {
+        // you are not allowed to select at root and space level, so if !canSelectParent
+        // we will select each item (= category)
+        const itemsToSelect = selectableItems.filter((item) => {
+          const selectionState = isRowSelected(item.id);
+          return selectionState !== true;
+        });
+
+        for (const item of itemsToSelect) {
+          const nodePath = computeNavigationPath(navigationHistory);
+          nodePath.push(getLastNavigationHistoryEntryId(item.entry));
+
+          newTreeValue = addNodeToTree(newTreeValue, {
+            path: pathToString(nodePath),
+            name: navigationHistoryEntryTitle(item.entry),
+            ...item.entry,
+          });
+        }
       }
     } else {
       // Currently checked or partial -> unselect all selected items
@@ -230,9 +258,6 @@ export function DataSourceList({
         }
       }
 
-      // Remove each node from the tree
-      // TODO(yuka 17/10/2025): I don't think we need to compute every node path if its parentId is `in`,
-      // we can simple remove that instead of going through each item (and it should be the same when you select all).
       for (const item of itemsToUnselect) {
         const nodePath = computeNavigationPath(navigationHistory);
         nodePath.push(getLastNavigationHistoryEntryId(item.entry));
@@ -246,12 +271,9 @@ export function DataSourceList({
 
       // Also remove the current parent if it's in the tree
       // This handles the case where we selected all within a folder view
-      const currentPath = computeNavigationPath(navigationHistory);
-      const currentPathStr = pathToString(currentPath);
-      if (
-        newTreeValue.in.some((item) => item.path === currentPathStr) &&
-        navigationHistory.length > 0
-      ) {
+      if (isCurrentNavigationEntrySelected()) {
+        const currentPath = computeNavigationPath(navigationHistory);
+        const currentPathStr = pathToString(currentPath);
         const currentEntry = navigationHistory[navigationHistory.length - 1];
         newTreeValue = removeNodeFromTree(newTreeValue, {
           path: currentPathStr,
@@ -270,6 +292,7 @@ export function DataSourceList({
     field,
     navigationHistory,
     confirm,
+    isCurrentNavigationEntrySelected,
   ]);
 
   const handleSelectionChange = useCallback(
@@ -357,7 +380,7 @@ export function DataSourceList({
         return (
           <Fragment key={item.id}>
             <div
-              className="flex cursor-pointer items-center justify-between rounded-md p-3 hover:bg-muted/60"
+              className="flex cursor-pointer items-center justify-between rounded-md p-3 hover:bg-muted/60 hover:dark:bg-muted/10"
               onClick={() => item.onClick?.()}
             >
               <div className="flex min-w-0 flex-1 items-center gap-3">

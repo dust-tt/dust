@@ -1,7 +1,7 @@
 import { Octokit } from "@octokit/core";
 
-import type { GithubOrganization } from "@app/lib/triggers/built-in-webhooks/github/github_service_types";
-import { isGithubOrganization } from "@app/lib/triggers/built-in-webhooks/github/github_service_types";
+import type { GithubOrganization } from "@app/lib/triggers/built-in-webhooks/github/types";
+import { isGithubOrganization } from "@app/lib/triggers/built-in-webhooks/github/types";
 
 const ORGS_PER_PAGE = 100; // GitHub max is 100
 

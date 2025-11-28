@@ -1,24 +1,25 @@
-import { ConversationMCPServerViewModel } from "@app/lib/models/assistant/actions/conversation_mcp_server_view";
-import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
+import { ConversationMCPServerViewModel } from "@app/lib/models/agent/actions/conversation_mcp_server_view";
+import { AgentDataSourceConfiguration } from "@app/lib/models/agent/actions/data_sources";
+import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/internal_mcp_server_credentials";
 import {
   AgentChildAgentConfiguration,
   AgentMCPActionModel,
   AgentMCPActionOutputItem,
   AgentMCPServerConfiguration,
-} from "@app/lib/models/assistant/actions/mcp";
-import { MCPServerConnection } from "@app/lib/models/assistant/actions/mcp_server_connection";
-import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
-import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
-import { RemoteMCPServerModel } from "@app/lib/models/assistant/actions/remote_mcp_server";
-import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/assistant/actions/remote_mcp_server_tool_metadata";
-import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
+} from "@app/lib/models/agent/actions/mcp";
+import { MCPServerConnection } from "@app/lib/models/agent/actions/mcp_server_connection";
+import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
+import { AgentReasoningConfiguration } from "@app/lib/models/agent/actions/reasoning";
+import { RemoteMCPServerModel } from "@app/lib/models/agent/actions/remote_mcp_server";
+import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
+import { AgentTablesQueryConfigurationTable } from "@app/lib/models/agent/actions/tables_query";
 import {
   AgentConfiguration,
   AgentUserRelation,
   GlobalAgentSettings,
-} from "@app/lib/models/assistant/agent";
-import { AgentDataRetentionModel } from "@app/lib/models/assistant/agent_data_retention";
-import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
+} from "@app/lib/models/agent/agent";
+import { AgentDataRetentionModel } from "@app/lib/models/agent/agent_data_retention";
+import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
   AgentMessage,
   AgentMessageFeedback,
@@ -28,15 +29,15 @@ import {
   Message,
   MessageReaction,
   UserMessage,
-} from "@app/lib/models/assistant/conversation";
-import { GroupAgentModel } from "@app/lib/models/assistant/group_agent";
-import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
-import { TriggerSubscriberModel } from "@app/lib/models/assistant/triggers/trigger_subscriber";
-import { TriggerModel } from "@app/lib/models/assistant/triggers/triggers";
-import { WebhookRequestModel } from "@app/lib/models/assistant/triggers/webhook_request";
-import { WebhookRequestTriggerModel } from "@app/lib/models/assistant/triggers/webhook_request_trigger";
-import { WebhookSourceModel } from "@app/lib/models/assistant/triggers/webhook_source";
-import { WebhookSourcesViewModel } from "@app/lib/models/assistant/triggers/webhook_sources_view";
+} from "@app/lib/models/agent/conversation";
+import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
+import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
+import { TriggerSubscriberModel } from "@app/lib/models/agent/triggers/trigger_subscriber";
+import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
+import { WebhookRequestModel } from "@app/lib/models/agent/triggers/webhook_request";
+import { WebhookRequestTriggerModel } from "@app/lib/models/agent/triggers/webhook_request_trigger";
+import { WebhookSourceModel } from "@app/lib/models/agent/triggers/webhook_source";
+import { WebhookSourcesViewModel } from "@app/lib/models/agent/triggers/webhook_sources_view";
 import {
   TrackerConfigurationModel,
   TrackerDataSourceConfigurationModel,
@@ -56,6 +57,7 @@ import {
   Provider,
 } from "@app/lib/resources/storage/models/apps";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+import { CreditModel } from "@app/lib/resources/storage/models/credits";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import {
@@ -73,7 +75,9 @@ import {
   LabsTranscriptsHistoryModel,
 } from "@app/lib/resources/storage/models/labs_transcripts";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
+import { OnboardingTaskModel } from "@app/lib/resources/storage/models/onboarding_tasks";
 import { PluginRunModel } from "@app/lib/resources/storage/models/plugin_runs";
+import { ProgrammaticUsageConfigurationModel } from "@app/lib/resources/storage/models/programmatic_usage_configurations";
 import {
   RunModel,
   RunUsageModel,
@@ -140,6 +144,8 @@ async function main() {
   await Plan.sync({ alter: true });
   await Subscription.sync({ alter: true });
   await TemplateModel.sync({ alter: true });
+  await CreditModel.sync({ alter: true });
+  await ProgrammaticUsageConfigurationModel.sync({ alter: true });
 
   await AgentConfiguration.sync({ alter: true });
   await AgentUserRelation.sync({ alter: true });
@@ -151,6 +157,7 @@ async function main() {
   await MCPServerViewModel.sync({ alter: true });
   await MCPServerConnection.sync({ alter: true });
   await RemoteMCPServerToolMetadataModel.sync({ alter: true });
+  await InternalMCPServerCredentialModel.sync({ alter: true });
 
   await ConversationMCPServerViewModel.sync({ alter: true });
 
@@ -183,6 +190,7 @@ async function main() {
   await PluginRunModel.sync({ alter: true });
 
   await AgentMemoryModel.sync({ alter: true });
+  await OnboardingTaskModel.sync({ alter: true });
 
   process.exit(0);
 }

@@ -13,7 +13,7 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { MCPServerConnection } from "@app/lib/models/assistant/actions/mcp_server_connection";
+import { MCPServerConnection } from "@app/lib/models/agent/actions/mcp_server_connection";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";

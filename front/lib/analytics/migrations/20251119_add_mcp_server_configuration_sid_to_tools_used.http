@@ -1,0 +1,13 @@
+PUT /front.agent_message_analytics_2/_mapping
+{
+  "properties": {
+    "tools_used": {
+      "type": "nested",
+      "properties": {
+        "mcp_server_configuration_sid": {
+          "type": "keyword"
+        }
+      }
+    }
+  }
+}

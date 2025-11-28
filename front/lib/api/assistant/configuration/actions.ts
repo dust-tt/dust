@@ -1,6 +1,7 @@
 import assert from "assert";
 import type { Transaction } from "sequelize";
 
+import { DEFAULT_WEBSEARCH_ACTION_NAME } from "@app/lib/actions/constants";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { UnsavedMCPServerConfigurationType } from "@app/lib/actions/types/agent";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
@@ -9,22 +10,24 @@ import type {
   TableDataSourceConfiguration,
 } from "@app/lib/api/assistant/configuration/types";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
+import { AgentDataSourceConfiguration } from "@app/lib/models/agent/actions/data_sources";
 import {
   AgentChildAgentConfiguration,
   AgentMCPServerConfiguration,
-} from "@app/lib/models/assistant/actions/mcp";
-import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
-import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
+} from "@app/lib/models/agent/actions/mcp";
+import { AgentReasoningConfiguration } from "@app/lib/models/agent/actions/reasoning";
+import { AgentTablesQueryConfigurationTable } from "@app/lib/models/agent/actions/tables_query";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
-import type { LightAgentConfigurationType, Result } from "@app/types";
-import type { ReasoningModelConfigurationType } from "@app/types";
-import { removeNulls } from "@app/types";
-import { Err, Ok } from "@app/types";
+import type {
+  LightAgentConfigurationType,
+  ReasoningModelConfigurationType,
+  Result,
+} from "@app/types";
+import { Err, Ok, removeNulls } from "@app/types";
 
 /**
  * Called by Agent Builder to create an action configuration.
@@ -61,7 +64,13 @@ export async function createAgentActionConfiguration(
         additionalConfiguration: action.additionalConfiguration,
         timeFrame: action.timeFrame,
         jsonSchema: action.jsonSchema,
-        name: serverName !== action.name ? action.name : null,
+        // specific case in which the server_name has an extra "&" compare
+        // to the action name
+        name:
+          serverName !== action.name &&
+          serverName !== DEFAULT_WEBSEARCH_ACTION_NAME
+            ? action.name
+            : null,
         singleToolDescriptionOverride:
           serverDescription !== action.description ? action.description : null,
         appId: action.dustAppConfiguration?.appId ?? null,

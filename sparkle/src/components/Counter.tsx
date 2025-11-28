@@ -17,7 +17,9 @@ const counterVariants = cva(
       variant: {
         primary: "",
         highlight: "",
+        "highlight-secondary": "",
         warning: "",
+        "warning-secondary": "",
         outline: "",
         ghost: "",
         "ghost-secondary": "",
@@ -36,12 +38,12 @@ const counterVariants = cva(
       },
       {
         isInButton: false,
-        variant: "highlight",
+        variant: ["highlight", "highlight-secondary"],
         className: "s-bg-highlight s-text-white",
       },
       {
         isInButton: false,
-        variant: "warning",
+        variant: ["warning", "warning-secondary"],
         className: "s-bg-warning s-text-white",
       },
       {
@@ -62,12 +64,12 @@ const counterVariants = cva(
       },
       {
         isInButton: true,
-        variant: "highlight",
+        variant: ["highlight", "highlight-secondary"],
         className: "s-bg-highlight-400 s-text-white",
       },
       {
         isInButton: true,
-        variant: "warning",
+        variant: ["warning", "warning-secondary"],
         className: "s-bg-warning-400 s-text-white",
       },
       {

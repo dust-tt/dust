@@ -1,8 +1,11 @@
 import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
-import type { AllSupportedWithDustSpecificFileContentType } from "@app/types";
-import type { ContentFragmentType } from "@app/types";
-import type { ModelId } from "@app/types";
+import type {
+  AllSupportedWithDustSpecificFileContentType,
+  ContentFragmentType,
+  MentionType,
+  ModelId,
+} from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 
 import type { UserType, WorkspaceType } from "../user";
@@ -13,26 +16,7 @@ import type {
 } from "./agent";
 import type { AgentContentItemType } from "./agent_message_content";
 
-/**
- * Mentions
- */
-
-export type AgentMention = {
-  configurationId: string;
-};
-
-export type UserMention = {
-  type: "user";
-  userId: string;
-};
-
-export type MentionType = AgentMention | UserMention;
-
 export type MessageVisibility = "visible" | "deleted";
-
-export function isAgentMention(arg: MentionType): arg is AgentMention {
-  return (arg as AgentMention).configurationId !== undefined;
-}
 
 export type ConversationMessageReactions = {
   messageId: string;
@@ -53,40 +37,63 @@ export type MessageType =
   | UserMessageType
   | ContentFragmentType;
 
-export type LightMessageType =
+// This is the old format where content fragments are separated from the user messages.
+export type LegacyLightMessageType =
   | LightAgentMessageType
   | UserMessageType
   | ContentFragmentType;
 
-export type MessageWithContentFragmentsType =
+// This is the new format where content fragments are attached to the user messages.
+export type LightMessageType =
   | LightAgentMessageType
-  | (UserMessageType & {
-      contentFragments?: ContentFragmentType[];
-    });
+  | UserMessageTypeWithContentFragments;
 
 /**
  * User messages
  */
 
+/**
+ * User message origins indicate which means the user (be it human or program)
+ * used to send the message.
+ *
+ * They should be mutually exclusive and commonly exhaustive, i.e. any new
+ * origin here should not overlap with another existing origin and all user
+ * messages should have an origin.
+ *
+ * Avoid adding an origin that:
+ * - is not directly linked to how the original user sent the message;
+ * - overlaps with existing origins (e.g. "linux" and "mac-os" would be terrible
+ *   orgins in that respect, overlapping with almost all origins).
+ *
+ * Origins are also used for programmatic usage tracking, so ideally a new
+ * origin should be easily categorizable as either "programmatic" or "user".
+ *
+ */
 export type UserMessageOrigin =
+  // TODO(2025-11-24 PPUL): Remove run_agent and agent_handover from allowed origin values.
+  | "agent_handover" // soon to be removed (not a fitting origin).
+  // "api" is Custom API usage, while e.g. extension, gsheets and many other origins
+  // below are API usages dedicated to standard product features.
   | "api"
   | "email"
+  | "excel"
   | "extension"
   | "github-copilot-chat"
   | "gsheet"
   | "make"
   | "n8n"
+  | "powerpoint"
   | "raycast"
+  | "run_agent" // soon to be removed (not a fitting origin).
   | "slack"
   | "teams"
+  | "transcript"
+  | "triggered_programmatic"
   | "triggered"
   | "web"
   | "zapier"
   | "zendesk"
-  | "excel"
-  | "powerpoint"
-  | "run_agent"
-  | "agent_handover";
+  | "onboarding_conversation";
 
 export type UserMessageContext = {
   username: string;
@@ -101,6 +108,11 @@ export type UserMessageContext = {
   selectedMCPServerViewIds?: string[];
 };
 
+export type AgenticMessageData = {
+  type: "run_agent" | "agent_handover";
+  originMessageId: string;
+};
+
 export type UserMessageType = {
   id: ModelId;
   created: number;
@@ -113,12 +125,23 @@ export type UserMessageType = {
   mentions: MentionType[];
   content: string;
   context: UserMessageContext;
+  agenticMessageData?: AgenticMessageData;
+};
+
+export type UserMessageTypeWithContentFragments = UserMessageType & {
+  contentFragments: ContentFragmentType[];
 };
 
 export function isUserMessageType(
-  arg: MessageType | LightMessageType
+  arg: MessageType | LegacyLightMessageType | LightMessageType
 ): arg is UserMessageType {
   return arg.type === "user_message";
+}
+
+export function isUserMessageTypeWithContentFragments(
+  arg: MessageType | LightMessageType
+): arg is UserMessageTypeWithContentFragments {
+  return arg.type === "user_message" && "contentFragments" in arg;
 }
 
 /**
@@ -188,8 +211,6 @@ export type LightAgentMessageType = BaseAgentMessageType & {
     pictureUrl: string;
     status: AgentConfigurationStatus;
     canRead: boolean;
-    requestedGroupIds: string[][];
-    requestedSpaceIds: string[];
   };
   citations: Record<string, CitationType>;
   generatedFiles: Omit<ActionGeneratedFileType, "snippet">[];
@@ -230,15 +251,16 @@ export type ConversationVisibility = "unlisted" | "deleted" | "test";
 export type ConversationWithoutContentType = {
   id: ModelId;
   created: number;
-  updated?: number;
+  updated: number;
   unread: boolean;
   actionRequired: boolean;
   hasError: boolean;
   sId: string;
   title: string | null;
+  spaceId: string | null;
+  depth: number;
 
-  // Ideally, theses 2 properties should be moved to the ConversationType.
-  requestedGroupIds: string[][];
+  // Ideally, this property should be moved to the ConversationType.
   requestedSpaceIds: string[];
 };
 
@@ -249,7 +271,6 @@ export type ConversationWithoutContentType = {
 export type ConversationType = ConversationWithoutContentType & {
   owner: WorkspaceType;
   visibility: ConversationVisibility;
-  depth: number;
   content: (UserMessageType[] | AgentMessageType[] | ContentFragmentType[])[];
 };
 
@@ -307,12 +328,6 @@ export type SubmitMessageError = {
   message: string;
 };
 
-export interface FetchConversationMessagesResponse {
-  hasMore: boolean;
-  lastValue: number | null;
-  messages: LightMessageType[];
-}
-
 /**
  * Conversation events.
  */
@@ -322,7 +337,7 @@ export type UserMessageNewEvent = {
   type: "user_message_new";
   created: number;
   messageId: string;
-  message: UserMessageType;
+  message: UserMessageTypeWithContentFragments;
 };
 
 // Event sent when the user message is created.

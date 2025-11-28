@@ -1,4 +1,4 @@
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentConfiguration } from "@app/lib/models/agent/agent";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { GPT_4_TURBO_MODEL_ID } from "@app/types";
 import { Err } from "@app/types";

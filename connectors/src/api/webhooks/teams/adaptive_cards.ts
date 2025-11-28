@@ -3,7 +3,9 @@ import type { AdaptiveCard } from "@microsoft/teams-ai";
 import type { Activity } from "botbuilder";
 
 import type { MessageFootnotes } from "@connectors/lib/bot/citations";
+import { convertUrlsToMarkdown } from "@connectors/lib/bot/citations";
 import { makeDustAppUrl } from "@connectors/lib/bot/conversation_utils";
+import type { MentionMatch } from "@connectors/lib/bot/mentions";
 
 const DUST_URL = "https://dust.tt/home";
 
@@ -12,7 +14,7 @@ const DUST_URL = "https://dust.tt/home";
  */
 export function createResponseAdaptiveCard({
   response,
-  assistant,
+  mentionedAgent,
   conversationUrl,
   workspaceId,
   footnotes,
@@ -21,7 +23,7 @@ export function createResponseAdaptiveCard({
   originalMessage,
 }: {
   response: string;
-  assistant: { assistantName: string; assistantId: string };
+  mentionedAgent: MentionMatch;
   conversationUrl: string | null;
   workspaceId: string;
   footnotes?: MessageFootnotes;
@@ -30,7 +32,7 @@ export function createResponseAdaptiveCard({
   originalMessage: string;
 }): Partial<Activity> {
   const currentAgent = agentConfigurations.find(
-    (agent) => agent.sId === assistant.assistantId
+    (agent) => agent.sId === mentionedAgent.agentId
   );
 
   const feedbackActions =
@@ -66,6 +68,8 @@ export function createResponseAdaptiveCard({
           },
         ];
 
+  const responseWithMarkdownLinks = convertUrlsToMarkdown(response);
+
   const card: AdaptiveCard = {
     type: "AdaptiveCard",
     $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
@@ -73,7 +77,7 @@ export function createResponseAdaptiveCard({
     body: [
       {
         type: "TextBlock",
-        text: response,
+        text: responseWithMarkdownLinks,
         wrap: true,
         spacing: "Medium",
         color: isError ? "Attention" : "Default",
@@ -117,7 +121,7 @@ export function createResponseAdaptiveCard({
       {
         type: "TextBlock",
         text: createFooterText({
-          assistantName: assistant.assistantName,
+          agentName: mentionedAgent.agentName,
           conversationUrl,
           workspaceId,
           isError,
@@ -141,7 +145,7 @@ export function createResponseAdaptiveCard({
           {
             type: "Input.ChoiceSet",
             id: "selectedAgent",
-            value: assistant.assistantName,
+            value: mentionedAgent.agentName,
             choices: agentConfigurations.map((agent) => ({
               title: agent.name,
               value: agent.name,
@@ -199,10 +203,12 @@ export function createStreamingAdaptiveCard({
   response,
 }: {
   response: string;
-  assistantName: string;
+  agentName: string;
   conversationUrl: string | null;
   workspaceId: string;
 }): Partial<Activity> {
+  const responseWithMarkdownLinks = convertUrlsToMarkdown(response);
+
   return {
     type: "message",
     attachments: [
@@ -216,7 +222,7 @@ export function createStreamingAdaptiveCard({
             // Main response content
             {
               type: "TextBlock",
-              text: response,
+              text: responseWithMarkdownLinks,
               wrap: true,
               spacing: "Medium",
             },
@@ -246,6 +252,57 @@ export function createThinkingAdaptiveCard(): Partial<Activity> {
               text: `Thinking...`,
               wrap: true,
               color: "Accent",
+            },
+          ],
+        },
+      },
+    ],
+  };
+}
+
+export function createPersonalAuthenticationAdaptiveCard({
+  conversationUrl,
+  workspaceId,
+}: {
+  conversationUrl: string | null;
+  workspaceId: string;
+}): Partial<Activity> {
+  return {
+    type: "message",
+    attachments: [
+      {
+        contentType: "application/vnd.microsoft.card.adaptive",
+        content: {
+          type: "AdaptiveCard",
+          $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+          version: "1.4",
+          body: [
+            {
+              type: "TextBlock",
+              text:
+                "The agent took an action that requires personal authentication. " +
+                (conversationUrl
+                  ? `Please go to [the conversation](${conversationUrl}) to authenticate.`
+                  : ""),
+              wrap: true,
+            },
+            {
+              type: "Container",
+              spacing: "Medium",
+              separator: true,
+              items: [
+                {
+                  type: "TextBlock",
+                  text: createFooterText({
+                    workspaceId,
+                    conversationUrl,
+                    isError: true,
+                  }),
+                  wrap: true,
+                  size: "Small",
+                  color: "Good",
+                },
+              ],
             },
           ],
         },
@@ -535,28 +592,28 @@ export function createWelcomeAdaptiveCard(): Partial<Activity> {
 }
 
 function createFooterText({
-  assistantName,
+  agentName,
   conversationUrl,
   workspaceId,
   isError = false,
 }: {
-  assistantName?: string;
+  agentName?: string;
   conversationUrl?: string | null;
   workspaceId: string;
   isError?: boolean;
 }): string {
-  const assistantsUrl = makeDustAppUrl(`/w/${workspaceId}/assistant/new`);
+  const agentsUrl = makeDustAppUrl(`/w/${workspaceId}/agent/new`);
 
   let attribution = "";
-  if (assistantName) {
+  if (agentName) {
     if (isError) {
-      attribution = `**${assistantName}** encountered an error | `;
+      attribution = `**${agentName}** encountered an error | `;
     } else {
-      attribution = `Answered by **${assistantName}** | `;
+      attribution = `Answered by **${agentName}** | `;
     }
   }
 
-  const baseLinks = `[Browse agents](${assistantsUrl}) | [Learn more](${DUST_URL})`;
+  const baseLinks = `[Browse agents](${agentsUrl}) | [Learn more](${DUST_URL})`;
 
   return conversationUrl
     ? `${attribution}[Go to full conversation](${conversationUrl}) | ${baseLinks}`

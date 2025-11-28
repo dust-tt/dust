@@ -133,28 +133,41 @@ export async function updateAllParentsFields(
   createdOrMovedNotionPageIds: string[],
   createdOrMovedNotionDatabaseIds: string[],
   memoizationKey?: string,
-  onProgress?: () => Promise<void>
+  onProgress?: () => Promise<void>,
+  processingAllResources: boolean = false
 ): Promise<number> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("Could not find connector");
   }
 
-  /* Computing all descendants, then updating, ensures the field is updated only
-    once per page, limiting the load on the Datasource */
-  const pageAndDatabaseIdsToUpdate = await getPagesAndDatabasesToUpdate(
-    createdOrMovedNotionPageIds,
-    createdOrMovedNotionDatabaseIds,
-    connectorId,
-    onProgress
-  );
+  let pageAndDatabaseIdsToUpdate: Set<string>;
+  if (processingAllResources) {
+    // If we're processing all items, we don't need to include descendants,
+    // as we're updating everybody anyway. This is an optimization to avoid processing
+    // the same resources multiple times.
+    pageAndDatabaseIdsToUpdate = new Set<string>([
+      ...createdOrMovedNotionPageIds,
+      ...createdOrMovedNotionDatabaseIds,
+    ]);
+  } else {
+    /* Computing all descendants, then updating, ensures the field is updated only
+      once per page, limiting the load on the Datasource */
+    pageAndDatabaseIdsToUpdate = await getPagesAndDatabasesToUpdate(
+      createdOrMovedNotionPageIds,
+      createdOrMovedNotionDatabaseIds,
+      connectorId,
+      onProgress
+    );
+  }
 
   logger.info(
     {
       connectorId,
+      processingAllResources,
       pageIdsToUpdateCount: pageAndDatabaseIdsToUpdate.size,
     },
-    "updateAllParentsFields: Updating parents field for pages and databases"
+    "notionUpdateAllParentsFields: Updating parents field for pages and databases"
   );
 
   // Update everybody's parents field. Use of a memoization key to control
@@ -171,6 +184,14 @@ export async function updateAllParentsFields(
           [],
           false,
           memoizationKey
+        );
+        logger.info(
+          {
+            connectorId,
+            pageOrDbId,
+            parents: pageOrDbIds,
+          },
+          "notionUpdateAllParentsFields: Fetched parents"
         );
 
         const parents = pageOrDbIds.map((id) => nodeIdFromNotionId(id));

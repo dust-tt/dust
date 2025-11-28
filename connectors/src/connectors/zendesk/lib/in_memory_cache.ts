@@ -1,10 +1,7 @@
-import type { ZendeskFetchedOrganization } from "@connectors/connectors/zendesk/lib/types";
+import type { ZendeskOrganization } from "@connectors/connectors/zendesk/lib/types";
 
 // Nested Map structure: brandSubdomain -> organizationId -> organization
-const organizationCache = new Map<
-  string,
-  Map<number, ZendeskFetchedOrganization>
->();
+const organizationCache = new Map<string, Map<number, ZendeskOrganization>>();
 
 export function getOrganizationFromCache({
   brandSubdomain,
@@ -12,13 +9,13 @@ export function getOrganizationFromCache({
 }: {
   brandSubdomain: string;
   organizationId: number;
-}): ZendeskFetchedOrganization | undefined {
+}): ZendeskOrganization | undefined {
   const brandCache = organizationCache.get(brandSubdomain);
   return brandCache?.get(organizationId);
 }
 
 export function setOrganizationInCache(
-  organization: ZendeskFetchedOrganization,
+  organization: ZendeskOrganization,
   {
     brandSubdomain,
     organizationId,
@@ -29,7 +26,7 @@ export function setOrganizationInCache(
 ): void {
   let brandCache = organizationCache.get(brandSubdomain);
   if (!brandCache) {
-    brandCache = new Map<number, ZendeskFetchedOrganization>();
+    brandCache = new Map<number, ZendeskOrganization>();
     organizationCache.set(brandSubdomain, brandCache);
   }
   brandCache.set(organizationId, organization);

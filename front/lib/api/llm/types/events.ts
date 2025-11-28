@@ -9,6 +9,13 @@ export type Text = {
   text: string;
 };
 
+// Provider response identification event
+export interface ResponseIdEvent {
+  type: "interaction_id";
+  content: { modelInteractionId: string };
+  metadata: LLMClientMetadata;
+}
+
 // Stream events
 export interface TextDeltaEvent {
   type: "text_delta";
@@ -19,20 +26,20 @@ export interface TextDeltaEvent {
 export interface ReasoningDeltaEvent {
   type: "reasoning_delta";
   content: Delta;
-  metadata: LLMClientMetadata;
+  metadata: LLMClientMetadata & { encrypted_content?: string };
 }
 
 // Output items
 export interface ToolCall {
   id: string;
   name: string;
-  arguments: string;
+  arguments: Record<string, unknown>;
 }
 
 export interface ToolCallEvent {
   type: "tool_call";
   content: ToolCall;
-  metadata: LLMClientMetadata;
+  metadata: LLMClientMetadata & { thoughtSignature?: string };
 }
 
 export interface TextGeneratedEvent {
@@ -44,7 +51,7 @@ export interface TextGeneratedEvent {
 export interface ReasoningGeneratedEvent {
   type: "reasoning_generated";
   content: Text;
-  metadata: LLMClientMetadata & { encrypted_content?: string };
+  metadata: LLMClientMetadata & { id?: string; encrypted_content?: string };
 }
 
 export type LLMOutputItem =
@@ -71,7 +78,10 @@ export interface TokenUsageEvent {
 
 export interface SuccessCompletionEvent {
   type: "success";
-  content: LLMOutputItem[];
+  aggregated: LLMOutputItem[];
+  textGenerated?: TextGeneratedEvent;
+  reasoningGenerated?: ReasoningGeneratedEvent;
+  toolCalls?: ToolCallEvent[];
   metadata: LLMClientMetadata;
 }
 
@@ -89,6 +99,7 @@ export class EventError extends Error {
 }
 
 export type LLMEvent =
+  | ResponseIdEvent
   | TextDeltaEvent
   | ReasoningDeltaEvent
   | ToolCallEvent

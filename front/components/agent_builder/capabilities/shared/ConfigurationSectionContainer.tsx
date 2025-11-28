@@ -1,9 +1,11 @@
 import { cn } from "@dust-tt/sparkle";
+import type { ReactNode } from "react";
+import React from "react";
 
 interface ConfigurationSectionContainerProps {
   title: string;
-  description?: string | React.ReactNode;
-  children: React.ReactNode;
+  description?: string | ReactNode;
+  children: ReactNode;
   className?: string;
   error?: string;
 }

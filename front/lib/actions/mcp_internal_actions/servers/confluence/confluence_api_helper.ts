@@ -6,18 +6,20 @@ import type {
   ConfluenceCreatePageRequest,
   ConfluenceCurrentUser,
   ConfluenceErrorResult,
-  ConfluenceListPagesResult,
+  ConfluenceListSpacesResult,
   ConfluencePage,
   ConfluenceSearchRequest,
   ConfluenceUpdatePageRequest,
+  ConfluenceV1SearchResult,
   UpdatePagePayload,
   WithAuthParams,
 } from "@app/lib/actions/mcp_internal_actions/servers/confluence/types";
 import {
   AtlassianResourceSchema,
   ConfluenceCurrentUserSchema,
-  ConfluenceListPagesResultSchema,
+  ConfluenceListSpacesResultSchema,
   ConfluencePageSchema,
+  ConfluenceV1SearchResultSchema,
   CreatePagePayloadSchema,
 } from "@app/lib/actions/mcp_internal_actions/servers/confluence/types";
 import logger from "@app/logger/logger";
@@ -195,7 +197,7 @@ export async function listPages(
   baseUrl: string,
   accessToken: string,
   params: ConfluenceSearchRequest
-): Promise<Result<ConfluenceListPagesResult, string>> {
+): Promise<Result<ConfluenceV1SearchResult, string>> {
   // Validate limit with clear error messages
   const limit = params.limit ?? 25;
   if (limit < 1) {
@@ -206,23 +208,48 @@ export async function listPages(
   }
 
   const searchParams = new URLSearchParams();
+  searchParams.append("cql", params.cql);
+  searchParams.append("limit", limit.toString());
 
-  if (params.cql) {
-    searchParams.append("body-format", "storage");
-  }
   if (params.cursor) {
     searchParams.append("cursor", params.cursor);
   }
-  searchParams.append("limit", limit.toString());
 
-  const endpoint = `/wiki/api/v2/pages?${searchParams.toString()}`;
+  // Use v1 search endpoint for CQL queries
+  // CQL queries require v1 API endpoint since v2 doesn't support CQL
+  // See: https://developer.atlassian.com/cloud/confluence/rest/v2/api-group-page/
+  const endpoint = `/rest/api/content/search?${searchParams.toString()}`;
 
   const result = await confluenceApiCall(
     {
       endpoint,
       accessToken,
     },
-    ConfluenceListPagesResultSchema,
+    ConfluenceV1SearchResultSchema,
+    {
+      baseUrl,
+    }
+  );
+
+  if (result.isErr()) {
+    return new Err(result.error);
+  }
+
+  return new Ok(result.value);
+}
+
+export async function listSpaces(
+  baseUrl: string,
+  accessToken: string
+): Promise<Result<ConfluenceListSpacesResult, string>> {
+  const endpoint = `/wiki/api/v2/spaces`;
+
+  const result = await confluenceApiCall(
+    {
+      endpoint,
+      accessToken,
+    },
+    ConfluenceListSpacesResultSchema,
     {
       baseUrl,
     }

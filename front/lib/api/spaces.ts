@@ -4,7 +4,7 @@ import uniq from "lodash/uniq";
 import { hardDeleteApp } from "@app/lib/api/apps";
 import {
   getAgentConfigurations,
-  updateAgentRequestedGroupIds,
+  updateAgentRequirements,
 } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationRequirementsFromActions } from "@app/lib/api/assistant/permissions";
 import { getWorkspaceAdministrationVersionLock } from "@app/lib/api/workspace";
@@ -156,11 +156,10 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
               ignoreSpaces: [space],
             });
 
-          const res = await updateAgentRequestedGroupIds(
+          const res = await updateAgentRequirements(
             auth,
             {
               agentId,
-              newGroupIds: requirements.requestedGroupIds,
               newSpaceIds: requirements.requestedSpaceIds,
             },
             { transaction: t }

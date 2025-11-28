@@ -47,7 +47,7 @@ class LLMEventFactory {
       content: {
         id: faker.string.uuid(),
         name: faker.hacker.verb(),
-        arguments: JSON.stringify({ query: faker.lorem.sentence() }),
+        arguments: { query: faker.lorem.sentence() },
       },
       metadata: { clientId: "test", modelId: "gpt-4-turbo" },
     };
@@ -94,6 +94,7 @@ function createTestBuffer(traceId?: LLMTraceId, workspaceId?: string) {
     modelId: "gpt-4-turbo",
     prompt: faker.lorem.paragraph(),
     reasoningEffort: "medium",
+    responseFormat: null,
     specifications: [],
     temperature: 0.7,
   });

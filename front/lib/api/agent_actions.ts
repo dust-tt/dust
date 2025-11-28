@@ -2,9 +2,9 @@ import { Op, Sequelize } from "sequelize";
 
 import { remoteMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
-import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentMCPServerConfiguration } from "@app/lib/models/agent/actions/mcp";
+import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
+import { AgentConfiguration } from "@app/lib/models/agent/agent";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { AgentsUsageType, ModelId } from "@app/types";
 

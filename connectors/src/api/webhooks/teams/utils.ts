@@ -1,7 +1,6 @@
 import type { TurnContext } from "botbuilder";
 import { z } from "zod";
 
-import { sendTextMessage } from "@connectors/api/webhooks/teams/bot_messaging_utils";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { MicrosoftBotConfigurationResource } from "@connectors/resources/microsoft_bot_resources";
@@ -39,7 +38,7 @@ export async function getConnector(context: TurnContext) {
   }
 
   if (!tenantId) {
-    return;
+    return { connector: null, tenantId };
   }
 
   // Find the bot configuration for this tenant
@@ -47,11 +46,7 @@ export async function getConnector(context: TurnContext) {
     await MicrosoftBotConfigurationResource.fetchByTenantId(tenantId);
 
   if (!botConfig || !botConfig.botEnabled) {
-    logger.error(
-      { tenantId, connectorProvider: "microsoft_bot" },
-      "No Microsoft Bot configuration found for tenant"
-    );
-    return;
+    return { connector: null, tenantId };
   }
 
   // Get the corresponding connector
@@ -66,14 +61,10 @@ export async function getConnector(context: TurnContext) {
       },
       "Connector not found for bot configuration"
     );
-    await sendTextMessage(
-      context,
-      "❌ Microsoft Teams Integration is not enabled for your Organization."
-    );
-    return;
+    return { connector: null, tenantId };
   }
 
-  return connector;
+  return { connector, tenantId };
 }
 
 /**

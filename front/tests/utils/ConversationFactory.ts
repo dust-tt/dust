@@ -7,13 +7,18 @@ import {
   ConversationModel,
   Message,
   UserMessage,
-} from "@app/lib/models/assistant/conversation";
+} from "@app/lib/models/agent/conversation";
+import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { FileFactory } from "@app/tests/utils/FileFactory";
 import type {
-  ConversationType,
   ConversationVisibility,
+  ConversationWithoutContentType,
   ModelId,
+  SupportedContentFragmentType,
+  UserMessageOrigin,
+  UserMessageType,
   WorkspaceType,
 } from "@app/types";
 
@@ -35,13 +40,14 @@ export class ConversationFactory {
       visibility?: ConversationVisibility;
       t?: Transaction;
     }
-  ): Promise<ConversationType> {
+  ): Promise<ConversationWithoutContentType> {
     const user = auth.getNonNullableUser();
     const workspace = auth.getNonNullableWorkspace();
 
     const conversation = await createConversation(auth, {
       title: "Test Conversation",
       visibility,
+      spaceId: null,
     });
 
     if (conversationCreatedAt) {
@@ -80,6 +86,220 @@ export class ConversationFactory {
     }
 
     return conversation;
+  }
+
+  /**
+   * Creates a test user message
+   */
+  static async createUserMessage({
+    auth,
+    workspace,
+    conversation,
+    content,
+    origin = "web",
+    agenticMessageType,
+    agenticOriginMessageId,
+  }: {
+    auth: Authenticator;
+    workspace: WorkspaceType;
+    conversation: ConversationWithoutContentType;
+    content: string;
+    origin?: UserMessageOrigin;
+    agenticMessageType?: "run_agent" | "agent_handover";
+    agenticOriginMessageId?: string;
+  }): Promise<{ messageRow: Message; userMessage: UserMessageType }> {
+    const userMessageRow = await UserMessage.create({
+      userId: auth.getNonNullableUser().id,
+      workspaceId: workspace.id,
+      content,
+      userContextUsername: "testuser",
+      userContextTimezone: "UTC",
+      userContextFullName: "Test User",
+      userContextEmail: "test@example.com",
+      userContextProfilePictureUrl: null,
+      userContextOrigin: origin,
+      clientSideMCPServerIds: [],
+    });
+
+    const messageRow = await Message.create({
+      sId: generateRandomModelSId(),
+      rank: 0,
+      conversationId: conversation.id,
+      parentId: null,
+      userMessageId: userMessageRow.id,
+      workspaceId: workspace.id,
+    });
+
+    const userMessage: UserMessageType = {
+      id: messageRow.id,
+      created: userMessageRow.createdAt.getTime(),
+      sId: messageRow.sId,
+      type: "user_message",
+      visibility: "visible",
+      version: 0,
+      user: auth.getNonNullableUser().toJSON(),
+      mentions: [],
+      content: userMessageRow.content,
+      context: {
+        username: userMessageRow.userContextUsername,
+        timezone: userMessageRow.userContextTimezone,
+        fullName: userMessageRow.userContextFullName,
+        email: userMessageRow.userContextEmail,
+        profilePictureUrl: userMessageRow.userContextProfilePictureUrl,
+        origin: userMessageRow.userContextOrigin,
+      },
+      ...(agenticMessageType &&
+        agenticOriginMessageId && {
+          agenticMessageData: {
+            type: agenticMessageType,
+            originMessageId: agenticOriginMessageId,
+          },
+        }),
+      rank: messageRow.rank,
+    };
+
+    return { messageRow, userMessage };
+  }
+
+  /**
+   * Creates a user message with a specific rank
+   */
+  static async createUserMessageWithRank({
+    auth,
+    workspace,
+    conversationId,
+    rank,
+    content,
+    origin = "web",
+  }: {
+    auth: Authenticator;
+    workspace: WorkspaceType;
+    conversationId: ModelId;
+    rank: number;
+    content: string;
+    origin?: UserMessageOrigin;
+  }): Promise<Message> {
+    const userMessageRow = await UserMessage.create({
+      userId: auth.getNonNullableUser().id,
+      workspaceId: workspace.id,
+      content,
+      userContextUsername: "testuser",
+      userContextTimezone: "UTC",
+      userContextFullName: "Test User",
+      userContextEmail: "test@example.com",
+      userContextProfilePictureUrl: null,
+      userContextOrigin: origin,
+      clientSideMCPServerIds: [],
+    });
+
+    return Message.create({
+      sId: generateRandomModelSId(),
+      rank,
+      conversationId,
+      parentId: null,
+      userMessageId: userMessageRow.id,
+      workspaceId: workspace.id,
+    });
+  }
+
+  /**
+   * Creates an agent message with a specific rank
+   */
+  static async createAgentMessageWithRank({
+    workspace,
+    conversationId,
+    rank,
+    agentConfigurationId,
+  }: {
+    workspace: WorkspaceType;
+    conversationId: ModelId;
+    rank: number;
+    agentConfigurationId: string;
+  }): Promise<Message> {
+    const agentMessageRow = await AgentMessage.create({
+      status: "created",
+      agentConfigurationId,
+      agentConfigurationVersion: 0,
+      workspaceId: workspace.id,
+      skipToolsValidation: false,
+    });
+
+    return Message.create({
+      sId: generateRandomModelSId(),
+      rank,
+      conversationId,
+      parentId: null,
+      agentMessageId: agentMessageRow.id,
+      workspaceId: workspace.id,
+    });
+  }
+
+  /**
+   * Creates a content fragment message with a specific rank
+   * If fileId is not provided, a file will be created automatically
+   */
+  static async createContentFragmentMessage({
+    auth,
+    workspace,
+    conversationId,
+    rank,
+    fileId,
+    title,
+    contentType = "text/plain",
+    fileName,
+  }: {
+    auth: Authenticator;
+    workspace: WorkspaceType;
+    conversationId: ModelId;
+    rank: number;
+    fileId?: ModelId;
+    title: string;
+    contentType?: SupportedContentFragmentType;
+    fileName?: string;
+  }): Promise<Message> {
+    let finalFileId = fileId;
+    if (!finalFileId) {
+      // Default to text/plain for file creation if contentType is not a valid file content type
+      const fileContentType =
+        contentType === "text/plain" || contentType === "text/markdown"
+          ? contentType
+          : "text/plain";
+      const file = await FileFactory.create(
+        workspace,
+        auth.getNonNullableUser(),
+        {
+          contentType: fileContentType,
+          fileName: fileName ?? `${title}.txt`,
+          fileSize: 100,
+          status: "ready",
+          useCase: "conversation",
+        }
+      );
+      finalFileId = file.id;
+    }
+
+    const contentFragment = await ContentFragmentResource.makeNew({
+      workspaceId: workspace.id,
+      title,
+      contentType: contentType ?? "text/plain",
+      fileId: finalFileId,
+      userId: auth.getNonNullableUser().id,
+      userContextUsername: "testuser",
+      userContextFullName: "Test User",
+      userContextEmail: "test@example.com",
+      userContextProfilePictureUrl: null,
+      sourceUrl: null,
+      textBytes: null,
+    });
+
+    return Message.create({
+      sId: generateRandomModelSId(),
+      rank,
+      conversationId,
+      parentId: null,
+      contentFragmentId: contentFragment.id,
+      workspaceId: workspace.id,
+    });
   }
 }
 

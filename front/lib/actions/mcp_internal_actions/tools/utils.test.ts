@@ -2,8 +2,8 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { describe, expect, it } from "vitest";
 
 import { Authenticator } from "@app/lib/auth";
-import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
-import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
+import { AgentDataSourceConfiguration } from "@app/lib/models/agent/actions/data_sources";
+import { AgentTablesQueryConfigurationTable } from "@app/lib/models/agent/actions/tables_query";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { setupAgentOwner } from "@app/pages/api/w/[wId]/assistant/agent_configurations/index.test";

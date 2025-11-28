@@ -28,6 +28,7 @@ import { getWorkspaceVerifiedDomains } from "@app/lib/api/workspace_domains";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSearchMembers } from "@app/lib/swr/memberships";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   PlanType,
   SubscriptionPerSeatPricing,
@@ -95,6 +96,8 @@ export default function WorkspaceAdmin({
   const isProvisioningEnabled =
     plan.limits.users.isSCIMAllowed && hasVerifiedDomains;
 
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+
   const onInviteClick = useCallback(
     (event: MouseEvent) => {
       if (!isUpgraded(plan)) {
@@ -115,7 +118,11 @@ export default function WorkspaceAdmin({
     <AppCenteredLayout
       subscription={subscription}
       owner={owner}
-      subNavigation={subNavigationAdmin({ owner, current: "members" })}
+      subNavigation={subNavigationAdmin({
+        owner,
+        current: "members",
+        featureFlags,
+      })}
     >
       <div className="mb-4">
         <Page.Vertical gap="lg" align="stretch">

@@ -31,6 +31,7 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { PatchSubscriptionRequestBody } from "@app/pages/api/w/[wId]/subscriptions";
 import type {
@@ -103,6 +104,9 @@ export default function Subscription({
   const [showSkipFreeTrialDialog, setShowSkipFreeTrialDialog] = useState(false);
   const [showCancelFreeTrialDialog, setShowCancelFreeTrialDialog] =
     useState(false);
+
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+
   useEffect(() => {
     if (router.query.type === "succeeded") {
       if (subscription.plan.code === router.query.plan_code) {
@@ -262,7 +266,11 @@ export default function Subscription({
     <AppCenteredLayout
       subscription={subscription}
       owner={owner}
-      subNavigation={subNavigationAdmin({ owner, current: "subscription" })}
+      subNavigation={subNavigationAdmin({
+        owner,
+        current: "subscription",
+        featureFlags,
+      })}
     >
       {perSeatPricing && (
         <>
@@ -367,7 +375,6 @@ export default function Subscription({
               </Page.Horizontal>
             </Page.Vertical>
           )}
-          <div className="h-4"></div>
           {subscription.stripeSubscriptionId && (
             <Page.Vertical gap="sm">
               <Page.H variant="h5">Billing</Page.H>

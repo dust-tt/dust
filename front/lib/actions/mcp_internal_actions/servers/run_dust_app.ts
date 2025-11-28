@@ -39,7 +39,7 @@ import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import type {
   BlockRunConfig,
-  ConversationType,
+  ConversationWithoutContentType,
   DatasetSchema,
   SpecificationBlockType,
   SupportedFileContentType,
@@ -181,7 +181,7 @@ async function prepareAppContext(
 async function processDustFileOutput(
   auth: Authenticator,
   sanitizedOutput: DustFileOutput,
-  conversation: ConversationType,
+  conversation: ConversationWithoutContentType,
   appName: string
 ): Promise<{ type: "resource"; resource: ToolGeneratedFileType }[]> {
   const content: { type: "resource"; resource: ToolGeneratedFileType }[] = [];

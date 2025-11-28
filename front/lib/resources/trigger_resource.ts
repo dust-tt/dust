@@ -1,3 +1,4 @@
+import assert from "assert";
 import type {
   Attributes,
   CreationAttributes,
@@ -9,23 +10,23 @@ import { Op } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { TriggerSubscriberModel } from "@app/lib/models/assistant/triggers/trigger_subscriber";
-import { TriggerModel } from "@app/lib/models/assistant/triggers/triggers";
-import { WebhookRequestModel } from "@app/lib/models/assistant/triggers/webhook_request";
-import { WebhookRequestTriggerModel } from "@app/lib/models/assistant/triggers/webhook_request_trigger";
-import { WebhookSourcesViewModel } from "@app/lib/models/assistant/triggers/webhook_sources_view";
+import { AgentConfiguration } from "@app/lib/models/agent/agent";
+import { TriggerSubscriberModel } from "@app/lib/models/agent/triggers/trigger_subscriber";
+import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
+import { WebhookRequestModel } from "@app/lib/models/agent/triggers/webhook_request";
+import { WebhookRequestTriggerModel } from "@app/lib/models/agent/triggers/webhook_request_trigger";
+import { WebhookSourcesViewModel } from "@app/lib/models/agent/triggers/webhook_sources_view";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
   createOrUpdateAgentSchedule,
   deleteTriggerSchedule,
-} from "@app/lib/triggers/temporal/schedule/client";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { ModelId, Result } from "@app/types";
+} from "@app/temporal/triggers/schedule/client";
+import type { ModelId, Result, UserType } from "@app/types";
 import {
   assertNever,
   Err,
@@ -64,9 +65,12 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     });
 
     const resource = new this(TriggerModel, trigger.get());
-    const r = await resource.upsertTemporalWorkflow(auth);
-    if (r.isErr()) {
-      return r;
+
+    if (resource.enabled) {
+      const r = await resource.upsertTemporalWorkflow(auth);
+      if (r.isErr()) {
+        return r;
+      }
     }
 
     return new Ok(resource);
@@ -137,8 +141,14 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     });
   }
 
-  static async listByUserEditor(auth: Authenticator) {
-    const user = auth.getNonNullableUser();
+  static async listByUserEditor(
+    auth: Authenticator,
+    user: UserResource | UserType
+  ) {
+    assert(
+      auth.isAdmin() || auth.user()?.id === user.id,
+      "Triggers can only be listed by admins or by their editor."
+    );
 
     return this.baseFetch(auth, {
       where: {
@@ -147,9 +157,16 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     });
   }
 
-  static async listByUserSubscriber(auth: Authenticator) {
+  static async listByUserSubscriber(
+    auth: Authenticator,
+    user: UserResource | UserType
+  ) {
+    assert(
+      auth.isAdmin() || auth.user()?.id === user.id,
+      "Triggers can only be listed by admins or by the subscribed user."
+    );
+
     const workspace = auth.getNonNullableWorkspace();
-    const user = auth.getNonNullableUser();
 
     const res = await this.model.findAll({
       where: {
@@ -191,7 +208,13 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }
 
     await trigger.update(blob, transaction);
-    const r = await trigger.upsertTemporalWorkflow(auth);
+
+    let r = null;
+    if (trigger.enabled) {
+      r = await trigger.upsertTemporalWorkflow(auth);
+    } else {
+      r = await trigger.removeTemporalWorkflow(auth);
+    }
     if (r.isErr()) {
       return r;
     }
@@ -275,21 +298,17 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     const r = await concurrentExecutor(
       triggers,
       async (trigger) => {
-        try {
-          return await trigger.delete(auth);
-        } catch (error) {
-          return new Err(normalizeError(error));
-        }
+        return trigger.delete(auth);
       },
       {
-        concurrency: 10,
+        concurrency: 4,
       }
     );
 
-    if (r.find((res) => res.isErr())) {
+    if (r.some((res) => res.isErr())) {
       return new Err(
         new Error(
-          `Failed to delete ${r.filter((res) => res.isErr()).length} some triggers`
+          `Failed to delete ${r.filter((res) => res.isErr()).length} triggers`
         )
       );
     }
@@ -297,9 +316,11 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   }
 
   static async deleteAllForUser(
-    auth: Authenticator
+    auth: Authenticator,
+    user: UserResource | UserType
   ): Promise<Result<undefined, Error>> {
-    const triggers = await this.listByUserEditor(auth);
+    const triggers = await this.listByUserEditor(auth, user);
+
     if (triggers.length === 0) {
       return new Ok(undefined);
     }
@@ -307,18 +328,14 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     const r = await concurrentExecutor(
       triggers,
       async (trigger) => {
-        try {
-          return await trigger.delete(auth);
-        } catch (error) {
-          return new Err(normalizeError(error));
-        }
+        return trigger.delete(auth);
       },
       {
-        concurrency: 10,
+        concurrency: 4,
       }
     );
 
-    if (r.find((res) => res.isErr())) {
+    if (r.some((res) => res.isErr())) {
       return new Err(
         new Error(
           `Failed to delete ${r.filter((res) => res.isErr()).length} triggers`
@@ -688,7 +705,6 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       editor: this.editor,
       customPrompt: this.customPrompt,
       enabled: this.enabled,
-      executionPerDayLimitOverride: this.executionPerDayLimitOverride,
       naturalLanguageDescription: this.naturalLanguageDescription,
       createdAt: this.createdAt.getTime(),
     };
@@ -698,6 +714,8 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         ...base,
         kind: "webhook" as const,
         configuration: this.configuration as WebhookConfig,
+        executionPerDayLimitOverride: this.executionPerDayLimitOverride,
+        executionMode: this.executionMode,
         webhookSourceViewSId: this.webhookSourceViewId
           ? makeSId("webhook_sources_view", {
               id: this.webhookSourceViewId,

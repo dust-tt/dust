@@ -3,7 +3,7 @@ import type { GroupedCountResultItem } from "sequelize";
 import { Op } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
-import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
+import { AgentTablesQueryConfigurationTable } from "@app/lib/models/agent/actions/tables_query";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";

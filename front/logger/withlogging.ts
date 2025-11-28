@@ -1,3 +1,11 @@
+/**
+ * Force dd-trace inclusion in Next.js standalone mode.
+ * Side-effect import ensures dd-trace/init is available at runtime.
+ * Safe: this file is server-only (API routes, getServerSideProps).
+ * See: https://github.com/DataDog/dd-trace-js/issues/4003
+ */
+import "dd-trace";
+
 import tracer from "dd-trace";
 import type {
   GetServerSidePropsContext,

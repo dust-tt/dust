@@ -6,10 +6,6 @@ import { HeaderContentBlock } from "@app/components/home/ContentBlocks";
 import { Grid } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import {
-  getParticleShapeIndexByName,
-  shapeNames,
-} from "@app/components/home/Particles";
 import { PricePlans } from "@app/components/plans/PlansTables";
 import {
   trackEvent,
@@ -21,7 +17,6 @@ import {
 export async function getStaticProps() {
   return {
     props: {
-      shape: getParticleShapeIndexByName(shapeNames.bigSphere),
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
     },
   };

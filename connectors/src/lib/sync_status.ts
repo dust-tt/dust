@@ -1,12 +1,13 @@
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 
+import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type {
   ConnectorErrorType,
   ConnectorSyncStatus,
+  ModelId,
 } from "@connectors/types";
-import type { ModelId } from "@connectors/types";
 
 async function syncFinished({
   connectorId,
@@ -51,6 +52,8 @@ export async function reportInitialSyncProgress(
   if (!connector) {
     return new Err(new Error("Connector not found"));
   }
+  const localLogger = getActivityLogger(connector);
+  localLogger.info({ progress }, "Reporting initial sync progress");
 
   await connector.update({
     firstSyncProgress: progress,

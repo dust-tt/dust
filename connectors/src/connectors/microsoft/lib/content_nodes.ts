@@ -1,9 +1,4 @@
-import type {
-  Channel,
-  Drive,
-  Site,
-  Team,
-} from "@microsoft/microsoft-graph-types";
+import type { Drive, Site } from "@microsoft/microsoft-graph-types";
 
 import {
   getDriveInternalId,
@@ -11,16 +6,13 @@ import {
   getSiteAPIPath,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import type { DriveItem } from "@connectors/connectors/microsoft/lib/types";
-import {
-  internalIdFromTypeAndPath,
-  typeAndPathFromInternalId,
-} from "@connectors/connectors/microsoft/lib/utils";
+import { internalIdFromTypeAndPath } from "@connectors/connectors/microsoft/lib/utils";
 import type { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
 import type { ContentNode, ContentNodeType } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 export function getRootNodes(): ContentNode[] {
-  return [getSitesRootAsContentNode(), getTeamsRootAsContentNode()];
+  return [getSitesRootAsContentNode()];
 }
 
 export function getSitesRootAsContentNode(): ContentNode {
@@ -33,41 +25,6 @@ export function getSitesRootAsContentNode(): ContentNode {
     type: "folder",
     title: "Sites",
     sourceUrl: null,
-    lastUpdatedAt: null,
-    preventSelection: true,
-    expandable: true,
-    permission: "none",
-    mimeType: INTERNAL_MIME_TYPES.MICROSOFT.FOLDER,
-  };
-}
-
-export function getTeamsRootAsContentNode(): ContentNode {
-  return {
-    internalId: internalIdFromTypeAndPath({
-      itemAPIPath: "",
-      nodeType: "teams-root",
-    }),
-    parentInternalId: null,
-    type: "folder",
-    title: "Teams",
-    sourceUrl: null,
-    lastUpdatedAt: null,
-    preventSelection: true,
-    expandable: true,
-    permission: "none",
-    mimeType: INTERNAL_MIME_TYPES.MICROSOFT.FOLDER,
-  };
-}
-export function getTeamAsContentNode(team: Team): ContentNode {
-  return {
-    internalId: internalIdFromTypeAndPath({
-      itemAPIPath: `/teams/${team.id}`,
-      nodeType: "team",
-    }),
-    parentInternalId: null,
-    type: "folder",
-    title: team.displayName || "unnamed",
-    sourceUrl: team.webUrl ?? null,
     lastUpdatedAt: null,
     preventSelection: true,
     expandable: true,
@@ -96,35 +53,6 @@ export function getSiteAsContentNode(
     lastUpdatedAt: null,
     preventSelection: true,
     expandable: true,
-    permission: "none",
-    mimeType: INTERNAL_MIME_TYPES.MICROSOFT.FOLDER,
-  };
-}
-
-export function getChannelAsContentNode(
-  channel: Channel,
-  parentInternalId: string
-): ContentNode {
-  if (!channel.id) {
-    // Unexpected, unreachable
-    throw new Error("Channel id is required");
-  }
-  const { nodeType } = typeAndPathFromInternalId(parentInternalId);
-  if (nodeType !== "team") {
-    throw new Error(`Invalid parent nodeType: ${nodeType}`);
-  }
-
-  return {
-    internalId: internalIdFromTypeAndPath({
-      itemAPIPath: `/teams/${parentInternalId}/channels/${channel.id}`,
-      nodeType: "channel",
-    }),
-    parentInternalId,
-    type: "folder",
-    title: channel.displayName || "unnamed",
-    sourceUrl: channel.webUrl ?? null,
-    lastUpdatedAt: null,
-    expandable: false,
     permission: "none",
     mimeType: INTERNAL_MIME_TYPES.MICROSOFT.FOLDER,
   };

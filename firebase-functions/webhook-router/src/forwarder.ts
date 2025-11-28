@@ -2,6 +2,9 @@ import type { IncomingHttpHeaders } from "http";
 
 import { CONFIG } from "./config.js";
 import type { Secrets } from "./secrets.js";
+import type { Region } from "./webhook-router-config.js";
+
+type WebhookTarget = { region: Region; url: string; secret: string };
 
 export class WebhookForwarder {
   constructor(private secrets: Secrets) {}
@@ -11,28 +14,41 @@ export class WebhookForwarder {
     endpoint,
     method,
     headers,
+    regions,
+    rootUrlToken = "webhooks",
   }: {
     body: unknown;
     endpoint: string;
     method: string;
     headers: IncomingHttpHeaders;
+    regions: readonly Region[];
+    rootUrlToken?: string;
   }): Promise<PromiseSettledResult<Response>[]> {
-    const targets = [
+    const targets: WebhookTarget[] = [
       {
-        region: "US",
+        region: "us-central1",
         url: CONFIG.US_CONNECTOR_URL,
         secret: this.secrets.usSecret,
       },
       {
-        region: "EU",
+        region: "europe-west1",
         url: CONFIG.EU_CONNECTOR_URL,
         secret: this.secrets.euSecret,
       },
     ];
 
-    const requests = targets.map((target) =>
-      this.forwardToTarget({ target, endpoint, method, body, headers })
-    );
+    const requests = targets
+      .filter(({ region }) => regions.includes(region))
+      .map((target) =>
+        this.forwardToTarget({
+          target,
+          endpoint,
+          method,
+          body,
+          headers,
+          rootUrlToken,
+        })
+      );
 
     return Promise.allSettled(requests);
   }
@@ -43,12 +59,14 @@ export class WebhookForwarder {
     method,
     target,
     headers,
+    rootUrlToken,
   }: {
     body: unknown;
     endpoint: string;
     method: string;
-    target: { region: string; url: string; secret: string };
+    target: WebhookTarget;
     headers: IncomingHttpHeaders;
+    rootUrlToken: string;
   }): Promise<Response> {
     try {
       const response = await this.createRequest({
@@ -58,6 +76,7 @@ export class WebhookForwarder {
         method,
         secret: target.secret,
         headers,
+        rootUrlToken,
       });
 
       console.log("Webhook forwarding succeeded", {
@@ -87,6 +106,7 @@ export class WebhookForwarder {
     method,
     secret,
     headers,
+    rootUrlToken,
   }: {
     baseUrl: string;
     body: unknown;
@@ -94,8 +114,9 @@ export class WebhookForwarder {
     method: string;
     secret: string;
     headers: IncomingHttpHeaders;
+    rootUrlToken: string;
   }): Promise<Response> {
-    const url = `${baseUrl}/webhooks/${secret}/${endpoint}`;
+    const url = `${baseUrl}/${rootUrlToken}/${secret}/${endpoint}`;
 
     // Forward with original content-type and appropriate body format.
     return fetch(url, {

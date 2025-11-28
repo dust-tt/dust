@@ -37,6 +37,8 @@ const RESOURCES_PREFIX = {
   agent_step_content: "asc",
   agent_memory: "amm",
   agent_message_feedback: "amf",
+  onboarding_task: "obt",
+  programmatic_usage_configuration: "puc",
 
   // Resource relative to triggers.
   trigger: "trg",

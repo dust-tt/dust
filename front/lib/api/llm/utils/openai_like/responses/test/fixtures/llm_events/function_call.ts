@@ -6,11 +6,11 @@ export const functionCallLLMEvents: LLMEvent[] = [
     content: {
       id: "call_TNG5uqSoWvdMD4MFV6wKCwZT",
       name: "common_utilities__math_operation",
-      arguments: '{"expression":"x^2 + 2x + 1 = 0"}',
+      arguments: { expression: "x^2 + 2x + 1 = 0" },
     },
     metadata: {
       clientId: "openai_responses",
-      modelId: "gpt-4.1-2025-04-14",
+      modelId: "gpt-5",
     },
   },
   {
@@ -18,11 +18,11 @@ export const functionCallLLMEvents: LLMEvent[] = [
     content: {
       id: "call_XoBlcEPygqXN28I2McKpLSfF",
       name: "web_search_browse__websearch",
-      arguments: '{"query":"weather forecast Paris France tomorrow","page":1}',
+      arguments: { query: "weather forecast Paris France tomorrow", page: 1 },
     },
     metadata: {
       clientId: "openai_responses",
-      modelId: "gpt-4.1-2025-04-14",
+      modelId: "gpt-5",
     },
   },
   {
@@ -36,7 +36,72 @@ export const functionCallLLMEvents: LLMEvent[] = [
     },
     metadata: {
       clientId: "openai_responses",
-      modelId: "gpt-4.1-2025-04-14",
+      modelId: "gpt-5",
+    },
+  },
+  {
+    type: "success",
+    aggregated: [
+      {
+        type: "tool_call",
+        content: {
+          id: "call_TNG5uqSoWvdMD4MFV6wKCwZT",
+          name: "common_utilities__math_operation",
+          arguments: { expression: "x^2 + 2x + 1 = 0" },
+        },
+        metadata: {
+          clientId: "openai_responses",
+          modelId: "gpt-5",
+        },
+      },
+      {
+        type: "tool_call",
+        content: {
+          id: "call_XoBlcEPygqXN28I2McKpLSfF",
+          name: "web_search_browse__websearch",
+          arguments: {
+            query: "weather forecast Paris France tomorrow",
+            page: 1,
+          },
+        },
+        metadata: {
+          clientId: "openai_responses",
+          modelId: "gpt-5",
+        },
+      },
+    ],
+    toolCalls: [
+      {
+        type: "tool_call",
+        content: {
+          id: "call_TNG5uqSoWvdMD4MFV6wKCwZT",
+          name: "common_utilities__math_operation",
+          arguments: { expression: "x^2 + 2x + 1 = 0" },
+        },
+        metadata: {
+          clientId: "openai_responses",
+          modelId: "gpt-5",
+        },
+      },
+      {
+        type: "tool_call",
+        content: {
+          id: "call_XoBlcEPygqXN28I2McKpLSfF",
+          name: "web_search_browse__websearch",
+          arguments: {
+            query: "weather forecast Paris France tomorrow",
+            page: 1,
+          },
+        },
+        metadata: {
+          clientId: "openai_responses",
+          modelId: "gpt-5",
+        },
+      },
+    ],
+    metadata: {
+      clientId: "openai_responses",
+      modelId: "gpt-5",
     },
   },
 ];

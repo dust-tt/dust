@@ -20,4 +20,5 @@ export const NOOP_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "none",
   supportsResponseFormat: false,
   featureFlag: "noop_model_feature",
+  tokenizer: { type: "tiktoken", base: "o200k_base" },
 };
