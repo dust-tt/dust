@@ -11,7 +11,32 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { Err, Ok } from "@app/types";
+import { Err, Ok, pluralize } from "@app/types";
+
+async function getDirectoryUserEmails(
+  directoryId: string
+): Promise<Set<string>> {
+  const workOS = getWorkOS();
+  const directoryUserEmails = new Set<string>();
+  let after: string | undefined = undefined;
+
+  do {
+    const response: AutoPaginatable<
+      DirectoryUserWithGroups<DefaultCustomAttributes>
+    > = await workOS.directorySync.listUsers({
+      directory: directoryId,
+      ...(after && { after }),
+    });
+    response.data.forEach((user) => {
+      if (user.email) {
+        directoryUserEmails.add(user.email.toLowerCase());
+      }
+    });
+    after = response.listMetadata?.after;
+  } while (after);
+
+  return directoryUserEmails;
+}
 
 export const resetProvisionedMembersNotInDirectoryPlugin = createPlugin({
   manifest: {
@@ -70,21 +95,14 @@ export const resetProvisionedMembersNotInDirectoryPlugin = createPlugin({
 
     const [directory] = directories;
 
-    // Get all memberships with users included
-    const { memberships } = await MembershipResource.getMembershipsForWorkspace(
-      {
-        workspace,
-        includeUser: true,
-      }
-    );
+    // Get all active memberships with users included
+    const { memberships } = await MembershipResource.getActiveMemberships({
+      workspace,
+    });
 
-    // Filter to only active memberships with origin "provisioned"
-    const now = new Date();
+    // Filter to only memberships with origin "provisioned"
     const provisionedMemberships = memberships.filter(
-      (membership) =>
-        membership.origin === "provisioned" &&
-        membership.startAt <= now &&
-        (membership.endAt === null || membership.endAt >= now)
+      (membership) => membership.origin === "provisioned"
     );
 
     if (provisionedMemberships.length === 0) {
@@ -96,24 +114,7 @@ export const resetProvisionedMembersNotInDirectoryPlugin = createPlugin({
     }
 
     // List all users in the directory
-    const workOS = getWorkOS();
-    const directoryUserEmails = new Set<string>();
-    let after: string | undefined = undefined;
-
-    do {
-      const response: AutoPaginatable<
-        DirectoryUserWithGroups<DefaultCustomAttributes>
-      > = await workOS.directorySync.listUsers({
-        directory: directory.id,
-        ...(after && { after }),
-      });
-      response.data.forEach((user) => {
-        if (user.email) {
-          directoryUserEmails.add(user.email.toLowerCase());
-        }
-      });
-      after = response.listMetadata?.after;
-    } while (after);
+    const directoryUserEmails = await getDirectoryUserEmails(directory.id);
 
     // Check which provisioned members are not in the directory
     const membersToReset: Array<{
@@ -145,7 +146,7 @@ export const resetProvisionedMembersNotInDirectoryPlugin = createPlugin({
         display: "json",
         value: {
           mode: "dry_run",
-          message: `Found ${membersToReset.length} provisioned member${membersToReset.length > 1 ? "s" : ""} not in directory that would be reset`,
+          message: `Found ${membersToReset.length} provisioned member${pluralize(membersToReset.length)} not in directory that would be reset`,
           members: membersToReset.map(({ membership, userEmail }) => ({
             email: userEmail,
             role: membership.role,
@@ -169,24 +170,16 @@ export const resetProvisionedMembersNotInDirectoryPlugin = createPlugin({
         }
 
         const user = new UserResource(UserModel, userAttributes);
+        await membership.updateOrigin({
+          user,
+          workspace,
+          newOrigin: "invited",
+        });
 
-        try {
-          await membership.updateOrigin({
-            user,
-            workspace,
-            newOrigin: "invited",
-          });
-
-          return {
-            email: userEmail,
-            success: true,
-          };
-        } catch (error) {
-          return {
-            email: userEmail,
-            success: false,
-          };
-        }
+        return {
+          email: userEmail,
+          success: true,
+        };
       },
       { concurrency: 10 }
     );
