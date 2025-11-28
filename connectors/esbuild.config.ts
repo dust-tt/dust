@@ -44,7 +44,9 @@ async function buildTarget(target: BuildTarget) {
     }
 
     if (result.warnings.length > 0) {
-      console.log(`⚠️  ${result.warnings.length} warning(s) during ${target.name} build`);
+      console.log(
+        `⚠️  ${result.warnings.length} warning(s) during ${target.name} build`
+      );
     }
   } catch (error) {
     console.error(`❌ ${target.name} build failed:`, error);
@@ -54,10 +56,10 @@ async function buildTarget(target: BuildTarget) {
 
 async function build() {
   console.log("🔨 Building all connectors components...\n");
-  
+
   // Build all targets in parallel
   await Promise.all(buildTargets.map(buildTarget));
-  
+
   console.log("\n🎉 All builds completed successfully!");
 }
 
