@@ -96,6 +96,13 @@ jobs:
             ./front/package-lock.json
             ./types/package-lock.json
             ./sdks/js/package-lock.json
+      - name: Cache ESLint
+        uses: actions/cache@v3
+        with:
+          path: front/.eslintcache
+          key: eslint-cache-${{ runner.os }}-${{ hashFiles('front/.eslintrc.js', 'front/tsconfig.json', 'front/package-lock.json') }}
+          restore-keys: |
+            eslint-cache-${{ runner.os }}-
       - name: Install SDK/JS
         working-directory: sdks/js
         run: npm install
@@ -104,6 +111,8 @@ jobs:
         run: npm install
       - name: Lint
         working-directory: front
+        env:
+          NODE_OPTIONS: "--max-old-space-size=8192"
         run: npm run lint && npm run format:check
       - name: Knip - unlisted dependencies
         working-directory: front
