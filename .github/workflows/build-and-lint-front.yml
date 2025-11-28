@@ -86,9 +86,6 @@ jobs:
         run: npx tsc --version && npm run tsc
   lint:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        check: [lint, format, circular]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
@@ -100,7 +97,6 @@ jobs:
             ./types/package-lock.json
             ./sdks/js/package-lock.json
       - name: Cache ESLint
-        if: matrix.check == 'lint'
         uses: actions/cache@v3
         with:
           path: front/.eslintcache
@@ -113,21 +109,31 @@ jobs:
       - name: Install Front
         working-directory: front
         run: npm install
-      - name: Run lint
-        if: matrix.check == 'lint'
+      - name: Lint, Format, and Biome Check (parallel)
         working-directory: front
         env:
           NODE_OPTIONS: "--max-old-space-size=8192"
-        run: npm run lint
-      - name: Run format check
-        if: matrix.check == 'format'
-        working-directory: front
-        run: npm run format:check
-      - name: Run circular dependencies check
-        if: matrix.check == 'circular'
-        working-directory: front
-        run: npm run circular
+        run: |
+          set -e
+          npm run lint &
+          lint_pid=$!
+          npm run format:check &
+          format_pid=$!
+          npm run circular &
+          biome_pid=$!
+
+          wait $lint_pid
+          lint_exit=$?
+          wait $format_pid
+          format_exit=$?
+          wait $biome_pid
+          biome_exit=$?
+
+          if [ $lint_exit -ne 0 ] || [ $format_exit -ne 0 ] || [ $biome_exit -ne 0 ]; then
+            exit 1
+          fi
       - name: Knip - unlisted dependencies
+        if: matrix.check == 'unlisted'
         working-directory: front
         run: |
           explanations=$(cat << EOF
@@ -143,6 +149,7 @@ jobs:
           )
           npm run knip -- --include unlisted || (echo "You have some unlisted dependencies. **Please add them to the package.json**\n\n${explanations}" >&2; false)
       - name: Knip - unused devDependencies
+        if: matrix.check == 'unused'
         working-directory: front
         run: |
           explanations=$(cat << EOF
