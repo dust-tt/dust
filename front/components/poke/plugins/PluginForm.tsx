@@ -180,12 +180,13 @@ export function PluginForm({
                             disabled={field.disabled}
                           />
                         )}
-                        {arg.type === "boolean" && arg.variant !== "toggle" && (
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        )}
+                        {arg.type === "boolean" &&
+                          arg.variant === "checkbox" && (
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          )}
                         {arg.type === "enum" && (
                           <EnumSelect
                             label={arg.label}
