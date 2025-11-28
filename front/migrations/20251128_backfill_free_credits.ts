@@ -1,4 +1,4 @@
-import { Op } from "sequelize";
+import readline from "readline";
 
 import { Authenticator } from "@app/lib/auth";
 import { CreditResource } from "@app/lib/resources/credit_resource";
@@ -16,6 +16,20 @@ function parseDate(dateStr: string): Date {
   return date;
 }
 
+async function confirmExecution(message: string): Promise<boolean> {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  return new Promise((resolve) => {
+    rl.question(`\n⚠️  ${message} [y/N] `, (answer) => {
+      rl.close();
+      resolve(answer.toLowerCase() === "y");
+    });
+  });
+}
+
 async function addFreeCredits(
   execute: boolean,
   amountCents: number,
@@ -29,13 +43,13 @@ async function addFreeCredits(
   console.log(`  Amount: ${amountCents} cents ($${amountCents / 100})`);
   console.log(`  Expiration: ${expirationDate.toISOString()}`);
 
-  let addedCount = 0;
+  // Count how many would be added
+  let toAddCount = 0;
   let skippedCount = 0;
 
   for (const workspace of workspaces) {
     const idempotencyKey = `backfill-free-${workspace.id}-${expirationDate.toISOString().split("T")[0]}`;
 
-    // Check if credit already exists
     const existingCredit = await CreditModel.findOne({
       where: {
         workspaceId: workspace.id,
@@ -48,48 +62,74 @@ async function addFreeCredits(
         `  Skipping workspace ${workspace.sId} (${workspace.id}): credit already exists`
       );
       skippedCount++;
-      continue;
-    }
-
-    if (execute) {
-      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-      const credit = await CreditResource.makeNew(auth, {
-        type: "free",
-        initialAmountCents: amountCents,
-        consumedAmountCents: 0,
-        discount: null,
-        invoiceOrLineItemId: idempotencyKey,
-      });
-
-      await credit.start(new Date(), expirationDate);
-
-      console.log(
-        `  Added credit ${credit.id} to workspace ${workspace.sId} (${workspace.id})`
-      );
     } else {
       console.log(
         `  Would add credit to workspace ${workspace.sId} (${workspace.id})`
       );
+      toAddCount++;
     }
-    addedCount++;
   }
 
   console.log(`\nSummary:`);
-  console.log(`  Added: ${addedCount}`);
+  console.log(`  To add: ${toAddCount}`);
   console.log(`  Skipped (already exists): ${skippedCount}`);
+
+  if (!execute || toAddCount === 0) {
+    return;
+  }
+
+  const confirmed = await confirmExecution(
+    `About to add ${toAddCount} free credits (${amountCents}¢ each). Continue?`
+  );
+  if (!confirmed) {
+    console.log("Aborted.");
+    return;
+  }
+
+  let addedCount = 0;
+  for (const workspace of workspaces) {
+    const idempotencyKey = `backfill-free-${workspace.id}-${expirationDate.toISOString().split("T")[0]}`;
+
+    const existingCredit = await CreditModel.findOne({
+      where: {
+        workspaceId: workspace.id,
+        invoiceOrLineItemId: idempotencyKey,
+      },
+    });
+
+    if (existingCredit) {
+      continue;
+    }
+
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const credit = await CreditResource.makeNew(auth, {
+      type: "free",
+      initialAmountCents: amountCents,
+      consumedAmountCents: 0,
+      discount: null,
+      invoiceOrLineItemId: idempotencyKey,
+    });
+
+    await credit.start(new Date(), expirationDate);
+
+    console.log(
+      `  Added credit ${credit.id} to workspace ${workspace.sId} (${workspace.id})`
+    );
+    addedCount++;
+  }
+
+  console.log(`\nDone: added ${addedCount} credits.`);
 }
 
-async function removeFreeCredits(execute: boolean, beforeStartDate: Date) {
+async function removeFreeCredits(execute: boolean, expirationDate: Date) {
   console.log(
-    `[execute=${execute}] Removing free credits with startDate < ${beforeStartDate.toISOString()}`
+    `[execute=${execute}] Removing free credits with expirationDate = ${expirationDate.toISOString()}`
   );
 
   const creditsToRemove = await CreditModel.findAll({
     where: {
       type: "free",
-      startDate: {
-        [Op.lt]: beforeStartDate,
-      },
+      expirationDate,
     },
   });
 
@@ -97,21 +137,29 @@ async function removeFreeCredits(execute: boolean, beforeStartDate: Date) {
 
   for (const credit of creditsToRemove) {
     console.log(
-      `  Credit ${credit.id}: workspaceId=${credit.workspaceId}, startDate=${credit.startDate?.toISOString()}, amount=${credit.initialAmountCents}c`
+      `  Credit ${credit.id}: workspaceId=${credit.workspaceId}, expirationDate=${credit.expirationDate?.toISOString()}, amount=${credit.initialAmountCents}c`
     );
   }
 
-  if (execute && creditsToRemove.length > 0) {
-    const deletedCount = await CreditModel.destroy({
-      where: {
-        type: "free",
-        startDate: {
-          [Op.lt]: beforeStartDate,
-        },
-      },
-    });
-    console.log(`\n  Deleted ${deletedCount} credits`);
+  if (!execute || creditsToRemove.length === 0) {
+    return;
   }
+
+  const confirmed = await confirmExecution(
+    `About to delete ${creditsToRemove.length} free credits. Continue?`
+  );
+  if (!confirmed) {
+    console.log("Aborted.");
+    return;
+  }
+
+  const deletedCount = await CreditModel.destroy({
+    where: {
+      type: "free",
+      expirationDate,
+    },
+  });
+  console.log(`\nDone: deleted ${deletedCount} credits.`);
 }
 
 makeScript(
@@ -127,15 +175,10 @@ makeScript(
     },
     endDate: {
       type: "string",
-      describe: `Expiration date YYYY-MM-DD (default: ${DEFAULT_EXPIRATION_DAYS} days from now)`,
-    },
-    beforeStartDate: {
-      type: "string",
-      describe:
-        "Remove free credits with startDate before this date YYYY-MM-DD (required for 'remove')",
+      describe: `Expiration date YYYY-MM-DD for 'add' (default: ${DEFAULT_EXPIRATION_DAYS} days from now), or exact expiration date to match for 'remove'`,
     },
   },
-  async ({ execute, action, amountCents, endDate, beforeStartDate }) => {
+  async ({ execute, action, amountCents, endDate }) => {
     if (action === "add") {
       if (!amountCents || amountCents <= 0) {
         throw new Error("amountCents is required and must be positive for add");
@@ -149,11 +192,11 @@ makeScript(
 
       await addFreeCredits(execute, amountCents, expirationDate);
     } else if (action === "remove") {
-      if (!beforeStartDate) {
-        throw new Error("beforeStartDate is required for remove action");
+      if (!endDate) {
+        throw new Error("endDate is required for remove action");
       }
 
-      await removeFreeCredits(execute, parseDate(beforeStartDate));
+      await removeFreeCredits(execute, parseDate(endDate));
     } else {
       throw new Error(`Unknown action: ${action}. Use 'add' or 'remove'.`);
     }
