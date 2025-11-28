@@ -90,7 +90,7 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
     const oneYearFromNow = addYears(today, 1);
 
     return new Ok({
-      overrideDiscount_description: overrideDiscountDescription,
+      overrideDiscountDescription: overrideDiscountDescription,
       startDate: format(today, "yyyy-MM-dd"),
       expirationDate: format(oneYearFromNow, "yyyy-MM-dd"),
       discountPercent: defaultDiscount,
