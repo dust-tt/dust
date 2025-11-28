@@ -82,7 +82,7 @@ export abstract class LLM {
       return;
     }
 
-    logger.info("hello");
+    logger.info("ok");
 
     const workspaceId = this.authenticator.getNonNullableWorkspace().sId;
     const buffer = new LLMTraceBuffer(this.traceId, workspaceId, this.context);
