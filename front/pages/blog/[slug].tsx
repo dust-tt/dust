@@ -18,7 +18,7 @@ import { isString } from "@app/types";
 export const getServerSideProps: GetServerSideProps<BlogPostPageProps> = async (
   context
 ) => {
-  const { slug } = context.params || {};
+  const { slug } = context.params ?? {};
 
   if (!isString(slug)) {
     return { notFound: true };
