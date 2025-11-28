@@ -40,10 +40,15 @@ jobs:
           key: front-node-modules-${{ runner.os }}-${{ hashFiles('front/package-lock.json') }}
           restore-keys: |
             front-node-modules-${{ runner.os }}-
+      - name: Install SDK/JS dependencies
+        if: steps.cache-sdkjs-tests.outputs.cache-hit != 'true'
+        working-directory: sdks/js
+        run: npm ci
       - name: Build SDK/JS
         working-directory: sdks/js
-        run: npm install && npm run build
-      - name: Build Front
+        run: npm run build
+      - name: Install Front dependencies
+        if: steps.cache-front-tests.outputs.cache-hit != 'true'
         working-directory: front
         run: npm ci
       - name: Install Redis
@@ -105,10 +110,15 @@ jobs:
           key: front-node-modules-${{ runner.os }}-${{ hashFiles('front/package-lock.json') }}
           restore-keys: |
             front-node-modules-${{ runner.os }}-
+      - name: Install SDK/JS dependencies
+        if: steps.cache-sdkjs-tsc.outputs.cache-hit != 'true'
+        working-directory: sdks/js
+        run: npm ci
       - name: Build SDK/JS
         working-directory: sdks/js
-        run: npm install && npm run build
-      - name: Build Front
+        run: npm run build
+      - name: Install Front dependencies
+        if: steps.cache-front-tsc.outputs.cache-hit != 'true'
         working-directory: front
         run: npm ci
       - name: Typecheck
@@ -148,13 +158,15 @@ jobs:
           key: eslint-cache-${{ runner.os }}-${{ hashFiles('front/.eslintrc.js', 'front/tsconfig.json', 'front/package-lock.json') }}
           restore-keys: |
             eslint-cache-${{ runner.os }}-
-      - name: Install SDK/JS
+      - name: Install SDK/JS dependencies
+        if: steps.cache-sdkjs-lint.outputs.cache-hit != 'true'
         working-directory: sdks/js
-        run: npm install
-      - name: Install Front
+        run: npm ci
+      - name: Install Front dependencies
+        if: steps.cache-front-lint.outputs.cache-hit != 'true'
         working-directory: front
-        run: npm install
-      - name: Lint
+        run: npm ci
+      - name: Lint, and format (check)
         working-directory: front
         env:
           NODE_OPTIONS: "--max-old-space-size=8192"
