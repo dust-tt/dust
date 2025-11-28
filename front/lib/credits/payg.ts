@@ -18,7 +18,7 @@ export async function isPAYGEnabled(auth: Authenticator): Promise<boolean> {
   return config !== null && config.paygCapCents !== null;
 }
 
-export async function invoiceEnterprisePAYGCreditsArrears({
+export async function invoiceEnterprisePAYGCredits({
   auth,
   stripeSubscription,
   previousPeriodStartSeconds,

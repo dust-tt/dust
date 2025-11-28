@@ -15,7 +15,7 @@ import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { startCreditFromProOneOffInvoice } from "@app/lib/credits/committed";
 import { grantFreeCreditsOnSubscriptionRenewal } from "@app/lib/credits/free";
-import { invoiceEnterprisePAYGCreditsArrears } from "@app/lib/credits/payg";
+import { invoiceEnterprisePAYGCredits } from "@app/lib/credits/payg";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import {
   assertStripeSubscriptionIsValid,
@@ -54,6 +54,11 @@ export const config = {
     bodyParser: false, // Disable the default body parser
   },
 };
+
+export const StripeBillingPeriodSchema = z.object({
+  current_period_start: z.number(),
+  current_period_end: z.number(),
+});
 
 async function handler(
   req: NextApiRequest,
@@ -550,19 +555,15 @@ async function handler(
               }
 
               // Invoice PAYG credits in arrears for enterprise subscriptions
-              const previousPeriodSchema = z.object({
-                current_period_start: z.number(),
-                current_period_end: z.number(),
-              });
               const previousPeriod =
-                previousPeriodSchema.safeParse(previousAttributes);
+                StripeBillingPeriodSchema.safeParse(previousAttributes);
 
               if (previousPeriod.success) {
                 const previousPeriodStartSeconds =
                   previousPeriod.data.current_period_start;
                 const previousPeriodEndSeconds =
                   previousPeriod.data.current_period_end;
-                const paygResult = await invoiceEnterprisePAYGCreditsArrears({
+                const paygResult = await invoiceEnterprisePAYGCredits({
                   auth,
                   stripeSubscription,
                   previousPeriodStartSeconds,
