@@ -19,6 +19,9 @@ const config: KnipConfig = {
     "@dust-tt/client",
     "lint-staged",
     "yalc",
+    "pino-pretty",
+    "posthog-node",
+    "sqlite3", // used during the build process by sequelize
   ],
   paths: {
     "@app/*": ["./*"],
