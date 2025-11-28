@@ -24,12 +24,16 @@ function verifyRequestSignature({
   signingSecret: string;
 }): void {
   if (typeof signature !== "string" || typeof requestTimestamp !== "string") {
-    throw new ReceiverAuthenticityError("Slack request signing verification failed. Some headers are invalid.");
+    throw new ReceiverAuthenticityError(
+      "Slack request signing verification failed. Some headers are invalid."
+    );
   }
 
   const ts = Number(requestTimestamp);
   if (Number.isNaN(ts)) {
-    throw new ReceiverAuthenticityError("Slack request signing verification failed. Timestamp is invalid.");
+    throw new ReceiverAuthenticityError(
+      "Slack request signing verification failed. Timestamp is invalid."
+    );
   }
 
   // Divide current date to match Slack ts format.
@@ -37,7 +41,9 @@ function verifyRequestSignature({
   const fiveMinutesAgo = Math.floor(Date.now() / 1000) - 60 * 5;
 
   if (ts < fiveMinutesAgo) {
-    throw new ReceiverAuthenticityError("Slack request signing verification failed. Timestamp is too old.");
+    throw new ReceiverAuthenticityError(
+      "Slack request signing verification failed. Timestamp is too old."
+    );
   }
 
   const hmac = crypto.createHmac("sha256", signingSecret);
@@ -47,14 +53,18 @@ function verifyRequestSignature({
   // Use crypto.timingSafeEqual for timing-safe comparison.
   const expectedHash = hmac.digest("hex");
   if (hash.length !== expectedHash.length) {
-    throw new ReceiverAuthenticityError("Slack request signing verification failed. Signature mismatch.");
+    throw new ReceiverAuthenticityError(
+      "Slack request signing verification failed. Signature mismatch."
+    );
   }
 
   const hashBuffer = Buffer.from(hash, "hex");
   const expectedHashBuffer = Buffer.from(expectedHash, "hex");
 
   if (!crypto.timingSafeEqual(hashBuffer, expectedHashBuffer)) {
-    throw new ReceiverAuthenticityError("Slack request signing verification failed. Signature mismatch.");
+    throw new ReceiverAuthenticityError(
+      "Slack request signing verification failed. Signature mismatch."
+    );
   }
 }
 
@@ -68,7 +78,12 @@ async function parseExpressRequestRawBody(req: Request): Promise<string> {
 }
 
 function isUrlVerification(body: any): boolean {
-  return body !== null && typeof body === "object" && body.type === "url_verification" && "challenge" in body;
+  return (
+    body !== null &&
+    typeof body === "object" &&
+    body.type === "url_verification" &&
+    "challenge" in body
+  );
 }
 
 export function createSlackVerificationMiddleware(
@@ -104,7 +119,10 @@ export function createSlackVerificationMiddleware(
           );
         }
 
-        const slackWebhookConfig = await webhookRouterConfigManager.getEntry("slack", teamId);
+        const slackWebhookConfig = await webhookRouterConfigManager.getEntry(
+          "slack",
+          teamId
+        );
         // Set the regions for the forwarder
         req.regions = slackWebhookConfig.regions;
         signingSecret = slackWebhookConfig.signingSecret;
