@@ -344,6 +344,58 @@ Write clear, actionable descriptions that help the LLM understand when to use ea
 
 Use Zod schemas with `.describe()` for each parameter. This helps the LLM understand what values are expected and improves tool calling accuracy.
 
+### 5. Validate External API Responses
+
+Always validate data returned from external APIs using Zod schemas.
+External APIs can change without notice, return unexpected data, or have undocumented edge cases.
+Validation ensures your code fails fast with clear error messages rather than propagating malformed data.
+
+**Pattern:**
+
+```typescript
+// In types.ts - define schemas for API responses
+const ItemSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  status: z.string(),
+}).passthrough(); // Use .passthrough() to allow extra fields from the API
+
+const ItemResponseSchema = z.object({
+  item: ItemSchema,
+});
+
+// In client.ts - validate every API response
+private async request<T extends z.Schema>(
+  endpoint: string,
+  schema: T
+): Promise<Result<z.infer<T>, Error>> {
+  const response = await fetch(url, { ... });
+  const rawData = await response.json();
+
+  const parseResult = schema.safeParse(rawData);
+  if (!parseResult.success) {
+    logger.error(
+      { endpoint, error: parseResult.error.message },
+      "[Provider] Invalid API response format"
+    );
+    return new Err(
+      new Error(`Invalid API response format: ${parseResult.error.message}`)
+    );
+  }
+
+  return new Ok(parseResult.data);
+}
+```
+
+**Benefits:**
+
+- Catches API contract changes early
+- Provides clear error messages for debugging
+- Prevents runtime errors from unexpected data shapes
+- Documents the expected API response structure
+
+See `servers/zendesk/types.ts` and `servers/zendesk/client.ts` for a complete example.
+
 ---
 
 ## Reference Implementations
