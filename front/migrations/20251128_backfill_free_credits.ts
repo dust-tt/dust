@@ -3,6 +3,7 @@ import readline from "readline";
 import { Authenticator } from "@app/lib/auth";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { CreditModel } from "@app/lib/resources/storage/models/credits";
+import type { WhereOptions } from "@app/lib/resources/storage/wrappers/workspace_models";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
@@ -47,10 +48,12 @@ function getIdempotencyKey(
   return `backfill-free-${workspaceId}-${expirationDate.toISOString().split("T")[0]}`;
 }
 
-async function checkWorkspaceCredit(
+async function addCreditToWorkspace(
   workspace: LightWorkspaceType,
-  expirationDate: Date
-): Promise<"exists" | "to_add"> {
+  amountCents: number,
+  expirationDate: Date,
+  execute: boolean
+): Promise<"added" | "skipped"> {
   const idempotencyKey = getIdempotencyKey(workspace.id, expirationDate);
 
   const existingCredit = await CreditModel.findOne({
@@ -65,33 +68,15 @@ async function checkWorkspaceCredit(
       { workspaceSId: workspace.sId, workspaceId: workspace.id },
       "Skipping workspace: credit already exists"
     );
-    return "exists";
+    return "skipped";
   }
 
-  logger.info(
-    { workspaceSId: workspace.sId, workspaceId: workspace.id },
-    "Would add credit to workspace"
-  );
-  return "to_add";
-}
-
-async function addCreditToWorkspace(
-  workspace: LightWorkspaceType,
-  amountCents: number,
-  expirationDate: Date
-): Promise<void> {
-  const idempotencyKey = getIdempotencyKey(workspace.id, expirationDate);
-
-  // Double-check credit doesn't exist (idempotency)
-  const existingCredit = await CreditModel.findOne({
-    where: {
-      workspaceId: workspace.id,
-      invoiceOrLineItemId: idempotencyKey,
-    },
-  });
-
-  if (existingCredit) {
-    return;
+  if (!execute) {
+    logger.info(
+      { workspaceSId: workspace.sId, workspaceId: workspace.id },
+      "Would add credit to workspace"
+    );
+    return "added";
   }
 
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
@@ -113,6 +98,7 @@ async function addCreditToWorkspace(
     },
     "Added credit to workspace"
   );
+  return "added";
 }
 
 async function addFreeCredits(
@@ -130,61 +116,60 @@ async function addFreeCredits(
     "Adding free credits"
   );
 
-  // First pass: count how many would be added
-  let toAddCount = 0;
+  if (execute) {
+    const confirmed = await confirmExecution(
+      `About to add free credits (${amountCents}¢ each) to all workspaces. Continue?`
+    );
+    if (!confirmed) {
+      logger.info("Aborted.");
+      return;
+    }
+  }
+
+  let addedCount = 0;
   let skippedCount = 0;
 
   await runOnAllWorkspaces(
     async (workspace) => {
-      const result = await checkWorkspaceCredit(workspace, expirationDate);
-      if (result === "exists") {
-        skippedCount++;
+      const result = await addCreditToWorkspace(
+        workspace,
+        amountCents,
+        expirationDate,
+        execute
+      );
+      if (result === "added") {
+        addedCount++;
       } else {
-        toAddCount++;
+        skippedCount++;
       }
     },
     { concurrency: CONCURRENCY }
   );
 
-  logger.info({ toAddCount, skippedCount }, "Summary");
-
-  if (!execute || toAddCount === 0) {
-    return;
-  }
-
-  const confirmed = await confirmExecution(
-    `About to add ${toAddCount} free credits (${amountCents}¢ each). Continue?`
-  );
-  if (!confirmed) {
-    logger.info("Aborted.");
-    return;
-  }
-
-  // Second pass: actually add the credits
-  let addedCount = 0;
-
-  await runOnAllWorkspaces(
-    async (workspace) => {
-      await addCreditToWorkspace(workspace, amountCents, expirationDate);
-      addedCount++;
-    },
-    { concurrency: CONCURRENCY }
-  );
-
-  logger.info({ addedCount }, "Done adding credits");
+  logger.info({ addedCount, skippedCount }, "Done");
 }
 
-async function removeFreeCredits(execute: boolean, expirationDate: Date) {
+async function removeFreeCredits(
+  execute: boolean,
+  expirationDate: Date | "all"
+) {
+  const isAll = expirationDate === "all";
+
   logger.info(
-    { execute, expirationDate: expirationDate.toISOString() },
+    {
+      execute,
+      expirationDate: isAll ? "all" : expirationDate.toISOString(),
+    },
     "Removing free credits"
   );
 
+  const whereClause: WhereOptions<CreditModel> = { type: "free" };
+  if (!isAll) {
+    whereClause.expirationDate = expirationDate;
+  }
+
   const creditsToRemove = await CreditModel.findAll({
-    where: {
-      type: "free",
-      expirationDate,
-    },
+    where: whereClause,
   });
 
   logger.info({ count: creditsToRemove.length }, "Found credits to remove");
@@ -214,10 +199,7 @@ async function removeFreeCredits(execute: boolean, expirationDate: Date) {
   }
 
   const deletedCount = await CreditModel.destroy({
-    where: {
-      type: "free",
-      expirationDate,
-    },
+    where: whereClause,
   });
   logger.info({ deletedCount }, "Done deleting credits");
 }
@@ -235,7 +217,7 @@ makeScript(
     },
     endDate: {
       type: "string",
-      describe: `Expiration date YYYY-MM-DD for 'add' (default: ${DEFAULT_EXPIRATION_DAYS} days from now), or exact expiration date to match for 'remove'`,
+      describe: `Expiration date YYYY-MM-DD for 'add' (default: ${DEFAULT_EXPIRATION_DAYS} days from now), or exact expiration date to match for 'remove' (use 'all' to remove all free credits)`,
     },
   },
   async ({ execute, action, amountCents, endDate }) => {
@@ -254,10 +236,13 @@ makeScript(
       await addFreeCredits(execute, amountCents, expirationDate);
     } else if (action === "remove") {
       if (!endDate) {
-        throw new Error("endDate is required for remove action");
+        throw new Error(
+          "endDate is required for remove action (use 'all' to remove all free credits)"
+        );
       }
 
-      await removeFreeCredits(execute, parseDate(endDate));
+      const expirationDate = endDate === "all" ? "all" : parseDate(endDate);
+      await removeFreeCredits(execute, expirationDate);
     } else {
       throw new Error(`Unknown action: ${action}. Use 'add' or 'remove'.`);
     }
