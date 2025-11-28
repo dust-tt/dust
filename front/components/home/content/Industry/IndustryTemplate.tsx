@@ -1,5 +1,6 @@
 import { Button, Chip } from "@dust-tt/sparkle";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
 import { CustomerStoriesSection } from "@app/components/home/content/Solutions/CustomerStoriesSection";
@@ -7,6 +8,7 @@ import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVid
 import { Grid, H1, H2, H3, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
+import { PageMetadata } from "@app/components/home/PageMetadata";
 import TrustedBy from "@app/components/home/TrustedBy";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
@@ -500,6 +502,8 @@ export default function IndustryTemplate({
   config,
   trackingPrefix,
 }: IndustryTemplateProps) {
+  const router = useRouter();
+
   // Get the list of enabled sections in the specified order
   const enabledSections = getEnabledSections(config.layout);
 
@@ -606,9 +610,16 @@ export default function IndustryTemplate({
   };
 
   return (
-    <div className="container flex w-full flex-col gap-16 px-2 py-2 pb-12">
-      {enabledSections.map(renderSection).filter(Boolean)}
-    </div>
+    <>
+      <PageMetadata
+        title={config.seo.title}
+        description={config.seo.description}
+        pathname={router.asPath}
+      />
+      <div className="container flex w-full flex-col gap-16 px-2 py-2 pb-12">
+        {enabledSections.map(renderSection).filter(Boolean)}
+      </div>
+    </>
   );
 }
 

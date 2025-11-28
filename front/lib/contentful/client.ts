@@ -71,6 +71,50 @@ const EMPTY_DOCUMENT: Document = {
   content: [],
 };
 
+/**
+ * Extracts plain text from a Contentful rich text document.
+ * Used to generate SEO descriptions from blog post bodies.
+ */
+function extractPlainText(document: Document): string {
+  const extractFromNodes = (nodes: Document["content"]): string => {
+    return nodes
+      .map((node) => {
+        if ("value" in node && typeof node.value === "string") {
+          return node.value;
+        }
+        if ("content" in node && Array.isArray(node.content)) {
+          return extractFromNodes(node.content as Document["content"]);
+        }
+        return "";
+      })
+      .join(" ");
+  };
+
+  return extractFromNodes(document.content).replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Generates a description for SEO from blog post body text.
+ * Truncates to ~160 characters at a word boundary.
+ */
+function generateDescription(body: Document): string {
+  const plainText = extractPlainText(body);
+
+  if (plainText.length <= 160) {
+    return plainText;
+  }
+
+  // Truncate at word boundary before 160 chars
+  const truncated = plainText.slice(0, 160);
+  const lastSpace = truncated.lastIndexOf(" ");
+
+  if (lastSpace > 100) {
+    return truncated.slice(0, lastSpace) + "...";
+  }
+
+  return truncated + "...";
+}
+
 function isDocument(value: unknown): value is Document {
   return typeof value === "object" && value !== null && "nodeType" in value;
 }
@@ -103,7 +147,7 @@ function contentfulEntryToBlogPost(entry: Entry<BlogPageSkeleton>): BlogPost {
     id: sys.id,
     slug,
     title,
-    description: null,
+    description: generateDescription(body),
     body,
     tags,
     image: contentfulAssetToBlogImage(image, title),

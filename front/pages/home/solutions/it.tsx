@@ -1,5 +1,6 @@
 import { Button } from "@dust-tt/sparkle";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
 import { BenefitsSection } from "@app/components/home/content/Solutions/BenefitsSection";
@@ -12,6 +13,7 @@ import {
   Quote,
   UseCases,
 } from "@app/components/home/content/Solutions/configs/itConfig";
+import { PageMetadata } from "@app/components/home/PageMetadata";
 import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { HeroSection } from "@app/components/home/content/Solutions/HeroSection";
 import { UseCasesSection } from "@app/components/home/content/Solutions/UseCasesSection";
@@ -43,8 +45,15 @@ const GRID_SECTION_CLASSES = classNames(
 );
 
 export default function IT() {
+  const router = useRouter();
+
   return (
     <>
+      <PageMetadata
+        title={pageSettings.seo.title}
+        description={pageSettings.seo.description}
+        pathname={router.asPath}
+      />
       <div className="container flex w-full flex-col gap-16 px-2 py-2 pb-12">
         <HeroSection
           {...Hero}

@@ -1,6 +1,6 @@
 import { Button } from "@dust-tt/sparkle";
-import Head from "next/head";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
 import { BenefitsSection } from "@app/components/home/content/Solutions/BenefitsSection";
@@ -15,6 +15,7 @@ import {
   Stories,
   UseCases,
 } from "@app/components/home/content/Solutions/configs/salesConfig";
+import { PageMetadata } from "@app/components/home/PageMetadata";
 import { CustomerStoriesSection } from "@app/components/home/content/Solutions/CustomerStoriesSection";
 import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { HeroSection } from "@app/components/home/content/Solutions/HeroSection";
@@ -48,18 +49,15 @@ const GRID_SECTION_CLASSES = classNames(
 );
 
 export default function Sales() {
+  const router = useRouter();
+
   return (
     <>
-      <Head>
-        <title key="title">
-          AI sales Agents: build custom agents in minutes | Dust
-        </title>
-        <meta
-          key="description"
-          name="description"
-          content="Build custom AI sales agents that integrate with your CRM and tools. Automate RFPs, personalize outreach, boost team performance. Deploy in minutes, no coding required. Start free."
-        />
-      </Head>
+      <PageMetadata
+        title={pageSettings.seo.title}
+        description={pageSettings.seo.description}
+        pathname={router.asPath}
+      />
       <div className="container flex w-full flex-col gap-16 px-2 py-2 pb-12">
         <HeroSection
           {...Hero}

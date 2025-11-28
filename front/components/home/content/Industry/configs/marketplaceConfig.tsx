@@ -4,6 +4,11 @@ import type { IndustryPageConfig } from "@app/components/home/content/Industry/c
 import { createLayoutConfig } from "@app/components/home/content/Industry/configs/utils";
 
 export const marketplaceConfig: IndustryPageConfig = {
+  seo: {
+    title: "Dust for Marketplaces",
+    description:
+      "The AI solution powering Marketplace success. Streamline supplier acquisition, eliminate content bottlenecks, and scale support effortlessly.",
+  },
   layout: createLayoutConfig([
     "hero",
     "aiAgents",
@@ -271,14 +276,14 @@ export const marketplaceConfig: IndustryPageConfig = {
         title: "Doctolib uses Dust for AI adoption of 3,000 employees",
         content:
           "Doctolib achieved 70% weekly usage across 3,000 employees by treating AI transformation as a cultural imperative, not just tool deployment.",
-        href: "https://blog.dust.tt/why-doctolib-made-company-wide-enterprise-ai-a-national-cause/",
+        href: "/blog/why-doctolib-made-company-wide-enterprise-ai-a-national-cause",
         src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Doctolib-__-Dust---Part-1.jpg",
       },
       {
         title: "Malt cuts support ticket closing time by 50% with Dust",
         content:
           "Malt streamlines customer support using Dust's AI platform for rapid, consistent multilingual responses.",
-        href: "https://blog.dust.tt/malt-customer-support/",
+        href: "/blog/malt-customer-support",
         src: "https://blog.dust.tt/content/images/size/w2000/2025/07/malt_dust.png",
       },
       {
@@ -286,7 +291,7 @@ export const marketplaceConfig: IndustryPageConfig = {
           "Blueground accelerates customer support resolution time with Dust",
         content:
           "Discover how Blueground boosted satisfaction and cut resolution time using Dust agents.",
-        href: "https://blog.dust.tt/customer-support-blueground/",
+        href: "/blog/customer-support-blueground",
         src: "https://blog.dust.tt/content/images/size/w2000/2025/06/Blueground_dust.jpg",
       },
     ],
