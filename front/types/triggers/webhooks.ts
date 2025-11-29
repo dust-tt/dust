@@ -4,6 +4,8 @@ import type {
   CustomResourceIconType,
   InternalAllowedIconType,
 } from "@app/components/resources/resources_icons";
+import { ASANA_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/asana/preset";
+import type { AsanaAdditionalData } from "@app/lib/triggers/built-in-webhooks/asana/types";
 import { FATHOM_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/fathom/preset";
 import { GITHUB_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/github/preset";
 import type { GithubAdditionalData } from "@app/lib/triggers/built-in-webhooks/github/types";
@@ -27,6 +29,7 @@ export type WebhookSourceSignatureAlgorithm =
   (typeof WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS)[number];
 
 export const WEBHOOK_PROVIDERS = [
+  "asana",
   "fathom",
   "github",
   "jira",
@@ -46,6 +49,7 @@ export const NoAdditionalDataSchema = z.object({});
 export type NoAdditionalData = z.infer<typeof NoAdditionalDataSchema>;
 
 type WebhookProviderServiceDataMap = {
+  asana: AsanaAdditionalData;
   fathom: NoAdditionalData;
   github: GithubAdditionalData;
   jira: JiraAdditionalData;
@@ -57,6 +61,7 @@ export type WebhookServiceDataForProvider<P extends WebhookProvider> =
   WebhookProviderServiceDataMap[P];
 
 export const WEBHOOK_PRESETS = {
+  asana: ASANA_WEBHOOK_PRESET,
   fathom: FATHOM_WEBHOOK_PRESET,
   github: GITHUB_WEBHOOK_PRESET,
   jira: JIRA_WEBHOOK_PRESET,

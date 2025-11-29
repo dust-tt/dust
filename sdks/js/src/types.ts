@@ -653,6 +653,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dust_edge_global_agent"
   | "dust_quick_global_agent"
   | "dev_mcp_actions"
+  | "dev_webhooks"
   | "disable_run_logs"
   | "disallow_agent_creation_to_users"
   | "discord_bot"
