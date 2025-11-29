@@ -7,7 +7,7 @@ import {
 } from "@dust-tt/sparkle";
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import type { DataSourceTag } from "@app/types";
 
 export interface TagSearchProps {

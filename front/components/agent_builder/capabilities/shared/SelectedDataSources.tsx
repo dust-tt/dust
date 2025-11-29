@@ -24,14 +24,14 @@ import {
   DATA_WAREHOUSE_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
+import { getVisualForContentNodeType } from "@app/lib/content_nodes";
 import {
   CHANNEL_INTERNAL_MIME_TYPES,
   DATABASE_INTERNAL_MIME_TYPES,
   FILE_INTERNAL_MIME_TYPES,
-  getVisualForContentNodeType,
   SPREADSHEET_INTERNAL_MIME_TYPES,
-} from "@app/lib/content_nodes";
+} from "@app/lib/content_nodes_constants";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import type { DataSourceViewType } from "@app/types";
 import { asDisplayName, pluralize } from "@app/types";
