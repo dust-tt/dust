@@ -171,7 +171,9 @@ export async function getOrCreateConversation(
       // Do not track invalid request errors, since they are user-side and should
       // not trigger an alert on our end. For user-side errors, surface the
       // underlying message to the model.
-      const isUserSide = messageRes.error.type === "invalid_request_error";
+      const isUserSide =
+        messageRes.error.type === "invalid_request_error" ||
+        messageRes.error.type === "plan_message_limit_exceeded";
       const message = isUserSide
         ? messageRes.error.message
         : "Failed to create message";
@@ -191,7 +193,9 @@ export async function getOrCreateConversation(
       // Do not track invalid request errors, since they are user-side and should
       // not trigger an alert on our end. For user-side errors, surface the
       // underlying message to the model.
-      const isUserSide = convRes.error.type === "invalid_request_error";
+      const isUserSide =
+        convRes.error.type === "invalid_request_error" ||
+        convRes.error.type === "plan_message_limit_exceeded";
       const message = isUserSide
         ? convRes.error.message
         : "Failed to get conversation";
@@ -248,7 +252,9 @@ export async function getOrCreateConversation(
     // Do not track invalid request errors, since they are user-side and should
     // not trigger an alert on our end. For user-side errors, surface the
     // underlying message to the model.
-    const isUserSide = convRes.error.type === "invalid_request_error";
+    const isUserSide =
+      convRes.error.type === "invalid_request_error" ||
+      convRes.error.type === "plan_message_limit_exceeded";
     const message = isUserSide
       ? convRes.error.message
       : "Failed to create conversation";
