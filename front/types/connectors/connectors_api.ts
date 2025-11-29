@@ -623,6 +623,26 @@ export class ConnectorsAPI {
     return this._resultFromResponse(res);
   }
 
+  async getNotionWorkspaceId(
+    connectorId: string
+  ): Promise<
+    ConnectorsAPIResponse<{
+      notionWorkspaceId: string;
+    }>
+  > {
+    const res = await this._fetchWithError(
+      `${this._url}/connectors/${encodeURIComponent(
+        connectorId
+      )}/notion/workspace_id`,
+      {
+        method: "GET",
+        headers: this.getDefaultHeaders(),
+      }
+    );
+
+    return this._resultFromResponse(res);
+  }
+
   getDefaultHeaders() {
     return {
       "Content-Type": "application/json",
