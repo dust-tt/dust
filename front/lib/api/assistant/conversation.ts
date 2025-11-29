@@ -584,6 +584,8 @@ export async function postUserMessage(
     });
   }
 
+  // `getAgentConfiguration` checks that we're only pulling a configuration from the
+  // same workspace or a global one.
   const results = await Promise.all([
     getAgentConfigurations(auth, {
       agentIds: mentions
@@ -736,15 +738,18 @@ export async function postUserMessage(
       }
 
       const agentMessagesResult = await createAgentMessages({
-        mentions,
-        agentConfigurations,
-        message: m,
         owner,
-        transaction: t,
-        skipToolsValidation,
-        nextMessageRank,
         conversation,
-        userMessage,
+        metadata: {
+          type: "create",
+          mentions,
+          agentConfigurations,
+          message: m,
+          skipToolsValidation,
+          nextMessageRank,
+          userMessage,
+        },
+        transaction: t,
       });
 
       await updateConversationRequirements(auth, {
@@ -1053,15 +1058,18 @@ export async function editUserMessage(
       });
 
       const agentMessagesResult = await createAgentMessages({
-        mentions,
-        agentConfigurations,
-        message: m,
         owner,
-        transaction: t,
-        skipToolsValidation,
-        nextMessageRank,
         conversation,
-        userMessage,
+        metadata: {
+          type: "create",
+          mentions,
+          agentConfigurations,
+          message: m,
+          skipToolsValidation,
+          nextMessageRank,
+          userMessage,
+        },
+        transaction: t,
       });
 
       await updateConversationRequirements(auth, {
@@ -1209,31 +1217,24 @@ export async function retryAgentMessage(
           "Invalid agent message retry request, this message was already retried."
         );
       }
-      const agentMessageRow = await AgentMessage.create(
-        {
-          status: "created",
-          agentConfigurationId: messageRow.agentMessage.agentConfigurationId,
-          agentConfigurationVersion:
-            messageRow.agentMessage.agentConfigurationVersion,
-          workspaceId: auth.getNonNullableWorkspace().id,
-          skipToolsValidation: messageRow.agentMessage.skipToolsValidation,
+
+      const agentMessagesResult = await createAgentMessages({
+        owner: auth.getNonNullableWorkspace(),
+        conversation,
+        metadata: {
+          type: "retry",
+          message: messageRow,
+          agentMessage: message,
         },
-        { transaction: t }
-      );
-      const m = await Message.create(
-        {
-          sId: generateRandomModelSId(),
-          rank: messageRow.rank,
-          conversationId: conversation.id,
-          parentId: messageRow.parentId,
-          version: messageRow.version + 1,
-          agentMessageId: agentMessageRow.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
-        },
-        {
-          transaction: t,
-        }
-      );
+        transaction: t,
+      });
+
+      if (agentMessagesResult.length !== 1) {
+        throw new AgentMessageError(
+          `Unexpected: expected 1 agent message result while retrying agent message, got ${agentMessagesResult.length} instead.`
+        );
+      }
+      const { m: agentMessage, row: agentMessageRow } = agentMessagesResult[0];
 
       await updateConversationRequirements(auth, {
         agents: [message.configuration],
@@ -1242,31 +1243,6 @@ export async function retryAgentMessage(
       });
 
       await ConversationResource.markAsUpdated(auth, { conversation, t });
-
-      const agentMessage: AgentMessageType = {
-        id: m.id,
-        agentMessageId: agentMessageRow.id,
-        created: m.createdAt.getTime(),
-        completedTs: agentMessageRow.completedAt?.getTime() ?? null,
-        sId: m.sId,
-        type: "agent_message",
-        visibility: m.visibility,
-        version: m.version,
-        parentMessageId: message.parentMessageId,
-        parentAgentMessageId: message.parentAgentMessageId,
-        status: "created",
-        actions: [],
-        content: null,
-        chainOfThought: null,
-        rawContents: [],
-        error: null,
-        configuration: message.configuration,
-        rank: m.rank,
-        skipToolsValidation: agentMessageRow.skipToolsValidation,
-        contents: [],
-        parsedContents: {},
-        modelInteractionDurationMs: agentMessageRow.modelInteractionDurationMs,
-      };
 
       return {
         agentMessage,
