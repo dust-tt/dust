@@ -1,10 +1,14 @@
+import assert from "node:assert";
+
 import type { estypes } from "@elastic/elasticsearch";
 import moment from "moment-timezone";
 import type { RedisClientType } from "redis";
 
+import { DUST_MARKUP_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import { runOnRedis } from "@app/lib/api/redis";
 import { getWorkspacePublicAPILimits } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
+import { CreditResource } from "@app/lib/resources/credit_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -189,6 +193,58 @@ async function decreaseProgrammaticCredits(
     await redis.set(key, newCredits.toString(), { KEEPTTL: true });
   });
 }
+// There's a race condition here if many messages are running at the same time.
+// This method might be called with credits depleted. In that case we log amounts
+// for tracking but do not take any other action.
+export async function decreaseProgrammaticCreditsV2(
+  auth: Authenticator,
+  amount: number
+): Promise<void> {
+  const activeCredits = await CreditResource.listActive(auth);
+
+  const sortedCredits = activeCredits.sort(compareCreditsForConsumption);
+
+  let remainingAmount = amount;
+  while (remainingAmount > 0) {
+    const credit = sortedCredits.shift();
+    if (!credit) {
+      // A simple warn suffices; tokens have already been consumed.
+      logger.warn(
+        {
+          initialAmount: amount,
+          remainingAmount,
+          workspaceId: auth.getNonNullableWorkspace().sId,
+        },
+        "No more credits available for this message cost."
+      );
+      break;
+    }
+    const amountToConsume = Math.min(
+      remainingAmount,
+      credit.initialAmountCents - credit.consumedAmountCents
+    );
+    const result = await credit.consume(amountToConsume);
+    if (result.isErr()) {
+      logger.error(
+        {
+          amount: amountToConsume,
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          // For eng on-call: this error should be investigated since it likely
+          // reveals an underlying issue in our billing / credit logic. The only
+          // legitimate case this error could happen would be a race condition
+          // in which two messages consume the same credit at exactly the same
+          // time--in which case it's a no-op, but at time of writing this is
+          // considered very unlikely, so to be confirmed first before skipping.
+          panic: true,
+          error: result.error,
+        },
+        "Error consuming credit."
+      );
+      break;
+    }
+    remainingAmount -= amountToConsume;
+  }
+}
 
 // TODO(PPUL): remove this method once we switch to new credits tracking system.
 async function initializeCredits(
@@ -259,6 +315,10 @@ export async function trackProgrammaticCost(
     auth.getNonNullableWorkspace(),
     runsCostCents
   );
+  const costWithMarkup = Math.ceil(
+    runsCostCents * (1 + DUST_MARKUP_PERCENT / 100)
+  );
+  await decreaseProgrammaticCreditsV2(auth, costWithMarkup);
 }
 
 export async function resetCredits(
@@ -293,4 +353,26 @@ export async function getRemainingCredits(
       remainingCredits: parseFloat(remainingCredits),
     };
   });
+}
+// First free credits, then committed credits, lastly pay-as-you-go, by expiration date (earliest first).
+export function compareCreditsForConsumption(
+  a: CreditResource,
+  b: CreditResource
+): number {
+  if (a.type === "free" && b.type !== "free") {
+    return -1;
+  }
+  if (a.type !== "free" && b.type === "free") {
+    return 1;
+  }
+  if (a.type === "committed" && b.type !== "committed") {
+    return -1;
+  }
+  if (a.type !== "committed" && b.type === "committed") {
+    return 1;
+  }
+
+  // TODO(PPUL): in following PR, we will make expiration date non-nullable.
+  assert(a.expirationDate && b.expirationDate, "Expiration date is required");
+  return a.expirationDate.getTime() - b.expirationDate.getTime();
 }
