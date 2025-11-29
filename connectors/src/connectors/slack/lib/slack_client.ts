@@ -162,12 +162,14 @@ export type SlackUserInfo = {
   name: string | null;
 };
 
+const CHACHE_TTL_MS = 10 * 60 * 1_000; // 10 minutes.
+
 export const getSlackUserInfoMemoized = cacheWithRedis(
   _getSlackUserInfo,
   (connectorId, slackClient, userId) =>
     `slack-userid2name-${connectorId}-${userId}`,
   {
-    ttlMs: 60 * 60 * 1000,
+    ttlMs: CHACHE_TTL_MS,
   }
 );
 
