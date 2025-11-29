@@ -97,11 +97,15 @@ export async function createEnterpriseCreditPurchase({
   stripeSubscriptionId,
   amountCents,
   discountPercent,
+  startDate,
+  expirationDate,
 }: {
   auth: Authenticator;
   stripeSubscriptionId: string;
   amountCents: number;
   discountPercent?: number;
+  startDate?: Date;
+  expirationDate?: Date;
 }): Promise<Result<{ credit: CreditResource; invoiceItemId: string }, Error>> {
   const workspace = auth.getNonNullableWorkspace();
 
@@ -156,7 +160,7 @@ export async function createEnterpriseCreditPurchase({
   });
 
   // Activate the credit immediately (optimistic activation for Enterprise)
-  const startResult = await credit.start();
+  const startResult = await credit.start(startDate, expirationDate);
 
   if (startResult.isErr()) {
     logger.error(

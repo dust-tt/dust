@@ -31,7 +31,9 @@ type InferArgType<T extends PluginArgDefinition["type"]> = T extends "string"
           ? FormidableFile
           : T extends "enum"
             ? string[]
-            : never;
+            : T extends "date"
+              ? string
+              : never;
 
 // Helper type to map field types to their async value types
 type AsyncValueTypeAtPopulate<T extends PluginArgDefinition> =
@@ -45,7 +47,9 @@ type AsyncValueTypeAtPopulate<T extends PluginArgDefinition> =
           ? boolean
           : T["type"] extends "text"
             ? string
-            : never;
+            : T["type"] extends "date"
+              ? string
+              : never;
 
 // Type for async args that maps each field to its correct async value type
 export type AsyncArgsType<T extends PluginArgs> = {
