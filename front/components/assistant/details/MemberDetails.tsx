@@ -36,6 +36,7 @@ export function MemberDetails({ userId, onClose, owner }: MemberDetailsProps) {
           name="User avatar"
           visual={userDetails?.image ?? undefined}
           size="lg"
+          isRounded
         />
         <div className="flex grow flex-col gap-1">
           <div className="heading-lg line-clamp-1 text-foreground dark:text-foreground-night">{`${userDetails?.fullName ?? ""}`}</div>

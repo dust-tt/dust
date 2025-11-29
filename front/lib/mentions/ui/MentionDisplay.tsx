@@ -7,6 +7,7 @@
  */
 
 import {
+  cn,
   TooltipContent,
   TooltipProvider,
   TooltipRoot,
@@ -14,6 +15,7 @@ import {
 } from "@dust-tt/sparkle";
 import React from "react";
 
+import { useUser } from "@app/lib/swr/user";
 import type { WorkspaceType } from "@app/types";
 import type { RichMention } from "@app/types";
 
@@ -28,11 +30,21 @@ interface MentionDisplayProps {
 
 interface MentionTriggerProps {
   mention: RichMention;
+  isCurrentUserMentioned: boolean;
 }
 
-function MentionTrigger({ mention }: MentionTriggerProps) {
+function MentionTrigger({
+  mention,
+  isCurrentUserMentioned = false,
+}: MentionTriggerProps) {
   return (
-    <span className="inline-block cursor-pointer font-medium text-highlight-500">
+    <span
+      className={cn(
+        "inline-block cursor-pointer font-light",
+        mention.type === "agent" ? "text-highlight-500" : "text-green-700",
+        isCurrentUserMentioned && "bg-green-200 text-green-700"
+      )}
+    >
       @{mention.label}
     </span>
   );
@@ -51,6 +63,8 @@ export function MentionDisplay({
   owner,
   showTooltip = true,
 }: MentionDisplayProps) {
+  const { user } = useUser();
+  const isCurrentUserMentioned = mention.id === user?.sId;
   // If interactive and owner is provided, wrap with dropdown.
   if (interactive && owner) {
     // If tooltip is requested and description exists, wrap with tooltip.
@@ -60,7 +74,10 @@ export function MentionDisplay({
           <TooltipRoot>
             <TooltipTrigger asChild>
               <MentionDropdown mention={mention} owner={owner}>
-                <MentionTrigger mention={mention} />
+                <MentionTrigger
+                  mention={mention}
+                  isCurrentUserMentioned={isCurrentUserMentioned}
+                />
               </MentionDropdown>
             </TooltipTrigger>
             <TooltipContent>{mention.description}</TooltipContent>
@@ -72,7 +89,10 @@ export function MentionDisplay({
     return (
       <div className="inline-flex">
         <MentionDropdown mention={mention} owner={owner}>
-          <MentionTrigger mention={mention} />
+          <MentionTrigger
+            mention={mention}
+            isCurrentUserMentioned={isCurrentUserMentioned}
+          />
         </MentionDropdown>
       </div>
     );
@@ -84,7 +104,10 @@ export function MentionDisplay({
       <TooltipProvider>
         <TooltipRoot>
           <TooltipTrigger asChild>
-            <MentionTrigger mention={mention} />
+            <MentionTrigger
+              mention={mention}
+              isCurrentUserMentioned={isCurrentUserMentioned}
+            />
           </TooltipTrigger>
           <TooltipContent>{mention.description}</TooltipContent>
         </TooltipRoot>
@@ -92,5 +115,10 @@ export function MentionDisplay({
     );
   }
 
-  return <MentionTrigger mention={mention} />;
+  return (
+    <MentionTrigger
+      mention={mention}
+      isCurrentUserMentioned={isCurrentUserMentioned}
+    />
+  );
 }

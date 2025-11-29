@@ -101,6 +101,7 @@ export function ChangeMemberModal({
                     size="lg"
                     visual={member.image}
                     name={member.fullName}
+                    isRounded
                   />
                   <div className="flex grow flex-col">
                     <div className="heading-base text-foreground dark:text-foreground-night">

@@ -211,7 +211,7 @@ export function AccountSettings({
       />
       <div className="flex items-center gap-4 py-2">
         <div className="group relative">
-          <Avatar size="lg" visual={currentImageUrl ?? null} />
+          <Avatar size="lg" visual={currentImageUrl ?? null} isRounded />
           <Button
             variant="outline"
             size="sm"
