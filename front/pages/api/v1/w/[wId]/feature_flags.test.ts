@@ -9,7 +9,7 @@ import {
 } from "@app/tests/utils/generic_public_api_tests";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 
-// Mock the getSession function to return the user without going through the auth0 session
+// Mock the getSession function to return the user without going through the workos session
 // Not sure to understand why it's not working with the generic_public_api_tests.ts mock
 vi.mock(import("../../../../../lib/auth"), async (importOriginal) => {
   const mod = await importOriginal();

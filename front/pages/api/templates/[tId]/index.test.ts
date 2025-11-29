@@ -6,7 +6,7 @@ import { TemplateFactory } from "@app/tests/utils/TemplateFactory";
 
 import handler from "./index";
 
-// Mock the getSession function to return the user without going through the auth0 session
+// Mock the getSession function to return the user without going through the workos session
 vi.mock(import("../../../../lib/auth"), async (importOriginal) => {
   const mod = await importOriginal();
   return {

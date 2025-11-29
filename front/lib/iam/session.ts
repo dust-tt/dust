@@ -21,7 +21,7 @@ import { isString } from "@app/types";
 
 /**
  * Retrieves the user for a given session
- * @param session any Auth0 session
+ * @param session any workos session
  * @returns Promise<UserType | null>
  */
 export async function getUserFromSession(

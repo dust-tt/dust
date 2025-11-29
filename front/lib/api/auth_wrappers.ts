@@ -283,7 +283,7 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
         try {
           const authRes = await handleWorkOSAuth(req, res, token, wId);
           if (authRes.isErr()) {
-            // If WorkOS errors and Auth0 also fails, return an ApiError.
+            // If WorkOS errors return an ApiError.
             return apiError(req, res, authRes.error);
           }
 
@@ -457,7 +457,7 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
 
 /**
  * This function is a wrapper for Public API routes that require authentication without a workspace.
- * It automatically detects whether to use Auth0 or WorkOS authentication based on the token's issuer.
+ * It automatically detects whether to use WorkOS authentication based on the token's issuer.
  */
 export function withTokenAuthentication<T>(
   handler: (
@@ -521,7 +521,7 @@ export function withTokenAuthentication<T>(
         }
 
         if (workOSDecoded.isErr()) {
-          // We were not able to decode the token for Workos, nor Auth0,
+          // We were not able to decode the token for Workos,
           // so we log the error and return an API error.
           logger.error(
             {
