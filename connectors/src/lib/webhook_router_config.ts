@@ -348,4 +348,19 @@ export class WebhookRouterConfigService {
       maxRetries
     );
   }
+
+  /**
+   * Get a webhook router entry.
+   *
+   * @param provider - The provider name
+   * @param providerWorkspaceId - The provider workspace/team ID
+   * @returns The entry if found, null otherwise
+   */
+  async getEntry(
+    provider: string,
+    providerWorkspaceId: string
+  ): Promise<WebhookRouterEntry | null> {
+    const { config } = await this.readConfig();
+    return config[provider]?.[providerWorkspaceId] || null;
+  }
 }
