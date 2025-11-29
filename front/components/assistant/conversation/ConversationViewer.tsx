@@ -321,12 +321,19 @@ export const ConversationViewer = ({
                   }
                   return {
                     conversations: currentData.conversations.map((c) =>
-                      c.sId === conversationId ? { ...c, hasError: false } : c
+                      c.sId === conversationId
+                        ? { ...c, hasError: false, unread: false }
+                        : c
                     ),
                   };
                 },
                 { revalidate: false }
               );
+
+              // Mark as read if the message is not from the current user.
+              if (userMessage.user?.sId !== user.sId) {
+                void debouncedMarkAsRead(conversationId, false);
+              }
             }
             break;
           case "agent_message_new":
@@ -428,6 +435,7 @@ export const ConversationViewer = ({
       mutateConversationParticipants,
       mutateConversations,
       mutateMessages,
+      user.sId,
     ]
   );
 
