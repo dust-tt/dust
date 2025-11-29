@@ -347,7 +347,10 @@ export default function CreditsUsagePage({
         {/* History Section */}
         <Page.Vertical>
           <Page.H variant="h5">History</Page.H>
-          <Page.P>Credit history for programmatic API usage</Page.P>
+          <Page.P>
+            Credit history for programmatic API usage. Credits invoices are sent
+            by email at time of purchase.
+          </Page.P>
 
           <CreditsList credits={credits} isLoading={isCreditsLoading} />
         </Page.Vertical>
