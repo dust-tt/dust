@@ -19,11 +19,7 @@ type GetNotionWorkspaceIdResBody = WithConnectorsAPIErrorReponse<{
  * Get the Notion workspace ID for a connector.
  */
 const _getNotionWorkspaceIdHandler = async (
-  req: Request<
-    GetNotionWorkspaceIdParams,
-    GetNotionWorkspaceIdResBody,
-    never
-  >,
+  req: Request<GetNotionWorkspaceIdParams, GetNotionWorkspaceIdResBody, never>,
   res: Response<GetNotionWorkspaceIdResBody>
 ) => {
   const { connector_id } = req.params;
@@ -39,21 +35,6 @@ const _getNotionWorkspaceIdHandler = async (
         api_error: {
           type: "connector_not_found",
           message: `Connector with id '${connector_id}' not found`,
-        },
-      });
-    }
-
-    if (connector.type !== "notion") {
-      logger.info(
-        { connector_id, type: connector.type },
-        "Connector is not a Notion connector"
-      );
-
-      return apiError(req, res, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: `Connector '${connector_id}' is not a Notion connector`,
         },
       });
     }
@@ -88,10 +69,7 @@ const _getNotionWorkspaceIdHandler = async (
       notionWorkspaceId: connectorState.notionWorkspaceId,
     });
   } catch (error) {
-    logger.error(
-      { error, connector_id },
-      "Failed to get Notion workspace ID"
-    );
+    logger.error({ error, connector_id }, "Failed to get Notion workspace ID");
 
     return apiError(req, res, {
       status_code: 500,
