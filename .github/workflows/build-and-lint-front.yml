@@ -17,20 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 20.13.0
-          cache: "npm"
-          cache-dependency-path: |
-            ./front/package-lock.json
-            ./types/package-lock.json
-            ./sdks/js/package-lock.json
-      - name: Build SDK/JS
-        working-directory: sdks/js
-        run: npm install && npm run build
-      - name: Build Front
-        working-directory: front
-        run: npm ci
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
       - name: Install Redis
         uses: chenjuneking/redis-setup-action@v1
         with:
@@ -67,20 +55,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 20.13.0
-          cache: "npm"
-          cache-dependency-path: |
-            ./front/package-lock.json
-            ./types/package-lock.json
-            ./sdks/js/package-lock.json
-      - name: Build SDK/JS
-        working-directory: sdks/js
-        run: npm install && npm run build
-      - name: Build Front
-        working-directory: front
-        run: npm ci
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
       - name: Typecheck
         working-directory: front
         run: npx tsc --version && npm run tsc
@@ -88,14 +64,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 20.13.0
-          cache: "npm"
-          cache-dependency-path: |
-            ./front/package-lock.json
-            ./types/package-lock.json
-            ./sdks/js/package-lock.json
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
       - name: Cache ESLint
         uses: actions/cache@v3
         with:
@@ -103,17 +73,29 @@ jobs:
           key: eslint-cache-${{ runner.os }}-${{ hashFiles('front/.eslintrc.js', 'front/tsconfig.json', 'front/package-lock.json') }}
           restore-keys: |
             eslint-cache-${{ runner.os }}-
-      - name: Install SDK/JS
-        working-directory: sdks/js
-        run: npm install
-      - name: Install Front
-        working-directory: front
-        run: npm install
-      - name: Lint
+      - name: Lint, Format, and Biome Check (parallel)
         working-directory: front
         env:
           NODE_OPTIONS: "--max-old-space-size=8192"
-        run: npm run lint && npm run format:check
+        run: |
+          set -e
+          npm run lint &
+          lint_pid=$!
+          npm run format:check &
+          format_pid=$!
+          npm run circular &
+          biome_pid=$!
+
+          wait $lint_pid
+          lint_exit=$?
+          wait $format_pid
+          format_exit=$?
+          wait $biome_pid
+          biome_exit=$?
+
+          if [ $lint_exit -ne 0 ] || [ $format_exit -ne 0 ] || [ $biome_exit -ne 0 ]; then
+            exit 1
+          fi
       - name: Knip - unlisted dependencies
         working-directory: front
         run: |

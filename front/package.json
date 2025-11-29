@@ -17,6 +17,7 @@
     "docs:check": "npx @redocly/cli@1.25.5 lint --extends recommended-strict --skip-rule operation-operationId --lint-config error public/swagger.json",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "circular": "biome lint",
     "tsc": "tsc",
     "test": "FRONT_DATABASE_URI=$TEST_FRONT_DATABASE_URI vitest --run",
     "test:watch": "FRONT_DATABASE_URI=$TEST_FRONT_DATABASE_URI vitest --watch",
@@ -200,6 +201,7 @@
     "zod-validation-error": "^3.4.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.3.8",
     "@faker-js/faker": "^9.3.0",
     "@google-cloud/storage": "^7.11.2",
     "@next/bundle-analyzer": "^15.5.4",
