@@ -101,7 +101,7 @@ export const ExampleButton: Story = {
 };
 
 export const MiniButton: Story = {
-  render: () => <Button size="mini" icon={PlusIcon} />,
+  render: () => <Button size="xmini" icon={PlusIcon} />,
 };
 
 const ButtonBySize = ({

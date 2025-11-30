@@ -3,13 +3,22 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   ArrowUpIcon,
   AttachmentIcon,
+  BoldIcon,
   BoltIcon,
   Button,
   cn,
+  CodeBlockIcon,
+  CodeSlashIcon,
+  FontSizeAiIcon,
+  ItalicIcon,
+  LinkMIcon,
+  ListCheckIcon,
+  ListOrdered2Icon,
   MicIcon,
-  PlusIcon,
+  QuoteTextIcon,
   RainbowEffect,
   RobotIcon,
+  Separator,
   SquareIcon,
 } from "../index_with_tw_base";
 
@@ -142,7 +151,23 @@ export const Demo = () => {
   };
 
   return (
-    <div className="s-flex s-h-[600px] s-w-full s-items-end s-justify-center s-border s-border-warning/20 sm:s-p-0 md:s-p-6">
+    <div className="s-flex s-h-[600px] s-w-full s-flex-col s-items-end s-justify-center s-border s-border-warning/20 sm:s-p-0 md:s-p-6">
+      <div className="s-flex s-h-full s-w-full s-items-end sm:s-p-2">
+        <div className="s-inline-flex s-gap-1 s-border-b s-border-t s-border-border s-bg-background s-p-1 dark:s-border-border-night/50 dark:s-bg-background-night sm:s-rounded-2xl sm:s-border sm:s-border-border/50 sm:s-shadow-md">
+          <Button size="mini" variant="ghost" icon={FontSizeAiIcon} />
+          <Button size="mini" variant="ghost" icon={BoldIcon} />
+          <Button size="mini" variant="ghost" icon={ItalicIcon} />
+          <Separator orientation="vertical" />
+          <Button size="mini" variant="ghost" icon={LinkMIcon} />
+          <Separator orientation="vertical" />
+          <Button size="mini" variant="ghost" icon={ListCheckIcon} />
+          <Button size="mini" variant="ghost" icon={ListOrdered2Icon} />
+          <Button size="mini" variant="ghost" icon={QuoteTextIcon} />
+          <Separator orientation="vertical" />
+          <Button size="mini" variant="ghost" icon={CodeSlashIcon} />
+          <Button size="mini" variant="ghost" icon={CodeBlockIcon} />
+        </div>
+      </div>
       <div className="s-flex s-w-full s-max-w-[900px] s-flex-1 s-p-0">
         <RainbowEffect
           containerClassName="s-w-full"
@@ -164,32 +189,23 @@ export const Demo = () => {
               <div className="s-h-full s-w-full s-p-5">Ask a question</div>
               <div className="s-flex s-w-full s-gap-2 s-p-4">
                 <Button
-                  variant="outline"
-                  icon={PlusIcon}
-                  size="sm"
+                  variant="ghost"
+                  icon={AttachmentIcon}
+                  size="xs"
                   tooltip="Attach a document"
-                  className="md:s-hidden"
                 />
-                <div className="s-hidden s-gap-0 md:s-flex">
-                  <Button
-                    variant="ghost"
-                    icon={AttachmentIcon}
-                    size="xs"
-                    tooltip="Attach a document"
-                  />
-                  <Button
-                    variant="ghost"
-                    icon={BoltIcon}
-                    size="xs"
-                    tooltip="Add functionality"
-                  />
-                  <Button
-                    variant="ghost"
-                    icon={RobotIcon}
-                    size="xs"
-                    tooltip="Mention an Agent"
-                  />
-                </div>
+                <Button
+                  variant="ghost"
+                  icon={BoltIcon}
+                  size="xs"
+                  tooltip="Add functionality"
+                />
+                <Button
+                  variant="ghost"
+                  icon={RobotIcon}
+                  size="xs"
+                  tooltip="Mention an Agent"
+                />
                 <div className="s-grow" />
                 <div className="s-flex s-items-center s-gap-2 md:s-gap-1">
                   <div
@@ -281,7 +297,7 @@ export const Demo = () => {
                       recordState === "recording" ? "highlight" : "ghost"
                     }
                     icon={recordState === "recording" ? SquareIcon : MicIcon}
-                    size="sm"
+                    size="xs"
                     tooltip={
                       recordState === "recording"
                         ? "Stop recording"
@@ -310,7 +326,7 @@ export const Demo = () => {
                   <Button
                     variant="highlight"
                     icon={ArrowUpIcon}
-                    size="sm"
+                    size="xs"
                     tooltip="Send message"
                     isRounded
                     disabled={recordState === "recording"}

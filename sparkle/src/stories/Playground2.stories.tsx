@@ -1,0 +1,347 @@
+import React, { useEffect, useRef, useState } from "react";
+
+import {
+  ArrowUpIcon,
+  AttachmentIcon,
+  BoldIcon,
+  BoltIcon,
+  Button,
+  cn,
+  CodeBlockIcon,
+  CodeSlashIcon,
+  FontSizeAiIcon,
+  ItalicIcon,
+  LinkMIcon,
+  ListCheckIcon,
+  ListOrdered2Icon,
+  MicIcon,
+  QuoteTextIcon,
+  RobotIcon,
+  ScrollArea,
+  Separator,
+  SquareIcon,
+  TextIcon,
+  useIsTouchDevice,
+  XMarkIcon,
+} from "../index_with_tw_base";
+
+export default {
+  title: "Playground/Playground2",
+};
+
+export const Demo = () => {
+  const [isFocused, setIsFocused] = useState(false);
+  const [recordState, setRecordState] = useState<
+    "idle" | "pressAndHold" | "recording"
+  >("idle");
+  const [isPressAndHold, setIsPressAndHold] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [isTextStyleOpen, setIsTextStyleOpen] = useState(false);
+  const isTouchDevice = useIsTouchDevice();
+  const commandBarButtonSize = isTouchDevice ? "xs" : "mini";
+  const divRef = useRef<HTMLDivElement>(null);
+  const recordButtonRef = useRef<HTMLButtonElement>(null);
+  const mouseDownTimeRef = useRef<number>(0);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (divRef.current && !divRef.current.contains(event.target as Node)) {
+        setIsFocused(false);
+      }
+    };
+
+    document.addEventListener("click", handleClickOutside);
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+    };
+  }, []);
+
+  // Timer effect for recording and press and hold states
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+
+    if (recordState === "pressAndHold" || recordState === "recording") {
+      interval = setInterval(() => {
+        setElapsedSeconds((prev) => prev + 1);
+      }, 1000);
+    } else {
+      // Reset timer when not recording or press and hold
+      setElapsedSeconds(0);
+    }
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [recordState]);
+
+  const handleFocus = () => {
+    setIsFocused(true);
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const handleRecordMouseDown = () => {
+    console.log("MouseDown - recordState:", recordState);
+    mouseDownTimeRef.current = Date.now();
+    if (recordState === "idle") {
+      setRecordState("pressAndHold");
+      setIsPressAndHold(true);
+      console.log("Set to pressAndHold, isPressAndHold = true");
+    }
+  };
+
+  const handleRecordMouseUp = () => {
+    const holdDuration = Date.now() - mouseDownTimeRef.current;
+    console.log(
+      "MouseUp - recordState:",
+      recordState,
+      "holdDuration:",
+      holdDuration
+    );
+    if (recordState === "pressAndHold") {
+      setRecordState("idle");
+      console.log("Set to idle from pressAndHold");
+      // If held for more than 200ms, it was a press-and-hold, so ignore the upcoming click
+      if (holdDuration > 200) {
+        console.log("Was press-and-hold, keeping isPressAndHold = true");
+        // Keep isPressAndHold true to ignore the click
+      } else {
+        console.log("Was quick click, setting isPressAndHold = false");
+        setIsPressAndHold(false);
+        // For quick clicks, directly start recording
+        console.log("Starting recording from quick click");
+        setRecordState("recording");
+      }
+    }
+  };
+
+  const handleRecordClick = () => {
+    console.log(
+      "Click - recordState:",
+      recordState,
+      "isPressAndHold:",
+      isPressAndHold
+    );
+
+    // Handle stop recording
+    if (recordState === "recording") {
+      console.log("Setting to idle (stop recording)");
+      setRecordState("idle");
+      return;
+    }
+
+    // Only handle click if we're not in a press-and-hold sequence
+    if (!isPressAndHold) {
+      if (recordState === "idle") {
+        console.log("Setting to recording");
+        setRecordState("recording");
+      }
+    } else {
+      console.log("Ignoring click - was press and hold");
+      // Reset the flag after ignoring the click
+      setIsPressAndHold(false);
+    }
+  };
+
+  const handleRecordMouseLeave = () => {
+    if (recordState === "pressAndHold") {
+      setRecordState("idle");
+      setIsPressAndHold(false);
+    }
+  };
+
+  return (
+    <div className="s-flex s-h-[600px] s-w-full s-flex-col s-items-center s-justify-center s-overflow-hidden s-rounded-4xl s-border s-border-warning/20 s-p-2 md:s-p-6">
+      <div className="s-flex s-h-full s-w-full s-items-end s-p-1 sm:s-p-2"></div>
+      <div className="s-flex s-w-full s-max-w-[900px] s-flex-1 s-p-0">
+        <div
+          ref={divRef}
+          onClick={handleFocus}
+          // className={cn(
+          //   "s-relative s-flex s-w-full s-flex-row",
+          //   "s-border s-border-border/0 s-bg-primary-50 s-transition-all",
+          //   isFocused ? "s-border-border" : ""
+          // )}
+          className={cn(
+            "s-relative s-flex s-w-full s-flex-row",
+            "s-rounded-3xl s-border s-border-border/0 s-bg-primary-50 s-transition-all",
+            isFocused
+              ? "s-border-border md:s-ring-2 md:s-ring-highlight-300 md:s-ring-offset-2"
+              : ""
+          )}
+        >
+          <div className="s-flex s-w-full s-flex-col">
+            <div className="s-h-full s-w-full s-p-5">Ask a question</div>
+            <div
+              id="CommandBar"
+              className="s-relative s-flex s-w-full s-items-center s-justify-end s-gap-3 s-py-1 s-pb-2 s-pl-3 s-pr-2"
+            >
+              <div
+                id="TextStyle"
+                className={cn(
+                  "s-duration-600 s-absolute s-left-0 s-top-0 s-z-10 s-inline-flex s-h-11 s-items-center s-justify-start s-gap-3 s-overflow-hidden s-bg-primary-50 s-py-1 s-pl-3 s-transition-all s-ease-in-out",
+                  isTextStyleOpen
+                    ? "s-pointer-events-auto s-w-full s-opacity-100"
+                    : "s-pointer-events-none s-w-[120px] s-opacity-0"
+                )}
+              >
+                <Button
+                  size="mini"
+                  variant="outline"
+                  icon={XMarkIcon}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsTextStyleOpen(false);
+                  }}
+                />
+                <ScrollArea
+                  orientation="horizontal"
+                  className="s-h-full s-border-l s-border-border"
+                >
+                  <div
+                    id="Scrollable"
+                    className="s-flex s-h-full s-w-max s-flex-row s-items-center s-gap-3 s-px-3"
+                  >
+                    <Button size="mini" variant="ghost" icon={FontSizeAiIcon} />
+                    <Button size="mini" variant="ghost" icon={BoldIcon} />
+                    <Button size="mini" variant="ghost" icon={ItalicIcon} />
+                    <Separator orientation="vertical" />
+                    <Button size="mini" variant="ghost" icon={LinkMIcon} />
+                    <Separator orientation="vertical" />
+                    <Button size="mini" variant="ghost" icon={ListCheckIcon} />
+                    <Button
+                      size="mini"
+                      variant="ghost"
+                      icon={ListOrdered2Icon}
+                    />
+                    <Button size="mini" variant="ghost" icon={QuoteTextIcon} />
+                    <Separator orientation="vertical" />
+                    <Button size="mini" variant="ghost" icon={CodeSlashIcon} />
+                    <Button size="mini" variant="ghost" icon={CodeBlockIcon} />
+                  </div>
+                </ScrollArea>
+              </div>
+              <div
+                id="CommandLeft"
+                className={cn(
+                  "s-flex s-items-center s-gap-3 s-transition-opacity s-ease-in-out",
+                  recordState === "recording" && "s-opacity-0"
+                )}
+              >
+                <Button
+                  variant="ghost-secondary"
+                  icon={TextIcon}
+                  size={commandBarButtonSize}
+                  tooltip="Attach a document"
+                  onClick={() => setIsTextStyleOpen(true)}
+                  className="sm:s-hidden"
+                />
+                <Button
+                  variant="ghost-secondary"
+                  icon={AttachmentIcon}
+                  size={commandBarButtonSize}
+                  tooltip="Attach a document"
+                />
+                <Button
+                  variant="ghost-secondary"
+                  icon={BoltIcon}
+                  size={commandBarButtonSize}
+                  tooltip="Add functionality"
+                />
+                <Button
+                  variant="ghost-secondary"
+                  icon={RobotIcon}
+                  size={commandBarButtonSize}
+                  tooltip="Mention an Agent"
+                />
+              </div>
+              <div className="s-grow" />
+              <div
+                id="CommandRight"
+                className="s-flex s-items-center s-gap-1 s-gap-2"
+              >
+                <div
+                  id="Recording"
+                  className={cn(
+                    "s-duration-600 s-flex s-items-center s-justify-end s-gap-2 s-overflow-hidden s-px-2 s-transition-all s-ease-in-out",
+                    recordState === "pressAndHold" ||
+                      recordState === "recording"
+                      ? "s-w-24 s-opacity-100"
+                      : "s-w-6 s-opacity-0"
+                  )}
+                >
+                  <div className="s-heading-xs s-font-mono">
+                    {formatTime(elapsedSeconds)}
+                  </div>
+                  <div className="s-flex s-h-5 s-items-center s-gap-0.5">
+                    <div className="s-h-[22%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
+                    <div className="s-h-[33%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
+                    <div className="s-h-[18%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
+                    <div className="s-h-[64%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
+                    <div className="s-h-[98%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
+                    <div className="s-h-[56%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
+                    <div className="s-h-[6%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
+                    <div className="s-h-[34%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
+                    <div className="s-h-[76%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
+                    <div className="s-h-[46%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
+                    <div className="s-h-[12%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
+                    <div className="s-h-[22%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
+                  </div>
+                </div>
+                <Button
+                  id={
+                    recordState === "recording"
+                      ? "Stop Recording Button"
+                      : "Record Button"
+                  }
+                  ref={recordButtonRef}
+                  variant={recordState === "recording" ? "warning" : "ghost"}
+                  icon={recordState === "recording" ? SquareIcon : MicIcon}
+                  size="sm"
+                  isRounded
+                  tooltip={
+                    recordState === "recording"
+                      ? "Stop recording"
+                      : recordState === "pressAndHold"
+                        ? ""
+                        : "Click, or Press & Hold to record"
+                  }
+                  onClick={handleRecordClick}
+                  onMouseDown={
+                    recordState === "recording"
+                      ? undefined
+                      : handleRecordMouseDown
+                  }
+                  onMouseUp={
+                    recordState === "recording"
+                      ? undefined
+                      : handleRecordMouseUp
+                  }
+                  onMouseLeave={
+                    recordState === "recording"
+                      ? undefined
+                      : handleRecordMouseLeave
+                  }
+                />
+                <Button
+                  variant="highlight"
+                  icon={ArrowUpIcon}
+                  size="sm"
+                  tooltip="Send message"
+                  isRounded
+                  disabled={recordState === "recording"}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
