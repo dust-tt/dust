@@ -83,6 +83,7 @@
     "@textea/json-viewer": "^3.1.1",
     "@tiptap/core": "^3.11.0",
     "@tiptap/extension-heading": "^3.11.0",
+    "@tiptap/extension-link": "^3.11.0",
     "@tiptap/extension-mention": "^3.11.0",
     "@tiptap/extensions": "^3.11.0",
     "@tiptap/markdown": "^3.11.0",
