@@ -237,6 +237,7 @@ export const triggerConversationAddedAsParticipantNotification = async (
         cause: r.statusText,
       });
     }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     return new Err({
       name: "dust_error",

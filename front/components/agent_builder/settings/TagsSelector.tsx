@@ -80,6 +80,7 @@ export const TagsSelector = ({
       const suggestions = await onSuggestTags();
       setSuggestedTags(suggestions);
       setLastSuggestedInstructions(instructions);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       setSuggestedTags([]);
       setLastSuggestedInstructions(instructions);

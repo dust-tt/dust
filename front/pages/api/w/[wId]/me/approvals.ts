@@ -70,6 +70,7 @@ async function handler(
           // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           serverName = server?.toJSON().name || "Unknown Remote Server";
         }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         // If we can't parse the server ID or fetch the server, use default name
       }

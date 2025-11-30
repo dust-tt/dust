@@ -23,6 +23,7 @@ import { CoreAPI } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
+  // eslint-disable-next-line dust/enforce-client-types-in-public-api
   res: NextApiResponse<
     WithAPIErrorResponse<
       | GetFolderResponseType
@@ -172,11 +173,13 @@ async function handler(
         projectId: dataSource.dustAPIProjectId,
         dataSourceId: dataSource.dustAPIDataSourceId,
         folderId: fId,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         timestamp: timestamp || null,
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         parentId: parentId || null,
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         parents: parents || [fId],
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         title: title.trim() || "Untitled Folder",
         mimeType: mime_type,
         sourceUrl: source_url ?? null,

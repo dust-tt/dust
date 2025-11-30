@@ -99,6 +99,7 @@ export const useBlockInsertDropdown = (
   const rangeRef = useRef<{ from: number; to: number } | null>(null);
 
   const currentStateRef = useRef(state);
+  // eslint-disable-next-line react-hooks/refs
   currentStateRef.current = state;
 
   const filterSuggestions = useCallback(

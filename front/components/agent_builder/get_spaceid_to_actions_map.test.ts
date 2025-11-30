@@ -20,7 +20,9 @@ const createMockMCPAction = (
   configuration: {
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     mcpServerViewId: mcpServerViewId || "",
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     dataSourceConfigurations: dataSourceConfigurations || null,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     tablesConfigurations: tablesConfigurations || null,
     childAgentId: null,
     reasoningModel: null,

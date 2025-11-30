@@ -15,6 +15,7 @@ export function pastedAttachmentDirective() {
         (node.name === "pasted_content" || node.name === "pasted_attachment") &&
         node.children[0]
       ) {
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         const data = node.data || (node.data = {});
         data.hName = "pasted_attachment";
         data.hProperties = {

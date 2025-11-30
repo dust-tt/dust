@@ -402,6 +402,7 @@ export function AgentMessage({
         variant="ghost-secondary"
         size="xs"
         onClick={() => {
+          // eslint-disable-next-line react-hooks/immutability
           void retryHandler({
             conversationId,
             messageId: agentMessageToRender.sId,

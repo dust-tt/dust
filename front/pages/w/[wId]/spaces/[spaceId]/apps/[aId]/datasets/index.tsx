@@ -149,6 +149,7 @@ export default function DatasetsView({
                                 "text-s flex items-center"
                               )}
                             >
+                              {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
                               {d.description ? d.description : "No description"}
                             </p>
                           </div>

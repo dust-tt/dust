@@ -85,6 +85,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const { dsId } = context.params || {};
   if (typeof dsId !== "string") {
     return {
@@ -340,6 +341,7 @@ function FolderDisplay({
 
   useEffect(() => {
     if (!isDocumentsLoading && !isDocumentsError) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDisplayNameByDocId(
         documents.reduce(
           (acc, doc) =>

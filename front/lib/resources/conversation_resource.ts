@@ -304,6 +304,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       ) {
         return "conversation_access_restricted";
       }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       return "conversation_not_found";
     }

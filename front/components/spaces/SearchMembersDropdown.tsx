@@ -40,6 +40,7 @@ export function SearchMembersDropdown({
 
   useEffect(() => {
     if (members && !isLoading) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setAllMembers((prevMembers) => {
         if (pagination.pageIndex === 0) {
           // if it's the first page, replace all members
@@ -58,6 +59,7 @@ export function SearchMembersDropdown({
 
   // Effect to reset pagination when the search term changes.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPagination(DefaultPagination);
   }, [searchTerm]);
 

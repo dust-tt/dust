@@ -1,5 +1,6 @@
 import type { UserMessageOrigin } from "@app/types";
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const TOOL_CHART_MODES = ["version", "step"] as const;
 
 export type ToolChartModeType = (typeof TOOL_CHART_MODES)[number];

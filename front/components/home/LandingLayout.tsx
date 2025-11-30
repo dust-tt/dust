@@ -146,6 +146,7 @@ export default function LandingLayout({
                 TRACKING_AREAS.NAVIGATION,
                 "sign_in",
                 () => {
+                  // eslint-disable-next-line react-hooks/immutability
                   window.location.href = `/api/workos/login?returnTo=${encodeURIComponent(postLoginReturnToUrl)}`;
                 }
               )}

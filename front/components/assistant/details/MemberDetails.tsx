@@ -72,6 +72,7 @@ export function MemberDetails({ userId, onClose, owner }: MemberDetailsProps) {
         ) : (
           <>
             <SheetHeader className="flex flex-col gap-5 text-sm text-foreground dark:text-foreground-night">
+              {/* eslint-disable-next-line react-hooks/static-components */}
               <DescriptionSection />
             </SheetHeader>
             <SheetContainer className="pb-4">

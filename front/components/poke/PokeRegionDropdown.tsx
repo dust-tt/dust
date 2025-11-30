@@ -26,6 +26,7 @@ export function PokeRegionDropdown({
     }
     if (regionUrls) {
       const regionUrl = regionUrls[region];
+      // eslint-disable-next-line react-hooks/immutability
       window.location.href = regionUrl + "/poke";
     }
   };

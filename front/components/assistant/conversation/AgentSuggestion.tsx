@@ -78,6 +78,7 @@ export function AgentSuggestion({
 
   useEffect(() => {
     if (!dustAgent) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowSuggestion(true);
     }
   }, [dustAgent]);

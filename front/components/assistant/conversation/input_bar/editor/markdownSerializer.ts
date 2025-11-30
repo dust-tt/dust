@@ -17,6 +17,7 @@ function buildNodeSerializers(schema: Schema) {
   };
 
   map.orderedList = (state: MarkdownSerializerState, node: ProseMirrorNode) => {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const start = node.attrs.order || 1;
     state.renderList(node, "  ", (i) => `${start + i}. `);
   };
@@ -26,6 +27,7 @@ function buildNodeSerializers(schema: Schema) {
   };
 
   map.codeBlock = (state: MarkdownSerializerState, node: ProseMirrorNode) => {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     state.write("```" + (node.attrs.language || "") + "\n");
     state.text(node.textContent, false);
     state.ensureNewLine();
@@ -108,6 +110,7 @@ function buildMarkSerializers(schema: Schema) {
 
   // Add fallback for any mark in schema that isn't handled.
   for (const markName of Object.keys(schema.marks)) {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (!marks[markName]) {
       marks[markName] = {
         open: "",

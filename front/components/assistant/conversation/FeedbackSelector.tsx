@@ -55,6 +55,7 @@ export function FeedbackSelector({
   useEffect(() => {
     if (isPopoverOpen) {
       if (getPopoverInfo) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setPopoverInfo(getPopoverInfo());
       }
       if (feedback?.thumb === lastSelectedThumb) {

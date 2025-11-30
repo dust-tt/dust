@@ -314,6 +314,7 @@ export function ProviderSetup({
     for (const field of fields) {
       newValues[field.name] = config[field.name] || "";
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setValues(newValues);
     setTestSuccessful(false);
     setTestError("");

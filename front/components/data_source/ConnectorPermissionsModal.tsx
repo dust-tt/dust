@@ -236,6 +236,7 @@ function UpdateConnectionOAuthModal({
 
   useEffect(() => {
     if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setExtraConfig({});
     }
   }, [isOpen]);
@@ -646,6 +647,7 @@ export function ConnectorPermissionsModal({
 
   useEffect(() => {
     if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedNodes(initialTreeSelectionModel);
     }
   }, [initialTreeSelectionModel, isOpen]);
@@ -766,6 +768,7 @@ export function ConnectorPermissionsModal({
 
   useEffect(() => {
     if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setModalToShow("selection");
     } else {
       setModalToShow(null);

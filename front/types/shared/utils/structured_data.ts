@@ -64,6 +64,7 @@ export async function guessDelimiter(csv: string): Promise<string | undefined> {
           break;
         }
       }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
       // Ignore error.
       continue;

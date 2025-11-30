@@ -85,6 +85,7 @@ export function WebhookSourceSheet({
   const [debouncedOpen, setDebouncedOpen] = useState(() => open);
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDebouncedOpen(true);
     } else {
       const timeout = setTimeout(() => {

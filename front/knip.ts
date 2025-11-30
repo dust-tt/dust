@@ -16,11 +16,11 @@ const config: KnipConfig = {
   },
   ignoreDependencies: [
     "@vitest/coverage-v8",
-    "@dust-tt/client",
     "lint-staged",
     "yalc",
     "pino-pretty",
     "posthog-node",
+    "eslint-plugin-dust",
     "sqlite3", // used during the build process by sequelize
   ],
   paths: {

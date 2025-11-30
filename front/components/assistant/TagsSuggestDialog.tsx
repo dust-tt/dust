@@ -83,6 +83,7 @@ export const TagsSuggestDialog = ({
   }, [isSuggestionsError, sendNotification, setIsOpen]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAppliedSuggestion(
       suggestions.reduce(
         (acc, suggestion) => {

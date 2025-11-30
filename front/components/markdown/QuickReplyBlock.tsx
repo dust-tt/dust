@@ -46,6 +46,7 @@ export function quickReplyDirective() {
     visit(tree, ["textDirective"], (node) => {
       if (node.name === "quickReply" && node.children?.[0]) {
         const label = node.children[0].value;
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         const data = node.data || (node.data = {});
         data.hName = "quickReply";
         data.hProperties = {

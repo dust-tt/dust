@@ -77,6 +77,7 @@ export async function setupOAuthConnection({
       channel.addEventListener("message", (event: MessageEvent) => {
         handleFinalization(event.data);
       });
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
       // BroadcastChannel not supported
     }

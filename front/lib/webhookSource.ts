@@ -75,6 +75,7 @@ export const verifySignature = ({
       Buffer.from(expectedSignature)
     );
     return isValid;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (e) {
     return false;
   }

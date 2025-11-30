@@ -241,6 +241,7 @@ const InputBarContainer = ({
           editorInstance
             .chain()
             .focus()
+            // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
             .deleteRange({ from: nodePos, to: nodePos + node.nodeSize })
             .insertContentAt(nodePos, textContent)
             .run();
@@ -460,6 +461,7 @@ const InputBarContainer = ({
         );
         const node = sortedNodes[0];
         onNodeSelect(node);
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setSelectedNode(node);
         return;
       }

@@ -97,6 +97,7 @@ makeScript(
     dsConfigs.forEach((cfg: any) => {
       const agentId =
         cfg.agent_mcp_server_configuration.agent_configuration.sId;
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       if (!dsAgents[agentId]) {
         dsAgents[agentId] = {
           sId: cfg.agent_mcp_server_configuration.agent_configuration.sId,
@@ -166,6 +167,7 @@ makeScript(
     tableConfigs.forEach((cfg: any) => {
       const agentId =
         cfg.agent_mcp_server_configuration.agent_configuration.sId;
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       if (!tableAgents[agentId]) {
         tableAgents[agentId] = {
           sId: cfg.agent_mcp_server_configuration.agent_configuration.sId,

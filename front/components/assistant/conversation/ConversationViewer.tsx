@@ -193,6 +193,7 @@ export const ConversationViewer = ({
 
       const messagesToRender = convertLightMessageTypeToVirtuosoMessages(raw);
 
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setInitialListData(messagesToRender);
     }
   }, [initialListData, messages, setInitialListData, isValidating]);

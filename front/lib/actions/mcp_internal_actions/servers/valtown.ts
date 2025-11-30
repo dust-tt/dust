@@ -457,7 +457,9 @@ function createServer(
           let resultText = `Found ${files.length} file(s) in val ${valId} at path "${path || "root"}":\n\n`;
 
           for (const file of files) {
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             resultText += `Path: ${file.path || "Unknown"}\n`;
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             resultText += `Type: ${file.type || "Unknown"}\n`;
             if (file.links) {
               if (file.links.self) {

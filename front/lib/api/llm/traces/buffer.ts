@@ -392,6 +392,7 @@ export class LLMTraceBuffer {
   private getByteSize(obj: unknown): number {
     try {
       return Buffer.byteLength(JSON.stringify(obj), "utf8");
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (err) {
       return Buffer.byteLength(String(obj), "utf8");
     }

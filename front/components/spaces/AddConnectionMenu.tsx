@@ -287,6 +287,7 @@ export const AddConnectionMenu = ({
           description: errorMessage,
         });
       }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
       setShowConfirmConnection((prev) => ({
         isOpen: false,

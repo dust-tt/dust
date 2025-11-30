@@ -70,6 +70,7 @@ export const DataSourceBuilderSelector = ({
   useEffect(() => {
     if (debouncedSearch.length >= MIN_SEARCH_QUERY_SIZE) {
       const candidate = nodeCandidateFromUrl(debouncedSearch.trim());
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setNodeOrUrlCandidate(candidate);
     } else {
       setNodeOrUrlCandidate(null);
