@@ -104,9 +104,9 @@ const NavigationListItem = React.forwardRef<
     const getStatusDotColor = () => {
       switch (status) {
         case "unread":
-          return "s-bg-highlight-500 dark:s-bg-highlight-500-night";
+          return "s-h-2 s-m-1 s-w-2 s-bg-highlight-500 dark:s-bg-highlight-500-night";
         case "blocked":
-          return "s-bg-golden-500 dark:s-bg-golden-500-night";
+          return "s-h-4 s-w-4 s-bg-golden-200 dark:s-bg-golden-800-night s-text-golden-900 dark:s-text-golden-900-night";
         default:
           return "";
       }
@@ -146,19 +146,21 @@ const NavigationListItem = React.forwardRef<
             onMouseDown={handleMouseDown}
             onMouseUp={() => setIsPressed(false)}
           >
-            {shouldShowStatusDot && (
-              <div
-                className={cn(
-                  "s-h-2 s-w-2 s-flex-shrink-0 s-rounded-full",
-                  getStatusDotColor()
-                )}
-              />
-            )}
             {icon && <Icon visual={icon} size="sm" />}
             {label && (
               <span className="s-grow s-overflow-hidden s-text-ellipsis s-whitespace-nowrap group-hover/menu-item:s-pr-8 group-data-[selected=true]/menu-item:s-pr-8">
                 {label}
               </span>
+            )}
+            {shouldShowStatusDot && (
+              <div
+                className={cn(
+                  "s-heading-xs s-flex s-flex-shrink-0 s-items-center s-justify-center s-rounded-full group-hover/menu-item:s-hidden",
+                  getStatusDotColor()
+                )}
+              >
+                {status === "blocked" ? "!" : ""}
+              </div>
             )}
           </div>
         </LinkWrapper>
