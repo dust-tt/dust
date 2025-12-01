@@ -3,7 +3,6 @@ import type { Request, Response } from "express";
 import { NotionConnectorState } from "@connectors/lib/models/notion";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
 
 type GetNotionWorkspaceIdParams = {
@@ -25,23 +24,9 @@ const _getNotionWorkspaceIdHandler = async (
   const { connector_id } = req.params;
 
   try {
-    const connector = await ConnectorResource.fetchById(connector_id);
-
-    if (!connector) {
-      logger.info({ connector_id }, "Connector not found");
-
-      return apiError(req, res, {
-        status_code: 404,
-        api_error: {
-          type: "connector_not_found",
-          message: `Connector with id '${connector_id}' not found`,
-        },
-      });
-    }
-
     const connectorState = await NotionConnectorState.findOne({
       where: {
-        connectorId: connector.id,
+        connectorId: connector_id,
       },
     });
 
