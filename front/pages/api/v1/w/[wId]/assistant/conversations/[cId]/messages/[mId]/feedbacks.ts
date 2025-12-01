@@ -11,6 +11,7 @@ import {
 } from "@app/lib/api/assistant/feedback";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { triggerAgentMessageFeedbackNotification } from "@app/lib/notifications/workflows/agent-message-feedback";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -253,22 +254,24 @@ async function handler(
         });
       }
 
-      await Promise.all([
-        launchAgentMessageFeedbackWorkflow(auth, {
-          message: {
-            conversationId: conversation.sId,
-            agentMessageId: messageId,
-          },
-        }),
-        triggerAgentMessageFeedbackNotification(auth, {
+      await launchAgentMessageFeedbackWorkflow(auth, {
+        message: {
+          conversationId: conversation.sId,
+          agentMessageId: messageId,
+        },
+      });
+      const featureFlags = await getFeatureFlags(
+        auth.getNonNullableWorkspace()
+      );
+      if (featureFlags.includes("notifications")) {
+        await triggerAgentMessageFeedbackNotification(auth, {
           conversationId: conversation.sId,
           messageId,
           agentConfigurationId: created.value.agentConfigurationId,
           thumbDirection: bodyValidation.right.thumbDirection,
           feedbackContent: bodyValidation.right.feedbackContent ?? undefined,
-        }),
-      ]);
-
+        });
+      }
       res.status(200).json({ success: true });
       return;
 
