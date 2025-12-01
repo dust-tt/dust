@@ -4,7 +4,6 @@ import fs from "fs";
 const sdkAckLabel = "sdk-ack";
 const migrationAckLabel = "migration-ack";
 const documentationAckLabel = "documentation-ack";
-const auth0UpdateLabelAck = "auth0-update-ack";
 const rawSqlAckLabel = "raw-sql-ack";
 const sparkleVersionAckLabel = "sparkle-version-ack";
 
@@ -67,29 +66,6 @@ function checkDeployPlanSection() {
       "Please include a detailed Deploy Plan section in your PR description, at least 20 characters long."
     );
   }
-}
-
-function checkAuth0UpdateLabel() {
-  if (!hasLabel(auth0UpdateLabelAck)) {
-    failAuth0UpdateLabel();
-  } else {
-    warnAuth0UpdateLabel(auth0UpdateLabelAck);
-  }
-}
-
-function failAuth0UpdateLabel() {
-  fail(
-    "`**/lib/utils/blacklisted_email_domains.ts` has been modified. " +
-      `Please add the \`${auth0UpdateLabelAck}\` label to acknowledge that the Auth0 blacklist has been updated.`
-  );
-}
-
-function warnAuth0UpdateLabel(auth0UpdateLabelAck: string) {
-  warn(
-    "`**/lib/utils/blacklisted_email_domains.ts` has been modified and the PR has the `" +
-      auth0UpdateLabelAck +
-      "` label. Don't forget to update the Auth0 blacklist."
-  );
 }
 
 function checkDocumentationLabel() {
@@ -251,15 +227,6 @@ async function checkDiffFiles() {
 
   if (modifiedPublicApiFiles.length > 0) {
     checkDocumentationLabel();
-  }
-
-  // Auth0 files
-  const modifiedAuth0Files = diffFiles.filter((path) => {
-    return path.startsWith("front/lib/utils/blacklisted_email_domains.ts");
-  });
-
-  if (modifiedAuth0Files.length > 0) {
-    checkAuth0UpdateLabel();
   }
 
   // SDK files
