@@ -140,18 +140,38 @@ function generateDescription(body: Document): string {
   return truncated + "...";
 }
 
-function isDocument(value: Document | undefined): value is Document {
-  return value !== undefined && "nodeType" in value;
+// Utility type for Contentful's withoutUnresolvableLinks behavior
+type MaybeUnresolved<T> = T | { [x: string]: undefined } | undefined;
+
+function isContentfulDocument(
+  value: MaybeUnresolved<Document>
+): value is Document {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "nodeType" in value &&
+    value.nodeType !== undefined
+  );
 }
 
-function isAsset(value: Asset | undefined): value is Asset {
-  return value !== undefined && "fields" in value;
+function isContentfulAsset(value: MaybeUnresolved<Asset>): value is Asset {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "sys" in value &&
+    "fields" in value
+  );
 }
 
 function isContentfulEntry(
-  value: Entry<AuthorSkeleton> | undefined
+  value: MaybeUnresolved<Entry<AuthorSkeleton>>
 ): value is Entry<AuthorSkeleton> {
-  return value !== undefined && "fields" in value;
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "sys" in value &&
+    "fields" in value
+  );
 }
 
 function contentfulEntryToAuthor(
@@ -166,7 +186,7 @@ function contentfulEntryToAuthor(
     return null;
   }
 
-  const image = isAsset(entry.fields.image)
+  const image = isContentfulAsset(entry.fields.image)
     ? contentfulAssetToBlogImage(entry.fields.image, name)
     : null;
 
@@ -190,10 +210,13 @@ function contentfulEntryToBlogPost(entry: Entry<BlogPageSkeleton>): BlogPost {
     ? publishedAtField
     : sys.createdAt;
 
-  const body = isDocument(fields.body) ? fields.body : EMPTY_DOCUMENT;
-  const image = isAsset(fields.image) ? fields.image : undefined;
+  const body = isContentfulDocument(fields.body) ? fields.body : EMPTY_DOCUMENT;
+  const image = isContentfulAsset(fields.image) ? fields.image : undefined;
   const authors = Array.isArray(fields.authors)
-    ? fields.authors.filter(isContentfulEntry).map(contentfulEntryToAuthor).filter(Boolean) as BlogAuthor[]
+    ? (fields.authors
+        .filter(isContentfulEntry)
+        .map(contentfulEntryToAuthor)
+        .filter(Boolean) as BlogAuthor[])
     : [];
 
   return {
