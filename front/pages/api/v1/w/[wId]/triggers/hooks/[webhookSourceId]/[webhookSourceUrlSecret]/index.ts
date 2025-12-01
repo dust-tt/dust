@@ -164,7 +164,8 @@ async function handler(
   const filteredHeaders: Record<string, string> = Object.fromEntries(
     Object.entries(headers).filter(
       ([key]) =>
-        HEADERS_ALLOWED_LIST.includes(key.toLowerCase()) &&
+        (HEADERS_ALLOWED_LIST.includes(key.toLowerCase()) &&
+          webhookSource.provider !== null) ||
         isString(headers[key])
     ) as [string, string][] // Type assertion to satisfy TypeScript, we've already filtered to strings
   );
@@ -194,7 +195,7 @@ async function handler(
   const result = await processWebhookRequest(auth, {
     webhookSource: webhookSource,
     webhookRequest,
-    headers: filteredHeaders,
+    headers,
     body,
   });
 
