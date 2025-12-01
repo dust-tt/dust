@@ -257,6 +257,9 @@ export class UserResource extends BaseResource<UserModel> {
           missingUserSIds: missingUserIds,
           owner: "spolu",
         },
+        // This log is expected has user search queries may happen before the index update completes
+        // (temporal workflow + ES indexing asyncrhonously). We keep it to ensure that volume stays
+        // flat. An increase would indicate a synchronization problem.
         "[user_search] Found revoked users in search results"
       );
     }
