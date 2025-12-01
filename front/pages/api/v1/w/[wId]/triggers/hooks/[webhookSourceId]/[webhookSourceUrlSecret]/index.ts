@@ -195,7 +195,7 @@ async function handler(
   const result = await processWebhookRequest(auth, {
     webhookSource: webhookSource,
     webhookRequest,
-    headers,
+    headers: filteredHeaders,
     body,
   });
 
