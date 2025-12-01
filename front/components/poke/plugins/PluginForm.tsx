@@ -105,7 +105,25 @@ export function PluginForm({
     defaultValues,
   });
 
-  const watchedValues = form.watch();
+  const dependencyFields = useMemo(() => {
+    if (!manifest) {
+      return [];
+    }
+    return [
+      ...new Set(
+        Object.values(manifest.args)
+          .filter((arg) => arg.dependsOn)
+          .map((arg) => arg.dependsOn!.field)
+      ),
+    ];
+  }, [manifest]);
+
+  const watchedValuesArray = form.watch(dependencyFields);
+
+  const watchedValues: Record<string, unknown> = {};
+  dependencyFields.forEach((field, index) => {
+    watchedValues[field] = watchedValuesArray[index];
+  });
 
   async function handleSubmit(values: FormValues<typeof argsCodec>) {
     // Lock the form to prevent multiple submissions.
