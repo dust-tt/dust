@@ -106,7 +106,6 @@ impl SlackConnectionProvider {
         store: Box<dyn OAuthStore + Sync + Send>,
         metadata: &serde_json::Value,
     ) -> Result<Option<Credential>> {
-        // Check if this is a connection use-case
         if metadata.get("use_case").and_then(|v| v.as_str()) != Some("connection") {
             return Ok(None);
         }
