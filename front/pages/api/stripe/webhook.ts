@@ -504,7 +504,7 @@ async function handler(
 
             logger.error(
               {
-                stripeError: true,
+                invalidStripeSubscriptionError: true,
                 workspaceId: event.data.object.metadata?.workspaceId,
                 stripeSubscriptionId: stripeSubscription.id,
                 priceId,
@@ -795,7 +795,7 @@ async function handler(
                 : null;
             logger.error(
               {
-                stripeError: true,
+                invalidStripeSubscriptionError: true,
                 workspaceId: event.data.object.metadata?.workspaceId,
                 stripeSubscriptionId: stripeSubscription.id,
                 priceId,
