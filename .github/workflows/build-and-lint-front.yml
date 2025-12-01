@@ -73,11 +73,16 @@ jobs:
           key: eslint-cache-${{ runner.os }}-${{ hashFiles('front/.eslintrc.js', 'front/tsconfig.json', 'front/package-lock.json') }}
           restore-keys: |
             eslint-cache-${{ runner.os }}-
-      - name: Lint, and format (check)
+      - name: Lint, Format, and Biome Check (parallel)
         working-directory: front
         env:
           NODE_OPTIONS: "--max-old-space-size=8192"
-        run: npm run lint && npm run format:check
+        run: |
+          set -e
+          npm run lint &
+          npm run format:check &
+          npm run lint:circular &
+          wait -n
       - name: Knip - unlisted dependencies
         working-directory: front
         run: |
