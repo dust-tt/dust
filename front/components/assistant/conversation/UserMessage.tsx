@@ -135,7 +135,7 @@ export function UserMessage({
             />
           </NewConversationMessage>
         </div>
-        {message.mentions.length === 0 && isLastMessage && (
+        {showAgentSuggestions && (
           <AgentSuggestion
             conversationId={conversationId}
             owner={owner}
