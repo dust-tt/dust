@@ -17,6 +17,7 @@ const config: KnipConfig = {
   ignoreDependencies: [
     "@vitest/coverage-v8",
     "lint-staged",
+    "nodemon", // used for development only for workers
     "yalc",
     "pino-pretty",
     "posthog-node",
