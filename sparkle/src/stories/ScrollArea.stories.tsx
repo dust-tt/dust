@@ -128,3 +128,42 @@ export const ScrollWithActiveState: Story = {
     );
   },
 };
+
+export const ScrollAreaHideScrollbar: Story = {
+  render: () => (
+    <div className="s-flex s-flex-row s-gap-6 s-bg-muted s-p-8">
+      <div className="s-h-[400px]">
+        <ScrollArea
+          className="s-h-full s-w-[200px] s-border-b s-border-t s-border-border s-bg-white"
+          hideScrollBar
+        >
+          <h4 className="s-mb-4 s-text-sm s-font-medium s-leading-none">
+            Mini ScrollBar
+          </h4>
+          {tags.map((tag) => (
+            <React.Fragment key={tag}>
+              <div className="s-text-sm">{tag}</div>
+              <Separator className="s-my-2" />
+            </React.Fragment>
+          ))}
+        </ScrollArea>
+      </div>
+      <div className="s-h-[400px]">
+        <ScrollArea
+          className="s-h-full s-w-[200px] s-border-b s-border-t s-border-border s-bg-white"
+          hideScrollBar
+        >
+          <h4 className="s-mb-4 s-text-sm s-font-medium s-leading-none">
+            Classic ScrollBar
+          </h4>
+          {tags.map((tag) => (
+            <React.Fragment key={tag}>
+              <div className="s-text-sm">{tag}</div>
+              <Separator className="s-my-2" />
+            </React.Fragment>
+          ))}
+        </ScrollArea>
+      </div>
+    </div>
+  ),
+};
