@@ -14,25 +14,37 @@ import {
   MagnifyingGlassIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { NodePathTooltip } from "@app/components/NodePathTooltip";
+import { getIcon } from "@app/components/resources/resources_icons";
 import { useDebounce } from "@app/hooks/useDebounce";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
+import { useSendNotification } from "@app/hooks/useNotification";
+import type {
+  ToolAttachment,
+  ToolSearchNode,
+} from "@app/lib/actions/mcp_internal_actions/search/types";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import {
   getLocationForDataSourceViewContentNode,
+  getVisualForContentNodeType,
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
 import { isFolder, isWebsite } from "@app/lib/data_sources";
 import { getSpaceAccessPriority } from "@app/lib/spaces";
+import { useToolAttachmentSearch } from "@app/lib/swr/mcp_servers";
 import {
   useSpaces,
   useSpacesSearchWithInfiniteScroll,
 } from "@app/lib/swr/spaces";
 import type { DataSourceViewContentNode, LightWorkspaceType } from "@app/types";
-import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
+import {
+  asDisplayToolName,
+  isSupportedFileContentType,
+  MIN_SEARCH_QUERY_SIZE,
+} from "@app/types";
 
 interface InputBarAttachmentsPickerProps {
   owner: LightWorkspaceType;
@@ -60,6 +72,11 @@ export const InputBarAttachmentsPicker = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const itemsContainerRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [loadingToolNodes, setLoadingToolNodes] = useState<Set<string>>(
+    new Set()
+  );
+
+  const sendNotification = useSendNotification();
 
   const {
     inputValue: search,
@@ -70,6 +87,81 @@ export const InputBarAttachmentsPicker = ({
     delay: 300,
     minLength: MIN_SEARCH_QUERY_SIZE,
   });
+
+  const handleToolNodeSelect = useCallback(
+    async (node: ToolSearchNode) => {
+      const nodeKey = `${node.serverViewId}-${node.internalId}`;
+
+      if (loadingToolNodes.has(nodeKey)) {
+        return;
+      }
+      const existingBlob = fileUploaderService.fileBlobs.find(
+        (blob) => blob.id === nodeKey
+      );
+      if (existingBlob) {
+        fileUploaderService.removeFile(nodeKey);
+        return;
+      }
+
+      setLoadingToolNodes((prev) => new Set(prev).add(nodeKey));
+
+      try {
+        const response = await fetch(
+          `/api/w/${owner.sId}/mcp/views/${encodeURIComponent(node.serverViewId)}/attach?fileId=${encodeURIComponent(node.internalId)}`
+        );
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error?.message ?? "Failed to fetch file");
+        }
+
+        const fileData: ToolAttachment = await response.json();
+
+        // TODO: This is inefficient - we fetch the file as base64 from the server, convert it
+        // to a File object here, then upload it back to our file storage. Ideally the /attach
+        // endpoint should upload directly to file storage and return the file ID.
+        const binaryString = atob(fileData.contentBase64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+
+        if (!isSupportedFileContentType(fileData.mimeType)) {
+          throw new Error(`Unsupported file type: ${fileData.mimeType}`);
+        }
+
+        const blob = new Blob([bytes], { type: fileData.mimeType });
+        const file = new File([blob], fileData.fileName, {
+          type: fileData.mimeType,
+        });
+        await fileUploaderService.handleFilesUpload([file]);
+        setIsOpen(false);
+      } catch (error) {
+        sendNotification({
+          type: "error",
+          title: "Failed to attach file",
+          description:
+            error instanceof Error ? error.message : "An error occurred",
+        });
+      } finally {
+        setLoadingToolNodes((prev) => {
+          const next = new Set(prev);
+          next.delete(nodeKey);
+          return next;
+        });
+      }
+    },
+    [owner.sId, fileUploaderService, loadingToolNodes, sendNotification]
+  );
+
+  const isToolNodeAttached = useCallback(
+    (node: ToolSearchNode) => {
+      const nodeKey = `${node.serverViewId}-${node.internalId}`;
+      return fileUploaderService.fileBlobs.some(
+        (blob) => blob.id === nodeKey || blob.filename === node.title + ".txt"
+      );
+    },
+    [fileUploaderService.fileBlobs]
+  );
 
   const { spaces, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
@@ -91,6 +183,17 @@ export const InputBarAttachmentsPicker = ({
     disabled: isSpacesLoading || !searchQuery,
     spaceIds: spaces.map((s) => s.sId),
     searchSourceUrls: true,
+  });
+
+  const {
+    searchResults: toolContentNodes,
+    isSearchLoading: isToolSearchLoading,
+    isSearchValidating: isToolSearchValidating,
+  } = useToolAttachmentSearch({
+    owner,
+    query: searchQuery,
+    pageSize: PAGE_SIZE,
+    disabled: isSpacesLoading || !searchQuery || !isOpen,
   });
 
   const spacesMap = useMemo(
@@ -119,7 +222,12 @@ export const InputBarAttachmentsPicker = ({
     });
   }, [searchResultNodes, spacesMap]);
 
-  const showLoader = isSearchLoading || isSearchValidating || isDebouncing;
+  const showLoader =
+    isSearchLoading ||
+    isSearchValidating ||
+    isToolSearchLoading ||
+    isToolSearchValidating ||
+    isDebouncing;
 
   return (
     <DropdownMenu
@@ -192,7 +300,11 @@ export const InputBarAttachmentsPicker = ({
         {searchQuery ? (
           <div ref={itemsContainerRef}>
             {pickedSpaceNodes.map((item, index) => (
-              <NodePathTooltip key={index} node={item} owner={owner}>
+              <NodePathTooltip
+                key={`knowledge-${index}`}
+                node={item}
+                owner={owner}
+              >
                 <DropdownMenuCheckboxItem
                   label={item.title}
                   icon={
@@ -231,11 +343,43 @@ export const InputBarAttachmentsPicker = ({
                 />
               </NodePathTooltip>
             ))}
-            {pickedSpaceNodes.length === 0 && !showLoader && (
-              <div className="flex items-center justify-center py-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
-                No results found
-              </div>
-            )}
+            {toolContentNodes.map((item, index) => {
+              const nodeKey = `${item.serverViewId}-${item.internalId}`;
+              const isLoading = loadingToolNodes.has(nodeKey);
+              const isAttached = isToolNodeAttached(item);
+
+              return (
+                <DropdownMenuCheckboxItem
+                  key={`tool-${nodeKey}-${index}`}
+                  label={item.title}
+                  icon={
+                    isLoading ? (
+                      <Spinner size="sm" variant="dark" />
+                    ) : (
+                      <DoubleIcon
+                        size="md"
+                        mainIcon={getVisualForContentNodeType(item.type)}
+                        secondaryIcon={getIcon(item.serverIcon)}
+                      />
+                    )
+                  }
+                  description={asDisplayToolName(item.serverName)}
+                  checked={isAttached}
+                  disabled={isLoading}
+                  onCheckedChange={() => {
+                    void handleToolNodeSelect(item);
+                  }}
+                  truncateText
+                />
+              );
+            })}
+            {pickedSpaceNodes.length === 0 &&
+              toolContentNodes.length === 0 &&
+              !showLoader && (
+                <div className="flex items-center justify-center py-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  No results found
+                </div>
+              )}
             <InfiniteScroll
               nextPage={nextPage}
               hasMore={hasMore}

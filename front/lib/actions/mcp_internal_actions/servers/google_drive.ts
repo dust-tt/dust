@@ -20,7 +20,7 @@ const SUPPORTED_MIMETYPES = [
 ];
 
 const MAX_CONTENT_SIZE = 32000; // Max characters to return for file content
-const MAX_FILE_SIZE = 64 * 1024 * 1024; // 10 MB max original file size
+const MAX_FILE_SIZE = 64 * 1024 * 1024; // 64 MB max original file size
 
 function createServer(
   auth: Authenticator,

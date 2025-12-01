@@ -12,6 +12,10 @@ import {
   mcpServersSortingFn,
 } from "@app/lib/actions/mcp_helper";
 import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
+import type {
+  ToolSeachResults,
+  ToolSearchNode,
+} from "@app/lib/actions/mcp_internal_actions/search/types";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import type { MCPServerTypeWithViews } from "@app/lib/api/mcp";
 import type {
@@ -1276,4 +1280,39 @@ export function useMCPServerViewsWithPersonalConnections({
           }),
     [connections, mcpServerViewsWithPersonalConnections]
   );
+}
+
+export function useToolAttachmentSearch({
+  owner,
+  query,
+  pageSize = 25,
+  disabled = false,
+}: {
+  owner: LightWorkspaceType;
+  query: string;
+  pageSize?: number;
+  disabled?: boolean;
+}) {
+  const searchFetcher: Fetcher<ToolSeachResults> = fetcher;
+  const url =
+    query && query.length >= 3 && !disabled
+      ? `/api/w/${owner.sId}/mcp/search?query=${encodeURIComponent(query)}&pageSize=${pageSize}`
+      : null;
+
+  const { data, error, isLoading, isValidating } = useSWRWithDefaults(
+    url,
+    searchFetcher,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+    }
+  );
+
+  return {
+    searchResults: data?.nodes ?? emptyArray<ToolSearchNode>(),
+    resultsCount: data?.resultsCount ?? 0,
+    isSearchLoading: isLoading,
+    isSearchValidating: isValidating,
+    isSearchError: error,
+  };
 }
