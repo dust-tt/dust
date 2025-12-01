@@ -190,7 +190,7 @@ export class CreditResource extends BaseResource<CreditModel> {
       return new Err(new Error("Amount to consume must be strictly positive."));
     }
     const now = new Date();
-    const [, affectedCount] = await this.model.increment(
+    const [affectedRows, _] = await this.model.increment(
       "consumedAmountCents",
       {
         by: amountInCents,
@@ -215,7 +215,7 @@ export class CreditResource extends BaseResource<CreditModel> {
         transaction,
       }
     );
-    if (!affectedCount || affectedCount < 1) {
+    if (!affectedRows || affectedRows.length === 0) {
       return new Err(
         new Error(
           "Insufficient credit on this line, or credit not yet started/already expired."
@@ -236,6 +236,33 @@ export class CreditResource extends BaseResource<CreditModel> {
         transaction,
       }
     );
+  }
+
+  static async freezePAYGCreditById(
+    auth: Authenticator,
+    creditId: number,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<Result<undefined, Error>> {
+    const [, affectedRows] = await this.model.update(
+      {
+        initialAmountCents: Sequelize.col("consumedAmountCents"),
+      },
+      {
+        where: {
+          id: creditId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          type: "payg",
+        },
+        transaction,
+        returning: true,
+      }
+    );
+
+    if (!affectedRows || affectedRows.length === 0) {
+      return new Err(new Error("Credit not found or already frozen"));
+    }
+
+    return new Ok(undefined);
   }
 
   async delete(

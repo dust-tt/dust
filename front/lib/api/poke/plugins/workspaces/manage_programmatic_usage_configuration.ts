@@ -1,3 +1,5 @@
+import assert from "assert";
+import type Stripe from "stripe";
 import { z } from "zod";
 
 import { createPlugin } from "@app/lib/api/poke/types";
@@ -5,6 +7,10 @@ import {
   calculateFreeCreditAmount,
   countElligibleUsersForFreeCredits,
 } from "@app/lib/credits/free";
+import {
+  startOrResumeEnterprisePAYG,
+  stopEnterprisePAYG,
+} from "@app/lib/credits/payg";
 import {
   getStripeSubscription,
   isEnterpriseSubscription,
@@ -20,7 +26,7 @@ const ManageProgrammaticUsageConfigurationSchema = z
     freeCreditsOverrideEnabled: z.boolean(),
     freeCreditsDollars: z
       .number()
-      .min(1, "Free credits must be at least $1")
+      .min(0, "Free credits must be positive")
       .max(
         MAX_FREE_CREDITS_DOLLARS,
         `Free credits cannot exceed $${MAX_FREE_CREDITS_DOLLARS.toLocaleString()}`
@@ -123,7 +129,7 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
 
   populateAsyncArgs: async (auth) => {
     const workspace = auth.getNonNullableWorkspace();
-    const userCount = await countElligibleUsersForFreeCredits(workspace);
+    const userCount = await countElligibleUsersForFreeCredits(workspace, 0);
     const automaticCreditsCents = calculateFreeCreditAmount(userCount);
     const automaticCreditsDollars = automaticCreditsCents / 100;
 
@@ -181,20 +187,15 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
       paygCapDollars,
     } = parseResult.data;
 
-    // Verify enterprise subscription if trying to enable PAYG
-    if (paygEnabled) {
-      const subscription = auth.subscription();
-      if (!subscription?.stripeSubscriptionId) {
-        return new Err(
-          new Error(
-            "PAYG can only be enabled for workspaces with a Stripe subscription."
-          )
-        );
-      }
-
-      const stripeSubscription = await getStripeSubscription(
+    let stripeSubscription: Stripe.Subscription | null = null;
+    const subscription = auth.subscription();
+    if (subscription?.stripeSubscriptionId) {
+      stripeSubscription = await getStripeSubscription(
         subscription.stripeSubscriptionId
       );
+    }
+
+    if (paygEnabled) {
       if (
         !stripeSubscription ||
         !isEnterpriseSubscription(stripeSubscription)
@@ -211,26 +212,64 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
         ? Math.round(freeCreditsDollars * 100)
         : undefined;
 
-    // When PAYG is disabled, clear the cap (set to null)
-    // When enabled, convert dollars to cents
-    const paygCapCents =
-      paygEnabled && paygCapDollars ? Math.round(paygCapDollars * 100) : null;
+    // Handle non-PAYG config fields first
+    const existingConfig =
+      await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
 
     const configData = {
       freeCreditCents,
       defaultDiscountPercent,
-      paygCapCents,
     };
 
-    const existingConfig =
-      await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
+    if (existingConfig) {
+      const updateResult = await existingConfig.updateConfiguration(
+        auth,
+        configData
+      );
+      if (updateResult.isErr()) {
+        return updateResult;
+      }
+    } else {
+      const createResult = await ProgrammaticUsageConfigurationResource.makeNew(
+        auth,
+        {
+          ...configData,
+          paygCapCents: null,
+        }
+      );
+      if (createResult.isErr()) {
+        return createResult;
+      }
+    }
 
-    const result = existingConfig
-      ? await existingConfig.updateConfiguration(auth, configData)
-      : await ProgrammaticUsageConfigurationResource.makeNew(auth, configData);
-
-    if (result.isErr()) {
-      return result;
+    // Handle PAYG enable/disable
+    if (paygEnabled && stripeSubscription) {
+      assert(
+        paygCapDollars !== undefined,
+        "[Unreachable] PaygEnabled but paygCapDollars undefined"
+      );
+      const paygCapCents = Math.round(paygCapDollars * 100);
+      const paygResult = await startOrResumeEnterprisePAYG({
+        auth,
+        stripeSubscription,
+        paygCapCents,
+      });
+      if (paygResult.isErr()) {
+        return paygResult;
+      }
+    } else {
+      // Check if PAYG was previously enabled and needs to be stopped
+      const refreshedConfig =
+        await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
+      if (refreshedConfig?.paygCapCents !== null && stripeSubscription) {
+        const stopResult = await stopEnterprisePAYG({
+          auth,
+          stripeSubscription,
+        });
+        if (stopResult.isErr()) {
+          return stopResult;
+        }
+      }
     }
 
     const paygStatus = paygEnabled
