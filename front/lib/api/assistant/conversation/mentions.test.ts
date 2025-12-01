@@ -91,9 +91,9 @@ describe("createAgentMessages", () => {
     });
 
     expect(result).toHaveLength(1);
-    expect(result[0].m.configuration.sId).toBe(agentConfig1.sId);
-    expect(result[0].m.status).toBe("created");
-    expect(result[0].m.skipToolsValidation).toBe(false);
+    expect(result[0].configuration.sId).toBe(agentConfig1.sId);
+    expect(result[0].status).toBe("created");
+    expect(result[0].skipToolsValidation).toBe(false);
 
     // Verify database records were created
     const mentionInDb = await Mention.findOne({
@@ -104,9 +104,21 @@ describe("createAgentMessages", () => {
     });
     expect(mentionInDb).not.toBeNull();
 
-    const agentMessageInDb = await AgentMessage.findByPk(result[0].row.id);
+    const agentMessageInDb = await AgentMessage.findByPk(
+      result[0].agentMessageId
+    );
     expect(agentMessageInDb).not.toBeNull();
     expect(agentMessageInDb?.status).toBe("created");
+
+    const messageInDb = await Message.findByPk(result[0].id);
+    expect(messageInDb).not.toBeNull();
+    expect(messageInDb?.rank).toBe(1);
+    expect(messageInDb?.parentId).toBe(messageRow.id);
+    expect(messageInDb?.agentMessageId).toBe(result[0].agentMessageId);
+    expect(messageInDb?.workspaceId).toBe(workspace.id);
+    expect(messageInDb?.visibility).toBe("visible");
+    expect(messageInDb?.version).toBe(0);
+    expect(messageInDb?.createdAt).toBeDefined();
   });
 
   it("should create multiple agent messages for multiple mentions", async () => {
@@ -141,8 +153,8 @@ describe("createAgentMessages", () => {
     });
 
     expect(result).toHaveLength(2);
-    expect(result[0].m.configuration.sId).toBe(agentConfig1.sId);
-    expect(result[1].m.configuration.sId).toBe(agentConfig2.sId);
+    expect(result[0].configuration.sId).toBe(agentConfig1.sId);
+    expect(result[1].configuration.sId).toBe(agentConfig2.sId);
 
     // Verify both mentions were created
     const mentionsInDb = await Mention.findAll({
@@ -186,7 +198,7 @@ describe("createAgentMessages", () => {
 
     // Should only create one agent message for the valid configuration
     expect(result).toHaveLength(1);
-    expect(result[0].m.configuration.sId).toBe(agentConfig1.sId);
+    expect(result[0].configuration.sId).toBe(agentConfig1.sId);
   });
 
   it("should return empty array when no agent mentions are provided", async () => {
@@ -241,8 +253,7 @@ describe("createAgentMessages", () => {
     });
 
     expect(result).toHaveLength(1);
-    expect(result[0].m.skipToolsValidation).toBe(true);
-    expect(result[0].row.skipToolsValidation).toBe(true);
+    expect(result[0].skipToolsValidation).toBe(true);
   });
 
   it("should set parentAgentMessageId when context origin is agent_handover", async () => {
@@ -278,7 +289,7 @@ describe("createAgentMessages", () => {
     });
 
     expect(result).toHaveLength(1);
-    expect(result[0].m.parentAgentMessageId).toBe(originMessageId);
+    expect(result[0].parentAgentMessageId).toBe(originMessageId);
   });
 
   it("should set parentAgentMessageId to null when context origin is not agent_handover", async () => {
@@ -310,7 +321,7 @@ describe("createAgentMessages", () => {
     });
 
     expect(result).toHaveLength(1);
-    expect(result[0].m.parentAgentMessageId).toBeNull();
+    expect(result[0].parentAgentMessageId).toBeNull();
   });
 
   it("should increment message rank correctly for multiple agent messages", async () => {
@@ -347,8 +358,8 @@ describe("createAgentMessages", () => {
 
     expect(result).toHaveLength(2);
     // Note: The function increments nextMessageRank internally, so ranks should be 10 and 11
-    expect(result[0].m.rank).toBe(nextMessageRank);
-    expect(result[1].m.rank).toBe(nextMessageRank + 1);
+    expect(result[0].rank).toBe(nextMessageRank);
+    expect(result[1].rank).toBe(nextMessageRank + 1);
   });
 });
 
