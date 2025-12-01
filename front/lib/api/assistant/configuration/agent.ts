@@ -60,6 +60,7 @@ import type {
   AgentModelConfigurationType,
   AgentStatus,
   LightAgentConfigurationType,
+  ModelId,
   Result,
   UserType,
 } from "@app/types";
@@ -367,6 +368,25 @@ export async function createAgentConfiguration(
 
   let userFavorite = false;
 
+  // For hidden agents, track previous editors to disable triggers when editors are removed.
+  let previousEditorIds: Set<ModelId> = new Set();
+  if (agentConfigurationId && scope === "hidden") {
+    const existingAgent = await getAgentConfiguration(auth, {
+      agentId: agentConfigurationId,
+      variant: "light",
+    });
+    if (existingAgent) {
+      const editorGroupRes = await GroupResource.findEditorGroupForAgent(
+        auth,
+        existingAgent
+      );
+      if (editorGroupRes.isOk()) {
+        const members = await editorGroupRes.value.getActiveMembers(auth);
+        previousEditorIds = new Set(members.map((m) => m.id));
+      }
+    }
+  }
+
   try {
     let template: TemplateResource | null = null;
     if (templateId) {
@@ -580,6 +600,38 @@ export async function createAgentConfiguration(
       agent: agentConfiguration,
       auth,
     });
+
+    // Disable triggers for editors who were removed from a hidden agent.
+    if (previousEditorIds.size > 0 && scope === "hidden") {
+      const newEditorIds = new Set(editors.map((e) => e.id));
+      const removedEditorIds = Array.from(previousEditorIds).filter(
+        (id) => !newEditorIds.has(id)
+      );
+
+      if (removedEditorIds.length > 0) {
+        const triggersToDisableRes =
+          await TriggerResource.listByAgentConfigurationIdAndEditors(auth, {
+            agentConfigurationId: agent.sId,
+            editorIds: removedEditorIds,
+          });
+        if (triggersToDisableRes.isOk()) {
+          for (const trigger of triggersToDisableRes.value) {
+            const disableResult = await trigger.disable(auth);
+            if (disableResult.isErr()) {
+              logger.error(
+                {
+                  workspaceId: owner.sId,
+                  agentConfigurationId: agent.sId,
+                  triggerId: trigger.sId,
+                  error: disableResult.error,
+                },
+                `Failed to disable trigger ${trigger.sId} when removing editor from agent ${agent.sId}`
+              );
+            }
+          }
+        }
+      }
+    }
 
     return new Ok(agentConfiguration);
   } catch (error) {
@@ -1161,7 +1213,7 @@ export async function updateAgentPermissions(
   // The canWrite check for agent_editors groups (allowing members and admins)
   // is implicitly handled by addMembers and removeMembers.
   try {
-    return await withTransaction(async (t) => {
+    const transactionResult = await withTransaction(async (t) => {
       if (usersToAdd.length > 0) {
         const addRes = await editorGroupRes.value.addMembers(auth, usersToAdd, {
           transaction: t,
@@ -1185,6 +1237,40 @@ export async function updateAgentPermissions(
       }
       return new Ok(undefined);
     });
+
+    if (transactionResult.isErr()) {
+      return transactionResult;
+    }
+
+    // If the agent is hidden and editors were removed, disable their triggers.
+    // Removed editors can no longer access the hidden agent, so their triggers would fail.
+    if (usersToRemove.length > 0 && agent.scope === "hidden") {
+      const triggersToDisable =
+        await TriggerResource.listByAgentConfigurationIdAndEditors(auth, {
+          agentConfigurationId: agent.sId,
+          editorIds: usersToRemove.map((u) => u.id),
+        });
+
+      if (triggersToDisable.isErr()) {
+        return new Err(normalizeAsInternalDustError(triggersToDisable.error));
+      }
+      for (const trigger of triggersToDisable.value) {
+        const disableResult = await trigger.disable(auth);
+        if (disableResult.isErr()) {
+          logger.error(
+            {
+              workspaceId: auth.getNonNullableWorkspace().sId,
+              agentConfigurationId: agent.sId,
+              triggerId: trigger.sId,
+              error: disableResult.error,
+            },
+            `Failed to disable trigger ${trigger.sId} when removing editor from agent ${agent.sId}`
+          );
+        }
+      }
+    }
+
+    return new Ok(undefined);
   } catch (error) {
     // Catch errors thrown from within the transaction
     return new Err(normalizeAsInternalDustError(error));
