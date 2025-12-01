@@ -16,6 +16,7 @@ import {
 import React from "react";
 
 import { useUser } from "@app/lib/swr/user";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { WorkspaceType } from "@app/types";
 import type { RichMention } from "@app/types";
 
@@ -24,25 +25,34 @@ import { MentionDropdown } from "./MentionDropdown";
 interface MentionDisplayProps {
   mention: RichMention;
   interactive?: boolean;
-  owner?: WorkspaceType;
+  owner: WorkspaceType;
   showTooltip?: boolean;
 }
 
 interface MentionTriggerProps {
   mention: RichMention;
   isCurrentUserMentioned: boolean;
+  owner: WorkspaceType;
 }
 
 function MentionTrigger({
   mention,
   isCurrentUserMentioned = false,
+  owner,
 }: MentionTriggerProps) {
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const userMentionsEnabled = hasFeature("mentions_v2");
+
   return (
     <span
       className={cn(
         "inline-block cursor-pointer font-light",
-        mention.type === "agent" ? "text-highlight-500" : "text-green-700",
-        isCurrentUserMentioned && "bg-green-200 text-green-700"
+        userMentionsEnabled || mention.type === "agent"
+          ? "text-highlight-500"
+          : "text-green-700",
+        userMentionsEnabled &&
+          isCurrentUserMentioned &&
+          "bg-green-200 text-green-700"
       )}
     >
       @{mention.label}
@@ -77,6 +87,7 @@ export function MentionDisplay({
                 <MentionTrigger
                   mention={mention}
                   isCurrentUserMentioned={isCurrentUserMentioned}
+                  owner={owner}
                 />
               </MentionDropdown>
             </TooltipTrigger>
@@ -92,6 +103,7 @@ export function MentionDisplay({
           <MentionTrigger
             mention={mention}
             isCurrentUserMentioned={isCurrentUserMentioned}
+            owner={owner}
           />
         </MentionDropdown>
       </div>
@@ -107,6 +119,7 @@ export function MentionDisplay({
             <MentionTrigger
               mention={mention}
               isCurrentUserMentioned={isCurrentUserMentioned}
+              owner={owner}
             />
           </TooltipTrigger>
           <TooltipContent>{mention.description}</TooltipContent>
@@ -119,6 +132,7 @@ export function MentionDisplay({
     <MentionTrigger
       mention={mention}
       isCurrentUserMentioned={isCurrentUserMentioned}
+      owner={owner}
     />
   );
 }
