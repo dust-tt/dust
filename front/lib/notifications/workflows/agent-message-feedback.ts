@@ -191,8 +191,7 @@ export const agentMessageFeedbackWorkflow = workflow(
               digestKey,
             }
           : {
-              amount: 1,
-              unit: "days",
+              cron: "0 9 * * *", // Every day at 9:00 AM UTC
               digestKey,
             };
       },
