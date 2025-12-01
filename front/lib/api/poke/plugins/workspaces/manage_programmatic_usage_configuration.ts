@@ -215,6 +215,10 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
     // Handle non-PAYG config fields first
     const existingConfig =
       await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
+    // When PAYG is disabled, clear the cap (set to null)
+    // When enabled, convert dollars to cents
+    const paygCapCents =
+      paygEnabled && paygCapDollars ? Math.round(paygCapDollars * 100) : null;
 
     if (existingConfig) {
       const updateResult = await existingConfig.updateConfiguration(auth, {
