@@ -2,7 +2,10 @@ import assert from "assert";
 import type { ParsedUrlQuery } from "querystring";
 
 import config from "@app/lib/api/config";
-import type { BaseOAuthStrategyProvider } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
+import type {
+  BaseOAuthStrategyProvider,
+  RelatedCredential,
+} from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
 import {
   finalizeUriForProvider,
   getStringFromQuery,
@@ -20,10 +23,12 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
     connection,
     useCase,
     extraConfig,
+    clientId: providedClientId,
   }: {
     connection: OAuthConnectionType;
     useCase: OAuthUseCase;
     extraConfig?: ExtraConfigType;
+    clientId?: string;
   }) {
     const { user_scopes, bot_scopes } = (() => {
       switch (useCase) {
@@ -126,6 +131,9 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
         case "personal_actions":
           return config.getOAuthSlackToolsClientId();
         case "connection": {
+          if (providedClientId) {
+            return providedClientId;
+          }
           return config.getOAuthSlackClientId();
         }
         case "bot":
@@ -172,6 +180,46 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
     return getStringFromQuery(query, "state");
   }
 
+  async getRelatedCredential(
+    auth: Authenticator,
+    {
+      extraConfig,
+      workspaceId,
+      userId,
+      useCase,
+    }: {
+      extraConfig: ExtraConfigType;
+      workspaceId: string;
+      userId: string;
+      useCase: OAuthUseCase;
+    }
+  ): Promise<RelatedCredential | undefined> {
+    if (useCase !== "connection") {
+      return undefined;
+    }
+
+    const { slack_client_id, slack_client_secret, slack_signing_secret } =
+      extraConfig;
+    if (!slack_client_id || !slack_client_secret || !slack_signing_secret) {
+      return undefined;
+    }
+
+    // Check if the feature flag is enabled
+    const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+    if (!featureFlags.includes("self_created_slack_app_connector_rollout")) {
+      return undefined;
+    }
+
+    return {
+      content: {
+        client_id: slack_client_id,
+        client_secret: slack_client_secret,
+        signing_secret: slack_signing_secret,
+      },
+      metadata: { workspace_id: workspaceId, user_id: userId },
+    };
+  }
+
   async getUpdatedExtraConfig(
     auth: Authenticator,
     {
@@ -182,7 +230,29 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
       useCase: OAuthUseCase;
     }
   ): Promise<ExtraConfigType> {
-    if (useCase === "personal_actions") {
+    if (useCase === "connection") {
+      // Remove the secrets from the stored config (they're stored in relatedCredential)
+      const {
+        slack_client_secret: _,
+        slack_signing_secret: __,
+        ...restConfig
+      } = extraConfig;
+
+      const featureFlags = await getFeatureFlags(
+        auth.getNonNullableWorkspace()
+      );
+      if (
+        featureFlags.includes("self_created_slack_app_connector_rollout") &&
+        restConfig.slack_client_id
+      ) {
+        return {
+          ...restConfig,
+          client_id: restConfig.slack_client_id,
+        };
+      }
+
+      return restConfig;
+    } else if (useCase === "personal_actions") {
       // For personal actions we fetch the team id of the admin-setup to enforce the team id to be the same as the admin-setup.
       // workspace connection (setup by admin) if we have it.
       const { mcp_server_id, ...restConfig } = extraConfig;
@@ -244,6 +314,18 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
     if (useCase === "personal_actions") {
       return (
         Object.keys(extraConfig).length === 1 && "mcp_server_id" in extraConfig
+      );
+    }
+    if (useCase === "connection") {
+      // Accept either empty config or config with all required Slack app credentials
+      const keys = Object.keys(extraConfig);
+      if (keys.length === 0) {
+        return true;
+      }
+      return !!(
+        extraConfig.slack_client_id &&
+        extraConfig.slack_client_secret &&
+        extraConfig.slack_signing_secret
       );
     }
     return Object.keys(extraConfig).length === 0;

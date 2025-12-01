@@ -202,6 +202,17 @@ export class OAuthAPI {
     return this._resultFromResponse(response);
   }
 
+  async getSlackSigningSecret({
+    connectionId,
+  }: {
+    connectionId: string;
+  }): Promise<OAuthAPIResponse<{ signing_secret: string }>> {
+    const response = await this._fetchWithError(
+      `${this._url}/connections/${connectionId}/slack_signing_secret`
+    );
+    return this._resultFromResponse(response);
+  }
+
   private async _fetchWithError(
     url: string,
     init?: RequestInit

@@ -493,6 +493,101 @@ async fn credentials_delete(
     }
 }
 
+async fn connections_slack_signing_secret(
+    State(state): State<Arc<OAuthState>>,
+    Path(connection_id): Path<String>,
+) -> (StatusCode, Json<APIResponse>) {
+    // Retrieve the connection
+    let connection = match state.store.retrieve_connection(&connection_id).await {
+        Err(e) => {
+            return error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to retrieve connection",
+                Some(e),
+            )
+        }
+        Ok(None) => {
+            return error_response(
+                StatusCode::NOT_FOUND,
+                "connection_not_found",
+                "Requested connection was not found",
+                None,
+            )
+        }
+        Ok(Some(c)) => c,
+    };
+
+    // Verify this is a Slack connection
+    if connection.provider() != ConnectionProvider::Slack {
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            "invalid_provider",
+            "This endpoint is only available for Slack connections",
+            None,
+        );
+    }
+
+    // Get the related credential ID
+    let credential_id = match connection.related_credential_id() {
+        Some(id) => id,
+        None => {
+            return error_response(
+                StatusCode::NOT_FOUND,
+                "credential_not_found",
+                "Connection does not have a related credential",
+                None,
+            )
+        }
+    };
+
+    // Retrieve the credential
+    let credential = match state.store.retrieve_credential(&credential_id).await {
+        Err(e) => {
+            return error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to retrieve credential",
+                Some(e),
+            )
+        }
+        Ok(None) => {
+            return error_response(
+                StatusCode::NOT_FOUND,
+                "credential_not_found",
+                "Related credential was not found",
+                None,
+            )
+        }
+        Ok(Some(c)) => c,
+    };
+
+    // Extract the signing secret from the credential
+    match SlackConnectionProvider::get_signing_secret(&credential) {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to extract signing secret from credential",
+            Some(e),
+        ),
+        Ok(None) => error_response(
+            StatusCode::NOT_FOUND,
+            "signing_secret_not_found",
+            "Signing secret not found in credential",
+            None,
+        ),
+        Ok(Some(signing_secret)) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "signing_secret": signing_secret,
+                })),
+            }),
+        ),
+    }
+}
+
 pub async fn create_app() -> Result<Router> {
     let store: Box<dyn store::OAuthStore + Sync + Send> = match std::env::var("OAUTH_DATABASE_URI")
     {
@@ -527,6 +622,10 @@ pub async fn create_app() -> Result<Router> {
         .route(
             "/connections/{connection_id}/credential",
             patch(connections_update_credential),
+        )
+        .route(
+            "/connections/{connection_id}/slack_signing_secret",
+            get(connections_slack_signing_secret),
         )
         .route("/credentials", post(credentials_create))
         .route("/credentials/{credential_id}", get(credentials_retrieve))

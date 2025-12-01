@@ -371,13 +371,16 @@ function UpdateConnectionOAuthModal({
             </ContentMessage>
           </div>
         )}
-        {connectorConfiguration.oauthExtraConfigComponent && (
-          <connectorConfiguration.oauthExtraConfigComponent
-            extraConfig={extraConfig}
-            setExtraConfig={setExtraConfig}
-            setIsExtraConfigValid={setIsExtraConfigValid}
-          />
-        )}
+        {connectorConfiguration.oauthExtraConfigComponent &&
+          // TODO(slackstorm) fabien: add extra config for Slack
+          // We must display the extra config without the possibility to edit the client id to not break the connector.
+          connectorConfiguration.connectorProvider !== "slack" && (
+            <connectorConfiguration.oauthExtraConfigComponent
+              extraConfig={extraConfig}
+              setExtraConfig={setExtraConfig}
+              setIsExtraConfigValid={setIsExtraConfigValid}
+            />
+          )}
 
         <div className="flex items-center justify-center">
           <Dialog>

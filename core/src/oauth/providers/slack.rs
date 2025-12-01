@@ -100,6 +100,23 @@ impl SlackConnectionProvider {
         Ok((client_id.to_string(), client_secret.to_string()))
     }
 
+    pub fn get_signing_secret(credentials: &Credential) -> Result<Option<String>> {
+        let content = credentials.unseal_encrypted_content()?;
+        let provider = credentials.provider();
+
+        if provider != CredentialProvider::Slack {
+            return Err(anyhow!(
+                "Invalid credential provider: {:?}, expected Slack",
+                provider
+            ));
+        }
+
+        Ok(content
+            .get("signing_secret")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()))
+    }
+
     /// Creates a system credential for Slack connection use-case using env variables
     /// Returns None if this is not a Slack connection use-case
     pub async fn create_system_credential_if_needed(

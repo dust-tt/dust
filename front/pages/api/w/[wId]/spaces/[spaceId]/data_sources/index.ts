@@ -42,9 +42,23 @@ import {
   dustManagedCredentials,
   EMBEDDING_CONFIGS,
   ioTsParsePayload,
+  OAuthAPI,
   sendUserOperationMessage,
   WebCrawlerConfigurationTypeSchema,
 } from "@app/types";
+
+async function getSlackSigningSecret(
+  oauthAPI: OAuthAPI,
+  connectionId: string
+): Promise<string | undefined> {
+  const signingSecretRes = await oauthAPI.getSlackSigningSecret({
+    connectionId,
+  });
+  if (signingSecretRes.isErr()) {
+    return undefined;
+  }
+  return signingSecretRes.value.signing_secret;
+}
 
 // Sorcery: Create a union type with at least two elements to satisfy t.union
 function getConnectorProviderCodec(): t.Mixed {
@@ -517,6 +531,53 @@ const handleDataSourceWithProvider = async ({
   }
 
   await dataSource.setConnectorId(connectorsRes.value.id);
+
+  // For Slack apps, register the signing secret in the webhook router
+  if (provider === "slack" && connectionId) {
+    const oauthAPI = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+    const accessTokenRes = await oauthAPI.getAccessToken({ connectionId });
+    if (accessTokenRes.isOk()) {
+      const connection = accessTokenRes.value.connection;
+      const signingSecret = await getSlackSigningSecret(oauthAPI, connectionId);
+
+      if (signingSecret && connection.metadata.team_id) {
+        const webhookRes = await connectorsAPI.addSlackWebhookRouterEntry({
+          slackTeamId: connection.metadata.team_id,
+          signingSecret: signingSecret,
+        });
+
+        if (webhookRes.isErr()) {
+          logger.error(
+            { error: webhookRes.error, teamId: connection.metadata.team_id },
+            "Failed to register webhook router entry for Slack app"
+          );
+
+          // Rollback: delete connector and data source
+          await dataSource.delete(auth, { hardDelete: true });
+
+          const deleteRes = await coreAPI.deleteDataSource({
+            projectId: dustProject.value.project.project_id.toString(),
+            dataSourceId: dustDataSource.value.data_source.data_source_id,
+          });
+          if (deleteRes.isErr()) {
+            logger.error(
+              { error: deleteRes.error },
+              "Failed to delete the data source during rollback"
+            );
+          }
+
+          return apiError(req, res, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message:
+                "Failed to register webhook router entry for Slack app. The connector has been rolled back.",
+            },
+          });
+        }
+      }
+    }
+  }
 
   res.status(201).json({
     dataSource: dataSource.toJSON(),
