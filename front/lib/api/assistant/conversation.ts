@@ -12,6 +12,7 @@ import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/cont
 import {
   createAgentMessages,
   createUserMentions,
+  createUserMessage,
 } from "@app/lib/api/assistant/conversation/mentions";
 import { getContentFragmentSpaceIds } from "@app/lib/api/assistant/permissions";
 import {
@@ -36,16 +37,13 @@ import { triggerConversationUnreadNotifications } from "@app/lib/notifications/w
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import {
   generateRandomModelSId,
   getResourceIdFromSId,
 } from "@app/lib/resources/string_ids";
-import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
-import { isEmailValid } from "@app/lib/utils";
 import {
   getTimeframeSecondsFromLiteral,
   rateLimiter,
@@ -71,7 +69,6 @@ import type {
   Result,
   UserMessageContext,
   UserMessageType,
-  UserType,
   WorkspaceType,
 } from "@app/types";
 import {
@@ -346,151 +343,6 @@ async function getConversationRankVersionLock(
   );
 }
 
-async function attributeUserFromWorkspaceAndEmail(
-  workspace: WorkspaceType | null,
-  email: string | null
-): Promise<UserType | null> {
-  if (!workspace || !email || !isEmailValid(email)) {
-    return null;
-  }
-
-  const matchingUser = await UserResource.fetchByEmail(email);
-  if (!matchingUser) {
-    return null;
-  }
-
-  const membership =
-    await MembershipResource.getActiveMembershipOfUserInWorkspace({
-      user: matchingUser,
-      workspace,
-    });
-
-  return membership ? matchingUser.toJSON() : null;
-}
-
-async function createMessageAndUserMessage({
-  workspace,
-  conversation,
-  metadata,
-  content,
-  transaction,
-}: {
-  workspace: WorkspaceType;
-  conversation: ConversationWithoutContentType;
-  content: string;
-  metadata:
-    | {
-        type: "edit";
-        message: Message;
-      }
-    | {
-        type: "create";
-        user: UserType | null;
-        rank: number;
-        context: UserMessageContext;
-        agenticMessageData?: AgenticMessageData;
-      };
-  transaction: Transaction;
-}) {
-  let rank = 0;
-  let version = 0;
-  let parentId: ModelId | null = null;
-  let userMessage: UserMessage | null = null;
-  switch (metadata.type) {
-    case "edit":
-      rank = metadata.message.rank;
-      version = metadata.message.version + 1;
-      parentId = metadata.message.id;
-      const userMessageToEdit = metadata.message.userMessage;
-      if (!userMessageToEdit) {
-        throw new Error(
-          "Unexpected: UserMessage to edit not found in DB. Make sure it's included in the fetch."
-        );
-      }
-      userMessage = await UserMessage.create(
-        {
-          content,
-          // TODO(MCP Clean-up): Rename field in DB.
-          clientSideMCPServerIds:
-            userMessageToEdit.clientSideMCPServerIds ?? [],
-          userContextUsername: userMessageToEdit.userContextUsername,
-          userContextTimezone: userMessageToEdit.userContextTimezone,
-          userContextFullName: userMessageToEdit.userContextFullName,
-          userContextEmail: userMessageToEdit.userContextEmail,
-          userContextProfilePictureUrl:
-            userMessageToEdit.userContextProfilePictureUrl,
-          userContextOrigin: userMessageToEdit.userContextOrigin,
-          userContextLastTriggerRunAt:
-            userMessageToEdit.userContextLastTriggerRunAt,
-          agenticMessageType: userMessageToEdit.agenticMessageType,
-          agenticOriginMessageId: userMessageToEdit.agenticOriginMessageId,
-          userId: userMessageToEdit.userId,
-          workspaceId: userMessageToEdit.workspaceId,
-        },
-        { transaction: transaction }
-      );
-      break;
-    case "create":
-      rank = metadata.rank;
-      const user =
-        metadata.user ??
-        (await attributeUserFromWorkspaceAndEmail(
-          workspace,
-          metadata.context.email
-        ));
-
-      // Fetch originMessage to ensure it exists
-      const originMessageId = metadata.agenticMessageData?.originMessageId;
-      const originMessage = originMessageId
-        ? await Message.findOne({
-            where: {
-              workspaceId: workspace.id,
-              sId: originMessageId,
-            },
-          })
-        : null;
-      userMessage = await UserMessage.create(
-        {
-          content,
-          // TODO(MCP Clean-up): Rename field in DB.
-          clientSideMCPServerIds: metadata.context.clientSideMCPServerIds ?? [],
-          userContextUsername: metadata.context.username,
-          userContextTimezone: metadata.context.timezone,
-          userContextFullName: metadata.context.fullName,
-          userContextEmail: metadata.context.email,
-          userContextProfilePictureUrl: metadata.context.profilePictureUrl,
-          userContextOrigin: metadata.context.origin,
-          userContextLastTriggerRunAt: metadata.context.lastTriggerRunAt
-            ? new Date(metadata.context.lastTriggerRunAt)
-            : null,
-          agenticMessageType: metadata.agenticMessageData?.type,
-          agenticOriginMessageId: originMessage?.sId,
-          userId: user?.id,
-          workspaceId: workspace.id,
-        },
-        { transaction: transaction }
-      );
-      break;
-    default:
-      assertNever(metadata);
-  }
-
-  return Message.create(
-    {
-      sId: generateRandomModelSId(),
-      rank,
-      conversationId: conversation.id,
-      parentId,
-      version,
-      userMessageId: userMessage.id,
-      workspaceId: workspace.id,
-    },
-    {
-      transaction,
-    }
-  );
-}
-
 export function getRelatedContentFragments(
   conversation: ConversationType,
   message: UserMessageType
@@ -679,10 +531,11 @@ export async function postUserMessage(
           transaction: t,
         })) ?? -1) + 1;
 
-      const m = await createMessageAndUserMessage({
+      const userMessage = await createUserMessage({
         workspace: owner,
         conversation,
         content,
+        mentions,
         metadata: {
           type: "create",
           user: user?.toJSON() ?? null,
@@ -693,24 +546,9 @@ export async function postUserMessage(
         transaction: t,
       });
 
-      const userMessage: UserMessageType = {
-        id: m.id,
-        created: m.createdAt.getTime(),
-        sId: m.sId,
-        type: "user_message",
-        visibility: "visible",
-        version: 0,
-        user: user?.toJSON() ?? null,
-        mentions,
-        content,
-        context,
-        agenticMessageData,
-        rank: m.rank,
-      };
-
       await createUserMentions(auth, {
         mentions,
-        message: m,
+        message: userMessage,
         conversation,
         transaction: t,
       });
@@ -732,7 +570,7 @@ export async function postUserMessage(
         if (conversationRes) {
           await triggerConversationUnreadNotifications(auth, {
             conversation: conversationRes,
-            messageId: m.sId,
+            messageId: userMessage.sId,
           });
         }
       }
@@ -744,7 +582,6 @@ export async function postUserMessage(
           type: "create",
           mentions,
           agentConfigurations,
-          message: m,
           skipToolsValidation,
           nextMessageRank,
           userMessage,
@@ -1008,30 +845,17 @@ export async function editUserMessage(
         );
       }
 
-      const m = await createMessageAndUserMessage({
+      const userMessage = await createUserMessage({
         workspace: owner,
         conversation,
         content,
+        mentions,
         metadata: {
           type: "edit",
-          message: messageRow,
+          message,
         },
         transaction: t,
       });
-
-      const userMessage: UserMessageType = {
-        id: m.id,
-        created: m.createdAt.getTime(),
-        sId: m.sId,
-        type: "user_message",
-        visibility: m.visibility,
-        version: m.version,
-        user: user?.toJSON() ?? null,
-        mentions,
-        content,
-        context: message.context,
-        rank: m.rank,
-      };
 
       // Mark the conversation as unread for all participants except the user.
       await ConversationResource.markAsUnreadForOtherParticipants(auth, {
@@ -1052,7 +876,7 @@ export async function editUserMessage(
 
       await createUserMentions(auth, {
         mentions,
-        message: m,
+        message: userMessage,
         conversation,
         transaction: t,
       });
@@ -1064,7 +888,6 @@ export async function editUserMessage(
           type: "create",
           mentions,
           agentConfigurations,
-          message: m,
           skipToolsValidation,
           nextMessageRank,
           userMessage,
@@ -1223,7 +1046,7 @@ export async function retryAgentMessage(
         conversation,
         metadata: {
           type: "retry",
-          message: messageRow,
+          parentId: messageRow.parentId,
           agentMessage: message,
         },
         transaction: t,
