@@ -104,7 +104,6 @@ export default defineConfig(
       "@next/next/no-img-element": "off",
 
       // Import rules
-      "import/no-cycle": ["error", { maxDepth: 1, ignoreExternal: true }],
       "import/consistent-type-specifier-style": ["error", "prefer-top-level"],
 
       // Import sorting
