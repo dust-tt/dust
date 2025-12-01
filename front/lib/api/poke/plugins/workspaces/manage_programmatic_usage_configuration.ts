@@ -106,7 +106,7 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
         type: "number",
         label: "Default Discount (%)",
         description:
-          "Discount applied to every programmatic credit usage purchase, PAYG or committed",
+          "Discount applied by default to programmatic credit purchases, PAYG or committed.",
         async: true,
       },
       paygEnabled: {
@@ -114,7 +114,7 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
         variant: "toggle",
         label: "Pay-as-you-go",
         description:
-          "Enable pay-as-you-go billing (enterprise only). When enabled, programmatic usage will not stops after free and committed credits are exhausted. Requires a spending cap.",
+          "Enable pay-as-you-go billing (enterprise only). When enabled, programmatic usage will still be possible after free and committed credits are exhausted. Requires a spending cap.",
         async: true,
       },
       paygCapDollars: {
