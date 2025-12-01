@@ -40,6 +40,7 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import { statsDClient } from "@app/logger/statsDClient";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import {
   launchScheduleWorkspaceScrubWorkflow,
@@ -497,9 +498,13 @@ async function handler(
             assertStripeSubscriptionIsValid(stripeSubscription);
 
           if (validStatus.isErr()) {
+            statsDClient.increment("stripe.subscription.invalid", 1, [
+              "event_type:customer.subscription.created",
+            ]);
+
             logger.error(
               {
-                stripeError: true,
+                invalidStripeSubscriptionError: true,
                 workspaceId: event.data.object.metadata?.workspaceId,
                 stripeSubscriptionId: stripeSubscription.id,
                 priceId,
@@ -780,13 +785,17 @@ async function handler(
           const validStatus =
             assertStripeSubscriptionIsValid(stripeSubscription);
           if (validStatus.isErr()) {
+            statsDClient.increment("stripe.subscription.invalid", 1, [
+              "event_type:customer.subscription.updated",
+            ]);
+
             const priceId =
               stripeSubscription.items.data.length > 0
                 ? stripeSubscription.items.data[0].price?.id
                 : null;
             logger.error(
               {
-                stripeError: true,
+                invalidStripeSubscriptionError: true,
                 workspaceId: event.data.object.metadata?.workspaceId,
                 stripeSubscriptionId: stripeSubscription.id,
                 priceId,
