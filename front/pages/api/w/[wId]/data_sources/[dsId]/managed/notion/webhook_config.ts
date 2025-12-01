@@ -64,8 +64,10 @@ async function handler(
     });
   }
 
-  const connectorsAPIConfig = config.getConnectorsAPIConfig();
-  const connectorsAPI = new ConnectorsAPI(connectorsAPIConfig, logger);
+  const connectorsAPI = new ConnectorsAPI(
+    config.getConnectorsAPIConfig(),
+    logger
+  );
 
   // Get the Notion workspace ID
   const workspaceIdRes = await connectorsAPI.getNotionWorkspaceId(
@@ -94,66 +96,44 @@ async function handler(
   const webhookUrl = `https://webhook-router.dust.tt/notion/${notionWorkspaceId}`;
 
   // Try to get the verification token from the webhooks router
-  try {
-    const webhookRouterRes = await fetch(
-      `${connectorsAPIConfig.url}/webhooks_router_entries/${connectorsAPIConfig.webhookSecret}/notion/${notionWorkspaceId}`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${connectorsAPIConfig.secret}`,
-        },
-      }
-    );
+  const webhookRouterRes = await connectorsAPI.getWebhookRouterEntry({
+    provider: "notion",
+    providerWorkspaceId: notionWorkspaceId,
+  });
 
-    if (webhookRouterRes.status === 404) {
-      // Expected when the webhook hasn't been set up yet
+  if (webhookRouterRes.isErr()) {
+    // 404 is expected when the webhook hasn't been set up yet
+    if (
+      webhookRouterRes.error.type === "not_found" ||
+      webhookRouterRes.error.type === "connector_not_found"
+    ) {
       return res.status(200).json({
         webhookUrl,
         verificationToken: null,
       });
     }
 
-    if (!webhookRouterRes.ok) {
-      logger.error(
-        {
-          status: webhookRouterRes.status,
-          statusText: webhookRouterRes.statusText,
-          notionWorkspaceId,
-        },
-        "Failed to get webhook router entry"
-      );
-      return apiError(req, res, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: "Failed to get webhook router entry",
-        },
-      });
-    }
-
-    const webhookRouterData = await webhookRouterRes.json();
-
-    return res.status(200).json({
-      webhookUrl,
-      verificationToken: webhookRouterData.signing_secret,
-    });
-  } catch (error) {
     logger.error(
       {
-        error,
+        error: webhookRouterRes.error,
         notionWorkspaceId,
       },
-      "Failed to fetch webhook router entry"
+      "Failed to get webhook router entry"
     );
     return apiError(req, res, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
-        message: "Failed to fetch webhook router entry",
+        message: "Failed to get webhook router entry",
+        connectors_error: webhookRouterRes.error,
       },
     });
   }
+
+  return res.status(200).json({
+    webhookUrl,
+    verificationToken: webhookRouterRes.value.signing_secret,
+  });
 }
 
 export default withSessionAuthenticationForWorkspace(handler);
