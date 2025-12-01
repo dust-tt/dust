@@ -3,6 +3,7 @@ import esbuild from "esbuild";
 async function buildWorker() {
   try {
     console.log("Building worker with esbuild...");
+    console.log("hello");
 
     const result = await esbuild.build({
       entryPoints: ["start_worker.ts"],
