@@ -14,7 +14,7 @@ interface MentionComponentProps {
       pictureUrl?: string;
     };
   };
-  owner?: WorkspaceType;
+  owner: WorkspaceType;
 }
 
 export const MentionComponent = ({ node, owner }: MentionComponentProps) => {

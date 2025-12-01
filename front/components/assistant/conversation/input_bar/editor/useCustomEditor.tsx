@@ -1,3 +1,4 @@
+import Link from "@tiptap/extension-link";
 import { Placeholder } from "@tiptap/extensions";
 import { Markdown } from "@tiptap/markdown";
 import type { Editor } from "@tiptap/react";
@@ -211,9 +212,30 @@ const useCustomEditor = ({
     StarterKit.configure({
       hardBreak: false, // Disable the built-in Shift+Enter. We handle it ourselves in the keymap extension
       strike: false,
+      heading: {
+        levels: [1],
+      },
     }),
     Markdown,
     DataSourceLinkExtension,
+    Link.extend({
+      renderHTML({ HTMLAttributes }: { HTMLAttributes: { href: string } }) {
+        const href = HTMLAttributes.href || "";
+        return [
+          "span",
+          {
+            ...HTMLAttributes,
+            title: href, // Add title attribute to show URL as tooltip
+          },
+          0,
+        ];
+      },
+    }).configure({
+      HTMLAttributes: {
+        class: "text-blue-600 hover:underline hover:text-blue-800",
+      },
+      autolink: false,
+    }),
     MentionExtension.configure({
       owner,
       HTMLAttributes: {
@@ -244,9 +266,11 @@ const useCustomEditor = ({
   const editor = useEditor({
     autofocus: disableAutoFocus ? false : "end",
     extensions,
+    shouldRerenderOnTransaction: true, // necessary to update the editor state (and so the toolbar icons "activation") in real time
     editorProps: {
       attributes: {
-        class: "border-0 outline-none overflow-y-auto h-full scrollbar-hide",
+        class:
+          "border-0 outline-none overflow-y-auto h-full scrollbar-hide [&_h1]:text-2xl [&_h1]:font-semibold [&_h1]:my-2 [&_a]:cursor-text",
       },
       // cleans up incoming HTML to remove all style that could mess up with our theme
       transformPastedHTML(html: string) {

@@ -1,8 +1,4 @@
-import {
-  CommandLineIcon,
-  DocumentIcon,
-  DocumentTextIcon,
-} from "@dust-tt/sparkle";
+import { CodeBlockIcon, CodeSlashIcon, HeadingIcon } from "@dust-tt/sparkle";
 import type { Editor as CoreEditor } from "@tiptap/core";
 import type { Editor as ReactEditor } from "@tiptap/react";
 import type {
@@ -44,7 +40,7 @@ const BLOCK_SUGGESTIONS: BlockSuggestion[] = [
   {
     id: "heading",
     label: "Heading",
-    icon: DocumentTextIcon,
+    icon: HeadingIcon,
     command: (editor, range) => {
       editor.chain().focus().deleteRange(range).setHeading({ level: 1 }).run();
     },
@@ -52,7 +48,7 @@ const BLOCK_SUGGESTIONS: BlockSuggestion[] = [
   {
     id: "xml-block",
     label: "XML Tag",
-    icon: DocumentIcon,
+    icon: CodeSlashIcon,
     command: (editor, range) => {
       editor
         .chain()
@@ -65,7 +61,7 @@ const BLOCK_SUGGESTIONS: BlockSuggestion[] = [
   {
     id: "code-block",
     label: "Code Block",
-    icon: CommandLineIcon,
+    icon: CodeBlockIcon,
     command: (editor, range) => {
       editor.chain().focus().deleteRange(range).setCodeBlock().run();
     },
