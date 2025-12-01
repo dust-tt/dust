@@ -16,8 +16,8 @@ const buildTargets: BuildTarget[] = [
   {
     name: "CLI",
     entryPoint: "src/admin/cli.ts",
-    outfile: "dist/cli.js"
-  }
+    outfile: "dist/cli.js",
+  },
 ];
 
 async function buildTarget(target: BuildTarget) {
