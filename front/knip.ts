@@ -23,6 +23,7 @@ const config: KnipConfig = {
     "posthog-node",
     "eslint-plugin-dust",
     "sqlite3", // used during the build process by sequelize
+    "@dust-tt/client",
   ],
   paths: {
     "@app/*": ["./*"],
