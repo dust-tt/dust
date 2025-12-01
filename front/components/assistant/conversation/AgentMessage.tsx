@@ -31,6 +31,7 @@ import { FeedbackSelector } from "@app/components/assistant/conversation/Feedbac
 import { FeedbackSelectorPopoverContent } from "@app/components/assistant/conversation/FeedbackSelectorPopoverContent";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/interactive_content/useAutoOpenInteractiveContent";
+import { MCPServerPersonalAuthenticationDeclined } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationDeclined";
 import { MCPServerPersonalAuthenticationRequired } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationRequired";
 import { NewConversationMessage } from "@app/components/assistant/conversation/NewConversationMessage";
 import type {
@@ -97,6 +98,7 @@ import {
   GLOBAL_AGENTS_SID,
   isAgentMessageType,
   isInteractiveContentFileContentType,
+  isPersonalAuthenticationRequiredDeclinedErrorContent,
   isPersonalAuthenticationRequiredErrorContent,
   isSupportedImageContentType,
 } from "@app/types";
@@ -817,6 +819,17 @@ function AgentMessageContent({
         />
       );
     }
+
+    console.log("error", error);
+    if (isPersonalAuthenticationRequiredDeclinedErrorContent(error)) {
+      return (
+        <MCPServerPersonalAuthenticationDeclined
+          owner={owner}
+          mcpServerId={error.metadata.mcp_server_id}
+        />
+      );
+    }
+
     return (
       <ErrorMessage
         error={

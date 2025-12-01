@@ -16,6 +16,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  ExclamationCircleIcon,
   Label,
   ListCheckIcon,
   MagicIcon,
@@ -58,6 +59,7 @@ import {
   getGroupConversationsByUnreadAndActionRequired,
 } from "@app/components/assistant/conversation/utils";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
+import { useDismissBlockedActions } from "@app/hooks/useDeclineAuthenticationAction";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
@@ -123,6 +125,14 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   const { conversations, isConversationsError, mutateConversations } =
     useConversations({
       workspaceId: owner.sId,
+    });
+
+  const { dismissBlockedActions, isDismissingActionRequiredActions } =
+    useDismissBlockedActions({
+      owner,
+      onError: (errorMessage) => {
+        console.error(errorMessage);
+      },
     });
 
   useEffect(() => {
@@ -311,6 +321,27 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
         titleFilter,
       })
     : ({} as Record<GroupLabel, ConversationWithoutContentType[]>);
+
+  const handleDismissBlockedActions = async (
+    conversations: ConversationWithoutContentType[]
+  ) => {
+    const result = await dismissBlockedActions({
+      conversationIds: conversations.map((c) => c.sId),
+    });
+
+    if (result.success) {
+      void mutateConversations();
+      sendNotification({
+        type: "success",
+        title: "Conversations dismissed successfully",
+      });
+    } else {
+      sendNotification({
+        type: "error",
+        title: "Failed to dismiss",
+      });
+    }
+  };
 
   return (
     <>
@@ -501,6 +532,10 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                 isMultiSelect={isMultiSelect}
                 selectedConversations={selectedConversations}
                 toggleConversationSelection={toggleConversationSelection}
+                handleDismissBlockedActions={handleDismissBlockedActions}
+                isDismissingActionRequiredActions={
+                  isDismissingActionRequiredActions
+                }
                 router={router}
                 owner={owner}
               />
@@ -562,6 +597,10 @@ interface InboxConversationListProps {
   router: NextRouter;
   owner: WorkspaceType;
   titleFilter: string;
+  dismissBlockedActions: (
+    conversations: ConversationWithoutContentType[]
+  ) => Promise<void>;
+  isDismissingActionRequiredActions: boolean;
 }
 
 interface ConversationListContainerProps {
@@ -582,8 +621,19 @@ const InboxConversationList = ({
   isMarkingAllAsRead,
   titleFilter,
   onMarkAllAsRead,
+  dismissBlockedActions,
+  isDismissingActionRequiredActions,
   ...props
 }: InboxConversationListProps) => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const handleMenuOpenChange = (open: boolean) => {
+    // We don't wanna close the menu if we are dismissing action required actions to show the loading spinner.
+    if (!isDismissingActionRequiredActions) {
+      setIsMenuOpen(open);
+    }
+  };
+
   if (!unreadConversations.length && !actionRequiredConversations.length) {
     return null;
   }
@@ -594,12 +644,22 @@ const InboxConversationList = ({
     !isMultiSelect &&
     onMarkAllAsRead;
 
+  const shouldShowAbortAllBlockedButton =
+    actionRequiredConversations.length > 0 &&
+    !isMultiSelect &&
+    dismissBlockedActions;
+
   const sortedInboxConversations = [
     ...unreadConversations,
     ...actionRequiredConversations,
   ].sort((a, b) => {
     return (b.updated ?? b.created) - (a.updated ?? a.created);
   });
+
+  const handleDismissBlockedActions = async () => {
+    await dismissBlockedActions(actionRequiredConversations);
+    handleMenuOpenChange(false);
+  };
 
   return (
     <ConversationListContainer>
@@ -608,8 +668,9 @@ const InboxConversationList = ({
           label={dateLabel}
           className="bg-background dark:bg-background-night"
         />
-        {shouldShowMarkAllAsReadButton && (
-          <div className="flex">
+
+        <div className="flex items-center gap-1">
+          {shouldShowMarkAllAsReadButton && (
             <Button
               size="xs"
               variant="ghost"
@@ -618,8 +679,38 @@ const InboxConversationList = ({
               isLoading={isMarkingAllAsRead}
               className="mt-2 text-muted-foreground dark:text-muted-foreground-night"
             />
-          </div>
-        )}
+          )}
+          {shouldShowAbortAllBlockedButton && (
+            <DropdownMenu
+              modal={false}
+              open={isMenuOpen}
+              onOpenChange={handleMenuOpenChange}
+            >
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="xs"
+                  variant="ghost"
+                  icon={MoreIcon}
+                  className="mt-2 text-muted-foreground dark:text-muted-foreground-night"
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  label="Abort all blocked"
+                  icon={
+                    isDismissingActionRequiredActions ? (
+                      <Spinner size="xs" />
+                    ) : (
+                      ExclamationCircleIcon
+                    )
+                  }
+                  disabled={isDismissingActionRequiredActions}
+                  onClick={handleDismissBlockedActions}
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
       </div>
 
       {sortedInboxConversations.map((conversation) => (
@@ -780,6 +871,8 @@ interface NavigationListWithInboxProps {
   toggleConversationSelection: (
     conversation: ConversationWithoutContentType
   ) => void;
+  handleDismissBlockedActions: () => Promise<void>;
+  isDismissingActionRequiredActions: boolean;
   router: NextRouter;
   owner: WorkspaceType;
 }
@@ -797,6 +890,8 @@ const NavigationListWithInbox = forwardRef<
       isMultiSelect,
       selectedConversations,
       toggleConversationSelection,
+      handleDismissBlockedActions,
+      isDismissingActionRequiredActions,
       router,
       owner,
     },
@@ -852,6 +947,10 @@ const NavigationListWithInbox = forwardRef<
               toggleConversationSelection={toggleConversationSelection}
               router={router}
               owner={owner}
+              dismissBlockedActions={handleDismissBlockedActions}
+              isDismissingActionRequiredActions={
+                isDismissingActionRequiredActions
+              }
             />
           </div>
         )}

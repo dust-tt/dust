@@ -275,6 +275,23 @@ export function isPersonalAuthenticationRequiredErrorContent(
   );
 }
 
+export type PersonalAuthenticationRequiredDeclinedErrorContent = {
+  code: "mcp_server_personal_authentication_declined";
+  message: string;
+  metadata: MCPServerPersonalAuthenticationRequiredMetadata;
+};
+
+export function isPersonalAuthenticationRequiredDeclinedErrorContent(
+  error: unknown
+): error is PersonalAuthenticationRequiredDeclinedErrorContent {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "mcp_server_personal_authentication_declined"
+  );
+}
+
 // Generic event sent when an error occurred during the model call.
 export type AgentErrorEvent = {
   type: "agent_error";

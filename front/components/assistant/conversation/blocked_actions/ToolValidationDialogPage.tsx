@@ -26,7 +26,7 @@ export function ToolValidationDialogPage({
 
   return (
     <div className="flex flex-col gap-4 text-muted-foreground dark:text-muted-foreground-night">
-      <div>
+      <div className="mt-4">
         Allow{" "}
         <span className="font-semibold">
           @{blockedAction.metadata.agentName}
