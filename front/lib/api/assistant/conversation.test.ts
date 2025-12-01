@@ -3,8 +3,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { retryAgentMessage } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { publishAgentMessagesEvents } from "@app/lib/api/assistant/streaming/events";
-import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
+import type { Authenticator } from "@app/lib/auth";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
+import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -14,7 +15,6 @@ import type {
   LightAgentConfigurationType,
 } from "@app/types";
 import { isUserMessageType } from "@app/types";
-import { Authenticator } from "@app/lib/auth";
 
 // Mock the dependencies
 vi.mock("@app/temporal/agent_loop/client", () => ({
