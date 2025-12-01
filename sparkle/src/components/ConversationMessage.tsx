@@ -1,7 +1,14 @@
 import { cva, VariantProps } from "class-variance-authority";
 import React from "react";
 
-import { Avatar, Button, CitationGrid } from "@sparkle/components";
+import { Avatar, Button, CitationGrid, IconButton } from "@sparkle/components";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@sparkle/components/Dropdown";
+import { MoreIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
 export const ConversationContainer = React.forwardRef<
@@ -29,6 +36,7 @@ ConversationContainer.displayName = "ConversationContainer";
 interface ConversationMessageProps
   extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof messageVariants> {
+  actions?: ConversationMessageAction[];
   avatarBusy?: boolean;
   buttons?: React.ReactElement<typeof Button>[];
   children?: React.ReactNode;
@@ -44,6 +52,12 @@ interface ConversationMessageProps
 }
 
 export type ConversationMessageType = "user" | "agent";
+
+export interface ConversationMessageAction {
+  icon: React.ComponentType | React.ReactNode;
+  label: string;
+  onClick: () => void;
+}
 
 const messageVariants = cva("s-flex s-w-full s-flex-col s-rounded-2xl", {
   variants: {
@@ -90,6 +104,7 @@ export const ConversationMessage = React.forwardRef<
       renderName = (name) => <span>{name}</span>,
       infoChip,
       type,
+      actions,
       className,
       ...props
     },
@@ -107,6 +122,7 @@ export const ConversationMessage = React.forwardRef<
             isDisabled={isDisabled}
             renderName={renderName}
             infoChip={infoChip}
+            actions={actions}
           />
 
           <ConversationMessageContent citations={citations} type={type}>
@@ -159,6 +175,7 @@ ConversationMessageContent.displayName = "ConversationMessageContent";
 
 interface ConversationMessageHeaderProps
   extends React.HTMLAttributes<HTMLDivElement> {
+  actions?: ConversationMessageAction[];
   avatarUrl?: string | React.ReactNode;
   isBusy?: boolean;
   isDisabled?: boolean;
@@ -183,6 +200,7 @@ export const ConversationMessageHeader = React.forwardRef<
       infoChip,
       completionStatus,
       renderName,
+      actions,
       className,
       ...props
     },
@@ -221,7 +239,31 @@ export const ConversationMessageHeader = React.forwardRef<
             </span>
             {infoChip && infoChip}
           </div>
-          {completionStatus ?? null}
+          <div className="s-flex s-items-center s-gap-2">
+            {completionStatus ?? null}
+            {actions && actions.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <IconButton
+                    icon={MoreIcon}
+                    size="xs"
+                    variant="highlight-secondary"
+                    aria-label="Message actions"
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  {actions.map((action, index) => (
+                    <DropdownMenuItem
+                      key={index}
+                      icon={action.icon}
+                      label={action.label}
+                      onClick={action.onClick}
+                    />
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
         </div>
       </div>
     );
