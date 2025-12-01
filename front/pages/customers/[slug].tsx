@@ -359,7 +359,7 @@ export default function CustomerStoryPage({
               {(story.contactName !== null || story.contactTitle !== null) && (
                 <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
                   <div className="flex items-center gap-4">
-                    {story.contactPhoto ? (
+                    {story.contactPhoto && (
                       <Image
                         src={story.contactPhoto.url}
                         alt={story.contactPhoto.alt}
@@ -367,10 +367,11 @@ export default function CustomerStoryPage({
                         height={56}
                         className="h-14 w-14 rounded-full object-cover"
                       />
-                    ) : (
+                    )}
+                    {!story.contactPhoto && story.contactName && (
                       <div className="flex h-14 w-14 items-center justify-center rounded-full bg-highlight/10">
                         <span className="text-lg font-semibold text-highlight">
-                          {story.contactName?.charAt(0) || "?"}
+                          {story.contactName.charAt(0)}
                         </span>
                       </div>
                     )}
