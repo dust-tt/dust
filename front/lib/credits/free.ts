@@ -79,28 +79,18 @@ export async function countEligibleUsersForFreeCredits(
 /**
  * For enterprise: always eligible
  * For pro:
- *    if you are a new (incl. trial) or returning customer (subscription started 2 months ago), eligible
- *    else, if you are a "good payer" (last paid subscription invoice less than 2 months ago), eligible
+ *   if you are a "good payer" (last paid subscription invoice less than 2 months ago), eligible
  * Otherwise, not eligible
  */
 export async function isSubscriptionEligibleForFreeCredits(
   stripeSubscription: Stripe.Subscription
 ): Promise<boolean> {
-  const twoMonthsAgo = Date.now() - 2 * MONTHLY_BILLING_CYCLE_SECONDS * 1000;
-  const subscriptionStartMs = stripeSubscription.start_date * 1000;
-
-  // New customers (subscription started within last 2 months): always eligible
-  if (twoMonthsAgo <= subscriptionStartMs) {
-    return true;
-  }
-
-  // Existing customers: check if they have a recent paid invoice
   const paidInvoices = await getSubscriptionInvoices(stripeSubscription.id, {
     status: "paid",
     limit: 1,
   });
 
-  if (paidInvoices.length === 0) {
+  if (!paidInvoices || paidInvoices.length === 0) {
     return false;
   }
 

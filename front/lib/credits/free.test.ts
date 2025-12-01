@@ -7,6 +7,7 @@ import {
 } from "@app/lib/credits/free";
 import { getSubscriptionInvoices } from "@app/lib/plans/stripe";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import type { LightWorkspaceType } from "@app/types";
 
 vi.mock("@app/lib/plans/stripe", async () => {
   const actual = await vi.importActual("@app/lib/plans/stripe");
@@ -45,6 +46,22 @@ function makeInvoice(periodEnd: number): Stripe.Invoice {
   } as Stripe.Invoice;
 }
 
+function makeWorkspace(
+  overrides: Partial<LightWorkspaceType> = {}
+): LightWorkspaceType {
+  return {
+    id: 1,
+    sId: "ws_123",
+    name: "Test Workspace",
+    role: "admin",
+    segmentation: null,
+    whiteListedProviders: null,
+    defaultEmbeddingProvider: null,
+    metadata: null,
+    ...overrides,
+  };
+}
+
 describe("isSubscriptionEligibleForFreeCredits", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -56,78 +73,61 @@ describe("isSubscriptionEligibleForFreeCredits", () => {
     vi.useRealTimers();
   });
 
-  describe("new customers (subscription started within 2 months)", () => {
-    it("returns true for subscription started 1 month ago", async () => {
-      const startDate = NOW - MONTH_SECONDS;
-      const result = await isSubscriptionEligibleForFreeCredits(
-        makeSubscription(NOW, startDate)
-      );
-      expect(result).toBe(true);
-      expect(getSubscriptionInvoices).not.toHaveBeenCalled();
-    });
-
-    it("returns true for subscription started today", async () => {
-      const result = await isSubscriptionEligibleForFreeCredits(
-        makeSubscription(NOW, NOW)
-      );
-      expect(result).toBe(true);
-      expect(getSubscriptionInvoices).not.toHaveBeenCalled();
+  it("returns true with recent payment (within 2 billing cycles)", async () => {
+    vi.mocked(getSubscriptionInvoices).mockResolvedValue([
+      makeInvoice(NOW - MONTH_SECONDS * 0.5),
+    ]);
+    const result = await isSubscriptionEligibleForFreeCredits(
+      makeSubscription(NOW, NOW - MONTH_SECONDS * 6)
+    );
+    expect(result).toBe(true);
+    expect(getSubscriptionInvoices).toHaveBeenCalledWith("sub_123", {
+      status: "paid",
+      limit: 1,
     });
   });
 
-  describe("existing customers (subscription started more than 2 months ago)", () => {
-    const oldStartDate = NOW - MONTH_SECONDS * 6; // Started 6 months ago
+  it("returns true with payment exactly at 2 billing cycles", async () => {
+    vi.mocked(getSubscriptionInvoices).mockResolvedValue([
+      makeInvoice(NOW - MONTH_SECONDS * 2),
+    ]);
+    const result = await isSubscriptionEligibleForFreeCredits(
+      makeSubscription(NOW, NOW - MONTH_SECONDS * 6)
+    );
+    expect(result).toBe(true);
+  });
 
-    it("returns true with recent payment (within 2 billing cycles)", async () => {
-      vi.mocked(getSubscriptionInvoices).mockResolvedValue([
-        makeInvoice(NOW - MONTH_SECONDS * 0.5),
-      ]);
-      const result = await isSubscriptionEligibleForFreeCredits(
-        makeSubscription(NOW, oldStartDate)
-      );
-      expect(result).toBe(true);
-    });
+  it("returns false with old payment (more than 2 billing cycles ago)", async () => {
+    vi.mocked(getSubscriptionInvoices).mockResolvedValue([
+      makeInvoice(NOW - MONTH_SECONDS * 2.5),
+    ]);
+    const result = await isSubscriptionEligibleForFreeCredits(
+      makeSubscription(NOW, NOW - MONTH_SECONDS * 6)
+    );
+    expect(result).toBe(false);
+  });
 
-    it("returns true with payment exactly at 2 billing cycles", async () => {
-      vi.mocked(getSubscriptionInvoices).mockResolvedValue([
-        makeInvoice(NOW - MONTH_SECONDS * 2),
-      ]);
-      const result = await isSubscriptionEligibleForFreeCredits(
-        makeSubscription(NOW, oldStartDate)
-      );
-      expect(result).toBe(true);
-    });
+  it("returns false with no paid invoices", async () => {
+    vi.mocked(getSubscriptionInvoices).mockResolvedValue([]);
+    const result = await isSubscriptionEligibleForFreeCredits(
+      makeSubscription(NOW, NOW - MONTH_SECONDS * 6)
+    );
+    expect(result).toBe(false);
+  });
 
-    it("returns false with old payment (more than 2 billing cycles ago)", async () => {
-      vi.mocked(getSubscriptionInvoices).mockResolvedValue([
-        makeInvoice(NOW - MONTH_SECONDS * 2.5),
-      ]);
-      const result = await isSubscriptionEligibleForFreeCredits(
-        makeSubscription(NOW, oldStartDate)
-      );
-      expect(result).toBe(false);
-    });
-
-    it("returns false with no paid invoices", async () => {
-      vi.mocked(getSubscriptionInvoices).mockResolvedValue([]);
-      const result = await isSubscriptionEligibleForFreeCredits(
-        makeSubscription(NOW, oldStartDate)
-      );
-      expect(result).toBe(false);
-    });
+  it("returns false for new subscription with no paid invoices yet", async () => {
+    vi.mocked(getSubscriptionInvoices).mockResolvedValue([]);
+    const result = await isSubscriptionEligibleForFreeCredits(
+      makeSubscription(NOW, NOW)
+    );
+    expect(result).toBe(false);
   });
 });
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const USER_COUNT_CUTOFF_DAYS = 5;
 
-const mockWorkspace = {
-  id: 1,
-  sId: "ws_123",
-  name: "Test Workspace",
-} as Parameters<typeof countEligibleUsersForFreeCredits>[0];
-
-describe("countElligibleUsersForFreeCredits", () => {
+describe("countEligibleUsersForFreeCredits", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
@@ -141,7 +141,7 @@ describe("countElligibleUsersForFreeCredits", () => {
   describe("new customers (subscription started within cutoff period)", () => {
     it("returns 1 for subscription started today", async () => {
       const result = await countEligibleUsersForFreeCredits(
-        mockWorkspace,
+        makeWorkspace(),
         NOW_MS
       );
       expect(result).toBe(1);
@@ -153,7 +153,7 @@ describe("countElligibleUsersForFreeCredits", () => {
     it("returns 1 for subscription started 4 days ago", async () => {
       const subscriptionStartMs = NOW_MS - 4 * DAY_MS;
       const result = await countEligibleUsersForFreeCredits(
-        mockWorkspace,
+        makeWorkspace(),
         subscriptionStartMs
       );
       expect(result).toBe(1);
@@ -165,7 +165,7 @@ describe("countElligibleUsersForFreeCredits", () => {
     it("returns 1 for subscription started just under 5 days ago", async () => {
       const subscriptionStartMs = NOW_MS - USER_COUNT_CUTOFF_DAYS * DAY_MS + 1;
       const result = await countEligibleUsersForFreeCredits(
-        mockWorkspace,
+        makeWorkspace(),
         subscriptionStartMs
       );
       expect(result).toBe(1);
@@ -182,7 +182,7 @@ describe("countElligibleUsersForFreeCredits", () => {
       ).mockResolvedValue(15);
       const subscriptionStartMs = NOW_MS - USER_COUNT_CUTOFF_DAYS * DAY_MS;
       const result = await countEligibleUsersForFreeCredits(
-        mockWorkspace,
+        makeWorkspace(),
         subscriptionStartMs
       );
       expect(result).toBe(15);
@@ -204,7 +204,7 @@ describe("countElligibleUsersForFreeCredits", () => {
       ).mockResolvedValue(42);
       const subscriptionStartMs = NOW_MS - 30 * DAY_MS;
       const result = await countEligibleUsersForFreeCredits(
-        mockWorkspace,
+        makeWorkspace(),
         subscriptionStartMs
       );
       expect(result).toBe(42);
