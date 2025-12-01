@@ -11,6 +11,7 @@ import { getNovuClient } from "@app/lib/notifications";
 import { renderEmail as renderDigestEmail } from "@app/lib/notifications/email-templates/agent-message-feedback-digest";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
@@ -270,16 +271,14 @@ export const agentMessageFeedbackWorkflow = workflow(
             return true;
           }
 
-          const shouldSkip = await Promise.all(
-            validEvents.map(async (event) => {
-              if (!isAgentMessageFeedbackPayload(event.payload)) {
-                return true;
-              }
-              return shouldSkipNotification({
+          const shouldSkip = await concurrentExecutor(
+            validEvents,
+            async (event) =>
+              shouldSkipNotification({
                 subscriberId: subscriber.subscriberId,
-                payload: event.payload,
-              });
-            })
+                payload: event.payload as AgentMessageFeedbackPayloadType,
+              }),
+            { concurrency: 8 }
           );
 
           // Skip email if all events should be skipped (meaning 0 valid feedbacks)
