@@ -54,7 +54,7 @@ async function handleNotionWebhook(
       // We send it to the connectors API that saves webhook router entries.
       const { providerWorkspaceId } = req.params;
       body = {
-        signing_secret: req.body.verification_token,
+        signingSecret: req.body.verification_token,
       };
       endpoint = `notion/${providerWorkspaceId}`;
       rootUrlToken = "webhooks_router_entries";

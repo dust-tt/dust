@@ -11,18 +11,15 @@ type WebhookRouterEntryParams = {
 };
 
 type GetWebhookRouterEntryResBody = WithConnectorsAPIErrorReponse<{
-  provider: string;
-  providerWorkspaceId: string;
-  signing_secret: string;
-  regions: string[];
+  signingSecret: string;
 }>;
 
 /**
  * GET /webhooks_router_entries/:webhook_secret/:provider/:providerWorkspaceId
- * Get a webhook router configuration entry.
+ * Get a webhook router configuration entry signing secret.
  */
 const _getWebhookRouterEntryHandler = async (
-  req: Request<WebhookRouterEntryParams, GetWebhookRouterEntryResBody, never>,
+  req: Request<WebhookRouterEntryParams, GetWebhookRouterEntryResBody>,
   res: Response<GetWebhookRouterEntryResBody>
 ) => {
   const { provider, providerWorkspaceId } = req.params;
@@ -52,10 +49,7 @@ const _getWebhookRouterEntryHandler = async (
     );
 
     return res.status(200).json({
-      provider,
-      providerWorkspaceId,
-      signing_secret: entry.signing_secret,
-      regions: entry.regions,
+      signingSecret: entry.signingSecret,
     });
   } catch (error) {
     logger.error(

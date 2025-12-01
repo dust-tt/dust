@@ -6,8 +6,10 @@ export type Region = (typeof ALL_REGIONS)[number];
 type ProviderWithSigningSecret = "slack" | "notion";
 
 type WebhookRouterConfigEntry = {
-  signing_secret: string;
-  regions: Region[];
+  signingSecret: string;
+  regions: {
+    [region: string]: number[];
+  };
 };
 
 /**
@@ -16,24 +18,44 @@ type WebhookRouterConfigEntry = {
  * Example valid object:
  * {
  *   signingSecret: "abc123def456",
- *   regions: ["us-central1", "europe-west1"]
+ *   regions: {
+ *     "us-central1": [123, 456],
+ *     "europe-west1": [789]
+ *   }
  * }
  */
 function isValidWebhookRouterConfigEntry(
   value: unknown
 ): value is WebhookRouterConfigEntry {
-  return (
-    value !== null &&
-    typeof value === "object" &&
-    "signing_secret" in value &&
-    typeof value.signing_secret === "string" &&
-    "regions" in value &&
-    Array.isArray(value.regions) &&
-    value.regions.every(
-      (region: unknown) =>
-        typeof region === "string" && ALL_REGIONS.includes(region as Region)
-    )
-  );
+  if (
+    value === null ||
+    typeof value !== "object" ||
+    !("signingSecret" in value) ||
+    typeof value.signingSecret !== "string" ||
+    !("regions" in value) ||
+    typeof value.regions !== "object" ||
+    value.regions === null ||
+    Array.isArray(value.regions)
+  ) {
+    return false;
+  }
+
+  // Validate each region entry
+  for (const [regionKey, connectorIds] of Object.entries(value.regions)) {
+    // Check region key is valid
+    if (!ALL_REGIONS.includes(regionKey as Region)) {
+      return false;
+    }
+    // Check connectorIds is an array of numbers
+    if (
+      !Array.isArray(connectorIds) ||
+      !connectorIds.every((id) => typeof id === "number")
+    ) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 export class WebhookRouterConfigManager {
@@ -60,7 +82,7 @@ export class WebhookRouterConfigManager {
     }
 
     return {
-      signing_secret: configEntry.signing_secret,
+      signingSecret: configEntry.signingSecret,
       regions: configEntry.regions,
     };
   }

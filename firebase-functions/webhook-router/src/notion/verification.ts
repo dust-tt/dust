@@ -4,6 +4,7 @@ import type express from "express";
 import rawBody from "raw-body";
 
 import type { SecretManager } from "../secrets.js";
+import type { Region } from "../webhook-router-config.js";
 import type { WebhookRouterConfigManager } from "../webhook-router-config.js";
 
 class ReceiverAuthenticityError extends Error {
@@ -109,8 +110,8 @@ export function createNotionVerificationMiddleware(
           providerWorkspaceId
         );
         // Set the regions for the forwarder
-        req.regions = notionWebhookConfig.regions;
-        signingSecret = notionWebhookConfig.signing_secret;
+        req.regions = Object.keys(notionWebhookConfig.regions) as Region[];
+        signingSecret = notionWebhookConfig.signingSecret;
       } else {
         // Get secrets for Notion signature verification (webhook secret already validated)
         const secrets = await secretManager.getSecrets();

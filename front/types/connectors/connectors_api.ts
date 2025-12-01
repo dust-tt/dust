@@ -653,7 +653,7 @@ export class ConnectorsAPI {
     ConnectorsAPIResponse<{
       provider: string;
       providerWorkspaceId: string;
-      signing_secret: string;
+      signingSecret: string;
       regions: string[];
     }>
   > {

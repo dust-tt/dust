@@ -131,7 +131,7 @@ async function handler(
 
   return res.status(200).json({
     webhookUrl,
-    verificationToken: webhookRouterRes.value.signing_secret,
+    verificationToken: webhookRouterRes.value.signingSecret,
   });
 }
 
