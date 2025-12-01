@@ -15,6 +15,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { slugify } from "@app/types/shared/utils/string_utils";
 
 let client: ContentfulClientApi<undefined> | null = null;
+let previewClient: ContentfulClientApi<undefined> | null = null;
 
 function getClient() {
   if (!client) {
@@ -35,6 +36,28 @@ function getClient() {
     });
   }
   return client.withoutUnresolvableLinks;
+}
+
+function getPreviewClient() {
+  if (!previewClient) {
+    const spaceId = process.env.CONTENTFUL_SPACE_ID;
+    const previewToken = process.env.CONTENTFUL_PREVIEW_TOKEN;
+
+    if (!spaceId || !previewToken) {
+      throw new Error(
+        "Contentful preview credentials not configured. " +
+          "Set CONTENTFUL_SPACE_ID and CONTENTFUL_PREVIEW_TOKEN environment variables."
+      );
+    }
+
+    previewClient = createClient({
+      space: spaceId,
+      accessToken: previewToken,
+      host: "preview.contentful.com",
+      environment: process.env.CONTENTFUL_ENVIRONMENT ?? "master",
+    });
+  }
+  return previewClient.withoutUnresolvableLinks;
 }
 
 function contentfulAssetToBlogImage(
@@ -168,11 +191,11 @@ function contentfulEntryToBlogPostSummary(post: BlogPost): BlogPostSummary {
   };
 }
 
-export async function getAllBlogPosts(): Promise<
-  Result<BlogPostSummary[], Error>
-> {
+export async function getAllBlogPosts(
+  preview = false
+): Promise<Result<BlogPostSummary[], Error>> {
   try {
-    const contentfulClient = getClient();
+    const contentfulClient = preview ? getPreviewClient() : getClient();
 
     const response = await contentfulClient.getEntries<BlogPageSkeleton>({
       content_type: "blogPage",
@@ -194,10 +217,11 @@ export async function getAllBlogPosts(): Promise<
 }
 
 export async function getBlogPostBySlug(
-  slug: string
+  slug: string,
+  preview = false
 ): Promise<Result<BlogPost | null, Error>> {
   try {
-    const contentfulClient = getClient();
+    const contentfulClient = preview ? getPreviewClient() : getClient();
 
     const queryParams = {
       content_type: "blogPage",
@@ -221,14 +245,15 @@ export async function getBlogPostBySlug(
 export async function getRelatedPosts(
   currentSlug: string,
   tags: string[],
-  limit = 3
+  limit = 3,
+  preview = false
 ): Promise<Result<BlogPostSummary[], Error>> {
   if (tags.length === 0) {
     return new Ok([]);
   }
 
   try {
-    const contentfulClient = getClient();
+    const contentfulClient = preview ? getPreviewClient() : getClient();
 
     const queryParams = {
       content_type: "blogPage",
