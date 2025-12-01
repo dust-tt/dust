@@ -1,7 +1,7 @@
 import { mergeAttributes, Node } from "@tiptap/core";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 
-import { PastedAttachmentComponent } from "../PastedAttachmentComponent";
+import { PastedAttachmentComponent } from "../../input_bar/PastedAttachmentComponent";
 
 export interface PastedAttachmentOptions {
   onInlineText?: (fileId: string, textContent: string) => void;

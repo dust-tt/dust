@@ -1,8 +1,8 @@
 import type { Editor } from "@tiptap/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { DataSourceLinkExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/DataSourceLinkExtension";
-import { EditorFactory } from "@app/components/assistant/conversation/input_bar/editor/extensions/tests/utils";
+import { DataSourceLinkExtension } from "@app/components/editor/extensions/input_bar/DataSourceLinkExtension";
+import { EditorFactory } from "@app/components/editor/extensions/tests/utils";
 
 describe("DataSourceLinkExtension", () => {
   let editor: Editor;

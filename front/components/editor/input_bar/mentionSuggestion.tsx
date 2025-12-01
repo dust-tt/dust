@@ -6,11 +6,11 @@ import type {
 } from "@tiptap/suggestion";
 import type { RefAttributes } from "react";
 
-import { MentionDropdown } from "@app/components/assistant/conversation/input_bar/editor/MentionDropdown";
+import { MentionDropdown } from "@app/components/editor/input_bar/MentionDropdown";
 import type {
   MentionDropdownOnKeyDown,
   MentionDropdownProps,
-} from "@app/components/assistant/conversation/input_bar/editor/types";
+} from "@app/components/editor/input_bar/types";
 import type { RichMention, WorkspaceType } from "@app/types";
 
 export const mentionPluginKey = new PluginKey("mention-suggestion");

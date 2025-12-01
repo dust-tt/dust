@@ -12,10 +12,6 @@ import React, {
 } from "react";
 
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
-import type { CustomEditorProps } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
-import useCustomEditor from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
-import useHandleAgentMentions from "@app/components/assistant/conversation/input_bar/editor/useHandleAgentMentions";
-import useUrlHandler from "@app/components/assistant/conversation/input_bar/editor/useUrlHandler";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import {
@@ -26,6 +22,10 @@ import { MobileToolbar } from "@app/components/assistant/conversation/input_bar/
 import { Toolbar } from "@app/components/assistant/conversation/input_bar/toolbar/Toolbar";
 import { ToolsPicker } from "@app/components/assistant/ToolsPicker";
 import { VoicePicker } from "@app/components/assistant/VoicePicker";
+import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
+import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
+import useHandleAgentMentions from "@app/components/editor/input_bar/useHandleAgentMentions";
+import useUrlHandler from "@app/components/editor/input_bar/useUrlHandler";
 import { getIcon } from "@app/components/resources/resources_icons";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";

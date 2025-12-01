@@ -1,8 +1,8 @@
 import type { Editor } from "@tiptap/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { PastedAttachmentExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/PastedAttachmentExtension";
-import { EditorFactory } from "@app/components/assistant/conversation/input_bar/editor/extensions/tests/utils";
+import { PastedAttachmentExtension } from "@app/components/editor/extensions/input_bar/PastedAttachmentExtension";
+import { EditorFactory } from "@app/components/editor/extensions/tests/utils";
 
 describe("PastedAttachmentExtension", () => {
   let editor: Editor;
