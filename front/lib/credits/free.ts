@@ -26,6 +26,7 @@ const MONTHLY_BILLING_CYCLE_SECONDS = 30 * 24 * 60 * 60; // ~30 days
 
 // 5 days
 const USER_COUNT_CUTOFF = 5 * 24 * 60 * 60 * 1000;
+const MAX_ELIGIBLE_USERS_FIRST_CYCLE = 1;
 
 /**
  * Calculate free credit amount based on brackets system:
@@ -58,13 +59,16 @@ export function calculateFreeCreditAmount(userCount: number): number {
  * Why 5 days ? At the current price of $30 / month,
  * pro-rated bump up from 5 days ago would be 5$.
  */
-export async function countElligibleUsersForFreeCredits(
+export async function countEligibleUsersForFreeCredits(
   workspace: Parameters<typeof renderLightWorkspaceType>[0]["workspace"],
   subscriptionStartMs: number
 ): Promise<number> {
-  const cutoffDate = new Date(
-    Math.max(subscriptionStartMs, Date.now() - USER_COUNT_CUTOFF)
-  );
+  // New customers (subscription started within the cutoff period) get 1 user worth of credits ($5)
+  if (subscriptionStartMs > Date.now() - USER_COUNT_CUTOFF) {
+    return MAX_ELIGIBLE_USERS_FIRST_CYCLE;
+  }
+
+  const cutoffDate = new Date(Date.now() - USER_COUNT_CUTOFF);
   return MembershipResource.getMembersCountForWorkspace({
     workspace: renderLightWorkspaceType({ workspace }),
     activeOnly: true,
@@ -180,7 +184,7 @@ export async function grantFreeCreditsOnSubscriptionRenewal({
     );
   } else {
     const subscriptionStartMs = stripeSubscription.start_date * 1000;
-    const userCount = await countElligibleUsersForFreeCredits(
+    const userCount = await countEligibleUsersForFreeCredits(
       workspace,
       subscriptionStartMs
     );
