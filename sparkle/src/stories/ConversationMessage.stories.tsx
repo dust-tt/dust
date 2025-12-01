@@ -287,46 +287,44 @@ Occasional system crashes when presented with empty food bowl. Single whisker ma
 
 export const ConversationWithActions = () => {
   return (
-    <>
-      <div className="s-flex s-w-full s-justify-center s-gap-6">
-        <ConversationContainer>
-          <ConversationMessage
-            type="user"
-            name="Edouard"
-            pictureUrl="https://dust.tt/static/droidavatar/Droid_Lime_1.jpg"
-            timestamp="14:30"
-            actions={[
-              {
-                icon: PencilSquareIcon,
-                label: "Edit",
-                onClick: () => {
-                  console.log("Edit clicked");
-                },
+    <div className="s-flex s-w-full s-justify-center s-gap-6">
+      <ConversationContainer>
+        <ConversationMessage
+          type="user"
+          name="Edouard"
+          pictureUrl="https://dust.tt/static/droidavatar/Droid_Lime_1.jpg"
+          timestamp="14:30"
+          actions={[
+            {
+              icon: PencilSquareIcon,
+              label: "Edit",
+              onClick: () => {
+                console.log("Edit clicked");
               },
-              {
-                icon: TrashIcon,
-                label: "Delete",
-                onClick: () => {
-                  console.log("Delete clicked");
-                },
+            },
+            {
+              icon: TrashIcon,
+              label: "Delete",
+              onClick: () => {
+                console.log("Delete clicked");
               },
-            ]}
-          >
-            This is a user message with edit and delete actions available in the
-            dropdown menu.
-          </ConversationMessage>
+            },
+          ]}
+        >
+          This is a user message with edit and delete actions available in the
+          dropdown menu.
+        </ConversationMessage>
 
-          <ConversationMessage
-            type="agent"
-            name="@agent"
-            pictureUrl="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
-            timestamp="14:31"
-          >
-            This is an agent message with edit and delete actions available in
-            the dropdown menu.
-          </ConversationMessage>
-        </ConversationContainer>
-      </div>
-    </>
+        <ConversationMessage
+          type="agent"
+          name="@agent"
+          pictureUrl="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
+          timestamp="14:31"
+        >
+          This is an agent message with edit and delete actions available in the
+          dropdown menu.
+        </ConversationMessage>
+      </ConversationContainer>
+    </div>
   );
 };
