@@ -820,7 +820,6 @@ function AgentMessageContent({
       );
     }
 
-    console.log("error", error);
     if (isPersonalAuthenticationRequiredDeclinedErrorContent(error)) {
       return (
         <MCPServerPersonalAuthenticationDeclined
