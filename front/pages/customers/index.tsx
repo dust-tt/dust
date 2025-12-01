@@ -179,9 +179,13 @@ export default function CustomerStoriesListing({
       } else {
         delete newQuery[key];
       }
-      void router.push({ pathname: router.pathname, query: newQuery }, undefined, {
-        shallow: true,
-      });
+      void router.push(
+        { pathname: router.pathname, query: newQuery },
+        undefined,
+        {
+          shallow: true,
+        }
+      );
     },
     [router]
   );
@@ -218,7 +222,9 @@ export default function CustomerStoriesListing({
     selectedCompanySizes.length > 0;
 
   const clearAllFilters = useCallback(() => {
-    void router.push({ pathname: router.pathname }, undefined, { shallow: true });
+    void router.push({ pathname: router.pathname }, undefined, {
+      shallow: true,
+    });
   }, [router]);
 
   return (
@@ -292,11 +298,6 @@ export default function CustomerStoriesListing({
           <div className="flex-1">
             {filteredStories.length > 0 ? (
               <>
-                <p className="mb-6 text-sm text-muted-foreground">
-                  {filteredStories.length}{" "}
-                  {filteredStories.length === 1 ? "story" : "stories"}
-                  {hasActiveFilters && " matching your filters"}
-                </p>
                 <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
                   {filteredStories.map((story) => (
                     <Link
