@@ -99,6 +99,10 @@ export async function allocatePAYGCreditsOnCycleRenewal({
 }
 
 export async function isPAYGEnabled(auth: Authenticator): Promise<boolean> {
+  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+  if (!featureFlags.includes("ppul")) {
+    return false;
+  }
   const config =
     await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
   return config !== null && config.paygCapCents !== null;
