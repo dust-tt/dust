@@ -164,8 +164,8 @@ async function handler(
   const filteredHeaders: Record<string, string> = Object.fromEntries(
     Object.entries(headers).filter(
       ([key]) =>
-        (HEADERS_ALLOWED_LIST.includes(key.toLowerCase()) &&
-          webhookSource.provider !== null) ||
+        (HEADERS_ALLOWED_LIST.includes(key.toLowerCase()) ||
+          webhookSource.signatureHeader?.toLowerCase() === key.toLowerCase()) &&
         isString(headers[key])
     ) as [string, string][] // Type assertion to satisfy TypeScript, we've already filtered to strings
   );
