@@ -138,6 +138,8 @@ WORKDIR /app
 
 # Copy worker assets from workers-specific build
 COPY --from=workers-build /app/dist ./dist
+# Copy relocation scripts
+COPY --from=base-deps /app/scripts/relocation ./scripts/relocation
 # Copy full dependencies from base dependencies (includes all node_modules)
 COPY --from=base-deps /app/node_modules ./node_modules
 COPY --from=base-deps /app/package.json ./package.json
