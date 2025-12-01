@@ -97,13 +97,17 @@ export async function upsertMessageFeedback(
   const { agentMessage, feedback, agentConfiguration, isGlobalAgent } =
     feedbackWithConversationContext.value;
 
+  const agentConfigurationId = isGlobalAgent
+    ? agentMessage.agentConfigurationId
+    : agentConfiguration.sId;
+
   if (feedback) {
     await feedback.updateFields({
       content,
       thumbDirection,
       isConversationShared,
     });
-    return new Ok(undefined);
+    return new Ok({ agentConfigurationId });
   }
 
   try {
@@ -111,9 +115,7 @@ export async function upsertMessageFeedback(
       workspaceId: auth.getNonNullableWorkspace().id,
       // If the agent is global, we use the agent configuration id from the agent message
       // Otherwise, we use the agent configuration id from the agent configuration
-      agentConfigurationId: isGlobalAgent
-        ? agentMessage.agentConfigurationId
-        : agentConfiguration.sId,
+      agentConfigurationId,
       agentConfigurationVersion: agentMessage.agentConfigurationVersion,
       agentMessageId: agentMessage.id,
       userId: user.id,
@@ -125,7 +127,7 @@ export async function upsertMessageFeedback(
   } catch (e) {
     return new Err(normalizeError(e));
   }
-  return new Ok(undefined);
+  return new Ok({ agentConfigurationId });
 }
 
 /**

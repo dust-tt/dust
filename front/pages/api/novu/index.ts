@@ -1,5 +1,6 @@
 import { serve } from "@novu/framework/next";
 
+import { agentMessageFeedbackWorkflow } from "@app/lib/notifications/workflows/agent-message-feedback";
 import { conversationAddedAsParticipantWorkflow } from "@app/lib/notifications/workflows/conversation-added-as-participant";
 import { conversationUnreadWorkflow } from "@app/lib/notifications/workflows/conversation-unread";
 
@@ -12,5 +13,6 @@ export default serve({
   workflows: [
     conversationUnreadWorkflow,
     conversationAddedAsParticipantWorkflow,
+    agentMessageFeedbackWorkflow,
   ],
 });

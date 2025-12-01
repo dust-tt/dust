@@ -11,6 +11,7 @@ import {
 } from "@app/lib/api/assistant/feedback";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { triggerAgentMessageFeedbackNotification } from "@app/lib/notifications/workflows/agent-message-feedback";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import { launchAgentMessageFeedbackWorkflow } from "@app/temporal/analytics_queue/client";
@@ -108,6 +109,15 @@ async function handler(
           agentMessageId: messageId,
           conversationId: conversation.sId,
         },
+      });
+
+      const r = await triggerAgentMessageFeedbackNotification(auth, {
+        conversationId: conversation.sId,
+        messageId,
+        agentConfigurationId: created.value.agentConfigurationId,
+        thumbDirection: bodyValidation.right
+          .thumbDirection as AgentMessageFeedbackDirection,
+        feedbackContent: bodyValidation.right.feedbackContent ?? undefined,
       });
 
       res.status(200).json({ success: true });
