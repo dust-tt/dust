@@ -83,7 +83,7 @@ jobs:
         run: npm ci
       - name: Typecheck
         working-directory: front
-        run: npx tsc --version && npm run tsc
+        run: npx tsgo --version && npm run tsgo
   lint:
     runs-on: ubuntu-latest
     steps:

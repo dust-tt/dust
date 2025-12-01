@@ -9,7 +9,7 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, isDevelopment, normalizeError, Ok } from "@app/types";
 
-let sgMailClient: sgMail.MailService | null = null;
+let sgMailClient: typeof sgMail | null = null;
 
 export function getSgMailClient(): any {
   if (!sgMailClient) {
