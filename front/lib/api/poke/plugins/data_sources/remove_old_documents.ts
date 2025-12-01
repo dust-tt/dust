@@ -49,9 +49,7 @@ export const removeOldDocumentsPlugin = createPlugin({
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(cutoffDate)) {
       return new Err(
-        new Error(
-          "Invalid date format. Use YYYY-MM-DD (e.g., 2024-01-15)"
-        )
+        new Error("Invalid date format. Use YYYY-MM-DD (e.g., 2024-01-15)")
       );
     }
 
@@ -87,9 +85,7 @@ export const removeOldDocumentsPlugin = createPlugin({
 
       if (documentsRes.isErr()) {
         return new Err(
-          new Error(
-            `Failed to fetch documents: ${documentsRes.error.message}`
-          )
+          new Error(`Failed to fetch documents: ${documentsRes.error.message}`)
         );
       }
 
@@ -134,9 +130,10 @@ export const removeOldDocumentsPlugin = createPlugin({
             date: new Date(doc.timestamp).toISOString().split("T")[0],
           })),
           totalCount: documentsToDelete.length,
-          note: documentsToDelete.length > 100
-            ? `Showing first 100 of ${documentsToDelete.length} documents. Tick 'execute' to perform the deletion.`
-            : "No documents were actually deleted. Tick 'execute' to perform the deletion.",
+          note:
+            documentsToDelete.length > 100
+              ? `Showing first 100 of ${documentsToDelete.length} documents. Tick 'execute' to perform the deletion.`
+              : "No documents were actually deleted. Tick 'execute' to perform the deletion.",
         },
       });
     }
@@ -196,4 +193,3 @@ export const removeOldDocumentsPlugin = createPlugin({
     });
   },
 });
-
