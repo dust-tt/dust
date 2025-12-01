@@ -69,6 +69,11 @@ export function isProgrammaticUsage(
   auth: Authenticator,
   { userMessageOrigin }: { userMessageOrigin?: UserMessageOrigin | null } = {}
 ): boolean {
+  // TODO(2025-12-01 PPUL): Remove once PPUL is out.
+  if (auth.isKey() && !auth.isSystemKey()) {
+    return true;
+  }
+
   // Track for API keys, listed programmatic origins or unspecified user message origins.
   // This must be in sync with the getShouldTrackTokenUsageCostsESFilter function.
   // TODO(PPUL): enforce passing non-null userMessageOrigin.
