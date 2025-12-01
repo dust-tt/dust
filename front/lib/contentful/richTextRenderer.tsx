@@ -120,7 +120,7 @@ const renderOptions: Options = {
         {children}
       </blockquote>
     ),
-    [BLOCKS.HR]: () => <hr className="my-8 border-gray-200" />,
+    [BLOCKS.HR]: () => <hr className="mb-8 mt-8 border-gray-200" />,
     [BLOCKS.EMBEDDED_ASSET]: (node) => {
       const { file, title, description } = node.data.target.fields;
       if (!file) {
