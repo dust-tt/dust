@@ -71,15 +71,17 @@ describe("createAgentMessages", () => {
     ];
 
     const result = await createAgentMessages({
-      mentions,
-      agentConfigurations: [agentConfig1],
-      message: messageRow,
       owner: workspace,
-
-      skipToolsValidation: false,
-      nextMessageRank: 1,
       conversation,
-      userMessage,
+      metadata: {
+        type: "create",
+        mentions,
+        agentConfigurations: [agentConfig1],
+        message: messageRow,
+        skipToolsValidation: false,
+        nextMessageRank: 1,
+        userMessage,
+      },
     });
 
     expect(result).toHaveLength(1);
@@ -120,15 +122,17 @@ describe("createAgentMessages", () => {
     ];
 
     const result = await createAgentMessages({
-      mentions,
-      agentConfigurations: [agentConfig1, agentConfig2],
-      message: messageRow,
       owner: workspace,
-
-      skipToolsValidation: false,
-      nextMessageRank: 1,
       conversation,
-      userMessage,
+      metadata: {
+        type: "create",
+        mentions,
+        agentConfigurations: [agentConfig1, agentConfig2],
+        message: messageRow,
+        skipToolsValidation: false,
+        nextMessageRank: 1,
+        userMessage,
+      },
     });
 
     expect(result).toHaveLength(2);
@@ -164,15 +168,17 @@ describe("createAgentMessages", () => {
 
     // Only pass agentConfig1, not the non-existent one
     const result = await createAgentMessages({
-      mentions,
-      agentConfigurations: [agentConfig1],
-      message: messageRow,
       owner: workspace,
-
-      skipToolsValidation: false,
-      nextMessageRank: 1,
       conversation,
-      userMessage,
+      metadata: {
+        type: "create",
+        mentions,
+        agentConfigurations: [agentConfig1],
+        message: messageRow,
+        skipToolsValidation: false,
+        nextMessageRank: 1,
+        userMessage,
+      },
     });
 
     // Should only create one agent message for the valid configuration
@@ -190,15 +196,17 @@ describe("createAgentMessages", () => {
       });
 
     const result = await createAgentMessages({
-      mentions: [],
-      agentConfigurations: [agentConfig1],
-      message: messageRow,
       owner: workspace,
-
-      skipToolsValidation: false,
-      nextMessageRank: 1,
       conversation,
-      userMessage,
+      metadata: {
+        type: "create",
+        mentions: [],
+        agentConfigurations: [agentConfig1],
+        message: messageRow,
+        skipToolsValidation: false,
+        nextMessageRank: 1,
+        userMessage,
+      },
     });
 
     expect(result).toHaveLength(0);
@@ -220,15 +228,17 @@ describe("createAgentMessages", () => {
     ];
 
     const result = await createAgentMessages({
-      mentions,
-      agentConfigurations: [agentConfig1],
-      message: messageRow,
       owner: workspace,
-
-      skipToolsValidation: true,
-      nextMessageRank: 1,
       conversation,
-      userMessage,
+      metadata: {
+        type: "create",
+        mentions,
+        agentConfigurations: [agentConfig1],
+        message: messageRow,
+        skipToolsValidation: true,
+        nextMessageRank: 1,
+        userMessage,
+      },
     });
 
     expect(result).toHaveLength(1);
@@ -257,15 +267,17 @@ describe("createAgentMessages", () => {
     ];
 
     const result = await createAgentMessages({
-      mentions,
-      agentConfigurations: [agentConfig1],
-      message: messageRow,
       owner: workspace,
-
-      skipToolsValidation: false,
-      nextMessageRank: 1,
       conversation,
-      userMessage,
+      metadata: {
+        type: "create",
+        mentions,
+        agentConfigurations: [agentConfig1],
+        message: messageRow,
+        skipToolsValidation: true,
+        nextMessageRank: 1,
+        userMessage,
+      },
     });
 
     expect(result).toHaveLength(1);
@@ -289,15 +301,17 @@ describe("createAgentMessages", () => {
     ];
 
     const result = await createAgentMessages({
-      mentions,
-      agentConfigurations: [agentConfig1],
-      message: messageRow,
       owner: workspace,
-
-      skipToolsValidation: false,
-      nextMessageRank: 1,
       conversation,
-      userMessage,
+      metadata: {
+        type: "create",
+        mentions,
+        agentConfigurations: [agentConfig1],
+        message: messageRow,
+        skipToolsValidation: false,
+        nextMessageRank: 1,
+        userMessage,
+      },
     });
 
     expect(result).toHaveLength(1);
@@ -325,15 +339,17 @@ describe("createAgentMessages", () => {
     const nextMessageRank = 10;
 
     const result = await createAgentMessages({
-      mentions,
-      agentConfigurations: [agentConfig1, agentConfig2],
-      message: messageRow,
       owner: workspace,
-
-      skipToolsValidation: false,
-      nextMessageRank,
       conversation,
-      userMessage,
+      metadata: {
+        type: "create",
+        mentions,
+        agentConfigurations: [agentConfig1, agentConfig2],
+        message: messageRow,
+        skipToolsValidation: false,
+        nextMessageRank: 10,
+        userMessage,
+      },
     });
 
     expect(result).toHaveLength(2);
