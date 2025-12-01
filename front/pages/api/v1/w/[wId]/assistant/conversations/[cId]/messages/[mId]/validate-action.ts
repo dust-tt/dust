@@ -9,6 +9,7 @@ import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 
 /**
  * @swagger
@@ -114,7 +115,9 @@ async function handler(
     });
   }
 
-  const conversationRes = await getConversation(auth, cId);
+  const conversationRes =
+    await ConversationResource.fetchConversationWithoutContent(auth, cId);
+
   if (conversationRes.isErr()) {
     return apiErrorForConversation(req, res, conversationRes.error);
   }
