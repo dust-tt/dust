@@ -6,7 +6,7 @@ export interface Checkpoint {
   config: EvalConfig
   startTime: string
   results: EvalResult[]
-  completedTasks: Set<string> // Set of "run-promptIndex-agentId" strings
+  completedTasks: Set<string>
 }
 
 export function getCheckpointPath(config: EvalConfig): string {
@@ -17,6 +17,8 @@ export function getCheckpointPath(config: EvalConfig): string {
       csvPath: config.csvPath,
       judgeAgent: config.judgeAgent,
       runs: config.runs,
+      judgeRuns: config.judgeRuns,
+      scale: config.scale,
     })
   )
     .toString("base64")
@@ -36,7 +38,7 @@ export async function saveCheckpoint(
     config,
     startTime,
     results,
-    completedTasks: Array.from(completedTasks), // Convert Set to Array for JSON
+    completedTasks: Array.from(completedTasks),
   }
 
   const path = getCheckpointPath(config)
@@ -62,7 +64,9 @@ export async function loadCheckpoint(
         JSON.stringify(config.agents.sort()) ||
       data.config.csvPath !== config.csvPath ||
       data.config.judgeAgent !== config.judgeAgent ||
-      data.config.runs !== config.runs
+      data.config.runs !== config.runs ||
+      data.config.judgeRuns !== config.judgeRuns ||
+      data.config.scale !== config.scale
     ) {
       console.error(
         "Warning: Checkpoint config doesn't match current config. Starting fresh."
@@ -70,7 +74,6 @@ export async function loadCheckpoint(
       return null
     }
 
-    // Convert completedTasks array back to Set
     return {
       config: data.config,
       startTime: data.startTime,

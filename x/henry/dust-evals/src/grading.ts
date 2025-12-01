@@ -1,42 +1,106 @@
-import type { Result, Score, VersusJudgeResult } from "./types"
+import type { Result, ScaleConfig, JudgeVote, JudgeResult } from "./types"
 import { Ok, Err } from "./types"
 
+// Maximum standard deviation as fraction of scale range for 0-100 agreement calculation
+// Agreement = 1 - (stdDev / maxStdDev), where maxStdDev = 25% of range
+const CONTINUOUS_SCALE_MAX_STDDEV_RATIO = 0.25
+
 /**
- * Extract score from judge response.
- * Expects the judge to return a score in the format:
- * SCORE: <number>
- * where the number must be 0, 1, 2, or 3
+ * Extract score from judge response based on the scale.
+ * Expects format: SCORE: <number>
  */
-export function extractScore(response: string): Result<Score> {
-  const match = response.match(/(?:SCORE|Score):\s*(\d)/i)
-  if (match && match[1]) {
-    const score = parseInt(match[1])
-    if (score >= 0 && score <= 3) {
-      return Ok(score as Score)
-    }
-    return Err(new Error(`Score must be 0, 1, 2, or 3. Got: ${score}`))
+export function extractScore(
+  response: string,
+  scale: ScaleConfig
+): Result<number> {
+  // Look for SCORE: pattern (case insensitive)
+  const match = response.match(/(?:SCORE|Score):\s*(\d+(?:\.\d+)?)/i)
+
+  if (!match || match[1] === undefined) {
+    return Err(
+      new Error(
+        `Could not extract score from response. Expected format: "SCORE: <number>"\n` +
+          `Response excerpt: "${response.slice(-200)}"`
+      )
+    )
   }
-  return Err(new Error(`Could not extract score from response: ${response}`))
+
+  const score = parseFloat(match[1])
+
+  if (isNaN(score)) {
+    return Err(new Error(`Invalid score value: ${match[1]}`))
+  }
+
+  if (score < scale.min || score > scale.max) {
+    return Err(
+      new Error(
+        `Score ${score} is out of range. Expected ${scale.min}-${scale.max} for ${scale.type} scale`
+      )
+    )
+  }
+
+  // For non-continuous scales, validate it's an integer
+  if (scale.type !== "0-100" && !Number.isInteger(score)) {
+    return Err(
+      new Error(
+        `Score must be an integer for ${scale.type} scale. Got: ${score}`
+      )
+    )
+  }
+
+  return Ok(score)
 }
 
 /**
- * Format judge prompt for grading.
+ * Format the scoring rubric based on the scale.
+ */
+function formatScoringRubric(scale: ScaleConfig): string {
+  const lines: string[] = [`Scoring system (${scale.type} scale):`]
+
+  // Sort labels by score
+  const sortedLabels = Object.entries(scale.labels)
+    .map(([score, label]) => ({ score: parseInt(score), label }))
+    .sort((a, b) => a.score - b.score)
+
+  for (const { score, label } of sortedLabels) {
+    lines.push(`- ${score}: ${label}`)
+  }
+
+  return lines.join("\n")
+}
+
+/**
+ * Format judge prompt for grading with configurable scale.
  */
 export function formatJudgePrompt(
   prompt: string,
   response: string,
-  judgePrompt: string
+  judgePrompt: string,
+  scale: ScaleConfig,
+  globalJudgePrompt: string | undefined
 ): string {
-  return `You are evaluating an agent's response.
+  const rubric = formatScoringRubric(scale)
 
-Scoring system:
-- 0: Completely wrong or unhelpful
-- 1: Partially correct but missing key elements
-- 2: Mostly correct with minor issues
-- 3: Excellent, complete, and accurate
+  const globalSection = globalJudgePrompt
+    ? `${globalJudgePrompt}
+
+---
+
+`
+    : ""
+
+  return `${globalSection}You are evaluating an agent's response.
+
+${rubric}
 
 You MUST include your score in the format:
 SCORE: <number>
+
+Where <number> is between ${scale.min} and ${scale.max}.
+
+IMPORTANT: First provide your reasoning, then give your score. The score MUST appear at the end of your response.
+
+---
 
 Original prompt:
 "${prompt}"
@@ -47,98 +111,110 @@ Agent's response:
 Evaluation criteria:
 ${judgePrompt}
 
-Provide your evaluation with the score (0-3) clearly marked.`
+---
+
+Provide your evaluation with clear reasoning, then end with the score (${scale.min}-${scale.max}).`
 }
 
 /**
- * Extract winner from versus judge response.
- * Expects the judge to return a winner in the format:
- * WINNER: <ID> or WINNER: DRAW
+ * Calculate majority vote result from multiple judge votes.
+ * For discrete scales: uses mode (most common value)
+ * For continuous scale (0-100): uses median
  */
-export function extractVersusWinner(
-  response: string,
-  agentMapping: Map<number, string>
-): Result<VersusJudgeResult> {
-  // More precise regex: match WINNER: followed by either a number or DRAW
-  // Use word boundary (\b) to avoid capturing extra text
-  const match = response.match(/(?:WINNER|Winner):\s*(DRAW\b|\d+)/i)
-  if (!match || !match[1]) {
-    return Err(
-      new Error(
-        `Could not extract winner from response. Expected format: "WINNER: 1" or "WINNER: DRAW"`
-      )
-    )
+export function calculateMajorityVote(
+  votes: JudgeVote[],
+  scale: ScaleConfig
+): JudgeResult {
+  if (votes.length === 0) {
+    return {
+      finalScore: scale.min,
+      votes: [],
+      variance: 0,
+      agreement: 0,
+      majorityScore: scale.min,
+    }
   }
 
-  const winner = match[1].toUpperCase()
+  const scores = votes.map((v) => v.score)
 
-  if (winner === "DRAW") {
-    return Ok({
-      winner: "DRAW",
-      reasoning: response,
-    })
+  // Calculate statistics
+  const mean = scores.reduce((a, b) => a + b, 0) / scores.length
+  const variance =
+    scores.reduce((sum, s) => sum + Math.pow(s - mean, 2), 0) / scores.length
+  const stdDev = Math.sqrt(variance)
+
+  // Calculate majority score
+  let majorityScore: number
+
+  if (scale.type === "0-100") {
+    // For continuous scale, use median
+    const sorted = [...scores].sort((a, b) => a - b)
+    const mid = Math.floor(sorted.length / 2)
+    majorityScore =
+      sorted.length % 2 !== 0
+        ? sorted[mid]!
+        : (sorted[mid - 1]! + sorted[mid]!) / 2
+  } else {
+    // For discrete scales, use mode (most common value)
+    const counts = new Map<number, number>()
+    for (const score of scores) {
+      counts.set(score, (counts.get(score) || 0) + 1)
+    }
+
+    let maxCount = 0
+    let modes: number[] = []
+    for (const [score, count] of counts) {
+      if (count > maxCount) {
+        maxCount = count
+        modes = [score]
+      } else if (count === maxCount) {
+        modes.push(score)
+      }
+    }
+
+    // If tie, use median of modes
+    modes.sort((a, b) => a - b)
+    majorityScore = modes[Math.floor(modes.length / 2)]!
   }
 
-  // Try to parse as number (agent ID)
-  const agentNum = parseInt(winner)
-  if (!isNaN(agentNum) && agentMapping.has(agentNum)) {
-    return Ok({
-      winner: agentMapping.get(agentNum)!,
-      reasoning: response,
-    })
+  // Calculate agreement (0-1)
+  // For discrete: % of votes that match majority
+  // For continuous: based on standard deviation relative to scale range
+  let agreement: number
+
+  if (scale.type === "0-100") {
+    // Normalize stdDev to 0-1 range
+    const maxStdDev = (scale.max - scale.min) * CONTINUOUS_SCALE_MAX_STDDEV_RATIO
+    agreement = Math.max(0, 1 - stdDev / maxStdDev)
+  } else {
+    // Count votes matching majority
+    const matchingVotes = scores.filter((s) => s === majorityScore).length
+    agreement = matchingVotes / scores.length
   }
 
-  return Err(
-    new Error(
-      `Invalid winner: ${winner}. Must be a number (1-${agentMapping.size}) or "DRAW"`
-    )
-  )
+  return {
+    finalScore: majorityScore,
+    votes,
+    variance,
+    agreement,
+    majorityScore,
+  }
 }
 
 /**
- * Format judge prompt for versus mode grading.
+ * Check if a result has low agreement (judges disagreed significantly).
  */
-export function formatVersusJudgePrompt(
-  originalPrompt: string,
-  responses: Array<{ agentId: string; response: string }>,
-  judgePrompt: string
-): { prompt: string; agentMapping: Map<number, string> } {
-  // Create anonymous mapping
-  const agentMapping = new Map<number, string>()
-  const shuffledResponses = [...responses].sort(() => Math.random() - 0.5)
-
-  shuffledResponses.forEach((resp, index) => {
-    agentMapping.set(index + 1, resp.agentId)
-  })
-
-  const formattedResponses = shuffledResponses
-    .map((resp, index) => {
-      return `Response ${index + 1}:\n"${resp.response}"`
-    })
-    .join("\n\n")
-
-  const prompt = `You are evaluating multiple agent responses to pick the best one.
-
-IMPORTANT: Focus ONLY on the evaluation criteria provided. Additional information beyond the criteria should neither be rewarded nor penalized.
-
-The best answer is the one that contains the most elements from the evaluation criteria.
-
-If no responses satisfy the criteria, are all too incomplete or incorrect, or all equally correct, output: WINNER: DRAW
-
-You MUST include your decision in the format:
-WINNER: <number> (where number is 1, 2, 3, etc.)
-OR
-WINNER: DRAW
-
-Original prompt:
-"${originalPrompt}"
-
-${formattedResponses}
-
-Evaluation criteria:
-${judgePrompt}
-
-Evaluate which response best satisfies the criteria. Remember: only judge based on the criteria provided, not on additional information.`
-
-  return { prompt, agentMapping }
+export function hasLowAgreement(
+  result: JudgeResult,
+  threshold: number
+): boolean {
+  return result.agreement < threshold
 }
+
+/**
+ * Normalize a score to 0-1 range based on the scale.
+ */
+export function normalizeScore(score: number, scale: ScaleConfig): number {
+  return (score - scale.min) / (scale.max - scale.min)
+}
+

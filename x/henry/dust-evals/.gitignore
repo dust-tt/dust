@@ -8,6 +8,9 @@ dist/
 # Results
 results/
 
+# Secret evals (contains sensitive company data)
+secret-evals/
+
 # Checkpoints
 .checkpoint_*.json
 
