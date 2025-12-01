@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Results
+results/
+
+# Secret evals (contains sensitive company data)
+secret-evals/
+
+# Checkpoints
+.checkpoint_*.json
+
+# Environment
+.env
+.env.local
+
+# OS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+
+# Logs
+*.log
