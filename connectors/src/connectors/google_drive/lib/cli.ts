@@ -1,3 +1,6 @@
+import type { drive_v3 } from "googleapis";
+import type { GaxiosResponse } from "googleapis-common";
+
 import { getConnectorManager } from "@connectors/connectors";
 import {
   fixParentsConsistency,
@@ -13,6 +16,7 @@ import {
 } from "@connectors/connectors/google_drive/temporal/client";
 import { syncOneFile } from "@connectors/connectors/google_drive/temporal/file";
 import { MIME_TYPES_TO_EXPORT } from "@connectors/connectors/google_drive/temporal/mime_types";
+import { getMimeTypesToSync } from "@connectors/connectors/google_drive/temporal/mime_types";
 import {
   _getLabels,
   getAuthObject,
@@ -22,7 +26,11 @@ import {
 } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { throwOnError } from "@connectors/lib/cli";
-import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
+import {
+  GoogleDriveConfig,
+  GoogleDriveFiles,
+  GoogleDriveFolders,
+} from "@connectors/lib/models/google_drive";
 import { terminateWorkflow } from "@connectors/lib/temporal";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -32,7 +40,10 @@ import type {
   CheckFileGenericResponseType,
   GoogleDriveCommandType,
 } from "@connectors/types";
-import { googleDriveIncrementalSyncWorkflowId } from "@connectors/types";
+import {
+  FILE_ATTRIBUTES_TO_FETCH,
+  googleDriveIncrementalSyncWorkflowId,
+} from "@connectors/types";
 
 const getConnector = async (args: GoogleDriveCommandType["args"]) => {
   if (!args.wId) {
@@ -336,6 +347,166 @@ export const google_drive = async ({
       }
 
       return { success: true };
+    }
+
+    case "export-folder-structure": {
+      const connector = await getConnector(args);
+      const config = await GoogleDriveConfig.findOne({
+        where: {
+          connectorId: connector.id,
+        },
+      });
+
+      const mimeTypesToSync = getMimeTypesToSync({
+        pdfEnabled: config?.pdfEnabled || false,
+        csvEnabled: config?.csvEnabled || false,
+      });
+
+      const authCredentials = await getAuthObject(connector.connectionId);
+      const drive = await getDriveClient(authCredentials);
+
+      // Get all folders configured to sync
+      const foldersToSync = await GoogleDriveFolders.findAll({
+        where: {
+          connectorId: connector.id,
+        },
+      });
+
+      interface FolderNode {
+        id: string;
+        name: string;
+        path: string;
+        children: FolderNode[];
+        fileCount: number;
+        lastSeenTs: Date | null;
+      }
+
+      const folderStructure: FolderNode[] = [];
+      let totalFileCount = 0;
+      const visitedFolders = new Set<string>();
+
+      const buildFolderTree = async (
+        folderId: string,
+        parentPath: string = ""
+      ): Promise<FolderNode> => {
+        if (visitedFolders.has(folderId)) {
+          // Return empty structure for already visited folders to avoid cycles
+          return {
+            id: folderId,
+            name: "circular reference",
+            path: parentPath,
+            children: [],
+            fileCount: 0,
+            lastSeenTs: null,
+          };
+        }
+        visitedFolders.add(folderId);
+
+        // Get folder info
+        const folderObject = await getGoogleDriveObject({
+          connectorId: connector.id,
+          authCredentials,
+          driveObjectId: folderId,
+          cacheKey: { connectorId: connector.id, ts: Date.now() },
+        });
+
+        // Get lastSeenTs from database if it exists
+        const folderFile = await GoogleDriveFiles.findOne({
+          where: {
+            connectorId: connector.id,
+            driveFileId: folderId,
+          },
+        });
+
+        if (!folderObject) {
+          return {
+            id: folderId,
+            name: "not found",
+            path: parentPath,
+            children: [],
+            fileCount: 0,
+            lastSeenTs: folderFile?.lastSeenTs || null,
+          };
+        }
+
+        const folderName = folderObject.name;
+        const currentPath = parentPath
+          ? `${parentPath}/${folderName}`
+          : folderName;
+
+        const node: FolderNode = {
+          id: folderId,
+          name: folderName,
+          path: currentPath,
+          children: [],
+          fileCount: 0,
+          lastSeenTs: folderFile?.lastSeenTs || null,
+        };
+
+        // Build mime type query
+        const mimeTypesSearchString = mimeTypesToSync
+          .map((mimeType) => `mimeType='${mimeType}'`)
+          .join(" or ");
+
+        // List all files and folders in this folder
+        let nextPageToken: string | undefined = undefined;
+        do {
+          const res: GaxiosResponse<drive_v3.Schema$FileList> =
+            await drive.files.list({
+              corpora: "allDrives",
+              pageSize: 200,
+              includeItemsFromAllDrives: true,
+              supportsAllDrives: true,
+              fields: `nextPageToken, files(${FILE_ATTRIBUTES_TO_FETCH.join(",")})`,
+              q: `'${folderId}' in parents and (${mimeTypesSearchString}) and trashed=false`,
+              ...(nextPageToken ? { pageToken: nextPageToken } : {}),
+            });
+
+          if (res.status !== 200 || !res.data.files) {
+            logger.warn(
+              { folderId, status: res.status },
+              "Error listing files in folder"
+            );
+            break;
+          }
+
+          for (const file of res.data.files) {
+            if (!file.id || !file.name || !file.mimeType) {
+              continue;
+            }
+
+            if (file.mimeType === "application/vnd.google-apps.folder") {
+              // Recursively process subfolder
+              const childNode = await buildFolderTree(file.id, currentPath);
+              node.children.push(childNode);
+              node.fileCount += childNode.fileCount;
+            } else {
+              // Count file (but don't include in structure)
+              node.fileCount++;
+              totalFileCount++;
+            }
+          }
+
+          nextPageToken = res.data.nextPageToken || undefined;
+        } while (nextPageToken);
+
+        return node;
+      };
+
+      // Build tree for each root folder
+      for (const folder of foldersToSync) {
+        const rootNode = await buildFolderTree(folder.folderId);
+        folderStructure.push(rootNode);
+      }
+
+      return {
+        status: 200,
+        content: {
+          totalFileCount,
+          folderStructure,
+        },
+        type: typeof folderStructure,
+      };
     }
 
     default:
