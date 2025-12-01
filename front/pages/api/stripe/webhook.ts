@@ -19,6 +19,7 @@ import { grantFreeCreditsOnSubscriptionRenewal } from "@app/lib/credits/free";
 import {
   allocatePAYGCreditsOnCycleRenewal,
   invoiceEnterprisePAYGCredits,
+  isPAYGEnabled,
 } from "@app/lib/credits/payg";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import {
@@ -558,7 +559,10 @@ async function handler(
                 );
               }
 
-              if (isEnterpriseSubscription(stripeSubscription)) {
+              // TODO(PPUL): should we enforce that enterprise always has PAYG enabled?
+              const paygEnabled = await isPAYGEnabled(auth);
+
+              if (isEnterpriseSubscription(stripeSubscription) && paygEnabled) {
                 // Allocate PAYG credits for the new billing cycle
                 const currentPeriod = StripeBillingPeriodSchema.safeParse({
                   current_period_start: stripeSubscription.current_period_start,
