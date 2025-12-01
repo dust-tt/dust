@@ -2,8 +2,6 @@ import type { ValidateActionResponseType } from "@dust-tt/client";
 import { ValidateActionRequestBodySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { validateAction } from "@app/lib/api/assistant/conversation/validate_actions";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
