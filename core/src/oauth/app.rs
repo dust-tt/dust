@@ -334,6 +334,7 @@ async fn connections_metadata(
 #[derive(Deserialize)]
 struct ConnectionUpdateCredentialPayload {
     related_credential_id: String,
+    metadata: serde_json::Map<String, serde_json::Value>,
 }
 
 async fn connections_update_credential(
@@ -355,14 +356,15 @@ async fn connections_update_credential(
             None,
         ),
         Ok(Some(mut c)) => {
-            match c
+            // Update related credential
+            if let Err(e) = c
                 .update_related_credential_id(
                     state.clone().store.clone(),
                     payload.related_credential_id,
                 )
                 .await
             {
-                Err(e) => error_response(
+                return error_response(
                     match e.code {
                         connection::ConnectionErrorCode::InvalidCredentialError => {
                             StatusCode::BAD_REQUEST
@@ -372,19 +374,33 @@ async fn connections_update_credential(
                     &e.code.to_string(),
                     &e.message,
                     None,
-                ),
-                Ok(_) => (
-                    StatusCode::OK,
-                    Json(APIResponse {
-                        error: None,
-                        response: Some(json!({
-                            "connection": {
-                                "connection_id": c.connection_id(),
-                            },
-                        })),
-                    }),
-                ),
+                );
             }
+
+            // Update metadata
+            if let Err(e) = c
+                .update_metadata(state.clone().store.clone(), payload.metadata)
+                .await
+            {
+                return error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    &e.code.to_string(),
+                    &e.message,
+                    None,
+                );
+            }
+
+            (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!({
+                        "connection": {
+                            "connection_id": c.connection_id(),
+                        },
+                    })),
+                }),
+            )
         }
     }
 }

@@ -974,4 +974,35 @@ impl Connection {
 
         Ok(())
     }
+
+    pub async fn update_metadata(
+        &mut self,
+        store: Box<dyn OAuthStore + Sync + Send>,
+        extra_metadata: serde_json::Map<String, serde_json::Value>,
+    ) -> Result<(), ConnectionError> {
+        // Merge extra_metadata into existing connection metadata
+        let mut merged_metadata = match self.metadata.clone() {
+            serde_json::Value::Object(map) => map,
+            _ => serde_json::Map::new(),
+        };
+        for (key, value) in extra_metadata {
+            merged_metadata.insert(key, value);
+        }
+        self.metadata = serde_json::Value::Object(merged_metadata);
+
+        store.update_connection_metadata(self).await.map_err(|e| {
+            error!(error = %e, "Failed to update connection metadata");
+            ConnectionError {
+                code: ConnectionErrorCode::InternalError,
+                message: "Failed to update connection metadata".to_string(),
+            }
+        })?;
+
+        info!(
+            connection_id = self.connection_id(),
+            "Successfully updated connection metadata"
+        );
+
+        Ok(())
+    }
 }
