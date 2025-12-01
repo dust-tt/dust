@@ -477,8 +477,13 @@ export async function isAccessibleAndUnarchived(
         e.code === "validation_error"
       ) {
         loggerToUse.info(
-          { errorCode: e.code },
-          "Skipping page/database due to unauthorized status code."
+          {
+            notion_error: {
+              code: e.code,
+              message: e.message,
+            },
+          },
+          "Skipping page/database due to unauthorized status code or validation error."
         );
         return false;
       }
@@ -612,14 +617,15 @@ export async function getParsedDatabase(
         // it's not useful to retry.
         e.code === "validation_error")
     ) {
-      if (e.code === "validation_error") {
-        localLogger.info(
-          { errorMessage: e.message },
-          "Got validation error trying to retrieve database (expected for linked databases)."
-        );
-      } else {
-        localLogger.info("Database not found.");
-      }
+      localLogger.info(
+        {
+          notion_error: {
+            code: e.code,
+            message: e.message,
+          },
+        },
+        "Got access or validation error trying to retrieve database (expected for linked databases)."
+      );
       return null;
     }
     localLogger.error(
@@ -727,7 +733,7 @@ export async function retrievePage({
             message: e.message,
           },
         },
-        "retrievePage: Page not found."
+        "retrievePage: Page not found or validation error."
       );
       return null;
     }
