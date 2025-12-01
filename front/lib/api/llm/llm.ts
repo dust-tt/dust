@@ -106,6 +106,7 @@ export abstract class LLM {
       tags: [
         `operationType:${this.context.operationType}`,
         `workspaceId:${this.authenticator.getNonNullableWorkspace().sId}`,
+        `authMethod:${this.authenticator.authMethod() ?? "unknown"}`,
       ],
       metadata: {
         dustTraceId: this.traceId,
