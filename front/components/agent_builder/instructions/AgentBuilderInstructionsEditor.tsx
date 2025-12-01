@@ -2,6 +2,7 @@ import { cn, markdownStyles } from "@dust-tt/sparkle";
 import type { Editor as CoreEditor } from "@tiptap/core";
 import { CharacterCount } from "@tiptap/extensions";
 import { Placeholder } from "@tiptap/extensions";
+import { Markdown } from "@tiptap/markdown";
 import type { Editor as ReactEditor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
@@ -20,10 +21,6 @@ import { BlockInsertExtension } from "@app/components/editor/extensions/agent_bu
 import { HeadingExtension } from "@app/components/editor/extensions/agent_builder/HeadingExtension";
 import { InstructionBlockExtension } from "@app/components/editor/extensions/agent_builder/InstructionBlockExtension";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
-import {
-  plainTextFromTipTapContent,
-  tipTapContentFromPlainText,
-} from "@app/lib/client/agent_builder/instructions";
 import type { LightAgentConfigurationType } from "@app/types";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
@@ -98,6 +95,7 @@ export function AgentBuilderInstructionsEditor({
           },
         },
       }),
+      Markdown,
       KeyboardShortcutsExtension,
       InstructionBlockExtension,
       AgentInstructionDiffExtension,
@@ -127,9 +125,7 @@ export function AgentBuilderInstructionsEditor({
     () =>
       debounce((editor: CoreEditor | ReactEditor) => {
         if (!isInstructionDiffMode && !editor.isDestroyed) {
-          const json = editor.getJSON();
-          const plainText = plainTextFromTipTapContent(json);
-          field.onChange(plainText);
+          field.onChange(editor.getMarkdown());
         }
       }, 250),
     [field, isInstructionDiffMode]
@@ -138,7 +134,8 @@ export function AgentBuilderInstructionsEditor({
   const editor = useEditor(
     {
       extensions,
-      content: tipTapContentFromPlainText(field.value),
+      content: field.value,
+      contentType: "markdown",
       onUpdate: ({ editor, transaction }) => {
         if (transaction.docChanged) {
           debouncedUpdate(editor);
@@ -190,11 +187,12 @@ export function AgentBuilderInstructionsEditor({
     if (editor.isFocused) {
       return;
     }
-    const currentContent = plainTextFromTipTapContent(editor.getJSON());
+    const currentContent = editor.getMarkdown();
     if (currentContent !== field.value) {
       // Use setTimeout to ensure this runs after any diff mode changes
       setTimeout(() => {
-        editor.commands.setContent(tipTapContentFromPlainText(field.value), {
+        editor.commands.setContent(editor.getMarkdown(), {
+          contentType: "markdown",
           emitUpdate: false,
         });
       }, 0);
@@ -211,9 +209,8 @@ export function AgentBuilderInstructionsEditor({
         editor.commands.exitDiff();
       }
 
-      const currentText = plainTextFromTipTapContent(editor.getJSON());
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      const compareText = compareVersion.instructions || "";
+      const currentText = editor.getMarkdown();
+      const compareText = compareVersion.instructions ?? "";
 
       editor.commands.applyDiff(compareText, currentText);
       editor.setEditable(false);
