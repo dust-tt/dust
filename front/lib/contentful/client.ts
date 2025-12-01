@@ -349,6 +349,9 @@ function contentfulEntryToCustomerStory(
     ? metaDescriptionField
     : generateDescription(body);
 
+  const featuredField = fields.featured;
+  const featured = typeof featuredField === "boolean" ? featuredField : false;
+
   return {
     id: sys.id,
     slug,
@@ -380,7 +383,7 @@ function contentfulEntryToCustomerStory(
       title
     ),
     gallery,
-    featured: fields.featured === true,
+    featured,
     tags,
     createdAt: publishedAt,
     updatedAt: sys.updatedAt,
