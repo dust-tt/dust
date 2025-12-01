@@ -67,19 +67,22 @@ jobs:
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
       - name: Cache ESLint
-        uses: actions/cache@v3
+        id: eslint-cache
+        uses: actions/cache@v4
         with:
-          path: front/.eslintcache
-          key: eslint-cache-${{ runner.os }}-${{ hashFiles('front/.eslintrc.js', 'front/tsconfig.json', 'front/package-lock.json') }}
+          path: front/.cache/
+          key: eslint-cache-v4-${{ runner.os }}-${{ hashFiles('front/eslint.config.ts', 'front/tsconfig.json', 'front/package-lock.json') }}
           restore-keys: |
-            eslint-cache-${{ runner.os }}-
-      - name: Lint, Format, and Biome Check (parallel)
+            eslint-cache-v4-${{ runner.os }}-
+      - name: Lint
         working-directory: front
         env:
           NODE_OPTIONS: "--max-old-space-size=8192"
+        run: npm run lint
+      - name: Format Check & Circular Dependency Check
+        working-directory: front
         run: |
           set -e
-          npm run lint &
           npm run format:check &
           npm run lint:circular &
           wait -n
