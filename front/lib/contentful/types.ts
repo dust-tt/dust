@@ -50,4 +50,5 @@ export interface BlogPostPageProps {
   post: BlogPost;
   relatedPosts: BlogPostSummary[];
   gtmTrackingId: string | null;
+  preview?: boolean;
 }

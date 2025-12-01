@@ -19,12 +19,17 @@ export const getServerSideProps: GetServerSideProps<BlogPostPageProps> = async (
   context
 ) => {
   const { slug } = context.params ?? {};
+  const { preview, secret } = context.query;
 
   if (!isString(slug)) {
     return { notFound: true };
   }
 
-  const postResult = await getBlogPostBySlug(slug);
+  // Enable preview mode if valid secret provided
+  const isPreview =
+    preview === "true" && secret === process.env.CONTENTFUL_PREVIEW_SECRET;
+
+  const postResult = await getBlogPostBySlug(slug, isPreview);
 
   if (postResult.isErr()) {
     logger.error(
@@ -40,7 +45,12 @@ export const getServerSideProps: GetServerSideProps<BlogPostPageProps> = async (
     return { notFound: true };
   }
 
-  const relatedPostsResult = await getRelatedPosts(slug, post.tags, 3);
+  const relatedPostsResult = await getRelatedPosts(
+    slug,
+    post.tags,
+    3,
+    isPreview
+  );
 
   if (relatedPostsResult.isErr()) {
     logger.error(
@@ -55,6 +65,7 @@ export const getServerSideProps: GetServerSideProps<BlogPostPageProps> = async (
       post,
       relatedPosts: relatedPostsResult.value,
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+      preview: isPreview,
     },
   };
 };
@@ -66,14 +77,24 @@ const CONTENT_CLASSES = classNames(
 
 const WIDE_CLASSES = classNames("col-span-12", "lg:col-span-10 lg:col-start-2");
 
-export default function BlogPost({ post, relatedPosts }: BlogPostPageProps) {
+export default function BlogPost({
+  post,
+  relatedPosts,
+  preview,
+}: BlogPostPageProps) {
   const ogImageUrl = post.image?.url ?? "https://dust.tt/static/og_image.png";
   const canonicalUrl = `https://dust.tt/blog/${post.slug}`;
 
   return (
     <>
+      {preview && (
+        <div className="fixed left-0 right-0 top-0 z-50 bg-amber-100 px-4 py-2 text-center text-amber-800">
+          Preview Mode - This is a draft
+        </div>
+      )}
       <Head>
         <title>{post.title} | Dust Blog</title>
+        {preview && <meta name="robots" content="noindex, nofollow" />}
         {post.description && (
           <meta name="description" content={post.description} />
         )}
