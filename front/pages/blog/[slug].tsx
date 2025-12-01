@@ -27,8 +27,7 @@ export const getServerSideProps: GetServerSideProps<BlogPostPageProps> = async (
 
   // Enable preview mode if valid secret provided
   const isPreview =
-    preview === "true" &&
-    secret === process.env.CONTENTFUL_PREVIEW_SECRET;
+    preview === "true" && secret === process.env.CONTENTFUL_PREVIEW_SECRET;
 
   const postResult = await getBlogPostBySlug(slug, isPreview);
 
@@ -46,7 +45,12 @@ export const getServerSideProps: GetServerSideProps<BlogPostPageProps> = async (
     return { notFound: true };
   }
 
-  const relatedPostsResult = await getRelatedPosts(slug, post.tags, 3, isPreview);
+  const relatedPostsResult = await getRelatedPosts(
+    slug,
+    post.tags,
+    3,
+    isPreview
+  );
 
   if (relatedPostsResult.isErr()) {
     logger.error(
