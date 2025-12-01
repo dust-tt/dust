@@ -34,5 +34,10 @@
     "**/*.mjs",
     "./.eslintrc.js"
   ],
-  "exclude": ["node_modules", "extension", ".next"]
+  "exclude": [
+    "node_modules",
+    ".next",
+    "workers-build",
+    "dist",
+  ]
 }
