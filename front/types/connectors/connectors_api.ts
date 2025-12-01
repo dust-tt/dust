@@ -625,9 +625,7 @@ export class ConnectorsAPI {
     return this._resultFromResponse(res);
   }
 
-  async getNotionWorkspaceId(
-    connectorId: string
-  ): Promise<
+  async getNotionWorkspaceId(connectorId: string): Promise<
     ConnectorsAPIResponse<{
       notionWorkspaceId: string;
     }>
