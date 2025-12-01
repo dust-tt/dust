@@ -24,7 +24,7 @@ import type {
   ReasoningEffort,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
-import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types";
+import { AGENT_CREATIVITY_LEVEL_TEMPERATURES, removeNulls } from "@app/types";
 
 export abstract class LLM {
   protected modelId: ModelIdType;
@@ -106,6 +106,7 @@ export abstract class LLM {
       tags: [
         `operationType:${this.context.operationType}`,
         `workspaceId:${this.authenticator.getNonNullableWorkspace().sId}`,
+        `authMethod:${this.authenticator.authMethod() ?? "unknown"}`,
       ],
       metadata: {
         dustTraceId: this.traceId,
