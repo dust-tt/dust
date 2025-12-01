@@ -22,6 +22,8 @@ const BRACKET_2_CENTS_PER_USER = 200; // $2
 const BRACKET_3_USERS = 50; // 51-100
 const BRACKET_3_CENTS_PER_USER = 100; // $1
 
+const TRIAL_MAX_CREDIT_CENTS = 500; // $5
+
 const MONTHLY_BILLING_CYCLE_SECONDS = 30 * 24 * 60 * 60; // ~30 days
 
 // 5 days
@@ -85,6 +87,10 @@ export async function countEligibleUsersForFreeCredits(
 export async function isSubscriptionEligibleForFreeCredits(
   stripeSubscription: Stripe.Subscription
 ): Promise<boolean> {
+  if (stripeSubscription.status === "trialing") {
+    return true;
+  }
+
   const paidInvoices = await getSubscriptionInvoices(stripeSubscription.id, {
     status: "paid",
     limit: 1,
@@ -180,11 +186,16 @@ export async function grantFreeCreditsOnSubscriptionRenewal({
     );
     creditAmountCents = calculateFreeCreditAmount(userCount);
 
+    if (stripeSubscription.status === "trialing") {
+      creditAmountCents = Math.min(creditAmountCents, TRIAL_MAX_CREDIT_CENTS);
+    }
+
     logger.info(
       {
         workspaceId: workspaceSId,
         userCount,
         creditAmountCents,
+        isTrialing: stripeSubscription.status === "trialing",
       },
       "[Free Credits] Calculated credit amount using brackets system"
     );

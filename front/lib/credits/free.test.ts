@@ -29,12 +29,14 @@ const NOW_MS = NOW * 1000;
 
 function makeSubscription(
   currentPeriodStart: number,
-  startDate: number
+  startDate: number,
+  status: Stripe.Subscription.Status = "active"
 ): Stripe.Subscription {
   return {
     id: "sub_123",
     current_period_start: currentPeriodStart,
     start_date: startDate,
+    status,
   } as Stripe.Subscription;
 }
 
@@ -121,6 +123,15 @@ describe("isSubscriptionEligibleForFreeCredits", () => {
       makeSubscription(NOW, NOW)
     );
     expect(result).toBe(false);
+  });
+
+  it("returns true for trialing subscription even without paid invoices", async () => {
+    vi.mocked(getSubscriptionInvoices).mockResolvedValue([]);
+    const result = await isSubscriptionEligibleForFreeCredits(
+      makeSubscription(NOW, NOW, "trialing")
+    );
+    expect(result).toBe(true);
+    expect(getSubscriptionInvoices).not.toHaveBeenCalled();
   });
 });
 
