@@ -159,16 +159,14 @@ export type GoogleDriveSelectedFolderType = GoogleDriveFolderType & {
 export class ConnectorsAPI {
   _url: string;
   _secret: string;
-  _webhookSecret: string;
   _logger: LoggerInterface;
 
   constructor(
-    config: { url: string; secret: string; webhookSecret: string },
+    config: { url: string; secret: string },
     logger: LoggerInterface
   ) {
     this._url = config.url;
     this._secret = config.secret;
-    this._webhookSecret = config.webhookSecret;
     this._logger = logger;
   }
 
@@ -646,9 +644,11 @@ export class ConnectorsAPI {
   async getWebhookRouterEntry({
     provider,
     providerWorkspaceId,
+    webhookSecret,
   }: {
     provider: "slack" | "notion";
     providerWorkspaceId: string;
+    webhookSecret: string;
   }): Promise<
     ConnectorsAPIResponse<{
       provider: string;
@@ -659,7 +659,7 @@ export class ConnectorsAPI {
   > {
     const res = await this._fetchWithError(
       `${this._url}/webhooks_router_entries/${encodeURIComponent(
-        this._webhookSecret
+        webhookSecret
       )}/${provider}/${encodeURIComponent(providerWorkspaceId)}`,
       {
         method: "GET",

@@ -64,10 +64,8 @@ async function handler(
     });
   }
 
-  const connectorsAPI = new ConnectorsAPI(
-    config.getConnectorsAPIConfig(),
-    logger
-  );
+  const connectorAPIConfig = config.getConnectorsAPIConfig();
+  const connectorsAPI = new ConnectorsAPI(connectorAPIConfig, logger);
 
   // Get the Notion workspace ID
   const workspaceIdRes = await connectorsAPI.getNotionWorkspaceId(
@@ -99,6 +97,7 @@ async function handler(
   const webhookRouterRes = await connectorsAPI.getWebhookRouterEntry({
     provider: "notion",
     providerWorkspaceId: notionWorkspaceId,
+    webhookSecret: connectorAPIConfig.webhookSecret,
   });
 
   if (webhookRouterRes.isErr()) {
