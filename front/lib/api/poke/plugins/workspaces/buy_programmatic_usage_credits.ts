@@ -17,8 +17,8 @@ const BuyCreditPurchaseArgsSchema = z.object({
     .number()
     .positive("Amount must be greater than $0")
     .finite("Amount must be a valid number"),
-  startDate: z.string().min(1, "Start date is required"),
-  expirationDate: z.string().min(1, "Expiration date is required"),
+  startDate: z.date(),
+  expirationDate: z.date(),
   overrideDiscount: z.boolean(),
   discountPercent: z
     .number()

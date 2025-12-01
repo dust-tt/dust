@@ -135,6 +135,7 @@ export function PluginForm({
 
           let defaultValue = undefined;
           let options = undefined;
+
           if (arg.type === "enum") {
             options =
               arg.async && asyncArgs?.[key]
@@ -186,7 +187,8 @@ export function PluginForm({
                           />
                         )}
                         {arg.type === "boolean" &&
-                          arg.variant === "checkbox" && (
+                          (arg.variant === "checkbox" ||
+                            arg.variant === undefined) && (
                             <Checkbox
                               checked={field.value}
                               onCheckedChange={field.onChange}
