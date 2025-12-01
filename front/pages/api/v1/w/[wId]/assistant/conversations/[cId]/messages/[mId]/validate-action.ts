@@ -115,16 +115,21 @@ async function handler(
     });
   }
 
-  const conversationRes =
-    await ConversationResource.fetchConversationWithoutContent(auth, cId);
+  const conversation = await ConversationResource.fetchById(auth, cId);
 
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(req, res, conversationRes.error);
+  if (!conversation) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "conversation_not_found",
+        message: "Conversation not found.",
+      },
+    });
   }
 
   const { actionId, approved } = parseResult.data;
 
-  const result = await validateAction(auth, conversationRes.value, {
+  const result = await validateAction(auth, conversation.toJSON(), {
     actionId,
     approvalState: approved,
     messageId: mId,
