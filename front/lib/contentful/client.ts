@@ -4,6 +4,8 @@ import type { Asset, ContentfulClientApi, Entry } from "contentful";
 import { createClient } from "contentful";
 
 import type {
+  AuthorSkeleton,
+  BlogAuthor,
   BlogImage,
   BlogPageSkeleton,
   BlogPost,
@@ -138,12 +140,37 @@ function generateDescription(body: Document): string {
   return truncated + "...";
 }
 
-function isDocument(value: unknown): value is Document {
-  return typeof value === "object" && value !== null && "nodeType" in value;
+function isDocument(value: Document | undefined): value is Document {
+  return value !== undefined && "nodeType" in value;
 }
 
-function isAsset(value: unknown): value is Asset {
-  return typeof value === "object" && value !== null && "sys" in value;
+function isAsset(value: Asset | undefined): value is Asset {
+  return value !== undefined && "fields" in value;
+}
+
+function isContentfulEntry(
+  value: Entry<AuthorSkeleton> | undefined
+): value is Entry<AuthorSkeleton> {
+  return value !== undefined && "fields" in value;
+}
+
+function contentfulEntryToAuthor(
+  entry: Entry<AuthorSkeleton> | undefined
+): BlogAuthor | null {
+  if (!entry?.fields) {
+    return null;
+  }
+
+  const name = isString(entry.fields.name) ? entry.fields.name : "";
+  if (!name) {
+    return null;
+  }
+
+  const image = isAsset(entry.fields.image)
+    ? contentfulAssetToBlogImage(entry.fields.image, name)
+    : null;
+
+  return { name, image };
 }
 
 function contentfulEntryToBlogPost(entry: Entry<BlogPageSkeleton>): BlogPost {
@@ -165,6 +192,9 @@ function contentfulEntryToBlogPost(entry: Entry<BlogPageSkeleton>): BlogPost {
 
   const body = isDocument(fields.body) ? fields.body : EMPTY_DOCUMENT;
   const image = isAsset(fields.image) ? fields.image : undefined;
+  const authors = Array.isArray(fields.authors)
+    ? fields.authors.filter(isContentfulEntry).map(contentfulEntryToAuthor).filter(Boolean) as BlogAuthor[]
+    : [];
 
   return {
     id: sys.id,
@@ -174,6 +204,7 @@ function contentfulEntryToBlogPost(entry: Entry<BlogPageSkeleton>): BlogPost {
     body,
     tags,
     image: contentfulAssetToBlogImage(image, title),
+    authors,
     createdAt: publishedAt,
     updatedAt: sys.updatedAt,
   };
