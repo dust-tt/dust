@@ -97,6 +97,7 @@ export function UserMenu({
                 : "https://gravatar.com/avatar/anonymous?d=mp"
             }
             clickable
+            isRounded
           />
           <div className="flex min-w-0 flex-1 flex-col items-start text-left">
             <span

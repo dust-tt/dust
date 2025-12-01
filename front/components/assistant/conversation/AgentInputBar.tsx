@@ -156,7 +156,7 @@ export const AgentInputBar = ({
   return (
     <div
       className={
-        "max-h-dvh relative z-20 mx-auto flex w-full flex-col py-2 sm:w-full sm:max-w-3xl sm:py-4"
+        "max-h-dvh relative z-20 mx-auto flex w-full flex-col py-2 sm:w-full sm:max-w-4xl sm:py-4"
       }
     >
       <div

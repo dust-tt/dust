@@ -158,7 +158,11 @@ export const MentionDropdown = forwardRef<
                     setSelectedIndex(index);
                   }}
                 >
-                  <Avatar size="xs" visual={suggestion.pictureUrl} />
+                  <Avatar
+                    size="xs"
+                    visual={suggestion.pictureUrl}
+                    isRounded={suggestion.type === "user"}
+                  />
                   <span className="truncate" title={suggestion.label}>
                     {suggestion.label}
                   </span>
