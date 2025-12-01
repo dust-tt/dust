@@ -31,6 +31,7 @@ export function BuyCreditDialog({
   // Reset state when dialog opens
   useEffect(() => {
     if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setAmountDollars("");
     }
   }, [isOpen]);

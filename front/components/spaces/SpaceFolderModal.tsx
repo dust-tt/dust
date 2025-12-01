@@ -76,6 +76,7 @@ export default function SpaceFolderModal({
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setName(dataSourceView ? dataSourceView.dataSource.name : null);
       setDescription(
         dataSourceView ? dataSourceView.dataSource.description : null

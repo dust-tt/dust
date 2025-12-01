@@ -70,6 +70,7 @@ export function InputBarAttachments({
   );
 
   // Convert file blobs to FileAttachment objects
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const fileAttachments: FileAttachment[] = useMemo(() => {
     return (
       files?.service.fileBlobs.map((blob) => {
@@ -109,6 +110,7 @@ export function InputBarAttachments({
           spacesMap[node.dataSourceView.spaceId].name ?? "Unknown Space";
         const { dataSource } = node.dataSourceView;
 
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         const isWebsiteOrFolder = isWebsite(dataSource) || isFolder(dataSource);
         const visual = isWebsiteOrFolder ? (
           <Icon visual={logo} size="md" />

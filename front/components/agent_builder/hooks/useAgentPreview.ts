@@ -148,6 +148,7 @@ export function useDraftConversation({
             ? { ...mention, id: currentAgent.sId }
             : mention
         );
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         return new Err({
           code: "internal_error",

@@ -236,6 +236,7 @@ function UpdateConnectionOAuthModal({
 
   useEffect(() => {
     if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setExtraConfig({});
     }
   }, [isOpen]);
@@ -295,7 +296,7 @@ function UpdateConnectionOAuthModal({
         <div className="flex flex-col gap-2 border-t pb-4 pt-4">
           <Page.SectionHeader title="Connection Owner" />
           <div className="flex items-center gap-2">
-            <Avatar visual={editedByUser?.imageUrl} size="sm" />
+            <Avatar visual={editedByUser?.imageUrl} size="sm" isRounded />
             <div>
               <span className="font-bold">
                 {isDataSourceOwner ? "You" : editedByUser?.fullName}
@@ -491,7 +492,7 @@ function DataSourceDeletionModal({
         <div className="flex flex-col gap-2 border-t pb-4 pt-4">
           <Page.SectionHeader title="Connection Owner" />
           <div className="flex items-center gap-2">
-            <Avatar visual={editedByUser?.imageUrl} size="sm" />
+            <Avatar visual={editedByUser?.imageUrl} size="sm" isRounded />
             <div>
               <span className="font-bold">
                 {isDataSourceOwner ? "You" : editedByUser?.fullName}
@@ -646,6 +647,7 @@ export function ConnectorPermissionsModal({
 
   useEffect(() => {
     if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedNodes(initialTreeSelectionModel);
     }
   }, [initialTreeSelectionModel, isOpen]);
@@ -766,6 +768,7 @@ export function ConnectorPermissionsModal({
 
   useEffect(() => {
     if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setModalToShow("selection");
     } else {
       setModalToShow(null);

@@ -130,6 +130,7 @@ import { CoreAPI } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
+  // eslint-disable-next-line dust/enforce-client-types-in-public-api
   res: NextApiResponse<
     WithAPIErrorResponse<ListTablesResponseType | UpsertTableResponseType>
   >,

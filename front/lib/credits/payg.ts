@@ -118,13 +118,11 @@ export async function invoiceEnterprisePAYGCredits({
   const workspace = auth.getNonNullableWorkspace();
 
   const paygEnabled = await isPAYGEnabled(auth);
-  if (!isEnterpriseSubscription(stripeSubscription)) {
-    logger.info(
-      { workspaceId: workspace.sId },
-      "[Credit PAYG] Not an enterprise subscription, skipping arrears invoicing"
-    );
-    return new Ok(undefined);
-  }
+
+  assert(
+    isEnterpriseSubscription(stripeSubscription) && paygEnabled,
+    "Unreachable: [Credit PAYG] Not an enterprise subscription or PAYG not enabled."
+  );
 
   const previousPeriodStartDate = new Date(previousPeriodStartSeconds * 1000);
   const previousPeriodEndDate = new Date(previousPeriodEndSeconds * 1000);
@@ -137,7 +135,7 @@ export async function invoiceEnterprisePAYGCredits({
   );
 
   assert(
-    paygCredit || !paygEnabled,
+    paygCredit,
     `[Credit PAYG] No PAYG credit found for period ${previousPeriodStartDate.toISOString()} - ${previousPeriodEndDate.toISOString()} in workspace ${workspace.sId}`
   );
 

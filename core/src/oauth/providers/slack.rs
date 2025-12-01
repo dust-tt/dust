@@ -7,8 +7,9 @@ use crate::oauth::{
         ProviderError,
         RefreshResult, // PROVIDER_TIMEOUT_SECONDS,
     },
-    credential::{Credential, CredentialProvider},
+    credential::{Credential, CredentialMetadata, CredentialProvider},
     providers::utils::execute_request,
+    store::OAuthStore,
 };
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -98,6 +99,52 @@ impl SlackConnectionProvider {
 
         Ok((client_id.to_string(), client_secret.to_string()))
     }
+
+    /// Creates a system credential for Slack connection use-case using env variables
+    /// Returns None if this is not a Slack connection use-case
+    pub async fn create_system_credential_if_needed(
+        store: Box<dyn OAuthStore + Sync + Send>,
+        metadata: &serde_json::Value,
+    ) -> Result<Option<Credential>> {
+        if metadata.get("use_case").and_then(|v| v.as_str()) != Some("connection") {
+            return Ok(None);
+        }
+
+        let workspace_id = metadata
+            .get("workspace_id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("Missing workspace_id in metadata"))?;
+
+        let user_id = metadata
+            .get("user_id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("Missing user_id in metadata"))?;
+
+        let client_id = OAUTH_SLACK_CLIENT_ID.clone();
+        let client_secret = OAUTH_SLACK_CLIENT_SECRET.clone();
+
+        let credential_metadata = CredentialMetadata {
+            user_id: user_id.to_string(),
+            workspace_id: workspace_id.to_string(),
+        };
+
+        let mut credential_content = serde_json::Map::new();
+        credential_content.insert("client_id".to_string(), serde_json::json!(client_id));
+        credential_content.insert(
+            "client_secret".to_string(),
+            serde_json::json!(client_secret),
+        );
+
+        let credential = Credential::create(
+            store,
+            CredentialProvider::Slack,
+            credential_metadata,
+            credential_content,
+        )
+        .await?;
+
+        Ok(Some(credential))
+    }
 }
 
 #[async_trait]
@@ -122,6 +169,23 @@ impl Provider for SlackConnectionProvider {
                 _ => Err(anyhow!("Slack use_case format invalid"))?,
             },
             None => Err(anyhow!("Slack use_case missing"))?,
+        };
+
+        // Extract client_id early for metadata
+        let client_id = match app_type {
+            SlackUseCase::Connection => match &related_credentials {
+                Some(credentials) => {
+                    let content = credentials.unseal_encrypted_content()?;
+                    content
+                        .get("client_id")
+                        .and_then(|v| v.as_str())
+                        .ok_or_else(|| anyhow!("Missing client_id in Slack credential"))?
+                        .to_string()
+                }
+                None => OAUTH_SLACK_CLIENT_ID.clone(),
+            },
+            SlackUseCase::PlatformActions | SlackUseCase::Bot => OAUTH_SLACK_BOT_CLIENT_ID.clone(),
+            SlackUseCase::PersonalActions => OAUTH_SLACK_TOOLS_CLIENT_ID.clone(),
         };
 
         let req = self
@@ -192,6 +256,10 @@ impl Provider for SlackConnectionProvider {
                 (
                     "team_name".to_string(),
                     serde_json::Value::String(team_name.to_string()),
+                ),
+                (
+                    "client_id".to_string(),
+                    serde_json::Value::String(client_id.to_string()),
                 ),
             ])),
             raw_json,

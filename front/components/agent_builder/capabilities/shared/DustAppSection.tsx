@@ -90,6 +90,7 @@ export function DustAppSection() {
       );
       const nextSpace = spaces[currentIndex + 1];
       if (nextSpace) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setSelectedSpace(nextSpace);
       }
     }
@@ -210,6 +211,7 @@ export function DustAppSection() {
                   <div className="text-md font-medium">{field.value.name}</div>
                 </div>
                 <div className="max-h-24 overflow-y-auto text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
                   {field.value.description || "No description available"}
                 </div>
               </div>

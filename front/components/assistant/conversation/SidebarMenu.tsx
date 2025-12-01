@@ -269,6 +269,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   );
 
   const { ref, inView, entry } = useInView({
+    // eslint-disable-next-line react-hooks/refs
     root: conversationsNavigationRef.current,
     threshold: 0,
   });
@@ -526,6 +527,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                         owner={owner}
                       />
                     ))}
+                    {/* eslint-disable-next-line react-hooks/refs */}
                     {conversationsNavigationRef.current && (
                       <div
                         // Change the key each page to force a re-render and get a new entry
@@ -867,6 +869,7 @@ const NavigationListWithInbox = forwardRef<
                 owner={owner}
               />
             ))}
+            {/* eslint-disable-next-line react-hooks/refs */}
             {conversationsNavigationRef.current && (
               <div
                 // Change the key each page to force a re-render and get a new entry

@@ -372,6 +372,7 @@ export async function deleteWorksOSOrganizationWithWorkspace(
   try {
     organization =
       await getWorkOS().organizations.getOrganizationByExternalId(workspaceId);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (err) {
     localLogger.warn({ workspaceId }, "Can't get workOSOrganization");
     return new Ok(undefined);

@@ -76,6 +76,7 @@ export function TagSearchSection({
       }
     }
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAvailableTags(formattedTags);
   }, [dataSourceViews, rawTags, selectedTagsIn, selectedTagsNot]);
 

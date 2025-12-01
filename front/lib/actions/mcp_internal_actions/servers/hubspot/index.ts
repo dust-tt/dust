@@ -615,6 +615,7 @@ function createServer(): McpServer {
             content: [
               {
                 type: "text",
+                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 text: `Communication (channel: ${properties.hs_communication_channel_type || "unknown"}) created successfully.`,
               },
               { type: "text", text: JSON.stringify(result, null, 2) },

@@ -294,6 +294,7 @@ export function useCancelMessage({
             body: JSON.stringify({ action: "cancel", messageIds }),
           }
         );
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         sendNotification({ type: "error", title: "Failed to cancel message" });
       }
@@ -688,6 +689,7 @@ export const useConversationParticipationOption = ({
 
   useEffect(() => {
     if (conversationParticipants === undefined) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setOption(null);
       return;
     }
@@ -754,6 +756,7 @@ export const useJoinConversation = ({
 
         throw new Error("Failed to subscribe to the conversation.");
       }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       sendNotification({
         type: "error",

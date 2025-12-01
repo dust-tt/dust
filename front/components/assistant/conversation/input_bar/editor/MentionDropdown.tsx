@@ -92,11 +92,13 @@ export const MentionDropdown = forwardRef<
   }));
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     updateTriggerPosition();
   }, [updateTriggerPosition]);
 
   // Reset the selected index when items change (e.g., when query changes).
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedIndex(0);
   }, [suggestions]);
 
@@ -156,7 +158,11 @@ export const MentionDropdown = forwardRef<
                     setSelectedIndex(index);
                   }}
                 >
-                  <Avatar size="xs" visual={suggestion.pictureUrl} />
+                  <Avatar
+                    size="xs"
+                    visual={suggestion.pictureUrl}
+                    isRounded={suggestion.type === "user"}
+                  />
                   <span className="truncate" title={suggestion.label}>
                     {suggestion.label}
                   </span>

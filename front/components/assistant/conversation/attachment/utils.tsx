@@ -50,8 +50,11 @@ export const isTextualContentType = (
   }
   const ct = attachmentCitation.contentType;
   return (
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     ct.startsWith("text/") ||
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     ct === "application/json" ||
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     ct === "application/xml" ||
     ct === "application/vnd.dust.section.json"
   );
@@ -79,7 +82,11 @@ export const IconForAttachmentCitation = ({
   const { isDark } = useTheme();
 
   if (provider === "webcrawler") {
-    return <FaviconIcon className="h-3 w-3" websiteUrl={sourceUrl} />;
+    return (
+      <div className="h-6 w-6">
+        <FaviconIcon size="md" websiteUrl={sourceUrl} />
+      </div>
+    );
   }
 
   if (provider && provider in CONNECTOR_CONFIGURATIONS) {

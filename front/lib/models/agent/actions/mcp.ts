@@ -115,6 +115,7 @@ AgentMCPServerConfiguration.init(
             let parsed;
             try {
               parsed = JSON.parse(value);
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
             } catch (e) {
               throw new Error("additionalConfiguration is invalid JSON");
             }

@@ -583,6 +583,7 @@ export async function deleteWorkspaceActivity({
   let auth: Authenticator;
   try {
     auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (err) {
     hardDeleteLogger.warn(
       { workspaceId },

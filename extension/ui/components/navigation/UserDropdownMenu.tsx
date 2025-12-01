@@ -43,6 +43,7 @@ export const UserDropdownMenu = ({
             onClick={() => {
               "clickable";
             }}
+            isRounded
           />
         </div>
       </DropdownMenuTrigger>

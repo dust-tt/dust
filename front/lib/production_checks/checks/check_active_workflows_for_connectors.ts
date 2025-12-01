@@ -109,6 +109,7 @@ async function areTemporalEntitiesActive(
           if (descriptions.some(({ status: { name } }) => name !== "RUNNING")) {
             return false;
           }
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (err) {
           return false;
         }
@@ -126,6 +127,7 @@ async function areTemporalEntitiesActive(
           if (description.state.paused) {
             return false;
           }
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (err) {
           return false;
         }

@@ -730,6 +730,7 @@ export const createNote = async ({
     );
   }
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!propertiesForApi.hs_timestamp) {
     propertiesForApi.hs_timestamp = new Date().toISOString();
   }
@@ -903,6 +904,7 @@ export const createCommunication = async ({
 
   const finalProperties = { ...properties }; // Create a copy
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!finalProperties.hs_engagement_type) {
     finalProperties.hs_engagement_type = "COMMUNICATION"; // Default if not provided, mutate the copy
   }
@@ -985,6 +987,7 @@ export const createMeeting = async ({
   const finalProperties = { ...properties }; // Create a copy
 
   // Ensure hs_engagement_type is set for meetings
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!finalProperties.hs_engagement_type) {
     finalProperties.hs_engagement_type = "MEETING"; // Mutate the copy
   }
@@ -1509,6 +1512,7 @@ export const getUserActivity = async ({
             if (result?.results && result.results.length > 0) {
               break; // Found results with this property name
             }
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
           } catch (propertyError) {
             // Try next property name
             continue;
@@ -1847,6 +1851,7 @@ export const listAssociations = async ({
                 associations: result.results,
               });
             }
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
           } catch (error) {
             // Continue if this association type doesn't exist
             continue;

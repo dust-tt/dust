@@ -454,6 +454,7 @@ export default async function createServer(
             return;
           }
 
+          /* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */
           if (!childCancellationPromise) {
             childCancellationPromise = cancelMessageGenerationEvent(auth, {
               messageIds: [agentMessage.sId],

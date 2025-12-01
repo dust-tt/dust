@@ -96,6 +96,7 @@ export function SetupNotionPrivateIntegrationModal({
 
       if (!response.ok) {
         const error = await response.json();
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         throw new Error(error.error?.message || "Failed to create credential");
       }
 
@@ -119,6 +120,7 @@ export function SetupNotionPrivateIntegrationModal({
       if (!configRes.ok) {
         const error = await configRes.json();
         throw new Error(
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           error.error?.message || "Failed to set connector configuration"
         );
       }

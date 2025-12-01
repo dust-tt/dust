@@ -90,6 +90,7 @@ function createServer(
         } catch (err) {
           return new Err(
             new MCPError(
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               normalizeError(err).message || "Failed to search files"
             )
           );
@@ -144,6 +145,7 @@ function createServer(
         } catch (err) {
           return new Err(
             new MCPError(
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               normalizeError(err).message || "Failed to search drive items"
             )
           );
@@ -253,6 +255,7 @@ function createServer(
           ]);
         } catch (err) {
           const originalError =
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             normalizeError(err).message || "Failed to update document";
           let errorMessage = originalError;
 
@@ -421,6 +424,7 @@ function createServer(
         } catch (err) {
           return new Err(
             new MCPError(
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               normalizeError(err).message || "Failed to retrieve file content"
             )
           );
@@ -533,6 +537,7 @@ function createServer(
               } catch (err) {
                 const error = normalizeError(err);
                 const isNotFound =
+                  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                   error.message.toLowerCase().includes("could not be found") ||
                   error.message.toLowerCase().includes("not found");
 
@@ -611,6 +616,7 @@ function createServer(
           ]);
         } catch (err) {
           const error = normalizeError(err);
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           const errorMessage = error.message || "Failed to upload file";
           return new Err(new MCPError(errorMessage));
         }

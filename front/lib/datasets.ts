@@ -69,6 +69,7 @@ export function getValueType(value: any): DatasetDataType {
   let parsed = null;
   try {
     parsed = JSON.parse(value);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (e) {
     return "string";
   }

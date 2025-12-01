@@ -99,6 +99,7 @@ export function getCiteDirective() {
     return (tree: any) => {
       visit(tree, ["textDirective"], (node) => {
         if (node.name === "cite" && node.children[0]?.value) {
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           const data = node.data || (node.data = {});
 
           const references = node.children[0]?.value

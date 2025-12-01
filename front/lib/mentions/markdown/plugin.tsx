@@ -24,6 +24,7 @@ export function agentMentionDirective() {
   return (tree: any) => {
     visit(tree, ["textDirective"], (node) => {
       if (node.name === "mention" && node.children[0]) {
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         const data = node.data || (node.data = {});
         data.hName = "mention";
         data.hProperties = {
@@ -82,6 +83,7 @@ export function userMentionDirective() {
   return (tree: any) => {
     visit(tree, ["textDirective"], (node) => {
       if (node.name === "mention_user" && node.children[0]) {
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         const data = node.data || (node.data = {});
         data.hName = "mention_user";
         data.hProperties = {

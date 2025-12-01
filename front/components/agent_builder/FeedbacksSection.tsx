@@ -312,6 +312,7 @@ function FeedbackCard({
           size="sm"
           visual={feedback.userImageUrl}
           name={feedback.userName}
+          isRounded
         />
         <div className="flex flex-col">
           <div className="font-semibold">{feedback.userName}</div>

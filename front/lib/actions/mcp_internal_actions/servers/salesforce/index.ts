@@ -220,6 +220,7 @@ function createServer(
           "\nChild Relationships (for Parent-to-Child SOQL queries):\n";
         if (result.childRelationships && result.childRelationships.length > 0) {
           result.childRelationships.forEach((rel: any) => {
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             summary += `- RelationshipName: ${rel.relationshipName || "(N/A - check API docs)"}`;
             summary += `, ChildObject: ${rel.childSObject}`;
             summary += `, Field on Child: ${rel.field}\n`;

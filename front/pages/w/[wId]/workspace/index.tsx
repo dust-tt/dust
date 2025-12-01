@@ -159,6 +159,7 @@ export default function WorkspaceAdmin({
   }, [owner.name, workspaceName]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDisabled(!formValidation());
   }, [workspaceName, formValidation]);
 

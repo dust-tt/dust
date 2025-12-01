@@ -261,6 +261,7 @@ async function processTriggers({
           workspaceId: owner.sId,
           agentConfigurationId,
           triggerIds: formData.triggersToDelete,
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           errorMessage: error?.api_error?.message || error?.error?.message,
         },
         "[Agent builder] - Failed to delete triggers"
@@ -312,6 +313,7 @@ async function processTriggers({
           workspaceId: owner.sId,
           agentConfigurationId,
           triggersCount: formData.triggersToUpdate.length,
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           errorMessage: error?.api_error?.message || error?.error?.message,
         },
         "[Agent builder] - Failed to update triggers"
@@ -362,6 +364,7 @@ async function processTriggers({
           workspaceId: owner.sId,
           agentConfigurationId,
           triggersCount: formData.triggersToCreate.length,
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           errorMessage: error?.api_error?.message || error?.error?.message,
         },
         "[Agent builder] - Failed to create triggers"
@@ -510,6 +513,7 @@ export async function submitAgentBuilderForm({
           "[Agent builder] - Form submission failed"
         );
         return new Err(
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           new Error(error.error?.message || "Failed to save agent")
         );
       } catch {

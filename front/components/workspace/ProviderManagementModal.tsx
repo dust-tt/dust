@@ -172,6 +172,7 @@ export function ProviderManagementModal({
 
         // Retrigger a server fetch after a successful update
         await mutateWorkspace();
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         sendNotifications({
           type: "error",

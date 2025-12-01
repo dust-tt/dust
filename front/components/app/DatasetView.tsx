@@ -194,6 +194,7 @@ export default function DatasetView({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const sendNotification = useSendNotification();
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!dataset) {
     dataset = {
       name: "",
@@ -291,6 +292,7 @@ export default function DatasetView({
           if (type !== "string") {
             entry[k] = JSON.parse(entry[k]);
           }
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (err) {
           // no-op
         }

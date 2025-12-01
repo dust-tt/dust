@@ -52,6 +52,7 @@ export default function Pricing() {
                 TRACKING_AREAS.PRICING,
                 "hero_start_trial",
                 () => {
+                  // eslint-disable-next-line react-hooks/immutability
                   window.location.href = "/api/workos/login?screenHint=sign-up";
                 }
               )}

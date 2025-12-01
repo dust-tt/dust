@@ -69,5 +69,6 @@ export type DataSourceViewSelectionConfigurations = Record<
   DataSourceViewSelectionConfiguration
 >;
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const DATA_SOURCE_VIEW_KINDS = ["default", "custom"] as const;
 export type DataSourceViewKind = (typeof DATA_SOURCE_VIEW_KINDS)[number];

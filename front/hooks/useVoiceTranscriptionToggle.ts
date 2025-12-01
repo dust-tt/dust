@@ -33,6 +33,7 @@ export function useVoiceTranscriptionToggle({
       if (!res.ok) {
         throw new Error("Failed to update Voice transcription setting");
       }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       sendNotification({
         type: "error",

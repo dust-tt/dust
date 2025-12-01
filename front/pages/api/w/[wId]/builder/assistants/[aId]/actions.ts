@@ -74,6 +74,7 @@ async function handler(
     }
 
     res.status(200).json({ actions });
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     return apiError(req, res, {
       status_code: 500,

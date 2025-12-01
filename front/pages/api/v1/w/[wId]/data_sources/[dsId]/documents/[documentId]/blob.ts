@@ -24,6 +24,7 @@ export const config = {
  */
 async function handler(
   req: NextApiRequest,
+  // eslint-disable-next-line dust/enforce-client-types-in-public-api
   res: NextApiResponse<WithAPIErrorResponse<GetDocumentBlobResponseType>>,
   auth: Authenticator
 ): Promise<void> {

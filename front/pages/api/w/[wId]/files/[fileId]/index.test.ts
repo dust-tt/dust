@@ -18,7 +18,9 @@ vi.mock("@app/lib/api/auth_wrappers", async () => {
     withSessionAuthenticationForWorkspace: (handler: any) => {
       return async (req: any, res: any) => {
         const auth = req.auth;
-        return handler(req, res, auth, { user: { sub: "auth0|test-user-id" } });
+        return handler(req, res, auth, {
+          user: { sub: "workos|test-user-id" },
+        });
       };
     },
   };

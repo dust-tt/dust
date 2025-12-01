@@ -59,9 +59,12 @@ function calculateFreeCreditAmount(userCount: number): number {
  * pro-rated bump up from 5 days ago would be 5$.
  */
 export async function countElligibleUsersForFreeCredits(
-  workspace: Parameters<typeof renderLightWorkspaceType>[0]["workspace"]
+  workspace: Parameters<typeof renderLightWorkspaceType>[0]["workspace"],
+  subscriptionStartMs: number
 ): Promise<number> {
-  const cutoffDate = new Date(Date.now() - USER_COUNT_CUTOFF);
+  const cutoffDate = new Date(
+    Math.max(subscriptionStartMs, Date.now() - USER_COUNT_CUTOFF)
+  );
   return MembershipResource.getMembersCountForWorkspace({
     workspace: renderLightWorkspaceType({ workspace }),
     activeOnly: true,
@@ -176,7 +179,11 @@ export async function grantFreeCreditsOnSubscriptionRenewal({
       "[Free Credits] Using ProgrammaticUsageConfiguration override amount"
     );
   } else {
-    const userCount = await countElligibleUsersForFreeCredits(workspace);
+    const subscriptionStartMs = stripeSubscription.start_date * 1000;
+    const userCount = await countElligibleUsersForFreeCredits(
+      workspace,
+      subscriptionStartMs
+    );
     creditAmountCents = calculateFreeCreditAmount(userCount);
 
     logger.info(

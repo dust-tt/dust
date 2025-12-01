@@ -18,6 +18,7 @@ import {
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { searchUsers } from "@app/lib/user_search/search";
 import logger from "@app/logger/logger";
+import { statsDClient } from "@app/logger/statsDClient";
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
 import type { LightWorkspaceType, ModelId, Result, UserType } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
@@ -251,12 +252,17 @@ export class UserResource extends BaseResource<UserModel> {
       const foundUserIds = new Set(users.map((u) => u.sId));
       const missingUserIds = userIds.filter((sId) => !foundUserIds.has(sId));
 
+      statsDClient.increment("user_search.revoked_users_in_results.count", 1);
+
       logger.error(
         {
           workspaceId: owner.sId,
           missingUserSIds: missingUserIds,
           owner: "spolu",
         },
+        // This log is expected as user search queries may happen before the index update completes
+        // (temporal workflow + ES indexing asynchronously). We keep it to ensure that volume stays
+        // flat. An increase would indicate a synchronization problem.
         "[user_search] Found revoked users in search results"
       );
     }

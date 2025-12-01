@@ -39,6 +39,7 @@ export const useEnableBrowserNotification = () => {
       return true;
     }
 
+    // eslint-disable-next-line react-hooks/purity
     const delay = Date.now() - parseInt(metadata.value);
 
     return delay > DELAY_BEFORE_ASKING_AGAIN;

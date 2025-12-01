@@ -136,6 +136,7 @@ export function FrameRenderer({
   const { closePanel, panelRef } = useConversationSidePanelContext();
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
+  // eslint-disable-next-line react-hooks/refs
   const panel = panelRef?.current;
 
   const [fullScreenHash, setFullScreenHash] = useHashParam(
@@ -222,6 +223,7 @@ export function FrameRenderer({
         restoreLayout();
       }
     }
+    // eslint-disable-next-line react-hooks/refs
   }, [
     panel,
     isFullScreen,

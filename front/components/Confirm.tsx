@@ -38,6 +38,7 @@ export function ConfirmPopupArea({ children }: { children: ReactNode }) {
       {children}
       <ConfirmDialog
         confirmData={confirmData}
+        // eslint-disable-next-line react-hooks/refs
         resolveConfirm={resolveConfirmRef.current}
         clearConfirmData={() => setConfirmData(null)}
       />
