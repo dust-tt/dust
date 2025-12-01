@@ -81,10 +81,17 @@ const config = {
       apiKey: EnvironmentConfig.getOptionalEnvVariable("CORE_API_KEY") ?? null,
     };
   },
-  getConnectorsAPIConfig: (): { url: string; secret: string } => {
+  getConnectorsAPIConfig: (): {
+    url: string;
+    secret: string;
+    webhookSecret: string;
+  } => {
     return {
       url: EnvironmentConfig.getEnvVariable("CONNECTORS_API"),
       secret: EnvironmentConfig.getEnvVariable("DUST_CONNECTORS_SECRET"),
+      webhookSecret: EnvironmentConfig.getEnvVariable(
+        "DUST_CONNECTORS_WEBHOOKS_SECRET"
+      ),
     };
   },
   getDustAPIConfig: (): { url: string; nodeEnv: string } => {

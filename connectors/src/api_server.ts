@@ -45,6 +45,8 @@ import {
   setConnectorConfigAPIHandler,
 } from "./api/connector_config";
 import { deleteWebhookRouterEntryHandler } from "./api/delete_webhook_router_config";
+import { getNotionWorkspaceIdHandler } from "./api/get_notion_workspace_id";
+import { getWebhookRouterEntryHandler } from "./api/get_webhook_router_config";
 import { webhookFirecrawlAPIHandler } from "./api/webhooks/webhook_firecrawl";
 
 export function startServer(port: number) {
@@ -134,6 +136,10 @@ export function startServer(port: number) {
   );
 
   app.get("/notion/url/status", getNotionUrlStatusHandler);
+  app.get(
+    "/connectors/:connector_id/notion/workspace_id",
+    getNotionWorkspaceIdHandler
+  );
 
   // (legacy) "Dust Data-sync" for indexing and handling calls to the dust bot.
   app.post("/webhooks/:webhook_secret/slack", webhookSlackAPIHandler);
@@ -185,6 +191,10 @@ export function startServer(port: number) {
   app.patch(
     "/webhooks_router_entries/:webhook_secret/:provider/:providerWorkspaceId",
     patchWebhookRouterEntryHandler
+  );
+  app.get(
+    "/webhooks_router_entries/:webhook_secret/:provider/:providerWorkspaceId",
+    getWebhookRouterEntryHandler
   );
   app.delete(
     "/webhooks_router_entries/:webhook_secret/:provider/:providerWorkspaceId",
