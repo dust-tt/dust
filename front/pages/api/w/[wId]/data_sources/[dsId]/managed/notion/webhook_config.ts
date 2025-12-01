@@ -12,7 +12,6 @@ import { ConnectorsAPI } from "@app/types";
 export type GetNotionWebhookConfigResponseBody = {
   webhookUrl: string;
   verificationToken: string | null;
-  message: string | null;
 };
 
 async function handler(
@@ -112,8 +111,6 @@ async function handler(
       return res.status(200).json({
         webhookUrl,
         verificationToken: null,
-        message:
-          "Set the webhook URL in your Notion integration and come back here to get the token.",
       });
     }
 
@@ -140,7 +137,6 @@ async function handler(
     return res.status(200).json({
       webhookUrl,
       verificationToken: webhookRouterData.signing_secret,
-      message: null,
     });
   } catch (error) {
     logger.error(
