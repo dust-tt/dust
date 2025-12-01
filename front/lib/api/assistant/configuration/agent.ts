@@ -1282,20 +1282,65 @@ export async function updateAgentConfigurationScope(
   agentConfigurationId: string,
   scope: Exclude<AgentConfigurationScope, "global">
 ) {
-  const agent = await AgentConfiguration.findOne({
-    where: {
-      workspaceId: auth.getNonNullableWorkspace().id,
-      sId: agentConfigurationId,
-      status: "active",
-    },
+  const agentConfig = await getAgentConfiguration(auth, {
+    agentId: agentConfigurationId,
+    variant: "light",
   });
 
-  if (!agent) {
+  if (!agentConfig) {
     return new Err(new Error(`Could not find agent ${agentConfigurationId}`));
   }
 
-  agent.scope = scope;
-  await agent.save();
+  const previousScope = agentConfig.scope;
+  await AgentConfiguration.update(
+    { scope },
+    {
+      where: {
+        id: agentConfig.id,
+      },
+    }
+  );
+
+  // When scope changes from visible to hidden, disable triggers for non-editors.
+  // Non-editors will no longer have access to the hidden agent.
+  if (previousScope === "visible" && scope === "hidden") {
+    const triggers = await TriggerResource.listByAgentConfigurationId(
+      auth,
+      agentConfigurationId
+    );
+
+    if (triggers.length > 0) {
+      // Get the editor group to find who can still access the agent
+      const editorGroupRes = await GroupResource.findEditorGroupForAgent(
+        auth,
+        agentConfig
+      );
+
+      let editorIds: Set<ModelId> = new Set();
+      if (editorGroupRes.isOk()) {
+        const members = await editorGroupRes.value.getActiveMembers(auth);
+        editorIds = new Set(members.map((m) => m.id));
+      }
+
+      // Disable triggers for users who are not editors
+      for (const trigger of triggers) {
+        if (!editorIds.has(trigger.editor)) {
+          const disableResult = await trigger.disable(auth);
+          if (disableResult.isErr()) {
+            logger.error(
+              {
+                workspaceId: auth.getNonNullableWorkspace().sId,
+                agentConfigurationId,
+                triggerId: trigger.sId,
+                error: disableResult.error,
+              },
+              `Failed to disable trigger ${trigger.sId} when changing agent ${agentConfigurationId} scope to hidden`
+            );
+          }
+        }
+      }
+    }
+  }
 
   return new Ok(undefined);
 }
