@@ -30,6 +30,7 @@ export function MobileToolbar({ editor, className, onClose }: ToolbarProps) {
       <ScrollArea
         orientation="horizontal"
         className="h-full w-full border-l border-border dark:border-border-night/50"
+        hideScrollBar
       >
         <div
           id="Scrollable"
