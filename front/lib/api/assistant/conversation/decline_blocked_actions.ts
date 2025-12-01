@@ -1,4 +1,3 @@
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { validateAction } from "@app/lib/api/assistant/conversation/validate_actions";
 import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
 import type { Authenticator } from "@app/lib/auth";
@@ -7,14 +6,14 @@ import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_reso
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
-import type { ConversationType, Result } from "@app/types";
+import type { ConversationWithoutContentType, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 // This will update the status of an authentication required action to denied.
 // Since we don't launch a new agent loop after unlike action validation, we need to manually clear actionRequired status.
 export async function declineAuthenticationRequiredAction(
   auth: Authenticator,
-  conversation: ConversationType,
+  conversation: ConversationWithoutContentType,
   {
     actionId,
     messageId,
@@ -118,19 +117,23 @@ export async function declineBlockedActionsForConversations(
   conversationIds: string[]
 ): Promise<Result<DeclineBlockedActionsForConversationsResult, Error>> {
   let failedActionCount = 0;
+  const conversationResources = await ConversationResource.fetchByIds(
+    auth,
+    conversationIds
+  );
 
-  for (const conversationId of conversationIds) {
-    const conversation = await getConversation(auth, conversationId);
-
+  for (const conversationResource of conversationResources) {
     // if it doesn't exist, we skip it
-    if (conversation.isErr()) {
+    if (!conversationResource) {
       continue;
     }
+
+    const conversation = conversationResource.toJSON();
 
     const blockedActions =
       await AgentMCPActionResource.listBlockedActionsForConversation(
         auth,
-        conversation.value.sId
+        conversation.sId
       );
 
     const authRequiredActions = blockedActions.filter(
@@ -145,7 +148,7 @@ export async function declineBlockedActionsForConversations(
       for (const action of authRequiredActions) {
         const result = await declineAuthenticationRequiredAction(
           auth,
-          conversation.value,
+          conversation,
           {
             actionId: action.actionId,
             messageId: action.messageId,
@@ -160,7 +163,7 @@ export async function declineBlockedActionsForConversations(
 
     if (validationRequiredActions.length > 0) {
       for (const action of validationRequiredActions) {
-        const result = await validateAction(auth, conversation.value, {
+        const result = await validateAction(auth, conversation, {
           actionId: action.actionId,
           approvalState: "rejected",
           messageId: action.messageId,
