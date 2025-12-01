@@ -4,15 +4,14 @@ import Mention from "@tiptap/extension-mention";
 import { Plugin, TextSelection } from "@tiptap/pm/state";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 
-import { createMarkdownSerializer } from "@app/components/assistant/conversation/input_bar/editor/markdownSerializer";
+import { createMarkdownSerializer } from "@app/components/editor/input_bar/markdownSerializer";
+import { MentionComponent } from "@app/components/editor/input_bar/MentionComponent";
 import {
   AGENT_MENTION_REGEX_BEGINNING,
   USER_MENTION_REGEX_BEGINNING,
 } from "@app/lib/mentions/format";
 import logger from "@app/logger/logger";
 import type { WorkspaceType } from "@app/types";
-
-import { MentionComponent } from "../MentionComponent";
 
 interface MentionExtensionOptions extends MentionOptions {
   owner: WorkspaceType;

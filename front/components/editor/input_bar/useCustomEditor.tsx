@@ -6,18 +6,18 @@ import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { useEffect, useMemo } from "react";
 
-import { cleanupPastedHTML } from "@app/components/assistant/conversation/input_bar/editor/cleanupPastedHTML";
-import { DataSourceLinkExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/DataSourceLinkExtension";
-import { KeyboardShortcutsExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/KeyboardShortcutsExtension";
-import { MarkdownStyleExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MarkdownStyleExtension";
-import { MentionExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionExtension";
-import { PastedAttachmentExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/PastedAttachmentExtension";
-import { URLDetectionExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/URLDetectionExtension";
-import { createMarkdownSerializer } from "@app/components/assistant/conversation/input_bar/editor/markdownSerializer";
+import { DataSourceLinkExtension } from "@app/components/editor/extensions/input_bar/DataSourceLinkExtension";
+import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
+import { MarkdownStyleExtension } from "@app/components/editor/extensions/input_bar/MarkdownStyleExtension";
+import { PastedAttachmentExtension } from "@app/components/editor/extensions/input_bar/PastedAttachmentExtension";
+import { URLDetectionExtension } from "@app/components/editor/extensions/input_bar/URLDetectionExtension";
+import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
+import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPastedHTML";
+import { createMarkdownSerializer } from "@app/components/editor/input_bar/markdownSerializer";
 import {
   createMentionSuggestion,
   mentionPluginKey,
-} from "@app/components/assistant/conversation/input_bar/editor/mentionSuggestion";
+} from "@app/components/editor/input_bar/mentionSuggestion";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { extractFromEditorJSON } from "@app/lib/mentions/format";
@@ -25,7 +25,7 @@ import { isMobile } from "@app/lib/utils";
 import type { RichMention } from "@app/types";
 import type { WorkspaceType } from "@app/types";
 
-import { URLStorageExtension } from "./extensions/URLStorageExtension";
+import { URLStorageExtension } from "../extensions/input_bar/URLStorageExtension";
 
 const DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD = 16000;
 

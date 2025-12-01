@@ -5,7 +5,7 @@ import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isUrlCandidate } from "@app/lib/connectors";
 import type { DataSourceViewContentNode } from "@app/types";
 
-import type { URLState } from "./extensions/URLStorageExtension";
+import type { URLState } from "../extensions/input_bar/URLStorageExtension";
 
 const useUrlHandler = (
   editor: Editor | null,

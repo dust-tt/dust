@@ -18,7 +18,7 @@ import React, {
 import type {
   MentionDropdownOnKeyDown,
   MentionDropdownProps,
-} from "@app/components/assistant/conversation/input_bar/editor/types";
+} from "@app/components/editor/input_bar/types";
 import { useMentionSuggestions } from "@app/lib/swr/mentions";
 import { classNames } from "@app/lib/utils";
 

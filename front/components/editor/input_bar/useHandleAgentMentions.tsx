@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-import type { EditorService } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
+import type { EditorService } from "@app/components/editor/input_bar/useCustomEditor";
 import type {
   AgentMention,
   LightAgentConfigurationType,
