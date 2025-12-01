@@ -253,20 +253,22 @@ async function handler(
         });
       }
 
-      await launchAgentMessageFeedbackWorkflow(auth, {
-        message: {
+      await Promise.all([
+        launchAgentMessageFeedbackWorkflow(auth, {
+          message: {
+            conversationId: conversation.sId,
+            agentMessageId: messageId,
+          },
+        }),
+        triggerAgentMessageFeedbackNotification(auth, {
           conversationId: conversation.sId,
-          agentMessageId: messageId,
-        },
-      });
+          messageId,
+          agentConfigurationId: created.value.agentConfigurationId,
+          thumbDirection: bodyValidation.right.thumbDirection,
+          feedbackContent: bodyValidation.right.feedbackContent ?? undefined,
+        }),
+      ]);
 
-      await triggerAgentMessageFeedbackNotification(auth, {
-        conversationId: conversation.sId,
-        messageId,
-        agentConfigurationId: created.value.agentConfigurationId,
-        thumbDirection: bodyValidation.right.thumbDirection,
-        feedbackContent: bodyValidation.right.feedbackContent ?? undefined,
-      });
       res.status(200).json({ success: true });
       return;
 
