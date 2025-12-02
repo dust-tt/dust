@@ -30,7 +30,7 @@ import {
 import { AgentMessage, Message } from "@app/lib/models/agent/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import type { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
@@ -360,8 +360,26 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         });
       } else if (action.status === "blocked_child_action_input_required") {
         const conversationId = action.stepContext.resumeState?.conversationId;
+
+        // conversation was not created so we can return an empty list (= no blocked actions)
+        if (!conversationId || !isString(conversationId)) {
+          return blockedActionsList;
+        }
+
+        const childConversation = await ConversationResource.fetchById(
+          auth,
+          conversationId
+        );
+
+        if (!childConversation) {
+          return blockedActionsList;
+        }
+
         const childBlockedActionsList = isString(conversationId)
-          ? await this.listBlockedActionsForConversation(auth, conversation)
+          ? await this.listBlockedActionsForConversation(
+              auth,
+              childConversation
+            )
           : [];
 
         blockedActionsList.push({
