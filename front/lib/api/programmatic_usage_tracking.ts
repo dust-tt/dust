@@ -258,7 +258,7 @@ export async function trackProgrammaticCost(
   const runsCostUsd = runUsages
     .flat()
     .reduce((acc, usage) => acc + usage.costUsd, 0);
-  const runsCostCents = runsCostUsd > 0 ? Math.ceil(runsCostUsd * 100) : 0;
+  const runsCostCents = runsCostUsd > 0 ? Math.ceil(runsCostUsd) : 0;
 
   await decreaseProgrammaticCredits(
     auth.getNonNullableWorkspace(),
