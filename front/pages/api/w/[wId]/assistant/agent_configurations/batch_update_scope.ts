@@ -11,7 +11,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
-import { isBuilder, type WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types";
 
 const BatchUpdateAgentScopeRequestBodySchema = t.type({
   agentIds: t.array(t.string),
