@@ -128,15 +128,13 @@ export function CreateConnectionOAuthModal({
                 </div>
               )}
 
-              {connectorProviderConfiguration.oauthExtraConfigComponent &&
-                (connectorProviderConfiguration.connectorProvider !== "slack" ||
-                  isSlackCustomAppEnabled) && (
-                  <connectorProviderConfiguration.oauthExtraConfigComponent
-                    extraConfig={extraConfig}
-                    setExtraConfig={setExtraConfig}
-                    setIsExtraConfigValid={setIsExtraConfigValid}
-                  />
-                )}
+              {connectorProviderConfiguration.oauthExtraConfigComponent && (
+                <connectorProviderConfiguration.oauthExtraConfigComponent
+                  extraConfig={extraConfig}
+                  setExtraConfig={setExtraConfig}
+                  setIsExtraConfigValid={setIsExtraConfigValid}
+                />
+              )}
 
               <div className="flex justify-center pt-2">
                 <div className="flex gap-2">
