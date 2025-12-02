@@ -1541,9 +1541,13 @@ export const APIErrorSchema = z.object({
 });
 export type APIError = z.infer<typeof APIErrorSchema>;
 
+export const DomainUseCaseSchema = z.enum(["sso", "mcp"]);
+export type DomainUseCaseType = z.infer<typeof DomainUseCaseSchema>;
+
 export const WorkspaceDomainSchema = z.object({
   domain: z.string(),
   domainAutoJoinEnabled: z.boolean(),
+  useCases: z.array(DomainUseCaseSchema),
 });
 
 export type WorkspaceDomainType = z.infer<typeof WorkspaceDomainSchema>;

@@ -311,6 +311,8 @@ async function handleOrganizationDomainEvent(
       // verification process. If this domain is already assigned to another workspace,
       // we need to delete the domain from the other workspace.
       dropExistingDomain: true,
+      // New domains verified through WorkOS default to SSO use case.
+      initialUseCases: ["sso"],
     });
   } else {
     domainResult = await deleteWorkspaceDomain(workspace, { domain });
@@ -348,8 +350,8 @@ async function handleOrganizationUpdated(
   const { domains } = eventData;
 
   const existingVerifiedDomains = await getWorkspaceVerifiedDomains(workspace);
-  const existingVerifiedDomainsSet = new Set(
-    existingVerifiedDomains.map((d) => d.domain)
+  const existingVerifiedDomainsMap = new Map(
+    existingVerifiedDomains.map((d) => [d.domain, d])
   );
 
   // Get all verified domains from WorkOS.
@@ -358,9 +360,13 @@ async function handleOrganizationUpdated(
   );
 
   // Add new verified domains that don't exist yet.
+  // New domains from WorkOS verification default to SSO use case.
   for (const domain of workOSVerifiedDomains) {
-    if (!existingVerifiedDomainsSet.has(domain)) {
-      const result = await upsertWorkspaceDomain(workspace, { domain });
+    if (!existingVerifiedDomainsMap.has(domain)) {
+      const result = await upsertWorkspaceDomain(workspace, {
+        domain,
+        initialUseCases: ["sso"],
+      });
 
       // Swallow errors, we don't want to block the event from being processed. Sole error returned
       // is if the domain is already in use by another workspace.
@@ -374,7 +380,7 @@ async function handleOrganizationUpdated(
   }
 
   // Delete domains that are no longer verified in WorkOS.
-  for (const domain of existingVerifiedDomainsSet) {
+  for (const domain of existingVerifiedDomainsMap.keys()) {
     if (!workOSVerifiedDomains.has(domain)) {
       await deleteWorkspaceDomain(workspace, { domain });
     }

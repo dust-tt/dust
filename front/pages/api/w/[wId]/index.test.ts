@@ -181,6 +181,7 @@ describe("POST /api/w/[wId]", () => {
       workspaceId: workspace.id,
       domain: fakeDomain,
       domainAutoJoinEnabled: false,
+      useCases: ["sso"],
     });
 
     req.body = {
