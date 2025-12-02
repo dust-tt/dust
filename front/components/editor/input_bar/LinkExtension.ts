@@ -1,8 +1,8 @@
 import Link from "@tiptap/extension-link";
 
 export const LinkExtension = Link.extend({
-  renderHTML({ HTMLAttributes }: { HTMLAttributes: { href: string } }) {
-    const href = HTMLAttributes.href || "";
+  renderHTML({ HTMLAttributes }) {
+    const href = HTMLAttributes.href ?? "";
     return [
       "span",
       {

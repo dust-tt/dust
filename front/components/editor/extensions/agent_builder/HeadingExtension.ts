@@ -4,7 +4,12 @@ import { Heading } from "@tiptap/extension-heading";
 import type { Node } from "@tiptap/pm/model";
 
 export const HeadingExtension = Heading.extend({
-  levels: [1, 2, 3, 4, 5, 6],
+  addOptions() {
+    return {
+      levels: [1, 2, 3, 4, 5, 6],
+      HTMLAttributes: {},
+    };
+  },
   renderHTML({
     node,
     HTMLAttributes,
