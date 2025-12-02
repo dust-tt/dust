@@ -4,13 +4,13 @@ import type { ModelIdType as BaseModelIdType, ModelIdType } from "@app/types";
 type PricingEntry = {
   input: number;
   output: number;
-  // Optional cached-token pricing (USD per million tokens). For now unused.
+  // Optional cached-token pricing (micro USD per token).
   cache_creation_input_tokens?: number;
   cache_read_input_tokens?: number;
 };
 
 export const DUST_MARKUP_PERCENT = 30;
-// Pricing (in USD) per million of tokens for current models.
+// Pricing in micro USD per token for current models.
 // This record must contain all BaseModelIdType values.
 const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
   // https://openai.com/api/pricing
@@ -415,11 +415,11 @@ const DEFAULT_PRICING_MODEL_ID: BaseModelIdType = "gpt-4o";
 const DEFAULT_PRICING = MODEL_PRICING[DEFAULT_PRICING_MODEL_ID];
 
 /**
- * Calculate the cost in USD for token usage.
+ * Calculate the cost in micro USD for token usage.
  * Note: promptTokens currently includes cached read and cache write tokens for some providers.
  * To avoid double counting, price all promptTokens at base input rate, then adjust with deltas.
  */
-export function calculateTokenUsageCostForUsage({
+export function calculateTokenUsageCostForUsageInMicroUsd({
   modelId,
   promptTokens,
   completionTokens,
@@ -440,19 +440,19 @@ export function calculateTokenUsageCostForUsage({
   const cachedReadRate = pricing.cache_read_input_tokens ?? pricing.input;
   const cacheWriteRate = pricing.cache_creation_input_tokens ?? pricing.input;
 
-  const basePromptCost = (promptTokens / 1_000_000) * pricing.input;
-  const cachedReadDelta =
-    (cachedReadTokens / 1_000_000) * (cachedReadRate - pricing.input);
-  const cacheWriteDelta =
-    (cacheWriteTokens / 1_000_000) * (cacheWriteRate - pricing.input);
-  const outputCost = (completionTokens / 1_000_000) * pricing.output;
+  const basePromptCost = promptTokens * pricing.input;
+  const cachedReadDelta = cachedReadTokens * (cachedReadRate - pricing.input);
+  const cacheWriteDelta = cacheWriteTokens * (cacheWriteRate - pricing.input);
+  const outputCost = completionTokens * pricing.output;
 
   return basePromptCost + cachedReadDelta + cacheWriteDelta + outputCost;
 }
 
-export function calculateTokenUsageCost(usages: RunUsageType[]): number {
+export function calculateTokenUsageCostInMicroUsd(
+  usages: RunUsageType[]
+): number {
   return usages.reduce(
-    (acc, usage) => acc + calculateTokenUsageCostForUsage(usage),
+    (acc, usage) => acc + calculateTokenUsageCostForUsageInMicroUsd(usage),
     0
   );
 }

@@ -8,7 +8,7 @@ import type {
 } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
-import { calculateTokenUsageCostForUsage } from "@app/lib/api/assistant/token_pricing";
+import { calculateTokenUsageCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
 import type { TokenUsage } from "@app/lib/api/llm/types/events";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -267,7 +267,7 @@ export class RunResource extends BaseResource<RunModel> {
           completionTokens,
           cachedTokens,
           cacheCreationTokens,
-          costUsd,
+          costMicroUsd,
         }) => ({
           runId: this.id,
           workspaceId: this.workspaceId,
@@ -277,7 +277,8 @@ export class RunResource extends BaseResource<RunModel> {
           completionTokens,
           cachedTokens,
           cacheCreationTokens: cacheCreationTokens ?? null,
-          costUsd,
+          costUsd: costMicroUsd / 1_000_000,
+          costMicroUsd,
         })
       )
     );
@@ -293,7 +294,7 @@ export class RunResource extends BaseResource<RunModel> {
       return;
     }
 
-    const usageCostUsd = calculateTokenUsageCostForUsage({
+    const usageCostMicroUsd = calculateTokenUsageCostForUsageInMicroUsd({
       modelId: modelConfig.modelId,
       promptTokens: usage.inputTokens,
       completionTokens: usage.outputTokens,
@@ -309,7 +310,7 @@ export class RunResource extends BaseResource<RunModel> {
         modelId: modelConfig.modelId,
         promptTokens: usage.inputTokens,
         providerId: modelConfig.providerId,
-        costUsd: usageCostUsd,
+        costMicroUsd: usageCostMicroUsd,
       },
     ]);
   }
@@ -329,7 +330,7 @@ export class RunResource extends BaseResource<RunModel> {
       providerId: usage.providerId as ModelProviderIdType,
       cachedTokens: usage.cachedTokens,
       cacheCreationTokens: usage.cacheCreationTokens,
-      costUsd: usage.costUsd,
+      costMicroUsd: usage.costMicroUsd,
     }));
   }
 }
@@ -351,5 +352,5 @@ export interface RunUsageType {
   cachedTokens: number | null;
   // Optional: tokens spent writing to cache (e.g., Anthropic cache creation)
   cacheCreationTokens?: number | null;
-  costUsd: number;
+  costMicroUsd: number;
 }

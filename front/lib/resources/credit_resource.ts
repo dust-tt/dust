@@ -191,7 +191,7 @@ export class CreditResource extends BaseResource<CreditModel> {
    * Over-consumption should however stay minimal
    */
   async consume(
-    amountInCents: number,
+    { amountInCents }: { amountInCents: number },
     { transaction }: { transaction?: Transaction } = {}
   ) {
     if (amountInCents <= 0) {

@@ -74,6 +74,7 @@ export class RunUsageModel extends WorkspaceAwareModel<RunUsageModel> {
   declare cacheCreationTokens: number | null;
 
   declare costUsd: number;
+  declare costMicroUsd: number;
 }
 
 RunUsageModel.init(
@@ -106,6 +107,11 @@ RunUsageModel.init(
     },
     costUsd: {
       type: DataTypes.FLOAT,
+      defaultValue: 0,
+      allowNull: false,
+    },
+    costMicroUsd: {
+      type: DataTypes.BIGINT,
       defaultValue: 0,
       allowNull: false,
     },
