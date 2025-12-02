@@ -178,8 +178,6 @@ function UsageSection({ subscription, credits, isLoading }: UsageSectionProps) {
     ? new Date(subscription.startDate).getDate()
     : null;
 
-  console.log(subscription.startDate);
-
   const [cycleStart, cycleEnd] = useMemo(() => {
     if (!BILLING_CYCLE_START_DAY) {
       return [null, null];
