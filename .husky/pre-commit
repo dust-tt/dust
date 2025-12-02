@@ -46,6 +46,10 @@ for directory in "${directories[@]}"; do
                 echo "Type checking failed. Please fix the issues before committing."
                 exit 1
             fi
+            if ! npm run lint:circular --if-present --prefix $root_path/$directory; then
+                echo "Circular dependency check failed. Please fix the issues before committing."
+                exit 1
+            fi
         else
             if ! npm run tsc --if-present --prefix $root_path/$directory; then
               echo "Type checking failed. Please fix the issues before committing."
