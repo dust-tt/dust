@@ -40,3 +40,4 @@ dist/
 
 # cache
 .cache/
+.eslintcache
