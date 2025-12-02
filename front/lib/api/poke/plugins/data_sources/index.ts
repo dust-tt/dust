@@ -3,6 +3,7 @@ export * from "./check_slack_channel";
 export * from "./compute_statistics";
 export * from "./confluence_page_checker";
 export * from "./delete_data_source";
+export * from "./delete_folder";
 export * from "./garbage_collect_google_drive_document";
 export * from "./google_drive_sync_file";
 export * from "./intercom_set_sliding_window";
