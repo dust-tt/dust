@@ -1,3 +1,4 @@
+import type { ConversationMessageAction } from "@dust-tt/sparkle";
 import {
   BoltIcon,
   classNames,
@@ -5,9 +6,10 @@ import {
   Icon,
   Markdown,
   Tooltip,
+  TrashIcon,
 } from "@dust-tt/sparkle";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
-import { useCallback, useMemo } from "react";
+import { useCallback, useContext, useMemo } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
@@ -17,7 +19,9 @@ import type { VirtuosoMessage } from "@app/components/assistant/conversation/typ
 import {
   hasHumansInteracting,
   isTriggeredOrigin,
+  isUserMessage,
 } from "@app/components/assistant/conversation/types";
+import { ConfirmContext } from "@app/components/Confirm";
 import {
   CiteBlock,
   getCiteDirective,
@@ -30,6 +34,7 @@ import {
   PastedAttachmentBlock,
   pastedAttachmentDirective,
 } from "@app/components/markdown/PastedAttachmentBlock";
+import { useDeleteMessage } from "@app/hooks/useDeleteMessage";
 import {
   agentMentionDirective,
   getAgentMentionPlugin,
@@ -59,6 +64,11 @@ export function UserMessage({
 }: UserMessageProps) {
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const userMentionsEnabled = hasFeature("mentions_v2");
+  const { deleteMessage, isDeleting } = useDeleteMessage({
+    owner,
+    conversationId,
+  });
+  const confirm = useContext(ConfirmContext);
 
   const additionalMarkdownComponents: Components = useMemo(
     () => ({
@@ -97,8 +107,52 @@ export function UserMessage({
     );
   }, [message.mentions.length, isLastMessage, methods.data]);
 
+  const isDeleted = message.visibility === "deleted";
+  const isCurrentUser = message.user?.sId === currentUserId;
+
+  const handleDeleteMessage = useCallback(async () => {
+    if (isDeleting || isDeleted) {
+      return;
+    }
+
+    const confirmed = await confirm({
+      title: "Delete message",
+      message:
+        "Are you sure you want to delete this message? This action cannot be undone.",
+      validateLabel: "Delete",
+      validateVariant: "warning",
+    });
+
+    if (confirmed) {
+      await deleteMessage(message.sId);
+      // Optimistically update the message visibility in the Virtuoso list
+      methods.data.map((m) => {
+        if (isUserMessage(m) && m.sId === message.sId) {
+          return {
+            ...m,
+            visibility: "deleted",
+          };
+        }
+        return m;
+      });
+    }
+  }, [isDeleting, isDeleted, confirm, deleteMessage, message.sId, methods]);
+
+  const actions: ConversationMessageAction[] = useMemo(() => {
+    if (!isCurrentUser || isDeleted || !userMentionsEnabled) {
+      return [];
+    }
+
+    return [
+      {
+        icon: TrashIcon,
+        label: "Delete message",
+        onClick: handleDeleteMessage,
+      },
+    ];
+  }, [isCurrentUser, isDeleted, userMentionsEnabled, handleDeleteMessage]);
+
   if (userMentionsEnabled) {
-    const isCurrentUser = message.user?.sId === currentUserId;
     return (
       <div className="flex flex-grow flex-col">
         <div
@@ -125,14 +179,21 @@ export function UserMessage({
             type="user"
             isCurrentUser={isCurrentUser}
             citations={citations}
+            actions={actions}
           >
-            <Markdown
-              content={message.content}
-              isStreaming={false}
-              isLastMessage={isLastMessage}
-              additionalMarkdownComponents={additionalMarkdownComponents}
-              additionalMarkdownPlugins={additionalMarkdownPlugins}
-            />
+            {isDeleted ? (
+              <div className="italic text-muted-foreground">
+                This message has been deleted
+              </div>
+            ) : (
+              <Markdown
+                content={message.content}
+                isStreaming={false}
+                isLastMessage={isLastMessage}
+                additionalMarkdownComponents={additionalMarkdownComponents}
+                additionalMarkdownPlugins={additionalMarkdownPlugins}
+              />
+            )}
           </NewConversationMessage>
         </div>
         {showAgentSuggestions && (
@@ -164,14 +225,21 @@ export function UserMessage({
           }
           type="user"
           citations={citations}
+          actions={actions}
         >
-          <Markdown
-            content={message.content}
-            isStreaming={false}
-            isLastMessage={isLastMessage}
-            additionalMarkdownComponents={additionalMarkdownComponents}
-            additionalMarkdownPlugins={additionalMarkdownPlugins}
-          />
+          {isDeleted ? (
+            <div className="italic text-muted-foreground">
+              This message has been deleted
+            </div>
+          ) : (
+            <Markdown
+              content={message.content}
+              isStreaming={false}
+              isLastMessage={isLastMessage}
+              additionalMarkdownComponents={additionalMarkdownComponents}
+              additionalMarkdownPlugins={additionalMarkdownPlugins}
+            />
+          )}
         </ConversationMessage>
       </div>
       {showAgentSuggestions && (

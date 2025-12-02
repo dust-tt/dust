@@ -1,5 +1,15 @@
-import type { Button } from "@dust-tt/sparkle";
-import { Avatar, CitationGrid, cn } from "@dust-tt/sparkle";
+import type { Button, ConversationMessageAction } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  CitationGrid,
+  cn,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  IconButton,
+  MoreIcon,
+} from "@dust-tt/sparkle";
 import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
 import React from "react";
@@ -10,6 +20,7 @@ type MessageType = "me" | "user" | "agent";
 interface NewConversationMessageProps
   extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof messageVariants> {
+  actions?: ConversationMessageAction[];
   avatarBusy?: boolean;
   buttons?: React.ReactElement<typeof Button>[];
   children?: React.ReactNode;
@@ -72,6 +83,7 @@ export const NewConversationMessage = React.forwardRef<
 >(
   (
     {
+      actions,
       avatarBusy = false,
       buttons,
       children,
@@ -120,6 +132,7 @@ export const NewConversationMessage = React.forwardRef<
               infoChip={infoChip}
               completionStatus={completionStatus}
               renderName={renderName}
+              actions={actions}
             />
           </div>
 
@@ -145,6 +158,7 @@ export const NewConversationMessage = React.forwardRef<
               infoChip={infoChip}
               completionStatus={completionStatus}
               renderName={renderName}
+              actions={actions}
             />
             <ConversationMessageContent citations={citations} type={type}>
               {children}
@@ -244,6 +258,7 @@ ConversationMessageAvatar.displayName = "ConversationMessageAvatar";
 
 interface ConversationMessageTitleProps
   extends React.HTMLAttributes<HTMLDivElement> {
+  actions?: ConversationMessageAction[];
   name?: string;
   timestamp?: string;
   infoChip?: React.ReactNode;
@@ -254,19 +269,52 @@ interface ConversationMessageTitleProps
 const ConversationMessageTitle = React.forwardRef<
   HTMLDivElement,
   ConversationMessageTitleProps
->(({ name = "", timestamp, infoChip, completionStatus, renderName }) => {
-  return (
-    <div className="inline-flex w-full justify-between gap-0.5">
-      <div className="inline-flex items-baseline gap-2 text-foreground dark:text-foreground-night">
-        <span className="heading-sm">{renderName(name)}</span>
-        <span className="heading-xs text-muted-foreground dark:text-muted-foreground-night">
-          {timestamp}
-        </span>
-        {infoChip && infoChip}
+>(
+  ({
+    name = "",
+    timestamp,
+    infoChip,
+    completionStatus,
+    renderName,
+    actions,
+  }) => {
+    return (
+      <div className="inline-flex w-full justify-between gap-0.5">
+        <div className="inline-flex items-baseline gap-2 text-foreground dark:text-foreground-night">
+          <span className="heading-sm">{renderName(name)}</span>
+          <span className="heading-xs text-muted-foreground dark:text-muted-foreground-night">
+            {timestamp}
+          </span>
+          {infoChip && infoChip}
+        </div>
+        <div className="inline-flex items-center gap-2">
+          {completionStatus ?? null}
+          {actions && actions.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <IconButton
+                  icon={MoreIcon}
+                  size="xs"
+                  variant="highlight-secondary"
+                  aria-label="Message actions"
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {actions.map((action, index) => (
+                  <DropdownMenuItem
+                    key={index}
+                    icon={action.icon}
+                    label={action.label}
+                    onClick={action.onClick}
+                  />
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
       </div>
-      {completionStatus ?? null}
-    </div>
-  );
-});
+    );
+  }
+);
 
 ConversationMessageTitle.displayName = "ConversationMessageTitle";
