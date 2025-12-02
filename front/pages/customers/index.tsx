@@ -10,48 +10,39 @@ import { Grid, H1, H5, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { getAllCustomerStories } from "@app/lib/contentful/client";
-import type { CustomerStoryListingPageProps } from "@app/lib/contentful/types";
+import type {
+  CustomerStoryFilterOptions,
+  CustomerStoryListingPageProps,
+  CustomerStorySummary,
+} from "@app/lib/contentful/types";
 import { classNames } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
-// Filter options
-const INDUSTRIES = [
-  "B2B SaaS",
-  "Financial Services",
-  "Insurance",
-  "Healthcare",
-  "Retail & E-commerce",
-  "Marketplace",
-  "Consulting",
-  "Technology",
-  "Travel",
-  "Real Estate",
-  "Other",
-] as const;
+function extractFilterOptions(
+  stories: CustomerStorySummary[]
+): CustomerStoryFilterOptions {
+  const industries = new Set<string>();
+  const departments = new Set<string>();
+  const companySizes = new Set<string>();
 
-const DEPARTMENTS = [
-  "Sales",
-  "Marketing",
-  "Customer Support",
-  "Engineering",
-  "Product",
-  "HR & People",
-  "Legal",
-  "Finance",
-  "IT",
-  "Operations",
-  "Data",
-  "Knowledge Management",
-  "Executive",
-] as const;
+  for (const story of stories) {
+    if (story.industry) {
+      industries.add(story.industry);
+    }
+    for (const dept of story.department) {
+      departments.add(dept);
+    }
+    if (story.companySize) {
+      companySizes.add(story.companySize);
+    }
+  }
 
-const COMPANY_SIZES = [
-  "1-50",
-  "51-200",
-  "201-1000",
-  "1001-5000",
-  "5000+",
-] as const;
+  return {
+    industries: [...industries].sort(),
+    departments: [...departments].sort(),
+    companySizes: [...companySizes].sort(),
+  };
+}
 
 export const getServerSideProps: GetServerSideProps<
   CustomerStoryListingPageProps
@@ -66,14 +57,18 @@ export const getServerSideProps: GetServerSideProps<
     return {
       props: {
         stories: [],
+        filterOptions: { industries: [], departments: [], companySizes: [] },
         gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
       },
     };
   }
 
+  const stories = storiesResult.value;
+
   return {
     props: {
-      stories: storiesResult.value,
+      stories,
+      filterOptions: extractFilterOptions(stories),
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
     },
   };
@@ -142,6 +137,7 @@ function FilterSection({
 
 export default function CustomerStoriesListing({
   stories,
+  filterOptions,
 }: CustomerStoryListingPageProps) {
   const router = useRouter();
 
@@ -273,21 +269,21 @@ export default function CustomerStoriesListing({
 
               <FilterSection
                 title="Industry"
-                options={INDUSTRIES}
+                options={filterOptions.industries}
                 selected={selectedIndustries}
                 onChange={(values) => updateFilters("industry", values)}
               />
 
               <FilterSection
                 title="Department"
-                options={DEPARTMENTS}
+                options={filterOptions.departments}
                 selected={selectedDepartments}
                 onChange={(values) => updateFilters("department", values)}
               />
 
               <FilterSection
                 title="Company Size"
-                options={COMPANY_SIZES}
+                options={filterOptions.companySizes}
                 selected={selectedCompanySizes}
                 onChange={(values) => updateFilters("size", values)}
               />
@@ -309,12 +305,12 @@ export default function CustomerStoriesListing({
                         "hover:bg-primary-100"
                       )}
                     >
-                      {/* Thumbnail or logo area */}
+                      {/* Hero image or logo */}
                       <div className="relative flex aspect-[16/9] w-full items-center justify-center overflow-hidden bg-gray-100">
-                        {story.thumbnailImage ? (
+                        {story.heroImage ? (
                           <Image
-                            src={story.thumbnailImage.url}
-                            alt={story.thumbnailImage.alt}
+                            src={story.heroImage.url}
+                            alt={story.heroImage.alt}
                             fill
                             className="object-cover brightness-100 transition duration-300 ease-out group-hover:brightness-110"
                           />

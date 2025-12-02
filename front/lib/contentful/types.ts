@@ -66,7 +66,6 @@ export interface CustomerStoryFields {
 
   // Customer info (optional)
   companyLogo?: Asset;
-  companyLogoWhite?: Asset;
   companyWebsite?: string;
 
   // Contact person (optional)
@@ -76,20 +75,17 @@ export interface CustomerStoryFields {
 
   // Metrics (optional)
   headlineMetric?: string;
-  secondaryMetrics?: string[];
 
   // Filtering (optional)
   companySize?: string;
 
   // Media (optional)
   heroImage?: Asset;
-  thumbnailImage?: Asset;
   gallery?: Asset[];
 
   // Publishing
   publishedAt?: string;
   featured?: boolean;
-  tags?: string[];
 
   // SEO
   metaDescription?: string;
@@ -106,23 +102,19 @@ export interface CustomerStory {
   title: string;
   companyName: string;
   companyLogo: BlogImage | null;
-  companyLogoWhite: BlogImage | null;
   companyWebsite: string | null;
   contactName: string | null;
   contactTitle: string | null;
   contactPhoto: BlogImage | null;
   headlineMetric: string | null;
-  secondaryMetrics: string[];
   industry: string;
   department: string[];
   companySize: string | null;
   description: string | null;
   body: Document;
   heroImage: BlogImage | null;
-  thumbnailImage: BlogImage | null;
   gallery: BlogImage[];
   featured: boolean;
-  tags: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -135,7 +127,7 @@ export interface CustomerStorySummary {
   companyLogo: BlogImage | null;
   headlineMetric: string | null;
   description: string | null;
-  thumbnailImage: BlogImage | null;
+  heroImage: BlogImage | null;
   industry: string;
   department: string[];
   companySize: string | null;
@@ -150,8 +142,15 @@ export interface CustomerStoryFilters {
   featured?: boolean;
 }
 
+export interface CustomerStoryFilterOptions {
+  industries: string[];
+  departments: string[];
+  companySizes: string[];
+}
+
 export interface CustomerStoryListingPageProps {
   stories: CustomerStorySummary[];
+  filterOptions: CustomerStoryFilterOptions;
   gtmTrackingId: string | null;
 }
 

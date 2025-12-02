@@ -7,6 +7,7 @@ import type { ReactElement } from "react";
 import { Grid, H1, H2, H5 } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
+import config from "@app/lib/api/config";
 import {
   getCustomerStoryBySlug,
   getRelatedCustomerStories,
@@ -28,22 +29,8 @@ export const getServerSideProps: GetServerSideProps<
   }
 
   // Enable preview mode if valid secret provided
-  const isPreview =
-    preview === "true" && secret === process.env.CONTENTFUL_PREVIEW_SECRET;
-
-  if (preview === "true" && !isPreview) {
-    const envSecret = process.env.CONTENTFUL_PREVIEW_SECRET;
-    logger.warn(
-      {
-        slug,
-        providedSecretLength: typeof secret === "string" ? secret.length : 0,
-        envSecretLength: envSecret?.length ?? 0,
-        envSecretSet: !!envSecret,
-        match: secret === envSecret,
-      },
-      `Preview requested but secret validation failed for "${slug}"`
-    );
-  }
+  const previewSecret = config.getContentfulPreviewSecret();
+  const isPreview = preview === "true" && secret === previewSecret;
 
   const storyResult = await getCustomerStoryBySlug(slug, isPreview);
 
@@ -246,22 +233,6 @@ export default function CustomerStoryPage({
 
           {/* Main content and sidebar */}
           <div className={classNames(CONTENT_CLASSES, "mt-12")}>
-            {/* Secondary metrics */}
-            {story.secondaryMetrics.length > 0 && (
-              <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {story.secondaryMetrics.map((metric, index) => (
-                  <div
-                    key={index}
-                    className="rounded-lg bg-muted-background p-4 text-center"
-                  >
-                    <span className="text-lg font-semibold text-foreground">
-                      {metric}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-
             {/* Rich text body */}
             {renderRichTextFromContentful(story.body)}
 
@@ -418,12 +389,12 @@ export default function CustomerStoryPage({
                     "hover:bg-primary-100"
                   )}
                 >
-                  {/* Thumbnail */}
+                  {/* Hero image */}
                   <div className="relative flex aspect-[16/9] w-full items-center justify-center overflow-hidden bg-gray-100">
-                    {relatedStory.thumbnailImage ? (
+                    {relatedStory.heroImage ? (
                       <Image
-                        src={relatedStory.thumbnailImage.url}
-                        alt={relatedStory.thumbnailImage.alt}
+                        src={relatedStory.heroImage.url}
+                        alt={relatedStory.heroImage.alt}
                         fill
                         className="object-cover brightness-100 transition duration-300 ease-out group-hover:brightness-110"
                       />

@@ -2,6 +2,7 @@ import type { Document } from "@contentful/rich-text-types";
 import { BLOCKS } from "@contentful/rich-text-types";
 import type { Asset, ContentfulClientApi, Entry } from "contentful";
 import { createClient } from "contentful";
+import { z } from "zod";
 
 import type {
   BlogImage,
@@ -282,110 +283,133 @@ export async function getRelatedPosts(
 
 // Customer Story functions
 
-function contentfulEntryToCustomerStory(
-  entry: Entry<CustomerStorySkeleton>
-): CustomerStory {
-  const { fields, sys } = entry;
+// Zod schema for customer story filters
+const CustomerStoryFiltersSchema = z.object({
+  industry: z.array(z.string()).optional(),
+  department: z.array(z.string()).optional(),
+  companySize: z.array(z.string()).optional(),
+  featured: z.boolean().optional(),
+});
 
-  const titleField = fields.title;
-  const title = isString(titleField) ? titleField : "";
+function buildCustomerStoryQuery(
+  filters?: CustomerStoryFilters,
+  options?: {
+    limit?: number;
+    slug?: string;
+    industry?: string;
+    departmentIn?: string[];
+  }
+): Record<string, string | number | boolean> {
+  const query: Record<string, string | number | boolean> = {
+    content_type: "customerStory",
+    limit: options?.limit ?? 1000,
+  };
 
-  const slugField = fields.slug;
-  const slug = isString(slugField) ? slugField : slugify(title);
+  if (options?.slug) {
+    query["fields.slug"] = options.slug;
+  }
 
-  const companyNameField = fields.companyName;
-  const companyName = isString(companyNameField) ? companyNameField : "";
+  if (options?.industry) {
+    query["fields.industry"] = options.industry;
+  }
 
-  const industryField = fields.industry;
-  const industry = isString(industryField) ? industryField : "";
+  if (options?.departmentIn && options.departmentIn.length > 0) {
+    query["fields.department[in]"] = options.departmentIn.join(",");
+  }
 
-  const departmentField = fields.department;
-  const department = Array.isArray(departmentField) ? departmentField : [];
+  if (filters) {
+    const parsed = CustomerStoryFiltersSchema.parse(filters);
 
-  const tagsField = fields.tags;
-  const tags = Array.isArray(tagsField) ? tagsField : [];
-
-  const secondaryMetricsField = fields.secondaryMetrics;
-  const secondaryMetrics = Array.isArray(secondaryMetricsField)
-    ? secondaryMetricsField
-    : [];
-
-  const publishedAtField = fields.publishedAt;
-  const publishedAt = isString(publishedAtField)
-    ? publishedAtField
-    : sys.createdAt;
-
-  const body = isDocument(fields.body) ? fields.body : EMPTY_DOCUMENT;
-  const heroImage = isAsset(fields.heroImage) ? fields.heroImage : undefined;
-  const thumbnailImage = isAsset(fields.thumbnailImage)
-    ? fields.thumbnailImage
-    : undefined;
-  const companyLogo = isAsset(fields.companyLogo)
-    ? fields.companyLogo
-    : undefined;
-  const companyLogoWhite = isAsset(fields.companyLogoWhite)
-    ? fields.companyLogoWhite
-    : undefined;
-  const contactPhoto = isAsset(fields.contactPhoto)
-    ? fields.contactPhoto
-    : undefined;
-
-  const galleryField = fields.gallery;
-  const gallery: BlogImage[] = [];
-  if (Array.isArray(galleryField)) {
-    for (const asset of galleryField) {
-      if (isAsset(asset)) {
-        const img = contentfulAssetToBlogImage(asset, title);
-        if (img) {
-          gallery.push(img);
-        }
-      }
+    if (parsed.industry && parsed.industry.length > 0) {
+      query["fields.industry[in]"] = parsed.industry.join(",");
+    }
+    if (parsed.department && parsed.department.length > 0) {
+      query["fields.department[in]"] = parsed.department.join(",");
+    }
+    if (parsed.companySize && parsed.companySize.length > 0) {
+      query["fields.companySize[in]"] = parsed.companySize.join(",");
+    }
+    if (parsed.featured !== undefined) {
+      query["fields.featured"] = parsed.featured;
     }
   }
 
-  // Generate description from body or use metaDescription
-  const metaDescriptionField = fields.metaDescription;
-  const description = isString(metaDescriptionField)
-    ? metaDescriptionField
-    : generateDescription(body);
+  return query;
+}
 
-  const featuredField = fields.featured;
-  const featured = typeof featuredField === "boolean" ? featuredField : false;
+// Zod helpers for Contentful types
+const assetSchema = z
+  .unknown()
+  .transform((val) => (isAsset(val) ? val : undefined));
+
+const documentSchema = z
+  .unknown()
+  .transform((val) => (isDocument(val) ? val : EMPTY_DOCUMENT));
+
+const gallerySchema = z.unknown().transform((val) => {
+  if (!Array.isArray(val)) {
+    return [];
+  }
+  return val.filter(isAsset);
+});
+
+// Zod schema for parsing Contentful customer story fields
+const CustomerStoryFieldsSchema = z.object({
+  title: z.string().default(""),
+  slug: z.string().optional(),
+  companyName: z.string().default(""),
+  industry: z.string().default(""),
+  department: z.array(z.string()).default([]),
+  publishedAt: z.string().optional(),
+  metaDescription: z.string().optional(),
+  companyWebsite: z.string().nullable().optional(),
+  contactName: z.string().nullable().optional(),
+  contactTitle: z.string().nullable().optional(),
+  headlineMetric: z.string().nullable().optional(),
+  companySize: z.string().nullable().optional(),
+  featured: z.boolean().default(false),
+  body: documentSchema,
+  heroImage: assetSchema,
+  companyLogo: assetSchema,
+  contactPhoto: assetSchema,
+  gallery: gallerySchema,
+});
+
+function contentfulEntryToCustomerStory(
+  entry: Entry<CustomerStorySkeleton>
+): CustomerStory {
+  const { sys } = entry;
+  const parsed = CustomerStoryFieldsSchema.parse(entry.fields);
+  const slug = parsed.slug ?? slugify(parsed.title);
 
   return {
     id: sys.id,
     slug,
-    title,
-    companyName,
-    companyLogo: contentfulAssetToBlogImage(companyLogo, companyName),
-    companyLogoWhite: contentfulAssetToBlogImage(
-      companyLogoWhite,
-      `${companyName} white logo`
+    title: parsed.title,
+    companyName: parsed.companyName,
+    companyLogo: contentfulAssetToBlogImage(
+      parsed.companyLogo,
+      parsed.companyName
     ),
-    companyWebsite: isString(fields.companyWebsite)
-      ? fields.companyWebsite
-      : null,
-    contactName: isString(fields.contactName) ? fields.contactName : null,
-    contactTitle: isString(fields.contactTitle) ? fields.contactTitle : null,
-    contactPhoto: contentfulAssetToBlogImage(contactPhoto, "Contact photo"),
-    headlineMetric: isString(fields.headlineMetric)
-      ? fields.headlineMetric
-      : null,
-    secondaryMetrics,
-    industry,
-    department,
-    companySize: isString(fields.companySize) ? fields.companySize : null,
-    description,
-    body,
-    heroImage: contentfulAssetToBlogImage(heroImage, title),
-    thumbnailImage: contentfulAssetToBlogImage(
-      thumbnailImage ?? heroImage,
-      title
+    companyWebsite: parsed.companyWebsite ?? null,
+    contactName: parsed.contactName ?? null,
+    contactTitle: parsed.contactTitle ?? null,
+    contactPhoto: contentfulAssetToBlogImage(
+      parsed.contactPhoto,
+      "Contact photo"
     ),
-    gallery,
-    featured,
-    tags,
-    createdAt: publishedAt,
+    headlineMetric: parsed.headlineMetric ?? null,
+    industry: parsed.industry,
+    department: parsed.department,
+    companySize: parsed.companySize ?? null,
+    description: parsed.metaDescription ?? generateDescription(parsed.body),
+    body: parsed.body,
+    heroImage: contentfulAssetToBlogImage(parsed.heroImage, parsed.title),
+    gallery: parsed.gallery
+      .map((asset) => contentfulAssetToBlogImage(asset, parsed.title))
+      .filter((img): img is BlogImage => img !== null),
+    featured: parsed.featured,
+    createdAt: parsed.publishedAt ?? sys.createdAt,
     updatedAt: sys.updatedAt,
   };
 }
@@ -401,7 +425,7 @@ function contentfulEntryToCustomerStorySummary(
     companyLogo: story.companyLogo,
     headlineMetric: story.headlineMetric,
     description: story.description,
-    thumbnailImage: story.thumbnailImage,
+    heroImage: story.heroImage,
     industry: story.industry,
     department: story.department,
     companySize: story.companySize,
@@ -416,28 +440,10 @@ export async function getAllCustomerStories(
 ): Promise<Result<CustomerStorySummary[], Error>> {
   try {
     const contentfulClient = preview ? getPreviewClient() : getClient();
-
-    const queryParams: Record<string, string | number | boolean> = {
-      content_type: "customerStory",
-      limit: 1000,
-    };
-
-    // Apply filters
-    if (filters?.industry && filters.industry.length > 0) {
-      queryParams["fields.industry[in]"] = filters.industry.join(",");
-    }
-    if (filters?.department && filters.department.length > 0) {
-      queryParams["fields.department[in]"] = filters.department.join(",");
-    }
-    if (filters?.companySize && filters.companySize.length > 0) {
-      queryParams["fields.companySize[in]"] = filters.companySize.join(",");
-    }
-    if (filters?.featured !== undefined) {
-      queryParams["fields.featured"] = filters.featured;
-    }
+    const query = buildCustomerStoryQuery(filters);
 
     const response =
-      await contentfulClient.getEntries<CustomerStorySkeleton>(queryParams);
+      await contentfulClient.getEntries<CustomerStorySkeleton>(query);
 
     const stories = response.items
       .map(contentfulEntryToCustomerStory)
@@ -459,15 +465,10 @@ export async function getCustomerStoryBySlug(
 ): Promise<Result<CustomerStory | null, Error>> {
   try {
     const contentfulClient = preview ? getPreviewClient() : getClient();
-
-    const queryParams = {
-      content_type: "customerStory",
-      "fields.slug": slug,
-      limit: 1,
-    };
+    const query = buildCustomerStoryQuery(undefined, { slug, limit: 1 });
 
     const response =
-      await contentfulClient.getEntries<CustomerStorySkeleton>(queryParams);
+      await contentfulClient.getEntries<CustomerStorySkeleton>(query);
 
     if (response.items.length > 0) {
       return new Ok(contentfulEntryToCustomerStory(response.items[0]));
@@ -485,15 +486,10 @@ export async function getFeaturedCustomerStories(
 ): Promise<Result<CustomerStorySummary[], Error>> {
   try {
     const contentfulClient = preview ? getPreviewClient() : getClient();
-
-    const queryParams = {
-      content_type: "customerStory",
-      "fields.featured": true,
-      limit,
-    };
+    const query = buildCustomerStoryQuery({ featured: true }, { limit });
 
     const response =
-      await contentfulClient.getEntries<CustomerStorySkeleton>(queryParams);
+      await contentfulClient.getEntries<CustomerStorySkeleton>(query);
 
     const stories = response.items
       .map(contentfulEntryToCustomerStory)
@@ -520,16 +516,15 @@ export async function getRelatedCustomerStories(
     const contentfulClient = preview ? getPreviewClient() : getClient();
 
     // First try to find stories in the same industry
-    const queryParams: Record<string, string | number> = {
-      content_type: "customerStory",
-      "fields.industry": industry,
+    const industryQuery = buildCustomerStoryQuery(undefined, {
+      industry,
       limit: limit + 1,
-    };
+    });
 
     const response =
-      await contentfulClient.getEntries<CustomerStorySkeleton>(queryParams);
+      await contentfulClient.getEntries<CustomerStorySkeleton>(industryQuery);
 
-    let stories = response.items
+    const stories = response.items
       .map(contentfulEntryToCustomerStory)
       .filter((story) => story.slug !== currentSlug)
       .slice(0, limit)
@@ -537,16 +532,13 @@ export async function getRelatedCustomerStories(
 
     // If we don't have enough stories, try by department
     if (stories.length < limit && department.length > 0) {
-      const deptQueryParams: Record<string, string | number> = {
-        content_type: "customerStory",
-        "fields.department[in]": department.join(","),
+      const deptQuery = buildCustomerStoryQuery(undefined, {
+        departmentIn: department,
         limit: limit + 1,
-      };
+      });
 
       const deptResponse =
-        await contentfulClient.getEntries<CustomerStorySkeleton>(
-          deptQueryParams
-        );
+        await contentfulClient.getEntries<CustomerStorySkeleton>(deptQuery);
 
       const additionalStories = deptResponse.items
         .map(contentfulEntryToCustomerStory)
@@ -558,7 +550,7 @@ export async function getRelatedCustomerStories(
         .slice(0, limit - stories.length)
         .map(contentfulEntryToCustomerStorySummary);
 
-      stories = [...stories, ...additionalStories];
+      stories.push(...additionalStories);
     }
 
     return new Ok(stories);
