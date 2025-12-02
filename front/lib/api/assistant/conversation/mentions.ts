@@ -370,7 +370,7 @@ export const createAgentMessages = async (
     agentMessageRow: AgentMessage;
     messageRow: Message;
     configuration: LightAgentConfigurationType;
-    parentMessageId: string | null;
+    parentMessageId: string;
     parentAgentMessageId: string | null;
   }[] = [];
 

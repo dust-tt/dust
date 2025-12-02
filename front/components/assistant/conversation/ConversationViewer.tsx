@@ -499,7 +499,11 @@ export const ConversationViewer = ({
           // +1 per agent message mentioned
           rank += 1;
           placeholderAgentMessages.push(
-            createPlaceholderAgentMessage({ mention, rank })
+            createPlaceholderAgentMessage({
+              userMessage: placeholderUserMsg,
+              mention,
+              rank,
+            })
           );
         }
       }
