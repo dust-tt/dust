@@ -18,7 +18,6 @@
     "docs:check": "npx @redocly/cli@1.25.5 lint --extends recommended-strict --skip-rule operation-operationId --lint-config error public/swagger.json",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "tsc": "tsc",
     "tsgo": "tsgo",
     "test": "FRONT_DATABASE_URI=$TEST_FRONT_DATABASE_URI vitest --run",
     "test:watch": "FRONT_DATABASE_URI=$TEST_FRONT_DATABASE_URI vitest --watch",

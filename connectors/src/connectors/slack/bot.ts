@@ -1252,6 +1252,7 @@ async function makeContentFragments(
         fileSize: f.size!,
         useCase: "conversation",
         useCaseMetadata: conversationId ? { conversationId } : undefined,
+        // @ts-expect-error -- migration to tsgo
         fileObject: new File([fileContent], fileName, {
           type: f.mimetype,
         }),
