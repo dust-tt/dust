@@ -19,6 +19,7 @@ import { useCredits, usePurchaseCredits } from "@app/lib/swr/credits";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
 import type { CreditDisplayData, CreditType } from "@app/types/credits";
+import { subscription } from "@elevenlabs/elevenlabs-js/api/resources/user";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -121,11 +122,12 @@ function CreditCategoryBar({
 }
 
 interface UsageSectionProps {
+  subscription: SubscriptionType;
   credits: CreditDisplayData[];
   isLoading: boolean;
 }
 
-function UsageSection({ credits, isLoading }: UsageSectionProps) {
+function UsageSection({ subscription, credits, isLoading }: UsageSectionProps) {
   const creditsByType = useMemo(() => {
     const activeCredits = credits.filter((c) => !isExpired(c));
 
@@ -173,9 +175,17 @@ function UsageSection({ credits, isLoading }: UsageSectionProps) {
   // Get current billing period dates (month boundaries)
   // Use useMemo to calculate the current billing cycle (exclusive bounds)
   // Example: Nov 4 -> Dec 3 (if billing cycle starts on the 4th of each month)
-  // For this example, let's assume billing starts on the 4th
-  const BILLING_CYCLE_START_DAY = 4;
+  const BILLING_CYCLE_START_DAY = subscription.startDate
+    ? new Date(subscription.startDate).getDate()
+    : null;
+
+  console.log(subscription.startDate);
+
   const [cycleStart, cycleEnd] = useMemo(() => {
+    if (!BILLING_CYCLE_START_DAY) {
+      return [null, null];
+    }
+
     const now = new Date();
     const year = now.getFullYear();
     const month = now.getMonth();
@@ -249,9 +259,11 @@ function UsageSection({ credits, isLoading }: UsageSectionProps) {
           <Page.H variant="h5">Usage</Page.H>
           <Page.P variant="secondary">Available credits and consumption</Page.P>
         </Page.Vertical>
-        <Page.P variant="secondary">
-          {formatDateShort(cycleStart)} → {formatDateShort(cycleEnd)}
-        </Page.P>
+        {cycleStart && cycleEnd && (
+          <Page.P variant="secondary">
+            {formatDateShort(cycleStart)} → {formatDateShort(cycleEnd)}
+          </Page.P>
+        )}
       </div>
 
       {/* Total Consumed */}
@@ -356,7 +368,11 @@ export default function CreditsUsagePage({
         )}
 
         {/* Usage Section */}
-        <UsageSection credits={credits} isLoading={isCreditsLoading} />
+        <UsageSection
+          subscription={subscription}
+          credits={credits}
+          isLoading={isCreditsLoading}
+        />
 
         {/* History Section */}
         <Page.Vertical>
