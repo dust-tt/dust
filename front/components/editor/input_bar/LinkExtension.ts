@@ -18,7 +18,7 @@ export const LinkExtension = Link.extend({
       "Mod-k": () => {
         // This event is caught by the ToolbarLink component to open the link dialog
         const event = new CustomEvent("dust:openLinkDialog", {
-          detail: { editor: this.editor },
+          detail: { handled: false },
         });
         window.dispatchEvent(event);
         return true;
