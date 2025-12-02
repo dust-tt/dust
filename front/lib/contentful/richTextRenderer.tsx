@@ -11,6 +11,7 @@ import Image from "next/image";
 import type { ReactNode } from "react";
 
 import { A, H2, H3, H4, H5 } from "@app/components/home/ContentComponents";
+import { isString } from "@app/types";
 
 function getYouTubeVideoId(text: string): string | null {
   const patterns = [
@@ -69,7 +70,7 @@ const renderOptions: Options = {
     [MARKS.UNDERLINE]: (text: ReactNode) => <u>{text}</u>,
     [MARKS.CODE]: (text: ReactNode) => {
       // Check if code contains newlines - render as block
-      const textContent = typeof text === "string" ? text : "";
+      const textContent = isString(text) ? text : "";
       if (textContent.includes("\n")) {
         return (
           <pre className="my-4 overflow-x-auto rounded-lg bg-gray-100 p-4">

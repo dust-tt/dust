@@ -107,7 +107,7 @@ function extractPlainText(document: Document): string {
   const extractFromNodes = (nodes: Document["content"]): string => {
     return nodes
       .map((node) => {
-        if ("value" in node && typeof node.value === "string") {
+        if ("value" in node && isString(node.value)) {
           return node.value;
         }
         if ("content" in node && Array.isArray(node.content)) {
@@ -337,22 +337,6 @@ function buildCustomerStoryQuery(
   return query;
 }
 
-// Zod helpers for Contentful types
-const assetSchema = z
-  .unknown()
-  .transform((val) => (isAsset(val) ? val : undefined));
-
-const documentSchema = z
-  .unknown()
-  .transform((val) => (isDocument(val) ? val : EMPTY_DOCUMENT));
-
-const gallerySchema = z.unknown().transform((val) => {
-  if (!Array.isArray(val)) {
-    return [];
-  }
-  return val.filter(isAsset);
-});
-
 // Zod schema for parsing Contentful customer story fields
 const CustomerStoryFieldsSchema = z.object({
   title: z.string().default(""),
@@ -368,44 +352,42 @@ const CustomerStoryFieldsSchema = z.object({
   headlineMetric: z.string().nullable().optional(),
   companySize: z.string().nullable().optional(),
   featured: z.boolean().default(false),
-  body: documentSchema,
-  heroImage: assetSchema,
-  companyLogo: assetSchema,
-  contactPhoto: assetSchema,
-  gallery: gallerySchema,
 });
 
 function contentfulEntryToCustomerStory(
   entry: Entry<CustomerStorySkeleton>
 ): CustomerStory {
-  const { sys } = entry;
-  const parsed = CustomerStoryFieldsSchema.parse(entry.fields);
+  const { fields, sys } = entry;
+  const parsed = CustomerStoryFieldsSchema.parse(fields);
   const slug = parsed.slug ?? slugify(parsed.title);
+
+  // Check assets directly
+  const body = isDocument(fields.body) ? fields.body : EMPTY_DOCUMENT;
+  const heroImage = isAsset(fields.heroImage) ? fields.heroImage : undefined;
+  const companyLogo = isAsset(fields.companyLogo) ? fields.companyLogo : undefined;
+  const contactPhoto = isAsset(fields.contactPhoto) ? fields.contactPhoto : undefined;
+  const gallery = Array.isArray(fields.gallery)
+    ? fields.gallery.filter(isAsset)
+    : [];
 
   return {
     id: sys.id,
     slug,
     title: parsed.title,
     companyName: parsed.companyName,
-    companyLogo: contentfulAssetToBlogImage(
-      parsed.companyLogo,
-      parsed.companyName
-    ),
+    companyLogo: contentfulAssetToBlogImage(companyLogo, parsed.companyName),
     companyWebsite: parsed.companyWebsite ?? null,
     contactName: parsed.contactName ?? null,
     contactTitle: parsed.contactTitle ?? null,
-    contactPhoto: contentfulAssetToBlogImage(
-      parsed.contactPhoto,
-      "Contact photo"
-    ),
+    contactPhoto: contentfulAssetToBlogImage(contactPhoto, "Contact photo"),
     headlineMetric: parsed.headlineMetric ?? null,
     industry: parsed.industry,
     department: parsed.department,
     companySize: parsed.companySize ?? null,
-    description: parsed.metaDescription ?? generateDescription(parsed.body),
-    body: parsed.body,
-    heroImage: contentfulAssetToBlogImage(parsed.heroImage, parsed.title),
-    gallery: parsed.gallery
+    description: parsed.metaDescription ?? generateDescription(body),
+    body,
+    heroImage: contentfulAssetToBlogImage(heroImage, parsed.title),
+    gallery: gallery
       .map((asset) => contentfulAssetToBlogImage(asset, parsed.title))
       .filter((img): img is BlogImage => img !== null),
     featured: parsed.featured,
