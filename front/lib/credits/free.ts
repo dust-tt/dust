@@ -22,13 +22,24 @@ const BRACKET_2_CENTS_PER_USER = 200; // $2
 const BRACKET_3_USERS = 50; // 51-100
 const BRACKET_3_CENTS_PER_USER = 100; // $1
 
-const TRIAL_MAX_CREDIT_CENTS = 500; // $5
+const TRIAL_CREDIT_CENTS = 500; // $5
 
 const MONTHLY_BILLING_CYCLE_SECONDS = 30 * 24 * 60 * 60; // ~30 days
 
 // 5 days
 const USER_COUNT_CUTOFF = 5 * 24 * 60 * 60 * 1000;
-const MAX_ELIGIBLE_USERS_FIRST_CYCLE = 1;
+
+type CustomerStatus = "paying" | "trialing";
+
+function isTrialingOrNewCustomer(
+  stripeSubscription: Stripe.Subscription
+): boolean {
+  const subscriptionStartSec = stripeSubscription.start_date;
+  const nowSec = Math.floor(Date.now() / 1000);
+  const oneMonthAgoSec = nowSec - MONTHLY_BILLING_CYCLE_SECONDS;
+  const isNewCustomer = subscriptionStartSec >= oneMonthAgoSec;
+  return stripeSubscription.status === "trialing" || isNewCustomer;
+}
 
 /**
  * Calculate free credit amount based on brackets system:
@@ -62,14 +73,8 @@ export function calculateFreeCreditAmount(userCount: number): number {
  * pro-rated bump up from 5 days ago would be 5$.
  */
 export async function countEligibleUsersForFreeCredits(
-  workspace: Parameters<typeof renderLightWorkspaceType>[0]["workspace"],
-  subscriptionStartMs: number
+  workspace: Parameters<typeof renderLightWorkspaceType>[0]["workspace"]
 ): Promise<number> {
-  // New customers (subscription started within the cutoff period) get 1 user worth of credits ($5)
-  if (subscriptionStartMs > Date.now() - USER_COUNT_CUTOFF) {
-    return MAX_ELIGIBLE_USERS_FIRST_CYCLE;
-  }
-
   const cutoffDate = new Date(Date.now() - USER_COUNT_CUTOFF);
   return MembershipResource.getMembersCountForWorkspace({
     workspace: renderLightWorkspaceType({ workspace }),
@@ -79,34 +84,34 @@ export async function countEligibleUsersForFreeCredits(
 }
 
 /**
- * For enterprise: always eligible
- * For pro:
- *   if you are a "good payer" (last paid subscription invoice less than 2 months ago), eligible
- * Otherwise, not eligible
+ * Infer customer payment status to determine eligibility and credit amount.
+ * - "paying": Has recent paid invoice (within 2 billing cycles) → full credits
+ * - "trialing": No paid invoice but trialing or new customer → capped credits
+ * - null: Not eligible (no recent payment and not trialing/new)
  */
-export async function isSubscriptionEligibleForFreeCredits(
+export async function getCustomerStatus(
   stripeSubscription: Stripe.Subscription
-): Promise<boolean> {
-  if (stripeSubscription.status === "trialing") {
-    return true;
-  }
-
+): Promise<CustomerStatus | null> {
   const paidInvoices = await getSubscriptionInvoices(stripeSubscription.id, {
     status: "paid",
     limit: 1,
   });
 
-  if (!paidInvoices || paidInvoices.length === 0) {
-    return false;
+  if (paidInvoices && paidInvoices.length > 0) {
+    const mostRecentInvoice = paidInvoices[0];
+    const currentPeriodStartSec = stripeSubscription.current_period_start;
+    const invoicePeriodEndSec = mostRecentInvoice.period_end;
+    const ageSec = currentPeriodStartSec - invoicePeriodEndSec;
+    if (ageSec <= MONTHLY_BILLING_CYCLE_SECONDS * 2) {
+      return "paying";
+    }
   }
 
-  // Check if most recent paid invoice is within 2 billing cycles
-  const mostRecentInvoice = paidInvoices[0];
-  const currentPeriodStart = stripeSubscription.current_period_start;
-  const invoicePeriodEnd = mostRecentInvoice.period_end;
-  const ageSeconds = currentPeriodStart - invoicePeriodEnd;
+  if (isTrialingOrNewCustomer(stripeSubscription)) {
+    return "trialing";
+  }
 
-  return ageSeconds <= MONTHLY_BILLING_CYCLE_SECONDS * 2;
+  return null;
 }
 
 export async function grantFreeCreditsOnSubscriptionRenewal({
@@ -140,10 +145,11 @@ export async function grantFreeCreditsOnSubscriptionRenewal({
 
   // Enterprise subscriptions are always eligible
   const isEnterprise = isEnterpriseSubscription(stripeSubscription);
+  let customerStatus: CustomerStatus | null = null;
 
   if (!isEnterprise) {
-    // For Pro subscriptions, check eligibility based on payment history
-    if (!(await isSubscriptionEligibleForFreeCredits(stripeSubscription))) {
+    customerStatus = await getCustomerStatus(stripeSubscription);
+    if (!customerStatus) {
       logger.info(
         {
           workspaceId: workspaceSId,
@@ -151,7 +157,9 @@ export async function grantFreeCreditsOnSubscriptionRenewal({
         },
         "[Free Credits] Pro subscription not eligible for free credits (subscription payment too old or missing)"
       );
-      return new Ok(undefined);
+      return new Err(
+        new Error("Pro subscription not eligible for free credits")
+      );
     }
   }
 
@@ -179,26 +187,22 @@ export async function grantFreeCreditsOnSubscriptionRenewal({
       "[Free Credits] Using ProgrammaticUsageConfiguration override amount"
     );
   } else {
-    const subscriptionStartMs = stripeSubscription.start_date * 1000;
-    const userCount = await countEligibleUsersForFreeCredits(
-      workspace,
-      subscriptionStartMs
-    );
-    creditAmountCents = calculateFreeCreditAmount(userCount);
-
-    if (stripeSubscription.status === "trialing") {
-      creditAmountCents = Math.min(creditAmountCents, TRIAL_MAX_CREDIT_CENTS);
+    if (customerStatus === "trialing") {
+      creditAmountCents = TRIAL_CREDIT_CENTS;
+    } else {
+      const userCount = await countEligibleUsersForFreeCredits(workspace);
+      creditAmountCents = calculateFreeCreditAmount(userCount);
+      logger.info(
+        {
+          workspaceId: workspaceSId,
+          userCount,
+          creditAmountCents,
+          customerStatus,
+        },
+        "[Free Credits] Calculated credit amount using brackets system"
+      );
     }
 
-    logger.info(
-      {
-        workspaceId: workspaceSId,
-        userCount,
-        creditAmountCents,
-        isTrialing: stripeSubscription.status === "trialing",
-      },
-      "[Free Credits] Calculated credit amount using brackets system"
-    );
     assert(
       creditAmountCents > 0,
       "Unexpected programmatic usage free credit amount equal to zero"

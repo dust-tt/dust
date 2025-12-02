@@ -5,7 +5,7 @@ import { z } from "zod";
 import { createPlugin } from "@app/lib/api/poke/types";
 import {
   calculateFreeCreditAmount,
-  countElligibleUsersForFreeCredits,
+  countEligibleUsersForFreeCredits,
 } from "@app/lib/credits/free";
 import {
   startOrResumeEnterprisePAYG,
@@ -129,7 +129,7 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
 
   populateAsyncArgs: async (auth) => {
     const workspace = auth.getNonNullableWorkspace();
-    const userCount = await countElligibleUsersForFreeCredits(workspace, 0);
+    const userCount = await countEligibleUsersForFreeCredits(workspace);
     const automaticCreditsCents = calculateFreeCreditAmount(userCount);
     const automaticCreditsDollars = automaticCreditsCents / 100;
 
