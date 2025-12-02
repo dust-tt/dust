@@ -3,9 +3,9 @@ import React, { useState } from "react";
 import { visit } from "unist-util-visit";
 
 import {
+  trackEvent,
   TRACKING_ACTIONS,
   TRACKING_AREAS,
-  trackEvent,
 } from "@app/lib/tracking";
 
 interface QuickReplyBlockProps {

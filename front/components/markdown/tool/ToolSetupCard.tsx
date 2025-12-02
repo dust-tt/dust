@@ -19,9 +19,9 @@ import {
 } from "@app/lib/swr/mcp_servers";
 import { useSpaces, useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import {
+  trackEvent,
   TRACKING_ACTIONS,
   TRACKING_AREAS,
-  trackEvent,
 } from "@app/lib/tracking";
 import type { WorkspaceType } from "@app/types";
 import { asDisplayToolName } from "@app/types";

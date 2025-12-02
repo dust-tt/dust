@@ -18,9 +18,9 @@ import {
 } from "@app/lib/swr/conversations";
 import { useIsOnboardingConversation } from "@app/lib/swr/user";
 import {
+  trackEvent,
   TRACKING_ACTIONS,
   TRACKING_AREAS,
-  trackEvent,
 } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
 import type {
