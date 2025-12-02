@@ -15,8 +15,8 @@ import {
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import {
-  handleFailedProCreditPurchaseInvoice,
   startCreditFromProOneOffInvoice,
+  voidFailedProCreditPurchaseInvoice,
 } from "@app/lib/credits/committed";
 import { grantFreeCreditsOnSubscriptionRenewal } from "@app/lib/credits/free";
 import {
@@ -457,33 +457,19 @@ async function handler(
           stripeSubscription = await getStripeSubscription(
             invoice.subscription
           );
-          if (stripeSubscription) {
-            const isProCreditPurchaseInvoice =
-              isCreditPurchaseInvoice(invoice) &&
-              !isEnterpriseSubscription(stripeSubscription);
 
-            if (isProCreditPurchaseInvoice) {
-              const result = await handleFailedProCreditPurchaseInvoice({
-                auth,
-                invoice,
-              });
-              if (result.isErr()) {
-                logger.error(
-                  { error: result.error, invoiceId: invoice.id },
-                  "[Stripe Webhook] Error handling failed credit purchase"
-                );
-              } else if (result.value.voided) {
-                logger.info(
-                  { invoiceId: invoice.id },
-                  "[Stripe Webhook] Voided Pro credit purchase invoice after 3 failures"
-                );
-                return res.status(200).json({ success: true });
-              }
-            }
+          if (!stripeSubscription) {
+            logger.warn(
+              {
+                event,
+                stripeSubscriptionId: invoice.subscription,
+              },
+              "[Stripe Webhook] Stripe Subscription not found."
+            );
           }
-
           const owner = auth.workspace();
           const subscriptionType = auth.subscription();
+
           if (!owner || !subscriptionType) {
             return _returnStripeApiError(
               req,
@@ -511,6 +497,37 @@ async function handler(
               portalUrl
             );
           }
+
+          if (stripeSubscription) {
+            const isProCreditPurchaseInvoice =
+              isCreditPurchaseInvoice(invoice) &&
+              !isEnterpriseSubscription(stripeSubscription);
+
+            if (isProCreditPurchaseInvoice) {
+              const result = await voidFailedProCreditPurchaseInvoice({
+                auth,
+                invoice,
+              });
+              if (result.isErr()) {
+                logger.error(
+                  {
+                    error: result.error,
+                    panic: true,
+                    stripeError: true,
+                    invoiceId: invoice.id,
+                  },
+                  "[Stripe Webhook] Error handling failed credit purchase"
+                );
+              } else if (result.value.voided) {
+                logger.warn(
+                  { invoiceId: invoice.id },
+                  "[Stripe Webhook] Voided Pro credit purchase invoice after 3 failures"
+                );
+                return res.status(200).json({ success: true });
+              }
+            }
+          }
+
           break;
         case "charge.dispute.created":
           const dispute = event.data.object as Stripe.Dispute;

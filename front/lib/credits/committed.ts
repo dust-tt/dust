@@ -9,6 +9,7 @@ import {
   isCreditPurchaseInvoice,
   isEnterpriseSubscription,
   makeOneOffInvoice,
+  MAX_PRO_INVOICE_ATTEMPTS_BEFORE_VOIDED,
   payInvoice,
   voidInvoiceWithReason,
 } from "@app/lib/plans/stripe";
@@ -94,14 +95,14 @@ export async function startCreditFromProOneOffInvoice({
   return new Ok(undefined);
 }
 
-export async function handleFailedProCreditPurchaseInvoice({
+export async function voidFailedProCreditPurchaseInvoice({
   auth,
   invoice,
 }: {
   auth: Authenticator;
   invoice: Stripe.Invoice;
 }): Promise<Result<{ voided: boolean }, Error>> {
-  if (invoice.attempt_count < 3) {
+  if (invoice.attempt_count < MAX_PRO_INVOICE_ATTEMPTS_BEFORE_VOIDED) {
     return new Ok({ voided: false });
   }
 
@@ -117,8 +118,18 @@ export async function handleFailedProCreditPurchaseInvoice({
     auth,
     invoice.id
   );
+
   if (credit) {
     await credit.delete(auth, {});
+  } else {
+    logger.warn(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        invoiceId: invoice.id,
+        attemptCount: invoice.attempt_count,
+      },
+      "[Credit Purchase] Credit not found for failed pro invoice"
+    );
   }
 
   logger.info(
