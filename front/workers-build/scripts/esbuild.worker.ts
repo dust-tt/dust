@@ -25,6 +25,7 @@ async function buildWorker() {
         "dd-trace",
         "isomorphic-dompurify",
         "tsconfig-paths-webpack-plugin",
+        "pg-hstore",
       ],
     });
 
