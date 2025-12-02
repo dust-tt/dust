@@ -125,6 +125,28 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     });
   }
 
+  static async listByAgentConfigurationIdAndEditors(
+    auth: Authenticator,
+    {
+      agentConfigurationId,
+      editorIds,
+    }: {
+      agentConfigurationId: string;
+      editorIds: ModelId[];
+    }
+  ): Promise<Result<TriggerResource[], Error>> {
+    if (editorIds.length === 0) {
+      return new Ok([]);
+    }
+    const triggers = await this.baseFetch(auth, {
+      where: {
+        agentConfigurationId,
+        editor: { [Op.in]: editorIds },
+      },
+    });
+    return new Ok(triggers);
+  }
+
   static listByWorkspace(auth: Authenticator) {
     return this.baseFetch(auth);
   }
