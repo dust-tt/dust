@@ -27,35 +27,19 @@ type WebhookRouterConfigEntry = {
 function isValidWebhookRouterConfigEntry(
   value: unknown
 ): value is WebhookRouterConfigEntry {
-  if (
-    value === null ||
-    typeof value !== "object" ||
-    !("signingSecret" in value) ||
-    typeof value.signingSecret !== "string" ||
-    !("regions" in value) ||
-    typeof value.regions !== "object" ||
-    value.regions === null ||
-    Array.isArray(value.regions)
-  ) {
-    return false;
-  }
-
-  // Validate each region entry
-  for (const [regionKey, connectorIds] of Object.entries(value.regions)) {
-    // Check region key is valid
-    if (!ALL_REGIONS.includes(regionKey as Region)) {
-      return false;
-    }
-    // Check connectorIds is an array of numbers
-    if (
-      !Array.isArray(connectorIds) ||
-      !connectorIds.every((id) => typeof id === "number")
-    ) {
-      return false;
-    }
-  }
-
-  return true;
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    "signing_secret" in value &&
+    typeof value.signing_secret === "string" &&
+    "regions" in value &&
+    typeof value.regions === "object" &&
+    value.regions !== null &&
+    Object.keys(value.regions).every(
+      (region: unknown) =>
+        typeof region === "string" && ALL_REGIONS.includes(region as Region)
+    )
+  );
 }
 
 export class WebhookRouterConfigManager {
