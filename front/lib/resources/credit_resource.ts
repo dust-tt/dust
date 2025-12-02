@@ -1,4 +1,3 @@
-import assert from "assert";
 import type {
   Attributes,
   CreationAttributes,
@@ -116,9 +115,11 @@ export class CreditResource extends BaseResource<CreditModel> {
     return this.baseFetch(auth);
   }
 
-  static async listActive(auth: Authenticator, fromDate: Date = new Date()) {
+  static async listActive(
+    auth: Authenticator,
+    minExpirationDate: Date = new Date()
+  ) {
     const now = new Date();
-    assert(this.model.sequelize, "Unexpected sequelize undefined");
     return this.baseFetch(auth, {
       where: {
         // Credit must have remaining balance (consumed < initial)
@@ -133,7 +134,7 @@ export class CreditResource extends BaseResource<CreditModel> {
         // Credit must not be expired
         [Op.or]: [
           { expirationDate: null },
-          { expirationDate: { [Op.gt]: fromDate } },
+          { expirationDate: { [Op.gt]: minExpirationDate } },
         ],
       },
     });
@@ -182,6 +183,13 @@ export class CreditResource extends BaseResource<CreditModel> {
     return row ?? null;
   }
 
+  /**
+   * Consume a given amount of credits, allowing for over-consumption.
+   * This is because users consume credits after Dust has spent the tokens,
+   * so it's not possible to preemptively block consumption.
+   *
+   * Over-consumption should however stay minimal
+   */
   async consume(
     amountInCents: number,
     { transaction }: { transaction?: Transaction } = {}
@@ -190,35 +198,29 @@ export class CreditResource extends BaseResource<CreditModel> {
       return new Err(new Error("Amount to consume must be strictly positive."));
     }
     const now = new Date();
-    const [, affectedCount] = await this.model.increment(
-      "consumedAmountCents",
-      {
-        by: amountInCents,
-        where: {
-          id: this.id,
-          workspaceId: this.workspaceId,
-          // Ensure sufficient remaining balance (consumed + amount <= initial)
-          [Op.and]: [
-            Sequelize.where(
-              Sequelize.literal('"initialAmountCents" - "consumedAmountCents"'),
-              { [Op.gte]: amountInCents }
-            ),
-          ],
-          // Credit must be started (startDate not null and <= now)
-          startDate: { [Op.ne]: null, [Op.lte]: now },
-          // Credit must not be expired
-          [Op.or]: [
-            { expirationDate: null },
-            { expirationDate: { [Op.gt]: now } },
-          ],
-        },
-        transaction,
-      }
-    );
-    if (!affectedCount || affectedCount < 1) {
+    // Note: Sequelize's increment() returns [affectedRows[], affectedCount] but
+    // affectedCount is unreliable for PostgreSQL. We check affectedRows.length instead.
+    const [affectedRows] = await this.model.increment("consumedAmountCents", {
+      by: amountInCents,
+      where: {
+        id: this.id,
+        workspaceId: this.workspaceId,
+        // Already-depleted credit should not be consumed.
+        consumedAmountCents: { [Op.lt]: Sequelize.col("initialAmountCents") },
+        // Credit must be started (startDate not null and <= now)
+        startDate: { [Op.ne]: null, [Op.lte]: now },
+        // Credit must not be expired
+        [Op.or]: [
+          { expirationDate: null },
+          { expirationDate: { [Op.gt]: now } },
+        ],
+      },
+      transaction,
+    });
+    if (!affectedRows || affectedRows.length < 1) {
       return new Err(
         new Error(
-          "Insufficient credit on this line, or credit not yet started/already expired."
+          "Credit already consumed, not yet started, or already expired."
         )
       );
     }
