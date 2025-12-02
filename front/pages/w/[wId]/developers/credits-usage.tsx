@@ -198,7 +198,7 @@ function UsageSection({ subscription, credits, isLoading }: UsageSectionProps) {
       end = new Date(year, month, BILLING_CYCLE_START_DAY);
     }
     return [start, end];
-  }, []);
+  }, [BILLING_CYCLE_START_DAY]);
 
   const formatDateShort = (date: Date) => {
     return date.toLocaleDateString(undefined, {
