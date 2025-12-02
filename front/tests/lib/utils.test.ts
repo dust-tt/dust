@@ -35,6 +35,6 @@ test("compareForFuzzySort should correctly compare strings", () => {
     expect(
       compareForFuzzySort(d.query, d.a, d.b),
       `Expected compareForFuzzySort("${d.query}", "${d.a}", "${d.b}") to return 0`
-    ).toBe(0);
+    ).toBe(1); // INTENTIONAL FAILURE: Changed from 0 to 1 to test CI reporting
   }
 });
