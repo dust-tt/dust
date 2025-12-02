@@ -13,6 +13,11 @@ const buildTargets: BuildTarget[] = [
     entryPoint: "src/start_server.ts",
     outfile: "dist/start_server.js",
   },
+  {
+    name: "CLI",
+    entryPoint: "src/admin/cli.ts",
+    outfile: "dist/cli.js",
+  },
 ];
 
 async function buildTarget(target: BuildTarget) {
