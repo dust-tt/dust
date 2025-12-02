@@ -47,19 +47,6 @@ import {
   WebCrawlerConfigurationTypeSchema,
 } from "@app/types";
 
-async function getSlackSigningSecret(
-  oauthAPI: OAuthAPI,
-  connectionId: string
-): Promise<string | undefined> {
-  const signingSecretRes = await oauthAPI.getSlackSigningSecret({
-    connectionId,
-  });
-  if (signingSecretRes.isErr()) {
-    return undefined;
-  }
-  return signingSecretRes.value.signing_secret;
-}
-
 // Sorcery: Create a union type with at least two elements to satisfy t.union
 function getConnectorProviderCodec(): t.Mixed {
   const [first, second, ...rest] = CONNECTOR_PROVIDERS;
@@ -242,7 +229,8 @@ const handleDataSourceWithProvider = async ({
   req: NextApiRequest;
   res: NextApiResponse<WithAPIErrorResponse<PostSpaceDataSourceResponseBody>>;
 }) => {
-  const { provider, name, connectionId, relatedCredentialId, extraConfig } = body;
+  const { provider, name, connectionId, relatedCredentialId, extraConfig } =
+    body;
 
   // Checking that we have connectionId if we need id
   const isConnectionIdRequired = isConnectionIdRequiredForProvider(provider);
@@ -556,9 +544,7 @@ const handleDataSourceWithProvider = async ({
 
           // Rollback: delete connector and data source
           await dataSource.delete(auth, { hardDelete: true });
-          await connectorsAPI.deleteConnector({
-            connectorId: connectorsRes.value.id,
-          });
+          await connectorsAPI.deleteConnector(connectorsRes.value.id);
 
           const deleteRes = await coreAPI.deleteDataSource({
             projectId: dustProject.value.project.project_id.toString(),
