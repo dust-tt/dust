@@ -11,69 +11,45 @@ type WebhookRouterEntryParams = {
 };
 
 type GetWebhookRouterEntryResBody = WithConnectorsAPIErrorReponse<{
-  provider: string;
-  providerWorkspaceId: string;
-  signing_secret: string;
-  regions: string[];
+  signingSecret: string;
 }>;
 
 /**
  * GET /webhooks_router_entries/:webhook_secret/:provider/:providerWorkspaceId
- * Get a webhook router configuration entry.
+ * Get a webhook router configuration entry signing secret.
  */
 const _getWebhookRouterEntryHandler = async (
-  req: Request<WebhookRouterEntryParams, GetWebhookRouterEntryResBody, never>,
+  req: Request<WebhookRouterEntryParams, GetWebhookRouterEntryResBody>,
   res: Response<GetWebhookRouterEntryResBody>
 ) => {
   const { provider, providerWorkspaceId } = req.params;
 
-  try {
-    const service = new WebhookRouterConfigService();
-    const entry = await service.getEntry(provider, providerWorkspaceId);
+  const service = new WebhookRouterConfigService();
+  const entry = await service.getEntry(provider, providerWorkspaceId);
 
-    if (!entry) {
-      logger.info(
-        { provider, providerWorkspaceId },
-        "Webhook router entry not found"
-      );
-
-      return apiError(req, res, {
-        status_code: 404,
-        api_error: {
-          type: "not_found",
-          message: `Webhook router entry not found for provider '${provider}' and providerWorkspaceId '${providerWorkspaceId}'`,
-        },
-      });
-    }
-
+  if (!entry) {
     logger.info(
       { provider, providerWorkspaceId },
-      "Successfully retrieved webhook router entry"
-    );
-
-    return res.status(200).json({
-      provider,
-      providerWorkspaceId,
-      signing_secret: entry.signing_secret,
-      regions: entry.regions,
-    });
-  } catch (error) {
-    logger.error(
-      { error, provider, providerWorkspaceId },
-      "Failed to get webhook router entry"
+      "Webhook router entry not found"
     );
 
     return apiError(req, res, {
-      status_code: 500,
+      status_code: 404,
       api_error: {
-        type: "internal_server_error",
-        message:
-          error instanceof Error
-            ? error.message
-            : "Failed to get webhook router entry",
+        type: "not_found",
+        message: `Webhook router entry not found for provider '${provider}' and providerWorkspaceId '${providerWorkspaceId}'`,
       },
     });
   }
+
+  logger.info(
+    { provider, providerWorkspaceId },
+    "Successfully retrieved webhook router entry"
+  );
+
+  return res.status(200).json({
+    signingSecret: entry.signingSecret,
+  });
 };
 
 export const getWebhookRouterEntryHandler = withLogging(
