@@ -168,10 +168,7 @@ function createServer(
         const invalidTableIds: string[] = [];
         for (const t of tableConfigurations) {
           const dataSourceView = dataSourceViewsMap.get(t.dataSourceViewId);
-          if (
-            dataSourceView &&
-            dataSourceView.dataSource.dustAPIDataSourceId
-          ) {
+          if (dataSourceView && dataSourceView.dataSource.dustAPIDataSourceId) {
             validTables.push({
               project_id: parseInt(dataSourceView.dataSource.dustAPIProjectId),
               data_source_id: dataSourceView.dataSource.dustAPIDataSourceId,
@@ -186,7 +183,7 @@ function createServer(
           return new Ok([
             {
               type: "text",
-              text: "The agent does not have access to any valid tables. Some table configurations may be outdated. Please edit the agent's Query Tables tool to update the table selection.",
+              text: "The agent does not have access to any valid tables. Some table configurations may be outdated.",
             },
           ]);
         }
