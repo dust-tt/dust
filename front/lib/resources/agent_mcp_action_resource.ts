@@ -361,7 +361,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       } else if (action.status === "blocked_child_action_input_required") {
         const conversationId = action.stepContext.resumeState?.conversationId;
 
-        // conversation was not created so we can return an empty list (= no blocked actions)
+        // conversation was not created so we can return early
         if (!conversationId || !isString(conversationId)) {
           return blockedActionsList;
         }
