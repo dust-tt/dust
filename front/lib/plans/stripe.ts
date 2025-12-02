@@ -89,6 +89,11 @@ const SUPPORTED_PAYMENT_METHODS = ["card", "sepa_debit"] as const;
 
 export const ENTERPRISE_N30_PAYMENTS_DAYS = 30;
 
+// We allow for 3 retries of invoices (not counting first payment)
+// before we give up, void the invoice and remove resources pending payment on Dust
+// At the time of writing, this is only used for Credit Purchase self-serve flow
+export const MAX_PRO_INVOICE_ATTEMPTS_BEFORE_VOIDED = 3;
+
 type SupportedPaymentMethod = (typeof SUPPORTED_PAYMENT_METHODS)[number];
 
 /**
