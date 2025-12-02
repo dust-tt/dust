@@ -22,7 +22,7 @@ import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/config
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
 import config from "@app/lib/api/config";
-import { Authenticator } from "@app/lib/auth";
+import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { isRemoteDatabase } from "@app/lib/data_sources";
 import type { DustError } from "@app/lib/error";
 import { AgentDataSourceConfiguration } from "@app/lib/models/agent/actions/data_sources";
@@ -385,6 +385,12 @@ export async function createAgentConfiguration(
         previousEditorIds = new Set(members.map((m) => m.id));
       }
     }
+  }
+
+  if (!(await canPublishAgent(auth)) && scope === "visible") {
+    return new Err(
+      new Error("User does not have permission to publish agents.")
+    );
   }
 
   try {
@@ -1277,11 +1283,26 @@ export async function updateAgentPermissions(
   }
 }
 
+export const PUBLISHING_RESTRICTION_ERROR_MESSAGE =
+  "Publishing agents is restricted to builders and admins.";
+
+export async function canPublishAgent(auth: Authenticator): Promise<boolean> {
+  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+
+  if (
+    featureFlags.includes("restrict_agents_publishing") &&
+    !auth.isBuilder()
+  ) {
+    return false;
+  }
+  return true;
+}
+
 export async function updateAgentConfigurationScope(
   auth: Authenticator,
   agentConfigurationId: string,
   scope: Exclude<AgentConfigurationScope, "global">
-) {
+): Promise<Result<void, Error>> {
   const agentConfig = await getAgentConfiguration(auth, {
     agentId: agentConfigurationId,
     variant: "light",
@@ -1289,6 +1310,12 @@ export async function updateAgentConfigurationScope(
 
   if (!agentConfig) {
     return new Err(new Error(`Could not find agent ${agentConfigurationId}`));
+  }
+
+  if (!(await canPublishAgent(auth)) && scope === "visible") {
+    return new Err(
+      new Error("Publishing agents is restricted to builders and admins.")
+    );
   }
 
   const previousScope = agentConfig.scope;
