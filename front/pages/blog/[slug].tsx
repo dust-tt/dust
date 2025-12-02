@@ -19,15 +19,17 @@ export const getServerSideProps: GetServerSideProps<BlogPostPageProps> = async (
   context
 ) => {
   const { slug } = context.params ?? {};
-  const { preview, secret } = context.query;
 
   if (!isString(slug)) {
     return { notFound: true };
   }
 
-  // Enable preview mode if valid secret provided
+  const searchParams = new URLSearchParams(context.resolvedUrl.split("?")[1]);
+  const preview = searchParams.get("preview");
+  const secret = searchParams.get("secret");
+  const previewSecret = process.env.CONTENTFUL_PREVIEW_SECRET;
   const isPreview =
-    preview === "true" && secret === process.env.CONTENTFUL_PREVIEW_SECRET;
+    preview === "true" && !!previewSecret && secret === previewSecret;
 
   const postResult = await getBlogPostBySlug(slug, isPreview);
 

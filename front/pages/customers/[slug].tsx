@@ -22,18 +22,17 @@ export const getServerSideProps: GetServerSideProps<
   CustomerStoryPageProps
 > = async (context) => {
   const { slug } = context.params ?? {};
-  const { preview, secret } = context.query;
 
   if (!isString(slug)) {
     return { notFound: true };
   }
 
+  const searchParams = new URLSearchParams(context.resolvedUrl.split("?")[1]);
+  const preview = searchParams.get("preview");
+  const secret = searchParams.get("secret");
   const previewSecret = config.getContentfulPreviewSecret();
   const isPreview =
-    preview === "true" &&
-    isString(secret) &&
-    isString(previewSecret) &&
-    secret === previewSecret;
+    preview === "true" && !!previewSecret && secret === previewSecret;
 
   const storyResult = await getCustomerStoryBySlug(slug, isPreview);
 
