@@ -967,6 +967,8 @@ export type UserMentionType = z.infer<typeof UserMentionSchema>;
 
 const MentionSchema = z.union([AgentMentionSchema, UserMentionSchema]);
 
+export type MentionType = z.infer<typeof MentionSchema>;
+
 const UserMessageContextSchema = z.object({
   username: z.string(),
   timezone: Timezone,
@@ -2746,7 +2748,7 @@ export type CancelMessageGenerationRequestType = z.infer<
 
 // Typeguards.
 
-export function isAgentMention(arg: AgentMentionType): arg is AgentMentionType {
+export function isAgentMention(arg: MentionType): arg is AgentMentionType {
   return (arg as AgentMentionType).configurationId !== undefined;
 }
 
