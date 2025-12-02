@@ -198,9 +198,8 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
       return undefined;
     }
 
-    const { slack_client_id, slack_client_secret, slack_signing_secret } =
-      extraConfig;
-    if (!slack_client_id || !slack_client_secret || !slack_signing_secret) {
+    const { slack_client_id, slack_client_secret } = extraConfig;
+    if (!slack_client_id || !slack_client_secret) {
       return undefined;
     }
 
