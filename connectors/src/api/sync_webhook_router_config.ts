@@ -8,7 +8,6 @@ import { NotionConnectorState } from "@connectors/lib/models/notion";
 import { WebhookRouterConfigService } from "@connectors/lib/webhook_router_config";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
 
