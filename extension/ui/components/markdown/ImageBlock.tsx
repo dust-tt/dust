@@ -1,6 +1,4 @@
-import { usePlatform } from "@app/shared/context/PlatformContext";
-import type { StoredUser } from "@app/shared/services/auth";
-import type { LightWorkspaceType } from "@dust-tt/client";
+import { useDustAPI } from "@app/shared/lib/dust_api";
 import { InteractiveImageGrid } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 import { visit } from "unist-util-visit";
@@ -10,12 +8,10 @@ const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
 interface ImgProps {
   src: string;
   alt: string;
-  owner: LightWorkspaceType;
-  user: StoredUser;
 }
 
-export function Img({ src, alt, owner, user }: ImgProps) {
-  const platform = usePlatform();
+export function Img({ src, alt }: ImgProps) {
+  const dustAPI = useDustAPI();
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -26,10 +22,8 @@ export function Img({ src, alt, owner, user }: ImgProps) {
     ? IMAGE_EXTENSIONS.some((ext) => alt.toLowerCase().endsWith(ext))
     : false;
 
-  const baseUrl = user.dustDomain;
-
   useEffect(() => {
-    if (!fileId || !isImageFile || !baseUrl) {
+    if (!fileId || !isImageFile) {
       setIsLoading(false);
       return;
     }
@@ -37,17 +31,13 @@ export function Img({ src, alt, owner, user }: ImgProps) {
     let objectUrl: string | null = null;
 
     const fetchImage = async () => {
-      // TODO: Use SDK method once getFileContent is available.
-      const token = await platform.auth.getAccessToken();
-      const viewUrl = `${baseUrl}/api/v1/w/${owner.sId}/files/${fileId}?action=view&version=processed`;
-      const response = await fetch(viewUrl, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const result = await dustAPI.getFileContent({
+        fileId,
+        version: "processed",
       });
-      if (response.ok) {
-        const blob = await response.blob();
-        objectUrl = URL.createObjectURL(blob);
+
+      if (result.isOk()) {
+        objectUrl = URL.createObjectURL(result.value);
         setImageUrl(objectUrl);
       }
       setIsLoading(false);
@@ -60,9 +50,9 @@ export function Img({ src, alt, owner, user }: ImgProps) {
         URL.revokeObjectURL(objectUrl);
       }
     };
-  }, [fileId, isImageFile, baseUrl, owner.sId, platform.auth]);
+  }, [fileId, isImageFile, dustAPI]);
 
-  if (!fileId || !isImageFile || !baseUrl) {
+  if (!fileId || !isImageFile) {
     return null;
   }
 
@@ -94,9 +84,9 @@ export function imgDirective() {
   };
 }
 
-export function getImgPlugin(owner: LightWorkspaceType, user: StoredUser) {
+export function getImgPlugin() {
   const ImagePlugin = ({ src, alt }: { src: string; alt: string }) => {
-    return <Img src={src} alt={alt} owner={owner} user={user} />;
+    return <Img src={src} alt={alt} />;
   };
 
   return ImagePlugin;
