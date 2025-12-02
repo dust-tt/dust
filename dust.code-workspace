@@ -142,7 +142,8 @@
       "**/out": true,
       "**/target": true
     },
-    "files.autoSave": "onFocusChange"
+    "files.autoSave": "onFocusChange",
+    "editor.formatOnSave": true
   }
 }
 
