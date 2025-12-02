@@ -17,7 +17,7 @@ export function useDeleteMessage({
   const { submit: deleteMessage, isSubmitting } = useSubmitFunction(
     async (messageId: string) => {
       const res = await fetch(
-        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/delete`,
+        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}`,
         {
           method: "DELETE",
           headers: {
