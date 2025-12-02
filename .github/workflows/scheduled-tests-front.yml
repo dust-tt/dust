@@ -1,9 +1,9 @@
-name: Scheduled Tests (front)
+name: Scheduled Tests & Lint (front)
 
 on:
   schedule:
-    # Run at 8:00 AM, 12:00 PM, and 4:00 PM UTC (three times daily)
-    - cron: "0 8,12,16 * * *"
+    # Run every hour
+    - cron: "0 * * * *"
   workflow_dispatch: # Allow manual triggering
 
 permissions:
@@ -29,8 +29,19 @@ jobs:
               🧪 Starting scheduled front tests
               • Workflow: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>
 
-      - name: Setup Node Dependencies
-        uses: ./.github/actions/setup-node-deps
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20.13.0
+      - name: Install SDK/JS dependencies
+        working-directory: sdks/js
+        run: npm ci
+      - name: Build SDK/JS
+        working-directory: sdks/js
+        run: npm run build
+      - name: Install Front dependencies
+        working-directory: front
+        run: npm ci
       - name: Install Redis
         uses: chenjuneking/redis-setup-action@v1
         with:
@@ -63,6 +74,12 @@ jobs:
           flaky_summary: true
           group_suite: true
           check_name: Scheduled Tests Report
+      - name: Run Biome Lint (Full Codebase)
+        working-directory: front
+        run: npm run lint:circular
+      - name: Run ESLint (Full Check, No Cache)
+        working-directory: front
+        run: npm run lint
 
       - name: Notify Test Success
         if: success()
