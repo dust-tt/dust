@@ -797,10 +797,7 @@ export function usePostOnboardingFollowUp({
   const sendNotification = useSendNotification();
 
   const postFollowUp = useCallback(
-    async (
-      toolId: string,
-      action: "completed" | "skipped"
-    ): Promise<boolean> => {
+    async (toolId: string): Promise<boolean> => {
       if (!conversationId) {
         return false;
       }
@@ -810,7 +807,7 @@ export function usePostOnboardingFollowUp({
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ toolId, action }),
+            body: JSON.stringify({ toolId }),
           }
         );
 
@@ -825,7 +822,6 @@ export function usePostOnboardingFollowUp({
           workspaceId,
           conversationId,
           toolId,
-          action,
         });
         sendNotification({
           type: "error",

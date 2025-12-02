@@ -2,6 +2,12 @@ import { Button } from "@dust-tt/sparkle";
 import React, { useState } from "react";
 import { visit } from "unist-util-visit";
 
+import {
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+  trackEvent,
+} from "@app/lib/tracking";
+
 interface QuickReplyBlockProps {
   label: string;
   message: string;
@@ -21,6 +27,12 @@ export function QuickReplyBlock({
     if (isSending || disabled) {
       return;
     }
+    trackEvent({
+      area: TRACKING_AREAS.CONVERSATION,
+      object: "onboarding_conversation",
+      action: TRACKING_ACTIONS.CLICK,
+      extra: { click_target: "quick_reply", label },
+    });
     setIsSending(true);
     try {
       await onSend(message);
