@@ -29,7 +29,11 @@ export const getServerSideProps: GetServerSideProps<
   }
 
   const previewSecret = config.getContentfulPreviewSecret();
-  const isPreview = preview === "true" && secret === previewSecret;
+  const isPreview =
+    preview === "true" &&
+    isString(secret) &&
+    isString(previewSecret) &&
+    secret === previewSecret;
 
   const storyResult = await getCustomerStoryBySlug(slug, isPreview);
 
