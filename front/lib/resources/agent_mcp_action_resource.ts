@@ -361,9 +361,9 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       } else if (action.status === "blocked_child_action_input_required") {
         const conversationId = action.stepContext.resumeState?.conversationId;
 
-        // conversation was not created so we can return early
+        // conversation was not created so we can skip it
         if (!conversationId || !isString(conversationId)) {
-          return blockedActionsList;
+          continue;
         }
 
         const childConversation = await ConversationResource.fetchById(
@@ -372,7 +372,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         );
 
         if (!childConversation) {
-          return blockedActionsList;
+          continue;
         }
 
         const childBlockedActionsList = isString(conversationId)
