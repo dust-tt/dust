@@ -563,9 +563,14 @@ export async function upsertDatabaseInConnectorsDb({
       loggerArgs,
     });
   } else {
+    // In most cases, this means we got a validation error from Notion when trying to fetch the
+    // database, commonly because it's either a linked database or it has multiple data sources.
+    // In this case, it's better to skip it than end up with a NotionDatabase with many null fields,
+    // including parentId.
     localLogger.info(
-      "notionUpsertDatabaseActivity: getParsedDatabase returned undefined."
+      "notionUpsertDatabaseActivity: getParsedDatabase returned undefined. Ignoring database."
     );
+    return;
   }
 
   const createdOrMoved =
