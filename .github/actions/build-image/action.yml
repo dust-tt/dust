@@ -172,22 +172,22 @@ runs:
             .
 
           # Build optimized workers target
-          # depot build \
-          #   --project $DEPOT_PROJECT_ID \
-          #   --platform linux/amd64 \
-          #   --provenance=false \
-          #   --target workers-optimized \
-          #   --cache-from type=gha,scope=${{ inputs.component }}-deps \
-          #   --cache-from type=gha,scope=${{ inputs.component }}-workers-optimized \
-          #   --cache-to type=gha,mode=max,scope=${{ inputs.component }}-deps \
-          #   --cache-to type=gha,mode=max,scope=${{ inputs.component }}-workers-optimized \
-          #   -f ./dockerfiles/${BASE_COMPONENT}.Dockerfile \
-          #   -t ${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${{ inputs.component }}-workers-optimized:${{ inputs.commit_sha }} \
-          #   --build-arg COMMIT_HASH=${{ inputs.commit_sha }} \
-          #   --build-arg COMMIT_HASH_LONG=${{ inputs.commit_sha_long }} \
-          #   ${build_args[@]} \
-          #   --push \
-          #   .
+          depot build \
+            --project $DEPOT_PROJECT_ID \
+            --platform linux/amd64 \
+            --provenance=false \
+            --target workers-optimized \
+            --cache-from type=gha,scope=${{ inputs.component }}-deps \
+            --cache-from type=gha,scope=${{ inputs.component }}-workers-optimized \
+            --cache-to type=gha,mode=max,scope=${{ inputs.component }}-deps \
+            --cache-to type=gha,mode=max,scope=${{ inputs.component }}-workers-optimized \
+            -f ./dockerfiles/${BASE_COMPONENT}.Dockerfile \
+            -t ${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${{ inputs.component }}-workers-optimized:${{ inputs.commit_sha }} \
+            --build-arg COMMIT_HASH=${{ inputs.commit_sha }} \
+            --build-arg COMMIT_HASH_LONG=${{ inputs.commit_sha_long }} \
+            ${build_args[@]} \
+            --push \
+            .
         else
           # Standard single-target build for other components
           depot build \
