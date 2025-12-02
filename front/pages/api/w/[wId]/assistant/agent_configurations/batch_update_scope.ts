@@ -11,7 +11,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import { isBuilder, type WithAPIErrorResponse } from "@app/types";
 
 const BatchUpdateAgentScopeRequestBodySchema = t.type({
   agentIds: t.array(t.string),
@@ -33,6 +33,16 @@ async function handler(
       api_error: {
         type: "method_not_supported_error",
         message: "The method passed is not supported, POST is expected.",
+      },
+    });
+  }
+
+  if (!auth.isBuilder()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "app_auth_error",
+        message: "You do not have the required permissions.",
       },
     });
   }
