@@ -1,5 +1,4 @@
 import { markdownStyles } from "@dust-tt/sparkle";
-import Link from "@tiptap/extension-link";
 import { Placeholder } from "@tiptap/extensions";
 import { Markdown } from "@tiptap/markdown";
 import type { Editor } from "@tiptap/react";
@@ -17,7 +16,9 @@ import { PastedAttachmentExtension } from "@app/components/editor/extensions/inp
 import { URLDetectionExtension } from "@app/components/editor/extensions/input_bar/URLDetectionExtension";
 import { URLStorageExtension } from "@app/components/editor/extensions/input_bar/URLStorageExtension";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
+import { BlockquoteExtension } from "@app/components/editor/input_bar/BlockquoteExtension";
 import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPastedHTML";
+import { LinkExtension } from "@app/components/editor/input_bar/LinkExtension";
 import {
   createMentionSuggestion,
   mentionPluginKey,
@@ -191,17 +192,14 @@ export const buildEditorExtensions = ({
     StarterKit.configure({
       hardBreak: false, // Disable the built-in Shift+Enter. We handle it ourselves in the keymap extension
       strike: false,
+      link: false, // Disable built-in Link extension, using custom LinkExtension instead
       heading: {
         levels: [1],
       },
       bold: false, // Disable default bold, we use a custom one
       italic: false, // Disable default italic, we use a custom one
+      blockquote: false, // Disable default blockquote, we use a custom one
       // Markdown styles configuration.
-      blockquote: {
-        HTMLAttributes: {
-          class: markdownStyles.blockquote(),
-        },
-      },
       code: {
         HTMLAttributes: {
           class: markdownStyles.code(),
@@ -235,21 +233,14 @@ export const buildEditorExtensions = ({
     }),
     CustomBold,
     CustomItalic,
+    BlockquoteExtension.configure({
+      HTMLAttributes: {
+        class: markdownStyles.blockquote(),
+      },
+    }),
     Markdown,
     DataSourceLinkExtension,
-    Link.extend({
-      renderHTML({ HTMLAttributes }: { HTMLAttributes: { href: string } }) {
-        const href = HTMLAttributes.href || "";
-        return [
-          "span",
-          {
-            ...HTMLAttributes,
-            title: href, // Add title attribute to show URL as tooltip
-          },
-          0,
-        ];
-      },
-    }).configure({
+    LinkExtension.configure({
       HTMLAttributes: {
         class: "text-blue-600 hover:underline hover:text-blue-800",
       },
