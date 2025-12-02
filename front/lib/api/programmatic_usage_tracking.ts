@@ -316,14 +316,14 @@ export async function trackProgrammaticCost(
   const runsCostUsd = runUsages
     .flat()
     .reduce((acc, usage) => acc + usage.costUsd, 0);
-  const runsCostUsdFloored = runsCostUsd > 0 ? Math.ceil(runsCostUsd) : 0;
+  const runsCostUsdRounded = runsCostUsd > 0 ? Math.ceil(runsCostUsd) : 0;
 
   await decreaseProgrammaticCredits(
     auth.getNonNullableWorkspace(),
-    runsCostUsdFloored
+    runsCostUsdRounded
   );
   // Percentage not divided by 100 because of the cents->dollars conversion at the same time.
-  const costWithMarkupCents = runsCostUsdFloored * (100 + DUST_MARKUP_PERCENT);
+  const costWithMarkupCents = runsCostUsdRounded * (100 + DUST_MARKUP_PERCENT);
   await decreaseProgrammaticCreditsV2(auth, {
     amountCents: costWithMarkupCents,
   });
