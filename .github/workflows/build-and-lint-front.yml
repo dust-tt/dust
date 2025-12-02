@@ -18,9 +18,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          fetch-depth: 1
+          fetch-depth: 0
       - name: Fetch main branch
-        run: git fetch origin main --depth=1
+        run: git fetch origin main --depth=0
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
       - name: Install Redis
@@ -45,7 +45,7 @@ jobs:
           REDIS_CACHE_URI: "redis://localhost:5434"
           REDIS_URI: "redis://localhost:5434"
           NODE_ENV: test
-        run: npx tsx admin/db.ts && npm run test:ci -- --changed=origin/main
+        run: npx tsx admin/db.ts && npm run test:ci -- --changed origin/main
       - name: Build Tests Report
         if: always()
         uses: mikepenz/action-junit-report@v5
