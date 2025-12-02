@@ -10,6 +10,7 @@ import {
   isEnterpriseSubscription,
   makeOneOffInvoice,
   payInvoice,
+  voidInvoiceWithReason,
 } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import logger from "@app/logger/logger";
@@ -91,6 +92,45 @@ export async function startCreditFromProOneOffInvoice({
     "[Credit Purchase] Successfully activated credit for Pro subscription"
   );
   return new Ok(undefined);
+}
+
+export async function handleFailedProCreditPurchaseInvoice({
+  auth,
+  invoice,
+}: {
+  auth: Authenticator;
+  invoice: Stripe.Invoice;
+}): Promise<Result<{ voided: boolean }, Error>> {
+  if (invoice.attempt_count < 3) {
+    return new Ok({ voided: false });
+  }
+
+  const voidResult = await voidInvoiceWithReason(
+    invoice.id,
+    "failed_upfront_pro_credit_purchase"
+  );
+  if (voidResult.isErr()) {
+    return new Err(voidResult.error);
+  }
+
+  const credit = await CreditResource.fetchByInvoiceOrLineItemId(
+    auth,
+    invoice.id
+  );
+  if (credit) {
+    await credit.delete(auth, {});
+  }
+
+  logger.info(
+    {
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      invoiceId: invoice.id,
+      attemptCount: invoice.attempt_count,
+    },
+    "[Credit Purchase] Voided failed invoice and deleted pending credit"
+  );
+
+  return new Ok({ voided: true });
 }
 
 export async function createEnterpriseCreditPurchase({

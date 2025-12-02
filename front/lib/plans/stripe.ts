@@ -512,6 +512,22 @@ export function getCreditAmountFromInvoice(
   return amountCents;
 }
 
+export async function voidInvoiceWithReason(
+  invoiceId: string,
+  voidReason: string
+): Promise<Result<Stripe.Invoice, Error>> {
+  const stripe = getStripeClient();
+  try {
+    const voidedInvoice = await stripe.invoices.voidInvoice(invoiceId);
+    await stripe.invoices.update(invoiceId, {
+      metadata: { void_reason: voidReason },
+    });
+    return new Ok(voidedInvoice);
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
+}
+
 export function makeCreditPurchaseOnceCouponId(percentOff: number): string {
   return `programmatic-usage-credits-once-${percentOff}`;
 }

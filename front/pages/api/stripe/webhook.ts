@@ -14,7 +14,10 @@ import {
 } from "@app/lib/api/email";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
-import { startCreditFromProOneOffInvoice } from "@app/lib/credits/committed";
+import {
+  handleFailedProCreditPurchaseInvoice,
+  startCreditFromProOneOffInvoice,
+} from "@app/lib/credits/committed";
 import { grantFreeCreditsOnSubscriptionRenewal } from "@app/lib/credits/free";
 import {
   allocatePAYGCreditsOnCycleRenewal,
@@ -449,6 +452,36 @@ async function handler(
           const auth = await Authenticator.internalAdminForWorkspace(
             subscription.workspace.sId
           );
+
+          // Handle Pro credit purchase invoice failures
+          stripeSubscription = await getStripeSubscription(
+            invoice.subscription
+          );
+          if (stripeSubscription) {
+            const isProCreditPurchaseInvoice =
+              isCreditPurchaseInvoice(invoice) &&
+              !isEnterpriseSubscription(stripeSubscription);
+
+            if (isProCreditPurchaseInvoice) {
+              const result = await handleFailedProCreditPurchaseInvoice({
+                auth,
+                invoice,
+              });
+              if (result.isErr()) {
+                logger.error(
+                  { error: result.error, invoiceId: invoice.id },
+                  "[Stripe Webhook] Error handling failed credit purchase"
+                );
+              } else if (result.value.voided) {
+                logger.info(
+                  { invoiceId: invoice.id },
+                  "[Stripe Webhook] Voided Pro credit purchase invoice after 3 failures"
+                );
+                return res.status(200).json({ success: true });
+              }
+            }
+          }
+
           const owner = auth.workspace();
           const subscriptionType = auth.subscription();
           if (!owner || !subscriptionType) {
