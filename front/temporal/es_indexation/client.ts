@@ -1,9 +1,8 @@
-import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
-
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/es_indexation/config";
 import { makeIndexUserSearchWorkflowId } from "@app/temporal/es_indexation/helpers";
+import { indexUserSearchSignal } from "@app/temporal/es_indexation/signals";
 import { indexUserSearchWorkflow } from "@app/temporal/es_indexation/workflows";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
@@ -18,26 +17,26 @@ export async function launchIndexUserSearchWorkflow({
   const workflowId = makeIndexUserSearchWorkflowId({ userId });
 
   try {
-    await client.workflow.start(indexUserSearchWorkflow, {
+    await client.workflow.signalWithStart(indexUserSearchWorkflow, {
       args: [{ userId }],
       taskQueue: QUEUE_NAME,
       workflowId,
+      signal: indexUserSearchSignal,
+      signalArgs: undefined,
       memo: {
         userId,
       },
     });
     return new Ok(undefined);
   } catch (e) {
-    if (!(e instanceof WorkflowExecutionAlreadyStartedError)) {
-      logger.error(
-        {
-          workflowId,
-          userId,
-          error: e,
-        },
-        "Failed starting index user workflow"
-      );
-    }
+    logger.error(
+      {
+        workflowId,
+        userId,
+        error: e,
+      },
+      "Failed starting index user workflow"
+    );
 
     return new Err(normalizeError(e));
   }
