@@ -364,8 +364,12 @@ function contentfulEntryToCustomerStory(
   // Check assets directly
   const body = isDocument(fields.body) ? fields.body : EMPTY_DOCUMENT;
   const heroImage = isAsset(fields.heroImage) ? fields.heroImage : undefined;
-  const companyLogo = isAsset(fields.companyLogo) ? fields.companyLogo : undefined;
-  const contactPhoto = isAsset(fields.contactPhoto) ? fields.contactPhoto : undefined;
+  const companyLogo = isAsset(fields.companyLogo)
+    ? fields.companyLogo
+    : undefined;
+  const contactPhoto = isAsset(fields.contactPhoto)
+    ? fields.contactPhoto
+    : undefined;
   const gallery = Array.isArray(fields.gallery)
     ? fields.gallery.filter(isAsset)
     : [];

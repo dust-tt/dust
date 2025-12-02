@@ -28,7 +28,6 @@ export const getServerSideProps: GetServerSideProps<
     return { notFound: true };
   }
 
-  // Enable preview mode if valid secret provided
   const previewSecret = config.getContentfulPreviewSecret();
   const isPreview = preview === "true" && secret === previewSecret;
 
@@ -45,10 +44,6 @@ export const getServerSideProps: GetServerSideProps<
   const story = storyResult.value;
 
   if (!story) {
-    logger.info(
-      { slug, isPreview },
-      `Customer story "${slug}" not found (preview: ${isPreview})`
-    );
     return { notFound: true };
   }
 
@@ -256,12 +251,9 @@ export default function CustomerStoryPage({
             )}
           </div>
 
-          {/* Sidebar */}
           <aside className={classNames(SIDEBAR_CLASSES, "mt-12 lg:mt-12")}>
             <div className="sticky top-24 space-y-6">
-              {/* Company card */}
               <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-                {/* Company logo header */}
                 <div className="flex items-center justify-center border-b border-gray-100 bg-white px-6 py-8">
                   {story.companyLogo ? (
                     <Image
@@ -278,7 +270,6 @@ export default function CustomerStoryPage({
                   )}
                 </div>
 
-                {/* Company details */}
                 <div className="p-6">
                   <dl className="space-y-4">
                     <div className="flex items-start justify-between">
@@ -326,7 +317,6 @@ export default function CustomerStoryPage({
                 </div>
               </div>
 
-              {/* Contact person */}
               {(story.contactName !== null || story.contactTitle !== null) && (
                 <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
                   <div className="flex items-center gap-4">
@@ -366,7 +356,6 @@ export default function CustomerStoryPage({
         </Grid>
       </article>
 
-      {/* Related stories */}
       {relatedStories.length > 0 && (
         <section className="mt-20">
           <Grid>
@@ -389,7 +378,6 @@ export default function CustomerStoryPage({
                     "hover:bg-primary-100"
                   )}
                 >
-                  {/* Hero image */}
                   <div className="relative flex aspect-[16/9] w-full items-center justify-center overflow-hidden bg-gray-100">
                     {relatedStory.heroImage ? (
                       <Image
