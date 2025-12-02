@@ -198,25 +198,26 @@ async function decreaseProgrammaticCredits(
     await redis.set(key, newCredits.toString(), { KEEPTTL: true });
   });
 }
+
 // There's a race condition here if many messages are running at the same time.
 // This method might be called with credits depleted. In that case we log amounts
 // for tracking but do not take any other action.
 export async function decreaseProgrammaticCreditsV2(
   auth: Authenticator,
-  amount: number
+  { amountCents }: { amountCents: number }
 ): Promise<void> {
   const activeCredits = await CreditResource.listActive(auth);
 
-  const sortedCredits = activeCredits.sort(compareCreditsForConsumption);
+  const sortedCredits = [...activeCredits].sort(compareCreditsForConsumption);
 
-  let remainingAmount = amount;
+  let remainingAmount = amountCents;
   while (remainingAmount > 0) {
     const credit = sortedCredits.shift();
     if (!credit) {
       // A simple warn suffices; tokens have already been consumed.
       logger.warn(
         {
-          initialAmount: amount,
+          initialAmount: amountCents,
           remainingAmount,
           workspaceId: auth.getNonNullableWorkspace().sId,
         },
@@ -239,7 +240,7 @@ export async function decreaseProgrammaticCreditsV2(
           // legitimate case this error could happen would be a race condition
           // in which two messages consume the same credit at exactly the same
           // time--in which case it's a no-op, but at time of writing this is
-          // considered very unlikely, so to be confirmed first before skipping.
+          // considered very unlikely. Double check first before skipping.
           panic: true,
           error: result.error,
         },
@@ -311,19 +312,23 @@ export async function trackProgrammaticCost(
   }
 
   // Compute the price for all the runs.
+  // TODO(2025-12-01 PPUL): microdollars here, floats are not safe for accumulating like this.
   const runsCostUsd = runUsages
     .flat()
     .reduce((acc, usage) => acc + usage.costUsd, 0);
-  const runsCostCents = runsCostUsd > 0 ? Math.ceil(runsCostUsd) : 0;
+  const runsCostUsdFloored = runsCostUsd > 0 ? Math.ceil(runsCostUsd) : 0;
 
   await decreaseProgrammaticCredits(
     auth.getNonNullableWorkspace(),
-    runsCostCents
+    runsCostUsdFloored
   );
-  const costWithMarkup = Math.ceil(
-    runsCostCents * (1 + DUST_MARKUP_PERCENT / 100)
+  const costWithMarkupCents = Math.ceil(
+    // Explicit dollar conversion and percentage.
+    runsCostUsdFloored * (1 + DUST_MARKUP_PERCENT / 100) * 100
   );
-  await decreaseProgrammaticCreditsV2(auth, costWithMarkup);
+  await decreaseProgrammaticCreditsV2(auth, {
+    amountCents: costWithMarkupCents,
+  });
 }
 
 export async function resetCredits(

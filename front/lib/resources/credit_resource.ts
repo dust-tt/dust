@@ -115,7 +115,10 @@ export class CreditResource extends BaseResource<CreditModel> {
     return this.baseFetch(auth);
   }
 
-  static async listActive(auth: Authenticator, fromDate: Date = new Date()) {
+  static async listActive(
+    auth: Authenticator,
+    minExpirationDate: Date = new Date()
+  ) {
     const now = new Date();
     return this.baseFetch(auth, {
       where: {
@@ -131,7 +134,7 @@ export class CreditResource extends BaseResource<CreditModel> {
         // Credit must not be expired
         [Op.or]: [
           { expirationDate: null },
-          { expirationDate: { [Op.gt]: fromDate } },
+          { expirationDate: { [Op.gt]: minExpirationDate } },
         ],
       },
     });
