@@ -30,7 +30,7 @@ import {
 import { AgentMessage, Message } from "@app/lib/models/agent/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
@@ -197,17 +197,9 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
   static async listBlockedActionsForConversation(
     auth: Authenticator,
-    conversationId: string
+    conversation: ConversationResource
   ): Promise<BlockedToolExecution[]> {
     const owner = auth.getNonNullableWorkspace();
-
-    const conversation = await ConversationResource.fetchById(
-      auth,
-      conversationId
-    );
-    if (!conversation) {
-      return [];
-    }
 
     const latestAgentMessages =
       await conversation.getLatestAgentMessageIdByRank(auth);
@@ -346,7 +338,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           logger.warn(
             {
               actionId: action.id,
-              conversationId,
+              conversationId: conversation.id,
               messageId: agentMessage.message.sId,
               workspaceId: owner.id,
             },
@@ -369,7 +361,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       } else if (action.status === "blocked_child_action_input_required") {
         const conversationId = action.stepContext.resumeState?.conversationId;
         const childBlockedActionsList = isString(conversationId)
-          ? await this.listBlockedActionsForConversation(auth, conversationId)
+          ? await this.listBlockedActionsForConversation(auth, conversation)
           : [];
 
         blockedActionsList.push({

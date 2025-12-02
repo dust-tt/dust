@@ -13,9 +13,10 @@ import { DustError } from "@app/lib/error";
 import { Message } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
-import type { ConversationWithoutContentType, Result } from "@app/types";
+import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 async function getUserMessageIdFromMessageId(
@@ -62,7 +63,7 @@ async function getUserMessageIdFromMessageId(
 
 export async function validateAction(
   auth: Authenticator,
-  conversation: ConversationWithoutContentType,
+  conversation: ConversationResource,
   {
     actionId,
     approvalState,
@@ -165,7 +166,7 @@ export async function validateAction(
   const blockedActions =
     await AgentMCPActionResource.listBlockedActionsForConversation(
       auth,
-      conversationId
+      conversation
     );
 
   // Harmless very rare race condition here where 2 validations get
