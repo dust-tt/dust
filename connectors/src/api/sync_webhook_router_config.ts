@@ -70,11 +70,7 @@ const _syncWebhookRouterEntryHandler = async (
 
     if (notionConnectorStates.length > 0) {
       // Get connector IDs for all connectors in this workspace
-      const connectors = await ConnectorResource.fetchByIds(
-        "notion",
-        notionConnectorStates.map((state) => state.connectorId)
-      );
-      connectorIds = connectors.map((c: ConnectorResource) => c.id);
+      connectorIds = notionConnectorStates.map((state) => state.connectorId);
 
       logger.info(
         { notionWorkspaceId: providerWorkspaceId, connectorIds },
@@ -93,11 +89,9 @@ const _syncWebhookRouterEntryHandler = async (
 
     if (slackConfigs.length > 0) {
       // Get the connector for this Slack configuration
-      const connectors = await ConnectorResource.fetchByIds(
-        "slack",
-        slackConfigs.map((config) => config.connectorId)
+      connectorIds = slackConfigs.map(
+        (c: SlackConfigurationResource) => c.connectorId
       );
-      connectorIds = connectors.map((c: ConnectorResource) => c.id);
 
       logger.info(
         { slackTeamId: providerWorkspaceId, connectorIds },
