@@ -586,6 +586,35 @@ export class ConnectorsAPI {
     return this._resultFromResponse(res);
   }
 
+  async addSlackWebhookRouterEntry({
+    slackTeamId,
+    signingSecret,
+  }: {
+    slackTeamId: string;
+    signingSecret: string;
+  }): Promise<ConnectorsAPIResponse<{ success: boolean }>> {
+    const webhooksSecret = process.env.DUST_CONNECTORS_WEBHOOKS_SECRET;
+    if (!webhooksSecret) {
+      return new Err({
+        type: "internal_server_error",
+        message: "DUST_CONNECTORS_WEBHOOKS_SECRET is not configured",
+      });
+    }
+
+    const res = await this._fetchWithError(
+      `${this._url}/webhooks_router_entries/${encodeURIComponent(webhooksSecret)}/slack/${encodeURIComponent(slackTeamId)}`,
+      {
+        method: "POST",
+        headers: this.getDefaultHeaders(),
+        body: JSON.stringify({
+          signingSecret,
+        }),
+      }
+    );
+
+    return this._resultFromResponse(res);
+  }
+
   async getNotionUrlStatus({
     connectorId,
     url,

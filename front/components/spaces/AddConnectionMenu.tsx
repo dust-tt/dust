@@ -147,10 +147,12 @@ export const AddConnectionMenu = ({
       connectionId,
       provider,
       suffix,
+      extraConfig,
     }: {
       connectionId: string;
       provider: ConnectorProvider;
       suffix: string | null;
+      extraConfig: Record<string, string>;
     }) => {
       if (!systemSpace) {
         throw new Error("System space is required");
@@ -162,6 +164,7 @@ export const AddConnectionMenu = ({
         provider,
         connectionId,
         suffix,
+        extraConfig,
       });
     },
     [owner, systemSpace]
@@ -193,6 +196,7 @@ export const AddConnectionMenu = ({
     connectionId,
     relatedCredentialId,
     suffix,
+    extraConfig,
   }: {
     owner: WorkspaceType;
     systemSpace: SpaceType;
@@ -200,6 +204,7 @@ export const AddConnectionMenu = ({
     connectionId: string;
     relatedCredentialId?: string;
     suffix: string | null;
+    extraConfig: Record<string, string>;
   }): Promise<Response> => {
     const res = await fetch(
       suffix
@@ -218,6 +223,7 @@ export const AddConnectionMenu = ({
           relatedCredentialId,
           name: undefined,
           configuration: null,
+          extraConfig,
         } satisfies PostDataSourceRequestBody),
       }
     );
@@ -256,6 +262,7 @@ export const AddConnectionMenu = ({
         connectionId: connectionRes.value.connectionId,
         relatedCredentialId: connectionRes.value.relatedCredentialId,
         suffix,
+        extraConfig,
       });
 
       if (res.ok) {
@@ -403,12 +410,13 @@ export const AddConnectionMenu = ({
                       Parameters<
                         typeof handleCredentialProviderManagedDataSource
                       >[0],
-                      "suffix"
+                      "suffix" | "extraConfig"
                     >
                   ) =>
                     handleCredentialProviderManagedDataSource({
                       ...args,
                       suffix: integration?.setupWithSuffix ?? null,
+                      extraConfig: {}, // No extra config needed for BigQuery
                     })
                   }
                   onSuccess={onCreated}
@@ -427,12 +435,13 @@ export const AddConnectionMenu = ({
                       Parameters<
                         typeof handleCredentialProviderManagedDataSource
                       >[0],
-                      "suffix"
+                      "suffix" | "extraConfig"
                     >
                   ) =>
                     handleCredentialProviderManagedDataSource({
                       ...args,
                       suffix: integration?.setupWithSuffix ?? null,
+                      extraConfig: {}, // No extra config needed for Snowflake
                     })
                   }
                   onSuccess={onCreated}
