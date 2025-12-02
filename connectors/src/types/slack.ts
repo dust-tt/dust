@@ -25,6 +25,7 @@ export const SlackConfigurationTypeSchema = z.object({
   autoReadChannelPatterns: SlackAutoReadPatternsSchema,
   restrictedSpaceAgentsEnabled: z.boolean().optional(),
   feedbackVisibleToAuthorOnly: z.boolean().optional(),
+  privateIntegrationCredentialId: z.string().optional(),
 });
 
 export type SlackConfigurationType = z.infer<
