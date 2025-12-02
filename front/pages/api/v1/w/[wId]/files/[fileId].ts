@@ -10,6 +10,7 @@ import {
 } from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { FileVersion } from "@app/lib/resources/file_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
@@ -20,6 +21,17 @@ import {
   isConversationFileUseCase,
   isPubliclySupportedUseCase,
 } from "@app/types";
+
+const VALID_VIEW_VERSIONS: FileVersion[] = ["original", "processed"];
+
+function isValidViewVersion(
+  version: string | string[] | undefined
+): version is FileVersion {
+  return (
+    typeof version === "string" &&
+    VALID_VIEW_VERSIONS.includes(version as FileVersion)
+  );
+}
 
 export const config = {
   api: {
@@ -113,12 +125,14 @@ async function handler(
   switch (req.method) {
     case "GET": {
       const action = getSecureFileAction(req.query.action, file);
+      const version = isValidViewVersion(req.query.version)
+        ? req.query.version
+        : "original";
 
-      // TODO(2024-07-01 flav) Expose the different versions of the file.
       if (action === "view") {
         const readStream = file.getReadStream({
           auth,
-          version: "original",
+          version,
         });
         readStream.on("error", () => {
           return apiError(req, res, {
@@ -135,7 +149,7 @@ async function handler(
       }
 
       // Redirect to a signed URL.
-      const url = await file.getSignedUrlForDownload(auth, "original");
+      const url = await file.getSignedUrlForDownload(auth, version);
 
       res.redirect(url);
       return;

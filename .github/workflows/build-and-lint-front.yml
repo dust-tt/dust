@@ -41,7 +41,7 @@ jobs:
           REDIS_CACHE_URI: "redis://localhost:5434"
           REDIS_URI: "redis://localhost:5434"
           NODE_ENV: test
-        run: npx tsx admin/db.ts && npm run test:ci
+        run: npx tsx admin/db.ts && npm run test:ci -- --changed=main
       - name: Build Tests Report
         if: always()
         uses: mikepenz/action-junit-report@v5
@@ -59,11 +59,15 @@ jobs:
         uses: ./.github/actions/setup-node-deps
       - name: Typecheck
         working-directory: front
-        run: npx tsc --version && npm run tsc
+        run: npx tsgo --version && npm run tsgo
   lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+      - name: Fetch main branch
+        run: git fetch origin main --depth=1
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
       - name: Cache ESLint

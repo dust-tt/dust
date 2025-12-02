@@ -11,7 +11,10 @@ import { ProgrammaticCostChart } from "@app/components/workspace/ProgrammaticCos
 import { getFeatureFlags } from "@app/lib/auth";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { isEntreprisePlan } from "@app/lib/plans/plan_codes";
+import {
+  getStripeSubscription,
+  isEnterpriseSubscription,
+} from "@app/lib/plans/stripe";
 import { useCredits, usePurchaseCredits } from "@app/lib/swr/credits";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
@@ -20,6 +23,7 @@ import type { CreditDisplayData, CreditType } from "@app/types/credits";
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
+  isEnterprise: boolean;
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.getNonNullableSubscription();
@@ -34,10 +38,21 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     return { notFound: true };
   }
 
+  let isEnterprise = false;
+  if (subscription.stripeSubscriptionId) {
+    const stripeSubscription = await getStripeSubscription(
+      subscription.stripeSubscriptionId
+    );
+    if (stripeSubscription) {
+      isEnterprise = isEnterpriseSubscription(stripeSubscription);
+    }
+  }
+
   return {
     props: {
       owner,
       subscription,
+      isEnterprise,
     },
   };
 });
@@ -106,11 +121,12 @@ function CreditCategoryBar({
 }
 
 interface UsageSectionProps {
+  subscription: SubscriptionType;
   credits: CreditDisplayData[];
   isLoading: boolean;
 }
 
-function UsageSection({ credits, isLoading }: UsageSectionProps) {
+function UsageSection({ subscription, credits, isLoading }: UsageSectionProps) {
   const creditsByType = useMemo(() => {
     const activeCredits = credits.filter((c) => !isExpired(c));
 
@@ -158,9 +174,15 @@ function UsageSection({ credits, isLoading }: UsageSectionProps) {
   // Get current billing period dates (month boundaries)
   // Use useMemo to calculate the current billing cycle (exclusive bounds)
   // Example: Nov 4 -> Dec 3 (if billing cycle starts on the 4th of each month)
-  // For this example, let's assume billing starts on the 4th
-  const BILLING_CYCLE_START_DAY = 4;
+  const BILLING_CYCLE_START_DAY = subscription.startDate
+    ? new Date(subscription.startDate).getDate()
+    : null;
+
   const [cycleStart, cycleEnd] = useMemo(() => {
+    if (!BILLING_CYCLE_START_DAY) {
+      return [null, null];
+    }
+
     const now = new Date();
     const year = now.getFullYear();
     const month = now.getMonth();
@@ -176,7 +198,7 @@ function UsageSection({ credits, isLoading }: UsageSectionProps) {
       end = new Date(year, month, BILLING_CYCLE_START_DAY);
     }
     return [start, end];
-  }, []);
+  }, [BILLING_CYCLE_START_DAY]);
 
   const formatDateShort = (date: Date) => {
     return date.toLocaleDateString(undefined, {
@@ -234,9 +256,11 @@ function UsageSection({ credits, isLoading }: UsageSectionProps) {
           <Page.H variant="h5">Usage</Page.H>
           <Page.P variant="secondary">Available credits and consumption</Page.P>
         </Page.Vertical>
-        <Page.P variant="secondary">
-          {formatDateShort(cycleStart)} → {formatDateShort(cycleEnd)}
-        </Page.P>
+        {cycleStart && cycleEnd && (
+          <Page.P variant="secondary">
+            {formatDateShort(cycleStart)} → {formatDateShort(cycleEnd)}
+          </Page.P>
+        )}
       </div>
 
       {/* Total Consumed */}
@@ -282,13 +306,12 @@ function UsageSection({ credits, isLoading }: UsageSectionProps) {
 export default function CreditsUsagePage({
   owner,
   subscription,
+  isEnterprise,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [showBuyCreditDialog, setShowBuyCreditDialog] = useState(false);
   const { hasFeature, featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
   });
-
-  const isEnterprise = isEntreprisePlan(subscription.plan.code);
   const isApiAndProgrammaticEnabled = hasFeature("ppul");
   const { credits, isCreditsLoading } = useCredits({
     workspaceId: owner.sId,
@@ -328,7 +351,7 @@ export default function CreditsUsagePage({
             <Button
               label="Buy credits"
               variant="primary"
-              disabled={subscription.trialing || isPurchasingCredits}
+              disabled={isPurchasingCredits}
               isLoading={isPurchasingCredits}
               onClick={() => setShowBuyCreditDialog(true)}
             />
@@ -342,7 +365,11 @@ export default function CreditsUsagePage({
         )}
 
         {/* Usage Section */}
-        <UsageSection credits={credits} isLoading={isCreditsLoading} />
+        <UsageSection
+          subscription={subscription}
+          credits={credits}
+          isLoading={isCreditsLoading}
+        />
 
         {/* History Section */}
         <Page.Vertical>

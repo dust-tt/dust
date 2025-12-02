@@ -78,27 +78,32 @@ export async function setupConnection({
   provider: ConnectorProvider;
   useCase?: OAuthUseCase;
   extraConfig: Record<string, string>;
-}): Promise<Result<string, Error>> {
-  let connectionId: string;
-
-  if (isOAuthProvider(provider)) {
-    // OAuth flow
-    const cRes = await setupOAuthConnection({
-      dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
-      owner,
-      provider,
-      useCase,
-      extraConfig,
-    });
-    if (!cRes.isOk()) {
-      return cRes;
-    }
-    connectionId = cRes.value.connection_id;
-  } else {
+}): Promise<
+  Result<{ connectionId: string; relatedCredentialId?: string }, Error>
+> {
+  if (!isOAuthProvider(provider)) {
     return new Err(new Error(`Unknown provider ${provider}`));
   }
 
-  return new Ok(connectionId);
+  // OAuth flow
+  const cRes = await setupOAuthConnection({
+    dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
+    owner,
+    provider,
+    useCase,
+    extraConfig,
+  });
+  if (!cRes.isOk()) {
+    return cRes;
+  }
+
+  return new Ok({
+    connectionId: cRes.value.connection_id,
+    relatedCredentialId:
+      cRes.value.related_credential_id === null
+        ? undefined
+        : cRes.value.related_credential_id,
+  });
 }
 
 export const AddConnectionMenu = ({
@@ -186,12 +191,14 @@ export const AddConnectionMenu = ({
     systemSpace,
     provider,
     connectionId,
+    relatedCredentialId,
     suffix,
   }: {
     owner: WorkspaceType;
     systemSpace: SpaceType;
     provider: ConnectorProvider;
     connectionId: string;
+    relatedCredentialId?: string;
     suffix: string | null;
   }): Promise<Response> => {
     const res = await fetch(
@@ -208,6 +215,7 @@ export const AddConnectionMenu = ({
         body: JSON.stringify({
           provider,
           connectionId,
+          relatedCredentialId,
           name: undefined,
           configuration: null,
         } satisfies PostDataSourceRequestBody),
@@ -222,13 +230,13 @@ export const AddConnectionMenu = ({
     extraConfig: Record<string, string>
   ) => {
     try {
-      const connectionIdRes = await setupConnection({
+      const connectionRes = await setupConnection({
         owner,
         provider,
         extraConfig,
       });
-      if (connectionIdRes.isErr()) {
-        throw connectionIdRes.error;
+      if (connectionRes.isErr()) {
+        throw connectionRes.error;
       }
 
       if (!systemSpace) {
@@ -245,7 +253,8 @@ export const AddConnectionMenu = ({
         owner,
         systemSpace,
         provider,
-        connectionId: connectionIdRes.value,
+        connectionId: connectionRes.value.connectionId,
+        relatedCredentialId: connectionRes.value.relatedCredentialId,
         suffix,
       });
 

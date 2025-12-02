@@ -436,7 +436,12 @@ const InputBarContainer = ({
   );
 
   useEffect(() => {
-    if (!nodeOrUrlCandidate || !onNodeSelect || isSearchLoading) {
+    if (
+      !nodeOrUrlCandidate ||
+      !onNodeSelect ||
+      isSearchLoading ||
+      isSpacesLoading
+    ) {
       return;
     }
 
@@ -487,6 +492,7 @@ const InputBarContainer = ({
     spacesMap,
     nodeOrUrlCandidate,
     sendNotification,
+    isSpacesLoading,
   ]);
 
   // When input bar animation is requested, it means the new button was clicked (removing focus from

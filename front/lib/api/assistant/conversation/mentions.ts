@@ -1,5 +1,8 @@
+import uniq from "lodash/uniq";
 import type { Transaction } from "sequelize";
 
+import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
+import { getContentFragmentSpaceIds } from "@app/lib/api/assistant/permissions";
 import { getUserForWorkspace } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -7,15 +10,29 @@ import {
   AgentMessage,
   Mention,
   Message,
+  UserMessage,
 } from "@app/lib/models/agent/conversation";
 import { triggerConversationAddedAsParticipantNotification } from "@app/lib/notifications/workflows/conversation-added-as-participant";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
+import {
+  generateRandomModelSId,
+  getResourceIdFromSId,
+} from "@app/lib/resources/string_ids";
+import { UserResource } from "@app/lib/resources/user_resource";
+import { isEmailValid } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import type {
+  AgenticMessageData,
   AgentMessageType,
+  ContentFragmentInputWithContentNode,
   ConversationWithoutContentType,
   MentionType,
+  MessageType,
+  ModelId,
+  UserMessageContext,
+  UserType,
 } from "@app/types";
 import type {
   LightAgentConfigurationType,
@@ -23,6 +40,8 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { assertNever, isAgentMention, isUserMention } from "@app/types";
+
+import { runAgentLoopWorkflow } from "./agent_loop";
 
 export const createUserMentions = async (
   auth: Authenticator,
@@ -33,7 +52,7 @@ export const createUserMentions = async (
     transaction,
   }: {
     mentions: MentionType[];
-    message: Message;
+    message: MessageType;
     conversation: ConversationWithoutContentType;
     transaction?: Transaction;
   }
@@ -74,64 +93,308 @@ export const createUserMentions = async (
   );
 };
 
-export const createAgentMessages = async ({
-  owner,
+async function attributeUserFromWorkspaceAndEmail(
+  workspace: WorkspaceType | null,
+  email: string | null
+): Promise<UserType | null> {
+  if (!workspace || !email || !isEmailValid(email)) {
+    return null;
+  }
+
+  const matchingUser = await UserResource.fetchByEmail(email);
+  if (!matchingUser) {
+    return null;
+  }
+
+  const membership =
+    await MembershipResource.getActiveMembershipOfUserInWorkspace({
+      user: matchingUser,
+      workspace,
+    });
+
+  return membership ? matchingUser.toJSON() : null;
+}
+
+/**
+ * Update the conversation requestedSpaceIds based on the mentioned agents. This function is purely
+ * additive - requirements are never removed.
+ *
+ * Each agent's requestedSpaceIds represents a set of requirements that must be satisfied. When an
+ * agent is mentioned in a conversation, its requirements are added to the conversation's
+ * requirements.
+ *
+ * - Within each requirement (sub-array), groups are combined with OR logic.
+ * - Different requirements (different sub-arrays) are combined with AND logic.
+ */
+export async function updateConversationRequirements(
+  auth: Authenticator,
+  {
+    agents,
+    contentFragment,
+    conversation,
+    t,
+  }: {
+    agents?: LightAgentConfigurationType[];
+    contentFragment?: ContentFragmentInputWithContentNode;
+    conversation: ConversationWithoutContentType;
+    t?: Transaction;
+  }
+): Promise<void> {
+  let newSpaceRequirements: string[] = [];
+  if (agents) {
+    newSpaceRequirements = agents.flatMap((agent) => agent.requestedSpaceIds);
+  }
+  if (contentFragment) {
+    const requestedSpaceId = await getContentFragmentSpaceIds(
+      auth,
+      contentFragment
+    );
+
+    newSpaceRequirements.push(requestedSpaceId);
+  }
+
+  newSpaceRequirements = uniq(newSpaceRequirements);
+
+  const currentSpaceRequirements = conversation.requestedSpaceIds;
+
+  const areAllSpaceRequirementsPresent = newSpaceRequirements.every((newReq) =>
+    currentSpaceRequirements.includes(newReq)
+  );
+
+  // Early return if all new requirements are already present.
+  if (areAllSpaceRequirementsPresent) {
+    return;
+  }
+
+  // Get missing requirements.
+  const spaceRequirementsToAdd = newSpaceRequirements.filter(
+    (newReq) => !currentSpaceRequirements.includes(newReq)
+  );
+
+  // Convert all sIds to modelIds.
+  const sIdToModelId = new Map<string, number>();
+  const getModelId = (sId: string) => {
+    if (!sIdToModelId.has(sId)) {
+      const id = getResourceIdFromSId(sId);
+      if (id === null) {
+        throw new Error("Unexpected: invalid group id");
+      }
+      sIdToModelId.set(sId, id);
+    }
+    return sIdToModelId.get(sId)!;
+  };
+
+  const allSpaceRequirements = [
+    ...currentSpaceRequirements.map(getModelId),
+    ...spaceRequirementsToAdd.map(getModelId),
+  ];
+
+  await ConversationResource.updateRequirements(
+    auth,
+    conversation.sId,
+    allSpaceRequirements,
+    t
+  );
+}
+
+export async function createUserMessage({
+  workspace,
   conversation,
   metadata,
+  content,
+  mentions,
   transaction,
 }: {
-  owner: WorkspaceType;
+  workspace: WorkspaceType;
   conversation: ConversationWithoutContentType;
+  content: string;
+  mentions: MentionType[];
   metadata:
     | {
-        type: "retry";
-        message: Message;
-        agentMessage: AgentMessageType;
+        type: "edit";
+        message: UserMessageType;
       }
     | {
         type: "create";
-        mentions: MentionType[];
-        agentConfigurations: LightAgentConfigurationType[];
-        message: Message;
-        skipToolsValidation: boolean;
-        nextMessageRank: number;
-        userMessage: UserMessageType;
+        user: UserType | null;
+        rank: number;
+        context: UserMessageContext;
+        agenticMessageData?: AgenticMessageData;
       };
-  transaction?: Transaction;
-}) => {
+  transaction: Transaction;
+}) {
+  let rank = 0;
+  let version = 0;
+  let parentId: ModelId | null = null;
+  let user: UserType | null = null;
+
+  let context: UserMessageContext | null = null;
+  let agenticMessageData: AgenticMessageData | undefined = undefined;
+
+  switch (metadata.type) {
+    case "edit":
+      // In case of edit, we use the message metadata to create the updated user message.
+      rank = metadata.message.rank;
+      version = metadata.message.version + 1;
+      parentId = metadata.message.id;
+      user = metadata.message.user;
+
+      context = metadata.message.context;
+      agenticMessageData = metadata.message.agenticMessageData;
+      break;
+    case "create":
+      // Otherwise, we create a new user message from the metadata.
+      rank = metadata.rank;
+
+      // TODO: this allow spoofing as we trust blindly the user email from the metadata.
+      user =
+        metadata.user ??
+        (await attributeUserFromWorkspaceAndEmail(
+          workspace,
+          metadata.context.email
+        ));
+
+      context = metadata.context;
+      agenticMessageData = metadata.agenticMessageData;
+      break;
+    default:
+      assertNever(metadata);
+  }
+
+  // Fetch originMessage to ensure it exists
+  const originMessageId = agenticMessageData?.originMessageId;
+  const originMessage = originMessageId
+    ? await Message.findOne({
+        where: {
+          workspaceId: workspace.id,
+          sId: originMessageId,
+        },
+      })
+    : null;
+
+  if (agenticMessageData?.originMessageId && !originMessage) {
+    logger.warn(
+      {
+        originMessageId,
+        workspaceId: workspace.id,
+      },
+      "Origin message not found"
+    );
+  }
+
+  // Only set agenticMessageType and agenticOriginMessageId if originMessage exists
+  // The model validation requires both to be set together
+  const agenticMessageType = originMessage ? agenticMessageData?.type : null;
+  const agenticOriginMessageId = originMessage?.sId ?? null;
+  const userMessage = await UserMessage.create(
+    {
+      content,
+      // TODO(MCP Clean-up): Rename field in DB.
+      clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
+      userContextUsername: context.username,
+      userContextTimezone: context.timezone,
+      userContextFullName: context.fullName,
+      userContextEmail: context.email,
+      userContextProfilePictureUrl: context.profilePictureUrl,
+      userContextOrigin: context.origin,
+      userContextLastTriggerRunAt: context.lastTriggerRunAt
+        ? new Date(context.lastTriggerRunAt)
+        : null,
+      agenticMessageType,
+      agenticOriginMessageId,
+      userId: user?.id,
+      workspaceId: workspace.id,
+    },
+    { transaction }
+  );
+
+  const m = await Message.create(
+    {
+      sId: generateRandomModelSId(),
+      rank,
+      conversationId: conversation.id,
+      parentId,
+      version,
+      userMessageId: userMessage.id,
+      workspaceId: workspace.id,
+    },
+    {
+      transaction,
+    }
+  );
+
+  const createdUserMessage: UserMessageType = {
+    id: m.id,
+    created: m.createdAt.getTime(),
+    sId: m.sId,
+    type: "user_message",
+    visibility: m.visibility,
+    version: m.version,
+    user,
+    mentions,
+    content,
+    context,
+    agenticMessageData: agenticMessageData ?? undefined,
+    rank: m.rank,
+  };
+  return createdUserMessage;
+}
+
+export const createAgentMessages = async (
+  auth: Authenticator,
+  {
+    conversation,
+    metadata,
+    transaction,
+  }: {
+    conversation: ConversationWithoutContentType;
+    metadata:
+      | {
+          type: "retry";
+          agentMessage: AgentMessageType;
+          parentId: number | null;
+        }
+      | {
+          type: "create";
+          mentions: MentionType[];
+          agentConfigurations: LightAgentConfigurationType[];
+          skipToolsValidation: boolean;
+          nextMessageRank: number;
+          userMessage: UserMessageType;
+        };
+    transaction?: Transaction;
+  }
+) => {
+  const owner = auth.getNonNullableWorkspace();
   const results: {
     agentMessageRow: AgentMessage;
     messageRow: Message;
     configuration: LightAgentConfigurationType;
-    parentMessageId: string | null;
+    parentMessageId: string;
     parentAgentMessageId: string | null;
   }[] = [];
 
   switch (metadata.type) {
     case "retry":
       {
-        const previousAgentMessage = metadata.message.agentMessage;
-        if (!previousAgentMessage) {
-          throw new Error("Previous agent message not found");
-        }
+        const agentConfiguration = metadata.agentMessage.configuration;
         const agentMessageRow = await AgentMessage.create(
           {
             status: "created",
-            agentConfigurationId: previousAgentMessage.agentConfigurationId,
-            agentConfigurationVersion:
-              previousAgentMessage.agentConfigurationVersion,
+            agentConfigurationId: agentConfiguration.sId,
+            agentConfigurationVersion: agentConfiguration.version,
             workspaceId: owner.id,
-            skipToolsValidation: previousAgentMessage.skipToolsValidation,
+            skipToolsValidation: metadata.agentMessage.skipToolsValidation,
           },
           { transaction }
         );
         const messageRow = await Message.create(
           {
             sId: generateRandomModelSId(),
-            rank: metadata.message.rank,
+            rank: metadata.agentMessage.rank,
             conversationId: conversation.id,
-            parentId: metadata.message.parentId,
-            version: metadata.message.version + 1,
+            parentId: metadata.parentId,
+            version: metadata.agentMessage.version + 1,
             agentMessageId: agentMessageRow.id,
             workspaceId: owner.id,
           },
@@ -164,7 +427,7 @@ export const createAgentMessages = async ({
 
             await Mention.create(
               {
-                messageId: metadata.message.id,
+                messageId: metadata.userMessage.id,
                 agentConfigurationId: configuration.sId,
                 workspaceId: owner.id,
               },
@@ -199,6 +462,12 @@ export const createAgentMessages = async ({
                   null)
                 : null;
 
+            // Track agent usage when creating a new agent message.
+            void signalAgentUsage({
+              agentConfigurationId: configuration.sId,
+              workspaceId: owner.sId,
+            });
+
             results.push({
               agentMessageRow,
               messageRow,
@@ -217,7 +486,7 @@ export const createAgentMessages = async ({
       assertNever(metadata);
   }
 
-  return results.map(
+  const agentMessages: AgentMessageType[] = results.map(
     ({
       agentMessageRow,
       messageRow,
@@ -225,31 +494,47 @@ export const createAgentMessages = async ({
       parentAgentMessageId,
       configuration,
     }) => ({
-      row: agentMessageRow,
-      m: {
-        id: messageRow.id,
-        agentMessageId: agentMessageRow.id,
-        created: agentMessageRow.createdAt.getTime(),
-        completedTs: agentMessageRow.completedAt?.getTime() ?? null,
-        sId: messageRow.sId,
-        type: "agent_message",
-        visibility: "visible",
-        version: messageRow.version,
-        parentMessageId,
-        parentAgentMessageId,
-        status: "created",
-        actions: [],
-        content: null,
-        chainOfThought: null,
-        rawContents: [],
-        error: null,
-        configuration,
-        rank: messageRow.rank,
-        skipToolsValidation: agentMessageRow.skipToolsValidation,
-        contents: [],
-        parsedContents: {},
-        modelInteractionDurationMs: agentMessageRow.modelInteractionDurationMs,
-      } satisfies AgentMessageType,
+      id: messageRow.id,
+      agentMessageId: agentMessageRow.id,
+      created: agentMessageRow.createdAt.getTime(),
+      completedTs: agentMessageRow.completedAt?.getTime() ?? null,
+      sId: messageRow.sId,
+      type: "agent_message",
+      visibility: "visible",
+      version: messageRow.version,
+      parentMessageId,
+      parentAgentMessageId,
+      status: "created",
+      actions: [],
+      content: null,
+      chainOfThought: null,
+      rawContents: [],
+      error: null,
+      configuration,
+      rank: messageRow.rank,
+      skipToolsValidation: agentMessageRow.skipToolsValidation,
+      contents: [],
+      parsedContents: {},
+      modelInteractionDurationMs: agentMessageRow.modelInteractionDurationMs,
     })
   );
+
+  if (agentMessages.length > 0) {
+    await updateConversationRequirements(auth, {
+      agents: agentMessages.map((m) => m.configuration),
+      conversation,
+      t: transaction,
+    });
+
+    if (metadata.type === "create") {
+      await runAgentLoopWorkflow({
+        auth,
+        agentMessages,
+        conversation,
+        userMessage: metadata.userMessage,
+      });
+    }
+  }
+
+  return agentMessages;
 };

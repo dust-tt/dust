@@ -67,7 +67,7 @@ export class ConversationFactory {
     // Note: fetchConversationParticipants rely on the existence of UserMessage even if we have a table for ConversationParticipant.
     for (let i = 0; i < messagesCreatedAt.length; i++) {
       const createdAt = messagesCreatedAt[i];
-      const userMessageRow = await createMessageAndUserMessage({
+      const userMessageRow = await createUserMessage({
         user,
         workspace,
         conversationModelId: conversation.id,
@@ -136,7 +136,7 @@ export class ConversationFactory {
       created: userMessageRow.createdAt.getTime(),
       sId: messageRow.sId,
       type: "user_message",
-      visibility: "visible",
+      visibility: messageRow.visibility,
       version: 0,
       user: auth.getNonNullableUser().toJSON(),
       mentions: [],
@@ -304,7 +304,7 @@ export class ConversationFactory {
   }
 }
 
-const createMessageAndUserMessage = async ({
+const createUserMessage = async ({
   user,
   workspace,
   conversationModelId,
