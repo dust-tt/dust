@@ -1,0 +1,91 @@
+name: Scheduled Tests (front)
+
+on:
+  schedule:
+    # Run at 8:00 AM, 12:00 PM, and 4:00 PM UTC (three times daily)
+    - cron: "0 8,12,16 * * *"
+  workflow_dispatch: # Allow manual triggering
+
+permissions:
+  contents: read
+  actions: read
+  checks: write
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Notify Test Start
+        id: start_notification
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          payload: |
+            channel: ${{ secrets.SLACK_FRONT_TESTS_NOTIFICATIONS_CHANNEL_ID }}
+            text: |
+              🧪 Starting scheduled front tests
+              • Workflow: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>
+
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
+      - name: Install Redis
+        uses: chenjuneking/redis-setup-action@v1
+        with:
+          version: "7.2.5"
+          hostPort: 5434
+          containerPort: 6379
+      - name: Install Postgres
+        uses: dust-tt/postgresql-action@6730e69fe23f4f2989c19edf9e6e0d7ffeb0a05c
+        with:
+          postgresql docker image: mirror.gcr.io/postgres
+          postgresql version: "14.13"
+          postgresql db: front_test
+          postgresql user: test
+          postgresql password: test
+          postgresql port: 5433
+      - name: Run All Tests
+        working-directory: front
+        env:
+          FRONT_DATABASE_URI: "postgres://test:test@localhost:5433/front_test"
+          REDIS_CACHE_URI: "redis://localhost:5434"
+          REDIS_URI: "redis://localhost:5434"
+          NODE_ENV: test
+        run: npx tsx admin/db.ts && npm run test:ci
+      - name: Build Tests Report
+        if: always()
+        uses: mikepenz/action-junit-report@v5
+        with:
+          report_paths: "**/front/junit*.xml"
+          detailed_summary: true
+          flaky_summary: true
+          group_suite: true
+          check_name: Scheduled Tests Report
+
+      - name: Notify Test Success
+        if: success()
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          payload: |
+            channel: ${{ secrets.SLACK_FRONT_TESTS_NOTIFICATIONS_CHANNEL_ID }}
+            thread_ts: "${{ steps.start_notification.outputs.ts }}"
+            text: |
+              ✅ Scheduled front tests passed
+              • Workflow: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>
+
+      - name: Notify Test Failure
+        if: failure()
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          payload: |
+            channel: ${{ secrets.SLACK_FRONT_TESTS_NOTIFICATIONS_CHANNEL_ID }}
+            thread_ts: "${{ steps.start_notification.outputs.ts }}"
+            text: |
+              ❌ Scheduled front tests failed <!subteam^${{ secrets.SLACK_ENGINEERING_TEAM_GROUP_ID }}>
+              • Workflow: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>

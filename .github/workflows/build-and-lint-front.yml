@@ -41,7 +41,7 @@ jobs:
           REDIS_CACHE_URI: "redis://localhost:5434"
           REDIS_URI: "redis://localhost:5434"
           NODE_ENV: test
-        run: npx tsx admin/db.ts && npm run test:ci
+        run: npx tsx admin/db.ts && npm run test:ci -- --changed=main
       - name: Build Tests Report
         if: always()
         uses: mikepenz/action-junit-report@v5
@@ -64,6 +64,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+      - name: Fetch main branch
+        run: git fetch origin main --depth=1
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
       - name: Cache ESLint
@@ -84,7 +88,7 @@ jobs:
         run: |
           set -e
           npm run format:check &
-          npm run lint:circular &
+          npm run lint:circular -- --changed --since=origin/main &
           wait -n
       - name: Knip - unlisted dependencies
         working-directory: front
