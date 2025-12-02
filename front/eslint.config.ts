@@ -181,6 +181,14 @@ export default defineConfig(
       "no-case-declarations": "off",
       "jsx-a11y/alt-text": "off",
       "no-unused-expressions": "error",
+      "no-restricted-globals": [
+        "warn",
+        {
+          name: "fetch",
+          message:
+            "Use clientFetch, trustedFetch, or untrustedFetch from @app/lib/egress instead of the global fetch to make egress intent explicit.",
+        },
+      ],
       "no-restricted-syntax": [
         "error",
         {
