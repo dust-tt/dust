@@ -1283,9 +1283,6 @@ export async function updateAgentPermissions(
   }
 }
 
-export const PUBLISHING_RESTRICTION_ERROR_MESSAGE =
-  "Publishing agents is restricted to builders and admins.";
-
 export async function canPublishAgent(auth: Authenticator): Promise<boolean> {
   const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
 
