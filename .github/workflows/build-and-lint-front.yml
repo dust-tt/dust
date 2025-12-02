@@ -88,7 +88,7 @@ jobs:
         run: |
           set -e
           npm run format:check &
-          npm run lint:circular -- --changed --since=origin/main &
+          npm run lint:circular &
           wait -n
       - name: Knip - unlisted dependencies
         working-directory: front
