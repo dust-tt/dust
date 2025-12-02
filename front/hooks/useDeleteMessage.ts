@@ -2,6 +2,7 @@ import { useSWRConfig } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { normalizeError } from "@app/types";
 
 export function useDeleteMessage({
   owner,
@@ -27,7 +28,7 @@ export function useDeleteMessage({
 
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.error?.message || "Failed to delete message");
+        throw normalizeError(errorData);
       }
 
       sendNotification({

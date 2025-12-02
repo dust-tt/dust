@@ -139,7 +139,7 @@ export function UserMessage({
   }, [isDeleting, isDeleted, confirm, deleteMessage, message.sId, methods]);
 
   const actions: ConversationMessageAction[] = useMemo(() => {
-    if (!isCurrentUser || isDeleted) {
+    if (!isCurrentUser || isDeleted || !userMentionsEnabled) {
       return [];
     }
 
@@ -150,7 +150,7 @@ export function UserMessage({
         onClick: handleDeleteMessage,
       },
     ];
-  }, [isCurrentUser, isDeleted, handleDeleteMessage]);
+  }, [isCurrentUser, isDeleted, userMentionsEnabled, handleDeleteMessage]);
 
   if (userMentionsEnabled) {
     return (
