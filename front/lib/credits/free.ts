@@ -31,6 +31,15 @@ const USER_COUNT_CUTOFF = 5 * 24 * 60 * 60 * 1000;
 
 type CustomerStatus = "paying" | "trialing";
 
+/**
+ * Returns true if
+ * Customer's subscription is in trial
+ * OR if customer's subscription is less than one month old
+ * This is done so that customers who recently converted still get
+ * the trial 5$ credit on their new billing cycle
+ * (triggered when converted to from trial to active)
+ * This is required because of race conditions between Stripe's subscription.updated and invoice.paid
+ */
 function isTrialingOrNewCustomer(
   stripeSubscription: Stripe.Subscription
 ): boolean {
