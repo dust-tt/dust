@@ -9,7 +9,7 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useContext, useMemo } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
@@ -38,6 +38,8 @@ import {
   getUserMentionPlugin,
   userMentionDirective,
 } from "@app/lib/mentions/markdown/plugin";
+import { ConfirmContext } from "@app/components/Confirm";
+import { useDeleteMessage } from "@app/hooks/useDeleteMessage";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type { UserMessageType, WorkspaceType } from "@app/types";
@@ -61,7 +63,11 @@ export function UserMessage({
 }: UserMessageProps) {
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const userMentionsEnabled = hasFeature("mentions_v2");
-  const [isDeleting, setIsDeleting] = useState(false);
+  const { deleteMessage, isDeleting } = useDeleteMessage({
+    owner,
+    conversationId,
+  });
+  const confirm = useContext(ConfirmContext);
 
   const additionalMarkdownComponents: Components = useMemo(
     () => ({
@@ -108,34 +114,18 @@ export function UserMessage({
       return;
     }
 
-    if (!window.confirm("Are you sure you want to delete this message?")) {
-      return;
+    const confirmed = await confirm({
+      title: "Delete message",
+      message:
+        "Are you sure you want to delete this message? This action cannot be undone.",
+      validateLabel: "Delete",
+      validateVariant: "warning",
+    });
+
+    if (confirmed) {
+      void deleteMessage(message.sId);
     }
-
-    setIsDeleting(true);
-
-    try {
-      const response = await fetch(
-        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/delete`,
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to delete message");
-      }
-
-      window.location.reload();
-    } catch (error) {
-      console.error("Failed to delete message:", error);
-      alert("Failed to delete message. Please try again.");
-      setIsDeleting(false);
-    }
-  }, [isDeleting, isDeleted, owner.sId, conversationId, message.sId]);
+  }, [isDeleting, isDeleted, confirm, deleteMessage, message.sId]);
 
   const actions: ConversationMessageAction[] = useMemo(() => {
     if (!isCurrentUser || isDeleted) {
