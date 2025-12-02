@@ -11,7 +11,10 @@ import { ProgrammaticCostChart } from "@app/components/workspace/ProgrammaticCos
 import { getFeatureFlags } from "@app/lib/auth";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { isEntreprisePlan } from "@app/lib/plans/plan_codes";
+import {
+  getStripeSubscription,
+  isEnterpriseSubscription,
+} from "@app/lib/plans/stripe";
 import { useCredits, usePurchaseCredits } from "@app/lib/swr/credits";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
@@ -20,6 +23,7 @@ import type { CreditDisplayData, CreditType } from "@app/types/credits";
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
+  isEnterprise: boolean;
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.getNonNullableSubscription();
@@ -34,10 +38,21 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     return { notFound: true };
   }
 
+  let isEnterprise = false;
+  if (subscription.stripeSubscriptionId) {
+    const stripeSubscription = await getStripeSubscription(
+      subscription.stripeSubscriptionId
+    );
+    if (stripeSubscription) {
+      isEnterprise = isEnterpriseSubscription(stripeSubscription);
+    }
+  }
+
   return {
     props: {
       owner,
       subscription,
+      isEnterprise,
     },
   };
 });
@@ -282,13 +297,12 @@ function UsageSection({ credits, isLoading }: UsageSectionProps) {
 export default function CreditsUsagePage({
   owner,
   subscription,
+  isEnterprise,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [showBuyCreditDialog, setShowBuyCreditDialog] = useState(false);
   const { hasFeature, featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
   });
-
-  const isEnterprise = isEntreprisePlan(subscription.plan.code);
   const isApiAndProgrammaticEnabled = hasFeature("ppul");
   const { credits, isCreditsLoading } = useCredits({
     workspaceId: owner.sId,
@@ -328,7 +342,7 @@ export default function CreditsUsagePage({
             <Button
               label="Buy credits"
               variant="primary"
-              disabled={subscription.trialing || isPurchasingCredits}
+              disabled={isPurchasingCredits}
               isLoading={isPurchasingCredits}
               onClick={() => setShowBuyCreditDialog(true)}
             />
