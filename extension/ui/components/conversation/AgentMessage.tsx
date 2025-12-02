@@ -435,7 +435,7 @@ export function AgentMessage({
       sup: CiteBlock,
       // Warning: we can't rename easily `mention` to agent_mention, because the messages DB contains this name
       mention: AgentMentionBlock,
-      dustimg: getImgPlugin(owner, user),
+      dustimg: getImgPlugin(),
     }),
     [owner, conversationId, message.sId, agentConfiguration.sId, user]
   );
