@@ -64,6 +64,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Fetch full history for biome --changed comparison
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
       - name: Cache ESLint
@@ -84,7 +86,7 @@ jobs:
         run: |
           set -e
           npm run format:check &
-          npm run lint:circular &
+          npm run lint:circular -- --changed --since=origin/main &
           wait -n
       - name: Knip - unlisted dependencies
         working-directory: front
