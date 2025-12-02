@@ -3,8 +3,9 @@ import type { Request, RequestHandler } from "express";
 import rawBody from "raw-body";
 
 import type { SecretManager } from "../secrets.js";
-import type { Region } from "../webhook-router-config.js";
 import type { WebhookRouterConfigManager } from "../webhook-router-config.js";
+import type { Region } from "../webhook-router-config.js";
+import { ALL_REGIONS } from "../webhook-router-config.js";
 
 class ReceiverAuthenticityError extends Error {
   constructor(message: string) {
@@ -125,7 +126,9 @@ export function createSlackVerificationMiddleware(
           teamId
         );
         // Set the regions for the forwarder
-        req.regions = Object.keys(slackWebhookConfig.regions) as Region[];
+        req.regions = Object.keys(slackWebhookConfig.regions).filter(
+          (key): key is Region => ALL_REGIONS.includes(key as Region)
+        );
         signingSecret = slackWebhookConfig.signingSecret;
       } else {
         const secrets = await secretManager.getSecrets();
