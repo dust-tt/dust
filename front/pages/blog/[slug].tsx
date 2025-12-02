@@ -8,8 +8,11 @@ import { BlogBlock } from "@app/components/home/ContentBlocks";
 import { Grid, H1, H2 } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import config from "@app/lib/api/config";
-import { getBlogPostBySlug, getRelatedPosts } from "@app/lib/contentful/client";
+import {
+  getBlogPostBySlug,
+  getRelatedPosts,
+  isPreviewMode,
+} from "@app/lib/contentful/client";
 import { renderRichTextFromContentful } from "@app/lib/contentful/richTextRenderer";
 import type { BlogPostPageProps } from "@app/lib/contentful/types";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
@@ -25,14 +28,9 @@ export const getServerSideProps: GetServerSideProps<BlogPostPageProps> = async (
     return { notFound: true };
   }
 
-  const searchParams = new URLSearchParams(context.resolvedUrl.split("?")[1]);
-  const preview = searchParams.get("preview");
-  const secret = searchParams.get("secret");
-  const previewSecret = config.getContentfulPreviewSecret();
-  const isPreview =
-    preview === "true" && !!previewSecret && secret === previewSecret;
+  const { resolvedUrl } = context;
 
-  const postResult = await getBlogPostBySlug(slug, isPreview);
+  const postResult = await getBlogPostBySlug(slug, resolvedUrl);
 
   if (postResult.isErr()) {
     logger.error(
@@ -52,7 +50,7 @@ export const getServerSideProps: GetServerSideProps<BlogPostPageProps> = async (
     slug,
     post.tags,
     3,
-    isPreview
+    resolvedUrl
   );
 
   if (relatedPostsResult.isErr()) {
@@ -68,7 +66,7 @@ export const getServerSideProps: GetServerSideProps<BlogPostPageProps> = async (
       post,
       relatedPosts: relatedPostsResult.value,
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
-      preview: isPreview,
+      preview: isPreviewMode(resolvedUrl),
     },
   };
 };

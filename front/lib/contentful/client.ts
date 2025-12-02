@@ -65,6 +65,19 @@ function getPreviewClient() {
   return previewClient.withoutUnresolvableLinks;
 }
 
+export function isPreviewMode(resolvedUrl: string): boolean {
+  const searchParams = new URLSearchParams(resolvedUrl.split("?")[1]);
+  const preview = searchParams.get("preview");
+  const secret = searchParams.get("secret");
+  const previewSecret = process.env.CONTENTFUL_PREVIEW_SECRET;
+
+  return preview === "true" && !!previewSecret && secret === previewSecret;
+}
+
+function getContentfulClient(resolvedUrl: string) {
+  return isPreviewMode(resolvedUrl) ? getPreviewClient() : getClient();
+}
+
 function contentfulAssetToBlogImage(
   asset: Asset | undefined,
   fallbackAlt: string
@@ -151,6 +164,10 @@ function isAsset(value: unknown): value is Asset {
   return typeof value === "object" && value !== null && "sys" in value;
 }
 
+function isNonNull<T>(value: T | null): value is T {
+  return value !== null;
+}
+
 function contentfulEntryToBlogPost(entry: Entry<BlogPageSkeleton>): BlogPost {
   const { fields, sys } = entry;
 
@@ -197,10 +214,10 @@ function contentfulEntryToBlogPostSummary(post: BlogPost): BlogPostSummary {
 }
 
 export async function getAllBlogPosts(
-  preview = false
+  resolvedUrl: string
 ): Promise<Result<BlogPostSummary[], Error>> {
   try {
-    const contentfulClient = preview ? getPreviewClient() : getClient();
+    const contentfulClient = getContentfulClient(resolvedUrl);
 
     const response = await contentfulClient.getEntries<BlogPageSkeleton>({
       content_type: "blogPage",
@@ -223,10 +240,10 @@ export async function getAllBlogPosts(
 
 export async function getBlogPostBySlug(
   slug: string,
-  preview = false
+  resolvedUrl: string
 ): Promise<Result<BlogPost | null, Error>> {
   try {
-    const contentfulClient = preview ? getPreviewClient() : getClient();
+    const contentfulClient = getContentfulClient(resolvedUrl);
 
     const queryParams = {
       content_type: "blogPage",
@@ -250,15 +267,15 @@ export async function getBlogPostBySlug(
 export async function getRelatedPosts(
   currentSlug: string,
   tags: string[],
-  limit = 3,
-  preview = false
+  limit: number,
+  resolvedUrl: string
 ): Promise<Result<BlogPostSummary[], Error>> {
   if (tags.length === 0) {
     return new Ok([]);
   }
 
   try {
-    const contentfulClient = preview ? getPreviewClient() : getClient();
+    const contentfulClient = getContentfulClient(resolvedUrl);
 
     const queryParams = {
       content_type: "blogPage",
@@ -318,19 +335,22 @@ function buildCustomerStoryQuery(
   }
 
   if (filters) {
-    const parsed = CustomerStoryFiltersSchema.parse(filters);
+    const result = CustomerStoryFiltersSchema.safeParse(filters);
 
-    if (parsed.industry && parsed.industry.length > 0) {
-      query["fields.industry[in]"] = parsed.industry.join(",");
-    }
-    if (parsed.department && parsed.department.length > 0) {
-      query["fields.department[in]"] = parsed.department.join(",");
-    }
-    if (parsed.companySize && parsed.companySize.length > 0) {
-      query["fields.companySize[in]"] = parsed.companySize.join(",");
-    }
-    if (parsed.featured !== undefined) {
-      query["fields.featured"] = parsed.featured;
+    if (result.success) {
+      const parsed = result.data;
+      if (parsed.industry && parsed.industry.length > 0) {
+        query["fields.industry[in]"] = parsed.industry.join(",");
+      }
+      if (parsed.department && parsed.department.length > 0) {
+        query["fields.department[in]"] = parsed.department.join(",");
+      }
+      if (parsed.companySize && parsed.companySize.length > 0) {
+        query["fields.companySize[in]"] = parsed.companySize.join(",");
+      }
+      if (parsed.featured !== undefined) {
+        query["fields.featured"] = parsed.featured;
+      }
     }
   }
 
@@ -356,9 +376,15 @@ const CustomerStoryFieldsSchema = z.object({
 
 function contentfulEntryToCustomerStory(
   entry: Entry<CustomerStorySkeleton>
-): CustomerStory {
+): CustomerStory | null {
   const { fields, sys } = entry;
-  const parsed = CustomerStoryFieldsSchema.parse(fields);
+  const result = CustomerStoryFieldsSchema.safeParse(fields);
+
+  if (!result.success) {
+    return null;
+  }
+
+  const parsed = result.data;
   const slug = parsed.slug ?? slugify(parsed.title);
 
   // Check assets directly
@@ -421,11 +447,11 @@ function contentfulEntryToCustomerStorySummary(
 }
 
 export async function getAllCustomerStories(
-  preview = false,
+  resolvedUrl: string,
   filters?: CustomerStoryFilters
 ): Promise<Result<CustomerStorySummary[], Error>> {
   try {
-    const contentfulClient = preview ? getPreviewClient() : getClient();
+    const contentfulClient = getContentfulClient(resolvedUrl);
     const query = buildCustomerStoryQuery(filters);
 
     const response =
@@ -433,6 +459,7 @@ export async function getAllCustomerStories(
 
     const stories = response.items
       .map(contentfulEntryToCustomerStory)
+      .filter(isNonNull)
       .sort(
         (a, b) =>
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -447,10 +474,10 @@ export async function getAllCustomerStories(
 
 export async function getCustomerStoryBySlug(
   slug: string,
-  preview = false
+  resolvedUrl: string
 ): Promise<Result<CustomerStory | null, Error>> {
   try {
-    const contentfulClient = preview ? getPreviewClient() : getClient();
+    const contentfulClient = getContentfulClient(resolvedUrl);
     const query = buildCustomerStoryQuery(undefined, { slug, limit: 1 });
 
     const response =
@@ -466,40 +493,15 @@ export async function getCustomerStoryBySlug(
   }
 }
 
-export async function getFeaturedCustomerStories(
-  limit = 5,
-  preview = false
-): Promise<Result<CustomerStorySummary[], Error>> {
-  try {
-    const contentfulClient = preview ? getPreviewClient() : getClient();
-    const query = buildCustomerStoryQuery({ featured: true }, { limit });
-
-    const response =
-      await contentfulClient.getEntries<CustomerStorySkeleton>(query);
-
-    const stories = response.items
-      .map(contentfulEntryToCustomerStory)
-      .sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      )
-      .map(contentfulEntryToCustomerStorySummary);
-
-    return new Ok(stories);
-  } catch (error) {
-    return new Err(normalizeError(error));
-  }
-}
-
 export async function getRelatedCustomerStories(
   currentSlug: string,
   industry: string,
   department: string[],
-  limit = 3,
-  preview = false
+  limit: number,
+  resolvedUrl: string
 ): Promise<Result<CustomerStorySummary[], Error>> {
   try {
-    const contentfulClient = preview ? getPreviewClient() : getClient();
+    const contentfulClient = getContentfulClient(resolvedUrl);
 
     // First try to find stories in the same industry
     const industryQuery = buildCustomerStoryQuery(undefined, {
@@ -512,6 +514,7 @@ export async function getRelatedCustomerStories(
 
     const stories = response.items
       .map(contentfulEntryToCustomerStory)
+      .filter(isNonNull)
       .filter((story) => story.slug !== currentSlug)
       .slice(0, limit)
       .map(contentfulEntryToCustomerStorySummary);
@@ -528,6 +531,7 @@ export async function getRelatedCustomerStories(
 
       const additionalStories = deptResponse.items
         .map(contentfulEntryToCustomerStory)
+        .filter(isNonNull)
         .filter(
           (story) =>
             story.slug !== currentSlug &&

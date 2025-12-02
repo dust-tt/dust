@@ -13,8 +13,8 @@ import logger from "@app/logger/logger";
 
 export const getServerSideProps: GetServerSideProps<
   BlogListingPageProps
-> = async () => {
-  const postsResult = await getAllBlogPosts();
+> = async (context) => {
+  const postsResult = await getAllBlogPosts(context.resolvedUrl);
 
   if (postsResult.isErr()) {
     logger.error(

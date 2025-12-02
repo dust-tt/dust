@@ -7,10 +7,10 @@ import type { ReactElement } from "react";
 import { Grid, H1, H2, H5 } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import config from "@app/lib/api/config";
 import {
   getCustomerStoryBySlug,
   getRelatedCustomerStories,
+  isPreviewMode,
 } from "@app/lib/contentful/client";
 import { renderRichTextFromContentful } from "@app/lib/contentful/richTextRenderer";
 import type { CustomerStoryPageProps } from "@app/lib/contentful/types";
@@ -27,18 +27,14 @@ export const getServerSideProps: GetServerSideProps<
     return { notFound: true };
   }
 
-  const searchParams = new URLSearchParams(context.resolvedUrl.split("?")[1]);
-  const preview = searchParams.get("preview");
-  const secret = searchParams.get("secret");
-  const previewSecret = config.getContentfulPreviewSecret();
-  const isPreview =
-    preview === "true" && !!previewSecret && secret === previewSecret;
+  const { resolvedUrl } = context;
+  const preview = isPreviewMode(resolvedUrl);
 
-  const storyResult = await getCustomerStoryBySlug(slug, isPreview);
+  const storyResult = await getCustomerStoryBySlug(slug, resolvedUrl);
 
   if (storyResult.isErr()) {
     logger.error(
-      { slug, error: storyResult.error, isPreview },
+      { slug, error: storyResult.error, preview },
       `Error fetching customer story "${slug}"`
     );
     return { notFound: true };
@@ -55,7 +51,7 @@ export const getServerSideProps: GetServerSideProps<
     story.industry,
     story.department,
     3,
-    isPreview
+    resolvedUrl
   );
 
   if (relatedStoriesResult.isErr()) {
@@ -72,7 +68,7 @@ export const getServerSideProps: GetServerSideProps<
         ? relatedStoriesResult.value
         : [],
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
-      preview: isPreview,
+      preview,
     },
   };
 };

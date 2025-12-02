@@ -46,8 +46,8 @@ function extractFilterOptions(
 
 export const getServerSideProps: GetServerSideProps<
   CustomerStoryListingPageProps
-> = async () => {
-  const storiesResult = await getAllCustomerStories();
+> = async (context) => {
+  const storiesResult = await getAllCustomerStories(context.resolvedUrl);
 
   if (storiesResult.isErr()) {
     logger.error(
