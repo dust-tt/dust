@@ -322,10 +322,8 @@ export async function trackProgrammaticCost(
     auth.getNonNullableWorkspace(),
     runsCostUsdFloored
   );
-  const costWithMarkupCents = Math.ceil(
-    // Explicit dollar conversion and percentage.
-    runsCostUsdFloored * (1 + DUST_MARKUP_PERCENT / 100) * 100
-  );
+  // Percentage not divided by 100 because of the cents->dollars conversion at the same time.
+  const costWithMarkupCents = runsCostUsdFloored * (100 + DUST_MARKUP_PERCENT);
   await decreaseProgrammaticCreditsV2(auth, {
     amountCents: costWithMarkupCents,
   });
