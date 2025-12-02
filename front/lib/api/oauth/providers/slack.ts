@@ -198,8 +198,8 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
       return undefined;
     }
 
-    const { slack_client_id, slack_client_secret } = extraConfig;
-    if (!slack_client_id || !slack_client_secret) {
+    const { client_id, client_secret } = extraConfig;
+    if (!client_id || !client_secret) {
       return undefined;
     }
 
@@ -213,8 +213,8 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
     // It is only used for webhook validation
     return {
       content: {
-        client_id: slack_client_id,
-        client_secret: slack_client_secret,
+        client_id,
+        client_secret,
       },
       metadata: { workspace_id: workspaceId, user_id: userId },
     };
@@ -233,24 +233,10 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
     if (useCase === "connection") {
       // Remove the secrets from the stored config (they're stored in relatedCredential)
       const {
-        slack_client_secret: _,
-        slack_signing_secret: __,
+        client_secret: _,
+        signing_secret: __,
         ...restConfig
       } = extraConfig;
-
-      const featureFlags = await getFeatureFlags(
-        auth.getNonNullableWorkspace()
-      );
-      if (
-        featureFlags.includes("self_created_slack_app_connector_rollout") &&
-        restConfig.slack_client_id
-      ) {
-        return {
-          ...restConfig,
-          client_id: restConfig.slack_client_id,
-        };
-      }
-
       return restConfig;
     } else if (useCase === "personal_actions") {
       // For personal actions we fetch the team id of the admin-setup to enforce the team id to be the same as the admin-setup.
@@ -323,9 +309,9 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
         return true;
       }
       return !!(
-        extraConfig.slack_client_id &&
-        extraConfig.slack_client_secret &&
-        extraConfig.slack_signing_secret
+        extraConfig.client_id &&
+        extraConfig.client_secret &&
+        extraConfig.signing_secret
       );
     }
     return Object.keys(extraConfig).length === 0;

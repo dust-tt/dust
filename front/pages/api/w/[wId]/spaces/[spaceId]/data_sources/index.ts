@@ -530,7 +530,7 @@ const handleDataSourceWithProvider = async ({
       connectionId,
     });
     if (connectionMetadataRes.isOk()) {
-      const metadata = connectionMetadataRes.value;
+      const metadata = connectionMetadataRes.value.connection.metadata;
       if (signingSecret && metadata.team_id) {
         const webhookRes = await connectorsAPI.addSlackWebhookRouterEntry({
           slackTeamId: metadata.team_id,
@@ -539,7 +539,7 @@ const handleDataSourceWithProvider = async ({
 
         if (webhookRes.isErr()) {
           logger.error(
-            { error: webhookRes.error, teamId: connection.metadata.team_id },
+            { error: webhookRes.error, teamId: metadata.team_id },
             "Failed to register webhook router entry for Slack app"
           );
 
