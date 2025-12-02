@@ -66,7 +66,7 @@ export const PostDataSourceWithProviderRequestBodySchema = t.intersection([
   t.partial({
     connectionId: t.string, // Required for some providers
     relatedCredentialId: t.string, // Required for private integrations
-    extraConfig: t.record(t.string, t.string), // Used by slack custom app connector
+    extraConfig: t.record(t.string, t.string), // Used by slack private integrations
   }),
 ]);
 
@@ -526,13 +526,14 @@ const handleDataSourceWithProvider = async ({
     const signingSecret = extraConfig["signing_secret"];
 
     const oauthAPI = new OAuthAPI(config.getOAuthAPIConfig(), logger);
-    const accessTokenRes = await oauthAPI.getAccessToken({ connectionId });
-    if (accessTokenRes.isOk()) {
-      const connection = accessTokenRes.value.connection;
-
-      if (signingSecret && connection.metadata.team_id) {
+    const connectionMetadataRes = await oauthAPI.getConnectionMetadata({
+      connectionId,
+    });
+    if (connectionMetadataRes.isOk()) {
+      const metadata = connectionMetadataRes.value;
+      if (signingSecret && metadata.team_id) {
         const webhookRes = await connectorsAPI.addSlackWebhookRouterEntry({
-          slackTeamId: connection.metadata.team_id,
+          slackTeamId: metadata.team_id,
           signingSecret: signingSecret,
         });
 
@@ -544,7 +545,15 @@ const handleDataSourceWithProvider = async ({
 
           // Rollback: delete connector and data source
           await dataSource.delete(auth, { hardDelete: true });
-          await connectorsAPI.deleteConnector(connectorsRes.value.id);
+          const deleteConnectorRes = await connectorsAPI.deleteConnector(
+            connectorsRes.value.id
+          );
+          if (deleteConnectorRes.isErr()) {
+            logger.error(
+              { error: deleteConnectorRes.error },
+              "Failed to delete the connector during rollback"
+            );
+          }
 
           const deleteRes = await coreAPI.deleteDataSource({
             projectId: dustProject.value.project.project_id.toString(),
