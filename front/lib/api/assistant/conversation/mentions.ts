@@ -394,9 +394,8 @@ export const createAgentMessages = async ({
       parentMessageId,
       parentAgentMessageId,
       configuration,
-    }) => ({
-      row: agentMessageRow,
-      m: {
+    }) =>
+      ({
         id: messageRow.id,
         agentMessageId: agentMessageRow.id,
         created: agentMessageRow.createdAt.getTime(),
@@ -419,7 +418,6 @@ export const createAgentMessages = async ({
         contents: [],
         parsedContents: {},
         modelInteractionDurationMs: agentMessageRow.modelInteractionDurationMs,
-      } satisfies AgentMessageType,
-    })
+      }) satisfies AgentMessageType
   );
 };

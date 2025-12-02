@@ -505,108 +505,102 @@ export async function postUserMessage(
   }
 
   // In one big transaction create all Message, UserMessage, AgentMessage and Mention rows.
-  const { userMessage, agentMessages, agentMessageRows } =
-    await withTransaction(async (t) => {
-      // Since we are getting a transaction level lock, we can't execute any other SQL query outside of
-      // this transaction, otherwise this other query will be competing for a connection in the database
-      // connection pool, resulting in a deadlock.
-      await getConversationRankVersionLock(conversation, t);
+  const { userMessage, agentMessages } = await withTransaction(async (t) => {
+    // Since we are getting a transaction level lock, we can't execute any other SQL query outside of
+    // this transaction, otherwise this other query will be competing for a connection in the database
+    // connection pool, resulting in a deadlock.
+    await getConversationRankVersionLock(conversation, t);
 
-      // We clear the hasError flag of a conversation when posting a new user message.
-      if (conversation.hasError) {
-        await ConversationResource.clearHasError(
-          auth,
-          {
-            conversation,
-          },
-          t
-        );
-      }
+    // We clear the hasError flag of a conversation when posting a new user message.
+    if (conversation.hasError) {
+      await ConversationResource.clearHasError(
+        auth,
+        {
+          conversation,
+        },
+        t
+      );
+    }
 
-      let nextMessageRank =
-        ((await Message.max<number | null, Message>("rank", {
-          where: {
-            conversationId: conversation.id,
-          },
-          transaction: t,
-        })) ?? -1) + 1;
-
-      const userMessage = await createUserMessage({
-        workspace: owner,
-        conversation,
-        content,
-        mentions,
-        metadata: {
-          type: "create",
-          user: user?.toJSON() ?? null,
-          rank: nextMessageRank++,
-          context,
-          agenticMessageData,
+    let nextMessageRank =
+      ((await Message.max<number | null, Message>("rank", {
+        where: {
+          conversationId: conversation.id,
         },
         transaction: t,
-      });
+      })) ?? -1) + 1;
 
-      await createUserMentions(auth, {
-        mentions,
-        message: userMessage,
-        conversation,
-        transaction: t,
-      });
-
-      // Mark the conversation as unread for all participants except the user.
-      await ConversationResource.markAsUnreadForOtherParticipants(auth, {
-        conversation,
-        excludedUser: user?.toJSON(),
-      });
-
-      const featureFlags = await getFeatureFlags(owner);
-      if (featureFlags.includes("notifications")) {
-        // TODO(mentionsv2) here we fetch the conversation again to trigger the notification.
-        // We should refactor to pass the resource as the argument of the postUserMessage function.
-        const conversationRes = await ConversationResource.fetchById(
-          auth,
-          conversation.sId
-        );
-        if (conversationRes) {
-          await triggerConversationUnreadNotifications(auth, {
-            conversation: conversationRes,
-            messageId: userMessage.sId,
-          });
-        }
-      }
-
-      const agentMessagesResult = await createAgentMessages({
-        owner,
-        conversation,
-        metadata: {
-          type: "create",
-          mentions,
-          agentConfigurations,
-          skipToolsValidation,
-          nextMessageRank,
-          userMessage,
-        },
-        transaction: t,
-      });
-
-      await updateConversationRequirements(auth, {
-        agents: agentMessagesResult.map(({ m }) => m.configuration),
-        conversation,
-        t,
-      });
-
-      await ConversationResource.markAsUpdated(auth, { conversation, t });
-
-      return {
-        userMessage,
-        agentMessages: agentMessagesResult.map(({ m }) => m),
-        agentMessageRows: agentMessagesResult.map(({ row }) => row),
-      };
+    const userMessage = await createUserMessage({
+      workspace: owner,
+      conversation,
+      content,
+      mentions,
+      metadata: {
+        type: "create",
+        user: user?.toJSON() ?? null,
+        rank: nextMessageRank++,
+        context,
+        agenticMessageData,
+      },
+      transaction: t,
     });
 
-  if (agentMessageRows.length !== agentMessages.length) {
-    throw new Error("Unreachable: agentMessageRows and agentMessages mismatch");
-  }
+    await createUserMentions(auth, {
+      mentions,
+      message: userMessage,
+      conversation,
+      transaction: t,
+    });
+
+    // Mark the conversation as unread for all participants except the user.
+    await ConversationResource.markAsUnreadForOtherParticipants(auth, {
+      conversation,
+      excludedUser: user?.toJSON(),
+    });
+
+    const featureFlags = await getFeatureFlags(owner);
+    if (featureFlags.includes("notifications")) {
+      // TODO(mentionsv2) here we fetch the conversation again to trigger the notification.
+      // We should refactor to pass the resource as the argument of the postUserMessage function.
+      const conversationRes = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      if (conversationRes) {
+        await triggerConversationUnreadNotifications(auth, {
+          conversation: conversationRes,
+          messageId: userMessage.sId,
+        });
+      }
+    }
+
+    const agentMessages = await createAgentMessages({
+      owner,
+      conversation,
+      metadata: {
+        type: "create",
+        mentions,
+        agentConfigurations,
+        skipToolsValidation,
+        nextMessageRank,
+        userMessage,
+      },
+      transaction: t,
+    });
+
+    await updateConversationRequirements(auth, {
+      agents: agentMessages.map((m) => m.configuration),
+      conversation,
+      t,
+    });
+
+    await ConversationResource.markAsUpdated(auth, { conversation, t });
+
+    return {
+      userMessage,
+      agentMessages,
+    };
+  });
 
   if (agentMessages.length > 0) {
     for (const agentMessage of agentMessages) {
@@ -625,11 +619,6 @@ export async function postUserMessage(
     agentMessages,
   });
 
-  const agentMessageRowById = new Map<ModelId, AgentMessage>();
-  for (const agentMessageRow of agentMessageRows) {
-    agentMessageRowById.set(agentMessageRow.id, agentMessageRow);
-  }
-
   // TODO(DURABLE-AGENTS 2025-07-17): Publish message events to all open tabs to maintain
   // conversation state synchronization in multiplex mode. This is a temporary solution -
   // we should move this to a dedicated real-time sync mechanism.
@@ -645,7 +634,6 @@ export async function postUserMessage(
   await runAgentLoopWorkflow({
     auth,
     agentMessages,
-    agentMessageRowById,
     conversation,
     userMessage,
   });
@@ -755,7 +743,6 @@ export async function editUserMessage(
 
   let userMessage: UserMessageType | null = null;
   let agentMessages: AgentMessageType[] = [];
-  let agentMessageRows: AgentMessage[] = [];
 
   const results = await Promise.all([
     Promise.all(
@@ -881,7 +868,7 @@ export async function editUserMessage(
         transaction: t,
       });
 
-      const agentMessagesResult = await createAgentMessages({
+      const agentMessages = await createAgentMessages({
         owner,
         conversation,
         metadata: {
@@ -896,7 +883,7 @@ export async function editUserMessage(
       });
 
       await updateConversationRequirements(auth, {
-        agents: agentMessagesResult.map(({ m }) => m.configuration),
+        agents: agentMessages.map((m) => m.configuration),
         conversation,
         t,
       });
@@ -905,13 +892,12 @@ export async function editUserMessage(
 
       return {
         userMessage,
-        agentMessages: agentMessagesResult.map(({ m }) => m),
-        agentMessageRows: agentMessagesResult.map(({ row }) => row),
+        agentMessages,
       };
     });
     userMessage = result.userMessage;
     agentMessages = result.agentMessages;
-    agentMessageRows = result.agentMessageRows;
+
     if (!userMessage) {
       throw new UserMessageError("Unreachable: userMessage is null");
     }
@@ -929,11 +915,6 @@ export async function editUserMessage(
     }
   }
 
-  assert(
-    agentMessageRows.length === agentMessages.length,
-    "Unreachable: agentMessageRows and agentMessages mismatch"
-  );
-
   if (agentMessages.length > 0) {
     for (const agentMessage of agentMessages) {
       void signalAgentUsage({
@@ -943,15 +924,9 @@ export async function editUserMessage(
     }
   }
 
-  const agentMessageRowById = new Map<ModelId, AgentMessage>();
-  for (const agentMessageRow of agentMessageRows) {
-    agentMessageRowById.set(agentMessageRow.id, agentMessageRow);
-  }
-
   await runAgentLoopWorkflow({
     auth,
     agentMessages,
-    agentMessageRowById,
     conversation,
     userMessage,
   });
@@ -990,7 +965,6 @@ export async function retryAgentMessage(
 ): Promise<Result<AgentMessageType, APIErrorWithStatusCode>> {
   let agentMessageResult: {
     agentMessage: AgentMessageType;
-    agentMessageRow: AgentMessage;
   } | null = null;
   try {
     agentMessageResult = await withTransaction(async (t) => {
@@ -1041,7 +1015,7 @@ export async function retryAgentMessage(
         );
       }
 
-      const agentMessagesResult = await createAgentMessages({
+      const agentMessages = await createAgentMessages({
         owner: auth.getNonNullableWorkspace(),
         conversation,
         metadata: {
@@ -1052,12 +1026,11 @@ export async function retryAgentMessage(
         transaction: t,
       });
 
-      if (agentMessagesResult.length !== 1) {
+      if (agentMessages.length !== 1) {
         throw new AgentMessageError(
-          `Unexpected: expected 1 agent message result while retrying agent message, got ${agentMessagesResult.length} instead.`
+          `Unexpected: expected 1 agent message result while retrying agent message, got ${agentMessages.length} instead.`
         );
       }
-      const { m: agentMessage, row: agentMessageRow } = agentMessagesResult[0];
 
       await updateConversationRequirements(auth, {
         agents: [message.configuration],
@@ -1068,8 +1041,7 @@ export async function retryAgentMessage(
       await ConversationResource.markAsUpdated(auth, { conversation, t });
 
       return {
-        agentMessage,
-        agentMessageRow,
+        agentMessage: agentMessages[0],
       };
     });
   } catch (e) {
