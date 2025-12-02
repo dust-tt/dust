@@ -65,7 +65,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          fetch-depth: 0 # Fetch full history for biome --changed comparison
+          fetch-depth: 1
+      - name: Fetch main branch
+        run: git fetch origin main --depth=1
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
       - name: Cache ESLint
