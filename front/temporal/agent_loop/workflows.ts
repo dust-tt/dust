@@ -37,7 +37,7 @@ export const NOTIFICATION_DELAY_MS = 30000;
 const { runModelAndCreateActionsActivity } = proxyActivities<
   typeof runModelAndCreateWrapperActivities
 >({
-  startToCloseTimeout: "10 minutes",
+  startToCloseTimeout: "5 minutes",
 });
 
 const { runToolActivity } = proxyActivities<typeof runToolActivities>({
