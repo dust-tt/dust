@@ -33,7 +33,7 @@ const TYPE_SORT_ORDER: Record<CreditType, number> = {
 
 // Display labels for credit types
 const TYPE_LABELS: Record<CreditType, string> = {
-  free: "Free",
+  free: "Included",
   committed: "Committed",
   payg: "Pay-as-you-go",
 };
