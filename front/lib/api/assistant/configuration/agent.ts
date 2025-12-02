@@ -370,12 +370,12 @@ export async function createAgentConfiguration(
 
   // For hidden agents, track previous editors to disable triggers when editors are removed.
   let previousEditorIds: Set<ModelId> = new Set();
-  if (agentConfigurationId && scope === "hidden") {
+  if (agentConfigurationId) {
     const existingAgent = await getAgentConfiguration(auth, {
       agentId: agentConfigurationId,
       variant: "light",
     });
-    if (existingAgent) {
+    if (existingAgent && scope === "hidden") {
       const editorGroupRes = await GroupResource.findEditorGroupForAgent(
         auth,
         existingAgent
@@ -385,12 +385,13 @@ export async function createAgentConfiguration(
         previousEditorIds = new Set(members.map((m) => m.id));
       }
     }
-  }
-
-  if (!(await canPublishAgent(auth)) && scope === "visible") {
-    return new Err(
-      new Error("User does not have permission to publish agents.")
-    );
+    if (existingAgent && existingAgent.scope !== "visible") {
+      if (!(await canPublishAgent(auth)) && scope === "visible") {
+        return new Err(
+          new Error("Publishing agents is restricted to builders and admins.")
+        );
+      }
+    }
   }
 
   try {
@@ -1283,7 +1284,7 @@ export async function updateAgentPermissions(
   }
 }
 
-export async function canPublishAgent(auth: Authenticator): Promise<boolean> {
+async function canPublishAgent(auth: Authenticator): Promise<boolean> {
   const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
 
   if (
@@ -1309,7 +1310,11 @@ export async function updateAgentConfigurationScope(
     return new Err(new Error(`Could not find agent ${agentConfigurationId}`));
   }
 
-  if (!(await canPublishAgent(auth)) && scope === "visible") {
+  if (
+    !(await canPublishAgent(auth)) &&
+    agentConfig.scope !== "visible" &&
+    scope === "visible"
+  ) {
     return new Err(
       new Error("Publishing agents is restricted to builders and admins.")
     );
