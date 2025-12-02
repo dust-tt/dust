@@ -1,9 +1,10 @@
 import { proxyActivities, setHandler, sleep } from "@temporalio/workflow";
 
 import type * as activities from "@app/temporal/es_indexation/activities";
-import { indexUserSearchSignal } from "@app/temporal/es_indexation/signals";
 
-const DEBOUNCE_DELAY_MS = 10_000;
+import { indexUserSearchSignal } from "./signals";
+
+const DEBOUNCE_DELAY_MS = 1_000;
 
 const { indexUserSearchActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
@@ -30,6 +31,6 @@ export async function indexUserSearchWorkflow({
     await indexUserSearchActivity({ userId });
   }
 
-  // /!\ Any signal received outside of the while loop will be lost, so don't make any async
-  // call here, which will allow the signal handler to be executed by the nodejs event loop. /!\
+  // /!\ Any signal received outside of the while loop will be lost, so don't make any async call
+  // here, which will allow the signal handler to be executed by the nodejs event loop.
 }
