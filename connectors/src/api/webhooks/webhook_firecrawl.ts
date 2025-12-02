@@ -61,13 +61,16 @@ const _webhookFirecrawlAPIHandler = async (
 ) => {
   const { success, type, id, data, metadata, error } = req.body;
 
-  logger.info("Received webhook", {
-    success,
-    type,
-    id,
-    metadata,
-    error,
-  });
+  logger.info(
+    {
+      success,
+      type,
+      id,
+      metadata,
+      error,
+    },
+    "Received webhook"
+  );
 
   if (!metadata.connectorId || isNaN(parseInt(metadata.connectorId))) {
     logger.error(
