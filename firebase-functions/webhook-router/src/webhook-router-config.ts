@@ -8,7 +8,7 @@ type ProviderWithSigningSecret = "slack" | "notion";
 type WebhookRouterConfigEntry = {
   signingSecret: string;
   regions: {
-    [region: string]: number[];
+    [region in Region]: number[];
   };
 };
 
