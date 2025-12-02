@@ -2,99 +2,64 @@ import {
   Dialog,
   DialogContainer,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
   Input,
   LinkMIcon,
 } from "@dust-tt/sparkle";
-import type { EditorState } from "@tiptap/pm/state";
 import type { Editor } from "@tiptap/react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
+import { calculateLinkTextAndPosition } from "@app/components/assistant/conversation/input_bar/toolbar/helpers";
 import { ToolbarIcon } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarIcon";
 
 interface ToolbarLinkProps {
   editor: Editor;
 }
 
-const getLinkPosition = (
-  state: EditorState,
-  from: number,
-  to: number,
-  href: string
-): { linkStart: number; linkEnd: number } => {
-  const linkMarkType = state.schema.marks.link;
-
-  // Start with the current cursor position
-  let linkStart = from;
-  let linkEnd = to || from;
-
-  // Look backwards for the start of the link
-  for (let pos = linkStart; pos >= 0; pos--) {
-    const $testPos = state.doc.resolve(pos);
-    const marks = $testPos.marks();
-    const hasMatchingLink = marks.some(
-      (mark) => mark.type === linkMarkType && mark.attrs.href === href
-    );
-    if (hasMatchingLink) {
-      linkStart = pos - 1;
-    } else {
-      break;
-    }
-  }
-
-  // Look forwards for the end of the link
-  for (let pos = linkEnd; pos <= state.doc.content.size; pos++) {
-    const $testPos = state.doc.resolve(pos);
-    const marks = $testPos.marks();
-    const hasMatchingLink = marks.some(
-      (mark) => mark.type === linkMarkType && mark.attrs.href === href
-    );
-    if (hasMatchingLink) {
-      linkEnd = pos;
-    } else {
-      break;
-    }
-  }
-
-  return { linkStart, linkEnd };
-};
-
 export function ToolbarLink({ editor }: ToolbarLinkProps) {
   const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
   const [linkText, setLinkText] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
   const [linkPos, setLinkPos] = useState({ from: 0, to: 0 });
+  const editorRef = useRef(editor);
 
-  const handleLinkDialogOpen = () => {
-    const { state } = editor;
-    const { from, to } = state.selection;
-    // Check if we're inside a link
-    const linkMark = editor.getAttributes("link");
+  // Keep editor ref up to date
+  useEffect(() => {
+    editorRef.current = editor;
+  }, [editor]);
 
-    if (linkMark.href) {
-      // We're inside or on a link, need to find the full link range
-      const { linkStart, linkEnd } = getLinkPosition(
-        state,
-        from,
-        to,
-        linkMark.href
-      );
-
-      const fullLinkText = state.doc.textBetween(linkStart, linkEnd);
-      setLinkUrl(linkMark.href);
-      setLinkText(fullLinkText);
-      setLinkPos({ from: linkStart, to: linkEnd });
-    } else {
-      // No link, just use selected text
-      const selectedText = state.doc.textBetween(from, to);
-      setLinkUrl("");
-      setLinkText(selectedText);
-      setLinkPos({ from, to });
-    }
+  const openLinkDialog = (editorInstance: Editor) => {
+    const { linkUrl, linkText, linkPos } = calculateLinkTextAndPosition({
+      editor: editorInstance,
+    });
+    setLinkUrl(linkUrl);
+    setLinkText(linkText);
+    setLinkPos(linkPos);
     setIsLinkDialogOpen(true);
   };
+
+  const handleLinkDialogOpen = () => {
+    openLinkDialog(editor);
+  };
+
+  // Listen for keyboard shortcut event from the editor
+  useEffect(() => {
+    const handleOpenDialog = (e: Event) => {
+      // Prevent other toolbar instances from handling the same event.
+      // This is necessary because there are two toolbar components (one for mobile and one for desktop)
+      e.stopImmediatePropagation();
+
+      openLinkDialog(editorRef.current);
+    };
+
+    window.addEventListener("dust:openLinkDialog", handleOpenDialog);
+    return () => {
+      window.removeEventListener("dust:openLinkDialog", handleOpenDialog);
+    };
+  }, []);
 
   const handleLinkSubmit = () => {
     let finalText = linkText;
@@ -123,6 +88,7 @@ export function ToolbarLink({ editor }: ToolbarLinkProps) {
         { updateSelection: true }
       )
       .insertContent(linkUrl ? " " : "")
+      .focus()
       .run();
 
     setLinkText("");
@@ -130,17 +96,28 @@ export function ToolbarLink({ editor }: ToolbarLinkProps) {
     setIsLinkDialogOpen(false);
   };
 
+  const onClose = (open: boolean) => {
+    if (!open) {
+      editor.chain().focus().run();
+    }
+    setIsLinkDialogOpen(open);
+  };
+
   return (
-    <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
+    <Dialog open={isLinkDialogOpen} onOpenChange={onClose}>
       <ToolbarIcon
         icon={LinkMIcon}
         onClick={handleLinkDialogOpen}
         active={editor.isActive("link")}
         tooltip="Link"
+        shortcut="Mod+K"
       />
       <DialogContent onClick={(e) => e.stopPropagation()}>
         <DialogHeader>
           <DialogTitle>Insert Link</DialogTitle>
+          <DialogDescription>
+            Add a link to your message with custom text.
+          </DialogDescription>
         </DialogHeader>
         <DialogContainer>
           <Input
@@ -155,6 +132,7 @@ export function ToolbarLink({ editor }: ToolbarLinkProps) {
             label="Link"
             placeholder="Link"
             value={linkUrl}
+            autoFocus
             onChange={(e) => setLinkUrl(e.target.value)}
           />
         </DialogContainer>
@@ -162,7 +140,7 @@ export function ToolbarLink({ editor }: ToolbarLinkProps) {
           leftButtonProps={{
             label: "Cancel",
             variant: "outline",
-            onClick: () => setIsLinkDialogOpen(false),
+            onClick: () => onClose(false),
           }}
           rightButtonProps={{
             label: "Save",

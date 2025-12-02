@@ -22,18 +22,21 @@ export function ToolBarContent({ editor }: { editor: Editor }) {
         onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
         active={editor.isActive("heading")}
         tooltip="Heading"
+        shortcut="Mod+Alt+1"
       />
       <ToolbarIcon
         icon={BoldIcon}
         onClick={() => editor.chain().focus().toggleBold().run()}
         active={editor.isActive("bold")}
         tooltip="Bold"
+        shortcut="Mod+B"
       />
       <ToolbarIcon
         icon={ItalicIcon}
         onClick={() => editor.chain().focus().toggleItalic().run()}
         active={editor.isActive("italic")}
         tooltip="Italic"
+        shortcut="Mod+I"
       />
 
       <Separator orientation="vertical" className="my-1" />
@@ -45,12 +48,14 @@ export function ToolBarContent({ editor }: { editor: Editor }) {
         onClick={() => editor.chain().focus().toggleBulletList().run()}
         active={editor.isActive("bulletList")}
         tooltip="Bulleted list"
+        shortcut="Mod+Shift+8"
       />
       <ToolbarIcon
         icon={ListOrdered2Icon}
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
         active={editor.isActive("orderedList")}
         tooltip="Ordered list"
+        shortcut="Mod+Shift+7"
       />
       <ToolbarIcon
         icon={QuoteTextIcon}
@@ -64,6 +69,7 @@ export function ToolBarContent({ editor }: { editor: Editor }) {
         }}
         active={editor.isActive("blockquote")}
         tooltip="Blockquote"
+        shortcut="Mod+Shift+9"
       />
 
       <Separator orientation="vertical" className="my-1" />
@@ -72,6 +78,7 @@ export function ToolBarContent({ editor }: { editor: Editor }) {
         onClick={() => editor.chain().focus().toggleCode().run()}
         active={editor.isActive("code")}
         tooltip="Inline code"
+        shortcut="Mod+E"
       />
       <ToolbarIcon
         icon={CodeBlockIcon}
@@ -85,6 +92,7 @@ export function ToolBarContent({ editor }: { editor: Editor }) {
         }}
         active={editor.isActive("codeBlock")}
         tooltip="Code block"
+        shortcut="Mod+Alt+C"
       />
     </>
   );
