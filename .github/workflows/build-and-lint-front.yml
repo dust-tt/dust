@@ -41,7 +41,7 @@ jobs:
           REDIS_CACHE_URI: "redis://localhost:5434"
           REDIS_URI: "redis://localhost:5434"
           NODE_ENV: test
-        run: npx tsx admin/db.ts && npm run test:ci
+        run: npx tsx admin/db.ts && npm run test:ci -- --changed=main
       - name: Build Tests Report
         if: always()
         uses: mikepenz/action-junit-report@v5
@@ -64,6 +64,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+      - name: Fetch main branch
+        run: git fetch origin main --depth=1
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
       - name: Cache ESLint
@@ -84,7 +88,7 @@ jobs:
         run: |
           set -e
           npm run format:check &
-          npm run lint:circular &
+          npm run lint:circular -- --changed --no-errors-on-unmatched &
           wait -n
       - name: Knip - unlisted dependencies
         working-directory: front
@@ -115,6 +119,21 @@ jobs:
           EOF
           )
           npm run knip -- --include dependencies,devDependencies || (echo "You have some unused dependencies. **Please remove them from the package.json, or add them in the knip.ts file in the ignoreDependencies array**\n\n${explanations}" >&2; false)
+      - name: Knip - unused files
+        working-directory: front
+        run: |
+          explanations=$(cat << 'EOF'
+
+          Keeping unused files in your codebase is problematic because:
+
+          1. Cognitive overhead: Developers waste time reading, searching through, and trying to understand code that isn't actually used
+          2. Maintenance burden: Unused files still need to be updated during refactors, migrations, or dependency upgrades
+          3. Confusion: Makes it unclear what's actually part of the application vs. legacy/dead code, slowing down onboarding
+          4. Bloat: Increases repository size, IDE indexing time, and potentially bundle size if not properly tree-shaken
+          
+          EOF
+          )
+          npm run knip -- --include files || (echo "You have some unused files. **Please remove them, or add them in the knip.ts file in the ignoreFiles array**\n\n${explanations}" >&2; false)
     # - name: Validate API Doc
     #   working-directory: front
     #   run: npm run docs

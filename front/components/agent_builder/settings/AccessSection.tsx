@@ -12,11 +12,14 @@ import { useState } from "react";
 import React from "react";
 import { useController } from "react-hook-form";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import { EditorsSheet } from "@app/components/agent_builder/settings/EditorsSheet";
 import { SlackSettingsSheet } from "@app/components/agent_builder/settings/SlackSettingsSheet";
 import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { isBuilder } from "@app/types";
 
 export function AccessSection() {
   const { field: scope } = useController<
@@ -35,6 +38,14 @@ export function AccessSection() {
   const [showSlackSettings, setShowSlackSettings] = useState(false);
 
   const { supportedDataSourceViews } = useDataSourceViewsContext();
+  const { owner } = useAgentBuilderContext();
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+
+  const restrictAgentsPublishing = featureFlags.includes(
+    "restrict_agents_publishing"
+  );
+  const publishingToggleDisabled =
+    restrictAgentsPublishing && !isBuilder(owner);
 
   const getDisplayValue = () => {
     return scope.value === "visible" ? "Published" : "Unpublished";
@@ -63,6 +74,12 @@ export function AccessSection() {
               label={getDisplayValue()}
               isSelect
               type="button"
+              disabled={publishingToggleDisabled}
+              tooltip={
+                publishingToggleDisabled
+                  ? "Publishing agents is restricted to builders and admins"
+                  : undefined
+              }
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
@@ -71,12 +88,14 @@ export function AccessSection() {
               description="Visible & usable by all members of the workspace."
               icon={EyeIcon}
               onClick={() => scope.onChange("visible")}
+              disabled={publishingToggleDisabled}
             />
             <DropdownMenuItem
               label="Unpublished"
               description="Visible & usable by editors only."
               icon={EyeSlashIcon}
               onClick={() => scope.onChange("hidden")}
+              disabled={publishingToggleDisabled}
             />
           </DropdownMenuContent>
         </DropdownMenu>

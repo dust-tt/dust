@@ -91,8 +91,9 @@ FROM base-deps AS workers-build
 # Build temporal workers and esbuild workers (workers only)
 RUN FRONT_DATABASE_URI="sqlite:foo.sqlite" npm run build:temporal-bundles
 RUN npm run build:workers
+
 # New experimental workers build
-#RUN cd workers-build && npm ci && FRONT_DATABASE_URI="sqlite:foo.sqlite" npm run build
+RUN cd workers-build && npm ci && npm run build:workers
 
 # Frontend image (Next.js standalone) for front deployment
 FROM node:20.19.2 AS front
@@ -163,28 +164,29 @@ ENV DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
 
 CMD ["node", "dist/start_worker.js"]
 
-# # Workers image (Full Node.js environment) for front-workers deployment
-# FROM node:20.19.2 AS workers-optimized
+# Workers image (Full Node.js environment) for front-workers deployment
+FROM node:20.19.2 AS workers-optimized
 
-# RUN apt-get update && \
-#   apt-get install -y redis-tools postgresql-client libjemalloc2 && \
-#   rm -rf /var/lib/apt/lists/*
+RUN apt-get update && \
+  apt-get install -y redis-tools postgresql-client libjemalloc2 && \
+  rm -rf /var/lib/apt/lists/*
 
-# WORKDIR /app
+WORKDIR /app
 
-# COPY --from=workers-build /app/workers-build ./
+COPY --from=workers-build /app/workers-build ./
+COPY --from=workers-build /app/dist/temporal-bundles ./dist/temporal-bundles
 
-# # Re-declare build arg needed at runtime
-# ARG NEXT_PUBLIC_DUST_CLIENT_FACING_URL
+# Re-declare build arg needed at runtime
+ARG NEXT_PUBLIC_DUST_CLIENT_FACING_URL
 
-# # Set as environment variable for runtime
-# ENV NEXT_PUBLIC_DUST_CLIENT_FACING_URL=$NEXT_PUBLIC_DUST_CLIENT_FACING_URL
+# Set as environment variable for runtime
+ENV NEXT_PUBLIC_DUST_CLIENT_FACING_URL=$NEXT_PUBLIC_DUST_CLIENT_FACING_URL
 
-# # Preload jemalloc for all processes:
-# ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
+# Preload jemalloc for all processes:
+ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
 
-# ARG COMMIT_HASH_LONG
-# ENV DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust/
-# ENV DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
+ARG COMMIT_HASH_LONG
+ENV DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust/
+ENV DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
 
-# CMD ["node", "dist/start_worker.js"]
+CMD ["node", "dist/start_worker.js"]

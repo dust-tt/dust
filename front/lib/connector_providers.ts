@@ -27,6 +27,7 @@ import { IntercomConfigView } from "@app/components/data_source/IntercomConfigVi
 import { MicrosoftOAuthExtraConfig } from "@app/components/data_source/MicrosoftOAuthExtraConfig";
 import { SalesforceOauthExtraConfig } from "@app/components/data_source/salesforce/SalesforceOAuthExtractConfig";
 import { SlackBotEnableView } from "@app/components/data_source/SlackBotEnableView";
+import { SlackOAuthExtraConfig } from "@app/components/data_source/SlackOAuthExtraConfig";
 import { ZendeskConfigView } from "@app/components/data_source/ZendeskConfigView";
 import { ZendeskOAuthExtraConfig } from "@app/components/data_source/ZendeskOAuthExtraConfig";
 import type {
@@ -205,8 +206,8 @@ export const CONNECTOR_CONFIGURATIONS: Record<
   slack: {
     name: "Slack",
     connectorProvider: "slack",
-    status: "built",
-    // TODO(slack 2025-06-19): Hide the Slack connector until we publish the new app.
+    status: "rolling_out",
+    rollingOutFlag: "self_created_slack_app_connector_rollout",
     hide: true,
     description:
       "Authorize granular access to your Slack workspace on a channel-by-channel basis.",
@@ -218,6 +219,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return SlackLogo;
     },
     optionsComponent: SlackBotEnableView,
+    oauthExtraConfigComponent: SlackOAuthExtraConfig,
     isNested: false,
     isTitleFilterEnabled: true,
     permissions: {

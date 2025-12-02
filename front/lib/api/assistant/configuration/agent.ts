@@ -22,7 +22,7 @@ import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/config
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
 import config from "@app/lib/api/config";
-import { Authenticator } from "@app/lib/auth";
+import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { isRemoteDatabase } from "@app/lib/data_sources";
 import type { DustError } from "@app/lib/error";
 import { AgentDataSourceConfiguration } from "@app/lib/models/agent/actions/data_sources";
@@ -370,12 +370,12 @@ export async function createAgentConfiguration(
 
   // For hidden agents, track previous editors to disable triggers when editors are removed.
   let previousEditorIds: Set<ModelId> = new Set();
-  if (agentConfigurationId && scope === "hidden") {
+  if (agentConfigurationId) {
     const existingAgent = await getAgentConfiguration(auth, {
       agentId: agentConfigurationId,
       variant: "light",
     });
-    if (existingAgent) {
+    if (existingAgent && scope === "hidden") {
       const editorGroupRes = await GroupResource.findEditorGroupForAgent(
         auth,
         existingAgent
@@ -384,6 +384,27 @@ export async function createAgentConfiguration(
         const members = await editorGroupRes.value.getActiveMembers(auth);
         previousEditorIds = new Set(members.map((m) => m.id));
       }
+    }
+    if (existingAgent && existingAgent.scope !== "visible") {
+      if (
+        !(await canPublishAgent(auth)) &&
+        scope === "visible" &&
+        status === "active"
+      ) {
+        return new Err(
+          new Error("Publishing agents is restricted to builders and admins.")
+        );
+      }
+    }
+  } else {
+    if (
+      !(await canPublishAgent(auth)) &&
+      scope === "visible" &&
+      status === "active"
+    ) {
+      return new Err(
+        new Error("Publishing agents is restricted to builders and admins.")
+      );
     }
   }
 
@@ -1277,11 +1298,23 @@ export async function updateAgentPermissions(
   }
 }
 
+async function canPublishAgent(auth: Authenticator): Promise<boolean> {
+  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+
+  if (
+    featureFlags.includes("restrict_agents_publishing") &&
+    !auth.isBuilder()
+  ) {
+    return false;
+  }
+  return true;
+}
+
 export async function updateAgentConfigurationScope(
   auth: Authenticator,
   agentConfigurationId: string,
   scope: Exclude<AgentConfigurationScope, "global">
-) {
+): Promise<Result<void, Error>> {
   const agentConfig = await getAgentConfiguration(auth, {
     agentId: agentConfigurationId,
     variant: "light",
@@ -1289,6 +1322,17 @@ export async function updateAgentConfigurationScope(
 
   if (!agentConfig) {
     return new Err(new Error(`Could not find agent ${agentConfigurationId}`));
+  }
+
+  if (
+    !(await canPublishAgent(auth)) &&
+    agentConfig.scope !== "visible" &&
+    scope === "visible" &&
+    agentConfig.status === "active"
+  ) {
+    return new Err(
+      new Error("Publishing agents is restricted to builders and admins.")
+    );
   }
 
   const previousScope = agentConfig.scope;

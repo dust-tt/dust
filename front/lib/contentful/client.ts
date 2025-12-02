@@ -4,6 +4,8 @@ import type { Asset, ContentfulClientApi, Entry } from "contentful";
 import { createClient } from "contentful";
 
 import type {
+  AuthorSkeleton,
+  BlogAuthor,
   BlogImage,
   BlogPageSkeleton,
   BlogPost,
@@ -138,12 +140,61 @@ function generateDescription(body: Document): string {
   return truncated + "...";
 }
 
-function isDocument(value: unknown): value is Document {
-  return typeof value === "object" && value !== null && "nodeType" in value;
+// Utility type for Contentful's withoutUnresolvableLinks behavior
+type MaybeUnresolved<T> = T | { [x: string]: undefined } | undefined;
+
+function isContentfulDocument(
+  value: MaybeUnresolved<Document>
+): value is Document {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "nodeType" in value &&
+    value.nodeType !== undefined
+  );
 }
 
-function isAsset(value: unknown): value is Asset {
-  return typeof value === "object" && value !== null && "sys" in value;
+function isContentfulAsset(value: MaybeUnresolved<Asset>): value is Asset {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "sys" in value &&
+    "fields" in value
+  );
+}
+
+function isContentfulEntry(
+  value: MaybeUnresolved<Entry<AuthorSkeleton>>
+): value is Entry<AuthorSkeleton> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "sys" in value &&
+    "fields" in value
+  );
+}
+
+function isNonNull<T>(value: T | null): value is T {
+  return value !== null;
+}
+
+function contentfulEntryToAuthor(
+  entry: Entry<AuthorSkeleton> | undefined
+): BlogAuthor | null {
+  if (!entry?.fields) {
+    return null;
+  }
+
+  const name = isString(entry.fields.name) ? entry.fields.name : "";
+  if (!name) {
+    return null;
+  }
+
+  const image = isContentfulAsset(entry.fields.image)
+    ? contentfulAssetToBlogImage(entry.fields.image, name)
+    : null;
+
+  return { name, image };
 }
 
 function contentfulEntryToBlogPost(entry: Entry<BlogPageSkeleton>): BlogPost {
@@ -163,8 +214,14 @@ function contentfulEntryToBlogPost(entry: Entry<BlogPageSkeleton>): BlogPost {
     ? publishedAtField
     : sys.createdAt;
 
-  const body = isDocument(fields.body) ? fields.body : EMPTY_DOCUMENT;
-  const image = isAsset(fields.image) ? fields.image : undefined;
+  const body = isContentfulDocument(fields.body) ? fields.body : EMPTY_DOCUMENT;
+  const image = isContentfulAsset(fields.image) ? fields.image : undefined;
+  const authors = Array.isArray(fields.authors)
+    ? fields.authors
+        .filter(isContentfulEntry)
+        .map(contentfulEntryToAuthor)
+        .filter(isNonNull)
+    : [];
 
   return {
     id: sys.id,
@@ -174,6 +231,7 @@ function contentfulEntryToBlogPost(entry: Entry<BlogPageSkeleton>): BlogPost {
     body,
     tags,
     image: contentfulAssetToBlogImage(image, title),
+    authors,
     createdAt: publishedAt,
     updatedAt: sys.updatedAt,
   };

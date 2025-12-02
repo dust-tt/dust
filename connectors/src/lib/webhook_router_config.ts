@@ -7,8 +7,10 @@ import { isDevelopment } from "@connectors/types";
 const WEBHOOK_ROUTER_CONFIG_FILE = "webhook-router-config.json";
 
 export interface WebhookRouterEntry {
-  signing_secret: string;
-  regions: string[];
+  signingSecret: string;
+  regions: {
+    [region: string]: number[]; // region name -> connector IDs
+  };
 }
 
 export interface WebhookRouterConfig {
@@ -43,21 +45,6 @@ export class ConcurrentModificationError extends Error {
 }
 
 /**
- * Error thrown when attempting to merge with a different signing secret.
- */
-export class SigningSecretMismatchError extends Error {
-  constructor(
-    public readonly provider: string,
-    public readonly appId: string
-  ) {
-    super(
-      `Cannot merge webhook router entry: signing secret does not match existing entry for provider '${provider}' and appId '${appId}'`
-    );
-    this.name = "SigningSecretMismatchError";
-  }
-}
-
-/**
  * Service for managing webhook router configuration in GCS.
  * Handles concurrent writes using GCS preconditions with generation numbers.
  */
@@ -67,6 +54,9 @@ export class WebhookRouterConfigService {
 
   constructor() {
     this.storage = new Storage({
+      // Use local firebase emulator in development mode. The port matches what we have in
+      // firebase.json
+      apiEndpoint: isDevelopment() ? "http://localhost:9199" : undefined,
       keyFilename: isDevelopment()
         ? connectorsConfig.getServiceAccount()
         : undefined,
@@ -259,23 +249,25 @@ export class WebhookRouterConfigService {
   }
 
   /**
-   * Add or update a webhook router entry with retry logic for concurrent modifications.
+   * Sync webhook router entry for a specific region with retry logic for concurrent modifications.
+   * Updates the connector IDs for the given region. If connectorIds is empty, removes the region.
+   * If all regions are removed, deletes the entire entry.
    *
    * @param provider - The provider name (e.g., "slack", "notion")
    * @param providerWorkspaceId - The provider workspace/team ID
-   * @param entry - The entry configuration
-   * @param options - Optional configuration
-   * @param options.merge - If true, merge regions with existing entry. If false, replace entire entry (default: false)
-   * @param options.maxRetries - Maximum number of retries on concurrent modification (default: 5)
+   * @param signingSecret - Optional signing secret for verification. If provided, updates the secret.
+   * @param region - The region name (e.g., "europe-west1", "us-central1")
+   * @param connectorIds - Array of connector IDs for this region
+   * @param maxRetries - Maximum number of retries on concurrent modification (default: 5)
    */
-  async addEntry(
+  async syncEntry(
     provider: string,
     providerWorkspaceId: string,
-    entry: WebhookRouterEntry,
-    options: { merge?: boolean; maxRetries?: number } = {}
+    signingSecret: string | undefined,
+    region: string,
+    connectorIds: number[],
+    maxRetries: number = 5
   ): Promise<void> {
-    const { merge = false, maxRetries = 5 } = options;
-
     return this.executeWithRetry(
       async (config) => {
         // Initialize provider object if it doesn't exist
@@ -286,63 +278,43 @@ export class WebhookRouterConfigService {
         // Get existing entry if any
         const existingEntry = config[provider]![providerWorkspaceId];
 
-        if (merge && existingEntry) {
-          // Validate signing secret matches when merging
-          if (existingEntry.signing_secret !== entry.signing_secret) {
-            throw new SigningSecretMismatchError(provider, providerWorkspaceId);
+        if (connectorIds.length === 0) {
+          // No connectors for this region - remove the region
+          if (existingEntry) {
+            delete existingEntry.regions[region];
+
+            // If no regions left, delete the entire entry
+            if (Object.keys(existingEntry.regions).length === 0) {
+              delete config[provider]![providerWorkspaceId];
+            }
           }
-
-          // Merge regions: combine existing and new regions, removing duplicates
-          const mergedRegions = Array.from(
-            new Set([...existingEntry.regions, ...entry.regions])
-          );
-
-          config[provider]![providerWorkspaceId] = {
-            signing_secret: entry.signing_secret,
-            regions: mergedRegions,
-          };
         } else {
-          // Replace entire entry (POST behavior or PATCH when entry doesn't exist)
-          config[provider]![providerWorkspaceId] = entry;
+          // We have connectors - update or create the entry
+          if (existingEntry) {
+            // Update existing entry
+            if (signingSecret !== undefined) {
+              existingEntry.signingSecret = signingSecret;
+            }
+            existingEntry.regions[region] = connectorIds;
+          } else {
+            // Create new entry - signingSecret must be provided for new entries
+            if (!signingSecret) {
+              throw new Error(
+                `Cannot create new entry without signing secret for provider '${provider}' and providerWorkspaceId '${providerWorkspaceId}'`
+              );
+            }
+            config[provider]![providerWorkspaceId] = {
+              signingSecret,
+              regions: {
+                [region]: connectorIds,
+              },
+            };
+          }
         }
 
         return config;
       },
-      merge ? "merge" : "add",
-      provider,
-      providerWorkspaceId,
-      maxRetries
-    );
-  }
-
-  /**
-   * Delete a webhook router entry with retry logic for concurrent modifications.
-   *
-   * @param provider - The provider name
-   * @param providerWorkspaceId - The provider workspace/team ID
-   * @param maxRetries - Maximum number of retries on concurrent modification (default: 5)
-   */
-  async deleteEntry(
-    provider: string,
-    providerWorkspaceId: string,
-    maxRetries: number = 5
-  ): Promise<void> {
-    return this.executeWithRetry(
-      async (config) => {
-        // Check if entry exists
-        if (!config[provider] || !config[provider]?.[providerWorkspaceId]) {
-          throw new WebhookRouterEntryNotFoundError(
-            provider,
-            providerWorkspaceId
-          );
-        }
-
-        // Delete the entry
-        delete config[provider]![providerWorkspaceId];
-
-        return config;
-      },
-      "delete",
+      "sync",
       provider,
       providerWorkspaceId,
       maxRetries

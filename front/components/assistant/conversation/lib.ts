@@ -146,9 +146,11 @@ export function createPlaceholderUserMessage({
 }
 
 export function createPlaceholderAgentMessage({
+  userMessage,
   mention,
   rank,
 }: {
+  userMessage: UserMessageType;
   mention: RichMention & { pictureUrl: string };
   rank: number;
 }): MessageTemporaryState {
@@ -161,7 +163,7 @@ export function createPlaceholderAgentMessage({
       version: 0,
       created: createdAt,
       completedTs: null,
-      parentMessageId: null,
+      parentMessageId: userMessage.sId,
       parentAgentMessageId: null,
       status: "created",
       content: null,

@@ -738,14 +738,7 @@ function AgentMessageContent({
 
   const handleToolSetupComplete = React.useCallback(
     (toolId: string) => {
-      void postFollowUp(toolId, "completed");
-    },
-    [postFollowUp]
-  );
-
-  const handleToolSetupSkipped = React.useCallback(
-    (toolId: string) => {
-      void postFollowUp(toolId, "skipped");
+      void postFollowUp(toolId);
     },
     [postFollowUp]
   );
@@ -764,13 +757,7 @@ function AgentMessageContent({
       mention_user: getUserMentionPlugin(owner),
       dustimg: getImgPlugin(owner),
       quickReply: getQuickReplyPlugin(onQuickReplySend, isLastMessage),
-      toolSetup: getToolSetupPlugin(
-        owner,
-        conversationId,
-        isLastMessage,
-        handleToolSetupComplete,
-        handleToolSetupSkipped
-      ),
+      toolSetup: getToolSetupPlugin(owner, handleToolSetupComplete),
     }),
     [
       owner,
@@ -780,7 +767,6 @@ function AgentMessageContent({
       onQuickReplySend,
       isLastMessage,
       handleToolSetupComplete,
-      handleToolSetupSkipped,
     ]
   );
 
