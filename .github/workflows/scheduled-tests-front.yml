@@ -1,4 +1,4 @@
-name: Scheduled Tests (front)
+name: Scheduled Tests & Lint (front)
 
 on:
   schedule:
