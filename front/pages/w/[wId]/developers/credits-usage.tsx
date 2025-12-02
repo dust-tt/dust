@@ -19,7 +19,6 @@ import { useCredits, usePurchaseCredits } from "@app/lib/swr/credits";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
 import type { CreditDisplayData, CreditType } from "@app/types/credits";
-import { subscription } from "@elevenlabs/elevenlabs-js/api/resources/user";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
