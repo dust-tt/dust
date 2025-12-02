@@ -1304,7 +1304,7 @@ export class DustAPI {
     }
   }
 
-  async viewFile({
+  async getFileContent({
     fileId,
     version = "original",
   }: {
