@@ -24,50 +24,32 @@ const _getWebhookRouterEntryHandler = async (
 ) => {
   const { provider, providerWorkspaceId } = req.params;
 
-  try {
-    const service = new WebhookRouterConfigService();
-    const entry = await service.getEntry(provider, providerWorkspaceId);
+  const service = new WebhookRouterConfigService();
+  const entry = await service.getEntry(provider, providerWorkspaceId);
 
-    if (!entry) {
-      logger.info(
-        { provider, providerWorkspaceId },
-        "Webhook router entry not found"
-      );
-
-      return apiError(req, res, {
-        status_code: 404,
-        api_error: {
-          type: "not_found",
-          message: `Webhook router entry not found for provider '${provider}' and providerWorkspaceId '${providerWorkspaceId}'`,
-        },
-      });
-    }
-
+  if (!entry) {
     logger.info(
       { provider, providerWorkspaceId },
-      "Successfully retrieved webhook router entry"
-    );
-
-    return res.status(200).json({
-      signingSecret: entry.signingSecret,
-    });
-  } catch (error) {
-    logger.error(
-      { error, provider, providerWorkspaceId },
-      "Failed to get webhook router entry"
+      "Webhook router entry not found"
     );
 
     return apiError(req, res, {
-      status_code: 500,
+      status_code: 404,
       api_error: {
-        type: "internal_server_error",
-        message:
-          error instanceof Error
-            ? error.message
-            : "Failed to get webhook router entry",
+        type: "not_found",
+        message: `Webhook router entry not found for provider '${provider}' and providerWorkspaceId '${providerWorkspaceId}'`,
       },
     });
   }
+
+  logger.info(
+    { provider, providerWorkspaceId },
+    "Successfully retrieved webhook router entry"
+  );
+
+  return res.status(200).json({
+    signingSecret: entry.signingSecret,
+  });
 };
 
 export const getWebhookRouterEntryHandler = withLogging(
