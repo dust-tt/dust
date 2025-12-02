@@ -44,6 +44,8 @@ export function AccessSection() {
   const restrictAgentsPublishing = featureFlags.includes(
     "restrict_agents_publishing"
   );
+  const publishingToggleDisabled =
+    restrictAgentsPublishing && !isBuilder(owner);
 
   const getDisplayValue = () => {
     return scope.value === "visible" ? "Published" : "Unpublished";
@@ -72,7 +74,12 @@ export function AccessSection() {
               label={getDisplayValue()}
               isSelect
               type="button"
-              disabled={restrictAgentsPublishing && !isBuilder(owner)}
+              disabled={publishingToggleDisabled}
+              tooltip={
+                publishingToggleDisabled
+                  ? "Publishing agents is restricted to builders and admins"
+                  : undefined
+              }
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
@@ -81,14 +88,14 @@ export function AccessSection() {
               description="Visible & usable by all members of the workspace."
               icon={EyeIcon}
               onClick={() => scope.onChange("visible")}
-              disabled={restrictAgentsPublishing && !isBuilder(owner)}
+              disabled={publishingToggleDisabled}
             />
             <DropdownMenuItem
               label="Unpublished"
               description="Visible & usable by editors only."
               icon={EyeSlashIcon}
               onClick={() => scope.onChange("hidden")}
-              disabled={restrictAgentsPublishing && !isBuilder(owner)}
+              disabled={publishingToggleDisabled}
             />
           </DropdownMenuContent>
         </DropdownMenu>
