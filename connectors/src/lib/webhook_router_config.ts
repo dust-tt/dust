@@ -67,6 +67,9 @@ export class WebhookRouterConfigService {
 
   constructor() {
     this.storage = new Storage({
+      // Use local firebase emulator in development mode. The port matches what we have in
+      // firebase.json
+      apiEndpoint: isDevelopment() ? "http://localhost:9199" : undefined,
       keyFilename: isDevelopment()
         ? connectorsConfig.getServiceAccount()
         : undefined,
