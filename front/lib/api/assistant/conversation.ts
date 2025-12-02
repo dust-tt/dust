@@ -1,20 +1,17 @@
 import assert from "assert";
-import _ from "lodash";
 import type { Transaction } from "sequelize";
 
-import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import {
   getAgentConfiguration,
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration/agent";
-import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import {
   createAgentMessages,
   createUserMentions,
   createUserMessage,
+  updateConversationRequirements,
 } from "@app/lib/api/assistant/conversation/mentions";
-import { getContentFragmentSpaceIds } from "@app/lib/api/assistant/permissions";
 import {
   makeAgentMentionsRateLimitKeyForWorkspace,
   makeMessageRateLimitKeyForWorkspace,
@@ -39,10 +36,7 @@ import { ContentFragmentResource } from "@app/lib/resources/content_fragment_res
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import {
-  generateRandomModelSId,
-  getResourceIdFromSId,
-} from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import {
   getTimeframeSecondsFromLiteral,
@@ -574,8 +568,7 @@ export async function postUserMessage(
       }
     }
 
-    const agentMessages = await createAgentMessages({
-      owner,
+    const agentMessages = await createAgentMessages(auth, {
       conversation,
       metadata: {
         type: "create",
@@ -588,12 +581,6 @@ export async function postUserMessage(
       transaction: t,
     });
 
-    await updateConversationRequirements(auth, {
-      agents: agentMessages.map((m) => m.configuration),
-      conversation,
-      t,
-    });
-
     await ConversationResource.markAsUpdated(auth, { conversation, t });
 
     return {
@@ -601,15 +588,6 @@ export async function postUserMessage(
       agentMessages,
     };
   });
-
-  if (agentMessages.length > 0) {
-    for (const agentMessage of agentMessages) {
-      void signalAgentUsage({
-        agentConfigurationId: agentMessage.configuration.sId,
-        workspaceId: owner.sId,
-      });
-    }
-  }
 
   void ServerSideTracking.trackUserMessage({
     userMessage,
@@ -630,13 +608,6 @@ export async function postUserMessage(
     },
     agentMessages
   );
-
-  await runAgentLoopWorkflow({
-    auth,
-    agentMessages,
-    conversation,
-    userMessage,
-  });
 
   return new Ok({
     userMessage,
@@ -868,8 +839,7 @@ export async function editUserMessage(
         transaction: t,
       });
 
-      const agentMessages = await createAgentMessages({
-        owner,
+      const agentMessages = await createAgentMessages(auth, {
         conversation,
         metadata: {
           type: "create",
@@ -880,12 +850,6 @@ export async function editUserMessage(
           userMessage,
         },
         transaction: t,
-      });
-
-      await updateConversationRequirements(auth, {
-        agents: agentMessages.map((m) => m.configuration),
-        conversation,
-        t,
       });
 
       await ConversationResource.markAsUpdated(auth, { conversation, t });
@@ -914,22 +878,6 @@ export async function editUserMessage(
       throw e;
     }
   }
-
-  if (agentMessages.length > 0) {
-    for (const agentMessage of agentMessages) {
-      void signalAgentUsage({
-        agentConfigurationId: agentMessage.configuration.sId,
-        workspaceId: owner.sId,
-      });
-    }
-  }
-
-  await runAgentLoopWorkflow({
-    auth,
-    agentMessages,
-    conversation,
-    userMessage,
-  });
 
   // TODO(DURABLE-AGENTS 2025-07-17): Publish message events to all open tabs to maintain
   // conversation state synchronization in multiplex mode. This is a temporary solution -
@@ -1015,8 +963,7 @@ export async function retryAgentMessage(
         );
       }
 
-      const agentMessages = await createAgentMessages({
-        owner: auth.getNonNullableWorkspace(),
+      const agentMessages = await createAgentMessages(auth, {
         conversation,
         metadata: {
           type: "retry",
@@ -1031,12 +978,6 @@ export async function retryAgentMessage(
           `Unexpected: expected 1 agent message result while retrying agent message, got ${agentMessages.length} instead.`
         );
       }
-
-      await updateConversationRequirements(auth, {
-        agents: [message.configuration],
-        conversation,
-        t,
-      });
 
       await ConversationResource.markAsUpdated(auth, { conversation, t });
 
@@ -1312,86 +1253,4 @@ async function isMessagesLimitReached({
     isLimitReached,
     limitType: isLimitReached ? "plan_message_limit_exceeded" : null,
   };
-}
-
-/**
- * Update the conversation requestedSpaceIds based on the mentioned agents. This function is purely
- * additive - requirements are never removed.
- *
- * Each agent's requestedSpaceIds represents a set of requirements that must be satisfied. When an
- * agent is mentioned in a conversation, its requirements are added to the conversation's
- * requirements.
- *
- * - Within each requirement (sub-array), groups are combined with OR logic.
- * - Different requirements (different sub-arrays) are combined with AND logic.
- */
-export async function updateConversationRequirements(
-  auth: Authenticator,
-  {
-    agents,
-    contentFragment,
-    conversation,
-    t,
-  }: {
-    agents?: LightAgentConfigurationType[];
-    contentFragment?: ContentFragmentInputWithContentNode;
-    conversation: ConversationWithoutContentType;
-    t: Transaction;
-  }
-): Promise<void> {
-  let newSpaceRequirements: string[] = [];
-  if (agents) {
-    newSpaceRequirements = agents.flatMap((agent) => agent.requestedSpaceIds);
-  }
-  if (contentFragment) {
-    const requestedSpaceId = await getContentFragmentSpaceIds(
-      auth,
-      contentFragment
-    );
-
-    newSpaceRequirements.push(requestedSpaceId);
-  }
-
-  newSpaceRequirements = _.uniq(newSpaceRequirements);
-
-  const currentSpaceRequirements = conversation.requestedSpaceIds;
-
-  const areAllSpaceRequirementsPresent = newSpaceRequirements.every((newReq) =>
-    currentSpaceRequirements.includes(newReq)
-  );
-
-  // Early return if all new requirements are already present.
-  if (areAllSpaceRequirementsPresent) {
-    return;
-  }
-
-  // Get missing requirements.
-  const spaceRequirementsToAdd = newSpaceRequirements.filter(
-    (newReq) => !currentSpaceRequirements.includes(newReq)
-  );
-
-  // Convert all sIds to modelIds.
-  const sIdToModelId = new Map<string, number>();
-  const getModelId = (sId: string) => {
-    if (!sIdToModelId.has(sId)) {
-      const id = getResourceIdFromSId(sId);
-      if (id === null) {
-        throw new Error("Unexpected: invalid group id");
-      }
-      sIdToModelId.set(sId, id);
-    }
-    return sIdToModelId.get(sId)!;
-  };
-
-  const allSpaceRequirements = [
-    ...currentSpaceRequirements.map(getModelId),
-    ...spaceRequirementsToAdd.map(getModelId),
-  ];
-
-  await ConversationResource.updateRequirements(
-    auth,
-    conversation.sId,
-    allSpaceRequirements,
-    t
-  );
 }

@@ -1,11 +1,25 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// Mock signalAgentUsage before importing the module that uses it
+vi.mock("@app/lib/api/assistant/agent_usage", () => ({
+  signalAgentUsage: vi.fn(),
+}));
+
+// Mock runAgentLoopWorkflow before importing the module that uses it
+vi.mock("@app/lib/api/assistant/conversation/agent_loop", () => ({
+  runAgentLoopWorkflow: vi.fn(),
+}));
+
+import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
 import {
   createAgentMessages,
   createUserMentions,
   createUserMessage,
 } from "@app/lib/api/assistant/conversation/mentions";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
+import { AgentConfiguration } from "@app/lib/models/agent/agent";
 import {
   AgentMessage,
   ConversationParticipantModel,
@@ -13,12 +27,17 @@ import {
   Message,
   UserMessage,
 } from "@app/lib/models/agent/conversation";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import {
+  generateRandomModelSId,
+  getResourceIdFromSId,
+} from "@app/lib/resources/string_ids";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type {
   AgenticMessageData,
@@ -38,6 +57,9 @@ describe("createAgentMessages", () => {
   let agentConfig2: LightAgentConfigurationType;
 
   beforeEach(async () => {
+    // Reset mocks before each test
+    vi.clearAllMocks();
+
     // Create workspace, user, spaces, and groups using the helper
     const setup = await createResourceTest({});
     workspace = setup.workspace;
@@ -77,8 +99,7 @@ describe("createAgentMessages", () => {
       } satisfies AgentMention,
     ];
 
-    const result = await createAgentMessages({
-      owner: workspace,
+    const result = await createAgentMessages(auth, {
       conversation,
       metadata: {
         type: "create",
@@ -119,6 +140,13 @@ describe("createAgentMessages", () => {
     expect(messageInDb?.visibility).toBe("visible");
     expect(messageInDb?.version).toBe(0);
     expect(messageInDb?.createdAt).toBeDefined();
+
+    // Verify signalAgentUsage was called with correct arguments
+    expect(signalAgentUsage).toHaveBeenCalledTimes(1);
+    expect(signalAgentUsage).toHaveBeenCalledWith({
+      agentConfigurationId: agentConfig1.sId,
+      workspaceId: workspace.sId,
+    });
   });
 
   it("should create multiple agent messages for multiple mentions", async () => {
@@ -139,8 +167,7 @@ describe("createAgentMessages", () => {
       } as AgentMention,
     ];
 
-    const result = await createAgentMessages({
-      owner: workspace,
+    const result = await createAgentMessages(auth, {
       conversation,
       metadata: {
         type: "create",
@@ -163,6 +190,17 @@ describe("createAgentMessages", () => {
       },
     });
     expect(mentionsInDb).toHaveLength(2);
+
+    // Verify signalAgentUsage was called for each agent configuration
+    expect(signalAgentUsage).toHaveBeenCalledTimes(2);
+    expect(signalAgentUsage).toHaveBeenCalledWith({
+      agentConfigurationId: agentConfig1.sId,
+      workspaceId: workspace.sId,
+    });
+    expect(signalAgentUsage).toHaveBeenCalledWith({
+      agentConfigurationId: agentConfig2.sId,
+      workspaceId: workspace.sId,
+    });
   });
 
   it("should skip mentions for configurations not in the list", async () => {
@@ -183,8 +221,7 @@ describe("createAgentMessages", () => {
     ];
 
     // Only pass agentConfig1, not the non-existent one
-    const result = await createAgentMessages({
-      owner: workspace,
+    const result = await createAgentMessages(auth, {
       conversation,
       metadata: {
         type: "create",
@@ -199,6 +236,22 @@ describe("createAgentMessages", () => {
     // Should only create one agent message for the valid configuration
     expect(result).toHaveLength(1);
     expect(result[0].configuration.sId).toBe(agentConfig1.sId);
+
+    // Verify signalAgentUsage was called only for the valid configuration
+    expect(signalAgentUsage).toHaveBeenCalledTimes(1);
+    expect(signalAgentUsage).toHaveBeenCalledWith({
+      agentConfigurationId: agentConfig1.sId,
+      workspaceId: workspace.sId,
+    });
+
+    // Verify runAgentLoopWorkflow was called with correct arguments
+    expect(runAgentLoopWorkflow).toHaveBeenCalledTimes(1);
+    expect(runAgentLoopWorkflow).toHaveBeenCalledWith({
+      auth,
+      agentMessages: result,
+      conversation,
+      userMessage,
+    });
   });
 
   it("should return empty array when no agent mentions are provided", async () => {
@@ -209,8 +262,7 @@ describe("createAgentMessages", () => {
       content: "Hello",
     });
 
-    const result = await createAgentMessages({
-      owner: workspace,
+    const result = await createAgentMessages(auth, {
       conversation,
       metadata: {
         type: "create",
@@ -223,6 +275,12 @@ describe("createAgentMessages", () => {
     });
 
     expect(result).toHaveLength(0);
+
+    // Verify signalAgentUsage was not called when no agent mentions are provided
+    expect(signalAgentUsage).not.toHaveBeenCalled();
+
+    // Verify runAgentLoopWorkflow was not called when no agent messages are created
+    expect(runAgentLoopWorkflow).not.toHaveBeenCalled();
   });
 
   it("should set skipToolsValidation correctly", async () => {
@@ -239,8 +297,7 @@ describe("createAgentMessages", () => {
       } as AgentMention,
     ];
 
-    const result = await createAgentMessages({
-      owner: workspace,
+    const result = await createAgentMessages(auth, {
       conversation,
       metadata: {
         type: "create",
@@ -254,6 +311,22 @@ describe("createAgentMessages", () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].skipToolsValidation).toBe(true);
+
+    // Verify signalAgentUsage was called with correct arguments
+    expect(signalAgentUsage).toHaveBeenCalledTimes(1);
+    expect(signalAgentUsage).toHaveBeenCalledWith({
+      agentConfigurationId: agentConfig1.sId,
+      workspaceId: workspace.sId,
+    });
+
+    // Verify runAgentLoopWorkflow was called with correct arguments
+    expect(runAgentLoopWorkflow).toHaveBeenCalledTimes(1);
+    expect(runAgentLoopWorkflow).toHaveBeenCalledWith({
+      auth,
+      agentMessages: result,
+      conversation,
+      userMessage,
+    });
   });
 
   it("should set parentAgentMessageId when context origin is agent_handover", async () => {
@@ -275,8 +348,7 @@ describe("createAgentMessages", () => {
       } as AgentMention,
     ];
 
-    const result = await createAgentMessages({
-      owner: workspace,
+    const result = await createAgentMessages(auth, {
       conversation,
       metadata: {
         type: "create",
@@ -290,6 +362,22 @@ describe("createAgentMessages", () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].parentAgentMessageId).toBe(originMessageId);
+
+    // Verify signalAgentUsage was called with correct arguments
+    expect(signalAgentUsage).toHaveBeenCalledTimes(1);
+    expect(signalAgentUsage).toHaveBeenCalledWith({
+      agentConfigurationId: agentConfig1.sId,
+      workspaceId: workspace.sId,
+    });
+
+    // Verify runAgentLoopWorkflow was called with correct arguments
+    expect(runAgentLoopWorkflow).toHaveBeenCalledTimes(1);
+    expect(runAgentLoopWorkflow).toHaveBeenCalledWith({
+      auth,
+      agentMessages: result,
+      conversation,
+      userMessage,
+    });
   });
 
   it("should set parentAgentMessageId to null when context origin is not agent_handover", async () => {
@@ -307,8 +395,7 @@ describe("createAgentMessages", () => {
       } as AgentMention,
     ];
 
-    const result = await createAgentMessages({
-      owner: workspace,
+    const result = await createAgentMessages(auth, {
       conversation,
       metadata: {
         type: "create",
@@ -322,6 +409,22 @@ describe("createAgentMessages", () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].parentAgentMessageId).toBeNull();
+
+    // Verify signalAgentUsage was called with correct arguments
+    expect(signalAgentUsage).toHaveBeenCalledTimes(1);
+    expect(signalAgentUsage).toHaveBeenCalledWith({
+      agentConfigurationId: agentConfig1.sId,
+      workspaceId: workspace.sId,
+    });
+
+    // Verify runAgentLoopWorkflow was called with correct arguments
+    expect(runAgentLoopWorkflow).toHaveBeenCalledTimes(1);
+    expect(runAgentLoopWorkflow).toHaveBeenCalledWith({
+      auth,
+      agentMessages: result,
+      conversation,
+      userMessage,
+    });
   });
 
   it("should increment message rank correctly for multiple agent messages", async () => {
@@ -343,8 +446,7 @@ describe("createAgentMessages", () => {
 
     const nextMessageRank = 10;
 
-    const result = await createAgentMessages({
-      owner: workspace,
+    const result = await createAgentMessages(auth, {
       conversation,
       metadata: {
         type: "create",
@@ -360,6 +462,424 @@ describe("createAgentMessages", () => {
     // Note: The function increments nextMessageRank internally, so ranks should be 10 and 11
     expect(result[0].rank).toBe(nextMessageRank);
     expect(result[1].rank).toBe(nextMessageRank + 1);
+
+    // Verify signalAgentUsage was called for each agent configuration
+    expect(signalAgentUsage).toHaveBeenCalledTimes(2);
+    expect(signalAgentUsage).toHaveBeenCalledWith({
+      agentConfigurationId: agentConfig1.sId,
+      workspaceId: workspace.sId,
+    });
+    expect(signalAgentUsage).toHaveBeenCalledWith({
+      agentConfigurationId: agentConfig2.sId,
+      workspaceId: workspace.sId,
+    });
+
+    // Verify runAgentLoopWorkflow was called with correct arguments
+    expect(runAgentLoopWorkflow).toHaveBeenCalledTimes(1);
+    expect(runAgentLoopWorkflow).toHaveBeenCalledWith({
+      auth,
+      agentMessages: result,
+      conversation,
+      userMessage,
+    });
+  });
+
+  it("should propagate requestedSpaceIds from agent configuration to conversation", async () => {
+    // Create spaces
+    const space1 = await SpaceFactory.regular(workspace);
+    const space2 = await SpaceFactory.regular(workspace);
+
+    // Add user to spaces so they can access agents with space requirements
+    const user = auth.getNonNullableUser();
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const addToSpace1Res = await space1.addMembers(adminAuth, {
+      userIds: [user.sId],
+    });
+    expect(addToSpace1Res.isOk()).toBe(true);
+    const addToSpace2Res = await space2.addMembers(adminAuth, {
+      userIds: [user.sId],
+    });
+    expect(addToSpace2Res.isOk()).toBe(true);
+
+    // Create agent configuration
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Agent with Space Requirements",
+    });
+
+    // Update agent configuration with requestedSpaceIds (as modelIds)
+    const space1ModelId = getResourceIdFromSId(space1.sId);
+    const space2ModelId = getResourceIdFromSId(space2.sId);
+    expect(space1ModelId).not.toBeNull();
+    expect(space2ModelId).not.toBeNull();
+
+    await AgentConfiguration.update(
+      {
+        requestedSpaceIds: [space1ModelId!, space2ModelId!],
+      },
+      {
+        where: {
+          workspaceId: workspace.id,
+          sId: agentConfig.sId,
+          version: agentConfig.version,
+        },
+      }
+    );
+
+    // Fetch updated agent configuration
+    const updatedAgentConfig = await AgentConfiguration.findOne({
+      where: {
+        workspaceId: workspace.id,
+        sId: agentConfig.sId,
+        version: agentConfig.version,
+      },
+    });
+    expect(updatedAgentConfig).not.toBeNull();
+    expect(updatedAgentConfig?.requestedSpaceIds).toContain(
+      space1ModelId?.toString()
+    );
+    expect(updatedAgentConfig?.requestedSpaceIds).toContain(
+      space2ModelId?.toString()
+    );
+
+    // Create conversation
+    const testConversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+      visibility: "unlisted",
+    });
+
+    // Fetch conversation before createAgentMessages
+    const conversationBefore = await ConversationResource.fetchById(
+      auth,
+      testConversation.sId
+    );
+    expect(conversationBefore).not.toBeNull();
+    const requestedSpaceIdsBefore =
+      conversationBefore!.getRequestedSpaceIdsFromModel();
+    expect(requestedSpaceIdsBefore).toEqual([]);
+
+    // Create user message
+    const { userMessage } = await ConversationFactory.createUserMessage({
+      auth,
+      workspace,
+      conversation: testConversation,
+      content: `Hello @${agentConfig.name}`,
+    });
+
+    const mentions: MentionType[] = [
+      {
+        configurationId: agentConfig.sId,
+      } satisfies AgentMention,
+    ];
+
+    // Get the updated agent configuration with requestedSpaceIds as sIds
+    const agentConfigWithSpaces = await getAgentConfiguration(auth, {
+      agentId: agentConfig.sId,
+      agentVersion: agentConfig.version,
+      variant: "light",
+    });
+    expect(agentConfigWithSpaces).not.toBeNull();
+    expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space1.sId);
+    expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space2.sId);
+
+    // Call createAgentMessages
+    const agentMessages = await withTransaction(async (transaction) => {
+      return createAgentMessages(auth, {
+        conversation: testConversation,
+        metadata: {
+          type: "create",
+          mentions,
+          agentConfigurations: [agentConfigWithSpaces!],
+          skipToolsValidation: false,
+          nextMessageRank: 1,
+          userMessage,
+        },
+        transaction,
+      });
+    });
+
+    // Verify runAgentLoopWorkflow was called with correct arguments
+    expect(runAgentLoopWorkflow).toHaveBeenCalledTimes(1);
+    expect(runAgentLoopWorkflow).toHaveBeenCalledWith({
+      auth,
+      agentMessages,
+      conversation: testConversation,
+      userMessage,
+    });
+
+    // Fetch conversation after createAgentMessages
+    const conversationAfter = await ConversationResource.fetchById(
+      auth,
+      testConversation.sId
+    );
+    expect(conversationAfter).not.toBeNull();
+    const requestedSpaceIdsAfter =
+      conversationAfter!.getRequestedSpaceIdsFromModel();
+
+    // Verify requestedSpaceIds were propagated
+    expect(requestedSpaceIdsAfter).toHaveLength(2);
+    expect(requestedSpaceIdsAfter).toContain(space1.sId);
+    expect(requestedSpaceIdsAfter).toContain(space2.sId);
+  });
+
+  it("should add new requestedSpaceIds when agent has different spaces than conversation", async () => {
+    // Create spaces
+    const space1 = await SpaceFactory.regular(workspace);
+    const space2 = await SpaceFactory.regular(workspace);
+    const space3 = await SpaceFactory.regular(workspace);
+
+    // Add user to spaces so they can access agents with space requirements
+    const user = auth.getNonNullableUser();
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const addToSpace1Res = await space1.addMembers(adminAuth, {
+      userIds: [user.sId],
+    });
+    expect(addToSpace1Res.isOk()).toBe(true);
+    const addToSpace2Res = await space2.addMembers(adminAuth, {
+      userIds: [user.sId],
+    });
+    expect(addToSpace2Res.isOk()).toBe(true);
+
+    // Create agent configuration
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Agent with New Space Requirements",
+    });
+
+    // Update agent configuration with requestedSpaceIds
+    const space1ModelId = getResourceIdFromSId(space1.sId);
+    const space2ModelId = getResourceIdFromSId(space2.sId);
+    expect(space1ModelId).not.toBeNull();
+    expect(space2ModelId).not.toBeNull();
+
+    await AgentConfiguration.update(
+      {
+        requestedSpaceIds: [space1ModelId!, space2ModelId!],
+      },
+      {
+        where: {
+          workspaceId: workspace.id,
+          sId: agentConfig.sId,
+          version: agentConfig.version,
+        },
+      }
+    );
+
+    // Create conversation with initial requestedSpaceIds (space1 only)
+    const space1ModelIdForConversation = getResourceIdFromSId(space1.sId);
+    expect(space1ModelIdForConversation).not.toBeNull();
+
+    const testConversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+      visibility: "unlisted",
+      requestedSpaceIds: [space1ModelIdForConversation!],
+    });
+
+    // Fetch conversation before createAgentMessages
+    const conversationBefore = await ConversationResource.fetchById(
+      auth,
+      testConversation.sId
+    );
+    expect(conversationBefore).not.toBeNull();
+    const requestedSpaceIdsBefore =
+      conversationBefore!.getRequestedSpaceIdsFromModel();
+    expect(requestedSpaceIdsBefore).toEqual([space1.sId]);
+
+    // Create user message
+    const { userMessage } = await ConversationFactory.createUserMessage({
+      auth,
+      workspace,
+      conversation: testConversation,
+      content: `Hello @${agentConfig.name}`,
+    });
+
+    const mentions: MentionType[] = [
+      {
+        configurationId: agentConfig.sId,
+      } satisfies AgentMention,
+    ];
+
+    // Agent has space1 and space2, conversation already has space1
+    const agentConfigWithSpaces = await getAgentConfiguration(auth, {
+      agentId: agentConfig.sId,
+      agentVersion: agentConfig.version,
+      variant: "light",
+    });
+    expect(agentConfigWithSpaces).not.toBeNull();
+    expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space1.sId);
+    expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space2.sId);
+
+    // Call createAgentMessages
+    const agentMessages = await withTransaction(async (transaction) => {
+      return createAgentMessages(auth, {
+        conversation: testConversation,
+        metadata: {
+          type: "create",
+          mentions,
+          agentConfigurations: [agentConfigWithSpaces!],
+          skipToolsValidation: false,
+          nextMessageRank: 1,
+          userMessage,
+        },
+        transaction,
+      });
+    });
+
+    // Verify runAgentLoopWorkflow was called with correct arguments
+    expect(runAgentLoopWorkflow).toHaveBeenCalledTimes(1);
+    expect(runAgentLoopWorkflow).toHaveBeenCalledWith({
+      auth,
+      agentMessages,
+      conversation: testConversation,
+      userMessage,
+    });
+
+    // Fetch conversation after createAgentMessages
+    const conversationAfter = await ConversationResource.fetchById(
+      auth,
+      testConversation.sId
+    );
+    expect(conversationAfter).not.toBeNull();
+    const requestedSpaceIdsAfter =
+      conversationAfter!.getRequestedSpaceIdsFromModel();
+
+    // Verify requestedSpaceIds were updated (space1 should remain, space2 should be added)
+    expect(requestedSpaceIdsAfter).toHaveLength(2);
+    expect(requestedSpaceIdsAfter).toContain(space1.sId);
+    expect(requestedSpaceIdsAfter).toContain(space2.sId);
+    // space3 should not be included
+    expect(requestedSpaceIdsAfter).not.toContain(space3.sId);
+  });
+
+  it("should not duplicate requestedSpaceIds when agent spaces already exist in conversation", async () => {
+    // Create spaces
+    const space1 = await SpaceFactory.regular(workspace);
+    const space2 = await SpaceFactory.regular(workspace);
+
+    // Add user to spaces so they can access agents with space requirements
+    const user = auth.getNonNullableUser();
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const addToSpace1Res = await space1.addMembers(adminAuth, {
+      userIds: [user.sId],
+    });
+    expect(addToSpace1Res.isOk()).toBe(true);
+    const addToSpace2Res = await space2.addMembers(adminAuth, {
+      userIds: [user.sId],
+    });
+    expect(addToSpace2Res.isOk()).toBe(true);
+
+    // Create agent configuration
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Agent with Existing Space Requirements",
+    });
+
+    // Update agent configuration with requestedSpaceIds
+    const space1ModelId = getResourceIdFromSId(space1.sId);
+    const space2ModelId = getResourceIdFromSId(space2.sId);
+    expect(space1ModelId).not.toBeNull();
+    expect(space2ModelId).not.toBeNull();
+
+    await AgentConfiguration.update(
+      {
+        requestedSpaceIds: [space1ModelId!, space2ModelId!],
+      },
+      {
+        where: {
+          workspaceId: workspace.id,
+          sId: agentConfig.sId,
+          version: agentConfig.version,
+        },
+      }
+    );
+
+    // Create conversation with requestedSpaceIds already set
+    const testConversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+      visibility: "unlisted",
+      requestedSpaceIds: [space1ModelId!, space2ModelId!],
+    });
+
+    // Fetch conversation before createAgentMessages
+    const conversationBefore = await ConversationResource.fetchById(
+      auth,
+      testConversation.sId
+    );
+    expect(conversationBefore).not.toBeNull();
+    const requestedSpaceIdsBefore =
+      conversationBefore!.getRequestedSpaceIdsFromModel();
+    expect(requestedSpaceIdsBefore).toHaveLength(2);
+    expect(requestedSpaceIdsBefore).toContain(space1.sId);
+    expect(requestedSpaceIdsBefore).toContain(space2.sId);
+
+    // Create user message
+    const { userMessage } = await ConversationFactory.createUserMessage({
+      auth,
+      workspace,
+      conversation: testConversation,
+      content: `Hello @${agentConfig.name}`,
+    });
+
+    const mentions: MentionType[] = [
+      {
+        configurationId: agentConfig.sId,
+      } satisfies AgentMention,
+    ];
+
+    // Agent has the same spaces as conversation
+    const agentConfigWithSpaces = await getAgentConfiguration(auth, {
+      agentId: agentConfig.sId,
+      agentVersion: agentConfig.version,
+      variant: "light",
+    });
+    expect(agentConfigWithSpaces).not.toBeNull();
+    expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space1.sId);
+    expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space2.sId);
+
+    // Call createAgentMessages
+    const agentMessages = await withTransaction(async (transaction) => {
+      return createAgentMessages(auth, {
+        conversation: testConversation,
+        metadata: {
+          type: "create",
+          mentions,
+          agentConfigurations: [agentConfigWithSpaces!],
+          skipToolsValidation: false,
+          nextMessageRank: 1,
+          userMessage,
+        },
+        transaction,
+      });
+    });
+
+    // Verify runAgentLoopWorkflow was called with correct arguments
+    expect(runAgentLoopWorkflow).toHaveBeenCalledTimes(1);
+    expect(runAgentLoopWorkflow).toHaveBeenCalledWith({
+      auth,
+      agentMessages,
+      conversation: testConversation,
+      userMessage,
+    });
+
+    // Fetch conversation after createAgentMessages
+    const conversationAfter = await ConversationResource.fetchById(
+      auth,
+      testConversation.sId
+    );
+    expect(conversationAfter).not.toBeNull();
+    const requestedSpaceIdsAfter =
+      conversationAfter!.getRequestedSpaceIdsFromModel();
+
+    // Verify requestedSpaceIds remain the same (no duplicates)
+    expect(requestedSpaceIdsAfter).toHaveLength(2);
+    expect(requestedSpaceIdsAfter).toContain(space1.sId);
+    expect(requestedSpaceIdsAfter).toContain(space2.sId);
   });
 });
 
