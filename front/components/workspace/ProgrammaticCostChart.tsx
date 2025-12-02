@@ -35,12 +35,12 @@ import {
   getSourceColor,
   isUserMessageOrigin,
 } from "@app/components/agent_builder/observability/utils";
-import { useWorkspaceProgrammaticCost } from "@app/lib/swr/workspaces";
 import type {
   AvailableGroup,
   GetWorkspaceProgrammaticCostResponse,
   GroupByType,
-} from "@app/pages/api/w/[wId]/analytics/programmatic-cost";
+} from "@app/lib/api/analytics/programmatic_cost";
+import { useWorkspaceProgrammaticCost } from "@app/lib/swr/workspaces";
 
 interface ProgrammaticCostChartProps {
   workspaceId: string;

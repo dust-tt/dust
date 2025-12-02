@@ -7,6 +7,7 @@ import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { isString } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
@@ -16,7 +17,7 @@ async function handler(
   session: SessionWithUser
 ): Promise<void> {
   const { wId } = req.query;
-  if (typeof wId !== "string") {
+  if (!isString(wId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {

@@ -1,11 +1,11 @@
 import type { Fetcher } from "swr";
 
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { PokeListCreditsResponseBody } from "@app/pages/api/poke/workspaces/[wId]/credits";
 import type {
   GetWorkspaceProgrammaticCostResponse,
   GroupByType,
-} from "@app/pages/api/w/[wId]/analytics/programmatic-cost";
+} from "@app/lib/api/analytics/programmatic_cost";
+import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { PokeListCreditsResponseBody } from "@app/pages/api/poke/workspaces/[wId]/credits";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 
 export function usePokeCredits({ disabled, owner }: PokeConditionalFetchProps) {

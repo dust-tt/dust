@@ -4,7 +4,7 @@ import {
   BaseProgrammaticCostChart,
   formatMonth,
 } from "@app/components/workspace/ProgrammaticCostChart";
-import type { GroupByType } from "@app/pages/api/w/[wId]/analytics/programmatic-cost";
+import type { GroupByType } from "@app/lib/api/analytics/programmatic_cost";
 import { usePokeProgrammaticCost } from "@app/poke/swr/credits";
 import type { WorkspaceType } from "@app/types";
 
