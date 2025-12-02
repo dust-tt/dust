@@ -9,11 +9,11 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import {
-  isEntreprisePlan,
+  isEntreprisePlanPrefix,
   isFreePlan,
   isFriendsAndFamilyPlan,
   isOldFreePlan,
-  isProPlan,
+  isProPlanPrefix,
 } from "@app/lib/plans/plan_codes";
 import { renderSubscriptionFromModels } from "@app/lib/plans/renderers";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -47,7 +47,7 @@ export type GetPokeWorkspacesResponseBody = {
 };
 
 const getPlanPriority = (planCode: string) => {
-  if (isEntreprisePlan(planCode)) {
+  if (isEntreprisePlanPrefix(planCode)) {
     return 1;
   }
 
@@ -55,7 +55,7 @@ const getPlanPriority = (planCode: string) => {
     return 2;
   }
 
-  if (isProPlan(planCode)) {
+  if (isProPlanPrefix(planCode)) {
     return 3;
   }
 

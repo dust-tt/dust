@@ -33,7 +33,7 @@ import { makeColumnsForSubscriptions } from "@app/components/poke/subscriptions/
 import EnterpriseUpgradeDialog from "@app/components/poke/subscriptions/EnterpriseUpgradeDialog";
 import FreePlanUpgradeDialog from "@app/components/poke/subscriptions/FreePlanUpgradeDialog";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { FREE_NO_PLAN_CODE, isProPlan } from "@app/lib/plans/plan_codes";
+import { FREE_NO_PLAN_CODE, isProPlanPrefix } from "@app/lib/plans/plan_codes";
 import { usePokePlans } from "@app/lib/swr/poke";
 import type { PlanType, SubscriptionType, WorkspaceType } from "@app/types";
 import { isDevelopment } from "@app/types";
@@ -396,7 +396,7 @@ function UpgradeDowngradeModal({
             <div>
               <EnterpriseUpgradeDialog owner={owner} />
             </div>
-            {isProPlan(subscription.plan.code) && (
+            {isProPlanPrefix(subscription.plan.code) && (
               <>
                 <Page.SectionHeader
                   title="Change the Pro Plan of this workspace"
@@ -404,7 +404,7 @@ function UpgradeDowngradeModal({
                 />
                 <div>
                   {plans
-                    .filter((p) => isProPlan(p.code))
+                    .filter((p) => isProPlanPrefix(p.code))
                     .map((p) => {
                       return (
                         <div key={p.code} className="pt-2">

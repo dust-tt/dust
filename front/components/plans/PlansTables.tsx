@@ -19,9 +19,9 @@ import {
   PRO_PLAN_COST_YEARLY,
 } from "@app/lib/client/subscription";
 import {
-  PRO_PLAN_LARGE_FILES_CODE,
-  PRO_PLAN_SEAT_29_CODE,
-  PRO_PLAN_SEAT_39_CODE,
+  isProOrBusinessPlanCode,
+  isProPlan,
+  isWhitelistedBusinessPlan,
 } from "@app/lib/plans/plan_codes";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
@@ -93,14 +93,6 @@ const ENTERPRISE_PLAN_ITEMS: PriceTableItem[] = [
   },
 ];
 
-function isProPlanCode(plan?: PlanType) {
-  return (
-    plan?.code === PRO_PLAN_SEAT_29_CODE ||
-    plan?.code === PRO_PLAN_LARGE_FILES_CODE ||
-    plan?.code === PRO_PLAN_SEAT_39_CODE
-  );
-}
-
 interface PriceTableProps {
   billingPeriod?: BillingPeriod;
   display: PriceTableDisplay;
@@ -122,8 +114,7 @@ export function ProPriceTable({
 }: PriceTableProps) {
   const [isFairUseModalOpened, setIsFairUseModalOpened] = useState(false);
 
-  // If the owner has the business metadata, we show the BusinessPriceTable instead.
-  if (owner?.metadata?.isBusiness) {
+  if (isWhitelistedBusinessPlan(owner)) {
     return (
       <BusinessPriceTable
         display={display}
@@ -225,7 +216,7 @@ export function ProPriceTable({
         size={size}
         magnified={false}
       >
-        {onClick && (!plan || !isProPlanCode(plan)) && (
+        {onClick && (!plan || !isProOrBusinessPlanCode(plan)) && (
           <PriceTable.ActionContainer position="top">
             <Button
               variant="highlight"
@@ -353,7 +344,7 @@ export function BusinessPriceTable({
         size={size}
         magnified={false}
       >
-        {onClick && (!plan || !isProPlanCode(plan)) && (
+        {onClick && (!plan || !isProPlan(plan)) && (
           <PriceTable.ActionContainer position="top">
             <Button
               variant="highlight"

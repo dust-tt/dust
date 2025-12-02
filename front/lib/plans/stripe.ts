@@ -425,6 +425,64 @@ export async function cancelSubscriptionAtPeriodEnd({
 }
 
 /**
+ * Upgrades a Pro subscription to Business by swapping the Stripe product/price.
+ * Always uses monthly billing for Business plan regardless of the original billing period.
+ * Also updates the subscription metadata to reflect the new plan code.
+ */
+export async function upgradeProSubscriptionToBusiness({
+  stripeSubscriptionId,
+  owner,
+  planCode,
+}: {
+  stripeSubscriptionId: string;
+  owner: WorkspaceType;
+  planCode: string;
+}): Promise<Result<Stripe.Subscription, Error>> {
+  const stripe = getStripeClient();
+
+  const subscription = await getStripeSubscription(stripeSubscriptionId);
+  if (!subscription) {
+    return new Err(new Error("Subscription not found"));
+  }
+
+  const businessProductId = getProPlanStripeProductId(owner);
+  const newPriceId = await getDefautPriceFromMetadata(
+    businessProductId,
+    "IS_DEFAULT_MONHTLY_PRICE"
+  );
+
+  if (!newPriceId) {
+    return new Err(new Error("Business monthly price not found"));
+  }
+
+  const currentItem = subscription.items.data[0];
+  if (!currentItem) {
+    return new Err(new Error("Subscription has no items"));
+  }
+
+  // Update the subscription with the new price and metadata.
+  // Proration will handle billing adjustment.
+  const updatedSubscription = await stripe.subscriptions.update(
+    stripeSubscriptionId,
+    {
+      items: [
+        {
+          id: currentItem.id,
+          price: newPriceId,
+        },
+      ],
+      proration_behavior: "create_prorations",
+      metadata: {
+        planCode,
+        workspaceId: owner.sId,
+      },
+    }
+  );
+
+  return new Ok(updatedSubscription);
+}
+
+/**
  * Checks that a subscription created in Stripe is usable by Dust, returns an
  * error otherwise.
  */
