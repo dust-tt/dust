@@ -20,7 +20,7 @@ import { ContentFragmentResource } from "@app/lib/resources/content_fragment_res
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { UserResource } from "@app/lib/resources/user_resource";
-import logger from "@app/logger/logger";
+import logger, { auditLog } from "@app/logger/logger";
 import type {
   AgentMention,
   AgentMessageType,
@@ -637,6 +637,7 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
 }
 
 type MessageVariant = "legacy-light" | "light";
+
 export async function fetchConversationMessages<V extends MessageVariant>(
   auth: Authenticator,
   {
@@ -770,7 +771,6 @@ export async function softDeleteUserMessage(
     visibility: "deleted",
   });
 
-  const { auditLog } = await import("@app/logger/logger");
   auditLog(
     {
       workspaceId: owner.sId,

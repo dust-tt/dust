@@ -19,7 +19,9 @@ import type { VirtuosoMessage } from "@app/components/assistant/conversation/typ
 import {
   hasHumansInteracting,
   isTriggeredOrigin,
+  isUserMessage,
 } from "@app/components/assistant/conversation/types";
+import { ConfirmContext } from "@app/components/Confirm";
 import {
   CiteBlock,
   getCiteDirective,
@@ -32,14 +34,13 @@ import {
   PastedAttachmentBlock,
   pastedAttachmentDirective,
 } from "@app/components/markdown/PastedAttachmentBlock";
+import { useDeleteMessage } from "@app/hooks/useDeleteMessage";
 import {
   agentMentionDirective,
   getAgentMentionPlugin,
   getUserMentionPlugin,
   userMentionDirective,
 } from "@app/lib/mentions/markdown/plugin";
-import { ConfirmContext } from "@app/components/Confirm";
-import { useDeleteMessage } from "@app/hooks/useDeleteMessage";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type { UserMessageType, WorkspaceType } from "@app/types";
@@ -123,9 +124,19 @@ export function UserMessage({
     });
 
     if (confirmed) {
-      void deleteMessage(message.sId);
+      await deleteMessage(message.sId);
+      // Optimistically update the message visibility in the Virtuoso list
+      methods.data.map((m) => {
+        if (isUserMessage(m) && m.sId === message.sId) {
+          return {
+            ...m,
+            visibility: "deleted",
+          };
+        }
+        return m;
+      });
     }
-  }, [isDeleting, isDeleted, confirm, deleteMessage, message.sId]);
+  }, [isDeleting, isDeleted, confirm, deleteMessage, message.sId, methods]);
 
   const actions: ConversationMessageAction[] = useMemo(() => {
     if (!isCurrentUser || isDeleted) {
