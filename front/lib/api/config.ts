@@ -285,11 +285,6 @@ const config = {
   getProfilerSecret: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("DEBUG_PROFILER_SECRET");
   },
-  getContentfulPreviewSecret: (): string | undefined => {
-    return EnvironmentConfig.getOptionalEnvVariable(
-      "CONTENTFUL_PREVIEW_SECRET"
-    );
-  },
   // Untrusted egress proxy.
   getUntrustedEgressProxyHost: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable(
