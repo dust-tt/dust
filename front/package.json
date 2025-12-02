@@ -84,6 +84,7 @@
     "@temporalio/workflow": "^1.12.1",
     "@textea/json-viewer": "^3.1.1",
     "@tiptap/core": "^3.11.0",
+    "@tiptap/extension-blockquote": "^3.11.1",
     "@tiptap/extension-bold": "^3.11.0",
     "@tiptap/extension-heading": "^3.11.0",
     "@tiptap/extension-italic": "^3.11.0",
