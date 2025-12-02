@@ -7,15 +7,25 @@ import {
   AgentMessage,
   Mention,
   Message,
+  UserMessage,
 } from "@app/lib/models/agent/conversation";
 import { triggerConversationAddedAsParticipantNotification } from "@app/lib/notifications/workflows/conversation-added-as-participant";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { UserResource } from "@app/lib/resources/user_resource";
+import { isEmailValid } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import type {
+  AgenticMessageData,
   AgentMessageType,
   ConversationWithoutContentType,
   MentionType,
+  MessageType,
+  ModelId,
+  UserMessageContext,
+  UserType,
 } from "@app/types";
 import type {
   LightAgentConfigurationType,
@@ -33,7 +43,7 @@ export const createUserMentions = async (
     transaction,
   }: {
     mentions: MentionType[];
-    message: Message;
+    message: MessageType;
     conversation: ConversationWithoutContentType;
     transaction?: Transaction;
   }
@@ -74,6 +84,171 @@ export const createUserMentions = async (
   );
 };
 
+async function attributeUserFromWorkspaceAndEmail(
+  workspace: WorkspaceType | null,
+  email: string | null
+): Promise<UserType | null> {
+  if (!workspace || !email || !isEmailValid(email)) {
+    return null;
+  }
+
+  const matchingUser = await UserResource.fetchByEmail(email);
+  if (!matchingUser) {
+    return null;
+  }
+
+  const membership =
+    await MembershipResource.getActiveMembershipOfUserInWorkspace({
+      user: matchingUser,
+      workspace,
+    });
+
+  return membership ? matchingUser.toJSON() : null;
+}
+
+export async function createUserMessage({
+  workspace,
+  conversation,
+  metadata,
+  content,
+  mentions,
+  transaction,
+}: {
+  workspace: WorkspaceType;
+  conversation: ConversationWithoutContentType;
+  content: string;
+  mentions: MentionType[];
+  metadata:
+    | {
+        type: "edit";
+        message: UserMessageType;
+      }
+    | {
+        type: "create";
+        user: UserType | null;
+        rank: number;
+        context: UserMessageContext;
+        agenticMessageData?: AgenticMessageData;
+      };
+  transaction: Transaction;
+}) {
+  let rank = 0;
+  let version = 0;
+  let parentId: ModelId | null = null;
+  let user: UserType | null = null;
+
+  let context: UserMessageContext | null = null;
+  let agenticMessageData: AgenticMessageData | undefined = undefined;
+
+  switch (metadata.type) {
+    case "edit":
+      // In case of edit, we use the message metadata to create the updated user message.
+      rank = metadata.message.rank;
+      version = metadata.message.version + 1;
+      parentId = metadata.message.id;
+      user = metadata.message.user;
+
+      context = metadata.message.context;
+      agenticMessageData = metadata.message.agenticMessageData;
+      break;
+    case "create":
+      // Otherwise, we create a new user message from the metadata.
+      rank = metadata.rank;
+
+      // TODO: this allow spoofing as we trust blindly the user email from the metadata.
+      user =
+        metadata.user ??
+        (await attributeUserFromWorkspaceAndEmail(
+          workspace,
+          metadata.context.email
+        ));
+
+      context = metadata.context;
+      agenticMessageData = metadata.agenticMessageData;
+      break;
+    default:
+      assertNever(metadata);
+  }
+
+  // Fetch originMessage to ensure it exists
+  const originMessageId = agenticMessageData?.originMessageId;
+  const originMessage = originMessageId
+    ? await Message.findOne({
+        where: {
+          workspaceId: workspace.id,
+          sId: originMessageId,
+        },
+      })
+    : null;
+
+  if (agenticMessageData?.originMessageId && !originMessage) {
+    logger.warn(
+      {
+        originMessageId,
+        workspaceId: workspace.id,
+      },
+      "Origin message not found"
+    );
+  }
+
+  // Only set agenticMessageType and agenticOriginMessageId if originMessage exists
+  // The model validation requires both to be set together
+  const agenticMessageType = originMessage ? agenticMessageData?.type : null;
+  const agenticOriginMessageId = originMessage?.sId ?? null;
+  const userMessage = await UserMessage.create(
+    {
+      content,
+      // TODO(MCP Clean-up): Rename field in DB.
+      clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
+      userContextUsername: context.username,
+      userContextTimezone: context.timezone,
+      userContextFullName: context.fullName,
+      userContextEmail: context.email,
+      userContextProfilePictureUrl: context.profilePictureUrl,
+      userContextOrigin: context.origin,
+      userContextLastTriggerRunAt: context.lastTriggerRunAt
+        ? new Date(context.lastTriggerRunAt)
+        : null,
+      agenticMessageType,
+      agenticOriginMessageId,
+      userId: user?.id,
+      workspaceId: workspace.id,
+    },
+    { transaction }
+  );
+
+  const m = await Message.create(
+    {
+      sId: generateRandomModelSId(),
+      rank,
+      conversationId: conversation.id,
+      parentId,
+      version,
+      userMessageId: userMessage.id,
+      workspaceId: workspace.id,
+    },
+    {
+      transaction,
+    }
+  );
+
+  const createdUserMessage: UserMessageType = {
+    id: m.id,
+    created: m.createdAt.getTime(),
+    sId: m.sId,
+    type: "user_message",
+    visibility: m.visibility,
+    version: m.version,
+    user,
+    mentions,
+    content,
+    context,
+    agenticMessageData: agenticMessageData ?? undefined,
+    rank: m.rank,
+  };
+  return createdUserMessage;
+}
+
 export const createAgentMessages = async ({
   owner,
   conversation,
@@ -85,14 +260,13 @@ export const createAgentMessages = async ({
   metadata:
     | {
         type: "retry";
-        message: Message;
         agentMessage: AgentMessageType;
+        parentId: number | null;
       }
     | {
         type: "create";
         mentions: MentionType[];
         agentConfigurations: LightAgentConfigurationType[];
-        message: Message;
         skipToolsValidation: boolean;
         nextMessageRank: number;
         userMessage: UserMessageType;
@@ -110,28 +284,24 @@ export const createAgentMessages = async ({
   switch (metadata.type) {
     case "retry":
       {
-        const previousAgentMessage = metadata.message.agentMessage;
-        if (!previousAgentMessage) {
-          throw new Error("Previous agent message not found");
-        }
+        const agentConfiguration = metadata.agentMessage.configuration;
         const agentMessageRow = await AgentMessage.create(
           {
             status: "created",
-            agentConfigurationId: previousAgentMessage.agentConfigurationId,
-            agentConfigurationVersion:
-              previousAgentMessage.agentConfigurationVersion,
+            agentConfigurationId: agentConfiguration.sId,
+            agentConfigurationVersion: agentConfiguration.version,
             workspaceId: owner.id,
-            skipToolsValidation: previousAgentMessage.skipToolsValidation,
+            skipToolsValidation: metadata.agentMessage.skipToolsValidation,
           },
           { transaction }
         );
         const messageRow = await Message.create(
           {
             sId: generateRandomModelSId(),
-            rank: metadata.message.rank,
+            rank: metadata.agentMessage.rank,
             conversationId: conversation.id,
-            parentId: metadata.message.parentId,
-            version: metadata.message.version + 1,
+            parentId: metadata.parentId,
+            version: metadata.agentMessage.version + 1,
             agentMessageId: agentMessageRow.id,
             workspaceId: owner.id,
           },
@@ -164,7 +334,7 @@ export const createAgentMessages = async ({
 
             await Mention.create(
               {
-                messageId: metadata.message.id,
+                messageId: metadata.userMessage.id,
                 agentConfigurationId: configuration.sId,
                 workspaceId: owner.id,
               },

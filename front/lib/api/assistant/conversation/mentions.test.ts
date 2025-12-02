@@ -3,23 +3,30 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   createAgentMessages,
   createUserMentions,
+  createUserMessage,
 } from "@app/lib/api/assistant/conversation/mentions";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMessage,
   ConversationParticipantModel,
   Mention,
+  Message,
+  UserMessage,
 } from "@app/lib/models/agent/conversation";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type {
+  AgenticMessageData,
   AgentMention,
   ConversationWithoutContentType,
   LightAgentConfigurationType,
   MentionType,
+  UserMessageContext,
   WorkspaceType,
 } from "@app/types";
 
@@ -77,7 +84,6 @@ describe("createAgentMessages", () => {
         type: "create",
         mentions,
         agentConfigurations: [agentConfig1],
-        message: messageRow,
         skipToolsValidation: false,
         nextMessageRank: 1,
         userMessage,
@@ -128,7 +134,6 @@ describe("createAgentMessages", () => {
         type: "create",
         mentions,
         agentConfigurations: [agentConfig1, agentConfig2],
-        message: messageRow,
         skipToolsValidation: false,
         nextMessageRank: 1,
         userMessage,
@@ -149,13 +154,12 @@ describe("createAgentMessages", () => {
   });
 
   it("should skip mentions for configurations not in the list", async () => {
-    const { messageRow, userMessage } =
-      await ConversationFactory.createUserMessage({
-        auth,
-        workspace,
-        conversation,
-        content: "Hello agent",
-      });
+    const { userMessage } = await ConversationFactory.createUserMessage({
+      auth,
+      workspace,
+      conversation,
+      content: "Hello agent",
+    });
 
     const mentions: MentionType[] = [
       {
@@ -174,7 +178,6 @@ describe("createAgentMessages", () => {
         type: "create",
         mentions,
         agentConfigurations: [agentConfig1],
-        message: messageRow,
         skipToolsValidation: false,
         nextMessageRank: 1,
         userMessage,
@@ -187,13 +190,12 @@ describe("createAgentMessages", () => {
   });
 
   it("should return empty array when no agent mentions are provided", async () => {
-    const { messageRow, userMessage } =
-      await ConversationFactory.createUserMessage({
-        auth,
-        workspace,
-        conversation,
-        content: "Hello",
-      });
+    const { userMessage } = await ConversationFactory.createUserMessage({
+      auth,
+      workspace,
+      conversation,
+      content: "Hello",
+    });
 
     const result = await createAgentMessages({
       owner: workspace,
@@ -202,7 +204,6 @@ describe("createAgentMessages", () => {
         type: "create",
         mentions: [],
         agentConfigurations: [agentConfig1],
-        message: messageRow,
         skipToolsValidation: false,
         nextMessageRank: 1,
         userMessage,
@@ -213,13 +214,12 @@ describe("createAgentMessages", () => {
   });
 
   it("should set skipToolsValidation correctly", async () => {
-    const { messageRow, userMessage } =
-      await ConversationFactory.createUserMessage({
-        auth,
-        workspace,
-        conversation,
-        content: `Hello @${agentConfig1.name}`,
-      });
+    const { userMessage } = await ConversationFactory.createUserMessage({
+      auth,
+      workspace,
+      conversation,
+      content: `Hello @${agentConfig1.name}`,
+    });
 
     const mentions: MentionType[] = [
       {
@@ -234,7 +234,6 @@ describe("createAgentMessages", () => {
         type: "create",
         mentions,
         agentConfigurations: [agentConfig1],
-        message: messageRow,
         skipToolsValidation: true,
         nextMessageRank: 1,
         userMessage,
@@ -249,16 +248,15 @@ describe("createAgentMessages", () => {
   it("should set parentAgentMessageId when context origin is agent_handover", async () => {
     const originMessageId = "original-agent-msg-123";
 
-    const { messageRow, userMessage } =
-      await ConversationFactory.createUserMessage({
-        auth,
-        workspace,
-        conversation,
-        content: `Hello @${agentConfig1.name}`,
-        origin: "web",
-        agenticMessageType: "agent_handover",
-        agenticOriginMessageId: originMessageId,
-      });
+    const { userMessage } = await ConversationFactory.createUserMessage({
+      auth,
+      workspace,
+      conversation,
+      content: `Hello @${agentConfig1.name}`,
+      origin: "web",
+      agenticMessageType: "agent_handover",
+      agenticOriginMessageId: originMessageId,
+    });
 
     const mentions: MentionType[] = [
       {
@@ -273,7 +271,6 @@ describe("createAgentMessages", () => {
         type: "create",
         mentions,
         agentConfigurations: [agentConfig1],
-        message: messageRow,
         skipToolsValidation: true,
         nextMessageRank: 1,
         userMessage,
@@ -285,14 +282,13 @@ describe("createAgentMessages", () => {
   });
 
   it("should set parentAgentMessageId to null when context origin is not agent_handover", async () => {
-    const { messageRow, userMessage } =
-      await ConversationFactory.createUserMessage({
-        auth,
-        workspace,
-        conversation,
-        content: `Hello @${agentConfig1.name}`,
-        origin: "web",
-      });
+    const { userMessage } = await ConversationFactory.createUserMessage({
+      auth,
+      workspace,
+      conversation,
+      content: `Hello @${agentConfig1.name}`,
+      origin: "web",
+    });
 
     const mentions: MentionType[] = [
       {
@@ -307,7 +303,6 @@ describe("createAgentMessages", () => {
         type: "create",
         mentions,
         agentConfigurations: [agentConfig1],
-        message: messageRow,
         skipToolsValidation: false,
         nextMessageRank: 1,
         userMessage,
@@ -319,13 +314,12 @@ describe("createAgentMessages", () => {
   });
 
   it("should increment message rank correctly for multiple agent messages", async () => {
-    const { messageRow, userMessage } =
-      await ConversationFactory.createUserMessage({
-        auth,
-        workspace,
-        conversation,
-        content: `Hello @${agentConfig1.name} and @${agentConfig2.name}`,
-      });
+    const { userMessage } = await ConversationFactory.createUserMessage({
+      auth,
+      workspace,
+      conversation,
+      content: `Hello @${agentConfig1.name} and @${agentConfig2.name}`,
+    });
 
     const mentions: MentionType[] = [
       {
@@ -345,7 +339,6 @@ describe("createAgentMessages", () => {
         type: "create",
         mentions,
         agentConfigurations: [agentConfig1, agentConfig2],
-        message: messageRow,
         skipToolsValidation: false,
         nextMessageRank: 10,
         userMessage,
@@ -384,7 +377,7 @@ describe("createUserMentions", () => {
       role: "user",
     });
 
-    const { messageRow } = await ConversationFactory.createUserMessage({
+    const { userMessage } = await ConversationFactory.createUserMessage({
       auth,
       workspace,
       conversation,
@@ -400,14 +393,14 @@ describe("createUserMentions", () => {
 
     await createUserMentions(auth, {
       mentions,
-      message: messageRow,
+      message: userMessage,
       conversation,
     });
 
     // Verify user mention was stored in the database
     const userMentionInDb = await Mention.findOne({
       where: {
-        messageId: messageRow.id,
+        messageId: userMessage.id,
         userId: mentionedUser.id,
       },
     });
@@ -434,7 +427,7 @@ describe("createUserMentions", () => {
     const user2 = await UserFactory.basic();
     await MembershipFactory.associate(workspace, user2, { role: "user" });
 
-    const { messageRow } = await ConversationFactory.createUserMessage({
+    const { userMessage } = await ConversationFactory.createUserMessage({
       auth,
       workspace,
       conversation,
@@ -454,14 +447,14 @@ describe("createUserMentions", () => {
 
     await createUserMentions(auth, {
       mentions,
-      message: messageRow,
+      message: userMessage,
       conversation,
     });
 
     // Verify both user mentions were stored
     const allMentionsInDb = await Mention.findAll({
       where: {
-        messageId: messageRow.id,
+        messageId: userMessage.id,
       },
       order: [["userId", "ASC"]],
     });
@@ -499,7 +492,7 @@ describe("createUserMentions", () => {
   });
 
   it("should handle empty user mentions array", async () => {
-    const { messageRow } = await ConversationFactory.createUserMessage({
+    const { userMessage } = await ConversationFactory.createUserMessage({
       auth,
       workspace,
       conversation,
@@ -510,14 +503,14 @@ describe("createUserMentions", () => {
 
     await createUserMentions(auth, {
       mentions,
-      message: messageRow,
+      message: userMessage,
       conversation,
     });
 
     // Verify no mentions were stored
     const allMentionsInDb = await Mention.findAll({
       where: {
-        messageId: messageRow.id,
+        messageId: userMessage.id,
       },
     });
     expect(allMentionsInDb).toHaveLength(0);
@@ -538,7 +531,7 @@ describe("createUserMentions", () => {
       role: "user",
     });
 
-    const { messageRow } = await ConversationFactory.createUserMessage({
+    const { userMessage } = await ConversationFactory.createUserMessage({
       auth,
       workspace,
       conversation,
@@ -557,18 +550,1034 @@ describe("createUserMentions", () => {
 
     await createUserMentions(auth, {
       mentions,
-      message: messageRow,
+      message: userMessage,
       conversation,
     });
 
     // Verify only user mention was stored, agent mention should be ignored
     const allMentionsInDb = await Mention.findAll({
       where: {
-        messageId: messageRow.id,
+        messageId: userMessage.id,
       },
     });
     expect(allMentionsInDb).toHaveLength(1);
     expect(allMentionsInDb[0].userId).toBe(mentionedUser.id);
     expect(allMentionsInDb[0].agentConfigurationId).toBeNull();
+  });
+});
+
+describe("createUserMessage", () => {
+  let workspace: WorkspaceType;
+  let auth: Authenticator;
+  let conversation: ConversationWithoutContentType;
+  let agentConfig1: LightAgentConfigurationType;
+
+  beforeEach(async () => {
+    // Create workspace, user, spaces, and groups using the helper
+    const setup = await createResourceTest({});
+    workspace = setup.workspace;
+    auth = setup.authenticator;
+
+    // Create test agent configuration
+    agentConfig1 = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent 1",
+      description: "First test agent",
+    });
+
+    // Create a conversation using the factory
+    conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig1.sId,
+      messagesCreatedAt: [],
+      visibility: "unlisted",
+    });
+  });
+
+  it("should create a new user message with user provided", async () => {
+    const user = auth.getNonNullableUser();
+    const userJson = user.toJSON();
+    const content = "Hello, this is a test message";
+    const mentions: MentionType[] = [];
+    const rank = 0;
+
+    const context: UserMessageContext = {
+      username: userJson.username,
+      timezone: "UTC",
+      fullName: userJson.fullName,
+      email: userJson.email,
+      profilePictureUrl: userJson.image,
+      origin: "web",
+    };
+
+    const userMessage = await withTransaction(async (transaction) => {
+      return createUserMessage({
+        workspace,
+        conversation,
+        content,
+        mentions,
+        metadata: {
+          type: "create",
+          user: userJson,
+          rank,
+          context,
+        },
+        transaction,
+      });
+    });
+
+    expect(userMessage).toBeDefined();
+    expect(userMessage.type).toBe("user_message");
+    expect(userMessage.content).toBe(content);
+    expect(userMessage.rank).toBe(rank);
+    expect(userMessage.version).toBe(0);
+    expect(userMessage.user).toEqual(userJson);
+    expect(userMessage.mentions).toEqual(mentions);
+    expect(userMessage.context).toEqual(context);
+    expect(userMessage.agenticMessageData).toBeUndefined();
+
+    // Verify database records were created
+    const messageInDb = await Message.findByPk(userMessage.id);
+    expect(messageInDb).not.toBeNull();
+    expect(messageInDb?.rank).toBe(rank);
+    expect(messageInDb?.version).toBe(0);
+    expect(messageInDb?.parentId).toBeNull();
+
+    const userMessageInDb = await UserMessage.findByPk(
+      messageInDb!.userMessageId!
+    );
+    expect(userMessageInDb).not.toBeNull();
+    expect(userMessageInDb?.content).toBe(content);
+    expect(userMessageInDb?.userId).toBe(user.id);
+    expect(userMessageInDb?.userContextUsername).toBe(context.username);
+    expect(userMessageInDb?.userContextTimezone).toBe(context.timezone);
+    expect(userMessageInDb?.userContextEmail).toBe(context.email);
+    expect(userMessageInDb?.userContextOrigin).toBe(context.origin);
+  });
+
+  it("should create a new user message with user attributed from email", async () => {
+    const user = auth.getNonNullableUser();
+    const userJson = user.toJSON();
+    const content = "Hello, this is a test message";
+    const mentions: MentionType[] = [];
+    const rank = 0;
+
+    const context: UserMessageContext = {
+      username: userJson.username,
+      timezone: "UTC",
+      fullName: userJson.fullName,
+      email: userJson.email,
+      profilePictureUrl: userJson.image,
+      origin: "web",
+    };
+
+    const userMessage = await withTransaction(async (transaction) => {
+      return createUserMessage({
+        workspace,
+        conversation,
+        content,
+        mentions,
+        metadata: {
+          type: "create",
+          user: null, // User should be attributed from email
+          rank,
+          context,
+        },
+        transaction,
+      });
+    });
+
+    expect(userMessage).toBeDefined();
+    expect(userMessage.user).not.toBeNull();
+    expect(userMessage.user?.email).toBe(userJson.email);
+  });
+
+  it("should create a user message with agenticMessageData and originMessage lookup", async () => {
+    const user = auth.getNonNullableUser();
+    const content = "Hello, this is an agentic message";
+    const mentions: MentionType[] = [];
+
+    // Create an origin message first with rank 0
+    const originMessage = await withTransaction(async (transaction) => {
+      const userJson = user.toJSON();
+      const originUserMessage = await UserMessage.create(
+        {
+          content: "Origin message",
+          userId: user.id,
+          workspaceId: workspace.id,
+          userContextUsername: userJson.username,
+          userContextTimezone: "UTC",
+          userContextFullName: userJson.fullName,
+          userContextEmail: userJson.email,
+          userContextProfilePictureUrl: userJson.image,
+          userContextOrigin: "web",
+          clientSideMCPServerIds: [],
+        },
+        { transaction }
+      );
+
+      return Message.create(
+        {
+          sId: generateRandomModelSId(),
+          rank: 0,
+          conversationId: conversation.id,
+          userMessageId: originUserMessage.id,
+          workspaceId: workspace.id,
+        },
+        { transaction }
+      );
+    });
+
+    const userJson = user.toJSON();
+    const context: UserMessageContext = {
+      username: userJson.username,
+      timezone: "UTC",
+      fullName: userJson.fullName,
+      email: userJson.email,
+      profilePictureUrl: userJson.image,
+      origin: "web",
+    };
+
+    const agenticMessageData: AgenticMessageData = {
+      type: "agent_handover",
+      originMessageId: originMessage.sId,
+    };
+
+    // Create the new message with rank 1 to avoid unique constraint violation
+    const rank = 1;
+    const userMessage = await withTransaction(async (transaction) => {
+      return createUserMessage({
+        workspace,
+        conversation,
+        content,
+        mentions,
+        metadata: {
+          type: "create",
+          user: userJson,
+          rank,
+          context,
+          agenticMessageData,
+        },
+        transaction,
+      });
+    });
+
+    expect(userMessage).toBeDefined();
+    expect(userMessage.agenticMessageData).toEqual(agenticMessageData);
+
+    // Verify database records
+    const messageInDb = await Message.findByPk(userMessage.id);
+    const userMessageInDb = await UserMessage.findByPk(
+      messageInDb!.userMessageId!
+    );
+    expect(userMessageInDb?.agenticMessageType).toBe("agent_handover");
+    expect(userMessageInDb?.agenticOriginMessageId).toBe(originMessage.sId);
+  });
+
+  it("should handle agenticMessageData with non-existent originMessage", async () => {
+    const user = auth.getNonNullableUser();
+    const userJson = user.toJSON();
+    const content = "Hello, this is an agentic message";
+    const mentions: MentionType[] = [];
+    const rank = 0;
+
+    const context: UserMessageContext = {
+      username: userJson.username,
+      timezone: "UTC",
+      fullName: userJson.fullName,
+      email: userJson.email,
+      profilePictureUrl: userJson.image,
+      origin: "web",
+    };
+
+    const agenticMessageData: AgenticMessageData = {
+      type: "run_agent",
+      originMessageId: "non-existent-message-id",
+    };
+
+    const userMessage = await withTransaction(async (transaction) => {
+      return createUserMessage({
+        workspace,
+        conversation,
+        content,
+        mentions,
+        metadata: {
+          type: "create",
+          user: userJson,
+          rank,
+          context,
+          agenticMessageData,
+        },
+        transaction,
+      });
+    });
+
+    expect(userMessage).toBeDefined();
+    // agenticMessageData is preserved in the API response even if origin message doesn't exist
+    expect(userMessage.agenticMessageData).toEqual(agenticMessageData);
+
+    // Verify database records - both fields should be null since origin message doesn't exist
+    // The model validation requires agenticMessageType and agenticOriginMessageId to be set together
+    const messageInDb = await Message.findByPk(userMessage.id);
+    const userMessageInDb = await UserMessage.findByPk(
+      messageInDb!.userMessageId!
+    );
+    expect(userMessageInDb?.agenticMessageType).toBeNull();
+    expect(userMessageInDb?.agenticOriginMessageId).toBeNull();
+  });
+
+  it("should edit an existing user message", async () => {
+    const user = auth.getNonNullableUser();
+    const originalContent = "Original message";
+    const editedContent = "Edited message";
+    const mentions: MentionType[] = [];
+
+    // Create original message
+    const userJson = user.toJSON();
+    const originalMessage = await withTransaction(async (transaction) => {
+      return createUserMessage({
+        workspace,
+        conversation,
+        content: originalContent,
+        mentions,
+        metadata: {
+          type: "create",
+          user: userJson,
+          rank: 0,
+          context: {
+            username: userJson.username,
+            timezone: "UTC",
+            fullName: userJson.fullName,
+            email: userJson.email,
+            profilePictureUrl: userJson.image,
+            origin: "web",
+          },
+        },
+        transaction,
+      });
+    });
+
+    // Edit the message
+    const editedMessage = await withTransaction(async (transaction) => {
+      return createUserMessage({
+        workspace,
+        conversation,
+        content: editedContent,
+        mentions,
+        metadata: {
+          type: "edit",
+          message: originalMessage,
+        },
+        transaction,
+      });
+    });
+
+    expect(editedMessage).toBeDefined();
+    expect(editedMessage.content).toBe(editedContent);
+    expect(editedMessage.version).toBe(originalMessage.version + 1);
+    expect(editedMessage.rank).toBe(originalMessage.rank);
+    expect(editedMessage.user).toEqual(originalMessage.user);
+    expect(editedMessage.context).toEqual(originalMessage.context);
+
+    // Verify database records
+    const messageInDb = await Message.findByPk(editedMessage.id);
+    expect(messageInDb).not.toBeNull();
+    expect(messageInDb?.version).toBe(originalMessage.version + 1);
+    expect(messageInDb?.parentId).toBe(originalMessage.id);
+
+    const userMessageInDb = await UserMessage.findByPk(
+      messageInDb!.userMessageId!
+    );
+    expect(userMessageInDb?.content).toBe(editedContent);
+  });
+
+  it("should edit a user message with different mentions", async () => {
+    const user = auth.getNonNullableUser();
+    const userJson = user.toJSON();
+    const originalContent = "Original message";
+    const editedContent = "Edited message with mentions";
+    const originalMentions: MentionType[] = [];
+    const editedMentions: MentionType[] = [
+      {
+        configurationId: agentConfig1.sId,
+      } satisfies AgentMention,
+    ];
+
+    // Create original message
+    const originalMessage = await withTransaction(async (transaction) => {
+      return createUserMessage({
+        workspace,
+        conversation,
+        content: originalContent,
+        mentions: originalMentions,
+        metadata: {
+          type: "create",
+          user: userJson,
+          rank: 0,
+          context: {
+            username: userJson.username,
+            timezone: "UTC",
+            fullName: userJson.fullName,
+            email: userJson.email,
+            profilePictureUrl: userJson.image,
+            origin: "web",
+          },
+        },
+        transaction,
+      });
+    });
+
+    // Edit the message with new mentions
+    const editedMessage = await withTransaction(async (transaction) => {
+      return createUserMessage({
+        workspace,
+        conversation,
+        content: editedContent,
+        mentions: editedMentions,
+        metadata: {
+          type: "edit",
+          message: originalMessage,
+        },
+        transaction,
+      });
+    });
+
+    expect(editedMessage).toBeDefined();
+    expect(editedMessage.content).toBe(editedContent);
+    expect(editedMessage.mentions).toEqual(editedMentions);
+    expect(editedMessage.mentions).toHaveLength(1);
+    expect(editedMessage.version).toBe(originalMessage.version + 1);
+    expect(editedMessage.rank).toBe(originalMessage.rank);
+    expect(editedMessage.user).toEqual(originalMessage.user);
+    expect(editedMessage.context).toEqual(originalMessage.context);
+  });
+
+  it("should preserve agenticMessageData when editing", async () => {
+    const user = auth.getNonNullableUser();
+    const userJson = user.toJSON();
+
+    // Create origin message
+    const originMessage = await withTransaction(async (transaction) => {
+      const originUserMessage = await UserMessage.create(
+        {
+          content: "Origin message",
+          userId: user.id,
+          workspaceId: workspace.id,
+          userContextUsername: userJson.username,
+          userContextTimezone: "UTC",
+          userContextFullName: userJson.fullName,
+          userContextEmail: userJson.email,
+          userContextProfilePictureUrl: userJson.image,
+          userContextOrigin: "web",
+          clientSideMCPServerIds: [],
+        },
+        { transaction }
+      );
+
+      return Message.create(
+        {
+          sId: generateRandomModelSId(),
+          rank: 0,
+          conversationId: conversation.id,
+          userMessageId: originUserMessage.id,
+          workspaceId: workspace.id,
+        },
+        { transaction }
+      );
+    });
+
+    const agenticMessageData: AgenticMessageData = {
+      type: "agent_handover",
+      originMessageId: originMessage.sId,
+    };
+
+    // Create original message with agenticMessageData
+    const originalMessage = await withTransaction(async (transaction) => {
+      return createUserMessage({
+        workspace,
+        conversation,
+        content: "Original agentic message",
+        mentions: [],
+        metadata: {
+          type: "create",
+          user: userJson,
+          rank: 1,
+          context: {
+            username: userJson.username,
+            timezone: "UTC",
+            fullName: userJson.fullName,
+            email: userJson.email,
+            profilePictureUrl: userJson.image,
+            origin: "web",
+          },
+          agenticMessageData,
+        },
+        transaction,
+      });
+    });
+
+    expect(originalMessage.agenticMessageData).toEqual(agenticMessageData);
+
+    // Edit the message - agenticMessageData should be preserved
+    const editedMessage = await withTransaction(async (transaction) => {
+      return createUserMessage({
+        workspace,
+        conversation,
+        content: "Edited agentic message",
+        mentions: [],
+        metadata: {
+          type: "edit",
+          message: originalMessage,
+        },
+        transaction,
+      });
+    });
+
+    expect(editedMessage).toBeDefined();
+    expect(editedMessage.content).toBe("Edited agentic message");
+    expect(editedMessage.agenticMessageData).toEqual(agenticMessageData);
+    expect(editedMessage.version).toBe(originalMessage.version + 1);
+    expect(editedMessage.rank).toBe(originalMessage.rank);
+
+    // Verify database records
+    const messageInDb = await Message.findByPk(editedMessage.id);
+    const userMessageInDb = await UserMessage.findByPk(
+      messageInDb!.userMessageId!
+    );
+    expect(userMessageInDb?.agenticMessageType).toBe("agent_handover");
+    expect(userMessageInDb?.agenticOriginMessageId).toBe(originMessage.sId);
+  });
+
+  it("should preserve all context fields when editing", async () => {
+    const user = auth.getNonNullableUser();
+    const userJson = user.toJSON();
+
+    const originalContext: UserMessageContext = {
+      username: userJson.username,
+      timezone: "America/New_York",
+      fullName: "Test User Full Name",
+      email: userJson.email,
+      profilePictureUrl: "https://example.com/avatar.jpg",
+      origin: "slack",
+      clientSideMCPServerIds: ["mcp-server-1", "mcp-server-2"],
+      selectedMCPServerViewIds: ["view-1"],
+      lastTriggerRunAt: Date.now(),
+    };
+
+    // Create original message with full context
+    const originalMessage = await withTransaction(async (transaction) => {
+      return createUserMessage({
+        workspace,
+        conversation,
+        content: "Original message",
+        mentions: [],
+        metadata: {
+          type: "create",
+          user: userJson,
+          rank: 0,
+          context: originalContext,
+        },
+        transaction,
+      });
+    });
+
+    // Edit the message - context should be preserved
+    const editedMessage = await withTransaction(async (transaction) => {
+      return createUserMessage({
+        workspace,
+        conversation,
+        content: "Edited message",
+        mentions: [],
+        metadata: {
+          type: "edit",
+          message: originalMessage,
+        },
+        transaction,
+      });
+    });
+
+    expect(editedMessage).toBeDefined();
+    expect(editedMessage.context).toEqual(originalContext);
+    expect(editedMessage.context.timezone).toBe(originalContext.timezone);
+    expect(editedMessage.context.fullName).toBe(originalContext.fullName);
+    expect(editedMessage.context.profilePictureUrl).toBe(
+      originalContext.profilePictureUrl
+    );
+    expect(editedMessage.context.origin).toBe(originalContext.origin);
+    expect(editedMessage.context.clientSideMCPServerIds).toEqual(
+      originalContext.clientSideMCPServerIds
+    );
+    expect(editedMessage.context.selectedMCPServerViewIds).toEqual(
+      originalContext.selectedMCPServerViewIds
+    );
+    expect(editedMessage.context.lastTriggerRunAt).toBe(
+      originalContext.lastTriggerRunAt
+    );
+
+    // Verify database records
+    const messageInDb = await Message.findByPk(editedMessage.id);
+    const userMessageInDb = await UserMessage.findByPk(
+      messageInDb!.userMessageId!
+    );
+    expect(userMessageInDb?.userContextTimezone).toBe(originalContext.timezone);
+    expect(userMessageInDb?.userContextFullName).toBe(originalContext.fullName);
+    expect(userMessageInDb?.userContextProfilePictureUrl).toBe(
+      originalContext.profilePictureUrl
+    );
+    expect(userMessageInDb?.userContextOrigin).toBe(originalContext.origin);
+    expect(userMessageInDb?.clientSideMCPServerIds).toEqual(
+      originalContext.clientSideMCPServerIds
+    );
+  });
+
+  it("should handle multiple edits with version increments", async () => {
+    const user = auth.getNonNullableUser();
+    const userJson = user.toJSON();
+
+    // Create original message
+    const originalMessage = await withTransaction(async (transaction) => {
+      return createUserMessage({
+        workspace,
+        conversation,
+        content: "Original message",
+        mentions: [],
+        metadata: {
+          type: "create",
+          user: userJson,
+          rank: 0,
+          context: {
+            username: userJson.username,
+            timezone: "UTC",
+            fullName: userJson.fullName,
+            email: userJson.email,
+            profilePictureUrl: userJson.image,
+            origin: "web",
+          },
+        },
+        transaction,
+      });
+    });
+
+    expect(originalMessage.version).toBe(0);
+
+    // First edit
+    const firstEdit = await withTransaction(async (transaction) => {
+      return createUserMessage({
+        workspace,
+        conversation,
+        content: "First edit",
+        mentions: [],
+        metadata: {
+          type: "edit",
+          message: originalMessage,
+        },
+        transaction,
+      });
+    });
+
+    expect(firstEdit.version).toBe(1);
+    expect(firstEdit.rank).toBe(originalMessage.rank);
+
+    // Verify parentId points to original message
+    const firstEditMessageInDb = await Message.findByPk(firstEdit.id);
+    expect(firstEditMessageInDb?.parentId).toBe(originalMessage.id);
+
+    // Second edit
+    const secondEdit = await withTransaction(async (transaction) => {
+      return createUserMessage({
+        workspace,
+        conversation,
+        content: "Second edit",
+        mentions: [],
+        metadata: {
+          type: "edit",
+          message: firstEdit,
+        },
+        transaction,
+      });
+    });
+
+    expect(secondEdit.version).toBe(2);
+    expect(secondEdit.rank).toBe(originalMessage.rank);
+
+    // Verify parentId points to first edit
+    const secondEditMessageInDb = await Message.findByPk(secondEdit.id);
+    expect(secondEditMessageInDb?.parentId).toBe(firstEdit.id);
+
+    // Third edit
+    const thirdEdit = await withTransaction(async (transaction) => {
+      return createUserMessage({
+        workspace,
+        conversation,
+        content: "Third edit",
+        mentions: [],
+        metadata: {
+          type: "edit",
+          message: secondEdit,
+        },
+        transaction,
+      });
+    });
+
+    expect(thirdEdit.version).toBe(3);
+    expect(thirdEdit.rank).toBe(originalMessage.rank);
+
+    // Verify parentId points to second edit
+    const thirdEditMessageInDb = await Message.findByPk(thirdEdit.id);
+    expect(thirdEditMessageInDb?.parentId).toBe(secondEdit.id);
+  });
+
+  it("should preserve null user when editing", async () => {
+    const content = "Original anonymous message";
+    const editedContent = "Edited anonymous message";
+    const mentions: MentionType[] = [];
+
+    // Create original message with null user
+    const originalMessage = await withTransaction(async (transaction) => {
+      return createUserMessage({
+        workspace,
+        conversation,
+        content,
+        mentions,
+        metadata: {
+          type: "create",
+          user: null,
+          rank: 0,
+          context: {
+            username: "anonymous",
+            timezone: "UTC",
+            fullName: null,
+            email: null,
+            profilePictureUrl: null,
+            origin: "web",
+          },
+        },
+        transaction,
+      });
+    });
+
+    expect(originalMessage.user).toBeNull();
+
+    // Edit the message - user should remain null
+    const editedMessage = await withTransaction(async (transaction) => {
+      return createUserMessage({
+        workspace,
+        conversation,
+        content: editedContent,
+        mentions,
+        metadata: {
+          type: "edit",
+          message: originalMessage,
+        },
+        transaction,
+      });
+    });
+
+    expect(editedMessage).toBeDefined();
+    expect(editedMessage.user).toBeNull();
+    expect(editedMessage.content).toBe(editedContent);
+    expect(editedMessage.version).toBe(originalMessage.version + 1);
+    expect(editedMessage.rank).toBe(originalMessage.rank);
+
+    // Verify database records
+    const messageInDb = await Message.findByPk(editedMessage.id);
+    const userMessageInDb = await UserMessage.findByPk(
+      messageInDb!.userMessageId!
+    );
+    expect(userMessageInDb?.userId).toBeNull();
+  });
+
+  it("should preserve user when editing", async () => {
+    const user = auth.getNonNullableUser();
+    const userJson = user.toJSON();
+    const originalContent = "Original message";
+    const editedContent = "Edited message";
+    const mentions: MentionType[] = [];
+
+    // Create original message
+    const originalMessage = await withTransaction(async (transaction) => {
+      return createUserMessage({
+        workspace,
+        conversation,
+        content: originalContent,
+        mentions,
+        metadata: {
+          type: "create",
+          user: userJson,
+          rank: 0,
+          context: {
+            username: userJson.username,
+            timezone: "UTC",
+            fullName: userJson.fullName,
+            email: userJson.email,
+            profilePictureUrl: userJson.image,
+            origin: "web",
+          },
+        },
+        transaction,
+      });
+    });
+
+    // Edit the message - user should be preserved
+    const editedMessage = await withTransaction(async (transaction) => {
+      return createUserMessage({
+        workspace,
+        conversation,
+        content: editedContent,
+        mentions,
+        metadata: {
+          type: "edit",
+          message: originalMessage,
+        },
+        transaction,
+      });
+    });
+
+    expect(editedMessage).toBeDefined();
+    expect(editedMessage.user).toEqual(userJson);
+    expect(editedMessage.user?.id).toBe(userJson.id);
+    expect(editedMessage.user?.email).toBe(userJson.email);
+    expect(editedMessage.user?.username).toBe(userJson.username);
+
+    // Verify database records
+    const messageInDb = await Message.findByPk(editedMessage.id);
+    const userMessageInDb = await UserMessage.findByPk(
+      messageInDb!.userMessageId!
+    );
+    expect(userMessageInDb?.userId).toBe(userJson.id);
+  });
+
+  it("should create a user message with mentions", async () => {
+    const user = auth.getNonNullableUser();
+    const userJson = user.toJSON();
+    const content = "Hello @agent";
+    const mentions: MentionType[] = [
+      {
+        configurationId: agentConfig1.sId,
+      } satisfies AgentMention,
+    ];
+    const rank = 0;
+
+    const context: UserMessageContext = {
+      username: userJson.username,
+      timezone: "UTC",
+      fullName: userJson.fullName,
+      email: userJson.email,
+      profilePictureUrl: userJson.image,
+      origin: "web",
+    };
+
+    const userMessage = await withTransaction(async (transaction) => {
+      return createUserMessage({
+        workspace,
+        conversation,
+        content,
+        mentions,
+        metadata: {
+          type: "create",
+          user: userJson,
+          rank,
+          context,
+        },
+        transaction,
+      });
+    });
+
+    expect(userMessage).toBeDefined();
+    expect(userMessage.mentions).toEqual(mentions);
+    expect(userMessage.mentions).toHaveLength(1);
+  });
+
+  it("should handle context with all optional fields", async () => {
+    const user = auth.getNonNullableUser();
+    const userJson = user.toJSON();
+    const content = "Hello with full context";
+    const mentions: MentionType[] = [];
+    const rank = 0;
+
+    const context: UserMessageContext = {
+      username: userJson.username,
+      timezone: "America/New_York",
+      fullName: "Test User Full Name",
+      email: userJson.email,
+      profilePictureUrl: "https://example.com/avatar.jpg",
+      origin: "slack",
+      clientSideMCPServerIds: ["mcp-server-1", "mcp-server-2"],
+      selectedMCPServerViewIds: ["view-1"],
+      lastTriggerRunAt: Date.now(),
+    };
+
+    const userMessage = await withTransaction(async (transaction) => {
+      return createUserMessage({
+        workspace,
+        conversation,
+        content,
+        mentions,
+        metadata: {
+          type: "create",
+          user: userJson,
+          rank,
+          context,
+        },
+        transaction,
+      });
+    });
+
+    expect(userMessage).toBeDefined();
+    expect(userMessage.context).toEqual(context);
+
+    // Verify database records
+    const messageInDb = await Message.findByPk(userMessage.id);
+    const userMessageInDb = await UserMessage.findByPk(
+      messageInDb!.userMessageId!
+    );
+    expect(userMessageInDb?.userContextTimezone).toBe(context.timezone);
+    expect(userMessageInDb?.userContextFullName).toBe(context.fullName);
+    expect(userMessageInDb?.userContextProfilePictureUrl).toBe(
+      context.profilePictureUrl
+    );
+    expect(userMessageInDb?.userContextOrigin).toBe(context.origin);
+    expect(userMessageInDb?.clientSideMCPServerIds).toEqual(
+      context.clientSideMCPServerIds
+    );
+    expect(userMessageInDb?.userContextLastTriggerRunAt).not.toBeNull();
+  });
+
+  it("should handle context with null optional fields", async () => {
+    const user = auth.getNonNullableUser();
+    const userJson = user.toJSON();
+    const content = "Hello with minimal context";
+    const mentions: MentionType[] = [];
+    const rank = 0;
+
+    const context: UserMessageContext = {
+      username: userJson.username,
+      timezone: "UTC",
+      fullName: null,
+      email: null,
+      profilePictureUrl: null,
+      origin: "web",
+    };
+
+    const userMessage = await withTransaction(async (transaction) => {
+      return createUserMessage({
+        workspace,
+        conversation,
+        content,
+        mentions,
+        metadata: {
+          type: "create",
+          user: userJson,
+          rank,
+          context,
+        },
+        transaction,
+      });
+    });
+
+    expect(userMessage).toBeDefined();
+    expect(userMessage.context).toEqual(context);
+
+    // Verify database records
+    const messageInDb = await Message.findByPk(userMessage.id);
+    const userMessageInDb = await UserMessage.findByPk(
+      messageInDb!.userMessageId!
+    );
+    expect(userMessageInDb?.userContextFullName).toBeNull();
+    expect(userMessageInDb?.userContextEmail).toBeNull();
+    expect(userMessageInDb?.userContextProfilePictureUrl).toBeNull();
+    expect(userMessageInDb?.clientSideMCPServerIds).toEqual([]);
+    expect(userMessageInDb?.userContextLastTriggerRunAt).toBeNull();
+  });
+
+  it("should create multiple user messages with correct ranks", async () => {
+    const user = auth.getNonNullableUser();
+    const userJson = user.toJSON();
+    const mentions: MentionType[] = [];
+
+    const context: UserMessageContext = {
+      username: userJson.username,
+      timezone: "UTC",
+      fullName: userJson.fullName,
+      email: userJson.email,
+      profilePictureUrl: userJson.image,
+      origin: "web",
+    };
+
+    const userMessage1 = await withTransaction(async (transaction) => {
+      return createUserMessage({
+        workspace,
+        conversation,
+        content: "First message",
+        mentions,
+        metadata: {
+          type: "create",
+          user: userJson,
+          rank: 0,
+          context,
+        },
+        transaction,
+      });
+    });
+
+    const userMessage2 = await withTransaction(async (transaction) => {
+      return createUserMessage({
+        workspace,
+        conversation,
+        content: "Second message",
+        mentions,
+        metadata: {
+          type: "create",
+          user: userJson,
+          rank: 1,
+          context,
+        },
+        transaction,
+      });
+    });
+
+    expect(userMessage1.rank).toBe(0);
+    expect(userMessage2.rank).toBe(1);
+    expect(userMessage1.version).toBe(0);
+    expect(userMessage2.version).toBe(0);
+  });
+
+  it("should handle user message with null user", async () => {
+    const content = "Hello from anonymous user";
+    const mentions: MentionType[] = [];
+    const rank = 0;
+
+    const context: UserMessageContext = {
+      username: "anonymous",
+      timezone: "UTC",
+      fullName: null,
+      email: null,
+      profilePictureUrl: null,
+      origin: "web",
+    };
+
+    const userMessage = await withTransaction(async (transaction) => {
+      return createUserMessage({
+        workspace,
+        conversation,
+        content,
+        mentions,
+        metadata: {
+          type: "create",
+          user: null,
+          rank,
+          context,
+        },
+        transaction,
+      });
+    });
+
+    expect(userMessage).toBeDefined();
+    expect(userMessage.user).toBeNull();
+
+    // Verify database records
+    const messageInDb = await Message.findByPk(userMessage.id);
+    const userMessageInDb = await UserMessage.findByPk(
+      messageInDb!.userMessageId!
+    );
+    expect(userMessageInDb?.userId).toBeNull();
   });
 });
