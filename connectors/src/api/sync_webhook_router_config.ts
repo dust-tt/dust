@@ -60,129 +60,108 @@ const _syncWebhookRouterEntryHandler = async (
   const { signingSecret } = bodyValidation.right;
   const region = connectorsConfig.getCurrentRegion();
 
-  try {
-    let connectorIds: number[] = [];
+  let connectorIds: number[] = [];
 
-    if (provider === "notion") {
-      // Find all connectors for this Notion workspace in this region
-      const notionConnectorStates = await NotionConnectorState.findAll({
-        where: { notionWorkspaceId: providerWorkspaceId },
-      });
-
-      if (notionConnectorStates.length > 0) {
-        // Get connector IDs for all connectors in this workspace
-        const connectors = await ConnectorResource.fetchByIds(
-          "notion",
-          notionConnectorStates.map((state) => state.connectorId)
-        );
-        connectorIds = connectors.map((c: ConnectorResource) => c.id);
-
-        logger.info(
-          { notionWorkspaceId: providerWorkspaceId, connectorIds },
-          `Found ${connectorIds.length} Notion connectors in region ${region}`
-        );
-      } else {
-        logger.info(
-          { notionWorkspaceId: providerWorkspaceId },
-          "No Notion connectors found in this region"
-        );
-      }
-    } else if (provider === "slack") {
-      // Find all connectors for this Slack team in this region
-      const slackConfigs =
-        await SlackConfigurationResource.listForTeamId(providerWorkspaceId);
-
-      if (slackConfigs.length > 0) {
-        // Get the connector for this Slack configuration
-        const connectors = await ConnectorResource.fetchByIds(
-          "slack",
-          slackConfigs.map((config) => config.connectorId)
-        );
-        connectorIds = connectors.map((c: ConnectorResource) => c.id);
-
-        logger.info(
-          { slackTeamId: providerWorkspaceId, connectorIds },
-          `Found ${connectorIds.length} Slack connectors in region ${region}`
-        );
-      } else {
-        logger.info(
-          { slackTeamId: providerWorkspaceId },
-          "No Slack configuration found in this region"
-        );
-      }
-    } else {
-      return apiError(req, res, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: `Unsupported provider '${provider}'`,
-        },
-      });
-    }
-
-    // If signingSecret was provided but no connectors found, return error
-    if (signingSecret && connectorIds.length === 0) {
-      return apiError(req, res, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: `No connectors found for provider '${provider}' and providerWorkspaceId '${providerWorkspaceId}' in region '${region}'. Cannot sync with provided signing secret.`,
-        },
-      });
-    }
-
-    // Check if signing secret differs from existing entry
-    const service = new WebhookRouterConfigService();
-    if (signingSecret) {
-      const existingEntry = await service.getEntry(
-        provider,
-        providerWorkspaceId
-      );
-      if (existingEntry && existingEntry.signingSecret !== signingSecret) {
-        logger.warn(
-          {
-            provider,
-            providerWorkspaceId,
-          },
-          "Signing secret differs from existing entry - updating to new secret"
-        );
-      }
-    }
-
-    // Sync the entry for this region
-    await service.syncEntry(
-      provider,
-      providerWorkspaceId,
-      signingSecret,
-      region,
-      connectorIds
-    );
-
-    logger.info(
-      { provider, providerWorkspaceId, region, connectorIds },
-      `Successfully synced webhook router entry`
-    );
-
-    return res.status(200).json({
-      success: true,
+  if (provider === "notion") {
+    // Find all connectors for this Notion workspace in this region
+    const notionConnectorStates = await NotionConnectorState.findAll({
+      where: { notionWorkspaceId: providerWorkspaceId },
     });
-  } catch (error) {
-    logger.error(
-      { error, provider, providerWorkspaceId },
-      "Failed to sync webhook router entry"
-    );
 
+    if (notionConnectorStates.length > 0) {
+      // Get connector IDs for all connectors in this workspace
+      const connectors = await ConnectorResource.fetchByIds(
+        "notion",
+        notionConnectorStates.map((state) => state.connectorId)
+      );
+      connectorIds = connectors.map((c: ConnectorResource) => c.id);
+
+      logger.info(
+        { notionWorkspaceId: providerWorkspaceId, connectorIds },
+        `Found ${connectorIds.length} Notion connectors in region ${region}`
+      );
+    } else {
+      logger.info(
+        { notionWorkspaceId: providerWorkspaceId },
+        "No Notion connectors found in this region"
+      );
+    }
+  } else if (provider === "slack") {
+    // Find all connectors for this Slack team in this region
+    const slackConfigs =
+      await SlackConfigurationResource.listForTeamId(providerWorkspaceId);
+
+    if (slackConfigs.length > 0) {
+      // Get the connector for this Slack configuration
+      const connectors = await ConnectorResource.fetchByIds(
+        "slack",
+        slackConfigs.map((config) => config.connectorId)
+      );
+      connectorIds = connectors.map((c: ConnectorResource) => c.id);
+
+      logger.info(
+        { slackTeamId: providerWorkspaceId, connectorIds },
+        `Found ${connectorIds.length} Slack connectors in region ${region}`
+      );
+    } else {
+      logger.info(
+        { slackTeamId: providerWorkspaceId },
+        "No Slack configuration found in this region"
+      );
+    }
+  } else {
     return apiError(req, res, {
-      status_code: 500,
+      status_code: 400,
       api_error: {
-        type: "internal_server_error",
-        message:
-          error instanceof Error
-            ? error.message
-            : "Failed to sync webhook router entry",
+        type: "invalid_request_error",
+        message: `Unsupported provider '${provider}'`,
       },
     });
   }
+
+  // If signingSecret was provided but no connectors found, return error
+  if (signingSecret && connectorIds.length === 0) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `No connectors found for provider '${provider}' and providerWorkspaceId '${providerWorkspaceId}' in region '${region}'. Cannot sync with provided signing secret.`,
+      },
+    });
+  }
+
+  // Check if signing secret differs from existing entry
+  const service = new WebhookRouterConfigService();
+  if (signingSecret) {
+    const existingEntry = await service.getEntry(provider, providerWorkspaceId);
+    if (existingEntry && existingEntry.signingSecret !== signingSecret) {
+      logger.warn(
+        {
+          provider,
+          providerWorkspaceId,
+        },
+        "Signing secret differs from existing entry - updating to new secret"
+      );
+    }
+  }
+
+  // Sync the entry for this region
+  await service.syncEntry(
+    provider,
+    providerWorkspaceId,
+    signingSecret,
+    region,
+    connectorIds
+  );
+
+  logger.info(
+    { provider, providerWorkspaceId, region, connectorIds },
+    `Successfully synced webhook router entry`
+  );
+
+  return res.status(200).json({
+    success: true,
+  });
 };
 
 export const syncWebhookRouterEntryHandler = withLogging(
