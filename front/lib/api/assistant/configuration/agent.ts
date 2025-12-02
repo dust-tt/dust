@@ -386,14 +386,22 @@ export async function createAgentConfiguration(
       }
     }
     if (existingAgent && existingAgent.scope !== "visible") {
-      if (!(await canPublishAgent(auth)) && scope === "visible") {
+      if (
+        !(await canPublishAgent(auth)) &&
+        scope === "visible" &&
+        status === "active"
+      ) {
         return new Err(
           new Error("Publishing agents is restricted to builders and admins.")
         );
       }
     }
   } else {
-    if (!(await canPublishAgent(auth)) && scope === "visible") {
+    if (
+      !(await canPublishAgent(auth)) &&
+      scope === "visible" &&
+      status === "active"
+    ) {
       return new Err(
         new Error("Publishing agents is restricted to builders and admins.")
       );
@@ -1319,7 +1327,8 @@ export async function updateAgentConfigurationScope(
   if (
     !(await canPublishAgent(auth)) &&
     agentConfig.scope !== "visible" &&
-    scope === "visible"
+    scope === "visible" &&
+    agentConfig.status === "active"
   ) {
     return new Err(
       new Error("Publishing agents is restricted to builders and admins.")
