@@ -1,4 +1,11 @@
-import { Button, CardIcon, ContentMessage, Page } from "@dust-tt/sparkle";
+import {
+  Button,
+  CardIcon,
+  cn,
+  ContentMessage,
+  ExclamationCircleIcon,
+  Page,
+} from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import React, { useMemo, useState } from "react";
 
@@ -73,7 +80,12 @@ function ProgressBar({ consumed, total }: ProgressBarProps) {
   return (
     <div className="h-2 w-full overflow-hidden rounded-full bg-muted-foreground/10 dark:bg-muted-foreground-night/10">
       <div
-        className={`h-full rounded-full bg-primary transition-all dark:bg-primary-night`}
+        className={cn(
+          "h-full rounded-full transition-all",
+          percentage > 80
+            ? "bg-warning-700"
+            : "bg-primary dark:bg-primary-night"
+        )}
         style={{ width: `${percentage}%` }}
       />
     </div>
@@ -85,6 +97,7 @@ interface CreditCategoryBarProps {
   consumed: number;
   total: number;
   renewalDate: string | null;
+  action?: React.ReactNode;
   isCap?: boolean;
 }
 
@@ -93,6 +106,7 @@ function CreditCategoryBar({
   consumed,
   total,
   renewalDate,
+  action,
   isCap = false,
 }: CreditCategoryBarProps) {
   const consumedFormatted = getPriceAsString({
@@ -106,7 +120,12 @@ function CreditCategoryBar({
 
   return (
     <Page.Vertical sizing="grow">
-      <Page.P variant="secondary">{title}</Page.P>
+      <div className="flex w-full items-center justify-between">
+        <p className="my-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
+          {title}
+        </p>
+        {action}
+      </div>
       <div className="text-lg font-semibold text-foreground dark:text-foreground-night">
         {consumedFormatted}
         <span className="font-normal text-muted-foreground dark:text-muted-foreground-night">
@@ -122,55 +141,28 @@ function CreditCategoryBar({
 
 interface UsageSectionProps {
   subscription: SubscriptionType;
-  credits: CreditDisplayData[];
+  isEnterprise: boolean;
+  creditsByType: Record<
+    CreditType,
+    { consumed: number; total: number; expirationDate: number | null }
+  >;
+  totalConsumed: number;
+  totalCredits: number;
   isLoading: boolean;
+  isPurchasingCredits: boolean;
+  setShowBuyCreditDialog: (show: boolean) => void;
 }
 
-function UsageSection({ subscription, credits, isLoading }: UsageSectionProps) {
-  const creditsByType = useMemo(() => {
-    const activeCredits = credits.filter((c) => !isExpired(c));
-
-    const byType: Record<
-      CreditType,
-      { consumed: number; total: number; expirationDate: number | null }
-    > = {
-      free: { consumed: 0, total: 0, expirationDate: null },
-      committed: { consumed: 0, total: 0, expirationDate: null },
-      payg: { consumed: 0, total: 0, expirationDate: null },
-    };
-
-    for (const credit of activeCredits) {
-      byType[credit.type].consumed += credit.consumedAmount;
-      byType[credit.type].total += credit.initialAmount;
-
-      // Keep the earliest expiration date for each type
-      const currentExpiration = byType[credit.type].expirationDate;
-      if (credit.expirationDate) {
-        if (!currentExpiration || credit.expirationDate < currentExpiration) {
-          byType[credit.type].expirationDate = credit.expirationDate;
-        }
-      }
-    }
-
-    return byType;
-  }, [credits]);
-
-  const totalConsumed = useMemo(() => {
-    return (
-      creditsByType.free.consumed +
-      creditsByType.committed.consumed +
-      creditsByType.payg.consumed
-    );
-  }, [creditsByType]);
-
-  const totalCredits = useMemo(() => {
-    return (
-      creditsByType.free.total +
-      creditsByType.committed.total +
-      creditsByType.payg.total
-    );
-  }, [creditsByType]);
-
+function UsageSection({
+  subscription,
+  isEnterprise,
+  creditsByType,
+  totalConsumed,
+  totalCredits,
+  isLoading,
+  isPurchasingCredits,
+  setShowBuyCreditDialog,
+}: UsageSectionProps) {
   // Get current billing period dates (month boundaries)
   // Use useMemo to calculate the current billing cycle (exclusive bounds)
   // Example: Nov 4 -> Dec 3 (if billing cycle starts on the 4th of each month)
@@ -252,7 +244,7 @@ function UsageSection({ subscription, credits, isLoading }: UsageSectionProps) {
     <div className="flex flex-col gap-6">
       {/* Usage Header */}
       <div className="flex items-center justify-between">
-        <Page.Vertical>
+        <Page.Vertical gap="xs">
           <Page.H variant="h5">Usage</Page.H>
           <Page.P variant="secondary">Available credits and consumption</Page.P>
         </Page.Vertical>
@@ -276,7 +268,7 @@ function UsageSection({ subscription, credits, isLoading }: UsageSectionProps) {
       </Page.Vertical>
 
       {/* Credit Categories */}
-      <div className="flex gap-8 border-t border-border pt-6 dark:border-border-night">
+      <div className="grid grid-cols-3 gap-8 border-t border-border pt-6 dark:border-border-night">
         <CreditCategoryBar
           title="Monthly included credits"
           consumed={creditsByType.free.consumed}
@@ -290,14 +282,26 @@ function UsageSection({ subscription, credits, isLoading }: UsageSectionProps) {
           renewalDate={formatExpirationDate(
             creditsByType.committed.expirationDate
           )}
+          action={
+            <Button
+              label="Buy credits"
+              variant="outline"
+              size="xs"
+              disabled={isPurchasingCredits}
+              isLoading={isPurchasingCredits}
+              onClick={() => setShowBuyCreditDialog(true)}
+            />
+          }
         />
-        <CreditCategoryBar
-          title="Pay-as-you-go"
-          consumed={creditsByType.payg.consumed}
-          total={creditsByType.payg.total}
-          renewalDate={formatRenewalDate(creditsByType.payg.expirationDate)}
-          isCap
-        />
+        {isEnterprise && (
+          <CreditCategoryBar
+            title="Pay-as-you-go"
+            consumed={creditsByType.payg.consumed}
+            total={creditsByType.payg.total}
+            renewalDate={formatRenewalDate(creditsByType.payg.expirationDate)}
+            isCap
+          />
+        )}
       </div>
     </div>
   );
@@ -321,6 +325,50 @@ export default function CreditsUsagePage({
     workspaceId: owner.sId,
   });
 
+  const creditsByType = useMemo(() => {
+    const activeCredits = credits.filter((c) => !isExpired(c));
+
+    const byType: Record<
+      CreditType,
+      { consumed: number; total: number; expirationDate: number | null }
+    > = {
+      free: { consumed: 0, total: 0, expirationDate: null },
+      committed: { consumed: 0, total: 0, expirationDate: null },
+      payg: { consumed: 0, total: 0, expirationDate: null },
+    };
+
+    for (const credit of activeCredits) {
+      byType[credit.type].consumed += credit.consumedAmount;
+      byType[credit.type].total += credit.initialAmount;
+
+      // Keep the earliest expiration date for each type
+      const currentExpiration = byType[credit.type].expirationDate;
+      if (credit.expirationDate) {
+        if (!currentExpiration || credit.expirationDate < currentExpiration) {
+          byType[credit.type].expirationDate = credit.expirationDate;
+        }
+      }
+    }
+
+    return byType;
+  }, [credits]);
+
+  const totalConsumed = useMemo(() => {
+    return (
+      creditsByType.free.consumed +
+      creditsByType.committed.consumed +
+      creditsByType.payg.consumed
+    );
+  }, [creditsByType]);
+
+  const totalCredits = useMemo(() => {
+    return (
+      creditsByType.free.total +
+      creditsByType.committed.total +
+      creditsByType.payg.total
+    );
+  }, [creditsByType]);
+
   return (
     <AppCenteredLayout
       subscription={subscription}
@@ -340,23 +388,30 @@ export default function CreditsUsagePage({
 
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
-          title="Credits & Usage"
+          title="Programmatic Usage"
           icon={CardIcon}
-          description="Monitor and manage your programmatic API usage credits."
+          description="Monitor usage and credits for your API keys and automated workflows."
         />
 
-        <ContentMessage title="Need more credits?" variant="outline" size="lg">
-          <div className="flex items-end justify-between">
-            <p>Purchase additional credits for programmatic usage</p>
-            <Button
-              label="Buy credits"
-              variant="primary"
-              disabled={isPurchasingCredits}
-              isLoading={isPurchasingCredits}
-              onClick={() => setShowBuyCreditDialog(true)}
-            />
-          </div>
-        </ContentMessage>
+        {totalConsumed >= totalCredits * 0.8 && (
+          <ContentMessage
+            title="You're almost out of credits."
+            variant="warning"
+            size="lg"
+            icon={ExclamationCircleIcon}
+          >
+            <div className="flex items-end justify-between">
+              <p>Add credits to ensure uninterrupted usage.</p>
+              <Button
+                label="Buy credits"
+                variant="primary"
+                disabled={isPurchasingCredits}
+                isLoading={isPurchasingCredits}
+                onClick={() => setShowBuyCreditDialog(true)}
+              />
+            </div>
+          </ContentMessage>
+        )}
 
         {subscription.trialing && (
           <ContentMessage title="Available after trial" variant="info">
@@ -367,18 +422,24 @@ export default function CreditsUsagePage({
         {/* Usage Section */}
         <UsageSection
           subscription={subscription}
-          credits={credits}
+          isEnterprise={isEnterprise}
+          creditsByType={creditsByType}
+          totalConsumed={totalConsumed}
+          totalCredits={totalCredits}
           isLoading={isCreditsLoading}
+          isPurchasingCredits={isPurchasingCredits}
+          setShowBuyCreditDialog={setShowBuyCreditDialog}
         />
 
         {/* History Section */}
         <Page.Vertical>
-          <Page.H variant="h5">History</Page.H>
-          <Page.P>
-            Credit history for programmatic API usage. Credits invoices are sent
-            by email at time of purchase.
-          </Page.P>
-
+          <Page.Vertical gap="sm">
+            <Page.H variant="h5">Credit history</Page.H>
+            <Page.P variant="secondary">
+              Credit history for programmatic usage. Credits invoices are sent
+              by email at time of purchase.
+            </Page.P>
+          </Page.Vertical>
           <CreditsList credits={credits} isLoading={isCreditsLoading} />
         </Page.Vertical>
 
