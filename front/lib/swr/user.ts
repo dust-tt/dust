@@ -80,6 +80,19 @@ export function useDeleteMetadata() {
   return { deleteMetadata };
 }
 
+export function useIsOnboardingConversation(conversationId: string | null) {
+  const { metadata, isMetadataLoading } = useUserMetadata(
+    "onboarding:conversation",
+    { disabled: !conversationId }
+  );
+
+  return {
+    isOnboardingConversation:
+      !!conversationId && !!metadata?.value && metadata.value === conversationId,
+    isLoading: isMetadataLoading,
+  };
+}
+
 export function usePatchUser() {
   const { mutateUser } = useUser();
   const sendNotification = useSendNotification();

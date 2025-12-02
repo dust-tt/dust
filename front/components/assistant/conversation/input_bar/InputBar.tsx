@@ -16,7 +16,12 @@ import {
   useAddDeleteConversationTool,
   useConversationTools,
 } from "@app/lib/swr/conversations";
-import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
+import { useIsOnboardingConversation } from "@app/lib/swr/user";
+import {
+  trackEvent,
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+} from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
 import type {
   AgentMention,
@@ -115,6 +120,8 @@ export const InputBar = React.memo(function InputBar({
 
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
   const { animate, setAnimate, selectedAgent } = useContext(InputBarContext);
+  const { isOnboardingConversation } =
+    useIsOnboardingConversation(conversationId);
   const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -221,6 +228,14 @@ export const InputBar = React.memo(function InputBar({
         message_length: markdown.length,
       },
     });
+
+    if (isOnboardingConversation) {
+      trackEvent({
+        area: TRACKING_AREAS.CONVERSATION,
+        object: "onboarding_conversation",
+        action: TRACKING_ACTIONS.SUBMIT,
+      });
+    }
 
     // When we are creating a new conversation, we will disable the input bar, show a loading
     // spinner and in case of error, re-enable the input bar
