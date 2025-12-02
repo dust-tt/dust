@@ -20,7 +20,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Fetch main branch
-        run: git fetch origin main --depth=0
+        run: git fetch origin main
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
       - name: Install Redis
@@ -38,6 +38,15 @@ jobs:
           postgresql user: test
           postgresql password: test
           postgresql port: 5433
+      - name: Debug Git State
+        run: |
+          echo "=== Current branch and commit ==="
+          git branch -a
+          git log --oneline -3
+          echo "=== origin/main ==="
+          git log --oneline origin/main -3
+          echo "=== Files changed from origin/main ==="
+          git diff --name-only origin/main | head -20
       - name: Run Tests
         working-directory: front
         env:
