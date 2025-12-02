@@ -8,11 +8,7 @@ import { BlogBlock } from "@app/components/home/ContentBlocks";
 import { Grid, H1, H2 } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import {
-  getBlogPostBySlug,
-  getRelatedPosts,
-  isPreviewMode,
-} from "@app/lib/contentful/client";
+import { getBlogPostBySlug, getRelatedPosts } from "@app/lib/contentful/client";
 import { renderRichTextFromContentful } from "@app/lib/contentful/richTextRenderer";
 import type { BlogPostPageProps } from "@app/lib/contentful/types";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
@@ -23,14 +19,17 @@ export const getServerSideProps: GetServerSideProps<BlogPostPageProps> = async (
   context
 ) => {
   const { slug } = context.params ?? {};
+  const { preview, secret } = context.query;
 
   if (!isString(slug)) {
     return { notFound: true };
   }
 
-  const { resolvedUrl } = context;
+  // Enable preview mode if valid secret provided
+  const isPreview =
+    preview === "true" && secret === process.env.CONTENTFUL_PREVIEW_SECRET;
 
-  const postResult = await getBlogPostBySlug(slug, resolvedUrl);
+  const postResult = await getBlogPostBySlug(slug, isPreview);
 
   if (postResult.isErr()) {
     logger.error(
@@ -50,7 +49,7 @@ export const getServerSideProps: GetServerSideProps<BlogPostPageProps> = async (
     slug,
     post.tags,
     3,
-    resolvedUrl
+    isPreview
   );
 
   if (relatedPostsResult.isErr()) {
@@ -66,7 +65,7 @@ export const getServerSideProps: GetServerSideProps<BlogPostPageProps> = async (
       post,
       relatedPosts: relatedPostsResult.value,
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
-      preview: isPreviewMode(resolvedUrl),
+      preview: isPreview,
     },
   };
 };
