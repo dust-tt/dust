@@ -14,15 +14,12 @@ import { useEffect, useState } from "react";
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { LightWorkspaceType } from "@app/types";
 
 type CreateConnectionOAuthModalProps = {
   connectorProviderConfiguration: ConnectorProviderConfiguration;
   isOpen: boolean;
   onClose: () => void;
   onConfirm: (extraConfig: Record<string, string>) => void;
-  owner: LightWorkspaceType;
 };
 
 export function CreateConnectionOAuthModal({
@@ -30,16 +27,11 @@ export function CreateConnectionOAuthModal({
   isOpen,
   onClose,
   onConfirm,
-  owner,
 }: CreateConnectionOAuthModalProps) {
   const { isDark } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
   const [extraConfig, setExtraConfig] = useState<Record<string, string>>({});
   const [isExtraConfigValid, setIsExtraConfigValid] = useState(true);
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
-  const isSlackCustomAppEnabled = featureFlags.includes(
-    "self_created_slack_app_connector_rollout"
-  );
 
   useEffect(() => {
     if (isOpen) {

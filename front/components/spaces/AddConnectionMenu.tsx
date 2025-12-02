@@ -473,7 +473,6 @@ export const AddConnectionMenu = ({
                       );
                     }
                   }}
-                  owner={owner}
                 />
               );
             case "microsoft_bot":
