@@ -15,12 +15,6 @@ import type { JobType } from "@app/types/job_type";
 
 import { createConversation, postUserMessage } from "./conversation";
 
-// Build the list of tools available for personal connection during onboarding.
-// These are tools that:
-// - Are manually connected (not auto-enabled)
-// - Support personal_actions use case
-// - Are not gated behind a feature flag
-// - Are not in preview
 function getOnboardingAvailableTools(): Array<{
   sId: string;
   name: string;
@@ -61,10 +55,8 @@ function getOnboardingAvailableTools(): Array<{
     }));
 }
 
-// Cached list of available tools for onboarding prompts.
 const ONBOARDING_AVAILABLE_TOOLS = getOnboardingAvailableTools();
 
-// Generate the available tools list for the prompt.
 function buildAvailableToolsList(): string {
   const toolLines = ONBOARDING_AVAILABLE_TOOLS.map(
     (tool) => `- ${tool.name} (${tool.sId}) - ${tool.description}`
@@ -73,11 +65,6 @@ function buildAvailableToolsList(): string {
   return `
 Available tools for personal connection (sId in parentheses):
 ${toolLines}`;
-}
-
-// Generate a comma-separated list of tool names for the follow-up prompt.
-function buildToolNamesList(): string {
-  return ONBOARDING_AVAILABLE_TOOLS.map((tool) => tool.name).join(", ");
 }
 
 // Maps job types (from welcome form) to their primary recommended tool.
@@ -185,13 +172,13 @@ Rules:
 
 ${buildAvailableToolsList()}
 
-**Only suggest tools from this list. If a user asks about a tool not listed, explain it's not currently available.**
+**Only suggest tools to setup from this list. If a user asks about a tool not listed, explain it's not currently available.**
 
 ---
 
 ## YOUR FIRST MESSAGE (respond now)
 
-Recommended tools for this user:
+Recommended tools to setup for this user:
 ${toolsWithDescriptions}
 
 Write a SHORT welcome message (3-4 lines max):
@@ -300,26 +287,16 @@ export function buildOnboardingFollowUpPrompt(toolId: string): string {
     TOOL_TASK_SUGGESTIONS[toolId] ?? DEFAULT_TASK_SUGGESTIONS;
 
   return `<dust_system>
-The user just connected a tool. Respond briefly.
-
-## What to do NOW
+The user just connected a tool. Respond briefly (2-3 lines max).
 
 1. Confirm the connection (one line + emoji)
-2. Suggest trying it with the quick replies below
+2. End with the quick replies below
 
 ${taskSuggestions}
 
-## CRITICAL: Do not hallucinate use cases
+Do NOT invent specific searches or assume what data the user has. Only use the quick replies above.
 
-- NEVER assume what data the user has
-- NEVER suggest specific searches like "find the Q4 report" or "search for project updates"
-- ONLY use the generic quick replies provided above
-- Keep your message to 2-3 lines maximum
-
-## Rules
-
-- Only suggest these tools: ${buildToolNamesList()}
-- After tasks, end with: :quickReply[Try something else]{message="What else can I try?"} :quickReply[Connect more]{message="What other tools can I connect?"}
+After tasks, end with: :quickReply[Try something else]{message="What else can I try?"} :quickReply[Connect more]{message="What other tools can I connect?"}
 </dust_system>`;
 }
 
