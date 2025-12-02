@@ -174,6 +174,10 @@ function isContentfulEntry(
   );
 }
 
+function isNonNull<T>(value: T | null): value is T {
+  return value !== null;
+}
+
 function contentfulEntryToAuthor(
   entry: Entry<AuthorSkeleton> | undefined
 ): BlogAuthor | null {
@@ -213,10 +217,10 @@ function contentfulEntryToBlogPost(entry: Entry<BlogPageSkeleton>): BlogPost {
   const body = isContentfulDocument(fields.body) ? fields.body : EMPTY_DOCUMENT;
   const image = isContentfulAsset(fields.image) ? fields.image : undefined;
   const authors = Array.isArray(fields.authors)
-    ? (fields.authors
+    ? fields.authors
         .filter(isContentfulEntry)
         .map(contentfulEntryToAuthor)
-        .filter(Boolean) as BlogAuthor[])
+        .filter(isNonNull)
     : [];
 
   return {
