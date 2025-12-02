@@ -224,10 +224,10 @@ export async function decreaseProgrammaticCreditsV2(
     }
     const amountToConsumeInMicroUsd = Math.min(
       remainingAmountMicroUsd,
-      (credit.initialAmountCents - credit.consumedAmountCents) * 10_000
+      credit.initialAmountMicroUsd - credit.consumedAmountMicroUsd
     );
     const result = await credit.consume({
-      amountInCents: Math.ceil(amountToConsumeInMicroUsd / 10_000),
+      amountInMicroUsd: amountToConsumeInMicroUsd,
     });
     if (result.isErr()) {
       logger.error(

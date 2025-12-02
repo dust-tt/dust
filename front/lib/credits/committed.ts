@@ -208,8 +208,8 @@ export async function createEnterpriseCreditPurchase({
 
   const credit = await CreditResource.makeNew(auth, {
     type: "committed",
-    initialAmountCents: amountCents,
-    consumedAmountCents: 0,
+    initialAmountMicroUsd: amountCents * 10_000,
+    consumedAmountMicroUsd: 0,
     discount: discountPercent,
     invoiceOrLineItemId: invoice.id,
   });
@@ -309,8 +309,8 @@ export async function createProCreditPurchase({
 
   await CreditResource.makeNew(auth, {
     type: "committed",
-    initialAmountCents: amountCents,
-    consumedAmountCents: 0,
+    initialAmountMicroUsd: amountCents * 10_000,
+    consumedAmountMicroUsd: 0,
     discount: discountPercent,
     invoiceOrLineItemId: invoice.id,
   });

@@ -40,8 +40,8 @@ async function createPAYGCreditForPeriod({
 
   const credit = await CreditResource.makeNew(auth, {
     type: "payg",
-    initialAmountCents: paygCapCents,
-    consumedAmountCents: 0,
+    initialAmountMicroUsd: paygCapCents * 10_000,
+    consumedAmountMicroUsd: 0,
     discount: discountPercent,
     invoiceOrLineItemId: null,
   });
@@ -286,7 +286,7 @@ export async function invoiceEnterprisePAYGCredits({
     `[Credit PAYG] No PAYG credit found for period ${previousPeriodStartDate.toISOString()} - ${previousPeriodEndDate.toISOString()} in workspace ${workspace.sId}`
   );
 
-  if (paygCredit.consumedAmountCents === 0) {
+  if (paygCredit.consumedAmountMicroUsd === 0) {
     logger.info(
       {
         workspaceId: workspace.sId,
@@ -306,7 +306,7 @@ export async function invoiceEnterprisePAYGCredits({
     {
       workspaceId: workspace.sId,
       creditId: paygCredit.id,
-      consumedAmountCents: paygCredit.consumedAmountCents,
+      consumedAmountMicroUsd: paygCredit.consumedAmountMicroUsd,
       discountPercent,
       periodStart: previousPeriodStartDate.toISOString(),
       periodEnd: previousPeriodEndDate.toISOString(),
@@ -316,7 +316,7 @@ export async function invoiceEnterprisePAYGCredits({
 
   const invoiceResult = await makeAndFinalizeCreditsPAYGInvoice({
     stripeSubscription,
-    amountCents: paygCredit.consumedAmountCents,
+    amountCents: Math.ceil(paygCredit.consumedAmountMicroUsd / 10_000),
     periodStartSeconds: previousPeriodStartSeconds,
     periodEndSeconds: previousPeriodEndSeconds,
     idempotencyKey,

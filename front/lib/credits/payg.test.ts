@@ -86,15 +86,15 @@ describe("PAYG Credits Database Tests", () => {
 
       const credit1 = await CreditResource.makeNew(auth, {
         type: "payg",
-        initialAmountCents: 1000,
-        consumedAmountCents: 0,
+        initialAmountMicroUsd: 100_000_000,
+        consumedAmountMicroUsd: 0,
       });
       await credit1.start(startDate, expirationDate);
 
       const credit2 = await CreditResource.makeNew(auth, {
         type: "payg",
-        initialAmountCents: 2000,
-        consumedAmountCents: 0,
+        initialAmountMicroUsd: 200_000_000,
+        consumedAmountMicroUsd: 0,
       });
 
       await expect(credit2.start(startDate, expirationDate)).rejects.toThrow(
@@ -112,8 +112,8 @@ describe("PAYG Credits Database Tests", () => {
 
       const credit = await CreditResource.makeNew(auth, {
         type: "payg",
-        initialAmountCents: 1000,
-        consumedAmountCents: 0,
+        initialAmountMicroUsd: 100_000_000,
+        consumedAmountMicroUsd: 0,
       });
       await credit.start(startDate, expirationDate);
 

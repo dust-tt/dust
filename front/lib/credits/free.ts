@@ -57,7 +57,7 @@ function isTrialingOrNewCustomer(
  * - Next 50 users (51-100): $1 each
  * - Cap at 100 users
  */
-export function calculateFreeCreditAmount(userCount: number): number {
+export function calculateFreeCreditAmountCents(userCount: number): number {
   const usersInBracket1 = Math.min(BRACKET_1_USERS, userCount);
   const usersInBracket2 = Math.min(
     BRACKET_2_USERS,
@@ -181,31 +181,31 @@ export async function grantFreeCreditsOnSubscriptionRenewal({
     "[Free Credits] Processing free credit grant on subscription renewal"
   );
 
-  let creditAmountCents: number;
+  let creditAmountMicroUsd: number;
 
   const programmaticConfig =
     await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
 
   if (programmaticConfig && programmaticConfig.freeCreditCents !== null) {
-    creditAmountCents = programmaticConfig.freeCreditCents;
+    creditAmountMicroUsd = programmaticConfig.freeCreditCents * 10_000;
     logger.info(
       {
         workspaceId: workspaceSId,
-        creditAmountCents,
+        creditAmountMicroUsd,
       },
       "[Free Credits] Using ProgrammaticUsageConfiguration override amount"
     );
   } else {
     if (customerStatus === "trialing") {
-      creditAmountCents = TRIAL_CREDIT_CENTS;
+      creditAmountMicroUsd = TRIAL_CREDIT_CENTS * 10_000;
     } else {
       const userCount = await countEligibleUsersForFreeCredits(workspace);
-      creditAmountCents = calculateFreeCreditAmount(userCount);
+      creditAmountMicroUsd = calculateFreeCreditAmountCents(userCount) * 10_000;
       logger.info(
         {
           workspaceId: workspaceSId,
           userCount,
-          creditAmountCents,
+          creditAmountMicroUsd,
           customerStatus,
         },
         "[Free Credits] Calculated credit amount using brackets system"
@@ -213,7 +213,7 @@ export async function grantFreeCreditsOnSubscriptionRenewal({
     }
 
     assert(
-      creditAmountCents > 0,
+      creditAmountMicroUsd > 0,
       "Unexpected programmatic usage free credit amount equal to zero"
     );
   }
@@ -224,7 +224,7 @@ export async function grantFreeCreditsOnSubscriptionRenewal({
     logger.info(
       {
         workspaceId: workspaceSId,
-        creditAmountCents,
+        creditAmountMicroUsd,
         expirationDate,
       },
       "[Free Credits] PPUL flag OFF - stopping here."
@@ -233,8 +233,8 @@ export async function grantFreeCreditsOnSubscriptionRenewal({
   }
   const credit = await CreditResource.makeNew(auth, {
     type: "free",
-    initialAmountCents: creditAmountCents,
-    consumedAmountCents: 0,
+    initialAmountMicroUsd: creditAmountMicroUsd,
+    consumedAmountMicroUsd: 0,
     discount: null,
     invoiceOrLineItemId: idempotencyKey,
   });
@@ -243,7 +243,7 @@ export async function grantFreeCreditsOnSubscriptionRenewal({
     {
       workspaceId: workspaceSId,
       creditId: credit.id,
-      creditAmountCents,
+      creditAmountMicroUsd,
       expirationDate,
     },
     "[Free Credits] Created credit, now starting"
@@ -269,7 +269,7 @@ export async function grantFreeCreditsOnSubscriptionRenewal({
     {
       workspaceId: workspaceSId,
       creditId: credit.id,
-      creditAmountCents,
+      creditAmountMicroUsd,
       expirationDate,
     },
     "[Free Credits] Successfully granted and activated free credit on renewal"

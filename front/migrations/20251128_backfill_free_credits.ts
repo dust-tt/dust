@@ -78,8 +78,8 @@ async function addCreditToWorkspace(
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
   const credit = await CreditResource.makeNew(auth, {
     type: "free",
-    initialAmountCents: amountCents,
-    consumedAmountCents: 0,
+    initialAmountMicroUsd: amountCents * 10_000,
+    consumedAmountMicroUsd: 0,
     discount: null,
     invoiceOrLineItemId: idempotencyKey,
   });
@@ -176,7 +176,7 @@ async function removeFreeCredits(
         creditId: credit.id,
         workspaceId: credit.workspaceId,
         expirationDate: credit.expirationDate?.toISOString(),
-        amountCents: credit.initialAmountCents,
+        amountMicroUsd: credit.initialAmountMicroUsd,
       },
       "Credit to remove"
     );

@@ -159,13 +159,13 @@ describe("decreaseProgrammaticCreditsV2", () => {
 
   async function createCredit(
     type: "free" | "payg" | "committed",
-    initialAmountCents: number,
+    initialAmountMicroUsd: number,
     expirationDate: Date
   ): Promise<CreditResource> {
     const credit = await CreditResource.makeNew(auth, {
       type,
-      initialAmountCents,
-      consumedAmountCents: 0,
+      initialAmountMicroUsd,
+      consumedAmountMicroUsd: 0,
     });
     // Use a start date clearly in the past to avoid timing issues
     const startDate = new Date(Date.now() - 1000);
@@ -197,7 +197,7 @@ describe("decreaseProgrammaticCreditsV2", () => {
       await decreaseProgrammaticCreditsV2(auth, { amountMicroUsd: 3000000 });
 
       const refreshed = await refreshCredit(credit);
-      expect(refreshed.consumedAmountCents).toBe(300);
+      expect(refreshed.consumedAmountMicroUsd).toBe(30000000);
     });
 
     it("should fully consume a credit and stop", async () => {
@@ -210,7 +210,7 @@ describe("decreaseProgrammaticCreditsV2", () => {
       await decreaseProgrammaticCreditsV2(auth, { amountMicroUsd: 10000000 });
 
       const refreshed = await refreshCredit(credit);
-      expect(refreshed.consumedAmountCents).toBe(500);
+      expect(refreshed.consumedAmountMicroUsd).toBe(100000000);
     });
 
     it("should not throw when no credits are available", async () => {
@@ -228,7 +228,7 @@ describe("decreaseProgrammaticCreditsV2", () => {
       await decreaseProgrammaticCreditsV2(auth, { amountMicroUsd: 0 });
 
       const refreshed = await refreshCredit(credit);
-      expect(refreshed.consumedAmountCents).toBe(0);
+      expect(refreshed.consumedAmountMicroUsd).toBe(0);
     });
   });
 
@@ -250,8 +250,8 @@ describe("decreaseProgrammaticCreditsV2", () => {
       const refreshedFree = await refreshCredit(freeCredit);
       const refreshedPayg = await refreshCredit(paygCredit);
 
-      expect(refreshedFree.consumedAmountCents).toBe(300);
-      expect(refreshedPayg.consumedAmountCents).toBe(0);
+      expect(refreshedFree.consumedAmountMicroUsd).toBe(30000000);
+      expect(refreshedPayg.consumedAmountMicroUsd).toBe(0);
     });
 
     it("should consume committed credits before payg", async () => {
@@ -271,8 +271,8 @@ describe("decreaseProgrammaticCreditsV2", () => {
       const refreshedCommitted = await refreshCredit(committedCredit);
       const refreshedPayg = await refreshCredit(paygCredit);
 
-      expect(refreshedCommitted.consumedAmountCents).toBe(300);
-      expect(refreshedPayg.consumedAmountCents).toBe(0);
+      expect(refreshedCommitted.consumedAmountMicroUsd).toBe(30000000);
+      expect(refreshedPayg.consumedAmountMicroUsd).toBe(0);
     });
 
     it("should consume in order: free -> committed -> payg", async () => {
@@ -302,9 +302,9 @@ describe("decreaseProgrammaticCreditsV2", () => {
       const refreshedCommitted = await refreshCredit(committedCredit);
       const refreshedPayg = await refreshCredit(paygCredit);
 
-      expect(refreshedFree.consumedAmountCents).toBe(200);
-      expect(refreshedCommitted.consumedAmountCents).toBe(200);
-      expect(refreshedPayg.consumedAmountCents).toBe(100);
+      expect(refreshedFree.consumedAmountMicroUsd).toBe(20000000);
+      expect(refreshedCommitted.consumedAmountMicroUsd).toBe(20000000);
+      expect(refreshedPayg.consumedAmountMicroUsd).toBe(10000000);
     });
   });
 
@@ -326,8 +326,8 @@ describe("decreaseProgrammaticCreditsV2", () => {
       const refreshedEarlier = await refreshCredit(earlierCredit);
       const refreshedLater = await refreshCredit(laterCredit);
 
-      expect(refreshedEarlier.consumedAmountCents).toBe(300);
-      expect(refreshedLater.consumedAmountCents).toBe(0);
+      expect(refreshedEarlier.consumedAmountMicroUsd).toBe(30000000);
+      expect(refreshedLater.consumedAmountMicroUsd).toBe(0);
     });
 
     it("should spill over to later-expiring credits when earlier ones are exhausted", async () => {
@@ -347,8 +347,8 @@ describe("decreaseProgrammaticCreditsV2", () => {
       const refreshedEarlier = await refreshCredit(earlierCredit);
       const refreshedLater = await refreshCredit(laterCredit);
 
-      expect(refreshedEarlier.consumedAmountCents).toBe(200);
-      expect(refreshedLater.consumedAmountCents).toBe(300);
+      expect(refreshedEarlier.consumedAmountMicroUsd).toBe(20000000);
+      expect(refreshedLater.consumedAmountMicroUsd).toBe(30000000);
     });
   });
 
@@ -372,8 +372,8 @@ describe("decreaseProgrammaticCreditsV2", () => {
       const refreshedFree = await refreshCredit(freeCredit);
 
       // Free should be consumed first despite later expiration
-      expect(refreshedFree.consumedAmountCents).toBe(300);
-      expect(refreshedPayg.consumedAmountCents).toBe(0);
+      expect(refreshedFree.consumedAmountMicroUsd).toBe(30000000);
+      expect(refreshedPayg.consumedAmountMicroUsd).toBe(0);
     });
 
     it("should handle complex scenario with multiple credits of each type", async () => {
@@ -417,11 +417,11 @@ describe("decreaseProgrammaticCreditsV2", () => {
       const refreshedPaygEarlier = await refreshCredit(paygEarlier);
       const refreshedPaygLater = await refreshCredit(paygLater);
 
-      expect(refreshedFreeEarlier.consumedAmountCents).toBe(100);
-      expect(refreshedFreeLater.consumedAmountCents).toBe(100);
-      expect(refreshedCommittedEarlier.consumedAmountCents).toBe(100);
-      expect(refreshedPaygEarlier.consumedAmountCents).toBe(50);
-      expect(refreshedPaygLater.consumedAmountCents).toBe(0);
+      expect(refreshedFreeEarlier.consumedAmountMicroUsd).toBe(10000000);
+      expect(refreshedFreeLater.consumedAmountMicroUsd).toBe(10000000);
+      expect(refreshedCommittedEarlier.consumedAmountMicroUsd).toBe(10000000);
+      expect(refreshedPaygEarlier.consumedAmountMicroUsd).toBe(5000000);
+      expect(refreshedPaygLater.consumedAmountMicroUsd).toBe(0);
     });
   });
 });
