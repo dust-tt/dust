@@ -8,6 +8,7 @@ import { BlogBlock } from "@app/components/home/ContentBlocks";
 import { Grid, H1, H2 } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
+import config from "@app/lib/api/config";
 import { getBlogPostBySlug, getRelatedPosts } from "@app/lib/contentful/client";
 import { renderRichTextFromContentful } from "@app/lib/contentful/richTextRenderer";
 import type { BlogPostPageProps } from "@app/lib/contentful/types";
@@ -27,7 +28,7 @@ export const getServerSideProps: GetServerSideProps<BlogPostPageProps> = async (
   const searchParams = new URLSearchParams(context.resolvedUrl.split("?")[1]);
   const preview = searchParams.get("preview");
   const secret = searchParams.get("secret");
-  const previewSecret = process.env.CONTENTFUL_PREVIEW_SECRET;
+  const previewSecret = config.getContentfulPreviewSecret();
   const isPreview =
     preview === "true" && !!previewSecret && secret === previewSecret;
 
