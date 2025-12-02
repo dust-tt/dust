@@ -30,7 +30,7 @@ import {
 import { AgentMessage, Message } from "@app/lib/models/agent/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import type { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
@@ -318,7 +318,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         "status" | "authorizationInfo"
       > = {
         messageId: agentMessage.message.sId,
-        conversationId,
+        conversationId: conversation.sId,
         actionId: this.modelIdToSId({
           id: action.id,
           workspaceId: owner.id,
@@ -338,7 +338,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           logger.warn(
             {
               actionId: action.id,
-              conversationId: conversation.id,
+              conversationId: conversation.sId,
               messageId: agentMessage.message.sId,
               workspaceId: owner.id,
             },
