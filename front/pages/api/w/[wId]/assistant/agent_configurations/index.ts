@@ -92,6 +92,7 @@ async function handler(
         withEditors,
         sort,
       } = queryValidation.right;
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       let viewParam = view ? view : "all";
       // @ts-expect-error: added for backwards compatibility
       viewParam = viewParam === "assistant-search" ? "list" : viewParam;

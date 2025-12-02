@@ -161,6 +161,7 @@ async function handler(
           data: bodyValidation.right.dataset.data,
           schema: bodyValidation.right.schema,
         });
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (e) {
         return apiError(req, res, {
           status_code: 400,
@@ -199,6 +200,7 @@ async function handler(
         });
       }
 
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const description = bodyValidation.right.dataset.description
         ? bodyValidation.right.dataset.description
         : null;

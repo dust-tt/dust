@@ -76,7 +76,7 @@ const memberColumns = [
     id: "name" as const,
     header: "Name",
     cell: (info: Info) => (
-      <DataTable.CellContent avatarUrl={info.row.original.icon}>
+      <DataTable.CellContent avatarUrl={info.row.original.icon} roundedAvatar>
         {info.row.original.name}
         {info.row.original.isCurrentUser && (
           <span className="ml-3 text-muted-foreground">(you)</span>

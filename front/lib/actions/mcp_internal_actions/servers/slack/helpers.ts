@@ -235,6 +235,7 @@ export async function resolveChannelId({
       if (infoResp.ok && infoResp.channel?.id) {
         return infoResp.channel.id;
       }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       // Fall through to name-based search.
     }
@@ -276,6 +277,7 @@ export async function resolveUserDisplayName(
         null
       );
     }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     // Return null if we can't resolve the user.
   }
@@ -312,6 +314,7 @@ export async function resolveChannelDisplayName(
         return `#${channelInfo.channel.name}`;
       }
     }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     // On error, return a fallback value.
     // If it looks like a DM, prefix with @, otherwise with #.
@@ -447,6 +450,7 @@ export async function executePostMessage(
         if (infoResp.ok && infoResp.channel?.id) {
           channelId = infoResp.channel.id;
         }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         // Fall through to list-based search.
       }

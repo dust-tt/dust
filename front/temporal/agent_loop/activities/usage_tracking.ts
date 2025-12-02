@@ -8,7 +8,7 @@ import {
   AgentMessage,
   Message,
   UserMessage,
-} from "@app/lib/models/assistant/conversation";
+} from "@app/lib/models/agent/conversation";
 import type { AgentMessageStatus } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 

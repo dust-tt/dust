@@ -10,7 +10,7 @@ import {
 
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import { Authenticator } from "@app/lib/auth";
-import { Message } from "@app/lib/models/assistant/conversation";
+import { Message } from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -888,7 +888,7 @@ describe("listConversationsForUser", () => {
   it("should return conversations with populated participation data", async () => {
     // First, get the raw participation data from the database to compare
     const { ConversationParticipantModel } = await import(
-      "@app/lib/models/assistant/conversation"
+      "@app/lib/models/agent/conversation"
     );
     const participation = await ConversationParticipantModel.findOne({
       where: {

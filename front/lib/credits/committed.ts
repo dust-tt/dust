@@ -97,11 +97,15 @@ export async function createEnterpriseCreditPurchase({
   stripeSubscriptionId,
   amountCents,
   discountPercent,
+  startDate,
+  expirationDate,
 }: {
   auth: Authenticator;
   stripeSubscriptionId: string;
   amountCents: number;
   discountPercent?: number;
+  startDate?: Date;
+  expirationDate?: Date;
 }): Promise<Result<{ credit: CreditResource; invoiceItemId: string }, Error>> {
   const workspace = auth.getNonNullableWorkspace();
 
@@ -151,12 +155,12 @@ export async function createEnterpriseCreditPurchase({
     type: "committed",
     initialAmountCents: amountCents,
     consumedAmountCents: 0,
-    discount: null,
+    discount: discountPercent,
     invoiceOrLineItemId: invoiceItemId,
   });
 
   // Activate the credit immediately (optimistic activation for Enterprise)
-  const startResult = await credit.start();
+  const startResult = await credit.start(startDate, expirationDate);
 
   if (startResult.isErr()) {
     logger.error(
@@ -188,17 +192,37 @@ export async function createProCreditPurchase({
   auth,
   stripeSubscriptionId,
   amountCents,
+  discountPercent,
 }: {
   auth: Authenticator;
   stripeSubscriptionId: string;
   amountCents: number;
+  discountPercent?: number;
 }): Promise<Result<{ invoiceId: string; paymentUrl: string | null }, Error>> {
   const workspace = auth.getNonNullableWorkspace();
+
+  let couponId;
+  if (discountPercent) {
+    const couponResult = await getCreditPurchaseCouponId(discountPercent);
+    if (couponResult.isErr()) {
+      logger.error(
+        {
+          error: couponResult.error.message,
+          workspaceId: workspace.sId,
+          discountPercent,
+        },
+        "[Credit Purchase] Failed to create or retrieve coupon"
+      );
+      return couponResult;
+    }
+    couponId = couponResult.value;
+  }
 
   // Create and pay one-off invoice
   const invoiceResult = await makeCreditPurchaseInvoice({
     stripeSubscriptionId,
     amountCents,
+    couponId,
   });
 
   if (invoiceResult.isErr()) {
@@ -220,7 +244,7 @@ export async function createProCreditPurchase({
     type: "committed",
     initialAmountCents: amountCents,
     consumedAmountCents: 0,
-    discount: null,
+    discount: discountPercent,
     invoiceOrLineItemId: invoice.id,
   });
 
@@ -244,6 +268,7 @@ export async function createProCreditPurchase({
     {
       workspaceId: workspace.sId,
       amountCents,
+      discountPercent,
       invoiceId: invoice.id,
       requiresAction: paymentUrl !== null,
     },

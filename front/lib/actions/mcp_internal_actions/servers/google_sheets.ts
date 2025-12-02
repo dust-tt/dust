@@ -100,6 +100,7 @@ function createServer(
         } catch (err) {
           return new Err(
             new MCPError(
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               normalizeError(err).message || "Failed to list spreadsheets"
             )
           );
@@ -146,6 +147,7 @@ function createServer(
         } catch (err) {
           return new Err(
             new MCPError(
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               normalizeError(err).message || "Failed to get spreadsheet"
             )
           );
@@ -204,6 +206,7 @@ function createServer(
         } catch (err) {
           return new Err(
             new MCPError(
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               normalizeError(err).message || "Failed to get worksheet data"
             )
           );
@@ -268,6 +271,7 @@ function createServer(
         } catch (err) {
           return new Err(
             new MCPError(
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               normalizeError(err).message || "Failed to update cells"
             )
           );
@@ -343,6 +347,7 @@ function createServer(
           ]);
         } catch (err) {
           return new Err(
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             new MCPError(normalizeError(err).message || "Failed to append data")
           );
         }
@@ -386,6 +391,7 @@ function createServer(
           ]);
         } catch (err) {
           return new Err(
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             new MCPError(normalizeError(err).message || "Failed to clear range")
           );
         }
@@ -438,6 +444,7 @@ function createServer(
         } catch (err) {
           return new Err(
             new MCPError(
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               normalizeError(err).message || "Failed to create spreadsheet"
             )
           );
@@ -501,6 +508,7 @@ function createServer(
         } catch (err) {
           return new Err(
             new MCPError(
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               normalizeError(err).message || "Failed to add worksheet"
             )
           );
@@ -550,6 +558,7 @@ function createServer(
         } catch (err) {
           return new Err(
             new MCPError(
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               normalizeError(err).message || "Failed to delete worksheet"
             )
           );
@@ -650,6 +659,7 @@ function createServer(
         } catch (err) {
           return new Err(
             new MCPError(
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               normalizeError(err).message || "Failed to format cells"
             )
           );
@@ -707,6 +717,7 @@ function createServer(
           ]);
         } catch (err) {
           return new Err(
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             new MCPError(normalizeError(err).message || "Failed to copy sheet")
           );
         }
@@ -760,6 +771,7 @@ function createServer(
         } catch (err) {
           return new Err(
             new MCPError(
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               normalizeError(err).message || "Failed to rename worksheet"
             )
           );
@@ -819,6 +831,7 @@ function createServer(
         } catch (err) {
           return new Err(
             new MCPError(
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               normalizeError(err).message || "Failed to move worksheet"
             )
           );

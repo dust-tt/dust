@@ -115,6 +115,7 @@ export function usePurchaseCredits({ workspaceId }: { workspaceId: string }) {
         if (!response.ok) {
           const errorData = await response.json();
           const errorMessage =
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             errorData.error?.message || "Failed to purchase credits";
 
           sendNotification({

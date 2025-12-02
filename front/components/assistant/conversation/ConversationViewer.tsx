@@ -193,6 +193,7 @@ export const ConversationViewer = ({
 
       const messagesToRender = convertLightMessageTypeToVirtuosoMessages(raw);
 
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setInitialListData(messagesToRender);
     }
   }, [initialListData, messages, setInitialListData, isValidating]);
@@ -321,12 +322,19 @@ export const ConversationViewer = ({
                   }
                   return {
                     conversations: currentData.conversations.map((c) =>
-                      c.sId === conversationId ? { ...c, hasError: false } : c
+                      c.sId === conversationId
+                        ? { ...c, hasError: false, unread: false }
+                        : c
                     ),
                   };
                 },
                 { revalidate: false }
               );
+
+              // Mark as read if the message is not from the current user.
+              if (userMessage.user?.sId !== user.sId) {
+                void debouncedMarkAsRead(conversationId, false);
+              }
             }
             break;
           case "agent_message_new":
@@ -428,6 +436,7 @@ export const ConversationViewer = ({
       mutateConversationParticipants,
       mutateConversations,
       mutateMessages,
+      user.sId,
     ]
   );
 
@@ -490,7 +499,11 @@ export const ConversationViewer = ({
           // +1 per agent message mentioned
           rank += 1;
           placeholderAgentMessages.push(
-            createPlaceholderAgentMessage({ mention, rank })
+            createPlaceholderAgentMessage({
+              userMessage: placeholderUserMsg,
+              mention,
+              rank,
+            })
           );
         }
       }

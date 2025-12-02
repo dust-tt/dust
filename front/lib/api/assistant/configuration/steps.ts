@@ -1,4 +1,4 @@
-import type { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
+import type { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 
 export function getMaximalVersionAgentStepContent(
   agentStepContents: AgentStepContentModel[]

@@ -47,6 +47,7 @@ function useBlockedActionsQueue({
 
   useEffect(() => {
     if (conversationId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setBlockedActionsQueue(
         blockedActions.flatMap((action): BlockedActionQueueItem[] => {
           if (action.status === "blocked_child_action_input_required") {
@@ -257,6 +258,7 @@ export function BlockedActionsProvider({
   // Opens the dialog when there are new pending validations
   useEffect(() => {
     if (pendingValidations.length > 0 && !isDialogOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCurrentValidationIndex(0);
       setIsDialogOpen(true);
     }
@@ -265,6 +267,7 @@ export function BlockedActionsProvider({
   // Close the dialog when there are no more blocked actions
   useEffect(() => {
     if (blockedActionsQueue.length === 0 && isDialogOpen && !isValidating) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsDialogOpen(false);
       setCurrentValidationIndex(0);
     }

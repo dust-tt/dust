@@ -4,10 +4,7 @@ import { isInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/c
 import { postUserMessage } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
-import {
-  buildOnboardingFollowUpPrompt,
-  buildOnboardingSkippedPrompt,
-} from "@app/lib/api/assistant/onboarding";
+import { buildOnboardingFollowUpPrompt } from "@app/lib/api/assistant/onboarding";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
@@ -48,7 +45,7 @@ async function handler(
     });
   }
 
-  const { toolId, action } = req.body;
+  const { toolId } = req.body;
 
   if (!isString(toolId) || !isInternalMCPServerName(toolId)) {
     return apiError(req, res, {
@@ -56,17 +53,6 @@ async function handler(
       api_error: {
         type: "invalid_request_error",
         message: "Invalid request body, `toolId` (valid tool id) is required.",
-      },
-    });
-  }
-
-  if (!isString(action) || !["completed", "skipped"].includes(action)) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message:
-          "Invalid request body, `action` must be 'completed' or 'skipped'.",
       },
     });
   }
@@ -79,10 +65,7 @@ async function handler(
 
   const conversation = conversationRes.value;
 
-  const followUpPrompt =
-    action === "skipped"
-      ? buildOnboardingSkippedPrompt()
-      : buildOnboardingFollowUpPrompt(toolId);
+  const followUpPrompt = buildOnboardingFollowUpPrompt(toolId);
 
   const messageRes = await postUserMessage(auth, {
     conversation,

@@ -1,4 +1,4 @@
-import { Button, Checkbox } from "@dust-tt/sparkle";
+import { Button, Checkbox, SliderToggle } from "@dust-tt/sparkle";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
 import type * as t from "io-ts";
 import { useMemo, useState } from "react";
@@ -86,6 +86,13 @@ export function PluginForm({
                     .map((v) => v.value)
                 : arg.values.filter((v) => v.checked).map((v) => v.value),
             ];
+          case "date":
+            return [
+              key,
+              arg.async && asyncArgs?.[key] !== undefined
+                ? (asyncArgs[key] as string)
+                : "",
+            ];
           default:
             return [key, null];
         }
@@ -96,6 +103,26 @@ export function PluginForm({
   const form = useForm({
     resolver: argsCodec ? ioTsResolver(argsCodec) : undefined,
     defaultValues,
+  });
+
+  const dependencyFields = useMemo(() => {
+    if (!manifest) {
+      return [];
+    }
+    return [
+      ...new Set(
+        Object.values(manifest.args)
+          .filter((arg) => arg.dependsOn)
+          .map((arg) => arg.dependsOn!.field)
+      ),
+    ];
+  }, [manifest]);
+
+  const watchedValuesArray = form.watch(dependencyFields);
+
+  const watchedValues: Record<string, unknown> = {};
+  dependencyFields.forEach((field, index) => {
+    watchedValues[field] = watchedValuesArray[index];
   });
 
   async function handleSubmit(values: FormValues<typeof argsCodec>) {
@@ -116,8 +143,17 @@ export function PluginForm({
         className="max-w-[600px] space-y-8"
       >
         {Object.entries(manifest.args).map(([key, arg]) => {
+          const isDependentFieldHidden =
+            arg.dependsOn &&
+            watchedValues[arg.dependsOn.field] !== arg.dependsOn.value;
+
+          if (isDependentFieldHidden) {
+            return null;
+          }
+
           let defaultValue = undefined;
           let options = undefined;
+
           if (arg.type === "enum") {
             options =
               arg.async && asyncArgs?.[key]
@@ -125,6 +161,11 @@ export function PluginForm({
                 : arg.values;
             defaultValue = options.filter((v) => v.checked).map((v) => v.value);
           }
+          const fieldDescription =
+            arg.asyncDescription &&
+            asyncArgs?.[`${key}_description`] !== undefined
+              ? String(asyncArgs[`${key}_description`])
+              : arg.description;
 
           return (
             <PokeFormField
@@ -156,12 +197,21 @@ export function PluginForm({
                             }
                           />
                         )}
-                        {arg.type === "boolean" && (
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
+                        {arg.type === "boolean" && arg.variant === "toggle" && (
+                          <SliderToggle
+                            selected={field.value}
+                            onClick={() => field.onChange(!field.value)}
+                            disabled={field.disabled}
                           />
                         )}
+                        {arg.type === "boolean" &&
+                          (arg.variant === "checkbox" ||
+                            arg.variant === undefined) && (
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          )}
                         {arg.type === "enum" && (
                           <EnumSelect
                             label={arg.label}
@@ -175,11 +225,16 @@ export function PluginForm({
                         {arg.type === "file" && (
                           <PokeFormUpload type="file" {...field} />
                         )}
+                        {arg.type === "date" && (
+                          <PokeFormInput type="date" {...field} />
+                        )}
                       </>
                     </PokeFormControl>
                   </div>
-                  {arg.description && (
-                    <PokeFormDescription>{arg.description}</PokeFormDescription>
+                  {fieldDescription && (
+                    <PokeFormDescription>
+                      {fieldDescription}
+                    </PokeFormDescription>
                   )}
                   <PokeFormMessage />
                 </PokeFormItem>

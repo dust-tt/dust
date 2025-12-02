@@ -1,0 +1,60 @@
+{
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true,
+    "defaultBranch": "main"
+  },
+  "files": {
+    "ignoreUnknown": true,
+    "includes": [
+      "**/*.{js,jsx,ts,tsx}",
+      "!!**/.next",
+      "!!**/node_modules",
+      "!!**/workers-build",
+      "!!**/dist",
+      "!!**/build",
+      "!!**/coverage",
+      "!!**/migrations",
+      "!!**/mailing",
+      "!**/*.css",
+      "!**/*.scss",
+      "!**/*.less",
+      "!**/*.json",
+      "!**/*.md",
+      "!**/*.yml",
+      "!**/*.yaml",
+      "!**/*.sh",
+      "!**/*.sql"
+    ]
+  },
+  "linter": {
+    "rules": {
+      "recommended": false,
+      "a11y": {
+        "recommended": false
+      },
+      "complexity": {
+        "recommended": false
+      },
+      "correctness": {
+        "recommended": false
+      },
+      "performance": {
+        "recommended": false
+      },
+      "security": {
+        "recommended": false
+      },
+      "style": {
+        "recommended": false
+      },
+      "suspicious": {
+        "recommended": false
+      },
+      "nursery": {
+        "noImportCycles": "error"
+      }
+    }
+  }
+}

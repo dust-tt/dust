@@ -81,9 +81,13 @@ const ScrollArea = React.forwardRef<
         >
           {children}
         </ScrollAreaPrimitive.Viewport>
-        {!shouldHideDefaultScrollBar && (
-          <ScrollBar orientation={orientation} className={scrollBarClassName} />
-        )}
+        <ScrollBar
+          orientation={orientation}
+          className={cn(
+            scrollBarClassName,
+            shouldHideDefaultScrollBar && "s-hidden"
+          )}
+        />
         <ScrollAreaPrimitive.Corner />
       </ScrollAreaPrimitive.Root>
     );

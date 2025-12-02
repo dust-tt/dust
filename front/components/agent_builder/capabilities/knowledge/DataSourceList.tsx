@@ -1,5 +1,5 @@
 import { Checkbox, cn, Icon, Separator, Spinner } from "@dust-tt/sparkle";
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 import {
   Fragment,
   useCallback,
@@ -28,7 +28,7 @@ import { isRemoteDatabase } from "@app/lib/data_sources";
 export interface DataSourceListItem {
   id: string;
   title: string;
-  icon?: React.ComponentType;
+  icon?: ComponentType;
   entry: NavigationHistoryEntryType;
   onClick?: () => void;
 }

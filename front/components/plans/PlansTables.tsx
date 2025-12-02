@@ -346,7 +346,7 @@ export function BusinessPriceTable({
         onClose={() => setIsFairUseModalOpened(false)}
       />
       <PriceTable
-        title="Business"
+        title="Enterprise (Seat-based)"
         price={price}
         color="blue"
         priceLabel="/ month / user, excl. tax."
@@ -426,6 +426,7 @@ function EnterprisePriceTable({
 }
 
 interface PricePlanProps {
+  owner?: WorkspaceType;
   plan?: PlanType;
   onClickProPlan?: () => void;
   isProcessing?: boolean;
@@ -434,6 +435,7 @@ interface PricePlanProps {
 }
 
 export function PricePlans({
+  owner,
   flexCSS = "mx-4 flex flex-row w-full md:-mx-12 md:gap-4 lg:gap-6 xl:mx-0 xl:gap-8 2xl:gap-10",
   plan,
   onClickProPlan,
@@ -461,6 +463,7 @@ export function PricePlans({
           <div className="mt-8">
             <TabsContent value="pro">
               <ProPriceTable
+                owner={owner}
                 display={display}
                 size="xs"
                 plan={plan}
@@ -478,6 +481,7 @@ export function PricePlans({
       {/* Cards view for larger screens (hidden below lg) */}
       <div className={classNames(flexCSS, "hidden lg:flex")}>
         <ProPriceTable
+          owner={owner}
           size="sm"
           plan={plan}
           isProcessing={isProcessing}

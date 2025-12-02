@@ -19,7 +19,7 @@ import {
   uploadBase64ImageToFileStorage,
 } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
+import type { AgentMCPActionOutputItem } from "@app/lib/models/agent/actions/mcp";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import type {
@@ -90,8 +90,10 @@ export function rewriteContentForModel(
     const xml = renderAttachmentXml({ attachment });
     let text = content.resource.text;
     if (text) {
+      // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
       text += `\n`;
     }
+    // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
     text += xml;
     return {
       type: "text",

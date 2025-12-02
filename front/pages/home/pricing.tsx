@@ -1,4 +1,5 @@
 import { Button, RocketIcon } from "@dust-tt/sparkle";
+import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 import React from "react";
 
@@ -6,6 +7,7 @@ import { HeaderContentBlock } from "@app/components/home/ContentBlocks";
 import { Grid } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
+import { PageMetadata } from "@app/components/home/PageMetadata";
 import { PricePlans } from "@app/components/plans/PlansTables";
 import {
   trackEvent,
@@ -23,8 +25,15 @@ export async function getStaticProps() {
 }
 
 export default function Pricing() {
+  const router = useRouter();
+
   return (
     <>
+      <PageMetadata
+        title="Dust Pricing: Pro and Enterprise Plans for AI Agents"
+        description="Explore Dust pricing plans. Pro for small teams and startups, Enterprise for 100+ members with multiple workspaces and SSO. Start with a 15-day free trial."
+        pathname={router.asPath}
+      />
       <HeaderContentBlock
         title="Meet our pricing plans"
         hasCTA={false}
@@ -43,6 +52,7 @@ export default function Pricing() {
                 TRACKING_AREAS.PRICING,
                 "hero_start_trial",
                 () => {
+                  // eslint-disable-next-line react-hooks/immutability
                   window.location.href = "/api/workos/login?screenHint=sign-up";
                 }
               )}

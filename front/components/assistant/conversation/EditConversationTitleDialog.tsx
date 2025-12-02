@@ -62,6 +62,7 @@ export const EditConversationTitleDialog = ({
       );
       void mutate(`/api/w/${ownerId}/assistant/conversations`);
       sendNotification({ type: "success", title: "Title edited" });
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
       sendNotification({ type: "error", title: "Failed to edit title" });
     }

@@ -35,6 +35,7 @@ export function CreateConnectionOAuthModal({
 
   useEffect(() => {
     if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsLoading(false);
       // Clean-up extraConfig at mount since the component is reused across providers.
       setExtraConfig({});

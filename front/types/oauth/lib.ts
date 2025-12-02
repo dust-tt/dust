@@ -276,6 +276,7 @@ export type OAuthConnectionType = {
   metadata: Record<string, string>;
   provider: OAuthProvider;
   status: "pending" | "finalized";
+  related_credential_id?: string | null;
 };
 
 export function isOAuthConnectionType(

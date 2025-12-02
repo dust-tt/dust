@@ -1,12 +1,8 @@
 import { useController } from "react-hook-form";
 
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
-import { dataSourceConfigurationSchema } from "@app/components/agent_builder/types";
-import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import type { AssistantTemplateListType } from "@app/pages/api/templates";
-import type { Result, TemplateTagCodeType } from "@app/types";
-import { Err, Ok } from "@app/types";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { TemplateTagCodeType } from "@app/types";
 
 export const isInvalidJson = (value: string | null | undefined): boolean => {
   if (!value) {
@@ -26,17 +22,6 @@ export function getUniqueTemplateTags(
   return Array.from(
     new Set(templates.flatMap((template) => template.tags))
   ).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
-}
-
-export function validateDataSourceConfiguration(
-  config: unknown
-): Result<DataSourceConfiguration, Error> {
-  try {
-    const validated = dataSourceConfigurationSchema.parse(config);
-    return new Ok(validated);
-  } catch (error) {
-    return new Err(normalizeError(error));
-  }
 }
 
 /**

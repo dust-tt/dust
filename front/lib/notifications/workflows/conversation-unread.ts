@@ -397,6 +397,7 @@ export const triggerConversationUnreadNotifications = async (
         });
       }
       return new Ok(undefined);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       return new Err({
         name: "dust_error",

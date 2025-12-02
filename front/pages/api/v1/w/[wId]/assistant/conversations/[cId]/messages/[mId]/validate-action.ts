@@ -2,11 +2,10 @@ import type { ValidateActionResponseType } from "@dust-tt/client";
 import { ValidateActionRequestBodySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { validateAction } from "@app/lib/api/assistant/conversation/validate_actions";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
@@ -77,6 +76,7 @@ import type { WithAPIErrorResponse } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
+  // eslint-disable-next-line dust/enforce-client-types-in-public-api
   res: NextApiResponse<WithAPIErrorResponse<ValidateActionResponseType>>,
   auth: Authenticator
 ): Promise<void> {
@@ -113,14 +113,21 @@ async function handler(
     });
   }
 
-  const conversationRes = await getConversation(auth, cId);
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(req, res, conversationRes.error);
+  const conversation = await ConversationResource.fetchById(auth, cId);
+
+  if (!conversation) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "conversation_not_found",
+        message: "Conversation not found.",
+      },
+    });
   }
 
   const { actionId, approved } = parseResult.data;
 
-  const result = await validateAction(auth, conversationRes.value, {
+  const result = await validateAction(auth, conversation.toJSON(), {
     actionId,
     approvalState: approved,
     messageId: mId,

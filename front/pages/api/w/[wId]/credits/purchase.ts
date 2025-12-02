@@ -14,6 +14,7 @@ import {
   getStripeSubscription,
   isEnterpriseSubscription,
 } from "@app/lib/plans/stripe";
+import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -124,11 +125,21 @@ async function handler(
       const amountCents = Math.round(amountDollars * 100);
       const isEnterprise = isEnterpriseSubscription(stripeSubscription);
 
+      // Fetch discount from programmatic usage configuration.
+      const programmaticConfig =
+        await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
+      const discountPercent =
+        programmaticConfig?.defaultDiscountPercent &&
+        programmaticConfig.defaultDiscountPercent > 0
+          ? programmaticConfig.defaultDiscountPercent
+          : undefined;
+
       if (isEnterprise) {
         const result = await createEnterpriseCreditPurchase({
           auth,
           stripeSubscriptionId: subscription.stripeSubscriptionId,
           amountCents,
+          discountPercent,
         });
 
         if (result.isErr()) {
@@ -152,6 +163,7 @@ async function handler(
         auth,
         stripeSubscriptionId: subscription.stripeSubscriptionId,
         amountCents,
+        discountPercent,
       });
 
       if (result.isErr()) {

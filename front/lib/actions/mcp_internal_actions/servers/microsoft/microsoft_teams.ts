@@ -67,6 +67,7 @@ function createServer(
         } catch (err) {
           return new Err(
             new MCPError(
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               normalizeError(err).message || "Failed to search Teams messages"
             )
           );
@@ -101,6 +102,7 @@ function createServer(
           ]);
         } catch (err) {
           return new Err(
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             new MCPError(normalizeError(err).message || "Failed to list teams")
           );
         }
@@ -145,6 +147,7 @@ function createServer(
           ]);
         } catch (err) {
           return new Err(
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             new MCPError(normalizeError(err).message || "Failed to list users")
           );
         }
@@ -185,6 +188,7 @@ function createServer(
         } catch (err) {
           return new Err(
             new MCPError(
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               normalizeError(err).message || "Failed to list public channels"
             )
           );
@@ -243,6 +247,7 @@ function createServer(
           ]);
         } catch (err) {
           return new Err(
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             new MCPError(normalizeError(err).message || "Failed to list chats")
           );
         }
@@ -336,6 +341,7 @@ function createServer(
         } catch (err) {
           return new Err(
             new MCPError(
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               normalizeError(err).message || "Failed to list threads"
             )
           );
@@ -474,6 +480,7 @@ function createServer(
                           .get();
 
                     // Check chats in the current page
+                    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                     for (const chat of chatsResponse.value || []) {
                       const chatMemberIds = chat.members
                         .map((member: { userId: string }) => member.userId)
@@ -578,6 +585,7 @@ function createServer(
         } catch (err) {
           return new Err(
             new MCPError(
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               normalizeError(err).message || "Failed to post message"
             )
           );

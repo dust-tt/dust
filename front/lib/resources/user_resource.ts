@@ -16,14 +16,15 @@ import {
   UserModel,
 } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { searchUsers } from "@app/lib/user_search/search";
+import logger from "@app/logger/logger";
+import { statsDClient } from "@app/logger/statsDClient";
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
 import type { LightWorkspaceType, ModelId, Result, UserType } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 import type { UserSearchDocument } from "@app/types/user_search/user_search";
 
 export interface SearchMembersPaginationParams {
-  orderColumn: "name";
-  orderDirection: "asc" | "desc";
   offset: number;
   limit: number;
 }
@@ -195,6 +196,92 @@ export class UserResource extends BaseResource<UserModel> {
     return users.map((user) => new UserResource(UserModel, user.get()));
   }
 
+  static async searchUsers(
+    auth: Authenticator,
+    {
+      searchTerm,
+      offset,
+      limit,
+    }: {
+      searchTerm: string;
+      offset: number;
+      limit: number;
+    }
+  ): Promise<Result<{ users: UserResource[]; total: number }, Error>> {
+    const owner = auth.getNonNullableWorkspace();
+
+    // Search users in Elasticsearch
+    const searchResult = await searchUsers({
+      owner,
+      searchTerm,
+      offset,
+      limit,
+    });
+    if (searchResult.isErr()) {
+      return searchResult;
+    }
+
+    const { users: userDocs, total } = searchResult.value;
+    const userIds = userDocs.map((doc) => doc.user_id);
+
+    if (userIds.length === 0) {
+      return new Ok({ users: [], total: 0 });
+    }
+
+    // Note that UserResource has stored sIds, not generated ones.
+    const users = await UserModel.findAll({
+      where: {
+        sId: { [Op.in]: userIds },
+      },
+      include: [
+        {
+          model: MembershipModel,
+          as: "memberships",
+          required: true, // INNER JOIN
+          where: {
+            workspaceId: owner.id,
+            startAt: { [Op.lte]: new Date() },
+            endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }] },
+          },
+        },
+      ],
+    });
+
+    // Check if we found fewer users than expected (means some were revoked)
+    if (users.length < userIds.length) {
+      const foundUserIds = new Set(users.map((u) => u.sId));
+      const missingUserIds = userIds.filter((sId) => !foundUserIds.has(sId));
+
+      statsDClient.increment("user_search.revoked_users_in_results.count", 1);
+
+      logger.error(
+        {
+          workspaceId: owner.sId,
+          missingUserSIds: missingUserIds,
+          owner: "spolu",
+        },
+        // This log is expected as user search queries may happen before the index update completes
+        // (temporal workflow + ES indexing asynchronously). We keep it to ensure that volume stays
+        // flat. An increase would indicate a synchronization problem.
+        "[user_search] Found revoked users in search results"
+      );
+    }
+
+    // Create a map to maintain the order from Elasticsearch results
+    const userResourceMap = new Map<string, UserResource>();
+    users.forEach((u) => {
+      const userBlob = u.get();
+      userResourceMap.set(u.sId, new UserResource(UserModel, userBlob));
+    });
+
+    // Return users in the order from Elasticsearch results
+    const orderedUsers = userIds
+      .map((sId) => userResourceMap.get(sId))
+      .filter((user): user is UserResource => user !== undefined);
+
+    return new Ok({ users: orderedUsers, total });
+  }
+
   static async listUsersWithEmailPredicat(
     owner: LightWorkspaceType,
     options: {
@@ -241,9 +328,14 @@ export class UserResource extends BaseResource<UserModel> {
           },
         },
       ],
-      order: [[paginationParams.orderColumn, paginationParams.orderDirection]],
       limit: paginationParams.limit,
       offset: paginationParams.offset,
+    });
+
+    users.sort((a, b) => {
+      const nameA = `${a.firstName} ${a.lastName}`.toLowerCase();
+      const nameB = `${b.firstName} ${b.lastName}`.toLowerCase();
+      return nameA.localeCompare(nameB);
     });
 
     return {

@@ -86,6 +86,7 @@ async function handler(
         });
       }
 
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const description = req.body.description ? req.body.description : null;
 
       const app = await AppResource.makeNew(

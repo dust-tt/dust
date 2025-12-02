@@ -195,6 +195,7 @@ export const MultipleDocumentsUpload = ({
       const ref = fileInputRef.current;
       ref?.click();
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setWasOpened(isOpen);
   }, [handleFileInputBlur, isOpen, wasOpened]);
 

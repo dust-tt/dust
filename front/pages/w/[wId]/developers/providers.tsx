@@ -99,6 +99,7 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
       : false;
 
   const configForSelected =
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     (selectedProviderId && configs[selectedProviderId]) || {};
 
   return (

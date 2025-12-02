@@ -1,9 +1,11 @@
+import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
 import { HeaderContentBlock } from "@app/components/home/ContentBlocks";
 import HubSpotForm from "@app/components/home/HubSpotForm";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
+import { PageMetadata } from "@app/components/home/PageMetadata";
 import TrustedBy from "@app/components/home/TrustedBy";
 import UTMPageWrapper from "@app/components/UTMPageWrapper";
 
@@ -16,8 +18,15 @@ export async function getStaticProps() {
 }
 
 export default function Contact() {
+  const router = useRouter();
+
   return (
     <UTMPageWrapper>
+      <PageMetadata
+        title="Contact Dust: Schedule a Demo for AI Agents"
+        description="Get in touch with the Dust team. Schedule a demo call to learn how AI agents can help address your team's challenges and improve productivity."
+        pathname={router.asPath}
+      />
       <div className="flex w-full flex-col justify-center gap-12">
         <HeaderContentBlock
           title="Contact Dust"

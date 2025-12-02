@@ -60,6 +60,7 @@ export function AttachmentCitation({
   const canOpenInDialog =
     attachmentCitation.type === "file" &&
     getFileFormat(attachmentCitation.contentType)?.isSafeToDisplay &&
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     (isTextualContentType(attachmentCitation) ||
       isAudioContentType(attachmentCitation));
 

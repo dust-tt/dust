@@ -108,6 +108,7 @@ export default function Analytics({
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       alert("Failed to download activity data.");
     } finally {

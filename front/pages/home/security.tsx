@@ -1,4 +1,5 @@
 import { ArrowRightIcon, Button, Div3D, Hover3D } from "@dust-tt/sparkle";
+import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
 import {
@@ -11,6 +12,7 @@ import {
 } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
+import { PageMetadata } from "@app/components/home/PageMetadata";
 import { classNames } from "@app/lib/utils";
 
 export async function getStaticProps() {
@@ -81,8 +83,15 @@ const MainVisualUsers = () => (
 );
 
 export default function Security() {
+  const router = useRouter();
+
   return (
     <>
+      <PageMetadata
+        title="Dust Security: Enterprise-Grade Data Protection"
+        description="GDPR compliant, SOC2 Type II certified, HIPAA-ready. Dust prioritizes your data security with encryption, regional hosting, role-based access, and zero model training."
+        pathname={router.asPath}
+      />
       <div className="container flex w-full flex-col gap-4 px-6 md:gap-0">
         <Grid>
           <div

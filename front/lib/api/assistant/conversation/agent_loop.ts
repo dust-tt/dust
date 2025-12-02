@@ -2,13 +2,11 @@ import assert from "assert";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type {
   AgentMessageType,
   ConversationWithoutContentType,
-  ModelId,
   UserMessageType,
 } from "@app/types";
 
@@ -18,28 +16,17 @@ const MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE = 10;
 export const runAgentLoopWorkflow = async ({
   auth,
   agentMessages,
-  agentMessageRowById,
   conversation,
   userMessage,
 }: {
   auth: Authenticator;
   agentMessages: AgentMessageType[];
-  agentMessageRowById: Map<ModelId, AgentMessage>;
   conversation: ConversationWithoutContentType;
   userMessage: UserMessageType;
 }) => {
   await concurrentExecutor(
     agentMessages,
     async (agentMessage) => {
-      // TODO(DURABLE-AGENTS 2025-07-16): Consolidate around agentMessage.
-      const agentMessageRow = agentMessageRowById.get(
-        agentMessage.agentMessageId
-      );
-      assert(
-        agentMessageRow,
-        `Agent message row not found for agent message ${agentMessage.agentMessageId}`
-      );
-
       const agentConfiguration = await getAgentConfiguration(auth, {
         agentId: agentMessage.configuration.sId,
         variant: "full",

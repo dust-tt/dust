@@ -58,6 +58,7 @@ export function useMembers({
     isMembersError: error,
     hasNextPage: !!data?.nextPageUrl,
     loadNextPage: useCallback(
+      // eslint-disable-next-line react-hooks/preserve-manual-memoization
       () => data?.nextPageUrl && setUrl(data.nextPageUrl),
       [data?.nextPageUrl]
     ),
@@ -115,8 +116,6 @@ export function useSearchMembers({
 
   const searchParams = new URLSearchParams({
     searchTerm: debouncedSearchTerm,
-    orderColumn: "name",
-    orderDirection: "asc",
     offset: (pageIndex * pageSize).toString(),
     limit: pageSize.toString(),
   });

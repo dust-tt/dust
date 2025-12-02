@@ -32,6 +32,7 @@ const DEFAULT_SUGGESTIONS = [
   "Product",
 ];
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const GetSuggestionsResponseBodySchema = t.type({
   suggestions: t.union([
     t.array(

@@ -67,13 +67,17 @@ const parseSendgridWebhookContent = async (
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       auth: { SPF: SPF || "", dkim: dkim || "" },
       envelope: {
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         to: envelope.to || [],
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         cc: envelope.cc || [],
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         bcc: envelope.bcc || [],
         from,
         full,
       },
     });
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (e) {
     return new Err(new Error("Failed to parse email content"));
   }

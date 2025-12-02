@@ -227,6 +227,7 @@ export function useAddTriggerSubscriber({
           });
           return false;
         }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         sendNotification({
           type: "error",
@@ -303,6 +304,7 @@ export function useRemoveTriggerSubscriber({
           });
           return false;
         }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         sendNotification({
           type: "error",

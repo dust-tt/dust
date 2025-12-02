@@ -182,6 +182,7 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       organizationId,
       authenticationMethod,
       region:
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         decodedPayload["https://dust.tt/region"] ||
         multiRegionsConfig.getCurrentRegion(),
       workspaceId: decodedPayload["https://dust.tt/workspaceId"],

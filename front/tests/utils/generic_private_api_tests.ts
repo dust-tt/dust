@@ -14,7 +14,7 @@ import { setupWorkOSMocks } from "./mocks/workos";
 // Setup WorkOS mocks
 setupWorkOSMocks();
 
-// Mock the getSession function to return the user without going through the auth0 session
+// Mock the getSession function to return the user without going through the workos session
 vi.mock(import("../../lib/auth"), async (importOriginal) => {
   const mod = await importOriginal();
   return {
@@ -62,7 +62,7 @@ export const createPrivateApiMockRequest = async ({
     role,
   });
 
-  // Mock the getSession function to return the user without going through the auth0 session
+  // Mock the getSession function to return the user without going through the workos session
   vi.mocked(getSession).mockReturnValue(
     Promise.resolve({
       type: "workos",

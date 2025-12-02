@@ -128,7 +128,7 @@ export function VoicePicker({
           "duration-600 flex items-center justify-end gap-2 overflow-hidden px-2 transition-all ease-in-out",
           voiceTranscriberService.status === "recording"
             ? "opacity-100"
-            : "opacity-0"
+            : "hidden"
         )}
       >
         <div className="heading-xs font-mono">

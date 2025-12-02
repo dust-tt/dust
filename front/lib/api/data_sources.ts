@@ -328,6 +328,7 @@ export async function augmentDataSourceWithConnectorDetails(
     } else {
       connector = { ...statusRes.value, connectionId: null };
     }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (e) {
     // Probably means `connectors` is down, we don't fail to avoid a 500 when just displaying
     // the datasources (eventual actions will fail but a 500 just at display is not desirable).

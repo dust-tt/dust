@@ -146,9 +146,11 @@ export function createPlaceholderUserMessage({
 }
 
 export function createPlaceholderAgentMessage({
+  userMessage,
   mention,
   rank,
 }: {
+  userMessage: UserMessageType;
   mention: RichMention & { pictureUrl: string };
   rank: number;
 }): MessageTemporaryState {
@@ -161,7 +163,7 @@ export function createPlaceholderAgentMessage({
       version: 0,
       created: createdAt,
       completedTs: null,
-      parentMessageId: null,
+      parentMessageId: userMessage.sId,
       parentAgentMessageId: null,
       status: "created",
       content: null,
@@ -261,6 +263,7 @@ export async function submitMessage({
         return new Err({
           type: "attachment_upload_error",
           title: "Error uploading file.",
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           message: data.error.message || "Please try again or contact us.",
         });
       }
@@ -302,6 +305,7 @@ export async function submitMessage({
           ? "plan_limit_reached_error"
           : "message_send_error",
       title: "Your message could not be sent.",
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       message: data.error.message || "Please try again or contact us.",
     });
   }
@@ -428,6 +432,7 @@ export async function createConversationWithMessage({
           ? "plan_limit_reached_error"
           : "message_send_error",
       title: "Your message could not be sent.",
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       message: data.error.message || "Please try again or contact us.",
     });
   }

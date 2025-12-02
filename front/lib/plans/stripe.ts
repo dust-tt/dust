@@ -46,6 +46,13 @@ export function getCreditPurchasePriceId() {
   return isDevelopment() ? devCreditPurchasePriceId : prodCreditPurchasePriceId;
 }
 
+export function getPAYGCreditPriceId() {
+  const devPAYGPriceId = "price_DUMMY_DEV_PAYG";
+  const prodPAYGPriceId = "price_DUMMY_PROD_PAYG";
+
+  return isDevelopment() ? devPAYGPriceId : prodPAYGPriceId;
+}
+
 export const getStripeClient = () => {
   return new Stripe(config.getStripeSecretKey(), {
     apiVersion: "2023-10-16",
@@ -53,6 +60,11 @@ export const getStripeClient = () => {
   });
 };
 
+/**
+ * Calls the Stripe API to get the price ID for a given product ID.
+ * We use prices metata to find the default price for a given product.
+ * For the Pro plan, the metadata are "IS_DEFAULT_YEARLY_PRICE" and "IS_DEFAULT_MONHTLY_PRICE" and are set to "true".
+ */
 async function getDefautPriceFromMetadata(
   productId: string,
   key: string
@@ -72,6 +84,7 @@ async function getDefautPriceFromMetadata(
   return null;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const SUPPORTED_PAYMENT_METHODS = ["card", "sepa_debit"] as const;
 
 type SupportedPaymentMethod = (typeof SUPPORTED_PAYMENT_METHODS)[number];
@@ -258,6 +271,7 @@ export const getStripeSubscription = async (
     } else {
       return await stripe.subscriptions.retrieve(stripeSubscriptionId);
     }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     return null;
   }
@@ -727,9 +741,11 @@ export async function attachCreditPurchaseToSubscription({
 export async function makeCreditPurchaseInvoice({
   stripeSubscriptionId,
   amountCents,
+  couponId,
 }: {
   stripeSubscriptionId: string;
   amountCents: number;
+  couponId?: string;
 }): Promise<Result<Stripe.Invoice, { error_message: string }>> {
   const stripe = getStripeClient();
 
@@ -761,6 +777,7 @@ export async function makeCreditPurchaseInvoice({
         customerId,
         amountCents,
         invoice: invoice.id,
+        couponId,
       })
     );
 
@@ -814,4 +831,86 @@ export async function finalizeAndPayCreditPurchaseInvoice(
     error_message:
       "Invoice created but payment could not be processed. Please contact support.",
   });
+}
+
+export async function makeCreditsPAYGInvoice({
+  stripeSubscription,
+  amountCents,
+  periodStartSeconds,
+  periodEndSeconds,
+  idempotencyKey,
+}: {
+  stripeSubscription: Stripe.Subscription;
+  amountCents: number;
+  periodStartSeconds: number;
+  periodEndSeconds: number;
+  idempotencyKey: string;
+}): Promise<
+  Result<
+    Stripe.Invoice,
+    { error_type: "idempotency" | "other"; error_message: string }
+  >
+> {
+  const stripe = getStripeClient();
+  const customerId = getCustomerId(stripeSubscription);
+
+  const periodStartDate = new Date(periodStartSeconds * 1000);
+  const periodEndDate = new Date(periodEndSeconds * 1000);
+  const amountDollars = amountCents / 100;
+
+  const invoiceParams: Stripe.InvoiceCreateParams = {
+    customer: customerId,
+    subscription: stripeSubscription.id,
+    collection_method: "send_invoice",
+    metadata: {
+      credits_payg: "true",
+      arrears_invoice: "true",
+      credits_amount_cents: amountCents.toString(),
+      credits_period_start: periodStartSeconds.toString(),
+      credits_period_end: periodEndSeconds.toString(),
+    },
+    auto_advance: true,
+  };
+
+  try {
+    const invoice = await stripe.invoices.create(invoiceParams, {
+      idempotencyKey,
+    });
+
+    await stripe.invoiceItems.create({
+      customer: customerId,
+      price: getPAYGCreditPriceId(),
+      quantity: amountCents,
+      description: `Pay-as-you-go programmatic usage from ${periodStartDate.toISOString().split("T")[0]} to ${periodEndDate.toISOString().split("T")[0]}: $${amountDollars.toFixed(2)}`,
+      invoice: invoice.id,
+    });
+
+    await stripe.invoices.finalizeInvoice(invoice.id);
+
+    return new Ok(invoice);
+  } catch (error) {
+    const isIdempotencyError =
+      error instanceof Stripe.errors.StripeError &&
+      error.code === "idempotency_key_in_use";
+
+    if (isIdempotencyError) {
+      return new Err({
+        error_type: "idempotency",
+        error_message: `Idempotency key already used: ${idempotencyKey}`,
+      });
+    }
+
+    logger.error(
+      {
+        panic: true,
+        stripeSubscriptionId: stripeSubscription.id,
+        stripeError: true,
+      },
+      "[Credit PAYG] Failed to create Stripe invoice"
+    );
+    return new Err({
+      error_type: "other",
+      error_message: `Failed to create PAYG invoice: ${normalizeError(error).message}`,
+    });
+  }
 }

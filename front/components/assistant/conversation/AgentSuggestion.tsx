@@ -78,13 +78,22 @@ export function AgentSuggestion({
 
   useEffect(() => {
     if (!dustAgent) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowSuggestion(true);
     }
   }, [dustAgent]);
 
   const { submit: handleSelectSuggestion } = useSubmitFunction(
     async (agent: LightAgentConfigurationType) => {
-      const editedContent = `${serializeMention(agent)} ${userMessage.content}`;
+      // Ensure proper formatting: if content starts with markdown that requires being at
+      // the beginning of a line (code blocks, list items, etc.), add a newline after the
+      // mention so the markdown remains valid.
+      const contentStartsWithLineStartMarkdown = userMessage.content.match(
+        /^(\s*)(```|`|---|\*\*\*|#{1,6}\s|[-*+]\s|>\s|\d+\.\s)/
+      );
+      const editedContent = contentStartsWithLineStartMarkdown
+        ? `${serializeMention(agent)}\n\n${userMessage.content}`
+        : `${serializeMention(agent)} ${userMessage.content}`;
       const mRes = await fetch(
         `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${userMessage.sId}/edit`,
         {

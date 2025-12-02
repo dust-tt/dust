@@ -60,7 +60,7 @@ async function handler(
       const credits = await CreditResource.listAll(auth);
 
       return res.status(200).json({
-        credits: credits.map((credit) => credit.toJSON()),
+        credits: credits.map((credit) => credit.toPokeJSON()),
       });
 
     default:

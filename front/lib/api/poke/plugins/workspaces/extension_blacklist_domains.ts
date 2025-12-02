@@ -56,6 +56,7 @@ function areDomainsValid(domains: string[]): boolean {
     if (domain.startsWith("http://") || domain.startsWith("https://")) {
       try {
         new URL(`http://${domain}`);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (_) {
         return false;
       }

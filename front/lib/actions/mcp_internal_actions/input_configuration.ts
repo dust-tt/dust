@@ -21,7 +21,7 @@ import type {
   DeveloperSecretSelectionType,
   MCPServerViewType,
 } from "@app/lib/api/mcp";
-import type { AdditionalConfigurationValueType } from "@app/lib/models/assistant/actions/mcp";
+import type { AdditionalConfigurationValueType } from "@app/lib/models/agent/actions/mcp";
 import {
   areSchemasEqual,
   ensurePathExists,
@@ -190,6 +190,7 @@ function generateConfiguredInput({
       let value: JSONSchemaType | AdditionalConfigurationValueType | null =
         actionConfiguration.additionalConfiguration[keyPath];
 
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       if (value === undefined) {
         value = getDefaultValueAtPath(actionConfiguration.inputSchema, keyPath);
       }
@@ -205,6 +206,7 @@ function generateConfiguredInput({
       let value: JSONSchemaType | AdditionalConfigurationValueType | null =
         actionConfiguration.additionalConfiguration[keyPath];
 
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       if (value === undefined) {
         value = getDefaultValueAtPath(actionConfiguration.inputSchema, keyPath);
       }
@@ -220,6 +222,7 @@ function generateConfiguredInput({
       let value: JSONSchemaType | AdditionalConfigurationValueType | null =
         actionConfiguration.additionalConfiguration[keyPath];
 
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       if (value === undefined) {
         value = getDefaultValueAtPath(actionConfiguration.inputSchema, keyPath);
       }
@@ -235,6 +238,7 @@ function generateConfiguredInput({
       let value: JSONSchemaType | AdditionalConfigurationValueType | null =
         actionConfiguration.additionalConfiguration[keyPath];
 
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       if (value === undefined) {
         value = getDefaultValueAtPath(actionConfiguration.inputSchema, keyPath);
       }

@@ -383,6 +383,7 @@ const ConversationPage = ({
       );
       const data = await response.json();
       if (!response.ok) {
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         throw new Error(data.error?.message || "Failed to render conversation");
       }
       setRenderResult({

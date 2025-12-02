@@ -1,3 +1,4 @@
+import type { Dispatch, SetStateAction } from "react";
 import type { UseFormReturn } from "react-hook-form";
 
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
@@ -171,7 +172,7 @@ export interface SaveConfigurationOptions {
   mcpServerView: MCPServerViewTypeWithLabel;
   onActionUpdate?: (action: AgentBuilderAction, index: number) => void;
   onModeChange: (mode: SheetMode | null) => void;
-  setSelectedToolsInSheet: React.Dispatch<React.SetStateAction<SelectedTool[]>>;
+  setSelectedToolsInSheet: Dispatch<SetStateAction<SelectedTool[]>>;
   setIsOpen: (open: boolean) => void;
   sendNotification: (notification: {
     title: string;

@@ -82,10 +82,12 @@ export function useZendeskTicketTagFilters({
             type: "error",
             title: "Failed to add tag",
             description:
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               err.error?.connectors_error?.message ||
               "An unknown error occurred",
           });
         }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         sendNotification({
           type: "error",
@@ -150,10 +152,12 @@ export function useZendeskTicketTagFilters({
             type: "error",
             title: "Failed to remove tag",
             description:
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               err.error?.connectors_error?.message ||
               "An unknown error occurred",
           });
         }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         sendNotification({
           type: "error",

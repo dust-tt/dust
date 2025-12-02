@@ -127,7 +127,9 @@ export function ScheduleEditionScheduler({
             return `${cronDesc}, in ${formatTimezone(generatedTimezone)} timezone.`;
           }
           return cronDesc;
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (error) {
+          // eslint-disable-next-line react-hooks/set-state-in-render
           setGenerationStatus("error");
         }
         break;

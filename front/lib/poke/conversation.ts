@@ -1,7 +1,7 @@
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { isLLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMessage } from "@app/lib/models/assistant/conversation";
+import { AgentMessage } from "@app/lib/models/agent/conversation";
 import { getDustProdAction } from "@app/lib/registry";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type {

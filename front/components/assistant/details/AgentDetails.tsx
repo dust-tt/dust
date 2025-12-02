@@ -110,6 +110,7 @@ export function AgentDetails({
 
   useEffect(() => {
     // Reset to info tab when we open/close the modal
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedTab("info");
   }, [agentId]);
 
@@ -220,6 +221,7 @@ export function AgentDetails({
         ) : (
           <>
             <SheetHeader className="flex flex-col gap-5 text-sm text-foreground dark:text-foreground-night">
+              {/* eslint-disable-next-line react-hooks/static-components */}
               <DescriptionSection />
             </SheetHeader>
             <SheetContainer className="pb-4">

@@ -9,7 +9,7 @@ import { isDevelopment } from "@app/types";
 // Directly require 'pg' here to make sure we are using the same version of the
 // package as the one used by pg package.
 // The doc recommends doing this : https://github.com/brianc/node-pg-types?tab=readme-ov-file#use
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
 const types = require("pg").types;
 
 const acquireAttempts = new WeakMap();
@@ -41,7 +41,8 @@ export const frontSequelize = new SequelizeWithComments(
   {
     pool: {
       // Default is 5.
-      max: 16,
+      // TODO(2025-11-29 flav) Revisit all Sequelize pool settings.
+      max: 25,
     },
     logging: isDevelopment() && DB_LOGGING_ENABLED ? sequelizeLogger : false,
     hooks: {
@@ -67,6 +68,7 @@ export const frontSequelize = new SequelizeWithComments(
 let frontReplicaDbInstance: Sequelize | null = null;
 
 export function getFrontReplicaDbConnection() {
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!frontReplicaDbInstance) {
     frontReplicaDbInstance = new SequelizeWithComments(
       dbConfig.getRequiredFrontReplicaDatabaseURI() as string,

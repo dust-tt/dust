@@ -222,6 +222,7 @@ export function useDeleteMCPServer(owner: LightWorkspaceType) {
             title: `Failure`,
             type: "error",
             description:
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               body.error?.message ||
               `Failed to delete ${getMcpServerDisplayName(server)}`,
           });
@@ -301,6 +302,7 @@ export function useCreateInternalMCPServer(owner: LightWorkspaceType) {
     if (!response.ok) {
       const body = await response.json();
       return new Err(
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         new Error(body.error?.message || "Failed to create server")
       );
     }
@@ -338,6 +340,7 @@ export function useDiscoverOAuthMetadata(owner: LightWorkspaceType) {
       if (!response.ok) {
         const body = await response.json();
         return new Err(
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           new Error(body.error.message || "Failed to check OAuth connection")
         );
       }
@@ -397,6 +400,7 @@ export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
       if (!response.ok) {
         const body = await response.json();
         return new Err(
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           new Error(body.error?.message || "Failed to create server")
         );
       }
@@ -440,6 +444,7 @@ export function useSyncRemoteMCPServer(
       sendNotification({
         title: `Error synchronizing server`,
         type: "error",
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         description: body.error?.message || "An error occurred",
       });
       return false;
@@ -503,6 +508,7 @@ export function useUpdateMCPServer(
       sendNotification({
         title: `Error updating server`,
         type: "error",
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         description: body.error?.message || "An error occurred",
       });
 
@@ -567,6 +573,7 @@ export function useUpdateMCPServerView(
       sendNotification({
         title: `Error updating server`,
         type: "error",
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         description: body.error?.message || "An error occurred",
       });
 
@@ -810,6 +817,7 @@ export function useUpdateMCPServerToolsSettings({
     if (!response.ok) {
       const body = await response.json();
       throw new Error(
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         body.error?.message || "Failed to update MCP tool settings"
       );
     }
@@ -888,6 +896,7 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
         title: "Failed to connect provider",
         description:
           "Unexpected error trying to connect to your provider. Please try again. Error: " +
+          // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
           error,
       });
     }
@@ -1083,6 +1092,7 @@ export function useAddMCPServerToSpace(
 
           if (!response.ok) {
             const body = await response.json();
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             throw new Error(body.error?.message || "Unknown error");
           }
 
@@ -1153,6 +1163,7 @@ export function useRemoveMCPServerViewFromSpace(
                 type: "error",
                 title: "Failed to remove action",
                 description:
+                  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                   res.error?.message ||
                   `Could not remove ${getMcpServerDisplayName(serverView.server)} from the ${space.name} space. Please try again.`,
               });

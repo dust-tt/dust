@@ -235,12 +235,10 @@ export function transformSelectionConfigurationsToTree(
     }
   }
 
-  const res = {
+  return {
     in: deduplicatePaths(inPaths),
     notIn: deduplicatePaths(notInPaths),
   };
-
-  return res;
 }
 
 /**

@@ -1,3 +1,5 @@
+import assert from "assert";
+
 import {
   AgentMessageContentParser,
   getCoTDelimitersConfiguration,
@@ -11,7 +13,7 @@ import {
   Mention,
   Message,
   UserMessage,
-} from "@app/lib/models/assistant/conversation";
+} from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
@@ -418,9 +420,38 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         }
       })();
 
-      const parentMessage = message.parentId
+      assert(message.parentId !== null, "Agent message must have a parentId.");
+
+      let parentMessage = message.parentId
         ? (messagesById.get(message.parentId) ?? null)
         : null;
+
+      if (!parentMessage) {
+        logger.info(
+          {
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            conversationSId: message.sId,
+            agentMessageId: agentMessage.id,
+          },
+          "Couldn't find parent message for agent message in the messages map, can happen if you are only rendering a subset of the messages. Falling back to fetch the message from the database."
+        );
+        parentMessage = await Message.findOne({
+          where: {
+            id: message.parentId,
+            workspaceId: auth.getNonNullableWorkspace().id,
+            conversationId: message.conversationId,
+          },
+          include: [
+            {
+              model: UserMessage,
+              as: "userMessage",
+              required: false,
+            },
+          ],
+        });
+      }
+
+      assert(parentMessage !== null, "Parent message must be found.");
 
       let parentAgentMessage: Message | null = null;
 
@@ -459,7 +490,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         visibility: message.visibility,
         version: message.version,
         rank: message.rank,
-        parentMessageId: parentMessage?.sId ?? null,
+        parentMessageId: parentMessage.sId,
         parentAgentMessageId: parentAgentMessage?.sId ?? null,
         status: agentMessage.status,
         actions,

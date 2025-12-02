@@ -7,6 +7,7 @@ import {
   DiscordLogo,
   GlobeAltIcon,
   Input,
+  LockIcon,
   MicIcon,
   MicrosoftLogo,
   Page,
@@ -159,6 +160,7 @@ export default function WorkspaceAdmin({
   }, [owner.name, workspaceName]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDisabled(!formValidation());
   }, [workspaceName, formValidation]);
 
@@ -269,6 +271,9 @@ export default function WorkspaceAdmin({
             <div className="h-full border-b border-border dark:border-border-night" />
             <InteractiveContentSharingToggle owner={owner} />
             <VoiceTranscriptionToggle owner={owner} />
+            {featureFlags.includes("restrict_agents_publishing") && (
+              <RestrictAgentsPublishingCapability />
+            )}
           </ContextItem.List>
         </Page.Vertical>
         <Page.Vertical align="stretch" gap="md">
@@ -548,6 +553,20 @@ function VoiceTranscriptionToggle({ owner }: { owner: WorkspaceType }) {
           disabled={isChanging}
           onClick={doToggleVoiceTranscription}
         />
+      }
+    />
+  );
+}
+
+function RestrictAgentsPublishingCapability() {
+  return (
+    <ContextItem
+      title="Restricted agents publication"
+      subElement="Publishing agents is restricted to builders and admins"
+      visual={<LockIcon className="h-6 w-6" />}
+      hasSeparatorIfLast={true}
+      action={
+        <SliderToggle selected={true} disabled={true} onClick={() => {}} />
       }
     />
   );

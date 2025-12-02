@@ -48,6 +48,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     whitelistedDomains,
     restrictedSpaceAgentsEnabled,
     feedbackVisibleToAuthorOnly,
+    privateIntegrationCredentialId,
     transaction,
   }: {
     slackTeamId: string;
@@ -56,6 +57,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     whitelistedDomains?: string[];
     restrictedSpaceAgentsEnabled?: boolean;
     feedbackVisibleToAuthorOnly?: boolean;
+    privateIntegrationCredentialId?: string | null;
     transaction: Transaction;
   }) {
     const otherSlackConfigurationWithBotEnabled =
@@ -76,6 +78,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
         restrictedSpaceAgentsEnabled: restrictedSpaceAgentsEnabled ?? true,
         whitelistedDomains,
         feedbackVisibleToAuthorOnly: feedbackVisibleToAuthorOnly ?? true,
+        privateIntegrationCredentialId,
       },
       { transaction }
     );

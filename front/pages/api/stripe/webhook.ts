@@ -1,7 +1,9 @@
+import assert from "assert";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { pipeline, Writable } from "stream";
 import type Stripe from "stripe";
 import { promisify } from "util";
+import { z } from "zod";
 
 import apiConfig from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
@@ -14,6 +16,11 @@ import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { startCreditFromProOneOffInvoice } from "@app/lib/credits/committed";
 import { grantFreeCreditsOnSubscriptionRenewal } from "@app/lib/credits/free";
+import {
+  allocatePAYGCreditsOnCycleRenewal,
+  invoiceEnterprisePAYGCredits,
+  isPAYGEnabled,
+} from "@app/lib/credits/payg";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import {
   assertStripeSubscriptionIsValid,
@@ -33,6 +40,7 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import { statsDClient } from "@app/logger/statsDClient";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import {
   launchScheduleWorkspaceScrubWorkflow,
@@ -52,6 +60,11 @@ export const config = {
     bodyParser: false, // Disable the default body parser
   },
 };
+
+export const StripeBillingPeriodSchema = z.object({
+  current_period_start: z.number(),
+  current_period_end: z.number(),
+});
 
 async function handler(
   req: NextApiRequest,
@@ -485,9 +498,13 @@ async function handler(
             assertStripeSubscriptionIsValid(stripeSubscription);
 
           if (validStatus.isErr()) {
+            statsDClient.increment("stripe.subscription.invalid", 1, [
+              "event_type:customer.subscription.created",
+            ]);
+
             logger.error(
               {
-                stripeError: true,
+                invalidStripeSubscriptionError: true,
                 workspaceId: event.data.object.metadata?.workspaceId,
                 stripeSubscriptionId: stripeSubscription.id,
                 priceId,
@@ -516,7 +533,7 @@ async function handler(
             break;
           } // should not happen by definition of the subscription.updated event
 
-          // Billing cycle changed - grant free credits based on eligibility
+          // Billing cycle changed
           if ("current_period_start" in previousAttributes) {
             const subscription = await Subscription.findOne({
               where: { stripeSubscriptionId: stripeSubscription.id },
@@ -545,6 +562,58 @@ async function handler(
                   },
                   "[Stripe Webhook] Error granting free credits on renewal"
                 );
+              }
+
+              // TODO(PPUL): should we enforce that enterprise always has PAYG enabled?
+              const paygEnabled = await isPAYGEnabled(auth);
+
+              if (isEnterpriseSubscription(stripeSubscription) && paygEnabled) {
+                // Allocate PAYG credits for the new billing cycle
+                const currentPeriod = StripeBillingPeriodSchema.safeParse({
+                  current_period_start: stripeSubscription.current_period_start,
+                  current_period_end: stripeSubscription.current_period_end,
+                });
+
+                assert(
+                  currentPeriod.success,
+                  "Unexpected current period missing or malformed"
+                );
+                await allocatePAYGCreditsOnCycleRenewal({
+                  auth,
+                  nextPeriodStartSeconds:
+                    currentPeriod.data.current_period_start,
+                  nextPeriodEndSeconds: currentPeriod.data.current_period_end,
+                });
+
+                const previousPeriod =
+                  StripeBillingPeriodSchema.safeParse(previousAttributes);
+                assert(
+                  previousPeriod.success,
+                  "Unexpected previous period missing or malformed"
+                );
+                const previousPeriodStartSeconds =
+                  previousPeriod.data.current_period_start;
+                const previousPeriodEndSeconds =
+                  previousPeriod.data.current_period_end;
+                const paygResult = await invoiceEnterprisePAYGCredits({
+                  auth,
+                  stripeSubscription,
+                  previousPeriodStartSeconds,
+                  previousPeriodEndSeconds,
+                });
+
+                if (paygResult.isErr()) {
+                  logger.error(
+                    {
+                      panic: true,
+                      stripeError: true,
+                      error: paygResult.error,
+                      subscriptionId: stripeSubscription.id,
+                      workspaceId: subscription.workspace.sId,
+                    },
+                    "[Stripe Webhook] Error invoicing PAYG credits"
+                  );
+                }
               }
             } else {
               logger.warn(
@@ -716,13 +785,17 @@ async function handler(
           const validStatus =
             assertStripeSubscriptionIsValid(stripeSubscription);
           if (validStatus.isErr()) {
+            statsDClient.increment("stripe.subscription.invalid", 1, [
+              "event_type:customer.subscription.updated",
+            ]);
+
             const priceId =
               stripeSubscription.items.data.length > 0
                 ? stripeSubscription.items.data[0].price?.id
                 : null;
             logger.error(
               {
-                stripeError: true,
+                invalidStripeSubscriptionError: true,
                 workspaceId: event.data.object.metadata?.workspaceId,
                 stripeSubscriptionId: stripeSubscription.id,
                 priceId,

@@ -82,6 +82,7 @@ export function useChangeMembersRoles({
           await mutateSearchMembers();
           return true;
         }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         sendNotification({
           type: "error",

@@ -92,6 +92,7 @@ export const DocumentOrTableDeleteDialog = ({
       }
 
       closeDialog();
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       sendNotification({
         type: "error",

@@ -89,6 +89,7 @@ async function handler(
               await deploymentsRes.json();
               res.status(200).json({ ok: true });
             }
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
           } catch (e) {
             // this can happen if config.endpoint is buggy
             res
@@ -149,6 +150,7 @@ async function handler(
             const err = await mistralModelsRes.json();
             res.status(400).json({
               ok: false,
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               error: err.message ? err.message : JSON.stringify(err),
             });
           } else {

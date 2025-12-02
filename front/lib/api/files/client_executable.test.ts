@@ -11,8 +11,8 @@ import {
   getRevertedContent,
   isCreateFileActionForFileId,
 } from "@app/lib/api/files/client_executable";
-import type { AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
-import { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
+import type { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
+import { AgentMCPActionOutputItem } from "@app/lib/models/agent/actions/mcp";
 
 const mockAgentMCPActionOutputItemFindAll = vi
   .spyOn(AgentMCPActionOutputItem, "findAll")

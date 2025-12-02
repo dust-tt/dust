@@ -580,6 +580,7 @@ export async function runModelActivity(
       (nativeChainOfThought || contentParser.getChainOfThought()) ?? "";
 
     if (chainOfThought.length) {
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       if (!agentMessage.chainOfThought) {
         agentMessage.chainOfThought = "";
       }
@@ -753,6 +754,7 @@ export async function runModelActivity(
     (agentMessage.content ?? "") + (contentParser.getContent() ?? "");
 
   if (chainOfThought.length) {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (!agentMessage.chainOfThought) {
       agentMessage.chainOfThought = "";
     }

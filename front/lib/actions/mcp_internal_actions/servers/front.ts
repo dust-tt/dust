@@ -171,14 +171,14 @@ async function getFrontAPIToken(
  */
 function formatConversationForLLM(conversation: any): string {
   const metadata = `<conversation id="${conversation.id}" status="${conversation.status}">
-  SUBJECT: ${conversation.subject || "(No subject)"}
+  SUBJECT: ${conversation.subject ?? "(No subject)"}
   STATUS: ${conversation.status}
   ASSIGNEE: ${conversation.assignee ? conversation.assignee.email : "Unassigned"}
-  INBOX: ${conversation.inbox?.name || "Unknown"}
-  TAGS: ${conversation.tags?.map((t: any) => t.name).join(", ") || "None"}
+  INBOX: ${conversation.inbox?.name ?? "Unknown"}
+  TAGS: ${conversation.tags?.map((t: any) => t.name).join(", ") ?? "None"}
   CREATED: ${conversation.created_at ? new Date(conversation.created_at * 1000).toISOString() : "Unknown"}
   LAST_MESSAGE: ${conversation.last_message?.received_at ? new Date(conversation.last_message.received_at * 1000).toISOString() : "None"}
-  RECIPIENT: ${conversation.recipient ? conversation.recipient.handle || conversation.recipient.name : "Unknown"}
+  RECIPIENT: ${conversation.recipient ? (conversation.recipient.handle ?? conversation.recipient.name) : "Unknown"}
   </conversation>`;
 
   return metadata;
@@ -208,11 +208,11 @@ function formatMessagesForLLM(messages: any[]): string {
           : "";
 
       return `<entry index="${index + 1}" type="${type}">
-  FROM: ${msg.author?.email || msg.author?.username || "Unknown"}
-  TO: ${msg.recipients?.map((r: any) => r.handle || r.name).join(", ") || "N/A"}
+  FROM: ${msg.author?.email ?? msg.author?.username ?? "Unknown"}
+  TO: ${msg.recipients?.map((r: any) => r.handle ?? r.name).join(", ") ?? "N/A"}
   TIMESTAMP: ${timestamp}
   ${msg.subject ? `SUBJECT: ${msg.subject}\n` : ""}CONTENT:
-  ${msg.body || msg.text || ""}${attachmentInfo}
+  ${msg.body ?? msg.text ?? ""}${attachmentInfo}
   </entry>`;
     })
     .join("\n\n");
@@ -265,6 +265,7 @@ const createServer = (
             params: { q, limit: Math.min(limit, 100) },
           });
 
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           const conversations = data._results || [];
 
           if (conversations.length === 0) {
@@ -372,6 +373,7 @@ const createServer = (
             apiToken,
           });
 
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           const messages = data._results || [];
           const formatted = formatMessagesForLLM(messages);
 
@@ -433,6 +435,7 @@ const createServer = (
               apiToken,
               params: { q: email },
             });
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             const contacts = searchData._results || [];
             if (contacts.length === 0) {
               return new Ok([
@@ -684,6 +687,7 @@ const createServer = (
             apiToken,
           });
 
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           const tags = data._results || [];
           const formatted = tags
             .map(
@@ -729,6 +733,7 @@ const createServer = (
             apiToken,
           });
 
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           const teammates = data._results || [];
           const formatted = teammates
             .map(
@@ -790,6 +795,7 @@ const createServer = (
             apiToken,
           });
 
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           const messages = messagesData._results || [];
 
           // Get channel address from conversation context
@@ -811,6 +817,7 @@ const createServer = (
               lastInboundMessage.recipients.length > 0
             ) {
               for (const recipient of lastInboundMessage.recipients) {
+                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 const recipientAddress = recipient.handle || recipient.email;
                 if (!recipientAddress) {
                   continue;
@@ -980,6 +987,7 @@ const createServer = (
             },
           });
 
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           const conversations = data._results || [];
 
           if (conversations.length === 0) {
@@ -1035,6 +1043,7 @@ const createServer = (
             apiToken,
           });
 
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           const inboxes = data._results || [];
           const formatted = inboxes
             .map(

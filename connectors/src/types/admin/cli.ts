@@ -238,6 +238,7 @@ export const GoogleDriveCommandSchema = t.type({
     t.literal("register-webhook"),
     t.literal("register-all-webhooks"),
     t.literal("list-labels"),
+    t.literal("export-folder-structure"),
   ]),
   args: t.record(
     t.string,

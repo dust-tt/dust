@@ -58,6 +58,7 @@ export const ImgBlock: React.FC<ImgBlockProps> = ({
       )}
     >
       <div className="flex aspect-video w-full items-center justify-center bg-primary-800 p-4">
+        {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
         <div className="max-w-lg">{children ? children : null}</div>
       </div>
       <div className="flex flex-col gap-3 px-6 pb-6 pt-4">
@@ -77,6 +78,7 @@ interface BlogBlockProps {
   href: string;
   className?: string;
   style?: React.CSSProperties;
+  target?: string;
 }
 
 export const BlogBlock: React.FC<BlogBlockProps> = ({
@@ -86,11 +88,12 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
   href,
   className = "",
   style,
+  target,
 }) => {
   return (
     <a
       href={href}
-      target="_blank"
+      target={target}
       className={classNames(
         className,
         "flex h-full w-full flex-col overflow-hidden rounded-xl bg-muted-background",

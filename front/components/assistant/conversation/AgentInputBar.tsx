@@ -2,6 +2,9 @@ import {
   ArrowDownDashIcon,
   ArrowPathIcon,
   Button,
+  ContentMessageAction,
+  ContentMessageInline,
+  InformationCircleIcon,
   StopIcon,
 } from "@dust-tt/sparkle";
 import {
@@ -26,6 +29,7 @@ import { useCancelMessage, useConversation } from "@app/lib/swr/conversations";
 import { emptyArray } from "@app/lib/swr/swr";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { AgentMention } from "@app/types";
+import { conjugate, pluralize } from "@app/types";
 import { isAgentMention } from "@app/types";
 
 const MAX_DISTANCE_FOR_SMOOTH_SCROLL = 2048;
@@ -36,7 +40,12 @@ export const AgentInputBar = ({
   context: VirtuosoMessageListContext;
 }) => {
   const generationContext = useContext(GenerationContext);
-  const { hasBlockedActions } = useBlockedActionsContext();
+  const {
+    hasBlockedActions,
+    hasPendingValidations,
+    totalBlockedActions,
+    showBlockedActionsDialog,
+  } = useBlockedActionsContext();
 
   if (!generationContext) {
     throw new Error(
@@ -68,6 +77,7 @@ export const AgentInputBar = ({
         !isHiddenMessage(m)
     );
 
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const agentMentions = useMemo(() => {
     // If we are in the agent builder, we show the draft agent as the sticky mention, all the time.
     // Especially since the draft agent have a new sId every time it is updated.
@@ -134,6 +144,7 @@ export const AgentInputBar = ({
         (m) => m.conversationId === context.conversationId
       )
     ) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsStopping(false);
     }
   }, [
@@ -145,7 +156,7 @@ export const AgentInputBar = ({
   return (
     <div
       className={
-        "max-h-dvh relative z-20 mx-auto flex w-full flex-col py-2 sm:w-full sm:max-w-3xl sm:py-4"
+        "max-h-dvh relative z-20 mx-auto flex w-full flex-col py-2 sm:w-full sm:max-w-4xl sm:py-4"
       }
     >
       <div
@@ -182,6 +193,29 @@ export const AgentInputBar = ({
           />
         )}
       </div>
+      {hasBlockedActions && (
+        <ContentMessageInline
+          icon={InformationCircleIcon}
+          variant="primary"
+          className="max-h-dvh mb-5 flex w-full sm:w-full sm:max-w-3xl"
+        >
+          <span className="font-bold">
+            {totalBlockedActions} action
+            {pluralize(totalBlockedActions)}
+          </span>{" "}
+          require{conjugate(totalBlockedActions)} a manual action
+          {/* If there are pending validations, we show a button allowing to open the dialog
+              from where they can be approved/denied */}
+          {hasPendingValidations && (
+            <ContentMessageAction
+              label="Review actions"
+              variant="outline"
+              size="xs"
+              onClick={() => showBlockedActionsDialog()}
+            />
+          )}
+        </ContentMessageInline>
+      )}
       <InputBar
         owner={context.owner}
         onSubmit={context.handleSubmit}

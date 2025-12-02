@@ -60,7 +60,8 @@ export class SecretManager {
   }
 
   private async loadFromSecretManager(): Promise<Secrets> {
-    const { GCP_GLOBAL_PROJECT_ID, GCP_US_PROJECT_ID, GCP_EU_PROJECT_ID } = getProjectIds();
+    const { GCP_GLOBAL_PROJECT_ID, GCP_US_PROJECT_ID, GCP_EU_PROJECT_ID } =
+      getProjectIds();
 
     if (!GCP_GLOBAL_PROJECT_ID || !GCP_US_PROJECT_ID || !GCP_EU_PROJECT_ID) {
       throw new Error("Missing required project environment variables");
@@ -97,11 +98,14 @@ export class SecretManager {
 
       return {
         webhookSecret: webhookSecretResponse[0].payload?.data?.toString() || "",
-        microsoftBotId: microsoftBotIdResponse[0].payload?.data?.toString() || "",
+        microsoftBotId:
+          microsoftBotIdResponse[0].payload?.data?.toString() || "",
         usSecret: usSecretResponse[0].payload?.data?.toString() || "",
         euSecret: euSecretResponse[0].payload?.data?.toString() || "",
-        slackSigningSecret: slackSigningSecretResponse[0].payload?.data?.toString() || "",
-        notionSigningSecret: notionSigningSecretResponse[0].payload?.data?.toString() || "",
+        slackSigningSecret:
+          slackSigningSecretResponse[0].payload?.data?.toString() || "",
+        notionSigningSecret:
+          notionSigningSecretResponse[0].payload?.data?.toString() || "",
       };
     } catch (error) {
       console.error("Failed to load secrets from Secret Manager", {

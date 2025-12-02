@@ -128,6 +128,7 @@ export default function AgentConversation({
   useEffect(() => {
     if (activeConversationId) {
       // Set conversation id as key if it exists.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setConversationKey(activeConversationId);
     } else if (!activeConversationId) {
       // Force re-render by setting a new key with a random number.

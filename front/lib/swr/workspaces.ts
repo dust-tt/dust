@@ -74,6 +74,7 @@ export function useWorkspaceAnalytics({
   );
 
   return {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     analytics: data ? data : null,
     isMemberCountLoading: !error && !data,
     isMemberCountError: error,

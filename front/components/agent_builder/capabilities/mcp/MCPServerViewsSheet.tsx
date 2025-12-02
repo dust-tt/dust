@@ -693,6 +693,7 @@ export function MCPServerViewsSheet({
         setConfigurationTool(null);
         setConfigurationMCPServerView(null);
       }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       sendNotification({
         title: "Configuration failed",

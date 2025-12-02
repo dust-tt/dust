@@ -40,6 +40,7 @@ export function SearchMembersDropdown({
 
   useEffect(() => {
     if (members && !isLoading) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setAllMembers((prevMembers) => {
         if (pagination.pageIndex === 0) {
           // if it's the first page, replace all members
@@ -58,6 +59,7 @@ export function SearchMembersDropdown({
 
   // Effect to reset pagination when the search term changes.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPagination(DefaultPagination);
   }, [searchTerm]);
 
@@ -102,7 +104,9 @@ export function SearchMembersDropdown({
             key={member.sId}
             onClick={addMember(member)}
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            icon={() => <Avatar size="sm" visual={member.image || ""} />}
+            icon={() => (
+              <Avatar size="sm" visual={member.image ?? ""} isRounded />
+            )}
             label={member.fullName}
             description={member.email}
           />

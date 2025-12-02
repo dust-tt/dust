@@ -8,7 +8,7 @@ import type {
 import sequelize from "sequelize/lib/sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
-import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
+import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { TagModel } from "@app/lib/models/tags";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";

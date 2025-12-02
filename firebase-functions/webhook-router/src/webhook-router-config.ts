@@ -7,7 +7,9 @@ type ProviderWithSigningSecret = "slack" | "notion";
 
 type WebhookRouterConfigEntry = {
   signingSecret: string;
-  regions: Region[];
+  regions: {
+    [region in Region]: number[];
+  };
 };
 
 /**
@@ -16,26 +18,40 @@ type WebhookRouterConfigEntry = {
  * Example valid object:
  * {
  *   signingSecret: "abc123def456",
- *   regions: ["us-central1", "europe-west1"]
+ *   regions: {
+ *     "us-central1": [123, 456],
+ *     "europe-west1": [789]
+ *   }
  * }
  */
-function isValidWebhookRouterConfigEntry(value: unknown): value is WebhookRouterConfigEntry {
+function isValidWebhookRouterConfigEntry(
+  value: unknown
+): value is WebhookRouterConfigEntry {
   return (
     value !== null &&
     typeof value === "object" &&
     "signingSecret" in value &&
     typeof value.signingSecret === "string" &&
     "regions" in value &&
-    Array.isArray(value.regions) &&
-    value.regions.every((region: unknown) => typeof region === "string" && ALL_REGIONS.includes(region as Region))
+    typeof value.regions === "object" &&
+    value.regions !== null &&
+    Object.keys(value.regions).every(
+      (region: unknown) =>
+        typeof region === "string" && ALL_REGIONS.includes(region as Region)
+    )
   );
 }
 
 export class WebhookRouterConfigManager {
   constructor(private client: Database) {}
 
-  async getEntry(provider: ProviderWithSigningSecret, providerWorkspaceId: string): Promise<WebhookRouterConfigEntry> {
-    const configSnapshot = await this.client.ref(`${provider}/${providerWorkspaceId}`).get();
+  async getEntry(
+    provider: ProviderWithSigningSecret,
+    providerWorkspaceId: string
+  ): Promise<WebhookRouterConfigEntry> {
+    const configSnapshot = await this.client
+      .ref(`${provider}/${providerWorkspaceId}`)
+      .get();
     if (!configSnapshot.exists()) {
       throw new Error(
         `No ${provider} webhook router configuration found in database for providerWorkspaceId ${providerWorkspaceId}`

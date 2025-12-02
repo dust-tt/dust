@@ -101,6 +101,7 @@ export const HeroSection: FC<HeroSectionProps> = ({
         </div>
         <div className="col-span-12 mx-auto hidden px-4 py-4 pt-12 sm:max-w-[100%] md:max-w-[90%] lg:col-span-6 lg:col-start-7 lg:block lg:h-[100%] lg:max-w-[100%] 2xl:col-span-6">
           <div className="flex h-full w-full items-center justify-center xl:px-8">
+            {/* eslint-disable-next-line react-hooks/static-components */}
             <MainVisual />
           </div>
         </div>

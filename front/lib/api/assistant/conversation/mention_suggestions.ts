@@ -1,12 +1,10 @@
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
-import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import {
   filterAndSortEditorSuggestionAgents,
-  filterAndSortUserSuggestions,
   SUGGESTION_DISPLAY_LIMIT,
 } from "@app/lib/mentions/editor/suggestion";
+import { UserResource } from "@app/lib/resources/user_resource";
 import type {
   RichAgentMention,
   RichMention,
@@ -18,64 +16,80 @@ export const suggestionsOfMentions = async (
   auth: Authenticator,
   {
     query,
+    select = {
+      agents: true,
+      users: true,
+    },
   }: {
     query: string;
+    select?: {
+      agents: boolean;
+      users: boolean;
+    };
   }
 ): Promise<RichMention[]> => {
-  // Fetch agent configurations.
-  const agentConfigurations = await getAgentConfigurationsForView({
-    auth,
-    agentsGetView: "list",
-    variant: "light",
-  });
-
-  // Convert to RichAgentMention format.
-  const agentSuggestions: RichAgentMention[] = agentConfigurations
-    .filter((a) => a.status === "active")
-    .sort(compareAgentsForSort)
-    .map((agent) => ({
-      type: "agent",
-      id: agent.sId,
-      label: agent.name,
-      pictureUrl: agent.pictureUrl,
-      userFavorite: agent.userFavorite,
-      description: agent.description,
-    }));
-
-  // Fetch workspace members if mentions_v2 is enabled.
+  const agentSuggestions: RichAgentMention[] = [];
   const userSuggestions: RichUserMention[] = [];
-  const workspace = auth.getNonNullableWorkspace();
-  const featureFlags = await getFeatureFlags(workspace);
-  const mentions_v2_enabled = featureFlags.includes("mentions_v2");
 
-  if (mentions_v2_enabled) {
-    const { members } = await getMembers(auth, { activeOnly: true });
+  if (select.agents) {
+    // Fetch agent configurations.
+    const agentConfigurations = await getAgentConfigurationsForView({
+      auth,
+      agentsGetView: "list",
+      variant: "light",
+    });
 
-    userSuggestions.push(
-      ...members.map(
-        (member) =>
-          ({
-            type: "user",
-            id: member.sId,
-            label: member.fullName || member.email,
-            pictureUrl: member.image ?? "/static/humanavatar/anonymous.png",
-            description: member.email,
-          }) satisfies RichUserMention
-      )
+    // Convert to RichAgentMention format.
+    agentSuggestions.push(
+      ...agentConfigurations
+        .filter((a) => a.status === "active")
+        .sort(compareAgentsForSort)
+        .map(
+          (agent) =>
+            ({
+              type: "agent",
+              id: agent.sId,
+              label: agent.name,
+              pictureUrl: agent.pictureUrl,
+              userFavorite: agent.userFavorite,
+              description: agent.description,
+            }) satisfies RichAgentMention
+        )
     );
   }
 
-  // Filter and sort agents.
+  if (select.users) {
+    const res = await UserResource.searchUsers(auth, {
+      searchTerm: query,
+      offset: 0,
+      limit: SUGGESTION_DISPLAY_LIMIT,
+    });
+
+    if (res.isOk()) {
+      const { users } = res.value;
+
+      userSuggestions.push(
+        ...users.map(
+          (u) =>
+            ({
+              type: "user",
+              id: u.sId,
+              label: u.fullName() || u.email,
+              pictureUrl:
+                u.toJSON().image ?? "/static/humanavatar/anonymous.png",
+              description: u.email,
+            }) satisfies RichUserMention
+        )
+      );
+    }
+  }
+
   const filteredAgents = filterAndSortEditorSuggestionAgents(
     query,
     agentSuggestions
   );
 
-  // Filter and sort users.
-  const filteredUsers = filterAndSortUserSuggestions(query, userSuggestions);
-
   // Combine results: agents first, then users.
-  const totalResults = [...filteredAgents, ...filteredUsers];
-  const suggestions = totalResults.slice(0, SUGGESTION_DISPLAY_LIMIT);
-  return suggestions as RichMention[];
+  const totalResults = [...filteredAgents, ...userSuggestions];
+  return totalResults.slice(0, SUGGESTION_DISPLAY_LIMIT);
 };

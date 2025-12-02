@@ -4,14 +4,14 @@ import { updateAnalyticsFeedback } from "@app/lib/analytics/feedback";
 import { ANALYTICS_ALIAS_NAME, withEs } from "@app/lib/api/elasticsearch";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
-import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
-import type { AgentMessageFeedback } from "@app/lib/models/assistant/conversation";
+import { AgentMCPServerConfiguration } from "@app/lib/models/agent/actions/mcp";
+import type { AgentMessageFeedback } from "@app/lib/models/agent/conversation";
 import {
   AgentMessage,
   ConversationModel,
   Message,
   UserMessage,
-} from "@app/lib/models/assistant/conversation";
+} from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { RunResource } from "@app/lib/resources/run_resource";

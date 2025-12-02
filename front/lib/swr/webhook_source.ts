@@ -195,6 +195,7 @@ export function useUpdateWebhookSourceView({
         });
 
         return true;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         sendNotification({
           type: "error",
@@ -258,6 +259,7 @@ export function useDeleteWebhookSource({
         } else {
           throw new Error("Delete operation failed");
         }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         sendNotification({
           type: "error",
@@ -345,6 +347,7 @@ export function useAddWebhookSourceViewToSpace({
         });
 
         await mutateWebhookSourcesWithViews();
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         sendNotification({
           type: "error",
@@ -417,11 +420,13 @@ export function useRemoveWebhookSourceViewFromSpace({
               type: "error",
               title: "Failed to remove webhook source",
               description:
+                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 res.error?.message ||
                 `Could not remove ${webhookSourceView.webhookSource.name} from the ${space.name} space. Please try again.`,
             });
           }
         }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         sendNotification({
           type: "error",

@@ -654,6 +654,7 @@ function SearchResultsTable({
 
   // Transform search results into format for DataTable.
   const rows: RowData[] = React.useMemo(() => {
+    // eslint-disable-next-line react-hooks/refs
     return searchResultNodes.map((node) => {
       const { dataSourceView, internalId: parentId } = node;
 

@@ -100,3 +100,5 @@ jobs:
           OAUTH_DATABASE_URI: "postgres://test:test@localhost:5433/oauth"
           REDIS_URI: "redis://localhost:5434"
           OAUTH_ENCRYPTION_KEY: ${{ secrets.TEST_OAUTH_ENCRYPTION_KEY }}
+          OAUTH_SLACK_CLIENT_ID: "test_slack_client_id"
+          OAUTH_SLACK_CLIENT_SECRET: "test_slack_client_secret"

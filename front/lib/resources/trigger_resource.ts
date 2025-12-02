@@ -10,12 +10,12 @@ import { Op } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { TriggerSubscriberModel } from "@app/lib/models/assistant/triggers/trigger_subscriber";
-import { TriggerModel } from "@app/lib/models/assistant/triggers/triggers";
-import { WebhookRequestModel } from "@app/lib/models/assistant/triggers/webhook_request";
-import { WebhookRequestTriggerModel } from "@app/lib/models/assistant/triggers/webhook_request_trigger";
-import { WebhookSourcesViewModel } from "@app/lib/models/assistant/triggers/webhook_sources_view";
+import { AgentConfiguration } from "@app/lib/models/agent/agent";
+import { TriggerSubscriberModel } from "@app/lib/models/agent/triggers/trigger_subscriber";
+import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
+import { WebhookRequestModel } from "@app/lib/models/agent/triggers/webhook_request";
+import { WebhookRequestTriggerModel } from "@app/lib/models/agent/triggers/webhook_request_trigger";
+import { WebhookSourcesViewModel } from "@app/lib/models/agent/triggers/webhook_sources_view";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
@@ -123,6 +123,28 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         agentConfigurationId,
       },
     });
+  }
+
+  static async listByAgentConfigurationIdAndEditors(
+    auth: Authenticator,
+    {
+      agentConfigurationId,
+      editorIds,
+    }: {
+      agentConfigurationId: string;
+      editorIds: ModelId[];
+    }
+  ): Promise<Result<TriggerResource[], Error>> {
+    if (editorIds.length === 0) {
+      return new Ok([]);
+    }
+    const triggers = await this.baseFetch(auth, {
+      where: {
+        agentConfigurationId,
+        editor: { [Op.in]: editorIds },
+      },
+    });
+    return new Ok(triggers);
   }
 
   static listByWorkspace(auth: Authenticator) {

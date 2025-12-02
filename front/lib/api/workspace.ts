@@ -218,15 +218,19 @@ export async function searchMembers(
     );
     total = users.length;
   } else {
-    const results = await UserResource.listUsersWithEmailPredicat(
-      owner,
-      {
-        email: options.searchTerm,
-      },
-      paginationParams
-    );
-    users = results.users;
-    total = results.total;
+    const results = await UserResource.searchUsers(auth, {
+      searchTerm: options.searchTerm ?? "",
+      offset: paginationParams.offset,
+      limit: paginationParams.limit,
+    });
+
+    if (results.isErr()) {
+      logger.error({ err: results.error }, "Error searching users");
+      return { members: [], total: 0 };
+    }
+
+    users = results.value.users;
+    total = results.value.total;
   }
 
   const usersWithWorkspace = await Promise.all(
@@ -399,6 +403,7 @@ export interface WorkspaceMetadata {
   allowContentCreationFileSharing?: boolean;
   allowVoiceTranscription?: boolean;
   autoCreateSpaceForProvisionedGroups?: boolean;
+  disableManualInvitations?: boolean;
 }
 
 export async function updateWorkspaceMetadata(

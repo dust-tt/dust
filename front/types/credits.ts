@@ -10,7 +10,7 @@ export function isCreditType(value: unknown): value is CreditType {
 export const CREDIT_EXPIRATION_DAYS = 365;
 
 export type CreditDisplayData = {
-  id: number;
+  sId: string;
   type: CreditType;
   initialAmount: number;
   remainingAmount: number;

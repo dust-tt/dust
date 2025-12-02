@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "rootDir": "src",
-    "baseUrl": "src",
+    "baseUrl": ".",
     "target": "es5",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
@@ -18,7 +18,7 @@
     "jsx": "react",
     "downlevelIteration": true,
     "paths": {
-      "@sparkle/*": ["./*"]
+      "@sparkle/*": ["./src/*"]
     },
     "declaration": true,
     "sourceMap": true,

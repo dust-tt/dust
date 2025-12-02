@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import React, { useMemo } from "react";
 import {
   CartesianGrid,
   Line,
@@ -53,7 +53,7 @@ function LatencyTooltip(
   props: TooltipContentProps<number, string> & {
     versionMarkers: AgentVersionMarker[];
   }
-): JSX.Element | null {
+) {
   const { active, payload, versionMarkers } = props;
   if (!active || !payload || payload.length === 0) {
     return null;

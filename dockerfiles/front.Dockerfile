@@ -110,6 +110,8 @@ COPY --from=front-nextjs-build /app/.next/static ./.next/static
 COPY --from=front-nextjs-build /app/public ./public
 # Copy admin directory (contains prestop.sh and other scripts)
 COPY --from=base-deps /app/admin ./admin
+# Copy scripts directory
+COPY --from=base-deps /app/scripts ./scripts
 # Copy built SDK from base dependencies (maintain absolute path for symlink resolution)
 COPY --from=base-deps /sdks /sdks
 
@@ -142,6 +144,8 @@ COPY --from=workers-build /app/dist ./dist
 # Copy full dependencies from base dependencies (includes all node_modules)
 COPY --from=base-deps /app/node_modules ./node_modules
 COPY --from=base-deps /app/package.json ./package.json
+# Copy scripts directory
+COPY --from=base-deps /app/scripts ./scripts
 # Copy built SDK that workers depend on (maintain absolute path for symlink resolution)
 COPY --from=base-deps /sdks/js /sdks/js
 

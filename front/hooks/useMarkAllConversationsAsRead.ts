@@ -33,6 +33,7 @@ export function useMarkAllConversationsAsRead({
         try {
           await markAsRead(conversation.sId, true);
           successCount += 1;
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (error) {
           // do nothing
         }

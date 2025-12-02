@@ -65,7 +65,14 @@ export default function AppRootLayout({
             notification.result.tags?.includes("conversations") &&
             window !== undefined
           ) {
-            window.dispatchEvent(new ConversationsUpdatedEvent());
+            if (
+              window.location.pathname !==
+                notification.result.primaryAction?.redirect?.url ||
+              !window.document.hasFocus()
+            ) {
+              // If we are not already on the conversation page, dispatch the event to update the conversations list.
+              window.dispatchEvent(new ConversationsUpdatedEvent());
+            }
           }
 
           if (!allowBrowserNotification) {

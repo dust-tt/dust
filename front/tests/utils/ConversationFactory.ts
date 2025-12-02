@@ -7,7 +7,7 @@ import {
   ConversationModel,
   Message,
   UserMessage,
-} from "@app/lib/models/assistant/conversation";
+} from "@app/lib/models/agent/conversation";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import type { UserResource } from "@app/lib/resources/user_resource";
@@ -67,7 +67,7 @@ export class ConversationFactory {
     // Note: fetchConversationParticipants rely on the existence of UserMessage even if we have a table for ConversationParticipant.
     for (let i = 0; i < messagesCreatedAt.length; i++) {
       const createdAt = messagesCreatedAt[i];
-      await createMessageAndUserMessage({
+      const userMessageRow = await createUserMessage({
         user,
         workspace,
         conversationModelId: conversation.id,
@@ -81,6 +81,7 @@ export class ConversationFactory {
         agentConfigurationId,
         createdAt,
         rank: i * 2 + 1,
+        parentId: userMessageRow.id,
         t,
       });
     }
@@ -135,7 +136,7 @@ export class ConversationFactory {
       created: userMessageRow.createdAt.getTime(),
       sId: messageRow.sId,
       type: "user_message",
-      visibility: "visible",
+      visibility: messageRow.visibility,
       version: 0,
       user: auth.getNonNullableUser().toJSON(),
       mentions: [],
@@ -303,7 +304,7 @@ export class ConversationFactory {
   }
 }
 
-const createMessageAndUserMessage = async ({
+const createUserMessage = async ({
   user,
   workspace,
   conversationModelId,
@@ -317,7 +318,7 @@ const createMessageAndUserMessage = async ({
   createdAt: Date;
   rank: number;
   t?: Transaction;
-}) => {
+}): Promise<Message> => {
   return Message.create(
     {
       createdAt,
@@ -359,6 +360,7 @@ const createMessageAndAgentMessage = async ({
   agentConfigurationId,
   createdAt,
   rank,
+  parentId,
   t,
 }: {
   workspace: WorkspaceType;
@@ -366,6 +368,7 @@ const createMessageAndAgentMessage = async ({
   agentConfigurationId: string;
   createdAt: Date;
   rank: number;
+  parentId?: ModelId | null;
   t?: Transaction;
 }) => {
   const agentMessageRow = await AgentMessage.create(
@@ -387,7 +390,7 @@ const createMessageAndAgentMessage = async ({
       sId: generateRandomModelSId(),
       rank,
       conversationId: conversationModelId,
-      parentId: null,
+      parentId: parentId ?? null,
       agentMessageId: agentMessageRow.id,
       workspaceId: workspace.id,
     },

@@ -46,6 +46,7 @@ export function validateMCPActionConfiguration(
     });
 
     return { isValid: true };
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     return {
       isValid: false,

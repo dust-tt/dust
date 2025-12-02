@@ -294,6 +294,7 @@ export function useCancelMessage({
             body: JSON.stringify({ action: "cancel", messageIds }),
           }
         );
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         sendNotification({ type: "error", title: "Failed to cancel message" });
       }
@@ -688,6 +689,7 @@ export const useConversationParticipationOption = ({
 
   useEffect(() => {
     if (conversationParticipants === undefined) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setOption(null);
       return;
     }
@@ -754,6 +756,7 @@ export const useJoinConversation = ({
 
         throw new Error("Failed to subscribe to the conversation.");
       }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       sendNotification({
         type: "error",
@@ -794,10 +797,7 @@ export function usePostOnboardingFollowUp({
   const sendNotification = useSendNotification();
 
   const postFollowUp = useCallback(
-    async (
-      toolId: string,
-      action: "completed" | "skipped"
-    ): Promise<boolean> => {
+    async (toolId: string): Promise<boolean> => {
       if (!conversationId) {
         return false;
       }
@@ -807,7 +807,7 @@ export function usePostOnboardingFollowUp({
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ toolId, action }),
+            body: JSON.stringify({ toolId }),
           }
         );
 
@@ -822,7 +822,6 @@ export function usePostOnboardingFollowUp({
           workspaceId,
           conversationId,
           toolId,
-          action,
         });
         sendNotification({
           type: "error",

@@ -794,19 +794,31 @@ export async function getNextRevokedConversationsBatchToDeleteActivity({
 
 /**
  * This activity is responsible for fetching a batch of conversations
- * that are older than 90 days and ready to be deleted.
+ * that are older than the configured sliding window and ready to be deleted.
  */
 export async function getNextOldConversationsBatchToDeleteActivity({
   connectorId,
 }: {
   connectorId: ModelId;
 }): Promise<string[]> {
+  const intercomWorkspace = await IntercomWorkspaceModel.findOne({
+    where: {
+      connectorId,
+    },
+  });
+  if (!intercomWorkspace) {
+    throw new Error("[Intercom] Workspace not found");
+  }
+
   const conversations = await IntercomConversationModel.findAll({
     attributes: ["conversationId"],
     where: {
       connectorId,
       conversationCreatedAt: {
-        [Op.lt]: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000), // 90 days ago
+        [Op.lt]: new Date(
+          Date.now() -
+            intercomWorkspace.conversationsSlidingWindow * 24 * 60 * 60 * 1000
+        ),
       },
     },
     limit: INTERCOM_CONVO_BATCH_SIZE,

@@ -3,6 +3,7 @@ use crate::{
     oauth::{
         connection::{self, Connection, ConnectionProvider, MigratedCredentials},
         credential::{Credential, CredentialMetadata, CredentialProvider},
+        providers::slack::SlackConnectionProvider,
         store,
     },
     utils::{error_response, APIResponse},
@@ -76,6 +77,26 @@ async fn connections_create(
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "credential_creation_failed",
                     "Failed to create credential",
+                    Some(e),
+                );
+            }
+        }
+    } else if payload.provider == ConnectionProvider::Slack {
+        // Temporary until all customers have migrated to the new system credential creation flow
+        // Auto-create system credential for Slack connection use-case if needed
+        match SlackConnectionProvider::create_system_credential_if_needed(
+            state.store.clone(),
+            &payload.metadata,
+        )
+        .await
+        {
+            Ok(Some(credential)) => Some(credential.credential_id().to_string()),
+            Ok(None) => None,
+            Err(e) => {
+                return error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "credential_creation_failed",
+                    "Failed to create system credential for Slack",
                     Some(e),
                 );
             }
@@ -178,6 +199,7 @@ async fn connections_finalize(
                             "provider": c.provider(),
                             "status": c.status(),
                             "metadata": c.metadata(),
+                            "related_credential_id": c.related_credential_id(),
                         },
                     })),
                 }),

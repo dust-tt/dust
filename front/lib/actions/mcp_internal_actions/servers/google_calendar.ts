@@ -174,6 +174,7 @@ function createServer(
         } catch (err) {
           return new Err(
             new MCPError(
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               normalizeError(err).message || "Failed to list calendars"
             )
           );
@@ -255,6 +256,7 @@ function createServer(
         } catch (err) {
           return new Err(
             new MCPError(
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               normalizeError(err).message || "Failed to list/search events"
             )
           );
@@ -308,6 +310,7 @@ function createServer(
           return new Ok([{ type: "text" as const, text: formattedText }]);
         } catch (err) {
           return new Err(
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             new MCPError(normalizeError(err).message || "Failed to get event")
           );
         }
@@ -441,6 +444,7 @@ function createServer(
         } catch (err) {
           return new Err(
             new MCPError(
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               normalizeError(err).message || "Failed to create event"
             )
           );
@@ -589,6 +593,7 @@ function createServer(
         } catch (err) {
           return new Err(
             new MCPError(
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               normalizeError(err).message || "Failed to update event"
             )
           );
@@ -631,6 +636,7 @@ function createServer(
         } catch (err) {
           return new Err(
             new MCPError(
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               normalizeError(err).message || "Failed to delete event"
             )
           );
@@ -815,6 +821,7 @@ function createServer(
         } catch (err) {
           return new Err(
             new MCPError(
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               normalizeError(err).message ||
                 "Failed to check calendar availability"
             )
