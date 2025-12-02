@@ -107,11 +107,14 @@ export async function upsertMessageFeedback(
       thumbDirection,
       isConversationShared,
     });
-    return new Ok({ agentConfigurationId });
+    return new Ok({
+      agentConfigurationId,
+      feedbackId: feedback.sId,
+    });
   }
 
   try {
-    await AgentMessageFeedbackResource.makeNew({
+    const newFeedback = await AgentMessageFeedbackResource.makeNew({
       workspaceId: auth.getNonNullableWorkspace().id,
       // If the agent is global, we use the agent configuration id from the agent message
       // Otherwise, we use the agent configuration id from the agent configuration
@@ -124,10 +127,13 @@ export async function upsertMessageFeedback(
       isConversationShared: isConversationShared ?? false,
       dismissed: false,
     });
+    return new Ok({
+      agentConfigurationId,
+      feedbackId: newFeedback.sId,
+    });
   } catch (e) {
     return new Err(normalizeError(e));
   }
-  return new Ok({ agentConfigurationId });
 }
 
 /**

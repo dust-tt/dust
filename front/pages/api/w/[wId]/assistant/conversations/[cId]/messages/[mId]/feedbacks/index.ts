@@ -122,7 +122,7 @@ async function handler(
           agentConfigurationId: created.value.agentConfigurationId,
           thumbDirection: bodyValidation.right
             .thumbDirection as AgentMessageFeedbackDirection,
-          feedbackContent: bodyValidation.right.feedbackContent ?? undefined,
+          feedbackId: created.value.feedbackId,
         });
       }
 

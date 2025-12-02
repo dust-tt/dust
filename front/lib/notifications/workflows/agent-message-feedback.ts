@@ -9,6 +9,7 @@ import { DustError } from "@app/lib/error";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
 import { getNovuClient } from "@app/lib/notifications";
 import { renderEmail as renderDigestEmail } from "@app/lib/notifications/email-templates/agent-message-feedback-digest";
+import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -24,7 +25,7 @@ const AgentMessageFeedbackPayloadSchema = z.object({
   agentConfigurationId: z.string(),
   userWhoGaveFeedbackId: z.string(),
   thumbDirection: z.union([z.literal("up"), z.literal("down")]),
-  feedbackContent: z.string().optional(),
+  feedbackId: z.string(),
 });
 
 type AgentMessageFeedbackPayloadType = z.infer<
@@ -211,6 +212,15 @@ export const agentMessageFeedbackWorkflow = workflow(
         const feedbacks: Parameters<typeof renderDigestEmail>[0]["feedbacks"] =
           [];
 
+        let feedbackAuth: Authenticator | null = null;
+
+        if (subscriber.subscriberId) {
+          feedbackAuth = await Authenticator.fromUserIdAndWorkspaceId(
+            subscriber.subscriberId,
+            payload.workspaceId
+          );
+        }
+
         for (const event of events) {
           if (!isAgentMessageFeedbackPayload(event.payload)) {
             continue;
@@ -229,6 +239,22 @@ export const agentMessageFeedbackWorkflow = workflow(
             payload: event.payload,
           });
 
+          let feedbackContent: string | undefined;
+
+          if (feedbackAuth) {
+            const feedback = await AgentMessageFeedbackResource.fetchById(
+              feedbackAuth,
+              {
+                feedbackId: event.payload.feedbackId,
+                agentConfigurationId: event.payload.agentConfigurationId,
+              }
+            );
+
+            if (feedback) {
+              feedbackContent = feedback.content ?? undefined;
+            }
+          }
+
           feedbacks.push({
             agentName: eventDetails.agentName,
             conversationId: event.payload.conversationId,
@@ -236,7 +262,7 @@ export const agentMessageFeedbackWorkflow = workflow(
             userWhoGaveFeedbackFullName:
               eventDetails.userWhoGaveFeedbackFullName,
             thumbDirection: event.payload.thumbDirection,
-            feedbackContent: event.payload.feedbackContent,
+            feedbackContent,
           });
         }
 
@@ -300,13 +326,13 @@ export const triggerAgentMessageFeedbackNotification = async (
     messageId,
     agentConfigurationId,
     thumbDirection,
-    feedbackContent,
+    feedbackId,
   }: {
     conversationId: string;
     messageId: string;
     agentConfigurationId: string;
     thumbDirection: AgentMessageFeedbackDirection;
-    feedbackContent?: string;
+    feedbackId: string;
   }
 ): Promise<Result<void, DustError<"internal_error">>> => {
   const userWhoGaveFeedback = auth.user();
@@ -372,7 +398,7 @@ export const triggerAgentMessageFeedbackNotification = async (
       agentConfigurationId,
       userWhoGaveFeedbackId: userWhoGaveFeedback.sId,
       thumbDirection,
-      ...(feedbackContent ? { feedbackContent } : {}),
+      feedbackId,
     };
 
     const r = await novuClient.bulkTrigger(

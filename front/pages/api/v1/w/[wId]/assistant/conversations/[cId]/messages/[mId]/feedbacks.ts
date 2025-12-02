@@ -269,7 +269,7 @@ async function handler(
           messageId,
           agentConfigurationId: created.value.agentConfigurationId,
           thumbDirection: bodyValidation.right.thumbDirection,
-          feedbackContent: bodyValidation.right.feedbackContent ?? undefined,
+          feedbackId: created.value.feedbackId,
         });
       }
       res.status(200).json({ success: true });
