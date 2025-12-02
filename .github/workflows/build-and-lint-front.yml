@@ -17,6 +17,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+      - name: Fetch main branch
+        run: git fetch origin main --depth=1
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
       - name: Install Redis
@@ -41,7 +45,7 @@ jobs:
           REDIS_CACHE_URI: "redis://localhost:5434"
           REDIS_URI: "redis://localhost:5434"
           NODE_ENV: test
-        run: npx tsx admin/db.ts && npm run test:ci -- --changed=main
+        run: npx tsx admin/db.ts && npm run test:ci -- --changed=origin/main
       - name: Build Tests Report
         if: always()
         uses: mikepenz/action-junit-report@v5
@@ -130,7 +134,7 @@ jobs:
           2. Maintenance burden: Unused files still need to be updated during refactors, migrations, or dependency upgrades
           3. Confusion: Makes it unclear what's actually part of the application vs. legacy/dead code, slowing down onboarding
           4. Bloat: Increases repository size, IDE indexing time, and potentially bundle size if not properly tree-shaken
-          
+
           EOF
           )
           npm run knip -- --include files || (echo "You have some unused files. **Please remove them, or add them in the knip.ts file in the ignoreFiles array**\n\n${explanations}" >&2; false)
