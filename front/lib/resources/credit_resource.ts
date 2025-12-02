@@ -198,6 +198,7 @@ export class CreditResource extends BaseResource<CreditModel> {
       return new Err(new Error("Amount to consume must be strictly positive."));
     }
     const now = new Date();
+
     // Note: Sequelize's increment() returns [affectedRows[], affectedCount] but
     // affectedCount is unreliable for PostgreSQL. We check affectedRows.length instead.
     const [affectedRows] = await this.model.increment("consumedAmountCents", {
@@ -238,6 +239,33 @@ export class CreditResource extends BaseResource<CreditModel> {
         transaction,
       }
     );
+  }
+
+  static async freezePAYGCreditById(
+    auth: Authenticator,
+    creditId: number,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<Result<undefined, Error>> {
+    const [, affectedRows] = await this.model.update(
+      {
+        initialAmountCents: Sequelize.col("consumedAmountCents"),
+      },
+      {
+        where: {
+          id: creditId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          type: "payg",
+        },
+        transaction,
+        returning: true,
+      }
+    );
+
+    if (!affectedRows || affectedRows.length === 0) {
+      return new Err(new Error("Credit not found or already frozen"));
+    }
+
+    return new Ok(undefined);
   }
 
   async delete(
