@@ -88,7 +88,9 @@ export function useIsOnboardingConversation(conversationId: string | null) {
 
   return {
     isOnboardingConversation:
-      !!conversationId && !!metadata?.value && metadata.value === conversationId,
+      !!conversationId &&
+      !!metadata?.value &&
+      metadata.value === conversationId,
     isLoading: isMetadataLoading,
   };
 }

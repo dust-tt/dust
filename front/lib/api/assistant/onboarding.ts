@@ -15,7 +15,9 @@ import type { JobType } from "@app/types/job_type";
 import { createConversation, postUserMessage } from "./conversation";
 
 // Maps job types (from welcome form) to their primary recommended tool.
-const ROLE_TO_PRIMARY_TOOL: Partial<Record<JobType, { sId: string; name: string }>> = {
+const ROLE_TO_PRIMARY_TOOL: Partial<
+  Record<JobType, { sId: string; name: string }>
+> = {
   engineering: { sId: "github", name: "GitHub" },
   sales: { sId: "hubspot", name: "HubSpot" },
   customer_success: { sId: "hubspot", name: "HubSpot" },
