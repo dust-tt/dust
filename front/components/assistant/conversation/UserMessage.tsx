@@ -1,3 +1,4 @@
+import type { ConversationMessageAction } from "@dust-tt/sparkle";
 import {
   BoltIcon,
   classNames,
@@ -5,9 +6,10 @@ import {
   Icon,
   Markdown,
   Tooltip,
+  TrashIcon,
 } from "@dust-tt/sparkle";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
@@ -59,6 +61,7 @@ export function UserMessage({
 }: UserMessageProps) {
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const userMentionsEnabled = hasFeature("mentions_v2");
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const additionalMarkdownComponents: Components = useMemo(
     () => ({
@@ -97,8 +100,58 @@ export function UserMessage({
     );
   }, [message.mentions.length, isLastMessage, methods.data]);
 
+  const isDeleted = message.visibility === "deleted";
+  const isCurrentUser = message.user?.sId === currentUserId;
+
+  const handleDeleteMessage = useCallback(async () => {
+    if (isDeleting || isDeleted) {
+      return;
+    }
+
+    if (!window.confirm("Are you sure you want to delete this message?")) {
+      return;
+    }
+
+    setIsDeleting(true);
+
+    try {
+      const response = await fetch(
+        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/delete`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to delete message");
+      }
+
+      window.location.reload();
+    } catch (error) {
+      console.error("Failed to delete message:", error);
+      alert("Failed to delete message. Please try again.");
+      setIsDeleting(false);
+    }
+  }, [isDeleting, isDeleted, owner.sId, conversationId, message.sId]);
+
+  const actions: ConversationMessageAction[] = useMemo(() => {
+    if (!isCurrentUser || isDeleted) {
+      return [];
+    }
+
+    return [
+      {
+        icon: TrashIcon,
+        label: "Delete message",
+        onClick: handleDeleteMessage,
+      },
+    ];
+  }, [isCurrentUser, isDeleted, handleDeleteMessage]);
+
   if (userMentionsEnabled) {
-    const isCurrentUser = message.user?.sId === currentUserId;
     return (
       <div className="flex flex-grow flex-col">
         <div
@@ -125,14 +178,21 @@ export function UserMessage({
             type="user"
             isCurrentUser={isCurrentUser}
             citations={citations}
+            actions={actions}
           >
-            <Markdown
-              content={message.content}
-              isStreaming={false}
-              isLastMessage={isLastMessage}
-              additionalMarkdownComponents={additionalMarkdownComponents}
-              additionalMarkdownPlugins={additionalMarkdownPlugins}
-            />
+            {isDeleted ? (
+              <div className="italic text-muted-foreground">
+                This message has been deleted
+              </div>
+            ) : (
+              <Markdown
+                content={message.content}
+                isStreaming={false}
+                isLastMessage={isLastMessage}
+                additionalMarkdownComponents={additionalMarkdownComponents}
+                additionalMarkdownPlugins={additionalMarkdownPlugins}
+              />
+            )}
           </NewConversationMessage>
         </div>
         {showAgentSuggestions && (
@@ -164,14 +224,21 @@ export function UserMessage({
           }
           type="user"
           citations={citations}
+          actions={actions}
         >
-          <Markdown
-            content={message.content}
-            isStreaming={false}
-            isLastMessage={isLastMessage}
-            additionalMarkdownComponents={additionalMarkdownComponents}
-            additionalMarkdownPlugins={additionalMarkdownPlugins}
-          />
+          {isDeleted ? (
+            <div className="italic text-muted-foreground">
+              This message has been deleted
+            </div>
+          ) : (
+            <Markdown
+              content={message.content}
+              isStreaming={false}
+              isLastMessage={isLastMessage}
+              additionalMarkdownComponents={additionalMarkdownComponents}
+              additionalMarkdownPlugins={additionalMarkdownPlugins}
+            />
+          )}
         </ConversationMessage>
       </div>
       {showAgentSuggestions && (
