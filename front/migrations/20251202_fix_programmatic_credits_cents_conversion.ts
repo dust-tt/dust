@@ -36,7 +36,7 @@ async function fixWorkspaceCredits(
 
   // monthlyLimit is in USD (e.g., 100 = $100), but remainingAmount was incorrectly
   // stored in cents before the fix. We need to add 100 * monthlyLimit to fix this.
-  const creditsToAdd = monthlyLimit * 100;
+  const creditsToAddCents = monthlyLimit * 100;
 
   await runOnRedis({ origin: REDIS_ORIGIN }, async (redis) => {
     const key = getRedisKey(workspace);
@@ -49,25 +49,28 @@ async function fixWorkspaceCredits(
       return;
     }
 
-    const currentCreditsValue = parseFloat(currentCredits);
-    const newCreditsValue = currentCreditsValue + creditsToAdd;
+    const currentCreditsValueCents = parseFloat(currentCredits);
+    const newCreditsValueUSD = Math.min(
+      monthlyLimit,
+      (currentCreditsValueCents + creditsToAddCents) / 100
+    );
 
     workspaceLogger.info(
       {
         monthlyLimit,
-        creditsToAdd,
-        currentCredits: currentCreditsValue,
-        newCredits: newCreditsValue,
+        creditsToAddCents: creditsToAddCents,
+        currentCreditsCents: currentCreditsValueCents,
+        newCreditsUSD: newCreditsValueUSD,
         execute,
       },
       execute
-        ? "Fixing credits by adding 100 * monthlyLimit"
-        : "Would fix credits by adding 100 * monthlyLimit (dry run)"
+        ? "Fixing credits by adding 100 * monthlyLimit then convert to USD"
+        : "Would fix credits by adding 100 * monthlyLimit (dry run) then convert to USD"
     );
 
     if (execute) {
       // Preserve the TTL of the key.
-      await redis.set(key, newCreditsValue.toString(), { KEEPTTL: true });
+      await redis.set(key, newCreditsValueUSD.toString(), { KEEPTTL: true });
       workspaceLogger.info("Successfully updated credits");
     }
   });
