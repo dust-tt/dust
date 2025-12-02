@@ -30,8 +30,8 @@ function isValidWebhookRouterConfigEntry(
   return (
     value !== null &&
     typeof value === "object" &&
-    "signing_secret" in value &&
-    typeof value.signing_secret === "string" &&
+    "signingSecret" in value &&
+    typeof value.signingSecret === "string" &&
     "regions" in value &&
     typeof value.regions === "object" &&
     value.regions !== null &&
