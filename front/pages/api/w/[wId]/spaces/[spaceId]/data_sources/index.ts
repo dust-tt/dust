@@ -64,6 +64,7 @@ export const PostDataSourceWithProviderRequestBodySchema = t.intersection([
   }),
   t.partial({
     connectionId: t.string, // Required for some providers
+    relatedCredentialId: t.string, // Required for private integrations
   }),
 ]);
 
@@ -226,7 +227,7 @@ const handleDataSourceWithProvider = async ({
   req: NextApiRequest;
   res: NextApiResponse<WithAPIErrorResponse<PostSpaceDataSourceResponseBody>>;
 }) => {
-  const { provider, name, connectionId } = body;
+  const { provider, name, connectionId, relatedCredentialId } = body;
 
   // Checking that we have connectionId if we need id
   const isConnectionIdRequired = isConnectionIdRequiredForProvider(provider);
@@ -295,7 +296,17 @@ const handleDataSourceWithProvider = async ({
   let dataSourceDescription = getDefaultDataSourceDescription(provider, suffix);
 
   let { configuration } = body;
-  if (provider === "slack" || provider === "slack_bot") {
+  if (provider === "slack") {
+    configuration = {
+      botEnabled: false,
+      whitelistedDomains: undefined,
+      autoReadChannelPatterns: [],
+      restrictedSpaceAgentsEnabled: true,
+      privateIntegrationCredentialId: relatedCredentialId,
+    };
+  }
+
+  if (provider === "slack_bot") {
     configuration = {
       botEnabled: true,
       whitelistedDomains: undefined,

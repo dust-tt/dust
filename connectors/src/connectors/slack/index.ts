@@ -97,6 +97,8 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
           configuration.restrictedSpaceAgentsEnabled ?? true,
         feedbackVisibleToAuthorOnly:
           configuration.feedbackVisibleToAuthorOnly ?? true,
+        privateIntegrationCredentialId:
+          configuration.privateIntegrationCredentialId,
       }
     );
 
@@ -604,6 +606,14 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         const enabled = configValue === "true";
         await slackConfig.model.update(
           { restrictedSpaceAgentsEnabled: enabled },
+          { where: { id: slackConfig.id } }
+        );
+        return new Ok(undefined);
+      }
+
+      case "privateIntegrationCredentialId": {
+        await slackConfig.model.update(
+          { privateIntegrationCredentialId: configValue },
           { where: { id: slackConfig.id } }
         );
         return new Ok(undefined);
