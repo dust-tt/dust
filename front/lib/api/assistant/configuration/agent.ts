@@ -392,6 +392,12 @@ export async function createAgentConfiguration(
         );
       }
     }
+  } else {
+    if (!(await canPublishAgent(auth)) && scope === "visible") {
+      return new Err(
+        new Error("Publishing agents is restricted to builders and admins.")
+      );
+    }
   }
 
   try {
