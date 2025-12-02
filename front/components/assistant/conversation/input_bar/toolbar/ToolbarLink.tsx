@@ -47,26 +47,17 @@ export function ToolbarLink({ editor }: ToolbarLinkProps) {
 
   // Listen for keyboard shortcut event from the editor
   useEffect(() => {
-    const handleOpenDialog = (e: CustomEvent) => {
-      // Only handle if not already handled.
+    const handleOpenDialog = (e: Event) => {
+      // Prevent other toolbar instances from handling the same event.
       // This is necessary because there are two toolbar components (one for mobile and one for desktop)
-      if (e.detail.handled) {
-        return;
-      }
-      e.detail.handled = true; // Mark as handled
+      e.stopImmediatePropagation();
 
       openLinkDialog(editorRef.current);
     };
 
-    window.addEventListener(
-      "dust:openLinkDialog",
-      handleOpenDialog as EventListener
-    );
+    window.addEventListener("dust:openLinkDialog", handleOpenDialog);
     return () => {
-      window.removeEventListener(
-        "dust:openLinkDialog",
-        handleOpenDialog as EventListener
-      );
+      window.removeEventListener("dust:openLinkDialog", handleOpenDialog);
     };
   }, []);
 
@@ -141,6 +132,7 @@ export function ToolbarLink({ editor }: ToolbarLinkProps) {
             label="Link"
             placeholder="Link"
             value={linkUrl}
+            autoFocus
             onChange={(e) => setLinkUrl(e.target.value)}
           />
         </DialogContainer>
