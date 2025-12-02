@@ -134,7 +134,10 @@ const _syncWebhookRouterEntryHandler = async (
     // Check if signing secret differs from existing entry
     const service = new WebhookRouterConfigService();
     if (signingSecret) {
-      const existingEntry = await service.getEntry(provider, providerWorkspaceId);
+      const existingEntry = await service.getEntry(
+        provider,
+        providerWorkspaceId
+      );
       if (existingEntry && existingEntry.signingSecret !== signingSecret) {
         logger.warn(
           {
