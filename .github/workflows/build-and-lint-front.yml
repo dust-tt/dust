@@ -41,7 +41,7 @@ jobs:
           REDIS_CACHE_URI: "redis://localhost:5434"
           REDIS_URI: "redis://localhost:5434"
           NODE_ENV: test
-        run: npx tsx admin/db.ts && npm run test:ci -- --changed=main
+        run: npx tsx admin/db.ts && npm run test:ci
       - name: Build Tests Report
         if: always()
         uses: mikepenz/action-junit-report@v5
