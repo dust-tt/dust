@@ -216,16 +216,11 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
     const existingConfig =
       await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
 
-    const configData = {
-      freeCreditCents,
-      defaultDiscountPercent,
-    };
-
     if (existingConfig) {
-      const updateResult = await existingConfig.updateConfiguration(
-        auth,
-        configData
-      );
+      const updateResult = await existingConfig.updateConfiguration(auth, {
+        freeCreditCents,
+        defaultDiscountPercent,
+      });
       if (updateResult.isErr()) {
         return updateResult;
       }
@@ -233,7 +228,8 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
       const createResult = await ProgrammaticUsageConfigurationResource.makeNew(
         auth,
         {
-          ...configData,
+          freeCreditCents,
+          defaultDiscountPercent,
           paygCapCents: null,
         }
       );

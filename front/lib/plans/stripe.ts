@@ -87,6 +87,8 @@ async function getDefautPriceFromMetadata(
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const SUPPORTED_PAYMENT_METHODS = ["card", "sepa_debit"] as const;
 
+export const ENTERPRISE_N30_PAYMENTS_DAYS = 30;
+
 type SupportedPaymentMethod = (typeof SUPPORTED_PAYMENT_METHODS)[number];
 
 /**
@@ -686,70 +688,21 @@ export async function reportActiveSeats(
   );
 }
 
-/**
- * Attaches a credit purchase as an invoice item to a subscription.
- * The item will be included in the next regular subscription invoice.
- * Returns the invoice item ID for idempotency tracking.
- */
-export async function attachCreditPurchaseToSubscription({
+export async function makeOneOffInvoice({
   stripeSubscriptionId,
   amountCents,
   couponId,
+  collectionMethod,
+  daysUntilDue,
 }: {
   stripeSubscriptionId: string;
   amountCents: number;
   couponId?: string;
-}): Promise<Result<string, { error_message: string }>> {
-  const stripe = getStripeClient();
-
-  // Get the subscription to find the customer.
-  const subscription = await getStripeSubscription(stripeSubscriptionId);
-  if (!subscription) {
-    return new Err({
-      error_message: `Subscription ${stripeSubscriptionId} not found`,
-    });
-  }
-
-  const customerId = getCustomerId(subscription);
-
-  try {
-    // Create invoice item that will be charged in the next subscription invoice.
-    const invoiceItem = await stripe.invoiceItems.create(
-      makeCreditPurchaseLineItemPayload({
-        customerId,
-        amountCents,
-        subscription: stripeSubscriptionId,
-        couponId,
-      })
-    );
-
-    return new Ok(invoiceItem.id);
-  } catch (error) {
-    logger.error(
-      {
-        stripeSubscriptionId,
-        stripeError: true,
-      },
-      "[Credit Purchase] Failed to attach line item to Stripe subscription"
-    );
-    return new Err({
-      error_message: `Failed to attach credit purchase to subscription: ${normalizeError(error).message}`,
-    });
-  }
-}
-
-export async function makeCreditPurchaseInvoice({
-  stripeSubscriptionId,
-  amountCents,
-  couponId,
-}: {
-  stripeSubscriptionId: string;
-  amountCents: number;
-  couponId?: string;
+  collectionMethod: "charge_automatically" | "send_invoice";
+  daysUntilDue?: number;
 }): Promise<Result<Stripe.Invoice, { error_message: string }>> {
   const stripe = getStripeClient();
 
-  // Get the subscription to find the customer.
   const subscription = await getStripeSubscription(stripeSubscriptionId);
   if (!subscription) {
     return new Err({
@@ -761,13 +714,17 @@ export async function makeCreditPurchaseInvoice({
   const invoiceParams: Stripe.InvoiceCreateParams = {
     customer: customerId,
     subscription: stripeSubscriptionId,
-    collection_method: "charge_automatically",
+    collection_method: collectionMethod,
     metadata: {
       credit_purchase: "true",
       credit_amount_cents: amountCents.toString(),
     },
     auto_advance: true,
   };
+
+  if (collectionMethod === "send_invoice" && daysUntilDue) {
+    invoiceParams.days_until_due = daysUntilDue;
+  }
 
   try {
     const invoice = await stripe.invoices.create(invoiceParams);
@@ -791,38 +748,56 @@ export async function makeCreditPurchaseInvoice({
       "[Credit Purchase] Failed to create Stripe invoice"
     );
     return new Err({
-      error_message: `Failed to create invoice credit purchase: ${normalizeError(error).message}`,
+      error_message: `Failed to create invoice: ${normalizeError(error).message}`,
     });
   }
 }
 
-export async function finalizeAndPayCreditPurchaseInvoice(
+export async function finalizeInvoice(
+  invoice: Stripe.Invoice
+): Promise<Result<Stripe.Invoice, { error_message: string }>> {
+  const stripe = getStripeClient();
+
+  try {
+    const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
+    return new Ok(finalizedInvoice);
+  } catch (error) {
+    logger.error(
+      {
+        stripeInvoiceId: invoice.id,
+        stripeError: true,
+        error: normalizeError(error).message,
+      },
+      "[Stripe] Failed to finalize invoice"
+    );
+    return new Err({
+      error_message: `Failed to finalize invoice: ${normalizeError(error).message}`,
+    });
+  }
+}
+
+export async function payInvoice(
   invoice: Stripe.Invoice
 ): Promise<Result<{ paymentUrl: string | null }, { error_message: string }>> {
   const stripe = getStripeClient();
-  const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
 
-  // Attempt to pay the invoice.
   try {
-    const paidInvoice = await stripe.invoices.pay(finalizedInvoice.id);
+    const paidInvoice = await stripe.invoices.pay(invoice.id);
 
     if (paidInvoice.status === "paid") {
       return new Ok({ paymentUrl: null });
     }
   } catch (payError) {
-    // Payment failed or requires action (e.g., 3D Secure).
-    // We'll return the hosted invoice URL for the customer to complete payment.
     logger.info(
       {
         stripeInvoiceId: invoice.id,
         error: normalizeError(payError).message,
       },
-      "[Credit Purchase] Payment requires additional action or failed"
+      "[Stripe] Payment requires additional action or failed"
     );
   }
 
-  // Payment not completed - return hosted URL for customer to complete.
-  const invoiceWithUrl = await stripe.invoices.retrieve(finalizedInvoice.id);
+  const invoiceWithUrl = await stripe.invoices.retrieve(invoice.id);
   if (invoiceWithUrl.hosted_invoice_url) {
     return new Ok({ paymentUrl: invoiceWithUrl.hosted_invoice_url });
   }
