@@ -38,8 +38,6 @@ export async function* streamLLMEvents({
   // Aggregate output items to build a SuccessCompletionEvent at the end of a turn.
   const aggregate = new SuccessAggregate();
 
-  console.log("hello");
-
   function* yieldEvents(events: LLMEvent[]) {
     for (const event of events) {
       if (event.type === "text_delta") {

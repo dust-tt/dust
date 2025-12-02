@@ -2,9 +2,8 @@ import type { GenerateContentResponse } from "@google/genai";
 import { FinishReason } from "@google/genai";
 import { describe, expect, it } from "vitest";
 
+import { streamLLMEvents } from "@app/lib/api/llm/clients/google/utils/google_to_events";
 import { createAsyncGenerator } from "@app/lib/api/llm/utils";
-
-import { streamLLMEvents } from "../google_to_events";
 
 // Test-specific type that omits computed/derived properties from GenerateContentResponse
 type PartialGenerateContentResponse = Omit<

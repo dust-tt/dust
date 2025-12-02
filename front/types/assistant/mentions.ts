@@ -42,6 +42,7 @@ export interface RichMention {
   pictureUrl: string;
   description: string;
   userFavorite?: boolean;
+  hello?: string;
 }
 
 /**
