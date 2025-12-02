@@ -2,8 +2,8 @@ name: Scheduled Lint (front)
 
 on:
   schedule:
-    # Run every hour
-    - cron: "0 * * * *"
+    # Run twice a day at 8 AM and 8 PM UTC
+    - cron: "0 8,20 * * *"
   workflow_dispatch: # Allow manual triggering
 
 permissions:
