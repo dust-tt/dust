@@ -252,7 +252,7 @@ export class WebhookRouterConfigService {
    *
    * @param provider - The provider name (e.g., "slack", "notion")
    * @param providerWorkspaceId - The provider workspace/team ID
-   * @param signingSecret - The signing secret for verification
+   * @param signingSecret - Optional signing secret for verification. If provided, updates the secret.
    * @param region - The region name (e.g., "europe-west1", "us-central1")
    * @param connectorIds - Array of connector IDs for this region
    * @param maxRetries - Maximum number of retries on concurrent modification (default: 5)
@@ -260,7 +260,7 @@ export class WebhookRouterConfigService {
   async syncEntry(
     provider: string,
     providerWorkspaceId: string,
-    signingSecret: string,
+    signingSecret: string | undefined,
     region: string,
     connectorIds: number[],
     maxRetries: number = 5
@@ -289,10 +289,17 @@ export class WebhookRouterConfigService {
           // We have connectors - update or create the entry
           if (existingEntry) {
             // Update existing entry
-            existingEntry.signingSecret = signingSecret;
+            if (signingSecret !== undefined) {
+              existingEntry.signingSecret = signingSecret;
+            }
             existingEntry.regions[region] = connectorIds;
           } else {
-            // Create new entry
+            // Create new entry - signingSecret must be provided for new entries
+            if (!signingSecret) {
+              throw new Error(
+                `Cannot create new entry without signing secret for provider '${provider}' and providerWorkspaceId '${providerWorkspaceId}'`
+              );
+            }
             config[provider]![providerWorkspaceId] = {
               signingSecret,
               regions: {

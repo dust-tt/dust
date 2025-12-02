@@ -21,7 +21,7 @@ type WebhookRouterEntryResBody = WithConnectorsAPIErrorReponse<{
   success: boolean;
 }>;
 
-const SyncWebhookRouterEntryBodySchema = t.type({
+const SyncWebhookRouterEntryBodySchema = t.partial({
   signingSecret: t.string,
 });
 
@@ -89,22 +89,21 @@ const _syncWebhookRouterEntryHandler = async (
       }
     } else if (provider === "slack") {
       // Find all connectors for this Slack team in this region
-      const slackConfig =
-        await SlackConfigurationResource.fetchByActiveBot(providerWorkspaceId);
+      const slackConfigs =
+        await SlackConfigurationResource.listForTeamId(providerWorkspaceId);
 
-      if (slackConfig) {
+      if (slackConfigs.length > 0) {
         // Get the connector for this Slack configuration
-        const connector = await ConnectorResource.fetchById(
-          slackConfig.connectorId
+        const connectors = await ConnectorResource.fetchByIds(
+          "slack",
+          slackConfigs.map((config) => config.connectorId)
         );
-        if (connector) {
-          connectorIds = [connector.id];
+        connectorIds = connectors.map((c: ConnectorResource) => c.id);
 
-          logger.info(
-            { slackTeamId: providerWorkspaceId, connectorIds },
-            `Found Slack connector in region ${region}`
-          );
-        }
+        logger.info(
+          { slackTeamId: providerWorkspaceId, connectorIds },
+          `Found ${connectorIds.length} Slack connectors in region ${region}`
+        );
       } else {
         logger.info(
           { slackTeamId: providerWorkspaceId },
@@ -121,8 +120,33 @@ const _syncWebhookRouterEntryHandler = async (
       });
     }
 
-    // Sync the entry for this region
+    // If signingSecret was provided but no connectors found, return error
+    if (signingSecret && connectorIds.length === 0) {
+      return apiError(req, res, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `No connectors found for provider '${provider}' and providerWorkspaceId '${providerWorkspaceId}' in region '${region}'. Cannot sync with provided signing secret.`,
+        },
+      });
+    }
+
+    // Check if signing secret differs from existing entry
     const service = new WebhookRouterConfigService();
+    if (signingSecret) {
+      const existingEntry = await service.getEntry(provider, providerWorkspaceId);
+      if (existingEntry && existingEntry.signingSecret !== signingSecret) {
+        logger.warn(
+          {
+            provider,
+            providerWorkspaceId,
+          },
+          "Signing secret differs from existing entry - updating to new secret"
+        );
+      }
+    }
+
+    // Sync the entry for this region
     await service.syncEntry(
       provider,
       providerWorkspaceId,
