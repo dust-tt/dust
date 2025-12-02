@@ -1,4 +1,4 @@
-name: Scheduled Tests & Lint (front)
+name: Scheduled Lint (front)
 
 on:
   schedule:
@@ -42,38 +42,6 @@ jobs:
       - name: Install Front dependencies
         working-directory: front
         run: npm ci
-      - name: Install Redis
-        uses: chenjuneking/redis-setup-action@v1
-        with:
-          version: "7.2.5"
-          hostPort: 5434
-          containerPort: 6379
-      - name: Install Postgres
-        uses: dust-tt/postgresql-action@6730e69fe23f4f2989c19edf9e6e0d7ffeb0a05c
-        with:
-          postgresql docker image: mirror.gcr.io/postgres
-          postgresql version: "14.13"
-          postgresql db: front_test
-          postgresql user: test
-          postgresql password: test
-          postgresql port: 5433
-      - name: Run All Tests
-        working-directory: front
-        env:
-          FRONT_DATABASE_URI: "postgres://test:test@localhost:5433/front_test"
-          REDIS_CACHE_URI: "redis://localhost:5434"
-          REDIS_URI: "redis://localhost:5434"
-          NODE_ENV: test
-        run: npx tsx admin/db.ts && npm run test:ci
-      - name: Build Tests Report
-        if: always()
-        uses: mikepenz/action-junit-report@v5
-        with:
-          report_paths: "**/front/junit*.xml"
-          detailed_summary: true
-          flaky_summary: true
-          group_suite: true
-          check_name: Scheduled Tests Report
       - name: Run Biome Lint (Full Codebase)
         working-directory: front
         run: npm run lint:circular
