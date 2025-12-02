@@ -386,7 +386,8 @@ export type AllSupportedFileContentType =
 export type AllSupportedWithDustSpecificFileContentType =
   | AllSupportedFileContentType
   | "application/vnd.dust.tool-output.data-source-search-result"
-  | "application/vnd.dust.tool-output.websearch-result";
+  | "application/vnd.dust.tool-output.websearch-result"
+  | "application/vnd.dust.tool-output.data-source-node-content";
 
 export type SupportedImageContentType = {
   [K in keyof typeof FILE_FORMATS]: (typeof FILE_FORMATS)[K] extends {

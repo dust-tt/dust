@@ -14,6 +14,7 @@ import {
 import { ensureAuthorizedDataSourceViews } from "@app/lib/actions/mcp_internal_actions/utils/data_source_views";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
@@ -175,6 +176,20 @@ export function registerCatTool(
           );
         }
 
+        if (!agentLoopContext?.runContext) {
+          return new Err(new MCPError("No conversation context available"));
+        }
+
+        const { citationsOffset } = agentLoopContext.runContext.stepContext;
+
+        if (citationsOffset >= getRefs().length) {
+          return new Err(
+            new MCPError("Unable to provide a citation for this document")
+          );
+        }
+
+        const ref = getRefs()[citationsOffset];
+
         return new Ok([
           {
             type: "resource" as const,
@@ -184,6 +199,7 @@ export function registerCatTool(
               uri: node.source_url ?? "",
               text: readResult.value.text,
               metadata: renderNode(node, dataSourceIdToConnectorMap),
+              ref: ref,
             },
           },
         ]);
