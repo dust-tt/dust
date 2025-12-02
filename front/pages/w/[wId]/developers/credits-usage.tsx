@@ -121,7 +121,9 @@ function CreditCategoryBar({
   return (
     <Page.Vertical sizing="grow">
       <div className="flex w-full items-center justify-between">
-        <p className="my-1 text-sm text-muted-foreground">{title}</p>
+        <p className="my-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
+          {title}
+        </p>
         {action}
       </div>
       <div className="text-lg font-semibold text-foreground dark:text-foreground-night">
