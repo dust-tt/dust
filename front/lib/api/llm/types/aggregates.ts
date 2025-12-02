@@ -27,6 +27,7 @@ export class SuccessAggregate {
 
   constructor() {
     this._aggregated = [];
+    console.log("hello");
   }
 
   public add(event: LLMEvent): void {
