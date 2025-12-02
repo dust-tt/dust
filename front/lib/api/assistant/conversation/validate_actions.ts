@@ -68,10 +68,12 @@ export async function validateAction(
     actionId,
     approvalState,
     messageId,
+    shouldRunAgentLoop = true,
   }: {
     actionId: string;
     approvalState: ActionApprovalStateType;
     messageId: string;
+    shouldRunAgentLoop?: boolean;
   }
 ): Promise<Result<void, DustError>> {
   const owner = auth.getNonNullableWorkspace();
@@ -182,24 +184,26 @@ export async function validateAction(
     return new Ok(undefined);
   }
 
-  await launchAgentLoopWorkflow({
-    auth,
-    agentLoopArgs: {
-      agentMessageId,
-      agentMessageVersion,
-      conversationId,
-      conversationTitle,
-      userMessageId,
-      userMessageVersion,
-    },
-    // Resume from the step where the action was created.
-    startStep: agentStepContent.step,
-    // Wait for completion of the agent loop workflow that triggered the
-    // validation. This avoids race conditions where validation re-triggers the
-    // agent loop before it completes, and thus throws a workflow already
-    // started error.
-    waitForCompletion: true,
-  });
+  if (shouldRunAgentLoop) {
+    await launchAgentLoopWorkflow({
+      auth,
+      agentLoopArgs: {
+        agentMessageId,
+        agentMessageVersion,
+        conversationId,
+        conversationTitle,
+        userMessageId,
+        userMessageVersion,
+      },
+      // Resume from the step where the action was created.
+      startStep: agentStepContent.step,
+      // Wait for completion of the agent loop workflow that triggered the
+      // validation. This avoids race conditions where validation re-triggers the
+      // agent loop before it completes, and thus throws a workflow already
+      // started error.
+      waitForCompletion: true,
+    });
+  }
 
   logger.info(
     {

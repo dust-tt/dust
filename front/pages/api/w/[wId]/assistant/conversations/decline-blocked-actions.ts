@@ -6,13 +6,13 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { normalizeError } from "@app/types";
 
 export type DeclineBlockedActionsResponse = {
-  success: true;
-  totalFailedActions: number;
+  failedConversationIds: string[];
 };
 
-export const DismissAllActionsQuerySchema = z.object({
+export const DismissAllActionsBodySchema = z.object({
   conversationIds: z.array(z.string()).min(1),
 });
 
@@ -31,35 +31,18 @@ async function handler(
     });
   }
 
-  if (
-    req.query.conversationIds &&
-    typeof req.query.conversationIds === "string"
-  ) {
-    req.query.conversationIds = [req.query.conversationIds];
-  }
-
-  const parseResult = DismissAllActionsQuerySchema.safeParse(req.query);
+  const parseResult = DismissAllActionsBodySchema.safeParse(req.body);
   if (!parseResult.success) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: `Invalid query parameters: ${parseResult.error.message}. Provide conversationIds as query parameters.`,
+        message: `Invalid request body: ${parseResult.error.message}. Provide conversationIds in the request body.`,
       },
     });
   }
 
   const { conversationIds } = parseResult.data;
-
-  if (conversationIds.length === 0) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "At least one conversation ID is required",
-      },
-    });
-  }
 
   const result = await declineBlockedActionsForConversations(
     auth,
@@ -71,17 +54,13 @@ async function handler(
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message:
-          result.error instanceof Error
-            ? result.error.message
-            : "Failed to decline blocked actions",
+        message: normalizeError(result.error).message,
       },
     });
   }
 
   return res.status(200).json({
-    success: true,
-    totalFailedActions: result.value.failedActionCount,
+    failedConversationIds: result.value.failedConversationIds,
   });
 }
 

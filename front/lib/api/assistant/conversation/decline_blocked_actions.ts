@@ -3,17 +3,16 @@ import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
-import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
-import type { ConversationWithoutContentType, Result } from "@app/types";
+import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 // This will update the status of an authentication required action to denied.
 // Since we don't launch a new agent loop after unlike action validation, we need to manually clear actionRequired status.
 export async function declineAuthenticationRequiredAction(
   auth: Authenticator,
-  conversation: ConversationWithoutContentType,
+  conversation: ConversationResource,
   {
     actionId,
     messageId,
@@ -29,19 +28,6 @@ export async function declineAuthenticationRequiredAction(
   if (!action) {
     return new Err(
       new DustError("action_not_found", `Action not found: ${actionId}`)
-    );
-  }
-
-  const agentStepContent = await AgentStepContentResource.fetchByModelId(
-    action.stepContentId
-  );
-
-  if (!agentStepContent) {
-    return new Err(
-      new DustError(
-        "internal_error",
-        `Agent step content not found: ${action.stepContentId}`
-      )
     );
   }
 
@@ -72,7 +58,7 @@ export async function declineAuthenticationRequiredAction(
 
   const messageResult = await fetchMessageInConversation(
     auth,
-    conversation,
+    conversation.toJSON(),
     messageId
   );
   if (!messageResult) {
@@ -109,31 +95,25 @@ export async function declineAuthenticationRequiredAction(
 }
 
 export type DeclineBlockedActionsForConversationsResult = {
-  failedActionCount: number;
+  failedConversationIds: string[];
 };
 
 export async function declineBlockedActionsForConversations(
   auth: Authenticator,
   conversationIds: string[]
 ): Promise<Result<DeclineBlockedActionsForConversationsResult, Error>> {
-  let failedActionCount = 0;
-  const conversationResources = await ConversationResource.fetchByIds(
+  const failedConversationIds = new Set<string>();
+
+  const conversations = await ConversationResource.fetchByIds(
     auth,
     conversationIds
   );
 
-  for (const conversationResource of conversationResources) {
-    // if it doesn't exist, we skip it
-    if (!conversationResource) {
-      continue;
-    }
-
-    const conversation = conversationResource.toJSON();
-
+  for (const conversation of conversations) {
     const blockedActions =
       await AgentMCPActionResource.listBlockedActionsForConversation(
         auth,
-        conversation.sId
+        conversation
       );
 
     const authRequiredActions = blockedActions.filter(
@@ -156,7 +136,7 @@ export async function declineBlockedActionsForConversations(
         );
 
         if (result.isErr()) {
-          failedActionCount++;
+          failedConversationIds.add(conversation.sId);
         }
       }
     }
@@ -167,24 +147,15 @@ export async function declineBlockedActionsForConversations(
           actionId: action.actionId,
           approvalState: "rejected",
           messageId: action.messageId,
+          shouldRunAgentLoop: false,
         });
 
         if (result.isErr()) {
-          failedActionCount++;
+          failedConversationIds.add(conversation.sId);
         }
       }
     }
   }
 
-  logger.info(
-    {
-      conversationIds,
-      failedActionCount,
-      workspaceId: auth.getNonNullableWorkspace().sId,
-      userId: auth.user()?.sId,
-    },
-    "Completed dismissing blocked actions"
-  );
-
-  return new Ok({ failedActionCount });
+  return new Ok({ failedConversationIds: Array.from(failedConversationIds) });
 }
