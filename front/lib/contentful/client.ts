@@ -442,16 +442,18 @@ function contentfulEntryToCustomerStory(
   const slug = parsed.slug ?? slugify(parsed.title);
 
   // Check assets directly
-  const body = isDocument(fields.body) ? fields.body : EMPTY_DOCUMENT;
-  const heroImage = isAsset(fields.heroImage) ? fields.heroImage : undefined;
-  const companyLogo = isAsset(fields.companyLogo)
+  const body = isContentfulDocument(fields.body) ? fields.body : EMPTY_DOCUMENT;
+  const heroImage = isContentfulAsset(fields.heroImage)
+    ? fields.heroImage
+    : undefined;
+  const companyLogo = isContentfulAsset(fields.companyLogo)
     ? fields.companyLogo
     : undefined;
-  const contactPhoto = isAsset(fields.contactPhoto)
+  const contactPhoto = isContentfulAsset(fields.contactPhoto)
     ? fields.contactPhoto
     : undefined;
   const gallery = Array.isArray(fields.gallery)
-    ? fields.gallery.filter(isAsset)
+    ? fields.gallery.filter(isContentfulAsset)
     : [];
 
   return {
