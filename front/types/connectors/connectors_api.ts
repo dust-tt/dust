@@ -607,7 +607,7 @@ export class ConnectorsAPI {
         method: "POST",
         headers: this.getDefaultHeaders(),
         body: JSON.stringify({
-          signing_secret: signingSecret,
+          signingSecret,
         }),
       }
     );
