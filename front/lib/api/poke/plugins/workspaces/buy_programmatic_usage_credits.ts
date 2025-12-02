@@ -5,7 +5,6 @@ import { fromZodError } from "zod-validation-error";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { createEnterpriseCreditPurchase } from "@app/lib/credits/committed";
 import {
-  getCustomerId,
   getStripeSubscription,
   isEnterpriseSubscription,
 } from "@app/lib/plans/stripe";
@@ -35,7 +34,7 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
     id: "buy-programmatic-usage-credits",
     name: "Buy Committed Credits",
     description:
-      "Purchase committed credits for enterprise customers. Committed credits are consumed after free credits and before pay-as-you-go (PAYG) credits. The purchase will be added to the customer's subscription and paid on the next billing cycle.",
+      "Purchase committed credits for enterprise customers. Committed credits are consumed after free credits and before pay-as-you-go (PAYG) credits. An invoice will be sent to the customer.",
     resourceTypes: ["workspaces"],
     args: {
       amountDollars: {
@@ -74,7 +73,7 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
         type: "boolean",
         label: "Confirm Purchase",
         description:
-          "I understand that running this plugin will add committed credits to the customer's subscription, which will be paid on next billing cycle.",
+          "I understand that running this plugin will add committed credits and an invoice will be sent to the customer.",
       },
     },
   },
@@ -163,16 +162,15 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
       return result;
     }
 
-    const customerId = getCustomerId(stripeSubscription);
-    const invoiceUrl = `https://dashboard.stripe.com/customers/${customerId}/upcoming_invoice/${subscription.stripeSubscriptionId}`;
+    const invoiceUrl = `https://dashboard.stripe.com/invoices/${result.value.invoiceOrLineItemId}`;
 
     const originalAmount = validatedArgs.amountDollars;
 
     return new Ok({
       display: "textWithLink",
-      value: `Successfully added committed credits of $${originalAmount.toFixed(2)} to the subscription (${validatedArgs.startDate} to ${validatedArgs.expirationDate}). The charge will appear on the next billing cycle. See upcoming invoice for actual billed amount`,
+      value: `Successfully added committed credits of $${originalAmount.toFixed(2)} (${validatedArgs.startDate} to ${validatedArgs.expirationDate}). An invoice has been sent to the customer.`,
       link: invoiceUrl,
-      linkText: "View Upcoming Invoice in Stripe",
+      linkText: "View Invoice in Stripe",
     });
   },
 });

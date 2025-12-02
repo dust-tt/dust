@@ -2,13 +2,14 @@ import type Stripe from "stripe";
 
 import type { Authenticator } from "@app/lib/auth";
 import {
-  attachCreditPurchaseToSubscription,
-  finalizeAndPayCreditPurchaseInvoice,
+  ENTERPRISE_N30_PAYMENTS,
+  finalizeInvoice,
   getCreditAmountFromInvoice,
   getCreditPurchaseCouponId,
   isCreditPurchaseInvoice,
   isEnterpriseSubscription,
-  makeCreditPurchaseInvoice,
+  makeOneOffInvoice,
+  payInvoice,
 } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import logger from "@app/logger/logger";
@@ -106,7 +107,9 @@ export async function createEnterpriseCreditPurchase({
   discountPercent?: number;
   startDate?: Date;
   expirationDate?: Date;
-}): Promise<Result<{ credit: CreditResource; invoiceItemId: string }, Error>> {
+}): Promise<
+  Result<{ credit: CreditResource; invoiceOrLineItemId: string }, Error>
+> {
   const workspace = auth.getNonNullableWorkspace();
 
   let couponId;
@@ -128,38 +131,50 @@ export async function createEnterpriseCreditPurchase({
     couponId = undefined;
   }
 
-  // Attach credit purchase to subscription
-  const attachResult = await attachCreditPurchaseToSubscription({
+  const invoiceResult = await makeOneOffInvoice({
     stripeSubscriptionId,
     amountCents,
     couponId,
+    collectionMethod: "send_invoice",
+    daysUntilDue: ENTERPRISE_N30_PAYMENTS,
   });
 
-  if (attachResult.isErr()) {
+  if (invoiceResult.isErr()) {
     logger.error(
       {
-        error: attachResult.error.error_message,
+        error: invoiceResult.error.error_message,
         workspaceId: workspace.sId,
         amountCents,
         discountPercent,
       },
-      "[Credit Purchase] Failed to attach credit purchase to subscription"
+      "[Credit Purchase] Failed to create enterprise credit purchase invoice"
     );
-    return new Err(new Error(attachResult.error.error_message));
+    return new Err(new Error(invoiceResult.error.error_message));
   }
 
-  const invoiceItemId = attachResult.value;
+  const invoice = invoiceResult.value;
 
-  // Create credit with full amount
   const credit = await CreditResource.makeNew(auth, {
     type: "committed",
     initialAmountCents: amountCents,
     consumedAmountCents: 0,
     discount: discountPercent,
-    invoiceOrLineItemId: invoiceItemId,
+    invoiceOrLineItemId: invoice.id,
   });
 
-  // Activate the credit immediately (optimistic activation for Enterprise)
+  const finalizeResult = await finalizeInvoice(invoice);
+  if (finalizeResult.isErr()) {
+    logger.error(
+      {
+        error: finalizeResult.error.error_message,
+        workspaceId: workspace.sId,
+        invoiceId: invoice.id,
+      },
+      "[Credit Purchase] Failed to finalize enterprise credit purchase invoice"
+    );
+    return new Err(new Error(finalizeResult.error.error_message));
+  }
+
   const startResult = await credit.start(startDate, expirationDate);
 
   if (startResult.isErr()) {
@@ -167,7 +182,7 @@ export async function createEnterpriseCreditPurchase({
       {
         error: startResult.error.message,
         workspaceId: workspace.sId,
-        invoiceItemId,
+        invoiceOrLineItemId: invoice.id,
       },
       "[Credit Purchase] Failed to start credit after creation"
     );
@@ -179,13 +194,13 @@ export async function createEnterpriseCreditPurchase({
       workspaceId: workspace.sId,
       amountCents,
       discountPercent,
-      invoiceItemId,
+      invoiceOrLineItemId: invoice.id,
       expirationDate: credit.expirationDate,
     },
-    "[Credit Purchase] Credit purchase attached to subscription and activated"
+    "[Credit Purchase] Enterprise credit purchase invoice created and credit activated"
   );
 
-  return new Ok({ credit, invoiceItemId });
+  return new Ok({ credit, invoiceOrLineItemId: invoice.id });
 }
 
 export async function createProCreditPurchase({
@@ -218,11 +233,11 @@ export async function createProCreditPurchase({
     couponId = couponResult.value;
   }
 
-  // Create and pay one-off invoice
-  const invoiceResult = await makeCreditPurchaseInvoice({
+  const invoiceResult = await makeOneOffInvoice({
     stripeSubscriptionId,
     amountCents,
     couponId,
+    collectionMethod: "charge_automatically",
   });
 
   if (invoiceResult.isErr()) {
@@ -239,7 +254,6 @@ export async function createProCreditPurchase({
 
   const invoice = invoiceResult.value;
 
-  // Create credit record (will be activated via webhook when paid)
   await CreditResource.makeNew(auth, {
     type: "committed",
     initialAmountCents: amountCents,
@@ -248,7 +262,7 @@ export async function createProCreditPurchase({
     invoiceOrLineItemId: invoice.id,
   });
 
-  const finalizeResult = await finalizeAndPayCreditPurchaseInvoice(invoice);
+  const finalizeResult = await finalizeInvoice(invoice);
   if (finalizeResult.isErr()) {
     logger.error(
       {
@@ -262,7 +276,21 @@ export async function createProCreditPurchase({
     return new Err(new Error(finalizeResult.error.error_message));
   }
 
-  const { paymentUrl } = finalizeResult.value;
+  const payResult = await payInvoice(finalizeResult.value);
+  if (payResult.isErr()) {
+    logger.error(
+      {
+        error: payResult.error.error_message,
+        workspaceId: workspace.sId,
+        invoiceId: invoice.id,
+        amountCents,
+      },
+      "[Credit Purchase] Failed to pay credit purchase invoice"
+    );
+    return new Err(new Error(payResult.error.error_message));
+  }
+
+  const { paymentUrl } = payResult.value;
 
   logger.info(
     {
