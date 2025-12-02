@@ -79,6 +79,7 @@ export const PostDataSourceWithProviderRequestBodySchema = t.intersection([
   t.partial({
     connectionId: t.string, // Required for some providers
     relatedCredentialId: t.string, // Required for private integrations
+    extraConfig: t.record(t.string, t.string), // Used by slack custom app connector
   }),
 ]);
 
@@ -241,7 +242,7 @@ const handleDataSourceWithProvider = async ({
   req: NextApiRequest;
   res: NextApiResponse<WithAPIErrorResponse<PostSpaceDataSourceResponseBody>>;
 }) => {
-  const { provider, name, connectionId, relatedCredentialId } = body;
+  const { provider, name, connectionId, relatedCredentialId, extraConfig } = body;
 
   // Checking that we have connectionId if we need id
   const isConnectionIdRequired = isConnectionIdRequiredForProvider(provider);
@@ -533,12 +534,13 @@ const handleDataSourceWithProvider = async ({
   await dataSource.setConnectorId(connectorsRes.value.id);
 
   // For Slack apps, register the signing secret in the webhook router
-  if (provider === "slack" && connectionId) {
+  if (provider === "slack" && connectionId && extraConfig) {
+    const signingSecret = extraConfig["signing_secret"];
+
     const oauthAPI = new OAuthAPI(config.getOAuthAPIConfig(), logger);
     const accessTokenRes = await oauthAPI.getAccessToken({ connectionId });
     if (accessTokenRes.isOk()) {
       const connection = accessTokenRes.value.connection;
-      const signingSecret = await getSlackSigningSecret(oauthAPI, connectionId);
 
       if (signingSecret && connection.metadata.team_id) {
         const webhookRes = await connectorsAPI.addSlackWebhookRouterEntry({
@@ -554,6 +556,9 @@ const handleDataSourceWithProvider = async ({
 
           // Rollback: delete connector and data source
           await dataSource.delete(auth, { hardDelete: true });
+          await connectorsAPI.deleteConnector({
+            connectorId: connectorsRes.value.id,
+          });
 
           const deleteRes = await coreAPI.deleteDataSource({
             projectId: dustProject.value.project.project_id.toString(),

@@ -210,11 +210,12 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
       return undefined;
     }
 
+    // Note: we don't store the signing secret as it's not needed for OAuth connections.
+    // It is only used for webhook validation
     return {
       content: {
         client_id: slack_client_id,
         client_secret: slack_client_secret,
-        signing_secret: slack_signing_secret,
       },
       metadata: { workspace_id: workspaceId, user_id: userId },
     };
