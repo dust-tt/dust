@@ -2,7 +2,7 @@ import type Stripe from "stripe";
 
 import type { Authenticator } from "@app/lib/auth";
 import {
-  ENTERPRISE_N30_PAYMENTS,
+  ENTERPRISE_N30_PAYMENTS_DAYS,
   finalizeInvoice,
   getCreditAmountFromInvoice,
   getCreditPurchaseCouponId,
@@ -136,7 +136,7 @@ export async function createEnterpriseCreditPurchase({
     amountCents,
     couponId,
     collectionMethod: "send_invoice",
-    daysUntilDue: ENTERPRISE_N30_PAYMENTS,
+    daysUntilDue: ENTERPRISE_N30_PAYMENTS_DAYS,
   });
 
   if (invoiceResult.isErr()) {

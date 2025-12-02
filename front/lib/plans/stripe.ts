@@ -87,7 +87,7 @@ async function getDefautPriceFromMetadata(
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const SUPPORTED_PAYMENT_METHODS = ["card", "sepa_debit"] as const;
 
-export const ENTERPRISE_N30_PAYMENTS = 30;
+export const ENTERPRISE_N30_PAYMENTS_DAYS = 30;
 
 type SupportedPaymentMethod = (typeof SUPPORTED_PAYMENT_METHODS)[number];
 
