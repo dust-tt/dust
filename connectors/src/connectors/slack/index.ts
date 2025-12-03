@@ -166,10 +166,8 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
             `Attempting Slack app deactivation [updateSlackConnector/team_id_mismatch]`
           );
 
-          const credentialsRes = await getSlackClientCredentials(
-            currentSlackConfig,
-            c.id
-          );
+          const credentialsRes =
+            await getSlackClientCredentials(currentSlackConfig);
           if (credentialsRes.isErr()) {
             throw credentialsRes.error;
           }
@@ -263,10 +261,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         `Attempting Slack app deactivation [cleanupSlackConnector]`
       );
 
-      const credentialsRes = await getSlackClientCredentials(
-        configuration,
-        connector.id
-      );
+      const credentialsRes = await getSlackClientCredentials(configuration);
       if (credentialsRes.isErr()) {
         if (!force) {
           return credentialsRes;
@@ -750,8 +745,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
  * Retrieves Slack client credentials from either customer-specific credentials or environment variables.
  */
 async function getSlackClientCredentials(
-  configuration: SlackConfigurationResource,
-  connectorId: number
+  configuration: SlackConfigurationResource
 ): Promise<
   Result<{ slackClientId: string; slackClientSecret: string }, Error>
 > {
@@ -788,7 +782,7 @@ async function getSlackClientCredentials(
 
     logger.info(
       {
-        connectorId,
+        connectorId: configuration.connectorId,
         credentialId: configuration.privateIntegrationCredentialId,
       },
       "Using customer-specific Slack credentials"
@@ -798,7 +792,7 @@ async function getSlackClientCredentials(
     slackClientSecret = slackConfig.getRequiredSlackClientSecret();
 
     logger.info(
-      { connectorId },
+      { connectorId: configuration.connectorId },
       "Using environment variable credentials for Slack (legacy connector)"
     );
   }
