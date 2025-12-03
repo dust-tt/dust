@@ -4,7 +4,6 @@
       "name": "core",
       "path": "core",
       "settings": {
-        // Rust Analyzer settings
         "rust-analyzer.checkOnSave.enable": true,
         "rust-analyzer.checkOnSave.command": "clippy",
         "rust-analyzer.cargo.buildScripts.enable": true,
@@ -16,7 +15,6 @@
         "rust-analyzer.completion.autoimport.enable": true,
         "rust-analyzer.imports.granularity.group": "module",
         "rust-analyzer.imports.prefix": "crate",
-        // Exclude target directory from file watching
         "files.watcherExclude": {
           "**/target/**": true
         }
@@ -30,7 +28,7 @@
         "typescript.experimental.useTsgo": true,
         "files.exclude": {
           "**/node_modules": true,
-          "**/dist": true,
+          "**/dist": true
         }
       }
     },
@@ -38,16 +36,14 @@
       "name": "front",
       "path": "front",
       "settings": {
-        // Build tools (Next.js) will still resolve from node_modules during build
         "typescript.preferences.useLabelDetailsInCompletion": true,
-        // Ensure this folder uses its own tsconfig.json for @app/* alias resolution
         "typescript.preferences.includePackageJsonAutoImports": "off",
         "typescript.experimental.useTsgo": true,
         "files.exclude": {
           "**/node_modules": true,
           "**/dist": true,
           "**/.next": true,
-          "**/workers-build": true,
+          "**/workers-build": true
         }
       }
     },
@@ -55,12 +51,11 @@
       "name": "connectors",
       "path": "connectors",
       "settings": {
-        // Ensure this folder uses its own tsconfig.json for @connectors/* alias resolution
         "typescript.preferences.includePackageJsonAutoImports": "off",
         "typescript.experimental.useTsgo": true,
         "files.exclude": {
           "**/node_modules": true,
-          "**/dist": true,
+          "**/dist": true
         }
       }
     },
@@ -68,15 +63,14 @@
       "name": "extension",
       "path": "extension",
       "settings": {
-        // Ensure this folder uses its own tsconfig.json for @app/* alias resolution
         "typescript.preferences.includePackageJsonAutoImports": "off",
         "typescript.experimental.useTsgo": true,
         "files.exclude": {
           "**/node_modules": true,
-          "**/dist": true,
+          "**/dist": true
         }
       }
-    }, 
+    },
     {
       "name": "firebase-functions",
       "path": "firebase-functions",
@@ -85,7 +79,7 @@
         "typescript.experimental.useTsgo": true,
         "files.exclude": {
           "**/node_modules": true,
-          "**/dist": true,
+          "**/dist": true
         }
       }
     },
@@ -93,7 +87,6 @@
       "name": "sparkle",
       "path": "sparkle",
       "settings": {
-        // Ensure this folder uses its own tsconfig.json for @sparkle/* alias resolution
         "typescript.preferences.includePackageJsonAutoImports": "off",
         "typescript.experimental.useTsgo": true,
         "files.exclude": {
@@ -106,7 +99,6 @@
       "name": "viz",
       "path": "viz",
       "settings": {
-        // Ensure this folder uses its own tsconfig.json for @viz/* alias resolution
         "typescript.preferences.includePackageJsonAutoImports": "off",
         "typescript.experimental.useTsgo": true,
         "files.exclude": {
@@ -115,6 +107,9 @@
           "**/dist": true
         }
       }
+    },
+    {
+      "path": "eslint-plugin-dust"
     }
   ],
   "settings": {
@@ -146,4 +141,3 @@
     "editor.formatOnSave": true
   }
 }
-

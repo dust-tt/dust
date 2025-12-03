@@ -142,7 +142,7 @@ export const MessageFeedbackRequestBodySchema = t.type({
  */
 async function handler(
   req: NextApiRequest,
-  // eslint-disable-next-line dust/enforce-client-types-in-public-api
+
   res: NextApiResponse<WithAPIErrorResponse<PostMessageFeedbackResponseType>>,
   auth: Authenticator
 ): Promise<void> {

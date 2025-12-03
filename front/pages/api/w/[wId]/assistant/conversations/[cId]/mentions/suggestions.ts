@@ -4,6 +4,7 @@ import { suggestionsOfMentions } from "@app/lib/api/assistant/conversation/menti
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { RichMention, WithAPIErrorResponse } from "@app/types";
 import { isString } from "@app/types";
@@ -25,6 +26,34 @@ async function handler(
         message: "The method passed is not supported, GET is expected.",
       },
     });
+  }
+
+  if (!(typeof req.query.cId === "string")) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid query parameters, `cId` (string) is required.",
+      },
+    });
+  }
+
+  const conversationId = req.query.cId;
+
+  if (conversationId) {
+    const conversationRes = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+    if (!conversationRes) {
+      return apiError(req, res, {
+        status_code: 404,
+        api_error: {
+          type: "conversation_not_found",
+          message: "Conversation not found",
+        },
+      });
+    }
   }
 
   const { select: selectParam } = req.query;

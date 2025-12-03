@@ -320,6 +320,42 @@
  *           type: string
  *           description: ID of the mentioned agent configuration
  *           example: "7f3a9c2b1e"
+ *     RichMention:
+ *       type: object
+ *       description: A rich mention suggestion containing detailed information about an agent or user
+ *       required:
+ *         - id
+ *         - type
+ *         - label
+ *         - pictureUrl
+ *         - description
+ *       properties:
+ *         id:
+ *           type: string
+ *           description: Unique identifier for the mention (agent sId or user sId)
+ *           example: "7f3a9c2b1e"
+ *         type:
+ *           type: string
+ *           enum: [agent, user]
+ *           description: Type of the mention
+ *           example: "agent"
+ *         label:
+ *           type: string
+ *           description: Display label for the mention
+ *           example: "My Assistant"
+ *         pictureUrl:
+ *           type: string
+ *           description: URL of the profile picture
+ *           example: "https://example.com/avatar.png"
+ *         description:
+ *           type: string
+ *           description: Description of the mention (agent description or user email)
+ *           example: "A helpful AI assistant"
+ *         userFavorite:
+ *           type: boolean
+ *           nullable: true
+ *           description: Whether the agent is marked as a favorite by the user (only for agent mentions)
+ *           example: true
  *     Message:
  *       type: object
  *       required:

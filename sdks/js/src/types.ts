@@ -3344,3 +3344,41 @@ export interface GetSpaceMembersResponseBody {
 export interface GetWorkspaceMembersResponseBody {
   users: Pick<UserType, "sId" | "id" | "email">[];
 }
+
+const RichMentionSchema = z.object({
+  id: z.string(),
+  type: z.enum(["agent", "user"]),
+  label: z.string(),
+  pictureUrl: z.string(),
+  description: z.string(),
+  userFavorite: z.boolean().optional(),
+});
+
+export type RichMention = z.infer<typeof RichMentionSchema>;
+
+export const GetMentionSuggestionsRequestQuerySchema = z.object({
+  query: z.string(),
+  select: z
+    .union([z.array(z.enum(["agents", "users"])), z.enum(["agents", "users"])])
+    .optional(),
+});
+
+export const GetMentionSuggestionsResponseBodySchema = z.object({
+  suggestions: z.array(RichMentionSchema),
+});
+
+export type GetMentionSuggestionsResponseBodyType = z.infer<
+  typeof GetMentionSuggestionsResponseBodySchema
+>;
+
+export const ParseMentionsRequestBodySchema = z.object({
+  markdown: z.string(),
+});
+
+export const ParseMentionsResponseBodySchema = z.object({
+  markdown: z.string(),
+});
+
+export type ParseMentionsResponseBodyType = z.infer<
+  typeof ParseMentionsResponseBodySchema
+>;
