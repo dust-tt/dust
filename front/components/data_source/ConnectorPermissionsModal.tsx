@@ -57,6 +57,7 @@ import {
   getDisplayNameForDataSource,
   isRemoteDatabase,
 } from "@app/lib/data_sources";
+import { clientFetch } from "@app/lib/egress/client";
 import {
   useConnectorConfig,
   useConnectorPermissions,
@@ -120,6 +121,7 @@ export async function handleUpdatePermissions(
 
   const updateRes = await updateConnectorConnectionId(
     connectionRes.value.connectionId,
+    extraConfig,
     provider,
     dataSource,
     owner
@@ -168,11 +170,12 @@ export async function handleUpdatePermissions(
 
 export async function updateConnectorConnectionId(
   newConnectionId: string,
+  newExtraConfig: Record<string, string>,
   provider: ConnectorProvider,
   dataSource: DataSourceType,
   owner: LightWorkspaceType
 ) {
-  const res = await fetch(
+  const res = await clientFetch(
     `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/update`,
     {
       method: "POST",
@@ -181,6 +184,7 @@ export async function updateConnectorConnectionId(
       },
       body: JSON.stringify({
         connectionId: newConnectionId,
+        extraConfig: newExtraConfig,
       } satisfies UpdateConnectorRequestBody),
     }
   );
@@ -208,7 +212,7 @@ export async function updateConnectorConnectionId(
 
   return {
     success: false,
-    error: `Failed to update the permissions of the Data Source: (contact support@dust.tt for assistance)`,
+    error: `Failed to update the permissions of the Data Source. Please retry to reconnect, or contact support@dust.tt for assistance if the problem persists.`,
   };
 }
 
