@@ -4,6 +4,7 @@ import type { ActionSpecification } from "@app/components/agent_builder/types";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { StepContext } from "@app/lib/actions/types";
 import {
+  isMCPInternalCatTool,
   isMCPInternalDataSourceFileSystem,
   isMCPInternalInclude,
   isMCPInternalNotion,
@@ -124,6 +125,10 @@ export function getCitationsCount({
 
   if (isMCPInternalRunAgent(action)) {
     return RUN_AGENT_ACTION_NUM_RESULTS;
+  }
+
+  if (isMCPInternalCatTool(action)) {
+    return 1;
   }
 
   return getRetrievalTopK({

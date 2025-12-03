@@ -75,6 +75,10 @@ export function registerCatTool(
         enableAlerting: true,
       },
       async ({ dataSources, nodeId, offset, limit, grep }) => {
+        if (!agentLoopContext?.runContext) {
+          return new Err(new MCPError("No conversation context available"));
+        }
+
         const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
         // Gather data source configurations.
@@ -174,10 +178,6 @@ export function registerCatTool(
               }
             )
           );
-        }
-
-        if (!agentLoopContext?.runContext) {
-          return new Err(new MCPError("No conversation context available"));
         }
 
         const { citationsOffset } = agentLoopContext.runContext.stepContext;

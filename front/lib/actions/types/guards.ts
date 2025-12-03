@@ -166,6 +166,15 @@ export function isMCPInternalDataSourceFileSystem(
   );
 }
 
+export function isMCPInternalCatTool(
+  arg: MCPToolConfigurationType
+): arg is ServerSideMCPToolConfigurationType {
+  if (!isMCPInternalDataSourceFileSystem(arg)) {
+    return false;
+  }
+  return arg.originalName === "cat";
+}
+
 export function isMCPInternalWebsearch(
   arg: MCPToolConfigurationType
 ): arg is ServerSideMCPToolConfigurationType {
