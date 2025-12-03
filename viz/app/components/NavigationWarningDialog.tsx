@@ -34,8 +34,8 @@ export function NavigationWarningDialog({
   }, [url]);
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onCancel(); }}>
-      <DialogContent className='sm:max-w-md'>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onCancel()}>
+      <DialogContent className='sm:max-w-md' showCloseButton={false}>
         <DialogHeader>
           <div className='flex items-center gap-3'>
             <div className='flex h-10 w-10 items-center justify-center rounded-full bg-amber-100'>
