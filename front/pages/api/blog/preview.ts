@@ -1,5 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { isString } from "@app/types";
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -10,7 +12,7 @@ export default async function handler(
     return res.status(401).json({ message: "Invalid token" });
   }
 
-  if (!slug || typeof slug !== "string") {
+  if (!isString(slug)) {
     return res
       .status(400)
       .json({ message: "Missing or invalid slug parameter" });
