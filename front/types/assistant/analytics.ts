@@ -11,7 +11,7 @@ export interface AgentMessageAnalyticsTokens {
   completion: number;
   reasoning: number;
   cached: number;
-  cost_cents: number;
+  cost_micro_usd: number;
 }
 
 export interface AgentMessageAnalyticsToolUsed {

@@ -9,7 +9,7 @@ const DEFAULT_METRIC_VALUE = 0;
 const DEFAULT_SELECTED_METRICS = [
   "conversations",
   "activeUsers",
-  "costCents",
+  "costMicroUsd",
 ] as const satisfies readonly (keyof MessageMetricsPoint)[];
 
 type BaseMetricsPoint = {
@@ -20,7 +20,7 @@ type BaseMetricsPoint = {
 type Metrics = {
   conversations: number;
   activeUsers: number;
-  costCents: number;
+  costMicroUsd: number;
   avgLatencyMs: number;
   percentilesLatencyMs: number;
   failedMessages: number;
@@ -47,7 +47,7 @@ export type MetricsBucket = {
   doc_count: number;
   unique_conversations?: estypes.AggregationsCardinalityAggregate;
   active_users?: estypes.AggregationsCardinalityAggregate;
-  cost_cents?: estypes.AggregationsSumAggregate;
+  cost_micro_usd?: estypes.AggregationsSumAggregate;
   avg_latency_ms?: estypes.AggregationsCardinalityAggregate;
   percentiles_latency_ms?: KeyedTDigestPercentiles;
   failed_messages?: estypes.AggregationsFilterAggregate;
@@ -80,8 +80,8 @@ export function buildMetricAggregates<K extends readonly MetricName[]>(
     aggregates.active_users = { cardinality: { field: "user_id" } };
   }
 
-  if (metrics.includes("costCents")) {
-    aggregates.cost_cents = { sum: { field: "tokens.cost_cents" } };
+  if (metrics.includes("costMicroUsd")) {
+    aggregates.cost_micro_usd = { sum: { field: "tokens.cost_micro_usd" } };
   }
 
   if (metrics.includes("avgLatencyMs")) {
@@ -131,9 +131,9 @@ export function parseMetricsFromBucket<K extends readonly MetricName[]>(
     );
   }
 
-  if (metrics.includes("costCents")) {
-    point.costCents = Math.round(
-      bucket.cost_cents?.value ?? DEFAULT_METRIC_VALUE
+  if (metrics.includes("costMicroUsd")) {
+    point.costMicroUsd = Math.round(
+      bucket.cost_micro_usd?.value ?? DEFAULT_METRIC_VALUE
     );
   }
 

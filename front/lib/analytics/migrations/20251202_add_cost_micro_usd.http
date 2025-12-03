@@ -1,0 +1,8 @@
+PUT /front.agent_message_analytics_2/_mapping
+{
+  "properties": {
+    "tokens.cost_micro_usd": {
+      "type": "long"
+    }
+  }
+}
