@@ -135,9 +135,22 @@ export function AttachmentCitation({
   );
 }
 
+export type ContentFragmentExpiredReason = "data_source_deleted";
+
+function isExpiredContentFragment(
+  arg: ContentFragmentType
+): arg is ContentFragmentType & {
+  expiredReason: ContentFragmentExpiredReason;
+} {
+  return arg.expiredReason !== null;
+}
+
 export function contentFragmentToAttachmentCitation(
   contentFragment: ContentFragmentType
-): AttachmentCitation {
+): AttachmentCitation | null {
+  if (isExpiredContentFragment(contentFragment)) {
+    return null;
+  }
   if (contentFragment.contentFragmentType === "content_node") {
     const { provider, nodeType } = contentFragment.contentNodeData;
     const logo = getConnectorProviderLogoWithFallback({ provider });
