@@ -134,18 +134,14 @@ function calculateCreditTotalsPerTimestamp(
       return true;
     });
 
-    const totalInitialCreditsCents = activeCredits.reduce(
-      (sum, credit) => sum + credit.initialAmountCents,
-      0
-    );
-    const totalConsumedCreditsCents = activeCredits.reduce(
-      (sum, credit) => sum + credit.consumedAmountCents,
-      0
-    );
-    const totalRemainingCreditsCents = activeCredits.reduce(
-      (sum, credit) =>
-        sum + (credit.initialAmountCents - credit.consumedAmountCents),
-      0
+    const { totalInitialCreditsCents, totalConsumedCreditsCents, totalRemainingCreditsCents } = activeCredits.reduce(
+      (acc, credit) => {
+        acc.totalInitialCreditsCents += credit.initialAmountCents;
+        acc.totalConsumedCreditsCents += credit.consumedAmountCents;
+        acc.totalRemainingCreditsCents += credit.initialAmountCents - credit.consumedAmountCents;
+        return acc;
+      },
+      { totalInitialCreditsCents: 0, totalConsumedCreditsCents: 0, totalRemainingCreditsCents: 0 }
     );
 
     creditTotalsMap.set(timestamp, {
