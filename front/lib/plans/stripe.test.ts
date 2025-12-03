@@ -9,8 +9,8 @@ import {
   getSubscriptionInvoices,
   isCreditPurchaseInvoice,
   isEnterpriseSubscription,
-  makeCreditsPAYGInvoice,
-  makeOneOffInvoice,
+  makeAndFinalizeCreditsPAYGInvoice,
+  makeCreditPurchaseOneOffInvoice,
   payInvoice,
   voidInvoiceWithReason,
 } from "@app/lib/plans/stripe";
@@ -92,107 +92,125 @@ vi.mock("stripe", () => {
 const NOV_2024_START_SECONDS = 1730419200; // 2024-11-01
 const DEC_2024_START_SECONDS = 1733011200; // 2024-12-01
 
+function makeSubscription(
+  overrides: Partial<Stripe.Subscription> = {}
+): Stripe.Subscription {
+  return {
+    id: "sub_test",
+    customer: "cus_test",
+    status: "active",
+    items: {
+      data: [],
+      has_more: false,
+      object: "list",
+      url: "/v1/subscription_items",
+    },
+    ...overrides,
+  } as Stripe.Subscription;
+}
+
+function makeInvoice(overrides: Partial<Stripe.Invoice> = {}): Stripe.Invoice {
+  return {
+    id: "in_test",
+    status: "draft",
+    metadata: {},
+    ...overrides,
+  } as Stripe.Invoice;
+}
+
+function makeSubscriptionItemWithMetadata(
+  reportUsage: string
+): Stripe.SubscriptionItem {
+  return {
+    id: "si_test",
+    object: "subscription_item",
+    price: {
+      id: "price_test",
+      object: "price",
+      recurring: {
+        interval: "month",
+        interval_count: 1,
+        aggregate_usage: null,
+        trial_period_days: null,
+        usage_type: "licensed",
+      },
+      metadata: { REPORT_USAGE: reportUsage },
+    },
+  } as unknown as Stripe.SubscriptionItem;
+}
+
+function makeItemsList(
+  items: Stripe.SubscriptionItem[]
+): Stripe.ApiList<Stripe.SubscriptionItem> {
+  return {
+    object: "list",
+    has_more: false,
+    url: "/v1/subscription_items",
+    data: items,
+  };
+}
+
 describe("isEnterpriseSubscription", () => {
   it("should identify enterprise subscription (recurring items with REPORT_USAGE=FIXED)", () => {
-    const subscription = {
-      items: {
-        data: [
-          {
-            deleted: false,
-            price: {
-              recurring: { interval: "month", interval_count: 1 },
-              metadata: { REPORT_USAGE: "FIXED" },
-            },
-          },
-        ],
-      },
-    } as unknown as Stripe.Subscription;
+    const subscription = makeSubscription({
+      items: makeItemsList([makeSubscriptionItemWithMetadata("FIXED")]),
+    });
 
     expect(isEnterpriseSubscription(subscription)).toBe(true);
   });
 
   it("should identify enterprise subscription (MAU_10)", () => {
-    const subscription = {
-      items: {
-        data: [
-          {
-            deleted: false,
-            price: {
-              recurring: { interval: "month", interval_count: 1 },
-              metadata: { REPORT_USAGE: "MAU_10" },
-            },
-          },
-        ],
-      },
-    } as unknown as Stripe.Subscription;
+    const subscription = makeSubscription({
+      items: makeItemsList([makeSubscriptionItemWithMetadata("MAU_10")]),
+    });
 
     expect(isEnterpriseSubscription(subscription)).toBe(true);
   });
 
   it("should identify Pro/Business subscriptions (REPORT_USAGE=PER_SEAT)", () => {
-    const subscription = {
-      items: {
-        data: [
-          {
-            deleted: false,
-            price: {
-              recurring: { interval: "month", interval_count: 1 },
-              metadata: { REPORT_USAGE: "PER_SEAT" },
-            },
-          },
-        ],
-      },
-    } as unknown as Stripe.Subscription;
+    const subscription = makeSubscription({
+      items: makeItemsList([makeSubscriptionItemWithMetadata("PER_SEAT")]),
+    });
 
     expect(isEnterpriseSubscription(subscription)).toBe(false);
   });
 
   it("should return false for mixed items (enterprise + pro)", () => {
-    const subscription = {
-      items: {
-        data: [
-          {
-            deleted: false,
-            price: {
-              recurring: { interval: "month", interval_count: 1 },
-              metadata: { REPORT_USAGE: "FIXED" },
-            },
-          },
-          {
-            deleted: false,
-            price: {
-              recurring: { interval: "month", interval_count: 1 },
-              metadata: { REPORT_USAGE: "PER_SEAT" },
-            },
-          },
-        ],
-      },
-    } as unknown as Stripe.Subscription;
+    const subscription = makeSubscription({
+      items: makeItemsList([
+        makeSubscriptionItemWithMetadata("FIXED"),
+        makeSubscriptionItemWithMetadata("PER_SEAT"),
+      ]),
+    });
 
     expect(isEnterpriseSubscription(subscription)).toBe(false);
   });
 
   it("should ignore deleted subscription items", () => {
-    const subscription = {
-      items: {
-        data: [
-          {
-            deleted: true,
-            price: {
-              recurring: { interval: "month", interval_count: 1 },
-              metadata: { REPORT_USAGE: "PER_SEAT" },
-            },
-          },
-          {
-            deleted: false,
-            price: {
-              recurring: { interval: "month", interval_count: 1 },
-              metadata: { REPORT_USAGE: "FIXED" },
-            },
-          },
-        ],
+    const deletedItem = {
+      id: "si_deleted",
+      object: "subscription_item",
+      deleted: true,
+      price: {
+        id: "price_deleted",
+        object: "price",
+        recurring: {
+          interval: "month",
+          interval_count: 1,
+          aggregate_usage: null,
+          trial_period_days: null,
+          usage_type: "licensed",
+        },
+        metadata: { REPORT_USAGE: "PER_SEAT" },
       },
-    } as unknown as Stripe.Subscription;
+    } as unknown as Stripe.SubscriptionItem;
+
+    const subscription = makeSubscription({
+      items: makeItemsList([
+        deletedItem,
+        makeSubscriptionItemWithMetadata("FIXED"),
+      ]),
+    });
 
     expect(isEnterpriseSubscription(subscription)).toBe(true);
   });
@@ -200,68 +218,66 @@ describe("isEnterpriseSubscription", () => {
 
 describe("credit purchase invoice helpers", () => {
   it("should identify valid credit purchase invoice", () => {
-    const invoice = {
+    const invoice = makeInvoice({
       metadata: {
         credit_purchase: "true",
         credit_amount_cents: "10000",
       },
-    } as unknown as Stripe.Invoice;
+    });
 
     expect(isCreditPurchaseInvoice(invoice)).toBe(true);
     expect(getCreditAmountFromInvoice(invoice)).toBe(10000);
   });
 
   it("should reject non-credit invoices (missing credit_purchase metadata)", () => {
-    const invoice = {
-      metadata: {},
-    } as unknown as Stripe.Invoice;
+    const invoice = makeInvoice({ metadata: {} });
 
     expect(isCreditPurchaseInvoice(invoice)).toBe(false);
     expect(getCreditAmountFromInvoice(invoice)).toBe(null);
   });
 
   it("should reject non-credit invoices (credit_purchase = 'false')", () => {
-    const invoice = {
+    const invoice = makeInvoice({
       metadata: {
         credit_purchase: "false",
         credit_amount_cents: "10000",
       },
-    } as unknown as Stripe.Invoice;
+    });
 
     expect(isCreditPurchaseInvoice(invoice)).toBe(false);
     expect(getCreditAmountFromInvoice(invoice)).toBe(null);
   });
 
   it("should reject invalid amounts (NaN)", () => {
-    const invoice = {
+    const invoice = makeInvoice({
       metadata: {
         credit_purchase: "true",
         credit_amount_cents: "invalid",
       },
-    } as unknown as Stripe.Invoice;
+    });
 
     expect(isCreditPurchaseInvoice(invoice)).toBe(true);
     expect(getCreditAmountFromInvoice(invoice)).toBe(null);
   });
 
   it("should reject invalid amounts (zero)", () => {
-    const invoice = {
+    const invoice = makeInvoice({
       metadata: {
         credit_purchase: "true",
         credit_amount_cents: "0",
       },
-    } as unknown as Stripe.Invoice;
+    });
 
     expect(getCreditAmountFromInvoice(invoice)).toBe(null);
   });
 
   it("should reject invalid amounts (negative)", () => {
-    const invoice = {
+    const invoice = makeInvoice({
       metadata: {
         credit_purchase: "true",
         credit_amount_cents: "-100",
       },
-    } as unknown as Stripe.Invoice;
+    });
 
     expect(getCreditAmountFromInvoice(invoice)).toBe(null);
   });
@@ -326,23 +342,26 @@ describe("makeOneOffInvoice - Pro credit purchase", () => {
     mockInvoices.create.mockResolvedValue({ id: "in_pro" });
     mockInvoiceItems.create.mockResolvedValue({ id: "ii_1" });
 
-    const result = await makeOneOffInvoice({
+    const result = await makeCreditPurchaseOneOffInvoice({
       stripeSubscriptionId: "sub_pro",
       amountCents: 10000,
       collectionMethod: "charge_automatically",
     });
 
     expect(result.isOk()).toBe(true);
-    expect(mockInvoices.create).toHaveBeenCalledWith({
-      customer: "cus_123",
-      subscription: "sub_pro",
-      collection_method: "charge_automatically",
-      metadata: {
-        credit_purchase: "true",
-        credit_amount_cents: "10000",
+    expect(mockInvoices.create).toHaveBeenCalledWith(
+      {
+        customer: "cus_123",
+        subscription: "sub_pro",
+        collection_method: "charge_automatically",
+        metadata: {
+          credit_purchase: "true",
+          credit_amount_cents: "10000",
+        },
+        auto_advance: true,
       },
-      auto_advance: true,
-    });
+      undefined
+    );
     expect(mockInvoiceItems.create).toHaveBeenCalledWith(
       expect.objectContaining({
         customer: "cus_123",
@@ -360,7 +379,7 @@ describe("makeOneOffInvoice - Pro credit purchase", () => {
     mockInvoices.create.mockResolvedValue({ id: "in_pro" });
     mockInvoiceItems.create.mockResolvedValue({ id: "ii_1" });
 
-    await makeOneOffInvoice({
+    await makeCreditPurchaseOneOffInvoice({
       stripeSubscriptionId: "sub_pro",
       amountCents: 10000,
       couponId: "programmatic-usage-credits-once-20",
@@ -377,7 +396,7 @@ describe("makeOneOffInvoice - Pro credit purchase", () => {
   it("should return Err when subscription not found", async () => {
     mockSubscriptions.retrieve.mockResolvedValue(null);
 
-    const result = await makeOneOffInvoice({
+    const result = await makeCreditPurchaseOneOffInvoice({
       stripeSubscriptionId: "sub_invalid",
       amountCents: 10000,
       collectionMethod: "charge_automatically",
@@ -403,7 +422,7 @@ describe("makeOneOffInvoice - Enterprise credit purchase", () => {
     mockInvoices.create.mockResolvedValue({ id: "in_enterprise" });
     mockInvoiceItems.create.mockResolvedValue({ id: "ii_1" });
 
-    const result = await makeOneOffInvoice({
+    const result = await makeCreditPurchaseOneOffInvoice({
       stripeSubscriptionId: "sub_enterprise",
       amountCents: 500000,
       collectionMethod: "send_invoice",
@@ -411,17 +430,20 @@ describe("makeOneOffInvoice - Enterprise credit purchase", () => {
     });
 
     expect(result.isOk()).toBe(true);
-    expect(mockInvoices.create).toHaveBeenCalledWith({
-      customer: "cus_456",
-      subscription: "sub_enterprise",
-      collection_method: "send_invoice",
-      days_until_due: 30,
-      metadata: {
-        credit_purchase: "true",
-        credit_amount_cents: "500000",
+    expect(mockInvoices.create).toHaveBeenCalledWith(
+      {
+        customer: "cus_456",
+        subscription: "sub_enterprise",
+        collection_method: "send_invoice",
+        days_until_due: 30,
+        metadata: {
+          credit_purchase: "true",
+          credit_amount_cents: "500000",
+        },
+        auto_advance: true,
       },
-      auto_advance: true,
-    });
+      undefined
+    );
   });
 });
 
@@ -434,7 +456,7 @@ describe("finalizeInvoice", () => {
     const finalizedInvoice = { id: "in_123", status: "open" };
     mockInvoices.finalizeInvoice.mockResolvedValue(finalizedInvoice);
 
-    const result = await finalizeInvoice({ id: "in_123" } as Stripe.Invoice);
+    const result = await finalizeInvoice(makeInvoice({ id: "in_123" }));
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
@@ -448,7 +470,7 @@ describe("finalizeInvoice", () => {
       new Error("Stripe API error")
     );
 
-    const result = await finalizeInvoice({ id: "in_123" } as Stripe.Invoice);
+    const result = await finalizeInvoice(makeInvoice({ id: "in_123" }));
 
     expect(result.isErr()).toBe(true);
   });
@@ -462,7 +484,7 @@ describe("payInvoice", () => {
   it("should return paymentUrl: null on immediate success", async () => {
     mockInvoices.pay.mockResolvedValue({ id: "in_123", status: "paid" });
 
-    const result = await payInvoice({ id: "in_123" } as Stripe.Invoice);
+    const result = await payInvoice(makeInvoice({ id: "in_123" }));
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
@@ -477,7 +499,7 @@ describe("payInvoice", () => {
       hosted_invoice_url: "https://checkout.stripe.com/3ds",
     });
 
-    const result = await payInvoice({ id: "in_123" } as Stripe.Invoice);
+    const result = await payInvoice(makeInvoice({ id: "in_123" }));
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
@@ -492,7 +514,7 @@ describe("payInvoice", () => {
       hosted_invoice_url: null,
     });
 
-    const result = await payInvoice({ id: "in_123" } as Stripe.Invoice);
+    const result = await payInvoice(makeInvoice({ id: "in_123" }));
 
     expect(result.isErr()).toBe(true);
   });
@@ -631,15 +653,16 @@ describe("makeCreditsPAYGInvoice", () => {
     const periodStart = NOV_2024_START_SECONDS;
     const periodEnd = DEC_2024_START_SECONDS;
 
-    const result = await makeCreditsPAYGInvoice({
-      stripeSubscription: {
+    const result = await makeAndFinalizeCreditsPAYGInvoice({
+      stripeSubscription: makeSubscription({
         id: "sub_enterprise",
         customer: "cus_123",
-      } as Stripe.Subscription,
+      }),
       amountCents: 15000,
       periodStartSeconds: periodStart,
       periodEndSeconds: periodEnd,
       idempotencyKey: "credits-payg-arrears-test",
+      daysUntilDue: 30,
     });
 
     expect(result.isOk()).toBe(true);
@@ -648,6 +671,7 @@ describe("makeCreditsPAYGInvoice", () => {
         customer: "cus_123",
         subscription: "sub_enterprise",
         collection_method: "send_invoice",
+        days_until_due: 30,
         metadata: {
           credits_payg: "true",
           arrears_invoice: "true",
@@ -676,15 +700,16 @@ describe("makeCreditsPAYGInvoice", () => {
     );
     mockInvoices.create.mockRejectedValue(idempotencyError);
 
-    const result = await makeCreditsPAYGInvoice({
-      stripeSubscription: {
+    const result = await makeAndFinalizeCreditsPAYGInvoice({
+      stripeSubscription: makeSubscription({
         id: "sub_enterprise",
         customer: "cus_123",
-      } as Stripe.Subscription,
+      }),
       amountCents: 15000,
       periodStartSeconds: NOV_2024_START_SECONDS,
       periodEndSeconds: DEC_2024_START_SECONDS,
       idempotencyKey: "credits-payg-arrears-duplicate",
+      daysUntilDue: 30,
     });
 
     expect(result.isErr()).toBe(true);
@@ -696,15 +721,16 @@ describe("makeCreditsPAYGInvoice", () => {
   it("should return Err with error_type='other' on general Stripe failure", async () => {
     mockInvoices.create.mockRejectedValue(new Error("Stripe API unavailable"));
 
-    const result = await makeCreditsPAYGInvoice({
-      stripeSubscription: {
+    const result = await makeAndFinalizeCreditsPAYGInvoice({
+      stripeSubscription: makeSubscription({
         id: "sub_enterprise",
         customer: "cus_123",
-      } as Stripe.Subscription,
+      }),
       amountCents: 15000,
       periodStartSeconds: NOV_2024_START_SECONDS,
       periodEndSeconds: DEC_2024_START_SECONDS,
       idempotencyKey: "credits-payg-arrears-error",
+      daysUntilDue: 30,
     });
 
     expect(result.isErr()).toBe(true);

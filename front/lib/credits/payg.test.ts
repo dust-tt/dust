@@ -11,8 +11,9 @@ import {
   stopEnterprisePAYG,
 } from "@app/lib/credits/payg";
 import {
+  ENTERPRISE_N30_PAYMENTS_DAYS,
   isEnterpriseSubscription,
-  makeCreditsPAYGInvoice,
+  makeAndFinalizeCreditsPAYGInvoice,
 } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
@@ -24,7 +25,7 @@ vi.mock("@app/lib/plans/stripe", async () => {
   return {
     ...actual,
     isEnterpriseSubscription: vi.fn(),
-    makeCreditsPAYGInvoice: vi.fn(),
+    makeAndFinalizeCreditsPAYGInvoice: vi.fn(),
   };
 });
 
@@ -492,7 +493,7 @@ describe("invoiceEnterprisePAYGCredits", () => {
     auth = authenticator;
     vi.mocked(getFeatureFlags).mockResolvedValue(["ppul"]);
     vi.mocked(isEnterpriseSubscription).mockReturnValue(true);
-    vi.mocked(makeCreditsPAYGInvoice).mockResolvedValue(
+    vi.mocked(makeAndFinalizeCreditsPAYGInvoice).mockResolvedValue(
       new Ok({ id: "inv_test" } as Stripe.Invoice)
     );
   });
@@ -589,7 +590,7 @@ describe("invoiceEnterprisePAYGCredits", () => {
     });
 
     expect(result.isOk()).toBe(true);
-    expect(makeCreditsPAYGInvoice).not.toHaveBeenCalled();
+    expect(makeAndFinalizeCreditsPAYGInvoice).not.toHaveBeenCalled();
   });
 
   it("should create invoice with correct amount and period dates", async () => {
@@ -621,7 +622,7 @@ describe("invoiceEnterprisePAYGCredits", () => {
       previousPeriodEndSeconds: previousEnd,
     });
 
-    expect(makeCreditsPAYGInvoice).toHaveBeenCalledWith({
+    expect(makeAndFinalizeCreditsPAYGInvoice).toHaveBeenCalledWith({
       stripeSubscription: subscription,
       amountCents: 15000,
       periodStartSeconds: previousStart,
@@ -629,6 +630,7 @@ describe("invoiceEnterprisePAYGCredits", () => {
       idempotencyKey: expect.stringMatching(
         `credits-payg-arrears-${credit.sId}`
       ),
+      daysUntilDue: ENTERPRISE_N30_PAYMENTS_DAYS,
     });
   });
 
@@ -661,7 +663,7 @@ describe("invoiceEnterprisePAYGCredits", () => {
       previousPeriodEndSeconds: previousEnd,
     });
 
-    expect(makeCreditsPAYGInvoice).toHaveBeenCalledWith(
+    expect(makeAndFinalizeCreditsPAYGInvoice).toHaveBeenCalledWith(
       expect.objectContaining({
         idempotencyKey: `credits-payg-arrears-${credit.sId}`,
       })
@@ -669,7 +671,7 @@ describe("invoiceEnterprisePAYGCredits", () => {
   });
 
   it("should handle idempotency errors gracefully", async () => {
-    vi.mocked(makeCreditsPAYGInvoice).mockResolvedValue(
+    vi.mocked(makeAndFinalizeCreditsPAYGInvoice).mockResolvedValue(
       new Err({ error_type: "idempotency", error_message: "Already created" })
     );
 
@@ -738,7 +740,7 @@ describe("invoiceEnterprisePAYGCredits", () => {
   });
 
   it("should return error on invoice creation failure", async () => {
-    vi.mocked(makeCreditsPAYGInvoice).mockResolvedValue(
+    vi.mocked(makeAndFinalizeCreditsPAYGInvoice).mockResolvedValue(
       new Err({ error_type: "other", error_message: "Stripe error" })
     );
 

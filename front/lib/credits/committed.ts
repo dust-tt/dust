@@ -8,7 +8,7 @@ import {
   getCreditPurchaseCouponId,
   isCreditPurchaseInvoice,
   isEnterpriseSubscription,
-  makeOneOffInvoice,
+  makeCreditPurchaseOneOffInvoice,
   MAX_PRO_INVOICE_ATTEMPTS_BEFORE_VOIDED,
   payInvoice,
   voidInvoiceWithReason,
@@ -183,7 +183,7 @@ export async function createEnterpriseCreditPurchase({
     couponId = undefined;
   }
 
-  const invoiceResult = await makeOneOffInvoice({
+  const invoiceResult = await makeCreditPurchaseOneOffInvoice({
     stripeSubscriptionId,
     amountCents,
     couponId,
@@ -286,7 +286,7 @@ export async function createProCreditPurchase({
     couponId = couponResult.value;
   }
 
-  const invoiceResult = await makeOneOffInvoice({
+  const invoiceResult = await makeCreditPurchaseOneOffInvoice({
     stripeSubscriptionId,
     amountCents,
     couponId,
