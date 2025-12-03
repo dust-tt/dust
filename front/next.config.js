@@ -47,6 +47,8 @@ const config = {
         hostname: "images.ctfassets.net",
       },
     ],
+    loader: "custom",
+    loaderFile: "./lib/contentful/imageLoader.ts",
   },
   transpilePackages: ["@uiw/react-textarea-code-editor"],
   // As of Next 14.2.3 swc minification creates a bug in the generated client side files.

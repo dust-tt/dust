@@ -143,8 +143,8 @@ export default function BlogListing({ posts }: BlogListingPageProps) {
                   <Image
                     src={post.image.url}
                     alt={post.image.alt}
-                    width={900}
-                    height={506}
+                    width={640}
+                    height={360}
                     className="aspect-video w-full object-cover"
                   />
                 )}

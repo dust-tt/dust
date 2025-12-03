@@ -314,10 +314,11 @@ export default function CustomerStoriesListing({
                       <div className="relative flex aspect-[16/9] w-full items-center justify-center overflow-hidden bg-gray-100">
                         {story.heroImage ? (
                           <Image
-                            src={`${story.heroImage.url}?w=800`}
+                            src={story.heroImage.url}
                             alt={story.heroImage.alt}
-                            fill
-                            className="object-cover brightness-100 transition duration-300 ease-out group-hover:brightness-110"
+                            width={640}
+                            height={360}
+                            className="h-full w-full object-cover brightness-100 transition duration-300 ease-out group-hover:brightness-110"
                           />
                         ) : story.companyLogo ? (
                           <div className="flex h-full w-full items-center justify-center bg-white p-8">
