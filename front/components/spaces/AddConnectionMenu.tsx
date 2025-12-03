@@ -27,6 +27,7 @@ import {
   isConnectionIdRequiredForProvider,
   isConnectorProviderAllowedForPlan,
 } from "@app/lib/connector_providers";
+import { clientFetch } from "@app/lib/egress";
 import { useSystemSpace } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
@@ -206,7 +207,7 @@ export const AddConnectionMenu = ({
     suffix: string | null;
     extraConfig: Record<string, string>;
   }): Promise<Response> => {
-    const res = await fetch(
+    const res = await clientFetch(
       suffix
         ? `/api/w/${
             owner.sId

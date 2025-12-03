@@ -478,6 +478,7 @@ function BotToggle({
                 } else {
                   const updateRes = await updateConnectorConnectionId(
                     cRes.value.connection_id,
+                    oauth.extraConfig,
                     connectorProvider,
                     botDataSource,
                     owner
