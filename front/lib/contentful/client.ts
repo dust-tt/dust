@@ -274,8 +274,7 @@ function contentfulEntryToBlogPost(
         "id" in tagLink.sys &&
         isString(tagLink.sys.id)
       ) {
-        // Use the tag name from the map, fallback to ID if not found
-        const tagName = tagNameMap.get(tagLink.sys.id) || tagLink.sys.id;
+        const tagName = tagNameMap.get(tagLink.sys.id) ?? tagLink.sys.id;
         tags.push(tagName);
       }
     }
