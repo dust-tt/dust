@@ -128,7 +128,7 @@ function CreditCategoryBar({
       </div>
       <div className="text-lg font-semibold text-foreground dark:text-foreground-night">
         {consumedFormatted}
-        <span className="font-normal text-muted-foreground dark:text-muted-foreground-night">
+        <span className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
           / {totalFormatted}
           {isCap ? " cap" : ""}
         </span>
@@ -369,6 +369,11 @@ export default function CreditsUsagePage({
     );
   }, [creditsByType]);
 
+  const shouldShowLowCreditsWarning =
+    !isCreditsLoading &&
+    totalCredits > 0 &&
+    totalConsumed >= totalCredits * 0.8;
+
   return (
     <AppCenteredLayout
       subscription={subscription}
@@ -393,9 +398,9 @@ export default function CreditsUsagePage({
           description="Monitor usage and credits for your API keys and automated workflows."
         />
 
-        {totalConsumed >= totalCredits * 0.8 && (
+        {shouldShowLowCreditsWarning && (
           <ContentMessage
-            title="You're almost out of credits."
+            title={`You're ${totalConsumed < totalCredits && "almost"} out of credits.`}
             variant="warning"
             size="lg"
             icon={ExclamationCircleIcon}
