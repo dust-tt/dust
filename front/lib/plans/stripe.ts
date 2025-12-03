@@ -299,7 +299,8 @@ export async function getSubscriptionInvoices(
   return invoices.data.filter(
     (inv) =>
       inv.billing_reason === "subscription_cycle" ||
-      inv.billing_reason === "subscription_create"
+      inv.billing_reason === "subscription_create" ||
+      inv.billing_reason === "subscription_update"
   );
 }
 
