@@ -797,20 +797,11 @@ export async function softDeleteAgentMessage(
   const user = auth.getNonNullableUser();
   const owner = auth.getNonNullableWorkspace();
 
-  const message = await Message.findOne({
-    where: {
-      conversationId: conversation.id,
-      sId: messageId,
-      workspaceId: owner.id,
-    },
-    include: [
-      {
-        model: AgentMessage,
-        as: "agentMessage",
-        required: true,
-      },
-    ],
-  });
+  const message = await fetchMessageInConversation(
+    auth,
+    conversation,
+    messageId
+  );
 
   if (!message || !message.agentMessage) {
     return new Err(new ConversationError("message_not_found"));
