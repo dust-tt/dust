@@ -152,7 +152,7 @@ export const NewConversationMessage = React.forwardRef<
             )}
           >
             <ConversationMessageTitle
-              className="heading-sm hidden @sm:block"
+              className="heading-sm hidden @sm:flex"
               name={name}
               timestamp={timestamp}
               infoChip={infoChip}
