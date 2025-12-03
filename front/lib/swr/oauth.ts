@@ -71,15 +71,9 @@ export function useSlackIsLegacy({
       disabled: disabled ?? !credentialId,
     }
   );
-  const isLegacy: boolean | null =
-    data !== undefined &&
-    "isLegacy" in data &&
-    typeof data.isLegacy === "boolean"
-      ? data.isLegacy
-      : null;
 
   return {
-    isLegacy,
+    isLegacySlackApp: data?.isLegacySlackApp ?? null,
     error,
     isLoading:
       !error && !data && !!credentialId && !(disabled ?? !credentialId),

@@ -275,7 +275,7 @@ function UpdateConnectionOAuthModal({
     disabled: !isSlack,
   });
 
-  const { isLegacy: isLegacySlackApp } = useSlackIsLegacy({
+  const { isLegacySlackApp } = useSlackIsLegacy({
     workspaceId: owner.sId,
     credentialId: slackCredentialId,
     disabled: !isSlack || !slackCredentialId,

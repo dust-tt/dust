@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
@@ -10,8 +11,12 @@ import type { WithAPIErrorResponse } from "@app/types";
 import { isString, OAuthAPI } from "@app/types";
 
 export type GetSlackClientIdResponseBody = {
-  isLegacy: boolean;
+  isLegacySlackApp: boolean;
 };
+
+const SlackCredentialContentSchema = z.object({
+  client_id: z.string(),
+});
 
 async function handler(
   req: NextApiRequest,
@@ -84,7 +89,9 @@ async function handler(
       const clientId = getClientId(credential.content);
       const oauthClientId = config.getOAuthSlackClientId();
 
-      return res.status(200).json({ isLegacy: clientId === oauthClientId });
+      return res
+        .status(200)
+        .json({ isLegacySlackApp: clientId === oauthClientId });
     }
 
     default:
@@ -99,15 +106,8 @@ async function handler(
 }
 
 function getClientId(content: unknown): string | null {
-  if (
-    content !== null &&
-    typeof content === "object" &&
-    "client_id" in content &&
-    isString(content["client_id"])
-  ) {
-    return content["client_id"];
-  }
-  return null;
+  const result = SlackCredentialContentSchema.safeParse(content);
+  return result.success ? result.data.client_id : null;
 }
 
 export default withSessionAuthenticationForWorkspace(handler);
