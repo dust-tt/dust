@@ -63,15 +63,15 @@ export function preprocessDollarSigns(content: string): string {
         // 2. Protect currency patterns
         // Matches: $100, $5.99, $1,000.50, $50k, $2.5M, $1 billion, etc.
         line = line.replace(
-          /\$(\d+(?:,\d{3})*(?:\.\d{1,2})?(?:\s*(?:USD|EUR|CAD|GBP|million|billion|thousand|[kKmMbB]))?)\b/g,
+          /(?<!\\)\$(\d+(?:,\d{3})*(?:\.\d{1,2})?(?:\s*(?:USD|EUR|CAD|GBP|million|billion|thousand|[kKmMbB]))?)\b/g,
           "\\$$$1"
         );
 
         // 3. Protect shell/code variables
         // Matches: $HOME, $PATH, $USER, ${variable}, ${foo.bar}
-        line = line.replace(/\$([A-Z_][A-Z0-9_]*)\b/g, "\\$$$1");
+        line = line.replace(/(?<!\\)\$([A-Z_][A-Z0-9_]*)\b/g, "\\$$$1");
 
-        line = line.replace(/\$\{([^}]+)\}/g, "\\${$1}");
+        line = line.replace(/(?<!\\)\$\{([^}]+)\}/g, "\\${$1}");
       }
       return line;
     })
