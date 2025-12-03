@@ -1,4 +1,5 @@
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
+import type { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { untrustedFetch } from "@app/lib/egress";
@@ -7,17 +8,19 @@ import { Err, Ok } from "@app/types";
 
 const VANTA_BASE_URL = "https://api.vanta.com";
 
-type VantaRequestOptions = {
+type VantaRequestOptions<T extends z.ZodTypeAny> = {
   path: string;
+  schema: T;
   query?: Record<string, string>;
   authInfo?: AuthInfo;
 };
 
-export async function vantaGet<T = unknown>({
+export async function vantaGet<T extends z.ZodTypeAny>({
   path,
+  schema,
   query,
   authInfo,
-}: VantaRequestOptions): Promise<Result<T, MCPError>> {
+}: VantaRequestOptions<T>): Promise<Result<z.infer<T>, MCPError>> {
   const token = authInfo?.token;
   if (!token) {
     return new Err(
@@ -46,8 +49,16 @@ export async function vantaGet<T = unknown>({
     );
   }
 
-  const payload = await response.json();
-  return new Ok(payload as T);
+  const rawData = await response.json();
+  const parseResult = schema.safeParse(rawData);
+
+  if (!parseResult.success) {
+    return new Err(
+      new MCPError(`Invalid Vanta API response: ${parseResult.error.message}`)
+    );
+  }
+
+  return new Ok(parseResult.data);
 }
 
 function buildUrl(

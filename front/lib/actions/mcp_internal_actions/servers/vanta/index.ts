@@ -8,8 +8,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { Ok } from "@app/types";
 
 import { vantaGet } from "./api";
-import type { VantaTestsResponse } from "./renderers";
-import { renderTests } from "./renderers";
+import { renderTests, VantaTestsResponseSchema } from "./renderers";
 
 const ListTestsInput = z.object({
   statusFilter: z
@@ -91,8 +90,9 @@ export default function createServer(
       async (params, { authInfo }) => {
         const query = buildQuery(params);
 
-        const result = await vantaGet<VantaTestsResponse>({
+        const result = await vantaGet({
           path: "/v1/tests",
+          schema: VantaTestsResponseSchema,
           query,
           authInfo,
         });

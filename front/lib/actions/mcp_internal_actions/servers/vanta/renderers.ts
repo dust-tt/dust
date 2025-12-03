@@ -1,46 +1,55 @@
+import { z } from "zod";
+
 import { pluralize } from "@app/types";
 
-export interface VantaTestsResponse {
-  results: {
-    pageInfo: {
-      totalCount: number;
-      endCursor: string | null;
-    };
-    data: VantaTest[];
-  };
-}
+const VantaIntegrationSchema = z.object({
+  id: z.string(),
+  name: z.string().optional(),
+});
 
-interface VantaTest {
-  id: string;
-  name: string;
-  status: string;
-  category: string;
-  description?: string;
-  failureDescription?: string;
-  remediationDescription?: string;
-  lastTestRunDate?: string;
-  integrations?: VantaIntegration[];
-  owner?: VantaOwner;
-  deactivatedStatusInfo?: {
-    isDeactivated: boolean;
-    deactivatedReason?: string;
-  };
-  remediationStatusInfo?: {
-    status: string;
-    itemCount?: number;
-  };
-}
+const VantaOwnerSchema = z.object({
+  id: z.string(),
+  displayName: z.string().optional(),
+  emailAddress: z.string().optional(),
+});
 
-interface VantaIntegration {
-  id: string;
-  name?: string;
-}
+const VantaTestSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  status: z.string(),
+  category: z.string(),
+  description: z.string().optional(),
+  failureDescription: z.string().optional(),
+  remediationDescription: z.string().optional(),
+  lastTestRunDate: z.string().optional(),
+  integrations: z.array(VantaIntegrationSchema).optional(),
+  owner: VantaOwnerSchema.optional(),
+  deactivatedStatusInfo: z
+    .object({
+      isDeactivated: z.boolean(),
+      deactivatedReason: z.string().optional(),
+    })
+    .optional(),
+  remediationStatusInfo: z
+    .object({
+      status: z.string(),
+      itemCount: z.number().optional(),
+    })
+    .optional(),
+});
 
-interface VantaOwner {
-  id: string;
-  displayName?: string;
-  emailAddress?: string;
-}
+export const VantaTestsResponseSchema = z.object({
+  results: z.object({
+    pageInfo: z.object({
+      totalCount: z.number(),
+      endCursor: z.string().nullable(),
+    }),
+    data: z.array(VantaTestSchema),
+  }),
+});
+
+export type VantaTestsResponse = z.infer<typeof VantaTestsResponseSchema>;
+type VantaTest = z.infer<typeof VantaTestSchema>;
 
 export function renderTests(response: VantaTestsResponse): string {
   const { results } = response;
