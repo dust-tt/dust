@@ -193,7 +193,7 @@ describe("decreaseProgrammaticCreditsV2", () => {
         1000,
         new Date(Date.now() + ONE_YEAR)
       );
-      console.log("credit", credit);
+
       await decreaseProgrammaticCreditsV2(auth, { amountMicroUsd: 3000000 });
 
       const refreshed = await refreshCredit(credit);

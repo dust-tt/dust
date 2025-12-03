@@ -1,16 +1,17 @@
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import type { ModelIdType as BaseModelIdType, ModelIdType } from "@app/types";
 
+// All pricing are in USD per million tokens (equivalent to micro-USD per token).
 type PricingEntry = {
   input: number;
   output: number;
-  // Optional cached-token pricing (micro USD per token).
+  // Optional cached-token pricing.
   cache_creation_input_tokens?: number;
   cache_read_input_tokens?: number;
 };
 
 export const DUST_MARKUP_PERCENT = 30;
-// Pricing in micro USD per token for current models.
+// Pricing for current models (USD per million tokens - equivalent to micro-USD per token)
 // This record must contain all BaseModelIdType values.
 const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
   // https://openai.com/api/pricing
