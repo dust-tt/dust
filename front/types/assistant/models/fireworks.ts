@@ -41,6 +41,8 @@ export const FIREWORKS_DEEPSEEK_V3P2_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: true,
   generationTokensCount: 2048,
   supportsVision: false,
+  // TODO(2025-12-03 pierre) Deepseek V3.2 reasoning support requires a bit more work
+  // https://api-docs.deepseek.com/guides/thinking_mode
   minimumReasoningEffort: "none",
   maximumReasoningEffort: "none",
   defaultReasoningEffort: "none",
