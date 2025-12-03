@@ -15,7 +15,7 @@ const MAX_PRO_CREDIT_TOTAL_CENTS = 100_000;
 const MAX_ENTERPRISE_CREDIT_CENTS = 100_000;
 
 export type CreditPurchaseLimits =
-  | { canPurchase: false; reason: "trialing" }
+  | { canPurchase: false; reason: "trialing" | "payment_issue" }
   | { canPurchase: true; maxAmountCents: number };
 
 /**
@@ -42,10 +42,17 @@ export async function getCreditPurchaseLimits(
   // For Pro subscriptions, check if they're paying or trialing.
   const customerStatus = await getCustomerStatus(stripeSubscription);
 
-  if (customerStatus !== "paying") {
+  if (customerStatus === "trialing") {
     return {
       canPurchase: false,
       reason: "trialing",
+    };
+  }
+
+  if (customerStatus === null) {
+    return {
+      canPurchase: false,
+      reason: "payment_issue",
     };
   }
 

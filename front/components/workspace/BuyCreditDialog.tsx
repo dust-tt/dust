@@ -24,6 +24,55 @@ interface BuyCreditDialogProps {
   creditPurchaseLimits: CreditPurchaseLimits | null;
 }
 
+function ContactSupportDialog({
+  isOpen,
+  onClose,
+  title,
+  description,
+  message,
+  emailSubject,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  description: string;
+  message: string;
+  emailSubject: string;
+}) {
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent size="md">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
+        </DialogHeader>
+        <DialogContainer>
+          <div className="flex flex-col gap-4">
+            <p className="text-sm text-muted-foreground">{message}</p>
+            <Button
+              label={`Contact ${SUPPORT_EMAIL}`}
+              variant="outline"
+              onClick={() =>
+                window.open(
+                  `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(emailSubject)}`,
+                  "_blank"
+                )
+              }
+            />
+          </div>
+        </DialogContainer>
+        <DialogFooter
+          leftButtonProps={{
+            label: "Close",
+            variant: "outline",
+            onClick: onClose,
+          }}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function BuyCreditDialog({
   isOpen,
   onClose,
@@ -58,17 +107,35 @@ export function BuyCreditDialog({
     });
   }, [creditPurchaseLimits]);
 
-  const amountExceedsMax = useMemo(() => {
-    if (!maxAmountDollars) {
-      return false;
-    }
+  const parsedAmount = useMemo(() => {
     const amount = parseFloat(amountDollars);
-    return !isNaN(amount) && amount > maxAmountDollars;
-  }, [amountDollars, maxAmountDollars]);
+    return isNaN(amount) ? null : amount;
+  }, [amountDollars]);
+
+  const amountValidationError = useMemo(() => {
+    if (!amountDollars) {
+      return null;
+    }
+    if (parsedAmount === null) {
+      return "Please enter a valid number";
+    }
+    if (parsedAmount <= 0) {
+      return "Amount must be greater than 0";
+    }
+    if (maxAmountDollars !== null && parsedAmount > maxAmountDollars) {
+      return `Maximum purchase amount is ${maxAmountFormatted}`;
+    }
+    return null;
+  }, [amountDollars, parsedAmount, maxAmountDollars, maxAmountFormatted]);
+
+  const isValidAmount =
+    parsedAmount !== null && parsedAmount > 0 && amountValidationError === null;
 
   const handlePurchase = async () => {
-    const amount = parseFloat(amountDollars);
-    await purchaseCredits(amount);
+    if (!isValidAmount) {
+      return;
+    }
+    await purchaseCredits(parsedAmount);
     onClose();
   };
 
@@ -79,42 +146,46 @@ export function BuyCreditDialog({
     creditPurchaseLimits.reason === "trialing"
   ) {
     return (
-      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent size="md">
-          <DialogHeader>
-            <DialogTitle>Purchase Programmatic Credits</DialogTitle>
-            <DialogDescription>
-              Credit purchases are not available during your trial period.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogContainer>
-            <div className="flex flex-col gap-4">
-              <p className="text-sm text-muted-foreground">
-                Credit purchases become available once you upgrade to a paid
-                plan. If you need credits during your trial, please contact our
-                support team.
-              </p>
-              <Button
-                label={`Contact ${SUPPORT_EMAIL}`}
-                variant="outline"
-                onClick={() =>
-                  window.open(
-                    `mailto:${SUPPORT_EMAIL}?subject=Credit%20purchase%20during%20trial`,
-                    "_blank"
-                  )
-                }
-              />
-            </div>
-          </DialogContainer>
-          <DialogFooter
-            leftButtonProps={{
-              label: "Close",
-              variant: "outline",
-              onClick: onClose,
-            }}
-          />
-        </DialogContent>
-      </Dialog>
+      <ContactSupportDialog
+        isOpen={isOpen}
+        onClose={onClose}
+        title="Purchase Programmatic Credits"
+        description="Credit purchases are not available during your trial period."
+        message="Credit purchases become available once you upgrade to a paid plan. If you need credits during your trial, please contact our support team."
+        emailSubject="Credit purchase during trial"
+      />
+    );
+  }
+
+  // Cannot purchase: payment issue.
+  if (
+    creditPurchaseLimits &&
+    !creditPurchaseLimits.canPurchase &&
+    creditPurchaseLimits.reason === "payment_issue"
+  ) {
+    return (
+      <ContactSupportDialog
+        isOpen={isOpen}
+        onClose={onClose}
+        title="Purchase Programmatic Credits"
+        description="Credit purchases require an active subscription."
+        message="Please ensure your subscription is active and your payment method is up to date. If you need assistance, please contact our support team."
+        emailSubject="Credit purchase - payment issue"
+      />
+    );
+  }
+
+  // No limits available (no Stripe subscription).
+  if (!creditPurchaseLimits) {
+    return (
+      <ContactSupportDialog
+        isOpen={isOpen}
+        onClose={onClose}
+        title="Purchase Programmatic Credits"
+        description="Credit purchases require an active subscription."
+        message="Please subscribe to a plan to purchase credits. If you need assistance, please contact our support team."
+        emailSubject="Credit purchase inquiry"
+      />
     );
   }
 
@@ -146,12 +217,8 @@ export function BuyCreditDialog({
                 min="1"
                 max={maxAmountDollars ?? undefined}
                 step="1"
-                isError={amountExceedsMax}
-                message={
-                  amountExceedsMax
-                    ? `Maximum purchase amount is ${maxAmountFormatted}`
-                    : undefined
-                }
+                isError={amountValidationError !== null}
+                message={amountValidationError ?? undefined}
               />
             </div>
 
@@ -184,7 +251,7 @@ export function BuyCreditDialog({
             label: "Purchase Credits",
             variant: "primary",
             onClick: handlePurchase,
-            disabled: !amountDollars || amountExceedsMax,
+            disabled: !isValidAmount,
           }}
         />
       </DialogContent>

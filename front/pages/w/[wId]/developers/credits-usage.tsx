@@ -433,6 +433,15 @@ export default function CreditsUsagePage({
             </ContentMessage>
           )}
 
+        {creditPurchaseLimits &&
+          !creditPurchaseLimits.canPurchase &&
+          creditPurchaseLimits.reason === "payment_issue" && (
+            <ContentMessage title="Subscription issue" variant="warning">
+              Credit purchases require an active subscription. Please ensure
+              your payment method is up to date.
+            </ContentMessage>
+          )}
+
         {/* Usage Section */}
         <UsageSection
           subscription={subscription}

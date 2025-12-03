@@ -98,8 +98,10 @@ describe("getCreditPurchaseLimits", () => {
         reason: "trialing",
       });
     });
+  });
 
-    it("should not allow purchase for null customer status", async () => {
+  describe("Pro subscriptions - payment issue", () => {
+    it("should not allow purchase when customer status is null", async () => {
       vi.mocked(isEnterpriseSubscription).mockReturnValue(false);
       vi.mocked(getCustomerStatus).mockResolvedValue(null);
 
@@ -107,7 +109,7 @@ describe("getCreditPurchaseLimits", () => {
 
       expect(result).toEqual({
         canPurchase: false,
-        reason: "trialing",
+        reason: "payment_issue",
       });
     });
   });
