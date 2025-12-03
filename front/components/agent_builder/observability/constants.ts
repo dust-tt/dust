@@ -29,7 +29,7 @@ export const LATENCY_LEGEND = [
 ] as const;
 
 export const COST_PALETTE = {
-  costCents: "text-blue-400 dark:text-blue-400-night",
+  costMicroUsd: "text-blue-400 dark:text-blue-400-night",
   totalCredits: "text-green-500 dark:text-green-500-night",
 } as const;
 

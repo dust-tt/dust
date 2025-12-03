@@ -64,7 +64,6 @@ type ChartDataPoint = {
   date: string;
   timestamp: number;
   totalInitialCreditsCents: number;
-  programmaticCostCents?: number;
   [key: string]: string | number | undefined;
 };
 
@@ -88,7 +87,7 @@ function getColorClassName(
   groups: string[]
 ): string {
   if (!groupBy) {
-    return COST_PALETTE.costCents;
+    return COST_PALETTE.costMicroUsd;
   } else if (groupBy === "origin" && isUserMessageOrigin(groupName)) {
     return getSourceColor(groupName);
   } else {
@@ -139,7 +138,7 @@ function GroupedTooltip(
 
       return {
         label,
-        value: `$${(p.value / 100).toFixed(2)}`,
+        value: `$${(p.value / 1_000_000).toFixed(2)}`,
         colorClassName,
       };
     });
@@ -344,7 +343,7 @@ export function BaseProgrammaticCostChart({
     // Add each group's cumulative cost to the data point using labels from availableGroups
     // Keep undefined values as-is so Recharts doesn't render those points
     point.groups.forEach((g) => {
-      dataPoint[g.groupKey] = g.cumulatedCostCents;
+      dataPoint[g.groupKey] = g.cumulatedCostMicroUsd;
     });
 
     return dataPoint;
@@ -530,7 +529,7 @@ export function BaseProgrammaticCostChart({
           tickLine={false}
           axisLine={false}
           tickMargin={8}
-          tickFormatter={(value) => `$${(value / 100).toFixed(0)}`}
+          tickFormatter={(value) => `$${(value / 1_000_000).toFixed(0)}`}
         />
         <Tooltip
           content={(props: TooltipContentProps<number, string>) =>

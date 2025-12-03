@@ -55,8 +55,8 @@ export type WorkspaceProgrammaticCostPoint = {
   timestamp: number;
   groups: {
     groupKey: string;
-    costCents: number;
-    cumulatedCostCents?: number;
+    costMicroUsd: number;
+    cumulatedCostMicroUsd?: number;
   }[];
   totalInitialCreditsCents: number;
   totalConsumedCreditsCents: number;
@@ -185,7 +185,7 @@ function buildAggregation(
       aggs: {
         // Total cost aggregation for sorting (sum across all documents in this group)
         total_cost: {
-          sum: { field: "tokens.cost_cents" },
+          sum: { field: "tokens.cost_micro_usd" },
         },
         ...(includeDailyBreakdown
           ? {
@@ -195,7 +195,7 @@ function buildAggregation(
                   field: "timestamp",
                   calendar_interval: "day",
                 },
-                aggs: buildMetricAggregates(["costCents"]),
+                aggs: buildMetricAggregates(["costMicroUsd"]),
               },
             }
           : {}),
@@ -283,14 +283,14 @@ export async function handleProgrammaticCostRequest(
       const result = await searchAnalytics<never, GroupedAggs>(baseQuery, {
         aggregations: {
           total_cost: {
-            sum: { field: "tokens.cost_cents" },
+            sum: { field: "tokens.cost_micro_usd" },
           },
           by_day: {
             date_histogram: {
               field: "timestamp",
               calendar_interval: "day",
             },
-            aggs: buildMetricAggregates(["costCents"]),
+            aggs: buildMetricAggregates(["costMicroUsd"]),
           },
           ...(groupBy ? buildAggregation(groupBy, groupByCount, true) : {}),
         },
@@ -315,8 +315,8 @@ export async function handleProgrammaticCostRequest(
       // Add total points to groupValues
       groupValues["total"] = new Map<number, number>();
       totalBuckets.forEach((bucket) => {
-        const point = parseMetricsFromBucket(bucket, ["costCents"]);
-        groupValues["total"]?.set(point.timestamp, point.costCents);
+        const point = parseMetricsFromBucket(bucket, ["costMicroUsd"]);
+        groupValues["total"]?.set(point.timestamp, point.costMicroUsd);
       });
 
       if (result.value.aggregations?.by_group) {
@@ -330,7 +330,7 @@ export async function handleProgrammaticCostRequest(
           return {
             groupKey: groupBucket.key,
             points: bucketsToArray(groupBucket.by_day?.buckets).map((bucket) =>
-              parseMetricsFromBucket(bucket, ["costCents"])
+              parseMetricsFromBucket(bucket, ["costMicroUsd"])
             ),
           };
         });
@@ -339,13 +339,13 @@ export async function handleProgrammaticCostRequest(
         const allGroupsToProcess = ensureAtMostNGroups(
           groupsWithParsedPoints,
           5,
-          "costCents"
+          "costMicroUsd"
         );
 
         // Process all groups (top 5 + "Others") with single loop
         for (const { groupKey, points } of allGroupsToProcess) {
           groupValues[groupKey] = new Map(
-            points.map((point) => [point.timestamp, point.costCents])
+            points.map((point) => [point.timestamp, point.costMicroUsd])
           );
         }
 
@@ -413,9 +413,9 @@ export async function handleProgrammaticCostRequest(
         });
       }
 
-      const cumulatedCostCents: Record<string, number> = {};
+      const cumulatedCostMicroUsd: Record<string, number> = {};
       Object.keys(groupValues).forEach((group) => {
-        cumulatedCostCents[group] = 0;
+        cumulatedCostMicroUsd[group] = 0;
       });
 
       const points = timestamps.map((timestamp) => {
@@ -424,19 +424,19 @@ export async function handleProgrammaticCostRequest(
           .map(([groupKey, costMap]) => {
             const cost = costMap?.get(timestamp);
             const cumulatedCost =
-              (cumulatedCostCents[groupKey] ?? 0) + (cost ?? 0);
-            cumulatedCostCents[groupKey] = cumulatedCost;
+              (cumulatedCostMicroUsd[groupKey] ?? 0) + (cost ?? 0);
+            cumulatedCostMicroUsd[groupKey] = cumulatedCost;
             return {
               groupKey,
-              costCents: cost ?? 0,
-              cumulatedCostCents:
+              costMicroUsd: cost ?? 0,
+              cumulatedCostMicroUsd:
                 timestamp <= now.getTime() ? cumulatedCost : undefined,
             };
           });
 
         if (groupBy) {
           const costForAll = groups.reduce(
-            (acc, group) => acc + group.costCents,
+            (acc, group) => acc + group.costMicroUsd,
             0
           );
 
@@ -444,13 +444,13 @@ export async function handleProgrammaticCostRequest(
           const totalCost = groupValues.total?.get(timestamp) ?? 0;
           const otherCost = totalCost - costForAll;
           const cumulatedOtherCost =
-            (cumulatedCostCents["others"] ?? 0) + (otherCost ?? 0);
-          cumulatedCostCents["others"] = cumulatedOtherCost;
+            (cumulatedCostMicroUsd["others"] ?? 0) + (otherCost ?? 0);
+          cumulatedCostMicroUsd["others"] = cumulatedOtherCost;
 
           groups.push({
             groupKey: "others",
-            costCents: otherCost,
-            cumulatedCostCents:
+            costMicroUsd: otherCost,
+            cumulatedCostMicroUsd:
               timestamp <= now.getTime() ? cumulatedOtherCost : undefined,
           });
         }
@@ -465,7 +465,7 @@ export async function handleProgrammaticCostRequest(
         };
       });
 
-      if (cumulatedCostCents["others"] > 0) {
+      if (cumulatedCostMicroUsd["others"] > 0) {
         availableGroups.push({
           groupKey: "others",
           groupLabel: "Others",

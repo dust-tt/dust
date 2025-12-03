@@ -152,7 +152,7 @@ export function formatUTCDateFromMillis(ms: number): string {
  *
  * @param groups - Array of groups with parsed points, already sorted by priority (e.g., by total cost)
  * @param max - Maximum number of groups to return (default: 5)
- * @param valueKey - Key of the numeric value to aggregate (e.g., "costCents")
+ * @param valueKey - Key of the numeric value to aggregate (e.g., "costMicroUsd")
  * @returns Array with at most N groups (top N-1 + optional "others" group)
  */
 export function ensureAtMostNGroups<
