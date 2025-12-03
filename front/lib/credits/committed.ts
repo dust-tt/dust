@@ -1,5 +1,6 @@
 import type Stripe from "stripe";
 
+import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import type { Authenticator } from "@app/lib/auth";
 import {
   ENTERPRISE_N30_PAYMENTS_DAYS,
@@ -161,6 +162,14 @@ export async function createEnterpriseCreditPurchase({
 }): Promise<
   Result<{ credit: CreditResource; invoiceOrLineItemId: string }, Error>
 > {
+  if (discountPercent !== undefined && discountPercent > MAX_DISCOUNT_PERCENT) {
+    return new Err(
+      new Error(
+        `Discount cannot exceed ${MAX_DISCOUNT_PERCENT}% (would result in selling below cost)`
+      )
+    );
+  }
+
   const workspace = auth.getNonNullableWorkspace();
 
   let couponId;
@@ -266,6 +275,14 @@ export async function createProCreditPurchase({
   amountCents: number;
   discountPercent?: number;
 }): Promise<Result<{ invoiceId: string; paymentUrl: string | null }, Error>> {
+  if (discountPercent !== undefined && discountPercent > MAX_DISCOUNT_PERCENT) {
+    return new Err(
+      new Error(
+        `Discount cannot exceed ${MAX_DISCOUNT_PERCENT}% (would result in selling below cost)`
+      )
+    );
+  }
+
   const workspace = auth.getNonNullableWorkspace();
 
   let couponId;

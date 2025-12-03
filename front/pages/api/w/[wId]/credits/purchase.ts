@@ -4,6 +4,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import {
@@ -128,11 +129,24 @@ async function handler(
       // Fetch discount from programmatic usage configuration.
       const programmaticConfig =
         await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
-      const discountPercent =
+      let discountPercent =
         programmaticConfig?.defaultDiscountPercent &&
         programmaticConfig.defaultDiscountPercent > 0
           ? programmaticConfig.defaultDiscountPercent
           : undefined;
+
+      // Validate discount does not exceed maximum (should be enforced at config level, but double-check).
+      if (discountPercent !== undefined && discountPercent > MAX_DISCOUNT_PERCENT) {
+        logger.error(
+          {
+            workspaceId: workspace.sId,
+            discountPercent,
+            maxDiscountPercent: MAX_DISCOUNT_PERCENT,
+          },
+          "[Credit Purchase] Discount exceeds maximum allowed"
+        );
+        discountPercent = undefined;
+      }
 
       if (isEnterprise) {
         const result = await createEnterpriseCreditPurchase({
