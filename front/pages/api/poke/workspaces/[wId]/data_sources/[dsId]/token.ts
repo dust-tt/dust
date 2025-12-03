@@ -5,10 +5,14 @@ import apiConfig from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import logger from "@app/logger/logger";
+import logger, { auditLog } from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { ConnectorsAPI, getOAuthConnectionAccessToken } from "@app/types";
+import {
+  ConnectorsAPI,
+  getOAuthConnectionAccessToken,
+  isString,
+} from "@app/types";
 
 export type GetTokenResponseBody = {
   token: string | null;
@@ -35,7 +39,7 @@ async function handler(
   }
 
   const { dsId } = req.query;
-  if (typeof dsId !== "string") {
+  if (!isString(dsId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -82,6 +86,15 @@ async function handler(
       }
 
       const connector = connectorRes.value;
+
+      auditLog(
+        {
+          connectorId: connector.id,
+          who: auth.user(),
+        },
+        "Fetching access token"
+      );
+
       const tokenRes = await getOAuthConnectionAccessToken({
         config: apiConfig.getOAuthAPIConfig(),
         logger,
