@@ -176,7 +176,7 @@ export async function createEnterpriseCreditPurchase({
         },
         "[Credit Purchase] Failed to create or retrieve coupon"
       );
-      throw new Error(couponResult.error.message);
+      return couponResult;
     }
     couponId = couponResult.value;
   } else {
@@ -281,7 +281,7 @@ export async function createProCreditPurchase({
         },
         "[Credit Purchase] Failed to create or retrieve coupon"
       );
-      throw new Error(couponResult.error.message);
+      return couponResult;
     }
     couponId = couponResult.value;
   }
