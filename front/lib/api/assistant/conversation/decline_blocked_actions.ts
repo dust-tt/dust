@@ -8,8 +8,6 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
-// This will update the status of an authentication required action to denied.
-// Since we don't launch a new agent loop after unlike action validation, we need to manually clear actionRequired status.
 export async function declineAuthenticationRequiredAction(
   auth: Authenticator,
   conversation: ConversationResource,
@@ -74,9 +72,9 @@ export async function declineBlockedActionsForConversations(
           conversation
         );
 
-      const blockedActions = actions
-        .filter((action) => isToolExecutionStatusBlocked(action.status))
-        .flat();
+      const blockedActions = actions.filter((action) =>
+        isToolExecutionStatusBlocked(action.status)
+      );
 
       const results = await concurrentExecutor(
         blockedActions,
@@ -113,8 +111,6 @@ export async function declineBlockedActionsForConversations(
         },
         { concurrency: CLEAR_ACTION_CONCURRENCY }
       );
-
-      return results;
     },
     { concurrency: CLEAR_ACTION_CONCURRENCY }
   );
