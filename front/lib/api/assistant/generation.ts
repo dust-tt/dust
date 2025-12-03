@@ -31,7 +31,7 @@ import { CHAIN_OF_THOUGHT_META_PROMPT } from "@app/types/assistant/chain_of_thou
  * doesn't need that replacement, and needs to avoid a dependency on
  * getAgentConfigurations here, so it passes null.
  */
-export async function constructPromptMultiActions(
+export function constructPromptMultiActions(
   auth: Authenticator,
   {
     userMessage,

@@ -244,7 +244,7 @@ export async function runModelActivity(
       })
     : null;
 
-  const prompt = await constructPromptMultiActions(auth, {
+  const prompt = constructPromptMultiActions(auth, {
     userMessage,
     agentConfiguration,
     fallbackPrompt,
