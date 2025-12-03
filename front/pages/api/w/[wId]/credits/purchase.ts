@@ -10,6 +10,7 @@ import {
   createEnterpriseCreditPurchase,
   createProCreditPurchase,
 } from "@app/lib/credits/committed";
+import { getCreditPurchaseLimits } from "@app/lib/credits/limits";
 import {
   getStripeSubscription,
   isEnterpriseSubscription,
@@ -112,6 +113,29 @@ async function handler(
       // Convert dollars to micro USD for internal storage.
       const amountMicroUsd = Math.round(amountDollars * 1_000_000);
       const isEnterprise = isEnterpriseSubscription(stripeSubscription);
+
+      // Validate against purchase limits.
+      const limits = await getCreditPurchaseLimits(auth, stripeSubscription);
+      if (!limits.canPurchase) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message:
+              "Credit purchases are not available during trial. Please contact support.",
+          },
+        });
+      }
+
+      if (amountCents > limits.maxAmountCents) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Amount exceeds maximum allowed: $${limits.maxAmountCents / 100}. Please contact support for higher limits.`,
+          },
+        });
+      }
 
       // Fetch discount from programmatic usage configuration.
       const programmaticConfig =

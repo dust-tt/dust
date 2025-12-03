@@ -19,6 +19,8 @@ import {
   getBillingCycle,
   getPriceAsString,
 } from "@app/lib/client/subscription";
+import type { CreditPurchaseLimits } from "@app/lib/credits/limits";
+import { getCreditPurchaseLimits } from "@app/lib/credits/limits";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import {
   getCreditPurchasePriceId,
@@ -41,6 +43,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   currency: string;
   discountPercent: number;
   creditPricing: StripePricingData | null;
+  creditPurchaseLimits: CreditPurchaseLimits | null;
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.getNonNullableSubscription();
@@ -51,6 +54,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   let isEnterprise = false;
   let currency = "usd";
+  let creditPurchaseLimits: CreditPurchaseLimits | null = null;
+
   if (subscription.stripeSubscriptionId) {
     const stripeSubscription = await getStripeSubscription(
       subscription.stripeSubscriptionId
@@ -60,6 +65,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       currency = isSupportedCurrency(stripeSubscription.currency)
         ? stripeSubscription.currency
         : "usd";
+      creditPurchaseLimits = await getCreditPurchaseLimits(
+        auth,
+        stripeSubscription
+      );
     }
   }
 
@@ -77,6 +86,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       currency,
       discountPercent,
       creditPricing,
+      creditPurchaseLimits,
     },
   };
 });
@@ -174,6 +184,29 @@ interface UsageSectionProps {
   setShowBuyCreditDialog: (show: boolean) => void;
 }
 
+function formatDateShort(date: Date): string {
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function formatExpirationDate(timestamp: number | null): string | null {
+  if (!timestamp) {
+    return null;
+  }
+  const date = new Date(timestamp);
+  return `Expires ${formatDateShort(date)}`;
+}
+
+function formatRenewalDate(timestamp: number | null): string | null {
+  if (!timestamp) {
+    return null;
+  }
+  const date = new Date(timestamp);
+  return `Renews ${formatDateShort(date)}`;
+}
+
 function UsageSection({
   subscription,
   isEnterprise,
@@ -183,47 +216,19 @@ function UsageSection({
   isLoading,
   setShowBuyCreditDialog,
 }: UsageSectionProps) {
-  const billingCycle = useMemo(
-    () => getBillingCycle(subscription.startDate),
-    [subscription.startDate]
-  );
-
-  const formatDateShort = (date: Date) => {
-    return date.toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
-
-  const formatExpirationDate = (timestamp: number | null) => {
-    if (!timestamp) {
+  const billingCycle = useMemo(() => {
+    if (!subscription.startDate) {
       return null;
     }
-    return `Expires on ${new Date(timestamp).toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    })}`;
-  };
-
-  const formatRenewalDate = (timestamp: number | null) => {
-    if (!timestamp) {
-      return null;
-    }
-    return `Renews on ${new Date(timestamp).toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    })}`;
-  };
+    return getBillingCycle(new Date(subscription.startDate));
+  }, [subscription.startDate]);
 
   if (isLoading) {
     return (
-      <div className="flex flex-col gap-6 rounded-lg border border-border p-6 dark:border-border-night">
-        <div className="h-8 w-32 animate-pulse rounded bg-muted-foreground/20" />
-        <div className="h-24 w-full animate-pulse rounded bg-muted-foreground/20" />
-      </div>
+      <Page.Vertical gap="md">
+        <Page.H variant="h5">Available credits</Page.H>
+        <div className="h-32 animate-pulse rounded-lg bg-muted-background dark:bg-muted-background-night" />
+      </Page.Vertical>
     );
   }
 
@@ -231,13 +236,14 @@ function UsageSection({
     currency: "usd",
     priceInMicroUsd: totalConsumed,
   });
+
   const totalCreditsFormatted = getPriceAsString({
     currency: "usd",
     priceInMicroUsd: totalCredits,
   });
 
   return (
-    <div className="flex flex-col gap-6">
+    <Page.Vertical gap="md">
       {/* Usage Header */}
       <div className="flex items-center justify-between">
         <Page.Vertical gap="xs">
@@ -257,22 +263,18 @@ function UsageSection({
       <Page.Vertical>
         <Page.P variant="secondary">Total consumed</Page.P>
         <div className="flex items-baseline gap-2">
-          <span className="text-5xl font-bold">{totalConsumedFormatted}</span>
-          <span className="text-2xl text-muted-foreground dark:text-muted-foreground-night">
-            /{totalCreditsFormatted}
+          <span className="text-2xl font-bold text-foreground dark:text-foreground-night">
+            {totalConsumedFormatted}
+          </span>
+          <span className="text-muted-foreground dark:text-muted-foreground-night">
+            / {totalCreditsFormatted}
           </span>
         </div>
         <ProgressBar consumed={totalConsumed} total={totalCredits} />
       </Page.Vertical>
 
       {/* Credit Categories */}
-      <div className="grid grid-cols-3 gap-8 border-t border-border pt-6 dark:border-border-night">
-        <CreditCategoryBar
-          title="Monthly included credits"
-          consumed={creditsByType.free.consumed}
-          total={creditsByType.free.total}
-          renewalDate={formatRenewalDate(creditsByType.free.expirationDate)}
-        />
+      <div className="flex w-full flex-wrap gap-4">
         <CreditCategoryBar
           title="Purchased credits"
           consumed={creditsByType.committed.consumed}
@@ -300,8 +302,14 @@ function UsageSection({
             isCap
           />
         )}
+        <CreditCategoryBar
+          title="Free credits"
+          consumed={creditsByType.free.consumed}
+          total={creditsByType.free.total}
+          renewalDate={formatRenewalDate(creditsByType.free.expirationDate)}
+        />
       </div>
-    </div>
+    </Page.Vertical>
   );
 }
 
@@ -312,6 +320,7 @@ export default function CreditsUsagePage({
   currency,
   discountPercent,
   creditPricing,
+  creditPurchaseLimits,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [showBuyCreditDialog, setShowBuyCreditDialog] = useState(false);
   const { featureFlags } = useFeatureFlags({
@@ -370,15 +379,17 @@ export default function CreditsUsagePage({
     );
   }, [creditsByType]);
 
-  const shouldShowLowCreditsWarning =
-    !isCreditsLoading &&
-    totalCredits > 0 &&
-    totalConsumed >= totalCredits * 0.8;
+  const shouldShowLowCreditsWarning = useMemo(() => {
+    if (totalCredits === 0) {
+      return false;
+    }
+    const percentUsed = (totalConsumed / totalCredits) * 100;
+    return percentUsed >= 80;
+  }, [totalConsumed, totalCredits]);
 
   return (
     <AppCenteredLayout
       subscription={subscription}
-      owner={owner}
       subNavigation={subNavigationAdmin({
         owner,
         current: "credits_usage",
@@ -393,6 +404,7 @@ export default function CreditsUsagePage({
         currency={currency}
         discountPercent={discountPercent}
         creditPricing={creditPricing}
+        creditPurchaseLimits={creditPurchaseLimits}
       />
 
       <Page.Vertical gap="xl" align="stretch">
@@ -421,13 +433,24 @@ export default function CreditsUsagePage({
         )}
 
         {/* Purposefully not giving email since we want to test determination here and limit support requests, it's a very edgy case and most likely fraudulent. */}
-        {subscription.trialing && (
-          <ContentMessage title="Available after trial" variant="info">
-            Credit purchases are available once you upgrade to a paid plan. If
-            you would like to purchase credits before upgrading, please contact
-            support.
-          </ContentMessage>
-        )}
+        {creditPurchaseLimits &&
+          !creditPurchaseLimits.canPurchase &&
+          creditPurchaseLimits.reason === "trialing" && (
+            <ContentMessage title="Available after trial" variant="info">
+              Credit purchases are available once you upgrade to a paid plan. If
+              you would like to purchase credits before upgrading, please
+              contact support.
+            </ContentMessage>
+          )}
+
+        {creditPurchaseLimits &&
+          !creditPurchaseLimits.canPurchase &&
+          creditPurchaseLimits.reason === "payment_issue" && (
+            <ContentMessage title="Subscription issue" variant="warning">
+              Credit purchases require an active subscription. Please ensure
+              your payment method is up to date.
+            </ContentMessage>
+          )}
 
         {/* Usage Section */}
         <UsageSection
