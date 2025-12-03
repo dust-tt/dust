@@ -122,6 +122,9 @@ export function getCitationsFromActions(
 
   const dataSourceNodeContentRefs: Record<string, CitationType> = {};
   dataSourceNodeContentResults.forEach((d) => {
+    if (!d.ref) {
+      return;
+    }
     dataSourceNodeContentRefs[d.ref] = {
       href: d.uri,
       title: d.metadata.title,
