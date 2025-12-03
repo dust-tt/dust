@@ -399,7 +399,7 @@ export const VisualizationActionIframe = forwardRef<
                     ref={combinedRef}
                     className={cn("h-full w-full", !errorMessage && "min-h-96")}
                     src={vizUrl}
-                    sandbox="allow-scripts allow-popups"
+                    sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
                   />
                 </div>
               )}
