@@ -17,11 +17,27 @@ import { usePurchaseCredits } from "@app/lib/swr/credits";
 
 const SUPPORT_EMAIL = "support@dust.tt";
 
+const EMAIL_SUBJECTS = {
+  TRIAL: "Credit purchase during trial",
+  PAYMENT_ISSUE: "Credit purchase - payment issue",
+  INQUIRY: "Credit purchase inquiry",
+  HIGHER_LIMIT: "Higher credit limit request",
+} as const;
+
 interface BuyCreditDialogProps {
   isOpen: boolean;
   onClose: () => void;
   workspaceId: string;
   creditPurchaseLimits: CreditPurchaseLimits | null;
+}
+
+interface ContactSupportDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  description: string;
+  message: string;
+  emailSubject: string;
 }
 
 function ContactSupportDialog({
@@ -31,14 +47,7 @@ function ContactSupportDialog({
   description,
   message,
   emailSubject,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  title: string;
-  description: string;
-  message: string;
-  emailSubject: string;
-}) {
+}: ContactSupportDialogProps) {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent size="md">
@@ -152,7 +161,7 @@ export function BuyCreditDialog({
         title="Purchase Programmatic Credits"
         description="Credit purchases are not available during your trial period."
         message="Credit purchases become available once you upgrade to a paid plan. If you need credits during your trial, please contact our support team."
-        emailSubject="Credit purchase during trial"
+        emailSubject={EMAIL_SUBJECTS.TRIAL}
       />
     );
   }
@@ -170,7 +179,7 @@ export function BuyCreditDialog({
         title="Purchase Programmatic Credits"
         description="Credit purchases require an active subscription."
         message="Please ensure your subscription is active and your payment method is up to date. If you need assistance, please contact our support team."
-        emailSubject="Credit purchase - payment issue"
+        emailSubject={EMAIL_SUBJECTS.PAYMENT_ISSUE}
       />
     );
   }
@@ -184,7 +193,7 @@ export function BuyCreditDialog({
         title="Purchase Programmatic Credits"
         description="Credit purchases require an active subscription."
         message="Please subscribe to a plan to purchase credits. If you need assistance, please contact our support team."
-        emailSubject="Credit purchase inquiry"
+        emailSubject={EMAIL_SUBJECTS.INQUIRY}
       />
     );
   }
@@ -227,7 +236,7 @@ export function BuyCreditDialog({
                 Maximum purchase: {maxAmountFormatted} per billing cycle. Need
                 more?{" "}
                 <a
-                  href={`mailto:${SUPPORT_EMAIL}?subject=Higher%20credit%20limit%20request`}
+                  href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(EMAIL_SUBJECTS.HIGHER_LIMIT)}`}
                   className="text-action-500 hover:underline"
                 >
                   Contact support
