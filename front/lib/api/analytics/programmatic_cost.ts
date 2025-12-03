@@ -91,7 +91,7 @@ type GroupedAggs = {
 /**
  * Calculates credit totals for each timestamp.
  * A credit is considered "active" on a day if:
- * - It was created before or on that day
+ * - It has been started (startDate is not null and <= day start)
  * - It hasn't expired yet on that day (expirationDate is null or > day start)
  */
 function calculateCreditTotalsPerTimestamp(
@@ -114,21 +114,40 @@ function calculateCreditTotalsPerTimestamp(
     }
   >();
 
-  const totalInitialCreditsCents = credits.reduce(
-    (sum, credit) => sum + credit.initialAmountCents,
-    0
-  );
-  const totalConsumedCreditsCents = credits.reduce(
-    (sum, credit) => sum + credit.consumedAmountCents,
-    0
-  );
-  const totalRemainingCreditsCents = credits.reduce(
-    (sum, credit) =>
-      sum + (credit.initialAmountCents - credit.consumedAmountCents),
-    0
-  );
-
   for (const timestamp of timestamps) {
+    const dayStart = new Date(timestamp);
+    dayStart.setUTCHours(0, 0, 0, 0);
+    const dayStartTime = dayStart.getTime();
+
+    const activeCredits = credits.filter((credit) => {
+      if (!credit.startDate || credit.startDate.getTime() > dayStartTime) {
+        return false;
+      }
+
+      if (
+        credit.expirationDate &&
+        credit.expirationDate.getTime() <= dayStartTime
+      ) {
+        return false;
+      }
+
+      return true;
+    });
+
+    const totalInitialCreditsCents = activeCredits.reduce(
+      (sum, credit) => sum + credit.initialAmountCents,
+      0
+    );
+    const totalConsumedCreditsCents = activeCredits.reduce(
+      (sum, credit) => sum + credit.consumedAmountCents,
+      0
+    );
+    const totalRemainingCreditsCents = activeCredits.reduce(
+      (sum, credit) =>
+        sum + (credit.initialAmountCents - credit.consumedAmountCents),
+      0
+    );
+
     creditTotalsMap.set(timestamp, {
       totalInitialCreditsCents,
       totalConsumedCreditsCents,
@@ -246,8 +265,9 @@ export async function handleProgrammaticCostRequest(
 
       const timestamps = getDatesInRange(startOfMonth, endOfMonth);
 
-      // Fetch all credits for the workspace
-      const credits = await CreditResource.listActive(auth, endOfMonth);
+      // Fetch all credits for the workspace (including free credits and fully consumed ones)
+      // We'll filter them per timestamp in calculateCreditTotalsPerTimestamp
+      const credits = await CreditResource.listAll(auth);
 
       // Calculate credit totals for each timestamp
       const creditTotalsMap = calculateCreditTotalsPerTimestamp(
