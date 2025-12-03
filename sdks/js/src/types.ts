@@ -666,8 +666,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_trackers"
   | "labs_transcripts"
   | "legacy_dust_apps"
-  | "llm_comparison_mode_enabled"
-  | "llm_router_direct_requests"
   | "mentions_v2"
   | "monday_tool"
   | "noop_model_feature"
