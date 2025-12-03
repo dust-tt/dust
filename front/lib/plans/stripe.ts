@@ -47,8 +47,8 @@ export function getCreditPurchasePriceId() {
 }
 
 export function getPAYGCreditPriceId() {
-  const devPAYGPriceId = "price_DUMMY_DEV_PAYG";
-  const prodPAYGPriceId = "price_DUMMY_PROD_PAYG";
+  const devPAYGPriceId = "price_1SZviPDKd2JRwZF6XHCzjgqp";
+  const prodPAYGPriceId = "price_1SZvmdDKd2JRwZF64DE4tZ6c";
 
   return isDevelopment() ? devPAYGPriceId : prodPAYGPriceId;
 }
