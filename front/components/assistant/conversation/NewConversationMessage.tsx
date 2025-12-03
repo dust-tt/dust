@@ -277,9 +277,12 @@ const ConversationMessageTitle = React.forwardRef<
     completionStatus,
     renderName,
     actions,
+    className,
   }) => {
     return (
-      <div className="inline-flex w-full justify-between gap-0.5">
+      <div
+        className={cn("inline-flex w-full justify-between gap-0.5", className)}
+      >
         <div className="inline-flex items-baseline gap-2 text-foreground dark:text-foreground-night">
           <span className="heading-sm">{renderName(name)}</span>
           <span className="heading-xs text-muted-foreground dark:text-muted-foreground-night">
