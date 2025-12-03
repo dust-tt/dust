@@ -39,7 +39,7 @@ async function handler(
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: `Invalid request body: ${parseResult.error.message}. Provide conversationIds in the request body.`,
+        message: `Invalid request body: ${parseResult.error.message}. You need to have at least one conversation ID and at most 50 conversation IDs.`,
       },
     });
   }
