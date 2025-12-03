@@ -2564,3 +2564,295 @@ describe("Space Handling", () => {
     });
   });
 });
+
+describe("markAsUnreadForOtherParticipants", () => {
+  let auth: Authenticator;
+  let user1Auth: Authenticator;
+  let user2Auth: Authenticator;
+  let user3Auth: Authenticator;
+  let conversation: ConversationWithoutContentType;
+  let agents: LightAgentConfigurationType[];
+  let conversationId: string;
+
+  beforeEach(async () => {
+    const workspace = await WorkspaceFactory.basic();
+    // Ensure default groups exist
+    await GroupResource.makeDefaultsForWorkspace(workspace);
+    const user = await UserFactory.basic();
+    auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    agents = await setupTestAgents(workspace, user);
+
+    // Create additional users
+    const user1 = await UserFactory.basic();
+    const user2 = await UserFactory.basic();
+    const user3 = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user1, { role: "user" });
+    await MembershipFactory.associate(workspace, user2, { role: "user" });
+    await MembershipFactory.associate(workspace, user3, { role: "user" });
+
+    user1Auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user1.sId,
+      workspace.sId
+    );
+    user2Auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user2.sId,
+      workspace.sId
+    );
+    user3Auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user3.sId,
+      workspace.sId
+    );
+
+    conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agents[0].sId,
+      messagesCreatedAt: [dateFromDaysAgo(5)],
+    });
+    conversationId = conversation.sId;
+
+    // Add all users as participants
+    await ConversationResource.upsertParticipation(user1Auth, {
+      conversation,
+      action: "posted",
+      user: user1Auth.getNonNullableUser().toJSON(),
+    });
+    await ConversationResource.upsertParticipation(user2Auth, {
+      conversation,
+      action: "posted",
+      user: user2Auth.getNonNullableUser().toJSON(),
+    });
+    await ConversationResource.upsertParticipation(user3Auth, {
+      conversation,
+      action: "posted",
+      user: user3Auth.getNonNullableUser().toJSON(),
+    });
+  });
+
+  afterEach(async () => {
+    await destroyConversation(auth, { conversationId });
+  });
+
+  it("should not update rows that are already unread", async () => {
+    const { ConversationParticipantModel } = await import(
+      "@app/lib/models/agent/conversation"
+    );
+
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+    assert(conversationResource, "Conversation resource not found");
+
+    // Set user1 and user2 to unread: true, user3 to unread: false
+    await ConversationParticipantModel.update(
+      { unread: true },
+      {
+        where: {
+          conversationId: conversationResource.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          userId: user1Auth.getNonNullableUser().id,
+        },
+      }
+    );
+    await ConversationParticipantModel.update(
+      { unread: true },
+      {
+        where: {
+          conversationId: conversationResource.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          userId: user2Auth.getNonNullableUser().id,
+        },
+      }
+    );
+    await ConversationParticipantModel.update(
+      { unread: false },
+      {
+        where: {
+          conversationId: conversationResource.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          userId: user3Auth.getNonNullableUser().id,
+        },
+      }
+    );
+
+    // Get the updatedAt timestamps before calling markAsUnreadForOtherParticipants
+    const participant1Before = await ConversationParticipantModel.findOne({
+      where: {
+        conversationId: conversationResource.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: user1Auth.getNonNullableUser().id,
+      },
+    });
+    const participant2Before = await ConversationParticipantModel.findOne({
+      where: {
+        conversationId: conversationResource.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: user2Auth.getNonNullableUser().id,
+      },
+    });
+    const participant3Before = await ConversationParticipantModel.findOne({
+      where: {
+        conversationId: conversationResource.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: user3Auth.getNonNullableUser().id,
+      },
+    });
+
+    assert(participant1Before, "Participant 1 not found");
+    assert(participant2Before, "Participant 2 not found");
+    assert(participant3Before, "Participant 3 not found");
+
+    const updatedAt1Before = participant1Before.updatedAt.getTime();
+    const updatedAt2Before = participant2Before.updatedAt.getTime();
+    const updatedAt3Before = participant3Before.updatedAt.getTime();
+
+    // Wait a bit to ensure updatedAt would change if updated
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // Call markAsUnreadForOtherParticipants
+    const result = await ConversationResource.markAsUnreadForOtherParticipants(
+      auth,
+      {
+        conversation,
+      }
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      // Should only update 1 row (user3, who had unread: false)
+      expect(result.value[0]).toBe(1);
+    }
+
+    // Verify user1 (already unread: true) was NOT updated
+    const participant1After = await ConversationParticipantModel.findOne({
+      where: {
+        conversationId: conversationResource.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: user1Auth.getNonNullableUser().id,
+      },
+    });
+    assert(participant1After, "Participant 1 not found after update");
+    expect(participant1After.unread).toBe(true);
+    expect(participant1After.updatedAt.getTime()).toBe(updatedAt1Before);
+
+    // Verify user2 (already unread: true) was NOT updated
+    const participant2After = await ConversationParticipantModel.findOne({
+      where: {
+        conversationId: conversationResource.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: user2Auth.getNonNullableUser().id,
+      },
+    });
+    assert(participant2After, "Participant 2 not found after update");
+    expect(participant2After.unread).toBe(true);
+    expect(participant2After.updatedAt.getTime()).toBe(updatedAt2Before);
+
+    // Verify user3 (unread: false) WAS updated to unread: true
+    const participant3After = await ConversationParticipantModel.findOne({
+      where: {
+        conversationId: conversationResource.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: user3Auth.getNonNullableUser().id,
+      },
+    });
+    assert(participant3After, "Participant 3 not found after update");
+    expect(participant3After.unread).toBe(true);
+    expect(participant3After.updatedAt.getTime()).toBeGreaterThan(
+      updatedAt3Before
+    );
+  });
+
+  it("should update only participants with unread: false when excludedUser is provided", async () => {
+    const { ConversationParticipantModel } = await import(
+      "@app/lib/models/agent/conversation"
+    );
+
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+    assert(conversationResource, "Conversation resource not found");
+
+    // Set user1 to unread: true, user2 and user3 to unread: false
+    await ConversationParticipantModel.update(
+      { unread: true },
+      {
+        where: {
+          conversationId: conversationResource.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          userId: user1Auth.getNonNullableUser().id,
+        },
+      }
+    );
+    await ConversationParticipantModel.update(
+      { unread: false },
+      {
+        where: {
+          conversationId: conversationResource.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          userId: user2Auth.getNonNullableUser().id,
+        },
+      }
+    );
+    await ConversationParticipantModel.update(
+      { unread: false },
+      {
+        where: {
+          conversationId: conversationResource.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          userId: user3Auth.getNonNullableUser().id,
+        },
+      }
+    );
+
+    // Call markAsUnreadForOtherParticipants with excludedUser (user1)
+    const result = await ConversationResource.markAsUnreadForOtherParticipants(
+      auth,
+      {
+        conversation,
+        excludedUser: user1Auth.getNonNullableUser().toJSON(),
+      }
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      // Should update 2 rows (user2 and user3, who had unread: false)
+      expect(result.value[0]).toBe(2);
+    }
+
+    // Verify user1 (excluded) remains unchanged
+    const participant1After = await ConversationParticipantModel.findOne({
+      where: {
+        conversationId: conversationResource.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: user1Auth.getNonNullableUser().id,
+      },
+    });
+    assert(participant1After, "Participant 1 not found after update");
+    expect(participant1After.unread).toBe(true);
+
+    // Verify user2 (unread: false, not excluded) was updated
+    const participant2After = await ConversationParticipantModel.findOne({
+      where: {
+        conversationId: conversationResource.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: user2Auth.getNonNullableUser().id,
+      },
+    });
+    assert(participant2After, "Participant 2 not found after update");
+    expect(participant2After.unread).toBe(true);
+
+    // Verify user3 (unread: false, not excluded) was updated
+    const participant3After = await ConversationParticipantModel.findOne({
+      where: {
+        conversationId: conversationResource.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: user3Auth.getNonNullableUser().id,
+      },
+    });
+    assert(participant3After, "Participant 3 not found after update");
+    expect(participant3After.unread).toBe(true);
+  });
+});
