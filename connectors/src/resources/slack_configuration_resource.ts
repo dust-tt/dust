@@ -226,8 +226,14 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
 
   static async listForTeamId(
     slackTeamId: string,
-    provider?: Extract<ConnectorProvider, "slack_bot" | "slack">
+    provider?: ConnectorProvider
   ): Promise<SlackConfigurationResource[]> {
+    if (provider && provider !== "slack" && provider !== "slack_bot") {
+      throw new Error(
+        `Invalid provider type for Slack configuration: expected 'slack' or 'slack_bot', got '${provider}'`
+      );
+    }
+
     const blobs = await this.model.findAll({
       where: {
         slackTeamId,
