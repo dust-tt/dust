@@ -63,6 +63,8 @@ function prepareSubscriptionsForDisplay(
             s.endDate
           ).toLocaleTimeString()}`
         : null,
+      startDateValue: s.startDate ? new Date(s.startDate).getTime() : null,
+      endDateValue: s.endDate ? new Date(s.endDate).getTime() : null,
     };
   });
 }
