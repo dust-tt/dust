@@ -21,7 +21,7 @@ async function inspectFromEvent(eventId: string, logger: any) {
 
   if ("subscription" in eventData && eventData.subscription) {
     stripeSubscriptionId =
-      typeof eventData.subscription === "string"
+      isString(eventData.subscription)
         ? eventData.subscription
         : eventData.subscription.id;
   } else if (
