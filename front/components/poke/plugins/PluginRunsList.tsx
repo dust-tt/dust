@@ -51,28 +51,28 @@ function PluginRunItem({ run, onClick }: PluginRunItemProps) {
 export function PluginRunsList({ pluginResourceTarget }: PluginRunsListProps) {
   const [selectedRun, setSelectedRun] = useState<PluginRunType | null>(null);
 
-  // For workspace-level views, show ALL plugin runs (don't filter by resource)
-  // For other resources, filter by specific resource type and ID
+  // Build the API options based on the target type
+  const isGlobalLevel = pluginResourceTarget.resourceType === "global";
   const isWorkspaceLevel = pluginResourceTarget.resourceType === "workspaces";
+
+  const apiOptions: Parameters<typeof usePokePluginRuns>[0] = {};
+
+  if (!isGlobalLevel && "workspace" in pluginResourceTarget) {
+    apiOptions.owner = pluginResourceTarget.workspace;
+  }
+
+  if (!isWorkspaceLevel && !isGlobalLevel) {
+    apiOptions.resourceType = pluginResourceTarget.resourceType;
+    if ("resourceId" in pluginResourceTarget) {
+      apiOptions.resourceId = pluginResourceTarget.resourceId;
+    }
+  }
 
   const {
     data: pluginRuns,
     isLoading,
     isError,
-  } = usePokePluginRuns({
-    disabled: !("workspace" in pluginResourceTarget),
-    owner:
-      "workspace" in pluginResourceTarget
-        ? pluginResourceTarget.workspace
-        : ({ sId: "" } as any),
-    resourceType: isWorkspaceLevel
-      ? undefined
-      : pluginResourceTarget.resourceType,
-    resourceId:
-      isWorkspaceLevel || !("resourceId" in pluginResourceTarget)
-        ? undefined
-        : pluginResourceTarget.resourceId,
-  });
+  } = usePokePluginRuns(apiOptions);
 
   const handleRunSelect = (run: PluginRunType) => {
     setSelectedRun(run);
@@ -81,16 +81,6 @@ export function PluginRunsList({ pluginResourceTarget }: PluginRunsListProps) {
   const handleModalClose = () => {
     setSelectedRun(null);
   };
-
-  if (!("workspace" in pluginResourceTarget)) {
-    return (
-      <div className="flex h-full items-center justify-center p-4 text-gray-500">
-        <p>
-          Plugin run history is only available for workspace-scoped plugins.
-        </p>
-      </div>
-    );
-  }
 
   if (isLoading) {
     return (
@@ -109,9 +99,15 @@ export function PluginRunsList({ pluginResourceTarget }: PluginRunsListProps) {
   }
 
   if (pluginRuns.length === 0) {
+    const contextMessage = isGlobalLevel
+      ? "No global plugin runs found."
+      : isWorkspaceLevel
+        ? "No plugin runs found for this workspace."
+        : "No plugin runs found for this resource.";
+
     return (
       <div className="flex h-full items-center justify-center p-4 text-gray-500">
-        <p>No plugin runs found for this resource.</p>
+        <p>{contextMessage}</p>
       </div>
     );
   }

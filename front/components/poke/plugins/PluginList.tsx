@@ -89,14 +89,12 @@ export function PluginList({ pluginResourceTarget }: PluginListProps) {
                 showRuns && "invisible"
               )}
             />
-            {"workspace" in pluginResourceTarget && (
-              <Button
-                label={showRuns ? "Show Available" : "Show History"}
-                variant={showRuns ? "primary" : "outline"}
-                size="sm"
-                onClick={() => setShowRuns(!showRuns)}
-              />
-            )}
+            <Button
+              label={showRuns ? "Show Available" : "Show History"}
+              variant={showRuns ? "primary" : "outline"}
+              size="sm"
+              onClick={() => setShowRuns(!showRuns)}
+            />
           </div>
         </div>
       </div>

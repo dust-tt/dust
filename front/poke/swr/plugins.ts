@@ -177,7 +177,9 @@ export function useRunPokePlugin({
   return { doRunPlugin };
 }
 
-export interface PokePluginRunsFetchProps extends PokeConditionalFetchProps {
+export interface PokePluginRunsFetchProps {
+  disabled?: boolean;
+  owner?: { sId: string }; // Optional for global plugins
   resourceType?: string;
   resourceId?: string;
 }
@@ -190,7 +192,13 @@ export function usePokePluginRuns({
 }: PokePluginRunsFetchProps) {
   const pluginRunsFetcher: Fetcher<PokeListPluginRunsResponseBody> = fetcher;
 
-  const urlParams = new URLSearchParams({ workspaceId: owner.sId });
+  const urlParams = new URLSearchParams();
+
+  // Add workspaceId only if owner is provided (workspace/resource level)
+  if (owner) {
+    urlParams.append("workspaceId", owner.sId);
+  }
+
   if (resourceType) {
     urlParams.append("resourceType", resourceType);
   }
