@@ -86,7 +86,7 @@ import { isUserMessageType } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
-  // eslint-disable-next-line dust/enforce-client-types-in-public-api
+
   res: NextApiResponse<WithAPIErrorResponse<PostMessagesResponseBody>>,
   auth: Authenticator
 ): Promise<void> {

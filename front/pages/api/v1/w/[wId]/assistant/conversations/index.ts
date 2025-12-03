@@ -109,7 +109,6 @@ export const MAX_CONVERSATION_DEPTH = 4;
 
 async function handler(
   req: NextApiRequest,
-  // eslint-disable-next-line dust/enforce-client-types-in-public-api
   res: NextApiResponse<
     WithAPIErrorResponse<
       PostConversationsResponseType | GetConversationsResponseType
