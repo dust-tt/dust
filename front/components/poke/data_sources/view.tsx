@@ -122,10 +122,7 @@ export function ViewDataSourceTable({
                   <PokeTableCell>System view</PokeTableCell>
                   <PokeTableCellWithLink
                     href={`/poke/${owner.sId}/spaces/${systemView?.spaceId}/data_source_views/${systemView?.sId}`}
-                    content={
-                      dataSourceViews.find((view) => view.kind === "default")
-                        ?.sId ?? "N/A"
-                    }
+                    content={systemView?.sId ?? "N/A"}
                   />
                 </PokeTableRow>
                 <PokeTableRow>
