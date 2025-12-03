@@ -334,6 +334,10 @@ function CopyTokenButton({
       return;
     }
 
+    // Need to focus and wait after confirmation modal, for copyToClipboard to work
+    window.focus();
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
     setIsLoading(true);
     setError(null);
     const res = await fetch(
@@ -342,6 +346,7 @@ function CopyTokenButton({
     if (!res.ok) {
       const err = await res.json();
       setError(err.error?.message ?? "Failed to fetch access token");
+      return;
     }
     const data = await res.json();
     if (data.token) {
