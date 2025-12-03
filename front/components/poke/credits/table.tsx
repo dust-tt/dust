@@ -1,7 +1,7 @@
 import { makeColumnsForCredits } from "@app/components/poke/credits/columns";
+import { PokeProgrammaticCostChart } from "@app/components/poke/credits/PokeProgrammaticCostChart";
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
-import { ProgrammaticCostChart } from "@app/components/workspace/ProgrammaticCostChart";
 import type { PokeCreditType } from "@app/pages/api/poke/workspaces/[wId]/credits";
 import { usePokeCredits } from "@app/poke/swr/credits";
 import type { WorkspaceType } from "@app/types";
@@ -48,7 +48,7 @@ export function CreditsDataTable({ owner, loadOnInit }: CreditsDataTableProps) {
         )}
       </PokeDataTableConditionalFetch>
 
-      <ProgrammaticCostChart workspaceId={owner.sId} />
+      <PokeProgrammaticCostChart owner={owner} />
     </>
   );
 }
