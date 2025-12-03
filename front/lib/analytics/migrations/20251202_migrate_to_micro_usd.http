@@ -5,7 +5,7 @@ POST /front.agent_message_analytics_2/_update_by_query
     "lang": "painless"
   },
   "query": {
-        "bool": {
+    "bool": {
       "must": [
         {
           "exists": {
