@@ -6,6 +6,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { getCustomerStatus } from "@app/lib/credits/free";
 import { getCreditPurchaseLimits } from "@app/lib/credits/limits";
 import { isEnterpriseSubscription } from "@app/lib/plans/stripe";
+import { CreditResource } from "@app/lib/resources/credit_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 
@@ -46,6 +47,7 @@ function makeSubscription(
 describe("getCreditPurchaseLimits", () => {
   let auth: Authenticator;
   let getMembersCountSpy: MockInstance;
+  let sumCreditsSpy: MockInstance;
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -58,17 +60,24 @@ describe("getCreditPurchaseLimits", () => {
     getMembersCountSpy = vi
       .spyOn(MembershipResource, "getMembersCountForWorkspace")
       .mockResolvedValue(10);
+
+    sumCreditsSpy = vi
+      .spyOn(CreditResource, "sumCommittedCreditsPurchasedInPeriod")
+      .mockResolvedValue(0);
   });
 
   afterEach(() => {
     vi.useRealTimers();
     getMembersCountSpy.mockRestore();
+    sumCreditsSpy.mockRestore();
   });
 
   describe("Enterprise subscriptions", () => {
-    it("should allow purchase with $1000 limit for enterprise", async () => {
+    beforeEach(() => {
       vi.mocked(isEnterpriseSubscription).mockReturnValue(true);
+    });
 
+    it("should allow purchase with $1000 limit for enterprise", async () => {
       const result = await getCreditPurchaseLimits(auth, makeSubscription());
 
       expect(result).toEqual({
@@ -78,11 +87,42 @@ describe("getCreditPurchaseLimits", () => {
     });
 
     it("should not call getCustomerStatus for enterprise", async () => {
-      vi.mocked(isEnterpriseSubscription).mockReturnValue(true);
-
       await getCreditPurchaseLimits(auth, makeSubscription());
 
       expect(getCustomerStatus).not.toHaveBeenCalled();
+    });
+
+    it("should subtract already purchased credits from limit", async () => {
+      sumCreditsSpy.mockResolvedValue(30_000); // $300 already purchased
+
+      const result = await getCreditPurchaseLimits(auth, makeSubscription());
+
+      expect(result).toEqual({
+        canPurchase: true,
+        maxAmountCents: 70_000, // $1000 - $300 = $700
+      });
+    });
+
+    it("should return 0 when limit is exhausted", async () => {
+      sumCreditsSpy.mockResolvedValue(100_000); // $1000 already purchased
+
+      const result = await getCreditPurchaseLimits(auth, makeSubscription());
+
+      expect(result).toEqual({
+        canPurchase: true,
+        maxAmountCents: 0,
+      });
+    });
+
+    it("should not return negative when over limit", async () => {
+      sumCreditsSpy.mockResolvedValue(120_000); // $1200 already purchased (over limit)
+
+      const result = await getCreditPurchaseLimits(auth, makeSubscription());
+
+      expect(result).toEqual({
+        canPurchase: true,
+        maxAmountCents: 0,
+      });
     });
   });
 
@@ -184,6 +224,61 @@ describe("getCreditPurchaseLimits", () => {
         canPurchase: true,
         maxAmountCents: 100_000, // Capped at $1000
       });
+    });
+
+    it("should subtract already purchased credits from limit", async () => {
+      getMembersCountSpy.mockResolvedValue(10); // $500 limit
+      sumCreditsSpy.mockResolvedValue(20_000); // $200 already purchased
+
+      const result = await getCreditPurchaseLimits(auth, makeSubscription());
+
+      expect(result).toEqual({
+        canPurchase: true,
+        maxAmountCents: 30_000, // $500 - $200 = $300
+      });
+    });
+
+    it("should return 0 when cycle limit is exhausted", async () => {
+      getMembersCountSpy.mockResolvedValue(10); // $500 limit
+      sumCreditsSpy.mockResolvedValue(50_000); // $500 already purchased
+
+      const result = await getCreditPurchaseLimits(auth, makeSubscription());
+
+      expect(result).toEqual({
+        canPurchase: true,
+        maxAmountCents: 0,
+      });
+    });
+
+    it("should not return negative when over cycle limit", async () => {
+      getMembersCountSpy.mockResolvedValue(10); // $500 limit
+      sumCreditsSpy.mockResolvedValue(60_000); // $600 already purchased (over limit)
+
+      const result = await getCreditPurchaseLimits(auth, makeSubscription());
+
+      expect(result).toEqual({
+        canPurchase: true,
+        maxAmountCents: 0,
+      });
+    });
+
+    it("should use billing cycle dates from subscription", async () => {
+      const customPeriodStart = NOW - 10 * 24 * 60 * 60; // 10 days ago
+      const customPeriodEnd = NOW + 20 * 24 * 60 * 60; // 20 days from now
+
+      await getCreditPurchaseLimits(
+        auth,
+        makeSubscription({
+          current_period_start: customPeriodStart,
+          current_period_end: customPeriodEnd,
+        })
+      );
+
+      expect(sumCreditsSpy).toHaveBeenCalledWith(
+        auth,
+        new Date(customPeriodStart * 1000),
+        new Date(customPeriodEnd * 1000)
+      );
     });
   });
 });
