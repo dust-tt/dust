@@ -4,6 +4,7 @@ import { z } from "zod";
 import { declineBlockedActionsForConversations } from "@app/lib/api/assistant/conversation/decline_blocked_actions";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { normalizeError } from "@app/types";
@@ -50,6 +51,13 @@ async function handler(
   );
 
   if (result.isErr()) {
+    logger.error(
+      {
+        error: result.error,
+      },
+      "Failed to decline blocked actions for conversations"
+    );
+
     return apiError(req, res, {
       status_code: 400,
       api_error: {

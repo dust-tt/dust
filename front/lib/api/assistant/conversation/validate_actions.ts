@@ -13,7 +13,7 @@ import { DustError } from "@app/lib/error";
 import { Message } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
-import type { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type { Result } from "@app/types";
@@ -203,6 +203,9 @@ export async function validateAction(
       // started error.
       waitForCompletion: true,
     });
+  } else {
+    // if we don't run the agent loop, we need to clear the action required status manually.
+    await ConversationResource.clearActionRequired(auth, conversationId);
   }
 
   logger.info(

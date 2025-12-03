@@ -1,11 +1,10 @@
+import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
 import { clearPersonalAuthenticationRequiredAction } from "@app/lib/api/assistant/conversation/messages";
 import { validateAction } from "@app/lib/api/assistant/conversation/validate_actions";
 import type { Authenticator } from "@app/lib/auth";
-import { DustError } from "@app/lib/error";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
@@ -22,38 +21,20 @@ export async function declineAuthenticationRequiredAction(
     messageId: string;
   }
 ): Promise<Result<undefined, Error>> {
-  const owner = auth.getNonNullableWorkspace();
-  const user = auth.user();
-
   const action = await AgentMCPActionResource.fetchById(auth, actionId);
   if (!action) {
-    return new Err(
-      new DustError("action_not_found", `Action not found: ${actionId}`)
-    );
+    return new Err(new Error(`Action not found: ${actionId}`));
   }
 
   if (action.status !== "blocked_authentication_required") {
     return new Err(
-      new DustError(
-        "action_not_blocked",
-        `Action is not blocked for authentication: ${action.status}`
-      )
+      new Error(`Action is not blocked for authentication: ${action.status}`)
     );
   }
 
   const [updatedCount] = await action.updateStatus("denied");
 
   if (updatedCount === 0) {
-    logger.info(
-      {
-        actionId,
-        messageId,
-        workspaceId: owner.sId,
-        userId: user?.sId,
-      },
-      "Action already declined"
-    );
-
     return new Ok(undefined);
   }
 
@@ -63,9 +44,13 @@ export async function declineAuthenticationRequiredAction(
   });
 }
 
-export type DeclineBlockedActionsForConversationsResult = {
+type DeclineBlockedActionsForConversationsResult = {
   failedConversationIds: string[];
 };
+
+// Assuming not that many actions will be blocked on a conversation at the same
+// time.
+const CLEAR_ACTION_CONCURRENCY = 4;
 
 export async function declineBlockedActionsForConversations(
   auth: Authenticator,
@@ -78,64 +63,60 @@ export async function declineBlockedActionsForConversations(
     conversationIds
   );
 
+  // TODO (2025-12-03 yuka): we end up fetching actions multiple times, we should refactor some methods
+  // to avoid doing it.
   await concurrentExecutor(
     conversations,
     async (conversation) => {
-      const blockedActions =
+      const actions =
         await AgentMCPActionResource.listBlockedActionsForConversation(
           auth,
           conversation
         );
 
-      const authRequiredActions = blockedActions.filter(
-        (action) => action.status === "blocked_authentication_required"
-      );
+      const blockedActions = actions
+        .filter((action) => isToolExecutionStatusBlocked(action.status))
+        .flat();
 
-      const validationRequiredActions = blockedActions.filter(
-        (action) => action.status === "blocked_validation_required"
-      );
+      const results = await concurrentExecutor(
+        blockedActions,
+        async (action) => {
+          switch (action.status) {
+            case "blocked_authentication_required":
+              const declineResult = await declineAuthenticationRequiredAction(
+                auth,
+                conversation,
+                {
+                  actionId: action.actionId,
+                  messageId: action.messageId,
+                }
+              );
 
-      if (authRequiredActions.length > 0) {
-        await concurrentExecutor(
-          authRequiredActions,
-          async (action) => {
-            const result = await declineAuthenticationRequiredAction(
-              auth,
-              conversation,
-              {
-                actionId: action.actionId,
-                messageId: action.messageId,
+              if (declineResult.isErr()) {
+                failedConversationIds.add(conversation.sId);
               }
-            );
 
-            if (result.isErr()) {
-              failedConversationIds.add(conversation.sId);
-            }
-          },
-          { concurrency: 8 }
-        );
-      }
+              break;
+            case "blocked_child_action_input_required":
+            case "blocked_validation_required":
+              const validateResult = await validateAction(auth, conversation, {
+                actionId: action.actionId,
+                approvalState: "rejected",
+                messageId: action.messageId,
+                shouldRunAgentLoop: false,
+              });
 
-      if (validationRequiredActions.length > 0) {
-        await concurrentExecutor(
-          validationRequiredActions,
-          async (action) => {
-            const result = await validateAction(auth, conversation, {
-              actionId: action.actionId,
-              approvalState: "rejected",
-              messageId: action.messageId,
-              shouldRunAgentLoop: false,
-            });
+              if (validateResult.isErr()) {
+                failedConversationIds.add(conversation.sId);
+              }
+          }
+        },
+        { concurrency: CLEAR_ACTION_CONCURRENCY }
+      );
 
-            if (result.isErr()) {
-              failedConversationIds.add(conversation.sId);
-            }
-          },
-          { concurrency: 8 }
-        );
-      }
+      return results;
     },
-    { concurrency: 8 }
+    { concurrency: CLEAR_ACTION_CONCURRENCY }
   );
 
   return new Ok({ failedConversationIds: Array.from(failedConversationIds) });

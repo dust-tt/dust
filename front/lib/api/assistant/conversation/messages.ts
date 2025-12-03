@@ -5,6 +5,8 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
+// This will update the status of an authentication required action to denied.
+// Since we don't launch a new agent loop unlike action validation, we need to manually clear actionRequired status.
 export async function clearPersonalAuthenticationRequiredAction(
   auth: Authenticator,
   conversation: ConversationResource,
@@ -43,9 +45,7 @@ export async function clearPersonalAuthenticationRequiredAction(
   }
 
   await messageResult.agentMessage.update({
-    ...messageResult.agentMessage,
     status: "failed",
-    updatedAt: new Date(),
     errorCode: "mcp_server_personal_authentication_declined",
     errorMessage: "Personal authentication was declined by the user",
   });
