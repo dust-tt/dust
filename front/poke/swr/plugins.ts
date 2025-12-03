@@ -11,7 +11,6 @@ import type { PokeGetPluginAsyncArgsResponseBody } from "@app/pages/api/poke/plu
 import type { PokeGetPluginDetailsResponseBody } from "@app/pages/api/poke/plugins/[pluginId]/manifest";
 import type { PokeRunPluginResponseBody } from "@app/pages/api/poke/plugins/[pluginId]/run";
 import type { PokeListPluginRunsResponseBody } from "@app/pages/api/poke/plugins/runs";
-import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { PluginResourceTarget, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
