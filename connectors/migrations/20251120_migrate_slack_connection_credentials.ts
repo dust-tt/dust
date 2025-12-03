@@ -34,6 +34,20 @@ async function migrateSlackConnectionCredential(
     return new Ok(undefined);
   }
 
+  // Get SlackConfiguration to retrieve team_id
+  const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
+    connector.id
+  );
+
+  if (!slackConfig) {
+    return new Err({
+      code: "missing_slack_config",
+      message: `No Slack configuration found for connector ${connector.id}`,
+    });
+  }
+
+  const teamId = slackConfig.slackTeamId;
+
   // Get connection metadata to extract user_id
   const metadataRes = await api.getConnectionMetadata({
     connectionId: connector.connectionId,
@@ -48,7 +62,6 @@ async function migrateSlackConnectionCredential(
   }
 
   const userId = metadataRes.value.connection.metadata.user_id;
-  const teamId = metadataRes.value.connection.metadata.team_id;
 
   if (typeof userId !== "string" || userId.length === 0) {
     return new Err({
@@ -57,16 +70,9 @@ async function migrateSlackConnectionCredential(
     });
   }
 
-  if (typeof teamId !== "string" || teamId.length === 0) {
-    return new Err({
-      code: "missing_team_id",
-      message: `Connection ${connector.connectionId} has no team_id in metadata.`,
-    });
-  }
-
   logger.info(
     { userId, teamId },
-    "Using user_id and team_id from connection metadata."
+    "Using user_id and team_id for credential creation."
   );
 
   // Create a credential record for this connection
@@ -107,17 +113,6 @@ async function migrateSlackConnectionCredential(
   );
 
   // Store credential reference in SlackConfiguration
-  const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
-    connector.id
-  );
-
-  if (!slackConfig) {
-    return new Err({
-      code: "missing_slack_config",
-      message: `No Slack configuration found for connector ${connector.id}`,
-    });
-  }
-
   await SlackConfigurationModel.update(
     { privateIntegrationCredentialId: credentialId },
     { where: { id: slackConfig.id } }
