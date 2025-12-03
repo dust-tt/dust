@@ -4,8 +4,9 @@ import type Stripe from "stripe";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import {
+  ENTERPRISE_N30_PAYMENTS_DAYS,
   isEnterpriseSubscription,
-  makeCreditsPAYGInvoice,
+  makeAndFinalizeCreditsPAYGInvoice,
 } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
@@ -223,7 +224,7 @@ export async function stopEnterprisePAYG({
       paygCredit.id
     );
     if (freezeResult.isErr()) {
-      logger.error(
+      logger.warn(
         { workspaceId: workspace.sId, error: freezeResult.error.message },
         "[Credit PAYG] Failed to freeze credit"
       );
@@ -313,12 +314,13 @@ export async function invoiceEnterprisePAYGCredits({
     "[Credit PAYG] Creating arrears invoice"
   );
 
-  const invoiceResult = await makeCreditsPAYGInvoice({
+  const invoiceResult = await makeAndFinalizeCreditsPAYGInvoice({
     stripeSubscription,
     amountCents: paygCredit.consumedAmountCents,
     periodStartSeconds: previousPeriodStartSeconds,
     periodEndSeconds: previousPeriodEndSeconds,
     idempotencyKey,
+    daysUntilDue: ENTERPRISE_N30_PAYMENTS_DAYS,
   });
 
   if (invoiceResult.isErr()) {

@@ -8,7 +8,7 @@ import {
   getCreditPurchaseCouponId,
   isCreditPurchaseInvoice,
   isEnterpriseSubscription,
-  makeOneOffInvoice,
+  makeCreditPurchaseOneOffInvoice,
   MAX_PRO_INVOICE_ATTEMPTS_BEFORE_VOIDED,
   payInvoice,
   voidInvoiceWithReason,
@@ -169,6 +169,7 @@ export async function createEnterpriseCreditPurchase({
     if (couponResult.isErr()) {
       logger.error(
         {
+          panic: true,
           error: couponResult.error.message,
           workspaceId: workspace.sId,
           discountPercent,
@@ -182,7 +183,7 @@ export async function createEnterpriseCreditPurchase({
     couponId = undefined;
   }
 
-  const invoiceResult = await makeOneOffInvoice({
+  const invoiceResult = await makeCreditPurchaseOneOffInvoice({
     stripeSubscriptionId,
     amountCents,
     couponId,
@@ -273,6 +274,7 @@ export async function createProCreditPurchase({
     if (couponResult.isErr()) {
       logger.error(
         {
+          panic: true,
           error: couponResult.error.message,
           workspaceId: workspace.sId,
           discountPercent,
@@ -284,7 +286,7 @@ export async function createProCreditPurchase({
     couponId = couponResult.value;
   }
 
-  const invoiceResult = await makeOneOffInvoice({
+  const invoiceResult = await makeCreditPurchaseOneOffInvoice({
     stripeSubscriptionId,
     amountCents,
     couponId,
@@ -292,7 +294,7 @@ export async function createProCreditPurchase({
   });
 
   if (invoiceResult.isErr()) {
-    logger.error(
+    logger.warn(
       {
         error: invoiceResult.error.error_message,
         workspaceId: workspace.sId,
@@ -317,6 +319,7 @@ export async function createProCreditPurchase({
   if (finalizeResult.isErr()) {
     logger.error(
       {
+        panic: true,
         error: finalizeResult.error.error_message,
         workspaceId: workspace.sId,
         invoiceId: invoice.id,
@@ -329,7 +332,7 @@ export async function createProCreditPurchase({
 
   const payResult = await payInvoice(finalizeResult.value);
   if (payResult.isErr()) {
-    logger.error(
+    logger.warn(
       {
         error: payResult.error.error_message,
         workspaceId: workspace.sId,
