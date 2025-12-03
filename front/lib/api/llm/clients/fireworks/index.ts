@@ -11,6 +11,7 @@ import type {
 } from "@app/lib/api/llm/types/options";
 import {
   toMessages,
+  toOutputFormatParam,
   toReasoningParam,
   toToolChoiceParam,
   toTools,
@@ -62,6 +63,7 @@ export class FireworksLLM extends LLM {
         ),
         tool_choice: toToolChoiceParam(specifications, forceToolCall),
         ...(tools ? { tools } : {}),
+        response_format: toOutputFormatParam(this.responseFormat),
       });
 
       yield* streamLLMEvents(events, this.metadata);

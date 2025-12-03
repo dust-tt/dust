@@ -220,6 +220,10 @@ const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
     input: 1.35,
     output: 5.4,
   },
+  "accounts/fireworks/models/deepseek-v3p2": {
+    input: 1.2,
+    output: 1.2,
+  },
   "accounts/fireworks/models/kimi-k2-instruct": {
     input: 0.4,
     output: 0.4,

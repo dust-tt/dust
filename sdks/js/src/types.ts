@@ -78,6 +78,7 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "deepseek-chat" // deepseek api
   | "deepseek-reasoner" // deepseek api
   | "accounts/fireworks/models/deepseek-r1-0528" // fireworks
+  | "accounts/fireworks/models/deepseek-v3p2" // fireworks
   | "accounts/fireworks/models/kimi-k2-instruct" // fireworks
   | "grok-3-latest" // xAI
   | "grok-3-mini-latest" // xAI
@@ -649,6 +650,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "claude_4_5_opus_feature"
   | "confluence_tool"
   | "deepseek_feature"
+  | "fireworks_new_model_feature"
   | "deepseek_r1_global_agent_feature"
   | "dust_edge_global_agent"
   | "dust_quick_global_agent"
