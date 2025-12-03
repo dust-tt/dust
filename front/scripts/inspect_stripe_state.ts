@@ -1,13 +1,15 @@
-import type Stripe from "stripe";
-
 import { getCustomerStatus } from "@app/lib/credits/free";
-import { Subscription } from "@app/lib/models/plan";
 import {
   getStripeClient,
   getStripeSubscription,
   getSubscriptionInvoices,
 } from "@app/lib/plans/stripe";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import {
+  isStripeInvoiceEvent,
+  isStripeSubscriptionEvent,
+} from "@app/lib/types/stripe/events";
 import { makeScript } from "@app/scripts/helpers";
 
 async function inspectFromEvent(eventId: string, logger: any) {
@@ -16,21 +18,22 @@ async function inspectFromEvent(eventId: string, logger: any) {
   const event = await stripe.events.retrieve(eventId);
   logger.info(`Event type: ${event.type}`);
 
-  const eventData = event.data.object as Stripe.Subscription | Stripe.Invoice;
   let stripeSubscriptionId: string;
 
-  if ("subscription" in eventData && eventData.subscription) {
+  if (isStripeSubscriptionEvent(event)) {
+    stripeSubscriptionId = event.data.object.id;
+  } else if (isStripeInvoiceEvent(event)) {
+    const subscription = event.data.object.subscription;
+    if (!subscription) {
+      logger.error("Invoice event has no subscription");
+      return;
+    }
     stripeSubscriptionId =
-      isString(eventData.subscription)
-        ? eventData.subscription
-        : eventData.subscription.id;
-  } else if (
-    "id" in eventData &&
-    event.type.startsWith("customer.subscription")
-  ) {
-    stripeSubscriptionId = eventData.id;
+      typeof subscription === "string" ? subscription : subscription.id;
   } else {
-    logger.error("Could not extract subscription ID from event");
+    logger.error(
+      `Unsupported event type: ${event.type}. Expected subscription or invoice event.`
+    );
     return;
   }
 
@@ -45,9 +48,8 @@ async function inspectFromEvent(eventId: string, logger: any) {
   const workspaceId = stripeSubscription.metadata?.workspaceId;
   logger.info(`Workspace ID from Stripe metadata: ${workspaceId}`);
 
-  const dustSubscription = await Subscription.findOne({
-    where: { stripeSubscriptionId },
-  });
+  const dustSubscription =
+    await SubscriptionResource.fetchByStripeId(stripeSubscriptionId);
   if (!dustSubscription) {
     logger.warn("Dust Subscription not found");
     return;
