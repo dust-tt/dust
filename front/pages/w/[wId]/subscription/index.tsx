@@ -435,6 +435,7 @@ export default function Subscription({
                 <Page.H variant="h5">Manage my plan</Page.H>
                 <div className="h-full w-full pt-2">
                   <PricePlans
+                    owner={owner}
                     plan={plan}
                     onClickProPlan={onClickProPlan}
                     isProcessing={isProcessing}

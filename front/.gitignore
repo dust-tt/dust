@@ -35,8 +35,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# eslint
-.eslintcache
-
 # build output
 dist/
+
+# cache
+.cache/
+.eslintcache

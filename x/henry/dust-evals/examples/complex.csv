@@ -1,0 +1,6 @@
+prompt,judge_prompt
+"Write a Python function that checks if a number is prime.","The function should correctly identify prime numbers. Key elements: handle edge cases (numbers <= 1), efficient algorithm (checking up to sqrt(n) is a plus), correct logic."
+"Explain the difference between TCP and UDP protocols.","Should mention: TCP is connection-oriented and reliable with guaranteed delivery, UDP is connectionless and faster but without delivery guarantees. Use cases for each should be mentioned."
+"What are the main causes of climate change?","Should mention: greenhouse gas emissions (especially CO2), fossil fuel combustion, deforestation, industrial processes, agriculture. Human activities should be identified as primary cause."
+"Design a simple REST API for a todo list application.","Should include endpoints for CRUD operations (GET, POST, PUT/PATCH, DELETE), proper HTTP methods, reasonable URL structure (e.g., /todos, /todos/:id), mention of status codes."
+"Explain the concept of recursion with an example.","Should define recursion (function calling itself), mention base case and recursive case, provide a clear example (factorial, fibonacci, tree traversal, etc.), explain how it works."

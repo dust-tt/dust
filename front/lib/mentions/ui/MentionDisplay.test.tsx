@@ -26,6 +26,7 @@ vi.mock("@dust-tt/sparkle", () => {
     TooltipRoot: Root,
     TooltipTrigger: Trigger,
     TooltipContent: Content,
+    cn: (...classes: string[]) => classes.join(" "),
   };
 });
 
@@ -56,17 +57,25 @@ describe("MentionDisplay", () => {
   });
 
   it("renders the @label trigger", () => {
-    render(<MentionDisplay mention={makeMention()} />);
+    render(<MentionDisplay mention={makeMention()} owner={owner} />);
     expect(screen.getByText("@Alice")).toBeInTheDocument();
   });
 
   it("shows tooltip content when showTooltip=true and description exists", () => {
-    render(<MentionDisplay mention={makeMention()} showTooltip />);
+    render(
+      <MentionDisplay mention={makeMention()} showTooltip owner={owner} />
+    );
     expect(screen.getByRole("tooltip")).toHaveTextContent("Helpful agent.");
   });
 
   it("does not render tooltip when showTooltip=false", () => {
-    render(<MentionDisplay mention={makeMention()} showTooltip={false} />);
+    render(
+      <MentionDisplay
+        mention={makeMention()}
+        showTooltip={false}
+        owner={owner}
+      />
+    );
     expect(screen.queryByRole("tooltip")).toBeNull();
   });
 
@@ -94,7 +103,11 @@ describe("MentionDisplay", () => {
 
   it("non-interactive without description renders just trigger", () => {
     render(
-      <MentionDisplay mention={makeMention({ description: "" })} showTooltip />
+      <MentionDisplay
+        mention={makeMention({ description: "" })}
+        showTooltip
+        owner={owner}
+      />
     );
     expect(screen.getByText("@Alice")).toBeInTheDocument();
     // No tooltip if description is empty.

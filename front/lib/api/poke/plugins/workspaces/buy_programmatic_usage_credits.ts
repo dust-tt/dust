@@ -1,10 +1,10 @@
+import { addYears, format } from "date-fns";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 
 import { createPlugin } from "@app/lib/api/poke/types";
 import { createEnterpriseCreditPurchase } from "@app/lib/credits/committed";
 import {
-  getCustomerId,
   getStripeSubscription,
   isEnterpriseSubscription,
 } from "@app/lib/plans/stripe";
@@ -16,6 +16,9 @@ const BuyCreditPurchaseArgsSchema = z.object({
     .number()
     .positive("Amount must be greater than $0")
     .finite("Amount must be a valid number"),
+  startDate: z.date(),
+  expirationDate: z.date(),
+  overrideDiscount: z.boolean(),
   discountPercent: z
     .number()
     .min(0, "Discount must be at least 0%")
@@ -29,29 +32,48 @@ const BuyCreditPurchaseArgsSchema = z.object({
 export const buyProgrammaticUsageCreditsPlugin = createPlugin({
   manifest: {
     id: "buy-programmatic-usage-credits",
-    name: "Buy Programmatic Usage Credits",
+    name: "Buy Committed Credits",
     description:
-      "Purchase programmatic usage credits for enterprise customers. The purchase will be added to the customer's subscription and paid on the next billing cycle.",
+      "Purchase committed credits for enterprise customers. Committed credits are consumed after free credits and before pay-as-you-go (PAYG) credits. An invoice will be sent to the customer.",
     resourceTypes: ["workspaces"],
     args: {
       amountDollars: {
         type: "number",
-        label: "Credit Amount ($)",
+        label: "Credit Amount (US$)",
         description:
-          "Programmatic usage credits amount, in usd, not billed amount. So without VAT, currency conversion and discounts",
+          "Committed credits amount in USD. Note: this is different from billed amount, as it  excludes VAT, currency conversion and discounts",
+      },
+      overrideDiscount: {
+        type: "boolean",
+        variant: "toggle",
+        label: "Override Default Discount",
+        async: true,
+        asyncDescription: true,
       },
       discountPercent: {
         type: "number",
         async: true,
         label: "Billing Discount (%)",
-        description:
-          "Discount percentage to apply (0-100) on the billed amount",
+        description: "Discount applied to the actual credit purchase",
+        dependsOn: { field: "overrideDiscount", value: true },
+      },
+      startDate: {
+        type: "date",
+        async: true,
+        label: "Start Date",
+        description: "When the credits become active.",
+      },
+      expirationDate: {
+        type: "date",
+        async: true,
+        label: "Expiration Date",
+        description: "When the credits expire.",
       },
       confirm: {
         type: "boolean",
         label: "Confirm Purchase",
         description:
-          "I understand that running this plugin will add a purchase in the customer's subscription, which will be paid on next billing cycle",
+          "I understand that running this plugin will add committed credits and an invoice will be sent to the customer.",
       },
     },
   },
@@ -59,8 +81,17 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
     const config =
       await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
     const defaultDiscount = config?.defaultDiscountPercent ?? 0;
+    const workspace = auth.getNonNullableWorkspace();
+
+    const overrideDiscountDescription = `Override the customer's default discount. Current default for ${workspace.name}: ${defaultDiscount}%`;
+
+    const today = new Date();
+    const oneYearFromNow = addYears(today, 1);
 
     return new Ok({
+      overrideDiscountDescription: overrideDiscountDescription,
+      startDate: format(today, "yyyy-MM-dd"),
+      expirationDate: format(oneYearFromNow, "yyyy-MM-dd"),
       discountPercent: defaultDiscount,
     });
   },
@@ -98,30 +129,48 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
 
     const amountCents = Math.round(validatedArgs.amountDollars * 100);
 
+    const startDate = new Date(validatedArgs.startDate);
+    const expirationDate = new Date(validatedArgs.expirationDate);
+
+    if (expirationDate <= startDate) {
+      return new Err(new Error("Expiration date must be after start date."));
+    }
+
+    let discountPercent: number | undefined;
+    if (validatedArgs.overrideDiscount) {
+      discountPercent =
+        validatedArgs.discountPercent > 0
+          ? validatedArgs.discountPercent
+          : undefined;
+    } else {
+      const config =
+        await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
+      const defaultDiscount = config?.defaultDiscountPercent ?? 0;
+      discountPercent = defaultDiscount > 0 ? defaultDiscount : undefined;
+    }
+
     const result = await createEnterpriseCreditPurchase({
       auth,
       stripeSubscriptionId: subscription.stripeSubscriptionId,
       amountCents,
-      discountPercent:
-        validatedArgs.discountPercent > 0
-          ? validatedArgs.discountPercent
-          : undefined,
+      discountPercent,
+      startDate,
+      expirationDate,
     });
 
     if (result.isErr()) {
       return result;
     }
 
-    const customerId = getCustomerId(stripeSubscription);
-    const invoiceUrl = `https://dashboard.stripe.com/customers/${customerId}/upcoming_invoice/${subscription.stripeSubscriptionId}`;
+    const invoiceUrl = `https://dashboard.stripe.com/invoices/${result.value.invoiceOrLineItemId}`;
 
     const originalAmount = validatedArgs.amountDollars;
 
     return new Ok({
       display: "textWithLink",
-      value: `Successfully added credit purchase of $${originalAmount.toFixed(2)} to the subscription. The charge will appear on the next billing cycle. See upcoming invoice for actual billed amount`,
+      value: `Successfully added committed credits of $${originalAmount.toFixed(2)} (${validatedArgs.startDate} to ${validatedArgs.expirationDate}). An invoice has been sent to the customer.`,
       link: invoiceUrl,
-      linkText: "View Upcoming Invoice in Stripe",
+      linkText: "View Invoice in Stripe",
     });
   },
 });

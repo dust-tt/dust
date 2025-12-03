@@ -37,6 +37,16 @@ async function handler(
     });
   }
 
+  if (!auth.isBuilder()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "app_auth_error",
+        message: "You do not have the required permissions.",
+      },
+    });
+  }
+
   const bodyValidation = BatchUpdateAgentScopeRequestBodySchema.decode(
     req.body
   );

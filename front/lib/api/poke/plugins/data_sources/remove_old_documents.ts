@@ -19,7 +19,7 @@ export const removeOldDocumentsPlugin = createPlugin({
         type: "string",
         label: "Cutoff Date (YYYY-MM-DD)",
         description:
-          "Remove all documents with a timestamp older than this date (inclusive). Format: YYYY-MM-DD",
+          "Remove all documents with a timestamp older than this date (00:00:00 UTC - exclusive). Format: YYYY-MM-DD",
       },
       execute: {
         type: "boolean",

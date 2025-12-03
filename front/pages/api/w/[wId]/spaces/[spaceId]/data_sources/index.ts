@@ -42,6 +42,7 @@ import {
   dustManagedCredentials,
   EMBEDDING_CONFIGS,
   ioTsParsePayload,
+  OAuthAPI,
   sendUserOperationMessage,
   WebCrawlerConfigurationTypeSchema,
 } from "@app/types";
@@ -64,6 +65,8 @@ export const PostDataSourceWithProviderRequestBodySchema = t.intersection([
   }),
   t.partial({
     connectionId: t.string, // Required for some providers
+    relatedCredentialId: t.string, // Required for private integrations
+    extraConfig: t.record(t.string, t.string), // Used by slack private integrations
   }),
 ]);
 
@@ -226,7 +229,8 @@ const handleDataSourceWithProvider = async ({
   req: NextApiRequest;
   res: NextApiResponse<WithAPIErrorResponse<PostSpaceDataSourceResponseBody>>;
 }) => {
-  const { provider, name, connectionId } = body;
+  const { provider, name, connectionId, relatedCredentialId, extraConfig } =
+    body;
 
   // Checking that we have connectionId if we need id
   const isConnectionIdRequired = isConnectionIdRequiredForProvider(provider);
@@ -295,7 +299,17 @@ const handleDataSourceWithProvider = async ({
   let dataSourceDescription = getDefaultDataSourceDescription(provider, suffix);
 
   let { configuration } = body;
-  if (provider === "slack" || provider === "slack_bot") {
+  if (provider === "slack") {
+    configuration = {
+      botEnabled: false,
+      whitelistedDomains: undefined,
+      autoReadChannelPatterns: [],
+      restrictedSpaceAgentsEnabled: true,
+      privateIntegrationCredentialId: relatedCredentialId,
+    };
+  }
+
+  if (provider === "slack_bot") {
     configuration = {
       botEnabled: true,
       whitelistedDomains: undefined,
@@ -506,6 +520,64 @@ const handleDataSourceWithProvider = async ({
   }
 
   await dataSource.setConnectorId(connectorsRes.value.id);
+
+  // For Slack apps, register the signing secret in the webhook router
+  if (provider === "slack" && connectionId && extraConfig) {
+    const signingSecret = extraConfig["signing_secret"];
+
+    const oauthAPI = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+    const connectionMetadataRes = await oauthAPI.getConnectionMetadata({
+      connectionId,
+    });
+    if (connectionMetadataRes.isOk()) {
+      const metadata = connectionMetadataRes.value.connection.metadata;
+      if (signingSecret && metadata.team_id) {
+        const webhookRes = await connectorsAPI.addSlackWebhookRouterEntry({
+          slackTeamId: metadata.team_id,
+          signingSecret: signingSecret,
+        });
+
+        if (webhookRes.isErr()) {
+          logger.error(
+            { error: webhookRes.error, teamId: metadata.team_id },
+            "Failed to register webhook router entry for Slack app"
+          );
+
+          // Rollback: delete connector and data source
+          await dataSource.delete(auth, { hardDelete: true });
+          const deleteConnectorRes = await connectorsAPI.deleteConnector(
+            connectorsRes.value.id
+          );
+          if (deleteConnectorRes.isErr()) {
+            logger.error(
+              { error: deleteConnectorRes.error },
+              "Failed to delete the connector during rollback"
+            );
+          }
+
+          const deleteRes = await coreAPI.deleteDataSource({
+            projectId: dustProject.value.project.project_id.toString(),
+            dataSourceId: dustDataSource.value.data_source.data_source_id,
+          });
+          if (deleteRes.isErr()) {
+            logger.error(
+              { error: deleteRes.error },
+              "Failed to delete the data source during rollback"
+            );
+          }
+
+          return apiError(req, res, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message:
+                "Failed to register webhook router entry for Slack app. The connector has been rolled back.",
+            },
+          });
+        }
+      }
+    }
+  }
 
   res.status(201).json({
     dataSource: dataSource.toJSON(),

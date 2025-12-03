@@ -268,6 +268,7 @@ function LinkBlock({
   return (
     <a
       href={href}
+      title={href}
       target="_blank"
       rel="noopener noreferrer"
       className={cn(

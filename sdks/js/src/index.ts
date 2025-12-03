@@ -1304,6 +1304,31 @@ export class DustAPI {
     }
   }
 
+  async getFileContent({
+    fileId,
+    version = "original",
+  }: {
+    fileId: string;
+    version?: "original" | "processed";
+  }) {
+    const res = await this.request({
+      method: "GET",
+      path: `files/${fileId}?action=view&version=${version}`,
+      stream: true,
+    });
+
+    if (res.isErr()) {
+      return res;
+    }
+
+    const { body } = res.value.response;
+    if (typeof body === "string") {
+      return new Ok(new Blob([body]));
+    }
+
+    return new Ok(await new Response(body).blob());
+  }
+
   async uploadFile({
     contentType,
     fileName,

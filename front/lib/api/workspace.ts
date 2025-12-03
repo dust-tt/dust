@@ -403,6 +403,7 @@ export interface WorkspaceMetadata {
   allowContentCreationFileSharing?: boolean;
   allowVoiceTranscription?: boolean;
   autoCreateSpaceForProvisionedGroups?: boolean;
+  disableManualInvitations?: boolean;
 }
 
 export async function updateWorkspaceMetadata(

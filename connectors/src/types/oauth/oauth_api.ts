@@ -202,6 +202,44 @@ export class OAuthAPI {
     return this._resultFromResponse(response);
   }
 
+  async getConnectionMetadata({
+    connectionId,
+  }: {
+    connectionId: string;
+  }): Promise<OAuthAPIResponse<{ connection: OAuthConnectionType }>> {
+    const response = await this._fetchWithError(
+      `${this._url}/connections/${connectionId}/metadata`
+    );
+    return this._resultFromResponse(response);
+  }
+
+  async updateConnectionCredential({
+    connectionId,
+    relatedCredentialId,
+    metadata,
+  }: {
+    connectionId: string;
+    relatedCredentialId: string;
+    metadata: Record<string, unknown>;
+  }): Promise<
+    OAuthAPIResponse<{ connection: Pick<OAuthConnectionType, "connection_id"> }>
+  > {
+    const response = await this._fetchWithError(
+      `${this._url}/connections/${connectionId}/credential`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          related_credential_id: relatedCredentialId,
+          metadata,
+        }),
+      }
+    );
+    return this._resultFromResponse(response);
+  }
+
   private async _fetchWithError(
     url: string,
     init?: RequestInit

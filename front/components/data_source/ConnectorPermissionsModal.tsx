@@ -100,22 +100,22 @@ export async function handleUpdatePermissions(
 ) {
   const provider = connector.type;
 
-  const connectionIdRes = await setupConnection({
+  const connectionRes = await setupConnection({
     owner,
     provider,
     extraConfig,
   });
-  if (connectionIdRes.isErr()) {
+  if (connectionRes.isErr()) {
     sendNotification({
       type: "error",
       title: "Failed to update the permissions",
-      description: connectionIdRes.error.message,
+      description: connectionRes.error.message,
     });
     return;
   }
 
   const updateRes = await updateConnectorConnectionId(
-    connectionIdRes.value,
+    connectionRes.value.connectionId,
     provider,
     dataSource,
     owner
@@ -126,13 +126,40 @@ export async function handleUpdatePermissions(
       title: "Failed to update the connection",
       description: updateRes.error,
     });
-  } else {
-    sendNotification({
-      type: "success",
-      title: "Successfully updated connection",
-      description: "The connection was successfully updated.",
-    });
+    return;
   }
+
+  // Slack connectors will rely on customer credentials, we need to set a reference to it on the connector to be able to properly uninstall the app on connector deletion
+  if (connector.type === "slack" && connectionRes.value.relatedCredentialId) {
+    const credentialRes = await fetch(
+      `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/privateIntegrationCredentialId`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          configValue: connectionRes.value.relatedCredentialId,
+        }),
+      }
+    );
+
+    if (!credentialRes.ok) {
+      sendNotification({
+        type: "error",
+        title: "Failed to update the connection",
+        description:
+          "The connection was updated but the credential could not be set.",
+      });
+      return;
+    }
+  }
+
+  sendNotification({
+    type: "success",
+    title: "Successfully updated connection",
+    description: "The connection was successfully updated.",
+  });
 }
 
 export async function updateConnectorConnectionId(
@@ -296,7 +323,7 @@ function UpdateConnectionOAuthModal({
         <div className="flex flex-col gap-2 border-t pb-4 pt-4">
           <Page.SectionHeader title="Connection Owner" />
           <div className="flex items-center gap-2">
-            <Avatar visual={editedByUser?.imageUrl} size="sm" />
+            <Avatar visual={editedByUser?.imageUrl} size="sm" isRounded />
             <div>
               <span className="font-bold">
                 {isDataSourceOwner ? "You" : editedByUser?.fullName}
@@ -344,13 +371,16 @@ function UpdateConnectionOAuthModal({
             </ContentMessage>
           </div>
         )}
-        {connectorConfiguration.oauthExtraConfigComponent && (
-          <connectorConfiguration.oauthExtraConfigComponent
-            extraConfig={extraConfig}
-            setExtraConfig={setExtraConfig}
-            setIsExtraConfigValid={setIsExtraConfigValid}
-          />
-        )}
+        {connectorConfiguration.oauthExtraConfigComponent &&
+          // TODO(slackstorm) fabien: add extra config for Slack
+          // We must display the extra config without the possibility to edit the client id to not break the connector.
+          connectorConfiguration.connectorProvider !== "slack" && (
+            <connectorConfiguration.oauthExtraConfigComponent
+              extraConfig={extraConfig}
+              setExtraConfig={setExtraConfig}
+              setIsExtraConfigValid={setIsExtraConfigValid}
+            />
+          )}
 
         <div className="flex items-center justify-center">
           <Dialog>
@@ -492,7 +522,7 @@ function DataSourceDeletionModal({
         <div className="flex flex-col gap-2 border-t pb-4 pt-4">
           <Page.SectionHeader title="Connection Owner" />
           <div className="flex items-center gap-2">
-            <Avatar visual={editedByUser?.imageUrl} size="sm" />
+            <Avatar visual={editedByUser?.imageUrl} size="sm" isRounded />
             <div>
               <span className="font-bold">
                 {isDataSourceOwner ? "You" : editedByUser?.fullName}

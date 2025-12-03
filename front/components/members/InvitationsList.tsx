@@ -133,7 +133,7 @@ export function InvitationsList({
               )}
             >
               <div className="hidden sm:block">
-                <Avatar size="xs" />
+                <Avatar size="xs" isRounded />
               </div>
               <div className="copy-base flex grow flex-col gap-1 sm:flex-row sm:gap-3">
                 <div className="font-semibold text-foreground dark:text-foreground-night">

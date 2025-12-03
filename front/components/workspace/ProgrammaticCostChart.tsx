@@ -35,14 +35,29 @@ import {
   getSourceColor,
   isUserMessageOrigin,
 } from "@app/components/agent_builder/observability/utils";
-import { useWorkspaceProgrammaticCost } from "@app/lib/swr/workspaces";
 import type {
   AvailableGroup,
+  GetWorkspaceProgrammaticCostResponse,
   GroupByType,
-} from "@app/pages/api/w/[wId]/analytics/programmatic-cost";
+} from "@app/lib/api/analytics/programmatic_cost";
+import { useWorkspaceProgrammaticCost } from "@app/lib/swr/workspaces";
 
 interface ProgrammaticCostChartProps {
   workspaceId: string;
+}
+
+export interface BaseProgrammaticCostChartProps {
+  programmaticCostData: GetWorkspaceProgrammaticCostResponse | undefined;
+  isProgrammaticCostLoading: boolean;
+  isProgrammaticCostError: boolean;
+  groupBy: GroupByType | undefined;
+  setGroupBy: (groupBy: GroupByType | undefined) => void;
+  filter: Partial<Record<GroupByType, string[]>>;
+  setFilter: React.Dispatch<
+    React.SetStateAction<Partial<Record<GroupByType, string[]>>>
+  >;
+  selectedMonth: string;
+  setSelectedMonth: (month: string) => void;
 }
 
 type ChartDataPoint = {
@@ -139,36 +154,31 @@ function GroupedTooltip(
   return <ChartTooltipCard title={data.date} rows={rows} />;
 }
 
-function formatMonth(date: Date): string {
+export function formatMonth(date: Date): string {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
-export function ProgrammaticCostChart({
-  workspaceId,
-}: ProgrammaticCostChartProps) {
-  const [groupBy, setGroupBy] = useState<GroupByType | undefined>(undefined);
-  const [filter, setFilter] = useState<Partial<Record<GroupByType, string[]>>>(
-    {}
-  );
+/**
+ * Base chart component that renders the programmatic cost chart.
+ * This component is agnostic of how the data is fetched.
+ */
+export function BaseProgrammaticCostChart({
+  programmaticCostData,
+  isProgrammaticCostLoading,
+  isProgrammaticCostError,
+  groupBy,
+  setGroupBy,
+  filter,
+  setFilter,
+  selectedMonth,
+  setSelectedMonth,
+}: BaseProgrammaticCostChartProps) {
   // Cache labels for each groupBy type so they persist when switching modes
   const [labelCache, setLabelCache] = useState<
     Partial<Record<GroupByType, Record<string, string>>>
   >({});
 
   const now = new Date();
-  const [selectedMonth, setSelectedMonth] = useState<string>(formatMonth(now));
-
-  const {
-    programmaticCostData,
-    isProgrammaticCostLoading,
-    isProgrammaticCostError,
-  } = useWorkspaceProgrammaticCost({
-    workspaceId,
-    selectedMonth,
-    groupBy,
-    filter,
-  });
-
   const currentDate = new Date(selectedMonth);
 
   // Get current month name
@@ -202,6 +212,13 @@ export function ProgrammaticCostChart({
   const handleGroupByChange = (newGroupBy: GroupByType | undefined) => {
     setGroupBy(newGroupBy);
   };
+
+  // Getting list of all available groups.
+  const availableGroupsArray = useMemo(
+    () => programmaticCostData?.availableGroups ?? [],
+    [programmaticCostData]
+  );
+  const allGroupKeys = availableGroupsArray.map((g) => g.groupKey);
 
   // Filter change
   const handleFilterChange = (group: AvailableGroup) => {
@@ -245,13 +262,6 @@ export function ProgrammaticCostChart({
   const handleClearFilters = () => {
     setFilter({});
   };
-
-  // Getting list of all available groups.
-  const availableGroupsArray = useMemo(
-    () => programmaticCostData?.availableGroups ?? [],
-    [programmaticCostData]
-  );
-  const allGroupKeys = availableGroupsArray.map((g) => g.groupKey);
 
   // Cache labels when availableGroupsArray changes
   // Otherwise, labels would be lost when switching groupBy types, and would display raw keys instead
@@ -397,7 +407,7 @@ export function ProgrammaticCostChart({
         };
       });
     },
-    []
+    [setFilter]
   );
 
   return (
@@ -581,5 +591,46 @@ export function ProgrammaticCostChart({
         })}
       </ChartComponent>
     </ChartContainer>
+  );
+}
+
+/**
+ * Workspace-specific wrapper component that handles data fetching
+ * using the workspace API endpoint.
+ */
+export function ProgrammaticCostChart({
+  workspaceId,
+}: ProgrammaticCostChartProps) {
+  const [groupBy, setGroupBy] = useState<GroupByType | undefined>(undefined);
+  const [filter, setFilter] = useState<Partial<Record<GroupByType, string[]>>>(
+    {}
+  );
+
+  const now = new Date();
+  const [selectedMonth, setSelectedMonth] = useState<string>(formatMonth(now));
+
+  const {
+    programmaticCostData,
+    isProgrammaticCostLoading,
+    isProgrammaticCostError,
+  } = useWorkspaceProgrammaticCost({
+    workspaceId,
+    selectedMonth,
+    groupBy,
+    filter,
+  });
+
+  return (
+    <BaseProgrammaticCostChart
+      programmaticCostData={programmaticCostData}
+      isProgrammaticCostLoading={isProgrammaticCostLoading}
+      isProgrammaticCostError={!!isProgrammaticCostError}
+      groupBy={groupBy}
+      setGroupBy={setGroupBy}
+      filter={filter}
+      setFilter={setFilter}
+      selectedMonth={selectedMonth}
+      setSelectedMonth={setSelectedMonth}
+    />
   );
 }

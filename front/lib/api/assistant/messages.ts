@@ -1,3 +1,5 @@
+import assert from "assert";
+
 import {
   AgentMessageContentParser,
   getCoTDelimitersConfiguration,
@@ -18,7 +20,7 @@ import { ContentFragmentResource } from "@app/lib/resources/content_fragment_res
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { UserResource } from "@app/lib/resources/user_resource";
-import logger from "@app/logger/logger";
+import logger, { auditLog } from "@app/logger/logger";
 import type {
   AgentMention,
   AgentMessageType,
@@ -418,9 +420,38 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         }
       })();
 
-      const parentMessage = message.parentId
+      assert(message.parentId !== null, "Agent message must have a parentId.");
+
+      let parentMessage = message.parentId
         ? (messagesById.get(message.parentId) ?? null)
         : null;
+
+      if (!parentMessage) {
+        logger.info(
+          {
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            conversationSId: message.sId,
+            agentMessageId: agentMessage.id,
+          },
+          "Couldn't find parent message for agent message in the messages map, can happen if you are only rendering a subset of the messages. Falling back to fetch the message from the database."
+        );
+        parentMessage = await Message.findOne({
+          where: {
+            id: message.parentId,
+            workspaceId: auth.getNonNullableWorkspace().id,
+            conversationId: message.conversationId,
+          },
+          include: [
+            {
+              model: UserMessage,
+              as: "userMessage",
+              required: false,
+            },
+          ],
+        });
+      }
+
+      assert(parentMessage !== null, "Parent message must be found.");
 
       let parentAgentMessage: Message | null = null;
 
@@ -459,7 +490,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         visibility: message.visibility,
         version: message.version,
         rank: message.rank,
-        parentMessageId: parentMessage?.sId ?? null,
+        parentMessageId: parentMessage.sId,
         parentAgentMessageId: parentAgentMessage?.sId ?? null,
         status: agentMessage.status,
         actions,
@@ -606,6 +637,7 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
 }
 
 type MessageVariant = "legacy-light" | "light";
+
 export async function fetchConversationMessages<V extends MessageVariant>(
   auth: Authenticator,
   {
@@ -702,4 +734,52 @@ export async function fetchMessageInConversation(
       },
     ],
   });
+}
+
+export async function softDeleteUserMessage(
+  auth: Authenticator,
+  {
+    messageId,
+    conversation,
+  }: {
+    messageId: string;
+    conversation: ConversationWithoutContentType;
+  }
+): Promise<Result<{ success: true }, ConversationError>> {
+  const user = auth.getNonNullableUser();
+  const owner = auth.getNonNullableWorkspace();
+
+  const message = await fetchMessageInConversation(
+    auth,
+    conversation,
+    messageId
+  );
+
+  if (!message || !message.userMessage) {
+    return new Err(new ConversationError("message_not_found"));
+  }
+
+  if (message.userMessage.userId !== user.id) {
+    return new Err(new ConversationError("message_deletion_not_authorized"));
+  }
+
+  if (message.visibility === "deleted") {
+    return new Ok({ success: true });
+  }
+
+  await message.update({
+    visibility: "deleted",
+  });
+
+  auditLog(
+    {
+      workspaceId: owner.sId,
+      userId: user.sId,
+      conversationId: conversation.sId,
+      messageId: message.sId,
+    },
+    "User deleted their message"
+  );
+
+  return new Ok({ success: true });
 }

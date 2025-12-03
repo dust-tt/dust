@@ -159,7 +159,7 @@ export function EditorsSheet() {
         cell: (info: CellContext<RowData, any>) => (
           <DataTable.CellContent>
             <div className="flex items-center gap-2">
-              <Avatar size="xs" visual={info.row.original.image} />
+              <Avatar size="xs" visual={info.row.original.image} isRounded />
               {info.row.original.fullName}
             </div>
           </DataTable.CellContent>

@@ -678,10 +678,12 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_o1_high_reasoning_feature"
   | "openai_usage_mcp"
   | "ppul"
+  | "restrict_agents_publishing"
   | "salesforce_synced_queries"
   | "salesforce_tool"
   | "salesforce_tool_write"
   | "salesloft_tool"
+  | "self_created_slack_app_connector_rollout"
   | "show_debug_tools"
   | "slack_bot_mcp"
   | "slack_enhanced_default_agent"
@@ -964,6 +966,8 @@ const UserMentionSchema = z.object({
 export type UserMentionType = z.infer<typeof UserMentionSchema>;
 
 const MentionSchema = z.union([AgentMentionSchema, UserMentionSchema]);
+
+export type MentionType = z.infer<typeof MentionSchema>;
 
 const UserMessageContextSchema = z.object({
   username: z.string(),
@@ -2744,7 +2748,7 @@ export type CancelMessageGenerationRequestType = z.infer<
 
 // Typeguards.
 
-export function isAgentMention(arg: AgentMentionType): arg is AgentMentionType {
+export function isAgentMention(arg: MentionType): arg is AgentMentionType {
   return (arg as AgentMentionType).configurationId !== undefined;
 }
 

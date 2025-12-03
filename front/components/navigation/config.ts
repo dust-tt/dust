@@ -253,7 +253,7 @@ export const subNavigationAdmin = ({
           },
           {
             id: "credits_usage",
-            label: "Credits & Usage",
+            label: "Programmatic usage",
             icon: CardIcon,
             href: `/w/${owner.sId}/developers/credits-usage`,
             current: current === "credits_usage",

@@ -1,21 +1,27 @@
+import type { ConversationMessageAction } from "@dust-tt/sparkle";
 import {
   BoltIcon,
+  classNames,
   ConversationMessage,
   Icon,
   Markdown,
   Tooltip,
+  TrashIcon,
 } from "@dust-tt/sparkle";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
-import { useCallback, useMemo } from "react";
+import { useCallback, useContext, useMemo } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
+import { NewConversationMessage } from "@app/components/assistant/conversation/NewConversationMessage";
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
 import {
   hasHumansInteracting,
   isTriggeredOrigin,
+  isUserMessage,
 } from "@app/components/assistant/conversation/types";
+import { ConfirmContext } from "@app/components/Confirm";
 import {
   CiteBlock,
   getCiteDirective,
@@ -28,18 +34,21 @@ import {
   PastedAttachmentBlock,
   pastedAttachmentDirective,
 } from "@app/components/markdown/PastedAttachmentBlock";
+import { useDeleteMessage } from "@app/hooks/useDeleteMessage";
 import {
   agentMentionDirective,
   getAgentMentionPlugin,
   getUserMentionPlugin,
   userMentionDirective,
 } from "@app/lib/mentions/markdown/plugin";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type { UserMessageType, WorkspaceType } from "@app/types";
 
 interface UserMessageProps {
   citations?: React.ReactElement[];
   conversationId: string;
+  currentUserId: string;
   isLastMessage: boolean;
   message: UserMessageType;
   owner: WorkspaceType;
@@ -48,10 +57,19 @@ interface UserMessageProps {
 export function UserMessage({
   citations,
   conversationId,
+  currentUserId,
   isLastMessage,
   message,
   owner,
 }: UserMessageProps) {
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const userMentionsEnabled = hasFeature("mentions_v2");
+  const { deleteMessage, isDeleting } = useDeleteMessage({
+    owner,
+    conversationId,
+  });
+  const confirm = useContext(ConfirmContext);
+
   const additionalMarkdownComponents: Components = useMemo(
     () => ({
       sup: CiteBlock,
@@ -89,6 +107,106 @@ export function UserMessage({
     );
   }, [message.mentions.length, isLastMessage, methods.data]);
 
+  const isDeleted = message.visibility === "deleted";
+  const isCurrentUser = message.user?.sId === currentUserId;
+
+  const handleDeleteMessage = useCallback(async () => {
+    if (isDeleting || isDeleted) {
+      return;
+    }
+
+    const confirmed = await confirm({
+      title: "Delete message",
+      message:
+        "Are you sure you want to delete this message? This action cannot be undone.",
+      validateLabel: "Delete",
+      validateVariant: "warning",
+    });
+
+    if (confirmed) {
+      await deleteMessage(message.sId);
+      // Optimistically update the message visibility in the Virtuoso list
+      methods.data.map((m) => {
+        if (isUserMessage(m) && m.sId === message.sId) {
+          return {
+            ...m,
+            visibility: "deleted",
+          };
+        }
+        return m;
+      });
+    }
+  }, [isDeleting, isDeleted, confirm, deleteMessage, message.sId, methods]);
+
+  const actions: ConversationMessageAction[] = useMemo(() => {
+    if (!isCurrentUser || isDeleted || !userMentionsEnabled) {
+      return [];
+    }
+
+    return [
+      {
+        icon: TrashIcon,
+        label: "Delete message",
+        onClick: handleDeleteMessage,
+      },
+    ];
+  }, [isCurrentUser, isDeleted, userMentionsEnabled, handleDeleteMessage]);
+
+  if (userMentionsEnabled) {
+    return (
+      <div className="flex flex-grow flex-col">
+        <div
+          className={classNames(
+            "flex w-full min-w-60 flex-col",
+            isCurrentUser ? "items-end" : "items-start"
+          )}
+        >
+          <NewConversationMessage
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            pictureUrl={
+              message.context.profilePictureUrl ?? message.user?.image
+            }
+            name={message.context.fullName ?? undefined}
+            renderName={renderName}
+            timestamp={formatTimestring(message.created)}
+            infoChip={
+              isTriggeredOrigin(message.context.origin) && (
+                <span className="translate-y-1 text-muted-foreground dark:text-muted-foreground-night">
+                  <TriggerChip message={message} />
+                </span>
+              )
+            }
+            type="user"
+            isCurrentUser={isCurrentUser}
+            citations={citations}
+            actions={actions}
+          >
+            {isDeleted ? (
+              <div className="italic text-muted-foreground">
+                This message has been deleted
+              </div>
+            ) : (
+              <Markdown
+                content={message.content}
+                isStreaming={false}
+                isLastMessage={isLastMessage}
+                additionalMarkdownComponents={additionalMarkdownComponents}
+                additionalMarkdownPlugins={additionalMarkdownPlugins}
+              />
+            )}
+          </NewConversationMessage>
+        </div>
+        {showAgentSuggestions && (
+          <AgentSuggestion
+            conversationId={conversationId}
+            owner={owner}
+            userMessage={message}
+          />
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-grow flex-col">
       <div className="min-w-60 max-w-full self-end">
@@ -107,14 +225,21 @@ export function UserMessage({
           }
           type="user"
           citations={citations}
+          actions={actions}
         >
-          <Markdown
-            content={message.content}
-            isStreaming={false}
-            isLastMessage={isLastMessage}
-            additionalMarkdownComponents={additionalMarkdownComponents}
-            additionalMarkdownPlugins={additionalMarkdownPlugins}
-          />
+          {isDeleted ? (
+            <div className="italic text-muted-foreground">
+              This message has been deleted
+            </div>
+          ) : (
+            <Markdown
+              content={message.content}
+              isStreaming={false}
+              isLastMessage={isLastMessage}
+              additionalMarkdownComponents={additionalMarkdownComponents}
+              additionalMarkdownPlugins={additionalMarkdownPlugins}
+            />
+          )}
         </ConversationMessage>
       </div>
       {showAgentSuggestions && (

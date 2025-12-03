@@ -8,7 +8,11 @@ import { BlogBlock } from "@app/components/home/ContentBlocks";
 import { Grid, H1, H2 } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import { getBlogPostBySlug, getRelatedPosts } from "@app/lib/contentful/client";
+import {
+  getBlogPostBySlug,
+  getRelatedPosts,
+  isPreviewMode,
+} from "@app/lib/contentful/client";
 import { renderRichTextFromContentful } from "@app/lib/contentful/richTextRenderer";
 import type { BlogPostPageProps } from "@app/lib/contentful/types";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
@@ -24,7 +28,9 @@ export const getServerSideProps: GetServerSideProps<BlogPostPageProps> = async (
     return { notFound: true };
   }
 
-  const postResult = await getBlogPostBySlug(slug);
+  const { resolvedUrl } = context;
+
+  const postResult = await getBlogPostBySlug(slug, resolvedUrl);
 
   if (postResult.isErr()) {
     logger.error(
@@ -40,7 +46,12 @@ export const getServerSideProps: GetServerSideProps<BlogPostPageProps> = async (
     return { notFound: true };
   }
 
-  const relatedPostsResult = await getRelatedPosts(slug, post.tags, 3);
+  const relatedPostsResult = await getRelatedPosts(
+    slug,
+    post.tags,
+    3,
+    resolvedUrl
+  );
 
   if (relatedPostsResult.isErr()) {
     logger.error(
@@ -55,6 +66,7 @@ export const getServerSideProps: GetServerSideProps<BlogPostPageProps> = async (
       post,
       relatedPosts: relatedPostsResult.value,
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+      preview: isPreviewMode(resolvedUrl),
     },
   };
 };
@@ -66,14 +78,24 @@ const CONTENT_CLASSES = classNames(
 
 const WIDE_CLASSES = classNames("col-span-12", "lg:col-span-10 lg:col-start-2");
 
-export default function BlogPost({ post, relatedPosts }: BlogPostPageProps) {
+export default function BlogPost({
+  post,
+  relatedPosts,
+  preview,
+}: BlogPostPageProps) {
   const ogImageUrl = post.image?.url ?? "https://dust.tt/static/og_image.png";
   const canonicalUrl = `https://dust.tt/blog/${post.slug}`;
 
   return (
     <>
+      {preview && (
+        <div className="fixed left-0 right-0 top-0 z-50 bg-amber-100 px-4 py-2 text-center text-amber-800">
+          Preview Mode - This is a draft
+        </div>
+      )}
       <Head>
         <title>{post.title} | Dust Blog</title>
+        {preview && <meta name="robots" content="noindex, nofollow" />}
         {post.description && (
           <meta name="description" content={post.description} />
         )}
@@ -159,10 +181,49 @@ export default function BlogPost({ post, relatedPosts }: BlogPostPageProps) {
 
             <H1 mono>{post.title}</H1>
 
-            <div className="mt-4 text-muted-foreground">
-              {formatTimestampToFriendlyDate(
-                new Date(post.createdAt).getTime(),
-                "short"
+            <div className="mt-6 flex items-center gap-4">
+              {post.authors.length > 0 ? (
+                <>
+                  <div className="flex -space-x-2">
+                    {post.authors.map((author) =>
+                      author.image ? (
+                        <Image
+                          key={author.name}
+                          src={author.image.url}
+                          alt={author.name}
+                          width={40}
+                          height={40}
+                          className="rounded-full ring-2 ring-white"
+                        />
+                      ) : (
+                        <div
+                          key={author.name}
+                          className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 text-sm font-medium text-gray-600 ring-2 ring-white"
+                        >
+                          {author.name.charAt(0).toUpperCase()}
+                        </div>
+                      )
+                    )}
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-medium text-foreground">
+                      {post.authors.map((a) => a.name).join(", ")}
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      {formatTimestampToFriendlyDate(
+                        new Date(post.createdAt).getTime(),
+                        "short"
+                      )}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <span className="text-muted-foreground">
+                  {formatTimestampToFriendlyDate(
+                    new Date(post.createdAt).getTime(),
+                    "short"
+                  )}
+                </span>
               )}
             </div>
           </header>

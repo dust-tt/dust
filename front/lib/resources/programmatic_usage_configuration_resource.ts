@@ -164,4 +164,12 @@ export class ProgrammaticUsageConfigurationResource extends BaseResource<Program
       paygCapCents: this.paygCapCents,
     };
   }
+
+  static async deleteAllForWorkspace(auth: Authenticator) {
+    await this.model.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+  }
 }

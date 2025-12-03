@@ -104,7 +104,6 @@ export default defineConfig(
       "@next/next/no-img-element": "off",
 
       // Import rules
-      "import/no-cycle": ["error", { maxDepth: 1, ignoreExternal: true }],
       "import/consistent-type-specifier-style": ["error", "prefer-top-level"],
 
       // Import sorting
@@ -182,6 +181,14 @@ export default defineConfig(
       "no-case-declarations": "off",
       "jsx-a11y/alt-text": "off",
       "no-unused-expressions": "error",
+      "no-restricted-globals": [
+        "warn",
+        {
+          name: "fetch",
+          message:
+            "Use clientFetch, trustedFetch, or untrustedFetch from @app/lib/egress instead of the global fetch to make egress intent explicit.",
+        },
+      ],
       "no-restricted-syntax": [
         "error",
         {

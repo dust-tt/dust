@@ -21,6 +21,10 @@ import {
   CiteBlock,
   getCiteDirective,
 } from "@app/ui/components/markdown/CiteBlock";
+import {
+  getImgPlugin,
+  imgDirective,
+} from "@app/ui/components/markdown/ImageBlock";
 import type { MarkdownCitation } from "@app/ui/components/markdown/MarkdownCitation";
 import { useSubmitFunction } from "@app/ui/components/utils/useSubmitFunction";
 import { useEventSource } from "@app/ui/hooks/useEventSource";
@@ -431,12 +435,18 @@ export function AgentMessage({
       sup: CiteBlock,
       // Warning: we can't rename easily `mention` to agent_mention, because the messages DB contains this name
       mention: AgentMentionBlock,
+      dustimg: getImgPlugin(),
     }),
-    [owner, conversationId, message.sId, agentConfiguration.sId]
+    [owner, conversationId, message.sId, agentConfiguration.sId, user]
   );
 
   const additionalMarkdownPlugins: PluggableList = useMemo(
-    () => [agentMentionDirective, getCiteDirective(), visualizationDirective],
+    () => [
+      agentMentionDirective,
+      getCiteDirective(),
+      visualizationDirective,
+      imgDirective,
+    ],
     []
   );
 

@@ -51,15 +51,9 @@ jobs:
             echo "run_danger=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Set up Node.js
+      - name: Setup Node Dependencies
         if: ${{ steps.file_changes.outputs.run_danger == 'true' }}
-        uses: actions/setup-node@v3
-        with:
-          node-version: "20"
-
-      - name: Install dependencies
-        if: ${{ steps.file_changes.outputs.run_danger == 'true' }}
-        run: cd front && npm install
+        uses: ./.github/actions/setup-node-deps
 
       - name: Run Danger for front
         if: ${{ steps.file_changes.outputs.run_danger == 'true' }}

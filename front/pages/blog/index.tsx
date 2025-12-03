@@ -1,6 +1,9 @@
+import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import type { GetServerSideProps } from "next";
 import Head from "next/head";
+import { useRouter } from "next/router";
 import type { ReactElement } from "react";
+import { useMemo } from "react";
 
 import { BlogBlock } from "@app/components/home/ContentBlocks";
 import { Grid, P } from "@app/components/home/ContentComponents";
@@ -13,8 +16,8 @@ import logger from "@app/logger/logger";
 
 export const getServerSideProps: GetServerSideProps<
   BlogListingPageProps
-> = async () => {
-  const postsResult = await getAllBlogPosts();
+> = async (context) => {
+  const postsResult = await getAllBlogPosts(context.resolvedUrl);
 
   if (postsResult.isErr()) {
     logger.error(
@@ -38,10 +41,27 @@ export const getServerSideProps: GetServerSideProps<
 };
 
 export default function BlogListing({ posts }: BlogListingPageProps) {
+  const router = useRouter();
+  const selectedTag =
+    typeof router.query.tag === "string" ? router.query.tag : null;
+
+  const allTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    posts.forEach((post) => post.tags.forEach((tag) => tagSet.add(tag)));
+    return Array.from(tagSet).sort();
+  }, [posts]);
+
+  const filteredPosts = useMemo(() => {
+    if (!selectedTag) {
+      return posts;
+    }
+    return posts.filter((post) => post.tags.includes(selectedTag));
+  }, [posts, selectedTag]);
+
   return (
     <>
       <Head>
-        <title>Blog | Dust</title>
+        <title>{selectedTag ? `${selectedTag} | ` : ""}Blog | Dust</title>
         <meta
           name="description"
           content="Insights, tutorials, and updates from the Dust team on AI agents, enterprise productivity, and building with AI."
@@ -57,14 +77,41 @@ export default function BlogListing({ posts }: BlogListingPageProps) {
       </Head>
 
       <Grid>
+        {allTags.length > 0 && (
+          <div className="col-span-12 flex justify-end pt-8">
+            <div className="relative inline-block">
+              <select
+                value={selectedTag ?? ""}
+                onChange={(e) => {
+                  const tag = e.target.value;
+                  if (tag) {
+                    void router.push(`/blog?tag=${encodeURIComponent(tag)}`);
+                  } else {
+                    void router.push("/blog");
+                  }
+                }}
+                className="appearance-none rounded-full border border-gray-200 bg-white py-2 pl-4 pr-10 text-sm font-medium text-foreground transition-colors hover:border-gray-300 focus:border-highlight focus:outline-none focus:ring-1 focus:ring-highlight"
+              >
+                <option value="">All topics</option>
+                {allTags.map((tag) => (
+                  <option key={tag} value={tag}>
+                    {tag}
+                  </option>
+                ))}
+              </select>
+              <ChevronDownIcon className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            </div>
+          </div>
+        )}
+
         <div
           className={classNames(
-            "col-span-12 pt-8",
+            "col-span-12 pt-6",
             "grid gap-8 sm:grid-cols-2 lg:grid-cols-3"
           )}
         >
-          {posts.length > 0 ? (
-            posts.map((post) => (
+          {filteredPosts.length > 0 ? (
+            filteredPosts.map((post) => (
               <BlogBlock
                 key={post.id}
                 title={post.title}
@@ -109,7 +156,9 @@ export default function BlogListing({ posts }: BlogListingPageProps) {
           ) : (
             <div className="col-span-full py-12 text-center">
               <P size="md" className="text-muted-foreground">
-                No blog posts available yet. Check back soon!
+                {selectedTag
+                  ? `No posts found with tag "${selectedTag}".`
+                  : "No blog posts available yet. Check back soon!"}
               </P>
             </div>
           )}

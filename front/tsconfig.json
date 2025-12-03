@@ -6,6 +6,7 @@
     "skipLibCheck": true,
     "strict": true,
     "forceConsistentCasingInFileNames": true,
+    "allowSyntheticDefaultImports": true,
     "noEmit": true,
     "noErrorTruncation": true,
     "esModuleInterop": true,
@@ -34,5 +35,5 @@
     "**/*.mjs",
     "./.eslintrc.js"
   ],
-  "exclude": ["node_modules", "extension", ".next"]
+  "exclude": ["node_modules", ".next", "dist"]
 }

@@ -64,6 +64,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Prevent users from creating agents, allowing only admins and builders",
     stage: "on_demand",
   },
+  restrict_agents_publishing: {
+    description: "Restrict publishing agents to builders and admins",
+    stage: "on_demand",
+  },
   google_sheets_tool: {
     description: "Google Sheets MCP tool",
     stage: "rolling_out",
@@ -113,6 +117,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   salesforce_synced_queries: {
     description: "Salesforce Connection: retrieval on Synchronized queries",
     stage: "on_demand",
+  },
+  self_created_slack_app_connector_rollout: {
+    description:
+      "Slack Connection: rollout for self-created Slack app connector",
+    stage: "rolling_out",
   },
   salesforce_tool: {
     description:

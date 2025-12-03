@@ -1,6 +1,7 @@
 import {
   ArrowPathIcon,
   Button,
+  ButtonGroup,
   Chip,
   ClipboardCheckIcon,
   ClipboardIcon,
@@ -31,6 +32,7 @@ import { FeedbackSelectorPopoverContent } from "@app/components/assistant/conver
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/interactive_content/useAutoOpenInteractiveContent";
 import { MCPServerPersonalAuthenticationRequired } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationRequired";
+import { NewConversationMessage } from "@app/components/assistant/conversation/NewConversationMessage";
 import type {
   AgentMessageStateWithControlEvent,
   MessageTemporaryState,
@@ -77,6 +79,7 @@ import {
   useConversationMessage,
   usePostOnboardingFollowUp,
 } from "@app/lib/swr/conversations";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type {
   ContentFragmentsType,
@@ -329,6 +332,7 @@ export function AgentMessage({
   }
 
   const buttons: React.ReactElement[] = [];
+  const buttonGroups: React.ReactElement[] = [];
 
   const hasMultiAgents =
     generationContext.generatingMessages.filter(
@@ -354,12 +358,13 @@ export function AgentMessage({
     );
   }
 
+  const copyAndRetryButtonGroup: React.ReactElement[] = [];
   // Show copy & feedback buttons only when streaming is done and it didn't fail
   if (
     agentMessageToRender.status !== "created" &&
     agentMessageToRender.status !== "failed"
   ) {
-    buttons.push(
+    const copyButton = (
       <Button
         key="copy-msg-button"
         tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
@@ -370,6 +375,8 @@ export function AgentMessage({
         className="text-muted-foreground"
       />
     );
+    buttons.push(copyButton);
+    copyAndRetryButtonGroup.push(copyButton);
   }
 
   // Show the retry button as long as it's not streaming nor failed,
@@ -395,7 +402,7 @@ export function AgentMessage({
     !shouldStream &&
     !isAgentMessageHandingOver
   ) {
-    buttons.push(
+    const retryButton = (
       <Button
         key="retry-msg-button"
         tooltip="Retry"
@@ -413,6 +420,16 @@ export function AgentMessage({
         disabled={isRetryHandlerProcessing || shouldStream}
       />
     );
+    buttons.push(retryButton);
+    copyAndRetryButtonGroup.push(retryButton);
+  }
+
+  if (copyAndRetryButtonGroup.length > 0) {
+    buttonGroups.push(
+      <ButtonGroup key="first-button-group" variant="outline">
+        {copyAndRetryButtonGroup}
+      </ButtonGroup>
+    );
   }
 
   // Add feedback buttons in the end of the array if the agent is not global nor in draft (= inside agent builder)
@@ -428,6 +445,15 @@ export function AgentMessage({
         key="feedback-selector"
         {...messageFeedback}
         getPopoverInfo={PopoverContent}
+        owner={owner}
+      />
+    );
+    buttonGroups.push(
+      <FeedbackSelector
+        key="feedback-selector"
+        {...messageFeedback}
+        getPopoverInfo={PopoverContent}
+        owner={owner}
       />
     );
   }
@@ -534,6 +560,49 @@ export function AgentMessage({
     ]
   );
 
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const userMentionsEnabled = hasFeature("mentions_v2");
+  if (userMentionsEnabled) {
+    return (
+      <NewConversationMessage
+        pictureUrl={agentConfiguration.pictureUrl}
+        name={agentConfiguration.name}
+        buttons={buttonGroups}
+        avatarBusy={agentMessageToRender.status === "created"}
+        isDisabled={isArchived}
+        renderName={renderName}
+        timestamp={
+          parentAgent
+            ? undefined
+            : formatTimestring(
+                agentMessageToRender.completedTs ?? agentMessageToRender.created
+              )
+        }
+        completionStatus={
+          <AgentMessageCompletionStatus agentMessage={agentMessageToRender} />
+        }
+        type="agent"
+        citations={citations}
+      >
+        <AgentMessageContent
+          onQuickReplySend={handleQuickReply}
+          owner={owner}
+          conversationId={conversationId}
+          retryHandler={retryHandler}
+          isLastMessage={isLastMessage}
+          messageStreamState={messageStreamState}
+          references={references}
+          streaming={shouldStream}
+          lastTokenClassification={
+            messageStreamState.agentState === "thinking" ? "tokens" : null
+          }
+          activeReferences={activeReferences}
+          setActiveReferences={setActiveReferences}
+        />
+      </NewConversationMessage>
+    );
+  }
+
   return (
     <ConversationMessage
       pictureUrl={agentConfiguration.pictureUrl}
@@ -555,23 +624,21 @@ export function AgentMessage({
       type="agent"
       citations={citations}
     >
-      <div>
-        <AgentMessageContent
-          owner={owner}
-          conversationId={conversationId}
-          retryHandler={retryHandler}
-          isLastMessage={isLastMessage}
-          messageStreamState={messageStreamState}
-          references={references}
-          onQuickReplySend={handleQuickReply}
-          streaming={shouldStream}
-          lastTokenClassification={
-            messageStreamState.agentState === "thinking" ? "tokens" : null
-          }
-          activeReferences={activeReferences}
-          setActiveReferences={setActiveReferences}
-        />
-      </div>
+      <AgentMessageContent
+        owner={owner}
+        conversationId={conversationId}
+        retryHandler={retryHandler}
+        isLastMessage={isLastMessage}
+        messageStreamState={messageStreamState}
+        references={references}
+        onQuickReplySend={handleQuickReply}
+        streaming={shouldStream}
+        lastTokenClassification={
+          messageStreamState.agentState === "thinking" ? "tokens" : null
+        }
+        activeReferences={activeReferences}
+        setActiveReferences={setActiveReferences}
+      />
     </ConversationMessage>
   );
 }
@@ -671,14 +738,7 @@ function AgentMessageContent({
 
   const handleToolSetupComplete = React.useCallback(
     (toolId: string) => {
-      void postFollowUp(toolId, "completed");
-    },
-    [postFollowUp]
-  );
-
-  const handleToolSetupSkipped = React.useCallback(
-    (toolId: string) => {
-      void postFollowUp(toolId, "skipped");
+      void postFollowUp(toolId);
     },
     [postFollowUp]
   );
@@ -697,13 +757,7 @@ function AgentMessageContent({
       mention_user: getUserMentionPlugin(owner),
       dustimg: getImgPlugin(owner),
       quickReply: getQuickReplyPlugin(onQuickReplySend, isLastMessage),
-      toolSetup: getToolSetupPlugin(
-        owner,
-        conversationId,
-        isLastMessage,
-        handleToolSetupComplete,
-        handleToolSetupSkipped
-      ),
+      toolSetup: getToolSetupPlugin(owner, handleToolSetupComplete),
     }),
     [
       owner,
@@ -713,7 +767,6 @@ function AgentMessageContent({
       onQuickReplySend,
       isLastMessage,
       handleToolSetupComplete,
-      handleToolSetupSkipped,
     ]
   );
 

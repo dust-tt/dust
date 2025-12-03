@@ -1,19 +1,17 @@
 import assert from "assert";
-import _ from "lodash";
 import type { Transaction } from "sequelize";
 
-import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import {
   getAgentConfiguration,
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration/agent";
-import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import {
   createAgentMessages,
   createUserMentions,
+  createUserMessage,
+  updateConversationRequirements,
 } from "@app/lib/api/assistant/conversation/mentions";
-import { getContentFragmentSpaceIds } from "@app/lib/api/assistant/permissions";
 import {
   makeAgentMentionsRateLimitKeyForWorkspace,
   makeMessageRateLimitKeyForWorkspace,
@@ -36,16 +34,10 @@ import { triggerConversationUnreadNotifications } from "@app/lib/notifications/w
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import {
-  generateRandomModelSId,
-  getResourceIdFromSId,
-} from "@app/lib/resources/string_ids";
-import { UserResource } from "@app/lib/resources/user_resource";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { ServerSideTracking } from "@app/lib/tracking/server";
-import { isEmailValid } from "@app/lib/utils";
 import {
   getTimeframeSecondsFromLiteral,
   rateLimiter,
@@ -71,7 +63,6 @@ import type {
   Result,
   UserMessageContext,
   UserMessageType,
-  UserType,
   WorkspaceType,
 } from "@app/types";
 import {
@@ -346,151 +337,6 @@ async function getConversationRankVersionLock(
   );
 }
 
-async function attributeUserFromWorkspaceAndEmail(
-  workspace: WorkspaceType | null,
-  email: string | null
-): Promise<UserType | null> {
-  if (!workspace || !email || !isEmailValid(email)) {
-    return null;
-  }
-
-  const matchingUser = await UserResource.fetchByEmail(email);
-  if (!matchingUser) {
-    return null;
-  }
-
-  const membership =
-    await MembershipResource.getActiveMembershipOfUserInWorkspace({
-      user: matchingUser,
-      workspace,
-    });
-
-  return membership ? matchingUser.toJSON() : null;
-}
-
-async function createMessageAndUserMessage({
-  workspace,
-  conversation,
-  metadata,
-  content,
-  transaction,
-}: {
-  workspace: WorkspaceType;
-  conversation: ConversationWithoutContentType;
-  content: string;
-  metadata:
-    | {
-        type: "edit";
-        message: Message;
-      }
-    | {
-        type: "create";
-        user: UserType | null;
-        rank: number;
-        context: UserMessageContext;
-        agenticMessageData?: AgenticMessageData;
-      };
-  transaction: Transaction;
-}) {
-  let rank = 0;
-  let version = 0;
-  let parentId: ModelId | null = null;
-  let userMessage: UserMessage | null = null;
-  switch (metadata.type) {
-    case "edit":
-      rank = metadata.message.rank;
-      version = metadata.message.version + 1;
-      parentId = metadata.message.id;
-      const userMessageToEdit = metadata.message.userMessage;
-      if (!userMessageToEdit) {
-        throw new Error(
-          "Unexpected: UserMessage to edit not found in DB. Make sure it's included in the fetch."
-        );
-      }
-      userMessage = await UserMessage.create(
-        {
-          content,
-          // TODO(MCP Clean-up): Rename field in DB.
-          clientSideMCPServerIds:
-            userMessageToEdit.clientSideMCPServerIds ?? [],
-          userContextUsername: userMessageToEdit.userContextUsername,
-          userContextTimezone: userMessageToEdit.userContextTimezone,
-          userContextFullName: userMessageToEdit.userContextFullName,
-          userContextEmail: userMessageToEdit.userContextEmail,
-          userContextProfilePictureUrl:
-            userMessageToEdit.userContextProfilePictureUrl,
-          userContextOrigin: userMessageToEdit.userContextOrigin,
-          userContextLastTriggerRunAt:
-            userMessageToEdit.userContextLastTriggerRunAt,
-          agenticMessageType: userMessageToEdit.agenticMessageType,
-          agenticOriginMessageId: userMessageToEdit.agenticOriginMessageId,
-          userId: userMessageToEdit.userId,
-          workspaceId: userMessageToEdit.workspaceId,
-        },
-        { transaction: transaction }
-      );
-      break;
-    case "create":
-      rank = metadata.rank;
-      const user =
-        metadata.user ??
-        (await attributeUserFromWorkspaceAndEmail(
-          workspace,
-          metadata.context.email
-        ));
-
-      // Fetch originMessage to ensure it exists
-      const originMessageId = metadata.agenticMessageData?.originMessageId;
-      const originMessage = originMessageId
-        ? await Message.findOne({
-            where: {
-              workspaceId: workspace.id,
-              sId: originMessageId,
-            },
-          })
-        : null;
-      userMessage = await UserMessage.create(
-        {
-          content,
-          // TODO(MCP Clean-up): Rename field in DB.
-          clientSideMCPServerIds: metadata.context.clientSideMCPServerIds ?? [],
-          userContextUsername: metadata.context.username,
-          userContextTimezone: metadata.context.timezone,
-          userContextFullName: metadata.context.fullName,
-          userContextEmail: metadata.context.email,
-          userContextProfilePictureUrl: metadata.context.profilePictureUrl,
-          userContextOrigin: metadata.context.origin,
-          userContextLastTriggerRunAt: metadata.context.lastTriggerRunAt
-            ? new Date(metadata.context.lastTriggerRunAt)
-            : null,
-          agenticMessageType: metadata.agenticMessageData?.type,
-          agenticOriginMessageId: originMessage?.sId,
-          userId: user?.id,
-          workspaceId: workspace.id,
-        },
-        { transaction: transaction }
-      );
-      break;
-    default:
-      assertNever(metadata);
-  }
-
-  return Message.create(
-    {
-      sId: generateRandomModelSId(),
-      rank,
-      conversationId: conversation.id,
-      parentId,
-      version,
-      userMessageId: userMessage.id,
-      workspaceId: workspace.id,
-    },
-    {
-      transaction,
-    }
-  );
-}
-
 export function getRelatedContentFragments(
   conversation: ConversationType,
   message: UserMessageType
@@ -584,6 +430,8 @@ export async function postUserMessage(
     });
   }
 
+  // `getAgentConfiguration` checks that we're only pulling a configuration from the
+  // same workspace or a global one.
   const results = await Promise.all([
     getAgentConfigurations(auth, {
       agentIds: mentions
@@ -651,129 +499,95 @@ export async function postUserMessage(
   }
 
   // In one big transaction create all Message, UserMessage, AgentMessage and Mention rows.
-  const { userMessage, agentMessages, agentMessageRows } =
-    await withTransaction(async (t) => {
-      // Since we are getting a transaction level lock, we can't execute any other SQL query outside of
-      // this transaction, otherwise this other query will be competing for a connection in the database
-      // connection pool, resulting in a deadlock.
-      await getConversationRankVersionLock(conversation, t);
+  const { userMessage, agentMessages } = await withTransaction(async (t) => {
+    // Since we are getting a transaction level lock, we can't execute any other SQL query outside of
+    // this transaction, otherwise this other query will be competing for a connection in the database
+    // connection pool, resulting in a deadlock.
+    await getConversationRankVersionLock(conversation, t);
 
-      // We clear the hasError flag of a conversation when posting a new user message.
-      if (conversation.hasError) {
-        await ConversationResource.clearHasError(
-          auth,
-          {
-            conversation,
-          },
-          t
-        );
-      }
+    // We clear the hasError flag of a conversation when posting a new user message.
+    if (conversation.hasError) {
+      await ConversationResource.clearHasError(
+        auth,
+        {
+          conversation,
+        },
+        t
+      );
+    }
 
-      let nextMessageRank =
-        ((await Message.max<number | null, Message>("rank", {
-          where: {
-            conversationId: conversation.id,
-          },
-          transaction: t,
-        })) ?? -1) + 1;
-
-      const m = await createMessageAndUserMessage({
-        workspace: owner,
-        conversation,
-        content,
-        metadata: {
-          type: "create",
-          user: user?.toJSON() ?? null,
-          rank: nextMessageRank++,
-          context,
-          agenticMessageData,
+    let nextMessageRank =
+      ((await Message.max<number | null, Message>("rank", {
+        where: {
+          conversationId: conversation.id,
         },
         transaction: t,
-      });
+      })) ?? -1) + 1;
 
-      const userMessage: UserMessageType = {
-        id: m.id,
-        created: m.createdAt.getTime(),
-        sId: m.sId,
-        type: "user_message",
-        visibility: "visible",
-        version: 0,
+    const userMessage = await createUserMessage({
+      workspace: owner,
+      conversation,
+      content,
+      mentions,
+      metadata: {
+        type: "create",
         user: user?.toJSON() ?? null,
-        mentions,
-        content,
+        rank: nextMessageRank++,
         context,
         agenticMessageData,
-        rank: m.rank,
-      };
-
-      await createUserMentions(auth, {
-        mentions,
-        message: m,
-        conversation,
-        transaction: t,
-      });
-
-      // Mark the conversation as unread for all participants except the user.
-      await ConversationResource.markAsUnreadForOtherParticipants(auth, {
-        conversation,
-        excludedUser: user?.toJSON(),
-      });
-
-      const featureFlags = await getFeatureFlags(owner);
-      if (featureFlags.includes("notifications")) {
-        // TODO(mentionsv2) here we fetch the conversation again to trigger the notification.
-        // We should refactor to pass the resource as the argument of the postUserMessage function.
-        const conversationRes = await ConversationResource.fetchById(
-          auth,
-          conversation.sId
-        );
-        if (conversationRes) {
-          await triggerConversationUnreadNotifications(auth, {
-            conversation: conversationRes,
-            messageId: m.sId,
-          });
-        }
-      }
-
-      const agentMessagesResult = await createAgentMessages({
-        mentions,
-        agentConfigurations,
-        message: m,
-        owner,
-        transaction: t,
-        skipToolsValidation,
-        nextMessageRank,
-        conversation,
-        userMessage,
-      });
-
-      await updateConversationRequirements(auth, {
-        agents: agentMessagesResult.map(({ m }) => m.configuration),
-        conversation,
-        t,
-      });
-
-      await ConversationResource.markAsUpdated(auth, { conversation, t });
-
-      return {
-        userMessage,
-        agentMessages: agentMessagesResult.map(({ m }) => m),
-        agentMessageRows: agentMessagesResult.map(({ row }) => row),
-      };
+      },
+      transaction: t,
     });
 
-  if (agentMessageRows.length !== agentMessages.length) {
-    throw new Error("Unreachable: agentMessageRows and agentMessages mismatch");
-  }
+    await createUserMentions(auth, {
+      mentions,
+      message: userMessage,
+      conversation,
+      transaction: t,
+    });
 
-  if (agentMessages.length > 0) {
-    for (const agentMessage of agentMessages) {
-      void signalAgentUsage({
-        agentConfigurationId: agentMessage.configuration.sId,
-        workspaceId: owner.sId,
-      });
+    // Mark the conversation as unread for all participants except the user.
+    await ConversationResource.markAsUnreadForOtherParticipants(auth, {
+      conversation,
+      excludedUser: user?.toJSON(),
+    });
+
+    const featureFlags = await getFeatureFlags(owner);
+    if (featureFlags.includes("notifications")) {
+      // TODO(mentionsv2) here we fetch the conversation again to trigger the notification.
+      // We should refactor to pass the resource as the argument of the postUserMessage function.
+      const conversationRes = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      if (conversationRes) {
+        await triggerConversationUnreadNotifications(auth, {
+          conversation: conversationRes,
+          messageId: userMessage.sId,
+        });
+      }
     }
-  }
+
+    const agentMessages = await createAgentMessages(auth, {
+      conversation,
+      metadata: {
+        type: "create",
+        mentions,
+        agentConfigurations,
+        skipToolsValidation,
+        nextMessageRank,
+        userMessage,
+      },
+      transaction: t,
+    });
+
+    await ConversationResource.markAsUpdated(auth, { conversation, t });
+
+    return {
+      userMessage,
+      agentMessages,
+    };
+  });
 
   void ServerSideTracking.trackUserMessage({
     userMessage,
@@ -782,11 +596,6 @@ export async function postUserMessage(
     conversationId: conversation.sId,
     agentMessages,
   });
-
-  const agentMessageRowById = new Map<ModelId, AgentMessage>();
-  for (const agentMessageRow of agentMessageRows) {
-    agentMessageRowById.set(agentMessageRow.id, agentMessageRow);
-  }
 
   // TODO(DURABLE-AGENTS 2025-07-17): Publish message events to all open tabs to maintain
   // conversation state synchronization in multiplex mode. This is a temporary solution -
@@ -799,14 +608,6 @@ export async function postUserMessage(
     },
     agentMessages
   );
-
-  await runAgentLoopWorkflow({
-    auth,
-    agentMessages,
-    agentMessageRowById,
-    conversation,
-    userMessage,
-  });
 
   return new Ok({
     userMessage,
@@ -913,7 +714,6 @@ export async function editUserMessage(
 
   let userMessage: UserMessageType | null = null;
   let agentMessages: AgentMessageType[] = [];
-  let agentMessageRows: AgentMessage[] = [];
 
   const results = await Promise.all([
     Promise.all(
@@ -1003,30 +803,17 @@ export async function editUserMessage(
         );
       }
 
-      const m = await createMessageAndUserMessage({
+      const userMessage = await createUserMessage({
         workspace: owner,
         conversation,
         content,
+        mentions,
         metadata: {
           type: "edit",
-          message: messageRow,
+          message,
         },
         transaction: t,
       });
-
-      const userMessage: UserMessageType = {
-        id: m.id,
-        created: m.createdAt.getTime(),
-        sId: m.sId,
-        type: "user_message",
-        visibility: m.visibility,
-        version: m.version,
-        user: user?.toJSON() ?? null,
-        mentions,
-        content,
-        context: message.context,
-        rank: m.rank,
-      };
 
       // Mark the conversation as unread for all participants except the user.
       await ConversationResource.markAsUnreadForOtherParticipants(auth, {
@@ -1047,40 +834,34 @@ export async function editUserMessage(
 
       await createUserMentions(auth, {
         mentions,
-        message: m,
+        message: userMessage,
         conversation,
         transaction: t,
       });
 
-      const agentMessagesResult = await createAgentMessages({
-        mentions,
-        agentConfigurations,
-        message: m,
-        owner,
+      const agentMessages = await createAgentMessages(auth, {
+        conversation,
+        metadata: {
+          type: "create",
+          mentions,
+          agentConfigurations,
+          skipToolsValidation,
+          nextMessageRank,
+          userMessage,
+        },
         transaction: t,
-        skipToolsValidation,
-        nextMessageRank,
-        conversation,
-        userMessage,
-      });
-
-      await updateConversationRequirements(auth, {
-        agents: agentMessagesResult.map(({ m }) => m.configuration),
-        conversation,
-        t,
       });
 
       await ConversationResource.markAsUpdated(auth, { conversation, t });
 
       return {
         userMessage,
-        agentMessages: agentMessagesResult.map(({ m }) => m),
-        agentMessageRows: agentMessagesResult.map(({ row }) => row),
+        agentMessages,
       };
     });
     userMessage = result.userMessage;
     agentMessages = result.agentMessages;
-    agentMessageRows = result.agentMessageRows;
+
     if (!userMessage) {
       throw new UserMessageError("Unreachable: userMessage is null");
     }
@@ -1097,33 +878,6 @@ export async function editUserMessage(
       throw e;
     }
   }
-
-  assert(
-    agentMessageRows.length === agentMessages.length,
-    "Unreachable: agentMessageRows and agentMessages mismatch"
-  );
-
-  if (agentMessages.length > 0) {
-    for (const agentMessage of agentMessages) {
-      void signalAgentUsage({
-        agentConfigurationId: agentMessage.configuration.sId,
-        workspaceId: owner.sId,
-      });
-    }
-  }
-
-  const agentMessageRowById = new Map<ModelId, AgentMessage>();
-  for (const agentMessageRow of agentMessageRows) {
-    agentMessageRowById.set(agentMessageRow.id, agentMessageRow);
-  }
-
-  await runAgentLoopWorkflow({
-    auth,
-    agentMessages,
-    agentMessageRowById,
-    conversation,
-    userMessage,
-  });
 
   // TODO(DURABLE-AGENTS 2025-07-17): Publish message events to all open tabs to maintain
   // conversation state synchronization in multiplex mode. This is a temporary solution -
@@ -1159,7 +913,6 @@ export async function retryAgentMessage(
 ): Promise<Result<AgentMessageType, APIErrorWithStatusCode>> {
   let agentMessageResult: {
     agentMessage: AgentMessageType;
-    agentMessageRow: AgentMessage;
   } | null = null;
   try {
     agentMessageResult = await withTransaction(async (t) => {
@@ -1209,68 +962,27 @@ export async function retryAgentMessage(
           "Invalid agent message retry request, this message was already retried."
         );
       }
-      const agentMessageRow = await AgentMessage.create(
-        {
-          status: "created",
-          agentConfigurationId: messageRow.agentMessage.agentConfigurationId,
-          agentConfigurationVersion:
-            messageRow.agentMessage.agentConfigurationVersion,
-          workspaceId: auth.getNonNullableWorkspace().id,
-          skipToolsValidation: messageRow.agentMessage.skipToolsValidation,
-        },
-        { transaction: t }
-      );
-      const m = await Message.create(
-        {
-          sId: generateRandomModelSId(),
-          rank: messageRow.rank,
-          conversationId: conversation.id,
-          parentId: messageRow.parentId,
-          version: messageRow.version + 1,
-          agentMessageId: agentMessageRow.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
-        },
-        {
-          transaction: t,
-        }
-      );
 
-      await updateConversationRequirements(auth, {
-        agents: [message.configuration],
+      const agentMessages = await createAgentMessages(auth, {
         conversation,
-        t,
+        metadata: {
+          type: "retry",
+          parentId: messageRow.parentId,
+          agentMessage: message,
+        },
+        transaction: t,
       });
+
+      if (agentMessages.length !== 1) {
+        throw new AgentMessageError(
+          `Unexpected: expected 1 agent message result while retrying agent message, got ${agentMessages.length} instead.`
+        );
+      }
 
       await ConversationResource.markAsUpdated(auth, { conversation, t });
 
-      const agentMessage: AgentMessageType = {
-        id: m.id,
-        agentMessageId: agentMessageRow.id,
-        created: m.createdAt.getTime(),
-        completedTs: agentMessageRow.completedAt?.getTime() ?? null,
-        sId: m.sId,
-        type: "agent_message",
-        visibility: m.visibility,
-        version: m.version,
-        parentMessageId: message.parentMessageId,
-        parentAgentMessageId: message.parentAgentMessageId,
-        status: "created",
-        actions: [],
-        content: null,
-        chainOfThought: null,
-        rawContents: [],
-        error: null,
-        configuration: message.configuration,
-        rank: m.rank,
-        skipToolsValidation: agentMessageRow.skipToolsValidation,
-        contents: [],
-        parsedContents: {},
-        modelInteractionDurationMs: agentMessageRow.modelInteractionDurationMs,
-      };
-
       return {
-        agentMessage,
-        agentMessageRow,
+        agentMessage: agentMessages[0],
       };
     });
   } catch (e) {
@@ -1541,86 +1253,4 @@ async function isMessagesLimitReached({
     isLimitReached,
     limitType: isLimitReached ? "plan_message_limit_exceeded" : null,
   };
-}
-
-/**
- * Update the conversation requestedSpaceIds based on the mentioned agents. This function is purely
- * additive - requirements are never removed.
- *
- * Each agent's requestedSpaceIds represents a set of requirements that must be satisfied. When an
- * agent is mentioned in a conversation, its requirements are added to the conversation's
- * requirements.
- *
- * - Within each requirement (sub-array), groups are combined with OR logic.
- * - Different requirements (different sub-arrays) are combined with AND logic.
- */
-export async function updateConversationRequirements(
-  auth: Authenticator,
-  {
-    agents,
-    contentFragment,
-    conversation,
-    t,
-  }: {
-    agents?: LightAgentConfigurationType[];
-    contentFragment?: ContentFragmentInputWithContentNode;
-    conversation: ConversationWithoutContentType;
-    t: Transaction;
-  }
-): Promise<void> {
-  let newSpaceRequirements: string[] = [];
-  if (agents) {
-    newSpaceRequirements = agents.flatMap((agent) => agent.requestedSpaceIds);
-  }
-  if (contentFragment) {
-    const requestedSpaceId = await getContentFragmentSpaceIds(
-      auth,
-      contentFragment
-    );
-
-    newSpaceRequirements.push(requestedSpaceId);
-  }
-
-  newSpaceRequirements = _.uniq(newSpaceRequirements);
-
-  const currentSpaceRequirements = conversation.requestedSpaceIds;
-
-  const areAllSpaceRequirementsPresent = newSpaceRequirements.every((newReq) =>
-    currentSpaceRequirements.includes(newReq)
-  );
-
-  // Early return if all new requirements are already present.
-  if (areAllSpaceRequirementsPresent) {
-    return;
-  }
-
-  // Get missing requirements.
-  const spaceRequirementsToAdd = newSpaceRequirements.filter(
-    (newReq) => !currentSpaceRequirements.includes(newReq)
-  );
-
-  // Convert all sIds to modelIds.
-  const sIdToModelId = new Map<string, number>();
-  const getModelId = (sId: string) => {
-    if (!sIdToModelId.has(sId)) {
-      const id = getResourceIdFromSId(sId);
-      if (id === null) {
-        throw new Error("Unexpected: invalid group id");
-      }
-      sIdToModelId.set(sId, id);
-    }
-    return sIdToModelId.get(sId)!;
-  };
-
-  const allSpaceRequirements = [
-    ...currentSpaceRequirements.map(getModelId),
-    ...spaceRequirementsToAdd.map(getModelId),
-  ];
-
-  await ConversationResource.updateRequirements(
-    auth,
-    conversation.sId,
-    allSpaceRequirements,
-    t
-  );
 }

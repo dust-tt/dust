@@ -2,8 +2,7 @@
   "name": "front-worker",
   "version": "0.1.0",
   "scripts": {
-    "build": "npm run build:temporal-bundles && npm run build:workers",
-    "build:temporal-bundles": "tsx ../scripts/temporal-build/build-temporal-bundles.ts",
+    "build": "npm run build:workers",
     "build:workers": "tsx scripts/esbuild.worker.ts",
     "start": "node ./dist/start_worker.js"
   },

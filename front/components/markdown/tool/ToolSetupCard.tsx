@@ -18,6 +18,11 @@ import {
   useMCPServers,
 } from "@app/lib/swr/mcp_servers";
 import { useSpaces, useSpacesAsAdmin } from "@app/lib/swr/spaces";
+import {
+  trackEvent,
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+} from "@app/lib/tracking";
 import type { WorkspaceType } from "@app/types";
 import { asDisplayToolName } from "@app/types";
 
@@ -25,23 +30,17 @@ interface ToolSetupCardProps {
   toolName: string;
   toolId: InternalMCPServerNameType;
   owner: WorkspaceType;
-  conversationId?: string;
-  isLastMessage?: boolean;
   onSetupComplete?: (toolId: string) => void;
-  onSetupSkipped?: (toolId: string) => void;
 }
 
 export function ToolSetupCard({
   toolName,
   toolId,
   owner,
-  isLastMessage,
   onSetupComplete,
-  onSetupSkipped,
 }: ToolSetupCardProps) {
   const [isActivating, setIsActivating] = useState(false);
   const [isSetupSheetOpen, setIsSetupSheetOpen] = useState(false);
-  const [isSkipped, setIsSkipped] = useState(false);
   const isAdmin = owner.role === "admin";
 
   const { spaces: spacesAsUser } = useSpaces({
@@ -130,6 +129,12 @@ export function ToolSetupCard({
   };
 
   const handleAddToGlobalSpace = async () => {
+    trackEvent({
+      area: TRACKING_AREAS.CONVERSATION,
+      object: "onboarding_conversation",
+      action: TRACKING_ACTIONS.CLICK,
+      extra: { tool_id: toolId, click_target: "tool_setup_card" },
+    });
     setIsActivating(true);
     await addToSpace(matchingMCPServer, globalSpace);
     await mutateMCPServers();
@@ -138,6 +143,12 @@ export function ToolSetupCard({
   };
 
   const handleActivateClick = async () => {
+    trackEvent({
+      area: TRACKING_AREAS.CONVERSATION,
+      object: "onboarding_conversation",
+      action: TRACKING_ACTIONS.CLICK,
+      extra: { tool_id: toolId, click_target: "tool_setup_card" },
+    });
     setIsSetupSheetOpen(true);
   };
 
@@ -149,18 +160,8 @@ export function ToolSetupCard({
     onSetupComplete?.(toolId);
   };
 
-  const handleSkip = () => {
-    setIsSkipped(true);
-    onSetupSkipped?.(toolId);
-  };
-
-  const showSkipButton =
-    isAdmin && !isToolActivatedInGlobalSpace && !isActivating;
-
-  const isSkipDisabled = !isLastMessage || isSkipped;
-
   return (
-    <>
+    <div className="mb-2 mr-2 inline-block w-72 align-top">
       <ContentMessage
         title={`${asDisplayToolName(toolId) || toolName} Tool`}
         icon={getIcon(matchingMCPServer.icon)}
@@ -183,26 +184,15 @@ export function ToolSetupCard({
                 />
               )}
             </div>
-            <div className="flex gap-2">
-              {showSkipButton && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  label={isSkipped ? "Skipped" : "Skip"}
-                  onClick={handleSkip}
-                  disabled={isSkipDisabled}
-                />
-              )}
-              <Button
-                variant="highlight"
-                size="sm"
-                label={getButtonLabel()}
-                onClick={getButtonClickHandler()}
-                disabled={
-                  !isAdmin || isToolActivatedInGlobalSpace || isActivating
-                }
-              />
-            </div>
+            <Button
+              variant="highlight"
+              size="sm"
+              label={getButtonLabel()}
+              onClick={getButtonClickHandler()}
+              disabled={
+                !isAdmin || isToolActivatedInGlobalSpace || isActivating
+              }
+            />
           </div>
         </div>
       </ContentMessage>
@@ -217,6 +207,6 @@ export function ToolSetupCard({
           setIsOpen={setIsSetupSheetOpen}
         />
       )}
-    </>
+    </div>
   );
 }

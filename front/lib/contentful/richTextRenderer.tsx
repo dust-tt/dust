@@ -11,6 +11,7 @@ import Image from "next/image";
 import type { ReactNode } from "react";
 
 import { A, H2, H3, H4, H5 } from "@app/components/home/ContentComponents";
+import { isString } from "@app/types";
 
 function getYouTubeVideoId(text: string): string | null {
   const patterns = [
@@ -67,11 +68,23 @@ const renderOptions: Options = {
     ),
     [MARKS.ITALIC]: (text: ReactNode) => <em>{text}</em>,
     [MARKS.UNDERLINE]: (text: ReactNode) => <u>{text}</u>,
-    [MARKS.CODE]: (text: ReactNode) => (
-      <code className="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-sm">
-        {text}
-      </code>
-    ),
+    [MARKS.CODE]: (text: ReactNode) => {
+      // Check if code contains newlines - render as block
+      const textContent = isString(text) ? text : "";
+      if (textContent.includes("\n")) {
+        return (
+          <pre className="my-4 overflow-x-auto rounded-lg bg-gray-100 p-4">
+            <code className="font-mono text-sm">{text}</code>
+          </pre>
+        );
+      }
+      // Inline code
+      return (
+        <code className="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-sm">
+          {text}
+        </code>
+      );
+    },
   },
   renderNode: {
     [BLOCKS.HEADING_1]: (_node, children) => (
@@ -120,7 +133,7 @@ const renderOptions: Options = {
         {children}
       </blockquote>
     ),
-    [BLOCKS.HR]: () => <hr className="my-8 border-gray-200" />,
+    [BLOCKS.HR]: () => <hr className="mb-8 mt-8 border-gray-200" />,
     [BLOCKS.EMBEDDED_ASSET]: (node) => {
       const { file, title, description } = node.data.target.fields;
       if (!file) {
@@ -135,20 +148,12 @@ const renderOptions: Options = {
         <figure className="my-8">
           <Image
             src={`https:${url}`}
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            alt={title || description || "Blog image"}
+            alt={title ?? description ?? "Blog image"}
             width={width}
             height={height}
             className="rounded-lg"
             loading="lazy"
           />
-          {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
-          {(title || description) && (
-            <figcaption className="mt-2 text-center text-sm text-muted-foreground">
-              {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
-              {description || title}
-            </figcaption>
-          )}
         </figure>
       );
     },

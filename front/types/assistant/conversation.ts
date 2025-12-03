@@ -175,7 +175,7 @@ export type BaseAgentMessageType = {
   rank: number;
   created: number;
   completedTs: number | null;
-  parentMessageId: string | null;
+  parentMessageId: string;
   parentAgentMessageId: string | null; // If handover, this is the agent message that summoned this agent.
   status: AgentMessageStatus;
   content: string | null;
@@ -304,6 +304,8 @@ export const CONVERSATION_ERROR_TYPES = [
   "conversation_access_restricted",
   "conversation_with_unavailable_agent",
   "user_already_participant",
+  "message_not_found",
+  "message_deletion_not_authorized",
 ] as const;
 
 export type ConversationErrorType = (typeof CONVERSATION_ERROR_TYPES)[number];

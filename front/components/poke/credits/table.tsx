@@ -1,4 +1,5 @@
 import { makeColumnsForCredits } from "@app/components/poke/credits/columns";
+import { PokeProgrammaticCostChart } from "@app/components/poke/credits/PokeProgrammaticCostChart";
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import type { PokeCreditType } from "@app/pages/api/poke/workspaces/[wId]/credits";
@@ -31,19 +32,23 @@ function sortByExpirationDate(credits: PokeCreditType[]): PokeCreditType[] {
 
 export function CreditsDataTable({ owner, loadOnInit }: CreditsDataTableProps) {
   return (
-    <PokeDataTableConditionalFetch
-      header="Credits"
-      owner={owner}
-      loadOnInit={loadOnInit}
-      useSWRHook={usePokeCredits}
-    >
-      {(data) => (
-        <PokeDataTable
-          columns={makeColumnsForCredits()}
-          data={sortByExpirationDate(data)}
-          defaultFilterColumn="type"
-        />
-      )}
-    </PokeDataTableConditionalFetch>
+    <>
+      <PokeDataTableConditionalFetch
+        header="Credits"
+        owner={owner}
+        loadOnInit={loadOnInit}
+        useSWRHook={usePokeCredits}
+      >
+        {(data) => (
+          <PokeDataTable
+            columns={makeColumnsForCredits()}
+            data={sortByExpirationDate(data)}
+            defaultFilterColumn="type"
+          />
+        )}
+      </PokeDataTableConditionalFetch>
+
+      <PokeProgrammaticCostChart owner={owner} />
+    </>
   );
 }

@@ -254,7 +254,7 @@ const ExploreMenuConfig: MenuConfig = {
     },
     {
       title: "Customer Stories",
-      href: "/blog?tag=customer-stories",
+      href: "/blog?tag=Customer%20Stories",
     },
   ],
 };
