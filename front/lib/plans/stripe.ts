@@ -21,22 +21,25 @@ import type {
 } from "@app/types";
 import { Err, isDevelopment, normalizeError, Ok } from "@app/types";
 
-export function getProPlanStripeProductId(owner: WorkspaceType) {
-  const isBusiness = owner.metadata?.isBusiness;
+const DEV_PRO_PLAN_PRODUCT_ID = "prod_OwKvN4XrUwFw5a";
+const DEV_BUSINESS_PRO_PLAN_PRODUCT_ID = "prod_RkNr4qbHJD3oUp";
 
-  const devProPlanProductId = "prod_OwKvN4XrUwFw5a";
-  const devBusinessProPlanProductId = "prod_RkNr4qbHJD3oUp";
+const PROD_PRO_PLAN_PRODUCT_ID = "prod_OwALjyfxfi2mln";
+const PROD_BUSINESS_PRO_PLAN_PRODUCT_ID = "prod_RkPFpfBzLo79gd";
 
-  const prodProPlanProductId = "prod_OwALjyfxfi2mln";
-  const prodBusinessProPlanProductId = "prod_RkPFpfBzLo79gd";
+export function getProPlanProductId() {
+  return isDevelopment() ? DEV_PRO_PLAN_PRODUCT_ID : PROD_PRO_PLAN_PRODUCT_ID;
+}
 
+export function getBusinessProPlanProductId() {
   return isDevelopment()
-    ? isBusiness
-      ? devBusinessProPlanProductId
-      : devProPlanProductId
-    : isBusiness
-      ? prodBusinessProPlanProductId
-      : prodProPlanProductId;
+    ? DEV_BUSINESS_PRO_PLAN_PRODUCT_ID
+    : PROD_BUSINESS_PRO_PLAN_PRODUCT_ID;
+}
+
+export function getStripeCheckoutSessionProductId(owner: WorkspaceType) {
+  const isBusiness = owner.metadata?.isBusiness;
+  return isBusiness ? getBusinessProPlanProductId() : getProPlanProductId();
 }
 
 export function getCreditPurchasePriceId() {
@@ -125,7 +128,7 @@ export const createProPlanCheckoutSession = async ({
     );
   }
 
-  const stripeProductId = getProPlanStripeProductId(owner);
+  const stripeProductId = getStripeCheckoutSessionProductId(owner);
   let priceId: string | null = null;
 
   if (billingPeriod === "yearly") {
@@ -451,7 +454,7 @@ export async function upgradeProSubscriptionToBusiness({
     return new Err(new Error("Subscription not found"));
   }
 
-  const businessProductId = getProPlanStripeProductId(owner);
+  const businessProductId = getBusinessProPlanProductId();
   const newPriceId = await getDefautPriceFromMetadata(
     businessProductId,
     "IS_DEFAULT_MONHTLY_PRICE"

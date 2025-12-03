@@ -24,7 +24,8 @@ import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
   cancelSubscriptionImmediately,
   createProPlanCheckoutSession,
-  getProPlanStripeProductId,
+  getBusinessProPlanProductId,
+  getProPlanProductId,
   getStripeSubscription,
   upgradeProSubscriptionToBusiness,
 } from "@app/lib/plans/stripe";
@@ -470,7 +471,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       }
 
       const isAlreadyOnProPlan =
-        await activeSubscription.isSubscriptionOnProPlan(owner);
+        await activeSubscription.isSubscriptionOnProOrBusinessPlan(owner);
 
       if (!isAlreadyOnProPlan) {
         throw new Error(
@@ -517,7 +518,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       return new Err(new Error("No active Stripe subscription to upgrade"));
     }
 
-    const isOnProPlan = await this.isSubscriptionOnProPlan(owner);
+    const isOnProPlan = await this.isSubscriptionOnProOrBusinessPlan(owner);
     if (!isOnProPlan) {
       return new Err(new Error("Workspace is not on a Pro plan"));
     }
@@ -621,7 +622,8 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     const proPlan = await SubscriptionResource.findPlanOrThrow(planCode);
 
     // We verify that the workspace is not already subscribed to the Pro plan product.
-    const isAlreadyOnProPlan = await this.isSubscriptionOnProPlan(owner);
+    const isAlreadyOnProPlan =
+      await this.isSubscriptionOnProOrBusinessPlan(owner);
     if (isAlreadyOnProPlan) {
       throw new Error(
         `Cannot subscribe to plan ${planCode}: already subscribed to a Pro plan.`
@@ -764,15 +766,18 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     };
   }
 
-  private static async isStripeSubscriptionOnProPlan(
+  private static async isStripeSubscriptionOnProOrBusinessPlan(
     owner: LightWorkspaceType,
     stripeSubscription: Stripe.Subscription
   ): Promise<boolean> {
     const { data: subscriptionItems } = stripeSubscription.items;
-    const proPlanStripeProductId = getProPlanStripeProductId(owner);
+    const proPlanProductId = getProPlanProductId();
+    const businessProPlanStripeProductId = getBusinessProPlanProductId();
 
     return subscriptionItems.some(
-      (item) => item.plan.product === proPlanStripeProductId
+      (item) =>
+        item.plan.product === proPlanProductId ||
+        item.plan.product === businessProPlanStripeProductId
     );
   }
 
@@ -841,7 +846,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     return activeSubscription;
   }
 
-  private async isSubscriptionOnProPlan(
+  private async isSubscriptionOnProOrBusinessPlan(
     owner: WorkspaceType
   ): Promise<boolean> {
     if (!this.stripeSubscriptionId) {
@@ -854,7 +859,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       return false;
     }
 
-    return SubscriptionResource.isStripeSubscriptionOnProPlan(
+    return SubscriptionResource.isStripeSubscriptionOnProOrBusinessPlan(
       owner,
       stripeSubscription
     );
