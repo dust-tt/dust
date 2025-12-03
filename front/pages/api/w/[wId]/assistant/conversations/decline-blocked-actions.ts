@@ -13,8 +13,9 @@ export type DeclineBlockedActionsResponse = {
   failedConversationIds: string[];
 };
 
+// TODO (2025-12-03 yuka): we limit the number of conversations to 50 and ideally we should move this to temporal.
 export const DismissAllActionsBodySchema = z.object({
-  conversationIds: z.array(z.string()).min(1),
+  conversationIds: z.array(z.string()).min(1).max(50),
 });
 
 async function handler(
