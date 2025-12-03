@@ -226,7 +226,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
 
   static async listForTeamId(
     slackTeamId: string,
-    provider?: Extract<ConnectorProvider, "slack_bot" | "slack">
+    provider?: Extract<ConnectorProvider, "slack" | "slack_bot">
   ): Promise<SlackConfigurationResource[]> {
     const blobs = await this.model.findAll({
       where: {
