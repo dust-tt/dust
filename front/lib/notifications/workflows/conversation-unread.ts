@@ -54,6 +54,7 @@ export const shouldSendNotificationForAgentAnswer = (
     case "raycast":
     case "run_agent":
     case "slack":
+    case "slack_workflow":
     case "teams":
     case "transcript":
     case "triggered_programmatic":

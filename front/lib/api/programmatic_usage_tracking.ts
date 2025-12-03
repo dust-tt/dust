@@ -35,6 +35,7 @@ export const USAGE_ORIGINS_CLASSIFICATION: Record<
   raycast: "user",
   run_agent: "user",
   slack: "user",
+  slack_workflow: "programmatic",
   teams: "user",
   transcript: "user",
   triggered_programmatic: "programmatic",

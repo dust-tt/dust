@@ -1017,6 +1017,8 @@ async function answerMessage(
     message = `:mention[${mention.agentName}]{sId=${mention.agentId}} ${message}`;
   }
 
+  const origin = slackBotId ? "slack_workflow" : "slack";
+
   const messageReqBody: PublicPostMessagesRequestBody = {
     content: message,
     mentions: [{ configurationId: mention.agentId }],
@@ -1027,7 +1029,7 @@ async function answerMessage(
         slackChatBotMessage.slackFullName || slackChatBotMessage.slackUserName,
       email: slackChatBotMessage.slackEmail,
       profilePictureUrl: slackChatBotMessage.slackAvatar || null,
-      origin: "slack" as const,
+      origin,
     },
     skipToolsValidation,
   };

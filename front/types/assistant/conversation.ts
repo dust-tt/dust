@@ -86,6 +86,7 @@ export type UserMessageOrigin =
   | "raycast"
   | "run_agent" // soon to be removed (not a fitting origin).
   | "slack"
+  | "slack_workflow"
   | "teams"
   | "transcript"
   | "triggered_programmatic"
