@@ -136,7 +136,10 @@ async function handler(
           : undefined;
 
       // Validate discount does not exceed maximum (should be enforced at config level, but double-check).
-      if (discountPercent !== undefined && discountPercent > MAX_DISCOUNT_PERCENT) {
+      if (
+        discountPercent !== undefined &&
+        discountPercent > MAX_DISCOUNT_PERCENT
+      ) {
         logger.error(
           {
             workspaceId: workspace.sId,
