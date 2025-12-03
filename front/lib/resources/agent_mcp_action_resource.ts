@@ -614,6 +614,10 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   async updateStatus(
     status: ToolExecutionStatus
   ): Promise<[affectedCount: number]> {
+    if (status === this.status) {
+      return [0];
+    }
+
     return this.update({
       status,
     });
