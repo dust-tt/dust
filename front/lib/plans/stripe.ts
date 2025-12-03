@@ -89,6 +89,11 @@ const SUPPORTED_PAYMENT_METHODS = ["card", "sepa_debit"] as const;
 
 export const ENTERPRISE_N30_PAYMENTS_DAYS = 30;
 
+// We allow for 3 retries of invoices (not counting first payment)
+// before we give up, void the invoice and remove resources pending payment on Dust
+// At the time of writing, this is only used for Credit Purchase self-serve flow
+export const MAX_PRO_INVOICE_ATTEMPTS_BEFORE_VOIDED = 3;
+
 type SupportedPaymentMethod = (typeof SUPPORTED_PAYMENT_METHODS)[number];
 
 /**
@@ -510,6 +515,22 @@ export function getCreditAmountFromInvoice(
   }
 
   return amountCents;
+}
+
+export async function voidInvoiceWithReason(
+  invoiceId: string,
+  voidReason: string
+): Promise<Result<Stripe.Invoice, Error>> {
+  const stripe = getStripeClient();
+  try {
+    const voidedInvoice = await stripe.invoices.voidInvoice(invoiceId);
+    await stripe.invoices.update(invoiceId, {
+      metadata: { void_reason: voidReason },
+    });
+    return new Ok(voidedInvoice);
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
 }
 
 export function makeCreditPurchaseOnceCouponId(percentOff: number): string {
