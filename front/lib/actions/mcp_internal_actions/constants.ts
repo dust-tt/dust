@@ -625,7 +625,7 @@ The directive should be used to display a clickable version of the agent name in
       description: "Work with spreadsheet data and tables.",
       authorization: {
         provider: "gmail",
-        supported_use_cases: ["personal_actions"] as const,
+        supported_use_cases: ["personal_actions", "platform_actions"] as const,
         scope:
           "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.readonly" as const,
       },
