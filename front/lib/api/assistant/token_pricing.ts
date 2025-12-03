@@ -420,7 +420,7 @@ const DEFAULT_PRICING = MODEL_PRICING[DEFAULT_PRICING_MODEL_ID];
  * Note: promptTokens currently includes cached read and cache write tokens for some providers.
  * To avoid double counting, price all promptTokens at base input rate, then adjust with deltas.
  */
-export function calculateTokenUsageCostForUsageInMicroUsd({
+export function computeTokensCostForUsageInMicroUsd({
   modelId,
   promptTokens,
   completionTokens,
@@ -453,7 +453,7 @@ export function calculateTokenUsageCostInMicroUsd(
   usages: RunUsageType[]
 ): number {
   return usages.reduce(
-    (acc, usage) => acc + calculateTokenUsageCostForUsageInMicroUsd(usage),
+    (acc, usage) => acc + computeTokensCostForUsageInMicroUsd(usage),
     0
   );
 }

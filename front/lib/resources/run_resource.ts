@@ -8,7 +8,7 @@ import type {
 } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
-import { calculateTokenUsageCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
+import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
 import type { TokenUsage } from "@app/lib/api/llm/types/events";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -294,7 +294,7 @@ export class RunResource extends BaseResource<RunModel> {
       return;
     }
 
-    const usageCostMicroUsd = calculateTokenUsageCostForUsageInMicroUsd({
+    const usageCostMicroUsd = computeTokensCostForUsageInMicroUsd({
       modelId: modelConfig.modelId,
       promptTokens: usage.inputTokens,
       completionTokens: usage.outputTokens,
