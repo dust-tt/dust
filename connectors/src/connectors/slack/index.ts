@@ -660,6 +660,15 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         return restrictedSpaceAgentsEnabled;
       }
 
+      case "privateIntegrationCredentialId": {
+        const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
+          this.connectorId
+        );
+        return slackConfig
+          ? new Ok(slackConfig.privateIntegrationCredentialId ?? null)
+          : new Ok(null);
+      }
+
       default:
         return new Err(new Error(`Invalid config key ${configKey}`));
     }
