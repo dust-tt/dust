@@ -34,14 +34,15 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
 import { decodeSqids, timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { usePokeDocuments, usePokeTables } from "@app/poke/swr";
 import type {
-  ConnectorType,
   CoreAPIDataSource,
   DataSourceType,
+  DataSourceViewType,
   NotionCheckUrlResponseType,
   NotionFindUrlResponseType,
   SlackAutoReadPattern,
@@ -54,7 +55,7 @@ import {
   isSlackAutoReadPatterns,
   safeParseJSON,
 } from "@app/types";
-
+import type { InternalConnectorType } from "@app/types/connectors/connectors_api";
 const { TEMPORAL_CONNECTORS_NAMESPACE = "" } = process.env;
 
 type FeaturesType = {
@@ -73,8 +74,9 @@ type FeaturesType = {
 export const getServerSideProps = withSuperUserAuthRequirements<{
   owner: WorkspaceType;
   dataSource: DataSourceType;
+  dataSourceViews: DataSourceViewType[];
   coreDataSource: CoreAPIDataSource;
-  connector: ConnectorType | null;
+  connector: InternalConnectorType | null;
   features: FeaturesType;
   temporalWorkspace: string;
   temporalRunningWorkflows: {
@@ -108,13 +110,18 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     dataSourceId: dataSource.dustAPIDataSourceId,
   });
 
+  const dataSourceViews = await DataSourceViewResource.listForDataSources(
+    auth,
+    [dataSource]
+  );
+
   if (coreDataSourceRes.isErr()) {
     return {
       notFound: true,
     };
   }
 
-  let connector: ConnectorType | null = null;
+  let connector: InternalConnectorType | null = null;
   const workflowInfos: { workflowId: string; runId: string; status: string }[] =
     [];
   if (dataSource.connectorId) {
@@ -126,10 +133,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       dataSource.connectorId
     );
     if (connectorRes.isOk()) {
-      connector = {
-        ...connectorRes.value,
-        connectionId: null,
-      };
+      connector = connectorRes.value;
       const temporalClient = await getTemporalClientForConnectorsNamespace();
 
       const res = temporalClient.workflow.list({
@@ -299,6 +303,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     props: {
       owner,
       dataSource: dataSource.toJSON(),
+      dataSourceViews: dataSourceViews.map((view) => view.toJSON()),
       coreDataSource: coreDataSourceRes.value.data_source,
       connector,
       features,
@@ -538,6 +543,7 @@ function FolderDisplay({
 const DataSourcePage = ({
   owner,
   dataSource,
+  dataSourceViews,
   coreDataSource,
   connector,
   temporalWorkspace,
@@ -598,6 +604,7 @@ const DataSourcePage = ({
       <div className="flex flex-row gap-x-6">
         <ViewDataSourceTable
           dataSource={dataSource}
+          dataSourceViews={dataSourceViews}
           owner={owner}
           temporalWorkspace={temporalWorkspace}
           coreDataSource={coreDataSource}
