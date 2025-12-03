@@ -3,7 +3,6 @@
 import type { DustAppConfigType, DustAppType } from "@dust-tt/client";
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { DustAPI } from "@dust-tt/client";
-import { z } from "zod";
 
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -38,49 +37,6 @@ const logActionError = (
     },
     "Action run error"
   );
-};
-
-const DustAppChatBlockFunctionCallSchema = z.object({
-  arguments: z.string(),
-  id: z.string(),
-  name: z.string(),
-});
-
-const DustAppChatBlockSchema = z.object({
-  message: z.object({
-    content: z.string().optional(),
-    function_calls: z.array(DustAppChatBlockFunctionCallSchema).optional(),
-    role: z.string(),
-    contents: z
-      .array(
-        z.union([
-          z.object({
-            type: z.literal("text_content"),
-            value: z.string(),
-          }),
-          z.object({
-            type: z.literal("function_call"),
-            value: DustAppChatBlockFunctionCallSchema,
-          }),
-          z.object({
-            type: z.literal("reasoning"),
-            value: z.object({
-              reasoning: z.string().optional(),
-              metadata: z.string(),
-            }),
-          }),
-        ])
-      )
-      .optional(),
-  }),
-});
-
-export type DustAppChatBlockType = z.infer<typeof DustAppChatBlockSchema>;
-
-export const isDustAppChatBlockType = (
-  block: unknown
-): block is DustAppChatBlockType => {
-  return DustAppChatBlockSchema.safeParse(block).success;
 };
 
 /**
