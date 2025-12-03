@@ -80,18 +80,18 @@ jobs:
           EOF
           )
           npm run knip -- --include dependencies,devDependencies || (echo "You have some unused dependencies. **Please remove them from the package.json, or add them in the knip.ts file in the ignoreDependencies array**\n\n${explanations}" >&2; false)
-#      - name: Knip - unused files
-#        working-directory: front
-#        run: |
-#          explanations=$(cat << 'EOF'
-#
-#          Keeping unused files in your codebase is problematic because:
-#
-#          1. Cognitive overhead: Developers waste time reading, searching through, and trying to understand code that isn't actually used
-#          2. Maintenance burden: Unused files still need to be updated during refactors, migrations, or dependency upgrades
-#          3. Confusion: Makes it unclear what's actually part of the application vs. legacy/dead code, slowing down onboarding
-#          4. Bloat: Increases repository size, IDE indexing time, and potentially bundle size if not properly tree-shaken
-#
-#          EOF
-#          )
-#          npm run knip -- --include files || (echo "You have some unused files. **Please remove them, or add them in the knip.ts file in the ignoreFiles array**\n\n${explanations}" >&2; false)
+      - name: Knip - unused files
+        working-directory: connectors
+        run: |
+          explanations=$(cat << 'EOF'
+
+          Keeping unused files in your codebase is problematic because:
+
+          1. Cognitive overhead: Developers waste time reading, searching through, and trying to understand code that isn't actually used
+          2. Maintenance burden: Unused files still need to be updated during refactors, migrations, or dependency upgrades
+          3. Confusion: Makes it unclear what's actually part of the application vs. legacy/dead code, slowing down onboarding
+          4. Bloat: Increases repository size, IDE indexing time, and potentially bundle size if not properly tree-shaken
+
+          EOF
+          )
+          npm run knip -- --include files || (echo "You have some unused files. **Please remove them, or add them in the knip.ts file in the ignoreFiles array**\n\n${explanations}" >&2; false)
