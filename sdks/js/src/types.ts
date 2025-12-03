@@ -78,6 +78,7 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "deepseek-chat" // deepseek api
   | "deepseek-reasoner" // deepseek api
   | "accounts/fireworks/models/deepseek-r1-0528" // fireworks
+  | "accounts/fireworks/models/deepseek-v3p2" // fireworks
   | "accounts/fireworks/models/kimi-k2-instruct" // fireworks
   | "grok-3-latest" // xAI
   | "grok-3-mini-latest" // xAI
