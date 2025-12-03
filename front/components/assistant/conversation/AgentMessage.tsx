@@ -26,6 +26,7 @@ import { AgentMessageInteractiveContentGeneratedFiles } from "@app/components/as
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
+import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
@@ -677,9 +678,7 @@ export function AgentMessage({
         actions={actions}
       >
         {isDeleted ? (
-          <div className="italic text-muted-foreground">
-            This message has been deleted
-          </div>
+          <DeletedMessage />
         ) : (
           <AgentMessageContent
             onQuickReplySend={handleQuickReply}
@@ -726,9 +725,7 @@ export function AgentMessage({
       actions={actions}
     >
       {isDeleted ? (
-        <div className="italic text-muted-foreground">
-          This message has been deleted
-        </div>
+        <DeletedMessage />
       ) : (
         <AgentMessageContent
           owner={owner}
