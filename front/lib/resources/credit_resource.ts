@@ -328,4 +328,12 @@ export class CreditResource extends BaseResource<CreditModel> {
       invoiceOrLineItemId: this.invoiceOrLineItemId,
     };
   }
+
+  static async deleteAllForWorkspace(auth: Authenticator) {
+    await this.model.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+  }
 }
