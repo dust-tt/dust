@@ -81,6 +81,13 @@ procs:
     shell: "ngrok start localhost-via-https"
     autostart: false
 
+  firebase-webhook-router:
+    cwd: "<CONFIG_DIR>/../firebase-functions/webhook-router"
+    shell: |
+      set -euo pipefail
+      source ~/.nvm/nvm.sh && nvm install && npm install && npm run dev
+    autostart: false
+
   novu:
     # Doc: https://docs.novu.co/framework/studio
     shell: "npx novu@latest dev --port 3000"
