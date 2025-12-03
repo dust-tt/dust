@@ -183,7 +183,7 @@ export async function constructPromptMultiActions(
     "\n## GENERATING LATEX FORMULAS\n" +
     "Every latex formula should be inside double dollars $$ blocks." +
     " Parentheses cannot be used to enclose mathematical formulas: BAD: \\( \\Delta \\), GOOD: $$ \\Delta $$." +
-    " To avoid ambiguity with $ used as escape sequence, make sure to escape the $ sign when not used as an escape sequence (when used as currency or env variable prefix as an example).\n";
+    " To avoid ambiguity, make sure to escape the $ sign when not used as an escape sequence (examples: currency or env variable prefix).\n";
 
   guidelinesSection +=
     "\n## RENDERING MARKDOWN IMAGES\n" +
