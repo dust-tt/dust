@@ -27,7 +27,7 @@ import {
   isConnectionIdRequiredForProvider,
   isConnectorProviderAllowedForPlan,
 } from "@app/lib/connector_providers";
-import { clientFetch } from "@app/lib/egress";
+import { clientFetch } from "@app/lib/egress/client";
 import { useSystemSpace } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {

@@ -57,7 +57,7 @@ import {
   getDisplayNameForDataSource,
   isRemoteDatabase,
 } from "@app/lib/data_sources";
-import { clientFetch } from "@app/lib/egress";
+import { clientFetch } from "@app/lib/egress/client";
 import {
   useConnectorConfig,
   useConnectorPermissions,
@@ -212,7 +212,7 @@ export async function updateConnectorConnectionId(
 
   return {
     success: false,
-    error: `Failed to update the permissions of the Data Source: (contact support@dust.tt for assistance)`,
+    error: `Failed to update the permissions of the Data Source. Please retry to reconnect, or contact support@dust.tt for assistance if the problem persists.`,
   };
 }
 
