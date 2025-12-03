@@ -33,7 +33,7 @@ export function useDeleteMessage({
 
       sendNotification({
         title: "Message deleted",
-        description: "Your message has been deleted successfully.",
+        description: "Message has been deleted successfully.",
         type: "success",
       });
 

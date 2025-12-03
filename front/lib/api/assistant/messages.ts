@@ -759,7 +759,7 @@ export async function softDeleteUserMessage(
     return new Err(new ConversationError("message_not_found"));
   }
 
-  if (message.userMessage.userId !== user.id) {
+  if (!auth.isAdmin() && message.userMessage.userId !== user.id) {
     return new Err(new ConversationError("message_deletion_not_authorized"));
   }
 
@@ -778,7 +778,7 @@ export async function softDeleteUserMessage(
       conversationId: conversation.sId,
       messageId: message.sId,
     },
-    "User deleted their message"
+    auth.isAdmin() ? "Admin deleted a user message" : "User deleted their message"
   );
 
   return new Ok({ success: true });
