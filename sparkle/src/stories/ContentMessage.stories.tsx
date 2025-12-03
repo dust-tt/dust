@@ -76,7 +76,7 @@ export const Basic: Story = {
       {...args}
       action={
         showAction ? (
-          <ContentMessageAction variant="primary" label="Buy credits" />
+          <ContentMessageAction variant="primary" label="Action" />
         ) : undefined
       }
     />
