@@ -126,6 +126,7 @@ export interface ContentMessageProps {
   size?: ContentMessageSizeType;
   variant?: ContentMessageVariantType;
   icon?: ComponentType;
+  action?: React.ReactNode;
 }
 
 function ContentMessage({
@@ -135,22 +136,37 @@ function ContentMessage({
   size = "md",
   className = "",
   icon,
+  action,
 }: ContentMessageProps) {
   return (
     <div className={cn(contentMessageVariants({ variant, size }), className)}>
-      {(icon || title) && (
-        <div className="s-flex s-items-center s-gap-1.5">
-          {icon && (
-            <Icon
-              size="sm"
-              visual={icon}
-              className={iconVariants({ variant })}
-            />
+      <div
+        className={cn(
+          "s-flex s-gap-3",
+          action ? "s-items-center s-justify-between" : "s-flex-col"
+        )}
+      >
+        <div className="s-flex s-flex-col s-gap-1">
+          {(icon || title) && (
+            <div className="s-flex s-items-center s-gap-1.5">
+              {icon && (
+                <Icon
+                  size="sm"
+                  visual={icon}
+                  className={iconVariants({ variant })}
+                />
+              )}
+              {title && (
+                <div className={titleVariants({ variant })}>{title}</div>
+              )}
+            </div>
           )}
-          {title && <div className={titleVariants({ variant })}>{title}</div>}
+          {children && (
+            <div className={textVariants({ variant })}>{children}</div>
+          )}
         </div>
-      )}
-      {children && <div className={textVariants({ variant })}>{children}</div>}
+        {action && <div className="s-shrink-0">{action}</div>}
+      </div>
       {/* TODO(2025-08-13 aubin): Allow passing a ContentMessageAction here. */}
     </div>
   );
