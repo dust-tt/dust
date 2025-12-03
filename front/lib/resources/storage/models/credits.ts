@@ -99,8 +99,8 @@ CreditModel.init(
         fields: ["workspaceId", "expirationDate"],
         name: "credits_nonzero_remaining_idx",
         where: {
-          consumedAmountCents: {
-            [Op.lt]: frontSequelize.col("initialAmountCents"),
+          consumedAmountMicroUsd: {
+            [Op.lt]: frontSequelize.col("initialAmountMicroUsd"),
           },
         },
       },
