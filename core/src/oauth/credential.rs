@@ -32,6 +32,7 @@ pub enum CredentialProvider {
     Notion,
     Freshservice,
     Databricks,
+    Vanta,
 }
 
 impl From<ConnectionProvider> for CredentialProvider {
@@ -47,6 +48,7 @@ impl From<ConnectionProvider> for CredentialProvider {
             ConnectionProvider::McpStatic => CredentialProvider::McpStatic,
             ConnectionProvider::Freshservice => CredentialProvider::Freshservice,
             ConnectionProvider::Databricks => CredentialProvider::Databricks,
+            ConnectionProvider::Vanta => CredentialProvider::Vanta,
             _ => panic!("Unsupported provider: {:?}", provider),
         }
     }
@@ -242,6 +244,9 @@ impl Credential {
                 vec!["freshservice_domain"]
             }
             CredentialProvider::Databricks => {
+                vec!["client_id", "client_secret"]
+            }
+            CredentialProvider::Vanta => {
                 vec!["client_id", "client_secret"]
             }
         };
