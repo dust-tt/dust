@@ -177,14 +177,29 @@ export function useRunPokePlugin({
   return { doRunPlugin };
 }
 
+export interface PokePluginRunsFetchProps extends PokeConditionalFetchProps {
+  resourceType?: string;
+  resourceId?: string;
+}
+
 export function usePokePluginRuns({
   disabled,
   owner,
-}: PokeConditionalFetchProps) {
+  resourceType,
+  resourceId,
+}: PokePluginRunsFetchProps) {
   const pluginRunsFetcher: Fetcher<PokeListPluginRunsResponseBody> = fetcher;
 
+  const urlParams = new URLSearchParams({ workspaceId: owner.sId });
+  if (resourceType) {
+    urlParams.append("resourceType", resourceType);
+  }
+  if (resourceId) {
+    urlParams.append("resourceId", resourceId);
+  }
+
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/poke/plugins/runs?workspaceId=${owner.sId}`,
+    `/api/poke/plugins/runs?${urlParams.toString()}`,
     pluginRunsFetcher,
     {
       disabled,

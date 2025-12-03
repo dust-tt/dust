@@ -224,4 +224,6 @@ export interface PluginRunType {
   resourceType: string;
   resourceId: string | null;
   args: object;
+  result?: string | null;
+  error?: string | null;
 }

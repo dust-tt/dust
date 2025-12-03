@@ -180,6 +180,8 @@ export class PluginRunResource extends BaseResource<PluginRunModel> {
       args: parsedArgsResult.isOk()
         ? (parsedArgsResult.value ?? {})
         : { rawContent: this.args },
+      result: this.result,
+      error: this.error,
     };
   }
 
