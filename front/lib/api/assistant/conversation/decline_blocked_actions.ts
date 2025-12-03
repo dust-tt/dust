@@ -1,5 +1,5 @@
+import { clearPersonalAuthenticationRequiredAction } from "@app/lib/api/assistant/conversation/messages";
 import { validateAction } from "@app/lib/api/assistant/conversation/validate_actions";
-import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -21,7 +21,7 @@ export async function declineAuthenticationRequiredAction(
     actionId: string;
     messageId: string;
   }
-): Promise<Result<void, DustError>> {
+): Promise<Result<undefined, Error>> {
   const owner = auth.getNonNullableWorkspace();
   const user = auth.user();
 
@@ -57,42 +57,10 @@ export async function declineAuthenticationRequiredAction(
     return new Ok(undefined);
   }
 
-  const messageResult = await fetchMessageInConversation(
-    auth,
-    conversation.toJSON(),
-    messageId
-  );
-  if (!messageResult) {
-    return new Err(
-      new DustError("internal_error", `Message not found: ${messageId}`)
-    );
-  }
-
-  if (!messageResult.agentMessage) {
-    logger.warn(
-      {
-        actionId,
-        messageId,
-        conversationId: conversation.sId,
-        workspaceId: owner.sId,
-        userId: user?.sId,
-      },
-      "Failed to find agent message to update status"
-    );
-    return new Ok(undefined);
-  }
-
-  await messageResult.agentMessage.update({
-    status: "failed",
-    updatedAt: new Date(),
-    errorCode: "mcp_server_personal_authentication_declined",
-    errorMessage: "Personal authentication was declined by the user",
-    ...messageResult.agentMessage.errorMetadata,
+  return clearPersonalAuthenticationRequiredAction(auth, conversation, {
+    actionId,
+    messageId,
   });
-
-  await ConversationResource.clearActionRequired(auth, conversation.sId);
-
-  return new Ok(undefined);
 }
 
 export type DeclineBlockedActionsForConversationsResult = {
