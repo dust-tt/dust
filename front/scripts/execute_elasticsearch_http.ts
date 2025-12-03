@@ -1,6 +1,5 @@
 import * as fs from "fs";
 import * as path from "path";
-import * as readline from "readline";
 
 import { getClient } from "@app/lib/api/elasticsearch";
 import { makeScript } from "@app/scripts/helpers";
