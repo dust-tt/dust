@@ -40,7 +40,7 @@ export function extractIdFromMetadata(metadata: string): string {
 
 export function parseResponseFormatSchema(
   responseFormat: string | null,
-  providerId: string
+  providerId?: string
 ): ResponseFormat | undefined {
   if (!responseFormat) {
     return;

@@ -95,6 +95,7 @@ export async function getLLM(
       temperature,
       reasoningEffort,
       bypassFeatureFlag,
+      responseFormat,
     });
   }
   if (isNoopWhitelistedModelId(modelId)) {
