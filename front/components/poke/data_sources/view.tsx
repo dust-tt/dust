@@ -336,29 +336,24 @@ function CopyTokenButton({
 
     setIsLoading(true);
     setError(null);
-    try {
-      const res = await fetch(
-        `/api/poke/workspaces/${owner.sId}/data_sources/${dsId}/token`
-      );
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error?.message ?? "Failed to fetch access token");
-      }
-      const data = await res.json();
-      if (data.token) {
-        await copyToClipboard(
-          new ClipboardItem({
-            "text/plain": new Blob([data.token], { type: "text/plain" }),
-          })
-        );
-      } else {
-        setError("No token available");
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch token");
-    } finally {
-      setIsLoading(false);
+    const res = await fetch(
+      `/api/poke/workspaces/${owner.sId}/data_sources/${dsId}/token`
+    );
+    if (!res.ok) {
+      const err = await res.json();
+      setError(err.error?.message ?? "Failed to fetch access token");
     }
+    const data = await res.json();
+    if (data.token) {
+      await copyToClipboard(
+        new ClipboardItem({
+          "text/plain": new Blob([data.token], { type: "text/plain" }),
+        })
+      );
+    } else {
+      setError("No token available");
+    }
+    setIsLoading(false);
   };
 
   return (
