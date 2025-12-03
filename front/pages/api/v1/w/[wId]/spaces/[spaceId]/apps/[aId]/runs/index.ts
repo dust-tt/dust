@@ -2,7 +2,7 @@ import type { RunAppResponseType } from "@dust-tt/client";
 import { createParser } from "eventsource-parser";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { calculateTokenUsageCostForUsage } from "@app/lib/api/assistant/token_pricing";
+import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
@@ -75,7 +75,7 @@ function extractUsageFromExecutions(
           const cachedTokens = token_usage.cached_tokens;
           const cacheCreationTokens = token_usage.cache_creation_input_tokens;
 
-          const usageCostUsd = calculateTokenUsageCostForUsage({
+          const usageCostMicroUsd = computeTokensCostForUsageInMicroUsd({
             modelId: block.model_id,
             promptTokens,
             completionTokens,
@@ -90,7 +90,7 @@ function extractUsageFromExecutions(
             completionTokens,
             cachedTokens: cachedTokens ?? null,
             cacheCreationTokens: cacheCreationTokens ?? null,
-            costUsd: usageCostUsd,
+            costMicroUsd: usageCostMicroUsd,
           });
         }
       }

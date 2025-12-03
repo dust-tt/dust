@@ -210,10 +210,11 @@ async function collectTokenUsage(
     { concurrency: 5 }
   );
 
-  const usageCostUsd = runUsages
+  const usageCostMicroUsd = runUsages
     .flat()
-    .reduce((acc, usage) => acc + usage.costUsd, 0);
-  const usageCostCents = usageCostUsd > 0 ? Math.ceil(usageCostUsd * 100) : 0;
+    .reduce((acc, usage) => acc + usage.costMicroUsd, 0);
+  const usageCostCents =
+    usageCostMicroUsd > 0 ? Math.ceil(usageCostMicroUsd / 10_000) : 0;
 
   return runUsages.flat().reduce(
     (acc, usage) => {
