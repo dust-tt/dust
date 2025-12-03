@@ -76,7 +76,7 @@ export async function declineBlockedActionsForConversations(
         isToolExecutionStatusBlocked(action.status)
       );
 
-      const results = await concurrentExecutor(
+      await concurrentExecutor(
         blockedActions,
         async (action) => {
           switch (action.status) {
