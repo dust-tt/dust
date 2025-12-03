@@ -509,6 +509,11 @@ async function handler(
                 invoice,
               });
               if (result.isErr()) {
+                // For eng-oncall
+                // This case is supposed to be extremely rare, as there are not a lot of things that can fail
+                // during an invoice void, you will need to inspect the invoice directly in stripe to see what
+                // happened, and invoice it by hand, with the added metadata put in `voidFailedProCreditPurchase`
+                // contact Stripe owners in case of doubt
                 logger.error(
                   {
                     error: result.error,
