@@ -88,6 +88,7 @@ export const CREDENTIALS_PROVIDERS = [
   "snowflake",
   "bigquery",
   "salesforce",
+  "slack",
   "notion",
   // Labs
   "modjo",
@@ -201,6 +202,12 @@ export type SalesforceCredentials = t.TypeOf<
   typeof SalesforceCredentialsSchema
 >;
 
+export const SlackCredentialsSchema = t.type({
+  client_id: t.string,
+  client_secret: t.string,
+});
+export type SlackCredentials = t.TypeOf<typeof SlackCredentialsSchema>;
+
 export const NotionCredentialsSchema = t.type({
   integration_token: t.string,
 });
@@ -211,6 +218,7 @@ export type ConnectionCredentials =
   | ModjoCredentials
   | BigQueryCredentialsWithLocation
   | SalesforceCredentials
+  | SlackCredentials
   | NotionCredentials;
 
 export function isSnowflakeCredentials(
