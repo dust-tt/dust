@@ -7,7 +7,7 @@ import { dateToHumanReadable } from "@app/types";
 import type { CreditType } from "@app/types/credits";
 
 function formatMicroUsdToUsd(microUsdAmount: number): string {
-  return `$${(microUsdAmount / 10_000).toFixed(2)}`;
+  return `$${(microUsdAmount / 1_000_000).toFixed(2)}`;
 }
 
 export function makeColumnsForCredits(): ColumnDef<PokeCreditType>[] {
