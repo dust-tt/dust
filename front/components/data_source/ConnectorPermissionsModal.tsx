@@ -57,7 +57,11 @@ import {
   getDisplayNameForDataSource,
   isRemoteDatabase,
 } from "@app/lib/data_sources";
-import { useConnectorPermissions } from "@app/lib/swr/connectors";
+import {
+  useConnectorConfig,
+  useConnectorPermissions,
+} from "@app/lib/swr/connectors";
+import { useSlackIsLegacy } from "@app/lib/swr/oauth";
 import { useSpaceDataSourceViews, useSystemSpace } from "@app/lib/swr/spaces";
 import { useUser } from "@app/lib/swr/user";
 import {
@@ -261,12 +265,21 @@ function UpdateConnectionOAuthModal({
 
   const { connectorProvider, editedByUser } = dataSource;
 
-  useEffect(() => {
-    if (isOpen) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setExtraConfig({});
-    }
-  }, [isOpen]);
+  const isSlack = connectorProvider === "slack";
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+
+  const { configValue: slackCredentialId } = useConnectorConfig({
+    configKey: "privateIntegrationCredentialId",
+    dataSource,
+    owner,
+    disabled: !isSlack,
+  });
+
+  const { isLegacySlackApp } = useSlackIsLegacy({
+    workspaceId: owner.sId,
+    credentialId: slackCredentialId,
+    disabled: !isSlack || !slackCredentialId,
+  });
 
   if (!connectorProvider || !user) {
     return null;
@@ -279,6 +292,7 @@ function UpdateConnectionOAuthModal({
 
   const permissionsConfigurable =
     getConnectorPermissionsConfigurableBlocked(connectorProvider);
+
   return (
     <DataSourceManagementModal isOpen={isOpen} onClose={onClose}>
       <>
@@ -368,13 +382,18 @@ function UpdateConnectionOAuthModal({
                   .
                 </div>
               )}
+              {
+                isLegacySlackApp && "" // TODO(slackstorm) fabien: add message about legacy slack app
+              }
             </ContentMessage>
           </div>
         )}
         {connectorConfiguration.oauthExtraConfigComponent &&
-          // TODO(slackstorm) fabien: add extra config for Slack
-          // We must display the extra config without the possibility to edit the client id to not break the connector.
-          connectorConfiguration.connectorProvider !== "slack" && (
+          // TODO(slackstorm) fabien: remove flag and rely on isLegacySlackApp
+          !(
+            isSlack &&
+            !featureFlags.includes("self_created_slack_app_connector_rollout")
+          ) && (
             <connectorConfiguration.oauthExtraConfigComponent
               extraConfig={extraConfig}
               setExtraConfig={setExtraConfig}

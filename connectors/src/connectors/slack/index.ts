@@ -660,6 +660,13 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         return restrictedSpaceAgentsEnabled;
       }
 
+      case "privateIntegrationCredentialId": {
+        const credentialId = await getPrivateIntegrationCredentialId(
+          this.connectorId
+        );
+        return credentialId;
+      }
+
       default:
         return new Err(new Error(`Invalid config key ${configKey}`));
     }
@@ -782,6 +789,21 @@ export async function getRestrictedSpaceAgentsEnabled(
   }
 
   return new Ok(slackConfiguration.restrictedSpaceAgentsEnabled.toString());
+}
+
+export async function getPrivateIntegrationCredentialId(
+  connectorId: ModelId
+): Promise<Result<string | null, Error>> {
+  const slackConfig =
+    await SlackConfigurationResource.fetchByConnectorId(connectorId);
+  if (!slackConfig) {
+    return new Err(
+      new Error(
+        `Failed to find a Slack configuration for connector ${connectorId}`
+      )
+    );
+  }
+  return new Ok(slackConfig.privateIntegrationCredentialId ?? null);
 }
 
 async function getFilteredChannels(

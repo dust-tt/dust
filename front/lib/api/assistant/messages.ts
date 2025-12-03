@@ -778,7 +778,9 @@ export async function softDeleteUserMessage(
       conversationId: conversation.sId,
       messageId: message.sId,
     },
-    auth.isAdmin() ? "Admin deleted a user message" : "User deleted their message"
+    auth.isAdmin()
+      ? "Admin deleted a user message"
+      : "User deleted their message"
   );
 
   return new Ok({ success: true });
