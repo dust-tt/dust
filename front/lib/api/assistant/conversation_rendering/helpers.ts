@@ -269,7 +269,7 @@ export function renderUserMessage(m: UserMessageType): UserMessageTypeModel {
     metadataItems.push(`- Source: ${m.context.origin}`);
     if (m.context.origin === "slack") {
       additionalInstructions +=
-        "This message originated from Slack: make sure to retrieve the context from the attached Slack thread content.";
+        "This message originated from Slack: make sure to retrieve the context from the attached thread content.";
     }
   }
 
