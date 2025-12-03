@@ -11,7 +11,9 @@ export default async function handler(
   }
 
   if (!slug || typeof slug !== "string") {
-    return res.status(400).json({ message: "Missing or invalid slug parameter" });
+    return res
+      .status(400)
+      .json({ message: "Missing or invalid slug parameter" });
   }
 
   res.setPreviewData({ slug }, { maxAge: 60 * 60 });
