@@ -197,17 +197,9 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
   static async listBlockedActionsForConversation(
     auth: Authenticator,
-    conversationId: string
+    conversation: ConversationResource
   ): Promise<BlockedToolExecution[]> {
     const owner = auth.getNonNullableWorkspace();
-
-    const conversation = await ConversationResource.fetchById(
-      auth,
-      conversationId
-    );
-    if (!conversation) {
-      return [];
-    }
 
     const latestAgentMessages =
       await conversation.getLatestAgentMessageIdByRank(auth);
@@ -326,7 +318,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         "status" | "authorizationInfo"
       > = {
         messageId: agentMessage.message.sId,
-        conversationId,
+        conversationId: conversation.sId,
         actionId: this.modelIdToSId({
           id: action.id,
           workspaceId: owner.id,
@@ -346,7 +338,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           logger.warn(
             {
               actionId: action.id,
-              conversationId,
+              conversationId: conversation.sId,
               messageId: agentMessage.message.sId,
               workspaceId: owner.id,
             },
@@ -368,8 +360,26 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         });
       } else if (action.status === "blocked_child_action_input_required") {
         const conversationId = action.stepContext.resumeState?.conversationId;
+
+        // conversation was not created so we can skip it
+        if (!conversationId || !isString(conversationId)) {
+          continue;
+        }
+
+        const childConversation = await ConversationResource.fetchById(
+          auth,
+          conversationId
+        );
+
+        if (!childConversation) {
+          continue;
+        }
+
         const childBlockedActionsList = isString(conversationId)
-          ? await this.listBlockedActionsForConversation(auth, conversationId)
+          ? await this.listBlockedActionsForConversation(
+              auth,
+              childConversation
+            )
           : [];
 
         blockedActionsList.push({
