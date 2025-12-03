@@ -27,6 +27,7 @@ import { IntercomConfigView } from "@app/components/data_source/IntercomConfigVi
 import { MicrosoftOAuthExtraConfig } from "@app/components/data_source/MicrosoftOAuthExtraConfig";
 import { SalesforceOauthExtraConfig } from "@app/components/data_source/salesforce/SalesforceOAuthExtractConfig";
 import { SlackBotEnableView } from "@app/components/data_source/SlackBotEnableView";
+import { SlackOAuthExtraConfig } from "@app/components/data_source/SlackOAuthExtraConfig";
 import { ZendeskConfigView } from "@app/components/data_source/ZendeskConfigView";
 import { ZendeskOAuthExtraConfig } from "@app/components/data_source/ZendeskOAuthExtraConfig";
 import type {
@@ -36,7 +37,6 @@ import type {
   PlanType,
   WorkspaceType,
 } from "@app/types";
-import { SlackOAuthExtraConfig } from "@app/components/data_source/SlackOAuthExtraConfig";
 
 export interface ConnectorOptionsProps {
   owner: WorkspaceType;
