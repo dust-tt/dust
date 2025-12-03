@@ -51,47 +51,7 @@ jobs:
           flaky_summary: true
           group_suite: true
           check_name: Tests Report
-      - name: Knip - unlisted dependencies
-        working-directory: connectors
-        run: |
-          explanations=$(cat << 'EOF'
-
-          Relying on transitive dependencies is bad because:
-          * Fragility: Your direct dependencies can remove or update their dependencies at any time, breaking your code without warning
-          * No version control: You can't lock or manage versions of packages you don't explicitly declare
-          * Hidden contracts: It's unclear what your project actually needs, making maintenance and onboarding harder
-          * Unpredictable resolution: Package managers may hoist different versions than you expect, causing inconsistent behavior across environments
-
-          *Always explicitly declare what you directly import/use.*
-          EOF
-          )
-          npm run knip -- --include unlisted || (echo "You have some unlisted dependencies. **Please add them to the package.json**\n\n${explanations}" >&2; false)
-      - name: Knip - unused dependencies & dev dependencies
-        working-directory: connectors
-        run: |
-          explanations=$(cat << 'EOF'
-
-          Keeping unused (dev) dependencies is problematic because:
-
-          1. Security surface: More packages = more potential vulnerabilities to monitor and patch, even if you're not using them
-          2. Install time: Slows down `npm install` for everyone on the team and in CI/CD pipelines
-          3. Confusion: Makes it unclear what tools/libraries are actually needed for development, hindering onboarding
-          4. Maintenance burden: You'll waste time updating packages you don't actually use
-          EOF
-          )
-          npm run knip -- --include dependencies,devDependencies || (echo "You have some unused dependencies. **Please remove them from the package.json, or add them in the knip.ts file in the ignoreDependencies array**\n\n${explanations}" >&2; false)
-      - name: Knip - unused files
-        working-directory: connectors
-        run: |
-          explanations=$(cat << 'EOF'
-
-          Keeping unused files in your codebase is problematic because:
-
-          1. Cognitive overhead: Developers waste time reading, searching through, and trying to understand code that isn't actually used
-          2. Maintenance burden: Unused files still need to be updated during refactors, migrations, or dependency upgrades
-          3. Confusion: Makes it unclear what's actually part of the application vs. legacy/dead code, slowing down onboarding
-          4. Bloat: Increases repository size, IDE indexing time, and potentially bundle size if not properly tree-shaken
-
-          EOF
-          )
-          npm run knip -- --include files || (echo "You have some unused files. **Please remove them, or add them in the knip.ts file in the ignoreFiles array**\n\n${explanations}" >&2; false)
+      - name: Knip
+        uses: ./.github/actions/knip
+        with:
+          working_directory: connectors
