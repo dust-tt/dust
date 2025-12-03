@@ -32,12 +32,11 @@ async function handler(
   const conversationId = isString(cId) ? cId : null;
 
   if (conversationId) {
-    const conversationRes =
-      await ConversationResource.fetchConversationWithoutContent(
-        auth,
-        conversationId
-      );
-    if (conversationRes.isErr()) {
+    const conversationRes = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+    if (!conversationRes) {
       return apiError(req, res, {
         status_code: 404,
         api_error: {
