@@ -314,13 +314,11 @@ export function ViewDataSourceTable({
   );
 }
 
-function CopyTokenButton({
-  owner,
-  dsId,
-}: {
+interface CopyTokenButtonProps {
   owner: WorkspaceType;
   dsId: string;
-}) {
+}
+function CopyTokenButton({ owner, dsId }: CopyTokenButtonProps) {
   const [isCopied, copyToClipboard] = useCopyToClipboard();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
