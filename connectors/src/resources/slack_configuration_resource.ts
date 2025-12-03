@@ -1,4 +1,4 @@
-import type { Result } from "@dust-tt/client";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
@@ -11,6 +11,7 @@ import {
 } from "@connectors/lib/models/slack";
 import logger from "@connectors/logger/logger";
 import { BaseResource } from "@connectors/resources/base_resource";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
 import type {
   ModelId,
@@ -224,12 +225,26 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
   }
 
   static async listForTeamId(
-    slackTeamId: string
+    slackTeamId: string,
+    provider?: Extract<ConnectorProvider, "slack_bot" | "slack">
   ): Promise<SlackConfigurationResource[]> {
     const blobs = await this.model.findAll({
       where: {
         slackTeamId,
       },
+      include: provider
+        ? [
+            {
+              model: ConnectorModel,
+              as: "connector",
+              attributes: [],
+              required: true,
+              where: {
+                type: provider,
+              },
+            },
+          ]
+        : undefined,
     });
 
     return blobs.map(

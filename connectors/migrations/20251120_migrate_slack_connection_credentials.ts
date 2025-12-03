@@ -133,8 +133,11 @@ async function migrateSlackConnectionCredential(
   const currentRegion = connectorsConfig.getCurrentRegion();
 
   // Get all connectors for this team to build the connector IDs list
-  const allTeamConfigs = await SlackConfigurationResource.listForTeamId(teamId);
-  const connectorIds = allTeamConfigs.map((config) => config.connectorId);
+  const allTeamSlackConfigs = await SlackConfigurationResource.listForTeamId(
+    teamId,
+    PROVIDER
+  );
+  const connectorIds = allTeamSlackConfigs.map((config) => config.connectorId);
 
   await webhookService.syncEntry(
     PROVIDER,
