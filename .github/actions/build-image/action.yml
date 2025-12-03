@@ -45,6 +45,12 @@ inputs:
     description: "Depot region"
     required: false
     default: "us"
+  contentful_space_id:
+    description: "Contentful space ID"
+    required: false
+  contentful_access_token:
+    description: "Contentful access token"
+    required: false
 
 outputs:
   current_version:
@@ -129,6 +135,16 @@ runs:
         if [[ "$COMPONENT" == "front" || "$COMPONENT" == "front-edge" ]]; then
           build_args+=("--build-arg NEXT_PUBLIC_DATADOG_CLIENT_TOKEN=${{ inputs.dd_client_token }}")
           build_args+=("--build-arg NEXT_PUBLIC_DATADOG_SERVICE=$COMPONENT")
+        fi
+
+        # Only set Contentful credentials for front and front-edge builds (needed for ISR)
+        if [[ "$COMPONENT" == "front" || "$COMPONENT" == "front-edge" ]]; then
+          if [[ -n "${{ inputs.contentful_space_id }}" ]]; then
+            build_args+=("--build-arg CONTENTFUL_SPACE_ID=${{ inputs.contentful_space_id }}")
+          fi
+          if [[ -n "${{ inputs.contentful_access_token }}" ]]; then
+            build_args+=("--build-arg CONTENTFUL_ACCESS_TOKEN=${{ inputs.contentful_access_token }}")
+          fi
         fi
 
         # Special handling for front component, build both front and workers targets
