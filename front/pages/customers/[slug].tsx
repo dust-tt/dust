@@ -1,4 +1,4 @@
-import type { GetServerSideProps } from "next";
+import type { GetStaticPaths, GetStaticProps } from "next";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
@@ -8,9 +8,11 @@ import { Grid, H1, H2, H5 } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import {
+  buildPreviewQueryString,
+  CONTENTFUL_REVALIDATE_SECONDS,
+  getAllCustomerStories,
   getCustomerStoryBySlug,
   getRelatedCustomerStories,
-  isPreviewMode,
 } from "@app/lib/contentful/client";
 import { renderRichTextFromContentful } from "@app/lib/contentful/richTextRenderer";
 import type { CustomerStoryPageProps } from "@app/lib/contentful/types";
@@ -18,17 +20,41 @@ import { classNames } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types";
 
-export const getServerSideProps: GetServerSideProps<
-  CustomerStoryPageProps
-> = async (context) => {
+export const getStaticPaths: GetStaticPaths = async () => {
+  const storiesResult = await getAllCustomerStories();
+
+  if (storiesResult.isErr()) {
+    logger.error(
+      { error: storiesResult.error },
+      "Error fetching customer stories for static paths"
+    );
+    return {
+      paths: [],
+      fallback: "blocking",
+    };
+  }
+
+  const paths = storiesResult.value.map((story) => ({
+    params: { slug: story.slug },
+  }));
+
+  return {
+    paths,
+    fallback: "blocking",
+  };
+};
+
+export const getStaticProps: GetStaticProps<CustomerStoryPageProps> = async (
+  context
+) => {
   const { slug } = context.params ?? {};
 
   if (!isString(slug)) {
     return { notFound: true };
   }
 
-  const { resolvedUrl } = context;
-  const preview = isPreviewMode(resolvedUrl);
+  const resolvedUrl = buildPreviewQueryString(context.preview ?? false);
+  const preview = context.preview ?? false;
 
   const storyResult = await getCustomerStoryBySlug(slug, resolvedUrl);
 
@@ -70,6 +96,7 @@ export const getServerSideProps: GetServerSideProps<
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
       preview,
     },
+    revalidate: CONTENTFUL_REVALIDATE_SECONDS,
   };
 };
 

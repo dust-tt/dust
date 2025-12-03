@@ -1,4 +1,4 @@
-import type { GetServerSideProps } from "next";
+import type { GetStaticPaths, GetStaticProps } from "next";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
@@ -9,9 +9,11 @@ import { Grid, H1, H2 } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import {
+  buildPreviewQueryString,
+  CONTENTFUL_REVALIDATE_SECONDS,
+  getAllBlogPosts,
   getBlogPostBySlug,
   getRelatedPosts,
-  isPreviewMode,
 } from "@app/lib/contentful/client";
 import { renderRichTextFromContentful } from "@app/lib/contentful/richTextRenderer";
 import type { BlogPostPageProps } from "@app/lib/contentful/types";
@@ -19,7 +21,31 @@ import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types";
 
-export const getServerSideProps: GetServerSideProps<BlogPostPageProps> = async (
+export const getStaticPaths: GetStaticPaths = async () => {
+  const postsResult = await getAllBlogPosts();
+
+  if (postsResult.isErr()) {
+    logger.error(
+      { error: postsResult.error },
+      "Error fetching blog posts for static paths"
+    );
+    return {
+      paths: [],
+      fallback: "blocking",
+    };
+  }
+
+  const paths = postsResult.value.map((post) => ({
+    params: { slug: post.slug },
+  }));
+
+  return {
+    paths,
+    fallback: "blocking",
+  };
+};
+
+export const getStaticProps: GetStaticProps<BlogPostPageProps> = async (
   context
 ) => {
   const { slug } = context.params ?? {};
@@ -28,7 +54,7 @@ export const getServerSideProps: GetServerSideProps<BlogPostPageProps> = async (
     return { notFound: true };
   }
 
-  const { resolvedUrl } = context;
+  const resolvedUrl = buildPreviewQueryString(context.preview ?? false);
 
   const postResult = await getBlogPostBySlug(slug, resolvedUrl);
 
@@ -66,8 +92,9 @@ export const getServerSideProps: GetServerSideProps<BlogPostPageProps> = async (
       post,
       relatedPosts: relatedPostsResult.value,
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
-      preview: isPreviewMode(resolvedUrl),
+      preview: context.preview || false,
     },
+    revalidate: CONTENTFUL_REVALIDATE_SECONDS,
   };
 };
 
@@ -267,9 +294,11 @@ export default function BlogPost({
                   href={`/blog/${relatedPost.slug}`}
                 >
                   {relatedPost.image && (
-                    <img
+                    <Image
                       src={relatedPost.image.url}
                       alt={relatedPost.image.alt}
+                      width={400}
+                      height={225}
                       className="aspect-video w-full object-cover"
                     />
                   )}

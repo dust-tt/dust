@@ -79,6 +79,7 @@ interface BlogBlockProps {
   className?: string;
   style?: React.CSSProperties;
   target?: string;
+  tags?: string[];
 }
 
 export const BlogBlock: React.FC<BlogBlockProps> = ({
@@ -89,6 +90,7 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
   className = "",
   style,
   target,
+  tags = [],
 }) => {
   return (
     <a
@@ -122,6 +124,18 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
             }
             return child;
           })}
+          {tags.length > 0 && (
+            <div className="absolute right-3 top-3 flex flex-wrap justify-end gap-2">
+              {tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-gray-900 shadow-sm backdrop-blur-sm"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       ) : null}
       <div className="flex flex-col p-8">

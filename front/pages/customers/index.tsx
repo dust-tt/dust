@@ -1,4 +1,4 @@
-import type { GetServerSideProps } from "next";
+import type { GetStaticProps } from "next";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
@@ -9,7 +9,10 @@ import { useCallback, useMemo } from "react";
 import { Grid, H1, H5, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import { getAllCustomerStories } from "@app/lib/contentful/client";
+import {
+  CONTENTFUL_REVALIDATE_SECONDS,
+  getAllCustomerStories,
+} from "@app/lib/contentful/client";
 import type {
   CustomerStoryFilterOptions,
   CustomerStoryListingPageProps,
@@ -44,10 +47,10 @@ function extractFilterOptions(
   };
 }
 
-export const getServerSideProps: GetServerSideProps<
+export const getStaticProps: GetStaticProps<
   CustomerStoryListingPageProps
-> = async (context) => {
-  const storiesResult = await getAllCustomerStories(context.resolvedUrl);
+> = async () => {
+  const storiesResult = await getAllCustomerStories();
 
   if (storiesResult.isErr()) {
     logger.error(
@@ -60,6 +63,7 @@ export const getServerSideProps: GetServerSideProps<
         filterOptions: { industries: [], departments: [], companySizes: [] },
         gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
       },
+      revalidate: CONTENTFUL_REVALIDATE_SECONDS,
     };
   }
 
@@ -71,6 +75,7 @@ export const getServerSideProps: GetServerSideProps<
       filterOptions: extractFilterOptions(stories),
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
     },
+    revalidate: CONTENTFUL_REVALIDATE_SECONDS,
   };
 };
 

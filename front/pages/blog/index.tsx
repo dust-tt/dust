@@ -1,6 +1,7 @@
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
-import type { GetServerSideProps } from "next";
+import type { GetStaticProps } from "next";
 import Head from "next/head";
+import Image from "next/image";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 import { useMemo } from "react";
@@ -9,15 +10,18 @@ import { BlogBlock } from "@app/components/home/ContentBlocks";
 import { Grid, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import { getAllBlogPosts } from "@app/lib/contentful/client";
+import {
+  CONTENTFUL_REVALIDATE_SECONDS,
+  getAllBlogPosts,
+} from "@app/lib/contentful/client";
 import type { BlogListingPageProps } from "@app/lib/contentful/types";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
-export const getServerSideProps: GetServerSideProps<
+export const getStaticProps: GetStaticProps<
   BlogListingPageProps
-> = async (context) => {
-  const postsResult = await getAllBlogPosts(context.resolvedUrl);
+> = async () => {
+  const postsResult = await getAllBlogPosts();
 
   if (postsResult.isErr()) {
     logger.error(
@@ -29,6 +33,7 @@ export const getServerSideProps: GetServerSideProps<
         posts: [],
         gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
       },
+      revalidate: CONTENTFUL_REVALIDATE_SECONDS,
     };
   }
 
@@ -37,6 +42,7 @@ export const getServerSideProps: GetServerSideProps<
       posts: postsResult.value,
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
     },
+    revalidate: CONTENTFUL_REVALIDATE_SECONDS,
   };
 };
 
@@ -128,26 +134,17 @@ export default function BlogListing({ posts }: BlogListingPageProps) {
                         "short"
                       )}
                     </span>
-                    {post.tags.length > 0 && (
-                      <span className="mt-1 flex flex-wrap gap-1">
-                        {post.tags.slice(0, 2).map((tag) => (
-                          <span
-                            key={tag}
-                            className="rounded-full bg-highlight/10 px-2 py-0.5 text-xs font-medium text-highlight"
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                      </span>
-                    )}
                   </>
                 }
                 href={`/blog/${post.slug}`}
+                tags={post.tags}
               >
                 {post.image && (
-                  <img
-                    src={`${post.image.url}?w=900`}
+                  <Image
+                    src={post.image.url}
                     alt={post.image.alt}
+                    width={900}
+                    height={506}
                     className="aspect-video w-full object-cover"
                   />
                 )}

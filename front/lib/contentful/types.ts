@@ -13,7 +13,6 @@ export interface BlogPageFields {
   title: string;
   slug?: string;
   body: Document;
-  tags?: string[];
   image?: Asset;
   publishedAt?: string;
   authors?: Entry<AuthorSkeleton>[];
