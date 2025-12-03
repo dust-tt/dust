@@ -169,13 +169,14 @@ export async function createEnterpriseCreditPurchase({
     if (couponResult.isErr()) {
       logger.error(
         {
+          panic: true,
           error: couponResult.error.message,
           workspaceId: workspace.sId,
           discountPercent,
         },
         "[Credit Purchase] Failed to create or retrieve coupon"
       );
-      return couponResult;
+      throw new Error(couponResult.error.message);
     }
     couponId = couponResult.value;
   } else {
@@ -273,13 +274,14 @@ export async function createProCreditPurchase({
     if (couponResult.isErr()) {
       logger.error(
         {
+          panic: true,
           error: couponResult.error.message,
           workspaceId: workspace.sId,
           discountPercent,
         },
         "[Credit Purchase] Failed to create or retrieve coupon"
       );
-      return couponResult;
+      throw new Error(couponResult.error.message);
     }
     couponId = couponResult.value;
   }
@@ -292,7 +294,7 @@ export async function createProCreditPurchase({
   });
 
   if (invoiceResult.isErr()) {
-    logger.error(
+    logger.warn(
       {
         error: invoiceResult.error.error_message,
         workspaceId: workspace.sId,
@@ -317,6 +319,7 @@ export async function createProCreditPurchase({
   if (finalizeResult.isErr()) {
     logger.error(
       {
+        panic: true,
         error: finalizeResult.error.error_message,
         workspaceId: workspace.sId,
         invoiceId: invoice.id,
@@ -329,7 +332,7 @@ export async function createProCreditPurchase({
 
   const payResult = await payInvoice(finalizeResult.value);
   if (payResult.isErr()) {
-    logger.error(
+    logger.warn(
       {
         error: payResult.error.error_message,
         workspaceId: workspace.sId,

@@ -533,14 +533,10 @@ export async function voidInvoiceWithReason(
   }
 }
 
-export function makeCreditPurchaseOnceCouponId(percentOff: number): string {
-  return `programmatic-usage-credits-once-${percentOff}`;
-}
-
 export async function getCreditPurchaseCouponId(
   discountPercent: number
 ): Promise<Result<string | undefined, Error>> {
-  const couponId = makeCreditPurchaseOnceCouponId(discountPercent);
+  const couponId = `programmatic-usage-credits-once-${discountPercent}`;
   const couponResult = await createCreditPurchaseCoupon(
     couponId,
     discountPercent

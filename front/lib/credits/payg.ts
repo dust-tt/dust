@@ -223,7 +223,7 @@ export async function stopEnterprisePAYG({
       paygCredit.id
     );
     if (freezeResult.isErr()) {
-      logger.error(
+      logger.warn(
         { workspaceId: workspace.sId, error: freezeResult.error.message },
         "[Credit PAYG] Failed to freeze credit"
       );
