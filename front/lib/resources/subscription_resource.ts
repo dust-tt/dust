@@ -12,19 +12,21 @@ import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import {
   FREE_TEST_PLAN_CODE,
-  isEntreprisePlan,
+  isEntreprisePlanPrefix,
   isFreePlan,
-  isProPlan,
+  isProPlanPrefix,
   isUpgraded,
   PRO_PLAN_SEAT_29_CODE,
   PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
+import { isWhitelistedBusinessPlan } from "@app/lib/plans/plan_codes";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
   cancelSubscriptionImmediately,
   createProPlanCheckoutSession,
   getProPlanStripeProductId,
   getStripeSubscription,
+  upgradeProSubscriptionToBusiness,
 } from "@app/lib/plans/stripe";
 import { getTrialVersionForPlan, isTrial } from "@app/lib/plans/trial";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
@@ -53,7 +55,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { Ok, sendUserOperationMessage } from "@app/types";
+import { Err, Ok, sendUserOperationMessage } from "@app/types";
 
 const DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION: PlanAttributes = FREE_NO_PLAN_DATA;
 const FREE_NO_PLAN_SUBSCRIPTION_ID = -1;
@@ -448,7 +450,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     }
 
     // Ugrade to Enterprise is not allowed through this function.
-    if (isEntreprisePlan(newPlan.code)) {
+    if (isEntreprisePlanPrefix(newPlan.code)) {
       throw new Error(
         `Cannot subscribe to plan ${planCode}: Enterprise Plans requires a special process.`
       );
@@ -456,7 +458,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
 
     // Upgrade to Pro is allowed only if the workspace is already subscribed to a Pro plan.
     // This is a way to change the plan limitations but stay on Pro.
-    if (isProPlan(newPlan.code)) {
+    if (isProPlanPrefix(newPlan.code)) {
       if (
         !activeSubscription ||
         !activeSubscription.sId ||
@@ -496,6 +498,53 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     if (isUpgraded(newSubscription.getPlan())) {
       await getOrCreateWorkOSOrganization(owner);
     }
+  }
+
+  /**
+   * Upgrades a Pro subscription to Business plan.
+   * This updates both Stripe (swaps product/price to Business monthly) and the database plan.
+   * Only allowed for workspaces that are whitelisted for Business (metadata.isBusiness = true).
+   */
+  async upgradeToBusinessPlan(
+    owner: WorkspaceType
+  ): Promise<Result<undefined, Error>> {
+    if (!isWhitelistedBusinessPlan(owner)) {
+      return new Err(
+        new Error("Workspace is not whitelisted for Business plan")
+      );
+    }
+    if (!this.stripeSubscriptionId) {
+      return new Err(new Error("No active Stripe subscription to upgrade"));
+    }
+
+    const isOnProPlan = await this.isSubscriptionOnProPlan(owner);
+    if (!isOnProPlan) {
+      return new Err(new Error("Workspace is not on a Pro plan"));
+    }
+
+    const businessPlan = await SubscriptionResource.findPlanOrThrow(
+      PRO_PLAN_SEAT_39_CODE
+    );
+
+    const stripeResult = await upgradeProSubscriptionToBusiness({
+      stripeSubscriptionId: this.stripeSubscriptionId,
+      owner,
+      planCode: PRO_PLAN_SEAT_39_CODE,
+    });
+    if (stripeResult.isErr()) {
+      return new Err(stripeResult.error);
+    }
+
+    await Subscription.update(
+      { planId: businessPlan.id },
+      {
+        where: {
+          sId: this.sId,
+        },
+      }
+    );
+
+    return new Ok(undefined);
   }
 
   static async maybeCancelInactiveTrials(

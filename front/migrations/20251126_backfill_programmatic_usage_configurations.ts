@@ -1,6 +1,6 @@
 import { getWorkspacePublicAPILimits } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
-import { isEntreprisePlan } from "@app/lib/plans/plan_codes";
+import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import {
   getStripeSubscription,
   isEnterpriseSubscription,

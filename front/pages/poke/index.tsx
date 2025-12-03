@@ -14,11 +14,11 @@ import {
 } from "@app/components/poke/shadcn/ui/table";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import {
-  isEntreprisePlan,
+  isEntreprisePlanPrefix,
   isFreePlan,
   isFriendsAndFamilyPlan,
   isOldFreePlan,
-  isProPlan,
+  isProPlanPrefix,
 } from "@app/lib/plans/plan_codes";
 import { usePokeWorkspaces } from "@app/lib/swr/poke";
 import { classNames } from "@app/lib/utils";
@@ -81,11 +81,11 @@ const renderWorkspaces = (title: string, workspaces: PokeWorkspaceType[]) => (
                       <label
                         className={classNames(
                           "rounded px-1 text-sm text-gray-500 text-white",
-                          isEntreprisePlan(ws.subscription.plan.code) &&
+                          isEntreprisePlanPrefix(ws.subscription.plan.code) &&
                             "bg-red-500",
                           isFriendsAndFamilyPlan(ws.subscription.plan.code) &&
                             "bg-pink-500",
-                          isProPlan(ws.subscription.plan.code) &&
+                          isProPlanPrefix(ws.subscription.plan.code) &&
                             "bg-orange-500",
                           isFreePlan(ws.subscription.plan.code) &&
                             "bg-blue-500",
