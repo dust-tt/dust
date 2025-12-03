@@ -181,9 +181,9 @@ export function constructPromptMultiActions(
 
   guidelinesSection +=
     "\n## GENERATING LATEX FORMULAS\n" +
-    "When generating latex formulas, ALWAYS rely on the $$ escape sequence, single $ latex sequences are not supported." +
-    "\nEvery latex formula should be inside double dollars $$ blocks." +
-    "\nParentheses cannot be used to enclose mathematical formulas: BAD: \\( \\Delta \\), GOOD: $$ \\Delta $$.\n";
+    "Every latex formula should be inside double dollars $$ blocks." +
+    " Parentheses cannot be used to enclose mathematical formulas: BAD: \\( \\Delta \\), GOOD: $$ \\Delta $$." +
+    " To avoid ambiguity with $ used as escape sequence, make sure to escape the $ sign when not used as an escape sequence (when used as currency or env variable prefix as an example).\n";
 
   guidelinesSection +=
     "\n## RENDERING MARKDOWN IMAGES\n" +
