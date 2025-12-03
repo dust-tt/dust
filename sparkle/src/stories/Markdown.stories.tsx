@@ -128,9 +128,13 @@ Even **optimizers** are associative memories. Momentum with gradient descent is 
 
 The result is $a=2+t$
 
-### Some text with dollars
+### Some text with dollars signs:
 
 One want to import $USER_WORKSPACE but it will cost them $3.5 or $100 $1000
+
+-> The EF for this code is 0.49059 kgCO2e per $ (2018 USD).
+-> This code is 0.54895 kgCO2e per $ (2018 USD) more.
+-> This thing is $5-$10 range.
 
 ### This is a CSV:
 

@@ -24,7 +24,10 @@ import {
   TableHeadBlock,
   TableHeaderBlock,
 } from "@sparkle/components/markdown/TableBlock";
-import { preprocessDollarSigns, sanitizeContent } from "@sparkle/components/markdown/utils";
+import {
+  preprocessDollarSigns,
+  sanitizeContent,
+} from "@sparkle/components/markdown/utils";
 import { cn } from "@sparkle/lib/utils";
 
 export const markdownHeaderClasses = {
