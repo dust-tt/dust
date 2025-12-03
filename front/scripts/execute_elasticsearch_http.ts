@@ -3,6 +3,7 @@ import * as path from "path";
 
 import { getClient } from "@app/lib/api/elasticsearch";
 import { makeScript } from "@app/scripts/helpers";
+import { normalizeError } from "@app/types";
 
 /**
  * Script to execute HTTP files against Elasticsearch
@@ -17,10 +18,16 @@ import { makeScript } from "@app/scripts/helpers";
  * Supported methods: GET, POST, PUT, DELETE
  */
 
+type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
+
 interface ParsedHttpFile {
-  method: string;
+  method: HttpMethod;
   path: string;
-  body?: unknown;
+  body?: Record<string, unknown>;
+}
+
+function isHttpMethod(method: string): method is HttpMethod {
+  return ["GET", "POST", "PUT", "DELETE", "PATCH"].includes(method);
 }
 
 function parseHttpFile(filePath: string): ParsedHttpFile {
@@ -41,19 +48,26 @@ function parseHttpFile(filePath: string): ParsedHttpFile {
   }
 
   const method = match[1].toUpperCase();
+  if (!isHttpMethod(method)) {
+    throw new Error(`Invalid HTTP method: ${method}`);
+  }
+
   const httpPath = match[2].trim();
 
   // Parse JSON body from remaining lines
   const bodyLines = lines.slice(1).join("\n").trim();
-  let body: unknown | undefined;
+  let body: Record<string, unknown> | undefined;
 
   if (bodyLines) {
-    try {
-      body = JSON.parse(bodyLines);
-    } catch (err) {
-      throw new Error(
-        `Failed to parse JSON body in HTTP file: ${err instanceof Error ? err.message : String(err)}`
-      );
+    const parsed = JSON.parse(bodyLines);
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      !Array.isArray(parsed)
+    ) {
+      body = parsed;
+    } else {
+      throw new Error("JSON body must be an object");
     }
   }
 
@@ -61,9 +75,9 @@ function parseHttpFile(filePath: string): ParsedHttpFile {
 }
 
 async function executeRequest(
-  method: string,
+  method: HttpMethod,
   httpPath: string,
-  body?: unknown
+  body?: Record<string, unknown>
 ): Promise<unknown> {
   const client = await getClient();
 
@@ -71,12 +85,20 @@ async function executeRequest(
   const cleanPath = httpPath.startsWith("/") ? httpPath.slice(1) : httpPath;
 
   // Use the transport layer to make arbitrary requests
-  // Cast body to satisfy TypeScript's RequestBody type requirement
-  const response = await client.transport.request({
-    method: method as "GET" | "POST" | "PUT" | "DELETE" | "PATCH",
+  const requestParams: {
+    method: HttpMethod;
+    path: string;
+    body?: Record<string, unknown>;
+  } = {
+    method,
     path: cleanPath,
-    ...(body !== undefined && { body: body as Record<string, unknown> }),
-  } as Parameters<typeof client.transport.request>[0]);
+  };
+
+  if (body !== undefined) {
+    requestParams.body = body;
+  }
+
+  const response = await client.transport.request(requestParams);
 
   return response;
 }
@@ -159,13 +181,8 @@ makeScript(
       logger.info("✅ Request executed successfully");
       logger.info(`Response: ${JSON.stringify(response, null, 2)}`);
     } catch (err) {
-      logger.error(
-        `❌ Request failed: ${err instanceof Error ? err.message : String(err)}`
-      );
-      if (err instanceof Error && "meta" in err) {
-        const meta = (err as { meta?: unknown }).meta;
-        logger.error(`Error details: ${JSON.stringify(meta, null, 2)}`);
-      }
+      const error = normalizeError(err);
+      logger.error(`❌ Request failed: ${error.message}`);
       throw err;
     }
   }
