@@ -1,5 +1,6 @@
 import uniq from "lodash/uniq";
 import type { Transaction } from "sequelize";
+import { Op } from "sequelize";
 
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getContentFragmentSpaceIds } from "@app/lib/api/assistant/permissions";
@@ -261,13 +262,14 @@ export async function createUserMessage({
       assertNever(metadata);
   }
 
-  // Fetch originMessage to ensure it exists
+  // Fetch originMessage to ensure it exists and that it's an agent message.
   const originMessageId = agenticMessageData?.originMessageId;
   const originMessage = originMessageId
     ? await Message.findOne({
         where: {
           workspaceId: workspace.id,
           sId: originMessageId,
+          agentMessageId: { [Op.not]: null },
         },
       })
     : null;
@@ -456,10 +458,10 @@ export const createAgentMessages = async (
               { transaction }
             );
 
+            // This will tweak the UI a bit.
             const parentAgentMessageId =
               metadata.userMessage.agenticMessageData?.type === "agent_handover"
-                ? (metadata.userMessage.agenticMessageData?.originMessageId ??
-                  null)
+                ? metadata.userMessage.agenticMessageData.originMessageId
                 : null;
 
             // Track agent usage when creating a new agent message.
@@ -519,14 +521,14 @@ export const createAgentMessages = async (
     })
   );
 
-  if (agentMessages.length > 0) {
-    await updateConversationRequirements(auth, {
-      agents: agentMessages.map((m) => m.configuration),
-      conversation,
-      t: transaction,
-    });
+  await updateConversationRequirements(auth, {
+    agents: agentMessages.map((m) => m.configuration),
+    conversation,
+    t: transaction,
+  });
 
-    if (metadata.type === "create") {
+  if (metadata.type === "create") {
+    if (agentMessages.length > 0) {
       await runAgentLoopWorkflow({
         auth,
         agentMessages,

@@ -41,7 +41,7 @@ export class ConversationFactory {
       t?: Transaction;
     }
   ): Promise<ConversationWithoutContentType> {
-    const user = auth.getNonNullableUser();
+    const user = auth.user();
     const workspace = auth.getNonNullableWorkspace();
 
     const conversation = await createConversation(auth, {
@@ -181,7 +181,7 @@ export class ConversationFactory {
     origin?: UserMessageOrigin;
   }): Promise<Message> {
     const userMessageRow = await UserMessage.create({
-      userId: auth.getNonNullableUser().id,
+      userId: auth.user()?.id,
       workspaceId: workspace.id,
       content,
       userContextUsername: "testuser",
@@ -312,7 +312,7 @@ const createUserMessage = async ({
   rank,
   t,
 }: {
-  user: UserResource;
+  user: UserResource | null;
   workspace: WorkspaceType;
   conversationModelId: ModelId;
   createdAt: Date;
@@ -332,7 +332,7 @@ const createUserMessage = async ({
           {
             createdAt,
             updatedAt: createdAt,
-            userId: user.id,
+            userId: user?.id,
             workspaceId: workspace.id,
             content: "Test user Message.",
             userContextUsername: "soupinou",
