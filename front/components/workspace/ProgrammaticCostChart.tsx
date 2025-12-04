@@ -114,7 +114,7 @@ function GroupedTooltip(
   const rows = payload
     .filter(
       (p) =>
-        p.dataKey !== "totalInitialCreditsCents" &&
+        p.dataKey !== "totalInitialCreditsMicroUsd" &&
         p.value != null &&
         typeof p.value === "number"
     )
@@ -146,7 +146,7 @@ function GroupedTooltip(
   // Add credits row
   rows.push({
     label: "Total Credits",
-    value: `$${(data.totalInitialCreditsCents / 100).toFixed(2)}`,
+    value: `$${(data.totalInitialCreditsMicroUsd / 1_000_000).toFixed(2)}`,
     colorClassName: COST_PALETTE.totalCredits,
   });
 
@@ -546,7 +546,7 @@ export function BaseProgrammaticCostChart({
         />
         <Line
           type="monotone"
-          dataKey="totalInitialCreditsCents"
+          dataKey="totalInitialCreditsMicroUsd"
           name="Total Credits"
           stroke="currentColor"
           strokeWidth={2}
