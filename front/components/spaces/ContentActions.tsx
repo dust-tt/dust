@@ -13,7 +13,7 @@ import React, { useCallback, useImperativeHandle, useState } from "react";
 
 import { DocumentOrTableDeleteDialog } from "@app/components/data_source/DocumentOrTableDeleteDialog";
 import { DocumentUploadOrEditModal } from "@app/components/data_source/DocumentUploadOrEditModal";
-import { MultipleDocumentsUpload } from "@app/components/data_source/MultipleDocumentsUpload";
+import { MultipleFilesUpload } from "@app/components/data_source/MultipleFilesUpload";
 import { TableUploadOrEditModal } from "@app/components/data_source/TableUploadOrEditModal";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import {
@@ -38,7 +38,7 @@ export type UploadOrEditContentActionKey =
 
 export type ContentActionKey =
   | UploadOrEditContentActionKey
-  | "MultipleDocumentsUpload"
+  | "MultipleFilesUpload"
   | "DeleteContentNode";
 
 export type ContentAction = {
@@ -131,10 +131,10 @@ export const ContentActions = React.forwardRef<
         ) : (
           <DocumentUploadOrEditModal {...modalProps} />
         )}
-        <MultipleDocumentsUpload
+        <MultipleFilesUpload
           dataSourceView={dataSourceView}
           existingNodes={existingNodes}
-          isOpen={currentAction.action === "MultipleDocumentsUpload"}
+          isOpen={currentAction.action === "MultipleFilesUpload"}
           onClose={onClose}
           owner={owner}
           totalNodesCount={totalNodesCount}
