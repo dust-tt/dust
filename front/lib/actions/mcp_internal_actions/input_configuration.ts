@@ -113,6 +113,11 @@ function generateConfiguredInput({
       };
     }
 
+    // TODO(2025-12-04 pierre) Remove when sdkjs/types are updated
+    case INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL: {
+      break;
+    }
+
     case INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME: {
       const { timeFrame } = actionConfiguration;
       if (!timeFrame) {
