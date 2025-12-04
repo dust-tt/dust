@@ -111,11 +111,11 @@ function CreditCategoryBar({
 }: CreditCategoryBarProps) {
   const consumedFormatted = getPriceAsString({
     currency: "usd",
-    priceInCents: consumed / 10_000,
+    priceInMicroUsd: consumed,
   });
   const totalFormatted = getPriceAsString({
     currency: "usd",
-    priceInCents: total / 10_000,
+    priceInMicroUsd: total,
   });
 
   return (
@@ -233,11 +233,11 @@ function UsageSection({
 
   const totalConsumedFormatted = getPriceAsString({
     currency: "usd",
-    priceInCents: totalConsumed / 10_000,
+    priceInMicroUsd: totalConsumed,
   });
   const totalCreditsFormatted = getPriceAsString({
     currency: "usd",
-    priceInCents: totalCredits / 10_000,
+    priceInMicroUsd: totalCredits,
   });
 
   return (

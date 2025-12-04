@@ -15,10 +15,22 @@ export const getPriceWithCurrency = (price: number): string => {
 export const getPriceAsString = ({
   currency,
   priceInCents,
-}: {
-  currency: string;
-  priceInCents: number;
-}): string => {
+  priceInMicroUsd,
+}:
+  | {
+      currency: string;
+      priceInCents: number;
+      priceInMicroUsd?: undefined;
+    }
+  | {
+      currency: "usd";
+      priceInCents?: undefined;
+      priceInMicroUsd: number;
+    }): string => {
+  if (priceInMicroUsd !== undefined) {
+    return `$${(priceInMicroUsd / 1_000_000).toFixed(2)}`;
+  }
+
   const price = (priceInCents / 100).toFixed(2);
   switch (currency) {
     case "usd":
