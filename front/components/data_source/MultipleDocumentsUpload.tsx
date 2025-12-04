@@ -32,15 +32,6 @@ import {
   isSupportedDelimitedTextContentType,
 } from "@app/types";
 
-// Helper to strip extension and slugify filename for table names
-function stripTableName(name: string): string {
-  return name
-    .replace(/\.(csv|tsv|xls|xlsx)$/i, "")
-    .replace(/[^a-z0-9]/gi, "_")
-    .toLowerCase()
-    .slice(0, 32);
-}
-
 // Helper to check if a file should be treated as a table based on its MIME type
 function isDelimitedFile(file: File): boolean {
   const contentType = file.type || "application/octet-stream";
@@ -207,15 +198,14 @@ export const MultipleDocumentsUpload = ({
           await concurrentExecutor(
             tableBlobs,
             async (blob: FileBlobWithFileId) => {
-              // For tables, we need to provide table-specific upsert args
-              const tableName = stripTableName(blob.filename);
+              const tableName = blob.filename;
               await doUpsertFileAsDataSourceEntry({
                 fileId: blob.fileId,
                 upsertArgs: {
                   title: blob.filename,
                   tableId: blob.fileId,
                   name: tableName,
-                  description: `Table uploaded from ${blob.filename}`,
+                  description: `Upload of ${blob.filename}`,
                 },
               });
 

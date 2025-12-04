@@ -171,7 +171,7 @@ export default function SpaceFolderModal({
                   setDescription(e.target.value);
                 }}
                 showErrorLabel
-                minRows={2}
+                minRows={6}
               />
 
               {dataSourceView && (
