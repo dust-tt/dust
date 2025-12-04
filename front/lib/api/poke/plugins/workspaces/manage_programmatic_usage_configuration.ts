@@ -45,7 +45,7 @@ const ManageProgrammaticUsageConfigurationSchema = z
     paygEnabled: z.boolean(),
     paygCapDollars: z
       .number()
-      .min(1, "PAYG cap must be at least $1")
+      .min(0, "PAYG cap must be positive")
       .max(
         MAX_PAYG_CAP_DOLLARS,
         `PAYG cap cannot exceed $${MAX_PAYG_CAP_DOLLARS.toLocaleString()}`
@@ -78,7 +78,7 @@ const ManageProgrammaticUsageConfigurationSchema = z
       return true;
     },
     {
-      message: "PAYG cap is required when Pay-as-you-go is enabled",
+      message: "PAYG cap must be at least $1 when Pay-as-you-go is enabled",
       path: ["paygCapDollars"],
     }
   );
@@ -147,15 +147,14 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
       return new Ok({
         freeCreditsOverrideEnabled: false,
         freeCreditsOverrideEnabledDescription: freeCreditsDescription,
-        freeCreditsDollars: undefined,
+        freeCreditsDollars: 0,
         defaultDiscountPercent: 0,
         paygEnabled: false,
         paygCapDollars: 0,
       });
     }
 
-    const paygCapDollars =
-      config.paygCapMicroUsd !== null ? config.paygCapMicroUsd / 1_000_000 : 0;
+    const paygCapDollars = config.paygCapMicroUsd ?? 0;
 
     return new Ok({
       freeCreditsOverrideEnabled: config.freeCreditMicroUsd !== null,
@@ -163,15 +162,15 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
       freeCreditsDollars:
         config.freeCreditMicroUsd !== null
           ? config.freeCreditMicroUsd / 1_000_000
-          : undefined,
+          : 0,
       defaultDiscountPercent: config.defaultDiscountPercent,
-      paygEnabled:
-        config.paygCapMicroUsd !== null && config.paygCapMicroUsd > 0,
+      paygEnabled: config.paygCapMicroUsd !== null,
       paygCapDollars,
     });
   },
 
   execute: async (auth, _, args) => {
+    console.log("args", args);
     const parseResult =
       ManageProgrammaticUsageConfigurationSchema.safeParse(args);
 
@@ -216,7 +215,7 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
     const freeCreditMicroUsd =
       freeCreditsOverrideEnabled && freeCreditsDollars
         ? Math.round(freeCreditsDollars * 1_000_000)
-        : undefined;
+        : null;
 
     // Handle non-PAYG config fields first
     const existingConfig =
