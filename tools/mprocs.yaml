@@ -83,9 +83,7 @@ procs:
 
   firebase-webhook-router:
     cwd: "<CONFIG_DIR>/../firebase-functions/webhook-router"
-    shell: |
-      set -euo pipefail
-      source ~/.nvm/nvm.sh && nvm install && npm install && npm run dev
+    shell: "docker-compose up --build"
     autostart: false
 
   novu:
