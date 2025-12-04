@@ -60,7 +60,8 @@ async function handler(
     });
   }
 
-  return res.status(200).end();
+  res.status(200).send();
+  return;
 }
 
 export default withSessionAuthenticationForWorkspace(handler);

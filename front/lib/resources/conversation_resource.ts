@@ -264,32 +264,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return resultConversations;
   }
 
-  // if (fetchConversationOptions?.includeParticipant) {
-  //   const participants = await this.fetchParticipantsForUser(
-  //     auth,
-  //     conversations.map((c) => c.id)
-  //   );
-
-  //   const participantsMap = new Map(
-  //     participants.map((p) => [
-  //       p.conversationId,
-  //       {
-  //         actionRequired: p.actionRequired,
-  //         unread: p.unread,
-  //         updated: p.updatedAt.getTime(),
-  //       },
-  //     ])
-  //   );
-
-  //   resultConversations.forEach((c) => {
-  //     const participation = participantsMap.get(c.id);
-  //     if (participation) {
-  //       c.userParticipation = participation;
-  //     }
-  //   });
-  // }
-  // }
-
   static triggerIdToSId(triggerId: number | null, workspaceId: number) {
     return triggerId != null
       ? TriggerResource.modelIdToSId({ id: triggerId, workspaceId })
@@ -630,11 +604,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   static async listConversationsForUser(
     auth: Authenticator
   ): Promise<ConversationResource[]> {
-    const user = auth.getNonNullableUser();
-
     // First get all participations for the user to get conversation IDs and metadata.
     const participations = await this.fetchParticipationsForUser(auth);
-
     const conversationIds = participations.map((p) => p.conversationId);
 
     const conversations = await this.baseFetchWithAuthorization(
