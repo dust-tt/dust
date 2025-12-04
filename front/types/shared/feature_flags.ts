@@ -122,11 +122,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Salesforce Connection: retrieval on Synchronized queries",
     stage: "on_demand",
   },
-  self_created_slack_app_connector_rollout: {
-    description:
-      "Slack Connection: rollout for self-created Slack app connector",
-    stage: "rolling_out",
-  },
   salesforce_tool: {
     description:
       "Salesforce MCP tool (activated by default on most plans, FF to override the plan config)",
