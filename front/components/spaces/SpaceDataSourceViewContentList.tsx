@@ -543,11 +543,10 @@ export const SpaceDataSourceViewContentList = ({
 
       if (
         action === "DocumentUploadOrEdit" ||
-        action === "MultipleDocumentsUpload"
+        action === "MultipleDocumentsUpload" ||
+        action === "TableUploadOrEdit"
       ) {
-        handleViewTypeChange("document");
-      } else if (action === "TableUploadOrEdit") {
-        handleViewTypeChange("table");
+        handleViewTypeChange("all");
       }
     },
     [handleViewTypeChange, mutateContentNodes, startPeriodicRefresh]
