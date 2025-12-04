@@ -8,7 +8,7 @@ import {
   calculateFreeCreditAmountMicroUsd,
   countEligibleUsersForFreeCredits,
   getCustomerStatus,
-  grantFreeCreditsOnSubscriptionRenewal,
+  grantFreeCreditsFromSubscriptionStateChange,
 } from "@app/lib/credits/free";
 import {
   getSubscriptionInvoices,
@@ -312,7 +312,7 @@ describe("grantFreeCreditsOnSubscriptionRenewal", () => {
       invoiceOrLineItemId: idempotencyKey,
     });
 
-    const result = await grantFreeCreditsOnSubscriptionRenewal({
+    const result = await grantFreeCreditsFromSubscriptionStateChange({
       auth,
       stripeSubscription: subscription,
     });
@@ -329,7 +329,7 @@ describe("grantFreeCreditsOnSubscriptionRenewal", () => {
       status: "active",
     });
 
-    const result = await grantFreeCreditsOnSubscriptionRenewal({
+    const result = await grantFreeCreditsFromSubscriptionStateChange({
       auth,
       stripeSubscription: oldSubscription,
     });
@@ -343,7 +343,7 @@ describe("grantFreeCreditsOnSubscriptionRenewal", () => {
 
     const subscription = makeFullSubscription();
 
-    const result = await grantFreeCreditsOnSubscriptionRenewal({
+    const result = await grantFreeCreditsFromSubscriptionStateChange({
       auth,
       stripeSubscription: subscription,
     });
@@ -365,7 +365,7 @@ describe("grantFreeCreditsOnSubscriptionRenewal", () => {
 
     const subscription = makeFullSubscription();
 
-    const result = await grantFreeCreditsOnSubscriptionRenewal({
+    const result = await grantFreeCreditsFromSubscriptionStateChange({
       auth,
       stripeSubscription: subscription,
     });
@@ -382,7 +382,7 @@ describe("grantFreeCreditsOnSubscriptionRenewal", () => {
       start_date: NOW,
     });
 
-    const result = await grantFreeCreditsOnSubscriptionRenewal({
+    const result = await grantFreeCreditsFromSubscriptionStateChange({
       auth,
       stripeSubscription: subscription,
     });
@@ -397,7 +397,7 @@ describe("grantFreeCreditsOnSubscriptionRenewal", () => {
 
     const subscription = makeFullSubscription();
 
-    const result = await grantFreeCreditsOnSubscriptionRenewal({
+    const result = await grantFreeCreditsFromSubscriptionStateChange({
       auth,
       stripeSubscription: subscription,
     });
@@ -410,7 +410,7 @@ describe("grantFreeCreditsOnSubscriptionRenewal", () => {
   it("should create credit with correct expiration date (period end)", async () => {
     const subscription = makeFullSubscription();
 
-    const result = await grantFreeCreditsOnSubscriptionRenewal({
+    const result = await grantFreeCreditsFromSubscriptionStateChange({
       auth,
       stripeSubscription: subscription,
     });
@@ -425,7 +425,7 @@ describe("grantFreeCreditsOnSubscriptionRenewal", () => {
   it("should start credit immediately after creation", async () => {
     const subscription = makeFullSubscription();
 
-    const result = await grantFreeCreditsOnSubscriptionRenewal({
+    const result = await grantFreeCreditsFromSubscriptionStateChange({
       auth,
       stripeSubscription: subscription,
     });
@@ -438,7 +438,7 @@ describe("grantFreeCreditsOnSubscriptionRenewal", () => {
   it("should use correct idempotency key format", async () => {
     const subscription = makeFullSubscription({ id: "sub_abc123" });
 
-    await grantFreeCreditsOnSubscriptionRenewal({
+    await grantFreeCreditsFromSubscriptionStateChange({
       auth,
       stripeSubscription: subscription,
     });
@@ -452,7 +452,7 @@ describe("grantFreeCreditsOnSubscriptionRenewal", () => {
   it("should verify isEnterpriseSubscription is called with correct subscription", async () => {
     const subscription = makeFullSubscription({ id: "sub_verify" });
 
-    await grantFreeCreditsOnSubscriptionRenewal({
+    await grantFreeCreditsFromSubscriptionStateChange({
       auth,
       stripeSubscription: subscription,
     });

@@ -1,7 +1,7 @@
 import type Stripe from "stripe";
 
 import { Authenticator } from "@app/lib/auth";
-import { grantFreeCreditsOnSubscriptionRenewal } from "@app/lib/credits/free";
+import { grantFreeCreditsFromSubscriptionStateChange } from "@app/lib/credits/free";
 import { startOrResumeEnterprisePAYG } from "@app/lib/credits/payg";
 import {
   getStripeSubscription,
@@ -103,7 +103,7 @@ async function backfillFreeCredits(
   );
 
   if (execute) {
-    const result = await grantFreeCreditsOnSubscriptionRenewal({
+    const result = await grantFreeCreditsFromSubscriptionStateChange({
       auth,
       stripeSubscription,
     });
