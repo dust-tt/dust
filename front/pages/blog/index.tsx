@@ -14,6 +14,7 @@ import {
   CONTENTFUL_REVALIDATE_SECONDS,
   getAllBlogPosts,
 } from "@app/lib/contentful/client";
+import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
 import type { BlogListingPageProps } from "@app/lib/contentful/types";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 import logger from "@app/logger/logger";
@@ -145,6 +146,8 @@ export default function BlogListing({ posts }: BlogListingPageProps) {
                     alt={post.image.alt}
                     width={640}
                     height={360}
+                    loader={contentfulImageLoader}
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     className="aspect-video w-full object-cover"
                   />
                 )}

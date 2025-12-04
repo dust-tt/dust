@@ -13,6 +13,7 @@ import {
   CONTENTFUL_REVALIDATE_SECONDS,
   getAllCustomerStories,
 } from "@app/lib/contentful/client";
+import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
 import type {
   CustomerStoryFilterOptions,
   CustomerStoryListingPageProps,
@@ -318,6 +319,8 @@ export default function CustomerStoriesListing({
                             alt={story.heroImage.alt}
                             width={640}
                             height={360}
+                            loader={contentfulImageLoader}
+                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                             className="h-full w-full object-cover brightness-100 transition duration-300 ease-out group-hover:brightness-110"
                           />
                         ) : story.companyLogo ? (
