@@ -170,8 +170,8 @@ describe("startCreditFromProOneOffInvoice", () => {
 
     await CreditResource.makeNew(auth, {
       type: "committed",
-      initialAmountCents: 10000,
-      consumedAmountCents: 0,
+      initialAmountMicroUsd: 100_000_000,
+      consumedAmountMicroUsd: 0,
       invoiceOrLineItemId: invoice.id,
     });
 
@@ -238,8 +238,8 @@ describe("voidFailedProCreditPurchaseInvoice", () => {
 
     await CreditResource.makeNew(auth, {
       type: "committed",
-      initialAmountCents: 10000,
-      consumedAmountCents: 0,
+      initialAmountMicroUsd: 100_000_000,
+      consumedAmountMicroUsd: 0,
       invoiceOrLineItemId: invoice.id,
     });
 
@@ -306,12 +306,12 @@ describe("createEnterpriseCreditPurchase", () => {
     await createEnterpriseCreditPurchase({
       auth,
       stripeSubscriptionId: subscriptionId,
-      amountCents: 500000,
+      amountMicroUsd: 5_000_000_000,
     });
 
     expect(makeCreditPurchaseOneOffInvoice).toHaveBeenCalledWith({
       stripeSubscriptionId: subscriptionId,
-      amountCents: 500000,
+      amountMicroUsd: 5_000_000_000,
       couponId: undefined,
       collectionMethod: "send_invoice",
       daysUntilDue: ENTERPRISE_N30_PAYMENTS_DAYS,
@@ -330,7 +330,7 @@ describe("createEnterpriseCreditPurchase", () => {
     await createEnterpriseCreditPurchase({
       auth,
       stripeSubscriptionId: subscriptionId,
-      amountCents: 500000,
+      amountMicroUsd: 5_000_000_000,
       discountPercent: 15,
     });
 
@@ -351,14 +351,14 @@ describe("createEnterpriseCreditPurchase", () => {
     const result = await createEnterpriseCreditPurchase({
       auth,
       stripeSubscriptionId: subscriptionId,
-      amountCents: 500000,
+      amountMicroUsd: 5_000_000_000,
       discountPercent: 10,
     });
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
       expect(result.value.credit.type).toBe("committed");
-      expect(result.value.credit.initialAmountCents).toBe(500000);
+      expect(result.value.credit.initialAmountMicroUsd).toBe(5_000_000_000);
       expect(result.value.credit.discount).toBe(10);
       expect(result.value.invoiceOrLineItemId).toBe("in_enterprise");
     }
@@ -374,7 +374,7 @@ describe("createEnterpriseCreditPurchase", () => {
     await createEnterpriseCreditPurchase({
       auth,
       stripeSubscriptionId: subscriptionId,
-      amountCents: 500000,
+      amountMicroUsd: 5_000_000_000,
     });
 
     expect(finalizeInvoice).toHaveBeenCalledWith(mockInvoice);
@@ -394,7 +394,7 @@ describe("createEnterpriseCreditPurchase", () => {
     const result = await createEnterpriseCreditPurchase({
       auth,
       stripeSubscriptionId: subscriptionId,
-      amountCents: 500000,
+      amountMicroUsd: 5_000_000_000,
       startDate,
       expirationDate,
     });
@@ -413,7 +413,7 @@ describe("createEnterpriseCreditPurchase", () => {
     const result = await createEnterpriseCreditPurchase({
       auth,
       stripeSubscriptionId: subscriptionId,
-      amountCents: 500000,
+      amountMicroUsd: 5_000_000_000,
       discountPercent: 15,
     });
 
@@ -432,7 +432,7 @@ describe("createEnterpriseCreditPurchase", () => {
     const result = await createEnterpriseCreditPurchase({
       auth,
       stripeSubscriptionId: subscriptionId,
-      amountCents: 500000,
+      amountMicroUsd: 5_000_000_000,
     });
 
     expect(result.isErr()).toBe(true);
@@ -452,7 +452,7 @@ describe("createEnterpriseCreditPurchase", () => {
     const result = await createEnterpriseCreditPurchase({
       auth,
       stripeSubscriptionId: subscriptionId,
-      amountCents: 500000,
+      amountMicroUsd: 5_000_000_000,
     });
 
     expect(result.isErr()).toBe(true);
@@ -485,12 +485,12 @@ describe("createProCreditPurchase", () => {
     await createProCreditPurchase({
       auth,
       stripeSubscriptionId: subscriptionId,
-      amountCents: 10000,
+      amountMicroUsd: 100_000_000,
     });
 
     expect(makeCreditPurchaseOneOffInvoice).toHaveBeenCalledWith({
       stripeSubscriptionId: subscriptionId,
-      amountCents: 10000,
+      amountMicroUsd: 100_000_000,
       couponId: undefined,
       collectionMethod: "charge_automatically",
     });
@@ -509,7 +509,7 @@ describe("createProCreditPurchase", () => {
     await createProCreditPurchase({
       auth,
       stripeSubscriptionId: subscriptionId,
-      amountCents: 10000,
+      amountMicroUsd: 100_000_000,
       discountPercent: 20,
     });
 
@@ -531,7 +531,7 @@ describe("createProCreditPurchase", () => {
     await createProCreditPurchase({
       auth,
       stripeSubscriptionId: subscriptionId,
-      amountCents: 10000,
+      amountMicroUsd: 100_000_000,
     });
 
     const credits = await CreditResource.listAll(auth);
@@ -556,7 +556,7 @@ describe("createProCreditPurchase", () => {
     await createProCreditPurchase({
       auth,
       stripeSubscriptionId: subscriptionId,
-      amountCents: 10000,
+      amountMicroUsd: 100_000_000,
     });
 
     expect(finalizeInvoice).toHaveBeenCalledWith(mockInvoice);
@@ -575,7 +575,7 @@ describe("createProCreditPurchase", () => {
     const result = await createProCreditPurchase({
       auth,
       stripeSubscriptionId: subscriptionId,
-      amountCents: 10000,
+      amountMicroUsd: 100_000_000,
     });
 
     expect(result.isOk()).toBe(true);
@@ -599,7 +599,7 @@ describe("createProCreditPurchase", () => {
     const result = await createProCreditPurchase({
       auth,
       stripeSubscriptionId: subscriptionId,
-      amountCents: 10000,
+      amountMicroUsd: 100_000_000,
     });
 
     expect(result.isOk()).toBe(true);
@@ -616,7 +616,7 @@ describe("createProCreditPurchase", () => {
     const result = await createProCreditPurchase({
       auth,
       stripeSubscriptionId: subscriptionId,
-      amountCents: 10000,
+      amountMicroUsd: 100_000_000,
       discountPercent: 20,
     });
 
@@ -635,7 +635,7 @@ describe("createProCreditPurchase", () => {
     const result = await createProCreditPurchase({
       auth,
       stripeSubscriptionId: subscriptionId,
-      amountCents: 10000,
+      amountMicroUsd: 100_000_000,
     });
 
     expect(result.isErr()).toBe(true);
@@ -655,7 +655,7 @@ describe("createProCreditPurchase", () => {
     const result = await createProCreditPurchase({
       auth,
       stripeSubscriptionId: subscriptionId,
-      amountCents: 10000,
+      amountMicroUsd: 100_000_000,
     });
 
     expect(result.isErr()).toBe(true);
@@ -678,7 +678,7 @@ describe("createProCreditPurchase", () => {
     const result = await createProCreditPurchase({
       auth,
       stripeSubscriptionId: subscriptionId,
-      amountCents: 10000,
+      amountMicroUsd: 100_000_000,
     });
 
     expect(result.isErr()).toBe(true);

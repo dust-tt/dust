@@ -5,7 +5,7 @@ import { z } from "zod";
 import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import { createPlugin } from "@app/lib/api/poke/types";
 import {
-  calculateFreeCreditAmount,
+  calculateFreeCreditAmountMicroUsd,
   countEligibleUsersForFreeCredits,
 } from "@app/lib/credits/free";
 import {
@@ -134,8 +134,9 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
   populateAsyncArgs: async (auth) => {
     const workspace = auth.getNonNullableWorkspace();
     const userCount = await countEligibleUsersForFreeCredits(workspace);
-    const automaticCreditsCents = calculateFreeCreditAmount(userCount);
-    const automaticCreditsDollars = automaticCreditsCents / 100;
+    const automaticCreditsMicroUsd =
+      calculateFreeCreditAmountMicroUsd(userCount);
+    const automaticCreditsDollars = automaticCreditsMicroUsd / 1_000_000;
 
     const freeCreditsDescription = `Override automatic free credits. Current automatic amount: $${automaticCreditsDollars.toLocaleString()}`;
 
@@ -154,17 +155,18 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
     }
 
     const paygCapDollars =
-      config.paygCapCents !== null ? config.paygCapCents / 100 : 0;
+      config.paygCapMicroUsd !== null ? config.paygCapMicroUsd / 1_000_000 : 0;
 
     return new Ok({
-      freeCreditsOverrideEnabled: config.freeCreditCents !== null,
+      freeCreditsOverrideEnabled: config.freeCreditMicroUsd !== null,
       freeCreditsOverrideEnabledDescription: freeCreditsDescription,
       freeCreditsDollars:
-        config.freeCreditCents !== null
-          ? config.freeCreditCents / 100
+        config.freeCreditMicroUsd !== null
+          ? config.freeCreditMicroUsd / 1_000_000
           : undefined,
       defaultDiscountPercent: config.defaultDiscountPercent,
-      paygEnabled: config.paygCapCents !== null && config.paygCapCents > 0,
+      paygEnabled:
+        config.paygCapMicroUsd !== null && config.paygCapMicroUsd > 0,
       paygCapDollars,
     });
   },
@@ -211,9 +213,9 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
     }
 
     // When override is disabled, use automatic brackets algorithm
-    const freeCreditCents =
+    const freeCreditMicroUsd =
       freeCreditsOverrideEnabled && freeCreditsDollars
-        ? Math.round(freeCreditsDollars * 100)
+        ? Math.round(freeCreditsDollars * 1_000_000)
         : undefined;
 
     // Handle non-PAYG config fields first
@@ -222,7 +224,7 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
 
     if (existingConfig) {
       const updateResult = await existingConfig.updateConfiguration(auth, {
-        freeCreditCents,
+        freeCreditMicroUsd,
         defaultDiscountPercent,
       });
       if (updateResult.isErr()) {
@@ -232,9 +234,9 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
       const createResult = await ProgrammaticUsageConfigurationResource.makeNew(
         auth,
         {
-          freeCreditCents,
+          freeCreditMicroUsd,
           defaultDiscountPercent,
-          paygCapCents: null,
+          paygCapMicroUsd: null,
         }
       );
       if (createResult.isErr()) {
@@ -248,11 +250,11 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
         paygCapDollars !== undefined,
         "[Unreachable] PaygEnabled but paygCapDollars undefined"
       );
-      const paygCapCents = Math.round(paygCapDollars * 100);
+      const paygCapMicroUsd = Math.round(paygCapDollars * 1_000_000);
       const paygResult = await startOrResumeEnterprisePAYG({
         auth,
         stripeSubscription,
-        paygCapCents,
+        paygCapMicroUsd,
       });
       if (paygResult.isErr()) {
         return paygResult;
@@ -261,7 +263,7 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
       // Check if PAYG was previously enabled and needs to be stopped
       const refreshedConfig =
         await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
-      if (refreshedConfig?.paygCapCents !== null && stripeSubscription) {
+      if (refreshedConfig?.paygCapMicroUsd !== null && stripeSubscription) {
         const stopResult = await stopEnterprisePAYG({
           auth,
           stripeSubscription,

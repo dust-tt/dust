@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import {
-  calculateFreeCreditAmount,
+  calculateFreeCreditAmountMicroUsd,
   countEligibleUsersForFreeCredits,
   getCustomerStatus,
   grantFreeCreditsOnSubscriptionRenewal,
@@ -212,41 +212,51 @@ describe("countEligibleUsersForFreeCredits", () => {
   });
 });
 
-describe("calculateFreeCreditAmount", () => {
+describe("calculateFreeCreditAmountMicroUsd", () => {
   it("should return $5 per user for first 10 users", () => {
-    expect(calculateFreeCreditAmount(1)).toBe(500);
-    expect(calculateFreeCreditAmount(5)).toBe(2500);
+    expect(calculateFreeCreditAmountMicroUsd(1)).toBe(5_000_000);
+    expect(calculateFreeCreditAmountMicroUsd(5)).toBe(25_000_000);
   });
 
   it("should return $50 for exactly 10 users", () => {
-    expect(calculateFreeCreditAmount(10)).toBe(5000);
+    expect(calculateFreeCreditAmountMicroUsd(10)).toBe(50_000_000);
   });
 
   it("should apply $2 per user for users 11-50", () => {
-    expect(calculateFreeCreditAmount(11)).toBe(5000 + 200);
-    expect(calculateFreeCreditAmount(20)).toBe(5000 + 2000);
+    expect(calculateFreeCreditAmountMicroUsd(11)).toBe(50_000_000 + 2_000_000);
+    expect(calculateFreeCreditAmountMicroUsd(20)).toBe(50_000_000 + 20_000_000);
   });
 
   it("should return $130 for exactly 50 users (50 + 80)", () => {
-    expect(calculateFreeCreditAmount(50)).toBe(5000 + 8000);
+    expect(calculateFreeCreditAmountMicroUsd(50)).toBe(50_000_000 + 80_000_000);
   });
 
   it("should apply $1 per user for users 51-100", () => {
-    expect(calculateFreeCreditAmount(51)).toBe(5000 + 8000 + 100);
-    expect(calculateFreeCreditAmount(75)).toBe(5000 + 8000 + 2500);
+    expect(calculateFreeCreditAmountMicroUsd(51)).toBe(
+      50_000_000 + 80_000_000 + 1_000_000
+    );
+    expect(calculateFreeCreditAmountMicroUsd(75)).toBe(
+      50_000_000 + 80_000_000 + 25_000_000
+    );
   });
 
   it("should return $180 for exactly 100 users", () => {
-    expect(calculateFreeCreditAmount(100)).toBe(5000 + 8000 + 5000);
+    expect(calculateFreeCreditAmountMicroUsd(100)).toBe(
+      50_000_000 + 80_000_000 + 50_000_000
+    );
   });
 
   it("should cap at 100 users (ignore users beyond 100)", () => {
-    expect(calculateFreeCreditAmount(150)).toBe(5000 + 8000 + 5000);
-    expect(calculateFreeCreditAmount(1000)).toBe(5000 + 8000 + 5000);
+    expect(calculateFreeCreditAmountMicroUsd(150)).toBe(
+      50_000_000 + 80_000_000 + 50_000_000
+    );
+    expect(calculateFreeCreditAmountMicroUsd(1000)).toBe(
+      50_000_000 + 80_000_000 + 50_000_000
+    );
   });
 
   it("should return 0 for 0 users", () => {
-    expect(calculateFreeCreditAmount(0)).toBe(0);
+    expect(calculateFreeCreditAmountMicroUsd(0)).toBe(0);
   });
 });
 
@@ -297,8 +307,8 @@ describe("grantFreeCreditsOnSubscriptionRenewal", () => {
 
     await CreditResource.makeNew(auth, {
       type: "free",
-      initialAmountCents: 5000,
-      consumedAmountCents: 0,
+      initialAmountMicroUsd: 50_000_000,
+      consumedAmountMicroUsd: 0,
       invoiceOrLineItemId: idempotencyKey,
     });
 
@@ -342,13 +352,13 @@ describe("grantFreeCreditsOnSubscriptionRenewal", () => {
     expect(isEnterpriseSubscription).toHaveBeenCalledWith(subscription);
   });
 
-  it("should use programmatic config override when freeCreditCents is set", async () => {
+  it("should use programmatic config override when freeCreditMicroUsd is set", async () => {
     const configResult = await ProgrammaticUsageConfigurationResource.makeNew(
       auth,
       {
-        freeCreditCents: 25000,
+        freeCreditMicroUsd: 250_000_000,
         defaultDiscountPercent: 0,
-        paygCapCents: null,
+        paygCapMicroUsd: null,
       }
     );
     expect(configResult.isOk()).toBe(true);
@@ -362,7 +372,7 @@ describe("grantFreeCreditsOnSubscriptionRenewal", () => {
 
     expect(result.isOk()).toBe(true);
     const credits = await CreditResource.listAll(auth);
-    expect(credits[0].initialAmountCents).toBe(25000);
+    expect(credits[0].initialAmountMicroUsd).toBe(250_000_000);
   });
 
   it("should grant trial credit amount ($5) for trialing customers", async () => {
@@ -379,7 +389,7 @@ describe("grantFreeCreditsOnSubscriptionRenewal", () => {
 
     expect(result.isOk()).toBe(true);
     const credits = await CreditResource.listAll(auth);
-    expect(credits[0].initialAmountCents).toBe(500);
+    expect(credits[0].initialAmountMicroUsd).toBe(5_000_000);
   });
 
   it("should calculate bracket-based credits for paying customers", async () => {
@@ -394,7 +404,7 @@ describe("grantFreeCreditsOnSubscriptionRenewal", () => {
 
     expect(result.isOk()).toBe(true);
     const credits = await CreditResource.listAll(auth);
-    expect(credits[0].initialAmountCents).toBe(5000 + 3000);
+    expect(credits[0].initialAmountMicroUsd).toBe(50_000_000 + 30_000_000);
   });
 
   it("should create credit with correct expiration date (period end)", async () => {

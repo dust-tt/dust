@@ -58,9 +58,9 @@ export type WorkspaceProgrammaticCostPoint = {
     costMicroUsd: number;
     cumulatedCostMicroUsd?: number;
   }[];
-  totalInitialCreditsCents: number;
-  totalConsumedCreditsCents: number;
-  totalRemainingCreditsCents: number;
+  totalInitialCreditsMicroUsd: number;
+  totalConsumedCreditsMicroUsd: number;
+  totalRemainingCreditsMicroUsd: number;
 };
 
 export type AvailableGroup = {
@@ -100,39 +100,39 @@ function calculateCreditTotalsPerTimestamp(
 ): Map<
   number,
   {
-    totalInitialCreditsCents: number;
-    totalConsumedCreditsCents: number;
-    totalRemainingCreditsCents: number;
+    totalInitialCreditsMicroUsd: number;
+    totalConsumedCreditsMicroUsd: number;
+    totalRemainingCreditsMicroUsd: number;
   }
 > {
   const creditTotalsMap = new Map<
     number,
     {
-      totalInitialCreditsCents: number;
-      totalConsumedCreditsCents: number;
-      totalRemainingCreditsCents: number;
+      totalInitialCreditsMicroUsd: number;
+      totalConsumedCreditsMicroUsd: number;
+      totalRemainingCreditsMicroUsd: number;
     }
   >();
 
-  const totalInitialCreditsCents = credits.reduce(
-    (sum, credit) => sum + credit.initialAmountCents,
+  const totalInitialCreditsMicroUsd = credits.reduce(
+    (sum, credit) => sum + credit.initialAmountMicroUsd,
     0
   );
-  const totalConsumedCreditsCents = credits.reduce(
-    (sum, credit) => sum + credit.consumedAmountCents,
+  const totalConsumedCreditsMicroUsd = credits.reduce(
+    (sum, credit) => sum + credit.consumedAmountMicroUsd,
     0
   );
-  const totalRemainingCreditsCents = credits.reduce(
+  const totalRemainingCreditsMicroUsd = credits.reduce(
     (sum, credit) =>
-      sum + (credit.initialAmountCents - credit.consumedAmountCents),
+      sum + (credit.initialAmountMicroUsd - credit.consumedAmountMicroUsd),
     0
   );
 
   for (const timestamp of timestamps) {
     creditTotalsMap.set(timestamp, {
-      totalInitialCreditsCents,
-      totalConsumedCreditsCents,
-      totalRemainingCreditsCents,
+      totalInitialCreditsMicroUsd,
+      totalConsumedCreditsMicroUsd,
+      totalRemainingCreditsMicroUsd,
     });
   }
 
@@ -459,9 +459,11 @@ export async function handleProgrammaticCostRequest(
         return {
           timestamp,
           groups,
-          totalInitialCreditsCents: credit?.totalInitialCreditsCents ?? 0,
-          totalConsumedCreditsCents: credit?.totalConsumedCreditsCents ?? 0,
-          totalRemainingCreditsCents: credit?.totalRemainingCreditsCents ?? 0,
+          totalInitialCreditsMicroUsd: credit?.totalInitialCreditsMicroUsd ?? 0,
+          totalConsumedCreditsMicroUsd:
+            credit?.totalConsumedCreditsMicroUsd ?? 0,
+          totalRemainingCreditsMicroUsd:
+            credit?.totalRemainingCreditsMicroUsd ?? 0,
         };
       });
 

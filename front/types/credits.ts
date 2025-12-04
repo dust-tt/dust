@@ -12,9 +12,9 @@ export const CREDIT_EXPIRATION_DAYS = 365;
 export type CreditDisplayData = {
   sId: string;
   type: CreditType;
-  initialAmount: number;
-  remainingAmount: number;
-  consumedAmount: number;
+  initialAmountMicroUsd: number;
+  remainingAmountMicroUsd: number;
+  consumedAmountMicroUsd: number;
   startDate: number | null;
   expirationDate: number | null;
 };

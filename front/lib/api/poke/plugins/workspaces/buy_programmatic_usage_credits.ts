@@ -131,7 +131,7 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
       );
     }
 
-    const amountCents = Math.round(validatedArgs.amountDollars * 100);
+    const amountMicroUsd = Math.round(validatedArgs.amountDollars * 1_000_000);
 
     const startDate = new Date(validatedArgs.startDate);
     const expirationDate = new Date(validatedArgs.expirationDate);
@@ -156,7 +156,7 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
     const result = await createEnterpriseCreditPurchase({
       auth,
       stripeSubscriptionId: subscription.stripeSubscriptionId,
-      amountCents,
+      amountMicroUsd,
       discountPercent,
       startDate,
       expirationDate,

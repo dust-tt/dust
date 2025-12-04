@@ -148,14 +148,14 @@ export async function voidFailedProCreditPurchaseInvoice({
 export async function createEnterpriseCreditPurchase({
   auth,
   stripeSubscriptionId,
-  amountCents,
+  amountMicroUsd,
   discountPercent,
   startDate,
   expirationDate,
 }: {
   auth: Authenticator;
   stripeSubscriptionId: string;
-  amountCents: number;
+  amountMicroUsd: number;
   discountPercent?: number;
   startDate?: Date;
   expirationDate?: Date;
@@ -194,7 +194,7 @@ export async function createEnterpriseCreditPurchase({
 
   const invoiceResult = await makeCreditPurchaseOneOffInvoice({
     stripeSubscriptionId,
-    amountCents,
+    amountMicroUsd,
     couponId,
     collectionMethod: "send_invoice",
     daysUntilDue: ENTERPRISE_N30_PAYMENTS_DAYS,
@@ -205,7 +205,7 @@ export async function createEnterpriseCreditPurchase({
       {
         error: invoiceResult.error.error_message,
         workspaceId: workspace.sId,
-        amountCents,
+        amountMicroUsd,
         discountPercent,
       },
       "[Credit Purchase] Failed to create enterprise credit purchase invoice"
@@ -217,8 +217,8 @@ export async function createEnterpriseCreditPurchase({
 
   const credit = await CreditResource.makeNew(auth, {
     type: "committed",
-    initialAmountCents: amountCents,
-    consumedAmountCents: 0,
+    initialAmountMicroUsd: amountMicroUsd,
+    consumedAmountMicroUsd: 0,
     discount: discountPercent,
     invoiceOrLineItemId: invoice.id,
   });
@@ -253,7 +253,7 @@ export async function createEnterpriseCreditPurchase({
   logger.info(
     {
       workspaceId: workspace.sId,
-      amountCents,
+      amountMicroUsd,
       discountPercent,
       invoiceOrLineItemId: invoice.id,
       expirationDate: credit.expirationDate,
@@ -267,12 +267,12 @@ export async function createEnterpriseCreditPurchase({
 export async function createProCreditPurchase({
   auth,
   stripeSubscriptionId,
-  amountCents,
+  amountMicroUsd,
   discountPercent,
 }: {
   auth: Authenticator;
   stripeSubscriptionId: string;
-  amountCents: number;
+  amountMicroUsd: number;
   discountPercent?: number;
 }): Promise<Result<{ invoiceId: string; paymentUrl: string | null }, Error>> {
   if (discountPercent !== undefined && discountPercent > MAX_DISCOUNT_PERCENT) {
@@ -305,7 +305,7 @@ export async function createProCreditPurchase({
 
   const invoiceResult = await makeCreditPurchaseOneOffInvoice({
     stripeSubscriptionId,
-    amountCents,
+    amountMicroUsd,
     couponId,
     collectionMethod: "charge_automatically",
   });
@@ -315,7 +315,7 @@ export async function createProCreditPurchase({
       {
         error: invoiceResult.error.error_message,
         workspaceId: workspace.sId,
-        amountCents,
+        amountMicroUsd,
       },
       "[Credit Purchase] Failed to process credit purchase"
     );
@@ -326,8 +326,8 @@ export async function createProCreditPurchase({
 
   await CreditResource.makeNew(auth, {
     type: "committed",
-    initialAmountCents: amountCents,
-    consumedAmountCents: 0,
+    initialAmountMicroUsd: amountMicroUsd,
+    consumedAmountMicroUsd: 0,
     discount: discountPercent,
     invoiceOrLineItemId: invoice.id,
   });
@@ -340,7 +340,7 @@ export async function createProCreditPurchase({
         error: finalizeResult.error.error_message,
         workspaceId: workspace.sId,
         invoiceId: invoice.id,
-        amountCents,
+        amountMicroUsd,
       },
       "[Credit Purchase] Failed to finalize credit purchase invoice"
     );
@@ -354,7 +354,7 @@ export async function createProCreditPurchase({
         error: payResult.error.error_message,
         workspaceId: workspace.sId,
         invoiceId: invoice.id,
-        amountCents,
+        amountMicroUsd,
       },
       "[Credit Purchase] Failed to pay credit purchase invoice"
     );
@@ -366,7 +366,7 @@ export async function createProCreditPurchase({
   logger.info(
     {
       workspaceId: workspace.sId,
-      amountCents,
+      amountMicroUsd,
       discountPercent,
       invoiceId: invoice.id,
       requiresAction: paymentUrl !== null,

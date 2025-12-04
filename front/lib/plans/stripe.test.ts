@@ -344,7 +344,7 @@ describe("makeOneOffInvoice - Pro credit purchase", () => {
 
     const result = await makeCreditPurchaseOneOffInvoice({
       stripeSubscriptionId: "sub_pro",
-      amountCents: 10000,
+      amountMicroUsd: 100_000_000,
       collectionMethod: "charge_automatically",
     });
 
@@ -381,7 +381,7 @@ describe("makeOneOffInvoice - Pro credit purchase", () => {
 
     await makeCreditPurchaseOneOffInvoice({
       stripeSubscriptionId: "sub_pro",
-      amountCents: 10000,
+      amountMicroUsd: 100_000_000,
       couponId: "programmatic-usage-credits-once-20",
       collectionMethod: "charge_automatically",
     });
@@ -398,7 +398,7 @@ describe("makeOneOffInvoice - Pro credit purchase", () => {
 
     const result = await makeCreditPurchaseOneOffInvoice({
       stripeSubscriptionId: "sub_invalid",
-      amountCents: 10000,
+      amountMicroUsd: 100_000_000,
       collectionMethod: "charge_automatically",
     });
 
@@ -424,7 +424,7 @@ describe("makeOneOffInvoice - Enterprise credit purchase", () => {
 
     const result = await makeCreditPurchaseOneOffInvoice({
       stripeSubscriptionId: "sub_enterprise",
-      amountCents: 500000,
+      amountMicroUsd: 5_000_000_000,
       collectionMethod: "send_invoice",
       daysUntilDue: 30,
     });
@@ -658,7 +658,7 @@ describe("makeCreditsPAYGInvoice", () => {
         id: "sub_enterprise",
         customer: "cus_123",
       }),
-      amountCents: 15000,
+      amountMicroUsd: 150_000_000,
       periodStartSeconds: periodStart,
       periodEndSeconds: periodEnd,
       idempotencyKey: "credits-payg-arrears-test",
@@ -705,7 +705,7 @@ describe("makeCreditsPAYGInvoice", () => {
         id: "sub_enterprise",
         customer: "cus_123",
       }),
-      amountCents: 15000,
+      amountMicroUsd: 150_000_000,
       periodStartSeconds: NOV_2024_START_SECONDS,
       periodEndSeconds: DEC_2024_START_SECONDS,
       idempotencyKey: "credits-payg-arrears-duplicate",
@@ -726,7 +726,7 @@ describe("makeCreditsPAYGInvoice", () => {
         id: "sub_enterprise",
         customer: "cus_123",
       }),
-      amountCents: 15000,
+      amountMicroUsd: 150_000_000,
       periodStartSeconds: NOV_2024_START_SECONDS,
       periodEndSeconds: DEC_2024_START_SECONDS,
       idempotencyKey: "credits-payg-arrears-error",
