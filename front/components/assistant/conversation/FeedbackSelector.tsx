@@ -43,7 +43,6 @@ export function FeedbackSelector({
   owner,
 }: FeedbackSelectorProps) {
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-  const userMentionsEnabled = hasFeature("mentions_v2");
 
   const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
