@@ -10,3 +10,5 @@ DROP COLUMN IF EXISTS "freeCreditCents";
 
 ALTER TABLE "public"."programmatic_usage_configurations"
 DROP COLUMN IF EXISTS "paygCapCents";
+
+ALTER TABLE "public"."run_usages" DROP COLUMN IF EXISTS "costUsd";
