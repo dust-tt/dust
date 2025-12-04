@@ -13,7 +13,7 @@ import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/progr
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { assertNever, Err, Ok } from "@app/types";
 
 const BRACKET_1_USERS = 10;
 const BRACKET_1_MICRO_USD_PER_USER = 5_000_000; // $5
@@ -80,16 +80,19 @@ export function calculateFreeCreditAmountMicroUsd(userCount: number): number {
  * the number of users before billing cycle renewal.
  * Why 5 days ? At the current price of $30 / month,
  * pro-rated bump up from 5 days ago would be 5$.
+ *
+ * However, at minimum we always count 1 user.
  */
 export async function countEligibleUsersForFreeCredits(
   workspace: Parameters<typeof renderLightWorkspaceType>[0]["workspace"]
 ): Promise<number> {
   const cutoffDate = new Date(Date.now() - USER_COUNT_CUTOFF);
-  return MembershipResource.getMembersCountForWorkspace({
+  const count = await MembershipResource.getMembersCountForWorkspace({
     workspace: renderLightWorkspaceType({ workspace }),
     activeOnly: true,
     membershipSpan: { fromDate: cutoffDate, toDate: cutoffDate },
   });
+  return Math.max(1, count);
 }
 
 /**
@@ -196,20 +199,27 @@ export async function grantFreeCreditsOnSubscriptionRenewal({
       "[Free Credits] Using ProgrammaticUsageConfiguration override amount"
     );
   } else {
-    if (customerStatus === "trialing") {
-      creditAmountMicroUsd = TRIAL_CREDIT_MICRO_USD;
-    } else {
-      const userCount = await countEligibleUsersForFreeCredits(workspace);
-      creditAmountMicroUsd = calculateFreeCreditAmountMicroUsd(userCount);
-      logger.info(
-        {
-          workspaceId: workspaceSId,
-          userCount,
-          creditAmountMicroUsd,
-          customerStatus,
-        },
-        "[Free Credits] Calculated credit amount using brackets system"
-      );
+    switch (customerStatus) {
+      case "trialing":
+        creditAmountMicroUsd = TRIAL_CREDIT_MICRO_USD;
+        break;
+      case "paying":
+        const userCount = await countEligibleUsersForFreeCredits(workspace);
+        creditAmountMicroUsd = calculateFreeCreditAmountMicroUsd(userCount);
+        logger.info(
+          {
+            workspaceId: workspaceSId,
+            userCount,
+            creditAmountMicroUsd,
+            customerStatus,
+          },
+          "[Free Credits] Calculated credit amount using brackets system"
+        );
+        break;
+      case null:
+        throw new Error("Unreachable: Customer status is null");
+      default:
+        assertNever(customerStatus);
     }
 
     assert(
