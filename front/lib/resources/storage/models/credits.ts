@@ -20,7 +20,7 @@ export class CreditModel extends WorkspaceAwareModel<CreditModel> {
   declare expirationDate: Date | null;
   // Amount in microUsd (immutable after creation).
   declare initialAmountMicroUsd: number;
-  declare consumedAmountMicroUsd: number; // in cents
+  declare consumedAmountMicroUsd: number;
   // Discount percentage (0-100), nullable
   declare discount: number | null;
   // Stripe invoice ID or line item ID for idempotency.
@@ -56,16 +56,8 @@ CreditModel.init(
       allowNull: true,
       defaultValue: null,
     },
-    initialAmountCents: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
     initialAmountMicroUsd: {
       type: DataTypes.BIGINT,
-      allowNull: false,
-    },
-    consumedAmountCents: {
-      type: DataTypes.INTEGER,
       allowNull: false,
     },
     consumedAmountMicroUsd: {
