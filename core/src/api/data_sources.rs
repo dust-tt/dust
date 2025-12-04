@@ -1076,13 +1076,12 @@ pub async fn data_sources_documents_retrieve_text(
         (None, Some(l)) => text.chars().take(l).collect(),
         (None, None) => text.to_string(),
     };
-    let slice_char_count = text_slice.chars().count();
 
     let offset_limit_duration = utils::now() - offset_limit_start;
     info!(
         document_id = document_id,
         offset_limit_duration = offset_limit_duration,
-        slice_char_count = slice_char_count,
+        slice_char_count = text_slice.chars().count(),
         "[RETRIEVE_TEXT] Applied offset/limit"
     );
 
