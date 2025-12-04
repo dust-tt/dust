@@ -14,25 +14,30 @@ import {
   MagnifyingGlassIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { NodePathTooltip } from "@app/components/NodePathTooltip";
+import { getIcon } from "@app/components/resources/resources_icons";
 import { useDebounce } from "@app/hooks/useDebounce";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import {
   getLocationForDataSourceViewContentNode,
+  getVisualForContentNodeType,
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
 import { isFolder, isWebsite } from "@app/lib/data_sources";
+import type { ToolSearchNode } from "@app/lib/search/tools/types";
 import { getSpaceAccessPriority } from "@app/lib/spaces";
+import { useSearchTools } from "@app/lib/swr/search";
 import {
   useSpaces,
   useSpacesSearchWithInfiniteScroll,
 } from "@app/lib/swr/spaces";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { DataSourceViewContentNode, LightWorkspaceType } from "@app/types";
-import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
+import { asDisplayToolName, MIN_SEARCH_QUERY_SIZE } from "@app/types";
 
 interface InputBarAttachmentsPickerProps {
   owner: LightWorkspaceType;
@@ -71,6 +76,16 @@ export const InputBarAttachmentsPicker = ({
     minLength: MIN_SEARCH_QUERY_SIZE,
   });
 
+  const isToolNodeAttached = useCallback(
+    (node: ToolSearchNode) => {
+      const nodeKey = `${node.serverViewId}-${node.internalId}`;
+      return fileUploaderService.fileBlobs.some(
+        (blob) => blob.id === nodeKey || blob.filename === node.title + ".txt"
+      );
+    },
+    [fileUploaderService.fileBlobs]
+  );
+
   const { spaces, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
     disabled: !isOpen,
@@ -91,6 +106,22 @@ export const InputBarAttachmentsPicker = ({
     disabled: isSpacesLoading || !searchQuery,
     spaceIds: spaces.map((s) => s.sId),
     searchSourceUrls: true,
+  });
+
+  const { hasFeature } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+  const hasUniversalSearch = hasFeature("universal_search");
+
+  const {
+    searchResults: toolContentNodes,
+    isSearchLoading: isToolSearchLoading,
+    isSearchValidating: isToolSearchValidating,
+  } = useSearchTools({
+    owner,
+    query: searchQuery,
+    pageSize: PAGE_SIZE,
+    disabled: !hasUniversalSearch || isSpacesLoading || !searchQuery || !isOpen,
   });
 
   const spacesMap = useMemo(
@@ -119,7 +150,12 @@ export const InputBarAttachmentsPicker = ({
     });
   }, [searchResultNodes, spacesMap]);
 
-  const showLoader = isSearchLoading || isSearchValidating || isDebouncing;
+  const showLoader =
+    isSearchLoading ||
+    isSearchValidating ||
+    isToolSearchLoading ||
+    isToolSearchValidating ||
+    isDebouncing;
 
   return (
     <DropdownMenu
@@ -192,7 +228,11 @@ export const InputBarAttachmentsPicker = ({
         {searchQuery ? (
           <div ref={itemsContainerRef}>
             {pickedSpaceNodes.map((item, index) => (
-              <NodePathTooltip key={index} node={item} owner={owner}>
+              <NodePathTooltip
+                key={`knowledge-${index}`}
+                node={item}
+                owner={owner}
+              >
                 <DropdownMenuCheckboxItem
                   label={item.title}
                   icon={
@@ -231,11 +271,38 @@ export const InputBarAttachmentsPicker = ({
                 />
               </NodePathTooltip>
             ))}
-            {pickedSpaceNodes.length === 0 && !showLoader && (
-              <div className="flex items-center justify-center py-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
-                No results found
-              </div>
-            )}
+            {toolContentNodes.map((item, index) => {
+              const nodeKey = `${item.serverViewId}-${item.internalId}`;
+              const isAttached = isToolNodeAttached(item);
+
+              return (
+                <DropdownMenuCheckboxItem
+                  key={`tool-${nodeKey}-${index}`}
+                  label={item.title}
+                  icon={
+                    <DoubleIcon
+                      size="md"
+                      mainIcon={getVisualForContentNodeType(item.type)}
+                      secondaryIcon={getIcon(item.serverIcon)}
+                    />
+                  }
+                  description={asDisplayToolName(item.serverName)}
+                  checked={isAttached}
+                  disabled={isLoading}
+                  onCheckedChange={() => {
+                    // @todo. It should call an endpoit to upload the content of the doc to the conversation (useCase conversation attachments)
+                  }}
+                  truncateText
+                />
+              );
+            })}
+            {pickedSpaceNodes.length === 0 &&
+              toolContentNodes.length === 0 &&
+              !showLoader && (
+                <div className="flex items-center justify-center py-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  No results found
+                </div>
+              )}
             <InfiniteScroll
               nextPage={nextPage}
               hasMore={hasMore}
