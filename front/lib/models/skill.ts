@@ -9,7 +9,7 @@ import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspa
 export type SkillStatus = "active" | "archived";
 export type SkillScope = "private" | "workspace";
 
-export class SkillConfiguration extends WorkspaceAwareModel<SkillConfiguration> {
+export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -30,7 +30,7 @@ export class SkillConfiguration extends WorkspaceAwareModel<SkillConfiguration> 
   declare editorGroup: NonAttribute<GroupModel> | null;
 }
 
-SkillConfiguration.init(
+SkillConfigurationModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -81,21 +81,21 @@ SkillConfiguration.init(
 );
 
 // Skill config <> Author
-UserModel.hasMany(SkillConfiguration, {
+UserModel.hasMany(SkillConfigurationModel, {
   foreignKey: { name: "authorId", allowNull: false },
   onDelete: "RESTRICT",
 });
-SkillConfiguration.belongsTo(UserModel, {
+SkillConfigurationModel.belongsTo(UserModel, {
   foreignKey: { name: "authorId", allowNull: false },
   as: "author",
 });
 
 // Skill config <> Editor Group
-GroupModel.hasMany(SkillConfiguration, {
+GroupModel.hasMany(SkillConfigurationModel, {
   foreignKey: { name: "editorGroupId", allowNull: true },
   onDelete: "SET NULL",
 });
-SkillConfiguration.belongsTo(GroupModel, {
+SkillConfigurationModel.belongsTo(GroupModel, {
   foreignKey: { name: "editorGroupId", allowNull: true },
   as: "editorGroup",
 });

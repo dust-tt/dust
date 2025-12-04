@@ -7,7 +7,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { getFeatureFlags } from "@app/lib/auth";
 import type { Authenticator } from "@app/lib/auth";
 import type { SkillScope, SkillStatus } from "@app/lib/models/skill";
-import { SkillConfiguration } from "@app/lib/models/skill";
+import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
@@ -40,7 +40,9 @@ type PostSkillConfigurationRequestBody = t.TypeOf<
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PostSkillConfigurationResponseBody>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<PostSkillConfigurationResponseBody>
+  >,
   auth: Authenticator
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
@@ -77,7 +79,7 @@ async function handler(
       const body: PostSkillConfigurationRequestBody = bodyValidation.right;
 
       // Check for existing active skill with the same name
-      const existingSkill = await SkillConfiguration.findOne({
+      const existingSkill = await SkillConfigurationModel.findOne({
         where: {
           workspaceId: owner.id,
           name: body.name,
@@ -95,7 +97,7 @@ async function handler(
         });
       }
 
-      const skillConfiguration = await SkillConfiguration.create({
+      const skillConfiguration = await SkillConfigurationModel.create({
         workspaceId: owner.id,
         version: 0,
         status: "active",
