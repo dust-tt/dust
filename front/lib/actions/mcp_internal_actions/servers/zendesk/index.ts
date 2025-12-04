@@ -20,6 +20,10 @@ import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types";
 
+function isTrackedError(error: Error): boolean {
+  return !(error instanceof ZendeskApiError && error.isInvalidInput);
+}
+
 const ZENDESK_TOOL_NAME = "zendesk";
 
 function createServer(
@@ -72,14 +76,11 @@ function createServer(
         const ticketResult = await client.getTicket(ticketId);
 
         if (ticketResult.isErr()) {
-          const { error } = ticketResult;
-          const tracked = !(
-            error instanceof ZendeskApiError && error.isInvalidInput
-          );
           return new Err(
-            new MCPError(`Failed to retrieve ticket: ${error.message}`, {
-              tracked,
-            })
+            new MCPError(
+              `Failed to retrieve ticket: ${ticketResult.error.message}`,
+              { tracked: isTrackedError(ticketResult.error) }
+            )
           );
         }
 
@@ -94,16 +95,10 @@ function createServer(
           const metricsResult = await client.getTicketMetrics(ticketId);
 
           if (metricsResult.isErr()) {
-            const { error } = metricsResult;
-            const tracked = !(
-              error instanceof ZendeskApiError && error.isInvalidInput
-            );
             return new Err(
               new MCPError(
-                `Failed to retrieve ticket metrics: ${error.message}`,
-                {
-                  tracked,
-                }
+                `Failed to retrieve ticket metrics: ${metricsResult.error.message}`,
+                { tracked: isTrackedError(metricsResult.error) }
               )
             );
           }
@@ -115,14 +110,10 @@ function createServer(
           const commentsResult = await client.getTicketComments(ticketId);
 
           if (commentsResult.isErr()) {
-            const { error } = commentsResult;
-            const tracked = !(
-              error instanceof ZendeskApiError && error.isInvalidInput
-            );
             return new Err(
               new MCPError(
-                `Failed to retrieve ticket conversation: ${error.message}`,
-                { tracked }
+                `Failed to retrieve ticket conversation: ${commentsResult.error.message}`,
+                { tracked: isTrackedError(commentsResult.error) }
               )
             );
           }
@@ -201,13 +192,9 @@ function createServer(
         const result = await client.searchTickets(query, sortBy, sortOrder);
 
         if (result.isErr()) {
-          const { error } = result;
-          const tracked = !(
-            error instanceof ZendeskApiError && error.isInvalidInput
-          );
           return new Err(
-            new MCPError(`Failed to search tickets: ${error.message}`, {
-              tracked,
+            new MCPError(`Failed to search tickets: ${result.error.message}`, {
+              tracked: isTrackedError(result.error),
             })
           );
         }
@@ -275,12 +262,10 @@ function createServer(
         const result = await client.draftReply(ticketId, body);
 
         if (result.isErr()) {
-          const { error } = result;
-          const tracked = !(
-            error instanceof ZendeskApiError && error.isInvalidInput
-          );
           return new Err(
-            new MCPError(`Failed to draft reply: ${error.message}`, { tracked })
+            new MCPError(`Failed to draft reply: ${result.error.message}`, {
+              tracked: isTrackedError(result.error),
+            })
           );
         }
 
