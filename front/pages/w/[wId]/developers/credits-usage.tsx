@@ -400,7 +400,7 @@ export default function CreditsUsagePage({
 
         {shouldShowLowCreditsWarning && (
           <ContentMessage
-            title={`You're ${totalConsumed < totalCredits && "almost"} out of credits.`}
+            title={`You're ${totalConsumed < totalCredits ? "almost" : ""} out of credits.`}
             variant="warning"
             size="lg"
             icon={ExclamationCircleIcon}
