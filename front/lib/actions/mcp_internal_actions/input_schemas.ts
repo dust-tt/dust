@@ -156,6 +156,8 @@ export const ConfigurableToolInputSchemas = {
   Record<InternalToolInputMimeType, z.ZodType>,
   | typeof INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM
   | typeof INTERNAL_MIME_TYPES.TOOL_INPUT.LIST
+  // TODO(2025-12-04 pierre) Remove when sdkjs/types are updated
+  | typeof INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL
 >;
 
 // Type for the tool inputs that have a flexible schema, which are schemas that can vary between tools.
