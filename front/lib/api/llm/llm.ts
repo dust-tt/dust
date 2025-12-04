@@ -69,6 +69,35 @@ export abstract class LLM {
     this.traceId = createLLMTraceId(randomUUID());
   }
 
+  private async *completeStream({
+    conversation,
+    prompt,
+    specifications,
+  }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
+    let currentEvent: LLMEvent | null = null;
+    for await (const event of this.internalStream({
+      conversation,
+      prompt,
+      specifications,
+    })) {
+      currentEvent = event;
+      yield event;
+    }
+
+    if (currentEvent?.type !== "success" && currentEvent?.type !== "error") {
+      currentEvent = new EventError(
+        {
+          type: "stream_error",
+          message: `LLM did not complete successfully for ${this.metadata.clientId}/${this.metadata.modelId}.`,
+          isRetryable: true,
+          originalError: { lastEventType: currentEvent?.type },
+        },
+        this.metadata
+      );
+      yield currentEvent;
+    }
+  }
+
   /**
    * Private method that wraps the abstract internalStream() with tracing functionality
    */
@@ -78,7 +107,7 @@ export abstract class LLM {
     specifications,
   }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
     if (!this.context) {
-      yield* this.internalStream({ conversation, prompt, specifications });
+      yield* this.completeStream({ conversation, prompt, specifications });
       return;
     }
 
@@ -135,7 +164,7 @@ export abstract class LLM {
     // TODO(LLM-Router 13/11/2025): Temporary logs, TBRemoved
     let currentEvent: LLMEvent | null = null;
     try {
-      for await (const event of this.internalStream({
+      for await (const event of this.completeStream({
         conversation,
         prompt,
         specifications,
@@ -153,20 +182,6 @@ export abstract class LLM {
         }
 
         yield event;
-      }
-
-      if (currentEvent?.type !== "success" && currentEvent?.type !== "error") {
-        currentEvent = new EventError(
-          {
-            type: "stream_error",
-            message: `LLM did not complete successfully for ${this.metadata.clientId}/${this.metadata.modelId}.`,
-            isRetryable: true,
-            originalError: { lastEventType: currentEvent?.type },
-          },
-          this.metadata
-        );
-        buffer.addEvent(currentEvent);
-        yield currentEvent;
       }
     } finally {
       if (currentEvent?.type === "error") {
