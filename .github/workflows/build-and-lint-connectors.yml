@@ -66,20 +66,20 @@ jobs:
           EOF
           )
           npm run knip -- --include unlisted || (echo "You have some unlisted dependencies. **Please add them to the package.json**\n\n${explanations}" >&2; false)
-#      - name: Knip - unused dependencies & dev dependencies
-#        working-directory: front
-#        run: |
-#          explanations=$(cat << 'EOF'
-#
-#          Keeping unused (dev) dependencies is problematic because:
-#
-#          1. Security surface: More packages = more potential vulnerabilities to monitor and patch, even if you're not using them
-#          2. Install time: Slows down `npm install` for everyone on the team and in CI/CD pipelines
-#          3. Confusion: Makes it unclear what tools/libraries are actually needed for development, hindering onboarding
-#          4. Maintenance burden: You'll waste time updating packages you don't actually use
-#          EOF
-#          )
-#          npm run knip -- --include dependencies,devDependencies || (echo "You have some unused dependencies. **Please remove them from the package.json, or add them in the knip.ts file in the ignoreDependencies array**\n\n${explanations}" >&2; false)
+      - name: Knip - unused dependencies & dev dependencies
+        working-directory: connectors
+        run: |
+          explanations=$(cat << 'EOF'
+
+          Keeping unused (dev) dependencies is problematic because:
+
+          1. Security surface: More packages = more potential vulnerabilities to monitor and patch, even if you're not using them
+          2. Install time: Slows down `npm install` for everyone on the team and in CI/CD pipelines
+          3. Confusion: Makes it unclear what tools/libraries are actually needed for development, hindering onboarding
+          4. Maintenance burden: You'll waste time updating packages you don't actually use
+          EOF
+          )
+          npm run knip -- --include dependencies,devDependencies || (echo "You have some unused dependencies. **Please remove them from the package.json, or add them in the knip.ts file in the ignoreDependencies array**\n\n${explanations}" >&2; false)
 #      - name: Knip - unused files
 #        working-directory: front
 #        run: |
