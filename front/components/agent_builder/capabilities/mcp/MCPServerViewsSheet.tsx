@@ -52,7 +52,6 @@ import { ChildAgentSection } from "@app/components/agent_builder/capabilities/sh
 import { DustAppSection } from "@app/components/agent_builder/capabilities/shared/DustAppSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
 import { NameSection } from "@app/components/agent_builder/capabilities/shared/NameSection";
-import { ReasoningModelSection } from "@app/components/agent_builder/capabilities/shared/ReasoningModelSection";
 import { SecretSection } from "@app/components/agent_builder/capabilities/shared/SecretSection";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
@@ -72,9 +71,7 @@ import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { useModels } from "@app/lib/swr/models";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { DEFAULT_REASONING_MODEL_ID } from "@app/types";
 
 const TOP_MCP_SERVER_VIEWS = [
   "web_search_&_browse",
@@ -144,7 +141,6 @@ export function MCPServerViewsSheet({
   const confirm = React.useContext(ConfirmContext);
   const { owner } = useAgentBuilderContext();
   const sendNotification = useSendNotification();
-  const { reasoningModels } = useModels({ owner });
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const {
     mcpServerViews: allMcpServerViews,
@@ -170,8 +166,6 @@ export function MCPServerViewsSheet({
     useState<MCPServerViewTypeWithLabel | null>(null);
   const [infoMCPServerView, setInfoMCPServerView] =
     useState<MCPServerViewType | null>(null);
-
-  const hasReasoningModel = reasoningModels.length > 0;
 
   const shouldFilterServerView = useCallback(
     (view: MCPServerViewTypeWithLabel, actions: AgentBuilderAction[]) => {
@@ -215,20 +209,8 @@ export function MCPServerViewsSheet({
       (view) => !shouldFilterServerView(view, selectedActions)
     );
 
-    if (hasReasoningModel) {
-      return filteredList;
-    }
-
-    // You should not be able to select Reasoning if there is no reasoning model available.
-    return filteredList.filter(
-      (view) => !getMCPServerRequirements(view).requiresReasoningConfiguration
-    );
-  }, [
-    topMCPServerViews,
-    selectedActions,
-    hasReasoningModel,
-    shouldFilterServerView,
-  ]);
+    return filteredList;
+  }, [topMCPServerViews, selectedActions, shouldFilterServerView]);
 
   const selectableNonTopMCPServerViews = useMemo(
     () =>
@@ -351,35 +333,11 @@ export function MCPServerViewsSheet({
       const action = getDefaultMCPAction(mcpServerView);
 
       let configuredAction = action;
-      if (
-        action.type === "MCP" &&
-        requirements.requiresReasoningConfiguration
-      ) {
-        if (reasoningModels.length === 0) {
-          sendNotification({
-            title: "No reasoning model available",
-            description:
-              "Please add a reasoning model to your workspace to be able to use this tool",
-            type: "error",
-          });
-          return;
-        }
-
-        const defaultReasoningModel =
-          reasoningModels.find(
-            (model) => model.modelId === DEFAULT_REASONING_MODEL_ID
-          ) ?? reasoningModels[0];
-
+      if (action.type === "MCP") {
         configuredAction = {
           ...action,
           configuration: {
             ...action.configuration,
-            reasoningModel: {
-              modelId: defaultReasoningModel.modelId,
-              providerId: defaultReasoningModel.providerId,
-              temperature: null,
-              reasoningEffort: null,
-            },
           },
         };
 
@@ -568,10 +526,6 @@ export function MCPServerViewsSheet({
                     placeholder="My tool name…"
                     triggerValidationOnChange
                   />
-                )}
-
-                {requirements.requiresReasoningConfiguration && (
-                  <ReasoningModelSection />
                 )}
 
                 {requirements.requiresChildAgentConfiguration && (

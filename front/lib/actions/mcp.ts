@@ -24,7 +24,6 @@ import type {
   DustAppRunConfigurationType,
   ModelId,
   PersonalAuthenticationRequiredErrorContent,
-  ReasoningModelConfigurationType,
   TimeFrame,
   ToolErrorEvent,
 } from "@app/types";
@@ -58,7 +57,6 @@ export type ServerSideMCPServerConfigurationType =
     dataSources: DataSourceConfiguration[] | null;
     tables: TableDataSourceConfiguration[] | null;
     childAgentId: string | null;
-    reasoningModel: ReasoningModelConfigurationType | null;
     timeFrame: TimeFrame | null;
     jsonSchema: JSONSchema | null;
     additionalConfiguration: AdditionalConfigurationType;

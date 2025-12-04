@@ -198,7 +198,6 @@ function makeServerSideMCPToolConfigurations(
     tables: config.tables,
     availability: tool.availability,
     childAgentId: config.childAgentId,
-    reasoningModel: config.reasoningModel,
     timeFrame: config.timeFrame,
     jsonSchema: config.jsonSchema,
     additionalConfiguration: config.additionalConfiguration,

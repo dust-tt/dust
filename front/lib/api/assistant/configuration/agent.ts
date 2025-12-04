@@ -30,7 +30,6 @@ import {
   AgentChildAgentConfiguration,
   AgentMCPServerConfiguration,
 } from "@app/lib/models/agent/actions/mcp";
-import { AgentReasoningConfiguration } from "@app/lib/models/agent/actions/reasoning";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/agent/actions/tables_query";
 import {
   AgentConfiguration,
@@ -779,7 +778,6 @@ export async function createGenericAgentConfiguration(
       description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
       mcpServerViewId: webSearchMCPServerView.sId,
       dataSources: null,
-      reasoningModel: null,
       tables: null,
       childAgentId: null,
       additionalConfiguration: {},
@@ -813,7 +811,6 @@ export async function createGenericAgentConfiguration(
           workspaceId: owner.sId,
           filter: { parents: null, tags: null },
         })),
-        reasoningModel: null,
         tables: null,
         childAgentId: null,
         additionalConfiguration: {},
@@ -896,7 +893,6 @@ export async function createGenericAgentConfiguration(
           description: `Query any of the tables available in the "${dsView.dataSource.name}" ${warehouseType} data warehouse.`,
           mcpServerViewId: queryTablesV2View.sId,
           dataSources: null,
-          reasoningModel: null,
           tables: tableConfigs,
           childAgentId: null,
           additionalConfiguration: {},
@@ -968,7 +964,6 @@ export async function createGenericAgentConfiguration(
       description: `Run the ${subAgentConfiguration.name} sub-agent. The sub-agent has access to the same tools as the main agent, except for the ability to spawn sub-agents.`,
       mcpServerViewId: runAgentMCPServerView.sId,
       dataSources: null,
-      reasoningModel: null,
       tables: null,
       childAgentId: subAgentConfiguration.sId,
       additionalConfiguration: {},
@@ -1136,14 +1131,6 @@ export async function unsafeHardDeleteAgentConfiguration(
       });
 
       await AgentTablesQueryConfigurationTable.destroy({
-        where: {
-          workspaceId,
-          mcpServerConfigurationId: { [Op.in]: mcpIds },
-        },
-        transaction: t,
-      });
-
-      await AgentReasoningConfiguration.destroy({
         where: {
           workspaceId,
           mcpServerConfigurationId: { [Op.in]: mcpIds },

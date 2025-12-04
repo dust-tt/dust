@@ -32,14 +32,8 @@ import {
   iterateOverSchemaPropertiesRecursive,
   setValueAtPath,
 } from "@app/lib/utils/json_schemas";
-import logger from "@app/logger/logger";
 import type { WhitelistableFeature, WorkspaceType } from "@app/types";
-import {
-  assertNever,
-  isProviderWhitelisted,
-  isString,
-  removeNulls,
-} from "@app/types";
+import { assertNever, isString, removeNulls } from "@app/types";
 
 function getDataSourceURI(config: DataSourceConfiguration): string {
   const { workspaceId, sId, dataSourceViewId, filter } = config;
@@ -117,47 +111,6 @@ function generateConfiguredInput({
         uri: `agent://dust/w/${owner.sId}/agents/${childAgentId}`,
         mimeType,
       };
-    }
-
-    case INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL: {
-      let { reasoningModel } = actionConfiguration;
-
-      if (!reasoningModel) {
-        // If no reasoning model is provided, we fallback to a default reasoning model.
-        // This situation should never happen but it seems we have a bug somewhere.
-        // However, the whole reasoning "tool" will be removed very soon so we can afford to be lenient here.
-
-        if (isProviderWhitelisted(owner, "openai")) {
-          reasoningModel = {
-            modelId: "o4-mini",
-            providerId: "openai",
-            temperature: 0.7,
-            reasoningEffort: "medium",
-          };
-          logger.warn(
-            {
-              workspaceId: owner.sId,
-              agentConfigurationId: actionConfiguration.sId,
-            },
-            "No reasoning model provided, falling back to o4-mini."
-          );
-        } else if (isProviderWhitelisted(owner, "google_ai_studio")) {
-          reasoningModel = {
-            modelId: "gemini-2.5-pro",
-            providerId: "google_ai_studio",
-            temperature: 0.7,
-            reasoningEffort: "light",
-          };
-        }
-      }
-
-      assert(
-        reasoningModel,
-        "Unreachable: missing reasoning model configuration."
-      );
-      const { modelId, providerId, temperature, reasoningEffort } =
-        reasoningModel;
-      return { modelId, providerId, temperature, reasoningEffort, mimeType };
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME: {
@@ -498,7 +451,6 @@ export interface MCPServerRequirements {
   requiresDataWarehouseConfiguration: boolean;
   requiresTableConfiguration: boolean;
   requiresChildAgentConfiguration: boolean;
-  requiresReasoningConfiguration: boolean;
   mayRequireTimeFrameConfiguration: boolean;
   mayRequireJsonSchemaConfiguration: boolean;
   // TODO(2025-10-10 aubin): align type with enums and lists by using Records.
@@ -549,7 +501,6 @@ export function getMCPServerRequirements(
       requiresDataWarehouseConfiguration: false,
       requiresTableConfiguration: false,
       requiresChildAgentConfiguration: false,
-      requiresReasoningConfiguration: false,
       mayRequireTimeFrameConfiguration: false,
       mayRequireJsonSchemaConfiguration: false,
       requiredStrings: [],
@@ -593,14 +544,6 @@ export function getMCPServerRequirements(
       findPathsToConfiguration({
         mcpServerView,
         mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT,
-      })
-    ).length > 0;
-
-  const requiresReasoningConfiguration =
-    Object.keys(
-      findPathsToConfiguration({
-        mcpServerView,
-        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL,
       })
     ).length > 0;
 
@@ -808,7 +751,6 @@ export function getMCPServerRequirements(
     requiresDataWarehouseConfiguration,
     requiresTableConfiguration,
     requiresChildAgentConfiguration,
-    requiresReasoningConfiguration,
     mayRequireTimeFrameConfiguration,
     mayRequireJsonSchemaConfiguration,
     requiredStrings,
@@ -823,7 +765,6 @@ export function getMCPServerRequirements(
       !requiresDataWarehouseConfiguration &&
       !requiresTableConfiguration &&
       !requiresChildAgentConfiguration &&
-      !requiresReasoningConfiguration &&
       !mayRequireTimeFrameConfiguration &&
       !mayRequireJsonSchemaConfiguration &&
       !requiredStrings.some((c) => c.default === null) &&

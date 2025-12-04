@@ -3,7 +3,6 @@ import {
   AgentChildAgentConfiguration,
   AgentMCPServerConfiguration,
 } from "@app/lib/models/agent/actions/mcp";
-import { AgentReasoningConfiguration } from "@app/lib/models/agent/actions/reasoning";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/agent/actions/tables_query";
 import { AgentConfiguration } from "@app/lib/models/agent/agent";
 import { Mention } from "@app/lib/models/agent/conversation";
@@ -69,11 +68,6 @@ async function deleteDraftAgentConfigurationAndRelatedResources(
     },
   });
 
-  await AgentReasoningConfiguration.destroy({
-    where: {
-      mcpServerConfigurationId: mcpServerConfigurations.map((r) => r.id),
-    },
-  });
 
   await AgentChildAgentConfiguration.destroy({
     where: {

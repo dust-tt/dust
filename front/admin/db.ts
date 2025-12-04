@@ -9,7 +9,6 @@ import {
 } from "@app/lib/models/agent/actions/mcp";
 import { MCPServerConnection } from "@app/lib/models/agent/actions/mcp_server_connection";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
-import { AgentReasoningConfiguration } from "@app/lib/models/agent/actions/reasoning";
 import { RemoteMCPServerModel } from "@app/lib/models/agent/actions/remote_mcp_server";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/agent/actions/tables_query";
@@ -163,7 +162,6 @@ async function main() {
 
   await AgentMCPServerConfiguration.sync({ alter: true });
   await AgentTablesQueryConfigurationTable.sync({ alter: true });
-  await AgentReasoningConfiguration.sync({ alter: true });
 
   await AgentDataSourceConfiguration.sync({ alter: true });
 
