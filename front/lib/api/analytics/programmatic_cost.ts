@@ -263,9 +263,14 @@ export async function handleProgrammaticCostRequest(
       } = q.data;
 
       // Get selected date range using shared billing cycle utility
+      // selectedMonth is "YYYY-MM", so new Date(selectedMonth) creates day 1 of that month.
+      // We need to set the day to billingCycleStartDay to get the correct billing cycle.
       const referenceDate = selectedMonth
         ? new Date(selectedMonth)
         : new Date();
+      if (selectedMonth) {
+        referenceDate.setUTCDate(billingCycleStartDay);
+      }
       const { cycleStart: periodStart, cycleEnd: periodEnd } =
         getBillingCycleFromDay(billingCycleStartDay, referenceDate, true);
 

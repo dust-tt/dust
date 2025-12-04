@@ -182,7 +182,11 @@ export function BaseProgrammaticCostChart({
   >({});
 
   const now = new Date();
+  // selectedMonth is "YYYY-MM", so new Date(selectedMonth) creates day 1 of that month.
+  // To get the correct billing cycle, we need a date within that cycle, so we set
+  // the day to billingCycleStartDay.
   const currentDate = new Date(selectedMonth);
+  currentDate.setDate(billingCycleStartDay);
 
   // Calculate the billing cycle for the selected month
   const billingCycle = getBillingCycleFromDay(
@@ -199,7 +203,10 @@ export function BaseProgrammaticCostChart({
     });
 
   // Format period label based on billing cycle
-  const periodLabel = `${formatDate(billingCycle.cycleStart)} → ${formatDate(billingCycle.cycleEnd)}`;
+  // cycleEnd is exclusive (first day of next cycle), so we subtract 1 day for display
+  const inclusiveEndDate = new Date(billingCycle.cycleEnd);
+  inclusiveEndDate.setDate(inclusiveEndDate.getDate() - 1);
+  const periodLabel = `${formatDate(billingCycle.cycleStart)} → ${formatDate(inclusiveEndDate)}`;
 
   // Calculate next and previous period dates
   const nextPeriodDate = new Date(
@@ -621,8 +628,19 @@ export function ProgrammaticCostChart({
     {}
   );
 
+  // Initialize selectedMonth to a date within the current billing cycle.
+  // Using just formatMonth(now) would create a date on the 1st of the month,
+  // which may fall in the previous billing cycle if billingCycleStartDay > 1.
+  // By using the billing cycle's start date, we ensure we're in the correct cycle.
   const now = new Date();
-  const [selectedMonth, setSelectedMonth] = useState<string>(formatMonth(now));
+  const currentBillingCycle = getBillingCycleFromDay(
+    billingCycleStartDay,
+    now,
+    false
+  );
+  const [selectedMonth, setSelectedMonth] = useState<string>(
+    formatMonth(currentBillingCycle.cycleStart)
+  );
 
   const {
     programmaticCostData,

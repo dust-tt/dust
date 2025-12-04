@@ -234,7 +234,9 @@ function UsageSection({
         {billingCycle && (
           <Page.P variant="secondary">
             {formatDateShort(billingCycle.cycleStart)} →{" "}
-            {formatDateShort(billingCycle.cycleEnd)}
+            {formatDateShort(
+              new Date(billingCycle.cycleEnd.getTime() - 24 * 60 * 60 * 1000)
+            )}
           </Page.P>
         )}
       </div>
