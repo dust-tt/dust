@@ -1,3 +1,4 @@
+import { CollapsibleComponent } from "@dust-tt/sparkle";
 import type { GetStaticProps } from "next";
 import Head from "next/head";
 import Image from "next/image";
@@ -22,6 +23,16 @@ import type {
 import { classNames } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
+function sortCompanySizes(sizes: string[]): string[] {
+  return [...sizes].sort((a, b) => {
+    const getFirstNumber = (size: string): number => {
+      const match = size.match(/^(\d+)/);
+      return match ? parseInt(match[1], 10) : 0;
+    };
+    return getFirstNumber(a) - getFirstNumber(b);
+  });
+}
+
 function extractFilterOptions(
   stories: CustomerStorySummary[]
 ): CustomerStoryFilterOptions {
@@ -44,7 +55,7 @@ function extractFilterOptions(
   return {
     industries: [...industries].sort(),
     departments: [...departments].sort(),
-    companySizes: [...companySizes].sort(),
+    companySizes: sortCompanySizes([...companySizes]),
   };
 }
 
@@ -105,6 +116,7 @@ interface FilterSectionProps {
   options: readonly string[];
   selected: string[];
   onChange: (selected: string[]) => void;
+  defaultOpen?: boolean;
 }
 
 function FilterSection({
@@ -112,6 +124,7 @@ function FilterSection({
   options,
   selected,
   onChange,
+  defaultOpen = false,
 }: FilterSectionProps) {
   const handleToggle = useCallback(
     (option: string, checked: boolean) => {
@@ -126,17 +139,25 @@ function FilterSection({
 
   return (
     <div className="mb-6">
-      <h3 className="mb-3 text-sm font-semibold text-foreground">{title}</h3>
-      <div className="flex flex-col gap-2">
-        {options.map((option) => (
-          <FilterCheckbox
-            key={option}
-            label={option}
-            checked={selected.includes(option)}
-            onChange={(checked) => handleToggle(option, checked)}
-          />
-        ))}
-      </div>
+      <CollapsibleComponent
+        rootProps={{ defaultOpen }}
+        triggerProps={{
+          label: title,
+          variant: "secondary",
+        }}
+        contentChildren={
+          <div className="flex flex-col gap-2">
+            {options.map((option) => (
+              <FilterCheckbox
+                key={option}
+                label={option}
+                checked={selected.includes(option)}
+                onChange={(checked) => handleToggle(option, checked)}
+              />
+            ))}
+          </div>
+        }
+      />
     </div>
   );
 }
@@ -283,6 +304,7 @@ export default function CustomerStoriesListing({
                 options={filterOptions.industries}
                 selected={selectedIndustries}
                 onChange={(values) => updateFilters("industry", values)}
+                defaultOpen={true}
               />
 
               <FilterSection
