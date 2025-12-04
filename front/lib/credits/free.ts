@@ -157,22 +157,19 @@ export async function grantFreeCreditsOnSubscriptionRenewal({
 
   // Enterprise subscriptions are always eligible
   const isEnterprise = isEnterpriseSubscription(stripeSubscription);
-  let customerStatus: CustomerStatus | null = null;
+  const customerStatus: CustomerStatus | null = isEnterprise
+    ? "paying"
+    : await getCustomerStatus(stripeSubscription);
 
-  if (!isEnterprise) {
-    customerStatus = await getCustomerStatus(stripeSubscription);
-    if (!customerStatus) {
-      logger.info(
-        {
-          workspaceId: workspaceSId,
-          subscriptionId: stripeSubscription.id,
-        },
-        "[Free Credits] Pro subscription not eligible for free credits (subscription payment too old or missing)"
-      );
-      return new Err(
-        new Error("Pro subscription not eligible for free credits")
-      );
-    }
+  if (!customerStatus) {
+    logger.info(
+      {
+        workspaceId: workspaceSId,
+        subscriptionId: stripeSubscription.id,
+      },
+      "[Free Credits] Pro subscription not eligible for free credits (subscription payment too old or missing)"
+    );
+    return new Err(new Error("Pro subscription not eligible for free credits"));
   }
 
   logger.info(
@@ -216,8 +213,6 @@ export async function grantFreeCreditsOnSubscriptionRenewal({
           "[Free Credits] Calculated credit amount using brackets system"
         );
         break;
-      case null:
-        throw new Error("Unreachable: Customer status is null");
       default:
         assertNever(customerStatus);
     }
