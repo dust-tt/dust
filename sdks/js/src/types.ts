@@ -691,6 +691,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "slack_message_splitting"
   | "slab_mcp"
   | "slideshow"
+  | "universal_search"
   | "usage_data_api"
   | "web_summarization"
   | "xai_feature"
