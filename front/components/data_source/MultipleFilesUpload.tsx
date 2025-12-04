@@ -112,8 +112,8 @@ export const MultipleFilesUpload = ({
       // Check for duplicates unless explicitly skipped
       if (!skipDuplicateCheck) {
         const existingTitles = new Set(existingNodes.map((node) => node.title));
-        const duplicates = files.filter((file) =>
-          existingTitles.has(file.name)
+        const duplicates = files.filter(
+          (file) => existingTitles.has(file.name) && !isDelimitedFile(file)
         );
 
         if (duplicates.length > 0) {
