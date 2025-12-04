@@ -6,9 +6,10 @@ import {
   BUTTON_VARIANTS,
   type ButtonVariantType,
 } from "@sparkle/components/Button";
-import type { ButtonGroupVariantType } from "@sparkle/components/ButtonGroup";
-
-import type { ButtonGroupItem } from "@sparkle/components/ButtonGroup";
+import type {
+  ButtonGroupItem,
+  ButtonGroupVariantType,
+} from "@sparkle/components/ButtonGroup";
 
 import {
   ArrowPathIcon,
