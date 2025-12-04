@@ -12,6 +12,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Area,
   AreaChart,
+  Bar,
+  BarChart,
   CartesianGrid,
   Line,
   LineChart,
@@ -43,9 +45,12 @@ import type {
 import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import { useWorkspaceProgrammaticCost } from "@app/lib/swr/workspaces";
 
+type ChartType = "bar" | "line";
+
 interface ProgrammaticCostChartProps {
   workspaceId: string;
   billingCycleStartDay: number;
+  chartType?: ChartType;
 }
 
 export interface BaseProgrammaticCostChartProps {
@@ -61,6 +66,7 @@ export interface BaseProgrammaticCostChartProps {
   selectedMonth: string;
   setSelectedMonth: (month: string) => void;
   billingCycleStartDay: number;
+  chartType?: ChartType;
 }
 
 type ChartDataPoint = {
@@ -175,6 +181,7 @@ export function BaseProgrammaticCostChart({
   selectedMonth,
   setSelectedMonth,
   billingCycleStartDay,
+  chartType = "bar",
 }: BaseProgrammaticCostChartProps) {
   // Cache labels for each groupBy type so they persist when switching modes
   const [labelCache, setLabelCache] = useState<
@@ -371,7 +378,11 @@ export function BaseProgrammaticCostChart({
     return dataPoint;
   });
 
-  const ChartComponent = groupBy ? AreaChart : LineChart;
+  const ChartComponent = groupBy
+    ? AreaChart
+    : chartType === "bar"
+      ? BarChart
+      : LineChart;
 
   // Check if any filters are applied
   const hasFilters = useMemo(() => {
@@ -596,6 +607,14 @@ export function BaseProgrammaticCostChart({
               strokeWidth={2}
               className={colorClassName}
             />
+          ) : chartType === "bar" ? (
+            <Bar
+              key={groupKey}
+              dataKey={groupKey}
+              name={groupKey}
+              fill="currentColor"
+              className={colorClassName}
+            />
           ) : (
             <Line
               key={groupKey}
@@ -622,6 +641,7 @@ export function BaseProgrammaticCostChart({
 export function ProgrammaticCostChart({
   workspaceId,
   billingCycleStartDay,
+  chartType = "bar",
 }: ProgrammaticCostChartProps) {
   const [groupBy, setGroupBy] = useState<GroupByType | undefined>(undefined);
   const [filter, setFilter] = useState<Partial<Record<GroupByType, string[]>>>(
@@ -666,6 +686,7 @@ export function ProgrammaticCostChart({
       selectedMonth={selectedMonth}
       setSelectedMonth={setSelectedMonth}
       billingCycleStartDay={billingCycleStartDay}
+      chartType={chartType}
     />
   );
 }
