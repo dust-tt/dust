@@ -9,6 +9,8 @@ import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers"
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import type {
+  ToolDownloadParams,
+  ToolDownloadResult,
   ToolSearchParams,
   ToolSearchRawNode,
 } from "@app/lib/search/tools/types";
@@ -381,7 +383,7 @@ export async function search({
   const res = await drive.files.list({
     q: searchQuery,
     pageSize: Math.min(pageSize, 100),
-    fields: "files(id, name, mimeType)",
+    fields: "files(id, name, mimeType, webViewLink)",
     includeItemsFromAllDrives: true,
     supportsAllDrives: true,
     corpora: "allDrives",
@@ -404,8 +406,69 @@ export async function search({
       mimeType,
       title: file.name ?? "Untitled",
       type,
+      sourceUrl: file.webViewLink ?? null,
     };
   });
+}
+
+export async function download({
+  accessToken,
+  internalId,
+}: ToolDownloadParams): Promise<ToolDownloadResult> {
+  const drive = getClient(accessToken);
+
+  // Get file metadata.
+  const fileMetadata = await drive.files.get({
+    fileId: internalId,
+    supportsAllDrives: true,
+    fields: "id, name, mimeType, size",
+  });
+
+  const file = fileMetadata.data;
+  if (!file.mimeType || !file.name) {
+    throw new Error("File metadata is incomplete.");
+  }
+
+  // Check file size for non-Google native files.
+  if (file.size && parseInt(file.size, 10) > MAX_FILE_SIZE) {
+    throw new Error(
+      `File size exceeds the maximum limit of ${MAX_FILE_SIZE / (1024 * 1024)} MB.`
+    );
+  }
+
+  let content: string;
+
+  // Export Google native files or download regular files.
+  if (
+    file.mimeType === "application/vnd.google-apps.document" ||
+    file.mimeType === "application/vnd.google-apps.presentation"
+  ) {
+    const exportRes = await drive.files.export({
+      fileId: internalId,
+      mimeType: "text/plain",
+    });
+    if (typeof exportRes.data !== "string") {
+      throw new Error("Failed to export file content.");
+    }
+    content = exportRes.data;
+  } else if (SUPPORTED_MIMETYPES.includes(file.mimeType)) {
+    const downloadRes = await drive.files.get({
+      fileId: internalId,
+      alt: "media",
+    });
+    if (typeof downloadRes.data !== "string") {
+      throw new Error("Failed to download file content.");
+    }
+    content = downloadRes.data;
+  } else {
+    throw new Error(`Unsupported file type: ${file.mimeType}`);
+  }
+
+  return {
+    content,
+    fileName: file.name,
+    mimeType: file.mimeType,
+  };
 }
 
 export default createServer;

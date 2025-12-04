@@ -54,11 +54,15 @@ export const AttachmentViewer = ({
   // For input bar attachments, we need to get the file blob first
   // because the attachment fileId is actually the blob id
   // TODO: to fix
-  const fileId =
+  const fileBlob = fileUploaderService.getFileBlob(attachmentCitation.fileId);
+
+  const shouldFetchFromServer =
     attachmentCitation.attachmentCitationType === "fragment" ||
-    attachmentCitation.attachmentCitationType === "mcp"
-      ? attachmentCitation.fileId
-      : fileUploaderService.getFileBlob(attachmentCitation.fileId)?.fileId;
+    attachmentCitation.attachmentCitationType === "mcp";
+
+  const fileId = shouldFetchFromServer
+    ? attachmentCitation.fileId
+    : fileBlob?.fileId;
 
   const { fileContent, isFileContentLoading } = useFileContent({
     fileId,
@@ -66,7 +70,7 @@ export const AttachmentViewer = ({
     config: {
       // Only fetch if we are on text, as for audio we use the processed content, which is the transcript
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      disabled: isAudio || !viewerOpen,
+      disabled: isAudio || !viewerOpen || !shouldFetchFromServer,
     },
   });
 
@@ -105,10 +109,7 @@ export const AttachmentViewer = ({
         return;
       }
 
-      if (
-        attachmentCitation.attachmentCitationType === "fragment" ||
-        attachmentCitation.attachmentCitationType === "mcp"
-      ) {
+      if (shouldFetchFromServer) {
         if (isFileContentLoading) {
           return;
         }
@@ -133,6 +134,7 @@ export const AttachmentViewer = ({
     isFileContentLoading,
     isProcessedContentLoading,
     processedContent,
+    shouldFetchFromServer,
   ]);
 
   const audioPlayer = isAudio && (

@@ -9,6 +9,7 @@ export type ToolSearchRawNode = {
   title: string;
   mimeType: string;
   type: ContentNodeType;
+  sourceUrl: string | null;
 };
 
 export type ToolSearchNode = ToolSearchRawNode & {
@@ -28,6 +29,18 @@ export type ToolSearchParams = {
   pageSize: number;
 };
 
+export type ToolDownloadParams = {
+  accessToken: string;
+  internalId: string;
+};
+
+export type ToolDownloadResult = {
+  content: string;
+  fileName: string;
+  mimeType: string;
+};
+
 export type SearchableTool = {
   search: (params: ToolSearchParams) => Promise<ToolSearchRawNode[]>;
+  download: (params: ToolDownloadParams) => Promise<ToolDownloadResult>;
 };
