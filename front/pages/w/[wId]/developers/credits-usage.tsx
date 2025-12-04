@@ -402,9 +402,12 @@ export default function CreditsUsagePage({
           </ContentMessage>
         )}
 
+        {/* Purposefully not giving email since we want to test determination here and limit support requests, it's a very edgy case and most likely fraudulent. */}
         {subscription.trialing && (
           <ContentMessage title="Available after trial" variant="info">
-            Credit purchases are available once you upgrade to a paid plan.
+            Credit purchases are available once you upgrade to a paid plan. If
+            you would like to purchase credits before upgrading, please contact
+            support.
           </ContentMessage>
         )}
 
