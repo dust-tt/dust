@@ -12,7 +12,6 @@ import {
 } from "@dust-tt/sparkle";
 import React, { useCallback, useEffect, useRef } from "react";
 
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { WorkspaceType } from "@app/types";
 
 export type ThumbReaction = "up" | "down";
@@ -40,10 +39,7 @@ export function FeedbackSelector({
   onSubmitThumb,
   isSubmittingThumb,
   getPopoverInfo,
-  owner,
 }: FeedbackSelectorProps) {
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-
   const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [localFeedbackContent, setLocalFeedbackContent] = React.useState<

@@ -500,7 +500,6 @@ export function AgentMessage({
         key="feedback-selector"
         {...messageFeedback}
         getPopoverInfo={PopoverContent}
-        owner={owner}
       />
     );
   }
