@@ -138,16 +138,13 @@ export default function SkillBuilder({ owner }: SkillBuilderProps) {
           <div className="mx-auto space-y-10 p-4 2xl:max-w-5xl">
             {/* Description Section */}
             <section className="flex flex-col gap-3">
-              <div>
-                <h2 className="heading-lg text-foreground dark:text-foreground-night">
-                  Description
-                </h2>
-                <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                  A short summary of what this skill does.
-                </p>
-              </div>
-              <Input
-                placeholder="Enter skill description"
+              {/* TODO(skills): double check the copy. */}
+              <h2 className="heading-lg text-foreground dark:text-foreground-night">
+                What will this skill be used for?
+              </h2>
+              <TextArea
+                placeholder="When should this skill be used? What will this skill be good for?"
+                className="min-h-24"
                 {...descriptionField}
               />
               {descriptionFieldState.error && (
@@ -159,18 +156,12 @@ export default function SkillBuilder({ owner }: SkillBuilderProps) {
 
             {/* Instructions Section */}
             <section className="flex flex-col gap-3">
-              <div>
-                <h2 className="heading-lg text-foreground dark:text-foreground-night">
-                  Skill instructions
-                </h2>
-                <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                  Command or guideline you provide to your agent to direct its
-                  responses.
-                </p>
-              </div>
+              <h2 className="heading-lg text-foreground dark:text-foreground-night">
+                How should this skill behave?
+              </h2>
               <TextArea
-                placeholder="What does this agent do? How should it behave? What should it avoid doing?"
-                className="min-h-60"
+                placeholder="What does this skill do? How should it behave?"
+                className="min-h-40"
                 {...instructionsField}
               />
               {instructionsFieldState.error && (
@@ -180,22 +171,28 @@ export default function SkillBuilder({ owner }: SkillBuilderProps) {
               )}
             </section>
 
-            {/* Name Section */}
-            <section className="flex flex-col gap-3">
+            {/* Skill Settings Section */}
+            <section className="flex flex-col gap-4">
               <div>
                 <h2 className="heading-lg text-foreground dark:text-foreground-night">
-                  Name
+                  Skill settings
                 </h2>
                 <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                  A unique name for your skill.
+                  Specialized tools that agents can use to accomplish their
+                  tasks.
                 </p>
               </div>
-              <Input placeholder="Enter skill name" {...nameField} />
-              {nameFieldState.error && (
-                <p className="text-sm text-warning-500">
-                  {nameFieldState.error.message}
-                </p>
-              )}
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-medium text-foreground dark:text-foreground-night">
+                  Skill name
+                </label>
+                <Input placeholder="Enter skill name" {...nameField} />
+                {nameFieldState.error && (
+                  <p className="text-sm text-warning-500">
+                    {nameFieldState.error.message}
+                  </p>
+                )}
+              </div>
             </section>
           </div>
         </ScrollArea>
