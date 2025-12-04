@@ -1,8 +1,10 @@
 import {
+  Button,
   Dialog,
   DialogContainer,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   Spinner,
@@ -20,6 +22,7 @@ import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useUpsertFileAsDatasourceEntry } from "@app/lib/swr/files";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
+  ContentNode,
   DataSourceViewType,
   LightWorkspaceType,
   PlanType,
@@ -28,6 +31,7 @@ import { getSupportedNonImageFileExtensions } from "@app/types";
 
 type MultipleDocumentsUploadProps = {
   dataSourceView: DataSourceViewType;
+  existingNodes: ContentNode[];
   isOpen: boolean;
   onClose: (save: boolean) => void;
   owner: LightWorkspaceType;
@@ -37,6 +41,7 @@ type MultipleDocumentsUploadProps = {
 
 export const MultipleDocumentsUpload = ({
   dataSourceView,
+  existingNodes,
   isOpen,
   onClose,
   owner,
@@ -46,6 +51,8 @@ export const MultipleDocumentsUpload = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isLimitPopupOpen, setIsLimitPopupOpen] = useState(false);
   const [wasOpened, setWasOpened] = useState(isOpen);
+  const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
+  const [duplicateFiles, setDuplicateFiles] = useState<string[]>([]);
 
   const close = useCallback(
     (save: boolean) => {
@@ -76,12 +83,27 @@ export const MultipleDocumentsUpload = ({
     completed: number;
   }>(null);
 
-  const uploadFiles = useCallback(
-    async (files: File[]) => {
+  const checkDuplicatesAndUpload = useCallback(
+    async (files: File[], skipDuplicateCheck = false) => {
       // Empty file input
       if (files.length === 0) {
         close(false);
         return;
+      }
+
+      // Check for duplicates unless explicitly skipped
+      if (!skipDuplicateCheck) {
+        const existingTitles = new Set(existingNodes.map((node) => node.title));
+        const duplicates = files.filter((file) =>
+          existingTitles.has(file.name)
+        );
+
+        if (duplicates.length > 0) {
+          // Show confirmation dialog
+          setDuplicateFiles(duplicates.map((f) => f.name));
+          setPendingFiles(files);
+          return;
+        }
       }
 
       // Open plan popup if limit is reached
@@ -141,12 +163,29 @@ export const MultipleDocumentsUpload = ({
       close(true);
     },
     [
+      existingNodes,
       fileUploaderService,
       close,
       plan.limits.dataSources.documents.count,
       totalNodesCount,
       doUpsertFileAsDataSourceEntry,
     ]
+  );
+
+  const handleDuplicateConfirmation = useCallback(
+    (confirmed: boolean) => {
+      if (confirmed && pendingFiles) {
+        // User confirmed - proceed with upload (skip duplicate check)
+        void checkDuplicatesAndUpload(pendingFiles, true);
+      }
+      // Clear pending files and duplicates
+      setPendingFiles(null);
+      setDuplicateFiles([]);
+      if (!confirmed) {
+        close(false);
+      }
+    },
+    [pendingFiles, checkDuplicatesAndUpload, close]
   );
 
   // Process dropped files if any.
@@ -157,11 +196,11 @@ export const MultipleDocumentsUpload = ({
       if (droppedFilesCopy.length > 0) {
         // Make sure the files are cleared after processing
         setDroppedFiles([]);
-        await uploadFiles(droppedFilesCopy);
+        await checkDuplicatesAndUpload(droppedFilesCopy);
       }
     };
     void handleDroppedFiles();
-  }, [droppedFiles, setDroppedFiles, uploadFiles]);
+  }, [droppedFiles, setDroppedFiles, checkDuplicatesAndUpload]);
 
   // Handle file change from file input.
   const handleFileChange = useCallback(
@@ -171,9 +210,9 @@ export const MultipleDocumentsUpload = ({
       const selectedFiles = Array.from(
         (e?.target as HTMLInputElement).files ?? []
       );
-      await uploadFiles(selectedFiles);
+      await checkDuplicatesAndUpload(selectedFiles);
     },
-    [uploadFiles]
+    [checkDuplicatesAndUpload]
   );
 
   const handleFileInputBlur = useCallback(() => {
@@ -207,6 +246,46 @@ export const MultipleDocumentsUpload = ({
         onClose={() => setIsLimitPopupOpen(false)}
         owner={owner}
       />
+      <Dialog open={duplicateFiles.length > 0}>
+        <DialogContent size="md">
+          <DialogHeader>
+            <DialogTitle>Replace existing files?</DialogTitle>
+            <DialogDescription>
+              {duplicateFiles.length === 1 ? (
+                <>
+                  A file named <strong>{duplicateFiles[0]}</strong> already
+                  exists in this folder. Do you want to replace it?
+                </>
+              ) : (
+                <>
+                  {duplicateFiles.length} files already exist in this folder:
+                  <ul className="ml-4 mt-2 list-disc">
+                    {duplicateFiles.slice(0, 5).map((name) => (
+                      <li key={name}>{name}</li>
+                    ))}
+                    {duplicateFiles.length > 5 && (
+                      <li>and {duplicateFiles.length - 5} more...</li>
+                    )}
+                  </ul>
+                  Do you want to replace them?
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="tertiary"
+              label="Cancel"
+              onClick={() => handleDuplicateConfirmation(false)}
+            />
+            <Button
+              variant="primary"
+              label="Replace"
+              onClick={() => handleDuplicateConfirmation(true)}
+            />
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog open={isBulkFilesUploading !== null}>
         <DialogContent
           size="md"

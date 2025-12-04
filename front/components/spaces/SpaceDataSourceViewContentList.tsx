@@ -716,6 +716,7 @@ export const SpaceDataSourceViewContentList = ({
         <ContentActions
           ref={contentActionsRef}
           dataSourceView={dataSourceView}
+          existingNodes={childrenNodes}
           totalNodesCount={totalNodesCount}
           owner={owner}
           plan={plan}
