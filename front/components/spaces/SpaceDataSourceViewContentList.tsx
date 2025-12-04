@@ -543,7 +543,7 @@ export const SpaceDataSourceViewContentList = ({
 
       if (
         action === "DocumentUploadOrEdit" ||
-        action === "MultipleDocumentsUpload" ||
+        action === "MultipleFilesUpload" ||
         action === "TableUploadOrEdit"
       ) {
         handleViewTypeChange("all");
@@ -667,7 +667,7 @@ export const SpaceDataSourceViewContentList = ({
   );
 
   return (
-    // MultipleDocumentsUpload listens to the file drop context and uploads the files.
+    // MultipleFilesUpload listens to the file drop context and uploads the files.
     <FileDropProvider>
       <DropzoneContainer
         description="Drag and drop your files here."

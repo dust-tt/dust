@@ -38,7 +38,7 @@ function isDelimitedFile(file: File): boolean {
   return isSupportedDelimitedTextContentType(contentType);
 }
 
-type MultipleDocumentsUploadProps = {
+type MultipleFilesUploadProps = {
   dataSourceView: DataSourceViewType;
   existingNodes: ContentNode[];
   isOpen: boolean;
@@ -48,7 +48,7 @@ type MultipleDocumentsUploadProps = {
   plan: PlanType;
 };
 
-export const MultipleDocumentsUpload = ({
+export const MultipleFilesUpload = ({
   dataSourceView,
   existingNodes,
   isOpen,
@@ -56,7 +56,7 @@ export const MultipleDocumentsUpload = ({
   owner,
   totalNodesCount,
   plan,
-}: MultipleDocumentsUploadProps) => {
+}: MultipleFilesUploadProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isLimitPopupOpen, setIsLimitPopupOpen] = useState(false);
   const [wasOpened, setWasOpened] = useState(isOpen);
