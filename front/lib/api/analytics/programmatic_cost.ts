@@ -14,6 +14,7 @@ import {
 } from "@app/lib/api/elasticsearch";
 import { getShouldTrackTokenUsageCostsESFilter } from "@app/lib/api/programmatic_usage_tracking";
 import type { Authenticator } from "@app/lib/auth";
+import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import { AgentConfiguration } from "@app/lib/models/agent/agent";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -49,6 +50,7 @@ export const QuerySchema = z.object({
     })
     .pipe(FilterSchema.optional()),
   selectedMonth: z.string().optional(),
+  billingCycleStartDay: z.coerce.number().min(1).max(31),
 });
 
 export type WorkspaceProgrammaticCostPoint = {
@@ -256,19 +258,18 @@ export async function handleProgrammaticCostRequest(
         groupBy,
         groupByCount,
         selectedMonth,
+        billingCycleStartDay,
         filter: filterParams,
       } = q.data;
 
-      // Get selected date range
-      const now = new Date();
-      const startOfMonth = selectedMonth
+      // Get selected date range using shared billing cycle utility
+      const referenceDate = selectedMonth
         ? new Date(selectedMonth)
-        : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth()));
+        : new Date();
+      const { cycleStart: periodStart, cycleEnd: periodEnd } =
+        getBillingCycleFromDay(billingCycleStartDay, referenceDate, true);
 
-      const endOfMonth = new Date(startOfMonth);
-      endOfMonth.setMonth(endOfMonth.getMonth() + 1);
-
-      const timestamps = getDatesInRange(startOfMonth, endOfMonth);
+      const timestamps = getDatesInRange(periodStart, periodEnd);
 
       // Fetch all credits for the workspace (including free credits and fully consumed ones)
       // We'll filter them per timestamp in calculateCreditTotalsPerTimestamp
@@ -286,8 +287,8 @@ export async function handleProgrammaticCostRequest(
         {
           range: {
             timestamp: {
-              gte: startOfMonth.toISOString(),
-              lt: endOfMonth.toISOString(),
+              gte: periodStart.toISOString(),
+              lt: periodEnd.toISOString(),
             },
           },
         },
@@ -442,6 +443,8 @@ export async function handleProgrammaticCostRequest(
       Object.keys(groupValues).forEach((group) => {
         cumulatedCostMicroUsd[group] = 0;
       });
+
+      const now = new Date();
 
       const points = timestamps.map((timestamp) => {
         const groups = Object.entries(groupValues)

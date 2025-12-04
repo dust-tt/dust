@@ -16,7 +16,10 @@ import { BuyCreditDialog } from "@app/components/workspace/BuyCreditDialog";
 import { CreditsList } from "@app/components/workspace/CreditsList";
 import { ProgrammaticCostChart } from "@app/components/workspace/ProgrammaticCostChart";
 import { getFeatureFlags } from "@app/lib/auth";
-import { getPriceAsString } from "@app/lib/client/subscription";
+import {
+  getBillingCycle,
+  getPriceAsString,
+} from "@app/lib/client/subscription";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import {
   getStripeSubscription,
@@ -163,34 +166,10 @@ function UsageSection({
   isPurchasingCredits,
   setShowBuyCreditDialog,
 }: UsageSectionProps) {
-  // Get current billing period dates (month boundaries)
-  // Use useMemo to calculate the current billing cycle (exclusive bounds)
-  // Example: Nov 4 -> Dec 3 (if billing cycle starts on the 4th of each month)
-  const BILLING_CYCLE_START_DAY = subscription.startDate
-    ? new Date(subscription.startDate).getDate()
-    : null;
-
-  const [cycleStart, cycleEnd] = useMemo(() => {
-    if (!BILLING_CYCLE_START_DAY) {
-      return [null, null];
-    }
-
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth();
-    let start: Date, end: Date;
-
-    if (now.getDate() >= BILLING_CYCLE_START_DAY) {
-      // Billing cycle started this month, ends next month
-      start = new Date(year, month, BILLING_CYCLE_START_DAY);
-      end = new Date(year, month + 1, BILLING_CYCLE_START_DAY);
-    } else {
-      // Billing cycle started last month, ends this month
-      start = new Date(year, month - 1, BILLING_CYCLE_START_DAY);
-      end = new Date(year, month, BILLING_CYCLE_START_DAY);
-    }
-    return [start, end];
-  }, [BILLING_CYCLE_START_DAY]);
+  const billingCycle = useMemo(
+    () => getBillingCycle(subscription.startDate),
+    [subscription.startDate]
+  );
 
   const formatDateShort = (date: Date) => {
     return date.toLocaleDateString(undefined, {
@@ -245,12 +224,12 @@ function UsageSection({
       {/* Usage Header */}
       <div className="flex items-center justify-between">
         <Page.Vertical gap="xs">
-          <Page.H variant="h5">Usage</Page.H>
-          <Page.P variant="secondary">Available credits and consumption</Page.P>
+          <Page.H variant="h5">Available credits</Page.H>
         </Page.Vertical>
-        {cycleStart && cycleEnd && (
+        {billingCycle && (
           <Page.P variant="secondary">
-            {formatDateShort(cycleStart)} → {formatDateShort(cycleEnd)}
+            {formatDateShort(billingCycle.cycleStart)} →{" "}
+            {formatDateShort(billingCycle.cycleEnd)}
           </Page.P>
         )}
       </div>
@@ -324,6 +303,11 @@ export default function CreditsUsagePage({
   const { isLoading: isPurchasingCredits } = usePurchaseCredits({
     workspaceId: owner.sId,
   });
+
+  // Get the billing cycle start day from the subscription start date
+  const billingCycleStartDay = subscription.startDate
+    ? new Date(subscription.startDate).getDate()
+    : null;
 
   const creditsByType = useMemo(() => {
     const activeCredits = credits.filter((c) => !isExpired(c));
@@ -448,8 +432,13 @@ export default function CreditsUsagePage({
           <CreditsList credits={credits} isLoading={isCreditsLoading} />
         </Page.Vertical>
 
-        {/* Programmatic Cost Chart */}
-        <ProgrammaticCostChart workspaceId={owner.sId} />
+        {/* Usage Graph */}
+        {billingCycleStartDay && (
+          <ProgrammaticCostChart
+            workspaceId={owner.sId}
+            billingCycleStartDay={billingCycleStartDay}
+          />
+        )}
       </Page.Vertical>
       <div className="h-12" />
     </AppCenteredLayout>

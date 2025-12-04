@@ -10,6 +10,7 @@ import type { WorkspaceType } from "@app/types";
 
 interface PokeProgrammaticCostChartProps {
   owner: WorkspaceType;
+  billingCycleStartDay: number;
 }
 
 /**
@@ -18,6 +19,7 @@ interface PokeProgrammaticCostChartProps {
  */
 export function PokeProgrammaticCostChart({
   owner,
+  billingCycleStartDay,
 }: PokeProgrammaticCostChartProps) {
   const [groupBy, setGroupBy] = useState<GroupByType | undefined>(undefined);
   const [filter, setFilter] = useState<Partial<Record<GroupByType, string[]>>>(
@@ -34,6 +36,7 @@ export function PokeProgrammaticCostChart({
   } = usePokeProgrammaticCost({
     owner,
     selectedMonth,
+    billingCycleStartDay,
     groupBy,
     filter,
   });
@@ -49,6 +52,7 @@ export function PokeProgrammaticCostChart({
       setFilter={setFilter}
       selectedMonth={selectedMonth}
       setSelectedMonth={setSelectedMonth}
+      billingCycleStartDay={billingCycleStartDay}
     />
   );
 }
