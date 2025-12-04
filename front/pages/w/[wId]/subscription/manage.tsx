@@ -3,7 +3,7 @@ import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useEffect } from "react";
 
-import { clientFetch } from "@app/lib/egress";
+import { clientFetch } from "@app/lib/egress/client";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import type { WorkspaceType } from "@app/types";
 

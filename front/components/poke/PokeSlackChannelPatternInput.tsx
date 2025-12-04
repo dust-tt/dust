@@ -12,7 +12,7 @@ import { useCallback, useMemo, useState } from "react";
 import { SlackAutoReadPatternsTable } from "@app/components/poke/data_sources/slack/table";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { clientFetch } from "@app/lib/egress";
+import { clientFetch } from "@app/lib/egress/client";
 import { usePokeSpaces } from "@app/poke/swr/spaces";
 import type {
   DataSourceType,

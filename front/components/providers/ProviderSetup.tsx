@@ -12,7 +12,7 @@ import type { MouseEvent } from "react";
 import React, { useEffect, useState } from "react";
 import { useSWRConfig } from "swr";
 
-import { clientFetch } from "@app/lib/egress";
+import { clientFetch } from "@app/lib/egress/client";
 import { checkProvider } from "@app/lib/providers";
 import type { WorkspaceType } from "@app/types";
 

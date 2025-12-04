@@ -15,7 +15,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
-import { clientFetch } from "@app/lib/egress";
+import { clientFetch } from "@app/lib/egress/client";
 import type { GetNotionWebhookConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/notion/webhook_config";
 import type { DataSourceType, LightWorkspaceType } from "@app/types";
 

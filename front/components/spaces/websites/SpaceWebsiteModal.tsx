@@ -15,7 +15,7 @@ import { DeleteStaticDataSourceDialog } from "@app/components/data_source/Delete
 import { SpaceWebsiteForm } from "@app/components/spaces/websites/SpaceWebsiteForm";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { createWebsite, updateWebsite } from "@app/lib/api/website";
-import { clientFetch } from "@app/lib/egress";
+import { clientFetch } from "@app/lib/egress/client";
 import { useDataSourceViewConnectorConfiguration } from "@app/lib/swr/data_source_views";
 import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 import { urlToDataSourceName } from "@app/lib/webcrawler";

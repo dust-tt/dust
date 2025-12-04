@@ -15,7 +15,7 @@ import type {
 import useSWRInfinite from "swr/infinite";
 
 import { COMMIT_HASH } from "@app/lib/commit-hash";
-import { clientFetch } from "@app/lib/egress";
+import { clientFetch } from "@app/lib/egress/client";
 import { isAPIErrorResponse, safeParseJSON } from "@app/types";
 
 const EMPTY_ARRAY = Object.freeze([]);

@@ -1,5 +1,5 @@
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
-import { clientFetch } from "@app/lib/egress";
+import { clientFetch } from "@app/lib/egress/client";
 import type { SkillConfigurationType } from "@app/pages/api/w/[wId]/assistant/skill_configurations";
 import type { Result, WorkspaceType } from "@app/types";
 import { Err, Ok } from "@app/types";

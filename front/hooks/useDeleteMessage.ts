@@ -2,7 +2,7 @@ import { useSWRConfig } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { clientFetch } from "@app/lib/egress";
+import { clientFetch } from "@app/lib/egress/client";
 import { normalizeError } from "@app/types";
 
 export function useDeleteMessage({

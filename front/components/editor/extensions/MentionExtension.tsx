@@ -5,7 +5,7 @@ import { Plugin, TextSelection } from "@tiptap/pm/state";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 
 import { MentionComponent } from "@app/components/editor/input_bar/MentionComponent";
-import { clientFetch } from "@app/lib/egress";
+import { clientFetch } from "@app/lib/egress/client";
 import {
   AGENT_MENTION_REGEX_BEGINNING,
   USER_MENTION_REGEX_BEGINNING,

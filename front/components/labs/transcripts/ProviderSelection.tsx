@@ -3,7 +3,7 @@ import { useCallback, useState } from "react";
 import type { KeyedMutator } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress";
+import { clientFetch } from "@app/lib/egress/client";
 import {
   useLabsTranscriptsDefaultConfiguration,
   useLabsTranscriptsIsConnectorConnected,

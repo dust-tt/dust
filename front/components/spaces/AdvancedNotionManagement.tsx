@@ -15,7 +15,7 @@ import type { CellContext } from "@tanstack/react-table";
 import { isLeft } from "fp-ts/lib/Either";
 import { useCallback, useState } from "react";
 
-import { clientFetch } from "@app/lib/egress";
+import { clientFetch } from "@app/lib/egress/client";
 import { useNotionLastSyncedUrls } from "@app/lib/swr/data_sources";
 import type { DataSourceType, WorkspaceType } from "@app/types";
 import { GetPostNotionSyncResponseBodySchema } from "@app/types";

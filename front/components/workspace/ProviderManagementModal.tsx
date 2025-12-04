@@ -28,7 +28,7 @@ import {
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { canUseModel } from "@app/lib/assistant";
-import { clientFetch } from "@app/lib/egress";
+import { clientFetch } from "@app/lib/egress/client";
 import { useFeatureFlags, useWorkspace } from "@app/lib/swr/workspaces";
 import type { ModelProviderIdType, PlanType, WorkspaceType } from "@app/types";
 import { EMBEDDING_PROVIDER_IDS, MODEL_PROVIDER_IDS } from "@app/types";

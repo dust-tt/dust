@@ -23,7 +23,7 @@ import React, {
 } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress";
+import { clientFetch } from "@app/lib/egress/client";
 import { useVisualizationRetry } from "@app/lib/swr/conversations";
 import datadogLogger from "@app/logger/datadogLogger";
 import type {

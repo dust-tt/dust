@@ -21,7 +21,7 @@ import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { useChangeMembersRoles } from "@app/hooks/useChangeMembersRoles";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getPriceAsString } from "@app/lib/client/subscription";
-import { clientFetch } from "@app/lib/egress";
+import { clientFetch } from "@app/lib/egress/client";
 import {
   MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY,
   sendInvitations,

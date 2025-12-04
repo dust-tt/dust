@@ -2,7 +2,7 @@ import { ContextItem, GithubLogo, SliderToggle } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress";
+import { clientFetch } from "@app/lib/egress/client";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
 import type { APIError, DataSourceType, WorkspaceType } from "@app/types";
 

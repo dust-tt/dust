@@ -13,7 +13,7 @@ import { useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useQueryParams } from "@app/hooks/useQueryParams";
-import { clientFetch } from "@app/lib/egress";
+import { clientFetch } from "@app/lib/egress/client";
 import type {
   DataSourceViewType,
   LightContentNode,

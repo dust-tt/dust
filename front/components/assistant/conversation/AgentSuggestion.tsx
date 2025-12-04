@@ -20,7 +20,7 @@ import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { clientFetch } from "@app/lib/egress";
+import { clientFetch } from "@app/lib/egress/client";
 import { serializeMention } from "@app/lib/mentions/format";
 import {
   useAgentConfigurations,

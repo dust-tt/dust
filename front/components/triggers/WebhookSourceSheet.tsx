@@ -36,7 +36,7 @@ import { WebhookSourceDetailsInfo } from "@app/components/triggers/WebhookSource
 import { WebhookSourceDetailsSharing } from "@app/components/triggers/WebhookSourceDetailsSharing";
 import { WebhookSourceViewIcon } from "@app/components/triggers/WebhookSourceViewIcon";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress";
+import { clientFetch } from "@app/lib/egress/client";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import {
   useCreateWebhookSource,

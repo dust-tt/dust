@@ -3,7 +3,7 @@ import type { NotificationType } from "@dust-tt/sparkle";
 import { mutate } from "swr";
 
 import type { ConfirmDataType } from "@app/components/Confirm";
-import { clientFetch } from "@app/lib/egress";
+import { clientFetch } from "@app/lib/egress/client";
 import type {
   PostInvitationRequestBody,
   PostInvitationResponseBody,

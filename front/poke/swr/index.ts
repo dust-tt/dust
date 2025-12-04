@@ -3,7 +3,7 @@ import type { Fetcher } from "swr";
 import useSWR from "swr";
 
 import type { LLMTrace } from "@app/lib/api/llm/traces/types";
-import { clientFetch } from "@app/lib/egress";
+import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, fetcher } from "@app/lib/swr/swr";
 import type { PokeFetchAssistantTemplateResponse } from "@app/pages/api/poke/templates/[tId]";
 import type { PullTemplatesResponseBody } from "@app/pages/api/poke/templates/pull";

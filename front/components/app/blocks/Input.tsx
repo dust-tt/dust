@@ -15,7 +15,7 @@ import { useState } from "react";
 import DatasetPicker from "@app/components/app/DatasetPicker";
 import DatasetView from "@app/components/app/DatasetView";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress";
+import { clientFetch } from "@app/lib/egress/client";
 import { useDataset } from "@app/lib/swr/datasets";
 import { shallowBlockClone } from "@app/lib/utils";
 import type {

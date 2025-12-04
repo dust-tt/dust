@@ -1,4 +1,4 @@
-import { clientFetch } from "@app/lib/egress";
+import { clientFetch } from "@app/lib/egress/client";
 import type {
   LightWorkspaceType,
   UserType,

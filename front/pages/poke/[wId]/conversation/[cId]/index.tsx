@@ -24,7 +24,7 @@ import type { ReactElement } from "react";
 import { useEffect, useState } from "react";
 
 import PokeLayout from "@app/components/poke/PokeLayout";
-import { clientFetch } from "@app/lib/egress";
+import { clientFetch } from "@app/lib/egress/client";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import type { Action } from "@app/lib/registry";
 import { getDustProdAction } from "@app/lib/registry";

@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
-import { clientFetch } from "@app/lib/egress";
+import { clientFetch } from "@app/lib/egress/client";
 import type {
   ConversationWithoutContentType,
   LightWorkspaceType,

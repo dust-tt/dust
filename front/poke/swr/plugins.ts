@@ -1,6 +1,6 @@
 import type { Fetcher } from "swr";
 
-import { clientFetch } from "@app/lib/egress";
+import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
   fetcher,

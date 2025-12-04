@@ -2,7 +2,7 @@ import type { NotificationType } from "@dust-tt/sparkle";
 import type * as t from "io-ts";
 
 import type { MessageTemporaryState } from "@app/components/assistant/conversation/types";
-import { clientFetch } from "@app/lib/egress";
+import { clientFetch } from "@app/lib/egress/client";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 import type { PostMessagesResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages";

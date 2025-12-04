@@ -4,7 +4,7 @@ import type { ReactElement } from "react";
 import { useState } from "react";
 
 import PokeLayout from "@app/components/poke/PokeLayout";
-import { clientFetch } from "@app/lib/egress";
+import { clientFetch } from "@app/lib/egress/client";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { usePokeTables } from "@app/poke/swr";

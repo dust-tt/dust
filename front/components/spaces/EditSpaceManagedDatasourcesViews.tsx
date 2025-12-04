@@ -28,7 +28,7 @@ import { useAwaitableDialog } from "@app/hooks/useAwaitableDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import { getDisplayNameForDataSource, isManaged } from "@app/lib/data_sources";
-import { clientFetch } from "@app/lib/egress";
+import { clientFetch } from "@app/lib/egress/client";
 import { useKillSwitches } from "@app/lib/swr/kill";
 import {
   useSpaceDataSourceViews,
