@@ -4,6 +4,30 @@ import * as React from "react";
 import { cn } from "@sparkle/lib/utils";
 
 import type { ButtonProps, ButtonSizeType, ButtonVariantType } from "./Button";
+import { Button } from "./Button";
+import type { DropdownMenuItemProps } from "./Dropdown";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "./Dropdown";
+
+type ButtonGroupButtonItem = {
+  type: "button";
+  props: ButtonProps;
+};
+
+type ButtonGroupDropdownItem = {
+  type: "dropdown";
+  triggerProps: Omit<ButtonProps, "onClick">;
+  dropdownProps: {
+    items: DropdownMenuItemProps[];
+    align?: "start" | "center" | "end";
+  };
+};
+
+export type ButtonGroupItem = ButtonGroupButtonItem | ButtonGroupDropdownItem;
 
 type DisallowedButtonGroupVariant =
   | "ghost"
@@ -58,13 +82,16 @@ const buttonGroupVariants = cva("s-inline-flex", {
 export interface ButtonGroupProps
   extends Omit<React.HTMLAttributes<HTMLDivElement>, "children">,
     VariantProps<typeof buttonGroupVariants> {
-  children: React.ReactElement<ButtonProps> | React.ReactElement<ButtonProps>[];
+  /**
+   * Array of button or dropdown items to render in the group.
+   */
+  items: ButtonGroupItem[];
   /**
    * Variant to apply to all buttons in the group.
    */
   variant?: ButtonGroupVariantType;
   /**
-   * Size to apply to all buttons in the group. Mini buttons must opt-in per child.
+   * Size to apply to all buttons in the group. Mini buttons must opt-in per item.
    */
   size?: Exclude<ButtonSizeType, "mini">;
   /**
@@ -86,26 +113,23 @@ const ButtonGroup = React.forwardRef<HTMLDivElement, ButtonGroupProps>(
       size,
       disabled,
       removeGaps = true,
-      children,
+      items,
       ...props
     },
     ref
   ) => {
-    const childrenArray = React.Children.toArray(
-      children
-    ) as React.ReactElement<ButtonProps>[];
+    if (!items || items.length === 0) {
+      return null;
+    }
 
-    const clonedChildren = childrenArray.map((child, index) => {
-      if (!React.isValidElement<ButtonProps>(child)) {
-        return child;
-      }
+    const totalItems = items.length;
 
-      const totalChildren = childrenArray.length;
+    const renderedItems = items.map((item, index) => {
       const isFirst = index === 0;
-      const isLast = index === totalChildren - 1;
+      const isLast = index === totalItems - 1;
 
       const borderRadiusClasses = (() => {
-        if (!removeGaps || totalChildren === 1) {
+        if (!removeGaps || totalItems === 1) {
           return "";
         }
 
@@ -140,22 +164,61 @@ const ButtonGroup = React.forwardRef<HTMLDivElement, ButtonGroupProps>(
         return isLast ? "" : "s-border-b-0";
       })();
 
-      const nextVariant = sanitizeVariant(variant ?? child.props.variant);
-      const nextSize = (size ?? child.props.size) as ButtonProps["size"];
+      if (item.type === "button") {
+        const nextVariant = sanitizeVariant(variant ?? item.props.variant);
+        const rawSize = size ?? item.props.size;
+        const nextSize: Exclude<ButtonSizeType, "mini"> | undefined =
+          rawSize === "mini"
+            ? undefined
+            : (rawSize as Exclude<ButtonSizeType, "mini"> | undefined);
 
-      const overrides = {
-        variant: nextVariant,
-        size: nextSize,
-        disabled: disabled ?? child.props.disabled,
-        isRounded: false,
-        className: cn(
-          child.props.className,
-          borderRadiusClasses,
-          borderClasses
-        ),
-      } as Partial<ButtonProps>;
+        return (
+          <Button
+            key={index}
+            {...item.props}
+            variant={nextVariant}
+            size={nextSize}
+            disabled={disabled ?? item.props.disabled}
+            isRounded={false}
+            className={cn(
+              item.props.className,
+              borderRadiusClasses,
+              borderClasses
+            )}
+          />
+        );
+      }
 
-      return React.cloneElement(child, overrides);
+      const nextVariant = sanitizeVariant(variant ?? item.triggerProps.variant);
+      const rawSize = size ?? item.triggerProps.size;
+      const nextSize: Exclude<ButtonSizeType, "mini"> | undefined =
+        rawSize === "mini"
+          ? undefined
+          : (rawSize as Exclude<ButtonSizeType, "mini"> | undefined);
+
+      return (
+        <DropdownMenu key={index}>
+          <DropdownMenuTrigger asChild>
+            <Button
+              {...item.triggerProps}
+              variant={nextVariant}
+              size={nextSize}
+              disabled={disabled ?? item.triggerProps.disabled}
+              isRounded={false}
+              className={cn(
+                item.triggerProps.className,
+                borderRadiusClasses,
+                borderClasses
+              )}
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align={item.dropdownProps.align ?? "center"}>
+            {item.dropdownProps.items.map((dropdownItem, dropdownIndex) => (
+              <DropdownMenuItem key={dropdownIndex} {...dropdownItem} />
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      );
     });
 
     return (
@@ -169,7 +232,7 @@ const ButtonGroup = React.forwardRef<HTMLDivElement, ButtonGroupProps>(
         role="group"
         {...props}
       >
-        {clonedChildren}
+        {renderedItems}
       </div>
     );
   }
