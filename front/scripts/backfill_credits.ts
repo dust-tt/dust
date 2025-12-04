@@ -109,7 +109,7 @@ async function backfillFreeCredits(
     });
 
     if (result.isErr()) {
-      logger.info(
+      logger.error(
         {
           workspaceId: workspaceSId,
           error: result.error.message,
