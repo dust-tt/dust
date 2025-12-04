@@ -373,7 +373,7 @@ describe("startOrResumeEnterprisePAYG", () => {
     expect(config?.paygCapMicroUsd).toBe(2_000_000_000);
   });
 
-  it("should skip credit creation if credit already exists for period", async () => {
+  it("should update credit if credit already exists for period", async () => {
     await ProgrammaticUsageConfigurationResource.makeNew(auth, {
       freeCreditMicroUsd: null,
       defaultDiscountPercent: 0,
@@ -399,7 +399,7 @@ describe("startOrResumeEnterprisePAYG", () => {
 
     const credits = await CreditResource.listAll(auth);
     expect(credits.length).toBe(1);
-    expect(credits[0].initialAmountMicroUsd).toBe(500_000_000);
+    expect(credits[0].initialAmountMicroUsd).toBe(1_000_000_000);
   });
 });
 
