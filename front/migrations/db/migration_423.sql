@@ -13,9 +13,3 @@ CREATE TABLE IF NOT EXISTS "skill_configurations" (
     "editorGroupId" BIGINT REFERENCES "groups" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
     "requestedSpaceIds" BIGINT[] NOT NULL DEFAULT '{}'
 );
-
-CREATE INDEX IF NOT EXISTS "skill_configurations_workspace_id" ON "skill_configurations" ("workspaceId");
-CREATE INDEX IF NOT EXISTS "skill_configurations_workspace_id_name" ON "skill_configurations" ("workspaceId", "name");
-CREATE INDEX IF NOT EXISTS "skill_configurations_workspace_id_status_name" ON "skill_configurations" ("workspaceId", "status", "name");
-CREATE UNIQUE INDEX IF NOT EXISTS "skill_configuration_unique_active_name" ON "skill_configurations" ("workspaceId", "name") WHERE "status" = 'active';
-CREATE INDEX IF NOT EXISTS "skill_configurations_status" ON "skill_configurations" ("status");
