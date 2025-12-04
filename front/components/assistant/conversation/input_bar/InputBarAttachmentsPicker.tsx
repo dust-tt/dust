@@ -20,7 +20,7 @@ import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { NodePathTooltip } from "@app/components/NodePathTooltip";
 import { useDebounce } from "@app/hooks/useDebounce";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
-import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import {
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,

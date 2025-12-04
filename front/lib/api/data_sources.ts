@@ -18,7 +18,7 @@ import {
 } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes";
+import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes_constants";
 import { DustError } from "@app/lib/error";
 import { getDustDataSourcesBucket } from "@app/lib/file_storage";
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";

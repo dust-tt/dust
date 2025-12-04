@@ -48,11 +48,12 @@ import { AdvancedNotionManagement } from "@app/components/spaces/AdvancedNotionM
 import { ConnectorDataUpdatedModal } from "@app/components/spaces/ConnectorDataUpdatedModal";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import {
-  CONNECTOR_CONFIGURATIONS,
+  CONNECTOR_UI_CONFIGURATIONS,
   getConnectorPermissionsConfigurableBlocked,
   isConnectorPermissionsEditable,
-} from "@app/lib/connector_providers";
+} from "@app/lib/connector_providers_ui";
 import {
   getDisplayNameForDataSource,
   isRemoteDatabase,
@@ -199,7 +200,7 @@ export async function updateConnectorConnectionId(
   if (error.type === "connector_oauth_target_mismatch") {
     return {
       success: false,
-      error: CONNECTOR_CONFIGURATIONS[provider].mismatchError,
+      error: CONNECTOR_UI_CONFIGURATIONS[provider].mismatchError,
     };
   }
   if (error.type === "connector_oauth_user_missing_rights") {
@@ -291,6 +292,8 @@ function UpdateConnectionOAuthModal({
 
   const connectorConfiguration =
     connectorProvider && CONNECTOR_CONFIGURATIONS[connectorProvider];
+  const connectorUIConfiguration =
+    connectorProvider && CONNECTOR_UI_CONFIGURATIONS[connectorProvider];
 
   const isDataSourceOwner = editedByUser?.userId === user.sId;
 
@@ -303,7 +306,7 @@ function UpdateConnectionOAuthModal({
         <div className="mt-4 flex flex-col">
           <div className="flex items-center gap-2">
             <Icon
-              visual={connectorConfiguration.getLogoComponent(isDark)}
+              visual={connectorUIConfiguration.getLogoComponent(isDark)}
               size="md"
             />
             <Page.SectionHeader
@@ -321,11 +324,11 @@ function UpdateConnectionOAuthModal({
                 Agents using them.
               </div>
 
-              {connectorConfiguration.guideLink && (
+              {connectorUIConfiguration.guideLink && (
                 <div className="copy-sm pl-4 text-info-800">
                   Read our{" "}
                   <a
-                    href={connectorConfiguration.guideLink}
+                    href={connectorUIConfiguration.guideLink}
                     className="text-highlight-600"
                     target="_blank"
                   >
@@ -373,11 +376,11 @@ function UpdateConnectionOAuthModal({
             >
               Editing permission rights with a different account will likely
               break the existing data structure in Dust and Agents using them.
-              {connectorConfiguration.guideLink && (
+              {connectorUIConfiguration.guideLink && (
                 <div>
                   Read our{" "}
                   <Hoverable
-                    href={connectorConfiguration.guideLink}
+                    href={connectorUIConfiguration.guideLink}
                     variant="primary"
                     target="_blank"
                   >
@@ -392,13 +395,13 @@ function UpdateConnectionOAuthModal({
             </ContentMessage>
           </div>
         )}
-        {connectorConfiguration.oauthExtraConfigComponent &&
+        {connectorUIConfiguration.oauthExtraConfigComponent &&
           // TODO(slackstorm) fabien: remove flag and rely on isLegacySlackApp
           !(
             isSlack &&
             !featureFlags.includes("self_created_slack_app_connector_rollout")
           ) && (
-            <connectorConfiguration.oauthExtraConfigComponent
+            <connectorUIConfiguration.oauthExtraConfigComponent
               extraConfig={extraConfig}
               setExtraConfig={setExtraConfig}
               setIsExtraConfigValid={setIsExtraConfigValid}
@@ -491,6 +494,8 @@ function DataSourceDeletionModal({
 
   const isDataSourceOwner = editedByUser?.userId === user.sId;
   const connectorConfiguration = CONNECTOR_CONFIGURATIONS[connectorProvider];
+  const connectorUIConfiguration =
+    CONNECTOR_UI_CONFIGURATIONS[connectorProvider];
 
   const handleDelete = async () => {
     setIsLoading(true);
@@ -525,7 +530,7 @@ function DataSourceDeletionModal({
         <div className="mt-4 flex flex-col">
           <div className="flex items-center gap-2">
             <Icon
-              visual={connectorConfiguration.getLogoComponent(isDark)}
+              visual={connectorUIConfiguration.getLogoComponent(isDark)}
               size="md"
             />
             <Page.SectionHeader
@@ -639,12 +644,12 @@ export function ConnectorPermissionsModal({
     CONNECTOR_CONFIGURATIONS[dataSource.connectorProvider].isDeletable;
 
   const selectedPermission: ConnectorPermission = dataSource.connectorProvider
-    ? CONNECTOR_CONFIGURATIONS[dataSource.connectorProvider].permissions
+    ? CONNECTOR_UI_CONFIGURATIONS[dataSource.connectorProvider].permissions
         .selected
     : "none";
 
   const unselectedPermission: ConnectorPermission = dataSource.connectorProvider
-    ? CONNECTOR_CONFIGURATIONS[dataSource.connectorProvider].permissions
+    ? CONNECTOR_UI_CONFIGURATIONS[dataSource.connectorProvider].permissions
         .unselected
     : "none";
 
@@ -829,8 +834,9 @@ export function ConnectorPermissionsModal({
   }, [connector.type, isOpen]);
 
   const connectorConfiguration = CONNECTOR_CONFIGURATIONS[connector.type];
+  const connectorUIConfiguration = CONNECTOR_UI_CONFIGURATIONS[connector.type];
 
-  const OptionsComponent = connectorConfiguration.optionsComponent;
+  const OptionsComponent = connectorUIConfiguration.optionsComponent;
 
   const permissionsConfigurable = getConnectorPermissionsConfigurableBlocked(
     connector.type
@@ -930,16 +936,16 @@ export function ConnectorPermissionsModal({
                       </div>
                     </>
                   )}
-                  {!connectorConfiguration.isResourceSelectionDisabled && (
+                  {!connectorUIConfiguration.isResourceSelectionDisabled && (
                     <>
                       <div className="flex items-center justify-between p-1">
                         <div className="heading-xl">
-                          {connectorConfiguration.selectLabel}
+                          {connectorUIConfiguration.selectLabel}
                         </div>
                       </div>
                       <ContentNodeTree
                         isTitleFilterEnabled={
-                          connectorConfiguration.isTitleFilterEnabled &&
+                          connectorUIConfiguration.isTitleFilterEnabled &&
                           canUpdatePermissions
                         }
                         isRoundedBackground={true}
@@ -952,8 +958,8 @@ export function ConnectorPermissionsModal({
                             ? setSelectedNodes
                             : undefined
                         }
-                        showExpand={connectorConfiguration?.isNested}
-                        emptyComponent={connectorConfiguration.emptyNodeLabel}
+                        showExpand={connectorUIConfiguration?.isNested}
+                        emptyComponent={connectorUIConfiguration.emptyNodeLabel}
                       />
                     </>
                   )}
@@ -967,7 +973,7 @@ export function ConnectorPermissionsModal({
                   )}
                 </div>
               </SheetContainer>
-              {!connectorConfiguration.isResourceSelectionDisabled && (
+              {!connectorUIConfiguration.isResourceSelectionDisabled && (
                 <SheetFooter
                   leftButtonProps={{
                     label: "Cancel",

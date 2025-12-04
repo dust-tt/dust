@@ -28,7 +28,7 @@ import { useSpaceSidebarItemFocus } from "@app/hooks/useSpaceSidebarItemFocus";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import type { SpaceSectionGroupType } from "@app/lib/spaces";

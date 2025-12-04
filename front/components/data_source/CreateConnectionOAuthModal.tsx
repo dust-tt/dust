@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
+import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 
 type CreateConnectionOAuthModalProps = {
   connectorProviderConfiguration: ConnectorProviderConfiguration;
@@ -32,6 +33,11 @@ export function CreateConnectionOAuthModal({
   const [isLoading, setIsLoading] = useState(false);
   const [extraConfig, setExtraConfig] = useState<Record<string, string>>({});
   const [isExtraConfigValid, setIsExtraConfigValid] = useState(true);
+
+  const connectorUIConfiguration =
+    CONNECTOR_UI_CONFIGURATIONS[
+      connectorProviderConfiguration.connectorProvider
+    ];
 
   useEffect(() => {
     if (isOpen) {
@@ -60,13 +66,13 @@ export function CreateConnectionOAuthModal({
             <Page.Vertical gap="lg" align="stretch">
               <Page.Header
                 title={`Connecting ${connectorProviderConfiguration.name}`}
-                icon={connectorProviderConfiguration.getLogoComponent(isDark)}
+                icon={connectorUIConfiguration.getLogoComponent(isDark)}
               />
               <Button
                 label="Read our guide"
                 size="xs"
                 variant="outline"
-                href={connectorProviderConfiguration.guideLink ?? ""}
+                href={connectorUIConfiguration.guideLink ?? ""}
                 target="_blank"
                 icon={BookOpenIcon}
               />
@@ -109,19 +115,19 @@ export function CreateConnectionOAuthModal({
                 </>
               )}
 
-              {connectorProviderConfiguration.limitations && (
+              {connectorUIConfiguration.limitations && (
                 <div className="flex flex-col gap-y-2">
                   <div className="copy-sm grow font-medium text-muted-foreground dark:text-muted-foreground-night">
                     Limitations
                   </div>
                   <div className="copy-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-                    {connectorProviderConfiguration.limitations}
+                    {connectorUIConfiguration.limitations}
                   </div>
                 </div>
               )}
 
-              {connectorProviderConfiguration.oauthExtraConfigComponent && (
-                <connectorProviderConfiguration.oauthExtraConfigComponent
+              {connectorUIConfiguration.oauthExtraConfigComponent && (
+                <connectorUIConfiguration.oauthExtraConfigComponent
                   extraConfig={extraConfig}
                   setExtraConfig={setExtraConfig}
                   setIsExtraConfigValid={setIsExtraConfigValid}
