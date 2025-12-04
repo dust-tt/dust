@@ -40,10 +40,12 @@ import type {
   GetWorkspaceProgrammaticCostResponse,
   GroupByType,
 } from "@app/lib/api/analytics/programmatic_cost";
+import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import { useWorkspaceProgrammaticCost } from "@app/lib/swr/workspaces";
 
 interface ProgrammaticCostChartProps {
   workspaceId: string;
+  billingCycleStartDay: number;
 }
 
 export interface BaseProgrammaticCostChartProps {
@@ -58,6 +60,7 @@ export interface BaseProgrammaticCostChartProps {
   >;
   selectedMonth: string;
   setSelectedMonth: (month: string) => void;
+  billingCycleStartDay: number;
 }
 
 type ChartDataPoint = {
@@ -171,6 +174,7 @@ export function BaseProgrammaticCostChart({
   setFilter,
   selectedMonth,
   setSelectedMonth,
+  billingCycleStartDay,
 }: BaseProgrammaticCostChartProps) {
   // Cache labels for each groupBy type so they persist when switching modes
   const [labelCache, setLabelCache] = useState<
@@ -180,31 +184,42 @@ export function BaseProgrammaticCostChart({
   const now = new Date();
   const currentDate = new Date(selectedMonth);
 
-  // Get current month name
-  const currentMonth = currentDate.toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric",
-  });
+  // Calculate the billing cycle for the selected month
+  const billingCycle = getBillingCycleFromDay(
+    billingCycleStartDay,
+    currentDate,
+    false
+  );
 
-  // Calculate next and previous month dates
-  const nextMonthDate = new Date(
+  const formatDate = (date: Date) =>
+    date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+
+  // Format period label based on billing cycle
+  const periodLabel = `${formatDate(billingCycle.cycleStart)} → ${formatDate(billingCycle.cycleEnd)}`;
+
+  // Calculate next and previous period dates
+  const nextPeriodDate = new Date(
     Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth() + 1, 1)
   );
-  const previousMonthDate = new Date(
+  const previousPeriodDate = new Date(
     Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth() - 1, 1)
   );
 
-  // Check if we can go to next month (not in the future)
-  const canGoNext = nextMonthDate.getTime() <= now.getTime();
+  // Check if we can go to next period (not in the future)
+  const canGoNext = billingCycle.cycleEnd.getTime() <= now.getTime();
 
-  // Navigate to next month
-  const handleNextMonth = () => {
-    setSelectedMonth(formatMonth(nextMonthDate));
+  // Navigate to next period
+  const handleNextPeriod = () => {
+    setSelectedMonth(formatMonth(nextPeriodDate));
   };
 
-  // Navigate to previous month
-  const handlePreviousMonth = () => {
-    setSelectedMonth(formatMonth(previousMonthDate));
+  // Navigate to previous period
+  const handlePreviousPeriod = () => {
+    setSelectedMonth(formatMonth(previousPeriodDate));
   };
 
   // Group by change
@@ -413,30 +428,30 @@ export function BaseProgrammaticCostChart({
     <ChartContainer
       title={
         <div className="flex items-center gap-2">
-          <span>Programmatic Cost</span>
+          <span>Usage Graph</span>
           <Button
             icon={ChevronLeftIcon}
             size="xs"
             variant="ghost"
-            onClick={handlePreviousMonth}
-            tooltip="Previous month"
+            onClick={handlePreviousPeriod}
+            tooltip="Previous period"
           />
 
           <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            {currentMonth}
+            {periodLabel}
           </span>
           {canGoNext && (
             <Button
               icon={ChevronRightIcon}
               size="xs"
               variant="ghost"
-              onClick={handleNextMonth}
-              tooltip="Next month"
+              onClick={handleNextPeriod}
+              tooltip="Next period"
             />
           )}
         </div>
       }
-      description="Total cost accumulated since the start of the month."
+      description="Total cost accumulated. Filter by clicking on legend items."
       isLoading={isProgrammaticCostLoading}
       errorMessage={
         isProgrammaticCostError
@@ -599,6 +614,7 @@ export function BaseProgrammaticCostChart({
  */
 export function ProgrammaticCostChart({
   workspaceId,
+  billingCycleStartDay,
 }: ProgrammaticCostChartProps) {
   const [groupBy, setGroupBy] = useState<GroupByType | undefined>(undefined);
   const [filter, setFilter] = useState<Partial<Record<GroupByType, string[]>>>(
@@ -615,6 +631,7 @@ export function ProgrammaticCostChart({
   } = useWorkspaceProgrammaticCost({
     workspaceId,
     selectedMonth,
+    billingCycleStartDay,
     groupBy,
     filter,
   });
@@ -630,6 +647,7 @@ export function ProgrammaticCostChart({
       setFilter={setFilter}
       selectedMonth={selectedMonth}
       setSelectedMonth={setSelectedMonth}
+      billingCycleStartDay={billingCycleStartDay}
     />
   );
 }

@@ -320,7 +320,11 @@ const WorkspacePage = ({
               <TriggerDataTable owner={owner} loadOnInit />
             </TabsContent>
             <TabsContent value="credits">
-              <CreditsDataTable owner={owner} loadOnInit />
+              <CreditsDataTable
+                owner={owner}
+                subscription={activeSubscription}
+                loadOnInit
+              />
             </TabsContent>
           </Tabs>
         </div>

@@ -29,16 +29,19 @@ export function usePokeProgrammaticCost({
   owner,
   groupBy,
   selectedMonth,
+  billingCycleStartDay,
   filter,
   disabled,
 }: PokeConditionalFetchProps & {
   groupBy?: GroupByType;
   selectedMonth?: string;
+  billingCycleStartDay: number;
   filter?: Partial<Record<GroupByType, string[]>>;
 }) {
   const fetcherFn: Fetcher<GetWorkspaceProgrammaticCostResponse> = fetcher;
 
   const queryParams = new URLSearchParams();
+  queryParams.set("billingCycleStartDay", billingCycleStartDay.toString());
   if (selectedMonth) {
     queryParams.set("selectedMonth", selectedMonth);
   }
@@ -49,7 +52,7 @@ export function usePokeProgrammaticCost({
     queryParams.set("filter", JSON.stringify(filter));
   }
   const queryString = queryParams.toString();
-  const key = `/api/poke/workspaces/${owner.sId}/analytics/programmatic-cost${queryString ? `?${queryString}` : ""}`;
+  const key = `/api/poke/workspaces/${owner.sId}/analytics/programmatic-cost?${queryString}`;
 
   const { data, error, isValidating } = useSWRWithDefaults(
     disabled ? null : key,

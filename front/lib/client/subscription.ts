@@ -12,6 +12,71 @@ export const getPriceWithCurrency = (price: number): string => {
   return isLikelyInUS ? `$${price}` : `${price}€`;
 };
 
+export interface BillingCycle {
+  cycleStart: Date;
+  cycleEnd: Date;
+}
+
+/**
+ * Calculate the billing cycle for a given day of the month.
+ * Example: if billing starts on the 4th, the cycle is from the 4th of one month
+ * to the 4th of the next month (exclusive).
+ *
+ * @param billingCycleStartDay - The day of the month when the billing cycle starts (1-31)
+ * @param referenceDate - The date to calculate the cycle for (defaults to now)
+ * @param useUTC - Whether to use UTC dates (for backend) or local dates (for frontend display)
+ */
+export function getBillingCycleFromDay(
+  billingCycleStartDay: number,
+  referenceDate: Date = new Date(),
+  useUTC: boolean = false
+): BillingCycle {
+  const year = useUTC
+    ? referenceDate.getUTCFullYear()
+    : referenceDate.getFullYear();
+  const month = useUTC ? referenceDate.getUTCMonth() : referenceDate.getMonth();
+  const day = useUTC ? referenceDate.getUTCDate() : referenceDate.getDate();
+
+  let cycleStart: Date;
+  let cycleEnd: Date;
+
+  if (day >= billingCycleStartDay) {
+    // Billing cycle started this month, ends next month
+    cycleStart = useUTC
+      ? new Date(Date.UTC(year, month, billingCycleStartDay, 0, 0, 0, 0))
+      : new Date(year, month, billingCycleStartDay);
+    cycleEnd = useUTC
+      ? new Date(Date.UTC(year, month + 1, billingCycleStartDay, 0, 0, 0, 0))
+      : new Date(year, month + 1, billingCycleStartDay);
+  } else {
+    // Billing cycle started last month, ends this month
+    cycleStart = useUTC
+      ? new Date(Date.UTC(year, month - 1, billingCycleStartDay, 0, 0, 0, 0))
+      : new Date(year, month - 1, billingCycleStartDay);
+    cycleEnd = useUTC
+      ? new Date(Date.UTC(year, month, billingCycleStartDay, 0, 0, 0, 0))
+      : new Date(year, month, billingCycleStartDay);
+  }
+
+  return { cycleStart, cycleEnd };
+}
+
+/**
+ * Calculate the current billing cycle based on the subscription start date.
+ * Returns null if no subscription start date is provided.
+ */
+export function getBillingCycle(
+  subscriptionStartDate: number | null,
+  referenceDate: Date = new Date()
+): BillingCycle | null {
+  if (!subscriptionStartDate) {
+    return null;
+  }
+
+  const billingCycleStartDay = new Date(subscriptionStartDate).getDate();
+  return getBillingCycleFromDay(billingCycleStartDay, referenceDate, false);
+}
+
 export const getPriceAsString = ({
   currency,
   priceInCents,
