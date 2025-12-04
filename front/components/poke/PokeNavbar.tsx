@@ -3,6 +3,8 @@ import Link from "next/link";
 import type { ComponentProps } from "react";
 import { useEffect, useState } from "react";
 
+import { PokeFavoriteButton } from "@app/components/poke/PokeFavorites";
+import { usePokePageTitle } from "@app/components/poke/PokeLayout";
 import { PokeRegionDropdown } from "@app/components/poke/PokeRegionDropdown";
 import {
   PokeCommandDialog,
@@ -41,6 +43,8 @@ function getPokeItemChipColor(
 }
 
 function PokeNavbar({ currentRegion, regionUrls }: PokeNavbarProps) {
+  const title = usePokePageTitle();
+
   return (
     <nav
       className={classNames(
@@ -60,7 +64,8 @@ function PokeNavbar({ currentRegion, regionUrls }: PokeNavbarProps) {
           <Button href="/poke/pokefy" variant="ghost" label="Pokefy URL" />
         </div>
       </div>
-      <div className="items-right flex gap-6">
+      <div className="items-right flex items-center gap-4">
+        <PokeFavoriteButton title={title} />
         {currentRegion && (
           <PokeRegionDropdown
             currentRegion={currentRegion}
