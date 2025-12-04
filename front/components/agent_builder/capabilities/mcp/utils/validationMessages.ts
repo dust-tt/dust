@@ -7,10 +7,6 @@ export const VALIDATION_MESSAGES = {
     required: "Child agent selection is required",
     invalid: "Please select a valid child agent",
   },
-  reasoningModel: {
-    required: "Reasoning model configuration is required",
-    invalid: "Please configure a valid reasoning model",
-  },
   dustApp: {
     required: "Please select a Dust app",
     invalid: "Selected Dust app is not valid",

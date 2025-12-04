@@ -41,7 +41,6 @@ import { default as outlookServer } from "@app/lib/actions/mcp_internal_actions/
 import { default as outlookCalendarServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook/calendar_server";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/primitive_types_debugger";
 import { default as extractDataServer } from "@app/lib/actions/mcp_internal_actions/servers/process";
-import { default as reasoningServer } from "@app/lib/actions/mcp_internal_actions/servers/reasoning";
 import { default as runAgentServer } from "@app/lib/actions/mcp_internal_actions/servers/run_agent";
 import { default as dustAppServer } from "@app/lib/actions/mcp_internal_actions/servers/run_dust_app";
 import { default as salesforceServer } from "@app/lib/actions/mcp_internal_actions/servers/salesforce";
@@ -148,8 +147,6 @@ export async function getInternalMCPServer(
       return includeDataServer(auth, agentLoopContext);
     case "run_agent":
       return runAgentServer(auth, agentLoopContext);
-    case "reasoning":
-      return reasoningServer(auth, agentLoopContext);
     case "run_dust_app":
       return dustAppServer(auth, agentLoopContext);
     case "agent_router":

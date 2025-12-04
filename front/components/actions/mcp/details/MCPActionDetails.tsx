@@ -35,7 +35,6 @@ import { MCPDeepDiveActionDetails } from "@app/components/actions/mcp/details/MC
 import { MCPExtractActionDetails } from "@app/components/actions/mcp/details/MCPExtractActionDetails";
 import { MCPGetDatabaseSchemaActionDetails } from "@app/components/actions/mcp/details/MCPGetDatabaseSchemaActionDetails";
 import { MCPListToolsActionDetails } from "@app/components/actions/mcp/details/MCPListToolsActionDetails";
-import { MCPReasoningActionDetails } from "@app/components/actions/mcp/details/MCPReasoningActionDetails";
 import { MCPRunAgentActionDetails } from "@app/components/actions/mcp/details/MCPRunAgentActionDetails";
 import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details/MCPTablesQueryActionDetails";
 import { SearchResultDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
@@ -241,10 +240,6 @@ export function MCPActionDetails({
     if (toolName === EXECUTE_DATABASE_QUERY_TOOL_NAME) {
       return <MCPTablesQueryActionDetails {...toolOutputDetailsProps} />;
     }
-  }
-
-  if (isInternalMCPServerOfName(mcpServerId, "reasoning")) {
-    return <MCPReasoningActionDetails {...toolOutputDetailsProps} />;
   }
 
   if (isInternalMCPServerOfName(mcpServerId, "extract_data")) {
