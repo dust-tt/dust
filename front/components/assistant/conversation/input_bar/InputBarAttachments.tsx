@@ -1,8 +1,8 @@
 // Okay to use public API types because it's front/connectors communication.
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { isFolder, isWebsite } from "@dust-tt/client";
-import { CitationGrid, DoubleIcon, Icon } from "@dust-tt/sparkle";
-import { useMemo } from "react";
+import { CitationGrid, DocumentIcon, DoubleIcon, Icon } from "@dust-tt/sparkle";
+import { useCallback, useMemo } from "react";
 
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import type {
@@ -16,7 +16,15 @@ import {
   getDisplayNameFromPastedFileId,
   isPastedFile,
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
-import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
+import {
+  getIcon,
+  isCustomResourceIconType,
+  isInternalAllowedIcon,
+} from "@app/components/resources/resources_icons";
+import type {
+  FileBlob,
+  FileUploaderService,
+} from "@app/hooks/useFileUploaderService";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import {
   getLocationForDataSourceViewContentNode,
@@ -69,34 +77,71 @@ export function InputBarAttachments({
     [spaces]
   );
 
-  // Convert file blobs to FileAttachment objects
-  // eslint-disable-next-line react-hooks/preserve-manual-memoization
-  const fileAttachments: FileAttachment[] = useMemo(() => {
+  const fileService = files.service;
+
+  const createNodeAttachment = useCallback(
+    (blob: FileBlob): NodeAttachment => {
+      const info = blob.nodeAttachmentInfo;
+      const iconName = info?.iconName;
+      const logo =
+        iconName &&
+        (isCustomResourceIconType(iconName) || isInternalAllowedIcon(iconName))
+          ? getIcon(iconName)
+          : DocumentIcon;
+
+      return {
+        type: "node",
+        id: blob.id,
+        title: blob.filename,
+        url: blob.sourceUrl ?? null,
+        spaceName: info?.label ?? "External",
+        spaceIcon: logo,
+        path: "",
+        visual: (
+          <DoubleIcon mainIcon={DocumentIcon} secondaryIcon={logo} size="md" />
+        ),
+        onRemove: disable ? undefined : () => fileService.removeFile(blob.id),
+      };
+    },
+    [disable, fileService]
+  );
+
+  const createFileAttachment = useCallback(
+    (blob: FileBlob): FileAttachment => {
+      const isPasted = isPastedFile(blob.contentType);
+      const title = isPasted
+        ? getDisplayNameFromPastedFileId(blob.id)
+        : blob.filename;
+      const uploadDate = isPasted
+        ? getDisplayDateFromPastedFileId(blob.id)
+        : undefined;
+
+      return {
+        type: "file",
+        id: blob.id,
+        title,
+        sourceUrl: blob.sourceUrl,
+        contentType: blob.contentType,
+        isUploading: blob.isUploading,
+        description: uploadDate,
+        onRemove: disable ? undefined : () => fileService.removeFile(blob.id),
+      };
+    },
+    [disable, fileService]
+  );
+
+  // Convert file blobs to attachments.
+  // Files with nodeAttachmentInfo become NodeAttachments (open in new tab).
+  // Regular files become FileAttachments (open in viewer dialog).
+  const blobAttachments: Attachment[] = useMemo(() => {
     return (
-      files?.service.fileBlobs.map((blob) => {
-        const isPasted = isPastedFile(blob.contentType);
-        const title = isPasted
-          ? getDisplayNameFromPastedFileId(blob.id)
-          : blob.id;
-        const uploadDate = isPasted
-          ? getDisplayDateFromPastedFileId(blob.id)
-          : undefined;
-        return {
-          type: "file",
-          id: blob.id,
-          title,
-          sourceUrl: blob.sourceUrl,
-          contentType: blob.contentType,
-          isUploading: blob.isUploading,
-          description: uploadDate,
-          fileId: blob.id,
-          onRemove: disable
-            ? undefined
-            : () => files.service.removeFile(blob.id),
-        };
-      }) ?? []
+      fileService.fileBlobs.map((blob) =>
+        blob.nodeAttachmentInfo
+          ? createNodeAttachment(blob)
+          : createFileAttachment(blob)
+      ) ?? []
     );
-  }, [files?.service, disable]);
+  }, [fileService, createFileAttachment, createNodeAttachment]);
 
   // Convert content nodes to NodeAttachment objects
   const nodeAttachments: NodeAttachment[] = useMemo(() => {
@@ -137,7 +182,7 @@ export function InputBarAttachments({
     );
   }, [nodes, spacesMap, disable]);
 
-  const allAttachments: Attachment[] = [...fileAttachments, ...nodeAttachments];
+  const allAttachments: Attachment[] = [...blobAttachments, ...nodeAttachments];
 
   if (allAttachments.length === 0) {
     return null;

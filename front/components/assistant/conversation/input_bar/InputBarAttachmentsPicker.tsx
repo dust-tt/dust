@@ -21,6 +21,7 @@ import { NodePathTooltip } from "@app/components/NodePathTooltip";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { useDebounce } from "@app/hooks/useDebounce";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import {
   getLocationForDataSourceViewContentNode,
@@ -28,6 +29,7 @@ import {
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
 import { isFolder, isWebsite } from "@app/lib/data_sources";
+import { clientFetch } from "@app/lib/egress/client";
 import type { ToolSearchNode } from "@app/lib/search/tools/types";
 import { getSpaceAccessPriority } from "@app/lib/spaces";
 import { useSearchTools } from "@app/lib/swr/search";
@@ -65,6 +67,10 @@ export const InputBarAttachmentsPicker = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const itemsContainerRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [uploadingToolNodes, setUploadingToolNodes] = useState<Set<string>>(
+    new Set()
+  );
+  const sendNotification = useSendNotification();
 
   const {
     inputValue: search,
@@ -78,12 +84,69 @@ export const InputBarAttachmentsPicker = ({
 
   const isToolNodeAttached = useCallback(
     (node: ToolSearchNode) => {
-      const nodeKey = `${node.serverViewId}-${node.internalId}`;
       return fileUploaderService.fileBlobs.some(
-        (blob) => blob.id === nodeKey || blob.filename === node.title + ".txt"
+        (blob) => blob.id === `tool-${node.serverViewId}-${node.internalId}`
       );
     },
     [fileUploaderService.fileBlobs]
+  );
+
+  const handleToolNodeUpload = useCallback(
+    async (node: ToolSearchNode) => {
+      const nodeKey = `${node.serverViewId}-${node.internalId}`;
+
+      setUploadingToolNodes((prev) => new Set(prev).add(nodeKey));
+
+      try {
+        const response = await clientFetch(
+          `/api/w/${owner.sId}/search/tools/upload`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              serverViewId: node.serverViewId,
+              internalId: node.internalId,
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error?.message ?? "Failed to upload file");
+        }
+
+        const { file } = await response.json();
+
+        fileUploaderService.addUploadedFile({
+          id: `tool-${nodeKey}`,
+          fileId: file.sId,
+          filename: file.fileName,
+          contentType: file.contentType,
+          size: file.fileSize,
+          sourceUrl: node.sourceUrl ?? undefined,
+          nodeAttachmentInfo: {
+            label: node.serverName,
+            iconName: node.serverIcon,
+          },
+        });
+      } catch (error) {
+        sendNotification({
+          type: "error",
+          title: "Failed to attach file",
+          description:
+            error instanceof Error ? error.message : "Unknown error occurred",
+        });
+      } finally {
+        setUploadingToolNodes((prev) => {
+          const next = new Set(prev);
+          next.delete(nodeKey);
+          return next;
+        });
+      }
+    },
+    [owner.sId, fileUploaderService, sendNotification]
   );
 
   const { spaces, isSpacesLoading } = useSpaces({
@@ -274,23 +337,32 @@ export const InputBarAttachmentsPicker = ({
             {toolContentNodes.map((item, index) => {
               const nodeKey = `${item.serverViewId}-${item.internalId}`;
               const isAttached = isToolNodeAttached(item);
+              const isUploading = uploadingToolNodes.has(nodeKey);
 
               return (
                 <DropdownMenuCheckboxItem
                   key={`tool-${nodeKey}-${index}`}
                   label={item.title}
                   icon={
-                    <DoubleIcon
-                      size="md"
-                      mainIcon={getVisualForContentNodeType(item.type)}
-                      secondaryIcon={getIcon(item.serverIcon)}
-                    />
+                    isUploading ? (
+                      <Spinner size="sm" />
+                    ) : (
+                      <DoubleIcon
+                        size="md"
+                        mainIcon={getVisualForContentNodeType(item.type)}
+                        secondaryIcon={getIcon(item.serverIcon)}
+                      />
+                    )
                   }
                   description={asDisplayToolName(item.serverName)}
                   checked={isAttached}
-                  disabled={isLoading}
-                  onCheckedChange={() => {
-                    // @todo. It should call an endpoit to upload the content of the doc to the conversation (useCase conversation attachments)
+                  disabled={isLoading || isUploading}
+                  onCheckedChange={(checked) => {
+                    if (checked && !isAttached && !isUploading) {
+                      void handleToolNodeUpload(item);
+                    } else if (!checked && isAttached) {
+                      fileUploaderService.removeFile(`tool-${nodeKey}`);
+                    }
                   }}
                   truncateText
                 />
