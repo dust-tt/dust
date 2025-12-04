@@ -170,8 +170,8 @@ describe("startCreditFromProOneOffInvoice", () => {
 
     await CreditResource.makeNew(auth, {
       type: "committed",
-      initialAmountCents: 10000,
-      consumedAmountCents: 0,
+      initialAmountMicroUsd: 100_000_000,
+      consumedAmountMicroUsd: 0,
       invoiceOrLineItemId: invoice.id,
     });
 
@@ -238,8 +238,8 @@ describe("voidFailedProCreditPurchaseInvoice", () => {
 
     await CreditResource.makeNew(auth, {
       type: "committed",
-      initialAmountCents: 10000,
-      consumedAmountCents: 0,
+      initialAmountMicroUsd: 100_000_000,
+      consumedAmountMicroUsd: 0,
       invoiceOrLineItemId: invoice.id,
     });
 
@@ -358,7 +358,7 @@ describe("createEnterpriseCreditPurchase", () => {
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
       expect(result.value.credit.type).toBe("committed");
-      expect(result.value.credit.initialAmountCents).toBe(500000);
+      expect(result.value.credit.initialAmountMicroUsd).toBe(5_000_000_000);
       expect(result.value.credit.discount).toBe(10);
       expect(result.value.invoiceOrLineItemId).toBe("in_enterprise");
     }

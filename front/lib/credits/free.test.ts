@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import {
-  calculateFreeCreditAmount,
+  calculateFreeCreditAmountCents,
   countEligibleUsersForFreeCredits,
   getCustomerStatus,
   grantFreeCreditsOnSubscriptionRenewal,
@@ -212,41 +212,41 @@ describe("countEligibleUsersForFreeCredits", () => {
   });
 });
 
-describe("calculateFreeCreditAmount", () => {
+describe("calculateFreeCreditAmountCents", () => {
   it("should return $5 per user for first 10 users", () => {
-    expect(calculateFreeCreditAmount(1)).toBe(500);
-    expect(calculateFreeCreditAmount(5)).toBe(2500);
+    expect(calculateFreeCreditAmountCents(1)).toBe(500);
+    expect(calculateFreeCreditAmountCents(5)).toBe(2500);
   });
 
   it("should return $50 for exactly 10 users", () => {
-    expect(calculateFreeCreditAmount(10)).toBe(5000);
+    expect(calculateFreeCreditAmountCents(10)).toBe(5000);
   });
 
   it("should apply $2 per user for users 11-50", () => {
-    expect(calculateFreeCreditAmount(11)).toBe(5000 + 200);
-    expect(calculateFreeCreditAmount(20)).toBe(5000 + 2000);
+    expect(calculateFreeCreditAmountCents(11)).toBe(5000 + 200);
+    expect(calculateFreeCreditAmountCents(20)).toBe(5000 + 2000);
   });
 
   it("should return $130 for exactly 50 users (50 + 80)", () => {
-    expect(calculateFreeCreditAmount(50)).toBe(5000 + 8000);
+    expect(calculateFreeCreditAmountCents(50)).toBe(5000 + 8000);
   });
 
   it("should apply $1 per user for users 51-100", () => {
-    expect(calculateFreeCreditAmount(51)).toBe(5000 + 8000 + 100);
-    expect(calculateFreeCreditAmount(75)).toBe(5000 + 8000 + 2500);
+    expect(calculateFreeCreditAmountCents(51)).toBe(5000 + 8000 + 100);
+    expect(calculateFreeCreditAmountCents(75)).toBe(5000 + 8000 + 2500);
   });
 
   it("should return $180 for exactly 100 users", () => {
-    expect(calculateFreeCreditAmount(100)).toBe(5000 + 8000 + 5000);
+    expect(calculateFreeCreditAmountCents(100)).toBe(5000 + 8000 + 5000);
   });
 
   it("should cap at 100 users (ignore users beyond 100)", () => {
-    expect(calculateFreeCreditAmount(150)).toBe(5000 + 8000 + 5000);
-    expect(calculateFreeCreditAmount(1000)).toBe(5000 + 8000 + 5000);
+    expect(calculateFreeCreditAmountCents(150)).toBe(5000 + 8000 + 5000);
+    expect(calculateFreeCreditAmountCents(1000)).toBe(5000 + 8000 + 5000);
   });
 
   it("should return 0 for 0 users", () => {
-    expect(calculateFreeCreditAmount(0)).toBe(0);
+    expect(calculateFreeCreditAmountCents(0)).toBe(0);
   });
 });
 

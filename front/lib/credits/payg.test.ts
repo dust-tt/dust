@@ -224,8 +224,8 @@ describe("allocatePAYGCreditsOnCycleRenewal", () => {
 
     const existingCredit = await CreditResource.makeNew(auth, {
       type: "payg",
-      initialAmountCents: 50000,
-      consumedAmountCents: 0,
+      initialAmountMicroUsd: 500_000_000,
+      consumedAmountMicroUsd: 0,
     });
     await existingCredit.start(
       new Date(NOW * 1000),
@@ -258,7 +258,7 @@ describe("allocatePAYGCreditsOnCycleRenewal", () => {
     const credits = await CreditResource.listAll(auth);
     expect(credits.length).toBe(1);
     expect(credits[0].type).toBe("payg");
-    expect(credits[0].initialAmountCents).toBe(75000);
+    expect(credits[0].initialAmountMicroUsd).toBe(750_000_000);
     expect(credits[0].startDate?.getTime()).toBe(NOW * 1000);
     expect(credits[0].expirationDate?.getTime()).toBe(
       (NOW + MONTH_SECONDS) * 1000
@@ -383,8 +383,8 @@ describe("startOrResumeEnterprisePAYG", () => {
 
     const existingCredit = await CreditResource.makeNew(auth, {
       type: "payg",
-      initialAmountCents: 50000,
-      consumedAmountCents: 0,
+      initialAmountMicroUsd: 500_000_000,
+      consumedAmountMicroUsd: 0,
     });
     await existingCredit.start(
       new Date(subscription.current_period_start * 1000),
@@ -399,7 +399,7 @@ describe("startOrResumeEnterprisePAYG", () => {
 
     const credits = await CreditResource.listAll(auth);
     expect(credits.length).toBe(1);
-    expect(credits[0].initialAmountCents).toBe(50000);
+    expect(credits[0].initialAmountMicroUsd).toBe(500_000_000);
   });
 });
 
@@ -423,8 +423,8 @@ describe("stopEnterprisePAYG", () => {
     const subscription = makeEnterpriseSubscription();
     const credit = await CreditResource.makeNew(auth, {
       type: "payg",
-      initialAmountCents: 100000,
-      consumedAmountCents: 5000,
+      initialAmountMicroUsd: 1_000_000_000,
+      consumedAmountMicroUsd: 50_000_000,
     });
     await credit.start(
       new Date(subscription.current_period_start * 1000),
@@ -438,7 +438,9 @@ describe("stopEnterprisePAYG", () => {
 
     expect(result.isOk()).toBe(true);
     const credits = await CreditResource.listAll(auth);
-    expect(credits[0].initialAmountCents).toBe(credits[0].consumedAmountCents);
+    expect(credits[0].initialAmountMicroUsd).toBe(
+      credits[0].consumedAmountMicroUsd
+    );
   });
 
   it("should handle case when no PAYG credit exists for period", async () => {
@@ -572,8 +574,8 @@ describe("invoiceEnterprisePAYGCredits", () => {
 
     const credit = await CreditResource.makeNew(auth, {
       type: "payg",
-      initialAmountCents: 100000,
-      consumedAmountCents: 0,
+      initialAmountMicroUsd: 100_000_000,
+      consumedAmountMicroUsd: 0,
     });
     await credit.start(
       new Date(previousStart * 1000),
@@ -605,8 +607,8 @@ describe("invoiceEnterprisePAYGCredits", () => {
 
     const credit = await CreditResource.makeNew(auth, {
       type: "payg",
-      initialAmountCents: 100000,
-      consumedAmountCents: 15000,
+      initialAmountMicroUsd: 1_000_000_000,
+      consumedAmountMicroUsd: 150_000_000,
     });
     await credit.start(
       new Date(previousStart * 1000),
@@ -646,8 +648,8 @@ describe("invoiceEnterprisePAYGCredits", () => {
 
     const credit = await CreditResource.makeNew(auth, {
       type: "payg",
-      initialAmountCents: 100000,
-      consumedAmountCents: 5000,
+      initialAmountMicroUsd: 100_000_000,
+      consumedAmountMicroUsd: 5_000_000,
     });
     await credit.start(
       new Date(previousStart * 1000),
@@ -686,8 +688,8 @@ describe("invoiceEnterprisePAYGCredits", () => {
 
     const credit = await CreditResource.makeNew(auth, {
       type: "payg",
-      initialAmountCents: 100000,
-      consumedAmountCents: 5000,
+      initialAmountMicroUsd: 1_000_000_000,
+      consumedAmountMicroUsd: 50_000_000,
     });
     await credit.start(
       new Date(previousStart * 1000),
@@ -718,8 +720,8 @@ describe("invoiceEnterprisePAYGCredits", () => {
 
     const credit = await CreditResource.makeNew(auth, {
       type: "payg",
-      initialAmountCents: 100000,
-      consumedAmountCents: 25000,
+      initialAmountMicroUsd: 100_000_000,
+      consumedAmountMicroUsd: 25_000_000,
     });
     await credit.start(
       new Date(previousStart * 1000),
@@ -755,8 +757,8 @@ describe("invoiceEnterprisePAYGCredits", () => {
 
     const credit = await CreditResource.makeNew(auth, {
       type: "payg",
-      initialAmountCents: 100000,
-      consumedAmountCents: 10000,
+      initialAmountMicroUsd: 100_000_000,
+      consumedAmountMicroUsd: 10_000_000,
     });
     await credit.start(
       new Date(previousStart * 1000),
