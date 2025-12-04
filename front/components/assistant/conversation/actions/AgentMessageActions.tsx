@@ -96,7 +96,7 @@ export function AgentMessageActions({
         </Card>
       ) : (
         <div>
-          <ContentMessage variant="primary" className="p-3">
+          <ContentMessage variant="primary" className="min-h-fit p-3">
             <div className="flex w-full flex-row">
               {!chainOfThought ? (
                 <AnimatedText variant="primary">Thinking...</AnimatedText>
