@@ -1069,12 +1069,12 @@ pub async fn data_sources_documents_retrieve_text(
 
     // First apply character-based offset and limit
     let offset_limit_start = utils::now();
-    let offset = query.offset.unwrap_or(0);
-    let limit = query.limit;
 
-    let text_slice: String = match limit {
-        Some(l) => text.chars().skip(offset).take(l).collect(),
-        None => text.chars().skip(offset).collect(),
+    let text_slice: String = match (query.offset, query.limit) {
+        (Some(o), Some(l)) => text.chars().skip(o).take(l).collect(),
+        (Some(o), None) => text.chars().skip(o).collect(),
+        (None, Some(l)) => text.chars().take(l).collect(),
+        (None, None) => text.to_string(),
     };
     let slice_char_count = text_slice.chars().count();
 
@@ -1127,8 +1127,8 @@ pub async fn data_sources_documents_retrieve_text(
             response: Some(json!({
                 "text": filtered_text,
                 "total_characters": char_count,
-                "offset": offset,
-                "limit": limit,
+                "offset": query.offset,
+                "limit": query.limit,
             })),
         }),
     )
