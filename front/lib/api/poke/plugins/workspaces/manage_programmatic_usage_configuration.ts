@@ -154,7 +154,7 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
       });
     }
 
-    const paygCapDollars = config.paygCapMicroUsd ?? 0;
+    const paygCapDollars = Math.round(config.paygCapMicroUsd / 1_000_000) ?? 0;
 
     return new Ok({
       freeCreditsOverrideEnabled: config.freeCreditMicroUsd !== null,
