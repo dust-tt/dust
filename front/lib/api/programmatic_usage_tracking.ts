@@ -13,11 +13,13 @@ import { CreditResource } from "@app/lib/resources/credit_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import { launchCreditAlertWorkflow } from "@app/temporal/credit_alerts/client";
 import type {
   LightWorkspaceType,
   PublicAPILimitsType,
   UserMessageOrigin,
 } from "@app/types";
+import { isString } from "@app/types";
 
 export const USAGE_ORIGINS_CLASSIFICATION: Record<
   UserMessageOrigin,
@@ -64,6 +66,7 @@ const PROGRAMMATIC_USAGE_ORIGINS = Object.keys(
 // Programmatic usage tracking: keep Redis key name for backward compatibility.
 const PROGRAMMATIC_USAGE_REMAINING_CREDITS_KEY = "public_api_remaining_credits";
 const REDIS_ORIGIN = "public_api_limits";
+const CREDIT_ALERT_THRESHOLD_PERCENT = 80;
 
 function getRedisKey(workspace: LightWorkspaceType): string {
   return `${PROGRAMMATIC_USAGE_REMAINING_CREDITS_KEY}:${workspace.id}`;
@@ -204,12 +207,24 @@ async function decreaseProgrammaticCredits(
 export async function decreaseProgrammaticCreditsV2(
   auth: Authenticator,
   { amountMicroUsd }: { amountMicroUsd: number }
-): Promise<void> {
+): Promise<{ totalConsumedMicroUsd: number; totalInitialMicroUsd: number }> {
+  const workspace = auth.getNonNullableWorkspace();
   const activeCredits = await CreditResource.listActive(auth);
 
   const sortedCredits = [...activeCredits].sort(compareCreditsForConsumption);
 
+  const totalConsumedBeforeMicroUsd = activeCredits.reduce(
+    (sum, c) => sum + c.consumedAmountMicroUsd,
+    0
+  );
+  const totalInitialMicroUsd = activeCredits.reduce(
+    (sum, c) => sum + c.initialAmountMicroUsd,
+    0
+  );
+
   let remainingAmountMicroUsd = amountMicroUsd;
+  let consumedAmountMicroUsd = 0;
+
   while (remainingAmountMicroUsd > 0) {
     const credit = sortedCredits.shift();
     if (!credit) {
@@ -218,24 +233,25 @@ export async function decreaseProgrammaticCreditsV2(
         {
           initialAmountMicroUsd: amountMicroUsd,
           remainingAmountMicroUsd,
-          workspaceId: auth.getNonNullableWorkspace().sId,
+          workspaceId: workspace.sId,
         },
         "No more credits available for this message cost."
       );
       break;
     }
-    const amountToConsumeInMicroUsd = Math.min(
+    const amountToConsumeMicroUsd = Math.min(
       remainingAmountMicroUsd,
       credit.initialAmountMicroUsd - credit.consumedAmountMicroUsd
     );
+
     const result = await credit.consume({
-      amountInMicroUsd: amountToConsumeInMicroUsd,
+      amountInMicroUsd: amountToConsumeMicroUsd,
     });
     if (result.isErr()) {
       logger.error(
         {
-          amountToConsumeInMicroUsd: amountToConsumeInMicroUsd,
-          workspaceId: auth.getNonNullableWorkspace().sId,
+          amountToConsumeInMicroUsd: amountToConsumeMicroUsd,
+          workspaceId: workspace.sId,
           // For eng on-call: this error should be investigated since it likely
           // reveals an underlying issue in our billing / credit logic. The only
           // legitimate case this error could happen would be a race condition
@@ -249,8 +265,15 @@ export async function decreaseProgrammaticCreditsV2(
       );
       break;
     }
-    remainingAmountMicroUsd -= amountToConsumeInMicroUsd;
+
+    consumedAmountMicroUsd += amountToConsumeMicroUsd;
+    remainingAmountMicroUsd -= amountToConsumeMicroUsd;
   }
+
+  return {
+    totalConsumedMicroUsd: totalConsumedBeforeMicroUsd + consumedAmountMicroUsd,
+    totalInitialMicroUsd: totalInitialMicroUsd,
+  };
 }
 
 // TODO(PPUL): remove this method once we switch to new credits tracking system.
@@ -324,9 +347,38 @@ export async function trackProgrammaticCost(
   const costWithMarkupMicroUsd = Math.ceil(
     runsCostMicroUsd * (1 + DUST_MARKUP_PERCENT / 100)
   );
-  await decreaseProgrammaticCreditsV2(auth, {
-    amountMicroUsd: costWithMarkupMicroUsd,
-  });
+  const { totalConsumedMicroUsd, totalInitialMicroUsd } =
+    await decreaseProgrammaticCreditsV2(auth, {
+      amountMicroUsd: costWithMarkupMicroUsd,
+    });
+
+  if (totalInitialMicroUsd > 0) {
+    const thresholdMicroUsd = Math.floor(
+      (totalInitialMicroUsd * CREDIT_ALERT_THRESHOLD_PERCENT) / 100
+    );
+    if (totalConsumedMicroUsd >= thresholdMicroUsd) {
+      const workspace = auth.getNonNullableWorkspace();
+      const featureFlags = await getFeatureFlags(workspace);
+      if (featureFlags.includes("ppul")) {
+        const thresholdId = workspace.metadata?.creditAlertThresholdId;
+        // For eng-oncall:
+        // If you get this, you can defer to programmatic usage owners right away
+        // Every customer should have this key defined
+        // If not, it means they will not get alerted
+        // when they reached their usage threshold
+        assert(
+          isString(thresholdId),
+          "creditAlertThresholdId must be set when credits exist"
+        );
+        void launchCreditAlertWorkflow({
+          workspaceId: workspace.sId,
+          thresholdId,
+          totalInitialMicroUsd,
+          totalConsumedMicroUsd,
+        });
+      }
+    }
+  }
 }
 
 export async function resetCredits(

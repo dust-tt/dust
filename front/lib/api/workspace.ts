@@ -404,6 +404,7 @@ export interface WorkspaceMetadata {
   allowVoiceTranscription?: boolean;
   autoCreateSpaceForProvisionedGroups?: boolean;
   disableManualInvitations?: boolean;
+  creditAlertThresholdId?: string;
 }
 
 export async function updateWorkspaceMetadata(
