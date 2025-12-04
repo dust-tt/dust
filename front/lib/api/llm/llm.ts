@@ -18,6 +18,7 @@ import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { RunResource } from "@app/lib/resources/run_resource";
 import logger from "@app/logger/logger";
+import { statsDClient } from "@app/logger/statsDClient";
 import type {
   ModelIdType,
   ModelProviderIdType,
@@ -161,6 +162,14 @@ export abstract class LLM {
       temperature: this.temperature,
     });
 
+    // Track LLM interaction metric
+    const metricTags = [
+      `model_id:${this.modelId}`,
+      `client_id:${this.metadata.clientId}`,
+      `operation_type:${this.context.operationType}`,
+    ];
+    statsDClient.increment("llm_interaction.count", 1, metricTags);
+
     // TODO(LLM-Router 13/11/2025): Temporary logs, TBRemoved
     let currentEvent: LLMEvent | null = null;
     try {
@@ -185,6 +194,8 @@ export abstract class LLM {
       }
     } finally {
       if (currentEvent?.type === "error") {
+        // Temporary: track LLM error metric
+        statsDClient.increment("llm_error.count", 1, metricTags);
         generation.updateTrace({
           tags: ["isError:true", `errorType:${currentEvent.content.type}`],
         });
@@ -200,6 +211,9 @@ export abstract class LLM {
           "LLM Error"
         );
       } else if (currentEvent?.type === "success") {
+        // Temporary: track LLM success metric
+        statsDClient.increment("llm_success.count", 1, metricTags);
+
         logger.info(
           {
             llmEventType: "success",
