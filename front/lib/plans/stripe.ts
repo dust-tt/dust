@@ -823,12 +823,12 @@ export async function reportActiveSeats(
 
 export async function makeCreditPurchaseOneOffInvoice({
   stripeSubscriptionId,
-  amountCents,
+  amountMicroUsd,
   couponId,
   ...collectionParams
 }: {
   stripeSubscriptionId: string;
-  amountCents: number;
+  amountMicroUsd: number;
   couponId?: string;
 } & InvoiceCollectionParams): Promise<
   Result<Stripe.Invoice, { error_message: string }>
@@ -840,6 +840,7 @@ export async function makeCreditPurchaseOneOffInvoice({
     });
   }
 
+  const amountCents = Math.ceil(amountMicroUsd / 10_000);
   const amountDollars = amountCents / 100;
 
   return makeInvoice({
