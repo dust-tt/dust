@@ -23,3 +23,9 @@ CREATE INDEX "credits_nonzero_remaining_idx" ON "credits" (
 )
 WHERE
     "consumedAmountMicroUsd" < "initialAmountMicroUsd";
+
+ALTER TABLE "public"."programmatic_usage_configurations"
+ADD COLUMN "freeCreditMicroUsd" BIGINT DEFAULT NULL;
+
+ALTER TABLE "public"."programmatic_usage_configurations"
+ADD COLUMN "paygCapMicroUsd" BIGINT DEFAULT NULL;
