@@ -118,8 +118,8 @@ const ButtonGroup = React.forwardRef<HTMLDivElement, ButtonGroupProps>(
     },
     ref
   ) => {
-    const totalItems = items.length;
-
+    const totalItems = items?.length ?? 0;
+    
     const renderedItems = items.map((item, index) => {
       const isFirst = index === 0;
       const isLast = index === totalItems - 1;
