@@ -73,12 +73,7 @@ export type SupportedModel = ExtractSpecificKeys<
   "providerId" | "modelId"
 >;
 export type ReasoningEffort = (typeof REASONING_EFFORTS)[number];
-export type ReasoningModelConfigurationType = {
-  modelId: ModelIdType;
-  providerId: ModelProviderIdType;
-  reasoningEffort: ReasoningEffort | null;
-  temperature: number | null;
-};
+
 export type EmbeddingProviderIdType = (typeof EMBEDDING_PROVIDER_IDS)[number];
 
 export const ResponseFormatSchema = z.object({

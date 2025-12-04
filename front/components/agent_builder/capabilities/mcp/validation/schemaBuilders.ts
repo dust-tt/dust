@@ -9,7 +9,6 @@ import {
   jsonSchemaStringSchema,
   mcpServerViewIdSchema,
   mcpTimeFrameSchema,
-  reasoningModelSchema,
   secretNameSchema,
 } from "@app/components/shared/tools_picker/types";
 import type { MCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
@@ -58,11 +57,6 @@ export function createDynamicConfigurationFields(
     childAgentId: requirements.requiresChildAgentConfiguration
       ? childAgentIdSchema.refine((val) => val !== null, {
           message: VALIDATION_MESSAGES.childAgent.required,
-        })
-      : z.null(),
-    reasoningModel: requirements.requiresReasoningConfiguration
-      ? reasoningModelSchema.refine((val) => val !== null, {
-          message: VALIDATION_MESSAGES.reasoningModel.required,
         })
       : z.null(),
     dustAppConfiguration: requirements.requiresDustAppConfiguration
@@ -174,7 +168,6 @@ export function createDefaultConfigurationSchema() {
   return z.object({
     ...createBaseConfigurationFields(),
     childAgentId: childAgentIdSchema,
-    reasoningModel: reasoningModelSchema,
     dustAppConfiguration: dustAppConfigurationSchema,
     additionalConfiguration: z.object({}),
   });

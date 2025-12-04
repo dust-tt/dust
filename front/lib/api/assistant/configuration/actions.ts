@@ -15,18 +15,13 @@ import {
   AgentChildAgentConfigurationModel,
   AgentMCPServerConfigurationModel,
 } from "@app/lib/models/agent/actions/mcp";
-import { AgentReasoningConfigurationModel } from "@app/lib/models/agent/actions/reasoning";
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
-import type {
-  LightAgentConfigurationType,
-  ReasoningModelConfigurationType,
-  Result,
-} from "@app/types";
+import type { LightAgentConfigurationType, Result } from "@app/types";
 import { Err, Ok, removeNulls } from "@app/types";
 
 /**
@@ -100,14 +95,6 @@ export async function createAgentActionConfiguration(
         mcpConfig,
       });
     }
-    // Creating the AgentReasoningConfiguration if configured
-    if (action.reasoningModel) {
-      await createReasoningConfiguration(auth, t, {
-        reasoningModel: action.reasoningModel,
-        mcpConfig,
-        agentConfiguration,
-      });
-    }
 
     return new Ok({
       id: mcpConfig.id,
@@ -120,7 +107,6 @@ export async function createAgentActionConfiguration(
       dataSources: action.dataSources,
       tables: action.tables,
       childAgentId: action.childAgentId,
-      reasoningModel: action.reasoningModel,
       timeFrame: action.timeFrame,
       additionalConfiguration: action.additionalConfiguration,
       dustAppConfiguration: action.dustAppConfiguration,
@@ -290,33 +276,6 @@ async function createChildAgentConfiguration(
     {
       agentConfigurationId: childAgentId,
       mcpServerConfigurationId: mcpConfig.id,
-      workspaceId: auth.getNonNullableWorkspace().id,
-    },
-    { transaction: t }
-  );
-}
-
-async function createReasoningConfiguration(
-  auth: Authenticator,
-  t: Transaction,
-  {
-    reasoningModel,
-    mcpConfig,
-    agentConfiguration,
-  }: {
-    reasoningModel: ReasoningModelConfigurationType;
-    mcpConfig: AgentMCPServerConfigurationModel;
-    agentConfiguration: LightAgentConfigurationType;
-  }
-) {
-  return AgentReasoningConfigurationModel.create(
-    {
-      sId: generateRandomModelSId(),
-      mcpServerConfigurationId: mcpConfig.id,
-      providerId: reasoningModel.providerId,
-      modelId: reasoningModel.modelId,
-      temperature: agentConfiguration.model.temperature,
-      reasoningEffort: reasoningModel.reasoningEffort,
       workspaceId: auth.getNonNullableWorkspace().id,
     },
     { transaction: t }
