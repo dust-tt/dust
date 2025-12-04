@@ -63,7 +63,7 @@ export interface BaseProgrammaticCostChartProps {
 type ChartDataPoint = {
   date: string;
   timestamp: number;
-  totalInitialCreditsCents: number;
+  totalInitialCreditsMicroUsd: number;
   [key: string]: string | number | undefined;
 };
 
@@ -337,7 +337,7 @@ export function BaseProgrammaticCostChart({
         day: "numeric",
       }),
       timestamp: point.timestamp,
-      totalInitialCreditsCents: point.totalInitialCreditsCents,
+      totalInitialCreditsMicroUsd: point.totalInitialCreditsMicroUsd,
     };
 
     // Add each group's cumulative cost to the data point using labels from availableGroups

@@ -105,9 +105,9 @@ export class ProgrammaticUsageConfigurationResource extends BaseResource<Program
   async updateConfiguration(
     auth: Authenticator,
     blob: Partial<{
-      freeCreditCents: number | null;
+      freeCreditMicroUsd: number | null;
       defaultDiscountPercent: number;
-      paygCapCents: number | null;
+      paygCapMicroUsd: number | null;
     }>,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
@@ -149,9 +149,9 @@ export class ProgrammaticUsageConfigurationResource extends BaseResource<Program
     return {
       sId: this.sId,
       createdAt: this.createdAt.getTime(),
-      freeCreditCents: this.freeCreditCents,
+      freeCreditMicroUsd: this.freeCreditMicroUsd,
       defaultDiscountPercent: this.defaultDiscountPercent,
-      paygCapCents: this.paygCapCents,
+      paygCapMicroUsd: this.paygCapMicroUsd,
     };
   }
 
@@ -159,9 +159,9 @@ export class ProgrammaticUsageConfigurationResource extends BaseResource<Program
     return {
       sId: this.sId,
       workspaceId: this.workspaceId,
-      freeCreditCents: this.freeCreditCents,
+      freeCreditMicroUsd: this.freeCreditMicroUsd,
       defaultDiscountPercent: this.defaultDiscountPercent,
-      paygCapCents: this.paygCapCents,
+      paygCapMicroUsd: this.paygCapMicroUsd,
     };
   }
 

@@ -217,11 +217,13 @@ export function isSupportedResourceType(
 }
 
 export interface PluginRunType {
-  createdAt: number;
-  author: string;
-  pluginId: string;
-  status: string;
-  resourceType: string;
-  resourceId: string | null;
   args: object;
+  author: string;
+  createdAt: number;
+  error: string | null;
+  pluginId: string;
+  resourceId: string | null;
+  resourceType: string;
+  result: string | null;
+  status: string;
 }

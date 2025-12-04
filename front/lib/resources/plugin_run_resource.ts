@@ -107,11 +107,44 @@ export class PluginRunResource extends BaseResource<PluginRunModel> {
   }
 
   static async findByWorkspaceId(auth: Authenticator) {
-    const workspace = auth.workspace();
+    const workspace = auth.getNonNullableWorkspace();
 
     const pluginRuns = await this.model.findAll({
       where: {
-        workspaceId: workspace?.id ?? null,
+        workspaceId: workspace.id,
+      },
+      order: [["createdAt", "DESC"]],
+    });
+
+    return pluginRuns.map(
+      (pluginRun) => new this(PluginRunResource.model, pluginRun.get())
+    );
+  }
+
+  static async findGlobalRuns() {
+    const pluginRuns = await this.model.findAll({
+      where: {
+        workspaceId: null,
+      },
+      order: [["createdAt", "DESC"]],
+    });
+
+    return pluginRuns.map(
+      (pluginRun) => new this(PluginRunResource.model, pluginRun.get())
+    );
+  }
+
+  static async findByWorkspaceAndResource(
+    auth: Authenticator,
+    { resourceId, resourceType }: { resourceId: string; resourceType: string }
+  ) {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const pluginRuns = await this.model.findAll({
+      where: {
+        workspaceId: workspace.id,
+        resourceType,
+        resourceId,
       },
       order: [["createdAt", "DESC"]],
     });
@@ -170,6 +203,7 @@ export class PluginRunResource extends BaseResource<PluginRunModel> {
   toJSON(): PluginRunType {
     // The value in DB is truncated to POKE_PLUGIN_RUN_MAX_ARGS_LENGTH so may not be a valid JSON.
     const parsedArgsResult = this.args ? safeParseJSON(this.args) : new Ok({});
+
     return {
       createdAt: this.createdAt.getTime(),
       author: this.author,
@@ -180,6 +214,8 @@ export class PluginRunResource extends BaseResource<PluginRunModel> {
       args: parsedArgsResult.isOk()
         ? (parsedArgsResult.value ?? {})
         : { rawContent: this.args },
+      result: this.result,
+      error: this.error,
     };
   }
 

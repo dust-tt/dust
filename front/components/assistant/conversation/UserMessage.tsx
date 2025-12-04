@@ -14,6 +14,7 @@ import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
+import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
 import { NewConversationMessage } from "@app/components/assistant/conversation/NewConversationMessage";
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
 import {
@@ -194,9 +195,7 @@ export function UserMessage({
             actions={actions}
           >
             {isDeleted ? (
-              <div className="italic text-muted-foreground">
-                This message has been deleted
-              </div>
+              <DeletedMessage />
             ) : (
               <Markdown
                 content={message.content}
@@ -240,9 +239,7 @@ export function UserMessage({
           actions={actions}
         >
           {isDeleted ? (
-            <div className="italic text-muted-foreground">
-              This message has been deleted
-            </div>
+            <DeletedMessage />
           ) : (
             <Markdown
               content={message.content}

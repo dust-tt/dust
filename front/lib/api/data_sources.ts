@@ -18,7 +18,7 @@ import {
 } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes";
+import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes_constants";
 import { DustError } from "@app/lib/error";
 import { getDustDataSourcesBucket } from "@app/lib/file_storage";
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
@@ -65,12 +65,78 @@ import {
   EMBEDDING_CONFIGS,
   Err,
   isDataSourceNameValid,
+  OAuthAPI,
   Ok,
   sectionFullText,
   validateUrl,
 } from "@app/types";
 
 import { ConversationResource } from "../resources/conversation_resource";
+
+/**
+ * Registers or updates the Slack webhook router entry for a Slack connection.
+ * This stores the signing secret in the webhook router, keyed by the Slack team ID.
+ * The function is idempotent - calling it multiple times will overwrite the existing entry.
+ *
+ * @returns Ok(true) if the entry was registered, Ok(false) if skipped (no signing secret or team_id), Err on failure
+ */
+export async function registerSlackWebhookRouterEntry({
+  connectionId,
+  extraConfig,
+}: {
+  connectionId: string;
+  extraConfig: Record<string, string> | undefined;
+}): Promise<Result<boolean, { message: string }>> {
+  if (!extraConfig) {
+    return new Ok(false);
+  }
+
+  const signingSecret = extraConfig["signing_secret"];
+  if (!signingSecret) {
+    return new Ok(false);
+  }
+
+  const oauthAPI = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+  const connectionMetadataRes = await oauthAPI.getConnectionMetadata({
+    connectionId,
+  });
+
+  if (connectionMetadataRes.isErr()) {
+    logger.error(
+      { connectionId, error: connectionMetadataRes.error },
+      "Failed to get connection metadata for Slack webhook registration"
+    );
+    return new Err({
+      message: "Failed to get connection metadata for Slack app",
+    });
+  }
+
+  const metadata = connectionMetadataRes.value.connection.metadata;
+  if (!metadata.team_id) {
+    return new Ok(false);
+  }
+
+  const connectorsAPI = new ConnectorsAPI(
+    config.getConnectorsAPIConfig(),
+    logger
+  );
+  const webhookRes = await connectorsAPI.addSlackWebhookRouterEntry({
+    slackTeamId: metadata.team_id,
+    signingSecret,
+  });
+
+  if (webhookRes.isErr()) {
+    logger.error(
+      { error: webhookRes.error, teamId: metadata.team_id },
+      "Failed to register webhook router entry for Slack app"
+    );
+    return new Err({
+      message: "Failed to register webhook router entry for Slack app",
+    });
+  }
+
+  return new Ok(true);
+}
 
 // Number of files we pull from GCS at once for deletion.
 // If we have 10k documents of 100kB each (which is a lot) we are at 1GB here.

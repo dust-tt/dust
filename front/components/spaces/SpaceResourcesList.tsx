@@ -38,10 +38,10 @@ import { ViewFolderAPIModal } from "@app/components/ViewFolderAPIModal";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import {
-  CONNECTOR_CONFIGURATIONS,
+  CONNECTOR_UI_CONFIGURATIONS,
   getConnectorProviderLogoWithFallback,
   isConnectorPermissionsEditable,
-} from "@app/lib/connector_providers";
+} from "@app/lib/connector_providers_ui";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import {
   useDeleteFolderOrWebsite,
@@ -367,7 +367,7 @@ export const SpaceResourcesList = ({
     return spaceDataSourceViews
       .filter((dataSourceView) => {
         const connectorConfig = dataSourceView.dataSource.connectorProvider
-          ? CONNECTOR_CONFIGURATIONS[
+          ? CONNECTOR_UI_CONFIGURATIONS[
               dataSourceView.dataSource.connectorProvider
             ]
           : null;

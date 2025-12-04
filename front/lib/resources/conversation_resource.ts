@@ -742,6 +742,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           conversationId: conversation.id,
           workspaceId: auth.getNonNullableWorkspace().id,
           ...(excludedUser ? { userId: { [Op.ne]: excludedUser.id } } : {}),
+          unread: false,
         },
       }
     );

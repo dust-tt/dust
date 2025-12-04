@@ -28,6 +28,7 @@ export class SlackConnectorStrategy
       restrictedSpaceAgentsEnabled: blob.restrictedSpaceAgentsEnabled,
       privateIntegrationCredentialId: blob.privateIntegrationCredentialId,
       connectorId,
+      botEnabled: blob.botEnabled,
       transaction,
     });
   }

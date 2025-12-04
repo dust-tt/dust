@@ -27,10 +27,8 @@ import {
 import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ToolGeneratedFileType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import {
-  CONNECTOR_CONFIGURATIONS,
-  getConnectorProviderLogoWithFallback,
-} from "@app/lib/connector_providers";
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import type {
   ConnectorProvider,
   ContentFragmentType,

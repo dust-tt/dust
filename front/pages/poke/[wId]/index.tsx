@@ -30,7 +30,6 @@ import { FeatureFlagsDataTable } from "@app/components/poke/features/table";
 import { GroupDataTable } from "@app/components/poke/groups/table";
 import { MCPServerViewsDataTable } from "@app/components/poke/mcp_server_views/table";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
-import { PluginRunsDataTable } from "@app/components/poke/plugins/table";
 import PokeLayout from "@app/components/poke/PokeLayout";
 import {
   PokeAlert,
@@ -282,9 +281,6 @@ const WorkspacePage = ({
 
               <TabsTrigger value="triggers" label="Triggers" />
               <TabsTrigger value="credits" label="Credits" />
-
-              {/* Plugin Logs on the far right */}
-              <TabsTrigger value="plugins" label="Plugins Logs" />
             </TabsList>
 
             <TabsContent value="datasources">
@@ -325,9 +321,6 @@ const WorkspacePage = ({
             </TabsContent>
             <TabsContent value="credits">
               <CreditsDataTable owner={owner} loadOnInit />
-            </TabsContent>
-            <TabsContent value="plugins">
-              <PluginRunsDataTable owner={owner} loadOnInit />
             </TabsContent>
           </Tabs>
         </div>

@@ -13,6 +13,7 @@ export function extractFileIds(code: string): string[] {
     });
 
     traverse(ast, {
+      // Extract useFile() calls.
       CallExpression(path) {
         // Look for: useFile("fil_xxx").
         if (

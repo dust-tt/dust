@@ -35,6 +35,7 @@ export const USAGE_ORIGINS_CLASSIFICATION: Record<
   raycast: "user",
   run_agent: "user",
   slack: "user",
+  slack_workflow: "programmatic",
   teams: "user",
   transcript: "user",
   triggered_programmatic: "programmatic",
@@ -67,8 +68,6 @@ function getRedisKey(workspace: LightWorkspaceType): string {
   return `${PROGRAMMATIC_USAGE_REMAINING_CREDITS_KEY}:${workspace.id}`;
 }
 
-const USERS_HAVE_BEEN_WARNED = false;
-
 export function isProgrammaticUsage(
   auth: Authenticator,
   { userMessageOrigin }: { userMessageOrigin?: UserMessageOrigin | null } = {}
@@ -91,10 +90,7 @@ export function isProgrammaticUsage(
 
   if (
     auth.authMethod() === "api_key" ||
-    // TODO(PPUL): remove this after notifying users.
-    (USERS_HAVE_BEEN_WARNED &&
-      USAGE_ORIGINS_CLASSIFICATION[userMessageOrigin] === "programmatic") ||
-    userMessageOrigin === "triggered_programmatic"
+    USAGE_ORIGINS_CLASSIFICATION[userMessageOrigin] === "programmatic"
   ) {
     return true;
   }
@@ -229,10 +225,10 @@ export async function decreaseProgrammaticCreditsV2(
     }
     const amountToConsumeInMicroUsd = Math.min(
       remainingAmountMicroUsd,
-      (credit.initialAmountCents - credit.consumedAmountCents) * 10_000
+      credit.initialAmountMicroUsd - credit.consumedAmountMicroUsd
     );
     const result = await credit.consume({
-      amountInCents: Math.ceil(amountToConsumeInMicroUsd / 10_000),
+      amountInMicroUsd: amountToConsumeInMicroUsd,
     });
     if (result.isErr()) {
       logger.error(

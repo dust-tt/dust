@@ -22,6 +22,7 @@ import { useState } from "react";
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
+import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import type {
   ConnectorProvider,
   ConnectorType,
@@ -72,6 +73,11 @@ export function CreateOrUpdateConnectionSnowflakeModal({
     // Should never happen.
     return null;
   }
+
+  const connectorUIConfiguration =
+    CONNECTOR_UI_CONFIGURATIONS[
+      connectorProviderConfiguration.connectorProvider
+    ];
 
   const areCredentialsValid = () => {
     const baseFieldsValid =
@@ -263,7 +269,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
           <SheetTitle className="flex items-center gap-2">
             <span className="[&>svg]:h-6 [&>svg]:w-6">
               <Icon
-                visual={connectorProviderConfiguration.getLogoComponent(isDark)}
+                visual={connectorUIConfiguration.getLogoComponent(isDark)}
               />
             </span>
             Connecting {connectorProviderConfiguration.name}
@@ -275,20 +281,20 @@ export function CreateOrUpdateConnectionSnowflakeModal({
               <Button
                 label="Read our guide"
                 size="sm"
-                href={connectorProviderConfiguration.guideLink ?? ""}
+                href={connectorUIConfiguration.guideLink ?? ""}
                 target="_blank"
                 rel="noopener noreferrer"
                 variant="outline"
                 icon={BookOpenIcon}
               />
 
-              {connectorProviderConfiguration.limitations && (
+              {connectorUIConfiguration.limitations && (
                 <div className="flex flex-col gap-y-2">
                   <div className="grow text-sm font-medium text-muted-foreground dark:text-muted-foreground-night">
                     Limitations
                   </div>
                   <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-                    {connectorProviderConfiguration.limitations}
+                    {connectorUIConfiguration.limitations}
                   </div>
                 </div>
               )}

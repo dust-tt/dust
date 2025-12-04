@@ -2,6 +2,7 @@ import clone from "lodash/clone";
 import { describe, it, vi } from "vitest";
 
 import type { AnthropicWhitelistedModelId } from "@app/lib/api/llm/clients/anthropic/types";
+import type { FireworksWhitelistedModelId } from "@app/lib/api/llm/clients/fireworks/types";
 import type { GoogleAIStudioWhitelistedModelId } from "@app/lib/api/llm/clients/google/types";
 import type { MistralWhitelistedModelId } from "@app/lib/api/llm/clients/mistral/types";
 import type { OpenAIWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
@@ -30,6 +31,8 @@ import {
   CLAUDE_4_5_SONNET_20250929_MODEL_ID,
   CLAUDE_4_OPUS_20250514_MODEL_ID,
   CLAUDE_4_SONNET_20250514_MODEL_ID,
+  FIREWORKS_DEEPSEEK_V3P2_MODEL_ID,
+  FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID,
   // Google models
   GEMINI_2_5_FLASH_LITE_MODEL_ID,
   GEMINI_2_5_FLASH_MODEL_ID,
@@ -109,7 +112,8 @@ const MODELS: Record<
   | OpenAIWhitelistedModelId
   | AnthropicWhitelistedModelId
   | GoogleAIStudioWhitelistedModelId
-  | MistralWhitelistedModelId,
+  | MistralWhitelistedModelId
+  | FireworksWhitelistedModelId,
   { runTest: boolean; providerId: ModelProviderIdType }
 > = {
   // Anthropic models
@@ -170,6 +174,15 @@ const MODELS: Record<
   [O3_MINI_MODEL_ID]: { runTest: false, providerId: "openai" },
   [O3_MODEL_ID]: { runTest: false, providerId: "openai" },
   [O4_MINI_MODEL_ID]: { runTest: false, providerId: "openai" },
+  // Fireworks models
+  [FIREWORKS_DEEPSEEK_V3P2_MODEL_ID]: {
+    runTest: false,
+    providerId: "fireworks",
+  },
+  [FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID]: {
+    runTest: false,
+    providerId: "fireworks",
+  },
 };
 
 // Read configuration from environment variables (set in vite.config.js)

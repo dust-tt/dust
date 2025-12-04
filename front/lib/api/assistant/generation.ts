@@ -4,6 +4,8 @@ import {
   DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME,
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
   DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
+  GET_MENTION_MARKDOWN_TOOL_NAME,
+  SEARCH_AVAILABLE_USERS_OR_AGENTS_TOOL_NAME,
 } from "@app/lib/actions/constants";
 import type { ServerToolsAndInstructions } from "@app/lib/actions/mcp_actions";
 import {
@@ -20,6 +22,7 @@ import type {
   LightAgentConfigurationType,
   ModelConfigurationType,
   UserMessageType,
+  WhitelistableFeature,
 } from "@app/types";
 import { CHAIN_OF_THOUGHT_META_PROMPT } from "@app/types/assistant/chain_of_thought_meta_prompt";
 
@@ -43,6 +46,7 @@ export function constructPromptMultiActions(
     agentsList,
     conversationId,
     serverToolsAndInstructions,
+    featureFlags,
   }: {
     userMessage: UserMessageType;
     agentConfiguration: AgentConfigurationType;
@@ -53,6 +57,7 @@ export function constructPromptMultiActions(
     agentsList: LightAgentConfigurationType[] | null;
     conversationId?: string;
     serverToolsAndInstructions?: ServerToolsAndInstructions[];
+    featureFlags: WhitelistableFeature[];
   }
 ) {
   const d = moment(new Date()).tz(userMessage.context.timezone);
@@ -190,6 +195,18 @@ export function constructPromptMultiActions(
     'When rendering markdown images, always use the file id of the image, which can be extracted from the corresponding `<attachment id="{FILE_ID}" type... title...>` tag in the conversation history.' +
     'Also always use the file title which can similarly be extracted from the same `<attachment id... type... title="{TITLE}">` tag in the conversation history.' +
     "\nEvery image markdown should follow this pattern ![{TITLE}]({FILE_ID}).\n";
+
+  if (featureFlags.includes("mentions_v2")) {
+    guidelinesSection +=
+      `\n## MENTIONNING AGENTS AND USERS\n` +
+      "You have the abillity to mention users and agents in a message using the markdown directive." +
+      '\nUsers can also refer to mention as "ping".' +
+      `\nUse the \`${SEARCH_AVAILABLE_USERS_OR_AGENTS_TOOL_NAME}\` tool to search for users and agents that are available to the conversation.` +
+      `\nUse the \`${GET_MENTION_MARKDOWN_TOOL_NAME}\` tool to get the markdown directive to use to mention a user or agent in a message.` +
+      "\nImportant:" +
+      "\n - In conversation with more than one user talking, always answer to users by prefixing your message with their markdown mention directive in order to address them directly, avoid confusion and ensure users are happy." +
+      "\n - Use the markdown directive only when you want to ping the user or agent, if you just want to refer to them, use their name only.";
+  }
 
   // INSTRUCTIONS section
   let instructions = "# INSTRUCTIONS\n\n";

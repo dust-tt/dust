@@ -111,11 +111,11 @@ function CreditCategoryBar({
 }: CreditCategoryBarProps) {
   const consumedFormatted = getPriceAsString({
     currency: "usd",
-    priceInCents: consumed,
+    priceInMicroUsd: consumed,
   });
   const totalFormatted = getPriceAsString({
     currency: "usd",
-    priceInCents: total,
+    priceInMicroUsd: total,
   });
 
   return (
@@ -233,11 +233,11 @@ function UsageSection({
 
   const totalConsumedFormatted = getPriceAsString({
     currency: "usd",
-    priceInCents: totalConsumed,
+    priceInMicroUsd: totalConsumed,
   });
   const totalCreditsFormatted = getPriceAsString({
     currency: "usd",
-    priceInCents: totalCredits,
+    priceInMicroUsd: totalCredits,
   });
 
   return (
@@ -338,8 +338,8 @@ export default function CreditsUsagePage({
     };
 
     for (const credit of activeCredits) {
-      byType[credit.type].consumed += credit.consumedAmount;
-      byType[credit.type].total += credit.initialAmount;
+      byType[credit.type].consumed += credit.consumedAmountMicroUsd;
+      byType[credit.type].total += credit.initialAmountMicroUsd;
 
       // Keep the earliest expiration date for each type
       const currentExpiration = byType[credit.type].expirationDate;
