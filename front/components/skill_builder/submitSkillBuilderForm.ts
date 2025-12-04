@@ -1,12 +1,7 @@
+import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import type { SkillConfigurationType } from "@app/pages/api/w/[wId]/assistant/skill_configurations";
 import type { Result, WorkspaceType } from "@app/types";
 import { Err, Ok } from "@app/types";
-
-export interface SkillBuilderFormData {
-  name: string;
-  description: string;
-  instructions: string;
-}
 
 export async function submitSkillBuilderForm({
   formData,
