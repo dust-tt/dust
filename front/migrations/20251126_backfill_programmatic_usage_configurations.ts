@@ -84,7 +84,7 @@ async function backfillWorkspace(
 
   const defaultDiscountPercent = calculateDefaultDiscountPercent(markup);
   const paygCapMicroUsd = Math.round(monthlyLimit * 1_000_000);
-  const freeCreditMicroUsd = undefined; // Setting free credit to 0 cents as default
+  const freeCreditMicroUsd = undefined; // Setting free credit to 0 micro USD as default
 
   if (defaultDiscountPercent < 0 || defaultDiscountPercent > 100) {
     workspaceLogger.error(

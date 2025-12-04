@@ -121,7 +121,7 @@ async function handler(
           },
         });
       }
-      // Convert dollars to cents for internal storage.
+      // Convert dollars to micro USD for internal storage.
       const amountMicroUsd = Math.round(amountDollars * 1_000_000);
       const isEnterprise = isEnterpriseSubscription(stripeSubscription);
 

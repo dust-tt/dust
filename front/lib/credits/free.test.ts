@@ -212,7 +212,7 @@ describe("countEligibleUsersForFreeCredits", () => {
   });
 });
 
-describe("calculateFreeCreditAmountCents", () => {
+describe("calculateFreeCreditAmountMicroUsd", () => {
   it("should return $5 per user for first 10 users", () => {
     expect(calculateFreeCreditAmountMicroUsd(1)).toBe(5_000_000);
     expect(calculateFreeCreditAmountMicroUsd(5)).toBe(25_000_000);
