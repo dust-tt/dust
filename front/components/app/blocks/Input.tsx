@@ -15,6 +15,7 @@ import { useState } from "react";
 import DatasetPicker from "@app/components/app/DatasetPicker";
 import DatasetView from "@app/components/app/DatasetView";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress";
 import { useDataset } from "@app/lib/swr/datasets";
 import { shallowBlockClone } from "@app/lib/utils";
 import type {
@@ -83,7 +84,7 @@ export default function Input({
     setIsDatasetModalOpen(false);
     setDatasetModalData(null);
     if (dataset) {
-      const res = await fetch(
+      const res = await clientFetch(
         `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets/${block.config.dataset}`,
         {
           method: "POST",
@@ -137,16 +138,14 @@ export default function Input({
                   onDatasetUpdate={handleSetDataset}
                   readOnly={readOnly}
                 />
-                {block.config && block.config.dataset ? (
-                  <>
-                    <Button
-                      variant="outline"
-                      onClick={() => setIsDatasetModalOpen(true)}
-                      icon={readOnly ? EyeIcon : PencilSquareIcon}
-                      label={readOnly ? "View" : "Edit"}
-                      size="xs"
-                    />
-                  </>
+                {block.config?.dataset ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsDatasetModalOpen(true)}
+                    icon={readOnly ? EyeIcon : PencilSquareIcon}
+                    label={readOnly ? "View" : "Edit"}
+                    size="xs"
+                  />
                 ) : null}
               </div>
             ) : null}

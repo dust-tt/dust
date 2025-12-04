@@ -1,6 +1,7 @@
 import type { Fetcher, SWRConfiguration } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress";
 import {
   fetcher,
   getErrorFromResponse,
@@ -106,7 +107,7 @@ export function usePatchUser() {
     jobType?: JobType,
     imageUrl?: string | null
   ) => {
-    const res = await fetch("/api/user", {
+    const res = await clientFetch("/api/user", {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",

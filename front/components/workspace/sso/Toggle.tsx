@@ -9,6 +9,7 @@ import {
 import React from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress";
 import type { WorkspaceType } from "@app/types";
 
 export function ToggleEnforceEnterpriseConnectionModal({
@@ -41,7 +42,7 @@ export function ToggleEnforceEnterpriseConnectionModal({
 
   const handleToggleSsoEnforced = React.useCallback(
     async (ssoEnforced: boolean) => {
-      const res = await fetch(`/api/w/${owner.sId}`, {
+      const res = await clientFetch(`/api/w/${owner.sId}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

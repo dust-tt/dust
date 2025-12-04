@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
+import { clientFetch } from "@app/lib/egress";
 import type {
   ConversationWithoutContentType,
   LightWorkspaceType,
@@ -34,7 +35,7 @@ export function useValidateAction({
 
       try {
         // Validate the action.
-        const response = await fetch(
+        const response = await clientFetch(
           `/api/w/${owner.sId}/assistant/conversations/${validationRequest.conversationId}/messages/${validationRequest.messageId}/validate-action`,
           {
             method: "POST",
@@ -70,7 +71,7 @@ export function useValidateAction({
           messageId &&
           conversation.sId !== validationRequest.conversationId
         ) {
-          const response = await fetch(
+          const response = await clientFetch(
             `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages/${messageId}/retry?blocked_only=true`,
             {
               method: "POST",

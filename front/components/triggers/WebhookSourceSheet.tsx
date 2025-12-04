@@ -36,6 +36,7 @@ import { WebhookSourceDetailsInfo } from "@app/components/triggers/WebhookSource
 import { WebhookSourceDetailsSharing } from "@app/components/triggers/WebhookSourceDetailsSharing";
 import { WebhookSourceViewIcon } from "@app/components/triggers/WebhookSourceViewIcon";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import {
   useCreateWebhookSource,
@@ -284,7 +285,7 @@ function WebhookSourceSheetContent({
         }
 
         if (change.action === "add") {
-          const response = await fetch(
+          const response = await clientFetch(
             `/api/w/${owner.sId}/spaces/${space.sId}/webhook_source_views`,
             {
               method: "POST",
@@ -303,7 +304,7 @@ function WebhookSourceSheetContent({
             (v) => v.spaceId === space.sId
           );
           if (view) {
-            const response = await fetch(
+            const response = await clientFetch(
               `/api/w/${owner.sId}/spaces/${space.sId}/webhook_source_views/${view.sId}`,
               {
                 method: "DELETE",
@@ -334,7 +335,7 @@ function WebhookSourceSheetContent({
           const diff = diffWebhookSourceForm(editDefaults, values);
 
           if (diff.requestBody) {
-            const response = await fetch(
+            const response = await clientFetch(
               `/api/w/${owner.sId}/webhook_sources/views/${systemView.sId}`,
               {
                 method: "PATCH",

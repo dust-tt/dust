@@ -33,6 +33,7 @@ import {
 } from "@app/components/poke/shadcn/ui/table";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { isWebhookBasedProvider } from "@app/lib/connector_providers";
+import { clientFetch } from "@app/lib/egress";
 import {
   decodeSqids,
   formatTimestampToFriendlyDate,
@@ -338,7 +339,7 @@ function CopyTokenButton({ owner, dsId }: CopyTokenButtonProps) {
 
     setIsLoading(true);
     setError(null);
-    const res = await fetch(
+    const res = await clientFetch(
       `/api/poke/workspaces/${owner.sId}/data_sources/${dsId}/token`
     );
     if (!res.ok) {
@@ -462,7 +463,7 @@ function CheckConnectorStuck({
   const checkStuck = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(
+      const res = await clientFetch(
         `/api/poke/workspaces/${owner.sId}/data_sources/${dsId}/check-stuck`
       );
       if (!res.ok) {

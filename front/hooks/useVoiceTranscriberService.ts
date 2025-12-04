@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress";
 import type { AugmentedMessage } from "@app/lib/utils/find_agents_in_message";
 import type { LightWorkspaceType } from "@app/types";
 import { normalizeError } from "@app/types";
@@ -180,10 +181,13 @@ export function useVoiceTranscriberService({
       const form = new FormData();
       form.append("file", file);
 
-      const resp = await fetch(`/api/w/${owner.sId}/services/transcribe`, {
-        method: "POST",
-        body: form,
-      });
+      const resp = await clientFetch(
+        `/api/w/${owner.sId}/services/transcribe`,
+        {
+          method: "POST",
+          body: form,
+        }
+      );
 
       if (!resp.ok) {
         const msg = await resp.text();

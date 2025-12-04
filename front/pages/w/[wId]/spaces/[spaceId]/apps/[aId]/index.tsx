@@ -16,6 +16,7 @@ import { ViewAppAPIModal } from "@app/components/app/ViewAppAPIModal";
 import { DustAppPageLayout } from "@app/components/apps/DustAppPageLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { extractConfig } from "@app/lib/config";
+import { clientFetch } from "@app/lib/egress";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -199,7 +200,7 @@ export default function AppView({
 
     saveTimeout = setTimeout(async () => {
       if (!readOnly) {
-        await fetch(
+        await clientFetch(
           `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/state`,
           {
             method: "POST",

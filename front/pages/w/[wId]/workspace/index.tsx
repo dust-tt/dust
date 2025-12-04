@@ -36,6 +36,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useVoiceTranscriptionToggle } from "@app/hooks/useVoiceTranscriptionToggle";
 import config from "@app/lib/api/config";
 import { getFeatureFlags } from "@app/lib/auth";
+import { clientFetch } from "@app/lib/egress";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -166,7 +167,7 @@ export default function WorkspaceAdmin({
 
   const handleUpdateWorkspace = async () => {
     setUpdating(true);
-    const res = await fetch(`/api/w/${owner.sId}`, {
+    const res = await clientFetch(`/api/w/${owner.sId}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -387,7 +388,7 @@ function BotToggle({
 
     const connectionId = cRes.value.connection_id;
 
-    const res = await fetch(
+    const res = await clientFetch(
       `/api/w/${owner.sId}/spaces/${systemSpace.sId}/data_sources`,
       {
         method: "POST",

@@ -3,6 +3,7 @@ import { useCallback, useState } from "react";
 import type { KeyedMutator } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress";
 import {
   useLabsTranscriptsDefaultConfiguration,
   useLabsTranscriptsIsConnectorConnected,
@@ -61,17 +62,20 @@ export function ProviderSelection({
       useConnectorConnection?: boolean
     ) => {
       try {
-        const response = await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            connectionId,
-            provider,
-            useConnectorConnection,
-          }),
-        });
+        const response = await clientFetch(
+          `/api/w/${owner.sId}/labs/transcripts`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              connectionId,
+              provider,
+              useConnectorConnection,
+            }),
+          }
+        );
         if (!response.ok) {
           sendNotification({
             type: "error",
@@ -127,16 +131,19 @@ export function ProviderSelection({
 
   const saveApiConnection = useCallback(
     async (apiKey: string, provider: string) => {
-      const response = await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          apiKey,
-          provider,
-        }),
-      });
+      const response = await clientFetch(
+        `/api/w/${owner.sId}/labs/transcripts`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            apiKey,
+            provider,
+          }),
+        }
+      );
 
       return response;
     },
@@ -145,13 +152,16 @@ export function ProviderSelection({
 
   const saveConnectorConnection = useCallback(
     async (provider: string) => {
-      const response = await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ provider, useConnectorConnection: true }),
-      });
+      const response = await clientFetch(
+        `/api/w/${owner.sId}/labs/transcripts`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ provider, useConnectorConnection: true }),
+        }
+      );
       return response;
     },
     [owner.sId]

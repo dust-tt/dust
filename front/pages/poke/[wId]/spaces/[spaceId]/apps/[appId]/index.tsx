@@ -17,6 +17,7 @@ import PokeLayout from "@app/components/poke/PokeLayout";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import config from "@app/lib/api/config";
 import { cleanSpecificationFromCore, getSpecification } from "@app/lib/api/run";
+import { clientFetch } from "@app/lib/egress";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { BaseDustProdActionRegistry } from "@app/lib/registry";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -149,7 +150,7 @@ function AppSpecification({
         config[block.name] = block.config;
       }
 
-      const r = await fetch(
+      const r = await clientFetch(
         `/api/poke/workspaces/${owner.sId}/apps/${app.sId}/state`,
         {
           method: "POST",

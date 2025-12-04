@@ -1,7 +1,8 @@
+import { clientFetch } from "@app/lib/egress";
 import type { UserMetadataType } from "@app/types";
 
 export async function setUserMetadataFromClient(metadata: UserMetadataType) {
-  const res = await fetch(
+  const res = await clientFetch(
     `/api/user/metadata/${encodeURIComponent(metadata.key)}`,
     {
       method: "POST",

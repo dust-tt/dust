@@ -15,6 +15,7 @@ import type {
 import useSWRInfinite from "swr/infinite";
 
 import { COMMIT_HASH } from "@app/lib/commit-hash";
+import { clientFetch } from "@app/lib/egress";
 import { isAPIErrorResponse, safeParseJSON } from "@app/types";
 
 const EMPTY_ARRAY = Object.freeze([]);
@@ -163,7 +164,7 @@ const resHandler = async (res: Response) => {
 
 export const fetcher = async (...args: Parameters<typeof fetch>) => {
   const [url, config] = args;
-  const res = await fetch(url, {
+  const res = await clientFetch(url, {
     ...config,
     headers: addCommitHashToHeaders(config?.headers),
   });
@@ -175,7 +176,7 @@ export const fetcherWithBody = async ([url, body, method]: [
   object,
   string,
 ]) => {
-  const res = await fetch(url, {
+  const res = await clientFetch(url, {
     method,
     headers: addCommitHashToHeaders({
       "Content-Type": "application/json",

@@ -13,6 +13,7 @@ import { useState } from "react";
 import { makeColumnsForAssistants } from "@app/components/poke/assistants/columns";
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
+import { clientFetch } from "@app/lib/egress";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { usePokeAgentConfigurations } from "@app/poke/swr/agent_configurations";
 import type {
@@ -51,7 +52,7 @@ const importAssistant = async (
     }
     setImporting(true);
     const fileContent = await file.text();
-    const response = await fetch(
+    const response = await clientFetch(
       `/api/poke/workspaces/${owner.sId}/agent_configurations/import`,
       {
         method: "POST",

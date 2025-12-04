@@ -12,6 +12,7 @@ import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getFeatureFlags } from "@app/lib/auth";
+import { clientFetch } from "@app/lib/egress";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
@@ -93,7 +94,7 @@ export default function LabsTranscriptsIndex({
       return;
     }
 
-    const response = await fetch(
+    const response = await clientFetch(
       `/api/w/${owner.sId}/labs/transcripts/${transcriptConfigurationId}`,
       {
         method: "DELETE",

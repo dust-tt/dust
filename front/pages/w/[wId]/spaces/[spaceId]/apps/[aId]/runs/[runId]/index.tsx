@@ -8,6 +8,7 @@ import { DustAppPageLayout } from "@app/components/apps/DustAppPageLayout";
 import { ConfirmContext } from "@app/components/Confirm";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { cleanSpecificationFromCore, getRun } from "@app/lib/api/run";
+import { clientFetch } from "@app/lib/egress";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
 import type {
@@ -104,7 +105,7 @@ export default function AppRun({
 
     cleanSpecificationFromCore(specCopy);
 
-    await fetch(
+    await clientFetch(
       `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/state`,
       {
         method: "POST",

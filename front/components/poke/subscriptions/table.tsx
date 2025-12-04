@@ -33,6 +33,7 @@ import { makeColumnsForSubscriptions } from "@app/components/poke/subscriptions/
 import EnterpriseUpgradeDialog from "@app/components/poke/subscriptions/EnterpriseUpgradeDialog";
 import FreePlanUpgradeDialog from "@app/components/poke/subscriptions/FreePlanUpgradeDialog";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { clientFetch } from "@app/lib/egress";
 import { FREE_NO_PLAN_CODE, isProPlanPrefix } from "@app/lib/plans/plan_codes";
 import { usePokePlans } from "@app/lib/swr/poke";
 import type { PlanType, SubscriptionType, WorkspaceType } from "@app/types";
@@ -310,12 +311,15 @@ function UpgradeDowngradeModal({
       return;
     }
     try {
-      const r = await fetch(`/api/poke/workspaces/${owner.sId}/downgrade`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+      const r = await clientFetch(
+        `/api/poke/workspaces/${owner.sId}/downgrade`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
       if (!r.ok) {
         throw new Error("Failed to downgrade workspace.");
       }
@@ -336,15 +340,18 @@ function UpgradeDowngradeModal({
         return;
       }
       try {
-        const r = await fetch(`/api/poke/workspaces/${owner.sId}/upgrade`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            planCode: plan.code,
-          }),
-        });
+        const r = await clientFetch(
+          `/api/poke/workspaces/${owner.sId}/upgrade`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              planCode: plan.code,
+            }),
+          }
+        );
         if (!r.ok) {
           throw new Error("Failed to upgrade workspace to plan.");
         }

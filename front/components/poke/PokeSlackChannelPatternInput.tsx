@@ -12,6 +12,7 @@ import { useCallback, useMemo, useState } from "react";
 import { SlackAutoReadPatternsTable } from "@app/components/poke/data_sources/slack/table";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { clientFetch } from "@app/lib/egress";
 import { usePokeSpaces } from "@app/poke/swr/spaces";
 import type {
   DataSourceType,
@@ -42,7 +43,7 @@ export function SlackChannelPatternInput({
 
   const { submit: updatePatterns } = useSubmitFunction(
     async (patterns: SlackAutoReadPattern[]) => {
-      const r = await fetch(
+      const r = await clientFetch(
         `/api/poke/workspaces/${owner.sId}/data_sources/${dataSource.sId}/config`,
         {
           method: "POST",

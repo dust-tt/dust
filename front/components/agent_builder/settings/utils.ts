@@ -108,7 +108,7 @@ export async function fetchWithErr<T>(
   init?: RequestInit
 ): Promise<Result<T, APIError>> {
   try {
-    const response = await fetch(input, init);
+    const response = await clientFetch(input, init);
     if (!response.ok) {
       const errorText = await response.text();
       let errorMessage;

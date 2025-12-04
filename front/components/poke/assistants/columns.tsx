@@ -10,6 +10,7 @@ import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 
+import { clientFetch } from "@app/lib/egress";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { LightWorkspaceType } from "@app/types";
 
@@ -165,7 +166,7 @@ async function archiveAssistant(
   }
 
   try {
-    const r = await fetch(
+    const r = await clientFetch(
       `/api/poke/workspaces/${owner.sId}/agent_configurations/${agentConfiguration.sId}`,
       {
         method: "DELETE",
@@ -199,7 +200,7 @@ async function restoreAssistant(
   }
 
   try {
-    const r = await fetch(
+    const r = await clientFetch(
       `/api/poke/workspaces/${owner.sId}/agent_configurations/${agentConfiguration.sId}/restore`,
       {
         method: "POST",

@@ -2,6 +2,7 @@ import type { Fetcher, SWRConfiguration } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { usePeriodicRefresh } from "@app/hooks/usePeriodicRefresh";
+import { clientFetch } from "@app/lib/egress";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import {
   fetcher,
@@ -60,7 +61,7 @@ export function useFileProcessedContent({
     // Stream fetcher -> don't try to parse the stream.
     // Wait for initial response to trigger swr error handling.
     async (...args) => {
-      const response = await fetch(...args, { redirect: "manual" });
+      const response = await clientFetch(...args, { redirect: "manual" });
 
       // File is not safe to display -> opaque redirect response. Return null.
       if (response.type === "opaqueredirect") {
@@ -102,7 +103,7 @@ export function useUpsertFileAsDatasourceEntry(
 
   const doCreate = async (body: UpsertFileToDataSourceRequestBody) => {
     const upsertUrl = `/api/w/${owner.sId}/data_sources/${dataSourceView.dataSource.sId}/files`;
-    const res = await fetch(upsertUrl, {
+    const res = await clientFetch(upsertUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -188,7 +189,7 @@ export function useFileContent({
     swrKey,
     async (url: string) => {
       // Use custom fetcher to parse as text.
-      const response = await fetch(url);
+      const response = await clientFetch(url);
 
       return response.text();
     },
@@ -219,7 +220,7 @@ export function useShareInteractiveContentFile({
   const { data, error, mutate } = useSWRWithDefaults(swrKey, fileShareFetcher);
 
   const doShare = async (shareScope: FileShareScope) => {
-    const res = await fetch(`/api/w/${owner.sId}/files/${fileId}/share`, {
+    const res = await clientFetch(`/api/w/${owner.sId}/files/${fileId}/share`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

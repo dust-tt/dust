@@ -2,6 +2,7 @@ import type { ChangeEvent } from "react";
 import { useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { FileUploadRequestResponseBody } from "@app/pages/api/w/[wId]/files";
 import type { FileUploadedRequestResponseBody } from "@app/pages/api/w/[wId]/files/[fileId]";
@@ -185,7 +186,7 @@ export function useFileUploaderService({
         // Get upload URL from server.
         let uploadResponse;
         try {
-          uploadResponse = await fetch(`/api/w/${owner.sId}/files`, {
+          uploadResponse = await clientFetch(`/api/w/${owner.sId}/files`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -234,7 +235,7 @@ export function useFileUploaderService({
         // Upload a file to the obtained URL.
         let uploadResult;
         try {
-          uploadResult = await fetch(file.uploadUrl, {
+          uploadResult = await clientFetch(file.uploadUrl, {
             method: "POST",
             body: formData,
           });

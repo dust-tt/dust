@@ -20,6 +20,7 @@ import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { clientFetch } from "@app/lib/egress";
 import { serializeMention } from "@app/lib/mentions/format";
 import {
   useAgentConfigurations,
@@ -94,7 +95,7 @@ export function AgentSuggestion({
       const editedContent = contentStartsWithLineStartMarkdown
         ? `${serializeMention(agent)}\n\n${userMessage.content}`
         : `${serializeMention(agent)} ${userMessage.content}`;
-      const mRes = await fetch(
+      const mRes = await clientFetch(
         `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${userMessage.sId}/edit`,
         {
           method: "POST",

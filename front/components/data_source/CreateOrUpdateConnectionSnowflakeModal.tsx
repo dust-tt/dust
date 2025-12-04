@@ -23,6 +23,7 @@ import { useState } from "react";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
+import { clientFetch } from "@app/lib/egress";
 import type {
   ConnectorProvider,
   ConnectorType,
@@ -142,7 +143,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
     setIsLoading(true);
 
     // First we post the credentials to OAuth service.
-    const createCredentialsRes = await fetch(
+    const createCredentialsRes = await clientFetch(
       `/api/w/${owner.sId}/credentials`,
       {
         method: "POST",
@@ -207,16 +208,19 @@ export function CreateOrUpdateConnectionSnowflakeModal({
     setIsLoading(true);
 
     // First we post the credentials to OAuth service.
-    const credentialsRes = await fetch(`/api/w/${owner.sId}/credentials`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        provider: "snowflake",
-        credentials,
-      }),
-    });
+    const credentialsRes = await clientFetch(
+      `/api/w/${owner.sId}/credentials`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          provider: "snowflake",
+          credentials,
+        }),
+      }
+    );
 
     if (!credentialsRes.ok) {
       setError("Failed to update connection: cannot verify those credentials.");
@@ -226,7 +230,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
 
     const data = await credentialsRes.json();
 
-    const updateConnectorRes = await fetch(
+    const updateConnectorRes = await clientFetch(
       `/api/w/${owner.sId}/data_sources/${dataSourceToUpdate.sId}/managed/update`,
       {
         method: "POST",

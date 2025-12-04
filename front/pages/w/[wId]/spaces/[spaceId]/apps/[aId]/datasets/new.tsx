@@ -9,6 +9,7 @@ import DatasetView from "@app/components/app/DatasetView";
 import { DustAppPageLayout } from "@app/components/apps/DustAppPageLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getDatasets } from "@app/lib/api/datasets";
+import { clientFetch } from "@app/lib/egress";
 import { useRegisterUnloadHandlers } from "@app/lib/front";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -101,7 +102,7 @@ export default function NewDatasetView({
 
   const handleSubmit = async () => {
     setLoading(true);
-    const res = await fetch(
+    const res = await clientFetch(
       `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets`,
       {
         method: "POST",

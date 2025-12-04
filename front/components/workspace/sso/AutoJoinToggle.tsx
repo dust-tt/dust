@@ -13,6 +13,7 @@ import { useState } from "react";
 
 import { UpgradePlanDialog } from "@app/components/workspace/UpgradePlanDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import type { PlanType, WorkspaceDomain, WorkspaceType } from "@app/types";
 import { pluralize } from "@app/types";
@@ -51,7 +52,7 @@ function DomainAutoJoinModal({
   );
 
   async function handleUpdateWorkspace(): Promise<void> {
-    const res = await fetch(`/api/w/${owner.sId}`, {
+    const res = await clientFetch(`/api/w/${owner.sId}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

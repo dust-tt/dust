@@ -2,6 +2,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 
+import { clientFetch } from "@app/lib/egress";
 import logger from "@app/logger/logger";
 
 const StatusPageUnresolvedIncident = t.type({
@@ -26,7 +27,7 @@ export async function getUnresolvedIncidents({
   pageId: string;
 }): Promise<StatusPageReponseType> {
   try {
-    const res = await fetch(
+    const res = await clientFetch(
       `https://api.statuspage.io/v1/pages/${pageId}/incidents/unresolved`,
       {
         headers: {

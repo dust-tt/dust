@@ -28,6 +28,7 @@ import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { AppWideModeLayout } from "@app/components/sparkle/AppWideModeLayout";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { isRestrictedFromAgentCreation } from "@app/lib/auth";
+import { clientFetch } from "@app/lib/egress";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
@@ -233,7 +234,7 @@ export default function WorkspaceAssistants({
       setShowDisabledFreeWorkspacePopup(agent.sId);
       return;
     }
-    const res = await fetch(
+    const res = await clientFetch(
       `/api/w/${owner.sId}/assistant/global_agents/${agent.sId}`,
       {
         method: "PATCH",

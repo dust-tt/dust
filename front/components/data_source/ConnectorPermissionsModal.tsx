@@ -138,7 +138,7 @@ export async function handleUpdatePermissions(
 
   // Slack connectors will rely on customer credentials, we need to set a reference to it on the connector to be able to properly uninstall the app on connector deletion
   if (connector.type === "slack" && connectionRes.value.relatedCredentialId) {
-    const credentialRes = await fetch(
+    const credentialRes = await clientFetch(
       `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/privateIntegrationCredentialId`,
       {
         method: "POST",
@@ -499,7 +499,7 @@ function DataSourceDeletionModal({
 
   const handleDelete = async () => {
     setIsLoading(true);
-    const res = await fetch(
+    const res = await clientFetch(
       `/api/w/${owner.sId}/spaces/${systemSpace.sId}/data_sources/${dataSource.sId}`,
       {
         method: "DELETE",
@@ -751,7 +751,7 @@ export function ConnectorPermissionsModal({
     setSaving(true);
     try {
       if (Object.keys(selectedNodes).length) {
-        const r = await fetch(
+        const r = await clientFetch(
           `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/permissions`,
           {
             method: "POST",

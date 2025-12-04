@@ -32,6 +32,7 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import config from "@app/lib/api/config";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
+import { clientFetch } from "@app/lib/egress";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -810,7 +811,7 @@ async function handleCheckOrFindNotionUrl(
   dsId: string,
   command: "check-url" | "find-url"
 ): Promise<NotionCheckUrlResponseType | NotionFindUrlResponseType | null> {
-  const res = await fetch(`/api/poke/admin`, {
+  const res = await clientFetch(`/api/poke/admin`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -843,7 +844,7 @@ async function handleCheckZendeskTicket(
     | { brandId: number | null; ticketId: number; wId: string; dsId: string }
     | { ticketUrl: string; wId: string; dsId: string }
 ): Promise<ZendeskFetchTicketResponseType | null> {
-  const res = await fetch(`/api/poke/admin`, {
+  const res = await clientFetch(`/api/poke/admin`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -1214,7 +1215,7 @@ const ConfigToggle = ({
 
   const { isSubmitting, submit: onToggle } = useSubmitFunction(async () => {
     try {
-      const r = await fetch(
+      const r = await clientFetch(
         `/api/poke/workspaces/${owner.sId}/data_sources/${dataSource.sId}/config`,
         {
           method: "POST",

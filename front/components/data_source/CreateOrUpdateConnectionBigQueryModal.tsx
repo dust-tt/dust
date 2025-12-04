@@ -27,6 +27,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
+import { clientFetch } from "@app/lib/egress";
 import { useBigQueryLocations } from "@app/lib/swr/bigquery";
 import type { PostCredentialsBody } from "@app/pages/api/w/[wId]/credentials";
 import type {
@@ -173,7 +174,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
     setIsLoading(true);
 
     // First we post the credentials to OAuth service.
-    const createCredentialsRes = await fetch(
+    const createCredentialsRes = await clientFetch(
       `/api/w/${owner.sId}/credentials`,
       {
         method: "POST",
@@ -247,19 +248,22 @@ export function CreateOrUpdateConnectionBigQueryModal({
     setIsLoading(true);
 
     // First we post the credentials to OAuth service.
-    const credentialsRes = await fetch(`/api/w/${owner.sId}/credentials`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        provider: "bigquery",
-        credentials: {
-          ...credentialsState.credentials,
-          location: selectedLocation,
-        } as BigQueryCredentialsWithLocation,
-      }),
-    });
+    const credentialsRes = await clientFetch(
+      `/api/w/${owner.sId}/credentials`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          provider: "bigquery",
+          credentials: {
+            ...credentialsState.credentials,
+            location: selectedLocation,
+          } as BigQueryCredentialsWithLocation,
+        }),
+      }
+    );
 
     if (!credentialsRes.ok) {
       setError("Failed to update connection: cannot verify those credentials.");
@@ -269,7 +273,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
 
     const data = await credentialsRes.json();
 
-    const updateConnectorRes = await fetch(
+    const updateConnectorRes = await clientFetch(
       `/api/w/${owner.sId}/data_sources/${dataSourceToUpdate.sId}/managed/update`,
       {
         method: "POST",

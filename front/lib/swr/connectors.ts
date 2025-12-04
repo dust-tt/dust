@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress";
 import {
   fetcher,
   getErrorFromResponse,
@@ -140,7 +141,7 @@ export function useToggleChatBot({
   }
 
   const doToggle = async (botEnabled: boolean) => {
-    const res = await fetch(
+    const res = await clientFetch(
       `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/botEnabled`,
       {
         headers: {
@@ -212,7 +213,7 @@ export function useToggleDiscordChatBot({
   }
 
   const doToggle = async (botEnabled: boolean) => {
-    const res = await fetch(
+    const res = await clientFetch(
       `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/botEnabled`,
       {
         headers: {
@@ -289,7 +290,7 @@ export function useTogglePdfEnabled({
 
   const doToggle = async (pdfEnabled: boolean) => {
     setIsLoading(true);
-    const res = await fetch(
+    const res = await clientFetch(
       `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/pdfEnabled`,
       {
         headers: {

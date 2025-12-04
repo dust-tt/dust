@@ -1,6 +1,7 @@
 import type { Fetcher } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import {
   fetcher,
@@ -78,7 +79,7 @@ export function useUpdateDataSourceViewDocument(
     const patchUrl =
       `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/` +
       `data_sources/${dataSourceView.dataSource.sId}/documents/${encodeURIComponent(documentId)}`;
-    const res = await fetch(patchUrl, {
+    const res = await clientFetch(patchUrl, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -128,7 +129,7 @@ export function useCreateDataSourceViewDocument(
     const createUrl =
       `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/` +
       `data_sources/${dataSourceView.dataSource.sId}/documents`;
-    const res = await fetch(createUrl, {
+    const res = await clientFetch(createUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

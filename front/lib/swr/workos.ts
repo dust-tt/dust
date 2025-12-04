@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress";
 import {
   emptyArray,
   fetcher,
@@ -49,7 +50,7 @@ export function useRemoveWorkspaceDomain({
   const sendNotification = useSendNotification();
 
   const doRemoveWorkspaceDomain = async (domain: string) => {
-    const response = await fetch(`/api/w/${owner.sId}/domains`, {
+    const response = await clientFetch(`/api/w/${owner.sId}/domains`, {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
@@ -115,7 +116,7 @@ export function useDisableWorkOSSSOConnection({
   const sendNotification = useSendNotification();
 
   const doDisableWorkOSSSOConnection = async () => {
-    const response = await fetch(`/api/w/${owner.sId}/sso`, {
+    const response = await clientFetch(`/api/w/${owner.sId}/sso`, {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
@@ -180,7 +181,7 @@ export function useDisableWorkOSDirectorySyncConnection({
   const sendNotification = useSendNotification();
 
   const doDisableWorkOSDirectorySyncConnection = async () => {
-    const response = await fetch(`/api/w/${owner.sId}/dsync`, {
+    const response = await clientFetch(`/api/w/${owner.sId}/dsync`, {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",

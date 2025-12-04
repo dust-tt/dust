@@ -2,8 +2,8 @@ import { useCallback, useSyncExternalStore } from "react";
 import type { Fetcher } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
-import { emptyArray } from "@app/lib/swr/swr";
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { clientFetch } from "@app/lib/egress";
+import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetCreditsResponseBody } from "@app/types/credits";
 
 // Global state for tracking purchase loading status per workspace
@@ -104,13 +104,16 @@ export function usePurchaseCredits({ workspaceId }: { workspaceId: string }) {
       setPurchaseLoading(workspaceId, true);
 
       try {
-        const response = await fetch(`/api/w/${workspaceId}/credits/purchase`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ amountDollars }),
-        });
+        const response = await clientFetch(
+          `/api/w/${workspaceId}/credits/purchase`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ amountDollars }),
+          }
+        );
 
         if (!response.ok) {
           const errorData = await response.json();

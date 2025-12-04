@@ -2,6 +2,7 @@ import type { NotificationType } from "@dust-tt/sparkle";
 import type * as t from "io-ts";
 
 import type { MessageTemporaryState } from "@app/components/assistant/conversation/types";
+import { clientFetch } from "@app/lib/egress";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 import type { PostMessagesResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages";
@@ -210,7 +211,7 @@ export async function submitMessage({
   ) {
     const contentFragmentsRes = await Promise.all([
       ...contentFragments.uploaded.map((contentFragment) => {
-        return fetch(
+        return clientFetch(
           `/api/w/${owner.sId}/assistant/conversations/${conversationId}/content_fragment`,
           {
             method: "POST",
@@ -230,7 +231,7 @@ export async function submitMessage({
         );
       }),
       ...contentFragments.contentNodes.map((contentFragment) => {
-        return fetch(
+        return clientFetch(
           `/api/w/${owner.sId}/assistant/conversations/${conversationId}/content_fragment`,
           {
             method: "POST",
@@ -267,7 +268,7 @@ export async function submitMessage({
   }
 
   // Create a new user message.
-  const mRes = await fetch(
+  const mRes = await clientFetch(
     `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages`,
     {
       method: "POST",
@@ -318,7 +319,7 @@ export async function deleteConversation({
   conversationId: string;
   sendNotification: (notification: NotificationType) => void;
 }) {
-  const res = await fetch(
+  const res = await clientFetch(
     `/api/w/${workspaceId}/assistant/conversations/${conversationId}`,
     {
       method: "DELETE",
@@ -412,13 +413,16 @@ export async function createConversationWithMessage({
   };
 
   // Create new conversation and post the initial message at the same time.
-  const cRes = await fetch(`/api/w/${owner.sId}/assistant/conversations`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
+  const cRes = await clientFetch(
+    `/api/w/${owner.sId}/assistant/conversations`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    }
+  );
 
   if (!cRes.ok) {
     const data = await cRes.json();

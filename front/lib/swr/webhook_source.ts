@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress";
 import {
   emptyArray,
   fetcher,
@@ -128,7 +129,7 @@ export function useCreateWebhookSource({
   const createWebhookSource = async (
     input: PostWebhookSourcesBody
   ): Promise<WebhookSourceForAdminType | null> => {
-    const response = await fetch(`/api/w/${owner.sId}/webhook_sources`, {
+    const response = await clientFetch(`/api/w/${owner.sId}/webhook_sources`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -174,7 +175,7 @@ export function useUpdateWebhookSourceView({
       updates: { name: string; description?: string; icon?: string }
     ): Promise<boolean> => {
       try {
-        const response = await fetch(
+        const response = await clientFetch(
           `/api/w/${owner.sId}/webhook_sources/views/${webhookSourceViewId}`,
           {
             method: "PATCH",
@@ -232,7 +233,7 @@ export function useDeleteWebhookSource({
       setIsDeleting(true);
 
       try {
-        const response = await fetch(
+        const response = await clientFetch(
           `/api/w/${owner.sId}/webhook_sources/${webhookSourceId}`,
           {
             method: "DELETE",
@@ -326,7 +327,7 @@ export function useAddWebhookSourceViewToSpace({
       webhookSource: WebhookSourceForAdminType;
     }): Promise<void> => {
       try {
-        const response = await fetch(
+        const response = await clientFetch(
           `/api/w/${owner.sId}/spaces/${space.sId}/webhook_source_views`,
           {
             method: "POST",
@@ -383,7 +384,7 @@ export function useRemoveWebhookSourceViewFromSpace({
       space: SpaceType;
     }): Promise<void> => {
       try {
-        const response = await fetch(
+        const response = await clientFetch(
           `/api/w/${owner.sId}/spaces/${space.sId}/webhook_source_views/${webhookSourceView.sId}`,
           {
             method: "DELETE",

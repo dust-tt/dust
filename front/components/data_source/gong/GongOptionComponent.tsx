@@ -9,6 +9,7 @@ import {
 import { useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
 import type { DataSourceType, WorkspaceType } from "@app/types";
 import { normalizeError } from "@app/types";
@@ -89,7 +90,7 @@ export function GongOptionComponent({
     }
 
     setLoading(true);
-    const res = await fetch(
+    const res = await clientFetch(
       `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${configKey}`,
       {
         headers: { "Content-Type": "application/json" },
