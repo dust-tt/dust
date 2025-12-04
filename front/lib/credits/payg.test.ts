@@ -150,9 +150,9 @@ describe("isPAYGEnabled", () => {
 
   it("should return false when paygCapCents is null", async () => {
     await ProgrammaticUsageConfigurationResource.makeNew(auth, {
-      freeCreditCents: null,
+      freeCreditMicroUsd: null,
       defaultDiscountPercent: 0,
-      paygCapCents: null,
+      paygCapMicroUsd: null,
     });
 
     const result = await isPAYGEnabled(auth);
@@ -161,9 +161,9 @@ describe("isPAYGEnabled", () => {
 
   it("should return true when paygCapCents is set", async () => {
     await ProgrammaticUsageConfigurationResource.makeNew(auth, {
-      freeCreditCents: null,
+      freeCreditMicroUsd: null,
       defaultDiscountPercent: 0,
-      paygCapCents: 100000,
+      paygCapMicroUsd: 1_000_000_000,
     });
 
     const result = await isPAYGEnabled(auth);
@@ -200,9 +200,9 @@ describe("allocatePAYGCreditsOnCycleRenewal", () => {
 
   it("should do nothing when paygCapCents is null", async () => {
     await ProgrammaticUsageConfigurationResource.makeNew(auth, {
-      freeCreditCents: null,
+      freeCreditMicroUsd: null,
       defaultDiscountPercent: 0,
-      paygCapCents: null,
+      paygCapMicroUsd: null,
     });
 
     await allocatePAYGCreditsOnCycleRenewal({
@@ -217,9 +217,9 @@ describe("allocatePAYGCreditsOnCycleRenewal", () => {
 
   it("should skip allocation when credit already exists for the period", async () => {
     await ProgrammaticUsageConfigurationResource.makeNew(auth, {
-      freeCreditCents: null,
+      freeCreditMicroUsd: null,
       defaultDiscountPercent: 0,
-      paygCapCents: 50000,
+      paygCapMicroUsd: 500_000_000,
     });
 
     const existingCredit = await CreditResource.makeNew(auth, {
@@ -244,9 +244,9 @@ describe("allocatePAYGCreditsOnCycleRenewal", () => {
 
   it("should create new PAYG credit with correct dates and amounts", async () => {
     await ProgrammaticUsageConfigurationResource.makeNew(auth, {
-      freeCreditCents: null,
+      freeCreditMicroUsd: null,
       defaultDiscountPercent: 10,
-      paygCapCents: 75000,
+      paygCapMicroUsd: 750_000_000,
     });
 
     await allocatePAYGCreditsOnCycleRenewal({
@@ -267,9 +267,9 @@ describe("allocatePAYGCreditsOnCycleRenewal", () => {
 
   it("should apply discount from config when creating credit", async () => {
     await ProgrammaticUsageConfigurationResource.makeNew(auth, {
-      freeCreditCents: null,
+      freeCreditMicroUsd: null,
       defaultDiscountPercent: 20,
-      paygCapCents: 100000,
+      paygCapMicroUsd: 1_000_000_000,
     });
 
     await allocatePAYGCreditsOnCycleRenewal({
@@ -308,7 +308,7 @@ describe("startOrResumeEnterprisePAYG", () => {
       startOrResumeEnterprisePAYG({
         auth,
         stripeSubscription: subscription,
-        paygCapCents: 100000,
+        paygCapMicroUsd: 1_000_000_000,
       })
     ).rejects.toThrow();
   });
@@ -319,7 +319,7 @@ describe("startOrResumeEnterprisePAYG", () => {
     const result = await startOrResumeEnterprisePAYG({
       auth,
       stripeSubscription: subscription,
-      paygCapCents: 100000,
+      paygCapMicroUsd: 1_000_000_000,
     });
 
     expect(result.isErr()).toBe(true);
@@ -327,36 +327,36 @@ describe("startOrResumeEnterprisePAYG", () => {
 
   it("should update config paygCapCents successfully", async () => {
     await ProgrammaticUsageConfigurationResource.makeNew(auth, {
-      freeCreditCents: null,
+      freeCreditMicroUsd: null,
       defaultDiscountPercent: 0,
-      paygCapCents: null,
+      paygCapMicroUsd: null,
     });
     const subscription = makeEnterpriseSubscription();
 
     const result = await startOrResumeEnterprisePAYG({
       auth,
       stripeSubscription: subscription,
-      paygCapCents: 150000,
+      paygCapMicroUsd: 1_500_000_000,
     });
 
     expect(result.isOk()).toBe(true);
     const config =
       await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
-    expect(config?.paygCapCents).toBe(150000);
+    expect(config?.paygCapMicroUsd).toBe(1_500_000_000);
   });
 
   it("should create credit for current billing period with correct dates", async () => {
     await ProgrammaticUsageConfigurationResource.makeNew(auth, {
-      freeCreditCents: null,
+      freeCreditMicroUsd: null,
       defaultDiscountPercent: 15,
-      paygCapCents: null,
+      paygCapMicroUsd: null,
     });
     const subscription = makeEnterpriseSubscription();
 
     await startOrResumeEnterprisePAYG({
       auth,
       stripeSubscription: subscription,
-      paygCapCents: 200000,
+      paygCapMicroUsd: 2_000_000_000,
     });
 
     const credits = await CreditResource.listAll(auth);
@@ -370,14 +370,14 @@ describe("startOrResumeEnterprisePAYG", () => {
 
     const config =
       await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
-    expect(config?.paygCapCents).toBe(200000);
+    expect(config?.paygCapMicroUsd).toBe(2_000_000_000);
   });
 
   it("should skip credit creation if credit already exists for period", async () => {
     await ProgrammaticUsageConfigurationResource.makeNew(auth, {
-      freeCreditCents: null,
+      freeCreditMicroUsd: null,
       defaultDiscountPercent: 0,
-      paygCapCents: null,
+      paygCapMicroUsd: null,
     });
     const subscription = makeEnterpriseSubscription();
 
@@ -394,7 +394,7 @@ describe("startOrResumeEnterprisePAYG", () => {
     await startOrResumeEnterprisePAYG({
       auth,
       stripeSubscription: subscription,
-      paygCapCents: 100000,
+      paygCapMicroUsd: 1_000_000_000,
     });
 
     const credits = await CreditResource.listAll(auth);
@@ -456,9 +456,9 @@ describe("stopEnterprisePAYG", () => {
 
   it("should set paygCapCents to null in config", async () => {
     await ProgrammaticUsageConfigurationResource.makeNew(auth, {
-      freeCreditCents: null,
+      freeCreditMicroUsd: null,
       defaultDiscountPercent: 10,
-      paygCapCents: 100000,
+      paygCapMicroUsd: 1_000_000_000,
     });
     const subscription = makeEnterpriseSubscription();
 
@@ -469,7 +469,7 @@ describe("stopEnterprisePAYG", () => {
 
     const config =
       await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
-    expect(config?.paygCapCents).toBeNull();
+    expect(config?.paygCapMicroUsd).toBeNull();
   });
 
   it("should succeed even when no config exists", async () => {
@@ -507,9 +507,9 @@ describe("invoiceEnterprisePAYGCredits", () => {
   it("should throw when subscription is not enterprise", async () => {
     vi.mocked(isEnterpriseSubscription).mockReturnValue(false);
     await ProgrammaticUsageConfigurationResource.makeNew(auth, {
-      freeCreditCents: null,
+      freeCreditMicroUsd: null,
       defaultDiscountPercent: 0,
-      paygCapCents: 100000,
+      paygCapMicroUsd: 1_000_000_000,
     });
 
     const subscription = makeEnterpriseSubscription();
@@ -543,9 +543,9 @@ describe("invoiceEnterprisePAYGCredits", () => {
 
   it("should throw when no credit exists for the period", async () => {
     await ProgrammaticUsageConfigurationResource.makeNew(auth, {
-      freeCreditCents: null,
+      freeCreditMicroUsd: null,
       defaultDiscountPercent: 0,
-      paygCapCents: 100000,
+      paygCapMicroUsd: 1_000_000_000,
     });
 
     const subscription = makeEnterpriseSubscription();
@@ -564,9 +564,9 @@ describe("invoiceEnterprisePAYGCredits", () => {
 
   it("should skip invoicing when consumed amount is zero", async () => {
     await ProgrammaticUsageConfigurationResource.makeNew(auth, {
-      freeCreditCents: null,
+      freeCreditMicroUsd: null,
       defaultDiscountPercent: 0,
-      paygCapCents: 100000,
+      paygCapMicroUsd: 1_000_000_000,
     });
 
     const previousStart = NOW - MONTH_SECONDS;
@@ -597,9 +597,9 @@ describe("invoiceEnterprisePAYGCredits", () => {
 
   it("should create invoice with correct amount and period dates", async () => {
     await ProgrammaticUsageConfigurationResource.makeNew(auth, {
-      freeCreditCents: null,
+      freeCreditMicroUsd: null,
       defaultDiscountPercent: 0,
-      paygCapCents: 100000,
+      paygCapMicroUsd: 1_000_000_000,
     });
 
     const previousStart = NOW - MONTH_SECONDS;
@@ -626,7 +626,7 @@ describe("invoiceEnterprisePAYGCredits", () => {
 
     expect(makeAndFinalizeCreditsPAYGInvoice).toHaveBeenCalledWith({
       stripeSubscription: subscription,
-      amountCents: 15000,
+      amountMicroUsd: 150_000_000,
       periodStartSeconds: previousStart,
       periodEndSeconds: previousEnd,
       idempotencyKey: expect.stringMatching(
@@ -638,9 +638,9 @@ describe("invoiceEnterprisePAYGCredits", () => {
 
   it("should pass correct idempotency key to makeCreditsPAYGInvoice", async () => {
     await ProgrammaticUsageConfigurationResource.makeNew(auth, {
-      freeCreditCents: null,
+      freeCreditMicroUsd: null,
       defaultDiscountPercent: 0,
-      paygCapCents: 100000,
+      paygCapMicroUsd: 1_000_000_000,
     });
 
     const previousStart = NOW - MONTH_SECONDS;
@@ -678,9 +678,9 @@ describe("invoiceEnterprisePAYGCredits", () => {
     );
 
     await ProgrammaticUsageConfigurationResource.makeNew(auth, {
-      freeCreditCents: null,
+      freeCreditMicroUsd: null,
       defaultDiscountPercent: 0,
-      paygCapCents: 100000,
+      paygCapMicroUsd: 1_000_000_000,
     });
 
     const previousStart = NOW - MONTH_SECONDS;
@@ -710,9 +710,9 @@ describe("invoiceEnterprisePAYGCredits", () => {
 
   it("should mark credit as paid after successful invoice creation", async () => {
     await ProgrammaticUsageConfigurationResource.makeNew(auth, {
-      freeCreditCents: null,
+      freeCreditMicroUsd: null,
       defaultDiscountPercent: 0,
-      paygCapCents: 100000,
+      paygCapMicroUsd: 1_000_000_000,
     });
 
     const previousStart = NOW - MONTH_SECONDS;
@@ -747,9 +747,9 @@ describe("invoiceEnterprisePAYGCredits", () => {
     );
 
     await ProgrammaticUsageConfigurationResource.makeNew(auth, {
-      freeCreditCents: null,
+      freeCreditMicroUsd: null,
       defaultDiscountPercent: 0,
-      paygCapCents: 100000,
+      paygCapMicroUsd: 1_000_000_000,
     });
 
     const previousStart = NOW - MONTH_SECONDS;

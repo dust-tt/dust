@@ -16,13 +16,13 @@ import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 const BRACKET_1_USERS = 10;
-const BRACKET_1_CENTS_PER_USER = 500; // $5
+const BRACKET_1_MICRO_USD_PER_USER = 5_000_000; // $5
 const BRACKET_2_USERS = 40; // 11-50
-const BRACKET_2_CENTS_PER_USER = 200; // $2
+const BRACKET_2_MICRO_USD_PER_USER = 2_000_000; // $2
 const BRACKET_3_USERS = 50; // 51-100
-const BRACKET_3_CENTS_PER_USER = 100; // $1
+const BRACKET_3_MICRO_USD_PER_USER = 1_000_000; // $1
 
-const TRIAL_CREDIT_CENTS = 500; // $5
+const TRIAL_CREDIT_MICRO_USD = 5_000_000; // $5
 
 const MONTHLY_BILLING_CYCLE_SECONDS = 30 * 24 * 60 * 60; // ~30 days
 
@@ -57,7 +57,7 @@ function isTrialingOrNewCustomer(
  * - Next 50 users (51-100): $1 each
  * - Cap at 100 users
  */
-export function calculateFreeCreditAmountCents(userCount: number): number {
+export function calculateFreeCreditAmountMicroUsd(userCount: number): number {
   const usersInBracket1 = Math.min(BRACKET_1_USERS, userCount);
   const usersInBracket2 = Math.min(
     BRACKET_2_USERS,
@@ -69,9 +69,9 @@ export function calculateFreeCreditAmountCents(userCount: number): number {
   );
 
   return (
-    usersInBracket1 * BRACKET_1_CENTS_PER_USER +
-    usersInBracket2 * BRACKET_2_CENTS_PER_USER +
-    usersInBracket3 * BRACKET_3_CENTS_PER_USER
+    usersInBracket1 * BRACKET_1_MICRO_USD_PER_USER +
+    usersInBracket2 * BRACKET_2_MICRO_USD_PER_USER +
+    usersInBracket3 * BRACKET_3_MICRO_USD_PER_USER
   );
 }
 
@@ -186,8 +186,8 @@ export async function grantFreeCreditsOnSubscriptionRenewal({
   const programmaticConfig =
     await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
 
-  if (programmaticConfig && programmaticConfig.freeCreditCents !== null) {
-    creditAmountMicroUsd = programmaticConfig.freeCreditCents * 10_000;
+  if (programmaticConfig && programmaticConfig.freeCreditMicroUsd !== null) {
+    creditAmountMicroUsd = programmaticConfig.freeCreditMicroUsd;
     logger.info(
       {
         workspaceId: workspaceSId,
@@ -197,10 +197,10 @@ export async function grantFreeCreditsOnSubscriptionRenewal({
     );
   } else {
     if (customerStatus === "trialing") {
-      creditAmountMicroUsd = TRIAL_CREDIT_CENTS * 10_000;
+      creditAmountMicroUsd = TRIAL_CREDIT_MICRO_USD;
     } else {
       const userCount = await countEligibleUsersForFreeCredits(workspace);
-      creditAmountMicroUsd = calculateFreeCreditAmountCents(userCount) * 10_000;
+      creditAmountMicroUsd = calculateFreeCreditAmountMicroUsd(userCount);
       logger.info(
         {
           workspaceId: workspaceSId,

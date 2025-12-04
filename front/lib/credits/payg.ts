@@ -16,13 +16,13 @@ import { Err, Ok } from "@app/types";
 
 async function createPAYGCreditForPeriod({
   auth,
-  paygCapCents,
+  paygCapMicroUsd,
   discountPercent,
   periodStart,
   periodEnd,
 }: {
   auth: Authenticator;
-  paygCapCents: number;
+  paygCapMicroUsd: number;
   discountPercent: number;
   periodStart: Date;
   periodEnd: Date;
@@ -40,7 +40,7 @@ async function createPAYGCreditForPeriod({
 
   const credit = await CreditResource.makeNew(auth, {
     type: "payg",
-    initialAmountMicroUsd: paygCapCents * 10_000,
+    initialAmountMicroUsd: paygCapMicroUsd,
     consumedAmountMicroUsd: 0,
     discount: discountPercent,
     invoiceOrLineItemId: null,
@@ -63,7 +63,7 @@ export async function allocatePAYGCreditsOnCycleRenewal({
 
   const config =
     await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
-  if (!config || config.paygCapCents === null) {
+  if (!config || config.paygCapMicroUsd === null) {
     return;
   }
 
@@ -75,7 +75,7 @@ export async function allocatePAYGCreditsOnCycleRenewal({
     logger.info(
       {
         workspaceId: workspace.sId,
-        initialAmountCents: config.paygCapCents,
+        initialAmountMicroUsd: config.paygCapMicroUsd,
         periodStart: nextPeriodStartDate.toISOString(),
         periodEnd: nextPeriodEndDate.toISOString(),
       },
@@ -86,7 +86,7 @@ export async function allocatePAYGCreditsOnCycleRenewal({
 
   const result = await createPAYGCreditForPeriod({
     auth,
-    paygCapCents: config.paygCapCents,
+    paygCapMicroUsd: config.paygCapMicroUsd,
     discountPercent: config.defaultDiscountPercent,
     periodStart: nextPeriodStartDate,
     periodEnd: nextPeriodEndDate,
@@ -103,7 +103,7 @@ export async function allocatePAYGCreditsOnCycleRenewal({
   logger.info(
     {
       workspaceId: workspace.sId,
-      initialAmountCents: config.paygCapCents,
+      initialAmountMicroUsd: config.paygCapMicroUsd,
       periodStart: nextPeriodStartDate.toISOString(),
       periodEnd: nextPeriodEndDate.toISOString(),
     },
@@ -118,17 +118,17 @@ export async function isPAYGEnabled(auth: Authenticator): Promise<boolean> {
   }
   const config =
     await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
-  return config !== null && config.paygCapCents !== null;
+  return config !== null && config.paygCapMicroUsd !== null;
 }
 
 export async function startOrResumeEnterprisePAYG({
   auth,
   stripeSubscription,
-  paygCapCents,
+  paygCapMicroUsd,
 }: {
   auth: Authenticator;
   stripeSubscription: Stripe.Subscription;
-  paygCapCents: number;
+  paygCapMicroUsd: number;
 }): Promise<Result<undefined, Error>> {
   const workspace = auth.getNonNullableWorkspace();
 
@@ -147,7 +147,9 @@ export async function startOrResumeEnterprisePAYG({
     );
   }
 
-  const updateResult = await config.updateConfiguration(auth, { paygCapCents });
+  const updateResult = await config.updateConfiguration(auth, {
+    paygCapMicroUsd,
+  });
   if (updateResult.isErr()) {
     return updateResult;
   }
@@ -170,7 +172,7 @@ export async function startOrResumeEnterprisePAYG({
 
   const result = await createPAYGCreditForPeriod({
     auth,
-    paygCapCents,
+    paygCapMicroUsd,
     discountPercent: config.defaultDiscountPercent,
     periodStart: currentPeriodStart,
     periodEnd: currentPeriodEnd,
@@ -240,7 +242,7 @@ export async function stopEnterprisePAYG({
     await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
   if (config) {
     const result = await config.updateConfiguration(auth, {
-      paygCapCents: null,
+      paygCapMicroUsd: null,
     });
     if (result.isErr()) {
       return result;
@@ -316,7 +318,7 @@ export async function invoiceEnterprisePAYGCredits({
 
   const invoiceResult = await makeAndFinalizeCreditsPAYGInvoice({
     stripeSubscription,
-    amountCents: Math.ceil(paygCredit.consumedAmountMicroUsd / 10_000),
+    amountMicroUsd: paygCredit.consumedAmountMicroUsd,
     periodStartSeconds: previousPeriodStartSeconds,
     periodEndSeconds: previousPeriodEndSeconds,
     idempotencyKey,

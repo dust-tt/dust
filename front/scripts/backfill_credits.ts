@@ -25,7 +25,7 @@ async function reconcilePAYGConfig(
   const config =
     await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
 
-  if (!config || config.paygCapCents === null) {
+  if (!config || config.paygCapMicroUsd === null) {
     return;
   }
 
@@ -36,7 +36,7 @@ async function reconcilePAYGConfig(
     logger.info(
       {
         workspaceId: workspaceSId,
-        paygCapCents: config.paygCapCents,
+        paygCapMicroUsd: config.paygCapMicroUsd,
         hasStripeSubscription: !!stripeSubscription,
         execute,
       },
@@ -46,7 +46,7 @@ async function reconcilePAYGConfig(
     );
 
     if (execute) {
-      await config.updateConfiguration(auth, { paygCapCents: null });
+      await config.updateConfiguration(auth, { paygCapMicroUsd: null });
     }
     return;
   }
@@ -54,7 +54,7 @@ async function reconcilePAYGConfig(
   logger.info(
     {
       workspaceId: workspaceSId,
-      paygCapCents: config.paygCapCents,
+      paygCapMicroUsd: config.paygCapMicroUsd,
       execute,
     },
     execute
@@ -66,7 +66,7 @@ async function reconcilePAYGConfig(
     const result = await startOrResumeEnterprisePAYG({
       auth,
       stripeSubscription,
-      paygCapCents: config.paygCapCents,
+      paygCapMicroUsd: config.paygCapMicroUsd,
     });
 
     if (result.isErr()) {
