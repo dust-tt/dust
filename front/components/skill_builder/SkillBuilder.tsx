@@ -14,6 +14,7 @@ import { useState } from "react";
 import { useController, useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { UserType, WorkspaceType } from "@app/types";
 
@@ -101,12 +102,10 @@ export default function SkillBuilder({ owner }: SkillBuilderProps) {
       description: "Your skill has been successfully created.",
       type: "success",
     });
-
-    await router.push(`/w/${owner.sId}/builder/assistants`);
   };
 
   const handleCancel = async () => {
-    await router.back();
+    await appLayoutBack(owner, router);
   };
 
   const handleSave = () => {
@@ -136,7 +135,7 @@ export default function SkillBuilder({ owner }: SkillBuilderProps) {
           }
         />
         <ScrollArea className="flex-1">
-          <div className="mx-auto max-w-3xl space-y-10 p-8">
+          <div className="mx-auto space-y-10 p-4 2xl:max-w-5xl">
             {/* Description Section */}
             <section className="flex flex-col gap-3">
               <div>
@@ -188,7 +187,7 @@ export default function SkillBuilder({ owner }: SkillBuilderProps) {
                   Name
                 </h2>
                 <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                  A unique name for your skill (no spaces).
+                  A unique name for your skill.
                 </p>
               </div>
               <Input placeholder="Enter skill name" {...nameField} />
