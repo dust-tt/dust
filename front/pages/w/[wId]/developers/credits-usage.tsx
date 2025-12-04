@@ -67,9 +67,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   };
 });
 
-function isExpired(credit: CreditDisplayData): boolean {
+function isActive(credit: CreditDisplayData): boolean {
   const now = Date.now();
-  return credit.expirationDate !== null && credit.expirationDate <= now;
+  const isStarted = credit.startDate !== null && credit.startDate <= now;
+  const isExpired =
+    credit.expirationDate !== null && credit.expirationDate <= now;
+  return isStarted && !isExpired;
 }
 
 interface ProgressBarProps {
@@ -310,7 +313,7 @@ export default function CreditsUsagePage({
     : null;
 
   const creditsByType = useMemo(() => {
-    const activeCredits = credits.filter((c) => !isExpired(c));
+    const activeCredits = credits.filter((c) => isActive(c));
 
     const byType: Record<
       CreditType,
