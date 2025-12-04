@@ -87,14 +87,8 @@ import {
 } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { formatTimestring } from "@app/lib/utils/timestamps";
-import {
-  assertNever,
+import type {
   ContentFragmentsType,
-  GLOBAL_AGENTS_SID,
-  isAgentMessageType,
-  isInteractiveContentFileContentType,
-  isPersonalAuthenticationRequiredErrorContent,
-  isSupportedImageContentType,
   LightAgentMessageType,
   LightAgentMessageWithActionsType,
   LightWorkspaceType,
@@ -103,6 +97,14 @@ import {
   RichMention,
   UserType,
   WorkspaceType,
+} from "@app/types";
+import {
+  assertNever,
+  GLOBAL_AGENTS_SID,
+  isAgentMessageType,
+  isInteractiveContentFileContentType,
+  isPersonalAuthenticationRequiredErrorContent,
+  isSupportedImageContentType,
 } from "@app/types";
 
 interface AgentMessageProps {
@@ -462,6 +464,35 @@ export function AgentMessage({
     !isGlobalAgent &&
     agentMessageToRender.configuration.status !== "draft";
 
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const userMentionsEnabled = hasFeature("mentions_v2");
+
+  const retryHandler = useCallback(
+    async ({
+      conversationId,
+      messageId,
+      blockedOnly = false,
+    }: {
+      conversationId: string;
+      messageId: string;
+      blockedOnly?: boolean;
+    }) => {
+      setIsRetryHandlerProcessing(true);
+      await fetch(
+        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/retry?blocked_only=${blockedOnly}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      setIsRetryHandlerProcessing(false);
+    },
+    [owner.sId]
+  );
+
   // Add feedback buttons first (thumbs up/down)
   if (shouldShowFeedback) {
     messageButtons.push(
@@ -479,8 +510,12 @@ export function AgentMessage({
     messageButtons.push(<Separator key="separator" orientation="vertical" />);
   }
 
-  // Add copy button or split button with dropdown
-  if (shouldShowCopy && (shouldShowRetry || canDeleteAgentMessage)) {
+  // Add copy button or split button with dropdown (only when mentions_v2 is enabled)
+  if (
+    userMentionsEnabled &&
+    shouldShowCopy &&
+    (shouldShowRetry || canDeleteAgentMessage)
+  ) {
     const dropdownItems = [];
 
     if (shouldShowRetry) {
@@ -520,6 +555,7 @@ export function AgentMessage({
               size: "xs",
               onClick: handleCopyToClipboard,
               icon: isCopied ? ClipboardCheckIcon : ClipboardIcon,
+              className: "text-muted-foreground",
             },
           },
           {
@@ -528,6 +564,7 @@ export function AgentMessage({
               variant: "ghost-secondary",
               size: "xs",
               icon: MoreIcon,
+              className: "text-muted-foreground",
             },
             dropdownProps: {
               items: dropdownItems,
@@ -537,45 +574,42 @@ export function AgentMessage({
         ]}
       />
     );
-  } else if (shouldShowCopy) {
-    messageButtons.push(
-      <Button
-        key="copy-msg-button"
-        tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
-        variant="ghost-secondary"
-        size="xs"
-        onClick={handleCopyToClipboard}
-        icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
-        className="text-muted-foreground"
-      />
-    );
-  }
-
-  const retryHandler = useCallback(
-    async ({
-      conversationId,
-      messageId,
-      blockedOnly = false,
-    }: {
-      conversationId: string;
-      messageId: string;
-      blockedOnly?: boolean;
-    }) => {
-      setIsRetryHandlerProcessing(true);
-      await fetch(
-        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/retry?blocked_only=${blockedOnly}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
+  } else {
+    // if mentions_v2 is disabled, show copy button
+    if (shouldShowCopy) {
+      messageButtons.push(
+        <Button
+          key="copy-msg-button"
+          tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
+          variant="ghost-secondary"
+          size="xs"
+          onClick={handleCopyToClipboard}
+          icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+          className="text-muted-foreground"
+        />
       );
+    }
 
-      setIsRetryHandlerProcessing(false);
-    },
-    [owner.sId]
-  );
+    if (shouldShowRetry) {
+      messageButtons.push(
+        <Button
+          key="retry-msg-button"
+          tooltip="Retry"
+          variant="ghost-secondary"
+          size="xs"
+          onClick={() => {
+            void retryHandler({
+              conversationId,
+              messageId: agentMessageToRender.sId,
+            });
+          }}
+          icon={ArrowPathIcon}
+          className="text-muted-foreground"
+          disabled={isRetryHandlerProcessing || shouldStream}
+        />
+      );
+    }
+  }
 
   const { configuration: agentConfiguration } = agentMessageToRender;
 
@@ -652,9 +686,6 @@ export function AgentMessage({
       agentMessageToRender.status,
     ]
   );
-
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-  const userMentionsEnabled = hasFeature("mentions_v2");
 
   if (userMentionsEnabled) {
     return (
