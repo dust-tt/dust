@@ -344,8 +344,7 @@ export function AgentMessage({
     conversationId,
   });
 
-  const buttons: React.ReactElement[] = [];
-  const buttonGroups: React.ReactElement[] = [];
+  const messageButtons: React.ReactElement[] = [];
 
   const hasMultiAgents =
     generationContext.generatingMessages.filter(
@@ -354,7 +353,7 @@ export function AgentMessage({
 
   // Show stop agent button only when streaming with multiple agents
   if (hasMultiAgents && shouldStream) {
-    const stopButton = (
+    messageButtons.push(
       <Button
         key="stop-msg-button"
         label="Stop agent"
@@ -367,8 +366,6 @@ export function AgentMessage({
         className="text-muted-foreground"
       />
     );
-    buttons.push(stopButton);
-    buttonGroups.push(stopButton);
   }
 
   const methods = useVirtuosoMethods<
@@ -459,15 +456,33 @@ export function AgentMessage({
     !shouldStream &&
     !isAgentMessageHandingOver;
 
-  // Create split button with copy on left and dropdown menu on right
+  const shouldShowFeedback =
+    !isDeleted &&
+    agentMessageToRender.status !== "created" &&
+    agentMessageToRender.status !== "failed" &&
+    !isGlobalAgent &&
+    agentMessageToRender.configuration.status !== "draft";
+
+  // Add feedback buttons first (thumbs up/down)
+  if (shouldShowFeedback) {
+    messageButtons.push(
+      <FeedbackSelector
+        key="feedback-selector"
+        {...messageFeedback}
+        getPopoverInfo={PopoverContent}
+        owner={owner}
+      />
+    );
+  }
+
+  // Add separator if we have both feedback and copy buttons
+  if (shouldShowFeedback && shouldShowCopy) {
+    messageButtons.push(<Separator key="separator" orientation="vertical" />);
+  }
+
+  // Add copy button or split button with dropdown
   if (shouldShowCopy && (shouldShowRetry || canDeleteAgentMessage)) {
-    const dropdownItems: Array<{
-      label: string;
-      icon: React.ComponentType;
-      onSelect?: () => void;
-      disabled?: boolean;
-      variant?: "default" | "warning";
-    }> = [];
+    const dropdownItems = [];
 
     if (shouldShowRetry) {
       dropdownItems.push({
@@ -489,49 +504,44 @@ export function AgentMessage({
         icon: TrashIcon,
         onSelect: handleDeleteAgentMessage,
         disabled: isDeleting,
-        variant: "warning",
+        variant: "warning" as const,
       });
     }
 
-    const buttonGroupItems: ButtonGroupItem[] = [
-      {
-        type: "button",
-        props: {
-          tooltip: isCopied ? "Copied!" : "Copy to clipboard",
-          variant: "ghost-secondary",
-          size: "xs",
-          onClick: handleCopyToClipboard,
-          icon: isCopied ? ClipboardCheckIcon : ClipboardIcon,
-          className: "text-muted-foreground",
-        },
-      },
-      {
-        type: "dropdown",
-        triggerProps: {
-          variant: "ghost-secondary",
-          size: "xs",
-          icon: ChevronDownIcon,
-          className: "text-muted-foreground",
-        },
-        dropdownProps: {
-          items: dropdownItems,
-          align: "end",
-        },
-      },
-    ];
-
-    const splitButton = (
+    messageButtons.push(
       <ButtonGroup
         key="split-button-group"
         variant="outline"
-        items={buttonGroupItems}
+        items={[
+          {
+            type: "button",
+            props: {
+              tooltip: isCopied ? "Copied!" : "Copy to clipboard",
+              variant: "ghost-secondary",
+              size: "xs",
+              onClick: handleCopyToClipboard,
+              icon: isCopied ? ClipboardCheckIcon : ClipboardIcon,
+              className: "text-muted-foreground",
+            },
+          },
+          {
+            type: "dropdown",
+            triggerProps: {
+              variant: "ghost-secondary",
+              size: "xs",
+              icon: ChevronDownIcon,
+              className: "text-muted-foreground",
+            },
+            dropdownProps: {
+              items: dropdownItems,
+              align: "end",
+            },
+          },
+        ]}
       />
     );
-    buttons.push(splitButton);
-    buttonGroups.push(splitButton);
   } else if (shouldShowCopy) {
-    // Just show copy button if no dropdown items
-    const copyButton = (
+    messageButtons.push(
       <Button
         key="copy-msg-button"
         tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
@@ -540,35 +550,6 @@ export function AgentMessage({
         onClick={handleCopyToClipboard}
         icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
         className="text-muted-foreground"
-      />
-    );
-    buttons.push(copyButton);
-    buttonGroups.push(copyButton);
-  }
-
-  // Add feedback buttons in the end of the array if the agent is not global nor in draft (= inside agent builder)
-  if (
-    !isDeleted &&
-    agentMessageToRender.status !== "created" &&
-    agentMessageToRender.status !== "failed" &&
-    !isGlobalAgent &&
-    agentMessageToRender.configuration.status !== "draft"
-  ) {
-    buttons.push(
-      <Separator key="separator" orientation="vertical" />,
-      <FeedbackSelector
-        key="feedback-selector"
-        {...messageFeedback}
-        getPopoverInfo={PopoverContent}
-        owner={owner}
-      />
-    );
-    buttonGroups.push(
-      <FeedbackSelector
-        key="feedback-selector"
-        {...messageFeedback}
-        getPopoverInfo={PopoverContent}
-        owner={owner}
       />
     );
   }
@@ -683,7 +664,7 @@ export function AgentMessage({
       <NewConversationMessage
         pictureUrl={agentConfiguration.pictureUrl}
         name={agentConfiguration.name}
-        buttons={buttonGroups}
+        buttons={messageButtons}
         avatarBusy={agentMessageToRender.status === "created"}
         isDisabled={isArchived}
         renderName={renderName}
@@ -729,7 +710,7 @@ export function AgentMessage({
     <ConversationMessage
       pictureUrl={agentConfiguration.pictureUrl}
       name={agentConfiguration.name}
-      buttons={buttons.length > 0 ? buttons : undefined}
+      buttons={messageButtons.length > 0 ? messageButtons : undefined}
       avatarBusy={agentMessageToRender.status === "created"}
       isDisabled={isArchived}
       renderName={renderName}
