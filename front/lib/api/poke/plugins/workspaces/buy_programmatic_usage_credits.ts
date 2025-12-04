@@ -19,8 +19,8 @@ const BuyCreditPurchaseArgsSchema = z
       .number()
       .positive("Amount must be greater than $0")
       .finite("Amount must be a valid number"),
-    startDate: z.date(),
-    expirationDate: z.date(),
+    startDate: z.coerce.date(),
+    expirationDate: z.coerce.date(),
     isFreeCredit: z.boolean(),
     overrideDiscount: z.boolean(),
     discountPercent: z
@@ -167,7 +167,7 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
 
       return new Ok({
         display: "text",
-        value: `Successfully added FREE credits of $${originalAmount.toFixed(2)} (${validatedArgs.startDate} to ${validatedArgs.expirationDate}). No invoice was sent.`,
+        value: `Successfully added FREE credits of $${originalAmount.toFixed(2)} (${format(validatedArgs.startDate, "yyyy-MM-dd")} to ${format(validatedArgs.expirationDate, "yyyy-MM-dd")}). No invoice was sent.`,
       });
     }
 
@@ -225,7 +225,7 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
 
     return new Ok({
       display: "textWithLink",
-      value: `Successfully added committed credits of $${originalAmount.toFixed(2)} (${validatedArgs.startDate} to ${validatedArgs.expirationDate}). An invoice has been sent to the customer.`,
+      value: `Successfully added committed credits of $${originalAmount.toFixed(2)} (${format(validatedArgs.startDate, "yyyy-MM-dd")} to ${format(validatedArgs.expirationDate, "yyyy-MM-dd")}). An invoice has been sent to the customer.`,
       link: invoiceUrl,
       linkText: "View Invoice in Stripe",
     });
