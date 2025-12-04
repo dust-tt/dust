@@ -27,7 +27,25 @@ import type {
   LightWorkspaceType,
   PlanType,
 } from "@app/types";
-import { getSupportedNonImageFileExtensions } from "@app/types";
+import {
+  getSupportedNonImageFileExtensions,
+  isSupportedDelimitedTextContentType,
+} from "@app/types";
+
+// Helper to strip extension and slugify filename for table names
+function stripTableName(name: string): string {
+  return name
+    .replace(/\.(csv|tsv|xls|xlsx)$/i, "")
+    .replace(/[^a-z0-9]/gi, "_")
+    .toLowerCase()
+    .slice(0, 32);
+}
+
+// Helper to check if a file should be treated as a table based on its MIME type
+function isDelimitedFile(file: File): boolean {
+  const contentType = file.type || "application/octet-stream";
+  return isSupportedDelimitedTextContentType(contentType);
+}
 
 type MultipleDocumentsUploadProps = {
   dataSourceView: DataSourceViewType;
@@ -65,10 +83,19 @@ export const MultipleDocumentsUpload = ({
     [onClose]
   );
 
-  // Used for creating files, with text extraction post-processing
-  const fileUploaderService = useFileUploaderService({
+  // Used for creating document files, with text extraction post-processing
+  const documentUploaderService = useFileUploaderService({
     owner,
     useCase: "folders_document",
+    useCaseMetadata: {
+      spaceId: dataSourceView.spaceId,
+    },
+  });
+
+  // Used for creating table files (CSV, XLS, XLSX) with structured data processing
+  const tableUploaderService = useFileUploaderService({
+    owner,
+    useCase: "upsert_table",
     useCaseMetadata: {
       spaceId: dataSourceView.spaceId,
     },
@@ -120,51 +147,97 @@ export const MultipleDocumentsUpload = ({
         completed: 0,
       });
 
-      // upload Files and get FileBlobs (only keep successful uploads)
-      // Each individual error triggers a notification
-      const fileBlobs = (
-        await fileUploaderService.handleFilesUpload(files)
-      )?.filter(
-        (fileBlob: FileBlob): fileBlob is FileBlobWithFileId =>
-          !!fileBlob.fileId
-      );
-      if (!fileBlobs || fileBlobs.length === 0) {
-        setIsBulkFilesUploading(null);
-        close(false);
-        fileUploaderService.resetUpload();
-        return;
+      // Split files by type: delimited (tables) vs others (documents)
+      const documentFiles: File[] = [];
+      const tableFiles: File[] = [];
+      for (const file of files) {
+        if (isDelimitedFile(file)) {
+          tableFiles.push(file);
+        } else {
+          documentFiles.push(file);
+        }
       }
 
-      // upsert the file as Data Source Documents
-      await concurrentExecutor(
-        fileBlobs,
-        async (blob: { fileId: string; filename: string }) => {
-          // This also notifies in case of error
-          await doUpsertFileAsDataSourceEntry({
-            fileId: blob.fileId,
-            // Have to use the filename to avoid fileId becoming apparent in the UI.
-            upsertArgs: {
-              title: blob.filename,
-              document_id: blob.filename,
-            },
-          });
+      let hasUploads = false;
 
-          setIsBulkFilesUploading((prev) => ({
-            total: fileBlobs.length,
-            completed: prev ? prev.completed + 1 : 1,
-          }));
-        },
-        { concurrency: 4 }
-      );
+      // Upload document files (non-delimited)
+      if (documentFiles.length > 0) {
+        const documentBlobs = (
+          await documentUploaderService.handleFilesUpload(documentFiles)
+        )?.filter(
+          (fileBlob: FileBlob): fileBlob is FileBlobWithFileId =>
+            !!fileBlob.fileId
+        );
+
+        if (documentBlobs && documentBlobs.length > 0) {
+          hasUploads = true;
+          await concurrentExecutor(
+            documentBlobs,
+            async (blob: FileBlobWithFileId) => {
+              await doUpsertFileAsDataSourceEntry({
+                fileId: blob.fileId,
+                upsertArgs: {
+                  title: blob.filename,
+                  document_id: blob.filename,
+                },
+              });
+
+              setIsBulkFilesUploading((prev) => ({
+                total: files.length,
+                completed: prev ? prev.completed + 1 : 1,
+              }));
+            },
+            { concurrency: 4 }
+          );
+        }
+        documentUploaderService.resetUpload();
+      }
+
+      // Upload table files (delimited: CSV, TSV, XLS, XLSX)
+      if (tableFiles.length > 0) {
+        const tableBlobs = (
+          await tableUploaderService.handleFilesUpload(tableFiles)
+        )?.filter(
+          (fileBlob: FileBlob): fileBlob is FileBlobWithFileId =>
+            !!fileBlob.fileId
+        );
+
+        if (tableBlobs && tableBlobs.length > 0) {
+          hasUploads = true;
+          await concurrentExecutor(
+            tableBlobs,
+            async (blob: FileBlobWithFileId) => {
+              // For tables, we need to provide table-specific upsert args
+              const tableName = stripTableName(blob.filename);
+              await doUpsertFileAsDataSourceEntry({
+                fileId: blob.fileId,
+                upsertArgs: {
+                  title: blob.filename,
+                  tableId: blob.fileId,
+                  name: tableName,
+                  description: `Table uploaded from ${blob.filename}`,
+                },
+              });
+
+              setIsBulkFilesUploading((prev) => ({
+                total: files.length,
+                completed: prev ? prev.completed + 1 : 1,
+              }));
+            },
+            { concurrency: 4 }
+          );
+        }
+        tableUploaderService.resetUpload();
+      }
 
       // Reset the upload state
       setIsBulkFilesUploading(null);
-      fileUploaderService.resetUpload();
-      close(true);
+      close(hasUploads);
     },
     [
       existingNodes,
-      fileUploaderService,
+      documentUploaderService,
+      tableUploaderService,
       close,
       plan.limits.dataSources.documents.count,
       totalNodesCount,
