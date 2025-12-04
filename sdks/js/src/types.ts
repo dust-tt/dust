@@ -317,6 +317,7 @@ const UserMessageOriginSchema = FlexibleEnumSchema<
   | "raycast"
   | "run_agent"
   | "slack"
+  | "slack_workflow"
   | "teams"
   | "transcript"
   | "triggered_programmatic"
