@@ -551,8 +551,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
 }
 
 interface InboxConversationListProps {
-  unreadConversations: ConversationWithoutContentType[];
-  actionRequiredConversations: ConversationWithoutContentType[];
+  inboxConversations: ConversationWithoutContentType[];
   dateLabel: string;
   isMultiSelect: boolean;
   isMarkingAllAsRead: boolean;
@@ -575,8 +574,7 @@ const ConversationListContainer = ({
 };
 
 const InboxConversationList = ({
-  unreadConversations,
-  actionRequiredConversations,
+  inboxConversations,
   dateLabel,
   isMultiSelect,
   isMarkingAllAsRead,
@@ -584,27 +582,15 @@ const InboxConversationList = ({
   onMarkAllAsRead,
   ...props
 }: InboxConversationListProps) => {
-  const conversationList = [
-    ...unreadConversations,
-    ...actionRequiredConversations,
-  ];
-
-  if (conversationList.length === 0) {
+  if (inboxConversations.length === 0) {
     return null;
   }
 
   const shouldShowMarkAllAsReadButton =
-    conversationList.length > 0 &&
+    inboxConversations.length > 0 &&
     titleFilter.length === 0 &&
     !isMultiSelect &&
     onMarkAllAsRead;
-
-  const sortedInboxConversations = [
-    ...unreadConversations,
-    ...actionRequiredConversations,
-  ].sort((a, b) => {
-    return (b.updated ?? b.created) - (a.updated ?? a.created);
-  });
 
   return (
     <ConversationListContainer>
@@ -619,7 +605,7 @@ const InboxConversationList = ({
               size="xs"
               variant="ghost"
               label={`Mark as read`}
-              onClick={() => onMarkAllAsRead(conversationList)}
+              onClick={() => onMarkAllAsRead(inboxConversations)}
               isLoading={isMarkingAllAsRead}
               className="mt-2 text-muted-foreground dark:text-muted-foreground-night"
             />
@@ -627,7 +613,7 @@ const InboxConversationList = ({
         )}
       </div>
 
-      {sortedInboxConversations.map((conversation) => (
+      {inboxConversations.map((conversation) => (
         <ConversationListItem
           key={conversation.sId}
           conversation={conversation}
@@ -807,11 +793,7 @@ const NavigationListWithInbox = forwardRef<
     },
     ref
   ) => {
-    const {
-      readConversations,
-      unreadConversations,
-      actionRequiredConversations,
-    } = useMemo(() => {
+    const { readConversations, inboxConversations } = useMemo(() => {
       return getGroupConversationsByUnreadAndActionRequired(
         conversations,
         titleFilter
@@ -824,8 +806,7 @@ const NavigationListWithInbox = forwardRef<
       }
     );
 
-    const shouldDisplayInbox =
-      unreadConversations.length > 0 || actionRequiredConversations.length > 0;
+    const shouldDisplayInbox = inboxConversations.length > 0;
 
     // TODO: Remove filtering by titleFilter when we release the inbox.
     const conversationsByDate = readConversations?.length
@@ -846,9 +827,8 @@ const NavigationListWithInbox = forwardRef<
         {shouldDisplayInbox && (
           <div className="bg-background pb-3 dark:bg-background-night">
             <InboxConversationList
-              unreadConversations={unreadConversations}
-              actionRequiredConversations={actionRequiredConversations}
-              dateLabel={`Inbox (${unreadConversations.length + actionRequiredConversations.length})`}
+              inboxConversations={inboxConversations}
+              dateLabel={`Inbox (${inboxConversations.length})`}
               isMultiSelect={isMultiSelect}
               isMarkingAllAsRead={isMarkingAllAsRead}
               titleFilter={titleFilter}

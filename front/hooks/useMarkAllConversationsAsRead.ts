@@ -29,6 +29,7 @@ export function useMarkAllConversationsAsRead({
 
       setIsMarkingAllAsRead(true);
 
+      const total = conversations.length;
       const conversationIds = conversations.map((c) => c.sId);
 
       try {
