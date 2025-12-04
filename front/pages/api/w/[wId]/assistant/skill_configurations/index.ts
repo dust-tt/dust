@@ -4,8 +4,8 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { getFeatureFlags } from "@app/lib/auth";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import type { SkillScope, SkillStatus } from "@app/lib/models/skill";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { apiError } from "@app/logger/withlogging";
@@ -106,7 +106,6 @@ async function handler(
         description: body.description,
         instructions: body.instructions,
         authorId: user.id,
-        editorGroupId: null,
         requestedSpaceIds: [],
       });
 

@@ -1,4 +1,3 @@
-import { zodResolver } from "@hookform/resolvers/zod";
 import {
   BarFooter,
   BarHeader,
@@ -9,6 +8,7 @@ import {
   TextArea,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/router";
 import { useState } from "react";
 import { useController, useForm } from "react-hook-form";
