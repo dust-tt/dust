@@ -45,17 +45,14 @@ SkillConfiguration.init(
     version: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      defaultValue: 0,
     },
     status: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: "active",
     },
     scope: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: "private",
     },
     name: {
       type: DataTypes.TEXT,
@@ -72,25 +69,13 @@ SkillConfiguration.init(
     requestedSpaceIds: {
       type: DataTypes.ARRAY(DataTypes.BIGINT),
       allowNull: false,
-      defaultValue: [],
     },
   },
   {
     modelName: "skill_configuration",
     sequelize: frontSequelize,
     indexes: [
-      { fields: ["workspaceId"] },
-      { fields: ["workspaceId", "name"] },
-      { fields: ["workspaceId", "status", "name"] },
-      {
-        name: "skill_configuration_unique_active_name",
-        fields: ["workspaceId", "name"],
-        unique: true,
-        where: {
-          status: "active",
-        },
-      },
-      { fields: ["status"] },
+      // TODO(skills): add indexes.
     ],
   }
 );
