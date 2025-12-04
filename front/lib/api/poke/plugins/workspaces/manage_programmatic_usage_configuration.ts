@@ -2,6 +2,7 @@ import assert from "assert";
 import type Stripe from "stripe";
 import { z } from "zod";
 
+import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import { createPlugin } from "@app/lib/api/poke/types";
 import {
   calculateFreeCreditAmount,
@@ -35,7 +36,10 @@ const ManageProgrammaticUsageConfigurationSchema = z
     defaultDiscountPercent: z
       .number()
       .min(0, "Discount percentage must be at least 0")
-      .max(100, "Discount percentage cannot exceed 100")
+      .max(
+        MAX_DISCOUNT_PERCENT,
+        `Discount cannot exceed ${MAX_DISCOUNT_PERCENT}% (would result in selling below cost)`
+      )
       .optional()
       .default(0),
     paygEnabled: z.boolean(),

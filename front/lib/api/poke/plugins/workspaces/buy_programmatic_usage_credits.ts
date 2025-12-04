@@ -2,6 +2,7 @@ import { addYears, format } from "date-fns";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 
+import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { createEnterpriseCreditPurchase } from "@app/lib/credits/committed";
 import {
@@ -22,7 +23,10 @@ const BuyCreditPurchaseArgsSchema = z.object({
   discountPercent: z
     .number()
     .min(0, "Discount must be at least 0%")
-    .max(100, "Discount must be at most 100%")
+    .max(
+      MAX_DISCOUNT_PERCENT,
+      `Discount cannot exceed ${MAX_DISCOUNT_PERCENT}% (would result in selling below cost)`
+    )
     .finite("Discount must be a valid number"),
   confirm: z.boolean().refine((val) => val === true, {
     message: "Please confirm the purchase by checking the confirmation box",

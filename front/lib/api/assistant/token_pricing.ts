@@ -11,6 +11,15 @@ type PricingEntry = {
 };
 
 export const DUST_MARKUP_PERCENT = 30;
+
+// Maximum discount percent that can be applied to credit purchases.
+// A discount above this threshold would result in selling below cost.
+// Formula: (1 - 1 / (1 + MARKUP/100)) * 100
+// With 30% markup: (1 - 1/1.30) * 100 ≈ 23.08%
+export const MAX_DISCOUNT_PERCENT = Math.floor(
+  (1 - 1 / (1 + DUST_MARKUP_PERCENT / 100)) * 100
+);
+
 // Pricing for current models (USD per million tokens - equivalent to micro-USD per token)
 // This record must contain all BaseModelIdType values.
 const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {

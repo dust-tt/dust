@@ -1,6 +1,7 @@
 import assert from "assert";
 import type Stripe from "stripe";
 
+import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import {
@@ -27,6 +28,14 @@ async function createPAYGCreditForPeriod({
   periodStart: Date;
   periodEnd: Date;
 }): Promise<Result<CreditResource, Error>> {
+  if (discountPercent > MAX_DISCOUNT_PERCENT) {
+    return new Err(
+      new Error(
+        `Discount cannot exceed ${MAX_DISCOUNT_PERCENT}% (would result in selling below cost)`
+      )
+    );
+  }
+
   const existingCredit = await CreditResource.fetchByTypeAndDates(
     auth,
     "payg",
