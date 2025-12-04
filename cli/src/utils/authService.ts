@@ -105,7 +105,7 @@ export const AuthService = {
     const currentTime = Math.floor(Date.now() / 1000);
     const timeUntilExpiry = (decoded.exp ?? 0) - currentTime;
 
-    if (timeUntilExpiry < 30) {
+    if (timeUntilExpiry < 120) {
       const refreshed = await this.refreshTokens();
       if (refreshed.isOk()) {
         return new Ok(await TokenStorage.getAccessToken());
