@@ -67,6 +67,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   };
 });
 
+// A credit is active if it has started and has not expired.
+// This need to be consistent with logic in CreditResource.listActive().
 function isActive(credit: CreditDisplayData): boolean {
   const now = Date.now();
   const isStarted = credit.startDate !== null && credit.startDate <= now;
