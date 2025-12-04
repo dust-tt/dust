@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 import { Grid, H1, H5, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
@@ -171,6 +171,11 @@ export default function CustomerStoriesListing({
     }
     return Array.isArray(param) ? param : [param];
   }, [router.query.size]);
+
+  // Scroll to top when filters change
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [selectedIndustries, selectedDepartments, selectedCompanySizes]);
 
   // Update URL with new filters
   const updateFilters = useCallback(
