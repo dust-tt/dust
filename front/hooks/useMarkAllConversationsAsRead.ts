@@ -22,19 +22,19 @@ export function useMarkAllConversationsAsRead({
   });
 
   const markAllAsRead = useCallback(
-    async (unreadConversations: ConversationWithoutContentType[]) => {
-      if (!unreadConversations || unreadConversations.length === 0) {
+    async (conversations: ConversationWithoutContentType[]) => {
+      if (conversations.length === 0) {
         return;
       }
 
       setIsMarkingAllAsRead(true);
 
-      const total = unreadConversations.length;
-      const conversationIds = unreadConversations.map((c) => c.sId);
+      const total = conversations.length;
+      const conversationIds = conversations.map((c) => c.sId);
 
       try {
         const response = await clientFetch(
-          `/api/mark-all-as-read?wId=${owner.sId}`,
+          `/api/w/${owner.sId}/assistant/conversations/mark-all-as-read`,
           {
             method: "POST",
             headers: {

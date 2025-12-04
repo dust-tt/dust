@@ -619,7 +619,7 @@ const InboxConversationList = ({
               size="xs"
               variant="ghost"
               label={`Mark as read`}
-              onClick={() => onMarkAllAsRead(sortedInboxConversations)}
+              onClick={() => onMarkAllAsRead(conversationList)}
               isLoading={isMarkingAllAsRead}
               className="mt-2 text-muted-foreground dark:text-muted-foreground-night"
             />

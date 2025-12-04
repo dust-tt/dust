@@ -9,17 +9,13 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { normalizeError } from "@app/types";
 
-export type DeclineBlockedActionsResponse = {
-  failedConversationIds: string[];
-};
-
 export const MarkAllAsReadBodySchema = z.object({
   conversationIds: z.array(z.string()).min(1),
 });
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<DeclineBlockedActionsResponse>>,
+  res: NextApiResponse<WithAPIErrorResponse<void>>,
   auth: Authenticator
 ): Promise<void> {
   if (req.method !== "POST") {
@@ -64,8 +60,7 @@ async function handler(
     });
   }
 
-  res.status(200).end();
-  return;
+  return res.status(200).end();
 }
 
 export default withSessionAuthenticationForWorkspace(handler);
