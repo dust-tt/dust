@@ -15,6 +15,8 @@ import { useState } from "react";
 import { useController, useForm } from "react-hook-form";
 import { z } from "zod";
 
+import type { SkillBuilderFormData } from "@app/components/skill_builder/submitSkillBuilderForm";
+import { submitSkillBuilderForm } from "@app/components/skill_builder/submitSkillBuilderForm";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { UserType, WorkspaceType } from "@app/types";
@@ -68,28 +70,15 @@ export default function SkillBuilder({ owner }: SkillBuilderProps) {
   const handleSubmit = async (data: SkillBuilderFormData) => {
     setIsSaving(true);
 
-    const response = await fetch(
-      `/api/w/${owner.sId}/assistant/skill_configurations`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: data.name,
-          description: data.description,
-          instructions: data.instructions,
-          scope: "private",
-        }),
-      }
-    );
+    const result = await submitSkillBuilderForm({
+      formData: data,
+      owner,
+    });
 
-    if (!response.ok) {
-      const errorData = await response.json();
+    if (result.isErr()) {
       sendNotification({
         title: "Error creating skill",
-        description:
-          errorData.error?.message ?? "An unexpected error occurred.",
+        description: result.error.message,
         type: "error",
       });
       setIsSaving(false);
