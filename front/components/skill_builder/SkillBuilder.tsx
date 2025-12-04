@@ -4,6 +4,7 @@ import {
   Button,
   cn,
   Input,
+  Label,
   ScrollArea,
   TextArea,
   XMarkIcon,
@@ -26,8 +27,6 @@ const skillBuilderFormSchema = z.object({
   description: z.string().min(1, "Skill description is required"),
   instructions: z.string().min(1, "Skill instructions are required"),
 });
-
-type SkillBuilderFormData = z.infer<typeof skillBuilderFormSchema>;
 
 interface SkillBuilderProps {
   owner: WorkspaceType;
@@ -183,9 +182,7 @@ export default function SkillBuilder({ owner }: SkillBuilderProps) {
                 </p>
               </div>
               <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium text-foreground dark:text-foreground-night">
-                  Skill name
-                </label>
+                <Label>Skill name</Label>
                 <Input placeholder="Enter skill name" {...nameField} />
                 {nameFieldState.error && (
                   <p className="text-sm text-warning-500">
