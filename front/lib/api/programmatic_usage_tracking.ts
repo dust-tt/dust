@@ -128,13 +128,8 @@ export function getShouldTrackTokenUsageCostsESFilter(
 }
 
 export async function hasReachedProgrammaticUsageLimits(
-  auth: Authenticator,
-  shouldTrack: boolean = false
+  auth: Authenticator
 ): Promise<boolean> {
-  if (!isProgrammaticUsage(auth) && !shouldTrack) {
-    return false;
-  }
-
   const owner = auth.getNonNullableWorkspace();
   const featureFlags = await getFeatureFlags(owner);
   if (featureFlags.includes("ppul")) {
