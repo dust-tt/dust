@@ -17,28 +17,28 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
-export function AssistantPicker({
-  assistants,
+export function AgentPicker({
+  agents,
   onItemClick,
   pickerButton,
   size = "md",
   isLoading,
 }: {
   owner: LightWorkspaceType;
-  assistants: LightAgentConfigurationType[];
+  agents: LightAgentConfigurationType[];
   onItemClick: (assistant: LightAgentConfigurationType) => void;
   pickerButton?: React.ReactNode;
   size?: "xs" | "sm" | "md";
   isLoading?: boolean;
 }) {
   const [searchText, setSearchText] = useState("");
-  const [searchedAssistants, setSearchedAssistants] = useState<
+  const [searchedAgents, setSearchedAgents] = useState<
     LightAgentConfigurationType[]
   >([]);
 
   useEffect(() => {
-    setSearchedAssistants(filterAndSortAgents(assistants, searchText));
-  }, [searchText, assistants]);
+    setSearchedAgents(filterAndSortAgents(agents, searchText));
+  }, [searchText, agents]);
 
   const searchbarRef = (element: HTMLInputElement) => {
     if (element) {
@@ -74,8 +74,8 @@ export function AssistantPicker({
               value={searchText}
               onChange={setSearchText}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && searchedAssistants.length > 0) {
-                  onItemClick(searchedAssistants[0]);
+                if (e.key === "Enter" && searchedAgents.length > 0) {
+                  onItemClick(searchedAgents[0]);
                   setSearchText("");
                   close();
                 }
@@ -86,9 +86,9 @@ export function AssistantPicker({
         }
       >
         <ScrollArea className="flex flex-col mt-1 max-h-[300px] overflow-y-auto">
-          {searchedAssistants.map((c) => (
+          {searchedAgents.map((c) => (
             <DropdownMenuItem
-              key={`assistant-picker-${c.sId}`}
+              key={`agent-picker-${c.sId}`}
               icon={() => <Avatar size="xs" visual={c.pictureUrl} />}
               label={c.name}
               onClick={() => {

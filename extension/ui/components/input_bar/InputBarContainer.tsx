@@ -3,7 +3,7 @@ import type { NodeCandidate, UrlCandidate } from "@app/shared/lib/connectors";
 import { isNodeCandidate } from "@app/shared/lib/connectors";
 import { getSpaceAccessPriority } from "@app/shared/lib/spaces";
 import { classNames } from "@app/shared/lib/utils";
-import { AssistantPicker } from "@app/ui/components/assistants/AssistantPicker";
+import { AgentPicker } from "@app/ui/components/agents/AgentPicker";
 import { AttachFragment } from "@app/ui/components/conversation/AttachFragment";
 import { MentionDropdown } from "@app/ui/components/input_bar/editor/MentionDropdown";
 import type { CustomEditorProps } from "@app/ui/components/input_bar/editor/useCustomEditor";
@@ -270,13 +270,13 @@ export const InputBarContainer = ({
             onNodeUnselect={onNodeUnselect}
             attachedNodes={attachedNodes}
           />
-          <AssistantPicker
+          <AgentPicker
             owner={owner}
             size="xs"
             onItemClick={(c) => {
               editorService.insertMention({ id: c.sId, label: c.name });
             }}
-            assistants={allAssistants}
+            agents={allAssistants}
             isLoading={isSubmitting}
           />
         </div>
