@@ -54,6 +54,7 @@ const isUploadOrEditAction = (
 
 type ContentActionsProps = {
   dataSourceView: DataSourceViewType;
+  existingNodes: DataSourceViewContentNode[];
   totalNodesCount: number;
   plan: PlanType;
   owner: WorkspaceType;
@@ -74,6 +75,7 @@ export const ContentActions = React.forwardRef<
   (
     {
       dataSourceView,
+      existingNodes,
       totalNodesCount,
       owner,
       plan,
@@ -131,6 +133,7 @@ export const ContentActions = React.forwardRef<
         )}
         <MultipleDocumentsUpload
           dataSourceView={dataSourceView}
+          existingNodes={existingNodes}
           isOpen={currentAction.action === "MultipleDocumentsUpload"}
           onClose={onClose}
           owner={owner}
