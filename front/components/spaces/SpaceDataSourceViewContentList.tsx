@@ -356,20 +356,18 @@ export const SpaceDataSourceViewContentList = ({
 
   const { startPeriodicRefresh } = usePeriodicRefresh(mutateContentNodes);
 
-  const { hasContent: hasDocuments, isNodesValidating: isDocumentsValidating } =
-    useStaticDataSourceViewHasContent({
-      owner,
-      dataSourceView,
-      parentId,
-      viewType: "document",
-    });
-  const { hasContent: hasTables, isNodesValidating: isTablesValidating } =
-    useStaticDataSourceViewHasContent({
-      owner,
-      dataSourceView,
-      parentId,
-      viewType: "table",
-    });
+  const { hasContent: hasDocuments } = useStaticDataSourceViewHasContent({
+    owner,
+    dataSourceView,
+    parentId,
+    viewType: "document",
+  });
+  const { hasContent: hasTables } = useStaticDataSourceViewHasContent({
+    owner,
+    dataSourceView,
+    parentId,
+    viewType: "table",
+  });
 
   useEffect(() => {
     if (childrenNodes.length === 0) {
@@ -378,8 +376,6 @@ export const SpaceDataSourceViewContentList = ({
       setIsSearchDisabled(false);
     }
   }, [childrenNodes.length, setIsSearchDisabled]);
-
-  const isDataSourceManaged = isManaged(dataSourceView.dataSource);
 
   const addToSpace = useCallback(
     async (contentNode: DataSourceViewContentNode, spaceSId: string) => {
@@ -450,28 +446,6 @@ export const SpaceDataSourceViewContentList = ({
       sendNotification,
     ]
   );
-
-  useEffect(() => {
-    if (!isTablesValidating && !isDocumentsValidating) {
-      // If the view only has content in one of the two views, we switch to that view.
-      // if both views have content, or neither view has content, we default to documents.
-      if (hasTables && !hasDocuments) {
-        handleViewTypeChange("table");
-      } else if (!hasTables && hasDocuments) {
-        handleViewTypeChange("document");
-      } else if (!viewType) {
-        handleViewTypeChange(DEFAULT_VIEW_TYPE);
-      }
-    }
-  }, [
-    hasDocuments,
-    hasTables,
-    handleViewTypeChange,
-    viewType,
-    isTablesValidating,
-    isDocumentsValidating,
-    isDataSourceManaged,
-  ]);
 
   const rows: RowData[] = useMemo(
     () =>
@@ -606,6 +580,10 @@ export const SpaceDataSourceViewContentList = ({
                 <DropdownMenuItem
                   label="Tables"
                   onClick={() => handleViewTypeChange("table")}
+                />
+                <DropdownMenuItem
+                  label="All"
+                  onClick={() => handleViewTypeChange("all")}
                 />
               </DropdownMenuContent>
             </DropdownMenu>
