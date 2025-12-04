@@ -2,7 +2,6 @@ import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
-import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
@@ -17,17 +16,16 @@ export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurat
 
   declare status: SkillStatus;
   declare scope: SkillScope;
+
   declare name: string;
   declare description: string;
   declare instructions: string;
 
   declare authorId: ForeignKey<UserModel["id"]>;
-  declare editorGroupId: ForeignKey<GroupModel["id"]> | null;
 
   declare requestedSpaceIds: number[];
 
   declare author: NonAttribute<UserModel>;
-  declare editorGroup: NonAttribute<GroupModel> | null;
 }
 
 SkillConfigurationModel.init(
@@ -88,14 +86,4 @@ UserModel.hasMany(SkillConfigurationModel, {
 SkillConfigurationModel.belongsTo(UserModel, {
   foreignKey: { name: "authorId", allowNull: false },
   as: "author",
-});
-
-// Skill config <> Editor Group
-GroupModel.hasMany(SkillConfigurationModel, {
-  foreignKey: { name: "editorGroupId", allowNull: true },
-  onDelete: "SET NULL",
-});
-SkillConfigurationModel.belongsTo(GroupModel, {
-  foreignKey: { name: "editorGroupId", allowNull: true },
-  as: "editorGroup",
 });
