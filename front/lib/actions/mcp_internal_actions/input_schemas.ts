@@ -129,13 +129,6 @@ export const ConfigurableToolInputSchemas = {
     value: z.boolean(),
     mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN),
   }),
-  [INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL]: z.object({
-    modelId: z.string(),
-    providerId: z.string(),
-    temperature: z.number().nullable(),
-    reasoningEffort: z.string().nullable(),
-    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL),
-  }),
   [INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP]: z.object({
     appId: z.string(),
     mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP),

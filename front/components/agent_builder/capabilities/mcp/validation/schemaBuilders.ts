@@ -8,7 +8,6 @@ import {
   jsonSchemaStringSchema,
   mcpServerViewIdSchema,
   mcpTimeFrameSchema,
-  reasoningModelSchema,
   secretNameSchema,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { VALIDATION_MESSAGES } from "@app/components/agent_builder/capabilities/mcp/utils/validationMessages";
@@ -58,11 +57,6 @@ export function createDynamicConfigurationFields(
     childAgentId: requirements.requiresChildAgentConfiguration
       ? childAgentIdSchema.refine((val) => val !== null, {
           message: VALIDATION_MESSAGES.childAgent.required,
-        })
-      : z.null(),
-    reasoningModel: requirements.requiresReasoningConfiguration
-      ? reasoningModelSchema.refine((val) => val !== null, {
-          message: VALIDATION_MESSAGES.reasoningModel.required,
         })
       : z.null(),
     dustAppConfiguration: requirements.requiresDustAppConfiguration
@@ -174,7 +168,6 @@ export function createDefaultConfigurationSchema() {
   return z.object({
     ...createBaseConfigurationFields(),
     childAgentId: childAgentIdSchema,
-    reasoningModel: reasoningModelSchema,
     dustAppConfiguration: dustAppConfigurationSchema,
     additionalConfiguration: z.object({}),
   });

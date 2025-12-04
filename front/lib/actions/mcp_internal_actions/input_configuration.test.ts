@@ -42,7 +42,6 @@ function createBasicMCPConfiguration(
     dataSources: null,
     tables: null,
     childAgentId: null,
-    reasoningModel: null,
     timeFrame: null,
     jsonSchema: null,
     additionalConfiguration: {},
@@ -339,115 +338,6 @@ describe("augmentInputsWithConfiguration", () => {
           actionConfiguration: config,
         });
       }).toThrow("Unreachable: child agent configuration without an sId.");
-    });
-  });
-
-  describe("REASONING_MODEL mime type", () => {
-    it("should augment inputs with reasoning model configuration", () => {
-      const rawInputs = {};
-      const config = createBasicMCPConfiguration({
-        reasoningModel: {
-          modelId: "gpt-4o",
-          providerId: "openai",
-          temperature: 0.7,
-          reasoningEffort: "medium",
-        },
-        inputSchema: {
-          type: "object",
-          properties: {
-            model:
-              ConfigurableToolInputJSONSchemas[
-                INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL
-              ],
-          },
-          required: ["model"],
-        },
-      });
-
-      const result = augmentInputsWithConfiguration({
-        owner: mockWorkspace,
-        rawInputs,
-        actionConfiguration: config,
-      });
-
-      expect(result).toEqual({
-        model: {
-          modelId: "gpt-4o",
-          providerId: "openai",
-          temperature: 0.7,
-          reasoningEffort: "medium",
-          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL,
-        },
-      });
-    });
-
-    it("should NOT augment when a partial model container exists (container present, missing required subfields)", () => {
-      const rawInputs = {
-        // Container present but invalid/partial: missing providerId, mimeType, etc.
-        model: { modelId: "gpt-4o" },
-      } as Record<string, unknown>;
-
-      const config = createBasicMCPConfiguration({
-        reasoningModel: {
-          modelId: "gpt-4o",
-          providerId: "openai",
-          temperature: 0.2,
-          reasoningEffort: "light",
-        },
-        inputSchema: {
-          type: "object",
-          properties: {
-            model:
-              ConfigurableToolInputJSONSchemas[
-                INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL
-              ],
-          },
-          required: ["model"],
-        },
-      });
-
-      const result = augmentInputsWithConfiguration({
-        owner: mockWorkspace,
-        rawInputs,
-        actionConfiguration: config,
-      });
-
-      // Current behavior: augmentation only reacts to top-level missing required properties.
-      // With a present (but invalid) container, no replacement occurs; the partial value is preserved.
-      expect(result).toEqual(rawInputs);
-    });
-
-    it("should NOT augment when an empty model object exists", () => {
-      const rawInputs = {
-        model: {},
-      } as Record<string, unknown>;
-
-      const config = createBasicMCPConfiguration({
-        reasoningModel: {
-          modelId: "gpt-4o",
-          providerId: "openai",
-          temperature: 0.5,
-          reasoningEffort: "medium",
-        },
-        inputSchema: {
-          type: "object",
-          properties: {
-            model:
-              ConfigurableToolInputJSONSchemas[
-                INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL
-              ],
-          },
-          required: ["model"],
-        },
-      });
-
-      const result = augmentInputsWithConfiguration({
-        owner: mockWorkspace,
-        rawInputs,
-        actionConfiguration: config,
-      });
-
-      expect(result).toEqual(rawInputs);
     });
   });
 

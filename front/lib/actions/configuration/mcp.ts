@@ -16,7 +16,6 @@ import {
   AgentChildAgentConfiguration,
   AgentMCPServerConfiguration,
 } from "@app/lib/models/agent/actions/mcp";
-import { AgentReasoningConfiguration } from "@app/lib/models/agent/actions/reasoning";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/agent/actions/tables_query";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -56,7 +55,6 @@ export async function fetchMCPServerActionConfigurations(
   const whereClause: WhereOptions<
     AgentDataSourceConfiguration &
       AgentTablesQueryConfigurationTable &
-      AgentReasoningConfiguration &
       AgentChildAgentConfiguration
   > = {
     workspaceId: workspace.id,
@@ -96,11 +94,6 @@ export async function fetchMCPServerActionConfigurations(
       include: includeDataSourceViewClause,
     });
 
-  // Find the associated reasoning configurations.
-  const allReasoningConfigurations = await AgentReasoningConfiguration.findAll({
-    where: whereClause,
-  });
-
   // Find the associated child agent configurations.
   const allChildAgentConfigurations =
     await AgentChildAgentConfiguration.findAll({ where: whereClause });
@@ -120,9 +113,6 @@ export async function fetchMCPServerActionConfigurations(
     );
     const childAgentConfigurations = allChildAgentConfigurations.filter(
       (ca) => ca.mcpServerConfigurationId === config.id
-    );
-    const reasoningConfigurations = allReasoningConfigurations.filter(
-      (rc) => rc.mcpServerConfigurationId === config.id
     );
 
     const dustApp = allDustApps.filter((app) => app.sId === config.appId)[0];
@@ -191,15 +181,6 @@ export async function fetchMCPServerActionConfigurations(
             ? childAgentConfigurations[0].agentConfigurationId
             : null,
         additionalConfiguration: config.additionalConfiguration,
-        reasoningModel:
-          reasoningConfigurations.length > 0
-            ? {
-                providerId: reasoningConfigurations[0].providerId,
-                modelId: reasoningConfigurations[0].modelId,
-                temperature: reasoningConfigurations[0].temperature,
-                reasoningEffort: reasoningConfigurations[0].reasoningEffort,
-              }
-            : null,
         timeFrame: config.timeFrame,
         jsonSchema: config.jsonSchema,
         secretName: config.secretName,

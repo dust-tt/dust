@@ -131,7 +131,6 @@ function _getManagedDataSourceAgent(
       })),
       tables: null,
       childAgentId: null,
-      reasoningModel: null,
       additionalConfiguration: {},
       timeFrame: null,
       dustAppConfiguration: null,

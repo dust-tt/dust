@@ -110,15 +110,6 @@ const tagSchema = z.object({
   kind: TAG_KINDS,
 });
 
-export const reasoningModelSchema = z
-  .object({
-    modelId: modelIdSchema,
-    providerId: providerIdSchema,
-    temperature: z.number().min(0).max(1).nullable(),
-    reasoningEffort: reasoningEffortSchema.nullable(),
-  })
-  .nullable();
-
 export const mcpServerConfigurationSchema = z.object({
   mcpServerViewId: mcpServerViewIdSchema,
   dataSourceConfigurations: dataSourceConfigurationSchema,
@@ -129,7 +120,6 @@ export const mcpServerConfigurationSchema = z.object({
   dustAppConfiguration: dustAppConfigurationSchema,
   secretName: secretNameSchema,
   jsonSchema: jsonSchemaFieldSchema,
-  reasoningModel: reasoningModelSchema,
   _jsonSchemaString: jsonSchemaStringSchema,
 });
 
@@ -257,7 +247,6 @@ export interface MCPFormData {
     dataSourceConfigurations: any;
     tablesConfigurations: any;
     childAgentId: string | null;
-    reasoningModel: any;
     timeFrame: {
       duration: number;
       unit: "hour" | "day" | "week" | "month" | "year";
