@@ -73,6 +73,7 @@ import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
 import { useDeleteAgentMessage } from "@app/hooks/useDeleteAgentMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { clientFetch } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
 import {
   agentMentionDirective,
@@ -101,7 +102,6 @@ import type {
 import {
   assertNever,
   GLOBAL_AGENTS_SID,
-  isAgentMessageType,
   isInteractiveContentFileContentType,
   isPersonalAuthenticationRequiredErrorContent,
   isSupportedImageContentType,
@@ -159,14 +159,24 @@ export function AgentMessage({
     options: { disabled: true },
   });
 
-  const parentAgentMessage = useConversationMessage({
-    conversationId,
-    workspaceId: owner.sId,
-    messageId: messageStreamState.message.parentAgentMessageId,
-    options: {
-      disabled: messageStreamState.message.parentAgentMessageId === null,
-    },
-  });
+  const methods = useVirtuosoMethods<
+    VirtuosoMessage,
+    VirtuosoMessageListContext
+  >();
+
+  const triggeringUser = useMemo((): UserType | null => {
+    const parentMessageId = messageStreamState.message.parentMessageId;
+    const messages = methods.data.get();
+    const parentUserMessage = messages
+      .filter(isUserMessage)
+      .find((m) => m.sId === parentMessageId);
+    return parentUserMessage?.user ?? null;
+  }, [messageStreamState.message.parentMessageId, methods.data]);
+
+  const isTriggeredByCurrentUser = useMemo(
+    () => triggeringUser?.sId === user.sId,
+    [triggeringUser, user.sId]
+  );
 
   const { shouldStream } = useAgentMessageStream({
     messageStreamState,
@@ -180,29 +190,34 @@ export function AgentMessage({
       }) => {
         const eventType = eventPayload.data.type;
 
-        if (eventType === "tool_approve_execution") {
-          showBlockedActionsDialog();
-          enqueueBlockedAction({
-            messageId: sId,
-            blockedAction: {
-              status: "blocked_validation_required",
-              authorizationInfo: null,
-              messageId: eventPayload.data.messageId,
-              conversationId: eventPayload.data.conversationId,
-              actionId: eventPayload.data.actionId,
-              inputs: eventPayload.data.inputs,
-              stake: eventPayload.data.stake,
-              metadata: eventPayload.data.metadata,
-            },
-          });
-        } else if (
-          eventType === "tool_error" &&
-          isPersonalAuthenticationRequiredErrorContent(eventPayload.data.error)
-        ) {
-          void mutateBlockedActions();
+        if (isTriggeredByCurrentUser) {
+          if (eventType === "tool_approve_execution") {
+            showBlockedActionsDialog();
+            enqueueBlockedAction({
+              messageId: sId,
+              blockedAction: {
+                status: "blocked_validation_required",
+                authorizationInfo: null,
+                messageId: eventPayload.data.messageId,
+                conversationId: eventPayload.data.conversationId,
+                actionId: eventPayload.data.actionId,
+                inputs: eventPayload.data.inputs,
+                stake: eventPayload.data.stake,
+                metadata: eventPayload.data.metadata,
+              },
+            });
+          } else if (
+            eventType === "tool_error" &&
+            isPersonalAuthenticationRequiredErrorContent(
+              eventPayload.data.error
+            )
+          ) {
+            void mutateBlockedActions();
+          }
         }
       },
       [
+        isTriggeredByCurrentUser,
         showBlockedActionsDialog,
         enqueueBlockedAction,
         sId,
@@ -369,11 +384,6 @@ export function AgentMessage({
     );
   }
 
-  const methods = useVirtuosoMethods<
-    VirtuosoMessage,
-    VirtuosoMessageListContext
-  >();
-
   const isAgentMessageHandingOver = methods.data
     .get()
     .some(
@@ -383,18 +393,18 @@ export function AgentMessage({
         m.agenticMessageData?.originMessageId === sId
     );
 
-  const isTriggeredByCurrentUser = useMemo(() => {
-    const parentMessageId = agentMessageToRender.parentMessageId;
-    const messages = methods.data.get();
-    const parentUserMessage = messages.find(
-      (m) => isUserMessage(m) && m.sId === parentMessageId
+  const parentAgentMessage = methods.data
+    .get()
+    .find(
+      (m) =>
+        isMessageTemporayState(m) &&
+        m.message.sId === messageStreamState.message.parentAgentMessageId
     );
-    if (!parentUserMessage || !isUserMessage(parentUserMessage)) {
-      return false;
-    }
 
-    return parentUserMessage.user?.sId === user.sId;
-  }, [agentMessageToRender.parentMessageId, methods.data, user.sId]);
+  const parentAgent =
+    parentAgentMessage && isMessageTemporayState(parentAgentMessage)
+      ? parentAgentMessage.message.configuration
+      : null;
 
   const canDeleteAgentMessage =
     !isDeleted &&
@@ -478,7 +488,7 @@ export function AgentMessage({
       blockedOnly?: boolean;
     }) => {
       setIsRetryHandlerProcessing(true);
-      await fetch(
+      await clientFetch(
         `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/retry?blocked_only=${blockedOnly}`,
         {
           method: "POST",
@@ -617,14 +627,6 @@ export function AgentMessage({
     [activeReferences, conversationId, owner]
   );
 
-  let parentAgent = null;
-  if (
-    parentAgentMessage.message &&
-    isAgentMessageType(parentAgentMessage.message)
-  ) {
-    parentAgent = parentAgentMessage.message.configuration;
-  }
-
   const handleQuickReply = React.useCallback(
     async (reply: string) => {
       const mention: RichMention = {
@@ -727,6 +729,7 @@ export function AgentMessage({
             }
             activeReferences={activeReferences}
             setActiveReferences={setActiveReferences}
+            triggeringUser={triggeringUser}
           />
         )}
       </NewConversationMessage>
@@ -773,6 +776,7 @@ export function AgentMessage({
           }
           activeReferences={activeReferences}
           setActiveReferences={setActiveReferences}
+          triggeringUser={triggeringUser}
         />
       )}
     </ConversationMessage>
@@ -780,6 +784,7 @@ export function AgentMessage({
 }
 
 function AgentMessageContent({
+  triggeringUser,
   isLastMessage,
   messageStreamState,
   references,
@@ -792,6 +797,7 @@ function AgentMessageContent({
   retryHandler,
   onQuickReplySend,
 }: {
+  triggeringUser: UserType | null;
   isLastMessage: boolean;
   owner: LightWorkspaceType;
   conversationId: string;
@@ -931,6 +937,7 @@ function AgentMessageContent({
     if (isPersonalAuthenticationRequiredErrorContent(error)) {
       return (
         <MCPServerPersonalAuthenticationRequired
+          triggeringUser={triggeringUser}
           owner={owner}
           mcpServerId={error.metadata.mcp_server_id}
           provider={error.metadata.provider}

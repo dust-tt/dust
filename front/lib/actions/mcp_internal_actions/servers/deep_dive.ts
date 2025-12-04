@@ -98,7 +98,7 @@ function createServer(
         }
 
         const response = makeMCPToolExit({
-          message: `Handoff from ${serializeMention(agentConfiguration)} to ${serializeMention({ name: DEEP_DIVE_NAME, sId: GLOBAL_AGENTS_SID.DEEP_DIVE })}successfully launched.`,
+          message: `Handoff from ${serializeMention(agentConfiguration)} to ${serializeMention({ name: DEEP_DIVE_NAME, sId: GLOBAL_AGENTS_SID.DEEP_DIVE })} successfully launched.`,
           isError: false,
         });
 

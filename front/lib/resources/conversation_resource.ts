@@ -668,6 +668,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         where: {
           conversationId: conversation.id,
           workspaceId: auth.getNonNullableWorkspace().id,
+          userId: auth.getNonNullableUser().id,
         },
       }
     );
