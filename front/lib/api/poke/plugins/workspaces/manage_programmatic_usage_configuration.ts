@@ -172,7 +172,6 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
   },
 
   execute: async (auth, _, args) => {
-    console.log("args", args);
     const parseResult =
       ManageProgrammaticUsageConfigurationSchema.safeParse(args);
 
