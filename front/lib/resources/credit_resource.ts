@@ -186,6 +186,7 @@ export class CreditResource extends BaseResource<CreditModel> {
   /**
    * Get the total amount of committed credits purchased within a date range.
    * Used to enforce per-billing-cycle purchase limits.
+   * Returns the total in cents.
    */
   static async sumCommittedCreditsPurchasedInPeriod(
     auth: Authenticator,
@@ -194,7 +195,14 @@ export class CreditResource extends BaseResource<CreditModel> {
   ): Promise<number> {
     const result = await this.model.findOne({
       attributes: [
-        [Sequelize.fn("COALESCE", Sequelize.fn("SUM", Sequelize.col("initialAmountCents")), 0), "total"],
+        [
+          Sequelize.fn(
+            "COALESCE",
+            Sequelize.fn("SUM", Sequelize.col("initialAmountMicroUsd")),
+            0
+          ),
+          "total",
+        ],
       ],
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
@@ -206,7 +214,12 @@ export class CreditResource extends BaseResource<CreditModel> {
       },
       raw: true,
     });
-    return parseInt((result as unknown as { total: string })?.total ?? "0", 10);
+    const totalMicroUsd = parseInt(
+      (result as unknown as { total: string })?.total ?? "0",
+      10
+    );
+    // Convert microUsd to cents (1 cent = 10,000 microUsd).
+    return Math.round(totalMicroUsd / 10_000);
   }
 
   /**

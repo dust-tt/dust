@@ -125,6 +125,8 @@ async function handler(
       }
       // Convert dollars to micro USD for internal storage.
       const amountMicroUsd = Math.round(amountDollars * 1_000_000);
+      // Convert dollars to cents for limit validation.
+      const amountCents = Math.round(amountDollars * 100);
       const isEnterprise = isEnterpriseSubscription(stripeSubscription);
 
       // Validate against purchase limits.
