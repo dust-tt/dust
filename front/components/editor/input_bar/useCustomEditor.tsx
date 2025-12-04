@@ -246,6 +246,11 @@ export const buildEditorExtensions = ({
       },
       autolink: false,
     }),
+    Placeholder.configure({
+      placeholder: "Ask an @agent a question, or get some @help",
+      emptyNodeClass:
+        "first:before:text-gray-400 first:before:float-left first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:h-0",
+    }),
     MentionExtension.configure({
       owner,
       HTMLAttributes: {
@@ -253,11 +258,6 @@ export const buildEditorExtensions = ({
           "min-w-0 px-0 py-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-highlight-500 font-semibold",
       },
       suggestion: createMentionSuggestion({ owner, conversationId }),
-    }),
-    Placeholder.configure({
-      placeholder: "Ask an @agent a question, or get some @help",
-      emptyNodeClass:
-        "first:before:text-gray-400 first:before:float-left first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:h-0",
     }),
     PastedAttachmentExtension.configure({
       onInlineText,
