@@ -226,6 +226,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Access to Skills, which are packaged sets of instructions and tools",
     stage: "dust_only",
   },
+  universal_search: {
+    description:
+      "WIP - Search from Input bar search in Knowledge and MCP tools. ",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
