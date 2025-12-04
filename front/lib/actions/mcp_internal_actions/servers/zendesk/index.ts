@@ -5,6 +5,7 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   getUniqueCustomFieldIds,
   getZendeskClient,
+  ZendeskApiError,
 } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/client";
 import {
   renderTicket,
@@ -71,10 +72,14 @@ function createServer(
         const ticketResult = await client.getTicket(ticketId);
 
         if (ticketResult.isErr()) {
+          const { error } = ticketResult;
+          const tracked = !(
+            error instanceof ZendeskApiError && error.isInvalidInput
+          );
           return new Err(
-            new MCPError(
-              `Failed to retrieve ticket: ${ticketResult.error.message}`
-            )
+            new MCPError(`Failed to retrieve ticket: ${error.message}`, {
+              tracked,
+            })
           );
         }
 
@@ -89,9 +94,16 @@ function createServer(
           const metricsResult = await client.getTicketMetrics(ticketId);
 
           if (metricsResult.isErr()) {
+            const { error } = metricsResult;
+            const tracked = !(
+              error instanceof ZendeskApiError && error.isInvalidInput
+            );
             return new Err(
               new MCPError(
-                `Failed to retrieve ticket metrics: ${metricsResult.error.message}`
+                `Failed to retrieve ticket metrics: ${error.message}`,
+                {
+                  tracked,
+                }
               )
             );
           }
@@ -103,9 +115,14 @@ function createServer(
           const commentsResult = await client.getTicketComments(ticketId);
 
           if (commentsResult.isErr()) {
+            const { error } = commentsResult;
+            const tracked = !(
+              error instanceof ZendeskApiError && error.isInvalidInput
+            );
             return new Err(
               new MCPError(
-                `Failed to retrieve ticket conversation: ${commentsResult.error.message}`
+                `Failed to retrieve ticket conversation: ${error.message}`,
+                { tracked }
               )
             );
           }
@@ -184,8 +201,14 @@ function createServer(
         const result = await client.searchTickets(query, sortBy, sortOrder);
 
         if (result.isErr()) {
+          const { error } = result;
+          const tracked = !(
+            error instanceof ZendeskApiError && error.isInvalidInput
+          );
           return new Err(
-            new MCPError(`Failed to search tickets: ${result.error.message}`)
+            new MCPError(`Failed to search tickets: ${error.message}`, {
+              tracked,
+            })
           );
         }
 
@@ -252,8 +275,12 @@ function createServer(
         const result = await client.draftReply(ticketId, body);
 
         if (result.isErr()) {
+          const { error } = result;
+          const tracked = !(
+            error instanceof ZendeskApiError && error.isInvalidInput
+          );
           return new Err(
-            new MCPError(`Failed to draft reply: ${result.error.message}`)
+            new MCPError(`Failed to draft reply: ${error.message}`, { tracked })
           );
         }
 
