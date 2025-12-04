@@ -85,6 +85,7 @@ export const InputBarContainer = ({
   >(null);
   const [selectedNode, setSelectedNode] =
     useState<DataSourceViewContentNodeType | null>(null);
+  const [isEmpty, setIsEmpty] = useState(true);
 
   // Create a ref to hold the editor instance
   const editorRef = useRef<Editor | null>(null);
@@ -243,9 +244,32 @@ export const InputBarContainer = ({
     onClick,
     isLoading: isSubmitting,
   };
+
+  // Update the editor ref when the editor is created and listen for updates to the editor.
+  useEffect(() => {
+    const handleUpdate = () => {
+      setIsEmpty(editorService.isEmpty());
+    };
+
+    if (editorRef.current) {
+      editorRef.current.off("update", handleUpdate);
+    }
+
+    if (editor) {
+      editor.on("update", handleUpdate);
+    }
+    editorRef.current = editor;
+
+    return () => {
+      if (editor) {
+        editor.off("update", handleUpdate);
+      }
+    };
+  }, [editor, editorService]);
+
   const disabled =
     isSubmitting ||
-    editorService.isEmpty() ||
+    isEmpty ||
     fileUploaderService.isProcessingFiles ||
     fileUploaderService.isCapturing;
 
