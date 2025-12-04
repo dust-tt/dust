@@ -233,7 +233,7 @@ const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
     input: 1.2,
     output: 1.2,
   },
-  "accounts/fireworks/models/kimi-k2-instruct": {
+  "accounts/fireworks/models/kimi-k2-instruct-0905": {
     input: 0.4,
     output: 0.4,
   },
