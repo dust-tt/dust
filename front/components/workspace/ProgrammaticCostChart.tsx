@@ -182,7 +182,11 @@ export function BaseProgrammaticCostChart({
   >({});
 
   const now = new Date();
+  // selectedMonth is "YYYY-MM", so new Date(selectedMonth) creates day 1 of that month.
+  // To get the correct billing cycle, we need a date within that cycle, so we set
+  // the day to billingCycleStartDay.
   const currentDate = new Date(selectedMonth);
+  currentDate.setDate(billingCycleStartDay);
 
   // Calculate the billing cycle for the selected month
   const billingCycle = getBillingCycleFromDay(
