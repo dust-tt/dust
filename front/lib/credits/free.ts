@@ -223,14 +223,17 @@ export async function grantFreeCreditsOnSubscriptionRenewal({
     );
   }
 
-  const expirationDate = new Date(stripeSubscription.current_period_end * 1000);
+  const periodStart = new Date(stripeSubscription.current_period_start * 1000);
+  const periodEnd = new Date(stripeSubscription.current_period_end * 1000);
+
   const featureFlags = await getFeatureFlags(workspace);
   if (!featureFlags.includes("ppul")) {
     logger.info(
       {
         workspaceId: workspaceSId,
         creditAmountMicroUsd,
-        expirationDate,
+        periodStart,
+        periodEnd,
       },
       "[Free Credits] PPUL flag OFF - stopping here."
     );
@@ -249,13 +252,14 @@ export async function grantFreeCreditsOnSubscriptionRenewal({
       workspaceId: workspaceSId,
       creditId: credit.id,
       creditAmountMicroUsd,
-      expirationDate,
+      periodStart,
+      periodEnd,
     },
     "[Free Credits] Created credit, now starting"
   );
 
-  // Start the credit immediately
-  const startResult = await credit.start(undefined, expirationDate);
+  // Start the credit at beginning of billing cycle.
+  const startResult = await credit.start(periodStart, periodEnd);
 
   if (startResult.isErr()) {
     logger.error(
@@ -275,7 +279,8 @@ export async function grantFreeCreditsOnSubscriptionRenewal({
       workspaceId: workspaceSId,
       creditId: credit.id,
       creditAmountMicroUsd,
-      expirationDate,
+      periodStart,
+      periodEnd,
     },
     "[Free Credits] Successfully granted and activated free credit on renewal"
   );
