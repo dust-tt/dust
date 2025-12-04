@@ -67,9 +67,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   };
 });
 
-function isExpired(credit: CreditDisplayData): boolean {
+// A credit is active if it has started and has not expired.
+// This need to be consistent with logic in CreditResource.listActive().
+function isActive(credit: CreditDisplayData): boolean {
   const now = Date.now();
-  return credit.expirationDate !== null && credit.expirationDate <= now;
+  const isStarted = credit.startDate !== null && credit.startDate <= now;
+  const isExpired =
+    credit.expirationDate !== null && credit.expirationDate <= now;
+  return isStarted && !isExpired;
 }
 
 interface ProgressBarProps {
@@ -310,7 +315,7 @@ export default function CreditsUsagePage({
     : null;
 
   const creditsByType = useMemo(() => {
-    const activeCredits = credits.filter((c) => !isExpired(c));
+    const activeCredits = credits.filter((c) => isActive(c));
 
     const byType: Record<
       CreditType,
