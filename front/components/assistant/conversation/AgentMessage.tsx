@@ -8,6 +8,7 @@ import {
   ConversationMessage,
   InteractiveImageGrid,
   Markdown,
+  MoreIcon,
   Separator,
   StopIcon,
   TrashIcon,
@@ -100,6 +101,7 @@ import type {
 import {
   assertNever,
   GLOBAL_AGENTS_SID,
+  isAgentMessageType,
   isInteractiveContentFileContentType,
   isPersonalAuthenticationRequiredErrorContent,
   isSupportedImageContentType,
@@ -155,6 +157,15 @@ export function AgentMessage({
     workspaceId: owner.sId,
     messageId: sId,
     options: { disabled: true },
+  });
+
+  const parentAgentMessage = useConversationMessage({
+    conversationId,
+    workspaceId: owner.sId,
+    messageId: messageStreamState.message.parentAgentMessageId,
+    options: {
+      disabled: messageStreamState.message.parentAgentMessageId === null,
+    },
   });
 
   const { shouldStream } = useAgentMessageStream({
@@ -329,8 +340,12 @@ export function AgentMessage({
     );
   }
 
-  const buttons: React.ReactElement[] = [];
-  const buttonGroups: React.ReactElement[] = [];
+  const { deleteAgentMessage, isDeleting } = useDeleteAgentMessage({
+    owner,
+    conversationId,
+  });
+
+  const messageButtons: React.ReactElement[] = [];
 
   const hasMultiAgents =
     generationContext.generatingMessages.filter(
@@ -338,10 +353,8 @@ export function AgentMessage({
     ).length > 1;
 
   // Show stop agent button only when streaming with multiple agents
-  // (it feels distractive to show buttons while streaming so we would like to avoid as much as possible.
-  // However, when there are multiple agents there is no other way to stop only single agent so we need to show it here).
   if (hasMultiAgents && shouldStream) {
-    buttons.push(
+    messageButtons.push(
       <Button
         key="stop-msg-button"
         label="Stop agent"
@@ -356,32 +369,6 @@ export function AgentMessage({
     );
   }
 
-  const copyAndRetryButtonGroup: React.ReactElement[] = [];
-  // Show copy & feedback buttons only when streaming is done, it didn't fail, and the message is not deleted
-  if (
-    !isDeleted &&
-    agentMessageToRender.status !== "created" &&
-    agentMessageToRender.status !== "failed"
-  ) {
-    const copyButton = (
-      <Button
-        key="copy-msg-button"
-        tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
-        variant="ghost-secondary"
-        size="xs"
-        onClick={handleCopyToClipboard}
-        icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
-        className="text-muted-foreground"
-      />
-    );
-    buttons.push(copyButton);
-    copyAndRetryButtonGroup.push(copyButton);
-  }
-
-  // Show the retry button as long as it's not streaming nor failed,
-  // since failed messages have their own retry button in ErrorMessage.
-  // Also, don't show the retry button if the agent message is handing over to another agent since we don't want to retry a message that has generated another agent response.
-  // This is to be removed as soon as we have branching in the conversation.
   const methods = useVirtuosoMethods<
     VirtuosoMessage,
     VirtuosoMessageListContext
@@ -395,48 +382,6 @@ export function AgentMessage({
         isHandoverUserMessage(m) &&
         m.agenticMessageData?.originMessageId === sId
     );
-
-  const parentAgentMessage = methods.data
-    .get()
-    .find(
-      (m) =>
-        isMessageTemporayState(m) &&
-        m.message.sId === messageStreamState.message.parentAgentMessageId
-    );
-
-  const parentAgent =
-    parentAgentMessage && isMessageTemporayState(parentAgentMessage)
-      ? parentAgentMessage.message.configuration
-      : null;
-
-  if (
-    !isDeleted &&
-    agentMessageToRender.status !== "created" &&
-    agentMessageToRender.status !== "failed" &&
-    !shouldStream &&
-    !isAgentMessageHandingOver
-  ) {
-    const retryButton = (
-      <Button
-        key="retry-msg-button"
-        tooltip="Retry"
-        variant="ghost-secondary"
-        size="xs"
-        onClick={() => {
-          // eslint-disable-next-line react-hooks/immutability
-          void retryHandler({
-            conversationId,
-            messageId: agentMessageToRender.sId,
-          });
-        }}
-        icon={ArrowPathIcon}
-        className="text-muted-foreground"
-        disabled={isRetryHandlerProcessing || shouldStream}
-      />
-    );
-    buttons.push(retryButton);
-    copyAndRetryButtonGroup.push(retryButton);
-  }
 
   const isTriggeredByCurrentUser = useMemo(() => {
     const parentMessageId = agentMessageToRender.parentMessageId;
@@ -456,40 +401,71 @@ export function AgentMessage({
     agentMessageToRender.status !== "created" &&
     isTriggeredByCurrentUser;
 
-  if (copyAndRetryButtonGroup.length > 0) {
-    buttonGroups.push(
-      <ButtonGroup key="first-button-group" variant="outline">
-        {copyAndRetryButtonGroup}
-      </ButtonGroup>
-    );
-  }
+  const handleDeleteAgentMessage = useCallback(async () => {
+    if (isDeleted || !canDeleteAgentMessage || isDeleting) {
+      return;
+    }
 
-  // Add feedback buttons in the end of the array if the agent is not global nor in draft (= inside agent builder)
-  if (
+    const confirmed = await confirm({
+      title: "Delete message",
+      message:
+        "Are you sure you want to delete this message? This action cannot be undone.",
+      validateLabel: "Delete",
+      validateVariant: "warning",
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    await deleteAgentMessage(agentMessageToRender.sId);
+
+    methods.data.map((m) => {
+      if (
+        isMessageTemporayState(m) &&
+        getMessageSId(m) === agentMessageToRender.sId
+      ) {
+        return {
+          ...m,
+          message: {
+            ...m.message,
+            visibility: "deleted",
+          },
+        };
+      }
+      return m;
+    });
+  }, [
+    agentMessageToRender.sId,
+    canDeleteAgentMessage,
+    confirm,
+    isDeleted,
+    deleteAgentMessage,
+    isDeleting,
+    methods.data,
+  ]);
+
+  const shouldShowCopy =
+    !isDeleted &&
+    agentMessageToRender.status !== "created" &&
+    agentMessageToRender.status !== "failed";
+
+  const shouldShowRetry =
+    !isDeleted &&
+    agentMessageToRender.status !== "created" &&
+    agentMessageToRender.status !== "failed" &&
+    !shouldStream &&
+    !isAgentMessageHandingOver;
+
+  const shouldShowFeedback =
     !isDeleted &&
     agentMessageToRender.status !== "created" &&
     agentMessageToRender.status !== "failed" &&
     !isGlobalAgent &&
-    agentMessageToRender.configuration.status !== "draft"
-  ) {
-    buttons.push(
-      <Separator key="separator" orientation="vertical" />,
-      <FeedbackSelector
-        key="feedback-selector"
-        {...messageFeedback}
-        getPopoverInfo={PopoverContent}
-        owner={owner}
-      />
-    );
-    buttonGroups.push(
-      <FeedbackSelector
-        key="feedback-selector"
-        {...messageFeedback}
-        getPopoverInfo={PopoverContent}
-        owner={owner}
-      />
-    );
-  }
+    agentMessageToRender.configuration.status !== "draft";
+
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const userMentionsEnabled = hasFeature("mentions_v2");
 
   const retryHandler = useCallback(
     async ({
@@ -517,12 +493,137 @@ export function AgentMessage({
     [owner.sId]
   );
 
+  // Add feedback buttons first (thumbs up/down)
+  if (shouldShowFeedback) {
+    messageButtons.push(
+      <FeedbackSelector
+        key="feedback-selector"
+        {...messageFeedback}
+        getPopoverInfo={PopoverContent}
+      />
+    );
+  }
+
+  // Add separator if we have both feedback and copy buttons
+  if (shouldShowFeedback && shouldShowCopy) {
+    messageButtons.push(<Separator key="separator" orientation="vertical" />);
+  }
+
+  // Add copy button or split button with dropdown (only when mentions_v2 is enabled)
+  if (
+    userMentionsEnabled &&
+    shouldShowCopy &&
+    (shouldShowRetry || canDeleteAgentMessage)
+  ) {
+    const dropdownItems = [];
+
+    if (shouldShowRetry) {
+      dropdownItems.push({
+        label: "Retry",
+        icon: ArrowPathIcon,
+        onSelect: () => {
+          void retryHandler({
+            conversationId,
+            messageId: agentMessageToRender.sId,
+          });
+        },
+        disabled: isRetryHandlerProcessing || shouldStream,
+      });
+    }
+
+    if (canDeleteAgentMessage) {
+      dropdownItems.push({
+        label: "Delete message",
+        icon: TrashIcon,
+        onSelect: handleDeleteAgentMessage,
+        disabled: isDeleting,
+        variant: "warning" as const,
+      });
+    }
+
+    messageButtons.push(
+      <ButtonGroup
+        key="split-button-group"
+        variant="outline"
+        items={[
+          {
+            type: "button",
+            props: {
+              tooltip: isCopied ? "Copied!" : "Copy to clipboard",
+              variant: "ghost-secondary",
+              size: "xs",
+              onClick: handleCopyToClipboard,
+              icon: isCopied ? ClipboardCheckIcon : ClipboardIcon,
+              className: "text-muted-foreground",
+            },
+          },
+          {
+            type: "dropdown",
+            triggerProps: {
+              variant: "ghost-secondary",
+              size: "xs",
+              icon: MoreIcon,
+              className: "text-muted-foreground",
+            },
+            dropdownProps: {
+              items: dropdownItems,
+              align: "end",
+            },
+          },
+        ]}
+      />
+    );
+  } else {
+    // if mentions_v2 is disabled, show copy button
+    if (shouldShowCopy) {
+      messageButtons.push(
+        <Button
+          key="copy-msg-button"
+          tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
+          variant="ghost-secondary"
+          size="xs"
+          onClick={handleCopyToClipboard}
+          icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+          className="text-muted-foreground"
+        />
+      );
+    }
+
+    if (shouldShowRetry) {
+      messageButtons.push(
+        <Button
+          key="retry-msg-button"
+          tooltip="Retry"
+          variant="ghost-secondary"
+          size="xs"
+          onClick={() => {
+            void retryHandler({
+              conversationId,
+              messageId: agentMessageToRender.sId,
+            });
+          }}
+          icon={ArrowPathIcon}
+          className="text-muted-foreground"
+          disabled={isRetryHandlerProcessing || shouldStream}
+        />
+      );
+    }
+  }
+
   const { configuration: agentConfiguration } = agentMessageToRender;
 
   const citations = React.useMemo(
     () => getCitations({ activeReferences, owner, conversationId }),
     [activeReferences, conversationId, owner]
   );
+
+  let parentAgent = null;
+  if (
+    parentAgentMessage.message &&
+    isAgentMessageType(parentAgentMessage.message)
+  ) {
+    parentAgent = parentAgentMessage.message.configuration;
+  }
 
   const handleQuickReply = React.useCallback(
     async (reply: string) => {
@@ -585,75 +686,12 @@ export function AgentMessage({
     ]
   );
 
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-  const userMentionsEnabled = hasFeature("mentions_v2");
-
-  const { deleteAgentMessage, isDeleting } = useDeleteAgentMessage({
-    owner,
-    conversationId,
-  });
-
-  const handleDeleteAgentMessage = useCallback(async () => {
-    if (isDeleted || !canDeleteAgentMessage || isDeleting) {
-      return;
-    }
-
-    const confirmed = await confirm({
-      title: "Delete message",
-      message:
-        "Are you sure you want to delete this message? This action cannot be undone.",
-      validateLabel: "Delete",
-      validateVariant: "warning",
-    });
-
-    if (!confirmed) {
-      return;
-    }
-
-    await deleteAgentMessage(agentMessageToRender.sId);
-
-    methods.data.map((m) => {
-      if (
-        isMessageTemporayState(m) &&
-        getMessageSId(m) === agentMessageToRender.sId
-      ) {
-        return {
-          ...m,
-          message: {
-            ...m.message,
-            visibility: "deleted" as const,
-          },
-        };
-      }
-      return m;
-    });
-  }, [
-    agentMessageToRender.sId,
-    canDeleteAgentMessage,
-    confirm,
-    isDeleted,
-    deleteAgentMessage,
-    isDeleting,
-    methods.data,
-  ]);
-
-  const actions =
-    canDeleteAgentMessage && userMentionsEnabled
-      ? [
-          {
-            icon: TrashIcon,
-            label: "Delete message",
-            onClick: handleDeleteAgentMessage,
-          },
-        ]
-      : [];
-
   if (userMentionsEnabled) {
     return (
       <NewConversationMessage
         pictureUrl={agentConfiguration.pictureUrl}
         name={agentConfiguration.name}
-        buttons={buttonGroups}
+        buttons={messageButtons}
         avatarBusy={agentMessageToRender.status === "created"}
         isDisabled={isArchived}
         renderName={renderName}
@@ -671,7 +709,6 @@ export function AgentMessage({
         }
         type="agent"
         citations={isDeleted ? undefined : citations}
-        actions={actions}
       >
         {isDeleted ? (
           <DeletedMessage />
@@ -700,7 +737,7 @@ export function AgentMessage({
     <ConversationMessage
       pictureUrl={agentConfiguration.pictureUrl}
       name={agentConfiguration.name}
-      buttons={buttons.length > 0 ? buttons : undefined}
+      buttons={messageButtons.length > 0 ? messageButtons : undefined}
       avatarBusy={agentMessageToRender.status === "created"}
       isDisabled={isArchived}
       renderName={renderName}
@@ -718,7 +755,6 @@ export function AgentMessage({
       }
       type="agent"
       citations={isDeleted ? undefined : citations}
-      actions={actions}
     >
       {isDeleted ? (
         <DeletedMessage />
