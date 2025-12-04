@@ -33,8 +33,26 @@ async function handler(
       },
     });
   }
+  if (typeof pageSizeParam !== "string") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "pageSize parameter is required.",
+      },
+    });
+  }
 
-  const pageSize = pageSizeParam ? parseInt(pageSizeParam as string, 10) : 25;
+  const pageSize = parseInt(pageSizeParam, 10);
+  if (isNaN(pageSize) || pageSize < 10 || pageSize > 100) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "pageSize must be a number between 10 and 100.",
+      },
+    });
+  }
 
   try {
     const nodes = await searchToolNodes({ auth, query, pageSize });

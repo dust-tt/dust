@@ -9,7 +9,9 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import type {
   SearchableTool,
   ToolSearchNode,
+  ToolSearchRawNode,
 } from "@app/lib/search/tools/types";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 
 const SEARCHABLE_MCP_SERVERS = {
@@ -71,26 +73,21 @@ export async function searchToolNodes({
     return [];
   }
 
-  const results = await Promise.all(
-    searchableServerViews.map(async (serverView) => {
+  const results = await concurrentExecutor(
+    searchableServerViews,
+    async (serverView) => {
       const result = await _getToolAccessToken(auth, serverView);
       if (!result) {
         return [];
       }
 
+      let nodes: ToolSearchRawNode[] = [];
       try {
-        const nodes = await result.tool.search({
+        nodes = await result.tool.search({
           accessToken: result.accessToken,
           query,
           pageSize,
         });
-        const serverJson = serverView.toJSON();
-        return nodes.map((node) => ({
-          ...node,
-          serverViewId: serverView.sId,
-          serverName: serverJson.server.name,
-          serverIcon: serverJson.server.icon,
-        }));
       } catch (error) {
         const r = getInternalMCPServerNameAndWorkspaceId(
           serverView.mcpServerId
@@ -105,7 +102,16 @@ export async function searchToolNodes({
         );
         return [];
       }
-    })
+
+      const serverJson = serverView.toJSON();
+      return nodes.map((node) => ({
+        ...node,
+        serverViewId: serverView.sId,
+        serverName: serverJson.server.name,
+        serverIcon: serverJson.server.icon,
+      }));
+    },
+    { concurrency: 4 }
   );
 
   return results.flat();

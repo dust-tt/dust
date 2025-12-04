@@ -76,11 +76,6 @@ export const InputBarAttachmentsPicker = ({
     minLength: MIN_SEARCH_QUERY_SIZE,
   });
 
-  const handleToolNodeSelect = useCallback(async (node: ToolSearchNode) => {
-    // @todo. It should call an endpoit to upload the content of the doc to the conversation (useCase conversation attachments)
-    console.log("Attaching tool node:", node);
-  }, []);
-
   const isToolNodeAttached = useCallback(
     (node: ToolSearchNode) => {
       const nodeKey = `${node.serverViewId}-${node.internalId}`;
@@ -295,7 +290,7 @@ export const InputBarAttachmentsPicker = ({
                   checked={isAttached}
                   disabled={isLoading}
                   onCheckedChange={() => {
-                    void handleToolNodeSelect(item);
+                    // @todo. It should call an endpoit to upload the content of the doc to the conversation (useCase conversation attachments)
                   }}
                   truncateText
                 />
