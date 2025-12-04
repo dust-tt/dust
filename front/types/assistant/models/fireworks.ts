@@ -5,7 +5,7 @@ export const FIREWORKS_DEEPSEEK_R1_MODEL_ID =
 export const FIREWORKS_DEEPSEEK_V3P2_MODEL_ID =
   "accounts/fireworks/models/deepseek-v3p2" as const;
 export const FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID =
-  "accounts/fireworks/models/kimi-k2-instruct" as const;
+  "accounts/fireworks/models/kimi-k2-instruct-0905" as const;
 export const FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "fireworks",
   modelId: FIREWORKS_DEEPSEEK_R1_MODEL_ID,
