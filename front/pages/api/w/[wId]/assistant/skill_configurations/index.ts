@@ -78,7 +78,8 @@ async function handler(
 
       const body: PostSkillConfigurationRequestBody = bodyValidation.right;
 
-      // Check for existing active skill with the same name
+      // Check for existing active skill with the same name.
+      // TODO(skills): consolidate this kind of db interaction within a resource.
       const existingSkill = await SkillConfigurationModel.findOne({
         where: {
           workspaceId: owner.id,
@@ -106,6 +107,7 @@ async function handler(
         description: body.description,
         instructions: body.instructions,
         authorId: user.id,
+        // TODO(skills): add space restrictions.
         requestedSpaceIds: [],
       });
 
