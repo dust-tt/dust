@@ -197,6 +197,8 @@ export default function SecretsPage({
               }
             />
             <Input
+              // prevent autocompletion of secrets
+              autoComplete="off"
               message="Secret values are encrypted and stored securely in our database."
               name="Secret value"
               placeholder="Type the secret value"
