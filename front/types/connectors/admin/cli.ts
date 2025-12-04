@@ -592,6 +592,17 @@ export const SlackJoinResponseSchema = t.type({
   processed: t.number,
 });
 export type SlackJoinResponseType = t.TypeOf<typeof SlackJoinResponseSchema>;
+
+export const SlackCheckChannelResponseSchema = t.type({
+  success: t.literal(true),
+  channel: t.type({
+    name: t.union([t.string, t.undefined]),
+    isPrivate: t.union([t.boolean, t.undefined]),
+  }),
+});
+export type SlackCheckChannelResponseType = t.TypeOf<
+  typeof SlackCheckChannelResponseSchema
+>;
 /**
  * </Slack>
  */
@@ -843,6 +854,7 @@ export const AdminResponseSchema = t.union([
   NotionMeResponseSchema,
   NotionSearchPagesResponseSchema,
   NotionUpsertResponseSchema,
+  SlackCheckChannelResponseSchema,
   SalesforceCheckConnectionResponseSchema,
   SalesforceRunSoqlResponseSchema,
   SalesforceSetupSyncedQueryResponseSchema,

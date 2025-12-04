@@ -1,7 +1,11 @@
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
 import logger from "@app/logger/logger";
-import type { AdminCommandType } from "@app/types";
+import type {
+  AdminCommandType,
+  ConnectorsAPIResponse,
+  SlackCheckChannelResponseType,
+} from "@app/types";
 import { ConnectorsAPI, Err, Ok } from "@app/types";
 
 export const checkSlackChannelPlugin = createPlugin({
@@ -56,16 +60,20 @@ export const checkSlackChannelPlugin = createPlugin({
       },
     };
 
-    const result = await connectorsAPI.admin(checkChannelCmd);
+    const result = (await connectorsAPI.admin(
+      checkChannelCmd
+    )) as ConnectorsAPIResponse<SlackCheckChannelResponseType>;
     if (result.isErr()) {
       return new Err(
         new Error(`Failed to check channel: ${result.error.message}`)
       );
     }
 
+    const { name, isPrivate } = result.value.channel;
+
     return new Ok({
       display: "text",
-      value: `Channel ${channelId} exists and is accessible by the connector`,
+      value: `${isPrivate ? "Private" : "Public"} channel ${channelId} (${name ? `#${name}` : ""}) exists and is accessible by the connector`,
     });
   },
 });
