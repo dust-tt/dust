@@ -67,8 +67,6 @@ function getRedisKey(workspace: LightWorkspaceType): string {
   return `${PROGRAMMATIC_USAGE_REMAINING_CREDITS_KEY}:${workspace.id}`;
 }
 
-const USERS_HAVE_BEEN_WARNED = false;
-
 export function isProgrammaticUsage(
   auth: Authenticator,
   { userMessageOrigin }: { userMessageOrigin?: UserMessageOrigin | null } = {}
@@ -91,10 +89,7 @@ export function isProgrammaticUsage(
 
   if (
     auth.authMethod() === "api_key" ||
-    // TODO(PPUL): remove this after notifying users.
-    (USERS_HAVE_BEEN_WARNED &&
-      USAGE_ORIGINS_CLASSIFICATION[userMessageOrigin] === "programmatic") ||
-    userMessageOrigin === "triggered_programmatic"
+    USAGE_ORIGINS_CLASSIFICATION[userMessageOrigin] === "programmatic"
   ) {
     return true;
   }

@@ -1,4 +1,5 @@
 import {
+  isDataSourceNodeContentType,
   isRunAgentResultResourceType,
   isSearchResultResourceType,
   isWebsearchResultResourceType,
@@ -113,10 +114,30 @@ export function getCitationsFromActions(
     }
   });
 
+  const dataSourceNodeContentResults = removeNulls(
+    actions.flatMap((action) =>
+      action.output?.filter(isDataSourceNodeContentType).map((o) => o.resource)
+    )
+  );
+
+  const dataSourceNodeContentRefs: Record<string, CitationType> = {};
+  dataSourceNodeContentResults.forEach((d) => {
+    if (!d.ref) {
+      return;
+    }
+    dataSourceNodeContentRefs[d.ref] = {
+      href: d.uri,
+      title: d.metadata.title,
+      provider: d.metadata.connectorProvider ?? "document",
+      contentType: d.mimeType,
+    };
+  });
+
   return {
     ...searchRefs,
     ...websearchRefs,
     ...runAgentRefs,
+    ...dataSourceNodeContentRefs,
   };
 }
 
@@ -132,6 +153,7 @@ export function getLightAgentMessageFromAgentMessage(
     rank: agentMessage.rank,
     parentMessageId: agentMessage.parentMessageId,
     parentAgentMessageId: agentMessage.parentAgentMessageId,
+    visibility: agentMessage.visibility,
     content: agentMessage.content,
     chainOfThought: agentMessage.chainOfThought,
     error: agentMessage.error,

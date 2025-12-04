@@ -181,6 +181,7 @@ export type BaseAgentMessageType = {
   content: string | null;
   chainOfThought: string | null;
   error: GenericErrorContent | null;
+  visibility: MessageVisibility;
 };
 
 export type ParsedContentItem =

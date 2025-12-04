@@ -76,6 +76,7 @@ function createMockAgentMessage(rank: number) {
     completedTs: null,
     parentMessageId: null,
     parentAgentMessageId: null,
+    visibility: "visible" as const,
     status: "succeeded" as const,
     content: "Agent response",
     chainOfThought: null,

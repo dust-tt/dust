@@ -10,11 +10,12 @@ import {
   Markdown,
   Separator,
   StopIcon,
+  TrashIcon,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import { marked } from "marked";
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useContext, useMemo } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
@@ -25,6 +26,7 @@ import { AgentMessageInteractiveContentGeneratedFiles } from "@app/components/as
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
+import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
@@ -43,7 +45,9 @@ import {
   getMessageSId,
   isHandoverUserMessage,
   isMessageTemporayState,
+  isUserMessage,
 } from "@app/components/assistant/conversation/types";
+import { ConfirmContext } from "@app/components/Confirm";
 import {
   CitationsContext,
   CiteBlock,
@@ -65,6 +69,7 @@ import {
   visualizationDirective,
 } from "@app/components/markdown/VisualizationBlock";
 import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
+import { useDeleteAgentMessage } from "@app/hooks/useDeleteAgentMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { DustError } from "@app/lib/error";
@@ -121,6 +126,7 @@ export function AgentMessage({
   messageStreamState,
   messageFeedback,
   owner,
+  user,
   handleSubmit,
 }: AgentMessageProps) {
   const sId = getMessageSId(messageStreamState);
@@ -133,6 +139,7 @@ export function AgentMessage({
   >([]);
   const [isCopied, copy] = useCopyToClipboard();
   const sendNotification = useSendNotification();
+  const confirm = useContext(ConfirmContext);
 
   const isGlobalAgent = Object.values(GLOBAL_AGENTS_SID).includes(
     messageStreamState.message.configuration.sId as GLOBAL_AGENTS_SID
@@ -209,6 +216,7 @@ export function AgentMessage({
     message: messageStreamState.message,
     messageStreamState: messageStreamState,
   });
+  const isDeleted = agentMessageToRender.visibility === "deleted";
   const cancelMessage = useCancelMessage({ owner, conversationId });
 
   const references = useMemo(
@@ -359,8 +367,9 @@ export function AgentMessage({
   }
 
   const copyAndRetryButtonGroup: React.ReactElement[] = [];
-  // Show copy & feedback buttons only when streaming is done and it didn't fail
+  // Show copy & feedback buttons only when streaming is done, it didn't fail, and the message is not deleted
   if (
+    !isDeleted &&
     agentMessageToRender.status !== "created" &&
     agentMessageToRender.status !== "failed"
   ) {
@@ -397,6 +406,7 @@ export function AgentMessage({
     );
 
   if (
+    !isDeleted &&
     agentMessageToRender.status !== "created" &&
     agentMessageToRender.status !== "failed" &&
     !shouldStream &&
@@ -424,6 +434,24 @@ export function AgentMessage({
     copyAndRetryButtonGroup.push(retryButton);
   }
 
+  const isTriggeredByCurrentUser = useMemo(() => {
+    const parentMessageId = agentMessageToRender.parentMessageId;
+    const messages = methods.data.get();
+    const parentUserMessage = messages.find(
+      (m) => isUserMessage(m) && m.sId === parentMessageId
+    );
+    if (!parentUserMessage || !isUserMessage(parentUserMessage)) {
+      return false;
+    }
+
+    return parentUserMessage.user?.sId === user.sId;
+  }, [agentMessageToRender.parentMessageId, methods.data, user.sId]);
+
+  const canDeleteAgentMessage =
+    !isDeleted &&
+    agentMessageToRender.status !== "created" &&
+    isTriggeredByCurrentUser;
+
   if (copyAndRetryButtonGroup.length > 0) {
     buttonGroups.push(
       <ButtonGroup key="first-button-group" variant="outline">
@@ -434,6 +462,7 @@ export function AgentMessage({
 
   // Add feedback buttons in the end of the array if the agent is not global nor in draft (= inside agent builder)
   if (
+    !isDeleted &&
     agentMessageToRender.status !== "created" &&
     agentMessageToRender.status !== "failed" &&
     !isGlobalAgent &&
@@ -562,6 +591,67 @@ export function AgentMessage({
 
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const userMentionsEnabled = hasFeature("mentions_v2");
+
+  const { deleteAgentMessage, isDeleting } = useDeleteAgentMessage({
+    owner,
+    conversationId,
+  });
+
+  const handleDeleteAgentMessage = useCallback(async () => {
+    if (isDeleted || !canDeleteAgentMessage || isDeleting) {
+      return;
+    }
+
+    const confirmed = await confirm({
+      title: "Delete message",
+      message:
+        "Are you sure you want to delete this message? This action cannot be undone.",
+      validateLabel: "Delete",
+      validateVariant: "warning",
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    await deleteAgentMessage(agentMessageToRender.sId);
+
+    methods.data.map((m) => {
+      if (
+        isMessageTemporayState(m) &&
+        getMessageSId(m) === agentMessageToRender.sId
+      ) {
+        return {
+          ...m,
+          message: {
+            ...m.message,
+            visibility: "deleted" as const,
+          },
+        };
+      }
+      return m;
+    });
+  }, [
+    agentMessageToRender.sId,
+    canDeleteAgentMessage,
+    confirm,
+    isDeleted,
+    deleteAgentMessage,
+    isDeleting,
+    methods.data,
+  ]);
+
+  const actions =
+    canDeleteAgentMessage && userMentionsEnabled
+      ? [
+          {
+            icon: TrashIcon,
+            label: "Delete message",
+            onClick: handleDeleteAgentMessage,
+          },
+        ]
+      : [];
+
   if (userMentionsEnabled) {
     return (
       <NewConversationMessage
@@ -579,26 +669,33 @@ export function AgentMessage({
               )
         }
         completionStatus={
-          <AgentMessageCompletionStatus agentMessage={agentMessageToRender} />
+          isDeleted ? undefined : (
+            <AgentMessageCompletionStatus agentMessage={agentMessageToRender} />
+          )
         }
         type="agent"
-        citations={citations}
+        citations={isDeleted ? undefined : citations}
+        actions={actions}
       >
-        <AgentMessageContent
-          onQuickReplySend={handleQuickReply}
-          owner={owner}
-          conversationId={conversationId}
-          retryHandler={retryHandler}
-          isLastMessage={isLastMessage}
-          messageStreamState={messageStreamState}
-          references={references}
-          streaming={shouldStream}
-          lastTokenClassification={
-            messageStreamState.agentState === "thinking" ? "tokens" : null
-          }
-          activeReferences={activeReferences}
-          setActiveReferences={setActiveReferences}
-        />
+        {isDeleted ? (
+          <DeletedMessage />
+        ) : (
+          <AgentMessageContent
+            onQuickReplySend={handleQuickReply}
+            owner={owner}
+            conversationId={conversationId}
+            retryHandler={retryHandler}
+            isLastMessage={isLastMessage}
+            messageStreamState={messageStreamState}
+            references={references}
+            streaming={shouldStream}
+            lastTokenClassification={
+              messageStreamState.agentState === "thinking" ? "tokens" : null
+            }
+            activeReferences={activeReferences}
+            setActiveReferences={setActiveReferences}
+          />
+        )}
       </NewConversationMessage>
     );
   }
@@ -619,26 +716,33 @@ export function AgentMessage({
             )
       }
       completionStatus={
-        <AgentMessageCompletionStatus agentMessage={agentMessageToRender} />
+        isDeleted ? undefined : (
+          <AgentMessageCompletionStatus agentMessage={agentMessageToRender} />
+        )
       }
       type="agent"
-      citations={citations}
+      citations={isDeleted ? undefined : citations}
+      actions={actions}
     >
-      <AgentMessageContent
-        owner={owner}
-        conversationId={conversationId}
-        retryHandler={retryHandler}
-        isLastMessage={isLastMessage}
-        messageStreamState={messageStreamState}
-        references={references}
-        onQuickReplySend={handleQuickReply}
-        streaming={shouldStream}
-        lastTokenClassification={
-          messageStreamState.agentState === "thinking" ? "tokens" : null
-        }
-        activeReferences={activeReferences}
-        setActiveReferences={setActiveReferences}
-      />
+      {isDeleted ? (
+        <DeletedMessage />
+      ) : (
+        <AgentMessageContent
+          owner={owner}
+          conversationId={conversationId}
+          retryHandler={retryHandler}
+          isLastMessage={isLastMessage}
+          messageStreamState={messageStreamState}
+          references={references}
+          onQuickReplySend={handleQuickReply}
+          streaming={shouldStream}
+          lastTokenClassification={
+            messageStreamState.agentState === "thinking" ? "tokens" : null
+          }
+          activeReferences={activeReferences}
+          setActiveReferences={setActiveReferences}
+        />
+      )}
     </ConversationMessage>
   );
 }
