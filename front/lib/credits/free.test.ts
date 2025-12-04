@@ -297,8 +297,8 @@ describe("grantFreeCreditsOnSubscriptionRenewal", () => {
 
     await CreditResource.makeNew(auth, {
       type: "free",
-      initialAmountCents: 5000,
-      consumedAmountCents: 0,
+      initialAmountMicroUsd: 50_000_000,
+      consumedAmountMicroUsd: 0,
       invoiceOrLineItemId: idempotencyKey,
     });
 
@@ -362,7 +362,7 @@ describe("grantFreeCreditsOnSubscriptionRenewal", () => {
 
     expect(result.isOk()).toBe(true);
     const credits = await CreditResource.listAll(auth);
-    expect(credits[0].initialAmountCents).toBe(25000);
+    expect(credits[0].initialAmountMicroUsd).toBe(250_000_000);
   });
 
   it("should grant trial credit amount ($5) for trialing customers", async () => {
@@ -379,7 +379,7 @@ describe("grantFreeCreditsOnSubscriptionRenewal", () => {
 
     expect(result.isOk()).toBe(true);
     const credits = await CreditResource.listAll(auth);
-    expect(credits[0].initialAmountCents).toBe(500);
+    expect(credits[0].initialAmountMicroUsd).toBe(5_000_000);
   });
 
   it("should calculate bracket-based credits for paying customers", async () => {
@@ -394,7 +394,7 @@ describe("grantFreeCreditsOnSubscriptionRenewal", () => {
 
     expect(result.isOk()).toBe(true);
     const credits = await CreditResource.listAll(auth);
-    expect(credits[0].initialAmountCents).toBe(5000 + 3000);
+    expect(credits[0].initialAmountMicroUsd).toBe(50_000_000 + 30_000_000);
   });
 
   it("should create credit with correct expiration date (period end)", async () => {
