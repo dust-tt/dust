@@ -162,6 +162,47 @@ export async function sendProactiveTrialCancelledEmail(
   });
 }
 
+export async function sendCreditUsageAlertEmail({
+  email,
+  workspaceName,
+  workspaceSId,
+  percentUsed,
+  totalInitialMicroUsd,
+  totalConsumedMicroUsd,
+}: {
+  email: string;
+  workspaceName: string;
+  workspaceSId: string;
+  percentUsed: number;
+  totalInitialMicroUsd: number;
+  totalConsumedMicroUsd: number;
+}): Promise<void> {
+  const remainingMicroUsd = totalInitialMicroUsd - totalConsumedMicroUsd;
+  const formatCents = (microUsd: number) =>
+    `$${(microUsd / 1_000_000).toFixed(2)}`;
+
+  await sendEmailWithTemplate({
+    to: email,
+    from: config.getSupportEmailAddress(),
+    subject: `[Dust] Credit usage alert - ${percentUsed}% of your credits consumed`,
+    body: `
+      <p>You're receiving this as Admin of the Dust workspace <strong>${workspaceName}</strong>.</p>
+      <p>Your workspace has consumed <strong>${percentUsed}%</strong> of its available Programmatic Usage credits.</p>
+      <ul>
+        <li>Total credits: ${formatCents(totalInitialMicroUsd)}</li>
+        <li>Consumed: ${formatCents(totalConsumedMicroUsd)}</li>
+        <li>Remaining: ${formatCents(remainingMicroUsd)}</li>
+      </ul>
+      <p>To avoid service interruption, consider:</p>
+      <ul>
+        <li>Purchasing additional credits</li>
+        <li>Reviewing your programmatic API usage</li>
+      </ul>
+      <p>View your usage details at: <a href="https://dust.tt/w/${workspaceSId}/developers/credits-usage">https://dust.tt/w/${workspaceSId}/developers/credits-usage</a></p>
+      <p>Please reply to this email if you have any questions.</p>`,
+  });
+}
+
 // Avoid using this function directly, use sendEmailWithTemplate instead.
 export async function sendEmail(email: string, message: any) {
   const msg = { ...message, to: email };

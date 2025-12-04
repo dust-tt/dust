@@ -160,7 +160,10 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
         invoiceOrLineItemId: idempotencyKey,
       });
 
-      const startResult = await credit.start(startDate, expirationDate);
+      const startResult = await credit.start(auth, {
+        startDate,
+        expirationDate,
+      });
       if (startResult.isErr()) {
         return new Err(startResult.error);
       }

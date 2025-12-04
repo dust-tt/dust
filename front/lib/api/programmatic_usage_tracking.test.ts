@@ -169,7 +169,10 @@ describe("decreaseProgrammaticCreditsV2", () => {
     });
     // Use a start date clearly in the past to avoid timing issues
     const startDate = new Date(Date.now() - 1000);
-    await credit.start(startDate, expirationDate);
+    await credit.start(auth, {
+      startDate,
+      expirationDate,
+    });
     return credit;
   }
 
