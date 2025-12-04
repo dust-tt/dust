@@ -1,4 +1,4 @@
-import type { GetServerSideProps } from "next";
+import type { GetStaticProps } from "next";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
@@ -9,7 +9,11 @@ import { useCallback, useMemo } from "react";
 import { Grid, H1, H5, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import { getAllCustomerStories } from "@app/lib/contentful/client";
+import {
+  CONTENTFUL_REVALIDATE_SECONDS,
+  getAllCustomerStories,
+} from "@app/lib/contentful/client";
+import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
 import type {
   CustomerStoryFilterOptions,
   CustomerStoryListingPageProps,
@@ -44,10 +48,10 @@ function extractFilterOptions(
   };
 }
 
-export const getServerSideProps: GetServerSideProps<
+export const getStaticProps: GetStaticProps<
   CustomerStoryListingPageProps
-> = async (context) => {
-  const storiesResult = await getAllCustomerStories(context.resolvedUrl);
+> = async () => {
+  const storiesResult = await getAllCustomerStories();
 
   if (storiesResult.isErr()) {
     logger.error(
@@ -60,6 +64,7 @@ export const getServerSideProps: GetServerSideProps<
         filterOptions: { industries: [], departments: [], companySizes: [] },
         gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
       },
+      revalidate: CONTENTFUL_REVALIDATE_SECONDS,
     };
   }
 
@@ -71,6 +76,7 @@ export const getServerSideProps: GetServerSideProps<
       filterOptions: extractFilterOptions(stories),
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
     },
+    revalidate: CONTENTFUL_REVALIDATE_SECONDS,
   };
 };
 
@@ -309,10 +315,13 @@ export default function CustomerStoriesListing({
                       <div className="relative flex aspect-[16/9] w-full items-center justify-center overflow-hidden bg-gray-100">
                         {story.heroImage ? (
                           <Image
-                            src={`${story.heroImage.url}?w=800`}
+                            src={story.heroImage.url}
                             alt={story.heroImage.alt}
-                            fill
-                            className="object-cover brightness-100 transition duration-300 ease-out group-hover:brightness-110"
+                            width={640}
+                            height={360}
+                            loader={contentfulImageLoader}
+                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                            className="h-full w-full object-cover brightness-100 transition duration-300 ease-out group-hover:brightness-110"
                           />
                         ) : story.companyLogo ? (
                           <div className="flex h-full w-full items-center justify-center bg-white p-8">
