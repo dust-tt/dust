@@ -10,7 +10,7 @@ import { useDustAPI } from "@app/shared/lib/dust_api";
 import { getRandomGreetingForName } from "@app/shared/lib/greetings";
 import type { ContentFragmentsType } from "@app/shared/lib/types";
 import type { StoredUser } from "@app/shared/services/auth";
-import { AssistantFavorites } from "@app/ui/components/assistants/AssistantFavorites";
+import { AgentFavorites } from "@app/ui/components/agents/AgentFavorites";
 import { ConversationViewer } from "@app/ui/components/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/ui/components/conversation/GenerationContextProvider";
 import { ReachedLimitPopup } from "@app/ui/components/conversation/ReachedLimitPopup";
@@ -291,7 +291,7 @@ export function ConversationContainer({
             conversation={conversation ?? undefined}
           />
         </div>
-        <AssistantFavorites user={user} />
+        <AgentFavorites user={user} />
         <ReachedLimitPopup
           isOpened={planLimitReached}
           onClose={() => setPlanLimitReached(false)}

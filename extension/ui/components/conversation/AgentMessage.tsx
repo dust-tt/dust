@@ -5,8 +5,8 @@ import type { StoredUser } from "@app/shared/services/auth";
 import type {
   AgentMessageStateEvent,
   MessageTemporaryState,
-} from "@app/ui/components/assistants/state/messageReducer";
-import { messageReducer } from "@app/ui/components/assistants/state/messageReducer";
+} from "@app/ui/components/agents/state/messageReducer";
+import { messageReducer } from "@app/ui/components/agents/state/messageReducer";
 import { ActionValidationContext } from "@app/ui/components/conversation/ActionValidationProvider";
 import { AgentMessageActions } from "@app/ui/components/conversation/AgentMessageActions";
 import type { FeedbackSelectorProps } from "@app/ui/components/conversation/FeedbackSelector";

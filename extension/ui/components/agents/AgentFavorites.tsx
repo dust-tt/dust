@@ -1,22 +1,22 @@
 import type { StoredUser } from "@app/shared/services/auth";
-import { usePublicAgentConfigurations } from "@app/ui/components/assistants/usePublicAgentConfigurations";
+import { usePublicAgentConfigurations } from "@app/ui/components/agents/usePublicAgentConfigurations";
 import { InputBarContext } from "@app/ui/components/input_bar/InputBarContext";
 import { AssistantCard, Button, CardGrid, Page } from "@dust-tt/sparkle";
 import { useCallback, useContext } from "react";
 
-interface AssistantFavoritesProps {
+interface AgentFavoritesProps {
   user: StoredUser;
 }
 
-export function AssistantFavorites({ user }: AssistantFavoritesProps) {
+export function AgentFavorites({ user }: AgentFavoritesProps) {
   const {
     agentConfigurations,
     isAgentConfigurationsLoading,
     isAgentConfigurationsError,
   } = usePublicAgentConfigurations("favorites", ["authors"]);
 
-  const { setSelectedAssistant } = useContext(InputBarContext);
-  const handleAssistantClick = useCallback(
+  const { setSelectedAgent } = useContext(InputBarContext);
+  const handleAgentClick = useCallback(
     (agentId: string) => {
       const scrollContainer = document.getElementById("agent-input-header");
       if (!scrollContainer) {
@@ -29,9 +29,9 @@ export function AssistantFavorites({ user }: AssistantFavoritesProps) {
         scrollContainer.scrollIntoView({ behavior: "smooth" });
       }
 
-      setSelectedAssistant({ configurationId: agentId });
+      setSelectedAgent({ configurationId: agentId });
     },
-    [setSelectedAssistant]
+    [setSelectedAgent]
   );
 
   if (isAgentConfigurationsError || isAgentConfigurationsLoading) {
@@ -53,7 +53,7 @@ export function AssistantFavorites({ user }: AssistantFavoritesProps) {
                 pictureUrl={pictureUrl}
                 subtitle={lastAuthors?.join(", ") ?? ""}
                 description={description}
-                onClick={() => handleAssistantClick(sId)}
+                onClick={() => handleAgentClick(sId)}
               />
             )
           )}
