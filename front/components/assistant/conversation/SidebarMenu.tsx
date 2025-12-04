@@ -584,12 +584,17 @@ const InboxConversationList = ({
   onMarkAllAsRead,
   ...props
 }: InboxConversationListProps) => {
-  if (!unreadConversations.length && !actionRequiredConversations.length) {
+  const conversationList = [
+    ...unreadConversations,
+    ...actionRequiredConversations,
+  ];
+
+  if (conversationList.length === 0) {
     return null;
   }
 
   const shouldShowMarkAllAsReadButton =
-    unreadConversations.length > 0 &&
+    conversationList.length > 0 &&
     titleFilter.length === 0 &&
     !isMultiSelect &&
     onMarkAllAsRead;
@@ -614,7 +619,7 @@ const InboxConversationList = ({
               size="xs"
               variant="ghost"
               label={`Mark as read`}
-              onClick={() => onMarkAllAsRead(unreadConversations)}
+              onClick={() => onMarkAllAsRead(sortedInboxConversations)}
               isLoading={isMarkingAllAsRead}
               className="mt-2 text-muted-foreground dark:text-muted-foreground-night"
             />
