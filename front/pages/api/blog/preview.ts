@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import config from "@app/lib/api/config";
 import { isString } from "@app/types";
 
 export default async function handler(
@@ -8,7 +9,7 @@ export default async function handler(
 ) {
   const { secret, slug } = req.query;
 
-  if (secret !== process.env.CONTENTFUL_PREVIEW_SECRET) {
+  if (secret !== config.getContentfulPreviewSecret()) {
     return res.status(401).json({ message: "Invalid token" });
   }
 

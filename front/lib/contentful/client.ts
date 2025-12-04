@@ -4,6 +4,7 @@ import type { Asset, ContentfulClientApi, Entry, Tag } from "contentful";
 import { createClient } from "contentful";
 import { z } from "zod";
 
+import config from "@app/lib/api/config";
 import type {
   AuthorSkeleton,
   BlogAuthor,
@@ -23,17 +24,18 @@ import { Err, Ok } from "@app/types/shared/result";
 import { slugify } from "@app/types/shared/utils/string_utils";
 
 // ISR revalidation time for all Contentful content (30 minutes)
-export const CONTENTFUL_REVALIDATE_SECONDS = 1800;
+export const CONTENTFUL_REVALIDATE_SECONDS = 30 * 60;
 
 let client: ContentfulClientApi<undefined> | null = null;
 let previewClient: ContentfulClientApi<undefined> | null = null;
 
 let tagNameCache: Map<string, string> | null = null;
+let tagNameCacheTimestamp: number | null = null;
 
 function getClient() {
   if (!client) {
-    const spaceId = process.env.CONTENTFUL_SPACE_ID;
-    const accessToken = process.env.CONTENTFUL_ACCESS_TOKEN;
+    const spaceId = config.getContentfulSpaceId();
+    const accessToken = config.getContentfulAccessToken();
 
     if (!spaceId || !accessToken) {
       throw new Error(
@@ -53,8 +55,8 @@ function getClient() {
 
 function getPreviewClient() {
   if (!previewClient) {
-    const spaceId = process.env.CONTENTFUL_SPACE_ID;
-    const previewToken = process.env.CONTENTFUL_PREVIEW_TOKEN;
+    const spaceId = config.getContentfulSpaceId();
+    const previewToken = config.getContentfulPreviewToken();
 
     if (!spaceId || !previewToken) {
       throw new Error(
@@ -75,7 +77,7 @@ function getPreviewClient() {
 
 export function buildPreviewQueryString(isPreview: boolean): string {
   return isPreview
-    ? `?preview=true&secret=${process.env.CONTENTFUL_PREVIEW_SECRET}`
+    ? `?preview=true&secret=${config.getContentfulPreviewSecret()}`
     : "";
 }
 
@@ -83,7 +85,7 @@ export function isPreviewMode(resolvedUrl: string): boolean {
   const searchParams = new URLSearchParams(resolvedUrl.split("?")[1]);
   const preview = searchParams.get("preview");
   const secret = searchParams.get("secret");
-  const previewSecret = process.env.CONTENTFUL_PREVIEW_SECRET;
+  const previewSecret = config.getContentfulPreviewSecret();
 
   return preview === "true" && !!previewSecret && secret === previewSecret;
 }
@@ -95,7 +97,13 @@ function getContentfulClient(resolvedUrl: string) {
 async function getTagNameMap(
   resolvedUrl: string
 ): Promise<Map<string, string>> {
-  if (tagNameCache) {
+  const now = Date.now();
+  const isCacheStale =
+    !tagNameCache ||
+    !tagNameCacheTimestamp ||
+    now - tagNameCacheTimestamp > CONTENTFUL_REVALIDATE_SECONDS * 1000;
+
+  if (!isCacheStale && tagNameCache) {
     return tagNameCache;
   }
 
@@ -107,6 +115,7 @@ async function getTagNameMap(
     tags.items.forEach((tag: Tag) => {
       tagNameCache!.set(tag.sys.id, tag.name);
     });
+    tagNameCacheTimestamp = now;
 
     return tagNameCache;
   } catch (error) {
@@ -231,6 +240,20 @@ function isNonNull<T>(value: T | null): value is T {
   return value !== null;
 }
 
+function isTagLink(
+  value: unknown
+): value is { sys: { id: string; type: "Link"; linkType: "Tag" } } {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "sys" in value &&
+    typeof value.sys === "object" &&
+    value.sys !== null &&
+    "id" in value.sys &&
+    typeof value.sys.id === "string"
+  );
+}
+
 function contentfulEntryToAuthor(
   entry: Entry<AuthorSkeleton> | undefined
 ): BlogAuthor | null {
@@ -265,15 +288,7 @@ function contentfulEntryToBlogPost(
   const tags: string[] = [];
   if (metadata?.tags && Array.isArray(metadata.tags)) {
     for (const tagLink of metadata.tags) {
-      if (
-        tagLink &&
-        typeof tagLink === "object" &&
-        "sys" in tagLink &&
-        tagLink.sys &&
-        typeof tagLink.sys === "object" &&
-        "id" in tagLink.sys &&
-        isString(tagLink.sys.id)
-      ) {
+      if (isTagLink(tagLink)) {
         const tagName = tagNameMap.get(tagLink.sys.id) ?? tagLink.sys.id;
         tags.push(tagName);
       }
