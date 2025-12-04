@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 import { Grid, H1, H5, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
@@ -171,6 +171,11 @@ export default function CustomerStoriesListing({
     }
     return Array.isArray(param) ? param : [param];
   }, [router.query.size]);
+
+  // Scroll to top when filters change
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [selectedIndustries, selectedDepartments, selectedCompanySizes]);
 
   // Update URL with new filters
   const updateFilters = useCallback(
@@ -340,6 +345,20 @@ export default function CustomerStoriesListing({
                             </span>
                           </div>
                         )}
+                        {/* Tags */}
+                        <div className="absolute right-3 top-3 flex flex-wrap justify-end gap-2">
+                          <span className="rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-gray-900 shadow-sm backdrop-blur-sm">
+                            {story.industry}
+                          </span>
+                          {story.department.slice(0, 2).map((dept) => (
+                            <span
+                              key={dept}
+                              className="rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-gray-900 shadow-sm backdrop-blur-sm"
+                            >
+                              {dept}
+                            </span>
+                          ))}
+                        </div>
                       </div>
 
                       <div className="flex flex-1 flex-col p-6">
@@ -359,21 +378,6 @@ export default function CustomerStoriesListing({
                         <H5 className="line-clamp-3 text-foreground" mono>
                           {story.title}
                         </H5>
-
-                        {/* Tags */}
-                        <div className="mt-auto flex flex-wrap gap-1 pt-4">
-                          <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
-                            {story.industry}
-                          </span>
-                          {story.department.slice(0, 2).map((dept) => (
-                            <span
-                              key={dept}
-                              className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600"
-                            >
-                              {dept}
-                            </span>
-                          ))}
-                        </div>
                       </div>
                     </Link>
                   ))}
