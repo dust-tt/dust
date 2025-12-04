@@ -1,15 +1,14 @@
-import type { ButtonGroupItem } from "@dust-tt/sparkle";
 import {
   ArrowPathIcon,
   Button,
   ButtonGroup,
-  ChevronDownIcon,
   Chip,
   ClipboardCheckIcon,
   ClipboardIcon,
   ConversationMessage,
   InteractiveImageGrid,
   Markdown,
+  MoreIcon,
   Separator,
   StopIcon,
   TrashIcon,
@@ -521,7 +520,6 @@ export function AgentMessage({
               size: "xs",
               onClick: handleCopyToClipboard,
               icon: isCopied ? ClipboardCheckIcon : ClipboardIcon,
-              className: "text-muted-foreground",
             },
           },
           {
@@ -529,8 +527,7 @@ export function AgentMessage({
             triggerProps: {
               variant: "ghost-secondary",
               size: "xs",
-              icon: ChevronDownIcon,
-              className: "text-muted-foreground",
+              icon: MoreIcon,
             },
             dropdownProps: {
               items: dropdownItems,
