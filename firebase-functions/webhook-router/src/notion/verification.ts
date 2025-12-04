@@ -108,7 +108,7 @@ export function createNotionVerificationMiddleware(
       if (useClientCredentials) {
         // It's a private client integration, so get the signing secret and regions from
         // the webhook router config.
-        const { providerWorkspaceId } = req.params;
+        providerWorkspaceId = req.params.providerWorkspaceId;
         const notionWebhookConfig = await webhookRouterConfigManager.getEntry(
           "notion",
           providerWorkspaceId
