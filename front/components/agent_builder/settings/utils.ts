@@ -1,3 +1,4 @@
+import { clientFetch } from "@app/lib/egress";
 import type {
   APIError,
   BuilderSuggestionsType,
@@ -16,7 +17,7 @@ export async function getNameSuggestions({
   description: string;
 }): Promise<Result<BuilderSuggestionsType, APIError>> {
   try {
-    const res = await fetch(
+    const res = await clientFetch(
       `/api/w/${owner.sId}/assistant/builder/suggestions`,
       {
         method: "POST",
@@ -64,7 +65,7 @@ export async function getDescriptionSuggestion({
   name: string;
 }): Promise<Result<BuilderSuggestionsType, APIError>> {
   try {
-    const res = await fetch(
+    const res = await clientFetch(
       `/api/w/${owner.sId}/assistant/builder/suggestions`,
       {
         method: "POST",

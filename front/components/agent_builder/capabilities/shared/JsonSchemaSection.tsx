@@ -6,6 +6,7 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { clientFetch } from "@app/lib/egress";
 
 interface JsonSchemaSectionProps {
   getAgentInstructions: () => string;
@@ -48,7 +49,7 @@ export function JsonSchemaSection({
         fullInstructions += `\n\nTool description:\n${toolDescription}`;
       }
 
-      const res = await fetch(
+      const res = await clientFetch(
         `/api/w/${owner.sId}/assistant/builder/process/generate_schema`,
         {
           method: "POST",

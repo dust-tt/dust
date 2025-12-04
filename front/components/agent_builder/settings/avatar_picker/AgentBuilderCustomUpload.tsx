@@ -1,12 +1,12 @@
 import { ArrowUpOnSquareIcon, Button } from "@dust-tt/sparkle";
 import type { ChangeEvent } from "react";
-import { useImperativeHandle, useRef, useState } from "react";
-import React from "react";
+import { forwardRef, useImperativeHandle, useRef, useState } from "react";
 import type { Crop } from "react-image-crop";
 import { centerCrop, makeAspectCrop, ReactCrop } from "react-image-crop";
 
 import type { AvatarPickerTabElement } from "@app/components/agent_builder/settings/avatar_picker/types";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
+import { clientFetch } from "@app/lib/egress";
 import { classNames } from "@app/lib/utils";
 import type { WorkspaceType } from "@app/types";
 
@@ -23,7 +23,7 @@ interface AgentBuilderCustomUploadProps {
   owner: WorkspaceType;
 }
 
-const AgentBuilderCustomUpload = React.forwardRef<
+const AgentBuilderCustomUpload = forwardRef<
   AvatarPickerTabElement,
   AgentBuilderCustomUploadProps
 >(function CustomUploadAvatar(
@@ -52,7 +52,7 @@ const AgentBuilderCustomUpload = React.forwardRef<
         if (imageRef.current && crop.width && crop.height) {
           // eslint-disable-next-line react-hooks/immutability
           const croppedImageUrl = await getCroppedImg(imageRef.current, crop);
-          const response = await fetch(croppedImageUrl);
+          const response = await clientFetch(croppedImageUrl);
 
           const blob = await response.blob();
           const f = new File([blob], "avatar.jpeg", { type: "image/jpeg" });

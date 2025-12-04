@@ -17,6 +17,7 @@ import {
   requiresBearerTokenConfiguration,
 } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { clientFetch } from "@app/lib/egress";
 import { useMCPServers, useMCPServerViews } from "@app/lib/swr/mcp_servers";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import datadogLogger from "@app/logger/datadogLogger";
@@ -95,7 +96,7 @@ export function MCPServerDetails({
     }>
   ) => {
     for (const change of toolChanges) {
-      const response = await fetch(
+      const response = await clientFetch(
         `/api/w/${owner.sId}/mcp/${mcpServerView?.server.sId}/tools/${change.toolName}`,
         {
           method: "PATCH",
@@ -130,7 +131,7 @@ export function MCPServerDetails({
       }
 
       if (change.action === "add") {
-        const response = await fetch(
+        const response = await clientFetch(
           `/api/w/${owner.sId}/spaces/${space.sId}/mcp_views`,
           {
             method: "POST",
@@ -149,7 +150,7 @@ export function MCPServerDetails({
           (v) => v.spaceId === space.sId
         );
         if (view) {
-          const response = await fetch(
+          const response = await clientFetch(
             `/api/w/${owner.sId}/spaces/${space.sId}/mcp_views/${view.sId}`,
             {
               method: "DELETE",
@@ -185,7 +186,7 @@ export function MCPServerDetails({
 
     // Patch the server view if needed.
     if (diff.serverView) {
-      const response = await fetch(
+      const response = await clientFetch(
         `/api/w/${owner.sId}/mcp/views/${mcpServerView?.sId}`,
         {
           method: "PATCH",
@@ -212,7 +213,7 @@ export function MCPServerDetails({
         patchBody.customHeaders = diff.authCustomHeaders;
       }
 
-      const response = await fetch(
+      const response = await clientFetch(
         `/api/w/${owner.sId}/mcp/${mcpServerView?.server.sId}`,
         {
           method: "PATCH",
