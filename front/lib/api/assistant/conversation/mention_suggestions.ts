@@ -1,3 +1,5 @@
+import shuffle from "lodash/shuffle";
+
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -28,8 +30,11 @@ export const suggestionsOfMentions = async (
     };
   }
 ): Promise<RichMention[]> => {
+  const normalizedQuery = query.toLowerCase();
+  const currentUserSId = auth.getNonNullableUser().sId;
+
   const agentSuggestions: RichAgentMention[] = [];
-  const userSuggestions: RichUserMention[] = [];
+  let userSuggestions: RichUserMention[] = [];
 
   if (select.agents) {
     // Fetch agent configurations.
@@ -68,8 +73,9 @@ export const suggestionsOfMentions = async (
     if (res.isOk()) {
       const { users } = res.value;
 
-      userSuggestions.push(
-        ...users.map(
+      userSuggestions = users
+        .filter((u) => u.sId !== currentUserSId)
+        .map(
           (u) =>
             ({
               type: "user",
@@ -79,17 +85,58 @@ export const suggestionsOfMentions = async (
                 u.toJSON().image ?? "/static/humanavatar/anonymous.png",
               description: u.email,
             }) satisfies RichUserMention
-        )
-      );
+        );
     }
   }
 
   const filteredAgents = filterAndSortEditorSuggestionAgents(
-    query,
+    normalizedQuery,
     agentSuggestions
   );
 
-  // Combine results: agents first, then users.
-  const totalResults = [...filteredAgents, ...userSuggestions];
-  return totalResults.slice(0, SUGGESTION_DISPLAY_LIMIT);
+  // If only one type is requested, keep the simple ordering.
+  if (!select.agents && select.users) {
+    return userSuggestions.slice(0, SUGGESTION_DISPLAY_LIMIT);
+  }
+  if (select.agents && !select.users) {
+    return filteredAgents.slice(0, SUGGESTION_DISPLAY_LIMIT);
+  }
+
+  // Both agents and users are requested.
+  // If we have no users, fall back to agents.
+  if (userSuggestions.length === 0) {
+    return filteredAgents.slice(0, SUGGESTION_DISPLAY_LIMIT);
+  }
+
+  // Compute a target 30% / 70% split over the first N items.
+  const totalAvailable = filteredAgents.length + userSuggestions.length;
+  const maxResults = Math.min(SUGGESTION_DISPLAY_LIMIT, totalAvailable);
+
+  const targetUserCount = Math.min(
+    userSuggestions.length,
+    Math.max(1, Math.round(0.3 * maxResults))
+  );
+  const targetAgentCount = Math.min(
+    filteredAgents.length,
+    maxResults - targetUserCount
+  );
+
+  const selectedUsers = userSuggestions.slice(0, targetUserCount);
+  const selectedAgents = filteredAgents.slice(0, targetAgentCount);
+
+  // Mix users and agents with a simple shuffle while:
+  // - preserving the 30/70 counts
+  // - keeping the first item as a user when possible.
+  if (selectedUsers.length === 0) {
+    return [...selectedAgents];
+  }
+
+  const [firstUser, ...remainingUsers] = selectedUsers;
+
+  const rest: RichMention[] = shuffle<RichMention>([
+    ...remainingUsers,
+    ...selectedAgents,
+  ]);
+
+  return [firstUser, ...rest];
 };

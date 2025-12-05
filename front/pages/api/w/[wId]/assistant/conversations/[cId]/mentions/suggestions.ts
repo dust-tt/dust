@@ -40,20 +40,18 @@ async function handler(
 
   const conversationId = req.query.cId;
 
-  if (conversationId) {
-    const conversationRes = await ConversationResource.fetchById(
-      auth,
-      conversationId
-    );
-    if (!conversationRes) {
-      return apiError(req, res, {
-        status_code: 404,
-        api_error: {
-          type: "conversation_not_found",
-          message: "Conversation not found",
-        },
-      });
-    }
+  const conversationRes = await ConversationResource.fetchById(
+    auth,
+    conversationId
+  );
+  if (!conversationRes) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "conversation_not_found",
+        message: "Conversation not found",
+      },
+    });
   }
 
   const { select: selectParam } = req.query;
