@@ -140,6 +140,19 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       asana_list_workspaces: "never_ask",
     },
   },
+  {
+    id: 10007,
+    name: "Supabase",
+    description:
+      "Supabase tools for database management, real-time queries, and backend operations.",
+    url: "https://mcp.supabase.com/mcp",
+    icon: "SupabaseLogo",
+    documentationUrl: "https://supabase.com/docs/guides/getting-started/mcp",
+    connectionInstructions:
+      "Supabase uses OAuth authentication with dynamic client registration. Natural language database queries and project management available.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {},
+  },
   //Removed temporaly gitlab server
   /*
   {
