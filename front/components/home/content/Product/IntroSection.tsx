@@ -1,6 +1,5 @@
-import { PlayIcon, RocketIcon } from "@dust-tt/sparkle";
+import { ArrowUpIcon, PlayIcon } from "@dust-tt/sparkle";
 import Image from "next/image";
-import { useState } from "react";
 
 import { ScrollProgressSection } from "@app/components/home/content/Product/ScrollProgressSection";
 import { ValuePropSection } from "@app/components/home/content/Product/ValuePropSection";
@@ -22,31 +21,54 @@ const HeroContent = () => {
         mono
         className="text-center text-5xl font-medium md:text-6xl lg:text-7xl"
       >
-        Transform how work
+        The operating system
         <br />
-        gets done
+        for{" "}
+        <span
+          style={{
+            background:
+              "linear-gradient(90deg, #1C91FF 34.13%, #8B5CF6 46.15%, #E14322 59.13%, #6AA668 71.63%)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            backgroundClip: "text",
+          }}
+        >
+          AI Agents
+        </span>
       </H1>
-      <P size="lg" className="text-base text-muted-foreground sm:text-lg">
-        The platform to build AI agents in minutes, connected to your company
-        knowledge and tools,
-        <br className="hidden sm:block" /> powered by the best AI models.
+      <P
+        size="lg"
+        className="text-xl leading-7 tracking-tight text-muted-foreground"
+      >
+        Deploy, orchestrate, and govern fleets of specialized AI agents that
+        work alongside your team, safely connected to your company's knowledge
+        and tools.
       </P>
-      <div className="mt-4 flex flex-row justify-center gap-4">
-        <UTMButton
-          variant="highlight"
-          size="md"
-          label="Get started"
-          icon={RocketIcon}
-          href="/home/pricing"
-          onClick={withTracking(TRACKING_AREAS.HOME, "hero_get_started")}
+      {/* Email input */}
+      <div className="mt-12 flex w-full max-w-xl items-center gap-2 rounded-full bg-white py-1.5 pl-6 pr-1.5 shadow-md">
+        <input
+          type="email"
+          placeholder="What's your work email?"
+          className="flex-1 border-none bg-transparent text-base text-gray-700 placeholder-gray-400 outline-none focus:ring-0"
         />
-        <UTMButton
-          variant="outline"
-          size="md"
-          label="Book a demo"
-          href="/home/contact"
-          onClick={withTracking(TRACKING_AREAS.HOME, "hero_book_demo")}
+        <button className="rounded-full bg-blue-500 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-600">
+          Get a custom demo
+        </button>
+      </div>
+
+      {/* Ask anything textarea */}
+      <div className="mt-10 flex w-full max-w-3xl flex-col rounded-3xl bg-white p-3 shadow-md">
+        <textarea
+          placeholder="Ask anything"
+          rows={3}
+          className="w-full resize-none border-none bg-transparent text-base text-gray-700 placeholder-gray-400 outline-none focus:ring-0"
         />
+        <div className="flex justify-end">
+          <button className="flex items-center gap-1.5 rounded-full bg-blue-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-600">
+            <ArrowUpIcon className="h-4 w-4" />
+            Try it
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -59,7 +81,6 @@ export const HeroVisual = ({
   onWatch: () => void;
   showVideo: boolean;
 }) => {
-  // Keep the outer shell & border animation consistent, swap inner content on click
   const videoUrl = new URL(
     "https://fast.wistia.net/embed/iframe/3eqngftomq?seo=true&videoFoam=true"
   );
@@ -132,19 +153,22 @@ export const HeroVisual = ({
 };
 
 export function IntroSection() {
-  const [showHeroVideo, setShowHeroVideo] = useState(false);
   return (
     <section className="w-full">
       <div className="flex flex-col gap-6 pt-16 sm:gap-6 md:gap-6 lg:gap-6">
-        <div className="flex flex-col gap-16 sm:gap-16">
+        <div
+          className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen pb-12"
+          style={{
+            backgroundImage: "url('/static/landing/hero/hero-bg.svg')",
+            backgroundSize: "cover",
+            backgroundPosition: "center -300px",
+            backgroundRepeat: "no-repeat",
+          }}
+        >
           <HeroContent />
-          <HeroVisual
-            showVideo={showHeroVideo}
-            onWatch={() => setShowHeroVideo(true)}
-          />
-        </div>
-        <div className="mt-12">
-          <TrustedBy logoSet="landing" />
+          <div className="mx-auto mt-12 max-w-5xl px-4">
+            <TrustedBy logoSet="landing" />
+          </div>
         </div>
         <div className="mt-12">
           <FunctionsSection />

@@ -5,7 +5,6 @@ import {
   DustLogoLayer1,
   DustLogoLayer2,
   Hover3D,
-  LoginIcon,
 } from "@dust-tt/sparkle";
 import { cva } from "class-variance-authority";
 import Head from "next/head";
@@ -129,19 +128,10 @@ export default function LandingLayout({
           </div>
           <MainNavigation />
           <div className="flex flex-grow justify-end gap-4">
-            <UTMButton
-              href="/home/contact"
-              className="hidden xs:inline-flex"
-              variant="outline"
-              size="sm"
-              label="Request a demo"
-              onClick={withTracking(TRACKING_AREAS.NAVIGATION, "request_demo")}
-            />
             <Button
               variant="highlight"
               size="sm"
               label="Sign in"
-              icon={LoginIcon}
               onClick={withTracking(
                 TRACKING_AREAS.NAVIGATION,
                 "sign_in",
@@ -150,6 +140,14 @@ export default function LandingLayout({
                   window.location.href = `/api/workos/login?returnTo=${encodeURIComponent(postLoginReturnToUrl)}`;
                 }
               )}
+            />
+            <UTMButton
+              href="/home/contact"
+              className="hidden xs:inline-flex"
+              variant="outline"
+              size="sm"
+              label="Contact sales"
+              onClick={withTracking(TRACKING_AREAS.NAVIGATION, "contact_sales")}
             />
           </div>
         </div>
