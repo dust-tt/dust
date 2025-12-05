@@ -50,6 +50,8 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
               // Semantic search scopes.
               "search:read.public",
               "search:read.private",
+              "search:read.im",
+              "search:read.mpim",
               // User info scopes.
               "users:read.email",
               "users:read",
@@ -99,6 +101,7 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
             "im:read",
             "users:read",
             "users:read.email",
+            "search:read.public",
           ];
 
           // TODO: This is temporary until our Slack app scope is approved.
