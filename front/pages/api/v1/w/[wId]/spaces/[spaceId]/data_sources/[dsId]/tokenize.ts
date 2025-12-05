@@ -31,7 +31,7 @@ const CORE_TOKENIZE_TIMEOUT_MS = 270000;
 
 async function handler(
   req: NextApiRequest,
-  // eslint-disable-next-line dust/enforce-client-types-in-public-api
+
   res: NextApiResponse<WithAPIErrorResponse<TokenizeResponseType>>,
   auth: Authenticator
 ): Promise<void> {

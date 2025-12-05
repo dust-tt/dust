@@ -196,7 +196,7 @@ async function collectTokenUsage(
       completion: 0,
       reasoning: 0,
       cached: 0,
-      cost_cents: 0,
+      cost_micro_usd: 0,
     };
   }
 
@@ -210,11 +210,6 @@ async function collectTokenUsage(
     { concurrency: 5 }
   );
 
-  const usageCostUsd = runUsages
-    .flat()
-    .reduce((acc, usage) => acc + usage.costUsd, 0);
-  const usageCostCents = usageCostUsd > 0 ? Math.ceil(usageCostUsd * 100) : 0;
-
   return runUsages.flat().reduce(
     (acc, usage) => {
       return {
@@ -222,7 +217,7 @@ async function collectTokenUsage(
         completion: acc.completion + usage.completionTokens,
         reasoning: acc.reasoning, // No reasoning tokens in RunUsageType yet.
         cached: acc.cached + (usage.cachedTokens ?? 0),
-        cost_cents: acc.cost_cents,
+        cost_micro_usd: acc.cost_micro_usd + usage.costMicroUsd,
       };
     },
     {
@@ -230,7 +225,7 @@ async function collectTokenUsage(
       completion: 0,
       reasoning: 0,
       cached: 0,
-      cost_cents: usageCostCents,
+      cost_micro_usd: 0,
     }
   );
 }

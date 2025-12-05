@@ -44,7 +44,7 @@ export const config = {
  */
 async function handler(
   req: NextApiRequest,
-  // eslint-disable-next-line dust/enforce-client-types-in-public-api
+
   res: NextApiResponse<WithAPIErrorResponse<FileUploadedRequestResponseType>>,
   auth: Authenticator
 ): Promise<void> {
@@ -271,10 +271,4 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthentication(handler, {
-  requiredScopes: {
-    GET: "read:file",
-    POST: "create:file",
-    DELETE: "delete:file",
-  },
-});
+export default withPublicAPIAuthentication(handler);

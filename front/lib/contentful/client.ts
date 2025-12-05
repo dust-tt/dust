@@ -1,9 +1,10 @@
 import type { Document } from "@contentful/rich-text-types";
 import { BLOCKS } from "@contentful/rich-text-types";
-import type { Asset, ContentfulClientApi, Entry } from "contentful";
+import type { Asset, ContentfulClientApi, Entry, Tag } from "contentful";
 import { createClient } from "contentful";
 import { z } from "zod";
 
+import config from "@app/lib/api/config";
 import type {
   AuthorSkeleton,
   BlogAuthor,
@@ -16,18 +17,25 @@ import type {
   CustomerStorySkeleton,
   CustomerStorySummary,
 } from "@app/lib/contentful/types";
+import logger from "@app/logger/logger";
 import { isString, normalizeError } from "@app/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { slugify } from "@app/types/shared/utils/string_utils";
 
+// ISR revalidation time for all Contentful content (30 minutes)
+export const CONTENTFUL_REVALIDATE_SECONDS = 30 * 60;
+
 let client: ContentfulClientApi<undefined> | null = null;
 let previewClient: ContentfulClientApi<undefined> | null = null;
 
+let tagNameCache: Map<string, string> | null = null;
+let tagNameCacheTimestamp: number | null = null;
+
 function getClient() {
   if (!client) {
-    const spaceId = process.env.CONTENTFUL_SPACE_ID;
-    const accessToken = process.env.CONTENTFUL_ACCESS_TOKEN;
+    const spaceId = config.getContentfulSpaceId();
+    const accessToken = config.getContentfulAccessToken();
 
     if (!spaceId || !accessToken) {
       throw new Error(
@@ -47,8 +55,8 @@ function getClient() {
 
 function getPreviewClient() {
   if (!previewClient) {
-    const spaceId = process.env.CONTENTFUL_SPACE_ID;
-    const previewToken = process.env.CONTENTFUL_PREVIEW_TOKEN;
+    const spaceId = config.getContentfulSpaceId();
+    const previewToken = config.getContentfulPreviewToken();
 
     if (!spaceId || !previewToken) {
       throw new Error(
@@ -67,17 +75,53 @@ function getPreviewClient() {
   return previewClient.withoutUnresolvableLinks;
 }
 
+export function buildPreviewQueryString(isPreview: boolean): string {
+  return isPreview
+    ? `?preview=true&secret=${config.getContentfulPreviewSecret()}`
+    : "";
+}
+
 export function isPreviewMode(resolvedUrl: string): boolean {
   const searchParams = new URLSearchParams(resolvedUrl.split("?")[1]);
   const preview = searchParams.get("preview");
   const secret = searchParams.get("secret");
-  const previewSecret = process.env.CONTENTFUL_PREVIEW_SECRET;
+  const previewSecret = config.getContentfulPreviewSecret();
 
   return preview === "true" && !!previewSecret && secret === previewSecret;
 }
 
 function getContentfulClient(resolvedUrl: string) {
   return isPreviewMode(resolvedUrl) ? getPreviewClient() : getClient();
+}
+
+async function getTagNameMap(
+  resolvedUrl: string
+): Promise<Map<string, string>> {
+  const now = Date.now();
+  const isCacheStale =
+    !tagNameCache ||
+    !tagNameCacheTimestamp ||
+    now - tagNameCacheTimestamp > CONTENTFUL_REVALIDATE_SECONDS * 1000;
+
+  if (!isCacheStale && tagNameCache) {
+    return tagNameCache;
+  }
+
+  try {
+    const contentfulClient = getContentfulClient(resolvedUrl);
+    const tags = await contentfulClient.getTags();
+
+    tagNameCache = new Map();
+    tags.items.forEach((tag: Tag) => {
+      tagNameCache!.set(tag.sys.id, tag.name);
+    });
+    tagNameCacheTimestamp = now;
+
+    return tagNameCache;
+  } catch (error) {
+    logger.error({ error }, "[Contentful] Failed to get tag name map");
+    return new Map();
+  }
 }
 
 function contentfulAssetToBlogImage(
@@ -196,6 +240,20 @@ function isNonNull<T>(value: T | null): value is T {
   return value !== null;
 }
 
+function isTagLink(
+  value: unknown
+): value is { sys: { id: string; type: "Link"; linkType: "Tag" } } {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "sys" in value &&
+    typeof value.sys === "object" &&
+    value.sys !== null &&
+    "id" in value.sys &&
+    typeof value.sys.id === "string"
+  );
+}
+
 function contentfulEntryToAuthor(
   entry: Entry<AuthorSkeleton> | undefined
 ): BlogAuthor | null {
@@ -215,8 +273,11 @@ function contentfulEntryToAuthor(
   return { name, image };
 }
 
-function contentfulEntryToBlogPost(entry: Entry<BlogPageSkeleton>): BlogPost {
-  const { fields, sys } = entry;
+function contentfulEntryToBlogPost(
+  entry: Entry<BlogPageSkeleton>,
+  tagNameMap: Map<string, string>
+): BlogPost {
+  const { fields, sys, metadata } = entry;
 
   const titleField = fields.title;
   const title = isString(titleField) ? titleField : "";
@@ -224,8 +285,15 @@ function contentfulEntryToBlogPost(entry: Entry<BlogPageSkeleton>): BlogPost {
   const slugField = fields.slug;
   const slug = isString(slugField) ? slugField : slugify(title);
 
-  const tagsField = fields.tags;
-  const tags = Array.isArray(tagsField) ? tagsField : [];
+  const tags: string[] = [];
+  if (metadata?.tags && Array.isArray(metadata.tags)) {
+    for (const tagLink of metadata.tags) {
+      if (isTagLink(tagLink)) {
+        const tagName = tagNameMap.get(tagLink.sys.id) ?? tagLink.sys.id;
+        tags.push(tagName);
+      }
+    }
+  }
 
   const publishedAtField = fields.publishedAt;
   const publishedAt = isString(publishedAtField)
@@ -268,10 +336,11 @@ function contentfulEntryToBlogPostSummary(post: BlogPost): BlogPostSummary {
 }
 
 export async function getAllBlogPosts(
-  resolvedUrl: string
+  resolvedUrl: string = ""
 ): Promise<Result<BlogPostSummary[], Error>> {
   try {
     const contentfulClient = getContentfulClient(resolvedUrl);
+    const tagNameMap = await getTagNameMap(resolvedUrl);
 
     const response = await contentfulClient.getEntries<BlogPageSkeleton>({
       content_type: "blogPage",
@@ -279,7 +348,7 @@ export async function getAllBlogPosts(
     });
 
     const posts = response.items
-      .map(contentfulEntryToBlogPost)
+      .map((entry) => contentfulEntryToBlogPost(entry, tagNameMap))
       .sort(
         (a, b) =>
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -288,6 +357,7 @@ export async function getAllBlogPosts(
 
     return new Ok(posts);
   } catch (error) {
+    logger.error({ error }, "[Contentful] Failed to get all blog posts");
     return new Err(normalizeError(error));
   }
 }
@@ -298,6 +368,7 @@ export async function getBlogPostBySlug(
 ): Promise<Result<BlogPost | null, Error>> {
   try {
     const contentfulClient = getContentfulClient(resolvedUrl);
+    const tagNameMap = await getTagNameMap(resolvedUrl);
 
     const queryParams = {
       content_type: "blogPage",
@@ -309,11 +380,12 @@ export async function getBlogPostBySlug(
       await contentfulClient.getEntries<BlogPageSkeleton>(queryParams);
 
     if (response.items.length > 0) {
-      return new Ok(contentfulEntryToBlogPost(response.items[0]));
+      return new Ok(contentfulEntryToBlogPost(response.items[0], tagNameMap));
     }
 
     return new Ok(null);
   } catch (error) {
+    logger.error({ error }, "[Contentful] Failed to get blog post by slug");
     return new Err(normalizeError(error));
   }
 }
@@ -330,10 +402,23 @@ export async function getRelatedPosts(
 
   try {
     const contentfulClient = getContentfulClient(resolvedUrl);
+    const tagNameMap = await getTagNameMap(resolvedUrl);
+
+    // Convert tag names to tag IDs for the query
+    const tagIds: string[] = [];
+    for (const [tagId, tagName] of tagNameMap.entries()) {
+      if (tags.includes(tagName)) {
+        tagIds.push(tagId);
+      }
+    }
+
+    if (tagIds.length === 0) {
+      return new Ok([]);
+    }
 
     const queryParams = {
       content_type: "blogPage",
-      "fields.tags[in]": tags.join(","),
+      "metadata.tags.sys.id[in]": tagIds.join(","),
       limit: limit + 1,
     };
 
@@ -341,7 +426,7 @@ export async function getRelatedPosts(
       await contentfulClient.getEntries<BlogPageSkeleton>(queryParams);
 
     const posts = response.items
-      .map(contentfulEntryToBlogPost)
+      .map((entry) => contentfulEntryToBlogPost(entry, tagNameMap))
       .filter((post: BlogPost) => post.slug !== currentSlug)
       .slice(0, limit)
       .map(contentfulEntryToBlogPostSummary);
@@ -359,6 +444,7 @@ const CustomerStoryFiltersSchema = z.object({
   industry: z.array(z.string()).optional(),
   department: z.array(z.string()).optional(),
   companySize: z.array(z.string()).optional(),
+  region: z.array(z.string()).optional(),
   featured: z.boolean().optional(),
 });
 
@@ -402,6 +488,9 @@ function buildCustomerStoryQuery(
       if (parsed.companySize && parsed.companySize.length > 0) {
         query["fields.companySize[in]"] = parsed.companySize.join(",");
       }
+      if (parsed.region && parsed.region.length > 0) {
+        query["fields.region[in]"] = parsed.region.join(",");
+      }
       if (parsed.featured !== undefined) {
         query["fields.featured"] = parsed.featured;
       }
@@ -425,6 +514,7 @@ const CustomerStoryFieldsSchema = z.object({
   contactTitle: z.string().nullable().optional(),
   headlineMetric: z.string().nullable().optional(),
   companySize: z.string().nullable().optional(),
+  region: z.array(z.string()).default([]),
   featured: z.boolean().default(false),
 });
 
@@ -470,6 +560,7 @@ function contentfulEntryToCustomerStory(
     industry: parsed.industry,
     department: parsed.department,
     companySize: parsed.companySize ?? null,
+    region: parsed.region ?? [],
     description: parsed.metaDescription ?? generateDescription(body),
     body,
     heroImage: contentfulAssetToBlogImage(heroImage, parsed.title),
@@ -497,13 +588,14 @@ function contentfulEntryToCustomerStorySummary(
     industry: story.industry,
     department: story.department,
     companySize: story.companySize,
+    region: story.region,
     featured: story.featured,
     createdAt: story.createdAt,
   };
 }
 
 export async function getAllCustomerStories(
-  resolvedUrl: string,
+  resolvedUrl: string = "",
   filters?: CustomerStoryFilters
 ): Promise<Result<CustomerStorySummary[], Error>> {
   try {

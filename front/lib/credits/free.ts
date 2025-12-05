@@ -13,16 +13,16 @@ import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/progr
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { assertNever, Err, Ok } from "@app/types";
 
 const BRACKET_1_USERS = 10;
-const BRACKET_1_CENTS_PER_USER = 500; // $5
+const BRACKET_1_MICRO_USD_PER_USER = 5_000_000; // $5
 const BRACKET_2_USERS = 40; // 11-50
-const BRACKET_2_CENTS_PER_USER = 200; // $2
+const BRACKET_2_MICRO_USD_PER_USER = 2_000_000; // $2
 const BRACKET_3_USERS = 50; // 51-100
-const BRACKET_3_CENTS_PER_USER = 100; // $1
+const BRACKET_3_MICRO_USD_PER_USER = 1_000_000; // $1
 
-const TRIAL_CREDIT_CENTS = 500; // $5
+const TRIAL_CREDIT_MICRO_USD = 5_000_000; // $5
 
 const MONTHLY_BILLING_CYCLE_SECONDS = 30 * 24 * 60 * 60; // ~30 days
 
@@ -57,7 +57,7 @@ function isTrialingOrNewCustomer(
  * - Next 50 users (51-100): $1 each
  * - Cap at 100 users
  */
-export function calculateFreeCreditAmount(userCount: number): number {
+export function calculateFreeCreditAmountMicroUsd(userCount: number): number {
   const usersInBracket1 = Math.min(BRACKET_1_USERS, userCount);
   const usersInBracket2 = Math.min(
     BRACKET_2_USERS,
@@ -69,9 +69,9 @@ export function calculateFreeCreditAmount(userCount: number): number {
   );
 
   return (
-    usersInBracket1 * BRACKET_1_CENTS_PER_USER +
-    usersInBracket2 * BRACKET_2_CENTS_PER_USER +
-    usersInBracket3 * BRACKET_3_CENTS_PER_USER
+    usersInBracket1 * BRACKET_1_MICRO_USD_PER_USER +
+    usersInBracket2 * BRACKET_2_MICRO_USD_PER_USER +
+    usersInBracket3 * BRACKET_3_MICRO_USD_PER_USER
   );
 }
 
@@ -80,16 +80,19 @@ export function calculateFreeCreditAmount(userCount: number): number {
  * the number of users before billing cycle renewal.
  * Why 5 days ? At the current price of $30 / month,
  * pro-rated bump up from 5 days ago would be 5$.
+ *
+ * However, at minimum we always count 1 user.
  */
 export async function countEligibleUsersForFreeCredits(
   workspace: Parameters<typeof renderLightWorkspaceType>[0]["workspace"]
 ): Promise<number> {
   const cutoffDate = new Date(Date.now() - USER_COUNT_CUTOFF);
-  return MembershipResource.getMembersCountForWorkspace({
+  const count = await MembershipResource.getMembersCountForWorkspace({
     workspace: renderLightWorkspaceType({ workspace }),
     activeOnly: true,
     membershipSpan: { fromDate: cutoffDate, toDate: cutoffDate },
   });
+  return Math.max(1, count);
 }
 
 /**
@@ -123,7 +126,7 @@ export async function getCustomerStatus(
   return null;
 }
 
-export async function grantFreeCreditsOnSubscriptionRenewal({
+export async function grantFreeCreditsFromSubscriptionStateChange({
   auth,
   stripeSubscription,
 }: {
@@ -154,22 +157,19 @@ export async function grantFreeCreditsOnSubscriptionRenewal({
 
   // Enterprise subscriptions are always eligible
   const isEnterprise = isEnterpriseSubscription(stripeSubscription);
-  let customerStatus: CustomerStatus | null = null;
+  const customerStatus: CustomerStatus | null = isEnterprise
+    ? "paying"
+    : await getCustomerStatus(stripeSubscription);
 
-  if (!isEnterprise) {
-    customerStatus = await getCustomerStatus(stripeSubscription);
-    if (!customerStatus) {
-      logger.info(
-        {
-          workspaceId: workspaceSId,
-          subscriptionId: stripeSubscription.id,
-        },
-        "[Free Credits] Pro subscription not eligible for free credits (subscription payment too old or missing)"
-      );
-      return new Err(
-        new Error("Pro subscription not eligible for free credits")
-      );
-    }
+  if (!customerStatus) {
+    logger.info(
+      {
+        workspaceId: workspaceSId,
+        subscriptionId: stripeSubscription.id,
+      },
+      "[Free Credits] Pro subscription not eligible for free credits (subscription payment too old or missing)"
+    );
+    return new Err(new Error("Pro subscription not eligible for free credits"));
   }
 
   logger.info(
@@ -181,51 +181,59 @@ export async function grantFreeCreditsOnSubscriptionRenewal({
     "[Free Credits] Processing free credit grant on subscription renewal"
   );
 
-  let creditAmountCents: number;
+  let creditAmountMicroUsd: number;
 
   const programmaticConfig =
     await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
 
-  if (programmaticConfig && programmaticConfig.freeCreditCents !== null) {
-    creditAmountCents = programmaticConfig.freeCreditCents;
+  if (programmaticConfig && programmaticConfig.freeCreditMicroUsd !== null) {
+    creditAmountMicroUsd = programmaticConfig.freeCreditMicroUsd;
     logger.info(
       {
         workspaceId: workspaceSId,
-        creditAmountCents,
+        creditAmountMicroUsd,
       },
       "[Free Credits] Using ProgrammaticUsageConfiguration override amount"
     );
   } else {
-    if (customerStatus === "trialing") {
-      creditAmountCents = TRIAL_CREDIT_CENTS;
-    } else {
-      const userCount = await countEligibleUsersForFreeCredits(workspace);
-      creditAmountCents = calculateFreeCreditAmount(userCount);
-      logger.info(
-        {
-          workspaceId: workspaceSId,
-          userCount,
-          creditAmountCents,
-          customerStatus,
-        },
-        "[Free Credits] Calculated credit amount using brackets system"
-      );
+    switch (customerStatus) {
+      case "trialing":
+        creditAmountMicroUsd = TRIAL_CREDIT_MICRO_USD;
+        break;
+      case "paying":
+        const userCount = await countEligibleUsersForFreeCredits(workspace);
+        creditAmountMicroUsd = calculateFreeCreditAmountMicroUsd(userCount);
+        logger.info(
+          {
+            workspaceId: workspaceSId,
+            userCount,
+            creditAmountMicroUsd,
+            customerStatus,
+          },
+          "[Free Credits] Calculated credit amount using brackets system"
+        );
+        break;
+      default:
+        assertNever(customerStatus);
     }
 
     assert(
-      creditAmountCents > 0,
+      creditAmountMicroUsd > 0,
       "Unexpected programmatic usage free credit amount equal to zero"
     );
   }
 
-  const expirationDate = new Date(stripeSubscription.current_period_end * 1000);
+  const periodStart = new Date(stripeSubscription.current_period_start * 1000);
+  const periodEnd = new Date(stripeSubscription.current_period_end * 1000);
+
   const featureFlags = await getFeatureFlags(workspace);
   if (!featureFlags.includes("ppul")) {
     logger.info(
       {
         workspaceId: workspaceSId,
-        creditAmountCents,
-        expirationDate,
+        creditAmountMicroUsd,
+        periodStart,
+        periodEnd,
       },
       "[Free Credits] PPUL flag OFF - stopping here."
     );
@@ -233,8 +241,8 @@ export async function grantFreeCreditsOnSubscriptionRenewal({
   }
   const credit = await CreditResource.makeNew(auth, {
     type: "free",
-    initialAmountCents: creditAmountCents,
-    consumedAmountCents: 0,
+    initialAmountMicroUsd: creditAmountMicroUsd,
+    consumedAmountMicroUsd: 0,
     discount: null,
     invoiceOrLineItemId: idempotencyKey,
   });
@@ -243,14 +251,15 @@ export async function grantFreeCreditsOnSubscriptionRenewal({
     {
       workspaceId: workspaceSId,
       creditId: credit.id,
-      creditAmountCents,
-      expirationDate,
+      creditAmountMicroUsd,
+      periodStart,
+      periodEnd,
     },
     "[Free Credits] Created credit, now starting"
   );
 
-  // Start the credit immediately
-  const startResult = await credit.start(undefined, expirationDate);
+  // Start the credit at beginning of billing cycle.
+  const startResult = await credit.start(periodStart, periodEnd);
 
   if (startResult.isErr()) {
     logger.error(
@@ -269,8 +278,9 @@ export async function grantFreeCreditsOnSubscriptionRenewal({
     {
       workspaceId: workspaceSId,
       creditId: credit.id,
-      creditAmountCents,
-      expirationDate,
+      creditAmountMicroUsd,
+      periodStart,
+      periodEnd,
     },
     "[Free Credits] Successfully granted and activated free credit on renewal"
   );

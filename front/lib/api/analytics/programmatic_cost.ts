@@ -14,6 +14,7 @@ import {
 } from "@app/lib/api/elasticsearch";
 import { getShouldTrackTokenUsageCostsESFilter } from "@app/lib/api/programmatic_usage_tracking";
 import type { Authenticator } from "@app/lib/auth";
+import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import { AgentConfiguration } from "@app/lib/models/agent/agent";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -49,18 +50,19 @@ export const QuerySchema = z.object({
     })
     .pipe(FilterSchema.optional()),
   selectedMonth: z.string().optional(),
+  billingCycleStartDay: z.coerce.number().min(1).max(31),
 });
 
 export type WorkspaceProgrammaticCostPoint = {
   timestamp: number;
   groups: {
     groupKey: string;
-    costCents: number;
-    cumulatedCostCents?: number;
+    costMicroUsd: number;
+    cumulatedCostMicroUsd?: number;
   }[];
-  totalInitialCreditsCents: number;
-  totalConsumedCreditsCents: number;
-  totalRemainingCreditsCents: number;
+  totalInitialCreditsMicroUsd: number;
+  totalConsumedCreditsMicroUsd: number;
+  totalRemainingCreditsMicroUsd: number;
 };
 
 export type AvailableGroup = {
@@ -80,18 +82,18 @@ type GroupBucket = {
   key: string;
   doc_count: number;
   total_cost?: estypes.AggregationsSumAggregate;
-  by_day?: estypes.AggregationsMultiBucketAggregateBase<DailyBucket>;
+  by_hour?: estypes.AggregationsMultiBucketAggregateBase<DailyBucket>;
 };
 
 type GroupedAggs = {
   by_group?: estypes.AggregationsMultiBucketAggregateBase<GroupBucket>;
-  by_day?: estypes.AggregationsMultiBucketAggregateBase<DailyBucket>;
+  by_hour?: estypes.AggregationsMultiBucketAggregateBase<DailyBucket>;
 };
 
 /**
  * Calculates credit totals for each timestamp.
  * A credit is considered "active" on a day if:
- * - It was created before or on that day
+ * - It has been started (startDate is not null and <= day start)
  * - It hasn't expired yet on that day (expirationDate is null or > day start)
  */
 function calculateCreditTotalsPerTimestamp(
@@ -100,52 +102,86 @@ function calculateCreditTotalsPerTimestamp(
 ): Map<
   number,
   {
-    totalInitialCreditsCents: number;
-    totalConsumedCreditsCents: number;
-    totalRemainingCreditsCents: number;
+    totalInitialCreditsMicroUsd: number;
+    totalConsumedCreditsMicroUsd: number;
+    totalRemainingCreditsMicroUsd: number;
   }
 > {
   const creditTotalsMap = new Map<
     number,
     {
-      totalInitialCreditsCents: number;
-      totalConsumedCreditsCents: number;
-      totalRemainingCreditsCents: number;
+      totalInitialCreditsMicroUsd: number;
+      totalConsumedCreditsMicroUsd: number;
+      totalRemainingCreditsMicroUsd: number;
     }
   >();
 
-  const totalInitialCreditsCents = credits.reduce(
-    (sum, credit) => sum + credit.initialAmountCents,
-    0
-  );
-  const totalConsumedCreditsCents = credits.reduce(
-    (sum, credit) => sum + credit.consumedAmountCents,
-    0
-  );
-  const totalRemainingCreditsCents = credits.reduce(
-    (sum, credit) =>
-      sum + (credit.initialAmountCents - credit.consumedAmountCents),
-    0
-  );
+  const now = Date.now();
 
   for (const timestamp of timestamps) {
+    const dayStart = new Date(timestamp);
+    dayStart.setUTCHours(0, 0, 0, 0);
+    // Use current time for today so credits created today are included.
+    const cutoffTime =
+      dayStart.getTime() === new Date().setUTCHours(0, 0, 0, 0)
+        ? now
+        : dayStart.getTime();
+
+    const activeCredits = credits.filter((credit) => {
+      if (!credit.startDate || credit.startDate.getTime() > cutoffTime) {
+        return false;
+      }
+
+      if (
+        credit.expirationDate &&
+        credit.expirationDate.getTime() <= cutoffTime
+      ) {
+        return false;
+      }
+
+      return true;
+    });
+
+    const {
+      totalInitialCreditsMicroUsd,
+      totalConsumedCreditsMicroUsd,
+      totalRemainingCreditsMicroUsd,
+    } = activeCredits.reduce(
+      (acc, credit) => {
+        acc.totalInitialCreditsMicroUsd += credit.initialAmountMicroUsd;
+        acc.totalConsumedCreditsMicroUsd += credit.consumedAmountMicroUsd;
+        acc.totalRemainingCreditsMicroUsd +=
+          credit.initialAmountMicroUsd - credit.consumedAmountMicroUsd;
+        return acc;
+      },
+      {
+        totalInitialCreditsMicroUsd: 0,
+        totalConsumedCreditsMicroUsd: 0,
+        totalRemainingCreditsMicroUsd: 0,
+      }
+    );
+
     creditTotalsMap.set(timestamp, {
-      totalInitialCreditsCents,
-      totalConsumedCreditsCents,
-      totalRemainingCreditsCents,
+      totalInitialCreditsMicroUsd,
+      totalConsumedCreditsMicroUsd,
+      totalRemainingCreditsMicroUsd,
     });
   }
 
   return creditTotalsMap;
 }
 
-function getDatesInRange(startOfMonth: Date, endDate: Date): number[] {
-  const dates = [];
+function getTimestampsInRange(startOfMonth: Date, endDate: Date): number[] {
+  const timestamps = [];
   const current = new Date(startOfMonth);
-  for (let date = current; date < endDate; date.setDate(date.getDate() + 1)) {
-    dates.push(date.getTime());
+  for (
+    let timestamp = current;
+    timestamp < endDate;
+    timestamp.setUTCHours(timestamp.getUTCHours() + 4)
+  ) {
+    timestamps.push(timestamp.getTime());
   }
-  return dates;
+  return timestamps;
 }
 
 function getSelectedFilterClauses(
@@ -185,17 +221,18 @@ function buildAggregation(
       aggs: {
         // Total cost aggregation for sorting (sum across all documents in this group)
         total_cost: {
-          sum: { field: "tokens.cost_cents" },
+          sum: { field: "tokens.cost_micro_usd" },
         },
         ...(includeDailyBreakdown
           ? {
               // Daily breakdown
-              by_day: {
+              by_hour: {
                 date_histogram: {
                   field: "timestamp",
-                  calendar_interval: "day",
+                  fixed_interval: "4h",
+                  time_zone: "UTC",
                 },
-                aggs: buildMetricAggregates(["costCents"]),
+                aggs: buildMetricAggregates(["costMicroUsd"]),
               },
             }
           : {}),
@@ -232,22 +269,33 @@ export async function handleProgrammaticCostRequest(
         groupBy,
         groupByCount,
         selectedMonth,
+        billingCycleStartDay,
         filter: filterParams,
       } = q.data;
 
-      // Get selected date range
-      const now = new Date();
-      const startOfMonth = selectedMonth
+      // Get selected date range using shared billing cycle utility
+      // selectedMonth is "YYYY-MM", so new Date(selectedMonth) creates day 1 of that month.
+      // We need to set the day to billingCycleStartDay to get the correct billing cycle.
+      const referenceDate = selectedMonth
         ? new Date(selectedMonth)
-        : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth()));
+        : new Date();
+      if (selectedMonth) {
+        referenceDate.setUTCDate(billingCycleStartDay);
+      }
+      const { cycleStart: periodStart, cycleEnd: periodEnd } =
+        getBillingCycleFromDay(billingCycleStartDay, referenceDate, true);
 
-      const endOfMonth = new Date(startOfMonth);
-      endOfMonth.setMonth(endOfMonth.getMonth() + 1);
+      // Cap periodEnd to 5 days in the future to avoid empty chart areas.
+      const FIVE_DAYS_IN_MS = 5 * 24 * 60 * 60 * 1000;
+      const cappedPeriodEnd = new Date(
+        Math.min(periodEnd.getTime(), Date.now() + FIVE_DAYS_IN_MS)
+      );
 
-      const timestamps = getDatesInRange(startOfMonth, endOfMonth);
+      const timestamps = getTimestampsInRange(periodStart, cappedPeriodEnd);
 
-      // Fetch all credits for the workspace
-      const credits = await CreditResource.listActive(auth, endOfMonth);
+      // Fetch all credits for the workspace (including free credits and fully consumed ones)
+      // We'll filter them per timestamp in calculateCreditTotalsPerTimestamp
+      const credits = await CreditResource.listAll(auth);
 
       // Calculate credit totals for each timestamp
       const creditTotalsMap = calculateCreditTotalsPerTimestamp(
@@ -261,8 +309,8 @@ export async function handleProgrammaticCostRequest(
         {
           range: {
             timestamp: {
-              gte: startOfMonth.toISOString(),
-              lt: endOfMonth.toISOString(),
+              gte: periodStart.toISOString(),
+              lt: periodEnd.toISOString(),
             },
           },
         },
@@ -283,14 +331,15 @@ export async function handleProgrammaticCostRequest(
       const result = await searchAnalytics<never, GroupedAggs>(baseQuery, {
         aggregations: {
           total_cost: {
-            sum: { field: "tokens.cost_cents" },
+            sum: { field: "tokens.cost_micro_usd" },
           },
-          by_day: {
+          by_hour: {
             date_histogram: {
               field: "timestamp",
-              calendar_interval: "day",
+              fixed_interval: "4h",
+              time_zone: "UTC",
             },
-            aggs: buildMetricAggregates(["costCents"]),
+            aggs: buildMetricAggregates(["costMicroUsd"]),
           },
           ...(groupBy ? buildAggregation(groupBy, groupByCount, true) : {}),
         },
@@ -309,14 +358,14 @@ export async function handleProgrammaticCostRequest(
       }
 
       const totalBuckets = bucketsToArray<MetricsBucket>(
-        result.value.aggregations?.by_day?.buckets
+        result.value.aggregations?.by_hour?.buckets
       );
 
       // Add total points to groupValues
       groupValues["total"] = new Map<number, number>();
       totalBuckets.forEach((bucket) => {
-        const point = parseMetricsFromBucket(bucket, ["costCents"]);
-        groupValues["total"]?.set(point.timestamp, point.costCents);
+        const point = parseMetricsFromBucket(bucket, ["costMicroUsd"]);
+        groupValues["total"]?.set(point.timestamp, point.costMicroUsd);
       });
 
       if (result.value.aggregations?.by_group) {
@@ -329,8 +378,8 @@ export async function handleProgrammaticCostRequest(
           // Parse each bucket once and store the results
           return {
             groupKey: groupBucket.key,
-            points: bucketsToArray(groupBucket.by_day?.buckets).map((bucket) =>
-              parseMetricsFromBucket(bucket, ["costCents"])
+            points: bucketsToArray(groupBucket.by_hour?.buckets).map((bucket) =>
+              parseMetricsFromBucket(bucket, ["costMicroUsd"])
             ),
           };
         });
@@ -339,13 +388,13 @@ export async function handleProgrammaticCostRequest(
         const allGroupsToProcess = ensureAtMostNGroups(
           groupsWithParsedPoints,
           5,
-          "costCents"
+          "costMicroUsd"
         );
 
         // Process all groups (top 5 + "Others") with single loop
         for (const { groupKey, points } of allGroupsToProcess) {
           groupValues[groupKey] = new Map(
-            points.map((point) => [point.timestamp, point.costCents])
+            points.map((point) => [point.timestamp, point.costMicroUsd])
           );
         }
 
@@ -413,10 +462,12 @@ export async function handleProgrammaticCostRequest(
         });
       }
 
-      const cumulatedCostCents: Record<string, number> = {};
+      const cumulatedCostMicroUsd: Record<string, number> = {};
       Object.keys(groupValues).forEach((group) => {
-        cumulatedCostCents[group] = 0;
+        cumulatedCostMicroUsd[group] = 0;
       });
+
+      const now = new Date();
 
       const points = timestamps.map((timestamp) => {
         const groups = Object.entries(groupValues)
@@ -424,19 +475,19 @@ export async function handleProgrammaticCostRequest(
           .map(([groupKey, costMap]) => {
             const cost = costMap?.get(timestamp);
             const cumulatedCost =
-              (cumulatedCostCents[groupKey] ?? 0) + (cost ?? 0);
-            cumulatedCostCents[groupKey] = cumulatedCost;
+              (cumulatedCostMicroUsd[groupKey] ?? 0) + (cost ?? 0);
+            cumulatedCostMicroUsd[groupKey] = cumulatedCost;
             return {
               groupKey,
-              costCents: cost ?? 0,
-              cumulatedCostCents:
+              costMicroUsd: cost ?? 0,
+              cumulatedCostMicroUsd:
                 timestamp <= now.getTime() ? cumulatedCost : undefined,
             };
           });
 
         if (groupBy) {
           const costForAll = groups.reduce(
-            (acc, group) => acc + group.costCents,
+            (acc, group) => acc + group.costMicroUsd,
             0
           );
 
@@ -444,13 +495,13 @@ export async function handleProgrammaticCostRequest(
           const totalCost = groupValues.total?.get(timestamp) ?? 0;
           const otherCost = totalCost - costForAll;
           const cumulatedOtherCost =
-            (cumulatedCostCents["others"] ?? 0) + (otherCost ?? 0);
-          cumulatedCostCents["others"] = cumulatedOtherCost;
+            (cumulatedCostMicroUsd["others"] ?? 0) + (otherCost ?? 0);
+          cumulatedCostMicroUsd["others"] = cumulatedOtherCost;
 
           groups.push({
             groupKey: "others",
-            costCents: otherCost,
-            cumulatedCostCents:
+            costMicroUsd: otherCost,
+            cumulatedCostMicroUsd:
               timestamp <= now.getTime() ? cumulatedOtherCost : undefined,
           });
         }
@@ -459,13 +510,15 @@ export async function handleProgrammaticCostRequest(
         return {
           timestamp,
           groups,
-          totalInitialCreditsCents: credit?.totalInitialCreditsCents ?? 0,
-          totalConsumedCreditsCents: credit?.totalConsumedCreditsCents ?? 0,
-          totalRemainingCreditsCents: credit?.totalRemainingCreditsCents ?? 0,
+          totalInitialCreditsMicroUsd: credit?.totalInitialCreditsMicroUsd ?? 0,
+          totalConsumedCreditsMicroUsd:
+            credit?.totalConsumedCreditsMicroUsd ?? 0,
+          totalRemainingCreditsMicroUsd:
+            credit?.totalRemainingCreditsMicroUsd ?? 0,
         };
       });
 
-      if (cumulatedCostCents["others"] > 0) {
+      if (cumulatedCostMicroUsd["others"] > 0) {
         availableGroups.push({
           groupKey: "others",
           groupLabel: "Others",

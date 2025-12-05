@@ -27,8 +27,13 @@ import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { clientFetch } from "@app/lib/egress/client";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
+import {
+  isProPlan,
+  isWhitelistedBusinessPlan,
+} from "@app/lib/plans/plan_codes";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -136,7 +141,7 @@ export default function Subscription({
 
   const { submit: handleSubscribePlan, isSubmitting: isSubscribingPlan } =
     useSubmitFunction(async () => {
-      const res = await fetch(`/api/w/${owner.sId}/subscriptions`, {
+      const res = await clientFetch(`/api/w/${owner.sId}/subscriptions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -177,10 +182,41 @@ export default function Subscription({
     window.open(`/w/${owner.sId}/subscription/manage`, "_blank");
   });
 
+  const {
+    submit: handleUpgradeToBusiness,
+    isSubmitting: isUpgradingToBusiness,
+  } = useSubmitFunction(async () => {
+    const res = await clientFetch(`/api/w/${owner.sId}/subscriptions`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        action: "upgrade_to_business",
+      } satisfies t.TypeOf<typeof PatchSubscriptionRequestBody>),
+    });
+
+    if (!res.ok) {
+      sendNotification({
+        type: "error",
+        title: "Upgrade failed",
+        description: "Failed to upgrade to Enterprise seat-based plan.",
+      });
+    } else {
+      sendNotification({
+        type: "success",
+        title: "Upgrade successful",
+        description:
+          "Your workspace has been upgraded to Enterprise seat-based plan.",
+      });
+      router.reload();
+    }
+  });
+
   const { submit: skipFreeTrial, isSubmitting: skipFreeTrialIsSubmitting } =
     useSubmitFunction(async () => {
       try {
-        const res = await fetch(`/api/w/${owner.sId}/subscriptions`, {
+        const res = await clientFetch(`/api/w/${owner.sId}/subscriptions`, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
@@ -212,7 +248,7 @@ export default function Subscription({
   const { submit: cancelFreeTrial, isSubmitting: cancelFreeTrialSubmitting } =
     useSubmitFunction(async () => {
       try {
-        const res = await fetch(`/api/w/${owner.sId}/subscriptions`, {
+        const res = await clientFetch(`/api/w/${owner.sId}/subscriptions`, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
@@ -240,9 +276,15 @@ export default function Subscription({
       }
     });
 
-  const isProcessing = isSubscribingPlan || isGoingToStripePortal;
-
   const plan = subscription.plan;
+  const isWorkspaceOnProPlan = isProPlan(plan);
+  const isWorkspaceWhitelistedBusinessPlan = isWhitelistedBusinessPlan(owner);
+  const canUpsellToBusinessPlan =
+    isWorkspaceOnProPlan && isWorkspaceWhitelistedBusinessPlan;
+
+  const isProcessing =
+    isSubscribingPlan || isGoingToStripePortal || isUpgradingToBusiness;
+
   const chipColor = !isUpgraded(plan) ? "green" : "blue";
 
   const onClickProPlan = async () => handleSubscribePlan();
@@ -423,6 +465,29 @@ export default function Subscription({
                     "subscription_stripe_portal",
                     () => {
                       void handleGoToStripePortal();
+                    }
+                  )}
+                />
+              </div>
+            </Page.Vertical>
+          )}
+          {canUpsellToBusinessPlan && (
+            <Page.Vertical gap="sm">
+              <Page.H variant="h5">Upgrade your plan</Page.H>
+              <Page.P>
+                You are eligible to upgrade to the Enteprise seat-based plan
+                with additional features.
+              </Page.P>
+              <div>
+                <Button
+                  label="Upgrade to Enterprise seat-based plan"
+                  variant="primary"
+                  disabled={isProcessing}
+                  onClick={withTracking(
+                    TRACKING_AREAS.AUTH,
+                    "subscription_upgrade_to_business",
+                    () => {
+                      void handleUpgradeToBusiness();
                     }
                   )}
                 />

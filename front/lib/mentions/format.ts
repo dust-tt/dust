@@ -38,7 +38,9 @@ export const USER_MENTION_REGEX_BEGINNING = new RegExp(
  *  * user: `:mention_user[name]{sId=xxx}`
  */
 export function serializeMention(
-  mention: RichMention | { name: string; sId: string }
+  mention:
+    | { name: string; sId: string }
+    | { id: string; type: "agent" | "user"; label: string }
 ): string {
   if ("name" in mention && "sId" in mention) {
     // Legacy format support

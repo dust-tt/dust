@@ -234,6 +234,7 @@ export class GCSRepositoryManager {
           chunks.push(chunk);
         }
 
+        // @ts-expect-error -- migration to tsgo
         const content = Buffer.concat(chunks);
         await this.uploadFile(gcsPath, content, { contentType, metadata });
       } else {

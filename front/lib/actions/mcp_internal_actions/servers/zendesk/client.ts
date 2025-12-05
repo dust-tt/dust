@@ -19,9 +19,22 @@ import {
   ZendeskTicketResponseSchema,
   ZendeskUsersResponseSchema,
 } from "@app/lib/actions/mcp_internal_actions/servers/zendesk/types";
+import { untrustedFetch } from "@app/lib/egress/server";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
+
+export class ZendeskApiError extends Error {
+  public readonly isInvalidInput: boolean;
+
+  constructor(
+    message: string,
+    { isInvalidInput }: { isInvalidInput: boolean }
+  ) {
+    super(message);
+    this.isInvalidInput = isInvalidInput;
+  }
+}
 
 const MAX_CUSTOM_FIELDS_TO_FETCH = 50;
 
@@ -93,7 +106,7 @@ class ZendeskClient {
     }
   ): Promise<Result<z.infer<T>, Error>> {
     const url = `https://${this.subdomain}.zendesk.com/api/v2/${endpoint}`;
-    const response = await fetch(url, {
+    const response = await untrustedFetch(url, {
       method,
       headers: {
         "Content-Type": "application/json",
@@ -105,8 +118,9 @@ class ZendeskClient {
     if (!response.ok) {
       const errorText = await response.text();
       return new Err(
-        new Error(
-          `Zendesk API error (${response.status}): ${errorText || response.statusText}`
+        new ZendeskApiError(
+          `Zendesk API error (${response.status}): ${errorText || response.statusText}`,
+          { isInvalidInput: response.status === 422 }
         )
       );
     }

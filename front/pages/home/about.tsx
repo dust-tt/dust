@@ -302,13 +302,6 @@ const PEOPLE: Record<
     linkedIn: "https://www.linkedin.com/in/lauriane-paour-152760106/",
     github: "https://github.com/laurianepao",
   },
-  landry: {
-    name: "Landry Monga",
-    title: "Software Engineer",
-    image: "https://avatars.githubusercontent.com/u/23080211?v=4",
-    github: "https://github.com/lvndry",
-    linkedIn: "https://www.linkedin.com/in/landry-monga",
-  },
   come: {
     name: "Côme Lucien-Brun",
     title: "Account Executive",

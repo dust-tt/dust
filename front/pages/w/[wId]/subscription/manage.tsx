@@ -3,6 +3,7 @@ import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useEffect } from "react";
 
+import { clientFetch } from "@app/lib/egress/client";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import type { WorkspaceType } from "@app/types";
 
@@ -30,7 +31,7 @@ export default function ManageSubscription({
 
   useEffect(() => {
     async function redirectToStripePortal() {
-      const res = await fetch("/api/stripe/portal", {
+      const res = await clientFetch("/api/stripe/portal", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

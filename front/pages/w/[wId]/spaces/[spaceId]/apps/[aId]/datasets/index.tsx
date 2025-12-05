@@ -8,6 +8,7 @@ import { DustAppPageLayout } from "@app/components/apps/DustAppPageLayout";
 import { ConfirmContext } from "@app/components/Confirm";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getDatasets } from "@app/lib/api/datasets";
+import { clientFetch } from "@app/lib/egress/client";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { classNames } from "@app/lib/utils";
@@ -72,7 +73,7 @@ export default function DatasetsView({
         validateVariant: "warning",
       })
     ) {
-      await fetch(
+      await clientFetch(
         `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets/${datasetName}`,
         {
           method: "DELETE",

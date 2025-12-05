@@ -153,7 +153,7 @@ export const NewConversationMessage = React.forwardRef<
             )}
           >
             <ConversationMessageTitle
-              className="heading-sm hidden @sm:block"
+              className="heading-sm hidden @sm:flex"
               name={name}
               timestamp={timestamp}
               infoChip={infoChip}
@@ -271,16 +271,25 @@ const ConversationMessageTitle = React.forwardRef<
   HTMLDivElement,
   ConversationMessageTitleProps
 >(
-  ({
-    name = "",
-    timestamp,
-    infoChip,
-    completionStatus,
-    renderName,
-    actions,
-  }) => {
+  (
+    {
+      name = "",
+      timestamp,
+      infoChip,
+      completionStatus,
+      renderName,
+      actions,
+      className,
+      ...props
+    },
+    ref
+  ) => {
     return (
-      <div className="inline-flex w-full justify-between gap-0.5">
+      <div
+        ref={ref}
+        className={cn("inline-flex w-full justify-between gap-0.5", className)}
+        {...props}
+      >
         <div className="inline-flex items-baseline gap-2 text-foreground dark:text-foreground-night">
           <span className="heading-sm">{renderName(name)}</span>
           <span className="heading-xs text-muted-foreground dark:text-muted-foreground-night">

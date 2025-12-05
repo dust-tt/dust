@@ -50,6 +50,7 @@ import {
   GetDataSourcesResponseSchema,
   GetFeedbacksResponseSchema,
   GetMCPServerViewsResponseSchema,
+  GetMentionSuggestionsResponseBodySchema,
   GetSpacesResponseSchema,
   GetWorkspaceFeatureFlagsResponseSchema,
   GetWorkspaceVerifiedDomainsResponseSchema,
@@ -58,6 +59,8 @@ import {
   LoggerInterface,
   MeResponseSchema,
   Ok,
+  ParseMentionsRequestBodySchema,
+  ParseMentionsResponseBodySchema,
   PatchConversationRequestType,
   PatchConversationResponseSchema,
   PatchDataSourceViewRequestType,
@@ -656,6 +659,78 @@ export class DustAPI {
       return r;
     }
     return new Ok(r.value.agentConfigurations);
+  }
+
+  /**
+   * Parses mentions in markdown text and converts them to the proper mention format.
+   * Matches @agentName or @userName patterns against available agents and users.
+   *
+   * @param markdown - Markdown text containing @ mentions to parse
+   * @returns A promise that resolves to a Result containing the parsed markdown with mentions converted to proper format
+   */
+  async parseForMentions({ markdown }: { markdown: string }) {
+    const body = ParseMentionsRequestBodySchema.parse({ markdown });
+
+    const res = await this.request({
+      method: "POST",
+      path: "assistant/mentions/parse",
+      body,
+    });
+
+    const r = await this._resultFromResponse(
+      ParseMentionsResponseBodySchema,
+      res
+    );
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value.markdown);
+  }
+
+  /**
+   * Get suggestions for mentions (agents and users) based on a query string.
+   *
+   * @param query - Search query string to filter suggestions
+   * @param select - Optional array of mention types to include. Can be "agents", "users", or both.
+   * @param conversationId - Optional conversation ID to scope suggestions to a specific conversation
+   * @returns A promise that resolves to a Result containing an array of mention suggestions
+   */
+  async getMentionsSuggestions({
+    query,
+    select,
+    conversationId,
+  }: {
+    query: string;
+    select?: "agents" | "users" | ("agents" | "users")[];
+    conversationId?: string;
+  }) {
+    const queryParams = new URLSearchParams({ query });
+    if (select) {
+      if (Array.isArray(select)) {
+        select.forEach((s) => queryParams.append("select", s));
+      } else {
+        queryParams.append("select", select);
+      }
+    }
+
+    const path = conversationId
+      ? `assistant/conversations/${conversationId}/mentions/suggestions`
+      : "assistant/mentions/suggestions";
+
+    const res = await this.request({
+      method: "GET",
+      path,
+      query: queryParams.toString() ? queryParams : undefined,
+    });
+
+    const r = await this._resultFromResponse(
+      GetMentionSuggestionsResponseBodySchema,
+      res
+    );
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value.suggestions);
   }
 
   async postContentFragment({

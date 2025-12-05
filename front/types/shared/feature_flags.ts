@@ -47,6 +47,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Access to DeepSeek models (they cannot use tool so can't be selected in the agent builder)",
     stage: "on_demand",
   },
+  fireworks_new_model_feature: {
+    description: "Access to Fireworks new model",
+    stage: "on_demand",
+  },
   deepseek_r1_global_agent_feature: {
     description: "Access to DeepSeek R1 model as global agent",
     stage: "on_demand",
@@ -209,20 +213,22 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Discord bot integration for workspace-level Discord integration",
     stage: "dust_only",
   },
-  llm_router_direct_requests: {
-    description: "Use direct LLM call over Dust app run in a conversation.",
-    stage: "on_demand",
-  },
-  llm_comparison_mode_enabled: {
-    description: "Enable LLM comparison mode.",
-    stage: "on_demand",
-  },
   mentions_v2: {
     description: "Enable mentions v2, aka mention users",
     stage: "on_demand",
   },
   notifications: {
     description: "Enable notifications",
+    stage: "dust_only",
+  },
+  skills: {
+    description:
+      "Access to Skills, which are packaged sets of instructions and tools",
+    stage: "dust_only",
+  },
+  universal_search: {
+    description:
+      "WIP - Search from Input bar search in Knowledge and MCP tools. ",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;

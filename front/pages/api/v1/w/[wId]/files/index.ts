@@ -87,7 +87,7 @@ import {
  */
 async function handler(
   req: NextApiRequest,
-  // eslint-disable-next-line dust/enforce-client-types-in-public-api
+
   res: NextApiResponse<WithAPIErrorResponse<FileUploadRequestResponseType>>,
   auth: Authenticator
 ): Promise<void> {
@@ -196,6 +196,4 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthentication(handler, {
-  requiredScopes: { POST: "create:file" },
-});
+export default withPublicAPIAuthentication(handler);

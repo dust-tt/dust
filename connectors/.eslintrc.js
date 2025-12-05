@@ -5,7 +5,7 @@ module.exports = {
     "plugin:@typescript-eslint/recommended",
   ],
   plugins: ["import", "simple-import-sort", "eslint-plugin-unused-imports"],
-  ignorePatterns: ["dist/"],
+  ignorePatterns: ["dist/", "knip.ts", ".eslintrc.js"],
   rules: {
     curly: ["error", "all"],
     "simple-import-sort/imports": [
@@ -45,11 +45,6 @@ module.exports = {
     "@typescript-eslint/return-await": ["error", "in-try-catch"],
     "no-unused-expressions": "error",
   },
-  overrides: [
-    {
-      files: ["*.jsx", "*.js", "*.ts", "*.tsx"],
-    },
-  ],
   env: {
     node: true,
     es6: true,

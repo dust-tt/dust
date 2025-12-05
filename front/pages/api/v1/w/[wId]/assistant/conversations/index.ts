@@ -20,7 +20,10 @@ import {
 } from "@app/lib/api/assistant/conversation/helper";
 import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import { hasReachedProgrammaticUsageLimits } from "@app/lib/api/programmatic_usage_tracking";
+import {
+  hasReachedProgrammaticUsageLimits,
+  isProgrammaticUsage,
+} from "@app/lib/api/programmatic_usage_tracking";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -109,7 +112,6 @@ export const MAX_CONVERSATION_DEPTH = 4;
 
 async function handler(
   req: NextApiRequest,
-  // eslint-disable-next-line dust/enforce-client-types-in-public-api
   res: NextApiResponse<
     WithAPIErrorResponse<
       PostConversationsResponseType | GetConversationsResponseType
@@ -142,7 +144,10 @@ async function handler(
         blocking,
       } = r.data;
 
-      const hasReachedLimits = await hasReachedProgrammaticUsageLimits(auth);
+      const hasReachedLimits =
+        isProgrammaticUsage(auth, {
+          userMessageOrigin: message?.context.origin,
+        }) && (await hasReachedProgrammaticUsageLimits(auth));
       if (hasReachedLimits) {
         return apiError(req, res, {
           status_code: 429,
@@ -500,6 +505,4 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthentication(handler, {
-  requiredScopes: { GET: "read:conversation", POST: "create:conversation" },
-});
+export default withPublicAPIAuthentication(handler);

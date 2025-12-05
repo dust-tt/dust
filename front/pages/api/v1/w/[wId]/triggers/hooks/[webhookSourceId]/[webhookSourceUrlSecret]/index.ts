@@ -66,7 +66,7 @@ export const config = {
 
 async function handler(
   req: NextApiRequestWithContext,
-  // eslint-disable-next-line dust/enforce-client-types-in-public-api
+
   res: NextApiResponse<WithAPIErrorResponse<PostWebhookTriggerResponseType>>
 ): Promise<void> {
   const { method, body, headers, query } = req;

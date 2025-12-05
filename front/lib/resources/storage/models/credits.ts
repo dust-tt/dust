@@ -18,9 +18,9 @@ export class CreditModel extends WorkspaceAwareModel<CreditModel> {
   // When credit becomes active (null = not yet paid/active).
   declare startDate: Date | null;
   declare expirationDate: Date | null;
-  // Amount in cents (immutable after creation).
-  declare initialAmountCents: number;
-  declare consumedAmountCents: number; // in cents
+  // Amount in microUsd (immutable after creation).
+  declare initialAmountMicroUsd: number;
+  declare consumedAmountMicroUsd: number;
   // Discount percentage (0-100), nullable
   declare discount: number | null;
   // Stripe invoice ID or line item ID for idempotency.
@@ -56,12 +56,12 @@ CreditModel.init(
       allowNull: true,
       defaultValue: null,
     },
-    initialAmountCents: {
-      type: DataTypes.INTEGER,
+    initialAmountMicroUsd: {
+      type: DataTypes.BIGINT,
       allowNull: false,
     },
-    consumedAmountCents: {
-      type: DataTypes.INTEGER,
+    consumedAmountMicroUsd: {
+      type: DataTypes.BIGINT,
       allowNull: false,
     },
     discount: {
@@ -91,8 +91,8 @@ CreditModel.init(
         fields: ["workspaceId", "expirationDate"],
         name: "credits_nonzero_remaining_idx",
         where: {
-          consumedAmountCents: {
-            [Op.lt]: frontSequelize.col("initialAmountCents"),
+          consumedAmountMicroUsd: {
+            [Op.lt]: frontSequelize.col("initialAmountMicroUsd"),
           },
         },
       },
@@ -110,7 +110,7 @@ CreditModel.init(
       },
       // Unique constraint on (type, workspaceId, startDate, expirationDate) for active credits
       {
-        fields: ["type", "workspaceId", "startDate", "expirationDate"],
+        fields: ["workspaceId", "type", "startDate", "expirationDate"],
         unique: true,
         name: "credits_type_workspace_dates_unique_idx",
         where: { startDate: { [Op.ne]: null } },

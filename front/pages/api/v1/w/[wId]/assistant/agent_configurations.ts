@@ -91,7 +91,6 @@ const viewRequiresUser = (view?: string): boolean =>
 
 async function handler(
   req: NextApiRequest,
-  // eslint-disable-next-line dust/enforce-client-types-in-public-api
   res: NextApiResponse<
     WithAPIErrorResponse<GetAgentConfigurationsResponseType>
   >,
@@ -167,6 +166,4 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthentication(handler, {
-  requiredScopes: { GET: "read:agent" },
-});
+export default withPublicAPIAuthentication(handler);

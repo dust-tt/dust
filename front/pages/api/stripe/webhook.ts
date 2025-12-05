@@ -14,8 +14,11 @@ import {
 } from "@app/lib/api/email";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
-import { startCreditFromProOneOffInvoice } from "@app/lib/credits/committed";
-import { grantFreeCreditsOnSubscriptionRenewal } from "@app/lib/credits/free";
+import {
+  startCreditFromProOneOffInvoice,
+  voidFailedProCreditPurchaseInvoice,
+} from "@app/lib/credits/committed";
+import { grantFreeCreditsFromSubscriptionStateChange } from "@app/lib/credits/free";
 import {
   allocatePAYGCreditsOnCycleRenewal,
   invoiceEnterprisePAYGCredits,
@@ -449,8 +452,24 @@ async function handler(
           const auth = await Authenticator.internalAdminForWorkspace(
             subscription.workspace.sId
           );
+
+          // Handle Pro credit purchase invoice failures
+          stripeSubscription = await getStripeSubscription(
+            invoice.subscription
+          );
+
+          if (!stripeSubscription) {
+            logger.warn(
+              {
+                event,
+                stripeSubscriptionId: invoice.subscription,
+              },
+              "[Stripe Webhook] Stripe Subscription not found."
+            );
+          }
           const owner = auth.workspace();
           const subscriptionType = auth.subscription();
+
           if (!owner || !subscriptionType) {
             return _returnStripeApiError(
               req,
@@ -478,6 +497,42 @@ async function handler(
               portalUrl
             );
           }
+
+          if (stripeSubscription) {
+            const isProCreditPurchaseInvoice =
+              isCreditPurchaseInvoice(invoice) &&
+              !isEnterpriseSubscription(stripeSubscription);
+
+            if (isProCreditPurchaseInvoice) {
+              const result = await voidFailedProCreditPurchaseInvoice({
+                auth,
+                invoice,
+              });
+              if (result.isErr()) {
+                // For eng-oncall
+                // This case is supposed to be extremely rare, as there are not a lot of things that can fail
+                // during an invoice void, you will need to inspect the invoice directly in stripe to see what
+                // happened, and invoice it by hand, with the added metadata put in `voidFailedProCreditPurchase`
+                // contact Stripe owners in case of doubt
+                logger.error(
+                  {
+                    error: result.error,
+                    panic: true,
+                    stripeError: true,
+                    invoiceId: invoice.id,
+                  },
+                  "[Stripe Webhook] Error handling failed credit purchase"
+                );
+              } else if (result.value.voided) {
+                logger.warn(
+                  { invoiceId: invoice.id },
+                  "[Stripe Webhook] Voided Pro credit purchase invoice after 3 failures"
+                );
+                return res.status(200).json({ success: true });
+              }
+            }
+          }
+
           break;
         case "charge.dispute.created":
           const dispute = event.data.object as Stripe.Dispute;
@@ -514,6 +569,37 @@ async function handler(
               "[Stripe Webhook] Received customer.subscription.created event with invalid subscription."
             );
           }
+
+          const subscription = await Subscription.findOne({
+            where: { stripeSubscriptionId: stripeSubscription.id },
+            include: [WorkspaceModel],
+          });
+
+          if (subscription) {
+            const auth = await Authenticator.internalAdminForWorkspace(
+              subscription.workspace.sId
+            );
+
+            const freeCreditsResult =
+              await grantFreeCreditsFromSubscriptionStateChange({
+                auth,
+                stripeSubscription,
+              });
+
+            if (freeCreditsResult.isErr()) {
+              logger.error(
+                {
+                  panic: true,
+                  stripeError: true,
+                  error: freeCreditsResult.error,
+                  subscriptionId: stripeSubscription.id,
+                  workspaceId: subscription.workspace.sId,
+                },
+                "[Stripe Webhook] Error granting free credits on subscription created"
+              );
+            }
+          }
+
           break;
         }
 
@@ -546,7 +632,7 @@ async function handler(
               );
 
               const freeCreditsResult =
-                await grantFreeCreditsOnSubscriptionRenewal({
+                await grantFreeCreditsFromSubscriptionStateChange({
                   auth,
                   stripeSubscription,
                 });

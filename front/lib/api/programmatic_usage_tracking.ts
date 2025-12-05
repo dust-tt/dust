@@ -8,6 +8,7 @@ import { DUST_MARKUP_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import { runOnRedis } from "@app/lib/api/redis";
 import { getWorkspacePublicAPILimits } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -35,6 +36,7 @@ export const USAGE_ORIGINS_CLASSIFICATION: Record<
   raycast: "user",
   run_agent: "user",
   slack: "user",
+  slack_workflow: "programmatic",
   teams: "user",
   transcript: "user",
   triggered_programmatic: "programmatic",
@@ -67,8 +69,6 @@ function getRedisKey(workspace: LightWorkspaceType): string {
   return `${PROGRAMMATIC_USAGE_REMAINING_CREDITS_KEY}:${workspace.id}`;
 }
 
-const USERS_HAVE_BEEN_WARNED = false;
-
 export function isProgrammaticUsage(
   auth: Authenticator,
   { userMessageOrigin }: { userMessageOrigin?: UserMessageOrigin | null } = {}
@@ -91,10 +91,7 @@ export function isProgrammaticUsage(
 
   if (
     auth.authMethod() === "api_key" ||
-    // TODO(PPUL): remove this after notifying users.
-    (USERS_HAVE_BEEN_WARNED &&
-      USAGE_ORIGINS_CLASSIFICATION[userMessageOrigin] === "programmatic") ||
-    userMessageOrigin === "triggered_programmatic"
+    USAGE_ORIGINS_CLASSIFICATION[userMessageOrigin] === "programmatic"
   ) {
     return true;
   }
@@ -131,14 +128,14 @@ export function getShouldTrackTokenUsageCostsESFilter(
 }
 
 export async function hasReachedProgrammaticUsageLimits(
-  auth: Authenticator,
-  shouldTrack: boolean = false
+  auth: Authenticator
 ): Promise<boolean> {
-  if (!isProgrammaticUsage(auth) && !shouldTrack) {
-    return false;
+  const owner = auth.getNonNullableWorkspace();
+  const featureFlags = await getFeatureFlags(owner);
+  if (featureFlags.includes("ppul")) {
+    return (await CreditResource.listActive(auth)).length === 0;
   }
 
-  const owner = auth.getNonNullableWorkspace();
   const limits = getWorkspacePublicAPILimits(owner);
   if (!limits?.enabled) {
     return false;
@@ -146,28 +143,28 @@ export async function hasReachedProgrammaticUsageLimits(
 
   return runOnRedis({ origin: REDIS_ORIGIN }, async (redis) => {
     const key = getRedisKey(owner);
-    const remainingCredits = await redis.get(key);
+    const remainingCreditsUsd = await redis.get(key);
 
     // If no credits are set yet, initialize with monthly limit.
-    if (remainingCredits === null) {
+    if (remainingCreditsUsd === null) {
       await initializeCredits(redis, owner, limits.monthlyLimit);
       return false;
     }
 
-    return parseFloat(remainingCredits) <= 0;
+    return parseFloat(remainingCreditsUsd) <= 0;
   });
 }
 
 // TODO(PPUL): remove this method once we switch to new credits tracking system.
 const TEMP_FAKE_LIMITS: PublicAPILimitsType & { enabled: true } = {
-  monthlyLimit: 1_000_000, // 10_000 USD
+  monthlyLimit: 10_000, // 10_000 USD
   markup: 30,
   billingDay: 1,
   enabled: true,
 };
 async function decreaseProgrammaticCredits(
   workspace: LightWorkspaceType,
-  amount: number
+  { amountMicroUsd }: { amountMicroUsd: number }
 ): Promise<void> {
   const rawLimits = getWorkspacePublicAPILimits(workspace);
 
@@ -176,14 +173,14 @@ async function decreaseProgrammaticCredits(
     : TEMP_FAKE_LIMITS;
 
   // Apply markup.
-  const amountWithMarkup = amount * (1 + limits.markup / 100);
+  const amountMicroUsdWithMarkup = amountMicroUsd * (1 + limits.markup / 100);
 
   await runOnRedis({ origin: REDIS_ORIGIN }, async (redis) => {
     const key = getRedisKey(workspace);
-    const remainingCredits = await redis.get(key);
+    const remainingCreditsUsd = await redis.get(key);
 
     // If no credits are set yet, initialize with monthly limit.
-    if (remainingCredits === null) {
+    if (remainingCreditsUsd === null) {
       await initializeCredits(redis, workspace, limits.monthlyLimit);
 
       return;
@@ -193,9 +190,11 @@ async function decreaseProgrammaticCredits(
     // remaining, we allow the negative balance to be recorded. This ensures we have an accurate
     // record of over-usage, while hasReachedPublicAPILimits will block subsequent calls when
     // detecting negative credits.
-    const newCredits = parseFloat(remainingCredits) - amountWithMarkup;
+    const newCreditsUsd =
+      parseFloat(remainingCreditsUsd) - amountMicroUsdWithMarkup / 1_000_000;
+
     // Preserve the TTL of the key.
-    await redis.set(key, newCredits.toString(), { KEEPTTL: true });
+    await redis.set(key, newCreditsUsd.toString(), { KEEPTTL: true });
   });
 }
 
@@ -204,36 +203,38 @@ async function decreaseProgrammaticCredits(
 // for tracking but do not take any other action.
 export async function decreaseProgrammaticCreditsV2(
   auth: Authenticator,
-  { amountCents }: { amountCents: number }
+  { amountMicroUsd }: { amountMicroUsd: number }
 ): Promise<void> {
   const activeCredits = await CreditResource.listActive(auth);
 
   const sortedCredits = [...activeCredits].sort(compareCreditsForConsumption);
 
-  let remainingAmount = amountCents;
-  while (remainingAmount > 0) {
+  let remainingAmountMicroUsd = amountMicroUsd;
+  while (remainingAmountMicroUsd > 0) {
     const credit = sortedCredits.shift();
     if (!credit) {
       // A simple warn suffices; tokens have already been consumed.
       logger.warn(
         {
-          initialAmount: amountCents,
-          remainingAmount,
+          initialAmountMicroUsd: amountMicroUsd,
+          remainingAmountMicroUsd,
           workspaceId: auth.getNonNullableWorkspace().sId,
         },
         "No more credits available for this message cost."
       );
       break;
     }
-    const amountToConsume = Math.min(
-      remainingAmount,
-      credit.initialAmountCents - credit.consumedAmountCents
+    const amountToConsumeInMicroUsd = Math.min(
+      remainingAmountMicroUsd,
+      credit.initialAmountMicroUsd - credit.consumedAmountMicroUsd
     );
-    const result = await credit.consume(amountToConsume);
+    const result = await credit.consume({
+      amountInMicroUsd: amountToConsumeInMicroUsd,
+    });
     if (result.isErr()) {
       logger.error(
         {
-          amount: amountToConsume,
+          amountToConsumeInMicroUsd: amountToConsumeInMicroUsd,
           workspaceId: auth.getNonNullableWorkspace().sId,
           // For eng on-call: this error should be investigated since it likely
           // reveals an underlying issue in our billing / credit logic. The only
@@ -248,7 +249,7 @@ export async function decreaseProgrammaticCreditsV2(
       );
       break;
     }
-    remainingAmount -= amountToConsume;
+    remainingAmountMicroUsd -= amountToConsumeInMicroUsd;
   }
 }
 
@@ -256,7 +257,7 @@ export async function decreaseProgrammaticCreditsV2(
 async function initializeCredits(
   redis: RedisClientType,
   workspace: LightWorkspaceType,
-  monthlyLimit: number
+  monthlyLimitUsd: number
 ): Promise<void> {
   const key = getRedisKey(workspace);
   const rawLimits = getWorkspacePublicAPILimits(workspace);
@@ -279,7 +280,7 @@ async function initializeCredits(
   const secondsUntilEnd = periodEnd.diff(now, "seconds");
 
   // Set initial credits with expiry.
-  await redis.set(key, monthlyLimit.toString());
+  await redis.set(key, monthlyLimitUsd.toString());
   await redis.expire(key, secondsUntilEnd);
 }
 
@@ -312,20 +313,19 @@ export async function trackProgrammaticCost(
   }
 
   // Compute the price for all the runs.
-  // TODO(2025-12-01 PPUL): microdollars here, floats are not safe for accumulating like this.
-  const runsCostUsd = runUsages
+  const runsCostMicroUsd = runUsages
     .flat()
-    .reduce((acc, usage) => acc + usage.costUsd, 0);
-  const runsCostUsdRounded = runsCostUsd > 0 ? Math.ceil(runsCostUsd) : 0;
+    .reduce((acc, usage) => acc + usage.costMicroUsd, 0);
 
-  await decreaseProgrammaticCredits(
-    auth.getNonNullableWorkspace(),
-    runsCostUsdRounded
+  await decreaseProgrammaticCredits(auth.getNonNullableWorkspace(), {
+    amountMicroUsd: runsCostMicroUsd,
+  });
+
+  const costWithMarkupMicroUsd = Math.ceil(
+    runsCostMicroUsd * (1 + DUST_MARKUP_PERCENT / 100)
   );
-  // Percentage not divided by 100 because of the cents->dollars conversion at the same time.
-  const costWithMarkupCents = runsCostUsdRounded * (100 + DUST_MARKUP_PERCENT);
   await decreaseProgrammaticCreditsV2(auth, {
-    amountCents: costWithMarkupCents,
+    amountMicroUsd: costWithMarkupMicroUsd,
   });
 }
 

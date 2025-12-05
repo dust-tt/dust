@@ -19,7 +19,7 @@ export interface EditorSuggestions {
   isLoading: boolean;
 }
 
-const SUGGESTION_DISPLAY_LIMIT = 7;
+const SUGGESTION_DISPLAY_LIMIT = 20;
 
 const SUGGESTION_PRIORITY: Record<string, number> = {
   [GLOBAL_AGENTS_SID.DUST]: 1,

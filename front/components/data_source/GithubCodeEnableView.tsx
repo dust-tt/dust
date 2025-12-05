@@ -2,6 +2,7 @@ import { ContextItem, GithubLogo, SliderToggle } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
 import type { APIError, DataSourceType, WorkspaceType } from "@app/types";
 
@@ -28,7 +29,7 @@ export function GithubCodeEnableView({
 
   const handleSetCodeSyncEnabled = async (codeSyncEnabled: boolean) => {
     setLoading(true);
-    const res = await fetch(
+    const res = await clientFetch(
       `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/codeSyncEnabled`,
       {
         headers: {

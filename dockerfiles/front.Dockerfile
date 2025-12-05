@@ -43,6 +43,8 @@ ARG NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY
 ARG NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER
 ARG NEXT_PUBLIC_NOVU_API_URL
 ARG NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL
+ARG CONTENTFUL_SPACE_ID
+ARG CONTENTFUL_ACCESS_TOKEN
 
 # Set environment variables for Next.js build
 ENV NEXT_PUBLIC_COMMIT_HASH=$COMMIT_HASH
@@ -57,6 +59,8 @@ ENV NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY=$NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY
 ENV NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER=$NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER
 ENV NEXT_PUBLIC_NOVU_API_URL=$NEXT_PUBLIC_NOVU_API_URL
 ENV NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL=$NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL
+ENV CONTENTFUL_SPACE_ID=$CONTENTFUL_SPACE_ID
+ENV CONTENTFUL_ACCESS_TOKEN=$CONTENTFUL_ACCESS_TOKEN
 
 # Build Next.js application and sitemap (front-nextjs only)
 # fake database URIs are needed because Sequelize will throw if the `url` parameter
@@ -115,10 +119,10 @@ COPY --from=base-deps /app/scripts ./scripts
 # Copy built SDK from base dependencies (maintain absolute path for symlink resolution)
 COPY --from=base-deps /sdks /sdks
 
-# Re-declare build arg needed at runtime
+# Re-declare build args needed at runtime
 ARG NEXT_PUBLIC_DUST_CLIENT_FACING_URL
 
-# Set as environment variable for runtime
+# Set as environment variables for runtime
 ENV NEXT_PUBLIC_DUST_CLIENT_FACING_URL=$NEXT_PUBLIC_DUST_CLIENT_FACING_URL
 
 # Preload jemalloc for all processes:

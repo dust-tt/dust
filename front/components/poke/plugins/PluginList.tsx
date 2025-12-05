@@ -1,6 +1,7 @@
-import { Input, Tooltip } from "@dust-tt/sparkle";
+import { Button, cn, Input, Tooltip } from "@dust-tt/sparkle";
 import React, { useMemo, useState } from "react";
 
+import { PluginRunsList } from "@app/components/poke/plugins/PluginRunsList";
 import { RunPluginDialog } from "@app/components/poke/plugins/RunPluginDialog";
 import {
   PokeCard,
@@ -47,6 +48,7 @@ export function PluginList({ pluginResourceTarget }: PluginListProps) {
     null
   );
   const [searchQuery, setSearchQuery] = useState("");
+  const [showRuns, setShowRuns] = useState(false);
 
   const handlePluginSelect = (plugin: PluginListItem) => {
     setSelectedPlugin(plugin);
@@ -73,50 +75,69 @@ export function PluginList({ pluginResourceTarget }: PluginListProps) {
   return (
     <div className="border-material-200 flex min-h-48 flex-col rounded-lg border bg-muted-background dark:bg-muted-background-night">
       <div className="flex items-center justify-between gap-3 rounded-t-lg bg-primary-300 p-4 dark:bg-primary-300-night">
-        <h2 className="text-md font-bold">Plugins</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-md font-bold">Plugins</h2>
+        </div>
         <div className="max-w-xs flex-1">
-          <Input
-            placeholder="Search plugins..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white dark:bg-gray-800"
-          />
+          <div className="flex flex-row gap-2">
+            <Input
+              placeholder="Search plugins..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className={cn(
+                "w-full bg-white dark:bg-gray-800",
+                showRuns && "invisible"
+              )}
+            />
+            <Button
+              label={showRuns ? "Show Available" : "Show History"}
+              variant={showRuns ? "primary" : "outline"}
+              size="sm"
+              onClick={() => setShowRuns(!showRuns)}
+            />
+          </div>
         </div>
       </div>
 
-      <div className="h-full">
-        {filteredPlugins.length === 0 ? (
-          <div className="flex h-full items-center justify-center text-gray-500">
-            {searchQuery.trim() ? (
-              <p>No plugins match your search.</p>
+      <div className="flex-1">
+        {!showRuns ? (
+          <div className="h-full">
+            {filteredPlugins.length === 0 ? (
+              <div className="flex h-full items-center justify-center text-gray-500">
+                {searchQuery.trim() ? (
+                  <p>No plugins match your search.</p>
+                ) : (
+                  <p>No plugins available.</p>
+                )}
+              </div>
             ) : (
-              <p>No plugins available.</p>
+              <div
+                className="grid w-full gap-3 p-4"
+                // 11rem is the fixed width of the card.
+                style={{
+                  gridTemplateColumns: "repeat(auto-fill, minmax(11rem, 1fr))",
+                }}
+              >
+                {filteredPlugins
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((plugin) => (
+                    <Tooltip
+                      key={plugin.id}
+                      trigger={
+                        <PluginCard
+                          key={plugin.id}
+                          plugin={plugin}
+                          onClick={() => handlePluginSelect(plugin)}
+                        />
+                      }
+                      label={plugin.description}
+                    />
+                  ))}
+              </div>
             )}
           </div>
         ) : (
-          <div
-            className="grid w-full gap-3 p-4"
-            // 11rem is the fixed width of the card.
-            style={{
-              gridTemplateColumns: "repeat(auto-fill, minmax(11rem, 1fr))",
-            }}
-          >
-            {filteredPlugins
-              .sort((a, b) => a.name.localeCompare(b.name))
-              .map((plugin) => (
-                <Tooltip
-                  key={plugin.id}
-                  trigger={
-                    <PluginCard
-                      key={plugin.id}
-                      plugin={plugin}
-                      onClick={() => handlePluginSelect(plugin)}
-                    />
-                  }
-                  label={plugin.description}
-                />
-              ))}
-          </div>
+          <PluginRunsList pluginResourceTarget={pluginResourceTarget} />
         )}
       </div>
       {selectedPlugin && (

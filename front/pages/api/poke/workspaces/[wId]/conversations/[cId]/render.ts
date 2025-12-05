@@ -12,7 +12,7 @@ import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { getSupportedModelConfig } from "@app/lib/assistant";
-import { Authenticator } from "@app/lib/auth";
+import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { tokenCountForTexts } from "@app/lib/tokenization";
@@ -228,7 +228,11 @@ async function handler(
           })
         : null;
 
-      const prompt = await constructPromptMultiActions(auth, {
+      const featureFlags = await getFeatureFlags(
+        auth.getNonNullableWorkspace()
+      );
+
+      const prompt = constructPromptMultiActions(auth, {
         userMessage,
         agentConfiguration,
         fallbackPrompt,
@@ -238,6 +242,7 @@ async function handler(
         agentsList,
         conversationId: conversation.sId,
         serverToolsAndInstructions,
+        featureFlags,
       });
 
       // Build tool specifications to estimate tokens for tool definitions (names + schemas only).

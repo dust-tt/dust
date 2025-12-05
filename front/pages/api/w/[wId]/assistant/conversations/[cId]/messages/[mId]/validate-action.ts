@@ -72,7 +72,7 @@ async function handler(
 
   const { actionId, approved } = parseResult.data;
 
-  const result = await validateAction(auth, conversation.toJSON(), {
+  const result = await validateAction(auth, conversation, {
     actionId,
     approvalState: approved,
     messageId: mId,

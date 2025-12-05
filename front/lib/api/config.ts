@@ -285,10 +285,19 @@ const config = {
   getProfilerSecret: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("DEBUG_PROFILER_SECRET");
   },
+  getContentfulSpaceId: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("CONTENTFUL_SPACE_ID");
+  },
+  getContentfulAccessToken: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("CONTENTFUL_ACCESS_TOKEN");
+  },
   getContentfulPreviewSecret: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable(
       "CONTENTFUL_PREVIEW_SECRET"
     );
+  },
+  getContentfulPreviewToken: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("CONTENTFUL_PREVIEW_TOKEN");
   },
   // Untrusted egress proxy.
   getUntrustedEgressProxyHost: (): string | undefined => {

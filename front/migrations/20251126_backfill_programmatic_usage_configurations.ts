@@ -1,6 +1,6 @@
 import { getWorkspacePublicAPILimits } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
-import { isEntreprisePlan } from "@app/lib/plans/plan_codes";
+import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import {
   getStripeSubscription,
   isEnterpriseSubscription,
@@ -83,8 +83,8 @@ async function backfillWorkspace(
   }
 
   const defaultDiscountPercent = calculateDefaultDiscountPercent(markup);
-  const paygCapCents = Math.round(monthlyLimit * 100);
-  const freeCreditCents = undefined; // Setting free credit to 0 cents as default
+  const paygCapMicroUsd = Math.round(monthlyLimit * 1_000_000);
+  const freeCreditMicroUsd = undefined; // Setting free credit to 0 micro USD as default
 
   if (defaultDiscountPercent < 0 || defaultDiscountPercent > 100) {
     workspaceLogger.error(
@@ -99,7 +99,7 @@ async function backfillWorkspace(
       markup,
       monthlyLimit,
       defaultDiscountPercent,
-      paygCapCents,
+      paygCapMicroUsd,
       execute,
     },
     execute
@@ -109,9 +109,9 @@ async function backfillWorkspace(
 
   if (execute) {
     const result = await ProgrammaticUsageConfigurationResource.makeNew(auth, {
-      freeCreditCents,
+      freeCreditMicroUsd,
       defaultDiscountPercent,
-      paygCapCents,
+      paygCapMicroUsd,
     });
 
     if (result.isErr()) {

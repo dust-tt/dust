@@ -105,7 +105,7 @@ import { isUserMessageType } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
-  // eslint-disable-next-line dust/enforce-client-types-in-public-api
+
   res: NextApiResponse<
     WithAPIErrorResponse<
       GetConversationResponseType | PatchConversationResponseBody
@@ -183,6 +183,4 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthentication(handler, {
-  requiredScopes: { GET: "read:conversation", PATCH: "update:conversation" },
-});
+export default withPublicAPIAuthentication(handler);

@@ -48,16 +48,22 @@ import { AdvancedNotionManagement } from "@app/components/spaces/AdvancedNotionM
 import { ConnectorDataUpdatedModal } from "@app/components/spaces/ConnectorDataUpdatedModal";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import {
-  CONNECTOR_CONFIGURATIONS,
+  CONNECTOR_UI_CONFIGURATIONS,
   getConnectorPermissionsConfigurableBlocked,
   isConnectorPermissionsEditable,
-} from "@app/lib/connector_providers";
+} from "@app/lib/connector_providers_ui";
 import {
   getDisplayNameForDataSource,
   isRemoteDatabase,
 } from "@app/lib/data_sources";
-import { useConnectorPermissions } from "@app/lib/swr/connectors";
+import { clientFetch } from "@app/lib/egress/client";
+import {
+  useConnectorConfig,
+  useConnectorPermissions,
+} from "@app/lib/swr/connectors";
+import { useSlackIsLegacy } from "@app/lib/swr/oauth";
 import { useSpaceDataSourceViews, useSystemSpace } from "@app/lib/swr/spaces";
 import { useUser } from "@app/lib/swr/user";
 import {
@@ -116,6 +122,7 @@ export async function handleUpdatePermissions(
 
   const updateRes = await updateConnectorConnectionId(
     connectionRes.value.connectionId,
+    extraConfig,
     provider,
     dataSource,
     owner
@@ -131,7 +138,7 @@ export async function handleUpdatePermissions(
 
   // Slack connectors will rely on customer credentials, we need to set a reference to it on the connector to be able to properly uninstall the app on connector deletion
   if (connector.type === "slack" && connectionRes.value.relatedCredentialId) {
-    const credentialRes = await fetch(
+    const credentialRes = await clientFetch(
       `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/privateIntegrationCredentialId`,
       {
         method: "POST",
@@ -164,11 +171,12 @@ export async function handleUpdatePermissions(
 
 export async function updateConnectorConnectionId(
   newConnectionId: string,
+  newExtraConfig: Record<string, string>,
   provider: ConnectorProvider,
   dataSource: DataSourceType,
   owner: LightWorkspaceType
 ) {
-  const res = await fetch(
+  const res = await clientFetch(
     `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/update`,
     {
       method: "POST",
@@ -177,6 +185,7 @@ export async function updateConnectorConnectionId(
       },
       body: JSON.stringify({
         connectionId: newConnectionId,
+        extraConfig: newExtraConfig,
       } satisfies UpdateConnectorRequestBody),
     }
   );
@@ -191,7 +200,7 @@ export async function updateConnectorConnectionId(
   if (error.type === "connector_oauth_target_mismatch") {
     return {
       success: false,
-      error: CONNECTOR_CONFIGURATIONS[provider].mismatchError,
+      error: CONNECTOR_UI_CONFIGURATIONS[provider].mismatchError,
     };
   }
   if (error.type === "connector_oauth_user_missing_rights") {
@@ -204,7 +213,7 @@ export async function updateConnectorConnectionId(
 
   return {
     success: false,
-    error: `Failed to update the permissions of the Data Source: (contact support@dust.tt for assistance)`,
+    error: `Failed to update the permissions of the Data Source. Please retry to reconnect, or contact support@dust.tt for assistance if the problem persists.`,
   };
 }
 
@@ -261,12 +270,21 @@ function UpdateConnectionOAuthModal({
 
   const { connectorProvider, editedByUser } = dataSource;
 
-  useEffect(() => {
-    if (isOpen) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setExtraConfig({});
-    }
-  }, [isOpen]);
+  const isSlack = connectorProvider === "slack";
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+
+  const { configValue: slackCredentialId } = useConnectorConfig({
+    configKey: "privateIntegrationCredentialId",
+    dataSource,
+    owner,
+    disabled: !isSlack,
+  });
+
+  const { isLegacySlackApp } = useSlackIsLegacy({
+    workspaceId: owner.sId,
+    credentialId: slackCredentialId,
+    disabled: !isSlack || !slackCredentialId,
+  });
 
   if (!connectorProvider || !user) {
     return null;
@@ -274,18 +292,21 @@ function UpdateConnectionOAuthModal({
 
   const connectorConfiguration =
     connectorProvider && CONNECTOR_CONFIGURATIONS[connectorProvider];
+  const connectorUIConfiguration =
+    connectorProvider && CONNECTOR_UI_CONFIGURATIONS[connectorProvider];
 
   const isDataSourceOwner = editedByUser?.userId === user.sId;
 
   const permissionsConfigurable =
     getConnectorPermissionsConfigurableBlocked(connectorProvider);
+
   return (
     <DataSourceManagementModal isOpen={isOpen} onClose={onClose}>
       <>
         <div className="mt-4 flex flex-col">
           <div className="flex items-center gap-2">
             <Icon
-              visual={connectorConfiguration.getLogoComponent(isDark)}
+              visual={connectorUIConfiguration.getLogoComponent(isDark)}
               size="md"
             />
             <Page.SectionHeader
@@ -303,11 +324,11 @@ function UpdateConnectionOAuthModal({
                 Agents using them.
               </div>
 
-              {connectorConfiguration.guideLink && (
+              {connectorUIConfiguration.guideLink && (
                 <div className="copy-sm pl-4 text-info-800">
                   Read our{" "}
                   <a
-                    href={connectorConfiguration.guideLink}
+                    href={connectorUIConfiguration.guideLink}
                     className="text-highlight-600"
                     target="_blank"
                   >
@@ -355,11 +376,11 @@ function UpdateConnectionOAuthModal({
             >
               Editing permission rights with a different account will likely
               break the existing data structure in Dust and Agents using them.
-              {connectorConfiguration.guideLink && (
+              {connectorUIConfiguration.guideLink && (
                 <div>
                   Read our{" "}
                   <Hoverable
-                    href={connectorConfiguration.guideLink}
+                    href={connectorUIConfiguration.guideLink}
                     variant="primary"
                     target="_blank"
                   >
@@ -368,14 +389,19 @@ function UpdateConnectionOAuthModal({
                   .
                 </div>
               )}
+              {
+                isLegacySlackApp && "" // TODO(slackstorm) fabien: add message about legacy slack app
+              }
             </ContentMessage>
           </div>
         )}
-        {connectorConfiguration.oauthExtraConfigComponent &&
-          // TODO(slackstorm) fabien: add extra config for Slack
-          // We must display the extra config without the possibility to edit the client id to not break the connector.
-          connectorConfiguration.connectorProvider !== "slack" && (
-            <connectorConfiguration.oauthExtraConfigComponent
+        {connectorUIConfiguration.oauthExtraConfigComponent &&
+          // TODO(slackstorm) fabien: remove flag and rely on isLegacySlackApp
+          !(
+            isSlack &&
+            !featureFlags.includes("self_created_slack_app_connector_rollout")
+          ) && (
+            <connectorUIConfiguration.oauthExtraConfigComponent
               extraConfig={extraConfig}
               setExtraConfig={setExtraConfig}
               setIsExtraConfigValid={setIsExtraConfigValid}
@@ -468,10 +494,12 @@ function DataSourceDeletionModal({
 
   const isDataSourceOwner = editedByUser?.userId === user.sId;
   const connectorConfiguration = CONNECTOR_CONFIGURATIONS[connectorProvider];
+  const connectorUIConfiguration =
+    CONNECTOR_UI_CONFIGURATIONS[connectorProvider];
 
   const handleDelete = async () => {
     setIsLoading(true);
-    const res = await fetch(
+    const res = await clientFetch(
       `/api/w/${owner.sId}/spaces/${systemSpace.sId}/data_sources/${dataSource.sId}`,
       {
         method: "DELETE",
@@ -502,7 +530,7 @@ function DataSourceDeletionModal({
         <div className="mt-4 flex flex-col">
           <div className="flex items-center gap-2">
             <Icon
-              visual={connectorConfiguration.getLogoComponent(isDark)}
+              visual={connectorUIConfiguration.getLogoComponent(isDark)}
               size="md"
             />
             <Page.SectionHeader
@@ -616,12 +644,12 @@ export function ConnectorPermissionsModal({
     CONNECTOR_CONFIGURATIONS[dataSource.connectorProvider].isDeletable;
 
   const selectedPermission: ConnectorPermission = dataSource.connectorProvider
-    ? CONNECTOR_CONFIGURATIONS[dataSource.connectorProvider].permissions
+    ? CONNECTOR_UI_CONFIGURATIONS[dataSource.connectorProvider].permissions
         .selected
     : "none";
 
   const unselectedPermission: ConnectorPermission = dataSource.connectorProvider
-    ? CONNECTOR_CONFIGURATIONS[dataSource.connectorProvider].permissions
+    ? CONNECTOR_UI_CONFIGURATIONS[dataSource.connectorProvider].permissions
         .unselected
     : "none";
 
@@ -723,7 +751,7 @@ export function ConnectorPermissionsModal({
     setSaving(true);
     try {
       if (Object.keys(selectedNodes).length) {
-        const r = await fetch(
+        const r = await clientFetch(
           `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/permissions`,
           {
             method: "POST",
@@ -806,8 +834,9 @@ export function ConnectorPermissionsModal({
   }, [connector.type, isOpen]);
 
   const connectorConfiguration = CONNECTOR_CONFIGURATIONS[connector.type];
+  const connectorUIConfiguration = CONNECTOR_UI_CONFIGURATIONS[connector.type];
 
-  const OptionsComponent = connectorConfiguration.optionsComponent;
+  const OptionsComponent = connectorUIConfiguration.optionsComponent;
 
   const permissionsConfigurable = getConnectorPermissionsConfigurableBlocked(
     connector.type
@@ -907,16 +936,16 @@ export function ConnectorPermissionsModal({
                       </div>
                     </>
                   )}
-                  {!connectorConfiguration.isResourceSelectionDisabled && (
+                  {!connectorUIConfiguration.isResourceSelectionDisabled && (
                     <>
                       <div className="flex items-center justify-between p-1">
                         <div className="heading-xl">
-                          {connectorConfiguration.selectLabel}
+                          {connectorUIConfiguration.selectLabel}
                         </div>
                       </div>
                       <ContentNodeTree
                         isTitleFilterEnabled={
-                          connectorConfiguration.isTitleFilterEnabled &&
+                          connectorUIConfiguration.isTitleFilterEnabled &&
                           canUpdatePermissions
                         }
                         isRoundedBackground={true}
@@ -929,8 +958,8 @@ export function ConnectorPermissionsModal({
                             ? setSelectedNodes
                             : undefined
                         }
-                        showExpand={connectorConfiguration?.isNested}
-                        emptyComponent={connectorConfiguration.emptyNodeLabel}
+                        showExpand={connectorUIConfiguration?.isNested}
+                        emptyComponent={connectorUIConfiguration.emptyNodeLabel}
                       />
                     </>
                   )}
@@ -944,7 +973,7 @@ export function ConnectorPermissionsModal({
                   )}
                 </div>
               </SheetContainer>
-              {!connectorConfiguration.isResourceSelectionDisabled && (
+              {!connectorUIConfiguration.isResourceSelectionDisabled && (
                 <SheetFooter
                   leftButtonProps={{
                     label: "Cancel",

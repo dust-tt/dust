@@ -1,6 +1,5 @@
 import {
   Button,
-  ButtonGroup,
   Checkbox,
   HandThumbDownIcon,
   HandThumbUpIcon,
@@ -13,7 +12,6 @@ import {
 } from "@dust-tt/sparkle";
 import React, { useCallback, useEffect, useRef } from "react";
 
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { WorkspaceType } from "@app/types";
 
 export type ThumbReaction = "up" | "down";
@@ -41,11 +39,7 @@ export function FeedbackSelector({
   onSubmitThumb,
   isSubmittingThumb,
   getPopoverInfo,
-  owner,
 }: FeedbackSelectorProps) {
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-  const userMentionsEnabled = hasFeature("mentions_v2");
-
   const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [localFeedbackContent, setLocalFeedbackContent] = React.useState<
@@ -139,43 +133,26 @@ export function FeedbackSelector({
     lastSelectedThumb,
   ]);
 
-  const ThumbUpButton = (
-    <Button
-      tooltip="I found this helpful"
-      variant={feedback?.thumb === "up" ? "primary" : "ghost-secondary"}
-      size="xs"
-      disabled={isSubmittingThumb}
-      onClick={handleThumbUp}
-      icon={HandThumbUpIcon}
-      // We enforce written feedback for thumbs down.
-      // -> Not saving the reaction until then.
-      className={feedback?.thumb === "up" ? "" : "text-muted-foreground"}
-    />
-  );
-
-  const ThumbDownButton = (
-    <Button
-      tooltip="Report an issue with this answer"
-      variant={feedback?.thumb === "down" ? "primary" : "ghost-secondary"}
-      size="xs"
-      disabled={isSubmittingThumb}
-      onClick={handleThumbDown}
-      icon={HandThumbDownIcon}
-      // We enforce written feedback for thumbs down.
-      // -> Not saving the reaction until then.
-      className={feedback?.thumb === "down" ? "" : "text-muted-foreground"}
-    />
-  );
-
-  const ThumbButtons = userMentionsEnabled ? (
-    <ButtonGroup variant="outline">
-      {ThumbUpButton}
-      {ThumbDownButton}
-    </ButtonGroup>
-  ) : (
+  const ThumbButtons = (
     <div className="flex items-center gap-0.5">
-      {ThumbUpButton}
-      {ThumbDownButton}
+      <Button
+        tooltip="I found this helpful"
+        variant={feedback?.thumb === "up" ? "primary" : "ghost-secondary"}
+        size="xs"
+        disabled={isSubmittingThumb}
+        onClick={handleThumbUp}
+        icon={HandThumbUpIcon}
+        className={feedback?.thumb === "up" ? "" : "text-muted-foreground"}
+      />
+      <Button
+        tooltip="Report an issue with this answer"
+        variant={feedback?.thumb === "down" ? "primary" : "ghost-secondary"}
+        size="xs"
+        disabled={isSubmittingThumb}
+        onClick={handleThumbDown}
+        icon={HandThumbDownIcon}
+        className={feedback?.thumb === "down" ? "" : "text-muted-foreground"}
+      />
     </div>
   );
 

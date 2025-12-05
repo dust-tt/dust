@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import PokeLayout from "@app/components/poke/PokeLayout";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
+import { clientFetch } from "@app/lib/egress/client";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
@@ -99,7 +100,7 @@ export default function DataSourceView({
       searchParams.append("top_k", "10");
       searchParams.append("full_text", "false");
 
-      const searchRes = await fetch(
+      const searchRes = await clientFetch(
         `/api/poke/workspaces/${owner.sId}/data_sources/${dataSource.sId}/search?` +
           searchParams.toString(),
         {

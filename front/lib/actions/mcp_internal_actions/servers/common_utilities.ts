@@ -1,21 +1,30 @@
+import { DustAPI } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { compile } from "mathjs";
 import { z } from "zod";
 
+import {
+  GET_MENTION_MARKDOWN_TOOL_NAME,
+  SEARCH_AVAILABLE_USERS_TOOL_NAME,
+} from "@app/lib/actions/constants";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { Err, normalizeError, Ok } from "@app/types";
+import { getFeatureFlags, prodAPICredentialsForOwner } from "@app/lib/auth";
+import { serializeMention } from "@app/lib/mentions/format";
+import logger from "@app/logger/logger";
+import { Err, getHeaderFromUserEmail, normalizeError, Ok } from "@app/types";
 
 const RANDOM_INTEGER_DEFAULT_MAX = 1_000_000;
 const MAX_WAIT_DURATION_MS = 3 * 60 * 1_000;
 
-function createServer(
+async function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer {
+): Promise<McpServer> {
   const server = makeInternalMCPServer("common_utilities");
 
   server.tool(
@@ -189,6 +198,107 @@ function createServer(
       }
     )
   );
+
+  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+  if (featureFlags.includes("mentions_v2")) {
+    // Add tools for searching users or agents to mention in a message.
+    server.tool(
+      SEARCH_AVAILABLE_USERS_TOOL_NAME,
+      "Search for users that are available to the conversation.",
+      {
+        searchTerm: z
+          .string()
+          .describe(
+            "A single search term to find users. Returns all the users that contain the search term in their name or description. Use an empty string to return all items."
+          ),
+      },
+      withToolLogging(
+        auth,
+        {
+          toolNameForMonitoring: SEARCH_AVAILABLE_USERS_TOOL_NAME,
+          agentLoopContext,
+        },
+        async ({ searchTerm }) => {
+          const user = auth.user();
+          const prodCredentials = await prodAPICredentialsForOwner(
+            auth.getNonNullableWorkspace()
+          );
+          const api = new DustAPI(
+            config.getDustAPIConfig(),
+            {
+              ...prodCredentials,
+              extraHeaders: {
+                // We use a system API key to override the user here (not groups and role) so that the
+                // sub-agent can access the same spaces as the user but also as the sub-agent may rely
+                // on personal actions that have to be operated in the name of the user initiating the
+                // interaction.
+                ...getHeaderFromUserEmail(user?.email),
+              },
+            },
+            logger
+          );
+
+          const r = await api.getMentionsSuggestions({
+            query: searchTerm,
+            select: ["users"],
+            conversationId: agentLoopContext?.runContext?.conversation?.sId,
+          });
+
+          if (r.isErr()) {
+            return new Err(
+              new MCPError(
+                `Error getting mentions suggestions: ${r.error.message}`,
+                {
+                  cause: r.error,
+                }
+              )
+            );
+          }
+
+          const suggestions = r.value;
+
+          return new Ok([
+            {
+              type: "text",
+              text: JSON.stringify(suggestions),
+            },
+          ]);
+        }
+      )
+    );
+
+    server.tool(
+      GET_MENTION_MARKDOWN_TOOL_NAME,
+      "Get the markdown directive to use to mention a user in a message.",
+      {
+        mention: z
+          .object({
+            id: z.string(),
+            label: z.string(),
+          })
+          .describe("A mention to get the markdown directive for."),
+      },
+      withToolLogging(
+        auth,
+        {
+          toolNameForMonitoring: GET_MENTION_MARKDOWN_TOOL_NAME,
+          agentLoopContext,
+        },
+        async ({ mention }) => {
+          return new Ok([
+            {
+              type: "text",
+              text: serializeMention({
+                name: mention.label,
+                sId: mention.id,
+                type: "user",
+              }),
+            },
+          ]);
+        }
+      )
+    );
+  }
 
   return server;
 }

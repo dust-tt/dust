@@ -335,6 +335,7 @@ export const CREDENTIALS_PROVIDERS = [
   "bigquery",
   "salesforce",
   "notion",
+  "slack",
   // LABS
   "modjo",
 ] as const;

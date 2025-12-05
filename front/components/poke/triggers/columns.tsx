@@ -2,6 +2,7 @@ import { IconButton, LinkWrapper, TrashIcon } from "@dust-tt/sparkle";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 
+import { clientFetch } from "@app/lib/egress/client";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { TriggerWithProviderType } from "@app/pages/api/poke/workspaces/[wId]/triggers";
 import type {
@@ -199,7 +200,7 @@ async function deleteTrigger(
   }
 
   try {
-    const r = await fetch(
+    const r = await clientFetch(
       `/api/poke/workspaces/${owner.sId}/triggers?tId=${trigger.sId}`,
       {
         method: "DELETE",

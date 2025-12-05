@@ -13,7 +13,6 @@ import type { UserTypeWithWorkspaces, WithAPIErrorResponse } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
-  // eslint-disable-next-line dust/enforce-client-types-in-public-api
   res: NextApiResponse<WithAPIErrorResponse<MeResponseType>>,
   user: UserTypeWithWorkspaces
 ): Promise<void> {
@@ -32,6 +31,4 @@ async function handler(
   }
 }
 
-export default withTokenAuthentication(handler, {
-  requiredScopes: { GET: "read:user_profile" },
-});
+export default withTokenAuthentication(handler);

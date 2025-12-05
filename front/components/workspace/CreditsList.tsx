@@ -79,15 +79,15 @@ function getTableRows(credits: CreditDisplayData[]): RowData[] {
     type: credit.type,
     initialAmount: getPriceAsString({
       currency: "usd",
-      priceInCents: credit.initialAmount,
+      priceInMicroUsd: credit.initialAmountMicroUsd,
     }),
     consumedAmount: getPriceAsString({
       currency: "usd",
-      priceInCents: credit.consumedAmount,
+      priceInMicroUsd: credit.consumedAmountMicroUsd,
     }),
     remainingAmount: getPriceAsString({
       currency: "usd",
-      priceInCents: credit.remainingAmount,
+      priceInMicroUsd: credit.remainingAmountMicroUsd,
     }),
     expirationDate:
       credit.expirationDate !== null

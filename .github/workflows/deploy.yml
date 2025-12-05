@@ -160,6 +160,8 @@ jobs:
           project_id: ${{ steps.project.outputs.PROJECT_ID }}
           region: ${{ matrix.region }}
           virtuoso_license_key: ${{ secrets.VIRTUOSO_LICENSE_KEY }}
+          contentful_space_id: ${{ secrets.CONTENTFUL_SPACE_ID }}
+          contentful_access_token: ${{ secrets.CONTENTFUL_ACCESS_TOKEN }}
           workload_identity_provider: "projects/357744735673/locations/global/workloadIdentityPools/github-pool-apps/providers/github-provider-apps"
 
       - name: Notify build success

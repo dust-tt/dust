@@ -17,6 +17,7 @@ import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
+import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
 import { NewConversationMessage } from "@app/components/assistant/conversation/NewConversationMessage";
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
 import {
@@ -108,6 +109,7 @@ export function UserMessage({
   const [isEditing, setIsEditing] = useState(false);
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const userMentionsEnabled = hasFeature("mentions_v2");
+  const isAdmin = owner.role === "admin";
   const { deleteMessage, isDeleting } = useDeleteMessage({
     owner,
     conversationId,
@@ -160,6 +162,8 @@ export function UserMessage({
 
   const isDeleted = message.visibility === "deleted";
   const isCurrentUser = message.user?.sId === currentUserId;
+  const canDelete =
+    (isCurrentUser || isAdmin) && !isDeleted && userMentionsEnabled;
 
   const handleDeleteMessage = useCallback(async () => {
     if (isDeleting || isDeleted) {
@@ -167,9 +171,10 @@ export function UserMessage({
     }
 
     const confirmed = await confirm({
-      title: "Delete message",
-      message:
-        "Are you sure you want to delete this message? This action cannot be undone.",
+      title: isCurrentUser ? "Delete your message" : "Delete user message",
+      message: isCurrentUser
+        ? "Are you sure you want to delete this message? This action cannot be undone."
+        : "Are you sure you want to delete this user's message? This the message will be deleted for all participants.",
       validateLabel: "Delete",
       validateVariant: "warning",
     });
@@ -187,7 +192,15 @@ export function UserMessage({
         return m;
       });
     }
-  }, [isDeleting, isDeleted, confirm, deleteMessage, message.sId, methods]);
+  }, [
+    isDeleting,
+    isDeleted,
+    confirm,
+    deleteMessage,
+    isCurrentUser,
+    message.sId,
+    methods,
+  ]);
 
   const handleEditMessage = () => {
     setIsEditing(true);
@@ -206,11 +219,15 @@ export function UserMessage({
               },
             ]
           : []),
-        {
-          icon: TrashIcon,
-          label: "Delete message",
-          onClick: handleDeleteMessage,
-        },
+        ...(canDelete
+          ? [
+              {
+                icon: TrashIcon,
+                label: "Delete message",
+                onClick: handleDeleteMessage,
+              },
+            ]
+          : []),
       ]
     : [];
 
@@ -328,9 +345,7 @@ export function UserMessage({
           actions={actions}
         >
           {isDeleted ? (
-            <div className="italic text-muted-foreground">
-              This message has been deleted
-            </div>
+            <DeletedMessage />
           ) : (
             <Markdown
               content={message.content}

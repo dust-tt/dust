@@ -25,6 +25,8 @@ export type AgentLoopArgs = {
   agentMessageVersion: number;
   conversationId: string;
   conversationTitle: string | null;
+
+  // Note that the original user message may not be the same as the parent message as agent might mention other agents.
   userMessageId: string;
   userMessageVersion: number;
   userMessageOrigin?: UserMessageOrigin | null;

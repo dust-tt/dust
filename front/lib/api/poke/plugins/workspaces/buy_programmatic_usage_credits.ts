@@ -2,32 +2,49 @@ import { addYears, format } from "date-fns";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 
+import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { createEnterpriseCreditPurchase } from "@app/lib/credits/committed";
 import {
   getStripeSubscription,
   isEnterpriseSubscription,
 } from "@app/lib/plans/stripe";
+import { CreditResource } from "@app/lib/resources/credit_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { Err, Ok } from "@app/types";
 
-const BuyCreditPurchaseArgsSchema = z.object({
-  amountDollars: z
-    .number()
-    .positive("Amount must be greater than $0")
-    .finite("Amount must be a valid number"),
-  startDate: z.date(),
-  expirationDate: z.date(),
-  overrideDiscount: z.boolean(),
-  discountPercent: z
-    .number()
-    .min(0, "Discount must be at least 0%")
-    .max(100, "Discount must be at most 100%")
-    .finite("Discount must be a valid number"),
-  confirm: z.boolean().refine((val) => val === true, {
-    message: "Please confirm the purchase by checking the confirmation box",
-  }),
-});
+const BuyCreditPurchaseArgsSchema = z
+  .object({
+    amountDollars: z
+      .number()
+      .positive("Amount must be greater than $0")
+      .finite("Amount must be a valid number"),
+    startDate: z.coerce.date(),
+    expirationDate: z.coerce.date(),
+    isFreeCredit: z.boolean(),
+    overrideDiscount: z.boolean(),
+    discountPercent: z
+      .number()
+      .min(0, "Discount must be at least 0%")
+      .max(
+        MAX_DISCOUNT_PERCENT,
+        `Discount cannot exceed ${MAX_DISCOUNT_PERCENT}% (would result in selling below cost)`
+      )
+      .finite("Discount must be a valid number"),
+    confirm: z.boolean(),
+    confirmFreeCredit: z.boolean(),
+  })
+  .refine(
+    (data) => {
+      if (data.isFreeCredit) {
+        return data.confirmFreeCredit === true;
+      }
+      return data.confirm === true;
+    },
+    {
+      message: "Please confirm the purchase by checking the confirmation box",
+    }
+  );
 
 export const buyProgrammaticUsageCreditsPlugin = createPlugin({
   manifest: {
@@ -43,12 +60,20 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
         description:
           "Committed credits amount in USD. Note: this is different from billed amount, as it  excludes VAT, currency conversion and discounts",
       },
+      isFreeCredit: {
+        type: "boolean",
+        variant: "toggle",
+        label: "Free Credit (no invoice)",
+        description:
+          "Create a free credit instead of a committed credit. No invoice will be sent.",
+      },
       overrideDiscount: {
         type: "boolean",
         variant: "toggle",
         label: "Override Default Discount",
         async: true,
         asyncDescription: true,
+        dependsOn: { field: "isFreeCredit", value: false },
       },
       discountPercent: {
         type: "number",
@@ -74,6 +99,14 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
         label: "Confirm Purchase",
         description:
           "I understand that running this plugin will add committed credits and an invoice will be sent to the customer.",
+        dependsOn: { field: "isFreeCredit", value: false },
+      },
+      confirmFreeCredit: {
+        type: "boolean",
+        label: "Confirm FREE Credit (⚠️ Giving money!)",
+        description:
+          "I understand that this will create FREE credits without an invoice. This is giving money to the customer for free.",
+        dependsOn: { field: "isFreeCredit", value: true },
       },
     },
   },
@@ -104,6 +137,41 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
 
     const validatedArgs = validationResult.data;
     const workspace = auth.getNonNullableWorkspace();
+
+    const amountMicroUsd = Math.round(validatedArgs.amountDollars * 1_000_000);
+    const startDate = new Date(validatedArgs.startDate);
+    const expirationDate = new Date(validatedArgs.expirationDate);
+
+    if (expirationDate <= startDate) {
+      return new Err(new Error("Expiration date must be after start date."));
+    }
+
+    const originalAmount = validatedArgs.amountDollars;
+
+    // Handle free credit creation (no Stripe invoice).
+    if (validatedArgs.isFreeCredit) {
+      const idempotencyKey = `free-poke-${workspace.sId}-${Date.now()}`;
+
+      const credit = await CreditResource.makeNew(auth, {
+        type: "free",
+        initialAmountMicroUsd: amountMicroUsd,
+        consumedAmountMicroUsd: 0,
+        discount: null,
+        invoiceOrLineItemId: idempotencyKey,
+      });
+
+      const startResult = await credit.start(startDate, expirationDate);
+      if (startResult.isErr()) {
+        return new Err(startResult.error);
+      }
+
+      return new Ok({
+        display: "text",
+        value: `Successfully added FREE credits of $${originalAmount.toFixed(2)} (${format(validatedArgs.startDate, "yyyy-MM-dd")} to ${format(validatedArgs.expirationDate, "yyyy-MM-dd")}). No invoice was sent.`,
+      });
+    }
+
+    // Handle committed credit creation (with Stripe invoice).
     const subscription = auth.subscription();
 
     if (!subscription?.stripeSubscriptionId) {
@@ -127,15 +195,6 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
       );
     }
 
-    const amountCents = Math.round(validatedArgs.amountDollars * 100);
-
-    const startDate = new Date(validatedArgs.startDate);
-    const expirationDate = new Date(validatedArgs.expirationDate);
-
-    if (expirationDate <= startDate) {
-      return new Err(new Error("Expiration date must be after start date."));
-    }
-
     let discountPercent: number | undefined;
     if (validatedArgs.overrideDiscount) {
       discountPercent =
@@ -152,7 +211,7 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
     const result = await createEnterpriseCreditPurchase({
       auth,
       stripeSubscriptionId: subscription.stripeSubscriptionId,
-      amountCents,
+      amountMicroUsd,
       discountPercent,
       startDate,
       expirationDate,
@@ -164,11 +223,9 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
 
     const invoiceUrl = `https://dashboard.stripe.com/invoices/${result.value.invoiceOrLineItemId}`;
 
-    const originalAmount = validatedArgs.amountDollars;
-
     return new Ok({
       display: "textWithLink",
-      value: `Successfully added committed credits of $${originalAmount.toFixed(2)} (${validatedArgs.startDate} to ${validatedArgs.expirationDate}). An invoice has been sent to the customer.`,
+      value: `Successfully added committed credits of $${originalAmount.toFixed(2)} (${format(validatedArgs.startDate, "yyyy-MM-dd")} to ${format(validatedArgs.expirationDate, "yyyy-MM-dd")}). An invoice has been sent to the customer.`,
       link: invoiceUrl,
       linkText: "View Invoice in Stripe",
     });

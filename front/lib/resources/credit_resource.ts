@@ -38,7 +38,7 @@ export class CreditResource extends BaseResource<CreditModel> {
   }
 
   // Create a new credit line for a workspace.
-  // Note: initialAmountCents is immutable after creation.
+  // Note: initialAmountMicroUsd is immutable after creation.
   // The credit is not consumable until start() is called (startDate is set).
   static async makeNew(
     auth: Authenticator,
@@ -124,8 +124,8 @@ export class CreditResource extends BaseResource<CreditModel> {
       where: {
         // Credit must have remaining balance (consumed < initial)
         [Op.and]: [
-          Sequelize.where(Sequelize.col("consumedAmountCents"), {
-            [Op.lt]: Sequelize.col("initialAmountCents"),
+          Sequelize.where(Sequelize.col("consumedAmountMicroUsd"), {
+            [Op.lt]: Sequelize.col("initialAmountMicroUsd"),
           }),
         ],
 
@@ -191,33 +191,38 @@ export class CreditResource extends BaseResource<CreditModel> {
    * Over-consumption should however stay minimal
    */
   async consume(
-    amountInCents: number,
+    { amountInMicroUsd }: { amountInMicroUsd: number },
     { transaction }: { transaction?: Transaction } = {}
   ) {
-    if (amountInCents <= 0) {
+    if (amountInMicroUsd <= 0) {
       return new Err(new Error("Amount to consume must be strictly positive."));
     }
     const now = new Date();
 
     // Note: Sequelize's increment() returns [affectedRows[], affectedCount] but
     // affectedCount is unreliable for PostgreSQL. We check affectedRows.length instead.
-    const [affectedRows] = await this.model.increment("consumedAmountCents", {
-      by: amountInCents,
-      where: {
-        id: this.id,
-        workspaceId: this.workspaceId,
-        // Already-depleted credit should not be consumed.
-        consumedAmountCents: { [Op.lt]: Sequelize.col("initialAmountCents") },
-        // Credit must be started (startDate not null and <= now)
-        startDate: { [Op.ne]: null, [Op.lte]: now },
-        // Credit must not be expired
-        [Op.or]: [
-          { expirationDate: null },
-          { expirationDate: { [Op.gt]: now } },
-        ],
-      },
-      transaction,
-    });
+    const [affectedRows] = await this.model.increment(
+      "consumedAmountMicroUsd",
+      {
+        by: amountInMicroUsd,
+        where: {
+          id: this.id,
+          workspaceId: this.workspaceId,
+          // Already-depleted credit should not be consumed.
+          consumedAmountMicroUsd: {
+            [Op.lt]: Sequelize.col("initialAmountMicroUsd"),
+          },
+          // Credit must be started (startDate not null and <= now)
+          startDate: { [Op.ne]: null, [Op.lte]: now },
+          // Credit must not be expired
+          [Op.or]: [
+            { expirationDate: null },
+            { expirationDate: { [Op.gt]: now } },
+          ],
+        },
+        transaction,
+      }
+    );
     if (!affectedRows || affectedRows.length < 1) {
       return new Err(
         new Error(
@@ -248,7 +253,7 @@ export class CreditResource extends BaseResource<CreditModel> {
   ): Promise<Result<undefined, Error>> {
     const [, affectedRows] = await this.model.update(
       {
-        initialAmountCents: Sequelize.col("consumedAmountCents"),
+        initialAmountMicroUsd: Sequelize.col("consumedAmountMicroUsd"),
       },
       {
         where: {
@@ -266,6 +271,19 @@ export class CreditResource extends BaseResource<CreditModel> {
     }
 
     return new Ok(undefined);
+  }
+
+  async updateInitialAmountMicroUsd(
+    auth: Authenticator,
+    initialAmountMicroUsd: number,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<[affectedCount: number]> {
+    return this.update(
+      {
+        initialAmountMicroUsd,
+      },
+      transaction
+    );
   }
 
   async delete(
@@ -287,9 +305,10 @@ export class CreditResource extends BaseResource<CreditModel> {
     return {
       sId: this.sId,
       type: this.type,
-      initialAmount: this.initialAmountCents,
-      remainingAmount: this.initialAmountCents - this.consumedAmountCents,
-      consumedAmount: this.consumedAmountCents,
+      initialAmountMicroUsd: this.initialAmountMicroUsd,
+      remainingAmountMicroUsd:
+        this.initialAmountMicroUsd - this.consumedAmountMicroUsd,
+      consumedAmountMicroUsd: this.consumedAmountMicroUsd,
       startDate: this.startDate ? this.startDate.getTime() : null,
       expirationDate: this.expirationDate
         ? this.expirationDate.getTime()
@@ -302,8 +321,8 @@ export class CreditResource extends BaseResource<CreditModel> {
       id: this.id,
       workspaceId: this.workspaceId,
       type: this.type,
-      initialAmountCents: this.initialAmountCents,
-      consumedAmountCents: this.consumedAmountCents,
+      initialAmountMicroUsd: this.initialAmountMicroUsd,
+      consumedAmountMicroUsd: this.consumedAmountMicroUsd,
       startDate: this.startDate ? this.startDate.toISOString() : null,
       expirationDate: this.expirationDate
         ? this.expirationDate.toISOString()
@@ -317,9 +336,10 @@ export class CreditResource extends BaseResource<CreditModel> {
       id: this.id,
       createdAt: this.createdAt.toISOString(),
       type: this.type,
-      initialAmountCents: this.initialAmountCents,
-      consumedAmountCents: this.consumedAmountCents,
-      remainingAmountCents: this.initialAmountCents - this.consumedAmountCents,
+      initialAmountMicroUsd: this.initialAmountMicroUsd,
+      consumedAmountMicroUsd: this.consumedAmountMicroUsd,
+      remainingAmountMicroUsd:
+        this.initialAmountMicroUsd - this.consumedAmountMicroUsd,
       startDate: this.startDate ? this.startDate.toISOString() : null,
       expirationDate: this.expirationDate
         ? this.expirationDate.toISOString()

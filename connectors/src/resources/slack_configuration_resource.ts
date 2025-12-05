@@ -50,6 +50,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     restrictedSpaceAgentsEnabled,
     feedbackVisibleToAuthorOnly,
     privateIntegrationCredentialId,
+    botEnabled,
     transaction,
   }: {
     slackTeamId: string;
@@ -59,6 +60,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     restrictedSpaceAgentsEnabled?: boolean;
     feedbackVisibleToAuthorOnly?: boolean;
     privateIntegrationCredentialId?: string | null;
+    botEnabled: boolean;
     transaction: Transaction;
   }) {
     const otherSlackConfigurationWithBotEnabled =
@@ -73,7 +75,8 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     const model = await SlackConfigurationModel.create(
       {
         autoReadChannelPatterns: autoReadChannelPatterns ?? [],
-        botEnabled: otherSlackConfigurationWithBotEnabled ? false : true,
+        // We want at most 1 Slack bot enabled per team id.
+        botEnabled: otherSlackConfigurationWithBotEnabled ? false : botEnabled,
         connectorId,
         slackTeamId,
         restrictedSpaceAgentsEnabled: restrictedSpaceAgentsEnabled ?? true,
@@ -226,7 +229,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
 
   static async listForTeamId(
     slackTeamId: string,
-    provider?: Extract<ConnectorProvider, "slack_bot" | "slack">
+    provider?: Extract<ConnectorProvider, "slack" | "slack_bot">
   ): Promise<SlackConfigurationResource[]> {
     const blobs = await this.model.findAll({
       where: {

@@ -27,13 +27,18 @@ import {
   AgentMCPActionModel,
   AgentMCPActionOutputItem,
 } from "@app/lib/models/agent/actions/mcp";
-import { AgentMessage, Message } from "@app/lib/models/agent/conversation";
+import {
+  AgentMessage,
+  Message,
+  UserMessage,
+} from "@app/lib/models/agent/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
@@ -197,22 +202,14 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
   static async listBlockedActionsForConversation(
     auth: Authenticator,
-    conversationId: string
+    conversation: ConversationResource
   ): Promise<BlockedToolExecution[]> {
     const owner = auth.getNonNullableWorkspace();
-
-    const conversation = await ConversationResource.fetchById(
-      auth,
-      conversationId
-    );
-    if (!conversation) {
-      return [];
-    }
 
     const latestAgentMessages =
       await conversation.getLatestAgentMessageIdByRank(auth);
 
-    const blockedActions = await AgentMCPActionModel.findAll({
+    const unfilteredBlockedActions = await AgentMCPActionModel.findAll({
       include: [
         {
           model: AgentMessage,
@@ -237,6 +234,43 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         },
       },
       order: [["createdAt", "ASC"]],
+    });
+
+    const parentUserMessageIds = removeNulls(
+      unfilteredBlockedActions.map((a) => a.agentMessage!.message!.parentId)
+    );
+
+    const parentUserMessages = await Message.findAll({
+      where: {
+        workspaceId: owner.id,
+        conversationId: conversation.id,
+        id: { [Op.in]: parentUserMessageIds },
+      },
+      include: [
+        {
+          model: UserMessage,
+          as: "userMessage",
+          required: true,
+          include: [
+            {
+              model: UserModel,
+              as: "user",
+              required: true,
+            },
+          ],
+        },
+      ],
+    });
+
+    const parentUserMessageById = _.keyBy(parentUserMessages, "id");
+
+    // Filter out the actions that are not triggered by the current user.
+    const blockedActions = unfilteredBlockedActions.filter((a) => {
+      const parentUserMessage =
+        parentUserMessageById[a.agentMessage!.message!.parentId!];
+      return (
+        parentUserMessage.userMessage?.userId === auth.getNonNullableUser().id
+      );
     });
 
     const blockedActionsList: BlockedToolExecution[] = [];
@@ -321,12 +355,18 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         ? getMcpServerViewDisplayName(mcpServerView.toJSON())
         : undefined;
 
+      const parentUserMessage =
+        parentUserMessageById[agentMessage.message.parentId!];
+
+      assert(parentUserMessage.userMessage?.user?.sId, "User not found.");
+
       const baseActionParams: Omit<
         BlockedToolExecution,
         "status" | "authorizationInfo"
       > = {
         messageId: agentMessage.message.sId,
-        conversationId,
+        userId: parentUserMessage.userMessage.user.sId,
+        conversationId: conversation.sId,
         actionId: this.modelIdToSId({
           id: action.id,
           workspaceId: owner.id,
@@ -346,7 +386,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           logger.warn(
             {
               actionId: action.id,
-              conversationId,
+              conversationId: conversation.sId,
               messageId: agentMessage.message.sId,
               workspaceId: owner.id,
             },
@@ -368,8 +408,26 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         });
       } else if (action.status === "blocked_child_action_input_required") {
         const conversationId = action.stepContext.resumeState?.conversationId;
+
+        // conversation was not created so we can skip it
+        if (!conversationId || !isString(conversationId)) {
+          continue;
+        }
+
+        const childConversation = await ConversationResource.fetchById(
+          auth,
+          conversationId
+        );
+
+        if (!childConversation) {
+          continue;
+        }
+
         const childBlockedActionsList = isString(conversationId)
-          ? await this.listBlockedActionsForConversation(auth, conversationId)
+          ? await this.listBlockedActionsForConversation(
+              auth,
+              childConversation
+            )
           : [];
 
         blockedActionsList.push({

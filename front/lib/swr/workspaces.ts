@@ -157,18 +157,21 @@ export function useWorkspaceProgrammaticCost({
   workspaceId,
   groupBy,
   selectedMonth,
+  billingCycleStartDay,
   filter,
   disabled,
 }: {
   workspaceId: string;
   groupBy?: GroupByType;
   selectedMonth?: string;
+  billingCycleStartDay: number;
   filter?: Partial<Record<GroupByType, string[]>>;
   disabled?: boolean;
 }) {
   const fetcherFn: Fetcher<GetWorkspaceProgrammaticCostResponse> = fetcher;
 
   const queryParams = new URLSearchParams();
+  queryParams.set("billingCycleStartDay", billingCycleStartDay.toString());
   if (selectedMonth) {
     queryParams.set("selectedMonth", selectedMonth);
   }
@@ -179,7 +182,7 @@ export function useWorkspaceProgrammaticCost({
     queryParams.set("filter", JSON.stringify(filter));
   }
   const queryString = queryParams.toString();
-  const key = `/api/w/${workspaceId}/analytics/programmatic-cost${queryString ? `?${queryString}` : ""}`;
+  const key = `/api/w/${workspaceId}/analytics/programmatic-cost?${queryString}`;
 
   const { data, error, isValidating } = useSWRWithDefaults(
     disabled ? null : key,

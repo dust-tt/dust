@@ -1,6 +1,6 @@
 // Okay to use public API types as it's about internal types between connector and front that public API users do not care about.
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { DATA_SOURCE_MIME_TYPE, INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 import {
   ChatBubbleLeftRightIcon,
   DocumentIcon,
@@ -11,10 +11,11 @@ import {
   Square3Stack3DIcon,
 } from "@dust-tt/sparkle";
 
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import {
-  CONNECTOR_CONFIGURATIONS,
+  CONNECTOR_UI_CONFIGURATIONS,
   getConnectorProviderLogoWithFallback,
-} from "@app/lib/connector_providers";
+} from "@app/lib/connector_providers_ui";
 import type {
   ContentNode,
   ContentNodeType,
@@ -22,33 +23,13 @@ import type {
 } from "@app/types";
 import { isConnectorProvider } from "@app/types";
 import { assertNever } from "@app/types";
-// Since titles will be synced in ES we don't support arbitrarily large titles.
-export const MAX_NODE_TITLE_LENGTH = 512;
 
-// Mime types that should be represented with a Channel icon.
-export const CHANNEL_INTERNAL_MIME_TYPES = [
-  INTERNAL_MIME_TYPES.GITHUB.DISCUSSIONS,
-  INTERNAL_MIME_TYPES.INTERCOM.TEAM,
-  INTERNAL_MIME_TYPES.INTERCOM.TEAMS_FOLDER,
-  INTERNAL_MIME_TYPES.SLACK.CHANNEL,
-] as readonly string[];
-
-// Mime types that should be represented with a Database icon but are not of type "table".
-export const DATABASE_INTERNAL_MIME_TYPES = [
-  INTERNAL_MIME_TYPES.GITHUB.ISSUES,
-] as readonly string[];
-
-// Mime types that should be represented with a File icon but are not of type "document".
-export const FILE_INTERNAL_MIME_TYPES = [
-  INTERNAL_MIME_TYPES.WEBCRAWLER.FOLDER,
-] as readonly string[];
-
-// Mime types that should be represented with a Spreadsheet icon, despite being of type "folder".
-export const SPREADSHEET_INTERNAL_MIME_TYPES = [
-  INTERNAL_MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET,
-  INTERNAL_MIME_TYPES.MICROSOFT.SPREADSHEET,
-  INTERNAL_MIME_TYPES.FOLDER.SPREADSHEET,
-] as readonly string[];
+import {
+  CHANNEL_INTERNAL_MIME_TYPES,
+  DATABASE_INTERNAL_MIME_TYPES,
+  FILE_INTERNAL_MIME_TYPES,
+  SPREADSHEET_INTERNAL_MIME_TYPES,
+} from "./content_nodes_constants";
 
 export function getDocumentIcon(provider: string | null | undefined) {
   if (provider && isConnectorProvider(provider)) {
@@ -77,9 +58,11 @@ export function getVisualForDataSourceViewContentNode(
     node.mimeType &&
     node.mimeType === DATA_SOURCE_MIME_TYPE &&
     node.dataSourceView?.dataSource?.connectorProvider &&
-    CONNECTOR_CONFIGURATIONS[node.dataSourceView.dataSource.connectorProvider]
+    CONNECTOR_UI_CONFIGURATIONS[
+      node.dataSourceView.dataSource.connectorProvider
+    ]
   ) {
-    return CONNECTOR_CONFIGURATIONS[
+    return CONNECTOR_UI_CONFIGURATIONS[
       node.dataSourceView.dataSource.connectorProvider
     ].getLogoComponent();
   }

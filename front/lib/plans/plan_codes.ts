@@ -1,4 +1,4 @@
-import type { PlanType } from "@app/types";
+import type { PlanType, WorkspaceType } from "@app/types";
 
 // Current free plans:
 export const FREE_NO_PLAN_CODE = "FREE_NO_PLAN";
@@ -17,11 +17,12 @@ export const PRO_PLAN_SEAT_39_CODE = "PRO_PLAN_SEAT_39";
 export const ENT_PLAN_FAKE_CODE = "ENT_PLAN_FAKE_CODE";
 
 // If the plan code starts with ENT_, it's an entreprise plan
-export const isEntreprisePlan = (planCode: string) =>
+export const isEntreprisePlanPrefix = (planCode: string) =>
   planCode.startsWith("ENT_");
 
 // If the plan code starts with PRO_, it's a pro plan
-export const isProPlan = (planCode: string) => planCode.startsWith("PRO_");
+export const isProPlanPrefix = (planCode: string) =>
+  planCode.startsWith("PRO_");
 
 // If the plan code is FREE_FRIENDSAMILY, it's a free friends and family plan
 export const isFriendsAndFamilyPlan = (planCode: string) =>
@@ -29,11 +30,26 @@ export const isFriendsAndFamilyPlan = (planCode: string) =>
 
 // Everything else is free
 export const isFreePlan = (planCode: string) =>
-  !isEntreprisePlan(planCode) && !isProPlan(planCode);
+  !isEntreprisePlanPrefix(planCode) && !isProPlanPrefix(planCode);
 
 // Early plan when anyone could create a dust account
 export const isOldFreePlan = (planCode: string) =>
-  planCode === "FREE_TEST_PLAN";
+  planCode === FREE_TEST_PLAN_CODE;
+
+export function isProPlan(plan?: PlanType) {
+  return (
+    plan?.code === PRO_PLAN_SEAT_29_CODE ||
+    plan?.code === PRO_PLAN_LARGE_FILES_CODE
+  );
+}
+
+export function isBusinessPlan(plan?: PlanType) {
+  return plan?.code === PRO_PLAN_SEAT_39_CODE;
+}
+
+export function isProOrBusinessPlanCode(plan?: PlanType) {
+  return isProPlan(plan) || isBusinessPlan(plan);
+}
 
 /**
  * `isUpgraded` returns true if the plan has access to all features of Dust, including large
@@ -47,4 +63,11 @@ export const isUpgraded = (plan: PlanType | null): boolean => {
     return false;
   }
   return ![FREE_TEST_PLAN_CODE, FREE_NO_PLAN_CODE].includes(plan.code);
+};
+
+export const isWhitelistedBusinessPlan = (owner?: WorkspaceType) => {
+  if (!owner) {
+    return false;
+  }
+  return owner.metadata?.isBusiness === true;
 };

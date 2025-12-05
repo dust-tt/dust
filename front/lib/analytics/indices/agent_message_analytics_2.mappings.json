@@ -53,8 +53,8 @@
           "cached": {
             "type": "integer"
           },
-          "cost_cents": {
-            "type": "short"
+          "cost_micro_usd": {
+            "type": "long"
           }
         }
       },

@@ -7,6 +7,11 @@ import {
 } from "@viz/app/lib/data-apis/cache-data-api";
 import type { VisualizationConfig } from "@viz/app/lib/visualization-api";
 import { useMemo } from "react";
+import { NavigationProvider } from "@viz/app/components/NavigationProvider";
+
+// Domains that are trusted and don't require user confirmation before navigation.
+// These are Dust platform domains that are considered safe for automatic navigation.
+const TRUSTED_NAVIGATION_DOMAINS = ["dust.tt", "eu.dust.tt"];
 
 interface ServerVisualizationWrapperClientProps {
   allowedOrigins: string[];
@@ -47,5 +52,9 @@ export function ServerVisualizationWrapperClient({
     isFullHeight,
   };
 
-  return <VisualizationWrapperWithErrorBoundary config={config} />;
+  return (
+    <NavigationProvider trustedDomains={TRUSTED_NAVIGATION_DOMAINS}>
+      <VisualizationWrapperWithErrorBoundary config={config} />
+    </NavigationProvider>
+  );
 }

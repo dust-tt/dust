@@ -35,6 +35,9 @@ export const DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME =
 export const DEFAULT_CONVERSATION_SEARCH_ACTION_NAME =
   "search_conversation_files";
 
+export const SEARCH_AVAILABLE_USERS_TOOL_NAME = "search_available_users";
+export const GET_MENTION_MARKDOWN_TOOL_NAME = "get_mention_markdown";
+
 export const DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY =
   "__dust_conversation_history";
 

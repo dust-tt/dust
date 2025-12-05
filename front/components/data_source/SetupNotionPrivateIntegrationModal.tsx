@@ -15,6 +15,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
+import { clientFetch } from "@app/lib/egress/client";
 import type { GetNotionWebhookConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/notion/webhook_config";
 import type { DataSourceType, LightWorkspaceType } from "@app/types";
 
@@ -52,7 +53,7 @@ export function SetupNotionPrivateIntegrationModal({
     const fetchWebhookConfig = async () => {
       setIsLoadingWebhookConfig(true);
       try {
-        const response = await fetch(
+        const response = await clientFetch(
           `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/notion/webhook_config`
         );
 
@@ -81,7 +82,7 @@ export function SetupNotionPrivateIntegrationModal({
     setError(null);
 
     try {
-      const response = await fetch(`/api/w/${owner.sId}/credentials`, {
+      const response = await clientFetch(`/api/w/${owner.sId}/credentials`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -104,7 +105,7 @@ export function SetupNotionPrivateIntegrationModal({
       const credentialId = data.credentials.id;
 
       // Set the credential ID on the connector
-      const configRes = await fetch(
+      const configRes = await clientFetch(
         `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/privateIntegrationCredentialId`,
         {
           method: "POST",

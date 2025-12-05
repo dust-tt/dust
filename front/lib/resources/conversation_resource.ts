@@ -668,6 +668,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         where: {
           conversationId: conversation.id,
           workspaceId: auth.getNonNullableWorkspace().id,
+          userId: auth.getNonNullableUser().id,
         },
       }
     );
@@ -742,6 +743,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           conversationId: conversation.id,
           workspaceId: auth.getNonNullableWorkspace().id,
           ...(excludedUser ? { userId: { [Op.ne]: excludedUser.id } } : {}),
+          unread: false,
         },
       }
     );

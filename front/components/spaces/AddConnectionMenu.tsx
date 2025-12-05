@@ -23,10 +23,14 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
   CONNECTOR_CONFIGURATIONS,
-  getConnectorProviderLogoWithFallback,
   isConnectionIdRequiredForProvider,
   isConnectorProviderAllowedForPlan,
 } from "@app/lib/connector_providers";
+import {
+  CONNECTOR_UI_CONFIGURATIONS,
+  getConnectorProviderLogoWithFallback,
+} from "@app/lib/connector_providers_ui";
+import { clientFetch } from "@app/lib/egress/client";
 import { useSystemSpace } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
@@ -172,7 +176,7 @@ export const AddConnectionMenu = ({
 
   // Filter available integrations.
   const availableIntegrations = integrations.filter((i) => {
-    const hide = CONNECTOR_CONFIGURATIONS[i.connectorProvider].hide;
+    const hide = CONNECTOR_UI_CONFIGURATIONS[i.connectorProvider].hide;
     const rolloutFlag =
       CONNECTOR_CONFIGURATIONS[i.connectorProvider].rollingOutFlag;
     const hasFlag = rolloutFlag && featureFlags.includes(rolloutFlag);
@@ -206,7 +210,7 @@ export const AddConnectionMenu = ({
     suffix: string | null;
     extraConfig: Record<string, string>;
   }): Promise<Response> => {
-    const res = await fetch(
+    const res = await clientFetch(
       suffix
         ? `/api/w/${
             owner.sId

@@ -1228,19 +1228,12 @@ describe("createUserMessage", () => {
 
     // Create an origin message first with rank 0
     const originMessage = await withTransaction(async (transaction) => {
-      const userJson = user.toJSON();
-      const originUserMessage = await UserMessage.create(
+      const originAgentMessage = await AgentMessage.create(
         {
-          content: "Origin message",
-          userId: user.id,
           workspaceId: workspace.id,
-          userContextUsername: userJson.username,
-          userContextTimezone: "UTC",
-          userContextFullName: userJson.fullName,
-          userContextEmail: userJson.email,
-          userContextProfilePictureUrl: userJson.image,
-          userContextOrigin: "web",
-          clientSideMCPServerIds: [],
+          skipToolsValidation: false,
+          agentConfigurationId: "not-a-real-agent",
+          agentConfigurationVersion: 0,
         },
         { transaction }
       );
@@ -1250,7 +1243,7 @@ describe("createUserMessage", () => {
           sId: generateRandomModelSId(),
           rank: 0,
           conversationId: conversation.id,
-          userMessageId: originUserMessage.id,
+          agentMessageId: originAgentMessage.id,
           workspaceId: workspace.id,
         },
         { transaction }
@@ -1487,18 +1480,12 @@ describe("createUserMessage", () => {
 
     // Create origin message
     const originMessage = await withTransaction(async (transaction) => {
-      const originUserMessage = await UserMessage.create(
+      const originAgentMessage = await AgentMessage.create(
         {
-          content: "Origin message",
-          userId: user.id,
           workspaceId: workspace.id,
-          userContextUsername: userJson.username,
-          userContextTimezone: "UTC",
-          userContextFullName: userJson.fullName,
-          userContextEmail: userJson.email,
-          userContextProfilePictureUrl: userJson.image,
-          userContextOrigin: "web",
-          clientSideMCPServerIds: [],
+          skipToolsValidation: false,
+          agentConfigurationId: "not-a-real-agent",
+          agentConfigurationVersion: 0,
         },
         { transaction }
       );
@@ -1508,7 +1495,7 @@ describe("createUserMessage", () => {
           sId: generateRandomModelSId(),
           rank: 0,
           conversationId: conversation.id,
-          userMessageId: originUserMessage.id,
+          agentMessageId: originAgentMessage.id,
           workspaceId: workspace.id,
         },
         { transaction }

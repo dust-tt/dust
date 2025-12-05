@@ -6,7 +6,7 @@ import { compareForFuzzySort, subFilter } from "../../utils";
 /**
  * Maximum number of suggestions to display in the autocomplete dropdown.
  */
-export const SUGGESTION_DISPLAY_LIMIT = 7;
+export const SUGGESTION_DISPLAY_LIMIT = 20;
 
 /**
  * Priority order for specific agent suggestions.

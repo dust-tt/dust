@@ -689,6 +689,7 @@ export const DataSourceNodeContentSchema = z.object({
   uri: z.string(),
   text: z.string(),
   metadata: RenderedNodeSchema,
+  ref: z.string().optional(),
 });
 
 export type DataSourceNodeContentType = z.infer<
