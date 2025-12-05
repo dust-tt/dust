@@ -1,4 +1,5 @@
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
+import { fetchConversationParticipants } from "@app/lib/api/assistant/participants";
 import type { Authenticator } from "@app/lib/auth";
 import {
   filterAndSortEditorSuggestionAgents,
@@ -6,11 +7,34 @@ import {
 } from "@app/lib/mentions/editor/suggestion";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
+  ConversationWithoutContentType,
   RichAgentMention,
   RichMention,
   RichUserMention,
 } from "@app/types";
 import { compareAgentsForSort } from "@app/types";
+
+function reorderByIds<T extends { id: string }>(
+  items: T[],
+  favoredIds: Set<string>
+): T[] {
+  if (favoredIds.size === 0 || items.length === 0) {
+    return items;
+  }
+
+  const favored: T[] = [];
+  const others: T[] = [];
+
+  for (const item of items) {
+    if (favoredIds.has(item.id)) {
+      favored.push(item);
+    } else {
+      others.push(item);
+    }
+  }
+
+  return [...favored, ...others];
+}
 
 export const suggestionsOfMentions = async (
   auth: Authenticator,
@@ -20,16 +44,18 @@ export const suggestionsOfMentions = async (
       agents: true,
       users: true,
     },
+    conversation,
   }: {
     query: string;
     select?: {
       agents: boolean;
       users: boolean;
     };
+    conversation?: ConversationWithoutContentType | null;
   }
 ): Promise<RichMention[]> => {
   const agentSuggestions: RichAgentMention[] = [];
-  const userSuggestions: RichUserMention[] = [];
+  let userSuggestions: RichUserMention[] = [];
 
   if (select.agents) {
     // Fetch agent configurations.
@@ -68,26 +94,49 @@ export const suggestionsOfMentions = async (
     if (res.isOk()) {
       const { users } = res.value;
 
-      userSuggestions.push(
-        ...users.map(
-          (u) =>
-            ({
-              type: "user",
-              id: u.sId,
-              label: u.fullName() || u.email,
-              pictureUrl:
-                u.toJSON().image ?? "/static/humanavatar/anonymous.png",
-              description: u.email,
-            }) satisfies RichUserMention
-        )
+      userSuggestions = users.map(
+        (u) =>
+          ({
+            type: "user",
+            id: u.sId,
+            label: u.fullName() || u.email,
+            pictureUrl: u.toJSON().image ?? "/static/humanavatar/anonymous.png",
+            description: u.email,
+          }) satisfies RichUserMention
       );
     }
   }
 
-  const filteredAgents = filterAndSortEditorSuggestionAgents(
+  let filteredAgents = filterAndSortEditorSuggestionAgents(
     query,
     agentSuggestions
   );
+
+  // If we have a conversation context, favor participants (users and agents)
+  // by moving them to the top of their respective lists.
+  if (conversation && (select.users || select.agents)) {
+    const participantsRes = await fetchConversationParticipants(
+      auth,
+      conversation
+    );
+
+    if (participantsRes.isOk()) {
+      const participants = participantsRes.value;
+
+      if (select.users && userSuggestions.length > 0) {
+        const participantUserIds = new Set(participants.users.map((u) => u.sId));
+        userSuggestions = reorderByIds(userSuggestions, participantUserIds);
+      }
+
+      if (select.agents && filteredAgents.length > 0) {
+        const participantAgentIds = new Set(
+          participants.agents.map((a) => a.configurationId)
+        );
+
+        filteredAgents = reorderByIds(filteredAgents, participantAgentIds);
+      }
+    }
+  }
 
   // If only one type is requested, keep the simple ordering.
   if (!select.agents && select.users) {
