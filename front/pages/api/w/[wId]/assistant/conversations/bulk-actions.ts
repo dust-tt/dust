@@ -10,6 +10,10 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { normalizeError } from "@app/types";
 
+export type BulkActionsResponse = {
+  failedConversationCount: number;
+};
+
 export const MarkAllAsReadBodySchema = z.object({
   action: z.enum(["mark_as_read"]),
   conversationIds: z.array(z.string()).min(1),
@@ -17,7 +21,7 @@ export const MarkAllAsReadBodySchema = z.object({
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<void>>,
+  res: NextApiResponse<WithAPIErrorResponse<BulkActionsResponse>>,
   auth: Authenticator
 ): Promise<void> {
   if (req.method !== "POST") {
@@ -65,8 +69,9 @@ async function handler(
       });
     }
 
-    res.status(200).send();
-    return;
+    return res.status(200).json({
+      failedConversationCount: result.value.failedConversationCount,
+    });
   }
 }
 
