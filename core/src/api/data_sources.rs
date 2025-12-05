@@ -1060,30 +1060,30 @@ pub async fn data_sources_documents_retrieve_text(
         }
     };
 
-    let text_len = text.len();
+    let char_count = text.chars().count();
     info!(
         document_id = document_id,
-        text_len = text_len,
+        char_count = char_count,
         "[RETRIEVE_TEXT] Extracted text"
     );
 
     // First apply character-based offset and limit
     let offset_limit_start = utils::now();
-    let offset = query.offset.unwrap_or(0);
-    let limit = query.limit;
-    let start = offset.min(text_len);
-    let end = match limit {
-        Some(l) => (start + l).min(text_len),
-        None => text_len,
+
+    let text_slice: String = match (query.offset, query.limit) {
+        (Some(o), Some(l)) => text.chars().skip(o).take(l).collect(),
+        (Some(o), None) => text.chars().skip(o).collect(),
+        (None, Some(l)) => text.chars().take(l).collect(),
+        (None, None) => text.to_string(),
     };
 
-    let text_slice = &text[start..end];
-
     let offset_limit_duration = utils::now() - offset_limit_start;
+    let slice_char_count = text_slice.chars().count();
     info!(
         document_id = document_id,
         offset_limit_duration = offset_limit_duration,
-        slice_len = text_slice.len(),
+        total_char_count = char_count,
+        slice_char_count = slice_char_count,
         "[RETRIEVE_TEXT] Applied offset/limit"
     );
 
@@ -1107,7 +1107,7 @@ pub async fn data_sources_documents_retrieve_text(
                 )
             }
         },
-        None => text_slice.to_string(),
+        None => text_slice,
     };
 
     let grep_duration = utils::now() - grep_start;
@@ -1127,9 +1127,9 @@ pub async fn data_sources_documents_retrieve_text(
             error: None,
             response: Some(json!({
                 "text": filtered_text,
-                "total_characters": text_len,
-                "offset": start,
-                "limit": limit,
+                "total_characters": char_count,
+                "offset": query.offset,
+                "limit": query.limit,
             })),
         }),
     )
