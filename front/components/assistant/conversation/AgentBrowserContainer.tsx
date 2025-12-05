@@ -11,7 +11,7 @@ import type {
 } from "@app/types";
 
 interface AgentBrowserContainerProps {
-  onAgentConfigurationClick: (agentId: string) => void;
+  onAgentConfigurationClick: (agent: LightAgentConfigurationType) => void;
   user: UserType;
   owner: WorkspaceType;
 }
@@ -41,7 +41,7 @@ export function AgentBrowserContainer({
         element: scrollContainerElement,
       });
 
-      onAgentConfigurationClick(agent.sId);
+      onAgentConfigurationClick(agent);
     },
     [onAgentConfigurationClick]
   );

@@ -10,7 +10,11 @@ import type {
   RichMention,
   RichUserMention,
 } from "@app/types";
-import { compareAgentsForSort } from "@app/types";
+import {
+  compareAgentsForSort,
+  toRichAgentMentionType,
+  toRichUserMentionType,
+} from "@app/types";
 
 export const suggestionsOfMentions = async (
   auth: Authenticator,
@@ -44,17 +48,7 @@ export const suggestionsOfMentions = async (
       ...agentConfigurations
         .filter((a) => a.status === "active")
         .sort(compareAgentsForSort)
-        .map(
-          (agent) =>
-            ({
-              type: "agent",
-              id: agent.sId,
-              label: agent.name,
-              pictureUrl: agent.pictureUrl,
-              userFavorite: agent.userFavorite,
-              description: agent.description,
-            }) satisfies RichAgentMention
-        )
+        .map(toRichAgentMentionType)
     );
   }
 
@@ -69,17 +63,7 @@ export const suggestionsOfMentions = async (
       const { users } = res.value;
 
       userSuggestions.push(
-        ...users.map(
-          (u) =>
-            ({
-              type: "user",
-              id: u.sId,
-              label: u.fullName() || u.email,
-              pictureUrl:
-                u.toJSON().image ?? "/static/humanavatar/anonymous.png",
-              description: u.email,
-            }) satisfies RichUserMention
-        )
+        ...users.map((u) => toRichUserMentionType(u.toJSON()))
       );
     }
   }

@@ -25,7 +25,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { Err, Ok, toMentionType } from "@app/types";
+import { Err, Ok, toMentionType, toRichAgentMentionType } from "@app/types";
 
 interface ConversationContainerProps {
   owner: WorkspaceType;
@@ -174,8 +174,8 @@ export function ConversationContainerVirtuoso({
             />
           </div>
           <AgentBrowserContainer
-            onAgentConfigurationClick={(agentId) => {
-              setSelectedAgent({ configurationId: agentId });
+            onAgentConfigurationClick={(agent) => {
+              setSelectedAgent(toRichAgentMentionType(agent));
             }}
             owner={owner}
             user={user}
