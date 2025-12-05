@@ -65,7 +65,7 @@ export interface BaseProgrammaticCostChartProps {
 
 type ChartDataPoint = {
   timestamp: number;
-  totalInitialCreditsMicroUsd: number;
+  totalInitialCreditsMicroUsd?: number;
   [key: string]: string | number | undefined;
 };
 
@@ -345,21 +345,45 @@ export function BaseProgrammaticCostChart({
     };
   });
 
+  // Compute maximum cumulated cost among all groups.
+  const maxCumulatedCost = useMemo(() => {
+    return programmaticCostData?.points.reduce((max, point) => {
+      return Math.max(
+        max,
+        point.groups.reduce((max, group) => {
+          return Math.max(max, group.cumulatedCostMicroUsd ?? 0);
+        }, 0)
+      );
+    }, 0);
+  }, [programmaticCostData]);
+
+  const shouldShowTotalCredits = useMemo(() => {
+    // if all points in the future have total credits higher to twice the max cumulated cost, don't show total credits.
+    const futurePoints = points.filter((point) => point.timestamp > Date.now());
+    return !futurePoints.every(
+      (point) => point.totalInitialCreditsMicroUsd > 2 * (maxCumulatedCost ?? 0)
+    );
+  }, [maxCumulatedCost]);
+
   // Add Total Credits to legend (not clickable)
-  legendItems.push({
-    key: "totalCredits",
-    label: "Total Credits",
-    colorClassName: COST_PALETTE.totalCredits,
-    isActive: true,
-  });
+  if (shouldShowTotalCredits) {
+    legendItems.push({
+      key: "totalCredits",
+      label: "Total Credits",
+      colorClassName: COST_PALETTE.totalCredits,
+      isActive: true,
+    });
+  }
 
   // Transform points into chart data using labels from availableGroups
   const chartData = points.map((point) => {
     const dataPoint: ChartDataPoint = {
       timestamp: point.timestamp,
-      totalInitialCreditsMicroUsd: point.totalInitialCreditsMicroUsd,
     };
 
+    if (shouldShowTotalCredits) {
+      dataPoint.totalInitialCreditsMicroUsd = point.totalInitialCreditsMicroUsd;
+    }
     // Add each group's cumulative cost to the data point using labels from availableGroups
     // Keep undefined values as-is so Recharts doesn't render those points
     point.groups.forEach((g) => {
