@@ -1,0 +1,24 @@
+name: Auto assign issues to EngRunner
+
+on:
+  issues:
+    types: [ opened ]
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  assign_one_project:
+    runs-on: ubuntu-latest
+    name: Assign to EngRunner project
+    steps:
+      - name: Assign new issues to project 2 (eng runner)
+        uses: srggrs/assign-one-project-github-action@1.2.1
+        if: github.event.action == 'opened'
+        with:
+          project: 'https://github.com/orgs/dust-tt/projects/2'
+          column_name: 'Backlog'
