@@ -140,7 +140,7 @@ export const MentionDropdown = forwardRef<
             <Spinner />
           </div>
         ) : suggestions.length > 0 ? (
-          <div className="flex flex-col gap-y-1 p-1">
+          <div className="flex max-h-60 flex-col gap-y-1 overflow-y-auto p-1">
             {suggestions.map((suggestion, index) => (
               <div key={suggestion.id}>
                 <button
