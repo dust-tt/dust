@@ -2,6 +2,7 @@ import { cn, markdownStyles } from "@dust-tt/sparkle";
 import type { Editor as CoreEditor } from "@tiptap/core";
 import { CharacterCount } from "@tiptap/extensions";
 import { Placeholder } from "@tiptap/extensions";
+import { Markdown } from "@tiptap/markdown";
 import type { Editor as ReactEditor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
@@ -20,10 +21,8 @@ import { BlockInsertExtension } from "@app/components/editor/extensions/agent_bu
 import { HeadingExtension } from "@app/components/editor/extensions/agent_builder/HeadingExtension";
 import { InstructionBlockExtension } from "@app/components/editor/extensions/agent_builder/InstructionBlockExtension";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
-import {
-  plainTextFromTipTapContent,
-  tipTapContentFromPlainText,
-} from "@app/lib/client/agent_builder/instructions";
+import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
+import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
 import type { LightAgentConfigurationType } from "@app/types";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
@@ -101,6 +100,15 @@ export function AgentBuilderInstructionsEditor({
       KeyboardShortcutsExtension,
       InstructionBlockExtension,
       AgentInstructionDiffExtension,
+      Markdown,
+      MentionExtension.configure({
+        owner,
+        HTMLAttributes: {
+          class:
+            "min-w-0 px-0 py-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-highlight-500 font-semibold",
+        },
+        suggestion: createMentionSuggestion({ owner, conversationId: null }),
+      }),
       BlockInsertExtension.configure({
         suggestion: suggestionHandler,
       }),
@@ -120,16 +128,14 @@ export function AgentBuilderInstructionsEditor({
         },
       }),
     ];
-  }, [suggestionHandler]);
+  }, [owner, suggestionHandler]);
 
   // Debounce serialization to prevent performance issues
   const debouncedUpdate = useMemo(
     () =>
       debounce((editor: CoreEditor | ReactEditor) => {
         if (!isInstructionDiffMode && !editor.isDestroyed) {
-          const json = editor.getJSON();
-          const plainText = plainTextFromTipTapContent(json);
-          field.onChange(plainText);
+          field.onChange(editor.getMarkdown());
         }
       }, 250),
     [field, isInstructionDiffMode]
@@ -138,7 +144,8 @@ export function AgentBuilderInstructionsEditor({
   const editor = useEditor(
     {
       extensions,
-      content: tipTapContentFromPlainText(field.value),
+      content: field.value,
+      contentType: "markdown",
       onUpdate: ({ editor, transaction }) => {
         if (transaction.docChanged) {
           debouncedUpdate(editor);
@@ -190,12 +197,13 @@ export function AgentBuilderInstructionsEditor({
     if (editor.isFocused) {
       return;
     }
-    const currentContent = plainTextFromTipTapContent(editor.getJSON());
+    const currentContent = editor.getMarkdown();
     if (currentContent !== field.value) {
       // Use setTimeout to ensure this runs after any diff mode changes
       setTimeout(() => {
-        editor.commands.setContent(tipTapContentFromPlainText(field.value), {
+        editor.commands.setContent(field.value, {
           emitUpdate: false,
+          contentType: "markdown",
         });
       }, 0);
     }
@@ -211,9 +219,8 @@ export function AgentBuilderInstructionsEditor({
         editor.commands.exitDiff();
       }
 
-      const currentText = plainTextFromTipTapContent(editor.getJSON());
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      const compareText = compareVersion.instructions || "";
+      const currentText = editor.getMarkdown();
+      const compareText = compareVersion.instructions ?? "";
 
       editor.commands.applyDiff(compareText, currentText);
       editor.setEditable(false);

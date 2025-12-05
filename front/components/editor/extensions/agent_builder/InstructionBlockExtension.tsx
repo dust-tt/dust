@@ -145,8 +145,7 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
   updateAttributes,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    node.attrs.isCollapsed || false
+    node.attrs.isCollapsed ?? false
   );
 
   let displayType = "";
@@ -252,8 +251,7 @@ export const InstructionBlockExtension =
         type: {
           default: "instructions",
           parseHTML: (element) =>
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            element.getAttribute("data-instruction-type") || "instructions",
+            element.getAttribute("data-instruction-type") ?? "instructions",
           renderHTML: (attributes) => ({
             "data-instruction-type": attributes.type,
           }),
@@ -289,11 +287,6 @@ export const InstructionBlockExtension =
 
     addCommands() {
       return {
-        setInstructionBlock:
-          (attributes) =>
-          ({ commands }) =>
-            commands.setNode(this.name, attributes),
-
         insertInstructionBlock:
           (type) =>
           ({ state, chain }) => {
@@ -880,5 +873,56 @@ export const InstructionBlockExtension =
           },
         }),
       ];
+    },
+
+    markdownTokenizer: {
+      name: "instructionBlock",
+      level: "block",
+      start: (src) => {
+        const match = src.match(/^<([a-z][a-z0-9-]*)>/i);
+        return match?.index ?? -1;
+      },
+      tokenize: (
+        src: string,
+        _tokens: MarkdownToken[],
+        lexer: MarkdownLexerConfiguration
+      ) => {
+        // Match opening tag, content, and closing tag
+        const match = src.match(/^<([a-z][a-z0-9-]*)>([\s\S]*?)<\/\1>/i);
+        if (!match) {
+          return undefined;
+        }
+
+        const tagName = match[1] || "instructions";
+
+        return {
+          type: "instructionBlock",
+          raw: match[0],
+          attrs: {
+            type: tagName.toLowerCase(),
+          },
+          tokens: lexer.blockTokens(match[2]),
+        };
+      },
+    },
+
+    parseMarkdown: (token, helpers) => {
+      const tagType = token.attrs?.type ?? "instructions";
+
+      return {
+        type: "instructionBlock",
+        attrs: {
+          type: tagType,
+          isCollapsed: false,
+        },
+        // The content markdown will be parsed by the markdown parser
+        content: helpers.parseChildren(token.tokens ?? []),
+      };
+    },
+
+    renderMarkdown: (node, helpers) => {
+      const tagType = node.attrs?.type ?? "instructions";
+      const content = helpers.renderChildren(node.content ?? []);
+      return `<${tagType}>${content}</${tagType}>`;
     },
   });
