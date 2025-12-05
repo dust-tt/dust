@@ -1,10 +1,10 @@
 import { ChevronDownIcon, ChevronRightIcon, Chip, cn } from "@dust-tt/sparkle";
-import type { Editor } from "@tiptap/core";
+import type { MarkdownLexerConfiguration, MarkdownToken } from "@tiptap/core";
 import { InputRule, mergeAttributes, Node } from "@tiptap/core";
 import type { Node as ProseMirrorNode, Slice } from "@tiptap/pm/model";
 import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
-import type { NodeViewProps } from "@tiptap/react";
+import type { Editor, NodeViewProps } from "@tiptap/react";
 import {
   NodeViewContent,
   NodeViewWrapper,
@@ -30,23 +30,6 @@ declare module "@tiptap/core" {
       insertInstructionBlock: (type: string) => ReturnType;
     };
   }
-}
-
-/**
- * Build the three-paragraph content for an instruction block
- */
-function buildInstructionBlockContent(tag: string) {
-  return [
-    {
-      type: "paragraph",
-      content: [{ type: "text", text: `<${tag}>` }],
-    },
-    { type: "paragraph" },
-    {
-      type: "paragraph",
-      content: [{ type: "text", text: `</${tag}>` }],
-    },
-  ];
 }
 
 /**
@@ -145,8 +128,7 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
   updateAttributes,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    node.attrs.isCollapsed || false
+    node.attrs.isCollapsed ?? false
   );
 
   let displayType = "";
@@ -252,8 +234,7 @@ export const InstructionBlockExtension =
         type: {
           default: "instructions",
           parseHTML: (element) =>
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            element.getAttribute("data-instruction-type") || "instructions",
+            element.getAttribute("data-instruction-type") ?? "instructions",
           renderHTML: (attributes) => ({
             "data-instruction-type": attributes.type,
           }),
@@ -267,6 +248,57 @@ export const InstructionBlockExtension =
           }),
         },
       };
+    },
+
+    markdownTokenizer: {
+      name: "instructionBlock",
+      level: "block",
+      start: (src) => {
+        const match = src.match(/^<([a-z][a-z0-9-]*)>/i);
+        return match?.index ?? -1;
+      },
+      tokenize: (
+        src: string,
+        _tokens: MarkdownToken[],
+        lexer: MarkdownLexerConfiguration
+      ) => {
+        // Match opening tag, content, and closing tag
+        const match = src.match(/^<([a-z][a-z0-9-]*)>([\s\S]*?)<\/\1>/i);
+        if (!match) {
+          return undefined;
+        }
+
+        const tagName = match[1] || "instructions";
+
+        return {
+          type: "instructionBlock",
+          raw: match[0],
+          attrs: {
+            type: tagName.toLowerCase(),
+          },
+          tokens: lexer.blockTokens(match[2]),
+        };
+      },
+    },
+
+    parseMarkdown: (token, helpers) => {
+      const tagType = token.attrs?.type ?? "instructions";
+
+      return {
+        type: "instructionBlock",
+        attrs: {
+          type: tagType,
+          isCollapsed: false,
+        },
+        // The content markdown will be parsed by the markdown parser
+        content: helpers.parseChildren(token.tokens ?? []),
+      };
+    },
+
+    renderMarkdown: (node, helpers) => {
+      const tagType = node.attrs?.type ?? "instructions";
+      const content = helpers.renderChildren(node.content ?? []);
+      return `<${tagType}>${content}</${tagType}>`;
     },
 
     parseHTML() {
@@ -289,11 +321,6 @@ export const InstructionBlockExtension =
 
     addCommands() {
       return {
-        setInstructionBlock:
-          (attributes) =>
-          ({ commands }) =>
-            commands.setNode(this.name, attributes),
-
         insertInstructionBlock:
           (type) =>
           ({ state, chain }) => {
@@ -305,7 +332,7 @@ export const InstructionBlockExtension =
               $from.parent.type.name === "paragraph" &&
               $from.parent.content.size === 0;
 
-            const content = buildInstructionBlockContent(type);
+            const content = `<${type}>\n\n</${type}>`;
 
             if (isEmptyParagraph) {
               // Replace empty paragraph with instruction block
@@ -314,14 +341,9 @@ export const InstructionBlockExtension =
 
               return chain()
                 .focus()
-                .insertContentAt(
-                  { from, to },
-                  {
-                    type: this.name,
-                    attrs: { type },
-                    content,
-                  }
-                )
+                .insertContentAt({ from, to }, content, {
+                  contentType: "markdown",
+                })
                 .command(({ editor }) => {
                   queueFocusInsideCurrentInstructionBlock(editor);
                   return true;
@@ -332,11 +354,7 @@ export const InstructionBlockExtension =
             // Non-empty: insert normally
             return chain()
               .focus()
-              .insertContent({
-                type: this.name,
-                attrs: { type },
-                content,
-              })
+              .insertContent(content, { contentType: "markdown" })
               .command(({ editor }) => {
                 queueFocusInsideCurrentInstructionBlock(editor);
                 return true;
@@ -376,10 +394,9 @@ export const InstructionBlockExtension =
                 .focus()
                 .insertContentAt(
                   { from, to },
+                  `<${tagType}>\n\n</${tagType}>`,
                   {
-                    type: this.name,
-                    attrs: { type: tagType },
-                    content: buildInstructionBlockContent(tagType),
+                    contentType: "markdown",
                   }
                 )
                 .command(({ editor }) => {
@@ -392,10 +409,8 @@ export const InstructionBlockExtension =
               chain()
                 .focus()
                 .deleteRange({ from: range.from, to: range.to })
-                .insertContent({
-                  type: this.name,
-                  attrs: { type: tagType },
-                  content: buildInstructionBlockContent(tagType),
+                .insertContent(`<${tagType}>\n\n</${tagType}>`, {
+                  contentType: "markdown",
                 })
                 .command(({ editor }) => {
                   queueFocusInsideCurrentInstructionBlock(editor);
