@@ -110,7 +110,7 @@ CreditModel.init(
       },
       // Unique constraint on (type, workspaceId, startDate, expirationDate) for active credits
       {
-        fields: ["type", "workspaceId", "startDate", "expirationDate"],
+        fields: ["workspaceId", "type", "startDate", "expirationDate"],
         unique: true,
         name: "credits_type_workspace_dates_unique_idx",
         where: { startDate: { [Op.ne]: null } },
