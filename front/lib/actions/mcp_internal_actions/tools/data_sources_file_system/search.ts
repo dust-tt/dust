@@ -215,7 +215,7 @@ async function searchCallback(
     return new Err(new MCPError(conflictingTags, { tracked: false }));
   }
 
-  const searchResults = await coreAPI.searchDataSources(
+  const searchResults = await coreAPI.bulkSearchDataSources(
     query,
     retrievalTopK,
     credentials,
