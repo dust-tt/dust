@@ -1,3 +1,5 @@
+import { createContext } from "react";
+import type { UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 
 export const skillBuilderFormSchema = z.object({
@@ -10,3 +12,6 @@ export const skillBuilderFormSchema = z.object({
 });
 
 export type SkillBuilderFormData = z.infer<typeof skillBuilderFormSchema>;
+
+export const SkillBuilderFormContext =
+  createContext<UseFormReturn<SkillBuilderFormData> | null>(null);
