@@ -40,11 +40,11 @@ async function handler(
 
   const conversationId = req.query.cId;
 
-  const conversation = await ConversationResource.fetchById(
+  const conversationRes = await ConversationResource.fetchById(
     auth,
     conversationId
   );
-  if (!conversation) {
+  if (!conversationRes) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -79,7 +79,7 @@ async function handler(
   const suggestions = await suggestionsOfMentions(auth, {
     query,
     select,
-    conversation,
+    conversation: conversationRes.toJSON(),
   });
 
   return res.status(200).json({ suggestions });
