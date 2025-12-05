@@ -116,6 +116,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "speech_generator",
   "toolsets",
   "val_town",
+  "vanta",
   "front",
   "web_search_&_browse",
   "zendesk",
@@ -1316,6 +1317,33 @@ The directive should be used to display a clickable version of the agent name in
       description: "Search and read from your Slab knowledge base",
       authorization: null,
       icon: "ActionDocumentTextIcon",
+      documentationUrl: null,
+      instructions: null,
+    },
+  },
+  vanta: {
+    id: 44,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("vanta_tool");
+    },
+    isPreview: true,
+    tools_stakes: {
+      list_tests: "never_ask",
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "vanta",
+      version: "1.0.0",
+      description:
+        "Review compliance posture powered by Vanta's security platform.",
+      authorization: {
+        provider: "vanta" as const,
+        supported_use_cases: ["platform_actions"] as const,
+      },
+      icon: "ActionScanIcon",
       documentationUrl: null,
       instructions: null,
     },

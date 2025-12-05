@@ -698,6 +698,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "usage_data_api"
   | "web_summarization"
   | "xai_feature"
+  | "vanta_tool"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -2860,6 +2861,7 @@ const OAuthProviderSchema = FlexibleEnumSchema<
   | "hubspot"
   | "mcp"
   | "mcp_static"
+  | "vanta"
 >();
 
 const InternalAllowedIconSchema = FlexibleEnumSchema<
