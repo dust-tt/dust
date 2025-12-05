@@ -360,19 +360,19 @@ export async function trackProgrammaticCost(
       const workspace = auth.getNonNullableWorkspace();
       const featureFlags = await getFeatureFlags(workspace);
       if (featureFlags.includes("ppul")) {
-        const thresholdId = workspace.metadata?.creditAlertThresholdId;
+        const idempotencyKey = workspace.metadata?.creditAlertIdempotencyKey;
         // For eng-oncall:
         // If you get this, you can defer to programmatic usage owners right away
-        // Every customer should have this key defined
+        // Every workspace should have this key defined
         // If not, it means they will not get alerted
         // when they reached their usage threshold
         assert(
-          isString(thresholdId),
+          isString(idempotencyKey),
           "creditAlertThresholdId must be set when credits exist"
         );
         void launchCreditAlertWorkflow({
           workspaceId: workspace.sId,
-          thresholdId,
+          idempotencyKey: idempotencyKey,
           totalInitialMicroUsd,
           totalConsumedMicroUsd,
         });

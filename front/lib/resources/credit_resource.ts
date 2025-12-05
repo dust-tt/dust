@@ -215,15 +215,15 @@ export class CreditResource extends BaseResource<CreditModel> {
     );
   }
 
-  private async updateCreditAlertThresholdId(
+  private async updateCreditAlertIdempotencyKey(
     auth: Authenticator
   ): Promise<void> {
     const workspace = auth.getNonNullableWorkspace();
-    const thresholdId = generateRandomModelSId("cra");
+    const idempotencyKey = generateRandomModelSId("cra");
     const previousMetadata = workspace.metadata ?? {};
     const newMetadata = {
       ...previousMetadata,
-      creditAlertThresholdId: thresholdId,
+      creditAlertIdempotencyKey: idempotencyKey,
     };
     await WorkspaceResource.updateMetadata(workspace.id, newMetadata);
   }
@@ -265,7 +265,7 @@ export class CreditResource extends BaseResource<CreditModel> {
       return new Err(new Error("Credit already started"));
     }
 
-    await this.updateCreditAlertThresholdId(auth);
+    await this.updateCreditAlertIdempotencyKey(auth);
     return new Ok(undefined);
   }
 
@@ -291,7 +291,7 @@ export class CreditResource extends BaseResource<CreditModel> {
       return new Err(new Error("Credit not found or already frozen"));
     }
 
-    await this.updateCreditAlertThresholdId(auth);
+    await this.updateCreditAlertIdempotencyKey(auth);
     return new Ok(undefined);
   }
 
