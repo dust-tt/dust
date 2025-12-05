@@ -26,7 +26,7 @@ import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
 
 export default function SkillBuilder() {
-  const { owner } = useSkillBuilderContext();
+  const { owner, user } = useSkillBuilderContext();
   const router = useRouter();
   const sendNotification = useSendNotification();
   const [isSaving, setIsSaving] = useState(false);
@@ -37,6 +37,8 @@ export default function SkillBuilder() {
       name: "",
       description: "",
       instructions: "",
+      scope: "private",
+      editors: [user],
     },
   });
 
@@ -46,6 +48,7 @@ export default function SkillBuilder() {
     const result = await submitSkillBuilderForm({
       formData: data,
       owner,
+      user,
     });
 
     if (result.isErr()) {
