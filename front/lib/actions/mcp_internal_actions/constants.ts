@@ -74,6 +74,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "ashby",
   "confluence",
   "conversation_files",
+  "databricks",
   "data_sources_file_system",
   DATA_WAREHOUSE_SERVER_NAME,
   "deep_dive",
@@ -1647,6 +1648,33 @@ The directive should be used to display a clickable version of the agent name in
       },
       icon: "ZendeskLogo",
       documentationUrl: null,
+      instructions: null,
+    },
+  },
+  databricks: {
+    id: 44,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("databricks_tool");
+    },
+    isPreview: true,
+    tools_stakes: {
+      list_warehouses: "never_ask",
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "databricks",
+      version: "1.0.0",
+      description:
+        "Execute SQL queries and manage databases in Databricks SQL.",
+      authorization: {
+        provider: "databricks" as const,
+        supported_use_cases: ["platform_actions", "personal_actions"] as const,
+      },
+      icon: "ActionTableIcon",
+      documentationUrl: "https://docs.dust.tt/docs/databricks",
       instructions: null,
     },
   },
