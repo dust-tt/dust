@@ -44,19 +44,19 @@ type RowData = {
   onClick?: () => void;
 };
 
-type EditorsSheetBaseProps = {
+type EditorsSheetProps = {
   owner: WorkspaceType;
   editors: UserType[];
   onChangeEditors: (editors: UserType[]) => void;
   description: string;
 };
 
-export function EditorsSheetBase({
+export function EditorsSheet({
   owner,
   editors,
   onChangeEditors,
   description,
-}: EditorsSheetBaseProps) {
+}: EditorsSheetProps) {
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
