@@ -34,13 +34,14 @@ export function useMarkAllConversationsAsRead({
 
       try {
         const response = await clientFetch(
-          `/api/w/${owner.sId}/assistant/conversations/mark-all-as-read`,
+          `/api/w/${owner.sId}/assistant/conversations/bulk-actions`,
           {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
+              action: "mark_as_read",
               conversationIds,
             }),
           }

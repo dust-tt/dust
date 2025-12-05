@@ -236,7 +236,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
 
     if (fetchConversationOptions?.includeParticipant) {
-      // First get all participations for the user to get conversation IDs and metadata.
       const participations = await this.fetchParticipationsForUser(
         auth,
         resultConversations.map((c) => c.id)
@@ -829,6 +828,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       actionRequired: participant?.actionRequired ?? false,
       unread: participant?.unread ?? false,
     };
+  }
+
+  getUserParticipation(): UserParticipation | undefined {
+    return this.userParticipation;
   }
 
   static async upsertParticipation(
@@ -1437,7 +1440,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     auth: Authenticator,
     conversationIds: number[]
   ) {
-    await ConversationParticipantModel.update(
+    const result = await ConversationParticipantModel.update(
       { unread: false, actionRequired: false },
       {
         where: {
@@ -1447,6 +1450,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         },
       }
     );
+
+    return result[0];
   }
 
   toJSON(): ConversationWithoutContentType {
