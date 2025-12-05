@@ -1,5 +1,9 @@
-import { PlayIcon } from "@dust-tt/sparkle";
+import { PlayIcon, Spinner } from "@dust-tt/sparkle";
 import Image from "next/image";
+import { useState } from "react";
+
+import { clientFetch } from "@app/lib/egress/client";
+import { appendUTMParams } from "@app/lib/utils/utm";
 
 import { ScrollProgressSection } from "@app/components/home/content/Product/ScrollProgressSection";
 import { ValuePropSection } from "@app/components/home/content/Product/ValuePropSection";
@@ -15,6 +19,44 @@ import UTMButton from "@app/components/UTMButton";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 
 const HeroContent = () => {
+  const [email, setEmail] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (!email || !email.includes("@")) {
+      setError("Please enter a valid email");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await clientFetch("/api/enrichment/company", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (data.redirectUrl) {
+        window.location.href = appendUTMParams(data.redirectUrl);
+      }
+    } catch (err) {
+      console.error("Enrichment error:", err);
+      // Fallback to signup on error
+      window.location.href = appendUTMParams(
+        `/api/workos/login?screenHint=sign-up&loginHint=${encodeURIComponent(email)}`
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="mx-auto flex max-w-4xl flex-col items-center gap-6 px-4 text-center sm:gap-2 sm:px-6">
       <H1 className="text-center text-5xl font-medium md:text-6xl lg:text-7xl">
@@ -43,16 +85,27 @@ const HeroContent = () => {
         and tools.
       </P>
       {/* Email input */}
-      <div className="mt-12 flex w-full max-w-xl items-center gap-2 rounded-full bg-white py-1.5 pl-6 pr-1.5 shadow-sm">
-        <input
-          type="email"
-          placeholder="What's your work email?"
-          className="flex-1 border-none bg-transparent text-base text-gray-700 placeholder-gray-400 outline-none focus:ring-0"
-        />
-        <button className="rounded-full bg-blue-500 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-600">
-          Start with Dust
-        </button>
-      </div>
+      <form onSubmit={handleSubmit} className="mt-12 w-full max-w-xl">
+        <div className="flex w-full items-center gap-2 rounded-full bg-white py-1.5 pl-6 pr-1.5 shadow-sm">
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="What's your work email?"
+            className="flex-1 border-none bg-transparent text-base text-gray-700 placeholder-gray-400 outline-none focus:ring-0"
+            disabled={isLoading}
+          />
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="flex items-center gap-2 rounded-full bg-blue-500 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-70"
+          >
+            {isLoading && <Spinner size="xs" />}
+            Start with Dust
+          </button>
+        </div>
+        {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
+      </form>
     </div>
   );
 };
@@ -142,10 +195,8 @@ export function IntroSection() {
         <div
           className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen pb-12"
           style={{
-            backgroundImage: "url('/static/landing/hero/hero-bg.svg')",
-            backgroundSize: "cover",
-            backgroundPosition: "center -300px",
-            backgroundRepeat: "no-repeat",
+            background:
+              "linear-gradient(180deg, #FFF 0%, #E9F7FF 40%, #E9F7FF 60%, #FFF 100%)",
           }}
         >
           <HeroContent />

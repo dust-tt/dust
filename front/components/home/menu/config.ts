@@ -364,12 +364,6 @@ export const menuConfig: DocsConfig = {
       items: ResourcesMenuConfig.items,
     },
     {
-      title: CompanyMenuConfig.title,
-      label: "All about Dust",
-      rows: 3,
-      items: CompanyMenuConfig.items,
-    },
-    {
       title: "Security",
       href: "/home/security",
     },
