@@ -1,5 +1,6 @@
 import {
   Avatar,
+  Chip,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
@@ -145,8 +146,8 @@ export const MentionDropdown = forwardRef<
               <div key={suggestion.id}>
                 <button
                   className={classNames(
-                    "flex items-center gap-x-2 px-2 py-1",
-                    "w-full flex-initial cursor-pointer text-left text-sm font-semibold",
+                    "flex items-center px-2 py-1",
+                    "w-full flex-initial cursor-pointer text-left text-sm",
                     index === selectedIndex
                       ? "text-highlight-500"
                       : "text-foreground dark:text-foreground-night"
@@ -158,14 +159,27 @@ export const MentionDropdown = forwardRef<
                     setSelectedIndex(index);
                   }}
                 >
-                  <Avatar
-                    size="xs"
-                    visual={suggestion.pictureUrl}
-                    isRounded={suggestion.type === "user"}
-                  />
-                  <span className="truncate" title={suggestion.label}>
-                    {suggestion.label}
-                  </span>
+                  <div className="flex min-w-0 flex-1 items-center gap-x-2">
+                    <Avatar
+                      size="xs"
+                      visual={suggestion.pictureUrl}
+                      isRounded={suggestion.type === "user"}
+                    />
+                    <span
+                      className="truncate font-semibold"
+                      title={suggestion.label}
+                    >
+                      {suggestion.label}
+                    </span>
+                  </div>
+                  {suggestion.type === "user" && (
+                    <Chip
+                      size="mini"
+                      color="primary"
+                      label="User"
+                      className="ml-2 shrink-0"
+                    />
+                  )}
                 </button>
               </div>
             ))}
