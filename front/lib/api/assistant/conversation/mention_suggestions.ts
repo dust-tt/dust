@@ -124,7 +124,9 @@ export const suggestionsOfMentions = async (
       const participants = participantsRes.value;
 
       if (select.users && userSuggestions.length > 0) {
-        const participantUserIds = new Set(participants.users.map((u) => u.sId));
+        const participantUserIds = new Set(
+          participants.users.map((u) => u.sId)
+        );
         userSuggestions = reorderByIds(userSuggestions, participantUserIds);
       }
 
