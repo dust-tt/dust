@@ -4,6 +4,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type { SkillScope, SkillStatus } from "@app/lib/models/skill";
@@ -110,6 +111,8 @@ async function handler(
         // TODO(skills): add space restrictions.
         requestedSpaceIds: [],
       });
+
+      await GroupResource.makeNewSkillEditorsGroup(auth, skillConfiguration);
 
       return res.status(200).json({
         skillConfiguration: {
