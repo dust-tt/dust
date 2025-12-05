@@ -26,7 +26,6 @@ import { GongOptionComponent } from "@app/components/data_source/gong/GongOption
 import { IntercomConfigView } from "@app/components/data_source/IntercomConfigView";
 import { MicrosoftOAuthExtraConfig } from "@app/components/data_source/MicrosoftOAuthExtraConfig";
 import { SalesforceOauthExtraConfig } from "@app/components/data_source/salesforce/SalesforceOAuthExtractConfig";
-import { SlackBotEnableView } from "@app/components/data_source/SlackBotEnableView";
 import { SlackOAuthExtraConfig } from "@app/components/data_source/SlackOAuthExtraConfig";
 import { ZendeskConfigView } from "@app/components/data_source/ZendeskConfigView";
 import { ZendeskOAuthExtraConfig } from "@app/components/data_source/ZendeskOAuthExtraConfig";
@@ -196,7 +195,6 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     getLogoComponent: () => {
       return SlackLogo;
     },
-    optionsComponent: SlackBotEnableView,
     oauthExtraConfigComponent: SlackOAuthExtraConfig,
     isNested: false,
     isTitleFilterEnabled: true,
