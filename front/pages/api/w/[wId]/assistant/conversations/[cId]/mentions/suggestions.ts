@@ -54,6 +54,7 @@ async function handler(
         },
       });
     }
+    conversation = conversationRes;
   }
 
   const { select: selectParam } = req.query;
