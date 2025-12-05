@@ -124,11 +124,7 @@ function UserMessageContent({
   additionalMarkdownPlugins,
 }: UserMessageContentProps) {
   if (isDeleted) {
-    return (
-      <div className="italic text-muted-foreground">
-        This message has been deleted
-      </div>
-    );
+    return <DeletedMessage />;
   }
 
   return (
