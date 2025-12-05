@@ -8,6 +8,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useCallback, useEffect, useState } from "react";
+import React from "react";
 
 import { createFavorite, usePokeFavorites } from "@app/poke/swr/favorites";
 
@@ -18,6 +19,7 @@ interface PokeFavoriteButtonProps {
 export function PokeFavoriteButton({ title }: PokeFavoriteButtonProps) {
   const router = useRouter();
   const { isFavorite, toggleFavorite } = usePokeFavorites();
+  const [hasMounted, setHasMounted] = React.useState(false);
 
   const url = router.asPath;
   const isCurrentlyFavorite = isFavorite(url);
@@ -25,6 +27,11 @@ export function PokeFavoriteButton({ title }: PokeFavoriteButtonProps) {
   const handleToggle = useCallback(() => {
     toggleFavorite(createFavorite(url, title));
   }, [toggleFavorite, url, title]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setHasMounted(true);
+  }, []);
 
   // Keyboard shortcut: Cmd+D (Mac) or Ctrl+D (Windows/Linux)
   useEffect(() => {
@@ -37,6 +44,10 @@ export function PokeFavoriteButton({ title }: PokeFavoriteButtonProps) {
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [handleToggle]);
+
+  if (!hasMounted) {
+    return null;
+  }
 
   return (
     <IconButton
@@ -56,8 +67,18 @@ export function PokeFavoriteButton({ title }: PokeFavoriteButtonProps) {
 const COLLAPSED_LIMIT = 12;
 
 export function PokeFavoritesList() {
+  const [hasMounted, setHasMounted] = useState(false);
   const { favorites, removeFavorite } = usePokeFavorites();
   const [isExpanded, setIsExpanded] = useState(false);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setHasMounted(true);
+  }, []);
+
+  if (!hasMounted) {
+    return null;
+  }
 
   if (favorites.length === 0) {
     return (
