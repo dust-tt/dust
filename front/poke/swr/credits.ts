@@ -28,13 +28,13 @@ export function usePokeCredits({ disabled, owner }: PokeConditionalFetchProps) {
 export function usePokeProgrammaticCost({
   owner,
   groupBy,
-  selectedMonth,
+  selectedPeriod,
   billingCycleStartDay,
   filter,
   disabled,
 }: PokeConditionalFetchProps & {
   groupBy?: GroupByType;
-  selectedMonth?: string;
+  selectedPeriod?: string;
   billingCycleStartDay: number;
   filter?: Partial<Record<GroupByType, string[]>>;
 }) {
@@ -42,8 +42,8 @@ export function usePokeProgrammaticCost({
 
   const queryParams = new URLSearchParams();
   queryParams.set("billingCycleStartDay", billingCycleStartDay.toString());
-  if (selectedMonth) {
-    queryParams.set("selectedMonth", selectedMonth);
+  if (selectedPeriod) {
+    queryParams.set("selectedPeriod", selectedPeriod);
   }
   if (groupBy) {
     queryParams.set("groupBy", groupBy);

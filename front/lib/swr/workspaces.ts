@@ -156,14 +156,14 @@ export function useFeatureFlags({
 export function useWorkspaceProgrammaticCost({
   workspaceId,
   groupBy,
-  selectedMonth,
+  selectedPeriod,
   billingCycleStartDay,
   filter,
   disabled,
 }: {
   workspaceId: string;
   groupBy?: GroupByType;
-  selectedMonth?: string;
+  selectedPeriod?: string;
   billingCycleStartDay: number;
   filter?: Partial<Record<GroupByType, string[]>>;
   disabled?: boolean;
@@ -172,8 +172,8 @@ export function useWorkspaceProgrammaticCost({
 
   const queryParams = new URLSearchParams();
   queryParams.set("billingCycleStartDay", billingCycleStartDay.toString());
-  if (selectedMonth) {
-    queryParams.set("selectedMonth", selectedMonth);
+  if (selectedPeriod) {
+    queryParams.set("selectedPeriod", selectedPeriod);
   }
   if (groupBy) {
     queryParams.set("groupBy", groupBy);

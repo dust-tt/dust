@@ -49,7 +49,7 @@ export const QuerySchema = z.object({
       }
     })
     .pipe(FilterSchema.optional()),
-  selectedMonth: z.string().optional(),
+  selectedPeriod: z.string().optional(),
   billingCycleStartDay: z.coerce.number().min(1).max(31),
 });
 
@@ -268,18 +268,18 @@ export async function handleProgrammaticCostRequest(
       const {
         groupBy,
         groupByCount,
-        selectedMonth,
+        selectedPeriod,
         billingCycleStartDay,
         filter: filterParams,
       } = q.data;
 
       // Get selected date range using shared billing cycle utility
-      // selectedMonth is "YYYY-MM", so new Date(selectedMonth) creates day 1 of that month.
+      // selectedPeriod is "YYYY-MM", so new Date(selectedPeriod) creates day 1 of that month.
       // We need to set the day to billingCycleStartDay to get the correct billing cycle.
-      const referenceDate = selectedMonth
-        ? new Date(selectedMonth)
+      const referenceDate = selectedPeriod
+        ? new Date(selectedPeriod)
         : new Date();
-      if (selectedMonth) {
+      if (selectedPeriod) {
         referenceDate.setUTCDate(billingCycleStartDay);
       }
       const { cycleStart: periodStart, cycleEnd: periodEnd } =

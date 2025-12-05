@@ -2,9 +2,10 @@ import { useState } from "react";
 
 import {
   BaseProgrammaticCostChart,
-  formatMonth,
+  formatPeriod,
 } from "@app/components/workspace/ProgrammaticCostChart";
 import type { GroupByType } from "@app/lib/api/analytics/programmatic_cost";
+import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import { usePokeProgrammaticCost } from "@app/poke/swr/credits";
 import type { WorkspaceType } from "@app/types";
 
@@ -26,8 +27,19 @@ export function PokeProgrammaticCostChart({
     {}
   );
 
+  // Initialize selectedPeriod to a date within the current billing cycle.
+  // Using just formatPeriod(now) would create a date on the 1st of the month,
+  // which may fall in the previous billing cycle if billingCycleStartDay > 1.
+  // By using the billing cycle's start date, we ensure we're in the correct cycle.
   const now = new Date();
-  const [selectedMonth, setSelectedMonth] = useState<string>(formatMonth(now));
+  const currentBillingCycle = getBillingCycleFromDay(
+    billingCycleStartDay,
+    now,
+    false
+  );
+  const [selectedPeriod, setSelectedPeriod] = useState<string>(
+    formatPeriod(currentBillingCycle.cycleStart)
+  );
 
   const {
     programmaticCostData,
@@ -35,7 +47,7 @@ export function PokeProgrammaticCostChart({
     isProgrammaticCostError,
   } = usePokeProgrammaticCost({
     owner,
-    selectedMonth,
+    selectedPeriod,
     billingCycleStartDay,
     groupBy,
     filter,
@@ -50,8 +62,8 @@ export function PokeProgrammaticCostChart({
       setGroupBy={setGroupBy}
       filter={filter}
       setFilter={setFilter}
-      selectedMonth={selectedMonth}
-      setSelectedMonth={setSelectedMonth}
+      selectedPeriod={selectedPeriod}
+      setSelectedPeriod={setSelectedPeriod}
       billingCycleStartDay={billingCycleStartDay}
     />
   );
