@@ -9,6 +9,7 @@ import {
   Tooltip,
   TrashIcon,
 } from "@dust-tt/sparkle";
+import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
@@ -26,6 +27,7 @@ import {
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
 import { ConfirmContext } from "@app/components/Confirm";
+import type { EditorService } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import {
   CiteBlock,
@@ -54,6 +56,58 @@ import { Toolbar } from "./input_bar/toolbar/Toolbar";
 
 // TODO (yuka:2025-12-04): we should show editing UI when the message is editable
 const showEditing = false;
+
+interface UserMessageEditorProps {
+  editor: Editor | null;
+  editorService: EditorService;
+  setIsEditing: (isEditing: boolean) => void;
+}
+
+function UserMessageEditor({
+  editor,
+  editorService,
+  setIsEditing,
+}: UserMessageEditorProps) {
+  if (!editor) {
+    return null;
+  }
+
+  return (
+    <div
+      className="dark:focus-within:ring-highlight/30-night w-full rounded-2xl bg-muted-background py-2 pl-4 pr-2 focus-within:ring-1 focus-within:ring-highlight/30 dark:bg-muted-background-night dark:ring-border-dark-night dark:focus-within:ring-1 sm:focus-within:ring-2 dark:sm:focus-within:ring-2"
+      onClick={(e) => {
+        // If e.target is not a child of a div with class "tiptap", then focus on the editor
+        if (!(e.target instanceof HTMLElement && e.target.closest(".tiptap"))) {
+          editorService.focusEnd();
+        }
+      }}
+    >
+      <EditorContent
+        editor={editor}
+        className={`inline-block max-h-[40vh] min-h-14 w-full overflow-y-auto whitespace-pre-wrap scrollbar-hide`}
+      />
+
+      <BubbleMenu editor={editor} className="hidden sm:flex">
+        <Toolbar editor={editor} className="hidden sm:inline-flex" />
+      </BubbleMenu>
+
+      <div className="flex justify-end gap-2">
+        <Button
+          variant="ghost-secondary"
+          size="xs"
+          onClick={() => setIsEditing(false)}
+          label="Cancel"
+        />
+        <Button
+          variant="highlight"
+          size="xs"
+          onClick={() => setIsEditing(false)}
+          label="Save"
+        />
+      </div>
+    </div>
+  );
+}
 
 interface UserMessageContentProps {
   message: UserMessageType;
@@ -243,47 +297,11 @@ export function UserMessage({
           )}
         >
           {isEditing ? (
-            <div
-              className="dark:focus-within:ring-highlight/30-night w-full rounded-2xl bg-muted-background py-2 pl-4 pr-2 focus-within:ring-1 focus-within:ring-highlight/30 dark:bg-muted-background-night dark:ring-border-dark-night dark:focus-within:ring-1 sm:focus-within:ring-2 dark:sm:focus-within:ring-2"
-              onClick={(e) => {
-                // If e.target is not a child of a div with class "tiptap", then focus on the editor
-                if (
-                  !(
-                    e.target instanceof HTMLElement &&
-                    e.target.closest(".tiptap")
-                  )
-                ) {
-                  editorService.focusEnd();
-                }
-              }}
-            >
-              <EditorContent
-                editor={editor}
-                className={`inline-block max-h-[40vh] min-h-14 w-full overflow-y-auto whitespace-pre-wrap scrollbar-hide`}
-              />
-
-              <BubbleMenu
-                editor={editor ?? undefined}
-                className="hidden sm:flex"
-              >
-                <Toolbar editor={editor} className="hidden sm:inline-flex" />
-              </BubbleMenu>
-
-              <div className="flex justify-end gap-2">
-                <Button
-                  variant="ghost-secondary"
-                  size="xs"
-                  onClick={() => setIsEditing(false)}
-                  label="Cancel"
-                />
-                <Button
-                  variant="highlight"
-                  size="xs"
-                  onClick={() => setIsEditing(false)}
-                  label="Save"
-                />
-              </div>
-            </div>
+            <UserMessageEditor
+              editor={editor}
+              editorService={editorService}
+              setIsEditing={setIsEditing}
+            />
           ) : (
             <NewConversationMessage
               pictureUrl={
