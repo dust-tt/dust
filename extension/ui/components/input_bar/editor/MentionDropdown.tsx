@@ -78,7 +78,7 @@ export const MentionDropdown = ({
             <Spinner />
           </div>
         ) : suggestions.length > 0 ? (
-          <div className="flex flex-col gap-y-1 p-1">
+          <div className="max-h-60 overflow-y-auto flex flex-col gap-y-1 p-1">
             {suggestions.map((suggestion, index) => (
               <div key={suggestion.id}>
                 <button

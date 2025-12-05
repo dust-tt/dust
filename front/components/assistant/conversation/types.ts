@@ -8,7 +8,6 @@ import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types"
 import type { DustError } from "@app/lib/error";
 import type {
   ContentFragmentsType,
-  ContentFragmentType,
   LightAgentConfigurationType,
   LightAgentMessageType,
   LightAgentMessageWithActionsType,
@@ -93,15 +92,11 @@ export const isHiddenMessage = (message: UserMessageType): boolean => {
 
 export const isUserMessage = (
   msg: VirtuosoMessage
-): msg is UserMessageType & { contentFragments: ContentFragmentType[] } =>
+): msg is UserMessageTypeWithContentFragments =>
   "type" in msg && msg.type === "user_message" && "contentFragments" in msg;
 
-export const isHandoverUserMessage = (
-  msg: VirtuosoMessage
-): msg is UserMessageType & { contentFragments: ContentFragmentType[] } =>
-  "type" in msg &&
-  msg.type === "user_message" &&
-  msg.agenticMessageData?.type === "agent_handover";
+export const isHandoverUserMessage = (msg: VirtuosoMessage): boolean =>
+  isUserMessage(msg) && msg.agenticMessageData?.type === "agent_handover";
 
 export const isMessageTemporayState = (
   msg: VirtuosoMessage

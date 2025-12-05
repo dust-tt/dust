@@ -29,6 +29,7 @@ import { SlackConfigurationResource } from "@connectors/resources/slack_configur
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type {
   AdminSuccessResponseType,
+  SlackCheckChannelResponseType,
   SlackCommandType,
   SlackJoinResponseType as SlackJoinResponseType,
 } from "@connectors/types";
@@ -61,7 +62,9 @@ export const slack = async ({
   command,
   args,
 }: SlackCommandType): Promise<
-  AdminSuccessResponseType | SlackJoinResponseType
+  | AdminSuccessResponseType
+  | SlackCheckChannelResponseType
+  | SlackJoinResponseType
 > => {
   const logger = topLogger.child({ majorCommand: "slack", command, args });
   switch (command) {
@@ -864,7 +867,13 @@ export const slack = async ({
         throw new Error(`Could not find the channel ${args.channelId}`);
       }
 
-      return { success: true };
+      return {
+        success: true,
+        channel: {
+          name: remoteChannel.name,
+          isPrivate: remoteChannel.is_private,
+        },
+      };
     }
 
     default:

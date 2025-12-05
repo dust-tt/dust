@@ -72,6 +72,9 @@ export function createNotionVerificationMiddleware(
     res: express.Response,
     next: express.NextFunction
   ): Promise<void> => {
+    let providerWorkspaceId: string | undefined;
+    let connectorIdsByRegion: Record<string, number[]> | undefined;
+
     try {
       // Get the raw body for Notion signature verification.
       const stringBody = await parseExpressRequestRawBody(req);
@@ -105,7 +108,7 @@ export function createNotionVerificationMiddleware(
       if (useClientCredentials) {
         // It's a private client integration, so get the signing secret and regions from
         // the webhook router config.
-        const { providerWorkspaceId } = req.params;
+        providerWorkspaceId = req.params.providerWorkspaceId;
         const notionWebhookConfig = await webhookRouterConfigManager.getEntry(
           "notion",
           providerWorkspaceId
@@ -114,6 +117,8 @@ export function createNotionVerificationMiddleware(
         req.regions = Object.keys(notionWebhookConfig.regions).filter(
           (key): key is Region => ALL_REGIONS.includes(key as Region)
         );
+        // Extract connectorIds by region for potential error logging
+        connectorIdsByRegion = notionWebhookConfig.regions;
         signingSecret = notionWebhookConfig.signingSecret;
       } else {
         // Get secrets for Notion signature verification (webhook secret already validated)
@@ -133,6 +138,8 @@ export function createNotionVerificationMiddleware(
         console.error("Notion request verification failed", {
           component: "notion-verification",
           error: error.message,
+          ...(providerWorkspaceId && { providerWorkspaceId }),
+          ...(connectorIdsByRegion && { connectorIdsByRegion }),
         });
         res.status(401).send();
         return;
@@ -141,6 +148,8 @@ export function createNotionVerificationMiddleware(
       console.error("Notion request verification failed", {
         component: "notion-verification",
         error: error instanceof Error ? error.message : String(error),
+        ...(providerWorkspaceId && { providerWorkspaceId }),
+        ...(connectorIdsByRegion && { connectorIdsByRegion }),
       });
       res.status(400).send();
       return;

@@ -27,7 +27,11 @@ import {
   AgentMCPActionModel,
   AgentMCPActionOutputItem,
 } from "@app/lib/models/agent/actions/mcp";
-import { AgentMessage, Message } from "@app/lib/models/agent/conversation";
+import {
+  AgentMessage,
+  Message,
+  UserMessage,
+} from "@app/lib/models/agent/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -204,7 +208,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     const latestAgentMessages =
       await conversation.getLatestAgentMessageIdByRank(auth);
 
-    const blockedActions = await AgentMCPActionModel.findAll({
+    const unfilteredBlockedActions = await AgentMCPActionModel.findAll({
       include: [
         {
           model: AgentMessage,
@@ -229,6 +233,36 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         },
       },
       order: [["createdAt", "ASC"]],
+    });
+
+    const parentUserMessageIds = removeNulls(
+      unfilteredBlockedActions.map((a) => a.agentMessage!.message!.parentId)
+    );
+
+    const parentUserMessages = await Message.findAll({
+      where: {
+        workspaceId: owner.id,
+        conversationId: conversation.id,
+        id: { [Op.in]: parentUserMessageIds },
+      },
+      include: [
+        {
+          model: UserMessage,
+          as: "userMessage",
+          required: true,
+        },
+      ],
+    });
+
+    const parentUserMessageById = _.keyBy(parentUserMessages, "id");
+
+    // Filter out the actions that are not triggered by the current user.
+    const blockedActions = unfilteredBlockedActions.filter((a) => {
+      const parentUserMessage =
+        parentUserMessageById[a.agentMessage!.message!.parentId!];
+      return (
+        parentUserMessage.userMessage?.userId === auth.getNonNullableUser().id
+      );
     });
 
     const blockedActionsList: BlockedToolExecution[] = [];

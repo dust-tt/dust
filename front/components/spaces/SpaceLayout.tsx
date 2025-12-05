@@ -14,7 +14,7 @@ import { CreateOrEditSpaceModal } from "@app/components/spaces/CreateOrEditSpace
 import { SpaceSearchInput } from "@app/components/spaces/SpaceSearchLayout";
 import SpaceSideBarMenu from "@app/components/spaces/SpaceSideBarMenu";
 import { AppWideModeLayout } from "@app/components/sparkle/AppWideModeLayout";
-import { isEntreprisePlan } from "@app/lib/plans/plan_codes";
+import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { isPrivateSpacesLimitReached } from "@app/lib/spaces";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import type {
@@ -75,7 +75,7 @@ export function SpaceLayout({
   });
 
   const isLimitReached = isPrivateSpacesLimitReached(spaces, plan);
-  const isEnterprise = isEntreprisePlan(plan.code);
+  const isEnterprise = isEntreprisePlanPrefix(plan.code);
 
   const closeSpaceCreationModal = useCallback(() => {
     setSpaceCreationModalState((prev) => ({ ...prev, isOpen: false }));

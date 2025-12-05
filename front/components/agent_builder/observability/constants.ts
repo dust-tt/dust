@@ -111,6 +111,10 @@ export const USER_MESSAGE_ORIGIN_LABELS: Record<
     color: "text-golden-500 dark:text-golden-500-night",
   },
   slack: { label: "Slack", color: "text-green-500 dark:text-green-500-night" },
+  slack_workflow: {
+    label: "Slack",
+    color: "text-green-500 dark:text-green-500-night",
+  },
   teams: {
     label: "Teams",
     color: "text-highlight-muted dark:text-highlight-muted-night",

@@ -3,6 +3,7 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -25,7 +26,7 @@ export const PostCreditPurchaseRequestBody = t.type({
 
 type PostCreditPurchaseResponseBody = {
   success: boolean;
-  creditsAdded: number;
+  creditsAddedMicroUsd: number;
   invoiceId: string | null;
   paymentUrl: string | null;
 };
@@ -121,24 +122,40 @@ async function handler(
           },
         });
       }
-      // Convert dollars to cents for internal storage.
-      const amountCents = Math.round(amountDollars * 100);
+      // Convert dollars to micro USD for internal storage.
+      const amountMicroUsd = Math.round(amountDollars * 1_000_000);
       const isEnterprise = isEnterpriseSubscription(stripeSubscription);
 
       // Fetch discount from programmatic usage configuration.
       const programmaticConfig =
         await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
-      const discountPercent =
+      let discountPercent =
         programmaticConfig?.defaultDiscountPercent &&
         programmaticConfig.defaultDiscountPercent > 0
           ? programmaticConfig.defaultDiscountPercent
           : undefined;
 
+      // Validate discount does not exceed maximum (should be enforced at config level, but double-check).
+      if (
+        discountPercent !== undefined &&
+        discountPercent > MAX_DISCOUNT_PERCENT
+      ) {
+        logger.error(
+          {
+            workspaceId: workspace.sId,
+            discountPercent,
+            maxDiscountPercent: MAX_DISCOUNT_PERCENT,
+          },
+          "[Credit Purchase] Discount exceeds maximum allowed"
+        );
+        discountPercent = undefined;
+      }
+
       if (isEnterprise) {
         const result = await createEnterpriseCreditPurchase({
           auth,
           stripeSubscriptionId: subscription.stripeSubscriptionId,
-          amountCents,
+          amountMicroUsd,
           discountPercent,
         });
 
@@ -154,7 +171,7 @@ async function handler(
 
         return res.status(200).json({
           success: true,
-          creditsAdded: amountCents,
+          creditsAddedMicroUsd: amountMicroUsd,
           invoiceId: null,
           paymentUrl: null,
         });
@@ -162,7 +179,7 @@ async function handler(
       const result = await createProCreditPurchase({
         auth,
         stripeSubscriptionId: subscription.stripeSubscriptionId,
-        amountCents,
+        amountMicroUsd,
         discountPercent,
       });
 
@@ -178,7 +195,7 @@ async function handler(
 
       return res.status(200).json({
         success: true,
-        creditsAdded: amountCents,
+        creditsAddedMicroUsd: amountMicroUsd,
         invoiceId: result.value.invoiceId,
         paymentUrl: result.value.paymentUrl,
       });

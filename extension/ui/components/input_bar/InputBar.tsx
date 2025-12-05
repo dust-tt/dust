@@ -8,7 +8,7 @@ import {
   compareAgentsForSort,
   isEqualNode,
 } from "@app/shared/lib/utils";
-import { usePublicAgentConfigurations } from "@app/ui/components/assistants/usePublicAgentConfigurations";
+import { usePublicAgentConfigurations } from "@app/ui/components/agents/usePublicAgentConfigurations";
 import { useFileDrop } from "@app/ui/components/conversation/FileUploaderContext";
 import { GenerationContext } from "@app/ui/components/conversation/GenerationContextProvider";
 import { InputBarAttachments } from "@app/ui/components/input_bar/InputBarAttachment";
@@ -160,7 +160,7 @@ export function AssistantInputBar({
   }, [baseAgentConfigurations, additionalAgentConfiguration]);
 
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
-  const { animate, selectedAssistant } = useContext(InputBarContext);
+  const { animate, selectedAgent } = useContext(InputBarContext);
   const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -373,7 +373,7 @@ export function AssistantInputBar({
                 allAssistants={activeAgents}
                 agentConfigurations={agentConfigurations}
                 owner={owner}
-                selectedAssistant={selectedAssistant}
+                selectedAssistant={selectedAgent}
                 onEnterKeyDown={handleSubmit}
                 stickyMentions={stickyMentions}
                 isTabIncluded={isTabIncluded}

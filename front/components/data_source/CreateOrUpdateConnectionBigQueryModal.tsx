@@ -26,6 +26,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
+import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import { useBigQueryLocations } from "@app/lib/swr/bigquery";
 import type { PostCredentialsBody } from "@app/pages/api/w/[wId]/credentials";
 import type {
@@ -151,6 +152,11 @@ export function CreateOrUpdateConnectionBigQueryModal({
     // Should never happen.
     return null;
   }
+
+  const connectorUIConfiguration =
+    CONNECTOR_UI_CONFIGURATIONS[
+      connectorProviderConfiguration.connectorProvider
+    ];
 
   function onSuccess(ds: DataSourceType) {
     setCredentials("");
@@ -307,7 +313,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
           <SheetTitle className="flex items-center gap-2">
             <span className="[&>svg]:h-6 [&>svg]:w-6">
               <Icon
-                visual={connectorProviderConfiguration.getLogoComponent(isDark)}
+                visual={connectorUIConfiguration.getLogoComponent(isDark)}
               />
             </span>
             Connecting {connectorProviderConfiguration.name}
@@ -319,20 +325,20 @@ export function CreateOrUpdateConnectionBigQueryModal({
               <Button
                 label="Read our guide"
                 size="sm"
-                href={connectorProviderConfiguration.guideLink ?? ""}
+                href={connectorUIConfiguration.guideLink ?? ""}
                 variant="outline"
                 target="_blank"
                 rel="noopener noreferrer"
                 icon={BookOpenIcon}
               />
 
-              {connectorProviderConfiguration.limitations && (
+              {connectorUIConfiguration.limitations && (
                 <ContentMessage
                   variant="primary"
                   title="Limitations"
                   className="border-none"
                 >
-                  {connectorProviderConfiguration.limitations}
+                  {connectorUIConfiguration.limitations}
                 </ContentMessage>
               )}
             </div>

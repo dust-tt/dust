@@ -34,14 +34,12 @@ import { ProviderManagementModal } from "@app/components/workspace/ProviderManag
 import { useFrameSharingToggle } from "@app/hooks/useFrameSharingToggle";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useVoiceTranscriptionToggle } from "@app/hooks/useVoiceTranscriptionToggle";
-import config from "@app/lib/api/config";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { useConnectorConfig, useToggleChatBot } from "@app/lib/swr/connectors";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import logger from "@app/logger/logger";
 import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 import type {
   ConnectorProvider,
@@ -52,12 +50,11 @@ import type {
   SubscriptionType,
   WorkspaceType,
 } from "@app/types";
-import { ConnectorsAPI, Err, Ok, setupOAuthConnection } from "@app/types";
+import { Err, Ok, setupOAuthConnection } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
-  isSlackDataSourceBotEnabled: boolean;
   isDiscordBotAvailable: boolean;
   slackBotDataSource: DataSourceType | null;
   microsoftBotDataSource: DataSourceType | null;
@@ -73,31 +70,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
 
   const [
-    [slackDataSource],
     [slackBotDataSource],
     [microsoftBotDataSource],
     [discordBotDataSource],
   ] = await Promise.all([
-    DataSourceResource.listByConnectorProvider(auth, "slack"),
     DataSourceResource.listByConnectorProvider(auth, "slack_bot"),
     DataSourceResource.listByConnectorProvider(auth, "microsoft_bot"),
     DataSourceResource.listByConnectorProvider(auth, "discord_bot"),
   ]);
-
-  let isSlackDataSourceBotEnabled = false;
-  if (slackDataSource && slackDataSource.connectorId) {
-    const connectorsAPI = new ConnectorsAPI(
-      config.getConnectorsAPIConfig(),
-      logger
-    );
-    const configRes = await connectorsAPI.getConnectorConfig(
-      slackDataSource.connectorId,
-      "botEnabled"
-    );
-    if (configRes.isOk()) {
-      isSlackDataSourceBotEnabled = configRes.value.configValue === "true";
-    }
-  }
 
   const featureFlags = await getFeatureFlags(owner);
   const isDiscordBotAvailable = featureFlags.includes("discord_bot");
@@ -108,7 +88,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     props: {
       owner,
       subscription,
-      isSlackDataSourceBotEnabled,
       isDiscordBotAvailable,
       slackBotDataSource: slackBotDataSource?.toJSON() ?? null,
       microsoftBotDataSource: microsoftBotDataSource?.toJSON() ?? null,
@@ -121,7 +100,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function WorkspaceAdmin({
   owner,
   subscription,
-  isSlackDataSourceBotEnabled,
   isDiscordBotAvailable,
   slackBotDataSource,
   microsoftBotDataSource,
@@ -280,19 +258,17 @@ export default function WorkspaceAdmin({
           <Page.H variant="h4">Integrations</Page.H>
           <ContextItem.List>
             <div className="h-full border-b border-border dark:border-border-night" />
-            {!isSlackDataSourceBotEnabled && (
-              <BotToggle
-                owner={owner}
-                botDataSource={slackBotDataSource}
-                systemSpace={systemSpace}
-                oauth={{ provider: "slack", useCase: "bot", extraConfig: {} }}
-                connectorProvider="slack_bot"
-                name="Slack Bot"
-                description="Use Dust Agents in Slack with the Dust Slack app"
-                visual={<SlackLogo className="h-6 w-6" />}
-                documentationUrl="https://docs.dust.tt/docs/slack"
-              />
-            )}
+            <BotToggle
+              owner={owner}
+              botDataSource={slackBotDataSource}
+              systemSpace={systemSpace}
+              oauth={{ provider: "slack", useCase: "bot", extraConfig: {} }}
+              connectorProvider="slack_bot"
+              name="Slack Bot"
+              description="Use Dust Agents in Slack with the Dust Slack app"
+              visual={<SlackLogo className="h-6 w-6" />}
+              documentationUrl="https://docs.dust.tt/docs/slack"
+            />
             <BotToggle
               owner={owner}
               botDataSource={microsoftBotDataSource}
@@ -478,6 +454,7 @@ function BotToggle({
                 } else {
                   const updateRes = await updateConnectorConnectionId(
                     cRes.value.connection_id,
+                    oauth.extraConfig,
                     connectorProvider,
                     botDataSource,
                     owner

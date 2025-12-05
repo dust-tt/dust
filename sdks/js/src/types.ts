@@ -78,7 +78,9 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "deepseek-chat" // deepseek api
   | "deepseek-reasoner" // deepseek api
   | "accounts/fireworks/models/deepseek-r1-0528" // fireworks
-  | "accounts/fireworks/models/kimi-k2-instruct" // fireworks
+  | "accounts/fireworks/models/deepseek-v3p2" // fireworks
+  | "accounts/fireworks/models/kimi-k2-instruct" // fireworks - not supported anymore
+  | "accounts/fireworks/models/kimi-k2-instruct-0905" // fireworks
   | "grok-3-latest" // xAI
   | "grok-3-mini-latest" // xAI
   | "grok-4-latest" // xAI
@@ -316,6 +318,7 @@ const UserMessageOriginSchema = FlexibleEnumSchema<
   | "raycast"
   | "run_agent"
   | "slack"
+  | "slack_workflow"
   | "teams"
   | "transcript"
   | "triggered_programmatic"
@@ -649,6 +652,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "claude_4_5_opus_feature"
   | "confluence_tool"
   | "deepseek_feature"
+  | "fireworks_new_model_feature"
   | "deepseek_r1_global_agent_feature"
   | "dust_edge_global_agent"
   | "dust_quick_global_agent"
@@ -666,8 +670,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_trackers"
   | "labs_transcripts"
   | "legacy_dust_apps"
-  | "llm_comparison_mode_enabled"
-  | "llm_router_direct_requests"
   | "mentions_v2"
   | "monday_tool"
   | "noop_model_feature"
@@ -685,11 +687,13 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "salesloft_tool"
   | "self_created_slack_app_connector_rollout"
   | "show_debug_tools"
+  | "skills"
   | "slack_bot_mcp"
   | "slack_enhanced_default_agent"
   | "slack_message_splitting"
   | "slab_mcp"
   | "slideshow"
+  | "universal_search"
   | "usage_data_api"
   | "web_summarization"
   | "xai_feature"

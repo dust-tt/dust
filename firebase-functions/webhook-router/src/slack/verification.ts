@@ -94,6 +94,9 @@ export function createSlackVerificationMiddleware(
   { useClientCredentials }: { useClientCredentials: boolean }
 ): RequestHandler {
   return async (req, res, next): Promise<void> => {
+    let teamId: string | undefined;
+    let connectorIdsByRegion: Record<string, number[]> | undefined;
+
     try {
       if (isUrlVerification(req.body)) {
         console.log("Handling URL verification challenge", {
@@ -114,7 +117,7 @@ export function createSlackVerificationMiddleware(
       let signingSecret: string;
 
       if (useClientCredentials) {
-        const teamId = req.body.team_id;
+        teamId = req.body.team_id;
         if (!teamId) {
           throw new ReceiverAuthenticityError(
             "Slack request signing verification failed. Some data in the payload is invalid."
@@ -129,6 +132,8 @@ export function createSlackVerificationMiddleware(
         req.regions = Object.keys(slackWebhookConfig.regions).filter(
           (key): key is Region => ALL_REGIONS.includes(key as Region)
         );
+        // Extract connectorIds by region for potential error logging
+        connectorIdsByRegion = slackWebhookConfig.regions;
         signingSecret = slackWebhookConfig.signingSecret;
       } else {
         const secrets = await secretManager.getSecrets();
@@ -148,6 +153,8 @@ export function createSlackVerificationMiddleware(
         console.error("Slack request verification failed", {
           component: "slack-verification",
           error: error.message,
+          ...(teamId && { teamId }),
+          ...(connectorIdsByRegion && { connectorIdsByRegion }),
         });
         res.status(401).send();
         return;
@@ -156,6 +163,8 @@ export function createSlackVerificationMiddleware(
       console.error("Slack request verification failed", {
         component: "slack-verification",
         error: error instanceof Error ? error.message : String(error),
+        ...(teamId && { teamId }),
+        ...(connectorIdsByRegion && { connectorIdsByRegion }),
       });
       res.status(400).send();
       return;

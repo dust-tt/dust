@@ -36,6 +36,7 @@ import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
 import {
   forwardRef,
+  memo,
   useCallback,
   useContext,
   useEffect,
@@ -676,90 +677,92 @@ function getConversationDotStatus(
   return "idle";
 }
 
-const ConversationListItem = ({
-  conversation,
-  isMultiSelect,
-  selectedConversations,
-  toggleConversationSelection,
-  router,
-  owner,
-}: {
-  conversation: ConversationWithoutContentType;
-  isMultiSelect: boolean;
-  selectedConversations: ConversationWithoutContentType[];
-  toggleConversationSelection: (c: ConversationWithoutContentType) => void;
-  router: NextRouter;
-  owner: WorkspaceType;
-}) => {
-  const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
-  const {
-    isMenuOpen,
-    menuTriggerPosition,
-    handleRightClick,
-    handleMenuOpenChange,
-  } = useConversationMenu();
+const ConversationListItem = memo(
+  ({
+    conversation,
+    isMultiSelect,
+    selectedConversations,
+    toggleConversationSelection,
+    router,
+    owner,
+  }: {
+    conversation: ConversationWithoutContentType;
+    isMultiSelect: boolean;
+    selectedConversations: ConversationWithoutContentType[];
+    toggleConversationSelection: (c: ConversationWithoutContentType) => void;
+    router: NextRouter;
+    owner: WorkspaceType;
+  }) => {
+    const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
+    const {
+      isMenuOpen,
+      menuTriggerPosition,
+      handleRightClick,
+      handleMenuOpenChange,
+    } = useConversationMenu();
 
-  const conversationLabel =
-    conversation.title ??
-    (moment(conversation.created).isSame(moment(), "day")
-      ? "New Conversation"
-      : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`);
+    const conversationLabel =
+      conversation.title ??
+      (moment(conversation.created).isSame(moment(), "day")
+        ? "New Conversation"
+        : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`);
 
-  return (
-    <>
-      {isMultiSelect ? (
-        <div className="flex items-center px-2 py-2">
-          <Checkbox
-            id={`conversation-${conversation.sId}`}
-            className="bg-background dark:bg-background-night"
-            checked={selectedConversations.includes(conversation)}
-            onCheckedChange={() => toggleConversationSelection(conversation)}
-          />
-          <Label
-            htmlFor={`conversation-${conversation.sId}`}
-            className="copy-sm ml-2 text-muted-foreground dark:text-muted-foreground-night"
-          >
-            {conversationLabel}
-          </Label>
-        </div>
-      ) : (
-        <NavigationListItem
-          selected={router.query.cId === conversation.sId}
-          status={getConversationDotStatus(conversation)}
-          label={conversationLabel}
-          moreMenu={
-            <ConversationMenu
-              activeConversationId={conversation.sId}
-              conversation={conversation}
-              owner={owner}
-              trigger={<NavigationListItemAction />}
-              isConversationDisplayed={router.query.cId === conversation.sId}
-              isOpen={isMenuOpen}
-              onOpenChange={handleMenuOpenChange}
-              triggerPosition={menuTriggerPosition}
+    return (
+      <>
+        {isMultiSelect ? (
+          <div className="flex items-center px-2 py-2">
+            <Checkbox
+              id={`conversation-${conversation.sId}`}
+              className="bg-background dark:bg-background-night"
+              checked={selectedConversations.includes(conversation)}
+              onCheckedChange={() => toggleConversationSelection(conversation)}
             />
-          }
-          onContextMenu={handleRightClick}
-          onClick={async () => {
-            // Side bar is the floating sidebar that appears when the screen is small.
-            if (sidebarOpen) {
-              setSidebarOpen(false);
-              // Wait a bit before moving to the new conversation to avoid the sidebar from flickering.
-              await new Promise((resolve) => setTimeout(resolve, 600));
+            <Label
+              htmlFor={`conversation-${conversation.sId}`}
+              className="copy-sm ml-2 text-muted-foreground dark:text-muted-foreground-night"
+            >
+              {conversationLabel}
+            </Label>
+          </div>
+        ) : (
+          <NavigationListItem
+            selected={router.query.cId === conversation.sId}
+            status={getConversationDotStatus(conversation)}
+            label={conversationLabel}
+            moreMenu={
+              <ConversationMenu
+                activeConversationId={conversation.sId}
+                conversation={conversation}
+                owner={owner}
+                trigger={<NavigationListItemAction />}
+                isConversationDisplayed={router.query.cId === conversation.sId}
+                isOpen={isMenuOpen}
+                onOpenChange={handleMenuOpenChange}
+                triggerPosition={menuTriggerPosition}
+              />
             }
-            await router.push(
-              getConversationRoute(owner.sId, conversation.sId),
-              undefined,
-              {
-                shallow: true,
+            onContextMenu={handleRightClick}
+            onClick={async () => {
+              // Side bar is the floating sidebar that appears when the screen is small.
+              if (sidebarOpen) {
+                setSidebarOpen(false);
+                // Wait a bit before moving to the new conversation to avoid the sidebar from flickering.
+                await new Promise((resolve) => setTimeout(resolve, 600));
               }
-            );
-          }}
-        />
-      )}
-    </>
-  );
-};
+              await router.push(
+                getConversationRoute(owner.sId, conversation.sId),
+                undefined,
+                {
+                  shallow: true,
+                }
+              );
+            }}
+          />
+        )}
+      </>
+    );
+  }
+);
 
 interface NavigationListWithInboxProps {
   conversations: ConversationWithoutContentType[];

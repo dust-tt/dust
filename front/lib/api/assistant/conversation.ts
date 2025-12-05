@@ -24,6 +24,7 @@ import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import { USER_MENTION_REGEX } from "@app/lib/mentions/format";
 import {
   AgentMessage,
   ConversationModel,
@@ -312,7 +313,8 @@ export async function getLastUserMessage(
  * resulting in a potential deadlock when the pool is fully occupied.
  */
 async function getConversationRankVersionLock(
-  conversation: ConversationType,
+  auth: Authenticator,
+  conversation: ConversationWithoutContentType,
   t: Transaction
 ) {
   const now = new Date();
@@ -328,7 +330,7 @@ async function getConversationRankVersionLock(
 
   logger.info(
     {
-      workspaceId: conversation.owner.sId,
+      workspaceId: auth.getNonNullableWorkspace().sId,
       conversationId: conversation.sId,
       duration: new Date().getTime() - now.getTime(),
       lockKey,
@@ -503,7 +505,7 @@ export async function postUserMessage(
     // Since we are getting a transaction level lock, we can't execute any other SQL query outside of
     // this transaction, otherwise this other query will be competing for a connection in the database
     // connection pool, resulting in a deadlock.
-    await getConversationRankVersionLock(conversation, t);
+    await getConversationRankVersionLock(auth, conversation, t);
 
     // We clear the hasError flag of a conversation when posting a new user message.
     if (conversation.hasError) {
@@ -766,7 +768,7 @@ export async function editUserMessage(
       // Since we are getting a transaction level lock, we can't execute any other SQL query outside of
       // this transaction, otherwise this other query will be competing for a connection in the database
       // connection pool, resulting in a deadlock.
-      await getConversationRankVersionLock(conversation, t);
+      await getConversationRankVersionLock(auth, conversation, t);
 
       const messageRow = await Message.findOne({
         where: {
@@ -899,6 +901,43 @@ export async function editUserMessage(
 
 class AgentMessageError extends Error {}
 
+export async function handleAgentMessage(
+  auth: Authenticator,
+  {
+    conversation,
+    agentMessage,
+  }: {
+    conversation: ConversationWithoutContentType;
+    agentMessage: AgentMessageType;
+  }
+) {
+  if (!agentMessage.content) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Agent message content is required",
+      },
+    });
+  }
+  const userMentions = [
+    ...agentMessage.content.matchAll(USER_MENTION_REGEX),
+  ].map((match) => ({ name: match[1], sId: match[2] }));
+
+  if (userMentions.length > 0) {
+    await withTransaction(async (t) => {
+      for (const m of userMentions) {
+        await createUserMentions(auth, {
+          mentions: [{ type: "user", userId: m.sId }],
+          message: agentMessage,
+          conversation,
+          transaction: t,
+        });
+      }
+    });
+  }
+}
+
 // This method is in charge of re-running an agent interaction (generating a new
 // AgentMessage as a result)
 export async function retryAgentMessage(
@@ -916,7 +955,7 @@ export async function retryAgentMessage(
   } | null = null;
   try {
     agentMessageResult = await withTransaction(async (t) => {
-      await getConversationRankVersionLock(conversation, t);
+      await getConversationRankVersionLock(auth, conversation, t);
 
       // We clear the hasError flag of a conversation when retrying an agent message.
       if (conversation.hasError) {
@@ -1031,7 +1070,7 @@ export async function retryAgentMessage(
 
   const agentConfiguration = await getAgentConfiguration(auth, {
     agentId: agentMessage.configuration.sId,
-    variant: "full",
+    variant: "light",
   });
 
   assert(
@@ -1107,7 +1146,7 @@ export async function postNewContentFragment(
   }
 
   const { contentFragment, messageRow } = await withTransaction(async (t) => {
-    await getConversationRankVersionLock(conversation, t);
+    await getConversationRankVersionLock(auth, conversation, t);
 
     const fullBlob = {
       ...cfBlobRes.value,

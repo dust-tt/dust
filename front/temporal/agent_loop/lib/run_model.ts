@@ -39,12 +39,8 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
+import { getOutputFromLLMStream } from "@app/temporal/agent_loop/lib/get_output_from_llm";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
-import type { GetOutputResponse } from "@app/temporal/agent_loop/lib/types";
-import {
-  getOutputFromLLM,
-  getOutputFromLLMWithParallelComparisonMode,
-} from "@app/temporal/agent_loop/lib/utils";
 import type { AgentActionsEvent, ModelId } from "@app/types";
 import { assertNever, removeNulls } from "@app/types";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
@@ -244,6 +240,8 @@ export async function runModelActivity(
       })
     : null;
 
+  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+
   const prompt = constructPromptMultiActions(auth, {
     userMessage,
     agentConfiguration,
@@ -254,6 +252,7 @@ export async function runModelActivity(
     agentsList,
     conversationId: conversation.sId,
     serverToolsAndInstructions: mcpActions,
+    featureFlags,
   });
 
   const specifications: AgentActionSpecification[] = [];
@@ -433,70 +432,54 @@ export async function runModelActivity(
     getDelimitersConfiguration({ agentConfiguration })
   );
 
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  const isComparisonModeEnabled = featureFlags.includes(
-    "llm_comparison_mode_enabled"
-  );
-
-  let getOutputFromActionResponse: GetOutputResponse;
   const traceContext: LLMTraceContext = {
     operationType: "agent_conversation",
     contextId: conversation.sId,
     userId: auth.user()?.sId,
     workspaceId: conversation.owner.sId,
   };
+
   const llm = await getLLM(auth, {
     modelId: model.modelId,
     temperature: agentConfiguration.model.temperature,
     reasoningEffort: agentConfiguration.model.reasoningEffort,
     responseFormat: agentConfiguration.model.responseFormat,
     context: traceContext,
-    bypassFeatureFlag: true,
   });
+
+  // Should not happen
+  if (llm === null) {
+    localLogger.error(
+      {
+        conversationId: conversation.sId,
+        workspaceId: conversation.owner.sId,
+      },
+      "LLM is null in runModelActivity, cannot proceed."
+    );
+
+    return null;
+  }
 
   const modelInteractionStartDate = performance.now();
 
-  if (llm === null || !isComparisonModeEnabled) {
-    getOutputFromActionResponse = await getOutputFromLLM(auth, localLogger, {
-      modelConversationRes,
-      conversation,
-      userMessage,
-      runConfig,
-      specifications,
-      flushParserTokens,
-      contentParser,
-      agentMessageRow,
-      step,
-      agentConfiguration,
-      agentMessage,
-      model,
-      publishAgentError,
-      prompt,
-      llm,
-      updateResourceAndPublishEvent,
-    });
-  } else {
-    // This returns the old implementation's response for now
-    getOutputFromActionResponse =
-      await getOutputFromLLMWithParallelComparisonMode(auth, localLogger, {
-        llm,
-        modelConversationRes,
-        conversation,
-        userMessage,
-        runConfig,
-        specifications,
-        flushParserTokens,
-        contentParser,
-        agentMessageRow,
-        step,
-        agentConfiguration,
-        agentMessage,
-        model,
-        publishAgentError,
-        prompt,
-        updateResourceAndPublishEvent,
-      });
-  }
+  const getOutputFromActionResponse = await getOutputFromLLMStream(auth, {
+    modelConversationRes,
+    conversation,
+    userMessage,
+    runConfig,
+    specifications,
+    flushParserTokens,
+    contentParser,
+    agentMessageRow,
+    step,
+    agentConfiguration,
+    agentMessage,
+    model,
+    publishAgentError,
+    prompt,
+    llm,
+    updateResourceAndPublishEvent,
+  });
 
   const modelInteractionEndDate = performance.now();
 

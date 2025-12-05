@@ -1,5 +1,5 @@
 import Head from "next/head";
-import React from "react";
+import React, { createContext, useContext } from "react";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
@@ -8,6 +8,12 @@ import { usePokeRegion } from "@app/lib/swr/poke";
 
 export interface PokeLayoutProps {
   currentRegion: RegionType;
+}
+
+const PokePageTitleContext = createContext<string>("");
+
+export function usePokePageTitle() {
+  return useContext(PokePageTitleContext);
 }
 
 export default function PokeLayout({
@@ -19,10 +25,12 @@ export default function PokeLayout({
 }) {
   return (
     <ThemeProvider>
-      <Head>
-        <title>{"Poke - " + title}</title>
-      </Head>
-      <PokeLayoutContent>{children}</PokeLayoutContent>
+      <PokePageTitleContext.Provider value={title}>
+        <Head>
+          <title>{"Poke - " + title}</title>
+        </Head>
+        <PokeLayoutContent>{children}</PokeLayoutContent>
+      </PokePageTitleContext.Provider>
     </ThemeProvider>
   );
 }

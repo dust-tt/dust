@@ -14,6 +14,13 @@ vi.mock("@app/lib/connector_providers", () => ({
     google_drive: {},
     github: {},
   },
+}));
+
+vi.mock("@app/lib/connector_providers_ui", () => ({
+  CONNECTOR_UI_CONFIGURATIONS: {
+    google_drive: {},
+    github: {},
+  },
   getConnectorProviderLogoWithFallback: ({
     provider,
     isDark,

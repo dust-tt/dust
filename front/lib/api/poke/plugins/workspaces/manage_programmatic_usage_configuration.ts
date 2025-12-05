@@ -2,9 +2,10 @@ import assert from "assert";
 import type Stripe from "stripe";
 import { z } from "zod";
 
+import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import { createPlugin } from "@app/lib/api/poke/types";
 import {
-  calculateFreeCreditAmount,
+  calculateFreeCreditAmountMicroUsd,
   countEligibleUsersForFreeCredits,
 } from "@app/lib/credits/free";
 import {
@@ -35,13 +36,16 @@ const ManageProgrammaticUsageConfigurationSchema = z
     defaultDiscountPercent: z
       .number()
       .min(0, "Discount percentage must be at least 0")
-      .max(100, "Discount percentage cannot exceed 100")
+      .max(
+        MAX_DISCOUNT_PERCENT,
+        `Discount cannot exceed ${MAX_DISCOUNT_PERCENT}% (would result in selling below cost)`
+      )
       .optional()
       .default(0),
     paygEnabled: z.boolean(),
     paygCapDollars: z
       .number()
-      .min(1, "PAYG cap must be at least $1")
+      .min(0, "PAYG cap must be positive")
       .max(
         MAX_PAYG_CAP_DOLLARS,
         `PAYG cap cannot exceed $${MAX_PAYG_CAP_DOLLARS.toLocaleString()}`
@@ -74,7 +78,7 @@ const ManageProgrammaticUsageConfigurationSchema = z
       return true;
     },
     {
-      message: "PAYG cap is required when Pay-as-you-go is enabled",
+      message: "PAYG cap must be at least $1 when Pay-as-you-go is enabled",
       path: ["paygCapDollars"],
     }
   );
@@ -130,8 +134,9 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
   populateAsyncArgs: async (auth) => {
     const workspace = auth.getNonNullableWorkspace();
     const userCount = await countEligibleUsersForFreeCredits(workspace);
-    const automaticCreditsCents = calculateFreeCreditAmount(userCount);
-    const automaticCreditsDollars = automaticCreditsCents / 100;
+    const automaticCreditsMicroUsd =
+      calculateFreeCreditAmountMicroUsd(userCount);
+    const automaticCreditsDollars = automaticCreditsMicroUsd / 1_000_000;
 
     const freeCreditsDescription = `Override automatic free credits. Current automatic amount: $${automaticCreditsDollars.toLocaleString()}`;
 
@@ -142,25 +147,26 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
       return new Ok({
         freeCreditsOverrideEnabled: false,
         freeCreditsOverrideEnabledDescription: freeCreditsDescription,
-        freeCreditsDollars: undefined,
+        freeCreditsDollars: 0,
         defaultDiscountPercent: 0,
         paygEnabled: false,
         paygCapDollars: 0,
       });
     }
 
-    const paygCapDollars =
-      config.paygCapCents !== null ? config.paygCapCents / 100 : 0;
+    const paygCapDollars = Math.round(
+      (config.paygCapMicroUsd ?? 0) / 1_000_000
+    );
 
     return new Ok({
-      freeCreditsOverrideEnabled: config.freeCreditCents !== null,
+      freeCreditsOverrideEnabled: config.freeCreditMicroUsd !== null,
       freeCreditsOverrideEnabledDescription: freeCreditsDescription,
       freeCreditsDollars:
-        config.freeCreditCents !== null
-          ? config.freeCreditCents / 100
-          : undefined,
+        config.freeCreditMicroUsd !== null
+          ? config.freeCreditMicroUsd / 1_000_000
+          : 0,
       defaultDiscountPercent: config.defaultDiscountPercent,
-      paygEnabled: config.paygCapCents !== null && config.paygCapCents > 0,
+      paygEnabled: config.paygCapMicroUsd !== null,
       paygCapDollars,
     });
   },
@@ -207,10 +213,10 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
     }
 
     // When override is disabled, use automatic brackets algorithm
-    const freeCreditCents =
+    const freeCreditMicroUsd =
       freeCreditsOverrideEnabled && freeCreditsDollars
-        ? Math.round(freeCreditsDollars * 100)
-        : undefined;
+        ? Math.round(freeCreditsDollars * 1_000_000)
+        : null;
 
     // Handle non-PAYG config fields first
     const existingConfig =
@@ -218,7 +224,7 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
 
     if (existingConfig) {
       const updateResult = await existingConfig.updateConfiguration(auth, {
-        freeCreditCents,
+        freeCreditMicroUsd,
         defaultDiscountPercent,
       });
       if (updateResult.isErr()) {
@@ -228,9 +234,9 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
       const createResult = await ProgrammaticUsageConfigurationResource.makeNew(
         auth,
         {
-          freeCreditCents,
+          freeCreditMicroUsd,
           defaultDiscountPercent,
-          paygCapCents: null,
+          paygCapMicroUsd: null,
         }
       );
       if (createResult.isErr()) {
@@ -244,11 +250,11 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
         paygCapDollars !== undefined,
         "[Unreachable] PaygEnabled but paygCapDollars undefined"
       );
-      const paygCapCents = Math.round(paygCapDollars * 100);
+      const paygCapMicroUsd = Math.round(paygCapDollars * 1_000_000);
       const paygResult = await startOrResumeEnterprisePAYG({
         auth,
         stripeSubscription,
-        paygCapCents,
+        paygCapMicroUsd,
       });
       if (paygResult.isErr()) {
         return paygResult;
@@ -257,7 +263,7 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
       // Check if PAYG was previously enabled and needs to be stopped
       const refreshedConfig =
         await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
-      if (refreshedConfig?.paygCapCents !== null && stripeSubscription) {
+      if (refreshedConfig?.paygCapMicroUsd !== null && stripeSubscription) {
         const stopResult = await stopEnterprisePAYG({
           auth,
           stripeSubscription,

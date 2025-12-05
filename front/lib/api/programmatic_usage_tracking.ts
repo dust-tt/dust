@@ -8,6 +8,7 @@ import { DUST_MARKUP_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import { runOnRedis } from "@app/lib/api/redis";
 import { getWorkspacePublicAPILimits } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -35,6 +36,7 @@ export const USAGE_ORIGINS_CLASSIFICATION: Record<
   raycast: "user",
   run_agent: "user",
   slack: "user",
+  slack_workflow: "programmatic",
   teams: "user",
   transcript: "user",
   triggered_programmatic: "programmatic",
@@ -67,8 +69,6 @@ function getRedisKey(workspace: LightWorkspaceType): string {
   return `${PROGRAMMATIC_USAGE_REMAINING_CREDITS_KEY}:${workspace.id}`;
 }
 
-const USERS_HAVE_BEEN_WARNED = false;
-
 export function isProgrammaticUsage(
   auth: Authenticator,
   { userMessageOrigin }: { userMessageOrigin?: UserMessageOrigin | null } = {}
@@ -91,10 +91,7 @@ export function isProgrammaticUsage(
 
   if (
     auth.authMethod() === "api_key" ||
-    // TODO(PPUL): remove this after notifying users.
-    (USERS_HAVE_BEEN_WARNED &&
-      USAGE_ORIGINS_CLASSIFICATION[userMessageOrigin] === "programmatic") ||
-    userMessageOrigin === "triggered_programmatic"
+    USAGE_ORIGINS_CLASSIFICATION[userMessageOrigin] === "programmatic"
   ) {
     return true;
   }
@@ -131,14 +128,14 @@ export function getShouldTrackTokenUsageCostsESFilter(
 }
 
 export async function hasReachedProgrammaticUsageLimits(
-  auth: Authenticator,
-  shouldTrack: boolean = false
+  auth: Authenticator
 ): Promise<boolean> {
-  if (!isProgrammaticUsage(auth) && !shouldTrack) {
-    return false;
+  const owner = auth.getNonNullableWorkspace();
+  const featureFlags = await getFeatureFlags(owner);
+  if (featureFlags.includes("ppul")) {
+    return (await CreditResource.listActive(auth)).length === 0;
   }
 
-  const owner = auth.getNonNullableWorkspace();
   const limits = getWorkspacePublicAPILimits(owner);
   if (!limits?.enabled) {
     return false;
@@ -229,10 +226,10 @@ export async function decreaseProgrammaticCreditsV2(
     }
     const amountToConsumeInMicroUsd = Math.min(
       remainingAmountMicroUsd,
-      (credit.initialAmountCents - credit.consumedAmountCents) * 10_000
+      credit.initialAmountMicroUsd - credit.consumedAmountMicroUsd
     );
     const result = await credit.consume({
-      amountInCents: Math.ceil(amountToConsumeInMicroUsd / 10_000),
+      amountInMicroUsd: amountToConsumeInMicroUsd,
     });
     if (result.isErr()) {
       logger.error(

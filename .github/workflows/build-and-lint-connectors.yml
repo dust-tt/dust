@@ -51,3 +51,7 @@ jobs:
           flaky_summary: true
           group_suite: true
           check_name: Tests Report
+      - name: Knip
+        uses: ./.github/actions/knip
+        with:
+          working_directory: connectors

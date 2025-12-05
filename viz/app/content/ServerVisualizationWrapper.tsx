@@ -12,12 +12,12 @@ interface ServerSideVisualizationWrapperProps {
 
 /**
  * Server-side visualization wrapper for JWT-authenticated public frames
- * 
+ *
  * This component runs on the server and:
  * 1. Pre-fetches visualization code using the JWT access token
  * 2. Extracts file IDs from the code and pre-fetches all referenced files
  * 3. Passes the pre-fetched plain data to the client wrapper
- * 
+ *
  * This approach avoids the React Server Component serialization boundary issue
  * by passing plain objects instead of class instances to the client component.
  */

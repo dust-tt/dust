@@ -274,8 +274,7 @@ async function checkWorkspaceRateLimit({
       errorMessage = message;
     }
   } else {
-    const publicAPILimit = await hasReachedProgrammaticUsageLimits(auth, true);
-    if (publicAPILimit) {
+    if (await hasReachedProgrammaticUsageLimits(auth)) {
       errorMessage =
         "Workspace has reached its public API limits for the current billing period.";
     }

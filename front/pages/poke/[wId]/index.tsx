@@ -30,7 +30,6 @@ import { FeatureFlagsDataTable } from "@app/components/poke/features/table";
 import { GroupDataTable } from "@app/components/poke/groups/table";
 import { MCPServerViewsDataTable } from "@app/components/poke/mcp_server_views/table";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
-import { PluginRunsDataTable } from "@app/components/poke/plugins/table";
 import PokeLayout from "@app/components/poke/PokeLayout";
 import {
   PokeAlert,
@@ -63,7 +62,7 @@ import type {
   WorkspaceSegmentationType,
   WorkspaceType,
 } from "@app/types";
-import { WHITELISTABLE_FEATURES } from "@app/types";
+import { isString, WHITELISTABLE_FEATURES } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   activeSubscription: SubscriptionType;
@@ -141,6 +140,21 @@ const WorkspacePage = ({
   workosEnvironmentId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const router = useRouter();
+
+  const currentTab = !isString(router.query.tab)
+    ? "datasources"
+    : router.query.tab;
+
+  const handleTabChange = (value: string) => {
+    void router.push(
+      {
+        pathname: router.pathname,
+        query: { ...router.query, tab: value },
+      },
+      undefined,
+      { shallow: true }
+    );
+  };
 
   const { submit: onWorkspaceUpdate } = useSubmitFunction(
     async (segmentation: WorkspaceSegmentationType) => {
@@ -269,7 +283,11 @@ const WorkspacePage = ({
               />
             </div>
           </div>
-          <Tabs defaultValue="datasources" className="min-h-[1024px] w-full">
+          <Tabs
+            value={currentTab}
+            onValueChange={handleTabChange}
+            className="min-h-[1024px] w-full"
+          >
             <TabsList>
               <TabsTrigger value="agents" label="Agents" />
               <TabsTrigger value="apps" label="Apps" />
@@ -282,9 +300,6 @@ const WorkspacePage = ({
 
               <TabsTrigger value="triggers" label="Triggers" />
               <TabsTrigger value="credits" label="Credits" />
-
-              {/* Plugin Logs on the far right */}
-              <TabsTrigger value="plugins" label="Plugins Logs" />
             </TabsList>
 
             <TabsContent value="datasources">
@@ -324,10 +339,11 @@ const WorkspacePage = ({
               <TriggerDataTable owner={owner} loadOnInit />
             </TabsContent>
             <TabsContent value="credits">
-              <CreditsDataTable owner={owner} loadOnInit />
-            </TabsContent>
-            <TabsContent value="plugins">
-              <PluginRunsDataTable owner={owner} loadOnInit />
+              <CreditsDataTable
+                owner={owner}
+                subscription={activeSubscription}
+                loadOnInit
+              />
             </TabsContent>
           </Tabs>
         </div>

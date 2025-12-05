@@ -12,9 +12,9 @@ export type PokeCreditType = {
   id: number;
   createdAt: string;
   type: CreditType;
-  initialAmountCents: number;
-  consumedAmountCents: number;
-  remainingAmountCents: number;
+  initialAmountMicroUsd: number;
+  consumedAmountMicroUsd: number;
+  remainingAmountMicroUsd: number;
   startDate: string | null;
   expirationDate: string | null;
   discount: number | null;

@@ -16,7 +16,10 @@ import { BuyCreditDialog } from "@app/components/workspace/BuyCreditDialog";
 import { CreditsList } from "@app/components/workspace/CreditsList";
 import { ProgrammaticCostChart } from "@app/components/workspace/ProgrammaticCostChart";
 import { getFeatureFlags } from "@app/lib/auth";
-import { getPriceAsString } from "@app/lib/client/subscription";
+import {
+  getBillingCycle,
+  getPriceAsString,
+} from "@app/lib/client/subscription";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import {
   getStripeSubscription,
@@ -48,7 +51,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   let isEnterprise = false;
   if (subscription.stripeSubscriptionId) {
     const stripeSubscription = await getStripeSubscription(
-      subscription.stripeSubscriptionId
+      subscription.stripeSubscriptionId,
     );
     if (stripeSubscription) {
       isEnterprise = isEnterpriseSubscription(stripeSubscription);
@@ -64,9 +67,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   };
 });
 
-function isExpired(credit: CreditDisplayData): boolean {
+// A credit is active if it has started and has not expired.
+// This need to be consistent with logic in CreditResource.listActive().
+function isActive(credit: CreditDisplayData): boolean {
   const now = Date.now();
-  return credit.expirationDate !== null && credit.expirationDate <= now;
+  const isStarted = credit.startDate !== null && credit.startDate <= now;
+  const isExpired =
+    credit.expirationDate !== null && credit.expirationDate <= now;
+  return isStarted && !isExpired;
 }
 
 interface ProgressBarProps {
@@ -84,7 +92,7 @@ function ProgressBar({ consumed, total }: ProgressBarProps) {
           "h-full rounded-full transition-all",
           percentage > 80
             ? "bg-warning-700"
-            : "bg-primary dark:bg-primary-night"
+            : "bg-primary dark:bg-primary-night",
         )}
         style={{ width: `${percentage}%` }}
       />
@@ -111,11 +119,11 @@ function CreditCategoryBar({
 }: CreditCategoryBarProps) {
   const consumedFormatted = getPriceAsString({
     currency: "usd",
-    priceInCents: consumed,
+    priceInMicroUsd: consumed,
   });
   const totalFormatted = getPriceAsString({
     currency: "usd",
-    priceInCents: total,
+    priceInMicroUsd: total,
   });
 
   return (
@@ -128,7 +136,7 @@ function CreditCategoryBar({
       </div>
       <div className="text-lg font-semibold text-foreground dark:text-foreground-night">
         {consumedFormatted}
-        <span className="font-normal text-muted-foreground dark:text-muted-foreground-night">
+        <span className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
           / {totalFormatted}
           {isCap ? " cap" : ""}
         </span>
@@ -163,34 +171,10 @@ function UsageSection({
   isPurchasingCredits,
   setShowBuyCreditDialog,
 }: UsageSectionProps) {
-  // Get current billing period dates (month boundaries)
-  // Use useMemo to calculate the current billing cycle (exclusive bounds)
-  // Example: Nov 4 -> Dec 3 (if billing cycle starts on the 4th of each month)
-  const BILLING_CYCLE_START_DAY = subscription.startDate
-    ? new Date(subscription.startDate).getDate()
-    : null;
-
-  const [cycleStart, cycleEnd] = useMemo(() => {
-    if (!BILLING_CYCLE_START_DAY) {
-      return [null, null];
-    }
-
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth();
-    let start: Date, end: Date;
-
-    if (now.getDate() >= BILLING_CYCLE_START_DAY) {
-      // Billing cycle started this month, ends next month
-      start = new Date(year, month, BILLING_CYCLE_START_DAY);
-      end = new Date(year, month + 1, BILLING_CYCLE_START_DAY);
-    } else {
-      // Billing cycle started last month, ends this month
-      start = new Date(year, month - 1, BILLING_CYCLE_START_DAY);
-      end = new Date(year, month, BILLING_CYCLE_START_DAY);
-    }
-    return [start, end];
-  }, [BILLING_CYCLE_START_DAY]);
+  const billingCycle = useMemo(
+    () => getBillingCycle(subscription.startDate),
+    [subscription.startDate],
+  );
 
   const formatDateShort = (date: Date) => {
     return date.toLocaleDateString(undefined, {
@@ -233,11 +217,11 @@ function UsageSection({
 
   const totalConsumedFormatted = getPriceAsString({
     currency: "usd",
-    priceInCents: totalConsumed,
+    priceInMicroUsd: totalConsumed,
   });
   const totalCreditsFormatted = getPriceAsString({
     currency: "usd",
-    priceInCents: totalCredits,
+    priceInMicroUsd: totalCredits,
   });
 
   return (
@@ -245,12 +229,14 @@ function UsageSection({
       {/* Usage Header */}
       <div className="flex items-center justify-between">
         <Page.Vertical gap="xs">
-          <Page.H variant="h5">Usage</Page.H>
-          <Page.P variant="secondary">Available credits and consumption</Page.P>
+          <Page.H variant="h5">Available credits</Page.H>
         </Page.Vertical>
-        {cycleStart && cycleEnd && (
+        {billingCycle && (
           <Page.P variant="secondary">
-            {formatDateShort(cycleStart)} → {formatDateShort(cycleEnd)}
+            {formatDateShort(billingCycle.cycleStart)} →{" "}
+            {formatDateShort(
+              new Date(billingCycle.cycleEnd.getTime() - 24 * 60 * 60 * 1000),
+            )}
           </Page.P>
         )}
       </div>
@@ -280,17 +266,19 @@ function UsageSection({
           consumed={creditsByType.committed.consumed}
           total={creditsByType.committed.total}
           renewalDate={formatExpirationDate(
-            creditsByType.committed.expirationDate
+            creditsByType.committed.expirationDate,
           )}
           action={
-            <Button
-              label="Buy credits"
-              variant="outline"
-              size="xs"
-              disabled={isPurchasingCredits}
-              isLoading={isPurchasingCredits}
-              onClick={() => setShowBuyCreditDialog(true)}
-            />
+            !subscription.trialing && (
+              <Button
+                label="Buy credits"
+                variant="outline"
+                size="xs"
+                disabled={isPurchasingCredits}
+                isLoading={isPurchasingCredits}
+                onClick={() => setShowBuyCreditDialog(true)}
+              />
+            )
           }
         />
         {isEnterprise && (
@@ -325,8 +313,13 @@ export default function CreditsUsagePage({
     workspaceId: owner.sId,
   });
 
+  // Get the billing cycle start day from the subscription start date
+  const billingCycleStartDay = subscription.startDate
+    ? new Date(subscription.startDate).getDate()
+    : null;
+
   const creditsByType = useMemo(() => {
-    const activeCredits = credits.filter((c) => !isExpired(c));
+    const activeCredits = credits.filter((c) => isActive(c));
 
     const byType: Record<
       CreditType,
@@ -338,8 +331,8 @@ export default function CreditsUsagePage({
     };
 
     for (const credit of activeCredits) {
-      byType[credit.type].consumed += credit.consumedAmount;
-      byType[credit.type].total += credit.initialAmount;
+      byType[credit.type].consumed += credit.consumedAmountMicroUsd;
+      byType[credit.type].total += credit.initialAmountMicroUsd;
 
       // Keep the earliest expiration date for each type
       const currentExpiration = byType[credit.type].expirationDate;
@@ -369,6 +362,11 @@ export default function CreditsUsagePage({
     );
   }, [creditsByType]);
 
+  const shouldShowLowCreditsWarning =
+    !isCreditsLoading &&
+    totalCredits > 0 &&
+    totalConsumed >= totalCredits * 0.8;
+
   return (
     <AppCenteredLayout
       subscription={subscription}
@@ -393,9 +391,9 @@ export default function CreditsUsagePage({
           description="Monitor usage and credits for your API keys and automated workflows."
         />
 
-        {totalConsumed >= totalCredits * 0.8 && (
+        {shouldShowLowCreditsWarning && (
           <ContentMessage
-            title="You're almost out of credits."
+            title={`You're ${totalConsumed < totalCredits ? "almost" : ""} out of credits.`}
             variant="warning"
             size="lg"
             icon={ExclamationCircleIcon}
@@ -413,9 +411,12 @@ export default function CreditsUsagePage({
           </ContentMessage>
         )}
 
+        {/* Purposefully not giving email since we want to test determination here and limit support requests, it's a very edgy case and most likely fraudulent. */}
         {subscription.trialing && (
           <ContentMessage title="Available after trial" variant="info">
-            Credit purchases are available once you upgrade to a paid plan.
+            Credit purchases are available once you upgrade to a paid plan. If
+            you would like to purchase credits before upgrading, please contact
+            support.
           </ContentMessage>
         )}
 
@@ -443,8 +444,13 @@ export default function CreditsUsagePage({
           <CreditsList credits={credits} isLoading={isCreditsLoading} />
         </Page.Vertical>
 
-        {/* Programmatic Cost Chart */}
-        <ProgrammaticCostChart workspaceId={owner.sId} />
+        {/* Usage Graph */}
+        {billingCycleStartDay && (
+          <ProgrammaticCostChart
+            workspaceId={owner.sId}
+            billingCycleStartDay={billingCycleStartDay}
+          />
+        )}
       </Page.Vertical>
       <div className="h-12" />
     </AppCenteredLayout>

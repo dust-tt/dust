@@ -1,11 +1,13 @@
 import assert from "assert";
 import type Stripe from "stripe";
 
+import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import {
+  ENTERPRISE_N30_PAYMENTS_DAYS,
   isEnterpriseSubscription,
-  makeCreditsPAYGInvoice,
+  makeAndFinalizeCreditsPAYGInvoice,
 } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
@@ -15,17 +17,25 @@ import { Err, Ok } from "@app/types";
 
 async function createPAYGCreditForPeriod({
   auth,
-  paygCapCents,
+  paygCapMicroUsd,
   discountPercent,
   periodStart,
   periodEnd,
 }: {
   auth: Authenticator;
-  paygCapCents: number;
+  paygCapMicroUsd: number;
   discountPercent: number;
   periodStart: Date;
   periodEnd: Date;
 }): Promise<Result<CreditResource, Error>> {
+  if (discountPercent > MAX_DISCOUNT_PERCENT) {
+    return new Err(
+      new Error(
+        `Discount cannot exceed ${MAX_DISCOUNT_PERCENT}% (would result in selling below cost)`
+      )
+    );
+  }
+
   const existingCredit = await CreditResource.fetchByTypeAndDates(
     auth,
     "payg",
@@ -39,8 +49,8 @@ async function createPAYGCreditForPeriod({
 
   const credit = await CreditResource.makeNew(auth, {
     type: "payg",
-    initialAmountCents: paygCapCents,
-    consumedAmountCents: 0,
+    initialAmountMicroUsd: paygCapMicroUsd,
+    consumedAmountMicroUsd: 0,
     discount: discountPercent,
     invoiceOrLineItemId: null,
   });
@@ -62,7 +72,7 @@ export async function allocatePAYGCreditsOnCycleRenewal({
 
   const config =
     await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
-  if (!config || config.paygCapCents === null) {
+  if (!config || config.paygCapMicroUsd === null) {
     return;
   }
 
@@ -74,7 +84,7 @@ export async function allocatePAYGCreditsOnCycleRenewal({
     logger.info(
       {
         workspaceId: workspace.sId,
-        initialAmountCents: config.paygCapCents,
+        initialAmountMicroUsd: config.paygCapMicroUsd,
         periodStart: nextPeriodStartDate.toISOString(),
         periodEnd: nextPeriodEndDate.toISOString(),
       },
@@ -85,7 +95,7 @@ export async function allocatePAYGCreditsOnCycleRenewal({
 
   const result = await createPAYGCreditForPeriod({
     auth,
-    paygCapCents: config.paygCapCents,
+    paygCapMicroUsd: config.paygCapMicroUsd,
     discountPercent: config.defaultDiscountPercent,
     periodStart: nextPeriodStartDate,
     periodEnd: nextPeriodEndDate,
@@ -94,7 +104,7 @@ export async function allocatePAYGCreditsOnCycleRenewal({
   if (result.isErr()) {
     logger.info(
       { workspaceId: workspace.sId, error: result.error.message },
-      "[Credit PAYG] Credit already exists for this period, skipping allocation"
+      "[Credit PAYG] Failed to create PAYG credit for this period, skipping allocation"
     );
     return;
   }
@@ -102,7 +112,7 @@ export async function allocatePAYGCreditsOnCycleRenewal({
   logger.info(
     {
       workspaceId: workspace.sId,
-      initialAmountCents: config.paygCapCents,
+      initialAmountMicroUsd: config.paygCapMicroUsd,
       periodStart: nextPeriodStartDate.toISOString(),
       periodEnd: nextPeriodEndDate.toISOString(),
     },
@@ -117,17 +127,17 @@ export async function isPAYGEnabled(auth: Authenticator): Promise<boolean> {
   }
   const config =
     await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
-  return config !== null && config.paygCapCents !== null;
+  return config !== null && config.paygCapMicroUsd !== null;
 }
 
 export async function startOrResumeEnterprisePAYG({
   auth,
   stripeSubscription,
-  paygCapCents,
+  paygCapMicroUsd,
 }: {
   auth: Authenticator;
   stripeSubscription: Stripe.Subscription;
-  paygCapCents: number;
+  paygCapMicroUsd: number;
 }): Promise<Result<undefined, Error>> {
   const workspace = auth.getNonNullableWorkspace();
 
@@ -146,7 +156,9 @@ export async function startOrResumeEnterprisePAYG({
     );
   }
 
-  const updateResult = await config.updateConfiguration(auth, { paygCapCents });
+  const updateResult = await config.updateConfiguration(auth, {
+    paygCapMicroUsd,
+  });
   if (updateResult.isErr()) {
     return updateResult;
   }
@@ -167,30 +179,40 @@ export async function startOrResumeEnterprisePAYG({
     stripeSubscription.current_period_end * 1000
   );
 
-  const result = await createPAYGCreditForPeriod({
+  const existingCredit = await CreditResource.fetchByTypeAndDates(
     auth,
-    paygCapCents,
-    discountPercent: config.defaultDiscountPercent,
-    periodStart: currentPeriodStart,
-    periodEnd: currentPeriodEnd,
-  });
+    "payg",
+    currentPeriodStart,
+    currentPeriodEnd
+  );
 
-  if (result.isErr()) {
-    logger.info(
-      { workspaceId: workspace.sId, error: result.error.message },
-      "[Credit PAYG] Credit already exists for current period"
-    );
+  if (existingCredit) {
+    await existingCredit.updateInitialAmountMicroUsd(auth, paygCapMicroUsd);
   } else {
-    logger.info(
-      {
-        workspaceId: workspace.sId,
-        periodStart: currentPeriodStart.toISOString(),
-        periodEnd: currentPeriodEnd.toISOString(),
-      },
-      "[Credit PAYG] Allocated PAYG credit for current period"
-    );
-  }
+    const result = await createPAYGCreditForPeriod({
+      auth,
+      paygCapMicroUsd,
+      discountPercent: config.defaultDiscountPercent,
+      periodStart: currentPeriodStart,
+      periodEnd: currentPeriodEnd,
+    });
 
+    if (result.isErr()) {
+      logger.info(
+        { workspaceId: workspace.sId, error: result.error.message },
+        "[Credit PAYG] Failed to create PAYG credit for current period"
+      );
+    } else {
+      logger.info(
+        {
+          workspaceId: workspace.sId,
+          periodStart: currentPeriodStart.toISOString(),
+          periodEnd: currentPeriodEnd.toISOString(),
+        },
+        "[Credit PAYG] Allocated PAYG credit for current period"
+      );
+    }
+  }
   return new Ok(undefined);
 }
 
@@ -223,7 +245,7 @@ export async function stopEnterprisePAYG({
       paygCredit.id
     );
     if (freezeResult.isErr()) {
-      logger.error(
+      logger.warn(
         { workspaceId: workspace.sId, error: freezeResult.error.message },
         "[Credit PAYG] Failed to freeze credit"
       );
@@ -239,7 +261,7 @@ export async function stopEnterprisePAYG({
     await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
   if (config) {
     const result = await config.updateConfiguration(auth, {
-      paygCapCents: null,
+      paygCapMicroUsd: null,
     });
     if (result.isErr()) {
       return result;
@@ -285,7 +307,7 @@ export async function invoiceEnterprisePAYGCredits({
     `[Credit PAYG] No PAYG credit found for period ${previousPeriodStartDate.toISOString()} - ${previousPeriodEndDate.toISOString()} in workspace ${workspace.sId}`
   );
 
-  if (paygCredit.consumedAmountCents === 0) {
+  if (paygCredit.consumedAmountMicroUsd === 0) {
     logger.info(
       {
         workspaceId: workspace.sId,
@@ -305,7 +327,7 @@ export async function invoiceEnterprisePAYGCredits({
     {
       workspaceId: workspace.sId,
       creditId: paygCredit.id,
-      consumedAmountCents: paygCredit.consumedAmountCents,
+      consumedAmountMicroUsd: paygCredit.consumedAmountMicroUsd,
       discountPercent,
       periodStart: previousPeriodStartDate.toISOString(),
       periodEnd: previousPeriodEndDate.toISOString(),
@@ -313,12 +335,13 @@ export async function invoiceEnterprisePAYGCredits({
     "[Credit PAYG] Creating arrears invoice"
   );
 
-  const invoiceResult = await makeCreditsPAYGInvoice({
+  const invoiceResult = await makeAndFinalizeCreditsPAYGInvoice({
     stripeSubscription,
-    amountCents: paygCredit.consumedAmountCents,
+    amountMicroUsd: paygCredit.consumedAmountMicroUsd,
     periodStartSeconds: previousPeriodStartSeconds,
     periodEndSeconds: previousPeriodEndSeconds,
     idempotencyKey,
+    daysUntilDue: ENTERPRISE_N30_PAYMENTS_DAYS,
   });
 
   if (invoiceResult.isErr()) {

@@ -13,7 +13,6 @@ export interface BlogPageFields {
   title: string;
   slug?: string;
   body: Document;
-  tags?: string[];
   image?: Asset;
   publishedAt?: string;
   authors?: Entry<AuthorSkeleton>[];
@@ -93,6 +92,7 @@ export interface CustomerStoryFields {
 
   // Filtering (optional)
   companySize?: string;
+  region?: string[];
 
   // Media (optional)
   heroImage?: Asset;
@@ -125,6 +125,7 @@ export interface CustomerStory {
   industry: string;
   department: string[];
   companySize: string | null;
+  region: string[];
   description: string | null;
   body: Document;
   heroImage: BlogImage | null;
@@ -146,6 +147,7 @@ export interface CustomerStorySummary {
   industry: string;
   department: string[];
   companySize: string | null;
+  region: string[];
   featured: boolean;
   createdAt: string;
 }
@@ -154,6 +156,7 @@ export interface CustomerStoryFilters {
   industry?: string[];
   department?: string[];
   companySize?: string[];
+  region?: string[];
   featured?: boolean;
 }
 
@@ -161,6 +164,7 @@ export interface CustomerStoryFilterOptions {
   industries: string[];
   departments: string[];
   companySizes: string[];
+  regions: string[];
 }
 
 export interface CustomerStoryListingPageProps {

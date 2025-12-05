@@ -69,15 +69,42 @@ export async function getCronTimezoneGeneration(
           },
         ],
       },
-      prompt:
-        "The user is currently adding a schedule to trigger an assistant based on a large language model. The user is describing the schedule in natural language.\n\n" +
-        "For the cron generation (set_schedule):\n" +
-        "You must interpret the description, convert it to the cron format and call set_schedule with the cron rule as an argument.\n\n" +
-        "For the timezone generation (set_tz):\n" +
-        "You must interpret the description, get the requested timezone from the user, and call set_tz with the timezone as an argument.\n" +
-        "If no timezone is specified in the naturalDescription, return the defaultTimezone.\n" +
-        "ALWAYS use IANA Timezone such as Europe/Paris, or America/New_York.\n" +
-        "ALWAYS call both tools",
+      prompt: `The user is adding a schedule to trigger an assistant. Convert their natural language description to cron format.
+
+<cron_format>
+5-field cron: minute hour day-of-month month day-of-week
+- minute: 0-59
+- hour: 0-23
+- day-of-month: 1-31
+- month: 1-12
+- day-of-week: 0-6 (0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday)
+
+Operators:
+- * : any value
+- , : list (e.g., 1,15 or 1-7,15-21)
+- - : range (e.g., 1-5 for Monday to Friday)
+- / : step (e.g., */15 for every 15 minutes)
+
+IMPORTANT: The # and L operators are NOT supported. Do NOT use them.
+</cron_format>
+
+<examples>
+- "Every Monday at 9am" → 0 9 * * 1
+- "Every weekday at 8:30am" → 30 8 * * 1-5
+- "Every day at midnight" → 0 0 * * *
+- "Every hour" → 0 * * * *
+- "Every 15th of the month at noon" → 0 12 15 * *
+- "Every quarter" → 0 0 1 */3 *
+</examples>
+
+<instructions>
+1. Parse the natural language description
+2. If no time is specified, default to 9:00 AM
+3. Call set_schedule with the cron expression
+4. Call set_tz with the timezone (use defaultTimezone if not specified in description)
+5. ALWAYS use IANA timezone format (e.g., Europe/Paris, America/New_York), never UTC offsets
+6. ALWAYS call both tools
+</instructions>`,
       specifications,
     },
     {

@@ -7,19 +7,19 @@ import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspa
 
 /*
  * Fields:
- * - freeCreditCents: Monthly amount awarded as free credits to the workspace (0-1,000,000 cents, nullable)
+ * - freeCreditMicroUsd: Monthly amount awarded as free credits to the workspace (0-10,000,000,000 microUSD, nullable)
  * - defaultDiscountPercent: Discount applied when computing usage cost for this workspace (0-100%)
- * - paygCapCents: Pay-as-you-go cap in cents enterprise only feature - even in payg you want a ceiling
+ * - paygCapMicroUsd: Pay-as-you-go cap in microUSD enterprise only feature - even in payg you want a ceiling
  */
 export class ProgrammaticUsageConfigurationModel extends WorkspaceAwareModel<ProgrammaticUsageConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare freeCreditCents: number | null;
+  declare freeCreditMicroUsd: number | null;
   declare defaultDiscountPercent: number;
-  declare paygCapCents: number | null;
+  declare paygCapMicroUsd: number | null;
 }
 
-const MAX_FREE_AMOUNT_CENTS = 1_000_000;
+const MAX_FREE_AMOUNT_MICRO_USD = 10_000_000_000;
 
 ProgrammaticUsageConfigurationModel.init(
   {
@@ -33,15 +33,18 @@ ProgrammaticUsageConfigurationModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    freeCreditCents: {
-      type: DataTypes.INTEGER,
+    freeCreditMicroUsd: {
+      type: DataTypes.BIGINT,
       allowNull: true,
       defaultValue: null,
       validate: {
         isValidFreeCreditAmount(value: number | null) {
-          if (value !== null && (value < 0 || value > MAX_FREE_AMOUNT_CENTS)) {
+          if (
+            value !== null &&
+            (value < 0 || value > MAX_FREE_AMOUNT_MICRO_USD)
+          ) {
             throw new Error(
-              `freeCreditCents must be between 0 and ${MAX_FREE_AMOUNT_CENTS}`
+              `freeCreditMicroUsd must be between 0 and ${MAX_FREE_AMOUNT_MICRO_USD}`
             );
           }
         },
@@ -55,14 +58,16 @@ ProgrammaticUsageConfigurationModel.init(
         max: 100,
       },
     },
-    paygCapCents: {
-      type: DataTypes.INTEGER,
+    paygCapMicroUsd: {
+      type: DataTypes.BIGINT,
       allowNull: true,
       defaultValue: null,
       validate: {
         isPositive(value: number | null) {
           if (value !== null && value <= 0) {
-            throw new Error("paygCapCents must be strictly positive when set");
+            throw new Error(
+              "paygCapMicroUsd must be strictly positive when set"
+            );
           }
         },
       },

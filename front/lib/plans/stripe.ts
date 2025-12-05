@@ -21,22 +21,25 @@ import type {
 } from "@app/types";
 import { Err, isDevelopment, normalizeError, Ok } from "@app/types";
 
-export function getProPlanStripeProductId(owner: WorkspaceType) {
-  const isBusiness = owner.metadata?.isBusiness;
+const DEV_PRO_PLAN_PRODUCT_ID = "prod_OwKvN4XrUwFw5a";
+const DEV_BUSINESS_PRO_PLAN_PRODUCT_ID = "prod_RkNr4qbHJD3oUp";
 
-  const devProPlanProductId = "prod_OwKvN4XrUwFw5a";
-  const devBusinessProPlanProductId = "prod_RkNr4qbHJD3oUp";
+const PROD_PRO_PLAN_PRODUCT_ID = "prod_OwALjyfxfi2mln";
+const PROD_BUSINESS_PRO_PLAN_PRODUCT_ID = "prod_RkPFpfBzLo79gd";
 
-  const prodProPlanProductId = "prod_OwALjyfxfi2mln";
-  const prodBusinessProPlanProductId = "prod_RkPFpfBzLo79gd";
+export function getProPlanProductId() {
+  return isDevelopment() ? DEV_PRO_PLAN_PRODUCT_ID : PROD_PRO_PLAN_PRODUCT_ID;
+}
 
+export function getBusinessProPlanProductId() {
   return isDevelopment()
-    ? isBusiness
-      ? devBusinessProPlanProductId
-      : devProPlanProductId
-    : isBusiness
-      ? prodBusinessProPlanProductId
-      : prodProPlanProductId;
+    ? DEV_BUSINESS_PRO_PLAN_PRODUCT_ID
+    : PROD_BUSINESS_PRO_PLAN_PRODUCT_ID;
+}
+
+export function getStripeCheckoutSessionProductId(owner: WorkspaceType) {
+  const isBusiness = owner.metadata?.isBusiness;
+  return isBusiness ? getBusinessProPlanProductId() : getProPlanProductId();
 }
 
 export function getCreditPurchasePriceId() {
@@ -125,7 +128,7 @@ export const createProPlanCheckoutSession = async ({
     );
   }
 
-  const stripeProductId = getProPlanStripeProductId(owner);
+  const stripeProductId = getStripeCheckoutSessionProductId(owner);
   let priceId: string | null = null;
 
   if (billingPeriod === "yearly") {
@@ -431,6 +434,64 @@ export async function cancelSubscriptionAtPeriodEnd({
 }
 
 /**
+ * Upgrades a Pro subscription to Business by swapping the Stripe product/price.
+ * Always uses monthly billing for Business plan regardless of the original billing period.
+ * Also updates the subscription metadata to reflect the new plan code.
+ */
+export async function upgradeProSubscriptionToBusiness({
+  stripeSubscriptionId,
+  owner,
+  planCode,
+}: {
+  stripeSubscriptionId: string;
+  owner: WorkspaceType;
+  planCode: string;
+}): Promise<Result<Stripe.Subscription, Error>> {
+  const stripe = getStripeClient();
+
+  const subscription = await getStripeSubscription(stripeSubscriptionId);
+  if (!subscription) {
+    return new Err(new Error("Subscription not found"));
+  }
+
+  const businessProductId = getBusinessProPlanProductId();
+  const newPriceId = await getDefautPriceFromMetadata(
+    businessProductId,
+    "IS_DEFAULT_MONHTLY_PRICE"
+  );
+
+  if (!newPriceId) {
+    return new Err(new Error("Business monthly price not found"));
+  }
+
+  const currentItem = subscription.items.data[0];
+  if (!currentItem) {
+    return new Err(new Error("Subscription has no items"));
+  }
+
+  // Update the subscription with the new price and metadata.
+  // Proration will handle billing adjustment.
+  const updatedSubscription = await stripe.subscriptions.update(
+    stripeSubscriptionId,
+    {
+      items: [
+        {
+          id: currentItem.id,
+          price: newPriceId,
+        },
+      ],
+      proration_behavior: "create_prorations",
+      metadata: {
+        planCode,
+        workspaceId: owner.sId,
+      },
+    }
+  );
+
+  return new Ok(updatedSubscription);
+}
+
+/**
  * Checks that a subscription created in Stripe is usable by Dust, returns an
  * error otherwise.
  */
@@ -533,14 +594,10 @@ export async function voidInvoiceWithReason(
   }
 }
 
-export function makeCreditPurchaseOnceCouponId(percentOff: number): string {
-  return `programmatic-usage-credits-once-${percentOff}`;
-}
-
 export async function getCreditPurchaseCouponId(
   discountPercent: number
 ): Promise<Result<string | undefined, Error>> {
-  const couponId = makeCreditPurchaseOnceCouponId(discountPercent);
+  const couponId = `programmatic-usage-credits-once-${discountPercent}`;
   const couponResult = await createCreditPurchaseCoupon(
     couponId,
     discountPercent
@@ -582,34 +639,88 @@ export async function createCreditPurchaseCoupon(
   }
 }
 
-/**
- * Creates the payload for a credit purchase line item.
- * This factors out the common parameters used when creating invoice items for credit purchases.
- */
-function makeCreditPurchaseLineItemPayload({
-  customerId,
-  amountCents,
-  subscription,
-  invoice,
-  couponId,
-}: {
-  customerId: string;
-  amountCents: number;
-  subscription?: string;
-  invoice?: string;
-  couponId?: string;
-}): Stripe.InvoiceItemCreateParams {
-  const amountDollars = amountCents / 100;
+type InvoiceCollectionParams =
+  | { collectionMethod: "charge_automatically"; daysUntilDue?: never }
+  | { collectionMethod: "send_invoice"; daysUntilDue: number };
 
-  return {
+type InvoiceLineItem = {
+  priceId: string;
+  quantity: number;
+  description: string;
+  couponId?: string;
+};
+
+async function makeInvoice({
+  stripeSubscription,
+  metadata,
+  lineItem,
+  idempotencyKey,
+  ...collectionParams
+}: {
+  stripeSubscription: Stripe.Subscription;
+  metadata: Record<string, string>;
+  lineItem: InvoiceLineItem;
+  idempotencyKey?: string;
+} & InvoiceCollectionParams): Promise<
+  Result<
+    Stripe.Invoice,
+    { error_message: string; isIdempotencyError?: boolean }
+  >
+> {
+  const stripe = getStripeClient();
+  const customerId = getCustomerId(stripeSubscription);
+
+  const invoiceParams: Stripe.InvoiceCreateParams = {
     customer: customerId,
-    price: getCreditPurchasePriceId(),
-    quantity: amountCents,
-    description: `Programmatic usage credit: $${amountDollars.toFixed(2)}`,
-    ...(subscription && { subscription }),
-    ...(invoice && { invoice }),
-    ...(couponId && { discounts: [{ coupon: couponId }] }),
+    subscription: stripeSubscription.id,
+    collection_method: collectionParams.collectionMethod,
+    metadata,
+    auto_advance: true,
   };
+
+  if (collectionParams.collectionMethod === "send_invoice") {
+    invoiceParams.days_until_due = collectionParams.daysUntilDue;
+  }
+
+  try {
+    const invoice = await stripe.invoices.create(
+      invoiceParams,
+      idempotencyKey ? { idempotencyKey } : undefined
+    );
+
+    await stripe.invoiceItems.create({
+      customer: customerId,
+      price: lineItem.priceId,
+      quantity: lineItem.quantity,
+      description: lineItem.description,
+      invoice: invoice.id,
+      ...(lineItem.couponId && { discounts: [{ coupon: lineItem.couponId }] }),
+    });
+
+    return new Ok(invoice);
+  } catch (error) {
+    const isIdempotencyError =
+      error instanceof Stripe.errors.StripeError &&
+      error.code === "idempotency_key_in_use";
+
+    if (isIdempotencyError) {
+      return new Err({
+        error_message: `Idempotency key already used: ${idempotencyKey}`,
+        isIdempotencyError: true,
+      });
+    }
+
+    logger.error(
+      {
+        stripeSubscriptionId: stripeSubscription.id,
+        stripeError: true,
+      },
+      "[Stripe] Failed to create invoice"
+    );
+    return new Err({
+      error_message: `Failed to create invoice: ${normalizeError(error).message}`,
+    });
+  }
 }
 
 export function assertStripeSubscriptionItemIsValid({
@@ -710,69 +821,42 @@ export async function reportActiveSeats(
   );
 }
 
-export async function makeOneOffInvoice({
+export async function makeCreditPurchaseOneOffInvoice({
   stripeSubscriptionId,
-  amountCents,
+  amountMicroUsd,
   couponId,
-  collectionMethod,
-  daysUntilDue,
+  ...collectionParams
 }: {
   stripeSubscriptionId: string;
-  amountCents: number;
+  amountMicroUsd: number;
   couponId?: string;
-  collectionMethod: "charge_automatically" | "send_invoice";
-  daysUntilDue?: number;
-}): Promise<Result<Stripe.Invoice, { error_message: string }>> {
-  const stripe = getStripeClient();
-
+} & InvoiceCollectionParams): Promise<
+  Result<Stripe.Invoice, { error_message: string }>
+> {
   const subscription = await getStripeSubscription(stripeSubscriptionId);
   if (!subscription) {
     return new Err({
       error_message: `Subscription ${stripeSubscriptionId} not found`,
     });
   }
-  const customerId = getCustomerId(subscription);
 
-  const invoiceParams: Stripe.InvoiceCreateParams = {
-    customer: customerId,
-    subscription: stripeSubscriptionId,
-    collection_method: collectionMethod,
+  const amountCents = Math.ceil(amountMicroUsd / 10_000);
+  const amountDollars = amountCents / 100;
+
+  return makeInvoice({
+    stripeSubscription: subscription,
     metadata: {
       credit_purchase: "true",
       credit_amount_cents: amountCents.toString(),
     },
-    auto_advance: true,
-  };
-
-  if (collectionMethod === "send_invoice" && daysUntilDue) {
-    invoiceParams.days_until_due = daysUntilDue;
-  }
-
-  try {
-    const invoice = await stripe.invoices.create(invoiceParams);
-
-    await stripe.invoiceItems.create(
-      makeCreditPurchaseLineItemPayload({
-        customerId,
-        amountCents,
-        invoice: invoice.id,
-        couponId,
-      })
-    );
-
-    return new Ok(invoice);
-  } catch (error) {
-    logger.error(
-      {
-        stripeSubscriptionId,
-        stripeError: true,
-      },
-      "[Credit Purchase] Failed to create Stripe invoice"
-    );
-    return new Err({
-      error_message: `Failed to create invoice: ${normalizeError(error).message}`,
-    });
-  }
+    lineItem: {
+      priceId: getCreditPurchasePriceId(),
+      quantity: amountCents,
+      description: `Programmatic usage credit: $${amountDollars.toFixed(2)}`,
+      couponId,
+    },
+    ...collectionParams,
+  });
 }
 
 export async function finalizeInvoice(
@@ -830,18 +914,20 @@ export async function payInvoice(
   });
 }
 
-export async function makeCreditsPAYGInvoice({
+export async function makeAndFinalizeCreditsPAYGInvoice({
   stripeSubscription,
-  amountCents,
+  amountMicroUsd,
   periodStartSeconds,
   periodEndSeconds,
   idempotencyKey,
+  daysUntilDue,
 }: {
   stripeSubscription: Stripe.Subscription;
-  amountCents: number;
+  amountMicroUsd: number;
   periodStartSeconds: number;
   periodEndSeconds: number;
   idempotencyKey: string;
+  daysUntilDue: number;
 }): Promise<
   Result<
     Stripe.Invoice,
@@ -849,16 +935,14 @@ export async function makeCreditsPAYGInvoice({
   >
 > {
   const stripe = getStripeClient();
-  const customerId = getCustomerId(stripeSubscription);
 
   const periodStartDate = new Date(periodStartSeconds * 1000);
   const periodEndDate = new Date(periodEndSeconds * 1000);
+  const amountCents = Math.ceil(amountMicroUsd / 10_000);
   const amountDollars = amountCents / 100;
 
-  const invoiceParams: Stripe.InvoiceCreateParams = {
-    customer: customerId,
-    subscription: stripeSubscription.id,
-    collection_method: "send_invoice",
+  const invoiceResult = await makeInvoice({
+    stripeSubscription,
     metadata: {
       credits_payg: "true",
       arrears_invoice: "true",
@@ -866,34 +950,21 @@ export async function makeCreditsPAYGInvoice({
       credits_period_start: periodStartSeconds.toString(),
       credits_period_end: periodEndSeconds.toString(),
     },
-    auto_advance: true,
-  };
-
-  try {
-    const invoice = await stripe.invoices.create(invoiceParams, {
-      idempotencyKey,
-    });
-
-    await stripe.invoiceItems.create({
-      customer: customerId,
-      price: getPAYGCreditPriceId(),
+    lineItem: {
+      priceId: getPAYGCreditPriceId(),
       quantity: amountCents,
       description: `Pay-as-you-go programmatic usage from ${periodStartDate.toISOString().split("T")[0]} to ${periodEndDate.toISOString().split("T")[0]}: $${amountDollars.toFixed(2)}`,
-      invoice: invoice.id,
-    });
+    },
+    idempotencyKey,
+    collectionMethod: "send_invoice",
+    daysUntilDue,
+  });
 
-    await stripe.invoices.finalizeInvoice(invoice.id);
-
-    return new Ok(invoice);
-  } catch (error) {
-    const isIdempotencyError =
-      error instanceof Stripe.errors.StripeError &&
-      error.code === "idempotency_key_in_use";
-
-    if (isIdempotencyError) {
+  if (invoiceResult.isErr()) {
+    if (invoiceResult.error.isIdempotencyError) {
       return new Err({
         error_type: "idempotency",
-        error_message: `Idempotency key already used: ${idempotencyKey}`,
+        error_message: invoiceResult.error.error_message,
       });
     }
 
@@ -907,7 +978,28 @@ export async function makeCreditsPAYGInvoice({
     );
     return new Err({
       error_type: "other",
-      error_message: `Failed to create PAYG invoice: ${normalizeError(error).message}`,
+      error_message: `Failed to create PAYG invoice: ${invoiceResult.error.error_message}`,
     });
   }
+
+  const invoice = invoiceResult.value;
+
+  try {
+    await stripe.invoices.finalizeInvoice(invoice.id);
+  } catch (error) {
+    logger.error(
+      {
+        panic: true,
+        stripeSubscriptionId: stripeSubscription.id,
+        stripeError: true,
+      },
+      "[Credit PAYG] Failed to finalize Stripe invoice"
+    );
+    return new Err({
+      error_type: "other",
+      error_message: `Failed to finalize PAYG invoice: ${normalizeError(error).message}`,
+    });
+  }
+
+  return new Ok(invoice);
 }

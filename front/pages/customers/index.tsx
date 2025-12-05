@@ -1,15 +1,20 @@
-import type { GetServerSideProps } from "next";
+import { CollapsibleComponent } from "@dust-tt/sparkle";
+import type { GetStaticProps } from "next";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 import { Grid, H1, H5, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import { getAllCustomerStories } from "@app/lib/contentful/client";
+import {
+  CONTENTFUL_REVALIDATE_SECONDS,
+  getAllCustomerStories,
+} from "@app/lib/contentful/client";
+import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
 import type {
   CustomerStoryFilterOptions,
   CustomerStoryListingPageProps,
@@ -18,12 +23,23 @@ import type {
 import { classNames } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
+function sortCompanySizes(sizes: string[]): string[] {
+  return [...sizes].sort((a, b) => {
+    const getFirstNumber = (size: string): number => {
+      const match = size.match(/^(\d+)/);
+      return match ? parseInt(match[1], 10) : 0;
+    };
+    return getFirstNumber(a) - getFirstNumber(b);
+  });
+}
+
 function extractFilterOptions(
   stories: CustomerStorySummary[]
 ): CustomerStoryFilterOptions {
   const industries = new Set<string>();
   const departments = new Set<string>();
   const companySizes = new Set<string>();
+  const regions = new Set<string>();
 
   for (const story of stories) {
     if (story.industry) {
@@ -35,19 +51,23 @@ function extractFilterOptions(
     if (story.companySize) {
       companySizes.add(story.companySize);
     }
+    for (const region of story.region) {
+      regions.add(region);
+    }
   }
 
   return {
     industries: [...industries].sort(),
     departments: [...departments].sort(),
-    companySizes: [...companySizes].sort(),
+    companySizes: sortCompanySizes([...companySizes]),
+    regions: [...regions].sort(),
   };
 }
 
-export const getServerSideProps: GetServerSideProps<
+export const getStaticProps: GetStaticProps<
   CustomerStoryListingPageProps
-> = async (context) => {
-  const storiesResult = await getAllCustomerStories(context.resolvedUrl);
+> = async () => {
+  const storiesResult = await getAllCustomerStories();
 
   if (storiesResult.isErr()) {
     logger.error(
@@ -57,9 +77,15 @@ export const getServerSideProps: GetServerSideProps<
     return {
       props: {
         stories: [],
-        filterOptions: { industries: [], departments: [], companySizes: [] },
+        filterOptions: {
+          industries: [],
+          departments: [],
+          companySizes: [],
+          regions: [],
+        },
         gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
       },
+      revalidate: CONTENTFUL_REVALIDATE_SECONDS,
     };
   }
 
@@ -71,6 +97,7 @@ export const getServerSideProps: GetServerSideProps<
       filterOptions: extractFilterOptions(stories),
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
     },
+    revalidate: CONTENTFUL_REVALIDATE_SECONDS,
   };
 };
 
@@ -99,6 +126,7 @@ interface FilterSectionProps {
   options: readonly string[];
   selected: string[];
   onChange: (selected: string[]) => void;
+  defaultOpen?: boolean;
 }
 
 function FilterSection({
@@ -106,6 +134,7 @@ function FilterSection({
   options,
   selected,
   onChange,
+  defaultOpen = false,
 }: FilterSectionProps) {
   const handleToggle = useCallback(
     (option: string, checked: boolean) => {
@@ -120,17 +149,25 @@ function FilterSection({
 
   return (
     <div className="mb-6">
-      <h3 className="mb-3 text-sm font-semibold text-foreground">{title}</h3>
-      <div className="flex flex-col gap-2">
-        {options.map((option) => (
-          <FilterCheckbox
-            key={option}
-            label={option}
-            checked={selected.includes(option)}
-            onChange={(checked) => handleToggle(option, checked)}
-          />
-        ))}
-      </div>
+      <CollapsibleComponent
+        rootProps={{ defaultOpen }}
+        triggerProps={{
+          label: title,
+          variant: "secondary",
+        }}
+        contentChildren={
+          <div className="flex flex-col gap-2">
+            {options.map((option) => (
+              <FilterCheckbox
+                key={option}
+                label={option}
+                checked={selected.includes(option)}
+                onChange={(checked) => handleToggle(option, checked)}
+              />
+            ))}
+          </div>
+        }
+      />
     </div>
   );
 }
@@ -165,6 +202,24 @@ export default function CustomerStoriesListing({
     }
     return Array.isArray(param) ? param : [param];
   }, [router.query.size]);
+
+  const selectedRegions = useMemo(() => {
+    const param = router.query.region;
+    if (!param) {
+      return [];
+    }
+    return Array.isArray(param) ? param : [param];
+  }, [router.query.region]);
+
+  // Scroll to top when filters change
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [
+    selectedIndustries,
+    selectedDepartments,
+    selectedCompanySizes,
+    selectedRegions,
+  ]);
 
   // Update URL with new filters
   const updateFilters = useCallback(
@@ -208,14 +263,27 @@ export default function CustomerStoriesListing({
       ) {
         return false;
       }
+      if (
+        selectedRegions.length > 0 &&
+        !story.region.some((r) => selectedRegions.includes(r))
+      ) {
+        return false;
+      }
       return true;
     });
-  }, [stories, selectedIndustries, selectedDepartments, selectedCompanySizes]);
+  }, [
+    stories,
+    selectedIndustries,
+    selectedDepartments,
+    selectedCompanySizes,
+    selectedRegions,
+  ]);
 
   const hasActiveFilters =
     selectedIndustries.length > 0 ||
     selectedDepartments.length > 0 ||
-    selectedCompanySizes.length > 0;
+    selectedCompanySizes.length > 0 ||
+    selectedRegions.length > 0;
 
   const clearAllFilters = useCallback(() => {
     void router.push({ pathname: router.pathname }, undefined, {
@@ -272,6 +340,7 @@ export default function CustomerStoriesListing({
                 options={filterOptions.industries}
                 selected={selectedIndustries}
                 onChange={(values) => updateFilters("industry", values)}
+                defaultOpen={true}
               />
 
               <FilterSection
@@ -279,6 +348,13 @@ export default function CustomerStoriesListing({
                 options={filterOptions.departments}
                 selected={selectedDepartments}
                 onChange={(values) => updateFilters("department", values)}
+              />
+
+              <FilterSection
+                title="Region"
+                options={filterOptions.regions}
+                selected={selectedRegions}
+                onChange={(values) => updateFilters("region", values)}
               />
 
               <FilterSection
@@ -309,10 +385,13 @@ export default function CustomerStoriesListing({
                       <div className="relative flex aspect-[16/9] w-full items-center justify-center overflow-hidden bg-gray-100">
                         {story.heroImage ? (
                           <Image
-                            src={`${story.heroImage.url}?w=800`}
+                            src={story.heroImage.url}
                             alt={story.heroImage.alt}
-                            fill
-                            className="object-cover brightness-100 transition duration-300 ease-out group-hover:brightness-110"
+                            width={640}
+                            height={360}
+                            loader={contentfulImageLoader}
+                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                            className="h-full w-full object-cover brightness-100 transition duration-300 ease-out group-hover:brightness-110"
                           />
                         ) : story.companyLogo ? (
                           <div className="flex h-full w-full items-center justify-center bg-white p-8">
@@ -331,6 +410,20 @@ export default function CustomerStoriesListing({
                             </span>
                           </div>
                         )}
+                        {/* Tags */}
+                        <div className="absolute right-3 top-3 flex flex-wrap justify-end gap-2">
+                          <span className="rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-gray-900 shadow-sm backdrop-blur-sm">
+                            {story.industry}
+                          </span>
+                          {story.department.slice(0, 2).map((dept) => (
+                            <span
+                              key={dept}
+                              className="rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-gray-900 shadow-sm backdrop-blur-sm"
+                            >
+                              {dept}
+                            </span>
+                          ))}
+                        </div>
                       </div>
 
                       <div className="flex flex-1 flex-col p-6">
@@ -350,21 +443,6 @@ export default function CustomerStoriesListing({
                         <H5 className="line-clamp-3 text-foreground" mono>
                           {story.title}
                         </H5>
-
-                        {/* Tags */}
-                        <div className="mt-auto flex flex-wrap gap-1 pt-4">
-                          <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
-                            {story.industry}
-                          </span>
-                          {story.department.slice(0, 2).map((dept) => (
-                            <span
-                              key={dept}
-                              className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600"
-                            >
-                              {dept}
-                            </span>
-                          ))}
-                        </div>
                       </div>
                     </Link>
                   ))}

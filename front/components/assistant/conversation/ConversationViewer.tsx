@@ -298,7 +298,10 @@ export const ConversationViewer = ({
               const exists = ref.current.data.find(predicate);
 
               if (!exists) {
-                ref.current.data.append([userMessage], true);
+                // Do not scroll if the message is from the current user.
+                // Can happen with fake user messages (like handover messages).
+                const scroll = userMessage.user?.sId !== user.sId;
+                ref.current.data.append([userMessage], scroll);
                 // Using else if with the type guard just to please the type checker as we already know it's a user message from the predicate.
               } else if (isUserMessage(exists)) {
                 // We only update if the version is greater than the existing version.
@@ -309,30 +312,30 @@ export const ConversationViewer = ({
                 }
               }
 
-              void mutateConversationParticipants(
-                async (participants) =>
-                  getUpdatedParticipantsFromEvent(participants, event),
-                { revalidate: false }
-              );
-
-              void mutateConversations(
-                (currentData) => {
-                  if (!currentData?.conversations) {
-                    return currentData;
-                  }
-                  return {
-                    conversations: currentData.conversations.map((c) =>
-                      c.sId === conversationId
-                        ? { ...c, hasError: false, unread: false }
-                        : c
-                    ),
-                  };
-                },
-                { revalidate: false }
-              );
-
-              // Mark as read if the message is not from the current user.
+              // Update the participants and the conversation list if the message is not from the current user.
               if (userMessage.user?.sId !== user.sId) {
+                void mutateConversationParticipants(
+                  async (participants) =>
+                    getUpdatedParticipantsFromEvent(participants, event),
+                  { revalidate: false }
+                );
+
+                void mutateConversations(
+                  (currentData) => {
+                    if (!currentData?.conversations) {
+                      return currentData;
+                    }
+                    return {
+                      conversations: currentData.conversations.map((c) =>
+                        c.sId === conversationId
+                          ? { ...c, hasError: false, unread: false }
+                          : c
+                      ),
+                    };
+                  },
+                  { revalidate: false }
+                );
+
                 void debouncedMarkAsRead(conversationId, false);
               }
             }

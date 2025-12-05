@@ -6,8 +6,8 @@ import type { PokeCreditType } from "@app/pages/api/poke/workspaces/[wId]/credit
 import { dateToHumanReadable } from "@app/types";
 import type { CreditType } from "@app/types/credits";
 
-function formatCentsToUSD(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
+function formatMicroUsdToUsd(microUsdAmount: number): string {
+  return `$${(microUsdAmount / 1_000_000).toFixed(2)}`;
 }
 
 export function makeColumnsForCredits(): ColumnDef<PokeCreditType>[] {
@@ -47,7 +47,7 @@ export function makeColumnsForCredits(): ColumnDef<PokeCreditType>[] {
       },
     },
     {
-      accessorKey: "initialAmountCents",
+      accessorKey: "initialAmountMicroUsd",
       header: ({ column }) => {
         return (
           <div className="flex items-center space-x-2">
@@ -62,10 +62,11 @@ export function makeColumnsForCredits(): ColumnDef<PokeCreditType>[] {
           </div>
         );
       },
-      cell: ({ row }) => formatCentsToUSD(row.original.initialAmountCents),
+      cell: ({ row }) =>
+        formatMicroUsdToUsd(row.original.initialAmountMicroUsd),
     },
     {
-      accessorKey: "consumedAmountCents",
+      accessorKey: "consumedAmountMicroUsd",
       header: ({ column }) => {
         return (
           <div className="flex items-center space-x-2">
@@ -80,10 +81,11 @@ export function makeColumnsForCredits(): ColumnDef<PokeCreditType>[] {
           </div>
         );
       },
-      cell: ({ row }) => formatCentsToUSD(row.original.consumedAmountCents),
+      cell: ({ row }) =>
+        formatMicroUsdToUsd(row.original.consumedAmountMicroUsd),
     },
     {
-      accessorKey: "remainingAmountCents",
+      accessorKey: "remainingAmountMicroUsd",
       header: ({ column }) => {
         return (
           <div className="flex items-center space-x-2">
@@ -99,8 +101,8 @@ export function makeColumnsForCredits(): ColumnDef<PokeCreditType>[] {
         );
       },
       cell: ({ row }) => {
-        const remaining = row.original.remainingAmountCents;
-        const initial = row.original.initialAmountCents;
+        const remaining = row.original.remainingAmountMicroUsd;
+        const initial = row.original.initialAmountMicroUsd;
         const percentUsed =
           initial > 0 ? ((initial - remaining) / initial) * 100 : 0;
         const color =
@@ -109,7 +111,7 @@ export function makeColumnsForCredits(): ColumnDef<PokeCreditType>[] {
             : percentUsed > 70
               ? "text-warning-500"
               : "text-green-600";
-        return <span className={color}>{formatCentsToUSD(remaining)}</span>;
+        return <span className={color}>{formatMicroUsdToUsd(remaining)}</span>;
       },
     },
     {

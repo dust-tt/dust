@@ -218,6 +218,7 @@ export function renderUserMessage(m: UserMessageType): UserMessageTypeModel {
   const content = replaceMentionsWithAt(m.content);
 
   const metadataItems: string[] = [];
+  let additionalInstructions = "";
 
   const identityTokens: string[] = [];
   if (m.context.fullName) {
@@ -266,12 +267,23 @@ export function renderUserMessage(m: UserMessageType): UserMessageTypeModel {
     }
   } else if (m.context.origin) {
     metadataItems.push(`- Source: ${m.context.origin}`);
+    if (m.context.origin === "slack") {
+      additionalInstructions +=
+        "This message originated from Slack: make sure to retrieve the context from the attached thread content.";
+    }
   }
 
-  let systemContext = "";
+  const systemContext = [];
   if (metadataItems.length > 0) {
-    systemContext = `<dust_system>\n${metadataItems.join("\n")}\n</dust_system>\n\n`;
+    systemContext.push(`${metadataItems.join("\n")}`);
   }
+  if (additionalInstructions.length > 0) {
+    systemContext.push(`${additionalInstructions}`);
+  }
+  const systemContextInstructions =
+    systemContext.length > 0
+      ? `<dust_system>\n${systemContext.join("\n\n")}\n</dust_system>\n\n`
+      : "";
 
   return {
     role: "user" as const,
@@ -280,7 +292,7 @@ export function renderUserMessage(m: UserMessageType): UserMessageTypeModel {
     content: [
       {
         type: "text",
-        text: systemContext + content,
+        text: systemContextInstructions + content,
       },
     ],
   };

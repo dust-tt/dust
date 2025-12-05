@@ -45,6 +45,7 @@ export type ConnectorCreateRequestBody = t.TypeOf<
 
 export const UpdateConnectorRequestBodySchema = t.type({
   connectionId: t.string,
+  extraConfig: t.union([t.undefined, t.record(t.string, t.string)]),
 });
 
 export type UpdateConnectorRequestBody = t.TypeOf<
@@ -240,6 +241,7 @@ export class ConnectorsAPI {
         headers: this.getDefaultHeaders(),
         body: JSON.stringify({
           connectionId,
+          extraConfig: undefined,
         } satisfies UpdateConnectorRequestBody),
       }
     );

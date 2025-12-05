@@ -86,6 +86,7 @@ export type UserMessageOrigin =
   | "raycast"
   | "run_agent" // soon to be removed (not a fitting origin).
   | "slack"
+  | "slack_workflow"
   | "teams"
   | "transcript"
   | "triggered_programmatic"
@@ -181,6 +182,7 @@ export type BaseAgentMessageType = {
   content: string | null;
   chainOfThought: string | null;
   error: GenericErrorContent | null;
+  visibility: MessageVisibility;
 };
 
 export type ParsedContentItem =
