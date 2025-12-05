@@ -47,7 +47,19 @@ const whitelistedCommands = [
   },
   {
     majorCommand: "slack",
+    command: "skip-channel",
+  },
+  {
+    majorCommand: "slack",
+    command: "unskip-channel",
+  },
+  {
+    majorCommand: "slack",
     command: "run-auto-join",
+  },
+  {
+    majorCommand: "slack",
+    command: "check-channel",
   },
   {
     majorCommand: "connectors",
@@ -72,6 +84,18 @@ const whitelistedCommands = [
   {
     majorCommand: "confluence",
     command: "check-page-exists",
+  },
+  {
+    majorCommand: "google_drive",
+    command: "upsert-file",
+  },
+  {
+    majorCommand: "intercom",
+    command: "get-conversations-sliding-window",
+  },
+  {
+    majorCommand: "intercom",
+    command: "set-conversations-sliding-window",
   },
 ];
 

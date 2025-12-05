@@ -30,7 +30,7 @@ import {
 } from "@connectors/lib/models/google_drive";
 import { heartbeat } from "@connectors/lib/temporal";
 import type { Logger } from "@connectors/logger/logger";
-import logger from "@connectors/logger/logger";
+import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { GoogleDriveObjectType, ModelId } from "@connectors/types";
 import { WithRetriesError } from "@connectors/types";
@@ -45,22 +45,20 @@ export async function incrementalSync(
 ): Promise<
   { nextPageToken: string | undefined; newFolders: string[] } | undefined
 > {
-  const localLogger = logger.child({
-    provider: "google_drive",
-    connectorId: connectorId,
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+  const localLogger = getActivityLogger(connector).child({
     driveId: driveId,
-    activity: "incrementalSync",
     runInstance: uuid4(),
   });
+
   const redisCli = await redisClient({
     origin: "google_drive_incremental_sync",
   });
   const newFolders = [];
   try {
-    const connector = await ConnectorResource.fetchById(connectorId);
-    if (!connector) {
-      throw new Error(`Connector ${connectorId} not found`);
-    }
     if (!nextPageToken) {
       nextPageToken = await getSyncPageToken(
         connectorId,
@@ -189,7 +187,17 @@ export async function incrementalSync(
           `Invalid file. File is: ${JSON.stringify(change.file)}`
         );
       }
-      localLogger.info({ fileId: change.file.id }, "will sync file");
+      localLogger.info(
+        {
+          fileId: change.file.id,
+          createdTime: change.file.createdTime,
+          modifiedTime: change.file.modifiedTime,
+          trashed: change.file.trashed,
+          mimeType: change.file.mimeType,
+          size: change.file.size,
+        },
+        "will sync file"
+      );
 
       const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
@@ -216,7 +224,7 @@ export async function incrementalSync(
         const parents = parentGoogleIds.map((parent) => getInternalId(parent));
 
         if (localFolder && localFolder.parentId !== parentGoogleIds[1]) {
-          logger.info(
+          localLogger.info(
             {
               fileId: change.file.id,
               localParentId: localFolder.parentId,

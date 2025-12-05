@@ -5,8 +5,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { handleMembershipInvitations } from "@app/lib/api/invitation";
-import { getPendingInvitations } from "@app/lib/api/invitation";
 import type { Authenticator } from "@app/lib/auth";
+import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type {
   MembershipInvitationType,
@@ -72,8 +72,12 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const invitations = await getPendingInvitations(auth);
-      res.status(200).json({ invitations });
+      const includeExpired = req.query.includeExpired === "true";
+      const invitations =
+        await MembershipInvitationResource.getPendingInvitations(auth, {
+          includeExpired,
+        });
+      res.status(200).json({ invitations: invitations.map((i) => i.toJSON()) });
       return;
 
     case "POST":

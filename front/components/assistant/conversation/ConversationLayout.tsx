@@ -3,7 +3,6 @@ import { useRouter } from "next/router";
 import React, { useMemo } from "react";
 
 import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
-import { CoEditionProvider } from "@app/components/assistant/conversation/co_edition/CoEditionProvider";
 import {
   ConversationErrorDisplay,
   ErrorDisplay,
@@ -18,15 +17,16 @@ import { ConversationTitle } from "@app/components/assistant/conversation/Conver
 import { FileDropProvider } from "@app/components/assistant/conversation/FileUploaderContext";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBarProvider } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
-import { AssistantDetails } from "@app/components/assistant/details/AssistantDetails";
+import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
+import { MemberDetails } from "@app/components/assistant/details/MemberDetails";
 import { WelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuide";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { ErrorBoundary } from "@app/components/error_boundary/ErrorBoundary";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import { useURLSheet } from "@app/hooks/useURLSheet";
+import { ONBOARDING_CONVERSATION_ENABLED } from "@app/lib/onboarding";
 import { useConversation } from "@app/lib/swr/conversations";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   ConversationError,
   ConversationWithoutContentType,
@@ -87,24 +87,15 @@ const ConversationLayoutContent = ({
   isAdmin,
 }: ConversationLayoutContentProps) => {
   const router = useRouter();
-  const { onOpenChange: onOpenChangeAssistantModal } =
-    useURLSheet("agentDetails");
+  const { onOpenChange: onOpenChangeAgentModal } = useURLSheet("agentDetails");
+  const { onOpenChange: onOpenChangeUserModal } = useURLSheet("userDetails");
   const { activeConversationId } = useConversationsNavigation();
   const { conversation, conversationError } = useConversation({
     conversationId: activeConversationId,
     workspaceId: owner.sId,
   });
 
-  const { hasFeature } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
-
-  const hasCoEditionFeatureFlag = useMemo(
-    () => hasFeature("co_edition"),
-    [hasFeature]
-  );
-
-  const assistantSId = useMemo(() => {
+  const agentSId = useMemo(() => {
     const sid = router.query.agentDetails ?? [];
     if (isString(sid)) {
       return sid;
@@ -112,12 +103,25 @@ const ConversationLayoutContent = ({
     return null;
   }, [router.query.agentDetails]);
 
+  const userSId = useMemo(() => {
+    const sid = router.query.userDetails ?? [];
+    if (isString(sid)) {
+      return sid;
+    }
+    return null;
+  }, [router.query.userDetails]);
+
   // Logic for the welcome tour guide. We display it if the welcome query param is set to true.
   const { startConversationRef, spaceMenuButtonRef, createAgentButtonRef } =
     useWelcomeTourGuide();
 
   const shouldDisplayWelcomeTourGuide = useMemo(() => {
-    return router.query.welcome === "true" && !activeConversationId;
+    // Only show the welcome tour guide if onboarding chat is disabled.
+    return (
+      router.query.welcome === "true" &&
+      !activeConversationId &&
+      !ONBOARDING_CONVERSATION_ENABLED
+    );
   }, [router.query.welcome, activeConversationId]);
 
   const onTourGuideEnd = () => {
@@ -139,30 +143,31 @@ const ConversationLayoutContent = ({
               ? `Dust - ${conversation?.title}`
               : `Dust - New Conversation`
           }
-          navChildren={<AssistantSidebarMenu owner={owner} />}
+          navChildren={<AgentSidebarMenu owner={owner} />}
         >
-          <AssistantDetails
+          <AgentDetails
             owner={owner}
             user={user}
-            assistantId={assistantSId}
-            onClose={() => onOpenChangeAssistantModal(false)}
+            agentId={agentSId}
+            onClose={() => onOpenChangeAgentModal(false)}
           />
 
-          <CoEditionProvider
+          <MemberDetails
             owner={owner}
-            hasCoEditionFeatureFlag={hasCoEditionFeatureFlag}
-          >
-            <ConversationSidePanelProvider>
-              <ConversationInnerLayout
-                activeConversationId={activeConversationId}
-                conversation={conversation}
-                conversationError={conversationError}
-                owner={owner}
-              >
-                {children}
-              </ConversationInnerLayout>
-            </ConversationSidePanelProvider>
-          </CoEditionProvider>
+            userId={userSId}
+            onClose={() => onOpenChangeUserModal(false)}
+          />
+
+          <ConversationSidePanelProvider>
+            <ConversationInnerLayout
+              activeConversationId={activeConversationId}
+              conversation={conversation}
+              conversationError={conversationError}
+              owner={owner}
+            >
+              {children}
+            </ConversationInnerLayout>
+          </ConversationSidePanelProvider>
           {shouldDisplayWelcomeTourGuide && (
             <WelcomeTourGuide
               owner={owner}
@@ -216,7 +221,9 @@ function ConversationInnerLayout({
         >
           <ResizablePanel defaultSize={100}>
             <div className="flex h-full flex-col">
-              {activeConversationId && <ConversationTitle owner={owner} />}
+              {activeConversationId && !conversationError && (
+                <ConversationTitle owner={owner} />
+              )}
               {conversationError ? (
                 <ConversationErrorDisplay error={conversationError} />
               ) : (

@@ -1,6 +1,6 @@
 import type {
   AgentContentItemType,
-  ErrorContentType,
+  AgentErrorContentType,
 } from "@app/types/assistant/agent_message_content";
 
 /**
@@ -29,7 +29,7 @@ export interface TextContent {
   text: string;
 }
 
-type Content = TextContent | ImageContent;
+export type Content = TextContent | ImageContent;
 
 export function isTextContent(content: object): content is TextContent {
   return "text" in content && "type" in content && content.type === "text";
@@ -56,21 +56,25 @@ export interface FunctionCallType {
   id: string;
   name: string;
   arguments: string; // Empty is not valid, should be at least "{}"
+  metadata?: { thoughtSignature?: string };
 }
 
 // Assistant requiring usage of function(s) call(s)
 export interface AssistantFunctionCallMessageTypeModel {
   role: "assistant";
+  /** @deprecated, use contents instead. */
   content?: string;
+  /** @deprecated, use contents instead. */
   function_calls: FunctionCallType[];
-  contents?: Array<Exclude<AgentContentItemType, ErrorContentType>>;
+  contents: Array<Exclude<AgentContentItemType, AgentErrorContentType>>;
 }
 
 export interface AssistantContentMessageTypeModel {
   role: "assistant";
   name: string;
-  content: string;
-  contents?: Array<Exclude<AgentContentItemType, ErrorContentType>>;
+  /** @deprecated, use contents instead. */
+  content?: string;
+  contents: Array<Exclude<AgentContentItemType, AgentErrorContentType>>;
 }
 
 // This is the output of one function call
@@ -81,12 +85,15 @@ export interface FunctionMessageTypeModel {
   content: string | Content[];
 }
 
-export type ModelMessageTypeMultiActions =
-  | ContentFragmentMessageTypeModel
+export type ModelMessageTypeMultiActionsWithoutContentFragment =
   | UserMessageTypeModel
   | AssistantFunctionCallMessageTypeModel
   | AssistantContentMessageTypeModel
   | FunctionMessageTypeModel;
+
+export type ModelMessageTypeMultiActions =
+  | ModelMessageTypeMultiActionsWithoutContentFragment
+  | ContentFragmentMessageTypeModel;
 
 export function isContentFragmentMessageTypeModel(
   contentFragment: ModelMessageTypeMultiActions
@@ -95,7 +102,7 @@ export function isContentFragmentMessageTypeModel(
 }
 
 export type ModelConversationTypeMultiActions = {
-  messages: ModelMessageTypeMultiActions[];
+  messages: ModelMessageTypeMultiActionsWithoutContentFragment[];
 };
 
 /**

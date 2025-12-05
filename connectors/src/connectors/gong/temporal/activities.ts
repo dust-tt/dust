@@ -267,6 +267,15 @@ export async function gongListAndSaveUsersActivity({
   connectorId: ModelId;
 }) {
   const connector = await fetchGongConnector({ connectorId });
+  const configuration = await fetchGongConfiguration(connector);
+
+  // Skip the full sync of users if we are not on the initial full sync.
+  // The call to /users is costly (many users usually) and heavily rate-limited:
+  // we have seen retry-after of ~20 minutes.
+  if (configuration.lastSyncTimestamp !== null) {
+    return;
+  }
+
   const gongClient = await getGongClient(connector);
 
   let pageCursor = null;

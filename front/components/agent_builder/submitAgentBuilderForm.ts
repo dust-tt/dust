@@ -6,9 +6,9 @@ import { DROID_AVATAR_URLS } from "@app/components/agent_builder/settings/avatar
 import {
   expandFoldersToTables,
   getTableIdForContentNode,
-} from "@app/components/assistant_builder/shared";
+} from "@app/components/agent_builder/shared/tables";
 import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
-import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
+import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
 import { fetcherWithBody } from "@app/lib/swr/swr";
 import {
   trackEvent,
@@ -17,6 +17,10 @@ import {
 } from "@app/lib/tracking";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import datadogLogger from "@app/logger/datadogLogger";
+import type {
+  PatchTriggersRequestBody,
+  PostTriggersRequestBody,
+} from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/triggers";
 import type {
   GetContentNodesOrChildrenRequestBodyType,
   GetDataSourceViewContentNodes,
@@ -257,6 +261,7 @@ async function processTriggers({
           workspaceId: owner.sId,
           agentConfigurationId,
           triggerIds: formData.triggersToDelete,
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           errorMessage: error?.api_error?.message || error?.error?.message,
         },
         "[Agent builder] - Failed to delete triggers"
@@ -275,17 +280,28 @@ async function processTriggers({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          triggers: formData.triggersToUpdate.map((trigger) => ({
-            sId: trigger.sId,
-            name: trigger.name,
-            customPrompt: trigger.customPrompt,
-            configuration: trigger.configuration,
-            kind: trigger.kind,
-            webhookSourceViewSId:
-              trigger.kind === "webhook"
-                ? trigger.webhookSourceViewSId
-                : undefined,
-          })),
+          triggers: formData.triggersToUpdate.map((trigger) => {
+            const baseData = {
+              sId: trigger.sId,
+              name: trigger.name,
+              enabled: trigger.enabled,
+              customPrompt: trigger.customPrompt,
+              naturalLanguageDescription: trigger.naturalLanguageDescription,
+              configuration: trigger.configuration,
+              kind: trigger.kind,
+            };
+
+            if (trigger.kind === "webhook") {
+              return {
+                ...baseData,
+                executionPerDayLimitOverride:
+                  trigger.executionPerDayLimitOverride,
+                webhookSourceViewSId: trigger.webhookSourceViewSId,
+              } as PatchTriggersRequestBody["triggers"][number];
+            }
+
+            return baseData as PatchTriggersRequestBody["triggers"][number];
+          }),
         }),
       }
     );
@@ -297,6 +313,7 @@ async function processTriggers({
           workspaceId: owner.sId,
           agentConfigurationId,
           triggersCount: formData.triggersToUpdate.length,
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           errorMessage: error?.api_error?.message || error?.error?.message,
         },
         "[Agent builder] - Failed to update triggers"
@@ -315,16 +332,27 @@ async function processTriggers({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          triggers: formData.triggersToCreate.map((trigger) => ({
-            name: trigger.name,
-            customPrompt: trigger.customPrompt,
-            configuration: trigger.configuration,
-            kind: trigger.kind,
-            webhookSourceViewSId:
-              trigger.kind === "webhook"
-                ? trigger.webhookSourceViewSId
-                : undefined,
-          })),
+          triggers: formData.triggersToCreate.map((trigger) => {
+            const baseData = {
+              name: trigger.name,
+              enabled: trigger.enabled,
+              customPrompt: trigger.customPrompt,
+              naturalLanguageDescription: trigger.naturalLanguageDescription,
+              configuration: trigger.configuration,
+              kind: trigger.kind,
+            };
+
+            if (trigger.kind === "webhook") {
+              return {
+                ...baseData,
+                executionPerDayLimitOverride:
+                  trigger.executionPerDayLimitOverride,
+                webhookSourceViewSId: trigger.webhookSourceViewSId,
+              } as PostTriggersRequestBody["triggers"][number];
+            }
+
+            return baseData as PostTriggersRequestBody["triggers"][number];
+          }),
         }),
       }
     );
@@ -336,6 +364,7 @@ async function processTriggers({
           workspaceId: owner.sId,
           agentConfigurationId,
           triggersCount: formData.triggersToCreate.length,
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           errorMessage: error?.api_error?.message || error?.error?.message,
         },
         "[Agent builder] - Failed to create triggers"
@@ -446,9 +475,6 @@ export async function submitAgentBuilderForm({
         responseFormat: formData.generationSettings.responseFormat,
       },
       actions: processedActions,
-      visualizationEnabled: formData.actions.some(
-        (action) => action.type === "DATA_VISUALIZATION"
-      ),
       templateId: null,
       tags: formData.agentSettings.tags,
       editors: formData.agentSettings.editors.map((editor) => ({
@@ -487,6 +513,7 @@ export async function submitAgentBuilderForm({
           "[Agent builder] - Form submission failed"
         );
         return new Err(
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           new Error(error.error?.message || "Failed to save agent")
         );
       } catch {
@@ -517,8 +544,14 @@ export async function submitAgentBuilderForm({
         object: "create_agent",
         action: TRACKING_ACTIONS.SUBMIT,
         extra: {
+          agent_id: agentConfiguration.sId,
           scope: formData.agentSettings.scope,
           has_actions: processedActions.length > 0,
+          action_count: processedActions.length,
+          action_names: processedActions.map((a) => a.name).join(","),
+          has_instructions: !!formData.instructions,
+          model_id: formData.generationSettings.modelSettings.modelId,
+          model_provider: formData.generationSettings.modelSettings.providerId,
         },
       });
     }

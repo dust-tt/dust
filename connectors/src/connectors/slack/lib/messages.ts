@@ -27,8 +27,6 @@ async function processMessageForMentions(
     }
 
     message = message.replace(m, `@${userName}`);
-
-    continue;
   }
 
   return message;

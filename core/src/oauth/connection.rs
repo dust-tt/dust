@@ -1,17 +1,19 @@
 use crate::oauth::{
+    credential::CredentialProvider,
     encryption::{seal_str, unseal_str},
     providers::{
         confluence::ConfluenceConnectionProvider,
         confluence_tools::ConfluenceToolsConnectionProvider, discord::DiscordConnectionProvider,
-        freshservice::FreshserviceConnectionProvider, github::GithubConnectionProvider,
-        gmail::GmailConnectionProvider, gong::GongConnectionProvider,
-        google_drive::GoogleDriveConnectionProvider, hubspot::HubspotConnectionProvider,
-        intercom::IntercomConnectionProvider, jira::JiraConnectionProvider,
-        mcp::MCPConnectionProvider, mcp_static::MCPStaticConnectionProvider,
-        microsoft::MicrosoftConnectionProvider, microsoft_tools::MicrosoftToolsConnectionProvider,
-        mock::MockConnectionProvider, monday::MondayConnectionProvider,
-        notion::NotionConnectionProvider, salesforce::SalesforceConnectionProvider,
-        slack::SlackConnectionProvider, zendesk::ZendeskConnectionProvider,
+        fathom::FathomConnectionProvider, freshservice::FreshserviceConnectionProvider,
+        github::GithubConnectionProvider, gmail::GmailConnectionProvider,
+        gong::GongConnectionProvider, google_drive::GoogleDriveConnectionProvider,
+        hubspot::HubspotConnectionProvider, intercom::IntercomConnectionProvider,
+        jira::JiraConnectionProvider, linear::LinearConnectionProvider, mcp::MCPConnectionProvider,
+        mcp_static::MCPStaticConnectionProvider, microsoft::MicrosoftConnectionProvider,
+        microsoft_tools::MicrosoftToolsConnectionProvider, mock::MockConnectionProvider,
+        monday::MondayConnectionProvider, notion::NotionConnectionProvider,
+        salesforce::SalesforceConnectionProvider, slack::SlackConnectionProvider,
+        zendesk::ZendeskConnectionProvider,
     },
     store::OAuthStore,
 };
@@ -60,6 +62,8 @@ pub enum ConnectionErrorCode {
     ProviderAccessTokenRefreshError,
     // Invalid Metadata
     InvalidMetadataError,
+    // Invalid Credential
+    InvalidCredentialError,
     // Internal Errors
     InternalError,
 }
@@ -95,6 +99,7 @@ pub enum ConnectionProvider {
     Confluence,
     ConfluenceTools,
     Discord,
+    Fathom,
     Freshservice,
     Github,
     Gong,
@@ -102,6 +107,7 @@ pub enum ConnectionProvider {
     Gmail,
     Intercom,
     Jira,
+    Linear,
     Microsoft,
     MicrosoftTools,
     Monday,
@@ -238,6 +244,7 @@ pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
         ConnectionProvider::Confluence => Box::new(ConfluenceConnectionProvider::new()),
         ConnectionProvider::ConfluenceTools => Box::new(ConfluenceToolsConnectionProvider::new()),
         ConnectionProvider::Discord => Box::new(DiscordConnectionProvider::new()),
+        ConnectionProvider::Fathom => Box::new(FathomConnectionProvider::new()),
         ConnectionProvider::Freshservice => Box::new(FreshserviceConnectionProvider::new()),
         ConnectionProvider::Github => Box::new(GithubConnectionProvider::new()),
         ConnectionProvider::Gong => Box::new(GongConnectionProvider::new()),
@@ -245,6 +252,7 @@ pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
         ConnectionProvider::Gmail => Box::new(GmailConnectionProvider::new()),
         ConnectionProvider::Intercom => Box::new(IntercomConnectionProvider::new()),
         ConnectionProvider::Jira => Box::new(JiraConnectionProvider::new()),
+        ConnectionProvider::Linear => Box::new(LinearConnectionProvider::new()),
         ConnectionProvider::Microsoft => Box::new(MicrosoftConnectionProvider::new()),
         ConnectionProvider::MicrosoftTools => Box::new(MicrosoftToolsConnectionProvider::new()),
         ConnectionProvider::Monday => Box::new(MondayConnectionProvider::new()),
@@ -908,5 +916,93 @@ impl Connection {
                 }
             }
         }
+    }
+
+    pub async fn update_related_credential_id(
+        &mut self,
+        store: Box<dyn OAuthStore + Sync + Send>,
+        related_credential_id: String,
+    ) -> Result<(), ConnectionError> {
+        match store.retrieve_credential(&related_credential_id).await {
+            Err(e) => {
+                error!(error = %e, "Failed to retrieve credential");
+                return Err(ConnectionError {
+                    code: ConnectionErrorCode::InternalError,
+                    message: "Failed to retrieve credential".to_string(),
+                });
+            }
+            Ok(None) => {
+                return Err(ConnectionError {
+                    code: ConnectionErrorCode::InvalidCredentialError,
+                    message: format!("Credential with id {} not found", related_credential_id),
+                });
+            }
+            Ok(Some(credential)) => {
+                let connection_provider_as_credential = CredentialProvider::from(self.provider);
+
+                if credential.provider() != connection_provider_as_credential {
+                    return Err(ConnectionError {
+                        code: ConnectionErrorCode::InvalidCredentialError,
+                        message: format!(
+                            "Credential provider ({}) does not match connection provider ({})",
+                            credential.provider(),
+                            connection_provider_as_credential
+                        ),
+                    });
+                }
+                // Credential exists and provider matches, proceed with update
+            }
+        }
+
+        self.related_credential_id = Some(related_credential_id);
+
+        store
+            .update_connection_related_credential_id(self)
+            .await
+            .map_err(|e| {
+                error!(error = %e, "Failed to update related_credential_id");
+                ConnectionError {
+                    code: ConnectionErrorCode::InternalError,
+                    message: "Failed to update related_credential_id".to_string(),
+                }
+            })?;
+
+        info!(
+            connection_id = self.connection_id(),
+            "Successfully updated related_credential_id"
+        );
+
+        Ok(())
+    }
+
+    pub async fn update_metadata(
+        &mut self,
+        store: Box<dyn OAuthStore + Sync + Send>,
+        extra_metadata: serde_json::Map<String, serde_json::Value>,
+    ) -> Result<(), ConnectionError> {
+        // Merge extra_metadata into existing connection metadata
+        let mut merged_metadata = match self.metadata.clone() {
+            serde_json::Value::Object(map) => map,
+            _ => serde_json::Map::new(),
+        };
+        for (key, value) in extra_metadata {
+            merged_metadata.insert(key, value);
+        }
+        self.metadata = serde_json::Value::Object(merged_metadata);
+
+        store.update_connection_metadata(self).await.map_err(|e| {
+            error!(error = %e, "Failed to update connection metadata");
+            ConnectionError {
+                code: ConnectionErrorCode::InternalError,
+                message: "Failed to update connection metadata".to_string(),
+            }
+        })?;
+
+        info!(
+            connection_id = self.connection_id(),
+            "Successfully updated connection metadata"
+        );
+
+        Ok(())
     }
 }

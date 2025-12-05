@@ -18,7 +18,7 @@ import {
   GoogleDriveFiles,
 } from "@connectors/lib/models/google_drive";
 import { heartbeat } from "@connectors/lib/temporal";
-import logger from "@connectors/logger/logger";
+import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types";
@@ -46,7 +46,9 @@ export async function syncFiles(
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
-  logger.info(
+  const activityLogger = getActivityLogger(connector);
+
+  activityLogger.info(
     {
       connectorId,
       folderId: driveFolderId,
@@ -69,7 +71,7 @@ export async function syncFiles(
   await heartbeat();
   if (!driveFolder) {
     // We got a 404 on this folder, we skip it.
-    logger.info(
+    activityLogger.info(
       {
         connectorId,
         folderId: driveFolderId,
@@ -118,7 +120,7 @@ export async function syncFiles(
     includeLabels: labels.map((l) => l.id).join(","),
     fields: `nextPageToken, files(${FILE_ATTRIBUTES_TO_FETCH.join(",")})`,
     q: `'${driveFolder.id}' in parents and (${mimeTypesSearchString}) and trashed=false`,
-    pageToken: nextPageToken,
+    ...(nextPageToken ? { pageToken: nextPageToken } : {}),
   });
   if (res.status !== 200) {
     throw new Error(
@@ -143,7 +145,7 @@ export async function syncFiles(
     (file) => file.mimeType === "application/vnd.google-apps.folder"
   );
 
-  logger.info(
+  activityLogger.info(
     {
       connectorId,
       dataSourceId: dataSourceConfig.dataSourceId,
@@ -176,7 +178,7 @@ export async function syncFiles(
 
   const count = results.filter((r) => r).length;
 
-  logger.info(
+  activityLogger.info(
     {
       connectorId,
       dataSourceId: dataSourceConfig.dataSourceId,

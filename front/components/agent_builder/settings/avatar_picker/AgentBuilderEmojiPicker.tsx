@@ -50,6 +50,7 @@ const AgentBuilderEmojiPicker = React.forwardRef<
       if (emojiInfos) {
         const { skinEmoji, id, unified, backgroundColor } = emojiInfos;
 
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setSelectedEmoji({
           native: skinEmoji,
           id,

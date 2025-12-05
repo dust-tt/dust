@@ -1634,15 +1634,14 @@ export async function checkDataSourceUpsertQueueStatus({
         },
         "Error checking upsert queue for data source."
       );
-      throw new Error(
-        `Error checking upsert queue: ${dustRequestResult.status}`
-      );
+      // Checking is a best-effort, so we return 0 on error, allowing the workflow to proceed.
+      return 0;
     }
   } catch (e) {
     localLogger.error(
       { error: e },
       "Error checking upsert queue for data source."
     );
-    throw e;
+    return 0;
   }
 }

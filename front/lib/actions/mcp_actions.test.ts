@@ -126,7 +126,7 @@ describe("MCP Actions", () => {
     await RemoteMCPServerToolMetadataResource.updateOrCreateSettings(auth, {
       serverSId: mcpServerId,
       toolName: "list_events",
-      permission: "high", // Permission metadata is stored but NOT applied to tool configs.
+      permission: "high",
       enabled: true, // Explicitly enable (though it's enabled by default).
     });
 
@@ -164,7 +164,7 @@ describe("MCP Actions", () => {
         expect.objectContaining({
           availability: "manual",
           name: "list_events",
-          permission: "never_ask", // Permission metadata is stored but NOT applied to tool configs.
+          permission: "high",
         }),
       ])
     );
@@ -286,7 +286,7 @@ describe("makeToolsWithStakesAndTimeout", () => {
         list_calendars: true,
       },
       toolsStakes: {
-        list_calendars: "never_ask",
+        list_calendars: "high",
         list_events: "never_ask",
         get_event: "never_ask",
         create_event: "low",

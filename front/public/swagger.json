@@ -798,6 +798,100 @@
         }
       }
     },
+    "/api/v1/w/{wId}/assistant/conversations/{cId}/mentions/suggestions": {
+      "get": {
+        "summary": "Get mention suggestions for a conversation",
+        "description": "Get suggestions for mentions (agents and users) based on a query string, scoped to a specific conversation.",
+        "tags": [
+          "Mentions"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cId",
+            "required": true,
+            "description": "ID of the conversation",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "query",
+            "required": true,
+            "description": "Search query string to filter suggestions",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "select",
+            "required": false,
+            "description": "Array of mention types to include. Can be \"agents\", \"users\", or both. If not provided, defaults to agents (and users if mentions_v2 is enabled).",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "agents",
+                  "users"
+                ]
+              }
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of mention suggestions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "suggestions": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/RichMention"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Missing or invalid parameters."
+          },
+          "401": {
+            "description": "Unauthorized. Invalid or missing authentication token."
+          },
+          "404": {
+            "description": "Conversation not found."
+          },
+          "405": {
+            "description": "Method not supported. Only GET is expected."
+          },
+          "500": {
+            "description": "Internal Server Error."
+          }
+        }
+      }
+    },
     "/api/v1/w/{wId}/assistant/conversations/{cId}/messages/{mId}/edit": {
       "post": {
         "tags": [
@@ -1416,6 +1510,163 @@
           },
           "500": {
             "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/v1/w/{wId}/assistant/mentions/parse": {
+      "post": {
+        "summary": "Parse mentions in markdown text",
+        "description": "Parses pasted text containing @ mentions and converts them to the proper mention format.\nMatches @agentName or @userName patterns against available agents and users.\n",
+        "tags": [
+          "Mentions"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "markdown"
+                ],
+                "properties": {
+                  "markdown": {
+                    "type": "string",
+                    "description": "Markdown text containing @ mentions to parse",
+                    "example": "Hello @JohnDoe, can you help with @MyAgent?"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Parsed markdown with mentions converted to proper format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "markdown": {
+                      "type": "string",
+                      "description": "Processed markdown text with mentions converted to serialized format"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Missing or invalid request body."
+          },
+          "401": {
+            "description": "Unauthorized. Invalid or missing authentication token."
+          },
+          "405": {
+            "description": "Method not supported. Only POST is expected."
+          },
+          "500": {
+            "description": "Internal Server Error."
+          }
+        }
+      }
+    },
+    "/api/v1/w/{wId}/assistant/mentions/suggestions": {
+      "get": {
+        "summary": "Get mention suggestions",
+        "description": "Get suggestions for mentions (agents and users) based on a query string.",
+        "tags": [
+          "Mentions"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "query",
+            "required": true,
+            "description": "Search query string to filter suggestions",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "select",
+            "required": false,
+            "description": "Array of mention types to include. Can be \"agents\", \"users\", or both. If not provided, defaults to agents (and users if mentions_v2 is enabled).",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "agents",
+                  "users"
+                ]
+              }
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of mention suggestions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "suggestions": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/RichMention"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Missing or invalid parameters."
+          },
+          "401": {
+            "description": "Unauthorized. Invalid or missing authentication token."
+          },
+          "405": {
+            "description": "Method not supported. Only GET is expected."
+          },
+          "500": {
+            "description": "Internal Server Error."
           }
         }
       }
@@ -2704,6 +2955,85 @@
           },
           "404": {
             "description": "Workspace not found."
+          },
+          "405": {
+            "description": "Method not supported."
+          },
+          "500": {
+            "description": "Internal Server Error."
+          }
+        }
+      }
+    },
+    "/api/v1/w/{wId}/spaces/{spaceId}/data_sources/{dsId}/check_upsert_queue": {
+      "get": {
+        "summary": "Check the upsert queue status for a data source",
+        "description": "Returns the number of running document upsert workflows for this data source. This endpoint is only accessible with system API keys (e.g., from connectors).",
+        "tags": [
+          "Datasources"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "description": "ID of the space",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "dsId",
+            "required": true,
+            "description": "ID of the data source",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Status of the upsert queue",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "running_count": {
+                      "type": "number",
+                      "description": "Number of currently running upsert workflows"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Missing or invalid parameters."
+          },
+          "401": {
+            "description": "Unauthorized. Invalid or missing authentication token."
+          },
+          "403": {
+            "description": "Forbidden. Only system keys can access this endpoint."
+          },
+          "404": {
+            "description": "Data source not found."
           },
           "405": {
             "description": "Method not supported."
@@ -4404,18 +4734,26 @@
             "in": "query",
             "name": "table",
             "required": true,
-            "description": "The name of the usage table to retrieve:\n- \"users\": The list of users categorized by their activity level.\n- \"inactive_users\": The of users that didn't sent any messages\n- \"assistant_messages\": The list of messages sent by users including the mentioned agents.\n- \"builders\": The list of builders categorized by their activity level.\n- \"assistants\": The list of workspace agents and their corresponding usage.\n- \"feedback\": The list of feedback given by users on the agent messages.\n- \"all\": A concatenation of all the above tables.\n",
+            "description": "The name of the usage table to retrieve:\n- \"users\": The list of users categorized by their activity level.\n- \"assistant_messages\": The list of messages sent by users including the mentioned agents.\n- \"builders\": The list of builders categorized by their activity level.\n- \"assistants\": The list of workspace agents and their corresponding usage.\n- \"feedback\": The list of feedback given by users on the agent messages.\n- \"all\": A concatenation of all the above tables.\n",
             "schema": {
               "type": "string",
               "enum": [
                 "users",
-                "inactive_users",
                 "assistant_messages",
                 "builders",
                 "assistants",
                 "feedback",
                 "all"
               ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "includeInactive",
+            "required": false,
+            "description": "Include users and assistants with zero messages in the export (defaults to false)",
+            "schema": {
+              "type": "boolean"
             }
           }
         ],
@@ -4894,6 +5232,54 @@
             "type": "string",
             "description": "ID of the mentioned agent configuration",
             "example": "7f3a9c2b1e"
+          }
+        }
+      },
+      "RichMention": {
+        "type": "object",
+        "description": "A rich mention suggestion containing detailed information about an agent or user",
+        "required": [
+          "id",
+          "type",
+          "label",
+          "pictureUrl",
+          "description"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the mention (agent sId or user sId)",
+            "example": "7f3a9c2b1e"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "agent",
+              "user"
+            ],
+            "description": "Type of the mention",
+            "example": "agent"
+          },
+          "label": {
+            "type": "string",
+            "description": "Display label for the mention",
+            "example": "My Assistant"
+          },
+          "pictureUrl": {
+            "type": "string",
+            "description": "URL of the profile picture",
+            "example": "https://example.com/avatar.png"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the mention (agent description or user email)",
+            "example": "A helpful AI assistant"
+          },
+          "userFavorite": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Whether the agent is marked as a favorite by the user (only for agent mentions)",
+            "example": true
           }
         }
       },

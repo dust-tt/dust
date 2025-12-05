@@ -159,6 +159,7 @@ import { CoreAPI, isSlugified, isString } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
+
   res: NextApiResponse<
     WithAPIErrorResponse<
       UpsertTableRowsResponseType | ListTableRowsResponseType

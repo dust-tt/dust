@@ -16,8 +16,11 @@ export class HubspotOAuthProvider implements BaseOAuthStrategyProvider {
     connection: OAuthConnectionType;
     useCase: OAuthUseCase;
   }) {
-    const scopes = [
-      "oauth",
+    // Required scopes - user must have access to these
+    const requiredScopes = ["oauth"];
+
+    // Optional scopes - user can still install app without these
+    const optionalScopes = [
       "crm.objects.contacts.read",
       "crm.objects.contacts.write",
       "crm.schemas.contacts.read",
@@ -36,11 +39,13 @@ export class HubspotOAuthProvider implements BaseOAuthStrategyProvider {
       "crm.lists.read",
       "crm.lists.write",
     ];
+
     return (
       `https://app.hubspot.com/oauth/authorize` +
       `?client_id=${config.getOAuthHubspotClientId()}` +
       `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("hubspot"))}` +
-      `&scope=${encodeURIComponent(scopes.join(" "))}` +
+      `&scope=${encodeURIComponent(requiredScopes.join(" "))}` +
+      `&optional_scope=${encodeURIComponent(optionalScopes.join(" "))}` +
       `&state=${connection.connection_id}`
     );
   }

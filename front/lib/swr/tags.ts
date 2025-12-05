@@ -109,6 +109,7 @@ export function useCreateTag({ owner }: { owner: LightWorkspaceType }) {
       sendNotification({
         type: "error",
         title: "Failed to create tag",
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         description: json.error.message || "Failed to create tag",
       });
 
@@ -145,6 +146,7 @@ export function useDeleteTag({ owner }: { owner: LightWorkspaceType }) {
       sendNotification({
         type: "error",
         title: "Failed to delete tag",
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         description: json.error.message || "Failed to delete tag",
       });
 
@@ -194,6 +196,7 @@ export function useUpdateTag({
       sendNotification({
         type: "error",
         title: "Failed to delete tag",
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         description: json.error.message || "Failed to create tag",
       });
       return;

@@ -50,7 +50,6 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
 
   // Note: We don't protect workspace sharing here - protection happens at the API level.
   // This allows the page to load but the content API call will fail if unauthorized.
-
   const shareUrl = `${config.getClientFacingUrl()}${context.req.url}`;
 
   return {

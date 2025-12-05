@@ -65,7 +65,7 @@ export function WorkspaceInfoTable({
   };
 
   return (
-    <div className="mt-3 flex justify-between gap-3">
+    <div className="flex justify-between gap-3">
       <div className="border-material-200 flex flex-grow flex-col rounded-lg border p-4 pb-2">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-md flex-grow pb-4 font-bold">Workspace info</h2>
@@ -101,7 +101,7 @@ export function WorkspaceInfoTable({
                     target="_blank"
                     className="text-xs text-highlight-400"
                   >
-                    Organization
+                    {owner.workOSOrganizationId}
                   </Link>
                 )}
               </PokeTableCell>
@@ -147,14 +147,6 @@ export function WorkspaceInfoTable({
                 {extensionConfig?.blacklistedDomains.length
                   ? extensionConfig.blacklistedDomains.join(", ")
                   : "None"}
-              </PokeTableCell>
-            </PokeTableRow>
-            <PokeTableRow>
-              <PokeTableCell className="max-w-48">
-                WorkOS organization
-              </PokeTableCell>
-              <PokeTableCell>
-                {owner.workOSOrganizationId ?? "None"}
               </PokeTableCell>
             </PokeTableRow>
             <PokeTableRow>

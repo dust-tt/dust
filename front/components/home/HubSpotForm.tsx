@@ -47,6 +47,7 @@ export default function HubSpotForm() {
     console.log = function (...args) {
       // Check for Default.com submission
       if (!submissionTracked && args.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         const message = args[0]?.toString() || "";
         if (
           message.includes("[Default.com]") &&
@@ -63,6 +64,13 @@ export default function HubSpotForm() {
             object: "hubspot_form",
             action: "submit",
           });
+          // Push event to Google Tag Manager
+          if (typeof window !== "undefined") {
+            window.dataLayer = window.dataLayer ?? [];
+            window.dataLayer.push({
+              event: "hubspot_form_submitted",
+            });
+          }
         }
       }
 
@@ -73,6 +81,7 @@ export default function HubSpotForm() {
     console.info = function (...args) {
       // Check for Default.com submission
       if (!submissionTracked && args.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         const message = args[0]?.toString() || "";
         if (
           message.includes("[Default.com]") &&
@@ -88,6 +97,13 @@ export default function HubSpotForm() {
             object: "hubspot_form",
             action: "submit",
           });
+          // Push event to Google Tag Manager
+          if (typeof window !== "undefined") {
+            window.dataLayer = window.dataLayer ?? [];
+            window.dataLayer.push({
+              event: "hubspot_form_submitted",
+            });
+          }
         }
       }
 

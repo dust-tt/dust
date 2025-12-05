@@ -19,6 +19,7 @@ import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrapp
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger, { auditLog } from "@app/logger/logger";
+import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
 import type {
   LightWorkspaceType,
   MembershipOriginType,
@@ -407,19 +408,23 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     activeOnly,
     rolesFilter,
     transaction,
+    membershipSpan,
   }: {
     workspace: LightWorkspaceType;
     activeOnly: boolean;
     rolesFilter?: MembershipRoleType[];
     transaction?: Transaction;
+    membershipSpan?: { fromDate: Date; toDate: Date };
   }): Promise<number> {
+    const fromDate = membershipSpan?.fromDate ?? new Date();
+    const toDate = membershipSpan?.toDate ?? new Date();
     const where: WhereOptions<InferAttributes<MembershipModel>> = activeOnly
       ? {
           endAt: {
-            [Op.or]: [{ [Op.eq]: null }, { [Op.gt]: new Date() }],
+            [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: fromDate }],
           },
           startAt: {
-            [Op.lte]: new Date(),
+            [Op.lte]: toDate,
           },
         }
       : {};
@@ -542,6 +547,15 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       newRole: role,
     });
 
+    // Update user search index across all workspaces
+    const workflowResult = await launchIndexUserSearchWorkflow({
+      userId: user.sId,
+    });
+    if (workflowResult.isErr()) {
+      // Throw if it fails to launch (unexpected).
+      throw workflowResult.error;
+    }
+
     return new MembershipResource(MembershipModel, newMembership.get());
   }
 
@@ -624,6 +638,15 @@ export class MembershipResource extends BaseResource<MembershipModel> {
           "Failed to deactivate WorkOS membership"
         );
       }
+    }
+
+    // Update user search index across all workspaces
+    const workflowResult = await launchIndexUserSearchWorkflow({
+      userId: user.sId,
+    });
+    if (workflowResult.isErr()) {
+      // Throw if it fails to launch (unexpected).
+      throw workflowResult.error;
     }
 
     return new Ok({
@@ -742,6 +765,16 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       },
       "Membership role updated"
     );
+
+    // Update user search index across all workspaces
+    const workflowResult = await launchIndexUserSearchWorkflow({
+      userId: user.sId,
+    });
+    if (workflowResult.isErr()) {
+      // Throw if it fails to launch (unexpected).
+      throw workflowResult.error;
+    }
+
     return new Ok({ previousRole, newRole });
   }
 

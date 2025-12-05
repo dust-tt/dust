@@ -23,7 +23,6 @@ on:
           - core
           - front
           - front-edge
-          - front-qa
           - prodbox
           - oauth
           - viz
@@ -36,6 +35,14 @@ on:
         options:
           - "check"
           - "force (dangerous)"
+      depot_region:
+        description: "Depot region to use for building"
+        required: true
+        default: "us"
+        type: choice
+        options:
+          - "us"
+          - "eu"
 
 permissions:
   contents: read
@@ -50,7 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check if deployment is from main branch
-        if: ${{ github.ref != 'refs/heads/main' && inputs.component != 'front-edge' && inputs.component != 'front-qa' }}
+        if: ${{ github.ref != 'refs/heads/main' && inputs.component != 'front-edge' }}
         run: |
           echo "Error: Deployments for ${{ inputs.component }} are only allowed from the main branch"
           exit 1
@@ -80,7 +87,6 @@ jobs:
 
       - name: Notify Build And Deploy Start
         id: build_message
-        if: ${{ inputs.component != 'front-qa'}}
         uses: ./.github/actions/slack-notify
         with:
           step: "start"
@@ -125,6 +131,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 50 # Fetch last 50 commits for commit diff functionality
 
       - name: Set project ID
         id: project
@@ -136,18 +144,39 @@ jobs:
           fi
 
       - name: Build Image
+        id: build
         uses: ./.github/actions/build-image
         with:
-          project_id: ${{ steps.project.outputs.PROJECT_ID }}
-          region: ${{ matrix.region }}
+          commit_sha_long: ${{ needs.prepare.outputs.long_sha }}
+          commit_sha: ${{ needs.prepare.outputs.short_sha }}
           component: ${{ inputs.component }}
-          workload_identity_provider: "projects/357744735673/locations/global/workloadIdentityPools/github-pool-apps/providers/github-provider-apps"
-          depot_token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           dd_api_key: ${{ secrets.DD_API_KEY }}
           dd_client_token: ${{ secrets.DD_CLIENT_TOKEN }}
+          depot_eu_project_id: ${{ secrets.DEPOT_EU_PROJECT_ID }}
+          depot_eu_token: ${{ secrets.DEPOT_EU_PROJECT_TOKEN }}
+          depot_region: ${{ inputs.depot_region }}
+          depot_us_project_id: ${{ secrets.DEPOT_PROJECT_ID }}
+          depot_us_token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
+          project_id: ${{ steps.project.outputs.PROJECT_ID }}
+          region: ${{ matrix.region }}
           virtuoso_license_key: ${{ secrets.VIRTUOSO_LICENSE_KEY }}
-          commit_sha: ${{ needs.prepare.outputs.short_sha }}
-          commit_sha_long: ${{ needs.prepare.outputs.long_sha }}
+          contentful_space_id: ${{ secrets.CONTENTFUL_SPACE_ID }}
+          contentful_access_token: ${{ secrets.CONTENTFUL_ACCESS_TOKEN }}
+          workload_identity_provider: "projects/357744735673/locations/global/workloadIdentityPools/github-pool-apps/providers/github-provider-apps"
+
+      - name: Notify build success
+        uses: ./.github/actions/slack-notify
+        with:
+          step: "build_success"
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
+          component: ${{ inputs.component }}
+          image_tag: ${{ needs.prepare.outputs.short_sha }}
+          region: ${{ matrix.region }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          current_version: ${{ steps.build.outputs.current_version }}
+          commit_diff: ${{ steps.build.outputs.commit_diff }}
+          commit_count: ${{ steps.build.outputs.commit_count }}
 
       - name: Notify Failure
         if: failure()

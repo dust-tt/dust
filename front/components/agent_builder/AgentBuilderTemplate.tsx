@@ -16,11 +16,11 @@ import { useFormContext } from "react-hook-form";
 
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { ConfirmContext } from "@app/components/Confirm";
-import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
+import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { MultiActionPreset, TemplateActionPreset } from "@app/types";
 
 interface AgentBuilderTemplateProps {
-  assistantTemplate: FetchAssistantTemplateResponse;
+  assistantTemplate: FetchAgentTemplateResponse;
   onAddPresetAction?: (presetAction: TemplateActionPreset) => void;
 }
 
@@ -57,7 +57,7 @@ export function AgentBuilderTemplate({
 }
 
 interface TemplateButtonsProps {
-  assistantTemplate: FetchAssistantTemplateResponse;
+  assistantTemplate: FetchAgentTemplateResponse;
 }
 
 function TemplateButtons({ assistantTemplate }: TemplateButtonsProps) {

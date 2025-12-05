@@ -36,7 +36,6 @@ export class AgentConfigurationFactory {
       name,
       description,
       instructions: "Test Instructions",
-      visualizationEnabled: false,
       pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
       status: "active",
       scope,
@@ -46,7 +45,6 @@ export class AgentConfigurationFactory {
         temperature,
       },
       templateId: null,
-      requestedGroupIds: [], // Let createAgentConfiguration handle group creation
       requestedSpaceIds: [],
       tags: [], // Added missing tags property
       editors: [user.toJSON()],

@@ -4,7 +4,7 @@ import type { DustMimeType } from "@dust-tt/client";
 import type { ConnectorProvider } from "@app/types/data_source";
 
 import type {
-  LightMessageType,
+  LegacyLightMessageType,
   MessageType,
   MessageVisibility,
 } from "./assistant/conversation";
@@ -56,20 +56,43 @@ export type BaseContentFragmentType = {
 
 export type ContentNodeContentFragmentType = BaseContentFragmentType & {
   contentFragmentType: "content_node";
-  nodeId: string;
-  nodeDataSourceViewId: string;
-  nodeType: ContentNodeType;
-  contentNodeData: ContentFragmentNodeData;
-};
+} & (
+    | {
+        expiredReason: null;
+        nodeId: string;
+        nodeDataSourceViewId: string;
+        nodeType: ContentNodeType;
+        contentNodeData: ContentFragmentNodeData;
+      }
+    | {
+        expiredReason: ContentFragmentExpiredReason;
+        nodeId: null;
+        nodeDataSourceViewId: null;
+        nodeType: null;
+        contentNodeData: null;
+      }
+  );
 
 export type FileContentFragmentType = BaseContentFragmentType & {
   contentFragmentType: "file";
-  fileId: string | null;
-  snippet: string | null;
-  generatedTables: string[];
-  textUrl: string;
-  textBytes: number | null;
-};
+} & (
+    | {
+        expiredReason: null;
+        fileId: string | null;
+        snippet: string | null;
+        generatedTables: string[];
+        textUrl: string;
+        textBytes: number | null;
+      }
+    | {
+        expiredReason: ContentFragmentExpiredReason;
+        fileId: null;
+        snippet: null;
+        generatedTables: [];
+        textUrl: null;
+        textBytes: null;
+      }
+  );
 
 export type ContentFragmentType =
   | FileContentFragmentType
@@ -87,7 +110,7 @@ export type ContentFragmentsType = {
 };
 
 export function isContentFragmentType(
-  arg: MessageType | LightMessageType
+  arg: MessageType | LegacyLightMessageType
 ): arg is ContentFragmentType {
   return arg.type === "content_fragment";
 }
@@ -102,4 +125,12 @@ export function isContentNodeContentFragment(
   arg: ContentFragmentType
 ): arg is ContentNodeContentFragmentType {
   return arg.contentFragmentType === "content_node";
+}
+
+export function isExpiredContentFragment(
+  arg: ContentFragmentType
+): arg is ContentFragmentType & {
+  expiredReason: ContentFragmentExpiredReason;
+} {
+  return arg.expiredReason !== null;
 }

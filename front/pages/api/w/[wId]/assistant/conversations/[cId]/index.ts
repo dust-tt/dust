@@ -61,6 +61,19 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
+      const canAccess = await ConversationResource.canAccess(auth, cId);
+      if (canAccess !== "allowed") {
+        return apiError(req, res, {
+          status_code: canAccess === "conversation_not_found" ? 404 : 403,
+          api_error: {
+            type: canAccess,
+            message:
+              canAccess === "conversation_not_found"
+                ? "Conversation not found."
+                : "You don't have access to this conversation.",
+          },
+        });
+      }
       const conversationRes =
         await ConversationResource.fetchConversationWithoutContent(auth, cId);
 

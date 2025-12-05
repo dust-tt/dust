@@ -4,7 +4,7 @@ import type { AgentConfigurationType, TagsFilter } from "@app/types";
 
 export type DataSourceFilter = {
   parents: { in: string[] | null; not: string[] | null } | null;
-  tags?: TagsFilter;
+  tags: TagsFilter;
 };
 
 export type DataSourceConfiguration = {

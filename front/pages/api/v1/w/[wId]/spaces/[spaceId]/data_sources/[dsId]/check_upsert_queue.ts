@@ -64,6 +64,7 @@ import type { WithAPIErrorResponse } from "@app/types";
  */
 async function handler(
   req: NextApiRequest,
+
   res: NextApiResponse<WithAPIErrorResponse<CheckUpsertQueueResponseType>>,
   auth: Authenticator
 ): Promise<void> {
@@ -108,6 +109,7 @@ async function handler(
       const owner = auth.getNonNullableWorkspace();
 
       try {
+        const start = Date.now();
         const runningCount = await checkRunningUpsertWorkflows({
           workspaceId: owner.sId,
           dataSourceId: dataSource.sId,
@@ -118,6 +120,7 @@ async function handler(
             workspaceId: owner.sId,
             dataSourceId: dataSource.sId,
             runningCount,
+            duration: Date.now() - start,
           },
           "[CheckUpsertQueue] Checked upsert queue status"
         );

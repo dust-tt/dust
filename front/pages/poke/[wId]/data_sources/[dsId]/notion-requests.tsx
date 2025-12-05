@@ -15,6 +15,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const { dsId } = context.params || {};
   if (typeof dsId !== "string") {
     return {
@@ -78,6 +79,7 @@ export default function NotionRequestsPage({
     if (method === "POST" && body.trim()) {
       try {
         JSON.parse(body);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (e) {
         setError("Invalid JSON in request body");
         return;
@@ -110,7 +112,9 @@ export default function NotionRequestsPage({
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           errorData.error?.connectors_error?.message ||
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             errorData.error?.message ||
             "Failed to execute request"
         );

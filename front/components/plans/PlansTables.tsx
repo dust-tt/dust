@@ -19,9 +19,9 @@ import {
   PRO_PLAN_COST_YEARLY,
 } from "@app/lib/client/subscription";
 import {
-  PRO_PLAN_LARGE_FILES_CODE,
-  PRO_PLAN_SEAT_29_CODE,
-  PRO_PLAN_SEAT_39_CODE,
+  isProOrBusinessPlanCode,
+  isProPlan,
+  isWhitelistedBusinessPlan,
 } from "@app/lib/plans/plan_codes";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
@@ -93,14 +93,6 @@ const ENTERPRISE_PLAN_ITEMS: PriceTableItem[] = [
   },
 ];
 
-function isProPlanCode(plan?: PlanType) {
-  return (
-    plan?.code === PRO_PLAN_SEAT_29_CODE ||
-    plan?.code === PRO_PLAN_LARGE_FILES_CODE ||
-    plan?.code === PRO_PLAN_SEAT_39_CODE
-  );
-}
-
 interface PriceTableProps {
   billingPeriod?: BillingPeriod;
   display: PriceTableDisplay;
@@ -122,8 +114,7 @@ export function ProPriceTable({
 }: PriceTableProps) {
   const [isFairUseModalOpened, setIsFairUseModalOpened] = useState(false);
 
-  // If the owner has the business metadata, we show the BusinessPriceTable instead.
-  if (owner?.metadata?.isBusiness) {
+  if (isWhitelistedBusinessPlan(owner)) {
     return (
       <BusinessPriceTable
         display={display}
@@ -225,7 +216,7 @@ export function ProPriceTable({
         size={size}
         magnified={false}
       >
-        {onClick && (!plan || !isProPlanCode(plan)) && (
+        {onClick && (!plan || !isProOrBusinessPlanCode(plan)) && (
           <PriceTable.ActionContainer position="top">
             <Button
               variant="highlight"
@@ -346,14 +337,14 @@ export function BusinessPriceTable({
         onClose={() => setIsFairUseModalOpened(false)}
       />
       <PriceTable
-        title="Business"
+        title="Enterprise (Seat-based)"
         price={price}
         color="blue"
         priceLabel="/ month / user, excl. tax."
         size={size}
         magnified={false}
       >
-        {onClick && (!plan || !isProPlanCode(plan)) && (
+        {onClick && (!plan || !isProPlan(plan)) && (
           <PriceTable.ActionContainer position="top">
             <Button
               variant="highlight"
@@ -426,6 +417,7 @@ function EnterprisePriceTable({
 }
 
 interface PricePlanProps {
+  owner?: WorkspaceType;
   plan?: PlanType;
   onClickProPlan?: () => void;
   isProcessing?: boolean;
@@ -434,6 +426,7 @@ interface PricePlanProps {
 }
 
 export function PricePlans({
+  owner,
   flexCSS = "mx-4 flex flex-row w-full md:-mx-12 md:gap-4 lg:gap-6 xl:mx-0 xl:gap-8 2xl:gap-10",
   plan,
   onClickProPlan,
@@ -461,6 +454,7 @@ export function PricePlans({
           <div className="mt-8">
             <TabsContent value="pro">
               <ProPriceTable
+                owner={owner}
                 display={display}
                 size="xs"
                 plan={plan}
@@ -478,6 +472,7 @@ export function PricePlans({
       {/* Cards view for larger screens (hidden below lg) */}
       <div className={classNames(flexCSS, "hidden lg:flex")}>
         <ProPriceTable
+          owner={owner}
           size="sm"
           plan={plan}
           isProcessing={isProcessing}

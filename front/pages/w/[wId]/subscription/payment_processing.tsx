@@ -32,7 +32,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
         notFound: true,
       };
     }
-    stripeSubscription;
   }
 
   return {

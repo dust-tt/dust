@@ -30,6 +30,7 @@ export async function purgeExpiredRunExecutionsActivity() {
   let hasMoreRunsToPurge = true;
   let runsPurgedCount = 0;
   do {
+    // eslint-disable-next-line dust/no-raw-sql
     const batchToDelete = await coreSequelize.query<RunExecutionRow>(
       "SELECT id FROM runs WHERE created < :cutoffDate ORDER BY created, id ASC LIMIT :batchSize",
       {
@@ -67,6 +68,7 @@ async function deleteRunExecutionBatch(
 
   const runIds = runs.map((r) => r.id);
 
+  // eslint-disable-next-line dust/no-raw-sql
   const runsJoins = await coreSequelize.query<RunsJoinsRow>(
     "SELECT id, block_execution FROM runs_joins WHERE run IN (:runIds)",
     {
@@ -79,6 +81,7 @@ async function deleteRunExecutionBatch(
 
   // For legacy rows, runsJoins may be empty.
   if (runsJoins.length > 0) {
+    // eslint-disable-next-line dust/no-raw-sql
     await coreSequelize.query(
       "DELETE FROM runs_joins WHERE id IN (:runsJoinsIds)",
       {
@@ -96,6 +99,7 @@ async function deleteRunExecutionBatch(
     ];
 
     try {
+      // eslint-disable-next-line dust/no-raw-sql
       await coreSequelize.query(
         "DELETE FROM block_executions WHERE id IN (:blockExecutionIds)",
         {
@@ -111,6 +115,7 @@ async function deleteRunExecutionBatch(
     }
   }
 
+  // eslint-disable-next-line dust/no-raw-sql
   await coreSequelize.query("DELETE FROM runs WHERE id IN (:runIds)", {
     replacements: {
       runIds,

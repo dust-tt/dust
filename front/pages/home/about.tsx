@@ -9,6 +9,7 @@ import {
   Separator,
 } from "@dust-tt/sparkle";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
 import {
@@ -21,16 +22,12 @@ import {
 } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import {
-  getParticleShapeIndexByName,
-  shapeNames,
-} from "@app/components/home/Particles";
+import { PageMetadata } from "@app/components/home/PageMetadata";
 import { classNames } from "@app/lib/utils";
 
 export async function getStaticProps() {
   return {
     props: {
-      shape: getParticleShapeIndexByName(shapeNames.icosahedron),
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
     },
   };
@@ -43,7 +40,7 @@ const PEOPLE: Record<
     title: string;
     image: string;
     linkedIn: string | null;
-    github: string | null;
+    github: string;
   }
 > = {
   spolu: {
@@ -111,7 +108,7 @@ const PEOPLE: Record<
   },
   albandum: {
     name: "Alban Dumouilla",
-    title: "Acceleration Engineer",
+    title: "Product Growth",
     image: "https://avatars.githubusercontent.com/u/1189312?v=4",
     github: "https://github.com/albandum",
     linkedIn: "https://www.linkedin.com/in/albandumouilla",
@@ -202,7 +199,7 @@ const PEOPLE: Record<
   },
   frank: {
     name: "Frank Aloia",
-    title: "Acceleration Engineer",
+    title: "Forward Deployed Engineer",
     image: "https://avatars.githubusercontent.com/u/201725577",
     github: "https://github.com/frankaloia",
     linkedIn: "https://www.linkedin.com/in/frank-aloia-39907a12b/",
@@ -210,7 +207,7 @@ const PEOPLE: Record<
   gina: {
     name: "Gina Kabasakalis",
     title: "Go To Market",
-    image: "https://ca.slack-edge.com/T050RH73H9P-U08FS7RK45B-0d9a6f5b000d-512",
+    image: "https://avatars.githubusercontent.com/u/202673816?v=4",
     linkedIn: "https://www.linkedin.com/in/ginakabasakalis/",
     github: "https://github.com/gina-dust/",
   },
@@ -223,7 +220,7 @@ const PEOPLE: Record<
   },
   stephen: {
     name: "Stephen Bronnec",
-    title: "Acceleration Engineer",
+    title: "Forward Deployed Engineer",
     image: "https://avatars.githubusercontent.com/u/11921176?v=4",
     github: "https://github.com/FlagBenett",
     linkedIn: "https://www.linkedin.com/in/stephen-bronnec-3033a02b/",
@@ -252,7 +249,7 @@ const PEOPLE: Record<
   lena: {
     name: "Léna Caloud",
     title: "Customer Success",
-    image: "https://ca.slack-edge.com/T050RH73H9P-U08S29YC36H-b53f68fd8f87-512",
+    image: "https://avatars.githubusercontent.com/u/212004840?v=4",
     github: "https://github.com/lcaloud",
     linkedIn: "https://www.linkedin.com/in/lenacaloud/",
   },
@@ -280,7 +277,7 @@ const PEOPLE: Record<
   louis: {
     name: "Louis Caulet",
     title: "Enterprise Account Executive",
-    image: "https://ca.slack-edge.com/T050RH73H9P-U093VA5K3JQ-6e18517d0b48-512",
+    image: "https://avatars.githubusercontent.com/u/218741719?v=4",
     github: "https://github.com/louiscaulet",
     linkedIn: "https://www.linkedin.com/in/louiscaulet",
   },
@@ -301,28 +298,21 @@ const PEOPLE: Record<
   lauriane: {
     name: "Lauriane Paour",
     title: "Solution Engineer",
-    image: "https://ca.slack-edge.com/T050RH73H9P-U096NGVETPD-0d8f0affddf6-512",
+    image: "https://avatars.githubusercontent.com/u/222254800?v=4",
     linkedIn: "https://www.linkedin.com/in/lauriane-paour-152760106/",
-    github: null,
-  },
-  landry: {
-    name: "Landry Monga",
-    title: "Software Engineer",
-    image: "https://avatars.githubusercontent.com/u/23080211?v=4",
-    github: "https://github.com/lvndry",
-    linkedIn: "https://www.linkedin.com/in/landry-monga",
+    github: "https://github.com/laurianepao",
   },
   come: {
     name: "Côme Lucien-Brun",
     title: "Account Executive",
-    image: "https://ca.slack-edge.com/T050RH73H9P-U09ATL7UVB5-873d7e42eb96-512",
+    image: "https://avatars.githubusercontent.com/u/227444187?v=4",
     github: "https://github.com/come-lb",
     linkedIn: "https://www.linkedin.com/in/comelb",
   },
   theog: {
     name: "Théo Gantzer",
     title: "Data",
-    image: "https://ca.slack-edge.com/T050RH73H9P-U09ATLHUB0B-6ab7143a82c5-512",
+    image: "https://avatars.githubusercontent.com/u/11852762?v=4",
     linkedIn: "https://www.linkedin.com/in/theo-gantzer",
     github: "https://github.com/theogz",
   },
@@ -350,7 +340,7 @@ const PEOPLE: Record<
   rcs: {
     name: "Rémy-Christophe Schermesser",
     title: "Software Engineer",
-    image: "https://ca.slack-edge.com/T050RH73H9P-U09D77UR8S0-3af0e8ba603b-512",
+    image: "https://avatars.githubusercontent.com/u/16667?v=4",
     linkedIn: "https://www.linkedin.com/in/r%C3%A9my-christophe-s-0204834/",
     github: "https://github.com/ElPicador",
   },
@@ -364,28 +354,27 @@ const PEOPLE: Record<
   alex: {
     name: "Alexandre Casanova",
     title: "Enterprise Account Executive",
-    image: "https://ca.slack-edge.com/T050RH73H9P-U09DVNHFS2C-9a2d6df66ced-512",
+    image: "https://avatars.githubusercontent.com/u/229972775?v=4",
     linkedIn: "https://www.linkedin.com/in/alexandre-casanova-a89927a5/",
     github: "https://github.com/AlexandreCasa",
   },
   neyla: {
     name: "Neyla Belmaachi",
     title: "Business Development Representative",
-    image:
-      "https://media.licdn.com/dms/image/v2/D4D03AQFOta7Ao6aodg/profile-displayphoto-shrink_800_800/B4DZeCQlSRH4Ac-/0/1750237075055?e=1759968000&v=beta&t=HR_yS-qenHyqOcrwWAXiqO3czAvb0KGRDpja8sutgIs",
+    image: "https://avatars.githubusercontent.com/u/129662164?v=4",
     linkedIn: "https://www.linkedin.com/in/neyla-belmaachi-4817b0166/",
-    github: null,
+    github: "https://github.com/neylabelmaachi",
   },
   leandre: {
     name: "Leandre Le Bizec",
-    title: "Acceleration Engineer",
+    title: "Forward Deployed Engineer",
     image: "https://avatars.githubusercontent.com/u/95234460?v=4",
     linkedIn: "https://www.linkedin.com/in/leandre-lebizec/",
     github: "https://github.com/LeandreLeBizec",
   },
   iliasbet: {
     name: "Ilias Bettahi",
-    title: "Tech Support Engineer",
+    title: "Support Engineer",
     image: "https://avatars.githubusercontent.com/iliasbet",
     linkedIn: "https://www.linkedin.com/in/iliasbet/",
     github: "https://github.com/iliasbet",
@@ -410,6 +399,70 @@ const PEOPLE: Record<
     image: "https://avatars.githubusercontent.com/u/235716301?v=4",
     linkedIn: "https://www.linkedin.com/in/gianna-gard/",
     github: "https://github.com/giga-dust",
+  },
+  ece: {
+    name: "Ece İrem Yıldız",
+    title: "Business Development Representative",
+    image: "https://avatars.githubusercontent.com/u/237274568?v=4",
+    linkedIn:
+      "https://www.linkedin.com/in/ece-irem-y%C4%B1ld%C4%B1z-590480219/",
+    github: "https://github.com/ece-hue",
+  },
+  astrid: {
+    name: "Astrid Le Faucheur",
+    title: "Solution Engineer",
+    image: "https://avatars.githubusercontent.com/u/237970272?v=4",
+    linkedIn: "https://www.linkedin.com/in/astrid-le-faucheur-7946ab209/",
+    github: "https://github.com/astridlf",
+  },
+  margherita: {
+    name: "Margherita Zama",
+    title: "Customer Success",
+    image: "https://avatars.githubusercontent.com/u/237991722?v=4",
+    linkedIn: "https://www.linkedin.com/in/margheritazama/",
+    github: "https://github.com/margherita-ops",
+  },
+  apinon: {
+    name: "Alexandre Pinon",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/71273869?s=88&v=4",
+    linkedIn: "https://www.linkedin.com/in/alexandre-pinon-60b5a71b7/",
+    github: "https://github.com/alexandre-pinon",
+  },
+  jdfiquet: {
+    name: "Jean-David Fiquet",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/6445595?s=88&v=4",
+    linkedIn: "https://www.linkedin.com/in/jeandavidfiquet/",
+    github: "https://github.com/id13",
+  },
+  reecebatch: {
+    name: "Reece Batchelor",
+    title: "Talent Acquisition",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U09S9S8PQTX-64b0620a0f35-72",
+    linkedIn: "https://www.linkedin.com/in/reece-a0730213bbd/",
+    github: "https://github.com/reece-batchelor",
+  },
+  nsiegle: {
+    name: "Nic Siegle",
+    title: "Account Executive",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U09SB8Q2DU6-65b85b4b1f83-72",
+    linkedIn: "https://www.linkedin.com/in/nsiegle/",
+    github: "https://github.com/nicdust",
+  },
+  seth: {
+    name: "Seth Mazow",
+    title: "Account Executive",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U09SBL368JC-95d97a17fd2d-72",
+    linkedIn: "https://www.linkedin.com/in/sethmazow/",
+    github: "https://github.com/sethmazow",
+  },
+  bmurray: {
+    name: "Bruno Murray",
+    title: "Customer Success",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U09SGSRG0MA-2329071b8045-72",
+    linkedIn: "https://www.linkedin.com/in/bruno-murray-2539682b9/",
+    github: "https://github.com/bruno-murray",
   },
 };
 
@@ -495,8 +548,15 @@ const VideoPlayer = () => {
 };
 
 export default function About() {
+  const router = useRouter();
+
   return (
     <>
+      <PageMetadata
+        title="About Dust: Our Mission to Transform How Work Gets Done"
+        description="Dust is building the AI operating system for the enterprise. Meet our team, learn our operating principles, and discover our vision for AI-driven companies."
+        pathname={router.asPath}
+      />
       <div className="container flex w-full flex-col gap-16 px-6 md:gap-24">
         <div
           className={classNames("flex w-full flex-col justify-end gap-4 pt-24")}
@@ -535,7 +595,7 @@ export default function About() {
             )}
           >
             <div className="flex w-full flex-row xl:max-w-lg">
-              <H2>We're crafting the AI operating system for enterprises</H2>
+              <H2>We're crafting the AI operating system for the enterprise</H2>
             </div>
             <div className="flex w-full flex-col gap-2 xl:max-w-xl">
               <P>

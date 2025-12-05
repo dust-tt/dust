@@ -7,8 +7,6 @@ const main = async () => {
 
   const [command] = argv._;
 
-  console.log(`Running command: ${command}`);
-
   switch (command) {
     case "start":
       await createRemoteMCPServersSyncSchedule();

@@ -217,6 +217,7 @@ export function AdvancedNotionManagement({
         dust: data.dust,
         summary: data.summary,
       });
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
       sendNotification({
         type: "error",
@@ -287,6 +288,7 @@ export function AdvancedNotionManagement({
         }
         await mutate();
       }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
       sendNotification({
         type: "error",

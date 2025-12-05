@@ -140,11 +140,11 @@ const CommandInput = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input>
 >(({ className, ...props }, ref) => (
   <div className="flex items-center border-b px-3" cmdk-input-wrapper="">
-    <MagnifyingGlassIcon className="mb-3 mr-2 h-4 w-4 shrink-0 opacity-50" />
+    <MagnifyingGlassIcon className="mr-2 h-4 w-4 shrink-0 opacity-50" />
     <CommandPrimitive.Input
       ref={ref}
       className={cn(
-        "mb-3 flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none",
+        "flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none",
         "placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
         "dark:placeholder:text-muted-foreground-night",
         className
@@ -238,7 +238,7 @@ const CommandItem = React.forwardRef<
       className={cn(
         "aria-selected:bg-accent aria-selected:text-accent-foreground relative flex cursor-pointer",
         "items-center rounded-sm px-2 py-1.5 text-sm outline-none",
-        isSelected && "bg-accent text-warning-800",
+        isSelected && "bg-faint dark:bg-faint-night",
         className
       )}
       data-index={index}

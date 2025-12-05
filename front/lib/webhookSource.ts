@@ -9,6 +9,7 @@ import {
   isInternalAllowedIcon,
 } from "@app/components/resources/resources_icons";
 import type {
+  WebhookSourceForAdminType,
   WebhookSourceSignatureAlgorithm,
   WebhookSourceWithViewsType,
 } from "@app/types/triggers/webhooks";
@@ -37,10 +38,11 @@ export const filterWebhookSource = (
   {
     return (
       webhookSource.name.toLowerCase().includes(filterValue.toLowerCase()) ||
-      webhookSource.views.some(
-        (view) =>
-          view?.customName !== null &&
-          view?.customName.toLowerCase().includes(filterValue.toLowerCase())
+      webhookSource.views.some((view) =>
+        view?.customName.toLowerCase().includes(filterValue.toLowerCase())
+      ) ||
+      (webhookSource.provider?.toLowerCase() ?? "custom").includes(
+        filterValue.toLowerCase()
       )
     );
   }
@@ -73,7 +75,20 @@ export const verifySignature = ({
       Buffer.from(expectedSignature)
     );
     return isValid;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (e) {
     return false;
   }
+};
+
+export const buildWebhookUrl = ({
+  apiBaseUrl,
+  workspaceId,
+  webhookSource,
+}: {
+  apiBaseUrl: string;
+  workspaceId: string;
+  webhookSource: WebhookSourceForAdminType;
+}): string => {
+  return `${apiBaseUrl}/api/v1/w/${workspaceId}/triggers/hooks/${webhookSource.sId}/${webhookSource.urlSecret}`;
 };

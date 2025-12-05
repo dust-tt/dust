@@ -1,6 +1,7 @@
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
-import { AgentMessage } from "@app/lib/models/assistant/conversation";
+import { AgentMessage } from "@app/lib/models/agent/conversation";
+import { markAgentMessageAsFailed } from "@app/temporal/agent_loop/activities/common";
 import type { DeferredEvent } from "@app/temporal/agent_loop/lib/deferred_events";
 import { assertNever } from "@app/types";
 
@@ -59,6 +60,8 @@ export async function publishDeferredEventsActivity(
           },
           isLastBlockingEventForStep: isLastEvent,
         };
+
+        await markAgentMessageAsFailed(agentMessageRow, eventToPublish.error);
         break;
 
       case "tool_approve_execution":

@@ -28,7 +28,8 @@ import {
   createSchedule,
   deleteSchedule,
   pauseSchedule,
-  triggerSchedule,
+  scheduleExists,
+  unpauseAndTriggerSchedule,
 } from "@connectors/lib/temporal_schedules";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -98,7 +99,18 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       mimeType: INTERNAL_MIME_TYPES.GONG.TRANSCRIPT_FOLDER,
     });
 
-    const result = await createSchedule({
+    const result = await this.createGongSchedule(connector);
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    return new Ok(connector.id.toString());
+  }
+
+  private static async createGongSchedule(
+    connector: ConnectorResource
+  ): Promise<Result<string, Error>> {
+    return createSchedule({
       connector,
       action: {
         type: "startWorkflow",
@@ -116,11 +128,6 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       policies: SCHEDULE_POLICIES,
       spec: SCHEDULE_SPEC,
     });
-    if (result.isErr()) {
-      throw result.error;
-    }
-
-    return new Ok(connector.id.toString());
   }
 
   async update({
@@ -158,11 +165,6 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       // If connector was previously paused, unpause it.
       if (connector.isPaused()) {
         await this.unpauseAndResume();
-
-        await triggerSchedule({
-          connector,
-          scheduleId: makeGongSyncScheduleId(connector),
-        });
       }
     }
 
@@ -214,14 +216,32 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
     const connector = await fetchGongConnector({
       connectorId: this.connectorId,
     });
-    const result = await triggerSchedule({
-      connector,
-      scheduleId: makeGongSyncScheduleId(connector),
+
+    const scheduleId = makeGongSyncScheduleId(connector);
+
+    const scheduleExistsResult = await scheduleExists({
+      scheduleId,
     });
-    if (result.isErr()) {
-      throw result.error;
+
+    if (!scheduleExistsResult) {
+      const creationRes =
+        await GongConnectorManager.createGongSchedule(connector);
+
+      if (creationRes.isOk()) {
+        return new Ok(undefined);
+      } else {
+        return new Err(creationRes.error);
+      }
+    } else {
+      const result = await unpauseAndTriggerSchedule({
+        connector,
+        scheduleId,
+      });
+      if (result.isErr()) {
+        throw result.error;
+      }
+      return new Ok(undefined);
     }
-    return new Ok(undefined);
   }
 
   async sync({
@@ -245,7 +265,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
-    const result = await triggerSchedule({
+    const result = await unpauseAndTriggerSchedule({
       connector,
       scheduleId: makeGongSyncScheduleId(connector),
     });

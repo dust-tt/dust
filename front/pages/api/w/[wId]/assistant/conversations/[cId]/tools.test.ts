@@ -22,8 +22,7 @@ async function setupTest(
       method,
     });
 
-  const conversation = await ConversationFactory.create({
-    auth: authenticator,
+  const conversation = await ConversationFactory.create(authenticator, {
     agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
     messagesCreatedAt: [new Date()],
   });

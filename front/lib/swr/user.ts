@@ -32,12 +32,18 @@ export function useUser(
   };
 }
 
-export function useUserMetadata(key: string) {
+export function useUserMetadata(
+  key: string,
+  swrOptions?: SWRConfiguration & {
+    disabled?: boolean;
+  }
+) {
   const userMetadataFetcher: Fetcher<GetUserMetadataResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/user/metadata/${encodeURIComponent(key)}`,
-    userMetadataFetcher
+    userMetadataFetcher,
+    swrOptions
   );
 
   return {
@@ -72,6 +78,21 @@ export function useDeleteMetadata() {
   };
 
   return { deleteMetadata };
+}
+
+export function useIsOnboardingConversation(conversationId: string | null) {
+  const { metadata, isMetadataLoading } = useUserMetadata(
+    "onboarding:conversation",
+    { disabled: !conversationId }
+  );
+
+  return {
+    isOnboardingConversation:
+      !!conversationId &&
+      !!metadata?.value &&
+      metadata.value === conversationId,
+    isLoading: isMetadataLoading,
+  };
 }
 
 export function usePatchUser() {

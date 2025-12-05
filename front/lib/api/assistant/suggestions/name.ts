@@ -1,16 +1,22 @@
+import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { SuggestionResults } from "@app/lib/api/assistant/suggestions/types";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import type { BuilderSuggestionInputType, Result } from "@app/types";
-import { Err, GPT_3_5_TURBO_MODEL_ID, Ok } from "@app/types";
+import { AgentConfiguration } from "@app/lib/models/agent/agent";
+import type {
+  BuilderSuggestionInputType,
+  ModelConversationTypeMultiActions,
+  Result,
+  UserMessageTypeModel,
+} from "@app/types";
+import { Err, isStringArray, MISTRAL_SMALL_MODEL_ID, Ok } from "@app/types";
 
 const FUNCTION_NAME = "send_suggestions";
 
-const specifications = [
+const specifications: AgentActionSpecification[] = [
   {
     name: FUNCTION_NAME,
-    description: "Send suggestions of names for the assistants",
+    description: "Send suggestions of names for the agent",
     inputSchema: {
       type: "object",
       properties: {
@@ -18,9 +24,9 @@ const specifications = [
           type: "array",
           items: {
             type: "string",
-            description: "A suggestion of name for the assistant.",
+            description: "A suggestion of name for the agent.",
           },
-          description: "Suggest one to three names for the assistant",
+          description: "Suggest one to three names for the agent",
         },
       },
       required: ["suggestions"],
@@ -28,25 +34,33 @@ const specifications = [
   },
 ];
 
-function getConversationContext(inputs: BuilderSuggestionInputType) {
+function getConversationContext(inputs: BuilderSuggestionInputType): {
+  messages: Array<UserMessageTypeModel>;
+} {
   const instructions = "instructions" in inputs ? inputs.instructions : "";
   const description = "description" in inputs ? inputs.description : "";
 
   const instructionsText = instructions
-    ? "\nAssistant instructions\n======\n" + JSON.stringify(instructions)
+    ? "\nAgent instructions\n======\n" + JSON.stringify(instructions)
     : "";
   const descriptionText = description
-    ? "Assistant description\n======\n" + JSON.stringify(description)
+    ? "Agent description\n======\n" + JSON.stringify(description)
     : "";
   const initialPrompt =
-    "Please suggest one to three good names for an AI assistant" +
+    "Please suggest one to three good names for an AI agent" +
     (instructions || description ? " based on the following data:" : ".");
 
   return {
     messages: [
       {
         role: "user",
-        content: initialPrompt + descriptionText + instructionsText,
+        content: [
+          {
+            type: "text",
+            text: initialPrompt + descriptionText + instructionsText,
+          },
+        ],
+        name: "",
       },
     ],
   };
@@ -77,23 +91,33 @@ export async function getBuilderNameSuggestions(
   auth: Authenticator,
   inputs: BuilderSuggestionInputType
 ): Promise<Result<SuggestionResults, Error>> {
+  const prompt =
+    "The user is currently creating an agent based on a large language model." +
+    "The agent has instructions and a description. You are provided with a single " +
+    "message, consisting of this information if it is available. Your role is to " +
+    "suggest good names for the agent. Names can not include whitespaces.";
+  const conversation: ModelConversationTypeMultiActions =
+    getConversationContext(inputs);
   const res = await runMultiActionsAgent(
     auth,
     {
       functionCall: FUNCTION_NAME,
-      modelId: GPT_3_5_TURBO_MODEL_ID,
-      providerId: "openai",
+      modelId: MISTRAL_SMALL_MODEL_ID,
+      providerId: "mistral",
       temperature: 0.7,
       useCache: false,
     },
     {
-      conversation: getConversationContext(inputs),
-      prompt:
-        "The user is currently creating an assistant based on a large language model." +
-        "The assistant has instructions and a description. You are provided with a single " +
-        "message, consisting of this information if it is available. Your role is to " +
-        "suggest good names for the assistant.",
+      conversation,
+      prompt,
       specifications,
+    },
+    {
+      context: {
+        operationType: "agent_builder_name_suggestion",
+        userId: auth.user()?.sId,
+        workspaceId: auth.getNonNullableWorkspace().sId,
+      },
     }
   );
 
@@ -101,18 +125,22 @@ export async function getBuilderNameSuggestions(
     return new Err(res.error);
   }
 
-  if (res.value.actions?.[0]?.arguments?.suggestions) {
-    const { suggestions } = res.value.actions[0].arguments;
-
-    const filteredSuggestions = await filterSuggestedNames(auth, suggestions);
-
-    return new Ok({
-      status: "ok",
-      suggestions: Array.isArray(filteredSuggestions)
-        ? filteredSuggestions
-        : null,
-    });
+  const args = res.value.actions?.[0]?.arguments;
+  if (!args || !("suggestions" in args) || !isStringArray(args.suggestions)) {
+    return new Err(
+      new Error(
+        `Error retrieving suggestions from arguments: ${JSON.stringify(args)}`
+      )
+    );
   }
 
-  return new Err(new Error("No suggestions found"));
+  const filteredSuggestions = await filterSuggestedNames(
+    auth,
+    args.suggestions
+  );
+
+  return new Ok({
+    status: "ok",
+    suggestions: filteredSuggestions,
+  });
 }

@@ -8,12 +8,12 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { WAREHOUSES_BROWSE_MIME_TYPE } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ResolvedDataSourceConfiguration } from "@app/lib/actions/mcp_internal_actions/tools/utils";
-import { makeDataSourceViewFilter } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import { makeCoreSearchNodesFilters } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
-import type { CoreAPIContentNode, CoreAPIError, Result } from "@app/types";
+import type { CoreAPIContentNode, Result } from "@app/types";
 import { CoreAPI, DATA_SOURCE_NODE_ID, Err, Ok } from "@app/types";
 
 export async function getAvailableWarehouses(
@@ -27,9 +27,10 @@ export async function getAvailableWarehouses(
   >
 > {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-  const dataSourceViewFilter = makeDataSourceViewFilter(
-    dataSourceConfigurations
-  ).map((view) => ({
+  const dataSourceViewFilter = makeCoreSearchNodesFilters({
+    agentDataSourceConfigurations: dataSourceConfigurations,
+    includeTagFilters: false,
+  }).map((view) => ({
     ...view,
     search_scope: "data_source_name" as const,
   }));
@@ -127,6 +128,7 @@ export async function getWarehouseNodes(
     };
   }
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!dataSourceById) {
     dataSourceById = _.keyBy(
       await DataSourceResource.fetchByDustAPIDataSourceIds(
@@ -153,7 +155,10 @@ export async function getWarehouseNodes(
   const result = await coreAPI.searchNodes({
     query,
     filter: {
-      data_source_views: makeDataSourceViewFilter(configsToUse),
+      data_source_views: makeCoreSearchNodesFilters({
+        agentDataSourceConfigurations: configsToUse,
+        includeTagFilters: false,
+      }),
       parent_id: parentIdToUse ?? undefined,
       node_ids: nodeIdsToUse,
     },
@@ -237,7 +242,7 @@ export async function validateTables(
 ): Promise<
   Result<
     { validatedNodes: CoreAPIContentNode[]; dataSourceId: string },
-    Error | CoreAPIError
+    MCPError
   >
 > {
   if (tableIds.length === 0) {
@@ -250,8 +255,11 @@ export async function validateTables(
   for (const tableId of tableIds) {
     if (!tableId.startsWith("table-")) {
       return new Err(
-        new Error(
-          `Invalid table ID format: ${tableId}. Expected format: table-<dataSourceSId>-<nodeId>`
+        new MCPError(
+          `Invalid table ID format: ${tableId}. Expected format: table-<dataSourceId>-<nodeId>`,
+          {
+            tracked: false,
+          }
         )
       );
     }
@@ -259,8 +267,11 @@ export async function validateTables(
     const parts = tableId.substring("table-".length).split("-");
     if (parts.length < 2) {
       return new Err(
-        new Error(
-          `Invalid table ID format: ${tableId}. Expected format: table-<dataSourceSId>-<nodeId>`
+        new MCPError(
+          `Invalid table ID format: ${tableId}. Expected format: table-<dataSourceId>-<nodeId>`,
+          {
+            tracked: false,
+          }
         )
       );
     }
@@ -274,8 +285,11 @@ export async function validateTables(
 
   if (dataSourceIds.size > 1) {
     return new Err(
-      new Error(
-        `All tables must be from the same warehouse. Found tables from warehouses: ${Array.from(dataSourceIds).join(", ")}`
+      new MCPError(
+        `All tables must be from the same warehouse. Found tables from warehouses: ${Array.from(dataSourceIds).join(", ")}`,
+        {
+          tracked: false,
+        }
       )
     );
   }
@@ -283,7 +297,11 @@ export async function validateTables(
   const dataSourceId = Array.from(dataSourceIds)[0];
   const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
   if (!dataSource) {
-    return new Err(new Error(`Data source not found for ID: ${dataSourceId}`));
+    return new Err(
+      new MCPError(`Data source not found for ID: ${dataSourceId}`, {
+        tracked: false,
+      })
+    );
   }
 
   const relevantConfig = dataSourceConfigurations.find(
@@ -293,8 +311,11 @@ export async function validateTables(
 
   if (!relevantConfig) {
     return new Err(
-      new Error(
-        `Tables from warehouse ${dataSourceId} are not accessible with the current view filter`
+      new MCPError(
+        `Tables from warehouse ${dataSourceId} are not accessible with the current view filter`,
+        {
+          tracked: false,
+        }
       )
     );
   }
@@ -302,13 +323,16 @@ export async function validateTables(
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const searchResult = await coreAPI.searchNodes({
     filter: {
-      data_source_views: makeDataSourceViewFilter([relevantConfig]),
+      data_source_views: makeCoreSearchNodesFilters({
+        agentDataSourceConfigurations: [relevantConfig],
+        includeTagFilters: false,
+      }),
       node_ids: parsedTables.map((t) => t.nodeId),
     },
   });
 
   if (searchResult.isErr()) {
-    return searchResult;
+    return new Err(new MCPError(searchResult.error.message));
   }
 
   const foundNodeIds = new Set(searchResult.value.nodes.map((n) => n.node_id));
@@ -316,10 +340,13 @@ export async function validateTables(
 
   if (missingTables.length > 0) {
     return new Err(
-      new Error(
+      new MCPError(
         `The following tables are not accessible with the current view filter: ${missingTables
           .map((t) => `table-${t.dataSourceId}-${t.nodeId}`)
-          .join(", ")}`
+          .join(", ")}`,
+        {
+          tracked: false,
+        }
       )
     );
   }

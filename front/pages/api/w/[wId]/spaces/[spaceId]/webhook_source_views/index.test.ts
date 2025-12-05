@@ -80,15 +80,11 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/webhook_source_views", () => {
 
     // Create a webhook source first
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
-    const webhookSourceResult = await webhookSourceFactory.create();
-    if (webhookSourceResult.isErr()) {
-      throw webhookSourceResult.error;
-    }
-    const webhookSource = webhookSourceResult.value;
+    const webhookSource = await webhookSourceFactory.create();
 
     // Set request body
     req.body = {
-      webhookSourceId: webhookSource.sId(),
+      webhookSourceId: webhookSource.sId,
     };
 
     // Create regular space for the test
@@ -106,7 +102,7 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/webhook_source_views", () => {
         sId: expect.any(String),
         spaceId: regularSpace.sId,
         webhookSource: expect.objectContaining({
-          sId: webhookSource.sId(),
+          sId: webhookSource.sId,
         }),
       }),
     });
@@ -120,15 +116,11 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/webhook_source_views", () => {
 
     // Create a webhook source first
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
-    const webhookSourceResult = await webhookSourceFactory.create();
-    if (webhookSourceResult.isErr()) {
-      throw webhookSourceResult.error;
-    }
-    const webhookSource = webhookSourceResult.value;
+    const webhookSource = await webhookSourceFactory.create();
 
     // Set request body
     req.body = {
-      webhookSourceId: webhookSource.sId(),
+      webhookSourceId: webhookSource.sId,
     };
 
     req.query.spaceId = globalSpace.sId;
@@ -144,7 +136,7 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/webhook_source_views", () => {
         sId: expect.any(String),
         spaceId: globalSpace.sId,
         webhookSource: expect.objectContaining({
-          sId: webhookSource.sId(),
+          sId: webhookSource.sId,
         }),
       }),
     });
@@ -155,15 +147,11 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/webhook_source_views", () => {
     const { req, res, workspace } = await setupTest("builder", "POST");
 
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
-    const webhookSourceResult = await webhookSourceFactory.create();
-    if (webhookSourceResult.isErr()) {
-      throw webhookSourceResult.error;
-    }
-    const webhookSource = webhookSourceResult.value;
+    const webhookSource = await webhookSourceFactory.create();
 
     // Set request body
     req.body = {
-      webhookSourceId: webhookSource.sId(),
+      webhookSourceId: webhookSource.sId,
     };
 
     await handler(req, res);
@@ -199,15 +187,11 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/webhook_source_views", () => {
 
     // Create a webhook source first
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
-    const webhookSourceResult = await webhookSourceFactory.create();
-    if (webhookSourceResult.isErr()) {
-      throw webhookSourceResult.error;
-    }
-    const webhookSource = webhookSourceResult.value;
+    const webhookSource = await webhookSourceFactory.create();
 
     // Set request body
     req.body = {
-      webhookSourceId: webhookSource.sId(),
+      webhookSourceId: webhookSource.sId,
     };
 
     // Get the system space from defaults (don't create a new one)

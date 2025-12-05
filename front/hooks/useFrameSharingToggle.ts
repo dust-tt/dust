@@ -37,6 +37,7 @@ export function useFrameSharingToggle({ owner }: UseFrameSharingToggleProps) {
 
       setIsChanging(false);
       setIsEnabled((prev) => !prev);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       sendNotification({
         type: "error",

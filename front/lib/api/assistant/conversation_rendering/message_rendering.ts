@@ -24,7 +24,7 @@ import {
   isContentFragmentType,
   isUserMessageType,
 } from "@app/types";
-import type { TextContentType } from "@app/types/assistant/agent_message_content";
+import type { AgentTextContentType } from "@app/types/assistant/agent_message_content";
 
 /**
  * Renders agent message steps into model messages
@@ -44,7 +44,7 @@ export function renderAgentSteps(
     );
     if (stepsWithContent.length) {
       const lastStepWithContent = stepsWithContent[stepsWithContent.length - 1];
-      const textContents: TextContentType[] = [];
+      const textContents: AgentTextContentType[] = [];
       for (const content of lastStepWithContent.contents) {
         if (content.type === "text_content") {
           textContents.push(content);
@@ -72,7 +72,7 @@ export function renderAgentSteps(
         );
         continue;
       }
-      const textContents: TextContentType[] = [];
+      const textContents: AgentTextContentType[] = [];
       for (const content of step.contents) {
         if (content.type === "text_content") {
           textContents.push(content);
@@ -114,10 +114,24 @@ export function renderAgentSteps(
 
   // Legacy agent message support
   if (!message.rawContents.length && message.content?.trim()) {
+    // This should not happen anymore, putting logs to check if anything goes wrong.
+    logger.error(
+      {
+        workspaceId: conversation.owner.sId,
+        conversationId: conversation.sId,
+        agentMessageId: message.sId,
+      },
+      "Unexpected legacy agent message state, agent message with empty `rawContents` and non-empty `content`"
+    );
     messages.push({
       role: "assistant",
       name: message.configuration.name,
-      content: message.content,
+      contents: [
+        {
+          type: "text_content",
+          value: message.content,
+        },
+      ],
     });
   }
 

@@ -19,7 +19,6 @@ import {
 import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/types/response/ConversationsRepliesResponse";
 import removeMarkdown from "remove-markdown";
-import jaroWinkler from "talisman/metrics/jaro-winkler";
 
 import {
   makeErrorBlock,
@@ -27,7 +26,6 @@ import {
   makeMessageUpdateBlocksAndText,
 } from "@connectors/connectors/slack/chat/blocks";
 import { streamConversationToSlack } from "@connectors/connectors/slack/chat/stream_conversation_handler";
-import { makeConversationUrl } from "@connectors/connectors/slack/chat/utils";
 import {
   getBotUserIdMemoized,
   getUserName,
@@ -54,6 +52,9 @@ import {
 import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
 import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { makeConversationUrl } from "@connectors/lib/bot/conversation_utils";
+import type { MentionMatch } from "@connectors/lib/bot/mentions";
+import { processMentions } from "@connectors/lib/bot/mentions";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import { sectionFullText } from "@connectors/lib/data_sources";
 import { ProviderRateLimitError } from "@connectors/lib/error";
@@ -80,6 +81,9 @@ const SLACK_ERROR_TEXT =
 const MAX_FILE_SIZE_TO_UPLOAD = 10 * 1024 * 1024; // 10 MB
 
 const DEFAULT_AGENTS = ["dust", "claude-4-sonnet", "gpt-5"];
+
+// Pattern to match +mention or ~mention at the beginning of the string (whitespaces allowed).
+const SLACK_MENTION_PATTERN = /^\s*([+~][a-zA-Z0-9_-]{1,40})(?=\s|,|\.|$)/;
 
 type BotAnswerParams = {
   responseUrl?: string;
@@ -531,7 +535,7 @@ async function processErrorResult(
       await throttleWithRedis(
         RATE_LIMITS["chat.update"],
         `${connector.id}-chat-update`,
-        false,
+        { canBeIgnored: false },
         async () =>
           slackClient.chat.update({
             ...errorPost,
@@ -785,15 +789,22 @@ async function answerMessage(
 
   // Slack sends the message with user ids when someone is mentioned (bot or user).
   // Here we remove the bot id from the message and we replace user ids by their display names.
-  // Example: <@U01J9JZQZ8Z> What is the command to upgrade a workspace in production (cc
-  // <@U91J1JEQZ1A>) ?
-  // becomes: What is the command to upgrade a workspace in production (cc @julien) ?
+  // Example:
+  //   <@U01J9JZQZ8Z> What is the command to upgrade a workspace in production (cc <@U91J1JEQZ1A>)?
+  // becomes:
+  //   What is the command to upgrade a workspace in production (cc @julien)?
   const matches = message.match(/<@[A-Z-0-9]+>/g);
+  let textAfterBotMention: string | null = null;
+
   if (matches) {
     const mySlackUser = await getBotUserIdMemoized(slackClient, connector.id);
     for (const m of matches) {
       const userId = m.replace(/<|@|>/g, "");
       if (userId === mySlackUser) {
+        const botMentionIndex = message.indexOf(m);
+        if (botMentionIndex !== -1 && !textAfterBotMention) {
+          textAfterBotMention = message.slice(botMentionIndex + m.length);
+        }
         message = message.replace(m, "");
       } else {
         const userName = await getUserName(userId, connector.id, slackClient);
@@ -802,87 +813,67 @@ async function answerMessage(
     }
   }
 
-  // Remove markdown to extract mentions.
-  const messageWithoutMarkdown = removeMarkdown(message);
+  let mention: MentionMatch | undefined;
 
-  let mention: { assistantName: string; assistantId: string } | undefined;
+  // Extract all ~mentions and +mentions that appear right after the bot mention.
+  let mentionCandidate: string | null = null;
+  // There may be no bot mention (e.g., when DMing the bot).
+  textAfterBotMention ??= message;
+  const textAfterBotMentionWithoutMarkdown =
+    removeMarkdown(textAfterBotMention);
 
-  // Extract all ~mentions and +mentions
-  const mentionCandidates =
-    messageWithoutMarkdown.match(
-      /(?<!\S)[+~]([a-zA-Z0-9_-]{1,40})(?=\s|,|\.|$)/g
-    ) || [];
+  const firstMatch = textAfterBotMentionWithoutMarkdown.match(
+    SLACK_MENTION_PATTERN
+  );
+
+  if (firstMatch?.[1]) {
+    mentionCandidate = firstMatch[1] ?? null;
+
+    // If the user tagged multiple agents, we need to show a custom message since we only support one agent at a time
+    // and they will expect all agents to answer.
+    const afterFirst = textAfterBotMentionWithoutMarkdown.slice(
+      firstMatch[0].length
+    );
+    const secondMatch = afterFirst.match(SLACK_MENTION_PATTERN);
+
+    if (secondMatch) {
+      return new Err(
+        new SlackExternalUserError(
+          "Only one agent at a time can be called through Slack."
+        )
+      );
+    }
+  }
 
   // First we look at mention override
-  // (eg: a mention coming from the Slack agent picker from slack).
+  // (e.g.: a mention coming from the Slack agent picker from Slack).
   if (mentionOverride) {
     const agentConfig = activeAgentConfigurations.find(
       (ac) => ac.sId === mentionOverride
     );
-    if (agentConfig) {
-      // Removing all previous mentions
-      for (const mc of mentionCandidates) {
-        message = message.replace(mc, "");
-      }
-      mention = {
-        assistantId: agentConfig.sId,
-        assistantName: agentConfig.name,
-      };
-    } else {
+    if (!agentConfig) {
       return new Err(new SlackExternalUserError("Cannot find selected agent."));
     }
-  }
-
-  if (mentionCandidates.length > 1) {
-    return new Err(
-      new SlackExternalUserError(
-        "Only one agent at a time can be called through Slack."
-      )
-    );
-  }
-
-  const [mentionCandidate] = mentionCandidates;
-  if (!mention && mentionCandidate) {
-    let bestCandidate:
-      | {
-          assistantId: string;
-          assistantName: string;
-          distance: number;
-        }
-      | undefined = undefined;
-    for (const agentConfiguration of activeAgentConfigurations) {
-      const distance =
-        1 -
-        jaroWinkler(
-          mentionCandidate.slice(1).toLowerCase(),
-          agentConfiguration.name.toLowerCase()
-        );
-
-      if (bestCandidate === undefined || bestCandidate.distance > distance) {
-        bestCandidate = {
-          assistantId: agentConfiguration.sId,
-          assistantName: agentConfiguration.name,
-          distance: distance,
-        };
-      }
+    // Removing all previous mentions.
+    if (mentionCandidate) {
+      message = message.replace(mentionCandidate, "");
+    }
+    mention = {
+      agentId: agentConfig.sId,
+      agentName: agentConfig.name,
+    };
+  } else {
+    const mentionResult = processMentions({
+      message,
+      activeAgentConfigurations,
+      mentionCandidate,
+    });
+    if (mentionResult.isErr()) {
+      return new Err(new SlackExternalUserError(mentionResult.error.message));
     }
 
-    if (bestCandidate) {
-      mention = {
-        assistantId: bestCandidate.assistantId,
-        assistantName: bestCandidate.assistantName,
-      };
-      message = message.replace(
-        mentionCandidate,
-        `:mention[${bestCandidate.assistantName}]{sId=${bestCandidate.assistantId}}`
-      );
-    } else {
-      return new Err(
-        new SlackExternalUserError(
-          `Assistant ${mentionCandidate} has not been found.`
-        )
-      );
-    }
+    mention = mentionResult.value.mention;
+    message = mentionResult.value.processedMessage;
   }
 
   if (!mention) {
@@ -895,7 +886,7 @@ async function answerMessage(
     });
     let agentConfigurationToMention: LightAgentConfigurationType | null = null;
 
-    if (channel && channel.agentConfigurationId) {
+    if (channel?.agentConfigurationId) {
       agentConfigurationToMention =
         activeAgentConfigurations.find(
           (ac) => ac.sId === channel.agentConfigurationId
@@ -904,21 +895,21 @@ async function answerMessage(
 
     if (agentConfigurationToMention) {
       mention = {
-        assistantId: agentConfigurationToMention.sId,
-        assistantName: agentConfigurationToMention.name,
+        agentId: agentConfigurationToMention.sId,
+        agentName: agentConfigurationToMention.name,
       };
     } else {
       // If no mention is found and no channel-based routing rule is found, we use the default agent.
-      let defaultAssistant: LightAgentConfigurationType | undefined = undefined;
+      let defaultAgent: LightAgentConfigurationType | undefined = undefined;
       for (const agent of DEFAULT_AGENTS) {
-        defaultAssistant = activeAgentConfigurations.find(
+        defaultAgent = activeAgentConfigurations.find(
           (ac) => ac.sId === agent && ac.status === "active"
         );
-        if (defaultAssistant) {
+        if (defaultAgent) {
           break;
         }
       }
-      if (!defaultAssistant) {
+      if (!defaultAgent) {
         return new Err(
           // not actually reachable, gpt-4 cannot be disabled.
           new SlackExternalUserError(
@@ -927,8 +918,8 @@ async function answerMessage(
         );
       }
       mention = {
-        assistantId: defaultAssistant.sId,
-        assistantName: defaultAssistant.name,
+        agentId: defaultAgent.sId,
+        agentName: defaultAgent.name,
       };
     }
   }
@@ -943,14 +934,14 @@ async function answerMessage(
     const isRestrictedRes = await isAgentAccessingRestrictedSpace(
       dustAPI,
       activeAgentConfigurations,
-      mention.assistantId
+      mention.agentId
     );
 
     if (isRestrictedRes.isErr()) {
       logger.error(
         {
           error: isRestrictedRes.error,
-          agentId: mention.assistantId,
+          agentId: mention.agentId,
           connectorId: connector.id,
         },
         "Error determining if agent is from restricted space"
@@ -979,7 +970,7 @@ async function answerMessage(
 
   const mainMessage = await slackClient.chat.postMessage({
     ...makeMessageUpdateBlocksAndText(null, connector.workspaceId, {
-      assistantName: mention.assistantName,
+      assistantName: mention.agentName,
       agentConfigurations: mostPopularAgentConfigurations,
       isThinking: true,
     }),
@@ -1023,12 +1014,14 @@ async function answerMessage(
 
   if (!message.includes(":mention")) {
     // if the message does not contain the mention, we add it as a prefix.
-    message = `:mention[${mention.assistantName}]{sId=${mention.assistantId}} ${message}`;
+    message = `:mention[${mention.agentName}]{sId=${mention.agentId}} ${message}`;
   }
+
+  const origin = slackBotId ? "slack_workflow" : "slack";
 
   const messageReqBody: PublicPostMessagesRequestBody = {
     content: message,
-    mentions: [{ configurationId: mention.assistantId }],
+    mentions: [{ configurationId: mention.agentId }],
     context: {
       timezone: slackChatBotMessage.slackTimezone || "Europe/Paris",
       username: slackChatBotMessage.slackUserName,
@@ -1036,7 +1029,7 @@ async function answerMessage(
         slackChatBotMessage.slackFullName || slackChatBotMessage.slackUserName,
       email: slackChatBotMessage.slackEmail,
       profilePictureUrl: slackChatBotMessage.slackAvatar || null,
-      origin: "slack" as const,
+      origin,
     },
     skipToolsValidation,
   };
@@ -1054,7 +1047,7 @@ async function answerMessage(
   let conversation: ConversationPublicType | undefined = undefined;
   let userMessage: UserMessageType | undefined = undefined;
 
-  if (lastSlackChatBotMessage?.conversationId) {
+  if (lastSlackChatBotMessage && lastSlackChatBotMessage.conversationId) {
     // Check conversation existence (it might have been deleted between two messages).
     const existsRes = await dustAPI.getConversation({
       conversationId: lastSlackChatBotMessage.conversationId,
@@ -1122,7 +1115,7 @@ async function answerMessage(
   }
 
   const streamRes = await streamConversationToSlack(dustAPI, {
-    assistantName: mention.assistantName,
+    assistantName: mention.agentName,
     connector,
     conversation,
     mainMessage,
@@ -1136,6 +1129,7 @@ async function answerMessage(
     userMessage,
     slackChatBotMessage,
     agentConfigurations: mostPopularAgentConfigurations,
+    feedbackVisibleToAuthorOnly: slackConfig.feedbackVisibleToAuthorOnly,
   });
 
   // Immediately mark the conversation as read.
@@ -1274,7 +1268,6 @@ async function makeContentFragments(
           },
           "Failed to upload slack file to conversation"
         );
-        continue;
       } else {
         allContentFragments.push({
           title: fileName,
@@ -1381,9 +1374,10 @@ async function makeContentFragments(
   }
 
   // Prepend $url to the content to make it available to the model.
+  const sectionHeader = `This only shows user-generated messages since ${startingAtTs} in #${channelName}. Look at the conversation history for the full thread.\n`;
   const section = document
-    ? `$url: ${url}\n${sectionFullText(document)}`
-    : `$url: ${url}\nNo messages previously sent in this thread.`;
+    ? `$url: ${url}\n${sectionHeader}${sectionFullText(document)}`
+    : `$url: ${url}\n${sectionHeader}`;
 
   const contentType = "text/vnd.dust.attachment.slack.thread";
   const fileName = `slack_thread-${channelName}-${threadTs}.txt`;
@@ -1438,13 +1432,12 @@ async function isAgentAccessingRestrictedSpace(
       return new Err(new Error(`Agent ${agentId} not found`));
     }
 
-    // TODO(2025-10-17 thomas): Check requestedSpaceIds instead of requestedGroupIds.
-    // If the agent has no requestedGroupIds, it's not from a restricted space
-    if (!agent.requestedGroupIds || agent.requestedGroupIds.length === 0) {
+    // If the agent has no requestedSpaceIds, it's not from a restricted space
+    if (!agent.requestedSpaceIds || agent.requestedSpaceIds.length === 0) {
       return new Ok(false);
     }
 
-    const agentGroupIds = agent.requestedGroupIds.flat();
+    const agentSpaceIds = agent.requestedSpaceIds.flat();
 
     const spacesRes = await dustAPI.getSpaces();
     if (spacesRes.isErr()) {
@@ -1461,9 +1454,9 @@ async function isAgentAccessingRestrictedSpace(
     const restrictedSpaces = spacesRes.value.filter(
       (space) => space.isRestricted
     );
-    const isFromRestrictedSpace = restrictedSpaces.some((space) => {
-      return space.groupIds.some((groupId) => agentGroupIds.includes(groupId));
-    });
+    const isFromRestrictedSpace = restrictedSpaces.some((space) =>
+      agentSpaceIds.includes(space.sId)
+    );
 
     logger.info(
       {

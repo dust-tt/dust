@@ -44,6 +44,7 @@ async function handler(
   // Record pre-stop initiation.
   statsDClient.increment("prestop.requests");
 
+  // Wait 10s for load balancer propagation.
   await setTimeoutAsync(10000);
 
   const preStopStartTime = Date.now();

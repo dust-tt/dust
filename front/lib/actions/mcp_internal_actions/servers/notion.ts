@@ -5,7 +5,6 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { Client, isFullDatabase, isFullPage } from "@notionhq/client";
 import type {
-  BlockObjectRequest,
   CreateCommentParameters,
   QueryDatabaseParameters,
   RichTextItemResponse,
@@ -15,11 +14,7 @@ import { parseISO } from "date-fns";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type {
-  SearchQueryResourceType,
-  SearchResultResourceType,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { renderRelativeTimeFrameForToolOutput } from "@app/lib/actions/mcp_internal_actions/rendering";
+import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   makeInternalMCPServer,
   makePersonalAuthenticationError,
@@ -29,7 +24,6 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { NOTION_SEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import type { Authenticator } from "@app/lib/auth";
-import type { TimeFrame } from "@app/types";
 import {
   Err,
   normalizeError,
@@ -251,34 +245,20 @@ export const NotionBlockSchema: z.ZodType = z.union([
   FallbackBlock,
 ]);
 
-function makeQueryResource(
-  query: string,
-  type: "page" | "database",
-  relativeTimeFrame: TimeFrame | null
-): SearchQueryResourceType {
-  const timeFrameAsString =
-    renderRelativeTimeFrameForToolOutput(relativeTimeFrame);
-
-  const text = `Searching Notion ${type}s ${timeFrameAsString} containing: ${query}`;
-  return {
-    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY,
-    text,
-    uri: "",
-  };
-}
-
 async function withNotionClient<T>(
   fn: (notion: Client) => Promise<T>,
   authInfo?: AuthInfo
 ): Promise<Result<CallToolResult["content"], MCPError>> {
+  const accessToken = authInfo?.token;
+  if (!accessToken) {
+    return new Ok(makePersonalAuthenticationError("notion").content);
+  }
+
   try {
-    const accessToken = authInfo?.token;
-    if (!accessToken) {
-      return new Ok(makePersonalAuthenticationError("notion").content);
-    }
     const notion = new Client({ auth: accessToken });
 
     const result = await fn(notion);
+
     return new Ok([
       { type: "text" as const, text: "Success" },
       { type: "text" as const, text: JSON.stringify(result, null, 2) },
@@ -353,7 +333,6 @@ function createServer(
         });
 
         const timeFrame = parseTimeFrame(relativeTimeFrame);
-        const queryResource = makeQueryResource(query, type, timeFrame);
 
         let results = rawResults.results;
 
@@ -372,10 +351,6 @@ function createServer(
 
         if (results.length === 0) {
           return new Ok([
-            {
-              type: "resource" as const,
-              resource: queryResource,
-            },
             {
               type: "text" as const,
               text: "No results found.",
@@ -458,12 +433,8 @@ function createServer(
             }
           });
 
-          return new Ok([
-            {
-              type: "resource" as const,
-              resource: queryResource,
-            },
-            ...resultResources.map((result) =>
+          return new Ok(
+            resultResources.map((result) =>
               typeof result === "string"
                 ? {
                     type: "text" as const,
@@ -473,8 +444,8 @@ function createServer(
                     type: "resource" as const,
                     resource: result,
                   }
-            ),
-          ]);
+            )
+          );
         }
       }
     )
@@ -782,7 +753,7 @@ function createServer(
           (notion) =>
             notion.blocks.children.append({
               block_id: blockId,
-              children: children as Array<BlockObjectRequest>,
+              children,
             }),
           authInfo
         );

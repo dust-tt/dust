@@ -1,4 +1,4 @@
-import { Chip, cn } from "@dust-tt/sparkle";
+import { Chip, cn, ContentMessage } from "@dust-tt/sparkle";
 import React from "react";
 
 import type { LogicalOp, MatcherExpression, Operation } from "@app/lib/matcher";
@@ -153,30 +153,22 @@ export function TriggerFilterRenderer({ data }: TriggerFilterRendererProps) {
     return null;
   }
 
-  try {
-    const parsedData = parseMatcherExpression(data);
+  const parseResult = parseMatcherExpression(data);
 
+  if (parseResult.isErr()) {
     return (
-      <div className={"overflow-hidden px-4 py-4"}>
-        <div className="max-w-full overflow-x-auto text-sm">
-          <ExpressionNode expression={parsedData} />
-        </div>
-      </div>
-    );
-  } catch (error) {
-    const errorMessage =
-      error instanceof Error &&
-      "message" in error &&
-      typeof error.message === "string"
-        ? error.message
-        : "unknown error";
-    return (
-      <div className="overflow-hidden px-4 py-4">
-        <p className="text-sm text-warning">
-          Error parsing filter expression: {errorMessage}. Please check the
-          filter syntax.
-        </p>
-      </div>
+      <ContentMessage variant="warning" size="lg">
+        Error parsing filter expression: {parseResult.error.message}. Please
+        check the filter syntax.
+      </ContentMessage>
     );
   }
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-border px-4 py-4 dark:border-border-night">
+      <div className="max-w-full overflow-x-auto text-sm">
+        <ExpressionNode expression={parseResult.value} />
+      </div>
+    </div>
+  );
 }

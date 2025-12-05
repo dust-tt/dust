@@ -1,5 +1,6 @@
 import _ from "lodash";
 
+import { setTimeoutAsync } from "@connectors/lib/async_utils";
 import { distributedLock, distributedUnlock } from "@connectors/lib/lock";
 import logger from "@connectors/logger/logger";
 import { redisClient } from "@connectors/types/shared/redis_client";
@@ -9,34 +10,12 @@ export type RateLimit = {
   windowInMs: number;
 };
 
-export async function throttleWithRedis<T>(
-  rateLimit: RateLimit,
-  key: string,
-  canBeIgnored: false,
-  func: () => Promise<T>,
-  extraLogs: Record<string, string>
-): Promise<T>;
+const ACQUIRE_LOCK_TIMEOUT_MS = 3_000;
 
 export async function throttleWithRedis<T>(
   rateLimit: RateLimit,
   key: string,
-  canBeIgnored: true,
-  func: () => Promise<T>,
-  extraLogs: Record<string, string>
-): Promise<T | undefined>;
-
-export async function throttleWithRedis<T>(
-  rateLimit: RateLimit,
-  key: string,
-  canBeIgnored: boolean,
-  func: () => Promise<T>,
-  extraLogs: Record<string, string>
-): Promise<T | undefined>;
-
-export async function throttleWithRedis<T>(
-  rateLimit: RateLimit,
-  key: string,
-  canBeIgnored: boolean,
+  { canBeIgnored }: { canBeIgnored: boolean },
   func: () => Promise<T>,
   extraLogs: Record<string, string>
 ): Promise<T | undefined> {
@@ -51,21 +30,32 @@ export async function throttleWithRedis<T>(
   const addTimestamp = async (timestamp: number) => {
     await client.rPush(redisKey, timestamp.toString());
   };
-  const removeTimestamp = async (timestamp: number) => {
-    await client.lRem(redisKey, 1, timestamp.toString());
+  const removeTimestampsBatch = async (timestamps: number[]) => {
+    if (timestamps.length === 0) {
+      return;
+    }
+
+    // Use Redis multi() to batch all removals into a single operation.
+    // This significantly reduces lock hold time compared to sequential lRem calls,
+    // helping prevent "Failed to acquire lock for throttling" errors under high load.
+    const multi = client.multi();
+    for (const timestamp of timestamps) {
+      multi.lRem(redisKey, 1, timestamp.toString());
+    }
+    await multi.exec();
   };
 
   const acquireLock = async () => {
-    const acquiredLockTimeout = 3000;
     const start = Date.now();
 
-    while (Date.now() - start < acquiredLockTimeout) {
+    while (Date.now() - start < ACQUIRE_LOCK_TIMEOUT_MS) {
       lockValue = await distributedLock(client, redisKey);
       if (lockValue) {
         break;
       }
-      // Sleep for 100ms before retrying
-      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Sleep for 100ms before retrying.
+      await setTimeoutAsync(100);
     }
     if (!lockValue) {
       throw new Error("Failed to acquire lock for throttling");
@@ -86,17 +76,17 @@ export async function throttleWithRedis<T>(
     releaseLock,
     getTimestamps,
     addTimestamp,
-    removeTimestamp,
+    removeTimestampsBatch,
   });
 
   if (throttleRes.skip) {
-    // Ignore the request
+    // Ignore the request.
     return;
   } else if (throttleRes.delay && throttleRes.delay > 0) {
     logger.info({ delay: throttleRes, ...extraLogs }, "Delaying api request");
-    await new Promise((resolve) => setTimeout(resolve, throttleRes.delay));
+    await setTimeoutAsync(throttleRes.delay);
   } else if (throttleRes.delay === 0) {
-    // Do nothing and just call the function
+    // Do nothing and just call the function.
   } else {
     throw new Error("Invalid delay");
   }
@@ -112,7 +102,7 @@ export async function throttle({
   releaseLock,
   getTimestamps,
   addTimestamp,
-  removeTimestamp,
+  removeTimestampsBatch,
 }: {
   rateLimit: RateLimit;
   canBeIgnored: boolean;
@@ -121,7 +111,7 @@ export async function throttle({
   releaseLock: () => Promise<void>;
   getTimestamps: () => Promise<number[]>;
   addTimestamp: (timestamp: number) => Promise<void>;
-  removeTimestamp: (timestamp: number) => Promise<void>;
+  removeTimestampsBatch: (timestamps: number[]) => Promise<void>;
 }): Promise<{ delay: number | undefined; skip: boolean }> {
   await acquireLock();
 
@@ -135,11 +125,9 @@ export async function throttle({
       return timestamp > windowStart;
     });
 
-    // Remove the expired timestamps entries.
+    // Remove the expired timestamps entries using batch operation.
     const diff = _.difference(rawTimestamps, timestamps);
-    for (const timestamp of diff) {
-      await removeTimestamp(timestamp);
-    }
+    await removeTimestampsBatch(diff);
 
     // Check if the list of timestamps is less than the rate limit.
     if (timestamps.length < rateLimit.limit) {

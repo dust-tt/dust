@@ -254,7 +254,8 @@ export async function getWorkOSSessionFromCookie(
         };
       } else {
         return {
-          cookie: "",
+          // Return the previous cookie in case it fails.
+          cookie: workOSSessionCookie,
           session: undefined,
         };
       }
@@ -274,7 +275,6 @@ export async function getWorkOSSessionFromCookie(
           family_name: r.user.lastName ?? "",
           given_name: r.user.firstName ?? "",
           nickname: getUserNicknameFromEmail(r.user.email) ?? "",
-          auth0Sub: null,
           workOSUserId: r.user.id,
         },
         organizationId,
@@ -287,38 +287,10 @@ export async function getWorkOSSessionFromCookie(
     logger.error({ error }, "Session authentication error");
 
     return {
-      cookie: "",
+      // In case WorkOS fails, do not clear the cookie.
+      cookie: undefined,
       session: undefined,
     };
-  }
-}
-
-// Store the region in the user's app_metadata to redirect to the right region.
-// A JWT Template includes this metadata in https://dust.tt/region (https://dashboard.workos.com/environment_01JGCT54YDGZAAD731M0GQKZGM/authentication/edit-jwt-template)
-export async function setRegionForUser(user: WorkOSUser, region: RegionType) {
-  // Update user metadata
-  await getWorkOS().userManagement.updateUser({
-    userId: user.id,
-    metadata: {
-      region,
-    },
-  });
-}
-
-export async function updateUserFromAuth0(
-  session: SessionWithUser,
-  region: RegionType,
-  emailVerified: boolean
-) {
-  if (session.user.workOSUserId) {
-    // Update user metadata
-    await getWorkOS().userManagement.updateUser({
-      userId: session.user.workOSUserId,
-      emailVerified,
-      metadata: {
-        region,
-      },
-    });
   }
 }
 

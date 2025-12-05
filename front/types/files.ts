@@ -31,6 +31,12 @@ export type FileUseCaseMetadata = {
   lastEditedByAgentConfigurationId?: string;
 };
 
+export function isConversationFileUseCase(
+  useCase: string
+): useCase is "conversation" | "tool_output" {
+  return ["conversation", "tool_output"].includes(useCase);
+}
+
 export const fileShareScopeSchema = z.enum(["workspace", "public"]);
 
 export type FileShareScope = z.infer<typeof fileShareScopeSchema>;
@@ -245,7 +251,7 @@ export const FILE_FORMATS = {
     exts: [],
     isSafeToDisplay: true,
   },
-
+  "message/rfc822": { cat: "data", exts: [".eml"], isSafeToDisplay: false },
   // Code - most code files are not safe to display by default.
   "text/xml": { cat: "data", exts: [".xml"], isSafeToDisplay: false },
   "application/xml": { cat: "data", exts: [".xml"], isSafeToDisplay: false },
@@ -376,6 +382,12 @@ export const ALL_FILE_FORMATS = {
 export type AllSupportedFileContentType =
   | InteractiveContentFileContentType
   | SupportedFileContentType;
+
+export type AllSupportedWithDustSpecificFileContentType =
+  | AllSupportedFileContentType
+  | "application/vnd.dust.tool-output.data-source-search-result"
+  | "application/vnd.dust.tool-output.websearch-result"
+  | "application/vnd.dust.tool-output.data-source-node-content";
 
 export type SupportedImageContentType = {
   [K in keyof typeof FILE_FORMATS]: (typeof FILE_FORMATS)[K] extends {

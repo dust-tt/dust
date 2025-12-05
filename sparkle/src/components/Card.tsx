@@ -60,10 +60,19 @@ const cardVariants = cva(
         md: "s-p-4 s-rounded-2xl",
         lg: "s-p-5 s-rounded-3xl",
       },
+      selected: {
+        true: cn(
+          "s-border-highlight-300 dark:s-border-highlight-300-night",
+          "s-ring-2 s-ring-highlight-200/70 dark:s-ring-highlight-300/60",
+          "s-shadow-sm"
+        ),
+        false: "",
+      },
     },
     defaultVariants: {
       variant: "primary",
       size: "md",
+      selected: false,
     },
   }
 );
@@ -72,6 +81,7 @@ interface CommonProps {
   variant?: CardVariantType;
   size?: CardSizeType;
   className?: string;
+  selected?: boolean;
 }
 
 interface CardLinkProps extends CommonProps, LinkWrapperProps {
@@ -103,6 +113,7 @@ const InnerCard = React.forwardRef<HTMLDivElement, InnerCardProps>(
       rel = "",
       replace,
       shallow,
+      selected,
       ...props
     },
     ref
@@ -112,9 +123,11 @@ const InnerCard = React.forwardRef<HTMLDivElement, InnerCardProps>(
 
     // Determine if the card is interactive based on href or onClick
     const isInteractive = Boolean(href || onClick);
+    const isSelected = Boolean(selected);
+    const hasSelectionProp = typeof selected !== "undefined";
 
     const cardButtonClassNames = cn(
-      cardVariants({ variant, size }),
+      cardVariants({ variant, size, selected: isSelected }),
       // Apply interactive styles when either href or onClick is present
       isInteractive ? interactiveClasses : "",
       className
@@ -129,6 +142,7 @@ const InnerCard = React.forwardRef<HTMLDivElement, InnerCardProps>(
           shallow={shallow}
           target={target}
           rel={rel}
+          aria-selected={hasSelectionProp ? isSelected : undefined}
         >
           {children}
         </Link>
@@ -140,6 +154,11 @@ const InnerCard = React.forwardRef<HTMLDivElement, InnerCardProps>(
         ref={ref}
         className={cardButtonClassNames}
         onClick={onClick}
+        role={isInteractive ? "button" : undefined}
+        aria-pressed={
+          isInteractive && hasSelectionProp ? isSelected : undefined
+        }
+        aria-selected={hasSelectionProp ? isSelected : undefined}
         {...props}
       >
         {children}

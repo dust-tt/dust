@@ -108,6 +108,8 @@ const Spinner: React.FC<SpinnerProps> = ({ size = "md", variant = "mono" }) => {
     let anim;
     switch (size) {
       case "xs":
+      case "sm":
+      case "md":
         anim = animLightXS;
         break;
       case "xl":
@@ -136,6 +138,8 @@ const Spinner: React.FC<SpinnerProps> = ({ size = "md", variant = "mono" }) => {
     let anim;
     switch (size) {
       case "xs":
+      case "sm":
+      case "md":
         anim = animColorXS;
         break;
       case "xl":
@@ -159,6 +163,8 @@ const Spinner: React.FC<SpinnerProps> = ({ size = "md", variant = "mono" }) => {
     let anim;
     switch (size) {
       case "xs":
+      case "sm":
+      case "md":
         anim = animLightXS;
         break;
       case "xl":
@@ -182,6 +188,8 @@ const Spinner: React.FC<SpinnerProps> = ({ size = "md", variant = "mono" }) => {
     let anim;
     switch (size) {
       case "xs":
+      case "sm":
+      case "md":
         anim = animDarkXS;
         break;
       case "xl":
@@ -206,6 +214,8 @@ const Spinner: React.FC<SpinnerProps> = ({ size = "md", variant = "mono" }) => {
   let darkAnim;
   switch (size) {
     case "xs":
+    case "sm":
+    case "md":
       lightAnim = animLightXS;
       darkAnim = animDarkXS;
       break;

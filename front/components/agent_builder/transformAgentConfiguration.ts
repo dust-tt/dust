@@ -1,16 +1,16 @@
 import uniqueId from "lodash/uniqueId";
 
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/components/agent_builder/types";
-import type { AssistantBuilderMCPConfiguration } from "@app/components/assistant_builder/types";
-import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
+import type { AgentBuilderMCPConfiguration } from "@app/components/agent_builder/types";
+import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type {
   LightAgentConfigurationType,
   UserType,
   WorkspaceType,
 } from "@app/types";
 import {
-  CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
+  AGENT_CREATIVITY_LEVEL_TEMPERATURES,
+  CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
   getLargeWhitelistedModel,
   isProviderWhitelisted,
 } from "@app/types";
@@ -62,7 +62,7 @@ export function getDefaultAgentFormData({
   user: UserType;
   owner: WorkspaceType;
 }): AgentBuilderFormData {
-  const preferredModel = CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG;
+  const preferredModel = CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG;
   const fallbackModel = getLargeWhitelistedModel(owner);
 
   // We use the preferred model unless the provider is deactivated for the workspace but we have a fallback model.
@@ -102,11 +102,11 @@ export function getDefaultAgentFormData({
 }
 
 /**
- * Transforms an assistant template into agent builder form data with defaults.
+ * Transforms an agent template into agent builder form data with defaults.
  * Merges template presets with default form data to create a complete configuration.
  */
 export function transformTemplateToFormData(
-  template: FetchAssistantTemplateResponse,
+  template: FetchAgentTemplateResponse,
   user: UserType,
   owner: WorkspaceType
 ): AgentBuilderFormData {
@@ -145,12 +145,12 @@ export function transformTemplateToFormData(
 }
 
 /**
- * Converts AssistantBuilderMCPConfiguration actions to AgentBuilderFormData actions format.
+ * Converts AgentBuilderMCPConfiguration actions to AgentBuilderFormData actions format.
  * Used for YAML export to include actions that are normally loaded client-side.
  * Generates unique IDs since they're only needed for UI purposes.
  */
 export function convertActionsForFormData(
-  actions: AssistantBuilderMCPConfiguration[]
+  actions: AgentBuilderMCPConfiguration[]
 ): AgentBuilderFormData["actions"] {
   return actions.map((action) => ({
     id: uniqueId(),

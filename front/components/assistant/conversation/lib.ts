@@ -1,7 +1,6 @@
 import type { NotificationType } from "@dust-tt/sparkle";
 import type * as t from "io-ts";
 
-import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import type { MessageTemporaryState } from "@app/components/assistant/conversation/types";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
@@ -15,6 +14,7 @@ import type {
   InternalPostConversationsRequestBodySchema,
   MentionType,
   Result,
+  RichMention,
   SubmitMessageError,
   SupportedContentFragmentType,
   SupportedContentNodeContentType,
@@ -22,13 +22,12 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { Err, isSupportedContentNodeFragmentContentType, Ok } from "@app/types";
-
-export type ContentFragmentInput = {
-  title: string;
-  content: string;
-  file: File;
-};
+import {
+  Err,
+  isSupportedContentNodeFragmentContentType,
+  Ok,
+  toMentionType,
+} from "@app/types";
 
 export function createPlaceholderUserMessage({
   input,
@@ -38,7 +37,7 @@ export function createPlaceholderUserMessage({
   contentFragments,
 }: {
   input: string;
-  mentions: EditorMention[];
+  mentions: RichMention[];
   user: UserType;
   rank: number;
   contentFragments?: ContentFragmentsType;
@@ -50,7 +49,7 @@ export function createPlaceholderUserMessage({
     id: -1,
     content: input,
     created: createdAt,
-    mentions: mentions.map((mention) => ({ configurationId: mention.id })),
+    mentions: mentions.map((mention) => toMentionType(mention)),
     user,
     visibility: "visible",
     type: "user_message",
@@ -142,10 +141,12 @@ export function createPlaceholderUserMessage({
 }
 
 export function createPlaceholderAgentMessage({
+  userMessage,
   mention,
   rank,
 }: {
-  mention: EditorMention;
+  userMessage: UserMessageType;
+  mention: RichMention & { pictureUrl: string };
   rank: number;
 }): MessageTemporaryState {
   const createdAt = new Date().getTime();
@@ -157,8 +158,9 @@ export function createPlaceholderAgentMessage({
       version: 0,
       created: createdAt,
       completedTs: null,
-      parentMessageId: null,
+      parentMessageId: userMessage.sId,
       parentAgentMessageId: null,
+      visibility: "visible",
       status: "created",
       content: null,
       chainOfThought: null,
@@ -166,12 +168,9 @@ export function createPlaceholderAgentMessage({
       configuration: {
         sId: mention.id,
         name: mention.label,
-        pictureUrl: "",
+        pictureUrl: mention.pictureUrl ?? "",
         status: "active",
         canRead: true,
-        // TODO(2025-10-17 thomas): Remove.
-        requestedGroupIds: [],
-        requestedSpaceIds: [],
       },
       citations: {},
       generatedFiles: [],
@@ -260,6 +259,7 @@ export async function submitMessage({
         return new Err({
           type: "attachment_upload_error",
           title: "Error uploading file.",
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           message: data.error.message || "Please try again or contact us.",
         });
       }
@@ -301,6 +301,7 @@ export async function submitMessage({
           ? "plan_limit_reached_error"
           : "message_send_error",
       title: "Your message could not be sent.",
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       message: data.error.message || "Please try again or contact us.",
     });
   }
@@ -427,6 +428,7 @@ export async function createConversationWithMessage({
           ? "plan_limit_reached_error"
           : "message_send_error",
       title: "Your message could not be sent.",
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       message: data.error.message || "Please try again or contact us.",
     });
   }

@@ -18,7 +18,9 @@ vi.mock("@app/lib/api/auth_wrappers", async () => {
     withSessionAuthenticationForWorkspace: (handler: any) => {
       return async (req: any, res: any) => {
         const auth = req.auth;
-        return handler(req, res, auth, { user: { sub: "auth0|test-user-id" } });
+        return handler(req, res, auth, {
+          user: { sub: "workos|test-user-id" },
+        });
       };
     },
   };
@@ -45,7 +47,6 @@ vi.mock("@app/lib/api/data_sources", () => ({
 vi.mock("@app/lib/resources/conversation_resource", () => ({
   ConversationResource: {
     fetchById: vi.fn().mockResolvedValue({ id: "test-conversation-id" }),
-    canAccessConversation: vi.fn().mockReturnValue(true),
   },
 }));
 

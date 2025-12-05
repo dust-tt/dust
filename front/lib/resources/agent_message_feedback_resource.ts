@@ -10,25 +10,26 @@ import { Op } from "sequelize";
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentConfiguration } from "@app/lib/models/agent/agent";
 import {
   AgentMessage,
   AgentMessage as AgentMessageModel,
   AgentMessageFeedback,
   ConversationModel,
   Message,
-} from "@app/lib/models/assistant/conversation";
+} from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
   AgentConfigurationType,
   AgentMessageType,
-  ConversationType,
   ConversationWithoutContentType,
   LightAgentConfigurationType,
   MessageType,
+  ModelId,
   Result,
   UserType,
   WorkspaceType,
@@ -67,6 +68,26 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     this.message = message;
     this.user = user;
     this.conversationId = conversationId;
+  }
+
+  get sId(): string {
+    return AgentMessageFeedbackResource.modelIdToSId({
+      id: this.id,
+      workspaceId: this.workspaceId,
+    });
+  }
+
+  static modelIdToSId({
+    id,
+    workspaceId,
+  }: {
+    id: ModelId;
+    workspaceId: ModelId;
+  }): string {
+    return makeSId("agent_message_feedback", {
+      id,
+      workspaceId,
+    });
   }
 
   static async makeNew(
@@ -120,20 +141,70 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     });
   }
 
+  async dismiss() {
+    return this.update({ dismissed: true });
+  }
+
+  async undismiss() {
+    return this.update({ dismissed: false });
+  }
+
+  static async fetchById(
+    auth: Authenticator,
+    {
+      feedbackId,
+      agentConfigurationId,
+    }: {
+      feedbackId: string;
+      agentConfigurationId?: string;
+    }
+  ): Promise<AgentMessageFeedbackResource | null> {
+    const resourceId = getResourceIdFromSId(feedbackId);
+    if (!resourceId) {
+      return null;
+    }
+
+    const where: WhereOptions<AgentMessageFeedback> = {
+      id: resourceId,
+      workspaceId: auth.getNonNullableWorkspace().id,
+    };
+
+    if (agentConfigurationId) {
+      where.agentConfigurationId = agentConfigurationId;
+    }
+
+    const feedback = await AgentMessageFeedback.findOne({ where });
+
+    if (!feedback) {
+      return null;
+    }
+
+    return new AgentMessageFeedbackResource(
+      AgentMessageFeedback,
+      feedback.get()
+    );
+  }
+
   static async getAgentConfigurationFeedbacksByDescVersion({
     workspace,
     agentConfiguration,
     paginationParams,
+    filter = "active",
   }: {
     workspace: WorkspaceType;
     agentConfiguration: LightAgentConfigurationType;
     paginationParams: PaginationParams;
+    filter?: "active" | "all";
   }) {
     const where: WhereOptions<AgentMessageFeedback> = {
       // Safety check: global models share ids across workspaces and some have had feedbacks.
       workspaceId: workspace.id,
       agentConfigurationId: agentConfiguration.sId,
     };
+
+    if (filter === "active") {
+      where.dismissed = false;
+    }
 
     if (paginationParams.lastValue) {
       const op = paginationParams.orderDirection === "desc" ? Op.lt : Op.gt;
@@ -287,7 +358,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
 
   static async getConversationFeedbacksForUser(
     auth: Authenticator,
-    conversation: ConversationType | ConversationWithoutContentType
+    conversation: ConversationWithoutContentType
   ) {
     const user = auth.getNonNullableUser();
 
@@ -348,7 +419,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
   }: {
     auth: Authenticator;
     messageId: string;
-    conversation: ConversationType | ConversationWithoutContentType;
+    conversation: ConversationWithoutContentType;
     user: UserType;
   }): Promise<
     Result<
@@ -471,15 +542,36 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     });
   }
 
+  static async listByAgentMessageModelId(
+    auth: Authenticator,
+    agentMessageId: ModelId
+  ): Promise<AgentMessageFeedbackResource[]> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const feedbacks = await AgentMessageFeedback.findAll({
+      where: {
+        agentMessageId,
+        workspaceId: workspace.id,
+      },
+      order: [["createdAt", "ASC"]],
+    });
+
+    return feedbacks.map((feedback) => {
+      return new AgentMessageFeedbackResource(this.model, feedback.get());
+    });
+  }
+
   toJSON() {
     return {
       id: this.id,
+      sId: this.sId,
       messageId: this.message?.sId,
       agentMessageId: this.agentMessageId,
       userId: this.userId,
       thumbDirection: this.thumbDirection,
       content: this.content ? this.content.replace(/\r?\n/g, "\\n") : null,
       isConversationShared: this.isConversationShared,
+      dismissed: this.dismissed,
       createdAt: this.createdAt,
       agentConfigurationId: this.agentConfigurationId,
       agentConfigurationVersion: this.agentConfigurationVersion,

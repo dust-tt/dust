@@ -2,7 +2,6 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
-import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
@@ -10,9 +9,7 @@ import {
   INCLUDE_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
-  IncludeQueryResourceType,
   IncludeResultResourceType,
   WarningResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -23,6 +20,10 @@ import {
   shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import {
+  IncludeInputSchema,
+  TagsInputSchema,
+} from "@app/lib/actions/mcp_internal_actions/types";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -52,32 +53,6 @@ function createServer(
 ): McpServer {
   const server = makeInternalMCPServer("include_data");
 
-  const commonInputsSchema = {
-    timeFrame:
-      ConfigurableToolInputSchemas[
-        INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
-      ].optional(),
-    dataSources:
-      ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
-  };
-
-  const tagsInputSchema = {
-    tagsIn: z
-      .array(z.string())
-      .describe(
-        "A list of labels (also called tags) to restrict the search based on the user request and past conversation context." +
-          "If multiple labels are provided, the search will return documents that have at least one of the labels." +
-          "You can't check that all labels are present, only that at least one is present." +
-          "If no labels are provided, the search will return all documents regardless of their labels."
-      ),
-    tagsNot: z
-      .array(z.string())
-      .describe(
-        "A list of labels (also called tags) to exclude from the search based on the user request and past conversation context." +
-          "Any document having one of these labels will be excluded from the search."
-      ),
-  };
-
   const areTagsDynamic = agentLoopContext
     ? shouldAutoGenerateTags(agentLoopContext)
     : false;
@@ -98,10 +73,7 @@ function createServer(
         | TextContent
         | {
             type: "resource";
-            resource:
-              | IncludeResultResourceType
-              | IncludeQueryResourceType
-              | WarningResourceType;
+            resource: IncludeResultResourceType | WarningResourceType;
           }
       )[],
       MCPError
@@ -145,10 +117,10 @@ function createServer(
       coreSearchArgsResults.map((res) => (res.isOk() ? res.value : null))
     );
 
-    const conflictingTagsError = checkConflictingTags(coreSearchArgs, {
-      tagsIn,
-      tagsNot,
-    });
+    const conflictingTagsError = checkConflictingTags(
+      coreSearchArgs.map(({ filter }) => filter.tags),
+      { tagsIn, tagsNot }
+    );
     if (conflictingTagsError) {
       return new Err(new MCPError(conflictingTagsError, { tracked: false }));
     }
@@ -243,10 +215,6 @@ function createServer(
         type: "resource" as const,
         resource: result,
       })),
-      {
-        type: "resource" as const,
-        resource: makeQueryResource(timeFrame ?? null),
-      },
       ...(warningResource
         ? [
             {
@@ -262,7 +230,7 @@ function createServer(
     server.tool(
       INCLUDE_TOOL_NAME,
       "Fetch the most recent documents in reverse chronological order up to a pre-allocated size. This tool retrieves content that is already pre-configured by the user, ensuring the latest information is included.",
-      commonInputsSchema,
+      IncludeInputSchema.shape,
       withToolLogging(
         auth,
         { toolNameForMonitoring: "include", agentLoopContext },
@@ -274,8 +242,8 @@ function createServer(
       INCLUDE_TOOL_NAME,
       "Fetch the most recent documents in reverse chronological order up to a pre-allocated size. This tool retrieves content that is already pre-configured by the user, ensuring the latest information is included.",
       {
-        ...commonInputsSchema,
-        ...tagsInputSchema,
+        ...IncludeInputSchema.shape,
+        ...TagsInputSchema.shape,
       },
       withToolLogging(
         auth,
@@ -291,16 +259,6 @@ function createServer(
   }
 
   return server;
-}
-
-function makeQueryResource(
-  timeFrame: TimeFrame | null
-): IncludeQueryResourceType {
-  return {
-    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_INCLUDE_QUERY,
-    text: `Requested to include documents ${renderRelativeTimeFrameForToolOutput(timeFrame)}.`,
-    uri: "",
-  };
 }
 
 function makeWarningResource(

@@ -73,11 +73,21 @@ export function ConversationSidePanelProvider({
     [panelRef]
   );
 
+  // This should be called once the closing animation is done (onTransitionEnd)
+  // so you won't have content flickering
+  const onPanelClosed = useCallback(() => {
+    setData(undefined);
+    setCurrentPanel(undefined);
+  }, [setData, setCurrentPanel]);
+
   const closePanel = useCallback(() => {
     if (panelRef && panelRef.current) {
       panelRef.current.collapse();
+    } else {
+      // in case there is no ref found (agent builder preview), close the panel directly
+      onPanelClosed();
     }
-  }, [panelRef]);
+  }, [panelRef, onPanelClosed]);
 
   const openPanel = useCallback(
     (params: OpenPanelParams) => {
@@ -99,6 +109,7 @@ export function ConversationSidePanelProvider({
         }
 
         case INTERACTIVE_CONTENT_SIDE_PANEL_TYPE:
+          // eslint-disable-next-line no-unused-expressions
           params.timestamp
             ? setData(`${params.fileId}@${params.timestamp}`)
             : setData(params.fileId);
@@ -110,11 +121,6 @@ export function ConversationSidePanelProvider({
     },
     [setCurrentPanel, setData, data, closePanel]
   );
-
-  const onPanelClosed = useCallback(() => {
-    setData(undefined);
-    setCurrentPanel(undefined);
-  }, [setData, setCurrentPanel]);
 
   // Initialize panel state from URL hash parameters
   useEffect(() => {

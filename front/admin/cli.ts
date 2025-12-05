@@ -23,8 +23,14 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
+import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { tokenCountForTexts } from "@app/lib/tokenization";
+import {
+  getWebhookRequestPayloadFromGCS,
+  processWebhookRequest,
+} from "@app/lib/triggers/webhook";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import {
@@ -623,6 +629,108 @@ async function apikeys(command: string, args: parseArgs.ParsedArgs) {
   }
 }
 
+async function trigger(command: string, args: parseArgs.ParsedArgs) {
+  switch (command) {
+    case "replay-failed-webhooks": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+
+      const execute = !!args.execute;
+
+      if (!execute) {
+        logger.info(
+          "[DRY RUN] Use --execute to actually replay the webhooks. Running in dry-run mode."
+        );
+      }
+
+      const auth = await Authenticator.internalAdminForWorkspace(args.wId);
+
+      const failedWebhooks = await WebhookRequestResource.listByStatus(auth, {
+        status: "failed",
+      });
+
+      if (failedWebhooks.length === 0) {
+        logger.info("No failed webhook requests found.");
+        return;
+      }
+
+      logger.info(
+        { count: failedWebhooks.length },
+        `Found ${failedWebhooks.length} failed webhook requests.`
+      );
+
+      for (const webhookRequest of failedWebhooks) {
+        const localLogger = logger.child({
+          webhookRequestId: webhookRequest.id,
+          webhookSourceId: webhookRequest.webhookSourceId,
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          createdAt: webhookRequest.createdAt,
+          initialErrorMessage: webhookRequest.errorMessage,
+        });
+        if (execute) {
+          const res = await getWebhookRequestPayloadFromGCS(auth, {
+            webhookRequest,
+          });
+          if (res.isErr()) {
+            localLogger.error(
+              { errorMessage: res.error.message },
+              `Failed to get webhook payload from GCS: ${res.error.message}`
+            );
+            continue;
+          }
+
+          const { headers, body } = res.value;
+
+          const webhookSource = await WebhookSourceResource.findByPk(
+            auth,
+            webhookRequest.webhookSourceId
+          );
+
+          if (!webhookSource) {
+            localLogger.error(
+              { errorMessage: "Webhook source not found" },
+              `Webhook source not found for webhook request.`
+            );
+            continue;
+          }
+
+          const result = await processWebhookRequest(auth, {
+            webhookRequest,
+            webhookSource,
+            headers,
+            body,
+          });
+          if (result.isErr()) {
+            localLogger.error(
+              { error: result.error.message },
+              `Failed to process webhook request: ${result.error.message}`
+            );
+            continue;
+          }
+          logger.info("Webhook workflow launched successfully.");
+        } else {
+          logger.info(
+            "[DRY RUN] Would launch workflow for this webhook request."
+          );
+        }
+      }
+
+      logger.info(
+        {
+          total: failedWebhooks.length,
+        },
+        "Webhook replay completed."
+      );
+
+      return;
+    }
+
+    default:
+      console.log(`Unknown trigger command: ${command}`);
+  }
+}
+
 export const CLI_OBJECT_TYPES = [
   "workspace",
   "user",
@@ -632,6 +740,7 @@ export const CLI_OBJECT_TYPES = [
   "registry",
   "production-check",
   "api-key",
+  "trigger",
 ] as const;
 
 export type CliObjectType = (typeof CLI_OBJECT_TYPES)[number];
@@ -679,6 +788,8 @@ const main = async () => {
       return productionCheck(command, argv);
     case "api-key":
       return apikeys(command, argv);
+    case "trigger":
+      return trigger(command, argv);
     default:
       assertNever(objectType);
   }

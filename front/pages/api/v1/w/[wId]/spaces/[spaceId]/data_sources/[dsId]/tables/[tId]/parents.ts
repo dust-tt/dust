@@ -20,6 +20,7 @@ import { CoreAPI, isString } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
+
   res: NextApiResponse<WithAPIErrorResponse<PostParentsResponseType>>,
   auth: Authenticator
 ): Promise<void> {

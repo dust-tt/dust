@@ -61,6 +61,8 @@ export class ZendeskConfigurationModel extends ConnectorBaseModel<ZendeskConfigu
     id: number;
     name: string;
   }[];
+
+  declare rateLimitTransactionsPerSecond: number | null;
 }
 
 ZendeskConfigurationModel.init(
@@ -114,6 +116,11 @@ ZendeskConfigurationModel.init(
       type: DataTypes.JSONB,
       allowNull: false,
       defaultValue: [],
+    },
+    rateLimitTransactionsPerSecond: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {

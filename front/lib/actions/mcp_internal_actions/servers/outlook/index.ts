@@ -1,4 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import sanitizeHtml from "sanitize-html";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
@@ -21,6 +22,7 @@ const OutlookRecipientSchema = z.object({
   emailAddress: OutlookEmailAddressSchema,
 });
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const OutlookMessageSchema = z.object({
   id: z.string(),
   conversationId: z.string().optional(),
@@ -47,6 +49,7 @@ const OutlookMessageSchema = z.object({
   internetMessageId: z.string().optional(),
 });
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const OutlookContactSchema = z.object({
   id: z.string(),
   displayName: z.string().optional(),
@@ -156,6 +159,7 @@ function createServer(
             type: "text" as const,
             text: JSON.stringify(
               {
+                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 messages: (result.value || []) as OutlookMessage[],
                 nextLink: result["@odata.nextLink"],
                 totalCount: result["@odata.count"],
@@ -224,6 +228,7 @@ function createServer(
 
         // Get detailed information for each draft
         const draftDetails = await concurrentExecutor(
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           result.value || [],
           async (draft: { id: string }): Promise<OutlookMessage | null> => {
             const draftResponse = await fetchFromOutlook(
@@ -489,17 +494,18 @@ function createServer(
           }));
         }
 
-        const response = await fetchFromOutlook(endpoint, accessToken, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(replyMessage),
-        });
+        // Create the empty draft
+        const createDraftResponse = await fetchFromOutlook(
+          endpoint,
+          accessToken,
+          {
+            method: "POST",
+          }
+        );
 
-        if (!response.ok) {
-          const errorText = await getErrorText(response);
-          if (response.status === 404) {
+        if (!createDraftResponse.ok) {
+          const errorText = await getErrorText(createDraftResponse);
+          if (createDraftResponse.status === 404) {
             return new Err(
               new MCPError(`Message not found: ${messageId}`, {
                 tracked: false,
@@ -508,12 +514,44 @@ function createServer(
           }
           return new Err(
             new MCPError(
-              `Failed to create reply draft: ${response.status} ${response.statusText} - ${errorText}`
+              `Failed to create reply draft: ${createDraftResponse.status} ${createDraftResponse.statusText} - ${errorText}`
             )
           );
         }
 
-        const result = await response.json();
+        const createDraftResult = await createDraftResponse.json();
+
+        // Get the existing body content from the created draft (includes quoted original message)
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+        const existingBody = createDraftResult.body?.content || "";
+
+        // Prepend the new body to the existing HTML content
+        const sanitizedBody = sanitizeHtml(body);
+        const combinedBody = `<div>${sanitizedBody}</div><br><br>${existingBody}`;
+
+        const updateDraftResponse = await fetchFromOutlook(
+          `/me/messages/${createDraftResult.id}`,
+          accessToken,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              body: {
+                contentType: "html",
+                content: combinedBody,
+              },
+            }),
+          }
+        );
+
+        if (!updateDraftResponse.ok) {
+          const errorText = await getErrorText(updateDraftResponse);
+          return new Err(
+            new MCPError(`Failed to update the draft: ${errorText}`)
+          );
+        }
 
         return new Ok([
           { type: "text" as const, text: "Reply draft created successfully" },
@@ -521,10 +559,10 @@ function createServer(
             type: "text" as const,
             text: JSON.stringify(
               {
-                messageId: result.id,
-                conversationId: result.conversationId,
+                messageId: createDraftResult.id,
+                conversationId: createDraftResult.conversationId,
                 originalMessageId: messageId,
-                subject: result.subject,
+                subject: createDraftResult.subject,
               },
               null,
               2
@@ -613,6 +651,7 @@ function createServer(
             type: "text" as const,
             text: JSON.stringify(
               {
+                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 contacts: (result.value || []) as OutlookContact[],
                 nextLink: result["@odata.nextLink"],
                 totalCount: result["@odata.count"],
@@ -901,6 +940,7 @@ const fetchFromOutlook = async (
 const getErrorText = async (response: Response): Promise<string> => {
   try {
     const errorData = await response.json();
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     return errorData.error?.message || errorData.error?.code || "Unknown error";
   } catch {
     return "Unknown error";

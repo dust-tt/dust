@@ -1,19 +1,28 @@
 import {
   Avatar,
+  Button,
   Card,
   CardActionButton,
   cn,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   ExternalLinkIcon,
+  EyeIcon,
+  EyeSlashIcon,
   HandThumbDownIcon,
   HandThumbUpIcon,
   Hoverable,
   Icon,
-  NavigationListLabel,
   Spinner,
+  Timeline,
 } from "@dust-tt/sparkle";
-import { memo, useCallback, useEffect } from "react";
+import { memo, useEffect, useState } from "react";
 import { useInView } from "react-intersection-observer";
 
+import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
+import { useDismissFeedback } from "@app/hooks/useDismissFeedback";
 import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
 import {
   useAgentConfigurationFeedbacksByDescVersion,
@@ -28,17 +37,32 @@ import type {
 
 const FEEDBACKS_PAGE_SIZE = 50;
 
+const getAgentConfigurationVersionString = (
+  config: LightAgentConfigurationType
+) => {
+  if (!config.versionCreatedAt) {
+    return `v${config.version}`;
+  }
+  const versionDate = new Date(config.versionCreatedAt);
+  return (
+    "Version: " + formatTimestampToFriendlyDate(versionDate.getTime(), "long")
+  );
+};
+
+type FeedbackFilter = "unseen" | "all";
+
 interface FeedbacksSectionProps {
   owner: LightWorkspaceType;
   agentConfigurationId: string;
-  gridMode?: boolean;
 }
 
 export const FeedbacksSection = ({
   owner,
   agentConfigurationId,
-  gridMode = false,
 }: FeedbacksSectionProps) => {
+  const [feedbackFilter, setFeedbackFilter] =
+    useState<FeedbackFilter>("unseen");
+
   const {
     isAgentConfigurationFeedbacksLoading,
     isValidating,
@@ -46,10 +70,12 @@ export const FeedbacksSection = ({
     hasMore,
     setSize,
     size,
+    mutateAgentConfigurationFeedbacks,
   } = useAgentConfigurationFeedbacksByDescVersion({
     workspaceId: owner.sId,
     agentConfigurationId: agentConfigurationId,
     limit: FEEDBACKS_PAGE_SIZE,
+    filter: feedbackFilter,
   });
 
   // Intersection observer to detect when the user has scrolled to the bottom of the list.
@@ -86,17 +112,6 @@ export const FeedbacksSection = ({
     return (
       <div className="w-full p-6">
         <Spinner variant="dark" />
-      </div>
-    );
-  }
-
-  if (
-    !isAgentConfigurationFeedbacksLoading &&
-    (!agentConfigurationFeedbacks || agentConfigurationFeedbacks.length === 0)
-  ) {
-    return (
-      <div className="mt-3 text-sm text-muted-foreground dark:text-muted-foreground-night">
-        No feedback yet.
       </div>
     );
   }
@@ -140,123 +155,112 @@ export const FeedbacksSection = ({
       {} as Record<number, LightAgentConfigurationType>
     ) || {};
 
-  const latestVersion = agentConfigurationHistory[0].version;
-
   return (
-    <>
-      {gridMode ? (
-        <div className="flex flex-col gap-4">
+    <TabContentChildSectionLayout
+      title="Feedback"
+      headerAction={
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              label={feedbackFilter === "unseen" ? "Unseen" : "All"}
+              isSelect
+              variant="outline"
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onClick={() => setFeedbackFilter("unseen")}
+              label="Unseen"
+            />
+            <DropdownMenuItem
+              onClick={() => setFeedbackFilter("all")}
+              label="All"
+            />
+          </DropdownMenuContent>
+        </DropdownMenu>
+      }
+    >
+      {!agentConfigurationFeedbacks ||
+      agentConfigurationFeedbacks.length === 0 ? (
+        <div className="mt-3 text-sm text-muted-foreground dark:text-muted-foreground-night">
+          No feedback yet.
+        </div>
+      ) : (
+        <Timeline>
           {versionsInOrder.map((version) => {
             const versionFeedbacks = feedbacksByVersion[version];
             const agentConfig = agentConfigByVersion[version];
-            const isLatestVersion = version === latestVersion;
 
             return (
-              <div key={version} className="flex flex-col gap-4">
-                <AgentConfigurationVersionHeader
-                  agentConfiguration={agentConfig}
-                  agentConfigurationVersion={version}
-                  isLatestVersion={isLatestVersion}
-                />
+              <Timeline.Item
+                key={version}
+                variant="upcoming"
+                title={
+                  agentConfig
+                    ? getAgentConfigurationVersionString(agentConfig)
+                    : `v${version}`
+                }
+                meta={
+                  agentConfig?.versionCreatedAt
+                    ? timeAgoFrom(
+                        new Date(agentConfig.versionCreatedAt).getTime(),
+                        {
+                          useLongFormat: true,
+                        }
+                      ) + " ago"
+                    : undefined
+                }
+              >
                 <div className="@container">
                   <div className="grid grid-cols-1 gap-4 @md:grid-cols-2">
                     {versionFeedbacks?.map((feedback) => (
                       <MemoizedFeedbackCard
-                        key={feedback.id}
+                        key={feedback.sId}
                         className="h-full"
                         owner={owner}
                         feedback={
                           feedback as AgentMessageFeedbackWithMetadataType
                         }
+                        onDismiss={() =>
+                          void mutateAgentConfigurationFeedbacks()
+                        }
                       />
                     ))}
                   </div>
                 </div>
-              </div>
+              </Timeline.Item>
             );
           })}
-        </div>
-      ) : (
-        <div className="flex flex-col gap-2">
-          {versionsInOrder.map((version) => {
-            const versionFeedbacks = feedbacksByVersion[version];
-            const agentConfig = agentConfigByVersion[version];
-            const isLatestVersion = version === latestVersion;
-
-            return (
-              <div key={version} className="flex flex-col gap-2">
-                <AgentConfigurationVersionHeader
-                  agentConfiguration={agentConfig}
-                  agentConfigurationVersion={version}
-                  isLatestVersion={isLatestVersion}
-                />
-                {versionFeedbacks?.map((feedback) => (
-                  <div key={feedback.id} className="animate-fadeIn">
-                    <MemoizedFeedbackCard
-                      owner={owner}
-                      feedback={
-                        feedback as AgentMessageFeedbackWithMetadataType
-                      }
-                    />
-                  </div>
-                ))}
-              </div>
-            );
-          })}
-        </div>
+        </Timeline>
       )}
       {/* Invisible div to act as a scroll anchor for detecting when the user has scrolled to the bottom */}
       <div ref={bottomRef} className="h-1.5" />
-    </>
+    </TabContentChildSectionLayout>
   );
 };
-interface AgentConfigurationVersionHeaderProps {
-  agentConfigurationVersion: number;
-  agentConfiguration: LightAgentConfigurationType | undefined;
-  isLatestVersion: boolean;
-}
-function AgentConfigurationVersionHeader({
-  agentConfigurationVersion,
-  agentConfiguration,
-  isLatestVersion,
-}: AgentConfigurationVersionHeaderProps) {
-  const getAgentConfigurationVersionString = useCallback(
-    (config: LightAgentConfigurationType) => {
-      if (isLatestVersion) {
-        return "Latest version";
-      }
-      if (!config.versionCreatedAt) {
-        return `v${config.version}`;
-      }
-      const versionDate = new Date(config.versionCreatedAt);
-      return (
-        "Version: " +
-        formatTimestampToFriendlyDate(versionDate.getTime(), "long")
-      );
-    },
-    [isLatestVersion]
-  );
-
-  return (
-    <NavigationListLabel
-      label={
-        agentConfiguration
-          ? getAgentConfigurationVersionString(agentConfiguration)
-          : `v${agentConfigurationVersion}`
-      }
-    />
-  );
-}
 
 interface FeedbackCardProps {
   owner: LightWorkspaceType;
   feedback: AgentMessageFeedbackWithMetadataType;
   className?: string;
+  onDismiss?: () => void;
 }
 
 const MemoizedFeedbackCard = memo(FeedbackCard);
 
-function FeedbackCard({ owner, feedback, className }: FeedbackCardProps) {
+function FeedbackCard({
+  owner,
+  feedback,
+  className,
+  onDismiss,
+}: FeedbackCardProps) {
+  const { isDismissing, toggleDismiss } = useDismissFeedback({
+    workspaceId: owner.sId,
+    agentConfigurationId: feedback.agentConfigurationId,
+    feedbackId: feedback.sId,
+    onSuccess: onDismiss,
+  });
+
   const conversationUrl =
     feedback.conversationId &&
     feedback.messageId &&
@@ -280,18 +284,27 @@ function FeedbackCard({ owner, feedback, className }: FeedbackCardProps) {
 
   return (
     <Card
-      className={cn("flex h-full flex-col", className)} // Add className here
+      className={cn("flex h-full flex-col", className)}
       action={
-        conversationUrl && (
+        <div className="flex gap-1">
           <CardActionButton
             size="mini"
-            icon={ExternalLinkIcon}
-            href={conversationUrl ?? ""}
-            disabled={!conversationUrl}
-            tooltip="View conversation"
-            target="_blank"
+            icon={feedback.dismissed ? EyeIcon : EyeSlashIcon}
+            onClick={() => toggleDismiss(!feedback.dismissed)}
+            disabled={isDismissing}
+            tooltip={`Mark feedback as ${feedback.dismissed ? "seen" : "unseen"}`}
           />
-        )
+          {conversationUrl && (
+            <CardActionButton
+              size="mini"
+              icon={ExternalLinkIcon}
+              href={conversationUrl ?? ""}
+              disabled={!conversationUrl}
+              tooltip="View conversation"
+              target="_blank"
+            />
+          )}
+        </div>
       }
     >
       <div className="flex flex-shrink-0 items-center gap-3 px-4 py-3">
@@ -299,6 +312,7 @@ function FeedbackCard({ owner, feedback, className }: FeedbackCardProps) {
           size="sm"
           visual={feedback.userImageUrl}
           name={feedback.userName}
+          isRounded
         />
         <div className="flex flex-col">
           <div className="font-semibold">{feedback.userName}</div>

@@ -188,12 +188,23 @@ async function handler(
               dataSourceConfig.dataSourceId
             );
             if (dataSource) {
-              await DataSourceViewResource.createViewInSpaceFromDataSource(
-                space,
-                dataSource,
-                dataSourceConfig.parentsIn,
-                auth.user()
-              );
+              const dataSourceViewRes =
+                await DataSourceViewResource.createViewInSpaceFromDataSource(
+                  auth,
+                  space,
+                  dataSource,
+                  dataSourceConfig.parentsIn
+                );
+
+              if (dataSourceViewRes.isErr()) {
+                return apiError(req, res, {
+                  status_code: 403,
+                  api_error: {
+                    type: "data_source_auth_error",
+                    message: dataSourceViewRes.error.message,
+                  },
+                });
+              }
             }
           }
         }

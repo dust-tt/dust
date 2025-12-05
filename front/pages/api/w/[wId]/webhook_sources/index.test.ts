@@ -1,6 +1,7 @@
 import type { RequestMethod } from "node-mocks-http";
 import { describe, expect, it } from "vitest";
 
+import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WebhookSourceFactory } from "@app/tests/utils/WebhookSourceFactory";
@@ -75,9 +76,8 @@ describe("POST /api/w/[wId]/webhook_sources/", () => {
       secret: providedSecret,
       signatureHeader: "X-Signature",
       signatureAlgorithm: "sha256",
-      customHeaders: null,
       includeGlobal: true,
-      kind: "custom",
+      provider: null,
       subscribedEvents: [],
     };
 
@@ -102,9 +102,8 @@ describe("POST /api/w/[wId]/webhook_sources/", () => {
       secret,
       signatureHeader: "X-Signature",
       signatureAlgorithm: "sha256",
-      customHeaders: null,
       includeGlobal: true,
-      kind: "custom",
+      provider: null,
       subscribedEvents: [],
     };
 
@@ -126,9 +125,8 @@ describe("POST /api/w/[wId]/webhook_sources/", () => {
       secret: "pr-secret-456",
       signatureHeader: "X-Hub-Signature-256",
       signatureAlgorithm: "sha256",
-      customHeaders: null,
       includeGlobal: true,
-      kind: "github",
+      provider: "github",
       subscribedEvents: ["pull_request"],
     };
 
@@ -137,7 +135,7 @@ describe("POST /api/w/[wId]/webhook_sources/", () => {
     expect(res._getStatusCode()).toBe(201);
     const data = res._getJSONData();
     expect(data.success).toBe(true);
-    expect(data.webhookSource.kind).toBe("github");
+    expect(data.webhookSource.provider).toBe("github");
     expect(data.webhookSource.subscribedEvents).toEqual(["pull_request"]);
     expect(data.webhookSource.name).toBe("GitHub PR Webhook");
   });
@@ -150,9 +148,8 @@ describe("POST /api/w/[wId]/webhook_sources/", () => {
       secret: "test-secret",
       signatureHeader: "X-Hub-Signature-256",
       signatureAlgorithm: "sha256",
-      customHeaders: null,
       includeGlobal: true,
-      kind: "github",
+      provider: "github",
       subscribedEvents: [],
     };
 
@@ -163,5 +160,44 @@ describe("POST /api/w/[wId]/webhook_sources/", () => {
     expect(data.error).toBeDefined();
     expect(data.error.type).toBe("invalid_request_error");
     expect(data.error.message).toContain("Subscribed events must not be empty");
+  });
+
+  it("should create webhook source with description and retrieve it in system space view", async () => {
+    // Create webhook source with description
+    const {
+      req: postReq,
+      res: postRes,
+      authenticator,
+    } = await setupTest("admin", "POST");
+
+    const testDescription = "This is a test webhook for monitoring events";
+
+    postReq.body = {
+      name: "Webhook With Description",
+      secret: "test-secret-789",
+      signatureHeader: "X-Signature",
+      signatureAlgorithm: "sha256",
+      includeGlobal: true,
+      provider: null,
+      subscribedEvents: [],
+      description: testDescription,
+    };
+
+    await handler(postReq, postRes);
+
+    expect(postRes._getStatusCode()).toBe(201);
+    const postData = postRes._getJSONData();
+    expect(postData.success).toBe(true);
+    expect(postData.webhookSource).toBeDefined();
+    expect(postData.webhookSource.name).toBe("Webhook With Description");
+
+    const systemView =
+      await WebhookSourcesViewResource.getWebhookSourceViewForSystemSpace(
+        authenticator,
+        postData.webhookSource.sId
+      );
+    expect(systemView).not.toBeNull();
+    // eslint-disable-next-line no-unused-expressions
+    systemView && expect(systemView.description).toBe(testDescription);
   });
 });

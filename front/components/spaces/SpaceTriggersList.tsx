@@ -83,9 +83,7 @@ export const SpaceTriggersList = ({ owner, space }: SpaceActionsListProps) => {
       webhookSourceViews.map((webhookSourceView) => {
         return {
           id: webhookSourceView.sId,
-          name:
-            webhookSourceView.customName ??
-            webhookSourceView.webhookSource.name,
+          name: webhookSourceView.customName,
           description: webhookSourceView.description ?? "",
           avatar: (
             <WebhookSourceViewIcon webhookSourceView={webhookSourceView} />

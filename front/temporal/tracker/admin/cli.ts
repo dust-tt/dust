@@ -12,8 +12,6 @@ const main = async () => {
 
   const [command] = argv._;
 
-  console.log(`Running command: ${command}`);
-
   const workspaceId = argv.workspaceId;
   const trackerId = argv.trackerId;
 

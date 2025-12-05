@@ -28,8 +28,7 @@ import {
   IntercomWorkspaceModel,
 } from "@connectors/lib/models/intercom";
 import logger from "@connectors/logger/logger";
-import type { ModelId } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
+import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 const turndownService = new TurndownService();

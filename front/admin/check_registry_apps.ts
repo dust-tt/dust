@@ -1,3 +1,4 @@
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { DustAPI } from "@dust-tt/client";
 
 import config from "@app/lib/api/config";

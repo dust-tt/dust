@@ -171,7 +171,7 @@ export async function getContentNodesForDataSourceView(
   // In any case, there is a data_source_view filter, which is always applied.
   const node_ids =
     internalIds ??
-    (parentId ? undefined : dataSourceView.parentsIn ?? undefined);
+    (parentId ? undefined : (dataSourceView.parentsIn ?? undefined));
   const parent_id =
     parentId ??
     (internalIds

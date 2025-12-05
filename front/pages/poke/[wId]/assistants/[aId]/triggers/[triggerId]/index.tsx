@@ -2,14 +2,14 @@ import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
 import { ConversationDataTable } from "@app/components/poke/conversation/table";
+import { PluginList } from "@app/components/poke/plugins/PluginList";
 import PokeLayout from "@app/components/poke/PokeLayout";
+import { PokeRecentWebhookRequests } from "@app/components/poke/triggers/RecentWebhookRequests";
 import { ViewTriggerTable } from "@app/components/poke/triggers/view";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type {
-  ConversationWithoutContentType,
   LightAgentConfigurationType,
   LightWorkspaceType,
   WorkspaceType,
@@ -20,10 +20,10 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   trigger: TriggerType;
   agent: LightAgentConfigurationType;
   owner: LightWorkspaceType;
-  conversations: ConversationWithoutContentType[];
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const { aId, triggerId } = context.params || {};
   if (typeof aId !== "string" || typeof triggerId !== "string") {
     return {
@@ -48,17 +48,11 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     };
   }
 
-  const conversations = await ConversationResource.listConversationsForTrigger(
-    auth,
-    triggerId
-  );
-
   return {
     props: {
       trigger: trigger.toJSON(),
       agent: agentConfiguration,
       owner,
-      conversations,
     },
   };
 });
@@ -67,16 +61,44 @@ export default function TriggerPage({
   trigger,
   agent,
   owner,
-  conversations,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
-    <div className="flex flex-col gap-y-6">
-      <ViewTriggerTable trigger={trigger} agent={agent} owner={owner} />
-      <div className="border-t border-gray-200 pt-6">
-        <h2 className="mb-4 text-lg font-semibold">Conversations</h2>
-        <ConversationDataTable owner={owner} conversations={conversations} />
+    <>
+      <h3 className="text-xl font-bold">
+        Trigger {trigger.name} on agent {agent.name}{" "}
+        <a href={`/poke/${owner.sId}`} className="text-highlight-500">
+          {owner.name}
+        </a>
+      </h3>
+      <div className="flex flex-row gap-x-6">
+        <ViewTriggerTable trigger={trigger} agent={agent} owner={owner} />
+        <div className="mt-4 flex grow flex-col">
+          <PluginList
+            pluginResourceTarget={{
+              resourceType: "triggers",
+              resourceId: trigger.sId,
+              workspace: owner,
+            }}
+          />
+          {trigger.kind === "webhook" && (
+            <PokeRecentWebhookRequests owner={owner} trigger={trigger} />
+          )}
+          {trigger.customPrompt && (
+            <div className="border-material-200 my-4 flex min-h-24 flex-col rounded-lg border bg-muted-background dark:bg-muted-background-night">
+              <div className="flex justify-between gap-3 rounded-t-lg bg-primary-300 p-4 dark:bg-primary-300-night">
+                <h2 className="text-md font-bold">Custom Prompt</h2>
+              </div>
+              <div className="flex flex-grow flex-col justify-center p-4">
+                <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                  {trigger.customPrompt}
+                </p>
+              </div>
+            </div>
+          )}
+          <ConversationDataTable owner={owner} trigger={trigger} />
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -90,7 +112,6 @@ TriggerPage.getLayout = (
     owner: WorkspaceType;
     agent: LightAgentConfigurationType;
     trigger: TriggerType;
-    conversations: ConversationWithoutContentType[];
   }
 ) => {
   return (

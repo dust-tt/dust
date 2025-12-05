@@ -26,6 +26,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useDustAppSecrets } from "@app/lib/swr/apps";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   DustAppSecretType,
   SubscriptionType,
@@ -69,6 +70,8 @@ export default function SecretsPage({
   const [isNewSecretPromptOpen, setIsNewSecretPromptOpen] = useState(false);
   const [isInputNameDisabled, setIsInputNameDisabled] = useState(false);
   const sendNotification = useSendNotification();
+
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
 
   const { secrets } = useDustAppSecrets(owner);
 
@@ -176,7 +179,7 @@ export default function SecretsPage({
         <DialogContent size="lg">
           <DialogHeader>
             <DialogTitle>
-              {isInputNameDisabled ? "Update" : "New"} Dust App Secret
+              {isInputNameDisabled ? "Update" : "New"} Developer Secret
             </DialogTitle>
           </DialogHeader>
           <DialogContainer>
@@ -194,6 +197,8 @@ export default function SecretsPage({
               }
             />
             <Input
+              // prevent autocompletion of secrets
+              autoComplete="off"
               message="Secret values are encrypted and stored securely in our database."
               name="Secret value"
               placeholder="Type the secret value"
@@ -225,13 +230,17 @@ export default function SecretsPage({
       <AppCenteredLayout
         subscription={subscription}
         owner={owner}
-        subNavigation={subNavigationAdmin({ owner, current: "dev_secrets" })}
+        subNavigation={subNavigationAdmin({
+          owner,
+          current: "dev_secrets",
+          featureFlags,
+        })}
       >
         <Page.Vertical gap="xl" align="stretch">
           <Page.Header
             title="Developer Secrets"
             icon={BracesIcon}
-            description="Secrets usable in Dust apps to avoid showing sensitive data in blocks definitions."
+            description="Secrets usable in Dust apps or MCP servers to safely store sensitive data."
           />{" "}
           <Page.Vertical align="stretch" gap="md">
             <Page.Horizontal align="stretch">

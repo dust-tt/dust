@@ -1,5 +1,4 @@
 import type { Node as ProseMirrorNode, Schema } from "@tiptap/pm/model";
-import type { NodeType } from "@tiptap/pm/model";
 import type { JSONContent } from "@tiptap/react";
 
 /**
@@ -56,17 +55,6 @@ export function parseInstructionBlockMatches(
   }
 
   return matches;
-}
-
-/**
- * Convert text content to paragraph JSONContent nodes
- */
-export function textToParagraphNodes(content: string): JSONContent[] {
-  const lines = content.split("\n");
-  return lines.map((line) => ({
-    type: "paragraph",
-    content: line.trim() ? [{ type: "text", text: line.trim() }] : [],
-  }));
 }
 
 /**
@@ -133,23 +121,6 @@ export function textToBlockNodes(content: string): JSONContent[] {
   }
 
   return nodes;
-}
-
-/**
- * Convert text content to ProseMirror paragraph nodes
- */
-export function textToProseMirrorParagraphs(
-  content: string,
-  schema: Schema
-): ProseMirrorNode[] {
-  const lines = content.split("\n");
-  return lines.map((line) => {
-    const trimmedLine = line.trim();
-    return schema.nodes.paragraph.create(
-      {},
-      trimmedLine ? [schema.text(trimmedLine)] : []
-    );
-  });
 }
 
 /**
@@ -295,27 +266,6 @@ function extractLanguageFromInfo(info?: string): string {
   }
   const [language] = trimmed.split(/\s+/);
   return language || "";
-}
-
-/**
- * Create ProseMirror instruction block node
- */
-export function createProseMirrorInstructionBlock(
-  type: string,
-  content: string,
-  nodeType: NodeType,
-  schema: Schema
-): ProseMirrorNode {
-  const blocks = textToProseMirrorBlocks(content, schema);
-
-  // Add opening and closing tags as paragraphs
-  const blockContent = [
-    schema.nodes.paragraph.create({}, [schema.text(`<${type}>`)]),
-    ...(blocks.length > 0 ? blocks : [schema.nodes.paragraph.create()]),
-    schema.nodes.paragraph.create({}, [schema.text(`</${type}>`)]),
-  ];
-
-  return nodeType.create({ type }, blockContent);
 }
 
 /**

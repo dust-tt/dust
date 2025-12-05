@@ -1,19 +1,37 @@
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import type { WorkflowHandle } from "@temporalio/client";
-import { WorkflowNotFoundError } from "@temporalio/client";
+import {
+  ScheduleOverlapPolicy,
+  WorkflowNotFoundError,
+} from "@temporalio/client";
 
 import { QUEUE_NAME } from "@connectors/connectors/intercom/temporal/config";
 import type { IntercomUpdateSignal } from "@connectors/connectors/intercom/temporal/signals";
 import { intercomUpdatesSignal } from "@connectors/connectors/intercom/temporal/signals";
-import { intercomSyncWorkflow } from "@connectors/connectors/intercom/temporal/workflows";
+import {
+  intercomConversationSyncWorkflow,
+  intercomFullSyncWorkflow,
+  intercomHelpCenterSyncWorkflow,
+} from "@connectors/connectors/intercom/temporal/workflows";
 import { getTemporalClient } from "@connectors/lib/temporal";
+import {
+  createSchedule,
+  deleteSchedule,
+  pauseSchedule,
+  unpauseAndTriggerSchedule,
+} from "@connectors/lib/temporal_schedules";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
-import { getIntercomSyncWorkflowId, normalizeError } from "@connectors/types";
+import {
+  getIntercomFullSyncWorkflowId,
+  makeIntercomConversationScheduleId,
+  makeIntercomHelpCenterScheduleId,
+  normalizeError,
+} from "@connectors/types";
 
-export async function launchIntercomSyncWorkflow({
+export async function launchIntercomFullSyncWorkflow({
   connectorId,
   fromTs = null,
   helpCenterIds = [],
@@ -40,7 +58,7 @@ export async function launchIntercomSyncWorkflow({
     );
   }
 
-  const workflowId = getIntercomSyncWorkflowId(connectorId);
+  const workflowId = getIntercomFullSyncWorkflowId(connector);
   const signaledHelpCenterIds: IntercomUpdateSignal[] = helpCenterIds.map(
     (helpCenterId) => ({
       type: "help_center",
@@ -69,9 +87,8 @@ export async function launchIntercomSyncWorkflow({
     ...signaledHasUpdatedSelectAllConvos,
   ];
 
-  // When the workflow is inactive, we omit passing helpCenterIds as they are only used to signal modifications within a currently active full sync workflow.
   try {
-    await client.workflow.signalWithStart(intercomSyncWorkflow, {
+    await client.workflow.signalWithStart(intercomFullSyncWorkflow, {
       args: [{ connectorId: connector.id }],
       taskQueue: QUEUE_NAME,
       workflowId,
@@ -83,7 +100,6 @@ export async function launchIntercomSyncWorkflow({
       memo: {
         connectorId,
       },
-      cronSchedule: "30 * * * *", // Every hour, at 30 of the hour.
     });
   } catch (err) {
     return new Err(normalizeError(err));
@@ -92,38 +108,160 @@ export async function launchIntercomSyncWorkflow({
   return new Ok(workflowId);
 }
 
-export async function stopIntercomSyncWorkflow(
-  connectorId: ModelId
+export async function stopIntercomSchedulesAndWorkflows(
+  connector: ConnectorResource
 ): Promise<Result<void, Error>> {
-  const client = await getTemporalClient();
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    throw new Error(
-      `[Intercom] Connector not found. ConnectorId: ${connectorId}`
-    );
+  const helpCenterResult = await pauseSchedule({
+    scheduleId: makeIntercomHelpCenterScheduleId(connector),
+    connector,
+  });
+
+  if (helpCenterResult.isErr()) {
+    return helpCenterResult;
   }
 
-  const workflowId = getIntercomSyncWorkflowId(connectorId);
+  const conversationResult = await pauseSchedule({
+    scheduleId: makeIntercomConversationScheduleId(connector),
+    connector,
+  });
+
+  if (conversationResult.isErr()) {
+    return conversationResult;
+  }
+
+  const client = await getTemporalClient();
+  const workflowId = getIntercomFullSyncWorkflowId(connector);
 
   try {
-    const handle: WorkflowHandle<typeof intercomSyncWorkflow> =
+    const handle: WorkflowHandle<typeof intercomFullSyncWorkflow> =
       client.workflow.getHandle(workflowId);
-    try {
-      await handle.terminate();
-    } catch (e) {
-      if (!(e instanceof WorkflowNotFoundError)) {
-        throw e;
-      }
+    await handle.terminate();
+  } catch (error) {
+    if (!(error instanceof WorkflowNotFoundError)) {
+      logger.error(
+        {
+          workflowId,
+          error,
+        },
+        "[Intercom] Failed to stop full sync workflow."
+      );
+      return new Err(normalizeError(error));
     }
-    return new Ok(undefined);
-  } catch (e) {
-    logger.error(
-      {
-        workflowId,
-        error: e,
-      },
-      "[Intercom] Failed stopping workflow."
-    );
-    return new Err(normalizeError(e));
   }
+
+  return new Ok(undefined);
+}
+
+export async function launchIntercomSchedules(
+  connector: ConnectorResource
+): Promise<Result<void, Error>> {
+  const helpCenterResult = await createSchedule({
+    connector,
+    action: {
+      type: "startWorkflow",
+      workflowType: intercomHelpCenterSyncWorkflow,
+      args: [
+        {
+          connectorId: connector.id,
+        },
+      ],
+      taskQueue: QUEUE_NAME,
+    },
+    scheduleId: makeIntercomHelpCenterScheduleId(connector),
+    policies: {
+      catchupWindow: "1 day",
+      overlap: ScheduleOverlapPolicy.BUFFER_ONE,
+    },
+    spec: {
+      intervals: [
+        {
+          every: "1 day",
+        },
+      ],
+    },
+  });
+
+  if (helpCenterResult.isErr()) {
+    return helpCenterResult;
+  }
+
+  const conversationResult = await createSchedule({
+    connector,
+    action: {
+      type: "startWorkflow",
+      workflowType: intercomConversationSyncWorkflow,
+      args: [
+        {
+          connectorId: connector.id,
+        },
+      ],
+      taskQueue: QUEUE_NAME,
+    },
+    scheduleId: makeIntercomConversationScheduleId(connector),
+    policies: {
+      catchupWindow: "1 day",
+      overlap: ScheduleOverlapPolicy.BUFFER_ONE,
+    },
+    spec: {
+      intervals: [
+        {
+          every: "20 minutes",
+        },
+      ],
+    },
+  });
+
+  if (conversationResult.isErr()) {
+    return conversationResult;
+  }
+
+  return new Ok(undefined);
+}
+
+export async function unpauseIntercomSchedules(
+  connector: ConnectorResource
+): Promise<Result<void, Error>> {
+  const helpCenterResult = await unpauseAndTriggerSchedule({
+    scheduleId: makeIntercomHelpCenterScheduleId(connector),
+    connector,
+  });
+  if (helpCenterResult.isErr()) {
+    return helpCenterResult;
+  }
+
+  const conversationResult = await unpauseAndTriggerSchedule({
+    scheduleId: makeIntercomConversationScheduleId(connector),
+    connector,
+  });
+  if (conversationResult.isErr()) {
+    return conversationResult;
+  }
+
+  return new Ok(undefined);
+}
+
+export async function deleteIntercomSchedules(
+  connector: ConnectorResource
+): Promise<Result<void, Error>> {
+  await stopIntercomSchedulesAndWorkflows(connector);
+
+  const helpCenterResult = await deleteSchedule({
+    scheduleId: makeIntercomHelpCenterScheduleId(connector),
+    connector,
+  });
+
+  if (helpCenterResult.isErr()) {
+    return helpCenterResult;
+  }
+
+  const conversationResult = await deleteSchedule({
+    scheduleId: makeIntercomConversationScheduleId(connector),
+    connector,
+  });
+
+  if (conversationResult.isErr()) {
+    return conversationResult;
+  }
+
+  return new Ok(undefined);
 }

@@ -6,12 +6,9 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { MAX_RESOURCE_CONTENT_SIZE } from "@app/lib/actions/action_output_limits";
 import {
   isBlobResource,
-  isIncludeQueryResourceType,
   isRunAgentQueryResourceType,
-  isSearchQueryResourceType,
   isToolGeneratedFile,
   isToolMarkerResourceType,
-  isWebsearchQueryResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   getAttachmentFromToolOutput,
@@ -22,7 +19,7 @@ import {
   uploadBase64ImageToFileStorage,
 } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
+import type { AgentMCPActionOutputItem } from "@app/lib/models/agent/actions/mcp";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import type {
@@ -93,8 +90,10 @@ export function rewriteContentForModel(
     const xml = renderAttachmentXml({ attachment });
     let text = content.resource.text;
     if (text) {
+      // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
       text += `\n`;
     }
+    // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
     text += xml;
     return {
       type: "text",
@@ -104,9 +103,6 @@ export function rewriteContentForModel(
 
   if (
     isToolMarkerResourceType(content) ||
-    isSearchQueryResourceType(content) ||
-    isIncludeQueryResourceType(content) ||
-    isWebsearchQueryResourceType(content) ||
     isRunAgentQueryResourceType(content)
   ) {
     return null;

@@ -1,31 +1,34 @@
-import * as t from "io-ts";
+import { z } from "zod";
 
 // Auto-read patterns.
 
-const SlackAutoReadPatternSchema = t.type({
-  pattern: t.string,
-  spaceId: t.string,
+const SlackAutoReadPatternSchema = z.object({
+  pattern: z.string(),
+  spaceId: z.string(),
 });
-export const SlackAutoReadPatternsSchema = t.array(SlackAutoReadPatternSchema);
+export const SlackAutoReadPatternsSchema = z.array(SlackAutoReadPatternSchema);
 
-export type SlackAutoReadPattern = t.TypeOf<typeof SlackAutoReadPatternSchema>;
+export type SlackAutoReadPattern = z.infer<typeof SlackAutoReadPatternSchema>;
 
 export function isSlackAutoReadPatterns(
   v: unknown[]
 ): v is SlackAutoReadPattern[] {
-  return SlackAutoReadPatternsSchema.is(v);
+  const result = SlackAutoReadPatternsSchema.safeParse(v);
+  return result.success;
 }
 
 // Configuration.
 
-export const SlackConfigurationTypeSchema = t.type({
-  botEnabled: t.boolean,
-  whitelistedDomains: t.union([t.array(t.string), t.undefined]),
+export const SlackConfigurationTypeSchema = z.object({
+  botEnabled: z.boolean(),
+  whitelistedDomains: z.array(z.string()).optional(),
   autoReadChannelPatterns: SlackAutoReadPatternsSchema,
-  restrictedSpaceAgentsEnabled: t.union([t.boolean, t.undefined]),
+  restrictedSpaceAgentsEnabled: z.boolean().optional(),
+  feedbackVisibleToAuthorOnly: z.boolean().optional(),
+  privateIntegrationCredentialId: z.string().optional(),
 });
 
-export type SlackConfigurationType = t.TypeOf<
+export type SlackConfigurationType = z.infer<
   typeof SlackConfigurationTypeSchema
 >;
 

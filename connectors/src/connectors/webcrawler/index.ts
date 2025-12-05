@@ -136,7 +136,14 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
         await getFirecrawl().cancelCrawl(webConfig.crawlId);
       } catch (error) {
         // If we don't find the job, we might just have an expired ID, so it's safe to continue.
-        if (!(error instanceof FirecrawlError) || error.statusCode !== 404) {
+        // Firecrawl error handling is busted, as when it's not found it returns the message:
+        // "Unexpected error occurred while trying to cancel crawl job. Status code: 404"
+        // but it sets the statusCode to 500 instead of 404. So we need to check both...
+        if (
+          !(error instanceof FirecrawlError) ||
+          (error.statusCode !== 404 &&
+            !error.message.includes("Status code: 404"))
+        ) {
           return new Err(
             new Error(
               `Error cancelling crawl on Firecrawl: ${normalizeError(error)}`

@@ -11,8 +11,21 @@ import {
 import { useEffect, useState } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
+import {
+  makeQueryTextForDataSourceSearch,
+  makeQueryTextForFind,
+  makeQueryTextForInclude,
+  makeQueryTextForList,
+} from "@app/components/actions/mcp/details/input_rendering";
 import { MCPAgentManagementActionDetails } from "@app/components/actions/mcp/details/MCPAgentManagementActionDetails";
+import {
+  MCPAgentMemoryEditActionDetails,
+  MCPAgentMemoryEraseActionDetails,
+  MCPAgentMemoryRecordActionDetails,
+  MCPAgentMemoryRetrieveActionDetails,
+} from "@app/components/actions/mcp/details/MCPAgentMemoryActionDetails";
 import { MCPBrowseActionDetails } from "@app/components/actions/mcp/details/MCPBrowseActionDetails";
+import { MCPConversationCatFileDetails } from "@app/components/actions/mcp/details/MCPConversationFilesActionDetails";
 import {
   DataSourceNodeContentDetails,
   FilesystemPathDetails,
@@ -26,8 +39,10 @@ import { MCPReasoningActionDetails } from "@app/components/actions/mcp/details/M
 import { MCPRunAgentActionDetails } from "@app/components/actions/mcp/details/MCPRunAgentActionDetails";
 import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details/MCPTablesQueryActionDetails";
 import { SearchResultDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
+import { MCPToolsetsEnableActionDetails } from "@app/components/actions/mcp/details/MCPToolsetsEnableActionDetails";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import { InternalActionIcons } from "@app/components/resources/resources_icons";
+import { DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME } from "@app/lib/actions/constants";
 import {
   DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME,
   DATA_WAREHOUSES_FIND_TOOL_NAME,
@@ -41,6 +56,7 @@ import {
   GET_DATABASE_SCHEMA_TOOL_NAME,
   getInternalMCPServerIconByName,
   INCLUDE_TOOL_NAME,
+  INTERNAL_SERVERS_WITH_WEBSEARCH,
   isInternalMCPServerOfName,
   PROCESS_TOOL_NAME,
   SEARCH_TOOL_NAME,
@@ -54,16 +70,17 @@ import {
   isResourceContentWithText,
   isTextContent,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { makeQueryResource } from "@app/lib/actions/mcp_internal_actions/rendering";
+import {
+  isDataSourceFilesystemFindInputType,
+  isDataSourceFilesystemListInputType,
+  isIncludeInputType,
+  isSearchInputType,
+  isWebsearchInputType,
+} from "@app/lib/actions/mcp_internal_actions/types";
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 import { isValidJSON } from "@app/lib/utils/json";
 import type { LightWorkspaceType } from "@app/types";
-import {
-  asDisplayName,
-  isString,
-  isSupportedImageContentType,
-  parseTimeFrame,
-} from "@app/types";
+import { asDisplayName, isSupportedImageContentType } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 
 export interface MCPActionDetailsProps {
@@ -99,6 +116,7 @@ export function MCPActionDetails({
       };
 
       if (baseOutput === null) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setOutput([deniedMessage]);
       } else {
         setOutput([...baseOutput, deniedMessage]);
@@ -124,26 +142,20 @@ export function MCPActionDetails({
     isInternalMCPServerOfName(mcpServerId, "search") ||
     isInternalMCPServerOfName(mcpServerId, "data_sources_file_system")
   ) {
-    if (toolName === SEARCH_TOOL_NAME && isString(params.relativeTimeFrame)) {
-      const timeFrame = parseTimeFrame(params.relativeTimeFrame);
-      // TODO: remove these typecasts
-      const queryResource = makeQueryResource({
-        query: params.query as string,
-        timeFrame: timeFrame,
-        tagsIn: params.tagsIn as string[],
-        tagsNot: params.tagsNot as string[],
-        nodeIds: params.nodeIds as string[],
-      });
-
+    if (toolName === SEARCH_TOOL_NAME) {
       return (
         <SearchResultDetails
           viewType={viewType}
-          defaultQuery={queryResource.text}
           actionName={
             viewType === "conversation" ? "Searching data" : "Search data"
           }
           actionOutput={output}
           visual={MagnifyingGlassIcon}
+          query={
+            isSearchInputType(params)
+              ? makeQueryTextForDataSourceSearch(params)
+              : null
+          }
         />
       );
     }
@@ -161,6 +173,13 @@ export function MCPActionDetails({
               : "Browse data sources"
           }
           actionOutput={output}
+          query={
+            isDataSourceFilesystemFindInputType(params)
+              ? makeQueryTextForFind(params)
+              : isDataSourceFilesystemListInputType(params)
+                ? makeQueryTextForList(params)
+                : null
+          }
           visual={ActionDocumentTextIcon}
         />
       );
@@ -185,17 +204,24 @@ export function MCPActionDetails({
           }
           actionOutput={output}
           visual={ClockIcon}
+          query={
+            isIncludeInputType(params) ? makeQueryTextForInclude(params) : null
+          }
         />
       );
     }
   }
 
-  if (isInternalMCPServerOfName(mcpServerId, "web_search_&_browse")) {
+  if (
+    INTERNAL_SERVERS_WITH_WEBSEARCH.some((n) =>
+      isInternalMCPServerOfName(mcpServerId, n)
+    )
+  ) {
     if (toolName === WEBSEARCH_TOOL_NAME) {
       return (
         <SearchResultDetails
           viewType={viewType}
-          defaultQuery={params.query as string}
+          query={isWebsearchInputType(params) ? params.query : null}
           actionName={
             viewType === "conversation" ? "Searching the web" : "Web search"
           }
@@ -236,7 +262,31 @@ export function MCPActionDetails({
     return <MCPDeepDiveActionDetails {...toolOutputDetailsProps} />;
   }
 
+  if (isInternalMCPServerOfName(mcpServerId, "agent_memory")) {
+    if (toolName === "retrieve") {
+      return (
+        <MCPAgentMemoryRetrieveActionDetails {...toolOutputDetailsProps} />
+      );
+    }
+    if (toolName === "record_entries") {
+      return <MCPAgentMemoryRecordActionDetails {...toolOutputDetailsProps} />;
+    }
+    if (toolName === "erase_entries") {
+      return <MCPAgentMemoryEraseActionDetails {...toolOutputDetailsProps} />;
+    }
+    if (toolName === "edit_entries" || toolName === "compact_memory") {
+      return (
+        <MCPAgentMemoryEditActionDetails
+          {...toolOutputDetailsProps}
+          toolName={toolName}
+        />
+      );
+    }
+  }
   if (isInternalMCPServerOfName(mcpServerId, "toolsets")) {
+    if (toolName === "enable") {
+      return <MCPToolsetsEnableActionDetails {...toolOutputDetailsProps} />;
+    }
     return <MCPListToolsActionDetails {...toolOutputDetailsProps} />;
   }
 
@@ -257,6 +307,12 @@ export function MCPActionDetails({
     }
     if (toolName === DATA_WAREHOUSES_QUERY_TOOL_NAME) {
       return <MCPTablesQueryActionDetails {...toolOutputDetailsProps} />;
+    }
+  }
+
+  if (isInternalMCPServerOfName(mcpServerId, "conversation_files")) {
+    if (toolName === DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME) {
+      return <MCPConversationCatFileDetails {...toolOutputDetailsProps} />;
     }
   }
 
@@ -301,12 +357,26 @@ export function GenericActionDetails({
     >
       {viewType !== "conversation" && (
         <div className="dd-privacy-mask flex flex-col gap-4 py-4 pl-6">
-          <span className="heading-base">Inputs</span>
-          <RenderToolItemMarkdown text={inputs} type="input" />
+          <CollapsibleComponent
+            rootProps={{ defaultOpen: false }}
+            triggerChildren={
+              <div
+                className={cn(
+                  "text-foreground dark:text-foreground-night",
+                  "flex flex-row items-center gap-x-2"
+                )}
+              >
+                <span className="heading-base">Inputs</span>
+              </div>
+            }
+            contentChildren={
+              <RenderToolItemMarkdown text={inputs} type="input" />
+            }
+          />
 
           {action.output && (
             <CollapsibleComponent
-              rootProps={{ defaultOpen: !action.generatedFiles.length }}
+              rootProps={{ defaultOpen: false }}
               triggerChildren={
                 <div
                   className={cn(
@@ -381,6 +451,7 @@ const RenderToolItemMarkdown = ({
   text: string | null;
   type: "input" | "output";
 }) => {
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!text) {
     text =
       type === "input"

@@ -1,6 +1,7 @@
 import {
   BoltIcon,
   Button,
+  Chip,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -11,19 +12,32 @@ import {
   LoadingBlock,
   ToolsIcon,
 } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
+import { CreateMCPServerDialog } from "@app/components/actions/mcp/CreateMCPServerSheet";
 import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
+  mcpServersSortingFn,
   mcpServerViewSortingFn,
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
+import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
+import { getDefaultRemoteMCPServerByName } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_servers";
+import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
+import {
+  useAvailableMCPServers,
+  useMCPServerViewsFromSpaces,
+} from "@app/lib/swr/mcp_servers";
 import { useSpaces } from "@app/lib/swr/spaces";
+import {
+  trackEvent,
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+} from "@app/lib/tracking";
 import type { WorkspaceType } from "@app/types";
+import { asDisplayName } from "@app/types";
 
 function ToolsPickerLoading({ count = 5 }: { count?: number }) {
   return (
@@ -64,23 +78,66 @@ export function ToolsPicker({
 }: ToolsPickerProps) {
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+  const [setupSheetServer, setSetupSheetServer] =
+    useState<MCPServerType | null>(null);
+  const [setupSheetRemoteServerConfig, setSetupSheetRemoteServerConfig] =
+    useState<DefaultRemoteMCPServerConfig | null>(null);
+  const [isSettingUpServer, setIsSettingUpServer] = useState(false);
+  const [pendingServerToAdd, setPendingServerToAdd] =
+    useState<MCPServerType | null>(null);
 
-  const { spaces } = useSpaces({ workspaceId: owner.sId, disabled: !isOpen });
+  const shouldFetchToolsData =
+    isOpen || isSettingUpServer || !!pendingServerToAdd;
+
+  const { spaces } = useSpaces({
+    workspaceId: owner.sId,
+    disabled: !shouldFetchToolsData,
+  });
   const globalSpaces = useMemo(
     () => spaces.filter((s) => s.kind === "global"),
     [spaces]
   );
-  const { serverViews, isLoading: isServerViewsLoading } =
-    useMCPServerViewsFromSpaces(
-      owner,
-      globalSpaces,
-      { disabled: !isOpen } // We don't want to fetch the server views when the picker is closed.
-    );
+
+  const isAdmin = owner.role === "admin";
+
+  const {
+    serverViews,
+    isLoading: isServerViewsLoading,
+    mutateServerViews,
+  } = useMCPServerViewsFromSpaces(owner, globalSpaces, {
+    disabled: !shouldFetchToolsData,
+  });
 
   const selectedMCPServerViewIds = useMemo(
     () => selectedMCPServerViews.map((v) => v.sId),
     [selectedMCPServerViews]
   );
+
+  // Fallback: add server to conversation when it appears in serverViews.
+  useEffect(() => {
+    if (pendingServerToAdd) {
+      const newServerView = serverViews.find(
+        (v) => v.server.name === pendingServerToAdd.name
+      );
+
+      if (newServerView) {
+        trackEvent({
+          area: TRACKING_AREAS.TOOLS,
+          object: "tool_select",
+          action: TRACKING_ACTIONS.SELECT,
+          extra: {
+            tool_id: newServerView.sId,
+            tool_name: newServerView.server.name,
+            from_setup: true,
+          },
+        });
+        onSelect(newServerView);
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setPendingServerToAdd(null);
+        setIsSettingUpServer(false);
+      }
+    }
+  }, [serverViews, pendingServerToAdd, onSelect]);
 
   const { filteredServerViews, filteredServerViewsUnselected } = useMemo(() => {
     const filteredServerViews = serverViews.filter(
@@ -96,67 +153,140 @@ export function ToolsPicker({
     );
 
     return {
-      filteredServerViews,
-      filteredServerViewsUnselected: filteredServerViews.filter(
-        (v) => !selectedMCPServerViewIds.includes(v.sId)
-      ),
+      filteredServerViews: filteredServerViews,
+      filteredServerViewsUnselected: filteredServerViews
+        .filter((v) => !selectedMCPServerViewIds.includes(v.sId))
+        .sort(mcpServerViewSortingFn),
     };
   }, [serverViews, searchText, selectedMCPServerViewIds]);
 
+  const { availableMCPServers, isAvailableMCPServersLoading } =
+    useAvailableMCPServers({
+      owner,
+      disabled: !shouldFetchToolsData,
+    });
+
+  const isDataReady = !isServerViewsLoading && !isAvailableMCPServersLoading;
+
+  // - We compare by name, not sId, because names are shared between multiple instances of the same MCP server (sIds are not).
+  // - We filter by manual availability to show only servers that need install step, and by search text if present.
+  // - We don't compute uninstalled servers until BOTH data sources have loaded to prevent flicker.
+  const filteredUninstalledServers = useMemo(() => {
+    if (!isAdmin || !isDataReady || !shouldFetchToolsData) {
+      return [];
+    }
+
+    const installedServerNames = new Set(serverViews.map((v) => v.server.name));
+    const uninstalled = availableMCPServers.filter(
+      (server) =>
+        !installedServerNames.has(server.name) &&
+        server.availability === "manual"
+    );
+
+    if (searchText.length === 0) {
+      return uninstalled;
+    }
+
+    return uninstalled
+      .filter(
+        (server) =>
+          asDisplayName(server.name)
+            .toLowerCase()
+            .includes(searchText.toLowerCase()) ||
+          server.description.toLowerCase().includes(searchText.toLowerCase())
+      )
+      .sort((a, b) => mcpServersSortingFn({ mcpServer: a }, { mcpServer: b }));
+  }, [
+    isAdmin,
+    isDataReady,
+    shouldFetchToolsData,
+    serverViews,
+    availableMCPServers,
+    searchText,
+  ]);
+
+  const shouldShowSetupSheet = useMemo(() => {
+    return !!setupSheetServer || !!setupSheetRemoteServerConfig;
+  }, [setupSheetServer, setupSheetRemoteServerConfig]);
+
   return (
-    <DropdownMenu
-      open={isOpen}
-      onOpenChange={(open) => {
-        setIsOpen(open);
-        if (open) {
-          setSearchText("");
-        }
-      }}
-    >
-      <DropdownMenuTrigger asChild>
-        <Button
-          icon={ToolsIcon}
-          variant="ghost-secondary"
-          size={buttonSize}
-          tooltip="Tools"
-          disabled={disabled || isLoading}
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        className="max-h-96 w-96"
-        align="start"
-        dropdownHeaders={
-          <>
-            <DropdownMenuSearchbar
-              autoFocus
-              name="search-tools"
-              placeholder="Search Tools"
-              value={searchText}
-              onChange={setSearchText}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && filteredServerViews.length > 0) {
-                  const isSelected = selectedMCPServerViewIds.includes(
-                    filteredServerViews[0].sId
-                  );
-                  if (isSelected) {
-                    onDeselect(filteredServerViews[0]);
-                  } else {
-                    onSelect(filteredServerViews[0]);
-                  }
-                  setSearchText("");
-                  setIsOpen(false);
-                }
-              }}
-            />
-            <DropdownMenuSeparator />
-          </>
-        }
+    <>
+      <DropdownMenu
+        open={isOpen}
+        onOpenChange={(open) => {
+          setIsOpen(open);
+          if (open) {
+            trackEvent({
+              area: TRACKING_AREAS.TOOLS,
+              object: "tool_picker",
+              action: TRACKING_ACTIONS.OPEN,
+            });
+            setSearchText("");
+          }
+        }}
       >
-        {filteredServerViews.length > 0 ? (
-          <>
-            {filteredServerViewsUnselected
-              .sort(mcpServerViewSortingFn)
-              .map((v) => {
+        <DropdownMenuTrigger asChild>
+          <Button
+            icon={ToolsIcon}
+            variant="ghost-secondary"
+            size={buttonSize}
+            tooltip="Tools"
+            disabled={disabled || isLoading}
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          className="max-h-96 w-96"
+          align="start"
+          dropdownHeaders={
+            <>
+              <DropdownMenuSearchbar
+                autoFocus
+                name="search-tools"
+                placeholder="Search Tools"
+                value={searchText}
+                onChange={setSearchText}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && filteredServerViews.length > 0) {
+                    const isSelected = selectedMCPServerViewIds.includes(
+                      filteredServerViews[0].sId
+                    );
+                    if (isSelected) {
+                      trackEvent({
+                        area: TRACKING_AREAS.TOOLS,
+                        object: "tool_deselect",
+                        action: TRACKING_ACTIONS.SELECT,
+                        extra: {
+                          tool_id: filteredServerViews[0].sId,
+                          tool_name: filteredServerViews[0].server.name,
+                        },
+                      });
+                      onDeselect(filteredServerViews[0]);
+                    } else {
+                      trackEvent({
+                        area: TRACKING_AREAS.TOOLS,
+                        object: "tool_select",
+                        action: TRACKING_ACTIONS.SELECT,
+                        extra: {
+                          tool_id: filteredServerViews[0].sId,
+                          tool_name: filteredServerViews[0].server.name,
+                        },
+                      });
+                      onSelect(filteredServerViews[0]);
+                    }
+                    setSearchText("");
+                    setIsOpen(false);
+                  }
+                }}
+              />
+              <DropdownMenuSeparator />
+            </>
+          }
+        >
+          {!isDataReady && <ToolsPickerLoading />}
+
+          {isDataReady && filteredServerViews.length > 0 && (
+            <>
+              {filteredServerViewsUnselected.map((v) => {
                 return (
                   <DropdownMenuItem
                     key={`tools-picker-${v.sId}`}
@@ -165,32 +295,130 @@ export function ToolsPicker({
                     description={getMcpServerViewDescription(v)}
                     truncateText
                     onClick={(e) => {
-                      onSelect(v);
                       e.stopPropagation();
                       e.preventDefault();
+                      trackEvent({
+                        area: TRACKING_AREAS.TOOLS,
+                        object: "tool_select",
+                        action: TRACKING_ACTIONS.SELECT,
+                        extra: {
+                          tool_id: v.sId,
+                          tool_name: v.server.name,
+                        },
+                      });
+                      onSelect(v);
+                      setIsOpen(false);
                     }}
                   />
                 );
               })}
-            {filteredServerViewsUnselected.length === 0 && (
+            </>
+          )}
+
+          {isDataReady && filteredUninstalledServers.length > 0 && (
+            <>
+              {filteredUninstalledServers.map((server) => (
+                <DropdownMenuItem
+                  key={`tools-to-install-${server.sId}`}
+                  icon={() => getAvatar(server)}
+                  label={asDisplayName(server.name)}
+                  description={server.description}
+                  truncateText
+                  endComponent={
+                    <Chip size="xs" color="golden" label="Configure" />
+                  }
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+
+                    const remoteMcpServerConfig =
+                      getDefaultRemoteMCPServerByName(server.name);
+
+                    if (remoteMcpServerConfig) {
+                      // Remote servers always use the remote flow, even if they have OAuth.
+                      setSetupSheetServer(null);
+                      setSetupSheetRemoteServerConfig(remoteMcpServerConfig);
+                    } else {
+                      // Internal servers (with or without OAuth)
+                      setSetupSheetServer(server);
+                      setSetupSheetRemoteServerConfig(null);
+                    }
+
+                    setIsSettingUpServer(true);
+                    setIsOpen(false);
+                  }}
+                />
+              ))}
+            </>
+          )}
+
+          {isDataReady &&
+            filteredServerViewsUnselected.length === 0 &&
+            filteredUninstalledServers.length === 0 && (
               <DropdownMenuItem
                 id="tools-picker-no-selected"
                 icon={() => <Icon visual={BoltIcon} size="xs" />}
                 className="italic"
-                label="No more tools to select"
-                description="All available tools are already selected"
+                label={
+                  searchText.length > 0
+                    ? "No result"
+                    : "No more tools to select"
+                }
+                description={
+                  searchText.length > 0
+                    ? "No tools found matching your search."
+                    : "All available tools are already selected."
+                }
                 disabled
               />
             )}
-          </>
-        ) : isServerViewsLoading ? (
-          <ToolsPickerLoading />
-        ) : (
-          <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
-            No results found
-          </div>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {shouldShowSetupSheet && (
+        <CreateMCPServerDialog
+          owner={owner}
+          internalMCPServer={setupSheetServer ?? undefined}
+          defaultServerConfig={setupSheetRemoteServerConfig ?? undefined}
+          setMCPServerToShow={async (createdServer) => {
+            const updatedData = await mutateServerViews();
+
+            const newServerView = updatedData?.serverViews?.find(
+              (v: MCPServerViewType) => v.server.name === createdServer.name
+            );
+
+            if (newServerView) {
+              trackEvent({
+                area: TRACKING_AREAS.TOOLS,
+                object: "tool_select",
+                action: TRACKING_ACTIONS.SELECT,
+                extra: {
+                  tool_id: newServerView.sId,
+                  tool_name: newServerView.server.name,
+                  from_setup: true,
+                },
+              });
+              onSelect(newServerView);
+              setIsSettingUpServer(false);
+            } else {
+              setPendingServerToAdd(createdServer);
+            }
+
+            setSetupSheetServer(null);
+            setSetupSheetRemoteServerConfig(null);
+          }}
+          setIsLoading={() => {}}
+          isOpen={shouldShowSetupSheet}
+          setIsOpen={(isOpen) => {
+            if (!isOpen) {
+              setSetupSheetServer(null);
+              setSetupSheetRemoteServerConfig(null);
+              setPendingServerToAdd(null);
+              setIsSettingUpServer(false);
+            }
+          }}
+        />
+      )}
+    </>
   );
 }

@@ -4,16 +4,10 @@ import type {
   ThinkingOutputType,
 } from "@dust-tt/client";
 import {
-  isIncludeQueryResourceType,
-  isSearchQueryResourceType,
-  isWebsearchQueryResourceType,
-} from "@dust-tt/client";
-import {
   ContentMessage,
   InformationCircleIcon,
   Markdown,
 } from "@dust-tt/sparkle";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 interface ThinkingBlockProps {
   resource: ThinkingOutputType;
@@ -66,36 +60,17 @@ export function ReasoningSuccessBlock({
 
 interface SearchResultProps {
   actionName: string;
-  defaultQuery?: string;
+  query: string | null;
   visual: React.ComponentType<{ className?: string }>;
-  actionOutput: CallToolResult["content"] | null;
   viewType: "conversation" | "sidebar";
 }
 
 export function SearchResultDetails({
   actionName,
-  defaultQuery,
+  query,
   visual,
   viewType,
-  actionOutput,
 }: SearchResultProps) {
-  const query =
-    actionOutput
-      ?.map((r) => {
-        if (
-          isSearchQueryResourceType(r) ||
-          isWebsearchQueryResourceType(r) ||
-          isIncludeQueryResourceType(r)
-        ) {
-          return r.resource.text.trim();
-        }
-        return null;
-      })
-      .filter(Boolean)
-      .join("\n") ||
-    defaultQuery ||
-    "No query provided";
-
   return (
     <ActionDetailsWrapper
       viewType={viewType}
@@ -103,7 +78,7 @@ export function SearchResultDetails({
       visual={visual}
     >
       <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-        {query}
+        {query ?? "No query provided"}
       </div>
     </ActionDetailsWrapper>
   );

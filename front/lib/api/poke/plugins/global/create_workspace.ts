@@ -3,6 +3,8 @@ import { createPlugin } from "@app/lib/api/poke/types";
 import { config } from "@app/lib/api/regions/config";
 import { Authenticator } from "@app/lib/auth";
 import { createWorkspaceInternal } from "@app/lib/iam/workspaces";
+import { Plan } from "@app/lib/models/plan";
+import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { getRegionDisplay } from "@app/lib/poke/regions";
 import { isEmailValid } from "@app/lib/utils";
 import { Err, Ok } from "@app/types";
@@ -31,11 +33,13 @@ export const createWorkspacePlugin = createPlugin({
           "Workspace will subscribe to Enterprise seat based plan (45€/$/£) when doing their Stripe checkout session.",
       },
       planCode: {
-        type: "string",
+        type: "enum",
         label: "Plan Code (optional)",
         description:
-          "Code of the plan to subscribe the workspace to. Leave empty to redirect to the paywall for the Pro plan.",
-        required: false,
+          "Code of the plan to subscribe the workspace to. Select a free plan or leave empty to redirect to the paywall for the Pro plan.",
+        values: [],
+        async: true,
+        multiple: false,
       },
       endDate: {
         type: "string",
@@ -45,6 +49,28 @@ export const createWorkspacePlugin = createPlugin({
         required: false,
       },
     },
+  },
+  populateAsyncArgs: async () => {
+    // Fetch all plans from the database
+    const plans = await Plan.findAll({ order: [["name", "ASC"]] });
+
+    // Create enum values with "None" as the first option
+    const planValues = [
+      {
+        label: "None (redirect to Pro plan paywall)",
+        value: "",
+      },
+      ...plans
+        .filter((plan) => isFreePlan(plan.code))
+        .map((plan) => ({
+          label: `${plan.name} (${plan.code})`,
+          value: plan.code,
+        })),
+    ];
+
+    return new Ok({
+      planCode: planValues,
+    });
   },
   execute: async (auth, _, args) => {
     const email = args.email.trim();
@@ -57,10 +83,14 @@ export const createWorkspacePlugin = createPlugin({
       return new Err(new Error("Name is required."));
     }
 
+    // Extract the selected plan code from the enum array (empty string means no plan)
+    const selectedPlanCode = args.planCode[0] || "";
+    const planCode = selectedPlanCode === "" ? null : selectedPlanCode;
+
     const workspace = await createWorkspaceInternal({
       name,
       isBusiness: args.isBusiness,
-      planCode: args.planCode,
+      planCode,
       endDate: args.endDate ? new Date(args.endDate) : null,
     });
 
@@ -95,9 +125,18 @@ export const createWorkspacePlugin = createPlugin({
       return new Err(new Error(result.error_message));
     }
 
+    let message = `Workspace created (id: ${workspace.sId}) and invitation sent to ${result.email}.`;
+
+    if (planCode) {
+      message += `\nPlan: ${planCode}`;
+      if (args.endDate) {
+        message += ` (expires: ${args.endDate})`;
+      }
+    }
+
     return new Ok({
       display: "textWithLink",
-      value: `Workspace created (id: ${workspace.sId}) and invitation sent to ${result.email}.`,
+      value: message,
       link: `poke/${workspace.sId}`,
       linkText: "View Workspace",
     });

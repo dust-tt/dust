@@ -166,6 +166,7 @@ export async function getPagesAndDatabasesEditedSince({
     ...loggerArgs,
     cursors,
     sinceTs,
+    filter,
   });
 
   const notionClient = new Client({
@@ -189,6 +190,7 @@ export async function getPagesAndDatabasesEditedSince({
       maxTries: retry.retries,
     });
 
+    const now = Date.now();
     try {
       resultsPage = await wrapNotionAPITokenErrors(async () => {
         return notionClient.search({
@@ -205,7 +207,7 @@ export async function getPagesAndDatabasesEditedSince({
       });
     } catch (e) {
       tryLogger.error(
-        { error: e },
+        { error: e, duration: Date.now() - now },
         "Error fetching result page from Notion API."
       );
       tries += 1;
@@ -475,8 +477,13 @@ export async function isAccessibleAndUnarchived(
         e.code === "validation_error"
       ) {
         loggerToUse.info(
-          { errorCode: e.code },
-          "Skipping page/database due to unauthorized status code."
+          {
+            notion_error: {
+              code: e.code,
+              message: e.message,
+            },
+          },
+          "Skipping page/database due to unauthorized status code or validation error."
         );
         return false;
       }
@@ -610,7 +617,15 @@ export async function getParsedDatabase(
         // it's not useful to retry.
         e.code === "validation_error")
     ) {
-      localLogger.info("Database not found.");
+      localLogger.info(
+        {
+          notion_error: {
+            code: e.code,
+            message: e.message,
+          },
+        },
+        "Got access or validation error trying to retrieve database (expected for linked databases)."
+      );
       return null;
     }
     localLogger.error(
@@ -718,7 +733,7 @@ export async function retrievePage({
             message: e.message,
           },
         },
-        "retrievePage: Page not found."
+        "retrievePage: Page not found or validation error."
       );
       return null;
     }

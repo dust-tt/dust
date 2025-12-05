@@ -2,93 +2,75 @@ import type { LightAgentConfigurationType, Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import jaroWinkler from "talisman/metrics/jaro-winkler";
 
-export interface MentionMatch {
-  assistantId: string;
-  assistantName: string;
-}
+export type MentionMatch = {
+  agentId: string;
+  agentName: string;
+};
 
-export interface ProcessMentionsParams {
+// Pattern to match @mention, +mention, and ~mention.
+const MENTION_PATTERN = /(?<!\S)[@+~]([a-zA-Z0-9_-]{1,40})(?=\s|,|\.|$|)/g;
+
+export function processMentions({
+  message,
+  activeAgentConfigurations,
+  mentionCandidate,
+}: {
   message: string;
   activeAgentConfigurations: LightAgentConfigurationType[];
-  mentionPattern: RegExp;
-}
+  mentionCandidate: string | null;
+}): Result<
+  {
+    mention: MentionMatch | undefined;
+    processedMessage: string;
+  },
+  Error
+> {
+  if (!mentionCandidate) {
+    return new Ok({
+      mention: undefined,
+      processedMessage: message,
+    });
+  }
 
-export interface ProcessMentionsResult {
-  mention: MentionMatch | undefined;
-  processedMessage: string;
-  allMentionCandidates: string[];
-}
+  let bestCandidate: {
+    agentId: string;
+    agentName: string;
+    distance: number;
+  } | null = null;
 
-export interface ProcessMessageForMentionParams {
-  message: string;
-  activeAgentConfigurations: LightAgentConfigurationType[];
-}
+  for (const agentConfiguration of activeAgentConfigurations) {
+    const distance =
+      1 -
+      jaroWinkler(
+        mentionCandidate.slice(1).toLowerCase(),
+        agentConfiguration.name.toLowerCase()
+      );
 
-export interface ProcessMessageForMentionResult {
-  mention: MentionMatch;
-  processedMessage: string;
-}
-
-export function processMentions(
-  params: ProcessMentionsParams
-): Result<ProcessMentionsResult, Error> {
-  const { message, activeAgentConfigurations, mentionPattern } = params;
-
-  const mentionCandidates = message.match(mentionPattern) || [];
-
-  const [mentionCandidate] = mentionCandidates;
-  if (mentionCandidate) {
-    let bestCandidate:
-      | {
-          assistantId: string;
-          assistantName: string;
-          distance: number;
-        }
-      | undefined = undefined;
-
-    for (const agentConfiguration of activeAgentConfigurations) {
-      const distance =
-        1 -
-        jaroWinkler(
-          mentionCandidate.slice(1).toLowerCase(),
-          agentConfiguration.name.toLowerCase()
-        );
-
-      if (bestCandidate === undefined || bestCandidate.distance > distance) {
-        bestCandidate = {
-          assistantId: agentConfiguration.sId,
-          assistantName: agentConfiguration.name,
-          distance: distance,
-        };
-      }
-    }
-
-    if (bestCandidate) {
-      const mention = {
-        assistantId: bestCandidate.assistantId,
-        assistantName: bestCandidate.assistantName,
+    if (bestCandidate === null || bestCandidate.distance > distance) {
+      bestCandidate = {
+        agentId: agentConfiguration.sId,
+        agentName: agentConfiguration.name,
+        distance: distance,
       };
-      const processedMessage = message.replace(
-        mentionCandidate,
-        `:mention[${bestCandidate.assistantName}]{sId=${bestCandidate.assistantId}}`
-      );
-
-      return new Ok({
-        mention,
-        processedMessage,
-        allMentionCandidates: mentionCandidates,
-      });
-    } else {
-      return new Err(
-        new Error(`Assistant ${mentionCandidate} has not been found.`)
-      );
     }
   }
 
+  if (!bestCandidate) {
+    return new Err(new Error(`Agent ${mentionCandidate} has not been found.`));
+  }
+
+  const mention = {
+    agentId: bestCandidate.agentId,
+    agentName: bestCandidate.agentName,
+  };
+  const processedMessage = message.replace(
+    mentionCandidate,
+    `:mention[${bestCandidate.agentName}]{sId=${bestCandidate.agentId}}`
+  );
+
   return new Ok({
-    mention: undefined,
-    processedMessage: message,
-    allMentionCandidates: mentionCandidates,
+    mention,
+    processedMessage,
   });
 }
 
@@ -123,31 +105,39 @@ export function findBestAgentMatch(
   return bestMatch?.agent;
 }
 
-export function processMessageForMention(
-  params: ProcessMessageForMentionParams
-): Result<ProcessMessageForMentionResult, Error> {
-  const { message, activeAgentConfigurations } = params;
-
-  // Default mention pattern supports @, ~, and + prefixes (covers all platforms)
-  const mentionPattern = /(?<!\S)[@+~]([a-zA-Z0-9_-]{1,40})(?=\s|,|\.|$|)/g;
-  const defaultAgentIds = ["dust", "claude-4-sonnet", "gpt-5"];
+export function processMessageForMention({
+  message,
+  activeAgentConfigurations,
+}: {
+  message: string;
+  activeAgentConfigurations: LightAgentConfigurationType[];
+}): Result<
+  {
+    mention: MentionMatch;
+    processedMessage: string;
+  },
+  Error
+> {
+  const fallbackAgentIds = ["dust", "claude-4-sonnet", "gpt-5"];
 
   let processedMessage = message;
   let mention: MentionMatch | undefined;
+
+  const mentionCandidates = message.match(MENTION_PATTERN) ?? [];
+
+  if (mentionCandidates.length > 1) {
+    return new Err(new Error("Only one agent at a time can be called."));
+  }
 
   // Extract all mentions from the message
   const mentionResult = processMentions({
     message,
     activeAgentConfigurations,
-    mentionPattern,
+    mentionCandidate: mentionCandidates[0] ?? null,
   });
 
   if (mentionResult.isErr()) {
     return new Err(mentionResult.error);
-  }
-
-  if (mentionResult.value.allMentionCandidates.length > 1) {
-    return new Err(new Error("Only one agent at a time can be called."));
   }
 
   mention = mentionResult.value.mention;
@@ -157,27 +147,27 @@ export function processMessageForMention(
 
   if (!mention) {
     // Use default agent if no mention found
-    let defaultAssistant: LightAgentConfigurationType | undefined = undefined;
-    for (const agentId of defaultAgentIds) {
-      defaultAssistant = activeAgentConfigurations.find(
+    let defaultAgent: LightAgentConfigurationType | undefined = undefined;
+    for (const agentId of fallbackAgentIds) {
+      defaultAgent = activeAgentConfigurations.find(
         (ac) => ac.sId === agentId && ac.status === "active"
       );
-      if (defaultAssistant) {
+      if (defaultAgent) {
         break;
       }
     }
-    if (!defaultAssistant) {
+    if (!defaultAgent) {
       return new Err(new Error("No agent has been configured to reply."));
     }
     mention = {
-      assistantId: defaultAssistant.sId,
-      assistantName: defaultAssistant.name,
+      agentId: defaultAgent.sId,
+      agentName: defaultAgent.name,
     };
   }
 
   if (!processedMessage.includes(":mention")) {
     // if the message does not contain the mention, we add it as a prefix.
-    processedMessage = `:mention[${mention.assistantName}]{sId=${mention.assistantId}} ${processedMessage}`;
+    processedMessage = `:mention[${mention.agentName}]{sId=${mention.agentId}} ${processedMessage}`;
   }
 
   return new Ok({

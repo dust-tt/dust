@@ -52,7 +52,9 @@ async function handler(
     case "GET":
       const conversations =
         await ConversationResource.listConversationsForUser(auth);
-      res.status(200).json({ conversations });
+      res
+        .status(200)
+        .json({ conversations: conversations.map((c) => c.toJSON()) });
       return;
 
     case "POST":
@@ -100,6 +102,7 @@ async function handler(
       let conversation = await createConversation(auth, {
         title,
         visibility,
+        spaceId: null,
       });
 
       const newContentFragments: ContentFragmentType[] = [];

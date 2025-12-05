@@ -130,7 +130,6 @@ interface AgentMessageViewProps {
 
 const AgentMessageView = ({
   message,
-  multiActionsApp,
   useMarkdown,
   workspaceId,
 }: AgentMessageViewProps) => {
@@ -188,19 +187,24 @@ const AgentMessageView = ({
           >
             {message.configuration.sId}
           </a>
-          {message.runIds && (
+          {message.runUrls && (
             <>
               {" • "}
               agent logs :{" "}
-              {message.runIds.map((runId, i) => (
-                <a
+              {message.runUrls.map(({ runId, url, isLLM }, i) => (
+                <span
                   key={`runId-${i}`}
-                  href={`/w/${multiActionsApp.app.workspaceId}/spaces/${multiActionsApp.app.appSpaceId}/apps/${multiActionsApp.app.appId}/runs/${runId}`}
-                  target="_blank"
-                  className="text-highlight-500"
+                  className="inline-flex items-center space-x-1"
                 >
-                  {runId.substring(0, 8)}{" "}
-                </a>
+                  <a href={url} target="_blank" className="text-highlight-500">
+                    {runId.substring(0, 16)}
+                  </a>
+                  {isLLM && (
+                    <span className="rounded-sm bg-blue-100 px-1 py-0.5 text-xs text-blue-800">
+                      LLM
+                    </span>
+                  )}{" "}
+                </span>
               ))}
             </>
           )}
@@ -294,7 +298,7 @@ const ContentFragmentView = ({ message }: ContentFragmentViewProps) => {
         </a>
       )}{" "}
       <a
-        href={isFileContentFragment(message) ? message.textUrl : ""}
+        href={isFileContentFragment(message) ? (message.textUrl ?? "") : ""}
         target="_blank"
         className="text-highlight-500"
       >
@@ -379,6 +383,7 @@ const ConversationPage = ({
       );
       const data = await response.json();
       if (!response.ok) {
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         throw new Error(data.error?.message || "Failed to render conversation");
       }
       setRenderResult({

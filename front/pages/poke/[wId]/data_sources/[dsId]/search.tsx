@@ -16,6 +16,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const { dsId } = context.params || {};
   if (typeof dsId !== "string") {
     return {
@@ -57,6 +58,7 @@ export default function DataSourceView({
 
   useEffect(
     () =>
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDisplayNameByDocId(
         documents.reduce(
           (acc, doc) =>
@@ -70,6 +72,7 @@ export default function DataSourceView({
   );
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setError(false);
     let isCancelled = false;
     void (async () => {
@@ -246,6 +249,7 @@ export default function DataSourceView({
                                   <div
                                     className="ml-2 mr-4 flex-1 cursor-pointer border-l-4 border-border-dark"
                                     onClick={() => {
+                                      // eslint-disable-next-line no-unused-expressions
                                       expandedChunkId == chunkId
                                         ? setExpandedChunkId(null)
                                         : setExpandedChunkId(chunkId);

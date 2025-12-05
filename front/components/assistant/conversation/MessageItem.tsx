@@ -20,6 +20,7 @@ import {
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
 
 interface MessageItemProps {
@@ -35,6 +36,9 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
     { data, context, prevData, nextData }: MessageItemProps,
     ref
   ) {
+    const { hasFeature } = useFeatureFlags({ workspaceId: context.owner.sId });
+    const userMentionsEnabled = hasFeature("mentions_v2");
+
     const sId = getMessageSId(data);
 
     const sendNotification = useSendNotification();
@@ -67,6 +71,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               }),
             }
           );
+
           if (res.ok) {
             if (feedbackContent && !shouldRemoveExistingFeedback) {
               sendNotification({
@@ -76,6 +81,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
                 type: "success",
               });
             }
+
             await mutate(
               `/api/w/${context.owner.sId}/assistant/conversations/${context.conversationId}/feedbacks`
             );
@@ -84,6 +90,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       );
 
     const messageFeedback = context.feedbacksByMessageId[sId];
+
     const messageFeedbackWithSubmit: FeedbackSelectorProps = {
       feedback: messageFeedback
         ? {
@@ -94,6 +101,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
         : null,
       onSubmitThumb,
       isSubmittingThumb,
+      owner: context.owner,
     };
 
     const citations =
@@ -132,14 +140,15 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           ref={ref}
           className={classNames(
             "mx-auto min-w-60",
-            "pt-6 md:pt-10",
-            "max-w-3xl"
+            userMentionsEnabled ? "mb-4" : "pt-6 md:pt-10",
+            "max-w-4xl"
           )}
         >
           {isUserMessage(data) && (
             <UserMessage
               citations={citations}
               conversationId={context.conversationId}
+              currentUserId={context.user.sId}
               isLastMessage={!nextData}
               message={data}
               owner={context.owner}
@@ -153,6 +162,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               messageStreamState={data}
               messageFeedback={messageFeedbackWithSubmit}
               owner={context.owner}
+              handleSubmit={context.handleSubmit}
             />
           )}
         </div>

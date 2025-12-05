@@ -3,10 +3,10 @@ import { Op } from "sequelize";
 import { getAgentsEditors } from "@app/lib/api/assistant/editors";
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
-import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
-import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
-import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentDataSourceConfiguration } from "@app/lib/models/agent/actions/data_sources";
+import { AgentMCPServerConfiguration } from "@app/lib/models/agent/actions/mcp";
+import { AgentTablesQueryConfigurationTable } from "@app/lib/models/agent/actions/tables_query";
+import { AgentConfiguration } from "@app/lib/models/agent/agent";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { makeScript } from "@app/scripts/helpers";
@@ -97,6 +97,7 @@ makeScript(
     dsConfigs.forEach((cfg: any) => {
       const agentId =
         cfg.agent_mcp_server_configuration.agent_configuration.sId;
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       if (!dsAgents[agentId]) {
         dsAgents[agentId] = {
           sId: cfg.agent_mcp_server_configuration.agent_configuration.sId,
@@ -166,6 +167,7 @@ makeScript(
     tableConfigs.forEach((cfg: any) => {
       const agentId =
         cfg.agent_mcp_server_configuration.agent_configuration.sId;
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       if (!tableAgents[agentId]) {
         tableAgents[agentId] = {
           sId: cfg.agent_mcp_server_configuration.agent_configuration.sId,

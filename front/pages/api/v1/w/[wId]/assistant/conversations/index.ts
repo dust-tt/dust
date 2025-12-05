@@ -20,13 +20,15 @@ import {
 } from "@app/lib/api/assistant/conversation/helper";
 import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import { hasReachedPublicAPILimits } from "@app/lib/api/public_api_limits";
+import { hasReachedProgrammaticUsageLimits } from "@app/lib/api/programmatic_usage_tracking";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type {
+  AgenticMessageData,
   ContentFragmentType,
   UserMessageContext,
   UserMessageType,
@@ -41,7 +43,7 @@ import {
   isEmptyString,
 } from "@app/types";
 
-const MAX_CONVERSATION_DEPTH = 4;
+export const MAX_CONVERSATION_DEPTH = 4;
 
 /**
  * @swagger
@@ -139,7 +141,7 @@ async function handler(
         blocking,
       } = r.data;
 
-      const hasReachedLimits = await hasReachedPublicAPILimits(auth);
+      const hasReachedLimits = await hasReachedProgrammaticUsageLimits(auth);
       if (hasReachedLimits) {
         return apiError(req, res, {
           status_code: 429,
@@ -209,9 +211,7 @@ async function handler(
           }
         }
 
-        const isRunAgent =
-          message.context.origin === "run_agent" ||
-          message.context.origin === "agent_handover";
+        const isRunAgent = !!message.agenticMessageData;
         if (isRunAgent && !auth.isSystemKey()) {
           return apiError(req, res, {
             status_code: 401,
@@ -221,6 +221,21 @@ async function handler(
                 "Messages from run_agent or agent_handover must come from a system key.",
             },
           });
+        }
+
+        if (
+          message.context.origin === "agent_handover" ||
+          message.context.origin === "run_agent" ||
+          message.context.originMessageId
+        ) {
+          logger.error(
+            {
+              panic: true,
+              origin: message.context.origin,
+              originMessageId: message.context.originMessageId,
+            },
+            "use agenticMessageData instead of origin."
+          );
         }
       }
 
@@ -274,6 +289,7 @@ async function handler(
         // Temporary translation layer for deprecated "workspace" visibility.
         visibility: visibility === "workspace" ? "unlisted" : visibility,
         depth,
+        spaceId: null,
       });
 
       let newContentFragment: ContentFragmentType | null = null;
@@ -361,8 +377,10 @@ async function handler(
           profilePictureUrl: message.context.profilePictureUrl ?? null,
           timezone: message.context.timezone,
           username: message.context.username,
-          originMessageId: message.context.originMessageId ?? null,
         };
+
+        const agenticMessageData: AgenticMessageData | undefined =
+          message.agenticMessageData ?? undefined;
 
         // If tools are enabled, we need to add the MCP server views to the conversation before posting the message.
         if (message.context.selectedMCPServerViewIds) {
@@ -396,6 +414,7 @@ async function handler(
             ? await postUserMessageAndWaitForCompletion(auth, {
                 content: message.content,
                 context: ctx,
+                agenticMessageData,
                 conversation,
                 mentions: message.mentions,
                 skipToolsValidation: skipToolsValidation ?? false,
@@ -403,6 +422,7 @@ async function handler(
             : await postUserMessage(auth, {
                 content: message.content,
                 context: ctx,
+                agenticMessageData,
                 conversation,
                 mentions: message.mentions,
                 skipToolsValidation: skipToolsValidation ?? false,
@@ -431,7 +451,10 @@ async function handler(
       }
 
       res.status(200).json({
-        conversation,
+        conversation: {
+          ...conversation,
+          requestedGroupIds: [], // Remove once all old SDKs users are updated
+        },
         message: newMessage ?? undefined,
         contentFragment: newContentFragment ?? undefined,
       });
@@ -449,7 +472,19 @@ async function handler(
       }
       const conversations =
         await ConversationResource.listConversationsForUser(auth);
-      res.status(200).json({ conversations });
+      res.status(200).json({
+        conversations: conversations.map((c) => ({
+          ...c.toJSON(),
+
+          // Theses 2 properties are excluded from the ConversationWithoutContentType used internally (as they are not needed anywhere).
+          // They are still returned for the public API to stay backward compatible.
+          visibility: "unlisted", // Hardcoded as "deleted" conversations are not returned by the API
+          owner: auth.getNonNullableWorkspace(),
+
+          // This one is no excluded (yet)
+          requestedGroupIds: [], // No need to leak to the public API. Hardcoded as an empty array. Can be removed once the chrome extension is updated.
+        })),
+      });
       return;
 
     default:

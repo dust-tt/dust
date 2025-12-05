@@ -4,7 +4,6 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import {
   deleteMessageFeedback,
@@ -12,15 +11,20 @@ import {
 } from "@app/lib/api/assistant/feedback";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
+import { triggerAgentMessageFeedbackNotification } from "@app/lib/notifications/workflows/agent-message-feedback";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
+import { launchAgentMessageFeedbackWorkflow } from "@app/temporal/analytics_queue/client";
 import type { WithAPIErrorResponse } from "@app/types";
 import { getUserEmailFromHeaders } from "@app/types/user";
 
+const ThumbDirectionCodec = t.union([t.literal("up"), t.literal("down")]);
+
 export const MessageFeedbackRequestBodySchema = t.type({
-  thumbDirection: t.string,
+  thumbDirection: ThumbDirectionCodec,
   feedbackContent: t.union([t.string, t.undefined, t.null]),
   isConversationShared: t.union([t.boolean, t.undefined]),
 });
@@ -138,6 +142,7 @@ export const MessageFeedbackRequestBodySchema = t.type({
  */
 async function handler(
   req: NextApiRequest,
+
   res: NextApiResponse<WithAPIErrorResponse<PostMessageFeedbackResponseType>>,
   auth: Authenticator
 ): Promise<void> {
@@ -233,8 +238,7 @@ async function handler(
         messageId,
         conversation,
         user,
-        thumbDirection: bodyValidation.right
-          .thumbDirection as AgentMessageFeedbackDirection,
+        thumbDirection: bodyValidation.right.thumbDirection,
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         content: bodyValidation.right.feedbackContent || "",
         isConversationShared: bodyValidation.right.isConversationShared,
@@ -249,6 +253,25 @@ async function handler(
           },
         });
       }
+
+      await launchAgentMessageFeedbackWorkflow(auth, {
+        message: {
+          conversationId: conversation.sId,
+          agentMessageId: messageId,
+        },
+      });
+      const featureFlags = await getFeatureFlags(
+        auth.getNonNullableWorkspace()
+      );
+      if (featureFlags.includes("notifications")) {
+        await triggerAgentMessageFeedbackNotification(auth, {
+          conversationId: conversation.sId,
+          messageId,
+          agentConfigurationId: created.value.agentConfigurationId,
+          thumbDirection: bodyValidation.right.thumbDirection,
+          feedbackId: created.value.feedbackId,
+        });
+      }
       res.status(200).json({ success: true });
       return;
 
@@ -257,6 +280,13 @@ async function handler(
         messageId,
         conversation,
         user,
+      });
+
+      await launchAgentMessageFeedbackWorkflow(auth, {
+        message: {
+          conversationId: conversation.sId,
+          agentMessageId: messageId,
+        },
       });
 
       if (deleted) {

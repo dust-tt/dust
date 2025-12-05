@@ -1,6 +1,7 @@
 use crate::providers::chat_messages::ChatMessage;
 use crate::providers::embedder::{Embedder, EmbedderVector};
 use crate::providers::llm::ChatFunction;
+use crate::providers::llm::TokenizerSingleton;
 use crate::providers::llm::Tokens;
 use crate::providers::llm::{LLMChatGeneration, LLMGeneration, LLMTokenUsage, LLM};
 use crate::providers::openai::embed;
@@ -8,10 +9,9 @@ use crate::providers::openai::streamed_completion;
 use crate::providers::openai::{completion, REMAINING_TOKENS_MARGIN};
 use crate::providers::provider::{Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::{batch_tokenize_async, decode_async, encode_async};
-use crate::providers::tiktoken::tiktoken::{
-    cl100k_base_singleton, p50k_base_singleton, r50k_base_singleton, CoreBPE,
-};
+use crate::providers::tiktoken::tiktoken::{cl100k_base_singleton, CoreBPE};
 use crate::run::Credentials;
+use crate::types::tokenizer::{TiktokenTokenizerBase, TokenizerConfig};
 use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -120,15 +120,21 @@ pub struct AzureOpenAILLM {
     model_id: Option<String>,
     endpoint: Option<String>,
     api_key: Option<String>,
+    tokenizer: Option<TokenizerSingleton>,
 }
 
 impl AzureOpenAILLM {
-    pub fn new(deployment_id: String) -> Self {
+    pub fn new(deployment_id: String, tokenizer: Option<TokenizerSingleton>) -> Self {
         AzureOpenAILLM {
             deployment_id,
             model_id: None,
             endpoint: None,
             api_key: None,
+            tokenizer: tokenizer.or_else(|| {
+                TokenizerSingleton::from_config(&TokenizerConfig::Tiktoken {
+                    base: TiktokenTokenizerBase::Cl100kBase,
+                })
+            }),
         }
     }
 
@@ -151,20 +157,6 @@ impl AzureOpenAILLM {
             self.deployment_id
         )
         .parse::<Uri>()?)
-    }
-
-    fn tokenizer(&self) -> Arc<RwLock<CoreBPE>> {
-        match self.model_id.as_ref() {
-            Some(model_id) => match model_id.as_str() {
-                "code_davinci-002" | "code-cushman-001" => p50k_base_singleton(),
-                "text-davinci-002" | "text-davinci-003" => p50k_base_singleton(),
-                _ => match model_id.starts_with("gpt-3.5-turbo") || model_id.starts_with("gpt-4") {
-                    true => cl100k_base_singleton(),
-                    false => r50k_base_singleton(),
-                },
-            },
-            None => r50k_base_singleton(),
-        }
     }
 }
 
@@ -213,7 +205,17 @@ impl LLM for AzureOpenAILLM {
         )
         .await?;
 
-        self.model_id = Some(d.model);
+        self.model_id = Some(d.model.clone());
+
+        // Update tokenizer based on actual model_id
+        match self.model_id.as_ref().unwrap().as_str() {
+            "code_davinci-002" | "code-cushman-001" | "text-davinci-002" | "text-davinci-003" => {
+                self.tokenizer = TokenizerSingleton::from_config(&TokenizerConfig::Tiktoken {
+                    base: TiktokenTokenizerBase::P50kBase,
+                });
+            }
+            _ => (),
+        }
 
         Ok(())
     }
@@ -226,15 +228,27 @@ impl LLM for AzureOpenAILLM {
     }
 
     async fn encode(&self, text: &str) -> Result<Vec<usize>> {
-        encode_async(self.tokenizer(), text).await
+        self.tokenizer
+            .as_ref()
+            .ok_or_else(|| anyhow!("Tokenizer not initialized"))?
+            .encode(text)
+            .await
     }
 
     async fn decode(&self, tokens: Vec<usize>) -> Result<String> {
-        decode_async(self.tokenizer(), tokens).await
+        self.tokenizer
+            .as_ref()
+            .ok_or_else(|| anyhow!("Tokenizer not initialized"))?
+            .decode(tokens)
+            .await
     }
 
     async fn tokenize(&self, texts: Vec<String>) -> Result<Vec<Vec<(usize, String)>>> {
-        batch_tokenize_async(self.tokenizer(), texts).await
+        self.tokenizer
+            .as_ref()
+            .ok_or_else(|| anyhow!("Tokenizer not initialized"))?
+            .tokenize(texts)
+            .await
     }
 
     async fn generate(
@@ -426,6 +440,7 @@ impl LLM for AzureOpenAILLM {
                     .prompt_tokens_details
                     .and_then(|details| details.cached_tokens),
                 reasoning_tokens: None,
+                cache_creation_input_tokens: None,
             }),
             provider_request_id: request_id,
         })
@@ -709,8 +724,8 @@ impl Provider for AzureOpenAIProvider {
         Ok(())
     }
 
-    fn llm(&self, id: String) -> Box<dyn LLM + Sync + Send> {
-        Box::new(AzureOpenAILLM::new(id))
+    fn llm(&self, id: String, tokenizer: Option<TokenizerSingleton>) -> Box<dyn LLM + Sync + Send> {
+        Box::new(AzureOpenAILLM::new(id, tokenizer))
     }
 
     fn embedder(&self, id: String) -> Box<dyn Embedder + Sync + Send> {

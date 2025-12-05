@@ -30,8 +30,7 @@ const CareersMenuConfig: MenuConfig = {
     },
     {
       title: "Why Dust?",
-      href: "https://blog.dust.tt/why-dust/",
-      isExternal: true,
+      href: "/blog/why-dust",
     },
   ],
 };
@@ -241,8 +240,7 @@ const ExploreMenuConfig: MenuConfig = {
   items: [
     {
       title: "Blog",
-      href: "https://blog.dust.tt/",
-      isExternal: true,
+      href: "/blog",
     },
     {
       title: "Webinars",
@@ -256,8 +254,7 @@ const ExploreMenuConfig: MenuConfig = {
     },
     {
       title: "Customer Stories",
-      href: "https://blog.dust.tt/tag/customer-stories/",
-      isExternal: true,
+      href: "/customers",
     },
   ],
 };
@@ -464,6 +461,10 @@ export const menuConfig: DocsConfig = {
           title: "Jobs",
           href: "/jobs",
           isExternal: true,
+        },
+        {
+          title: "Brand resources",
+          href: "/home/brand-resources",
         },
         {
           title: "Support",

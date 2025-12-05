@@ -120,6 +120,7 @@ async function handler(
           }
           const body = Buffer.concat(chunks).toString();
           formData = JSON.parse(body);
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (e) {
           return apiError(req, res, {
             status_code: 400,

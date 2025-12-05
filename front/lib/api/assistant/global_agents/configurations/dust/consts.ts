@@ -1,8 +1,9 @@
+import { serializeMention } from "@app/lib/mentions/format";
 import { GLOBAL_AGENTS_SID } from "@app/types";
 
 export const DEEP_DIVE_NAME = "deep-dive";
 export const DEEP_DIVE_DESC =
-  "Deep dive within the full company data and data warehouses, web search/browse.";
+  "Conducts comprehensive, in-depth analysis across all company data, databases, and web sources—thorough investigation that may take several minutes.";
 export const DEEP_DIVE_AVATAR_URL =
   "https://dust.tt/static/systemavatar/dust_avatar_full.png";
 
@@ -16,5 +17,5 @@ Once the tool is called, the current execution is stopped and the handoff is lau
 
 Guidelines:
 - Let the user know that the handoff is launched by mentionning it before calling the deep dive tool.
-- The valid way to mention the @${DEEP_DIVE_NAME} agent is using the mention directive: :mention[${DEEP_DIVE_NAME}]{sId=${GLOBAL_AGENTS_SID.DEEP_DIVE}}
+- The valid way to mention the @${DEEP_DIVE_NAME} agent is using the mention directive: ${serializeMention({ name: DEEP_DIVE_NAME, sId: GLOBAL_AGENTS_SID.DEEP_DIVE })}
 `;

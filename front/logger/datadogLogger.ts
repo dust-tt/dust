@@ -49,7 +49,9 @@ function makeLogger(baseBindings?: LogContext) {
 
     // Merge child bindings with per-call context
     const mergedContext = {
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       ...(baseBindings || {}),
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       ...(context || {}),
     };
 
@@ -90,6 +92,7 @@ function makeLogger(baseBindings?: LogContext) {
 
     // Pino-like child logger to bind persistent context
     child: (bindings?: LogContext) =>
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       makeLogger({ ...(baseBindings || {}), ...(bindings || {}) }),
   };
 }

@@ -86,6 +86,7 @@ import { isUserMessageType } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
+
   res: NextApiResponse<WithAPIErrorResponse<PostMessagesResponseBody>>,
   auth: Authenticator
 ): Promise<void> {

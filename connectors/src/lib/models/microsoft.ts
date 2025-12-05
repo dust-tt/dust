@@ -5,12 +5,21 @@ import type { MicrosoftNodeType } from "@connectors/connectors/microsoft/lib/typ
 import { connectorsSequelize } from "@connectors/resources/storage";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 
+export type SelectedSiteMetadata = {
+  siteId: string;
+  internalId: string;
+  displayName?: string | null;
+  webUrl?: string | null;
+};
+
 export class MicrosoftConfigurationModel extends ConnectorBaseModel<MicrosoftConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare pdfEnabled: boolean;
   declare csvEnabled: boolean;
   declare largeFilesEnabled: boolean;
+  declare tenantId: string | null;
+  declare selectedSites: SelectedSiteMetadata[] | null;
 }
 MicrosoftConfigurationModel.init(
   {
@@ -39,6 +48,15 @@ MicrosoftConfigurationModel.init(
       allowNull: false,
       defaultValue: false,
     },
+    tenantId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    selectedSites: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      defaultValue: null,
+    },
   },
   {
     sequelize: connectorsSequelize,
@@ -48,10 +66,10 @@ MicrosoftConfigurationModel.init(
   }
 );
 
-// MicrosoftRoot stores the drive/folders/channels selected by the user to sync.
+// MicrosoftRoot stores the sites/drives selected by the user to sync.
 // In order to be able to uniquely identify each node, we store the GET path
-// to the item in the itemApiPath field (e.g. /drives/{drive-id}), except for the toplevel
-// sites-root and teams-root, which are stored as "sites-root" and "teams-root" respectively.
+// to the item in the itemApiPath field (e.g. /drives/{drive-id}), except for the top-level
+// sites-root, which is stored as "sites-root".
 export class MicrosoftRootModel extends ConnectorBaseModel<MicrosoftRootModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -165,6 +183,7 @@ MicrosoftNodeModel.init(
       { fields: ["internalId", "connectorId"], unique: true },
       { fields: ["connectorId", "nodeType"], unique: false },
       { fields: ["parentInternalId", "connectorId"], concurrently: true },
+      { fields: ["connectorId", "id"], unique: false },
     ],
   }
 );

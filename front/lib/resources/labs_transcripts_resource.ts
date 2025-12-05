@@ -306,6 +306,25 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return history.get();
   }
 
+  async deleteHistoryByFileId(
+    auth: Authenticator,
+    fileId: string
+  ): Promise<Result<boolean, Error>> {
+    try {
+      const deletedCount = await LabsTranscriptsHistoryModel.destroy({
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          configurationId: this.id,
+          fileId,
+        },
+      });
+
+      return new Ok(deletedCount > 0);
+    } catch (err) {
+      return new Err(normalizeError(err));
+    }
+  }
+
   async setStorageStatusForFileId(
     auth: Authenticator,
     { fileId, stored }: { fileId: string; stored: boolean }

@@ -7,31 +7,47 @@ import {
   ConversationModel,
   Message,
   UserMessage,
-} from "@app/lib/models/assistant/conversation";
+} from "@app/lib/models/agent/conversation";
+import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import type { UserResource } from "@app/lib/resources/user_resource";
-import type { ConversationType, ModelId, WorkspaceType } from "@app/types";
+import { FileFactory } from "@app/tests/utils/FileFactory";
+import type {
+  ConversationVisibility,
+  ConversationWithoutContentType,
+  ModelId,
+  SupportedContentFragmentType,
+  UserMessageOrigin,
+  UserMessageType,
+  WorkspaceType,
+} from "@app/types";
 
 export class ConversationFactory {
-  static async create({
-    auth,
-    agentConfigurationId,
-    messagesCreatedAt,
-    conversationCreatedAt,
-    t,
-  }: {
-    auth: Authenticator;
-    agentConfigurationId: string;
-    messagesCreatedAt: Date[];
-    conversationCreatedAt?: Date;
-    t?: Transaction;
-  }): Promise<ConversationType> {
-    const user = auth.getNonNullableUser();
+  static async create(
+    auth: Authenticator,
+    {
+      agentConfigurationId,
+      messagesCreatedAt,
+      conversationCreatedAt,
+      requestedSpaceIds,
+      visibility = "unlisted",
+      t,
+    }: {
+      agentConfigurationId: string;
+      messagesCreatedAt: Date[];
+      conversationCreatedAt?: Date;
+      requestedSpaceIds?: ModelId[];
+      visibility?: ConversationVisibility;
+      t?: Transaction;
+    }
+  ): Promise<ConversationWithoutContentType> {
+    const user = auth.user();
     const workspace = auth.getNonNullableWorkspace();
 
     const conversation = await createConversation(auth, {
       title: "Test Conversation",
-      visibility: "unlisted",
+      visibility,
+      spaceId: null,
     });
 
     if (conversationCreatedAt) {
@@ -41,10 +57,17 @@ export class ConversationFactory {
       );
     }
 
+    if (requestedSpaceIds && requestedSpaceIds.length > 0) {
+      await ConversationModel.update(
+        { requestedSpaceIds },
+        { where: { id: conversation.id } }
+      );
+    }
+
     // Note: fetchConversationParticipants rely on the existence of UserMessage even if we have a table for ConversationParticipant.
     for (let i = 0; i < messagesCreatedAt.length; i++) {
       const createdAt = messagesCreatedAt[i];
-      await createMessageAndUserMessage({
+      const userMessageRow = await createUserMessage({
         user,
         workspace,
         conversationModelId: conversation.id,
@@ -58,15 +81,230 @@ export class ConversationFactory {
         agentConfigurationId,
         createdAt,
         rank: i * 2 + 1,
+        parentId: userMessageRow.id,
         t,
       });
     }
 
     return conversation;
   }
+
+  /**
+   * Creates a test user message
+   */
+  static async createUserMessage({
+    auth,
+    workspace,
+    conversation,
+    content,
+    origin = "web",
+    agenticMessageType,
+    agenticOriginMessageId,
+  }: {
+    auth: Authenticator;
+    workspace: WorkspaceType;
+    conversation: ConversationWithoutContentType;
+    content: string;
+    origin?: UserMessageOrigin;
+    agenticMessageType?: "run_agent" | "agent_handover";
+    agenticOriginMessageId?: string;
+  }): Promise<{ messageRow: Message; userMessage: UserMessageType }> {
+    const userMessageRow = await UserMessage.create({
+      userId: auth.getNonNullableUser().id,
+      workspaceId: workspace.id,
+      content,
+      userContextUsername: "testuser",
+      userContextTimezone: "UTC",
+      userContextFullName: "Test User",
+      userContextEmail: "test@example.com",
+      userContextProfilePictureUrl: null,
+      userContextOrigin: origin,
+      clientSideMCPServerIds: [],
+    });
+
+    const messageRow = await Message.create({
+      sId: generateRandomModelSId(),
+      rank: 0,
+      conversationId: conversation.id,
+      parentId: null,
+      userMessageId: userMessageRow.id,
+      workspaceId: workspace.id,
+    });
+
+    const userMessage: UserMessageType = {
+      id: messageRow.id,
+      created: userMessageRow.createdAt.getTime(),
+      sId: messageRow.sId,
+      type: "user_message",
+      visibility: messageRow.visibility,
+      version: 0,
+      user: auth.getNonNullableUser().toJSON(),
+      mentions: [],
+      content: userMessageRow.content,
+      context: {
+        username: userMessageRow.userContextUsername,
+        timezone: userMessageRow.userContextTimezone,
+        fullName: userMessageRow.userContextFullName,
+        email: userMessageRow.userContextEmail,
+        profilePictureUrl: userMessageRow.userContextProfilePictureUrl,
+        origin: userMessageRow.userContextOrigin,
+      },
+      ...(agenticMessageType &&
+        agenticOriginMessageId && {
+          agenticMessageData: {
+            type: agenticMessageType,
+            originMessageId: agenticOriginMessageId,
+          },
+        }),
+      rank: messageRow.rank,
+    };
+
+    return { messageRow, userMessage };
+  }
+
+  /**
+   * Creates a user message with a specific rank
+   */
+  static async createUserMessageWithRank({
+    auth,
+    workspace,
+    conversationId,
+    rank,
+    content,
+    origin = "web",
+  }: {
+    auth: Authenticator;
+    workspace: WorkspaceType;
+    conversationId: ModelId;
+    rank: number;
+    content: string;
+    origin?: UserMessageOrigin;
+  }): Promise<Message> {
+    const userMessageRow = await UserMessage.create({
+      userId: auth.user()?.id,
+      workspaceId: workspace.id,
+      content,
+      userContextUsername: "testuser",
+      userContextTimezone: "UTC",
+      userContextFullName: "Test User",
+      userContextEmail: "test@example.com",
+      userContextProfilePictureUrl: null,
+      userContextOrigin: origin,
+      clientSideMCPServerIds: [],
+    });
+
+    return Message.create({
+      sId: generateRandomModelSId(),
+      rank,
+      conversationId,
+      parentId: null,
+      userMessageId: userMessageRow.id,
+      workspaceId: workspace.id,
+    });
+  }
+
+  /**
+   * Creates an agent message with a specific rank
+   */
+  static async createAgentMessageWithRank({
+    workspace,
+    conversationId,
+    rank,
+    agentConfigurationId,
+  }: {
+    workspace: WorkspaceType;
+    conversationId: ModelId;
+    rank: number;
+    agentConfigurationId: string;
+  }): Promise<Message> {
+    const agentMessageRow = await AgentMessage.create({
+      status: "created",
+      agentConfigurationId,
+      agentConfigurationVersion: 0,
+      workspaceId: workspace.id,
+      skipToolsValidation: false,
+    });
+
+    return Message.create({
+      sId: generateRandomModelSId(),
+      rank,
+      conversationId,
+      parentId: null,
+      agentMessageId: agentMessageRow.id,
+      workspaceId: workspace.id,
+    });
+  }
+
+  /**
+   * Creates a content fragment message with a specific rank
+   * If fileId is not provided, a file will be created automatically
+   */
+  static async createContentFragmentMessage({
+    auth,
+    workspace,
+    conversationId,
+    rank,
+    fileId,
+    title,
+    contentType = "text/plain",
+    fileName,
+  }: {
+    auth: Authenticator;
+    workspace: WorkspaceType;
+    conversationId: ModelId;
+    rank: number;
+    fileId?: ModelId;
+    title: string;
+    contentType?: SupportedContentFragmentType;
+    fileName?: string;
+  }): Promise<Message> {
+    let finalFileId = fileId;
+    if (!finalFileId) {
+      // Default to text/plain for file creation if contentType is not a valid file content type
+      const fileContentType =
+        contentType === "text/plain" || contentType === "text/markdown"
+          ? contentType
+          : "text/plain";
+      const file = await FileFactory.create(
+        workspace,
+        auth.getNonNullableUser(),
+        {
+          contentType: fileContentType,
+          fileName: fileName ?? `${title}.txt`,
+          fileSize: 100,
+          status: "ready",
+          useCase: "conversation",
+        }
+      );
+      finalFileId = file.id;
+    }
+
+    const contentFragment = await ContentFragmentResource.makeNew({
+      workspaceId: workspace.id,
+      title,
+      contentType: contentType ?? "text/plain",
+      fileId: finalFileId,
+      userId: auth.getNonNullableUser().id,
+      userContextUsername: "testuser",
+      userContextFullName: "Test User",
+      userContextEmail: "test@example.com",
+      userContextProfilePictureUrl: null,
+      sourceUrl: null,
+      textBytes: null,
+    });
+
+    return Message.create({
+      sId: generateRandomModelSId(),
+      rank,
+      conversationId,
+      parentId: null,
+      contentFragmentId: contentFragment.id,
+      workspaceId: workspace.id,
+    });
+  }
 }
 
-const createMessageAndUserMessage = async ({
+const createUserMessage = async ({
   user,
   workspace,
   conversationModelId,
@@ -74,13 +312,13 @@ const createMessageAndUserMessage = async ({
   rank,
   t,
 }: {
-  user: UserResource;
+  user: UserResource | null;
   workspace: WorkspaceType;
   conversationModelId: ModelId;
   createdAt: Date;
   rank: number;
   t?: Transaction;
-}) => {
+}): Promise<Message> => {
   return Message.create(
     {
       createdAt,
@@ -94,7 +332,7 @@ const createMessageAndUserMessage = async ({
           {
             createdAt,
             updatedAt: createdAt,
-            userId: user.id,
+            userId: user?.id,
             workspaceId: workspace.id,
             content: "Test user Message.",
             userContextUsername: "soupinou",
@@ -122,6 +360,7 @@ const createMessageAndAgentMessage = async ({
   agentConfigurationId,
   createdAt,
   rank,
+  parentId,
   t,
 }: {
   workspace: WorkspaceType;
@@ -129,6 +368,7 @@ const createMessageAndAgentMessage = async ({
   agentConfigurationId: string;
   createdAt: Date;
   rank: number;
+  parentId?: ModelId | null;
   t?: Transaction;
 }) => {
   const agentMessageRow = await AgentMessage.create(
@@ -150,7 +390,7 @@ const createMessageAndAgentMessage = async ({
       sId: generateRandomModelSId(),
       rank,
       conversationId: conversationModelId,
-      parentId: null,
+      parentId: parentId ?? null,
       agentMessageId: agentMessageRow.id,
       workspaceId: workspace.id,
     },

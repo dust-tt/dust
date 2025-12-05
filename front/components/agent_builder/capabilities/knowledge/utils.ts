@@ -5,6 +5,7 @@ import {
   TableIcon,
 } from "@dust-tt/sparkle";
 import isEmpty from "lodash/isEmpty";
+import type { ComponentType } from "react";
 
 import { transformSelectionConfigurationsToTree } from "@app/components/agent_builder/capabilities/knowledge/transformations";
 import { nameToDisplayFormat } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
@@ -21,7 +22,7 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { TemplateActionPreset } from "@app/types";
 
 export interface CapabilityConfig {
-  icon: React.ComponentType;
+  icon: ComponentType;
   configPageTitle: string;
   configPageDescription: string;
   descriptionConfig: {

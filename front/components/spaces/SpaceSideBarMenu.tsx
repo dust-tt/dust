@@ -28,7 +28,7 @@ import { useSpaceSidebarItemFocus } from "@app/hooks/useSpaceSidebarItemFocus";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import type { SpaceSectionGroupType } from "@app/lib/spaces";
@@ -261,7 +261,7 @@ const SYSTEM_SPACE_ITEMS: {
     label: "Triggers",
     visual: BoltIcon,
     category: "triggers",
-    flag: "hootl_webhooks",
+    flag: null,
   },
 ];
 
@@ -501,6 +501,7 @@ const SpaceDataSourceViewItem = ({
   // Unfold the folder if it's an ancestor of the current page.
   useEffect(() => {
     if (isAncestorToCurrentPage) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsExpanded(isAncestorToCurrentPage);
     }
   }, [isAncestorToCurrentPage]);
@@ -861,7 +862,7 @@ const SpaceTriggersSubMenu = ({
         <Tree isLoading={isWebhookSourceViewsLoading}>
           {webhookSourceViews.map((webhookView) => (
             <SpaceTriggerItem
-              label={webhookView.customName ?? webhookView.webhookSource.name}
+              label={webhookView.customName}
               icon={webhookView.icon}
               key={webhookView.sId}
             />

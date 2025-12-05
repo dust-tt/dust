@@ -22,25 +22,35 @@ import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/config
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
 import config from "@app/lib/api/config";
-import { Authenticator } from "@app/lib/auth";
+import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { isRemoteDatabase } from "@app/lib/data_sources";
 import type { DustError } from "@app/lib/error";
+import { AgentDataSourceConfiguration } from "@app/lib/models/agent/actions/data_sources";
+import {
+  AgentChildAgentConfiguration,
+  AgentMCPServerConfiguration,
+} from "@app/lib/models/agent/actions/mcp";
+import { AgentReasoningConfiguration } from "@app/lib/models/agent/actions/reasoning";
+import { AgentTablesQueryConfigurationTable } from "@app/lib/models/agent/actions/tables_query";
 import {
   AgentConfiguration,
   AgentUserRelation,
-} from "@app/lib/models/assistant/agent";
-import { GroupAgentModel } from "@app/lib/models/assistant/group_agent";
-import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
+} from "@app/lib/models/agent/agent";
+import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
+import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import {
+  createResourcePermissionsFromSpacesWithMap,
+  createSpaceIdToGroupsMap,
+} from "@app/lib/resources/permission_utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { normalizeArrays } from "@app/lib/utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type {
@@ -50,6 +60,7 @@ import type {
   AgentModelConfigurationType,
   AgentStatus,
   LightAgentConfigurationType,
+  ModelId,
   Result,
   UserType,
 } from "@app/types";
@@ -58,66 +69,67 @@ import {
   Err,
   isAdmin,
   isBuilder,
+  isGlobalAgentId,
   MAX_STEPS_USE_PER_RUN_LIMIT,
   normalizeAsInternalDustError,
   Ok,
+  removeNulls,
 } from "@app/types";
-import { isGlobalAgentId, removeNulls } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
-/**
- * Get one specific version of a single agent
- */
-async function getAgentConfigurationWithVersion<V extends AgentFetchVariant>(
+export async function getAgentConfigurationsWithVersion<
+  V extends AgentFetchVariant,
+>(
   auth: Authenticator,
-  {
-    agentId,
-    agentVersion,
-    variant,
-  }: { agentId: string; agentVersion: number; variant: V }
+  agentIdsWithVersion: { agentId: string; agentVersion: number }[],
+  { variant }: { variant: V }
 ): Promise<
-  | (V extends "light" ? LightAgentConfigurationType : AgentConfigurationType)
-  | null
+  V extends "light" ? LightAgentConfigurationType[] : AgentConfigurationType[]
 > {
   const owner = auth.workspace();
   if (!owner || !auth.isUser()) {
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
-  assert(!isGlobalAgentId(agentId), "Global agents are not versioned.");
+  const globalAgentIds = agentIdsWithVersion
+    .map(({ agentId }) => agentId)
+    .filter(isGlobalAgentId);
 
-  const workspaceAgents = await AgentConfiguration.findAll({
+  let globalAgents: AgentConfigurationType[] = [];
+  if (globalAgentIds.length > 0) {
+    globalAgents = await getGlobalAgents(auth, globalAgentIds, variant);
+  }
+
+  const workspaceAgentModels = await AgentConfiguration.findAll({
     where: {
-      // Relies on the indexes (workspaceId), (sId, version).
       workspaceId: owner.id,
-      sId: agentId,
-      version: agentVersion,
+      [Op.or]: agentIdsWithVersion
+        .filter(({ agentId }) => !isGlobalAgentId(agentId))
+        .map(({ agentId: sId, agentVersion: version }) => ({
+          sId,
+          version,
+        })),
     },
-    order: [["version", "DESC"]],
   });
 
-  const agents = await enrichAgentConfigurations(auth, workspaceAgents, {
-    variant,
-  });
-
-  const allowedAgents = agents.filter((a) =>
-    // TODO(2025-10-17 thomas): Update permission to use space requirements.
-    // auth.canRead(
-    //   Authenticator.createResourcePermissionsFromSpaceIds(a.requestedSpaceIds)
-    // )
-    auth.canRead(
-      Authenticator.createResourcePermissionsFromGroupIds(a.requestedGroupIds)
-    )
+  const allowedAgentModels = await filterAgentsByRequestedSpaces(
+    auth,
+    workspaceAgentModels
+  );
+  const workspaceAgents = await enrichAgentConfigurations(
+    auth,
+    allowedAgentModels,
+    {
+      variant,
+    }
   );
 
-  return (
-    (allowedAgents[0] as V extends "light"
-      ? LightAgentConfigurationType
-      : AgentConfigurationType) || null
-  );
+  const agents = [...globalAgents, ...workspaceAgents];
+
+  return agents as V extends "light"
+    ? LightAgentConfigurationType[]
+    : AgentConfigurationType[];
 }
-
-// Main entry points for fetching agents.
 
 /**
  * Get all versions of a single agent.
@@ -135,34 +147,27 @@ export async function listsAgentConfigurationVersions<
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
-  let allAgents: AgentConfigurationType[];
+  let agents: AgentConfigurationType[];
   if (isGlobalAgentId(agentId)) {
-    allAgents = await getGlobalAgents(auth, [agentId], variant);
+    agents = await getGlobalAgents(auth, [agentId], variant);
   } else {
-    const workspaceAgents = await AgentConfiguration.findAll({
+    const agentModels = await AgentConfiguration.findAll({
       where: {
         workspaceId: owner.id,
         sId: agentId,
       },
       order: [["version", "DESC"]],
     });
-    allAgents = await enrichAgentConfigurations(auth, workspaceAgents, {
+    const allowedAgentModels = await filterAgentsByRequestedSpaces(
+      auth,
+      agentModels
+    );
+    agents = await enrichAgentConfigurations(auth, allowedAgentModels, {
       variant,
     });
   }
 
-  // Filter by permissions
-  const allowedAgents = allAgents.filter((a) =>
-    // TODO(2025-10-17 thomas): Update permission to use space requirements.
-    // auth.canRead(
-    //   Authenticator.createResourcePermissionsFromSpaceIds(a.requestedSpaceIds)
-    // )
-    auth.canRead(
-      Authenticator.createResourcePermissionsFromGroupIds(a.requestedGroupIds)
-    )
-  );
-
-  return allowedAgents as V extends "full"
+  return agents as V extends "full"
     ? AgentConfigurationType[]
     : LightAgentConfigurationType[];
 }
@@ -215,7 +220,7 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
         raw: true,
       })) as unknown as { sId: string; max_version: number }[];
 
-      const workspaceAgentConfigurations = await AgentConfiguration.findAll({
+      const agentModels = await AgentConfiguration.findAll({
         where: {
           workspaceId: owner.id,
           [Op.or]: latestVersions.map((v) => ({
@@ -225,27 +230,20 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
         },
         order: [["version", "DESC"]],
       });
+      const allowedAgentModels = await filterAgentsByRequestedSpaces(
+        auth,
+        agentModels
+      );
       workspaceAgents = await enrichAgentConfigurations(
         auth,
-        workspaceAgentConfigurations,
+        allowedAgentModels,
         { variant }
       );
     }
 
-    const allAgents = [...globalAgents, ...workspaceAgents];
+    const agents = [...globalAgents, ...workspaceAgents];
 
-    // Filter by permissions
-    const allowedAgents = allAgents.filter((a) =>
-      // TODO(2025-10-17 thomas): Update permission to use space requirements.
-      // auth.canRead(
-      //   Authenticator.createResourcePermissionsFromSpaceIds(a.requestedSpaceIds)
-      // )
-      auth.canRead(
-        Authenticator.createResourcePermissionsFromGroupIds(a.requestedGroupIds)
-      )
-    );
-
-    return allowedAgents as V extends "full"
+    return agents as V extends "full"
       ? AgentConfigurationType[]
       : LightAgentConfigurationType[];
   });
@@ -266,12 +264,19 @@ export async function getAgentConfiguration<V extends AgentFetchVariant>(
   | null
 > {
   return tracer.trace("getAgentConfiguration", async () => {
-    if (agentVersion !== undefined) {
-      return getAgentConfigurationWithVersion(auth, {
-        agentId,
-        agentVersion,
-        variant,
-      });
+    if (agentVersion !== undefined && !isGlobalAgentId(agentId)) {
+      const [agent] = await getAgentConfigurationsWithVersion(
+        auth,
+        [{ agentId, agentVersion }],
+        {
+          variant,
+        }
+      );
+      return (
+        (agent as V extends "light"
+          ? LightAgentConfigurationType
+          : AgentConfigurationType) || null
+      );
     }
     const [agent] = await getAgentConfigurations(auth, {
       agentIds: [agentId],
@@ -318,14 +323,12 @@ export async function createAgentConfiguration(
     name,
     description,
     instructions,
-    visualizationEnabled,
     pictureUrl,
     status,
     scope,
     model,
     agentConfigurationId,
     templateId,
-    requestedGroupIds,
     requestedSpaceIds,
     tags,
     editors,
@@ -333,14 +336,12 @@ export async function createAgentConfiguration(
     name: string;
     description: string;
     instructions: string | null;
-    visualizationEnabled: boolean;
     pictureUrl: string;
     status: AgentStatus;
     scope: Exclude<AgentConfigurationScope, "global">;
     model: AgentModelConfigurationType;
     agentConfigurationId?: string;
     templateId: string | null;
-    requestedGroupIds: number[][];
     requestedSpaceIds: number[];
     tags: TagType[];
     editors: UserType[];
@@ -366,6 +367,46 @@ export async function createAgentConfiguration(
   let version = 0;
 
   let userFavorite = false;
+
+  // For hidden agents, track previous editors to disable triggers when editors are removed.
+  let previousEditorIds: Set<ModelId> = new Set();
+  if (agentConfigurationId) {
+    const existingAgent = await getAgentConfiguration(auth, {
+      agentId: agentConfigurationId,
+      variant: "light",
+    });
+    if (existingAgent && scope === "hidden") {
+      const editorGroupRes = await GroupResource.findEditorGroupForAgent(
+        auth,
+        existingAgent
+      );
+      if (editorGroupRes.isOk()) {
+        const members = await editorGroupRes.value.getActiveMembers(auth);
+        previousEditorIds = new Set(members.map((m) => m.id));
+      }
+    }
+    if (existingAgent && existingAgent.scope !== "visible") {
+      if (
+        !(await canPublishAgent(auth)) &&
+        scope === "visible" &&
+        status === "active"
+      ) {
+        return new Err(
+          new Error("Publishing agents is restricted to builders and admins.")
+        );
+      }
+    }
+  } else {
+    if (
+      !(await canPublishAgent(auth)) &&
+      scope === "visible" &&
+      status === "active"
+    ) {
+      return new Err(
+        new Error("Publishing agents is restricted to builders and admins.")
+      );
+    }
+  }
 
   try {
     let template: TemplateResource | null = null;
@@ -436,13 +477,10 @@ export async function createAgentConfiguration(
           temperature: model.temperature,
           reasoningEffort: model.reasoningEffort,
           maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-          visualizationEnabled,
           pictureUrl,
           workspaceId: owner.id,
           authorId: user.id,
           templateId: template?.id,
-          // TODO(2025-10-17 thomas): Remove requestedGroupIds.
-          requestedGroupIds: normalizeArrays(requestedGroupIds),
           requestedSpaceIds: requestedSpaceIds,
           responseFormat: model.responseFormat,
         },
@@ -569,14 +607,8 @@ export async function createAgentConfiguration(
       pictureUrl: agent.pictureUrl,
       status: agent.status,
       maxStepsPerRun: agent.maxStepsPerRun,
-      visualizationEnabled: agent.visualizationEnabled ?? false,
       templateId: template?.sId ?? null,
-      // TODO(2025-10-17 thomas): Remove requestedGroupIds.
-      requestedGroupIds: agent.requestedGroupIds.map((groups) =>
-        groups.map((id) =>
-          GroupResource.modelIdToSId({ id, workspaceId: owner.id })
-        )
-      ),
+      requestedGroupIds: [],
       requestedSpaceIds: agent.requestedSpaceIds.map((spaceId) =>
         SpaceResource.modelIdToSId({ id: spaceId, workspaceId: owner.id })
       ),
@@ -589,6 +621,38 @@ export async function createAgentConfiguration(
       agent: agentConfiguration,
       auth,
     });
+
+    // Disable triggers for editors who were removed from a hidden agent.
+    if (previousEditorIds.size > 0 && scope === "hidden") {
+      const newEditorIds = new Set(editors.map((e) => e.id));
+      const removedEditorIds = Array.from(previousEditorIds).filter(
+        (id) => !newEditorIds.has(id)
+      );
+
+      if (removedEditorIds.length > 0) {
+        const triggersToDisableRes =
+          await TriggerResource.listByAgentConfigurationIdAndEditors(auth, {
+            agentConfigurationId: agent.sId,
+            editorIds: removedEditorIds,
+          });
+        if (triggersToDisableRes.isOk()) {
+          for (const trigger of triggersToDisableRes.value) {
+            const disableResult = await trigger.disable(auth);
+            if (disableResult.isErr()) {
+              logger.error(
+                {
+                  workspaceId: owner.sId,
+                  agentConfigurationId: agent.sId,
+                  triggerId: trigger.sId,
+                  error: disableResult.error,
+                },
+                `Failed to disable trigger ${trigger.sId} when removing editor from agent ${agent.sId}`
+              );
+            }
+          }
+        }
+      }
+    }
 
     return new Ok(agentConfiguration);
   } catch (error) {
@@ -674,14 +738,11 @@ export async function createGenericAgentConfiguration(
     name,
     description,
     instructions,
-    visualizationEnabled: false,
     pictureUrl,
     status: "active",
     scope: "hidden", // Unpublished
     model,
     templateId: null,
-    // TODO(2025-10-17 thomas): Remove requestedGroupIds.
-    requestedGroupIds: [],
     requestedSpaceIds: [],
     tags: [],
     editors: [user.toJSON()], // Only the current user as editor
@@ -1053,23 +1114,83 @@ export async function unsafeHardDeleteAgentConfiguration(
 ): Promise<void> {
   const workspaceId = auth.getNonNullableWorkspace().id;
 
-  await TagAgentModel.destroy({
-    where: {
-      agentConfigurationId: agentConfiguration.id,
-      workspaceId,
-    },
-  });
-  await GroupAgentModel.destroy({
-    where: {
-      agentConfigurationId: agentConfiguration.id,
-      workspaceId,
-    },
-  });
-  await AgentConfiguration.destroy({
-    where: {
-      id: agentConfiguration.id,
-      workspaceId,
-    },
+  await withTransaction(async (t) => {
+    // Clean up MCP server configurations and their children first
+    const mcpConfigs = await AgentMCPServerConfiguration.findAll({
+      where: {
+        agentConfigurationId: agentConfiguration.id,
+        workspaceId,
+      },
+      attributes: ["id"],
+      transaction: t,
+    });
+    if (mcpConfigs.length) {
+      const mcpIds = mcpConfigs.map((c) => c.id);
+
+      await AgentDataSourceConfiguration.destroy({
+        where: {
+          workspaceId,
+          mcpServerConfigurationId: { [Op.in]: mcpIds },
+        },
+        transaction: t,
+      });
+
+      await AgentTablesQueryConfigurationTable.destroy({
+        where: {
+          workspaceId,
+          mcpServerConfigurationId: { [Op.in]: mcpIds },
+        },
+        transaction: t,
+      });
+
+      await AgentReasoningConfiguration.destroy({
+        where: {
+          workspaceId,
+          mcpServerConfigurationId: { [Op.in]: mcpIds },
+        },
+        transaction: t,
+      });
+
+      await AgentChildAgentConfiguration.destroy({
+        where: {
+          workspaceId,
+          mcpServerConfigurationId: { [Op.in]: mcpIds },
+        },
+        transaction: t,
+      });
+
+      await AgentMCPServerConfiguration.destroy({
+        where: {
+          workspaceId,
+          id: { [Op.in]: mcpIds },
+        },
+        transaction: t,
+      });
+    }
+
+    await TagAgentModel.destroy({
+      where: {
+        agentConfigurationId: agentConfiguration.id,
+        workspaceId,
+      },
+      transaction: t,
+    });
+
+    await GroupAgentModel.destroy({
+      where: {
+        agentConfigurationId: agentConfiguration.id,
+        workspaceId,
+      },
+      transaction: t,
+    });
+
+    await AgentConfiguration.destroy({
+      where: {
+        id: agentConfiguration.id,
+        workspaceId,
+      },
+      transaction: t,
+    });
   });
 }
 
@@ -1113,7 +1234,7 @@ export async function updateAgentPermissions(
   // The canWrite check for agent_editors groups (allowing members and admins)
   // is implicitly handled by addMembers and removeMembers.
   try {
-    return await withTransaction(async (t) => {
+    const transactionResult = await withTransaction(async (t) => {
       if (usersToAdd.length > 0) {
         const addRes = await editorGroupRes.value.addMembers(auth, usersToAdd, {
           transaction: t,
@@ -1137,48 +1258,148 @@ export async function updateAgentPermissions(
       }
       return new Ok(undefined);
     });
+
+    if (transactionResult.isErr()) {
+      return transactionResult;
+    }
+
+    // If the agent is hidden and editors were removed, disable their triggers.
+    // Removed editors can no longer access the hidden agent, so their triggers would fail.
+    if (usersToRemove.length > 0 && agent.scope === "hidden") {
+      const triggersToDisable =
+        await TriggerResource.listByAgentConfigurationIdAndEditors(auth, {
+          agentConfigurationId: agent.sId,
+          editorIds: usersToRemove.map((u) => u.id),
+        });
+
+      if (triggersToDisable.isErr()) {
+        return new Err(normalizeAsInternalDustError(triggersToDisable.error));
+      }
+      for (const trigger of triggersToDisable.value) {
+        const disableResult = await trigger.disable(auth);
+        if (disableResult.isErr()) {
+          logger.error(
+            {
+              workspaceId: auth.getNonNullableWorkspace().sId,
+              agentConfigurationId: agent.sId,
+              triggerId: trigger.sId,
+              error: disableResult.error,
+            },
+            `Failed to disable trigger ${trigger.sId} when removing editor from agent ${agent.sId}`
+          );
+        }
+      }
+    }
+
+    return new Ok(undefined);
   } catch (error) {
     // Catch errors thrown from within the transaction
     return new Err(normalizeAsInternalDustError(error));
   }
 }
 
+async function canPublishAgent(auth: Authenticator): Promise<boolean> {
+  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+
+  if (
+    featureFlags.includes("restrict_agents_publishing") &&
+    !auth.isBuilder()
+  ) {
+    return false;
+  }
+  return true;
+}
+
 export async function updateAgentConfigurationScope(
   auth: Authenticator,
   agentConfigurationId: string,
   scope: Exclude<AgentConfigurationScope, "global">
-) {
-  const agent = await AgentConfiguration.findOne({
-    where: {
-      workspaceId: auth.getNonNullableWorkspace().id,
-      sId: agentConfigurationId,
-      status: "active",
-    },
+): Promise<Result<void, Error>> {
+  const agentConfig = await getAgentConfiguration(auth, {
+    agentId: agentConfigurationId,
+    variant: "light",
   });
 
-  if (!agent) {
+  if (!agentConfig) {
     return new Err(new Error(`Could not find agent ${agentConfigurationId}`));
   }
 
-  agent.scope = scope;
-  await agent.save();
+  if (
+    !(await canPublishAgent(auth)) &&
+    agentConfig.scope !== "visible" &&
+    scope === "visible" &&
+    agentConfig.status === "active"
+  ) {
+    return new Err(
+      new Error("Publishing agents is restricted to builders and admins.")
+    );
+  }
+
+  const previousScope = agentConfig.scope;
+  await AgentConfiguration.update(
+    { scope },
+    {
+      where: {
+        id: agentConfig.id,
+      },
+    }
+  );
+
+  // When scope changes from visible to hidden, disable triggers for non-editors.
+  // Non-editors will no longer have access to the hidden agent.
+  if (previousScope === "visible" && scope === "hidden") {
+    const triggers = await TriggerResource.listByAgentConfigurationId(
+      auth,
+      agentConfigurationId
+    );
+
+    if (triggers.length > 0) {
+      // Get the editor group to find who can still access the agent
+      const editorGroupRes = await GroupResource.findEditorGroupForAgent(
+        auth,
+        agentConfig
+      );
+
+      let editorIds: Set<ModelId> = new Set();
+      if (editorGroupRes.isOk()) {
+        const members = await editorGroupRes.value.getActiveMembers(auth);
+        editorIds = new Set(members.map((m) => m.id));
+      }
+
+      // Disable triggers for users who are not editors
+      for (const trigger of triggers) {
+        if (!editorIds.has(trigger.editor)) {
+          const disableResult = await trigger.disable(auth);
+          if (disableResult.isErr()) {
+            logger.error(
+              {
+                workspaceId: auth.getNonNullableWorkspace().sId,
+                agentConfigurationId,
+                triggerId: trigger.sId,
+                error: disableResult.error,
+              },
+              `Failed to disable trigger ${trigger.sId} when changing agent ${agentConfigurationId} scope to hidden`
+            );
+          }
+        }
+      }
+    }
+  }
 
   return new Ok(undefined);
 }
 
-// TODO(2025-10-17 thomas): Update name, remove requestedGroupIds.
-export async function updateAgentRequestedGroupIds(
+export async function updateAgentRequirements(
   auth: Authenticator,
-  params: { agentId: string; newGroupIds: number[][]; newSpaceIds: number[] },
+  params: { agentId: string; newSpaceIds: number[] },
   options?: { transaction?: Transaction }
 ): Promise<Result<boolean, Error>> {
-  const { agentId, newGroupIds, newSpaceIds } = params;
+  const { agentId, newSpaceIds } = params;
 
   const owner = auth.getNonNullableWorkspace();
 
   const updated = await AgentConfiguration.update(
     {
-      requestedGroupIds: normalizeArrays(newGroupIds),
       requestedSpaceIds: newSpaceIds,
     },
     {
@@ -1191,4 +1412,35 @@ export async function updateAgentRequestedGroupIds(
   );
 
   return new Ok(updated[0] > 0);
+}
+
+export async function filterAgentsByRequestedSpaces(
+  auth: Authenticator,
+  agents: AgentConfiguration[]
+) {
+  const uniqSpaceIds = Array.from(
+    new Set(agents.flatMap((agent) => agent.requestedSpaceIds))
+  );
+
+  const spaces = await SpaceResource.fetchByModelIds(auth, uniqSpaceIds);
+  const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
+
+  // Filter out agents that reference missing/deleted spaces.
+  // When a space is deleted, mcp actions are removed, and requestedSpaceIds are updated.
+  const foundSpaceIds = new Set(spaces.map((s) => s.id));
+  const validAgents = agents.filter((c) =>
+    c.requestedSpaceIds.every((id) => foundSpaceIds.has(Number(id)))
+  );
+
+  const allowedBySpaceIds = validAgents.filter((agent) =>
+    auth.canRead(
+      createResourcePermissionsFromSpacesWithMap(
+        spaceIdToGroupsMap,
+        // Parse as Number since Sequelize array of BigInts are returned as strings.
+        agent.requestedSpaceIds.map((id) => Number(id))
+      )
+    )
+  );
+
+  return allowedBySpaceIds;
 }

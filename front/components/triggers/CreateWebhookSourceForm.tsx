@@ -1,55 +1,44 @@
 import {
   Button,
-  Checkbox,
   ChevronDownIcon,
   CollapsibleComponent,
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   Input,
   Label,
+  ListSelectIcon,
   SliderToggle,
   TextArea,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { useForm } from "react-hook-form";
 import { Controller, useWatch } from "react-hook-form";
 import { z } from "zod";
 
-import { CreateWebhookGithubConnection } from "@app/components/triggers/CreateWebhookGithubConnection";
+import { CreateWebhookSourceWithProviderForm } from "@app/components/triggers/CreateWebhookSourceWithProviderForm";
 import type { LightWorkspaceType } from "@app/types";
-import { assertNever } from "@app/types";
-import type { WebhookSourceKind } from "@app/types/triggers/webhooks";
+import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import {
-  basePostWebhookSourcesSchema,
-  refineSubscribedEvents,
-  WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP,
+  WEBHOOK_PRESETS,
   WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS,
+  WebhookSourcesSchema,
 } from "@app/types/triggers/webhooks";
 
-export const validateCustomHeadersFromString = (value: string | null) => {
-  if (value === null || value.trim() === "") {
-    return { parsed: null };
-  }
-  try {
-    const parsed = JSON.parse(value);
-    const result = z.record(z.string()).nullable().safeParse(parsed);
-
-    return result.success ? { parsed: result.data } : null;
-  } catch {
-    return null;
-  }
-};
-
-export const CreateWebhookSourceSchema = basePostWebhookSourcesSchema
-  .extend({
-    customHeaders: z
-      .string()
-      .nullable()
-      .refine(validateCustomHeadersFromString, "Invalid JSON format"),
-    autoGenerate: z.boolean().default(true),
-  })
-  .refine(...refineSubscribedEvents)
+export const CreateWebhookSourceSchema = WebhookSourcesSchema.extend({
+  autoGenerate: z.boolean().default(true),
+})
+  .refine(
+    ({ provider, subscribedEvents }) =>
+      !provider || subscribedEvents.length > 0,
+    {
+      message: "Subscribed events must not be empty.",
+      path: ["subscribedEvents"],
+    }
+  )
   .refine(
     (data) => data.autoGenerate || (data.secret ?? "").trim().length > 0,
     {
@@ -62,27 +51,21 @@ export type CreateWebhookSourceFormData = z.infer<
   typeof CreateWebhookSourceSchema
 >;
 
-export type BaseRemoteData = {
-  connectionId: string;
-};
-
-export type RemoteGithubData = BaseRemoteData & {
-  repository: string;
-};
-
-export type RemoteProviderData = RemoteGithubData;
+export type RemoteProviderData = Record<string, unknown>;
 
 type CreateWebhookSourceFormContentProps = {
   form: ReturnType<typeof useForm<CreateWebhookSourceFormData>>;
-  kind: WebhookSourceKind;
-  owner?: LightWorkspaceType;
-  onRemoteProviderDataChange?: (data: RemoteProviderData | null) => void;
+  provider: WebhookProvider | null;
+  owner: LightWorkspaceType;
+  onRemoteProviderDataChange?: (
+    data: { connectionId: string; remoteMetadata: RemoteProviderData } | null
+  ) => void;
   onPresetReadyToSubmitChange?: (isReady: boolean) => void;
 };
 
 export function CreateWebhookSourceFormContent({
   form,
-  kind,
+  provider,
   owner,
   onRemoteProviderDataChange,
   onPresetReadyToSubmitChange,
@@ -92,56 +75,108 @@ export function CreateWebhookSourceFormContent({
     name: "subscribedEvents",
   });
 
-  const isGithub = kind === "github";
-  const isCustom = (() => {
-    switch (kind) {
-      case "custom":
-      case "test":
-        return true; // These are not OAuth-based kinds
-      case "github":
-        return false;
-      default:
-        assertNever(kind);
-    }
-  })();
-
   return (
     <>
       <Controller
         control={form.control}
         name="name"
-        render={({ field }) => (
+        render={({ field, fieldState }) => (
           <Input
             {...field}
             label="Name"
             placeholder="Name..."
-            isError={form.formState.errors.name !== undefined}
-            message={form.formState.errors.name?.message}
+            isError={fieldState.error !== undefined}
+            message={fieldState.error?.message}
             messageStatus="error"
             autoFocus
           />
         )}
       />
+      <Controller
+        control={form.control}
+        name="description"
+        render={({ field }) => (
+          <div className="space-y-2">
+            <Label htmlFor="trigger-description">Description (optional)</Label>
+            <TextArea
+              {...field}
+              id="trigger-description"
+              rows={3}
+              placeholder="Help your team understand when to use this trigger."
+            />
+          </div>
+        )}
+      />
 
-      {kind !== "custom" &&
-        WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].events.length > 0 && (
-          <Controller
-            control={form.control}
-            name="subscribedEvents"
-            render={({ fieldState }) => (
-              <div className="space-y-3">
-                <Label htmlFor="subscribedEvents">Subscribed events</Label>
-                <div className="space-y-2">
-                  {WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].events.map(
-                    (event) => {
-                      const isSelected = selectedEvents.includes(event.value);
-                      return (
-                        <div
-                          key={event.value}
-                          className="flex items-center space-x-3"
-                        >
-                          <Checkbox
-                            id={`${kind}-event-${event.value}`}
+      {provider && WEBHOOK_PRESETS[provider].events.length > 0 && (
+        <Controller
+          control={form.control}
+          name="subscribedEvents"
+          render={({ fieldState }) => {
+            const allEvents = WEBHOOK_PRESETS[provider].events;
+            const allSelected = selectedEvents.length === allEvents.length;
+            const dropDownLabel =
+              selectedEvents.length === 0
+                ? "Select events"
+                : allSelected
+                  ? `All events (${selectedEvents.length}) selected`
+                  : `${selectedEvents.length} event${selectedEvents.length > 1 ? "s" : ""} selected`;
+
+            const handleSelectAll = () => {
+              form.setValue(
+                "subscribedEvents",
+                allEvents.map((e) => e.value),
+                { shouldValidate: true, shouldDirty: true }
+              );
+            };
+
+            const handleUnselectAll = () => {
+              form.setValue("subscribedEvents", [], {
+                shouldValidate: true,
+                shouldDirty: true,
+              });
+            };
+
+            return (
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="subscribedEvents">Events to watch</Label>
+                <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  Choose which events will activate this trigger
+                </p>
+                <div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        label={dropDownLabel}
+                        variant="outline"
+                        icon={ChevronDownIcon}
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-72" align="start">
+                      <div className="flex gap-2 p-2">
+                        <Button
+                          label="Select all"
+                          icon={ListSelectIcon}
+                          variant="primary"
+                          size="xs"
+                          onClick={handleSelectAll}
+                          disabled={allSelected}
+                        />
+                        <Button
+                          label="Unselect all"
+                          icon={XMarkIcon}
+                          variant="primary"
+                          size="xs"
+                          onClick={handleUnselectAll}
+                          disabled={selectedEvents.length === 0}
+                        />
+                      </div>
+                      <DropdownMenuSeparator />
+                      {allEvents.map((event) => {
+                        const isSelected = selectedEvents.includes(event.value);
+                        return (
+                          <DropdownMenuCheckboxItem
+                            key={event.value}
                             checked={isSelected}
                             onCheckedChange={(checked) => {
                               if (checked) {
@@ -160,19 +195,13 @@ export function CreateWebhookSourceFormContent({
                                 );
                               }
                             }}
+                            onSelect={(e) => e.preventDefault()}
+                            label={event.name}
                           />
-                          <div className="grid gap-1.5 leading-none">
-                            <label
-                              htmlFor={`${kind}-event-${event.value}`}
-                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                            >
-                              {event.name}
-                            </label>
-                          </div>
-                        </div>
-                      );
-                    }
-                  )}
+                        );
+                      })}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
                 {fieldState.error && (
                   <div className="dark:text-warning-night flex items-center gap-1 text-xs text-warning">
@@ -180,19 +209,21 @@ export function CreateWebhookSourceFormContent({
                   </div>
                 )}
               </div>
-            )}
-          />
-        )}
+            );
+          }}
+        />
+      )}
 
-      {isGithub && owner && (
-        <CreateWebhookGithubConnection
+      {provider && (
+        <CreateWebhookSourceWithProviderForm
           owner={owner}
-          onGithubDataChange={onRemoteProviderDataChange}
+          provider={provider}
+          onDataToCreateWebhookChange={onRemoteProviderDataChange}
           onReadyToSubmitChange={onPresetReadyToSubmitChange}
         />
       )}
 
-      {isCustom && (
+      {!provider && (
         <div>
           <CollapsibleComponent
             rootProps={{ defaultOpen: false }}
@@ -295,27 +326,6 @@ export function CreateWebhookSourceFormContent({
             }
           />
         </div>
-      )}
-
-      {isCustom && (
-        <Controller
-          control={form.control}
-          name="customHeaders"
-          render={({ field }) => (
-            <div>
-              <Label htmlFor="customHeaders">Custom Headers (optional)</Label>
-              <TextArea
-                {...field}
-                value={field.value ?? undefined}
-                id="customHeaders"
-                placeholder='{"Authorization": "Bearer token", "Content-Type": "application/json"}'
-                error={form.formState.errors.customHeaders?.message}
-                showErrorLabel={true}
-                rows={4}
-              />
-            </div>
-          )}
-        />
       )}
     </>
   );

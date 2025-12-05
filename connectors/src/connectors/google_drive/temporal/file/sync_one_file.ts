@@ -14,7 +14,7 @@ import {
   GoogleDriveConfig,
   GoogleDriveFiles,
 } from "@connectors/lib/models/google_drive";
-import logger from "@connectors/logger/logger";
+import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type {
   DataSourceConfig,
@@ -55,11 +55,7 @@ export async function syncOneFile(
         where: { connectorId, driveFileId: file.id },
       });
 
-      const localLogger = logger.child({
-        provider: "google_drive",
-        workspaceId: dataSourceConfig.workspaceId,
-        dataSourceId: dataSourceConfig.dataSourceId,
-        connectorId,
+      const localLogger = getActivityLogger(connector).child({
         documentId,
         fileId: file.id,
         mimeType: file.mimeType,

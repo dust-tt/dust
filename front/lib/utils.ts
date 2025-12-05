@@ -2,7 +2,7 @@ import isEqual from "lodash/isEqual";
 
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import type { LightAgentConfigurationType } from "@app/types";
-import { isDevelopment } from "@app/types";
+import { compareAgentsForSort, isDevelopment } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 export const MODELS_STRING_MAX_LENGTH = 255;
@@ -18,6 +18,7 @@ export function classNames(...classes: (string | null | boolean)[]) {
 export const shallowBlockClone = (block: any) => {
   const b = Object.assign({}, block);
   b.spec = Object.assign({}, block.spec);
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   b.config = Object.assign({}, block.config || {});
   return b;
 };
@@ -277,10 +278,17 @@ export function compareForFuzzySort(query: string, a: string, b: string) {
     return subFilterLastIndexA - subFilterLastIndexB;
   }
 
+  // Favor exact match
   if (a.length !== b.length) {
-    return a.length - b.length;
+    if (a === query) {
+      return -1;
+    }
+    if (b === query) {
+      return 1;
+    }
   }
-  return a.localeCompare(b);
+
+  return 0;
 }
 
 export function filterAndSortAgents(
@@ -294,8 +302,10 @@ export function filterAndSortAgents(
   );
 
   if (searchText.length > 0) {
-    filtered.sort((a, b) =>
-      compareForFuzzySort(lowerCaseSearchText, a.name, b.name)
+    filtered.sort(
+      (a, b) =>
+        compareForFuzzySort(lowerCaseSearchText, a.name, b.name) ||
+        compareAgentsForSort(a, b)
     );
   }
 

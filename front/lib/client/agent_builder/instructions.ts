@@ -9,6 +9,7 @@ import {
 function serializeNodeToText(node: JSONContent): string {
   if (node.type === "heading") {
     // Preserve the original heading level in markdown (support H1–H6)
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const level = node.attrs?.level || 1;
     const safeLevel = Math.max(1, Math.min(level, 6));
     const prefix = "#".repeat(safeLevel) + " ";
@@ -30,6 +31,7 @@ function serializeNodeToText(node: JSONContent): string {
 
   if (node.type === "codeBlock") {
     // Convert code blocks to markdown format with triple backticks
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const language = node.attrs?.language || "";
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const code = node.content?.map(serializeNodeToText).join("") || "";

@@ -38,6 +38,11 @@ export const pageSettings: pageSettingsProps = {
     "Get expert coaching on any topic.",
   ],
   image: "/static/landing/productivity/contentoptimizer.png",
+  seo: {
+    title: "AI Productivity Agents: Get Things Done Faster, Better",
+    description:
+      "Automate routine tasks, enhance your communications, and get expert feedback tied to your company resources. Generate meeting summaries, summarize documents.",
+  },
 };
 
 export const Hero: HeroProps = {
@@ -168,7 +173,7 @@ export const Stories: CustomerStory[] = [
     title: "Kyriba's adoption of Dust across all functions",
     content:
       "43% of Kyriba employees save more than 3 hours weekly leveraging Dust for RFPs.",
-    href: "https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/",
+    href: "/blog/kyriba-accelerating-innovation-with-dust",
     src: "https://blog.dust.tt/content/images/size/w2000/2024/10/kyriba_dust.jpg",
   },
   {
@@ -176,14 +181,14 @@ export const Stories: CustomerStory[] = [
       "PayFit Accelerates Content Creation and Knowledge Sharing with Dust",
     content:
       "PayFit leverages Dust AI assistants to improve their internal processes across the board.",
-    href: "https://blog.dust.tt/dust-ai-payfit-efficiency/",
+    href: "/blog/dust-ai-payfit-efficiency",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_payfit.png",
   },
   {
     title: "November Five's journey to minimizing routine tasks with Dust",
     content:
       "Discover how November Five accelerates work with Dust, turning 3-hour tasks into 30 minutes.",
-    href: "https://blog.dust.tt/november-five-ai-transformation-dust/",
+    href: "/blog/november-five-ai-transformation-dust",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_november_five.png",
   },
 ];

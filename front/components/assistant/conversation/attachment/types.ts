@@ -1,7 +1,7 @@
 import type React from "react";
 
 import type {
-  AllSupportedFileContentType,
+  AllSupportedWithDustSpecificFileContentType,
   SupportedContentFragmentType,
   SupportedFileContentType,
 } from "@app/types";
@@ -12,7 +12,7 @@ export type FileAttachment = {
   title: string;
   contentType: SupportedFileContentType;
   isUploading: boolean;
-  onRemove: () => void;
+  onRemove?: () => void;
   description?: string;
   sourceUrl?: string;
 };
@@ -25,7 +25,7 @@ export type NodeAttachment = {
   spaceIcon: React.ComponentType;
   visual: React.ReactNode;
   path: string;
-  onRemove: () => void;
+  onRemove?: () => void;
   url: string | null;
 };
 
@@ -64,10 +64,7 @@ export interface MCPAttachmentCitation extends BaseAttachmentCitation {
   isUploading: false;
   description?: string;
 
-  contentType:
-    | AllSupportedFileContentType
-    | "application/vnd.dust.tool-output.data-source-search-result"
-    | "application/vnd.dust.tool-output.websearch-result";
+  contentType: AllSupportedWithDustSpecificFileContentType;
 }
 
 export type AttachmentCitation =

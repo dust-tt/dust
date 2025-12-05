@@ -17,8 +17,7 @@ import {
   isTextualContentType,
 } from "@app/components/assistant/conversation/attachment/utils";
 import type { LightWorkspaceType } from "@app/types";
-import { getFileFormat } from "@app/types";
-import { isSupportedImageContentType } from "@app/types";
+import { getFileFormat, isSupportedImageContentType } from "@app/types";
 
 interface AttachmentCitationProps {
   owner: LightWorkspaceType;
@@ -61,6 +60,7 @@ export function AttachmentCitation({
   const canOpenInDialog =
     attachmentCitation.type === "file" &&
     getFileFormat(attachmentCitation.contentType)?.isSafeToDisplay &&
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     (isTextualContentType(attachmentCitation) ||
       isAudioContentType(attachmentCitation));
 
@@ -87,8 +87,7 @@ export function AttachmentCitation({
                 <CitationClose
                   onClick={(e) => {
                     e.stopPropagation();
-                    attachmentCitation.onRemove &&
-                      attachmentCitation.onRemove();
+                    attachmentCitation.onRemove?.();
                   }}
                 />
               )

@@ -3,6 +3,7 @@ use crate::{
     oauth::{
         connection::{self, Connection, ConnectionProvider, MigratedCredentials},
         credential::{Credential, CredentialMetadata, CredentialProvider},
+        providers::slack::SlackConnectionProvider,
         store,
     },
     utils::{error_response, APIResponse},
@@ -12,7 +13,7 @@ use axum::{
     extract::{Path, State},
     middleware::from_fn,
     response::Json,
-    routing::{delete, get, post},
+    routing::{delete, get, patch, post},
     Router,
 };
 use axum_tracing_opentelemetry::middleware::{OtelAxumLayer, OtelInResponseLayer};
@@ -76,6 +77,26 @@ async fn connections_create(
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "credential_creation_failed",
                     "Failed to create credential",
+                    Some(e),
+                );
+            }
+        }
+    } else if payload.provider == ConnectionProvider::Slack {
+        // Temporary until all customers have migrated to the new system credential creation flow
+        // Auto-create system credential for Slack connection use-case if needed
+        match SlackConnectionProvider::create_system_credential_if_needed(
+            state.store.clone(),
+            &payload.metadata,
+        )
+        .await
+        {
+            Ok(Some(credential)) => Some(credential.credential_id().to_string()),
+            Ok(None) => None,
+            Err(e) => {
+                return error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "credential_creation_failed",
+                    "Failed to create system credential for Slack",
                     Some(e),
                 );
             }
@@ -178,6 +199,7 @@ async fn connections_finalize(
                             "provider": c.provider(),
                             "status": c.status(),
                             "metadata": c.metadata(),
+                            "related_credential_id": c.related_credential_id(),
                         },
                     })),
                 }),
@@ -306,6 +328,80 @@ async fn connections_metadata(
                 })),
             }),
         ),
+    }
+}
+
+#[derive(Deserialize)]
+struct ConnectionUpdateCredentialPayload {
+    related_credential_id: String,
+    metadata: serde_json::Map<String, serde_json::Value>,
+}
+
+async fn connections_update_credential(
+    State(state): State<Arc<OAuthState>>,
+    Path(connection_id): Path<String>,
+    Json(payload): Json<ConnectionUpdateCredentialPayload>,
+) -> (StatusCode, Json<APIResponse>) {
+    match state.store.retrieve_connection(&connection_id).await {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to retrieve connection",
+            Some(e),
+        ),
+        Ok(None) => error_response(
+            StatusCode::NOT_FOUND,
+            "connection_not_found",
+            "Requested connection was not found",
+            None,
+        ),
+        Ok(Some(mut c)) => {
+            // Update related credential
+            if let Err(e) = c
+                .update_related_credential_id(
+                    state.clone().store.clone(),
+                    payload.related_credential_id,
+                )
+                .await
+            {
+                return error_response(
+                    match e.code {
+                        connection::ConnectionErrorCode::InvalidCredentialError => {
+                            StatusCode::BAD_REQUEST
+                        }
+                        _ => StatusCode::INTERNAL_SERVER_ERROR,
+                    },
+                    &e.code.to_string(),
+                    &e.message,
+                    None,
+                );
+            }
+
+            // Update metadata
+            if let Err(e) = c
+                .update_metadata(state.clone().store.clone(), payload.metadata)
+                .await
+            {
+                return error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    &e.code.to_string(),
+                    &e.message,
+                    None,
+                );
+            }
+
+            (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!({
+                        "connection": {
+                            "connection_id": c.connection_id(),
+                        },
+                    })),
+                }),
+            )
+        }
     }
 }
 
@@ -443,6 +539,10 @@ pub async fn create_app() -> Result<Router> {
         .route(
             "/connections/{connection_id}/metadata",
             get(connections_metadata),
+        )
+        .route(
+            "/connections/{connection_id}/credential",
+            patch(connections_update_credential),
         )
         .route("/credentials", post(credentials_create))
         .route("/credentials/{credential_id}", get(credentials_retrieve))

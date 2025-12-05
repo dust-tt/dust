@@ -206,9 +206,9 @@ export const sendTrackerWithGenerationEmail = async ({
         url: null,
       };
       const maintainedDoc = g.maintainedDocumentDataSource
-        ? documentsByIdentifier.get(
+        ? (documentsByIdentifier.get(
             `${g.maintainedDocumentDataSource.id}__${g.maintainedDocumentId}`
-          ) ?? null
+          ) ?? null)
         : null;
 
       const title = doc.url

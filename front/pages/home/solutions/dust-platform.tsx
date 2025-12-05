@@ -1,5 +1,6 @@
 import { Button, Div3D, Hover3D, RocketIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
 import { ExtensibilitySection } from "@app/components/home/content/Product/ExtensibilitySection";
@@ -10,17 +11,13 @@ import { ImgBlock, QuoteSection } from "@app/components/home/ContentBlocks";
 import { Grid } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import {
-  getParticleShapeIndexByName,
-  shapeNames,
-} from "@app/components/home/Particles";
+import { PageMetadata } from "@app/components/home/PageMetadata";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
 
 export async function getStaticProps() {
   return {
     props: {
-      shape: getParticleShapeIndexByName(shapeNames.galaxy),
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
     },
   };
@@ -33,8 +30,15 @@ export const DemoVideo: DemoVideoProps = {
 };
 
 export default function DustPlatform() {
+  const router = useRouter();
+
   return (
     <>
+      <PageMetadata
+        title="Dust AI Platform: Build Custom AI Agents for Your Organization"
+        description="The enterprise platform for building, deploying, and managing AI agents. Connect your tools, customize workflows, and maintain security and compliance."
+        pathname={router.asPath}
+      />
       <PlatformIntroSection />
       <Grid>
         <div

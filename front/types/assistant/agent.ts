@@ -9,9 +9,9 @@ import type {
 } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
-  FunctionCallContentType,
-  ReasoningContentType,
-  TextContentType,
+  AgentFunctionCallContentType,
+  AgentReasoningContentType,
+  AgentTextContentType,
 } from "@app/types/assistant/agent_message_content";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
 import { isOAuthProvider, isValidScope } from "@app/types/oauth/lib";
@@ -99,7 +99,6 @@ export type AgentModelConfigurationType = {
   temperature: number;
   reasoningEffort?: AgentReasoningEffort;
   responseFormat?: string;
-  promptCaching?: boolean;
 };
 
 export type AgentFetchVariant = "light" | "full" | "extra_light";
@@ -135,19 +134,14 @@ export type LightAgentConfigurationType = {
   feedbacks?: { up: number; down: number };
 
   maxStepsPerRun: number;
-  visualizationEnabled: boolean;
   tags: TagType[];
 
   templateId: string | null;
 
-  // TODO(2025-10-17 thomas): Remove this.
-  // Group restrictions for accessing the agent/conversation. Deprecated
-  // The array of arrays represents permission requirements:
-  // - If empty, no restrictions apply
-  // - Each sub-array represents an OR condition (user must belong to AT LEAST ONE group)
-  // - Sub-arrays are combined with AND logic (user must satisfy ALL sub-arrays)
-  //
-  // Example: [[1,2], [3,4]] means (1 OR 2) AND (3 OR 4)
+  // TODO(2025-10-20 flav): Remove once SDK JS does not rely on it anymore.
+  visualizationEnabled?: boolean;
+
+  // Remove this once we have completely removed from the sdk.
   requestedGroupIds: string[][];
 
   // Space restrictions for accessing the agent/conversation - replaces group restrictions.
@@ -178,7 +172,6 @@ export interface TemplateAgentConfigurationType {
   instructions: string | null;
   isTemplate: true;
   maxStepsPerRun?: number;
-  visualizationEnabled: boolean;
   tags: TagType[];
 }
 
@@ -289,6 +282,7 @@ export type AgentErrorEvent = {
   configurationId: string;
   messageId: string;
   error: GenericErrorContent;
+  runIds?: string[];
 };
 
 // Generic event sent when an agent message is done (could be successful, failed, or cancelled).
@@ -389,5 +383,8 @@ export type AgentStepContentEvent = {
   configurationId: string;
   messageId: string;
   index: number;
-  content: TextContentType | FunctionCallContentType | ReasoningContentType;
+  content:
+    | AgentTextContentType
+    | AgentFunctionCallContentType
+    | AgentReasoningContentType;
 };

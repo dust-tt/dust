@@ -1,6 +1,10 @@
 import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 
+import type {
+  GetWorkspaceProgrammaticCostResponse,
+  GroupByType,
+} from "@app/lib/api/analytics/programmatic_cost";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetWorkspaceResponseBody } from "@app/pages/api/w/[wId]";
 import type { GetWorkspaceFeatureFlagsResponseType } from "@app/pages/api/w/[wId]/feature-flags";
@@ -70,6 +74,7 @@ export function useWorkspaceAnalytics({
   );
 
   return {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     analytics: data ? data : null,
     isMemberCountLoading: !error && !data,
     isMemberCountError: error,
@@ -145,5 +150,49 @@ export function useFeatureFlags({
     isFeatureFlagsLoading: !error && !data,
     isFeatureFlagsError: error,
     hasFeature,
+  };
+}
+
+export function useWorkspaceProgrammaticCost({
+  workspaceId,
+  groupBy,
+  selectedMonth,
+  billingCycleStartDay,
+  filter,
+  disabled,
+}: {
+  workspaceId: string;
+  groupBy?: GroupByType;
+  selectedMonth?: string;
+  billingCycleStartDay: number;
+  filter?: Partial<Record<GroupByType, string[]>>;
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetWorkspaceProgrammaticCostResponse> = fetcher;
+
+  const queryParams = new URLSearchParams();
+  queryParams.set("billingCycleStartDay", billingCycleStartDay.toString());
+  if (selectedMonth) {
+    queryParams.set("selectedMonth", selectedMonth);
+  }
+  if (groupBy) {
+    queryParams.set("groupBy", groupBy);
+  }
+  if (filter && Object.keys(filter).length > 0) {
+    queryParams.set("filter", JSON.stringify(filter));
+  }
+  const queryString = queryParams.toString();
+  const key = `/api/w/${workspaceId}/analytics/programmatic-cost?${queryString}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    programmaticCostData: data,
+    isProgrammaticCostLoading: !error && !data && !disabled,
+    isProgrammaticCostError: error,
+    isProgrammaticCostValidating: isValidating,
   };
 }

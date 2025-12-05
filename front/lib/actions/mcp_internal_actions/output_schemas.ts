@@ -278,25 +278,6 @@ export const isExecuteTablesQueryErrorResourceType = (
   );
 };
 
-// Data source search outputs: query and results.
-
-export const SearchQueryResourceSchema = z.object({
-  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY),
-  text: z.string(),
-  uri: z.literal(""),
-});
-
-export type SearchQueryResourceType = z.infer<typeof SearchQueryResourceSchema>;
-
-export const isSearchQueryResourceType = (
-  outputBlock: CallToolResult["content"][number]
-): outputBlock is { type: "resource"; resource: SearchQueryResourceType } => {
-  return (
-    outputBlock.type === "resource" &&
-    SearchQueryResourceSchema.safeParse(outputBlock.resource).success
-  );
-};
-
 export const SearchResultResourceSchema = z.object({
   mimeType: z.literal(
     INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT
@@ -324,28 +305,6 @@ export const isSearchResultResourceType = (
   return (
     outputBlock.type === "resource" &&
     SearchResultResourceSchema.safeParse(outputBlock.resource).success
-  );
-};
-
-// Data source inclusion outputs, query and results
-export const IncludeQueryResourceSchema = z.object({
-  mimeType: z.literal(
-    INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_INCLUDE_QUERY
-  ),
-  text: z.string(),
-  uri: z.literal(""),
-});
-
-export type IncludeQueryResourceType = z.infer<
-  typeof IncludeQueryResourceSchema
->;
-
-export const isIncludeQueryResourceType = (
-  outputBlock: CallToolResult["content"][number]
-): outputBlock is { type: "resource"; resource: IncludeQueryResourceType } => {
-  return (
-    outputBlock.type === "resource" &&
-    IncludeQueryResourceSchema.safeParse(outputBlock.resource).success
   );
 };
 
@@ -403,28 +362,6 @@ export const isIncludeResultResourceType = (
 };
 
 // Websearch results.
-
-export const WebsearchQueryResourceSchema = z.object({
-  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.WEBSEARCH_QUERY),
-  text: z.string(),
-  uri: z.literal(""),
-});
-
-export type WebsearchQueryResourceType = z.infer<
-  typeof WebsearchQueryResourceSchema
->;
-
-export const isWebsearchQueryResourceType = (
-  outputBlock: CallToolResult["content"][number]
-): outputBlock is {
-  type: "resource";
-  resource: WebsearchQueryResourceType;
-} => {
-  return (
-    outputBlock.type === "resource" &&
-    WebsearchQueryResourceSchema.safeParse(outputBlock.resource).success
-  );
-};
 
 export const WebsearchResultResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.WEBSEARCH_RESULT),
@@ -585,7 +522,7 @@ export const RunAgentResultResourceSchema = z.object({
         href: z.string().optional(),
         title: z.string(),
         provider: z.string(),
-        mimeType: z.string(),
+        contentType: z.string(),
       })
     )
     .optional(),
@@ -752,6 +689,7 @@ export const DataSourceNodeContentSchema = z.object({
   uri: z.string(),
   text: z.string(),
   metadata: RenderedNodeSchema,
+  ref: z.string().optional(),
 });
 
 export type DataSourceNodeContentType = z.infer<

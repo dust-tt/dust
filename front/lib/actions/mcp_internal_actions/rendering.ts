@@ -1,9 +1,6 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
-import type {
-  DataSourceNodeListType,
-  SearchQueryResourceType,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { DataSourceNodeListType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ResolvedDataSourceConfiguration } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import type {
   ConnectorProvider,
@@ -113,49 +110,4 @@ export function renderRelativeTimeFrameForToolOutput(
           ? `${relativeTimeFrame.duration} ${relativeTimeFrame.unit}s`
           : `${relativeTimeFrame.unit}`)
     : "across all time periods";
-}
-
-export function renderTagsForToolOutput(
-  tagsIn?: string[],
-  tagsNot?: string[]
-): string {
-  const tagsInAsString =
-    tagsIn && tagsIn.length > 0 ? `, with labels ${tagsIn?.join(", ")}` : "";
-  const tagsNotAsString =
-    tagsNot && tagsNot.length > 0
-      ? `, excluding labels ${tagsNot?.join(", ")}`
-      : "";
-  return `${tagsInAsString}${tagsNotAsString}`;
-}
-
-function renderSearchNodeIds(nodeIds?: string[]): string {
-  return nodeIds && nodeIds.length > 0
-    ? `within ${nodeIds.length} different subtrees `
-    : "";
-}
-
-export function makeQueryResource({
-  query,
-  timeFrame,
-  tagsIn,
-  tagsNot,
-  nodeIds,
-}: {
-  query: string;
-  timeFrame: TimeFrame | null;
-  tagsIn?: string[];
-  tagsNot?: string[];
-  nodeIds?: string[];
-}): SearchQueryResourceType {
-  const timeFrameAsString = renderRelativeTimeFrameForToolOutput(timeFrame);
-  const tagsAsString = renderTagsForToolOutput(tagsIn, tagsNot);
-  const nodeIdsAsString = renderSearchNodeIds(nodeIds);
-
-  return {
-    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY,
-    text: query
-      ? `Searching "${query}" ${nodeIdsAsString}${timeFrameAsString}${tagsAsString}.`
-      : `Searching ${timeFrameAsString}${tagsAsString}.`,
-    uri: "",
-  };
 }

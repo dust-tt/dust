@@ -8,6 +8,7 @@ import type {
   MicrosoftNodeType,
 } from "@connectors/connectors/microsoft/lib/types";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
+import type { SelectedSiteMetadata } from "@connectors/lib/models/microsoft";
 import {
   MicrosoftConfigurationModel,
   MicrosoftNodeModel,
@@ -114,10 +115,14 @@ export class MicrosoftConfigurationResource extends BaseResource<MicrosoftConfig
   toJSON(): {
     id: number;
     connectorId: number;
+    tenantId: string | null;
+    selectedSites: SelectedSiteMetadata[] | null;
   } {
     return {
       id: this.id,
       connectorId: this.connectorId,
+      tenantId: this.tenantId,
+      selectedSites: this.selectedSites,
     };
   }
 }

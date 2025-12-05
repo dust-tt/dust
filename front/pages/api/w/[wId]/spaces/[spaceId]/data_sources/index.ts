@@ -5,7 +5,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
-import { createDataSourceWithoutProvider } from "@app/lib/api/data_sources";
+import {
+  createDataSourceWithoutProvider,
+  registerSlackWebhookRouterEntry,
+} from "@app/lib/api/data_sources";
 import { checkConnectionOwnership } from "@app/lib/api/oauth";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -64,6 +67,8 @@ export const PostDataSourceWithProviderRequestBodySchema = t.intersection([
   }),
   t.partial({
     connectionId: t.string, // Required for some providers
+    relatedCredentialId: t.string, // Required for private integrations
+    extraConfig: t.record(t.string, t.string), // Used by slack private integrations
   }),
 ]);
 
@@ -226,7 +231,8 @@ const handleDataSourceWithProvider = async ({
   req: NextApiRequest;
   res: NextApiResponse<WithAPIErrorResponse<PostSpaceDataSourceResponseBody>>;
 }) => {
-  const { provider, name, connectionId } = body;
+  const { provider, name, connectionId, relatedCredentialId, extraConfig } =
+    body;
 
   // Checking that we have connectionId if we need id
   const isConnectionIdRequired = isConnectionIdRequiredForProvider(provider);
@@ -295,7 +301,17 @@ const handleDataSourceWithProvider = async ({
   let dataSourceDescription = getDefaultDataSourceDescription(provider, suffix);
 
   let { configuration } = body;
-  if (provider === "slack" || provider === "slack_bot") {
+  if (provider === "slack") {
+    configuration = {
+      botEnabled: false,
+      whitelistedDomains: undefined,
+      autoReadChannelPatterns: [],
+      restrictedSpaceAgentsEnabled: true,
+      privateIntegrationCredentialId: relatedCredentialId,
+    };
+  }
+
+  if (provider === "slack_bot") {
     configuration = {
       botEnabled: true,
       whitelistedDomains: undefined,
@@ -506,6 +522,48 @@ const handleDataSourceWithProvider = async ({
   }
 
   await dataSource.setConnectorId(connectorsRes.value.id);
+
+  // For Slack apps, register the signing secret in the webhook router
+  if (provider === "slack" && connectionId) {
+    const webhookRes = await registerSlackWebhookRouterEntry({
+      connectionId,
+      extraConfig,
+    });
+
+    if (webhookRes.isErr()) {
+      // Rollback: delete connector and data source
+      await dataSource.delete(auth, { hardDelete: true });
+      const deleteConnectorRes = await connectorsAPI.deleteConnector(
+        connectorsRes.value.id
+      );
+      if (deleteConnectorRes.isErr()) {
+        logger.error(
+          { error: deleteConnectorRes.error },
+          "Failed to delete the connector during rollback"
+        );
+      }
+
+      const deleteRes = await coreAPI.deleteDataSource({
+        projectId: dustProject.value.project.project_id.toString(),
+        dataSourceId: dustDataSource.value.data_source.data_source_id,
+      });
+      if (deleteRes.isErr()) {
+        logger.error(
+          { error: deleteRes.error },
+          "Failed to delete the data source during rollback"
+        );
+      }
+
+      return apiError(req, res, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message:
+            "Failed to register webhook router entry for Slack app. The connector has been rolled back.",
+        },
+      });
+    }
+  }
 
   res.status(201).json({
     dataSource: dataSource.toJSON(),

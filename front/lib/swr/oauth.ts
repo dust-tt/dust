@@ -1,3 +1,7 @@
+import type { Fetcher } from "swr";
+
+import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { GetSlackClientIdResponseBody } from "@app/pages/api/w/[wId]/credentials/slack_is_legacy";
 import type {
   APIError,
   OAuthConnectionType,
@@ -44,3 +48,35 @@ export const useFinalize = () => {
 
   return doFinalize;
 };
+
+export function useSlackIsLegacy({
+  workspaceId,
+  credentialId,
+  disabled,
+}: {
+  workspaceId: string;
+  credentialId: string | null;
+  disabled?: boolean;
+}) {
+  const slackIsLegacyFetcher: Fetcher<GetSlackClientIdResponseBody> = fetcher;
+
+  const url = `/api/w/${workspaceId}/credentials/slack_is_legacy${
+    credentialId ? `?credentialId=${encodeURIComponent(credentialId)}` : ""
+  }`;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    url,
+    slackIsLegacyFetcher,
+    {
+      disabled: disabled ?? !credentialId,
+    }
+  );
+
+  return {
+    isLegacySlackApp: data?.isLegacySlackApp ?? null,
+    error,
+    isLoading:
+      !error && !data && !!credentialId && !(disabled ?? !credentialId),
+    mutateIsLegacy: mutate,
+  };
+}

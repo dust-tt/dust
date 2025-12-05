@@ -152,7 +152,7 @@ const TableCellWithCopy = React.forwardRef<
       <div className="flex items-center space-x-2">
         <Label>{label}</Label>
         <Button
-          size="sm"
+          size="xs"
           variant="outline"
           onClick={handleCopy}
           icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}

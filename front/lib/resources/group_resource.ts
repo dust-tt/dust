@@ -15,8 +15,8 @@ import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import type { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { GroupAgentModel } from "@app/lib/models/assistant/group_agent";
+import type { AgentConfiguration } from "@app/lib/models/agent/agent";
+import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -174,6 +174,12 @@ export class GroupResource extends BaseResource<GroupModel> {
         agentConfigurationId: agent.id,
         workspaceId: owner.id,
       },
+      include: [
+        {
+          model: GroupModel,
+          as: "group",
+        },
+      ],
       attributes: ["groupId"],
     });
 
@@ -196,20 +202,15 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
 
     const groupAgent = groupAgents[0];
-
-    const group = await GroupResource.fetchById(
-      auth,
-      GroupResource.modelIdToSId({
-        id: groupAgent.groupId,
-        workspaceId: owner.id,
-      })
-    );
-
-    if (group.isErr()) {
-      return group;
+    const groupModel = await groupAgent.getGroup();
+    if (!groupModel) {
+      return new Err(
+        new DustError("group_not_found", "Editor group not found for agent.")
+      );
     }
 
-    if (group.value.kind !== "agent_editors") {
+    const group = new GroupResource(GroupModel, groupModel.get());
+    if (group.kind !== "agent_editors") {
       // Should not happen based on creation logic, but good to check.
       // Might change when we allow other group kinds to be associated with agents.
       return new Err(
@@ -220,7 +221,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    return group;
+    return new Ok(group);
   }
 
   /**
@@ -237,6 +238,12 @@ export class GroupResource extends BaseResource<GroupModel> {
         agentConfigurationId: agent.map((a) => a.id),
         workspaceId: owner.id,
       },
+      include: [
+        {
+          model: GroupModel,
+          as: "group",
+        },
+      ],
       attributes: ["groupId", "agentConfigurationId"],
     });
 
@@ -249,40 +256,30 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    const groups = await GroupResource.fetchByIds(
-      auth,
-      groupAgents.map((ga) =>
-        GroupResource.modelIdToSId({
-          id: ga.groupId,
-          workspaceId: owner.id,
-        })
-      )
-    );
-
-    if (groups.isErr()) {
-      return groups;
-    }
-
-    if (groups.value.some((g) => g.kind !== "agent_editors")) {
-      // Should not happen based on creation logic, but good to check.
-      // Might change when we allow other group kinds to be associated with agents.
-      return new Err(
-        new Error("Associated group is not an agent_editors group.")
-      );
-    }
-
-    const r = groupAgents.reduce<Record<string, GroupResource>>((acc, ga) => {
+    const r: Record<string, GroupResource> = {};
+    for (const ga of groupAgents) {
       if (ga.agentConfigurationId) {
         const agentConfiguration = agent.find(
           (a) => a.id === ga.agentConfigurationId
         );
-        const group = groups.value.find((g) => g.id === ga.groupId);
-        if (group && agentConfiguration) {
-          acc[agentConfiguration.sId] = group;
+        const group = await ga.getGroup();
+
+        if (group.kind !== "agent_editors") {
+          return new Err(
+            new DustError(
+              "group_not_found",
+              "Associated group is not an agent_editors group."
+            )
+          );
+        }
+        if (agentConfiguration) {
+          r[agentConfiguration.sId] = new GroupResource(
+            GroupModel,
+            group.get()
+          );
         }
       }
-      return acc;
-    }, {});
+    }
 
     return new Ok(r);
   }
@@ -597,6 +594,19 @@ export class GroupResource extends BaseResource<GroupModel> {
     return group ?? null;
   }
 
+  static async fetchByName(
+    auth: Authenticator,
+    name: string
+  ): Promise<GroupResource | null> {
+    const [group] = await this.baseFetch(auth, {
+      where: {
+        name,
+      },
+    });
+
+    return group ?? null;
+  }
+
   static async upsertByWorkOSGroupId(
     auth: Authenticator,
     directoryGroup: DirectoryGroup
@@ -860,6 +870,27 @@ export class GroupResource extends BaseResource<GroupModel> {
     return groups.map((group) => new this(GroupModel, group.get()));
   }
 
+  static async getActiveMembershipsForGroups(
+    auth: Authenticator,
+    groups: GroupResource[]
+  ): Promise<Record<ModelId, ModelId[]>> {
+    const owner = auth.getNonNullableWorkspace();
+    const res = await GroupMembershipModel.findAll({
+      where: {
+        workspaceId: owner.id,
+        groupId: groups.map((g) => g.id),
+        status: "active",
+        startAt: { [Op.lte]: new Date() },
+        [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+      },
+    });
+
+    return res.reduce<Record<ModelId, ModelId[]>>((acc, m) => {
+      acc[m.groupId] = [...(acc[m.groupId] || []), m.userId];
+      return acc;
+    }, {});
+  }
+
   async isMember(user: UserResource): Promise<boolean> {
     if (this.isGlobal()) {
       return true;
@@ -900,11 +931,11 @@ export class GroupResource extends BaseResource<GroupModel> {
     } else {
       memberships = await GroupMembershipModel.findAll({
         where: {
-          groupId: this.id,
           workspaceId: owner.id,
+          groupId: this.id,
+          status: "active",
           startAt: { [Op.lte]: new Date() },
           [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
-          status: "active",
         },
         transaction,
       });
@@ -942,8 +973,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       // Get all members regardless of status (active, suspended)
       memberships = await GroupMembershipModel.findAll({
         where: {
-          groupId: this.id,
           workspaceId: owner.id,
+          groupId: this.id,
           startAt: { [Op.lte]: new Date() },
           [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
           // Note: No status filter here - we want all statuses
@@ -979,11 +1010,11 @@ export class GroupResource extends BaseResource<GroupModel> {
     } else {
       return GroupMembershipModel.count({
         where: {
-          groupId: this.id,
           workspaceId: owner.id,
+          groupId: this.id,
+          status: "active",
           startAt: { [Op.lte]: new Date() },
           [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
-          status: "active",
         },
       });
     }

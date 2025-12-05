@@ -2,12 +2,12 @@ import {
   BoltIcon,
   Button,
   CardGrid,
-  ClockIcon,
   EmptyCTA,
   Hoverable,
   Spinner,
 } from "@dust-tt/sparkle";
-import React, { useState } from "react";
+import uniqBy from "lodash/uniqBy";
+import React, { useMemo, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
 import type {
@@ -15,24 +15,14 @@ import type {
   AgentBuilderTriggerType,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
-import { ScheduleEditionModal } from "@app/components/agent_builder/triggers/ScheduleEditionModal";
+import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { TriggerCard } from "@app/components/agent_builder/triggers/TriggerCard";
-import { WebhookEditionModal } from "@app/components/agent_builder/triggers/WebhookEditionModal";
+import type { SheetMode } from "@app/components/agent_builder/triggers/TriggerViewsSheet";
+import { TriggerViewsSheet } from "@app/components/agent_builder/triggers/TriggerViewsSheet";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { useWebhookSourceViewsFromSpaces } from "@app/lib/swr/webhook_source";
 import type { LightWorkspaceType } from "@app/types";
-import type { TriggerKind } from "@app/types/assistant/triggers";
-
-type DialogMode =
-  | {
-      type: "add";
-      kind: TriggerKind;
-    }
-  | {
-      type: "edit";
-      trigger: AgentBuilderTriggerType;
-      index: number;
-    };
+import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 
 interface AgentBuilderTriggersBlockProps {
   owner: LightWorkspaceType;
@@ -40,35 +30,59 @@ interface AgentBuilderTriggersBlockProps {
   agentConfigurationId: string | null;
 }
 
+const TEMP_TRIGGER_PREFIX = "temptrg";
+
 export function AgentBuilderTriggersBlock({
   owner,
   isTriggersLoading,
   agentConfigurationId,
 }: AgentBuilderTriggersBlockProps) {
-  const { getValues, setValue } = useFormContext<AgentBuilderFormData>();
+  const { getValues, setValue, control } =
+    useFormContext<AgentBuilderFormData>();
 
+  // We have to pass down this `append` rather than useFieldArray in the child component for the
+  // triggersToCreate to be updated here; this is specific to arrays in react-hook-form.
   const {
     fields: triggersToCreate,
-    remove: removeFromCreate,
-    append: appendToCreate,
-    update: updateInCreate,
+    remove: removeTriggerToCreate,
+    append: appendTriggerToCreate,
+    update: updateTriggerToCreate,
   } = useFieldArray<AgentBuilderFormData, "triggersToCreate">({
+    control,
     name: "triggersToCreate",
   });
 
   const {
     fields: triggersToUpdate,
-    remove: removeFromUpdate,
-    append: appendToUpdate,
-    update: updateInUpdate,
+    remove: removeTriggerToUpdate,
+    append: appendTriggerToUpdate,
+    update: updateTriggerToUpdate,
   } = useFieldArray<AgentBuilderFormData, "triggersToUpdate">({
+    control,
     name: "triggersToUpdate",
   });
 
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-
   const sendNotification = useSendNotification();
-  const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
+  const [sheetMode, setSheetMode] = useState<SheetMode | null>(null);
+
+  const { spaces } = useSpacesContext();
+  const { webhookSourceViews } = useWebhookSourceViewsFromSpaces(owner, spaces);
+
+  const accessibleSpaceIds = useMemo(
+    () => new Set(spaces.map((space) => space.sId)),
+    [spaces]
+  );
+
+  const accessibleWebhookSourceViews = useMemo(
+    () =>
+      uniqBy(
+        webhookSourceViews.filter((view) =>
+          accessibleSpaceIds.has(view.spaceId)
+        ),
+        (view) => view.webhookSource.sId
+      ).sort((a, b) => (a.createdAt >= b.createdAt ? -1 : 1)),
+    [webhookSourceViews, accessibleSpaceIds]
+  );
 
   // Combine triggers for display, excluding those marked for deletion
   const allTriggers = [
@@ -84,42 +98,57 @@ export function AgentBuilderTriggersBlock({
     })),
   ];
 
-  const handleCreateTrigger = (kind: TriggerKind) => {
-    setDialogMode({
-      type: "add",
-      kind,
+  const handleAddTrigger = () => {
+    setSheetMode({ type: "add" });
+  };
+
+  const handleTriggerEdit = (trigger: AgentBuilderTriggerType) => {
+    let webhookSourceView: WebhookSourceViewType | null = null;
+
+    if (trigger.kind === "webhook") {
+      webhookSourceView =
+        accessibleWebhookSourceViews.find(
+          (view) => view.sId === trigger.webhookSourceViewSId
+        ) ?? null;
+    }
+
+    setSheetMode({
+      type: "edit",
+      trigger,
+      webhookSourceView,
     });
   };
 
-  const handleTriggerEdit = (
-    trigger: AgentBuilderTriggerType,
-    displayIndex: number
-  ) => {
-    setDialogMode({ type: "edit", trigger, index: displayIndex });
+  const handleTriggerCreate = (trigger: AgentBuilderTriggerType) => {
+    appendTriggerToCreate({
+      ...trigger,
+      // Assign a temporary sId for frontend identification until it's created on the backend.
+      // The sId is needed to be able to update a freshly created trigger, not yet in DB.
+      sId: TEMP_TRIGGER_PREFIX + "_" + crypto.randomUUID().slice(0, 8),
+    });
   };
 
-  const handleCloseModal = () => {
-    setDialogMode(null);
-  };
+  const handleTriggerUpdate = (trigger: AgentBuilderTriggerType) => {
+    if (sheetMode?.type !== "edit" || !trigger.sId) {
+      appendTriggerToUpdate(trigger);
+      return;
+    }
 
-  const handleTriggerSave = (trigger: AgentBuilderTriggerType) => {
-    if (dialogMode?.type === "edit") {
-      // Find the trigger in either create or update arrays
-      const displayItem = allTriggers[dialogMode.index];
-      if (displayItem.source === "create") {
-        updateInCreate(displayItem.index, trigger);
-      } else {
-        updateInUpdate(displayItem.index, trigger);
-      }
-    } else {
-      // New trigger - determine if it should go to create or update
-      if (trigger.sId) {
-        appendToUpdate(trigger);
-      } else {
-        appendToCreate(trigger);
+    if (trigger.sId?.startsWith(TEMP_TRIGGER_PREFIX)) {
+      // We're editing a freshly created trigger,
+      // so the update should happen in the create array.
+      const index = triggersToCreate.findIndex((t) => t.sId === trigger.sId);
+      if (index !== -1) {
+        updateTriggerToCreate(index, trigger);
+        return;
       }
     }
-    handleCloseModal();
+
+    const index = triggersToUpdate.findIndex((t) => t.sId === trigger.sId);
+    if (index !== -1) {
+      updateTriggerToUpdate(index, trigger);
+      return;
+    }
   };
 
   const handleTriggerRemove = (
@@ -130,14 +159,14 @@ export function AgentBuilderTriggersBlock({
 
     if (displayItem.source === "create") {
       // Just remove from create array
-      removeFromCreate(displayItem.index);
+      removeTriggerToCreate(displayItem.index);
     } else {
       // Has sId, so it exists on backend - mark for deletion
       if (trigger.sId) {
         const currentToDelete = getValues("triggersToDelete");
         setValue("triggersToDelete", [...currentToDelete, trigger.sId]);
       }
-      removeFromUpdate(displayItem.index);
+      removeTriggerToUpdate(displayItem.index);
     }
 
     sendNotification({
@@ -152,7 +181,7 @@ export function AgentBuilderTriggersBlock({
       title="Triggers"
       description={
         <>
-          Triggers agent execution based on events. Need help? Check our{" "}
+          Triggers agent runs based on events. Need help? Check our{" "}
           <Hoverable
             variant="primary"
             href="https://docs.dust.tt/docs/scheduling-your-agent-beta#/"
@@ -165,27 +194,14 @@ export function AgentBuilderTriggersBlock({
       }
       headerActions={
         allTriggers.length > 0 && (
-          <>
-            <Button
-              label="Add Schedule"
-              variant="outline"
-              icon={ClockIcon}
-              onClick={() => handleCreateTrigger("schedule")}
-              type="button"
-            />
-            {hasFeature("hootl_webhooks") && (
-              <Button
-                label="Add Webhook"
-                variant="outline"
-                icon={BoltIcon}
-                onClick={() => handleCreateTrigger("webhook")}
-                type="button"
-              />
-            )}
-          </>
+          <Button
+            label="Add triggers"
+            type="button"
+            icon={BoltIcon}
+            onClick={handleAddTrigger}
+          />
         )
       }
-      isBeta
     >
       <div className="flex-1">
         {isTriggersLoading ? (
@@ -195,24 +211,12 @@ export function AgentBuilderTriggersBlock({
         ) : allTriggers.length === 0 ? (
           <EmptyCTA
             action={
-              <div className="flex space-x-2">
-                <Button
-                  label="Add Schedule"
-                  variant="outline"
-                  icon={ClockIcon}
-                  onClick={() => handleCreateTrigger("schedule")}
-                  type="button"
-                />
-                {hasFeature("hootl_webhooks") && (
-                  <Button
-                    label="Add Webhook"
-                    variant="outline"
-                    icon={BoltIcon}
-                    onClick={() => handleCreateTrigger("webhook")}
-                    type="button"
-                  />
-                )}
-              </div>
+              <Button
+                label="Add triggers"
+                type="button"
+                icon={BoltIcon}
+                onClick={handleAddTrigger}
+              />
             }
             className="py-4"
           />
@@ -220,48 +224,32 @@ export function AgentBuilderTriggersBlock({
           <CardGrid>
             {allTriggers.map((item, displayIndex) => (
               <TriggerCard
-                key={item.trigger.sId ?? `${item.source}-${item.index}`}
+                key={
+                  item.trigger.sId
+                    ? `card-${item.trigger.sId}`
+                    : `${item.source}-${item.index}`
+                }
                 trigger={item.trigger}
+                webhookSourceView={accessibleWebhookSourceViews.find((view) =>
+                  item.trigger.kind === "webhook"
+                    ? view.sId === item.trigger.webhookSourceViewSId
+                    : undefined
+                )}
                 onRemove={() => handleTriggerRemove(item.trigger, displayIndex)}
-                onEdit={() => handleTriggerEdit(item.trigger, displayIndex)}
+                onEdit={() => handleTriggerEdit(item.trigger)}
               />
             ))}
           </CardGrid>
         )}
       </div>
 
-      {/* Create/Edit Schedule Modal */}
-      <ScheduleEditionModal
+      <TriggerViewsSheet
         owner={owner}
-        trigger={
-          dialogMode?.type === "edit" && dialogMode.trigger.kind === "schedule"
-            ? dialogMode.trigger
-            : undefined
-        }
-        isOpen={
-          (dialogMode?.type === "add" && dialogMode.kind === "schedule") ||
-          (dialogMode?.type === "edit" &&
-            dialogMode.trigger.kind === "schedule")
-        }
-        onClose={handleCloseModal}
-        onSave={handleTriggerSave}
-      />
-
-      {/* Create/Edit Webhook Modal */}
-      <WebhookEditionModal
-        owner={owner}
-        trigger={
-          dialogMode?.type === "edit" && dialogMode.trigger.kind === "webhook"
-            ? dialogMode.trigger
-            : undefined
-        }
-        isOpen={
-          (dialogMode?.type === "add" && dialogMode.kind === "webhook") ||
-          (dialogMode?.type === "edit" && dialogMode.trigger.kind === "webhook")
-        }
-        onClose={handleCloseModal}
-        onSave={handleTriggerSave}
+        mode={sheetMode}
+        webhookSourceViews={accessibleWebhookSourceViews}
         agentConfigurationId={agentConfigurationId}
+        onAppendTriggerToCreate={handleTriggerCreate}
+        onAppendTriggerToUpdate={handleTriggerUpdate}
       />
     </AgentBuilderSectionContainer>
   );

@@ -24,6 +24,7 @@ export const config = {
  */
 async function handler(
   req: NextApiRequest,
+
   res: NextApiResponse<WithAPIErrorResponse<GetDocumentBlobResponseType>>,
   auth: Authenticator
 ): Promise<void> {

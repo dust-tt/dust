@@ -3,7 +3,7 @@ import { Err, normalizeError, Ok } from "@dust-tt/client";
 import axios from "axios";
 import type { Activity, TurnContext } from "botbuilder";
 
-import logger from "@connectors/logger/logger";
+import { apiConfig } from "@connectors/lib/api/config";
 import { cacheWithRedis } from "@connectors/types/shared/cache";
 
 /**
@@ -15,22 +15,12 @@ import { cacheWithRedis } from "@connectors/types/shared/cache";
  * Raw token acquisition function (for caching)
  */
 async function acquireTenantSpecificToken(): Promise<string> {
-  if (
-    !process.env.MICROSOFT_BOT_TENANT_ID ||
-    !process.env.MICROSOFT_BOT_ID ||
-    !process.env.MICROSOFT_BOT_PASSWORD
-  ) {
-    throw new Error(
-      "Missing required environment variables: BOT_TENANT_ID, BOT_ID, BOT_PASSWORD"
-    );
-  }
-
   const tokenResponse = await axios.post(
-    `https://login.microsoftonline.com/${process.env.MICROSOFT_BOT_TENANT_ID}/oauth2/v2.0/token`,
+    `https://login.microsoftonline.com/${apiConfig.getMicrosoftBotTenantId()}/oauth2/v2.0/token`,
     new URLSearchParams({
       grant_type: "client_credentials",
-      client_id: process.env.MICROSOFT_BOT_ID!,
-      client_secret: process.env.MICROSOFT_BOT_PASSWORD!,
+      client_id: apiConfig.getMicrosoftBotId() || "",
+      client_secret: apiConfig.getMicrosoftBotPassword() || "",
       scope: "https://api.botframework.com/.default",
     }),
     {
@@ -40,14 +30,6 @@ async function acquireTenantSpecificToken(): Promise<string> {
     }
   );
 
-  logger.info(
-    {
-      tokenType: tokenResponse.data.token_type,
-      expiresIn: tokenResponse.data.expires_in,
-    },
-    "Tenant-specific token acquired"
-  );
-
   return tokenResponse.data.access_token;
 }
 
@@ -55,60 +37,69 @@ async function acquireTenantSpecificToken(): Promise<string> {
  * Cached version of token acquisition using Redis
  * Cache for 50 minutes (tokens expire in 1 hour, 10-minute buffer)
  */
-const getCachedTenantToken = cacheWithRedis(
+export const getTenantSpecificToken: () => Promise<string> = cacheWithRedis(
   acquireTenantSpecificToken,
-  () =>
-    `teams-bot-token-${process.env.MICROSOFT_BOT_ID}-${process.env.MICROSOFT_BOT_TENANT_ID}`,
+  () => `teams-bot-token`,
   {
     ttlMs: 50 * 60 * 1000, // 50 minutes
   }
 );
 
 /**
- * Acquire tenant-specific token for Bot Framework API calls
+ * Handles 429 (Too Many Requests) errors from Microsoft Bot Framework
  */
-export async function getTenantSpecificToken(): Promise<string | null> {
+async function withRetry<T>(
+  operation: () => Promise<T>,
+  retryCount = 0,
+  maxRetries = 3
+): Promise<T> {
   try {
-    return await getCachedTenantToken();
+    return await operation();
   } catch (error) {
-    logger.error({ error }, "Failed to acquire tenant-specific token");
-    return null;
+    // Handle rate limiting with exponential backoff
+    if (axios.isAxiosError(error) && error.response?.status === 429) {
+      if (retryCount < maxRetries) {
+        // Exponential backoff: 500ms, 1000ms, 2000ms
+        const backoffMs = 500 * Math.pow(2, retryCount);
+        await new Promise((resolve) => setTimeout(resolve, backoffMs));
+        return withRetry(operation, retryCount + 1, maxRetries);
+      }
+      throw new Error(
+        `Rate limit exceeded after ${maxRetries} retries (429 Too Many Requests)`
+      );
+    }
+    throw error;
   }
 }
 
 /**
  * Reliable replacement for context.sendActivity()
- * Uses tenant-specific token for authentication
+ * Uses tenant-specific token for authentication with automatic retry on rate limits
+ * @param skipRetry - If true, don't retry on errors (useful for streaming updates)
  */
 export async function sendActivity(
   context: TurnContext,
-  activity: Partial<Activity>
+  activity: Partial<Activity>,
+  skipRetry = false
 ): Promise<Result<string, Error>> {
-  const token = await getTenantSpecificToken();
-  if (!token) {
-    return new Err(new Error("Cannot send activity - no valid token"));
-  }
-
   try {
-    const response = await axios.post(
-      `${context.activity.serviceUrl}/v3/conversations/${context.activity.conversation.id}/activities`,
-      activity,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        timeout: 10000,
-      }
-    );
+    const operation = async () => {
+      const token = await getTenantSpecificToken();
 
-    logger.debug(
-      {
-        activityId: response.data?.id,
-        statusCode: response.status,
-      },
-      "Activity sent successfully"
-    );
+      return axios.post(
+        `${context.activity.serviceUrl}/v3/conversations/${context.activity.conversation.id}/activities`,
+        activity,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          timeout: 10000,
+        }
+      );
+    };
+
+    const response = skipRetry ? await operation() : await withRetry(operation);
 
     if (response.data?.id) {
       return new Ok(response.data.id);
@@ -116,32 +107,20 @@ export async function sendActivity(
 
     return new Err(new Error("Cannot send activity - no activity ID"));
   } catch (error) {
-    logger.error(
-      {
-        error,
-        serviceUrl: context.activity.serviceUrl,
-        conversationId: context.activity.conversation?.id,
-      },
-      "Failed to send activity"
-    );
-
     return new Err(normalizeError(error));
   }
 }
 
 /**
  * Reliable replacement for context.updateActivity()
- * Uses tenant-specific token for authentication
+ * Uses tenant-specific token for authentication with automatic retry on rate limits
+ * @param skipRetry - If true, don't retry on errors (useful for streaming updates)
  */
 export async function updateActivity(
   context: TurnContext,
-  activity: Partial<Activity>
-): Promise<Result<void, Error>> {
-  const token = await getTenantSpecificToken();
-  if (!token) {
-    return new Err(new Error("Cannot send activity - no valid token"));
-  }
-
+  activity: Partial<Activity>,
+  skipRetry = false
+): Promise<Result<string, Error>> {
   if (!activity.id) {
     return new Err(
       new Error("Cannot update activity - no activity ID provided")
@@ -149,37 +128,30 @@ export async function updateActivity(
   }
 
   try {
-    const response = await axios.put(
-      `${context.activity.serviceUrl}/v3/conversations/${context.activity.conversation.id}/activities/${activity.id}`,
-      activity,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        timeout: 10000,
-      }
-    );
+    const operation = async () => {
+      const token = await getTenantSpecificToken();
 
-    logger.debug(
-      {
-        activityId: activity.id,
-        statusCode: response.status,
-      },
-      "Activity updated successfully"
-    );
+      return axios.put(
+        `${context.activity.serviceUrl}/v3/conversations/${context.activity.conversation.id}/activities/${activity.id}`,
+        activity,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          timeout: 10000,
+        }
+      );
+    };
 
-    return new Ok(undefined);
+    const response = skipRetry ? await operation() : await withRetry(operation);
+
+    if (response.data?.id) {
+      return new Ok(response.data.id);
+    }
+
+    return new Err(new Error("Cannot update activity - no activity ID"));
   } catch (error) {
-    logger.error(
-      {
-        error,
-        serviceUrl: context.activity.serviceUrl,
-        conversationId: context.activity.conversation?.id,
-        activityId: activity.id,
-      },
-      "Failed to update activity"
-    );
     return new Err(normalizeError(error));
   }
 }

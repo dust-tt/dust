@@ -2,27 +2,74 @@ import type { LightAgentConfigurationType } from "@dust-tt/client";
 import type { AdaptiveCard } from "@microsoft/teams-ai";
 import type { Activity } from "botbuilder";
 
+import type { MessageFootnotes } from "@connectors/lib/bot/citations";
+import { convertUrlsToMarkdown } from "@connectors/lib/bot/citations";
 import { makeDustAppUrl } from "@connectors/lib/bot/conversation_utils";
+import type { MentionMatch } from "@connectors/lib/bot/mentions";
 
 const DUST_URL = "https://dust.tt/home";
-const TEAMS_HELP_URL = "https://docs.dust.tt/docs/teams";
 
 /**
  * Creates an Adaptive Card for Teams with the AI response, conversation link, and agent selector
  */
 export function createResponseAdaptiveCard({
   response,
-  assistantName,
+  mentionedAgent,
   conversationUrl,
   workspaceId,
+  footnotes,
   isError = false,
+  agentConfigurations,
+  originalMessage,
 }: {
   response: string;
-  assistantName: string;
+  mentionedAgent: MentionMatch;
   conversationUrl: string | null;
   workspaceId: string;
+  footnotes?: MessageFootnotes;
   isError?: boolean;
+  agentConfigurations: LightAgentConfigurationType[];
+  originalMessage: string;
 }): Partial<Activity> {
+  const currentAgent = agentConfigurations.find(
+    (agent) => agent.sId === mentionedAgent.agentId
+  );
+
+  const feedbackActions =
+    currentAgent?.scope === "global"
+      ? []
+      : [
+          {
+            type: "Column",
+            width: "auto",
+            items: [
+              {
+                type: "ActionSet",
+                actions: [
+                  {
+                    type: "Action.Submit",
+                    iconUrl: "icon:ThumbLike",
+                    data: {
+                      verb: "like",
+                    },
+                    msTeams: { feedback: { hide: true } },
+                  },
+                  {
+                    type: "Action.Submit",
+                    iconUrl: "icon:ThumbDislike",
+                    data: {
+                      verb: "dislike",
+                    },
+                    msTeams: { feedback: { hide: true } },
+                  },
+                ],
+              },
+            ],
+          },
+        ];
+
+  const responseWithMarkdownLinks = convertUrlsToMarkdown(response);
+
   const card: AdaptiveCard = {
     type: "AdaptiveCard",
     $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
@@ -30,7 +77,7 @@ export function createResponseAdaptiveCard({
     body: [
       {
         type: "TextBlock",
-        text: response,
+        text: responseWithMarkdownLinks,
         wrap: true,
         spacing: "Medium",
         color: isError ? "Attention" : "Default",
@@ -38,6 +85,32 @@ export function createResponseAdaptiveCard({
     ],
     actions: [],
   };
+
+  // Add footnotes section if present
+  if (footnotes && footnotes.length > 0) {
+    const footnotesText = footnotes
+      .map(
+        (footnote) =>
+          `[**[${footnote.index}]** ${footnote.text}](${footnote.link})`
+      )
+      .join(" • ");
+
+    card.body.push({
+      type: "Container",
+      spacing: "Medium",
+      separator: true,
+      items: [
+        {
+          type: "TextBlock",
+          text: footnotesText,
+          wrap: true,
+          size: "Small",
+          color: "Accent",
+          spacing: "Small",
+        },
+      ],
+    });
+  }
 
   // Add separator and footer section
   card.body.push({
@@ -48,7 +121,7 @@ export function createResponseAdaptiveCard({
       {
         type: "TextBlock",
         text: createFooterText({
-          assistantName,
+          agentName: mentionedAgent.agentName,
           conversationUrl,
           workspaceId,
           isError,
@@ -57,6 +130,58 @@ export function createResponseAdaptiveCard({
         size: "Small",
         color: "Good",
       },
+    ],
+  });
+
+  card.body.push({
+    type: "ColumnSet",
+    spacing: "Medium",
+    id: "actions_set",
+    columns: [
+      {
+        type: "Column",
+        width: "stretch",
+        items: [
+          {
+            type: "Input.ChoiceSet",
+            id: "selectedAgent",
+            value: mentionedAgent.agentName,
+            choices: agentConfigurations.map((agent) => ({
+              title: agent.name,
+              value: agent.name,
+            })),
+            placeholder: "Select an agent",
+          },
+          {
+            type: "Input.Text",
+            id: "originalMessage",
+            value: originalMessage,
+            isVisible: false,
+          },
+        ],
+      },
+      {
+        type: "Column",
+        width: "auto",
+        items: [
+          {
+            type: "ActionSet",
+            actions: [
+              {
+                type: "Action.Submit",
+                title: "Resend",
+                iconUrl: "icon:Bot",
+                data: {
+                  verb: "ask_agent",
+                },
+                msTeams: { feedback: { hide: true } },
+              },
+            ],
+            horizontalAlignment: "Right",
+          },
+        ],
+      },
+      ...feedbackActions,
     ],
   });
 
@@ -78,10 +203,12 @@ export function createStreamingAdaptiveCard({
   response,
 }: {
   response: string;
-  assistantName: string;
+  agentName: string;
   conversationUrl: string | null;
   workspaceId: string;
 }): Partial<Activity> {
+  const responseWithMarkdownLinks = convertUrlsToMarkdown(response);
+
   return {
     type: "message",
     attachments: [
@@ -95,7 +222,7 @@ export function createStreamingAdaptiveCard({
             // Main response content
             {
               type: "TextBlock",
-              text: response,
+              text: responseWithMarkdownLinks,
               wrap: true,
               spacing: "Medium",
             },
@@ -125,6 +252,57 @@ export function createThinkingAdaptiveCard(): Partial<Activity> {
               text: `Thinking...`,
               wrap: true,
               color: "Accent",
+            },
+          ],
+        },
+      },
+    ],
+  };
+}
+
+export function createPersonalAuthenticationAdaptiveCard({
+  conversationUrl,
+  workspaceId,
+}: {
+  conversationUrl: string | null;
+  workspaceId: string;
+}): Partial<Activity> {
+  return {
+    type: "message",
+    attachments: [
+      {
+        contentType: "application/vnd.microsoft.card.adaptive",
+        content: {
+          type: "AdaptiveCard",
+          $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+          version: "1.4",
+          body: [
+            {
+              type: "TextBlock",
+              text:
+                "The agent took an action that requires personal authentication. " +
+                (conversationUrl
+                  ? `Please go to [the conversation](${conversationUrl}) to authenticate.`
+                  : ""),
+              wrap: true,
+            },
+            {
+              type: "Container",
+              spacing: "Medium",
+              separator: true,
+              items: [
+                {
+                  type: "TextBlock",
+                  text: createFooterText({
+                    workspaceId,
+                    conversationUrl,
+                    isError: true,
+                  }),
+                  wrap: true,
+                  size: "Small",
+                  color: "Good",
+                },
+              ],
             },
           ],
         },
@@ -187,77 +365,255 @@ export function createErrorAdaptiveCard({
 }
 
 /**
- * Creates an agent selection adaptive card
+ * Creates the basic Adaptive Card for tool execution approval for everyone (read-only, no actions)
  */
-export function createAgentSelectionCard(
-  agentConfigurations: LightAgentConfigurationType[],
-  originalMessage: string
-): Partial<Activity> {
+export function createBasicToolApprovalAdaptiveCard(data: {
+  agentName: string;
+  toolName: string;
+  conversationId: string;
+  messageId: string;
+  actionId: string;
+  workspaceId: string;
+  microsoftBotMessageId: number;
+  userAadObjectId: string;
+}): Partial<Activity> {
+  const basicCard: AdaptiveCard = {
+    type: "AdaptiveCard",
+    $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+    version: "1.4",
+    refresh: {
+      action: {
+        type: "Action.Execute",
+        title: "Tool execution approval",
+        verb: "toolExecutionApproval",
+        data,
+      },
+      userIds: [data.userAadObjectId],
+    },
+    body: [
+      {
+        type: "TextBlock",
+        text: "Tool validation Required",
+        weight: "Bolder",
+        size: "Large",
+        spacing: "Medium",
+      },
+      {
+        type: "Container",
+        spacing: "Medium",
+        items: [
+          {
+            type: "TextBlock",
+            text: `Agent **@${data.agentName}** is requesting permission to use tool **${data.toolName}**`,
+            wrap: true,
+            spacing: "Small",
+          },
+          {
+            type: "TextBlock",
+            text: "_Waiting for user approval..._",
+            wrap: true,
+            spacing: "Small",
+            size: "Small",
+            color: "Accent",
+            isSubtle: true,
+          },
+        ],
+      },
+    ],
+  };
+
   return {
     type: "message",
     attachments: [
       {
         contentType: "application/vnd.microsoft.card.adaptive",
         content: {
-          type: "AdaptiveCard",
-          $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
-          version: "1.4",
-          body: [
-            {
-              type: "TextBlock",
-              text: "**Choose an agent to answer your question:**",
-              wrap: true,
-              weight: "Bolder",
-              spacing: "Medium",
-            },
-            {
-              type: "TextBlock",
-              text: `_"${originalMessage.substring(0, 100)}${originalMessage.length > 100 ? "..." : ""}"_`,
-              wrap: true,
-              isSubtle: true,
-              spacing: "Small",
-            },
-          ],
-          actions: agentConfigurations.slice(0, 5).map((ac) => ({
-            type: "Action.Submit",
-            title: ac.name,
-            data: {
-              verb: "ask_agent",
-              action: "ask_agent",
-              agentId: ac.sId,
-              agentName: ac.name,
-              originalMessage: originalMessage,
-            },
-          })),
+          ...basicCard,
         },
       },
     ],
   };
 }
 
+/**
+ * Creates an interactive Adaptive Card for tool execution approval for the original sender (with buttons)
+ */
+export function createInteractiveToolApprovalAdaptiveCard(data: {
+  agentName: string;
+  toolName: string;
+  conversationId: string;
+  messageId: string;
+  actionId: string;
+  workspaceId: string;
+  microsoftBotMessageId: number;
+}): AdaptiveCard {
+  return {
+    type: "AdaptiveCard",
+    $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+    version: "1.4",
+    body: [
+      {
+        type: "TextBlock",
+        text: "Tool validation Required",
+        weight: "Bolder",
+        size: "Large",
+        spacing: "Medium",
+      },
+      {
+        type: "Container",
+        spacing: "Medium",
+        items: [
+          {
+            type: "TextBlock",
+            text: `Agent **@${data.agentName}** is requesting permission to use tool **${data.toolName}**`,
+            wrap: true,
+            spacing: "Small",
+          },
+        ],
+      },
+    ],
+    actions: [
+      {
+        type: "Action.Execute",
+        title: "Approve",
+        verb: "approve_tool",
+        data,
+      },
+      {
+        type: "Action.Execute",
+        title: "Reject",
+        verb: "reject_tool",
+        data,
+      },
+    ],
+  };
+}
+
+/**
+ * Creates a welcome adaptive card for new installations
+ */
+export function createWelcomeAdaptiveCard(): Partial<Activity> {
+  const card: AdaptiveCard = {
+    type: "AdaptiveCard",
+    $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+    version: "1.4",
+    body: [
+      {
+        type: "Container",
+        items: [
+          {
+            type: "TextBlock",
+            text: "🎉 Welcome to Dust!",
+            weight: "Bolder",
+            size: "Large",
+            spacing: "Medium",
+            horizontalAlignment: "Center",
+          },
+          {
+            type: "TextBlock",
+            text: "Thank you for installing Dust in Microsoft Teams!",
+            wrap: true,
+            spacing: "Medium",
+            horizontalAlignment: "Center",
+          },
+        ],
+      },
+      {
+        type: "Container",
+        spacing: "Medium",
+        separator: true,
+        items: [
+          {
+            type: "TextBlock",
+            text: "**Getting Started**",
+            weight: "Bolder",
+            spacing: "Medium",
+          },
+          {
+            type: "TextBlock",
+            text: "To start using Dust in Teams, make sure to:",
+            wrap: true,
+            spacing: "Small",
+          },
+          {
+            type: "TextBlock",
+            text: "• Enable the integration in your Workspace settings",
+            wrap: true,
+            spacing: "Small",
+          },
+          {
+            type: "TextBlock",
+            text: "• Configure your agents to work with Teams",
+            wrap: true,
+            spacing: "Small",
+          },
+          {
+            type: "TextBlock",
+            text: "• Start chatting by mentioning an agent",
+            wrap: true,
+            spacing: "Small",
+          },
+        ],
+      },
+      {
+        type: "Container",
+        spacing: "Medium",
+        separator: true,
+        items: [
+          {
+            type: "TextBlock",
+            text: "📚 [Read the full documentation](https://docs.dust.tt/docs/dust-in-teams) to learn more about using Dust in Teams.",
+            wrap: true,
+            size: "Small",
+            spacing: "Small",
+          },
+          {
+            type: "TextBlock",
+            text: "Need help? Visit [dust.tt](https://dust.tt) for support.",
+            wrap: true,
+            size: "Small",
+            spacing: "Small",
+            color: "Accent",
+          },
+        ],
+      },
+    ],
+  };
+
+  return {
+    type: "message",
+    attachments: [
+      {
+        contentType: "application/vnd.microsoft.card.adaptive",
+        content: card,
+      },
+    ],
+  };
+}
+
 function createFooterText({
-  assistantName,
+  agentName,
   conversationUrl,
   workspaceId,
   isError = false,
 }: {
-  assistantName?: string;
+  agentName?: string;
   conversationUrl?: string | null;
   workspaceId: string;
   isError?: boolean;
 }): string {
-  const assistantsUrl = makeDustAppUrl(`/w/${workspaceId}/assistant/new`);
+  const agentsUrl = makeDustAppUrl(`/w/${workspaceId}/agent/new`);
 
   let attribution = "";
-  if (assistantName) {
+  if (agentName) {
     if (isError) {
-      attribution = `**${assistantName}** encountered an error | `;
+      attribution = `**${agentName}** encountered an error | `;
     } else {
-      attribution = `Answered by **${assistantName}** | `;
+      attribution = `Answered by **${agentName}** | `;
     }
   }
 
-  const baseLinks = `[Browse agents](${assistantsUrl}) | [Use Dust in Teams](${TEAMS_HELP_URL}) | [Learn more](${DUST_URL})`;
+  const baseLinks = `[Browse agents](${agentsUrl}) | [Learn more](${DUST_URL})`;
 
   return conversationUrl
     ? `${attribution}[Go to full conversation](${conversationUrl}) | ${baseLinks}`

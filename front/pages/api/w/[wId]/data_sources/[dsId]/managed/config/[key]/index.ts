@@ -90,6 +90,7 @@ async function handler(
       "zendeskOrganizationTagsToInclude",
       "zendeskOrganizationTagsToExclude",
       "zendeskCustomFieldsConfig",
+      "zendeskRateLimitTransactionsPerSecond",
       "gongRetentionPeriodDays",
       "gongTrackersEnabled",
       "gongAccountsEnabled",

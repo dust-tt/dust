@@ -6,7 +6,7 @@ import {
   AgentMessage,
   ConversationParticipantModel,
   Message,
-} from "@app/lib/models/assistant/conversation";
+} from "@app/lib/models/agent/conversation";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type {
   AgentParticipantType,

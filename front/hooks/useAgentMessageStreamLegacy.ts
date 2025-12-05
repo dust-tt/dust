@@ -85,6 +85,7 @@ function updateProgress(
 }
 
 const CLEAR_CONTENT_EVENT = { type: "clear_content" as const };
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const RETRY_BLOCKED_ACTIONS_STARTED_EVENT = {
   type: "retry_blocked_actions_started" as const,
 };

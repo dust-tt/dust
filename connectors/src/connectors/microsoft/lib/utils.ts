@@ -20,12 +20,8 @@ export function internalIdFromTypeAndPath({
   nodeType: MicrosoftNodeType;
   itemAPIPath: string;
 }): string {
-  let stringId = "";
-  if (nodeType === "sites-root" || nodeType === "teams-root") {
-    stringId = nodeType;
-  } else {
-    stringId = `${nodeType}/${itemAPIPath}`;
-  }
+  const stringId =
+    nodeType === "sites-root" ? nodeType : `${nodeType}/${itemAPIPath}`;
   // encode to base64url so the internal id is URL-friendly
   return "microsoft-" + Buffer.from(stringId).toString("base64url");
 }
@@ -44,7 +40,7 @@ export function typeAndPathFromInternalId(internalId: string): {
     "base64url"
   ).toString();
 
-  if (decodedId === "sites-root" || decodedId === "teams-root") {
+  if (decodedId === "sites-root") {
     return { nodeType: decodedId, itemAPIPath: "" };
   }
 

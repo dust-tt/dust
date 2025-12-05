@@ -1,4 +1,5 @@
 import { Button, RocketIcon } from "@dust-tt/sparkle";
+import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 import React from "react";
 
@@ -6,10 +7,7 @@ import { HeaderContentBlock } from "@app/components/home/ContentBlocks";
 import { Grid } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import {
-  getParticleShapeIndexByName,
-  shapeNames,
-} from "@app/components/home/Particles";
+import { PageMetadata } from "@app/components/home/PageMetadata";
 import { PricePlans } from "@app/components/plans/PlansTables";
 import {
   trackEvent,
@@ -21,15 +19,21 @@ import {
 export async function getStaticProps() {
   return {
     props: {
-      shape: getParticleShapeIndexByName(shapeNames.bigSphere),
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
     },
   };
 }
 
 export default function Pricing() {
+  const router = useRouter();
+
   return (
     <>
+      <PageMetadata
+        title="Dust Pricing: Pro and Enterprise Plans for AI Agents"
+        description="Explore Dust pricing plans. Pro for small teams and startups, Enterprise for 100+ members with multiple workspaces and SSO. Start with a 15-day free trial."
+        pathname={router.asPath}
+      />
       <HeaderContentBlock
         title="Meet our pricing plans"
         hasCTA={false}
@@ -48,6 +52,7 @@ export default function Pricing() {
                 TRACKING_AREAS.PRICING,
                 "hero_start_trial",
                 () => {
+                  // eslint-disable-next-line react-hooks/immutability
                   window.location.href = "/api/workos/login?screenHint=sign-up";
                 }
               )}

@@ -21,7 +21,7 @@ import { isString } from "@app/types";
 
 /**
  * Retrieves the user for a given session
- * @param session any Auth0 session
+ * @param session any workos session
  * @returns Promise<UserType | null>
  */
 export async function getUserFromSession(
@@ -146,8 +146,10 @@ export function makeGetServerSidePropsRequirementsWrapper<
 
       const workspace = auth ? auth.workspace() : await getWorkspace(context);
       const maintenance = workspace?.metadata?.maintenance;
+      const isDustSuperUser = auth?.isDustSuperUser() ?? false;
 
-      if (maintenance) {
+      // Checking isDustSuperUser allows Poke to work during maintenance.
+      if (maintenance && !isDustSuperUser) {
         return {
           redirect: {
             permanent: false,
@@ -198,7 +200,6 @@ export function makeGetServerSidePropsRequirementsWrapper<
         // This was checked above already.
         assert(session);
 
-        const isDustSuperUser = auth?.isDustSuperUser() ?? false;
         if (requireUserPrivilege === "superuser" && !isDustSuperUser) {
           return {
             notFound: true,

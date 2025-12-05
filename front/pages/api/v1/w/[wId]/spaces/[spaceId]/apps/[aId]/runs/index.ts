@@ -2,6 +2,7 @@ import type { RunAppResponseType } from "@dust-tt/client";
 import { createParser } from "eventsource-parser";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
@@ -64,6 +65,7 @@ function extractUsageFromExecutions(
             prompt_tokens: number;
             completion_tokens: number;
             cached_tokens?: number;
+            cache_creation_input_tokens?: number;
             reasoning_tokens?: number;
           };
         };
@@ -71,6 +73,15 @@ function extractUsageFromExecutions(
           const promptTokens = token_usage.prompt_tokens;
           const completionTokens = token_usage.completion_tokens;
           const cachedTokens = token_usage.cached_tokens;
+          const cacheCreationTokens = token_usage.cache_creation_input_tokens;
+
+          const usageCostMicroUsd = computeTokensCostForUsageInMicroUsd({
+            modelId: block.model_id,
+            promptTokens,
+            completionTokens,
+            cachedTokens: cachedTokens ?? null,
+            cacheCreationTokens: cacheCreationTokens ?? null,
+          });
 
           usages.push({
             providerId: block.provider_id,
@@ -78,6 +89,8 @@ function extractUsageFromExecutions(
             promptTokens,
             completionTokens,
             cachedTokens: cachedTokens ?? null,
+            cacheCreationTokens: cacheCreationTokens ?? null,
+            costMicroUsd: usageCostMicroUsd,
           });
         }
       }
@@ -191,6 +204,7 @@ function extractUsageFromExecutions(
 
 async function handler(
   req: NextApiRequest,
+
   res: NextApiResponse<WithAPIErrorResponse<RunAppResponseType>>,
   auth: Authenticator,
   { space }: { space: SpaceResource },

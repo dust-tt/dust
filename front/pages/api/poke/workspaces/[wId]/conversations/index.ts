@@ -9,6 +9,7 @@ import type {
   ConversationWithoutContentType,
   WithAPIErrorResponse,
 } from "@app/types";
+import { isString } from "@app/types";
 
 export type PokeListConversations = {
   conversations: ConversationWithoutContentType[];
@@ -24,6 +25,8 @@ async function handler(
     req.query.wId as string
   );
 
+  const { agentId, triggerId } = req.query;
+
   if (!auth.isDustSuperUser()) {
     return apiError(req, res, {
       status_code: 404,
@@ -36,40 +39,61 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      // Get conversation IDs for this agent
-      const conversationIds =
-        await ConversationResource.listConversationWithAgentCreatedBeforeDate({
+      let conversations: ConversationWithoutContentType[];
+
+      if (isString(triggerId)) {
+        // Get conversations for this trigger
+        conversations = await ConversationResource.listConversationsForTrigger(
           auth,
-          agentConfigurationId: req.query.agentId as string,
-          cutoffDate: new Date(), // Current time to get all conversations
+          triggerId
+        );
+      } else if (isString(agentId)) {
+        // Get conversation IDs for this agent
+        const conversationIds =
+          await ConversationResource.listConversationWithAgentCreatedBeforeDate(
+            auth,
+            {
+              agentConfigurationId: agentId,
+              cutoffDate: new Date(), // Current time to get all conversations.
+            }
+          );
+
+        // Fetch full conversation objects
+        const conversationResources = await ConversationResource.fetchByIds(
+          auth,
+          conversationIds
+        );
+
+        conversations = conversationResources.map((c) => {
+          return {
+            id: c.id,
+            created: c.createdAt.getTime(),
+            updated: c.updatedAt.getTime(),
+            sId: c.sId,
+            owner: auth.getNonNullableWorkspace(),
+            title: c.title,
+            visibility: c.visibility,
+            depth: c.depth,
+            triggerId: c.triggerSId,
+            actionRequired: false, // We don't care about actionRequired/unread, so set to false
+            unread: false,
+            hasError: c.hasError,
+            requestedSpaceIds: c.getRequestedSpaceIdsFromModel(),
+            spaceId: c.space?.sId ?? null,
+          };
         });
 
-      // Fetch full conversation objects
-      const conversationResources = await ConversationResource.fetchByIds(
-        auth,
-        conversationIds
-      );
-
-      const conversations = conversationResources.map((c) => {
-        return {
-          id: c.id,
-          created: c.createdAt.getTime(),
-          sId: c.sId,
-          owner: auth.getNonNullableWorkspace(),
-          title: c.title,
-          visibility: c.visibility,
-          depth: c.depth,
-          triggerId: c.triggerSId(),
-          actionRequired: false, // We don't care about actionRequired/unread, so set to false
-          unread: false,
-          hasError: c.hasError,
-          requestedGroupIds: c.getRequestedGroupIdsFromModel(auth),
-          requestedSpaceIds: c.getRequestedSpaceIdsFromModel(auth),
-        };
-      });
-
-      // Sort by creation date (most recent first)
-      conversations.sort((a, b) => b.created - a.created);
+        // Sort by creation date (most recent first)
+        conversations.sort((a, b) => b.created - a.created);
+      } else {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Either agent ID or trigger ID is required.",
+          },
+        });
+      }
 
       return res.status(200).json({
         conversations,

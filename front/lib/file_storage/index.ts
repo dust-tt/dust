@@ -195,3 +195,6 @@ export const getDustDataSourcesBucket = (options?: FileStorageOptions) =>
 
 export const getWebhookRequestsBucket = (options?: FileStorageOptions) =>
   getBucketInstance(config.getWebhookRequestsBucket(), options);
+
+export const getLLMTracesBucket = (options?: FileStorageOptions) =>
+  getBucketInstance(config.getLLMTracesBucket(), options);

@@ -45,7 +45,10 @@ import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mi
 import { connectorsConfig } from "@connectors/connectors/shared/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
+import {
+  MAX_FILE_SIZE_TO_DOWNLOAD,
+  upsertDataSourceFolder,
+} from "@connectors/lib/data_sources";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { heartbeat } from "@connectors/lib/temporal";
 import { getActivityLogger } from "@connectors/logger/logger";
@@ -467,6 +470,21 @@ export async function syncFiles({
       item.file?.mimeType && mimeTypesToSync.includes(item.file.mimeType)
   );
 
+  // Find the maximum file size of the files that can be synced.
+  const maxFoundFileSize = filesToSync
+    .filter((file) => file.size && file.size <= MAX_FILE_SIZE_TO_DOWNLOAD)
+    .reduce((max, file) => {
+      return Math.max(max, file.size ?? 0);
+    }, 0);
+
+  // Limit the concurrency to the number of files that can be synced in parallel.
+  // We don't want to exceed the MAX_FILE_SIZE_TO_DOWNLOAD in memory,
+  // so we allow in parallel at most MAX_FILE_SIZE_TO_DOWNLOAD / maxFoundFileSize
+  const concurrency = Math.min(
+    Math.floor(MAX_FILE_SIZE_TO_DOWNLOAD / maxFoundFileSize),
+    FILES_SYNC_CONCURRENCY
+  );
+
   // sync files
   const results = await concurrentExecutor(
     filesToSync,
@@ -480,7 +498,7 @@ export async function syncFiles({
         startSyncTs,
         heartbeat,
       }),
-    { concurrency: FILES_SYNC_CONCURRENCY }
+    { concurrency }
   );
 
   const count = results.filter((r) => r).length;
@@ -1060,6 +1078,17 @@ export async function fetchDeltaForRootNodesInDrive({
     return { gcsFilePath: null };
   }
 
+  logger.info(
+    {
+      connectorId,
+      driveId,
+      gcsFilePath,
+      resultsCount: results.length,
+      totalItems: sortedChangedItems.length,
+    },
+    "Uploading to GCS delta file."
+  );
+
   const deltaData: DeltaDataInGCS = {
     deltaLink,
     rootNodeIds,
@@ -1067,7 +1096,16 @@ export async function fetchDeltaForRootNodesInDrive({
     totalItems: sortedChangedItems.length,
   };
 
-  await file.save(JSON.stringify(deltaData), {
+  const jsonData = JSON.stringify(deltaData);
+
+  logger.info(
+    {
+      jsonDataSize: jsonData.length,
+    },
+    "Delta file size."
+  );
+
+  await file.save(jsonData, {
     metadata: {
       contentType: "application/json",
       metadata: {
@@ -1272,7 +1310,7 @@ async function getDeltaData({
     if (e instanceof GraphError && e.statusCode === 410) {
       // API is answering 'resync required'
       // we repopulate the delta from scratch
-      return await getFullDeltaResults({
+      return getFullDeltaResults({
         logger,
         client,
         parentInternalId: node.internalId,

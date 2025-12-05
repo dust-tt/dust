@@ -11,6 +11,8 @@ export const temporalWorkspaceToEnvVar: Record<TemporalNamespaces, string> = {
   relocation: "TEMPORAL_RELOCATION_NAMESPACE",
 };
 
+export const TEMPORAL_MAXED_CACHED_WORKFLOWS = 50;
+
 // This is a singleton connection to the Temporal server.
 const TEMPORAL_CLIENTS: Partial<Record<TemporalNamespaces, Client>> = {};
 

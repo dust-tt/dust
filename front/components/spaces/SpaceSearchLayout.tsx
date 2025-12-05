@@ -36,6 +36,7 @@ import {
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
+import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import type {
@@ -48,7 +49,10 @@ import type {
   LightWorkspaceType,
   SpaceType,
 } from "@app/types";
-import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
+import {
+  DATA_SOURCE_VIEW_CATEGORIES_DISPLAY_NAMES,
+  MIN_SEARCH_QUERY_SIZE,
+} from "@app/types";
 
 const DEFAULT_VIEW_TYPE = "all";
 
@@ -79,6 +83,19 @@ function isBackendSearch(
   props: SpaceSearchInputProps
 ): props is BackendSearchProps {
   return props.useBackendSearch === true;
+}
+
+function getSearchInputPlaceholder(
+  space: SpaceType,
+  category?: DataSourceViewCategory,
+  dataSourceView?: DataSourceViewType
+) {
+  if (dataSourceView) {
+    return `Search in ${getDisplayNameForDataSource(dataSourceView.dataSource)}`;
+  } else if (category) {
+    return `Search in ${DATA_SOURCE_VIEW_CATEGORIES_DISPLAY_NAMES[category]}`;
+  }
+  return `Search in ${space.name}`;
 }
 
 export function SpaceSearchInput(props: SpaceSearchInputProps) {
@@ -383,11 +400,12 @@ function BackendSearch({
       setSearchHitCount(searchResults.length);
     }
   }, [isLoading, isSearchValidating, searchResults]);
+
   return (
     <SpaceSearchContext.Provider value={searchContextValue}>
       <SearchInput
         name="search"
-        placeholder={`Search in ${space.name}`}
+        placeholder={getSearchInputPlaceholder(space, category, dataSourceView)}
         value={searchTerm}
         onChange={handleSearchChange}
         disabled={isSearchDisabled}
@@ -488,7 +506,7 @@ function FrontendSearch({
     <SpaceSearchContext.Provider value={searchContextValue}>
       <SearchInput
         name="search"
-        placeholder={`Search in ${space.name}`}
+        placeholder={getSearchInputPlaceholder(space, category, dataSourceView)}
         value={searchTerm}
         onChange={searchParam.setParam}
         disabled={isSearchDisabled}
@@ -636,6 +654,7 @@ function SearchResultsTable({
 
   // Transform search results into format for DataTable.
   const rows: RowData[] = React.useMemo(() => {
+    // eslint-disable-next-line react-hooks/refs
     return searchResultNodes.map((node) => {
       const { dataSourceView, internalId: parentId } = node;
 

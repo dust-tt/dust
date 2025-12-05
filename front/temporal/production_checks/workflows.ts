@@ -4,7 +4,7 @@ import type * as activities from "@app/temporal/production_checks/activities";
 
 const { runAllChecksActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 hour",
-  heartbeatTimeout: "5 minutes",
+  heartbeatTimeout: "10 minutes",
 });
 
 export async function runAllChecksWorkflow() {

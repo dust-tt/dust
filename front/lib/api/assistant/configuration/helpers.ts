@@ -3,7 +3,7 @@ import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getPublicUploadBucket } from "@app/lib/file_storage";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentConfiguration } from "@app/lib/models/agent/agent";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
@@ -143,7 +143,7 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
   for (const agent of agentConfigurations) {
     const actions =
       variant === "full"
-        ? mcpServerActionsConfigurationsPerAgent.get(agent.id) ?? []
+        ? (mcpServerActionsConfigurationsPerAgent.get(agent.id) ?? [])
         : [];
 
     const model = getModelForAgentConfiguration(agent);
@@ -168,19 +168,12 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
       actions,
       versionAuthorId: agent.authorId,
       maxStepsPerRun: agent.maxStepsPerRun,
-      visualizationEnabled: agent.visualizationEnabled ?? false,
       templateId: agent.templateId
         ? TemplateResource.modelIdToSId({ id: agent.templateId })
         : null,
-      // TODO(2025-10-17 thomas): Remove requestedGroupIds.
-      requestedGroupIds: agent.requestedGroupIds.map((groups) =>
-        groups.map((id) =>
-          GroupResource.modelIdToSId({
-            id,
-            workspaceId: auth.getNonNullableWorkspace().id,
-          })
-        )
-      ),
+      // TODO(2025-10-20 flav): Remove once SDK JS does not rely on it anymore.
+      visualizationEnabled: false,
+      requestedGroupIds: [],
       requestedSpaceIds: agent.requestedSpaceIds.map((spaceId) =>
         SpaceResource.modelIdToSId({
           id: spaceId,

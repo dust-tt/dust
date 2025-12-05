@@ -50,6 +50,7 @@ const AgentBuilderCustomUpload = React.forwardRef<
         }
 
         if (imageRef.current && crop.width && crop.height) {
+          // eslint-disable-next-line react-hooks/immutability
           const croppedImageUrl = await getCroppedImg(imageRef.current, crop);
           const response = await fetch(croppedImageUrl);
 

@@ -16,7 +16,7 @@ import {
   Spinner,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 interface AgentSuggestionProps {
   conversationId: string;
@@ -32,7 +32,9 @@ export function AgentSuggestion({
   const { agentConfigurations } = usePublicAgentConfigurations();
   const sendNotification = useSendNotification();
 
+  const autoSelectedMessageIdRef = useRef<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showSuggestion, setShowSuggestion] = useState(false);
   const dustAPI = useDustAPI();
 
   const { submit: handleSelectSuggestion } = useSubmitFunction(
@@ -59,8 +61,22 @@ export function AgentSuggestion({
           description: mRes.error.message,
         });
       }
+      // In case the auto-selection failed, we show the suggestion.
+      if (dustAgent && !showSuggestion) {
+        setShowSuggestion(true);
+      }
     }
   );
+
+  const dustAgent = agentConfigurations.find(
+    (agent) => agent.sId === GLOBAL_AGENTS_SID.DUST && agent.status === "active"
+  );
+
+  useEffect(() => {
+    if (!dustAgent) {
+      setShowSuggestion(true);
+    }
+  }, [dustAgent]);
 
   const [topAgents, otherAgents] = useMemo(() => {
     const agents = agentConfigurations.sort((a, b) => {
@@ -68,6 +84,24 @@ export function AgentSuggestion({
     });
     return [agents.slice(0, 3), agents.slice(3)];
   }, [agentConfigurations]);
+
+  useEffect(() => {
+    if (
+      !dustAgent ||
+      userMessage.id === -1 ||
+      userMessage.sId.startsWith("placeholder") ||
+      userMessage.sId === autoSelectedMessageIdRef.current
+    ) {
+      return;
+    }
+
+    autoSelectedMessageIdRef.current = userMessage.sId;
+    void handleSelectSuggestion(dustAgent);
+  }, [dustAgent, userMessage.id, userMessage.sId, handleSelectSuggestion]);
+
+  if (!showSuggestion) {
+    return null;
+  }
 
   return (
     <>

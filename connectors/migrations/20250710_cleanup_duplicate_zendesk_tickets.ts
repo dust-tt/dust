@@ -5,7 +5,7 @@ import { Op } from "sequelize";
 
 import { getTicketInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
-import { fetchZendeskTicket } from "@connectors/connectors/zendesk/lib/zendesk_api";
+import { ZendeskClient } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { deleteDataSourceDocument } from "@connectors/lib/data_sources";
@@ -19,9 +19,9 @@ const CONCURRENCY = 4;
 async function getTicketBrandId(
   ticket: ZendeskTicketModel,
   {
-    accessToken,
+    zendeskClient,
     brandSubdomains,
-  }: { accessToken: string; brandSubdomains: Map<number, string> }
+  }: { zendeskClient: ZendeskClient; brandSubdomains: Map<number, string> }
 ) {
   let brandSubdomain = brandSubdomains.get(ticket.brandId);
   if (!brandSubdomains.has(ticket.brandId)) {
@@ -36,8 +36,7 @@ async function getTicketBrandId(
     brandSubdomain = brand.subdomain;
   }
 
-  const fetchedTicket = await fetchZendeskTicket({
-    accessToken,
+  const fetchedTicket = await zendeskClient.fetchTicket({
     brandSubdomain: brandSubdomain!,
     ticketId: ticket.ticketId,
   });
@@ -53,6 +52,7 @@ async function cleanupConnector(
   const { accessToken } = await getZendeskSubdomainAndAccessToken(
     connector.connectionId
   );
+  const zendeskClient = new ZendeskClient(accessToken, connector.id, null);
   const brandSubdomains = new Map<number, string>();
   const ticketIdsSeen = new Set();
 
@@ -94,7 +94,7 @@ async function cleanupConnector(
       async (ticketBatch) => {
         // Fetch the first ticket from Zendesk to get the brand ID (they all have the same one).
         const brandIdFromZendesk = await getTicketBrandId(ticketBatch[0]!, {
-          accessToken,
+          zendeskClient,
           brandSubdomains,
         });
         if (!brandIdFromZendesk) {

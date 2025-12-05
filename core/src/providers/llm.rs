@@ -4,6 +4,7 @@ use crate::providers::chat_messages::{AssistantChatMessage, AssistantContentItem
 use crate::providers::provider::{provider, with_retryable_back_off, ProviderID};
 use crate::run::Credentials;
 use crate::stores::store::Store;
+use crate::types::tokenizer::TokenizerConfig;
 use crate::utils::ParseError;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -13,6 +14,100 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::{error, info};
+
+use crate::providers::sentencepiece::sentencepiece::{
+    mistral_instruct_tokenizer_240216_model_v2_base_singleton,
+    mistral_instruct_tokenizer_240216_model_v3_base_singleton,
+    mistral_tokenizer_model_v1_base_singleton,
+};
+use crate::providers::tiktoken::tiktoken::CoreBPE;
+use crate::providers::tiktoken::tiktoken::{
+    anthropic_base_singleton, cl100k_base_singleton, o200k_base_singleton, p50k_base_singleton,
+    r50k_base_singleton,
+};
+use crate::types::tokenizer::{SentencePieceTokenizerBase, TiktokenTokenizerBase};
+use parking_lot::RwLock;
+use sentencepiece::SentencePieceProcessor;
+use std::sync::Arc;
+
+pub enum TokenizerSingleton {
+    Tiktoken(Arc<RwLock<CoreBPE>>),
+    SentencePiece(Arc<RwLock<SentencePieceProcessor>>),
+}
+
+impl TokenizerSingleton {
+    pub fn from_config(config: &TokenizerConfig) -> Option<Self> {
+        match config {
+            TokenizerConfig::Tiktoken { base } => match base {
+                TiktokenTokenizerBase::O200kBase => {
+                    Some(TokenizerSingleton::Tiktoken(o200k_base_singleton()))
+                }
+                TiktokenTokenizerBase::Cl100kBase => {
+                    Some(TokenizerSingleton::Tiktoken(cl100k_base_singleton()))
+                }
+                TiktokenTokenizerBase::P50kBase => {
+                    Some(TokenizerSingleton::Tiktoken(p50k_base_singleton()))
+                }
+                TiktokenTokenizerBase::R50kBase => {
+                    Some(TokenizerSingleton::Tiktoken(r50k_base_singleton()))
+                }
+                TiktokenTokenizerBase::AnthropicBase => {
+                    Some(TokenizerSingleton::Tiktoken(anthropic_base_singleton()))
+                }
+            },
+            TokenizerConfig::SentencePiece { base } => match base {
+                SentencePieceTokenizerBase::ModelV1 => Some(TokenizerSingleton::SentencePiece(
+                    mistral_tokenizer_model_v1_base_singleton(),
+                )),
+                SentencePieceTokenizerBase::ModelV2 => Some(TokenizerSingleton::SentencePiece(
+                    mistral_instruct_tokenizer_240216_model_v2_base_singleton(),
+                )),
+                SentencePieceTokenizerBase::ModelV3 => Some(TokenizerSingleton::SentencePiece(
+                    mistral_instruct_tokenizer_240216_model_v3_base_singleton(),
+                )),
+            },
+        }
+    }
+
+    pub async fn encode(&self, text: &str) -> Result<Vec<usize>> {
+        match self {
+            TokenizerSingleton::Tiktoken(bpe) => {
+                crate::providers::tiktoken::tiktoken::encode_async(bpe.clone(), text).await
+            }
+            TokenizerSingleton::SentencePiece(spp) => {
+                crate::providers::sentencepiece::sentencepiece::encode_async(spp.clone(), text)
+                    .await
+            }
+        }
+    }
+
+    pub async fn decode(&self, tokens: Vec<usize>) -> Result<String> {
+        match self {
+            TokenizerSingleton::Tiktoken(bpe) => {
+                crate::providers::tiktoken::tiktoken::decode_async(bpe.clone(), tokens).await
+            }
+            TokenizerSingleton::SentencePiece(spp) => {
+                crate::providers::sentencepiece::sentencepiece::decode_async(spp.clone(), tokens)
+                    .await
+            }
+        }
+    }
+
+    pub async fn tokenize(&self, texts: Vec<String>) -> Result<Vec<Vec<(usize, String)>>> {
+        match self {
+            TokenizerSingleton::Tiktoken(bpe) => {
+                crate::providers::tiktoken::tiktoken::batch_tokenize_async(bpe.clone(), texts).await
+            }
+            TokenizerSingleton::SentencePiece(spp) => {
+                crate::providers::sentencepiece::sentencepiece::batch_tokenize_async(
+                    spp.clone(),
+                    texts,
+                )
+                .await
+            }
+        }
+    }
+}
 
 #[derive(Debug, Serialize, PartialEq, Clone, Deserialize)]
 pub struct Tokens {
@@ -88,6 +183,8 @@ pub struct LLMTokenUsage {
     pub cached_tokens: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reasoning_tokens: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cache_creation_input_tokens: Option<u64>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -259,7 +356,7 @@ impl LLMRequest {
         event_sender: Option<UnboundedSender<Value>>,
         run_id: String,
     ) -> Result<LLMGeneration> {
-        let mut llm = provider(self.provider_id).llm(self.model_id.clone());
+        let mut llm = provider(self.provider_id).llm(self.model_id.clone(), None);
         llm.initialize(credentials).await?;
 
         let out = with_retryable_back_off(
@@ -485,7 +582,7 @@ impl LLMChatRequest {
         event_sender: Option<UnboundedSender<Value>>,
         run_id: String,
     ) -> Result<LLMChatGeneration> {
-        let mut llm = provider(self.provider_id).llm(self.model_id.clone());
+        let mut llm = provider(self.provider_id).llm(self.model_id.clone(), None);
         llm.initialize(credentials).await?;
 
         let out = with_retryable_back_off(

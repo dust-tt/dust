@@ -4,9 +4,20 @@ import { getSupportedModelConfig } from "@app/lib/assistant";
 import type {
   GenerationTokensEvent,
   LightAgentConfigurationType,
+  ModelIdType,
+} from "@app/types";
+import {
+  DEEPSEEK_CHAT_MODEL_ID,
+  DEEPSEEK_REASONER_MODEL_ID,
+  FIREWORKS_DEEPSEEK_R1_MODEL_ID,
+  TOGETHERAI_DEEPSEEK_R1_MODEL_ID,
+  TOGETHERAI_DEEPSEEK_V3_MODEL_ID,
 } from "@app/types";
 import { assertNever } from "@app/types";
-import { CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION } from "@app/types/assistant/chain_of_thought_meta_prompt";
+import {
+  CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION,
+  DEEPSEEK_CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION,
+} from "@app/types/assistant/chain_of_thought_meta_prompt";
 
 type AgentMessageTokenClassification = GenerationTokensEvent["classification"];
 
@@ -274,12 +285,24 @@ export class AgentMessageContentParser {
   }
 }
 
+const DEEPSEEK_MODELS: ModelIdType[] = [
+  TOGETHERAI_DEEPSEEK_V3_MODEL_ID,
+  TOGETHERAI_DEEPSEEK_R1_MODEL_ID,
+  DEEPSEEK_CHAT_MODEL_ID,
+  DEEPSEEK_REASONER_MODEL_ID,
+  FIREWORKS_DEEPSEEK_R1_MODEL_ID,
+];
+
 export function getDelimitersConfiguration({
   agentConfiguration,
 }: {
   agentConfiguration: LightAgentConfigurationType;
 }): DelimitersConfiguration {
   const model = getSupportedModelConfig(agentConfiguration.model);
+
+  if (DEEPSEEK_MODELS.includes(model.modelId)) {
+    return DEEPSEEK_CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION;
+  }
   const reasoningEffort =
     agentConfiguration.model.reasoningEffort ?? model.defaultReasoningEffort;
   if (reasoningEffort !== "light") {
@@ -288,6 +311,25 @@ export function getDelimitersConfiguration({
       incompleteDelimiterPatterns: [],
     };
   }
+  return {
+    delimiters: CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION.delimiters,
+    incompleteDelimiterPatterns:
+      CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION.incompleteDelimiterPatterns,
+  };
+}
+
+// For UI purpose we want to extract CoT possibly generated with previous reasoning configuration
+export function getCoTDelimitersConfiguration({
+  agentConfiguration,
+}: {
+  agentConfiguration: LightAgentConfigurationType;
+}): DelimitersConfiguration {
+  const model = getSupportedModelConfig(agentConfiguration.model);
+
+  if (DEEPSEEK_MODELS.includes(model.modelId)) {
+    return DEEPSEEK_CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION;
+  }
+
   return {
     delimiters: CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION.delimiters,
     incompleteDelimiterPatterns:

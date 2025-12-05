@@ -4,10 +4,11 @@ import {
   DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME,
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
   DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
+  GET_MENTION_MARKDOWN_TOOL_NAME,
+  SEARCH_AVAILABLE_USERS_TOOL_NAME,
 } from "@app/lib/actions/constants";
 import type { ServerToolsAndInstructions } from "@app/lib/actions/mcp_actions";
 import {
-  isMCPConfigurationForInternalInteractiveContent,
   isMCPConfigurationForInternalNotion,
   isMCPConfigurationForInternalSlack,
   isMCPConfigurationForInternalWebsearch,
@@ -15,13 +16,13 @@ import {
   isMCPConfigurationWithDataSource,
 } from "@app/lib/actions/types/guards";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
-import { visualizationSystemPrompt } from "@app/lib/api/assistant/visualization";
 import type { Authenticator } from "@app/lib/auth";
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
   ModelConfigurationType,
   UserMessageType,
+  WhitelistableFeature,
 } from "@app/types";
 import { CHAIN_OF_THOUGHT_META_PROMPT } from "@app/types/assistant/chain_of_thought_meta_prompt";
 
@@ -33,7 +34,7 @@ import { CHAIN_OF_THOUGHT_META_PROMPT } from "@app/types/assistant/chain_of_thou
  * doesn't need that replacement, and needs to avoid a dependency on
  * getAgentConfigurations here, so it passes null.
  */
-export async function constructPromptMultiActions(
+export function constructPromptMultiActions(
   auth: Authenticator,
   {
     userMessage,
@@ -45,6 +46,7 @@ export async function constructPromptMultiActions(
     agentsList,
     conversationId,
     serverToolsAndInstructions,
+    featureFlags,
   }: {
     userMessage: UserMessageType;
     agentConfiguration: AgentConfigurationType;
@@ -55,6 +57,7 @@ export async function constructPromptMultiActions(
     agentsList: LightAgentConfigurationType[] | null;
     conversationId?: string;
     serverToolsAndInstructions?: ServerToolsAndInstructions[];
+    featureFlags: WhitelistableFeature[];
   }
 ) {
   const d = moment(new Date()).tz(userMessage.context.timezone);
@@ -157,6 +160,11 @@ export async function constructPromptMultiActions(
     `// searchable: content can be searched alongside other searchable files' content using \`${DEFAULT_CONVERSATION_SEARCH_ACTION_NAME}\`\n` +
     "Other tools that accept files (referenced by their id) as arguments can be available. Rely on their description and the files mime types to decide which tool to use on which file.\n";
 
+  const pastedContentSection =
+    "# PASTED CONTENT\n" +
+    "The conversation history may contain large pasted contents, indicated by <pastedContent> tags. " +
+    "These tags contain the full content of the pasted content, so don't try to retrieve it with tools.\n";
+
   // GUIDELINES section
   let guidelinesSection = "# GUIDELINES\n";
   const canRetrieveDocuments = agentConfiguration.actions.some(
@@ -176,26 +184,29 @@ export async function constructPromptMultiActions(
     guidelinesSection += `\n${citationMetaPrompt(isUsingRunAgent)}\n`;
   }
 
-  const hasInteractiveContentServer = agentConfiguration.actions.some(
-    (action) => isMCPConfigurationForInternalInteractiveContent(action)
-  );
-
-  // Only inject the visualization system prompt if the Interactive Content server is not enabled.
-  if (agentConfiguration.visualizationEnabled && !hasInteractiveContentServer) {
-    guidelinesSection += `\n${visualizationSystemPrompt()}\n`;
-  }
-
   guidelinesSection +=
     "\n## GENERATING LATEX FORMULAS\n" +
-    "When generating latex formulas, ALWAYS rely on the $$ escape sequence, single $ latex sequences are not supported." +
-    "\nEvery latex formula should be inside double dollars $$ blocks." +
-    "\nParentheses cannot be used to enclose mathematical formulas: BAD: \\( \\Delta \\), GOOD: $$ \\Delta $$.\n";
+    "Every latex formula should be inside double dollars $$ blocks." +
+    " Parentheses cannot be used to enclose mathematical formulas: BAD: \\( \\Delta \\), GOOD: $$ \\Delta $$." +
+    " To avoid ambiguity, make sure to escape the $ sign when not used as an escape sequence (examples: currency or env variable prefix).\n";
 
   guidelinesSection +=
     "\n## RENDERING MARKDOWN IMAGES\n" +
     'When rendering markdown images, always use the file id of the image, which can be extracted from the corresponding `<attachment id="{FILE_ID}" type... title...>` tag in the conversation history.' +
     'Also always use the file title which can similarly be extracted from the same `<attachment id... type... title="{TITLE}">` tag in the conversation history.' +
     "\nEvery image markdown should follow this pattern ![{TITLE}]({FILE_ID}).\n";
+
+  if (featureFlags.includes("mentions_v2")) {
+    guidelinesSection +=
+      `\n## MENTIONNING USERS\n` +
+      "You have the abillity to mention users in a message using the markdown directive." +
+      '\nUsers can also refer to mention as "ping".' +
+      `\nUse the \`${SEARCH_AVAILABLE_USERS_TOOL_NAME}\` tool to search for users that are available to the conversation.` +
+      `\nUse the \`${GET_MENTION_MARKDOWN_TOOL_NAME}\` tool to get the markdown directive to use to mention a user in a message.` +
+      "\nImportant:" +
+      "\n - In conversation with more than one user talking, always answer to users by prefixing your message with their markdown mention directive in order to address them directly, avoid confusion and ensure users are happy." +
+      "\n - Use the markdown directive only when you want to ping the user, if you just want to refer to them, use their name only.";
+  }
 
   // INSTRUCTIONS section
   let instructions = "# INSTRUCTIONS\n\n";
@@ -228,7 +239,7 @@ export async function constructPromptMultiActions(
     );
   }
 
-  const prompt = `${context}\n${toolsSection}\n${attachmentsSection}\n${guidelinesSection}\n${instructions}`;
+  const prompt = `${context}\n${toolsSection}\n${attachmentsSection}\n${pastedContentSection}\n${guidelinesSection}\n${instructions}`;
 
   return prompt;
 }

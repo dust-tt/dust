@@ -97,9 +97,12 @@ export const toggleFeatureFlagPlugin = createPlugin({
       );
     }
     for (const feature of toRemove) {
-      actions.push(
-        `❌ Feature "${feature}" has been DISABLED for workspace "${workspace.name}"`
-      );
+      // Do not show a message for features that might have be set in the past but no longer exist as it might freak out the poke user.
+      if (isWhitelistableFeature(feature)) {
+        actions.push(
+          `❌ Feature "${feature}" has been DISABLED for workspace "${workspace.name}"`
+        );
+      }
     }
 
     return new Ok({

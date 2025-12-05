@@ -2,7 +2,10 @@ import type { Result } from "@dust-tt/client";
 import { Ok } from "@dust-tt/client";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
-import { MicrosoftBotConfigurationModel } from "@connectors/lib/models/microsoft_bot";
+import {
+  MicrosoftBotConfigurationModel,
+  MicrosoftBotMessage,
+} from "@connectors/lib/models/microsoft_bot";
 import { BaseResource } from "@connectors/resources/base_resource";
 import type { WithCreationAttributes } from "@connectors/resources/connector/strategy";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
@@ -90,6 +93,13 @@ export class MicrosoftBotConfigurationResource extends BaseResource<MicrosoftBot
   }
 
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
+    await MicrosoftBotMessage.destroy({
+      where: {
+        connectorId: this.connectorId,
+      },
+      transaction,
+    });
+
     await this.model.destroy({
       where: {
         connectorId: this.connectorId,

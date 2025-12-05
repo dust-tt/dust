@@ -47,6 +47,7 @@ function PokefyPage() {
       } else {
         setError("No poke page available for this URL");
       }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (err) {
       setError("Invalid URL format");
     }

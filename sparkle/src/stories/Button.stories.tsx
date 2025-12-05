@@ -114,32 +114,25 @@ const ButtonBySize = ({
     <h3 className="s-text-primary dark:s-text-primary-50">
       {size?.toUpperCase()}
     </h3>
-    <div className="s-flex s-items-center s-gap-4">
-      <Button size={size} label="Button" />
-      <Button size={size} variant="outline" label="Button" />
-      <Button size={size} variant="highlight" label="Button" />
-      <Button size={size} variant="warning" label="Button" />
-      <Button size={size} variant="ghost" label="Button" />
-      <Button
-        size={size}
-        variant="primary"
-        label="Button with href"
-        href="hello"
-      />
-    </div>
-    <div className="s-flex s-items-center s-gap-4">
-      <Button size={size} label="Button" isLoading />
-      <Button size={size} variant="outline" label="Button" isLoading />
-      <Button size={size} variant="highlight" label="Button" isLoading />
-      <Button size={size} variant="warning" label="Button" isLoading />
-      <Button size={size} variant="ghost" label="Button" isLoading />
-    </div>
-    <div className="s-flex s-items-center s-gap-4">
-      <Button size={size} icon={PlusIcon} label="Button" />
-      <Button size={size} variant="outline" icon={PlusIcon} label="Button" />
-      <Button size={size} variant="highlight" icon={PlusIcon} label="Button" />
-      <Button size={size} variant="warning" icon={PlusIcon} label="Button" />
-      <Button size={size} variant="ghost" icon={PlusIcon} label="Button" />
+    <div className="s-flex s-flex-col s-gap-4">
+      {BUTTON_VARIANTS.map((variant) => (
+        <div key={variant} className="s-flex s-flex-col s-gap-2">
+          <div className="s-text-sm s-font-medium s-text-primary dark:s-text-primary-night">
+            {variant}
+          </div>
+          <div className="s-flex s-items-center s-gap-4">
+            <Button size={size} variant={variant} label="Button" />
+            <Button size={size} variant={variant} label="Button" isLoading />
+            <Button
+              size={size}
+              variant={variant}
+              icon={PlusIcon}
+              label="Button"
+            />
+            <Button size={size} variant={variant} label="Button" disabled />
+          </div>
+        </div>
+      ))}
     </div>
   </>
 );

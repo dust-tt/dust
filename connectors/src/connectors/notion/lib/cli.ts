@@ -6,12 +6,11 @@ import { updateAllParentsFields } from "@connectors/connectors/notion/lib/parent
 import { pageOrDbIdFromUrl } from "@connectors/connectors/notion/lib/utils";
 import {
   clearParentsLastUpdatedAt,
-  deleteDatabase,
-  deletePage,
   updateParentsFields,
 } from "@connectors/connectors/notion/temporal/activities";
 import {
   launchUpdateOrphanedResourcesParentsWorkflow,
+  sendDeletionCrawlSignal,
   stopNotionGarbageCollectorWorkflow,
 } from "@connectors/connectors/notion/temporal/client";
 import { QUEUE_NAME } from "@connectors/connectors/notion/temporal/config";
@@ -21,7 +20,6 @@ import {
   upsertDatabaseWorkflow,
   upsertPageWorkflow,
 } from "@connectors/connectors/notion/temporal/workflows/admins";
-import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
@@ -132,7 +130,6 @@ export async function findNotionUrl({
 
   if (page) {
     logger.info({ pageOrDbId, url, page }, "findNotionUrl: Page found");
-    page._model;
     return { page: page.dataValues, db: null };
   } else {
     logger.info({ pageOrDbId, url }, "findNotionUrl: Page not found");
@@ -164,8 +161,6 @@ export async function deleteNotionUrl({
 }) {
   const pageOrDbId = pageOrDbIdFromUrl(url);
 
-  const dataSourceConfig = await dataSourceConfigFromConnector(connector);
-
   const page = await NotionPage.findOne({
     where: {
       notionPageId: pageOrDbId,
@@ -173,12 +168,22 @@ export async function deleteNotionUrl({
     },
   });
   if (page) {
-    await deletePage({
-      connectorId: connector.id,
-      dataSourceConfig,
-      pageId: page.notionPageId,
-      logger,
-    });
+    const result = await sendDeletionCrawlSignal(
+      connector.id,
+      page.notionPageId,
+      "page"
+    );
+    if (result.isErr()) {
+      mainLogger.error(
+        {
+          error: result.error,
+          connectorId: connector.id,
+          pageId: page.notionPageId,
+        },
+        "Failed to send deletion crawl signal for page"
+      );
+      throw result.error;
+    }
   }
 
   const db = await NotionDatabase.findOne({
@@ -189,12 +194,22 @@ export async function deleteNotionUrl({
   });
 
   if (db) {
-    await deleteDatabase({
-      connectorId: connector.id,
-      dataSourceConfig,
-      databaseId: db.notionDatabaseId,
-      logger,
-    });
+    const result = await sendDeletionCrawlSignal(
+      connector.id,
+      db.notionDatabaseId,
+      "database"
+    );
+    if (result.isErr()) {
+      mainLogger.error(
+        {
+          error: result.error,
+          connectorId: connector.id,
+          databaseId: db.notionDatabaseId,
+        },
+        "Failed to send deletion crawl signal for database"
+      );
+      throw result.error;
+    }
   }
 
   return { deletedPage: !!page, deletedDb: !!db };

@@ -119,7 +119,7 @@ NGROK_URL=${NGROK_URL%/}
 
 # Create Bot Service
 print_step "6. Creating Bot Service..."
-ENDPOINT="$NGROK_URL/webhooks/$WEBHOOK_SECRET/teams_messages"
+ENDPOINT="$NGROK_URL/webhooks/$WEBHOOK_SECRET/microsoft_teams_bot"
 print_status "Bot endpoint set to: $ENDPOINT"
 
 az bot create \

@@ -57,21 +57,6 @@ export function getVisualizationPlugin(
   conversationId: string,
   messageId: string
 ) {
-  const getFileBlob = async (fileId: string): Promise<Blob | null> => {
-    const response = await fetch(
-      `/api/w/${owner.sId}/files/${fileId}?action=view`
-    );
-    if (!response.ok) {
-      return null;
-    }
-
-    const resBuffer = await response.arrayBuffer();
-
-    return new Blob([resBuffer], {
-      type: response.headers.get("Content-Type") ?? undefined,
-    });
-  };
-
   const customRenderer = {
     visualization: (code: string, complete: boolean, lineStart: number) => {
       return (
@@ -85,7 +70,6 @@ export function getVisualizationPlugin(
           key={`viz-${messageId}-${lineStart}`}
           conversationId={conversationId}
           agentConfigurationId={agentConfigurationId}
-          getFileBlob={getFileBlob}
         />
       );
     },
@@ -104,6 +88,7 @@ export function visualizationDirective() {
   return (tree: any) => {
     visit(tree, ["containerDirective"], (node) => {
       if (node.name === "visualization") {
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         const data = node.data || (node.data = {});
         data.hName = "visualization";
         data.hProperties = {

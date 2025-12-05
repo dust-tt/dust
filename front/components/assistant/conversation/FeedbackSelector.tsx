@@ -12,6 +12,8 @@ import {
 } from "@dust-tt/sparkle";
 import React, { useCallback, useEffect, useRef } from "react";
 
+import type { WorkspaceType } from "@app/types";
+
 export type ThumbReaction = "up" | "down";
 
 export type FeedbackType = {
@@ -29,6 +31,7 @@ export interface FeedbackSelectorProps {
   ) => Promise<void>;
   isSubmittingThumb: boolean;
   getPopoverInfo?: () => React.JSX.Element | null;
+  owner: WorkspaceType;
 }
 
 export function FeedbackSelector({
@@ -55,6 +58,7 @@ export function FeedbackSelector({
   useEffect(() => {
     if (isPopoverOpen) {
       if (getPopoverInfo) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setPopoverInfo(getPopoverInfo());
       }
       if (feedback?.thumb === lastSelectedThumb) {
@@ -129,41 +133,33 @@ export function FeedbackSelector({
     lastSelectedThumb,
   ]);
 
+  const ThumbButtons = (
+    <div className="flex items-center gap-0.5">
+      <Button
+        tooltip="I found this helpful"
+        variant={feedback?.thumb === "up" ? "primary" : "ghost-secondary"}
+        size="xs"
+        disabled={isSubmittingThumb}
+        onClick={handleThumbUp}
+        icon={HandThumbUpIcon}
+        className={feedback?.thumb === "up" ? "" : "text-muted-foreground"}
+      />
+      <Button
+        tooltip="Report an issue with this answer"
+        variant={feedback?.thumb === "down" ? "primary" : "ghost-secondary"}
+        size="xs"
+        disabled={isSubmittingThumb}
+        onClick={handleThumbDown}
+        icon={HandThumbDownIcon}
+        className={feedback?.thumb === "down" ? "" : "text-muted-foreground"}
+      />
+    </div>
+  );
+
   return (
     <div ref={containerRef} className="flex items-center">
       <PopoverRoot open={isPopoverOpen}>
-        <PopoverTrigger asChild>
-          <div className="flex items-center gap-2">
-            <Button
-              tooltip="I found this helpful"
-              variant={feedback?.thumb === "up" ? "primary" : "ghost-secondary"}
-              size="xs"
-              disabled={isSubmittingThumb}
-              onClick={handleThumbUp}
-              icon={HandThumbUpIcon}
-              // We enforce written feedback for thumbs down.
-              // -> Not saving the reaction until then.
-              className={
-                feedback?.thumb === "up" ? "" : "text-muted-foreground"
-              }
-            />
-            <Button
-              tooltip="Report an issue with this answer"
-              variant={
-                feedback?.thumb === "down" ? "primary" : "ghost-secondary"
-              }
-              size="xs"
-              disabled={isSubmittingThumb}
-              onClick={handleThumbDown}
-              icon={HandThumbDownIcon}
-              // We enforce written feedback for thumbs down.
-              // -> Not saving the reaction until then.
-              className={
-                feedback?.thumb === "down" ? "" : "text-muted-foreground"
-              }
-            />
-          </div>
-        </PopoverTrigger>
+        <PopoverTrigger asChild>{ThumbButtons}</PopoverTrigger>
         <PopoverContent
           fullWidth={true}
           onInteractOutside={closePopover}
@@ -187,6 +183,7 @@ export function FeedbackSelector({
                     : "Tell us what went wrong so we can make this agent better."
                 }
                 className="mb-4 mt-4"
+                resize="vertical"
                 rows={3}
                 value={localFeedbackContent ?? ""}
                 onChange={handleTextAreaChange}

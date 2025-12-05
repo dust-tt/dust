@@ -4,7 +4,7 @@ import { Authenticator } from "@app/lib/auth";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import type { WorkspaceType } from "@app/types";
 import type {
-  WebhookSourceKind,
+  WebhookProvider,
   WebhookSourceSignatureAlgorithm,
 } from "@app/types/triggers/webhooks";
 
@@ -22,8 +22,7 @@ export class WebhookSourceFactory {
       urlSecret?: string;
       signatureHeader?: string;
       signatureAlgorithm?: WebhookSourceSignatureAlgorithm;
-      customHeaders?: Record<string, string>;
-      kind?: WebhookSourceKind;
+      provider?: WebhookProvider;
       subscribedEvents?: string[];
     } = {}
   ) {
@@ -34,18 +33,15 @@ export class WebhookSourceFactory {
       this.workspace.sId
     );
 
-    const result = await WebhookSourceResource.makeNew(auth, {
+    return WebhookSourceResource.makeNew(auth, {
       workspaceId: this.workspace.id,
       name: cachedName,
       urlSecret: options.urlSecret ?? faker.string.alphanumeric(64),
       secret: options.secret ?? null,
       signatureHeader: options.signatureHeader ?? null,
       signatureAlgorithm: options.signatureAlgorithm ?? null,
-      customHeaders: options.customHeaders ?? null,
-      kind: options.kind ?? "custom",
+      provider: options.provider ?? null,
       subscribedEvents: options.subscribedEvents ?? [],
     });
-
-    return result;
   }
 }

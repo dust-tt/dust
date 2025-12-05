@@ -1,4 +1,7 @@
-import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import {
+  CONNECTOR_CONFIGURATIONS,
+  isBotIntegration,
+} from "@app/lib/connector_providers";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type {
   ConnectorProvider,
@@ -84,6 +87,20 @@ export function isRemoteDatabase(ds: DataSource): ds is DataSource &
   return (
     ds.connectorProvider === "snowflake" || ds.connectorProvider === "bigquery"
   );
+}
+
+// Whether this data source should be included in the default "company data" tool for global agents.
+export function isIncludedInDefaultCompanyData(ds: DataSource): boolean {
+  if (isWebsite(ds)) {
+    return false;
+  }
+  if (ds.connectorProvider && isBotIntegration(ds.connectorProvider)) {
+    return false;
+  }
+  if (isRemoteDatabase(ds)) {
+    return false;
+  }
+  return true;
 }
 
 const STRUCTURED_DATA_SOURCES: ConnectorProvider[] = [

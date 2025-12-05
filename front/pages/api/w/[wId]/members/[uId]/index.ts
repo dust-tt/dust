@@ -10,8 +10,26 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { UserTypeWithWorkspaces, WithAPIErrorResponse } from "@app/types";
+import type {
+  RoleType,
+  UserTypeWithWorkspaces,
+  WithAPIErrorResponse,
+} from "@app/types";
 import { assertNever, isMembershipRoleType } from "@app/types";
+
+export type GetMemberResponseBody = {
+  member: {
+    id: string;
+    username: string;
+    email: string;
+    firstName: string;
+    lastName: string | null;
+    fullName: string;
+    image: string | null;
+    revoked: boolean;
+    role: RoleType;
+  };
+};
 
 export type PostMemberResponseBody = {
   member: UserTypeWithWorkspaces;
@@ -19,27 +37,12 @@ export type PostMemberResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PostMemberResponseBody>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<GetMemberResponseBody | PostMemberResponseBody>
+  >,
   auth: Authenticator
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
-  const featureFlags = await getFeatureFlags(owner);
-  // Allow Dust Super User to force role for testing
-  const allowForSuperUserTesting =
-    showDebugTools(featureFlags) &&
-    auth.isDustSuperUser() &&
-    req.body.force === "true";
-
-  if (!auth.isAdmin() && !allowForSuperUserTesting) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message:
-          "Only users that are `admins` for the current workspace can see memberships or modify it.",
-      },
-    });
-  }
 
   const userId = req.query.uId;
   if (!(typeof userId === "string")) {
@@ -64,16 +67,73 @@ async function handler(
   }
 
   switch (req.method) {
+    case "GET":
+      const membership =
+        await MembershipResource.getLatestMembershipOfUserInWorkspace({
+          user,
+          workspace: owner,
+        });
+
+      if (!membership) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "workspace_user_not_found",
+            message: "Could not find membership for the user.",
+          },
+        });
+      }
+
+      const response: GetMemberResponseBody = {
+        member: {
+          id: user.sId,
+          username: user.username,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          fullName: user.fullName(),
+          image: user.imageUrl,
+          revoked: membership.isRevoked(),
+          role: membership.isRevoked() ? "none" : membership.role,
+        },
+      };
+
+      res.status(200).json(response);
+      return;
+
     case "POST":
+      const featureFlags = await getFeatureFlags(owner);
+      // Allow Dust Super User to force role for testing
+      const allowForSuperUserTesting =
+        showDebugTools(featureFlags) &&
+        auth.isDustSuperUser() &&
+        req.body.force === "true";
+
+      if (!auth.isAdmin() && !allowForSuperUserTesting) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message:
+              "Only users that are `admins` for the current workspace can modify memberships.",
+          },
+        });
+      }
+
       // TODO(@fontanierh): use DELETE for revoking membership
       if (req.body.role === "revoked") {
-        const revokeResult = await revokeAndTrackMembership(owner, user);
+        const revokeResult = await revokeAndTrackMembership(auth, user);
 
         if (revokeResult.isErr()) {
           switch (revokeResult.error.type) {
             case "not_found":
               logger.error(
-                { panic: true, revokeResult },
+                {
+                  panic: true,
+                  revokeResult,
+                  userId: user.sId,
+                  workspaceId: owner.sId,
+                },
                 "Failed to revoke membership and track usage."
               );
               return apiError(req, res, {
@@ -85,10 +145,6 @@ async function handler(
               });
             case "already_revoked":
             case "invalid_end_at":
-              logger.error(
-                { panic: true, revokeResult },
-                "Failed to revoke membership and track usage."
-              );
               break;
             default:
               assertNever(revokeResult.error.type);
@@ -130,7 +186,6 @@ async function handler(
           }
         }
 
-        const featureFlags = await getFeatureFlags(owner);
         const allowLastAdminRemoval = showDebugTools(featureFlags);
 
         const updateRes = await MembershipResource.updateMembershipRole({
@@ -208,7 +263,8 @@ async function handler(
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, POST is expected.",
+          message:
+            "The method passed is not supported, GET or POST is expected.",
         },
       });
   }

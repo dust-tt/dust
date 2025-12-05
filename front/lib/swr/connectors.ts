@@ -8,7 +8,6 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { GetConnectorResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/connector";
 import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/config/[key]";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/permissions";
 import type {
@@ -109,52 +108,6 @@ export function useConnectorConfig({
     isResourcesLoading: !error && !data,
     isResourcesError: error,
     mutateConfig: mutate,
-  };
-}
-
-export function useConnector({
-  workspaceId,
-  dataSource,
-  disabled,
-}: {
-  workspaceId: string;
-  dataSource: DataSourceType;
-  disabled?: boolean;
-}) {
-  const configFetcher: Fetcher<GetConnectorResponseBody> = fetcher;
-
-  const url = `/api/w/${workspaceId}/data_sources/${dataSource.sId}/connector`;
-
-  const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
-    refreshInterval: (connectorResBody) => {
-      if (connectorResBody?.connector.errorType !== undefined) {
-        // We have an error, no need to auto refresh.
-        return 0;
-      }
-
-      // Relying on absolute time difference here because we are comparing
-      // two non synchronized clocks (front and back). It's obviously not perfect
-      // but it's good enough for our use case.
-      if (
-        connectorResBody &&
-        Math.abs(new Date().getTime() - connectorResBody.connector.updatedAt) <
-          60 * 5 * 1000
-      ) {
-        // Connector object has been updated less than 5 minutes ago, we'll refresh every 3 seconds.
-        return 3000;
-      }
-
-      return 0;
-    },
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    disabled: disabled || !dataSource.connectorId,
-  });
-
-  return {
-    connector: data ? data.connector : null,
-    isConnectorLoading: !error && !data,
-    isConnectorError: error,
-    mutateConnector: mutate,
   };
 }
 

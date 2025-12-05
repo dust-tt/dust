@@ -47,12 +47,7 @@ async function handler(
         });
       }
 
-      const { naturalDescription, defaultTimezone } = bodyValidation.data;
-
-      const r = await generateCronRule(auth, {
-        naturalDescription,
-        defaultTimezone,
-      });
+      const r = await generateCronRule(auth, bodyValidation.data);
 
       if (r.isErr()) {
         const cleanMessage = [

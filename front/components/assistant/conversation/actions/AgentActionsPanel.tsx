@@ -66,6 +66,7 @@ function AgentActionsPanelContent({
       fullAgentMessage?.status === "created" &&
       !!fullAgentMessage.chainOfThought
     ) {
+      // eslint-disable-next-line react-hooks/immutability
       isFreshMountWithContent.current = true;
     }
   }, [fullAgentMessage, isFreshMountWithContent]);

@@ -17,6 +17,7 @@ import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 
 import { ConfirmContext } from "@app/components/Confirm";
+import { getIcon } from "@app/components/resources/resources_icons";
 import type {
   CreateWebhookSourceFormData,
   RemoteProviderData,
@@ -24,7 +25,6 @@ import type {
 import {
   CreateWebhookSourceFormContent,
   CreateWebhookSourceSchema,
-  validateCustomHeadersFromString,
 } from "@app/components/triggers/CreateWebhookSourceForm";
 import type { WebhookSourceFormValues } from "@app/components/triggers/forms/webhookSourceFormSchema";
 import {
@@ -42,15 +42,17 @@ import {
   useDeleteWebhookSource,
   useWebhookSourcesWithViews,
 } from "@app/lib/swr/webhook_source";
+import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { LightWorkspaceType, RequireAtLeastOne } from "@app/types";
+import { asDisplayName } from "@app/types";
 import type {
-  WebhookSourceKind,
+  WebhookProvider,
   WebhookSourceWithSystemViewType,
 } from "@app/types/triggers/webhooks";
-import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
+import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
-export type WebhookSourceSheetMode = { kind: WebhookSourceKind } & (
+export type WebhookSourceSheetMode = { provider: WebhookProvider | null } & (
   | { type: "create" }
   | {
       type: "edit";
@@ -66,93 +68,6 @@ type WebhookSourceSheetProps = {
   mode: WebhookSourceSheetMode | null;
   onClose: () => void;
 };
-
-/**
- * Creates the actual webhook on the remote provider's servers and stores metadata locally
- */
-async function createActualWebhook({
-  webhookSource,
-  providerData,
-  subscribedEvents,
-  owner,
-  sendNotification,
-}: {
-  webhookSource: {
-    sId: string;
-    urlSecret: string;
-    secret: string | null;
-    kind: WebhookSourceKind;
-  };
-  providerData: RemoteProviderData;
-  subscribedEvents: string[];
-  owner: LightWorkspaceType;
-  sendNotification: ReturnType<typeof useSendNotification>;
-}): Promise<void> {
-  try {
-    const webhookUrl = `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/api/v1/w/${owner.sId}/triggers/hooks/${webhookSource.sId}/${webhookSource.urlSecret}`;
-
-    const { connectionId, ...remoteWebhookData } = providerData;
-
-    const response = await fetch(
-      `/api/w/${owner.sId}/${webhookSource.kind}/${connectionId}/webhooks`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          connectionId,
-          remoteMetadata: remoteWebhookData,
-          webhookUrl: webhookUrl,
-          events: subscribedEvents,
-          secret: webhookSource.secret,
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(
-        error.api_error?.message ||
-          `Failed to create ${webhookSource.kind} webhook`
-      );
-    }
-
-    const webhookResponse = await response.json();
-
-    // Store the webhook metadata in the webhook source
-    if (webhookResponse.webhook?.id) {
-      await fetch(`/api/w/${owner.sId}/webhook_sources/${webhookSource.sId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          remoteMetadata: {
-            ...remoteWebhookData,
-            id: String(webhookResponse.webhook.id),
-          },
-          oauthConnectionId: connectionId,
-        }),
-      });
-    }
-
-    sendNotification({
-      type: "success",
-      title: `${webhookSource.kind} webhook created`,
-      description: `Webhook successfully created on ${webhookSource.kind}.`,
-    });
-  } catch (error) {
-    sendNotification({
-      type: "error",
-      title: `Failed to create ${webhookSource.kind} webhook`,
-      description:
-        error instanceof Error ? error.message : "Unknown error occurred",
-    });
-    // Note: We don't throw here because the webhook source was already created
-    // The user can manually set up the webhook if needed
-  }
-}
 
 export function WebhookSourceSheet({
   owner,
@@ -170,6 +85,7 @@ export function WebhookSourceSheet({
   const [debouncedOpen, setDebouncedOpen] = useState(() => open);
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDebouncedOpen(true);
     } else {
       const timeout = setTimeout(() => {
@@ -236,6 +152,7 @@ function WebhookSourceSheetContent({
   const [isSaving, setIsSaving] = useState(false);
   const [remoteProviderData, setRemoteProviderData] =
     useState<RemoteProviderData | null>(null);
+  const [connectionId, setConnectionId] = useState<string | null>(null);
   const [isPresetReadyToSubmit, setIsPresetReadyToSubmit] = useState(true);
 
   const { spaces } = useSpacesAsAdmin({
@@ -274,21 +191,17 @@ function WebhookSourceSheetContent({
   // Create form
   const createFormDefaultValues = useMemo<CreateWebhookSourceFormData>(
     () => ({
-      name: "",
+      name: `${asDisplayName(mode.provider)} Source`,
       secret: "",
       autoGenerate: true,
       signatureHeader: "",
-      signatureAlgorithm: "sha256",
-      customHeaders: null,
-      kind: mode.kind,
-      subscribedEvents:
-        mode.kind === "custom"
-          ? []
-          : WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[mode.kind].events.map(
-              (e) => e.value
-            ),
+      signatureAlgorithm: "sha256" as const,
+      provider: mode.provider,
+      subscribedEvents: mode.provider
+        ? WEBHOOK_PRESETS[mode.provider].events.map((e) => e.value)
+        : [],
     }),
-    [mode.kind]
+    [mode.provider]
   );
 
   const createForm = useForm<CreateWebhookSourceFormData>({
@@ -332,35 +245,25 @@ function WebhookSourceSheetContent({
   const onCreateSubmit = useCallback(
     async (
       data: CreateWebhookSourceFormData,
-      providerData?: RemoteProviderData
+      connectionId?: string,
+      remoteMetadata?: RemoteProviderData
     ) => {
-      const parsedCustomHeaders = validateCustomHeadersFromString(
-        data.customHeaders
-      );
-
       const apiData = {
         ...data,
-        customHeaders: parsedCustomHeaders?.parsed ?? null,
         includeGlobal: true,
+        ...(remoteMetadata ? { remoteMetadata } : {}),
+        ...(connectionId ? { connectionId } : {}),
+        icon: normalizeWebhookIcon(
+          data.provider ? WEBHOOK_PRESETS[data.provider].icon : null
+        ),
       };
 
-      const webhookSource = await createWebhookSource(apiData);
-
-      // If we have provider data, create the actual webhook on the remote provider
-      if (webhookSource && providerData) {
-        await createActualWebhook({
-          webhookSource: { ...webhookSource, kind: mode.kind },
-          providerData,
-          subscribedEvents: data.subscribedEvents,
-          owner,
-          sendNotification,
-        });
-      }
+      await createWebhookSource(apiData);
 
       createForm.reset();
       onClose();
     },
-    [createWebhookSource, createForm, onClose, mode, owner, sendNotification]
+    [createWebhookSource, createForm, onClose]
   );
 
   const applySharingChanges = useCallback(
@@ -534,6 +437,7 @@ function WebhookSourceSheetContent({
 
     const agents = _.uniq(
       webhookSourcesWithViews
+        .filter((source) => source.sId === webhookSource.sId)
         .map((source) => source.usage?.agents ?? [])
         .flat()
         .map((agent) => `@${agent.name}`)
@@ -598,7 +502,11 @@ function WebhookSourceSheetContent({
           disabled: createForm.formState.isSubmitting || !isPresetReadyToSubmit,
           onClick: () => {
             void createForm.handleSubmit((data) =>
-              onCreateSubmit(data, remoteProviderData ?? undefined)
+              onCreateSubmit(
+                data,
+                connectionId ?? undefined,
+                remoteProviderData ?? undefined
+              )
             )();
           },
         },
@@ -637,23 +545,31 @@ function WebhookSourceSheetContent({
     onEditSave,
     isPresetReadyToSubmit,
     remoteProviderData,
+    connectionId,
   ]);
 
   const pages: MultiPageSheetPage[] = useMemo(
     () => [
       {
         id: "create",
-        title: `Create ${WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[mode.kind].name} Webhook Source`,
+        title: `New ${mode.provider ? WEBHOOK_PRESETS[mode.provider].name : "Custom"} Trigger`,
         description: "",
-        icon: WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[mode.kind].icon,
+        icon: getIcon(
+          normalizeWebhookIcon(
+            mode.provider ? WEBHOOK_PRESETS[mode.provider].icon : null
+          )
+        ),
         content: (
           <FormProvider {...createForm}>
             <div className="space-y-4">
               <CreateWebhookSourceFormContent
                 form={createForm}
-                kind={mode.kind}
+                provider={mode.provider}
                 owner={owner}
-                onRemoteProviderDataChange={setRemoteProviderData}
+                onRemoteProviderDataChange={(data) => {
+                  setRemoteProviderData(data?.remoteMetadata ?? null);
+                  setConnectionId(data?.connectionId ?? null);
+                }}
                 onPresetReadyToSubmitChange={setIsPresetReadyToSubmit}
               />
             </div>
@@ -662,12 +578,17 @@ function WebhookSourceSheetContent({
       },
       {
         id: "edit",
-        title:
-          systemView?.customName ?? webhookSource?.name ?? "Webhook Source",
+        title: systemView
+          ? systemView.customName
+          : (webhookSource?.name ?? "Webhook Source"),
         description: "Webhook source for triggering assistants.",
         icon: systemView
           ? () => <WebhookSourceViewIcon webhookSourceView={systemView} />
-          : WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[mode.kind].icon,
+          : getIcon(
+              normalizeWebhookIcon(
+                mode.provider ? WEBHOOK_PRESETS[mode.provider].icon : null
+              )
+            ),
         content:
           systemView && webhookSource ? (
             <FormProvider {...editForm}>

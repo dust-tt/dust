@@ -11,7 +11,10 @@ import { toFileContentFragment } from "@app/lib/api/assistant/conversation/conte
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import config from "@app/lib/api/config";
-import { sendEmailWithTemplate } from "@app/lib/api/email";
+import {
+  sendEmailWithTemplate,
+  sendModjoDisconnectionEmail,
+} from "@app/lib/api/email";
 import { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
@@ -29,10 +32,11 @@ import {
   retrieveGoogleTranscripts,
 } from "@app/temporal/labs/transcripts/utils/google";
 import {
+  ModjoAuthenticationError,
   retrieveModjoTranscriptContent,
   retrieveModjoTranscripts,
 } from "@app/temporal/labs/transcripts/utils/modjo";
-import type { AgentMessageType } from "@app/types";
+import type { AgentMessageType, UserMessageContext } from "@app/types";
 import {
   assertNever,
   dustManagedCredentials,
@@ -44,9 +48,17 @@ import { CoreAPI } from "@app/types";
 
 class TranscriptNonRetryableError extends Error {}
 
+export interface RetrieveTranscriptsResult {
+  fileIds: string[];
+  nextCursor: number | null;
+  isFirstSync: boolean;
+}
+
 export async function retrieveNewTranscriptsActivity(
-  transcriptsConfigurationId: string
-): Promise<string[]> {
+  transcriptsConfigurationId: string,
+  modjoCursor: number | null = null,
+  modjoIsFirstSync: boolean | null = null
+): Promise<RetrieveTranscriptsResult> {
   const transcriptsConfiguration =
     await LabsTranscriptsConfigurationResource.fetchById(
       transcriptsConfigurationId
@@ -59,7 +71,7 @@ export async function retrieveNewTranscriptsActivity(
       },
       "[retrieveNewTranscripts] Transcript configuration not found. Skipping."
     );
-    return [];
+    return { fileIds: [], nextCursor: null, isFirstSync: false };
   }
 
   const localLogger = mainLogger.child({
@@ -99,10 +111,8 @@ export async function retrieveNewTranscriptsActivity(
     );
   }
 
-  const transcriptsIdsToProcess: string[] = [];
-
   switch (transcriptsConfiguration.provider) {
-    case "google_drive":
+    case "google_drive": {
       const googleTranscriptsRes = await retrieveGoogleTranscripts(
         auth,
         transcriptsConfiguration,
@@ -114,33 +124,61 @@ export async function retrieveNewTranscriptsActivity(
           `Error retrieving Google transcripts: ${googleTranscriptsRes.error.message}`
         );
       }
-      const googleTranscriptsIds = googleTranscriptsRes.value;
-      transcriptsIdsToProcess.push(...googleTranscriptsIds);
-      break;
+      return {
+        fileIds: googleTranscriptsRes.value,
+        nextCursor: null,
+        isFirstSync: false,
+      };
+    }
 
-    case "gong":
+    case "gong": {
       const gongTranscriptsIds = await retrieveGongTranscripts(
         auth,
         transcriptsConfiguration,
         localLogger
       );
-      transcriptsIdsToProcess.push(...gongTranscriptsIds);
-      break;
+      return {
+        fileIds: gongTranscriptsIds,
+        nextCursor: null,
+        isFirstSync: false,
+      };
+    }
 
-    case "modjo":
-      const modjoTranscriptsIds = await retrieveModjoTranscripts(
-        auth,
-        transcriptsConfiguration,
-        localLogger
-      );
-      transcriptsIdsToProcess.push(...modjoTranscriptsIds);
-      break;
+    case "modjo": {
+      try {
+        const modjoResult = await retrieveModjoTranscripts(
+          auth,
+          transcriptsConfiguration,
+          localLogger,
+          modjoCursor,
+          modjoIsFirstSync
+        );
+        return {
+          fileIds: modjoResult.fileIds,
+          nextCursor: modjoResult.nextCursor,
+          isFirstSync: modjoResult.isFirstSync,
+        };
+      } catch (error) {
+        if (error instanceof ModjoAuthenticationError) {
+          localLogger.error(
+            { error: error.message },
+            "[retrieveNewTranscripts] Modjo authentication failed - disconnecting and notifying user"
+          );
+          await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+
+          if (user) {
+            await sendModjoDisconnectionEmail(user.email, workspace.name);
+          }
+
+          return { fileIds: [], nextCursor: null, isFirstSync: false };
+        }
+        throw error;
+      }
+    }
 
     default:
       assertNever(transcriptsConfiguration.provider);
   }
-
-  return transcriptsIdsToProcess;
 }
 
 export async function processTranscriptActivity(
@@ -553,15 +591,16 @@ export async function processTranscriptActivity(
     const initialConversation = await createConversation(auth, {
       title: transcriptTitle,
       visibility: "unlisted",
+      spaceId: null,
     });
 
-    const baseContext = {
+    const baseContext: UserMessageContext = {
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
       username: user.username,
       fullName: user.fullName(),
       email: user.email,
       profilePictureUrl: user.imageUrl,
-      origin: null,
+      origin: "transcript",
     };
 
     const cfRes = await toFileContentFragment(auth, {
@@ -696,10 +735,7 @@ export async function processTranscriptActivity(
 
     await sendEmailWithTemplate({
       to: user.email,
-      from: {
-        name: "Dust team",
-        email: "support@dust.help",
-      },
+      from: config.getSupportEmailAddress(),
       subject: `[DUST] Transcripts - ${transcriptTitle.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")}`,
       body: `${htmlAnswer}<div style="text-align: center; margin-top: 20px;">
     <a href="${getConversationRoute(owner.sId, conversation.sId, undefined, config.getClientFacingUrl())}"

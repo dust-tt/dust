@@ -1,9 +1,9 @@
 import {
+  isDataSourceNodeContentType,
   isRunAgentResultResourceType,
   isSearchResultResourceType,
   isWebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { getFaviconUrl } from "@app/lib/utils/favicon";
 import { rand } from "@app/lib/utils/seeded_random";
 import type {
   AgentMessageType,
@@ -40,9 +40,11 @@ export function getRefs() {
 export function citationMetaPrompt(isUsingRunAgent: boolean) {
   return (
     "## CITING DOCUMENTS\n" +
-    "To cite documents or web pages retrieved with a 3-character REFERENCE, " +
-    "use the markdown directive :cite[REFERENCE] " +
+    "Documents and web pages are automatically assigned a 3-character REFERENCE. " +
+    "When referring to a document or a web page, use the markdown directive :cite[REFERENCE] " +
     "(eg :cite[xxx] or :cite[xxx,xxx] but not :cite[xxx][xxx]). " +
+    "After retrieving information from documents or web pages, include citations for " +
+    "all information you are using in your answer. " +
     "Ensure citations are placed as close as possible to the related information." +
     (isUsingRunAgent
       ? " If you use information from a run_agent that is related to a document or a web page, you MUST include the citation markers exactly as they appear."
@@ -82,12 +84,10 @@ export function getCitationsFromActions(
 
   const websearchRefs: Record<string, CitationType> = {};
   websearchResultsWithDocs.forEach((d) => {
-    const faviconUrl = getFaviconUrl(d.resource.uri);
     websearchRefs[d.resource.reference] = {
       href: d.resource.uri,
       title: d.resource.title,
       provider: "webcrawler",
-      ...(faviconUrl && { faviconUrl }),
       contentType: d.resource.mimeType,
     };
   });
@@ -103,26 +103,41 @@ export function getCitationsFromActions(
     if (result.resource.refs) {
       Object.entries(result.resource.refs).forEach(([ref, citation]) => {
         const href = citation.href ?? "";
-        const faviconUrl =
-          citation.provider === "webcrawler" && href
-            ? getFaviconUrl(href)
-            : undefined;
 
         runAgentRefs[ref] = {
           href,
           title: citation.title,
           provider: citation.provider,
-          ...(faviconUrl && { faviconUrl }),
-          contentType: citation.mimeType as AllSupportedFileContentType,
+          contentType: citation.contentType as AllSupportedFileContentType,
         };
       });
     }
+  });
+
+  const dataSourceNodeContentResults = removeNulls(
+    actions.flatMap((action) =>
+      action.output?.filter(isDataSourceNodeContentType).map((o) => o.resource)
+    )
+  );
+
+  const dataSourceNodeContentRefs: Record<string, CitationType> = {};
+  dataSourceNodeContentResults.forEach((d) => {
+    if (!d.ref) {
+      return;
+    }
+    dataSourceNodeContentRefs[d.ref] = {
+      href: d.uri,
+      title: d.metadata.title,
+      provider: d.metadata.connectorProvider ?? "document",
+      contentType: d.mimeType,
+    };
   });
 
   return {
     ...searchRefs,
     ...websearchRefs,
     ...runAgentRefs,
+    ...dataSourceNodeContentRefs,
   };
 }
 
@@ -138,6 +153,7 @@ export function getLightAgentMessageFromAgentMessage(
     rank: agentMessage.rank,
     parentMessageId: agentMessage.parentMessageId,
     parentAgentMessageId: agentMessage.parentAgentMessageId,
+    visibility: agentMessage.visibility,
     content: agentMessage.content,
     chainOfThought: agentMessage.chainOfThought,
     error: agentMessage.error,
@@ -148,9 +164,6 @@ export function getLightAgentMessageFromAgentMessage(
       pictureUrl: agentMessage.configuration.pictureUrl,
       status: agentMessage.configuration.status,
       canRead: agentMessage.configuration.canRead,
-      // TODO(2025-10-17 thomas): Remove requestedGroupIds.
-      requestedGroupIds: agentMessage.configuration.requestedGroupIds,
-      requestedSpaceIds: agentMessage.configuration.requestedSpaceIds,
     },
     citations: getCitationsFromActions(agentMessage.actions),
     generatedFiles: agentMessage.actions

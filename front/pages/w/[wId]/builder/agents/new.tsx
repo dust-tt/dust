@@ -1,4 +1,5 @@
 import type { InferGetServerSidePropsType } from "next";
+import Head from "next/head";
 import type { ParsedUrlQuery } from "querystring";
 
 import AgentBuilder from "@app/components/agent_builder/AgentBuilder";
@@ -133,6 +134,9 @@ export default function CreateAgent({
       user={user}
       assistantTemplate={assistantTemplate}
     >
+      <Head>
+        <title>Dust - New Agent</title>
+      </Head>
       <AgentBuilder
         agentConfiguration={
           agentConfiguration && "sId" in agentConfiguration

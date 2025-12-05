@@ -11,6 +11,7 @@ import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import { sendEmail } from "@app/lib/api/email";
 import type { Authenticator } from "@app/lib/auth";
+import { serializeMention } from "@app/lib/mentions/format";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
@@ -303,6 +304,7 @@ export async function triggerFromEmail({
     conversation = await createConversation(auth, {
       title: `Email: ${email.subject}`,
       visibility: "unlisted",
+      spaceId: null,
     });
   }
 
@@ -368,7 +370,7 @@ export async function triggerFromEmail({
   const content =
     agentConfigurations
       .map((agent) => {
-        return `:mention[${agent.name}]{sId=${agent.sId}}`;
+        return serializeMention(agent);
       })
       .join(" ") +
     " " +

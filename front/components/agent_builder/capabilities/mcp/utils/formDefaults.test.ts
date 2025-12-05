@@ -114,7 +114,7 @@ describe("getDefaultConfiguration", () => {
           requiredEnums: {},
           requiredLists: {},
           requiresDustAppConfiguration: false,
-          requiresSecretConfiguration: false,
+          developerSecretSelection: null,
           noRequirement: true,
         });
 
@@ -162,7 +162,7 @@ describe("getDefaultConfiguration", () => {
           requiredEnums: {},
           requiredLists: {},
           requiresDustAppConfiguration: false,
-          requiresSecretConfiguration: false,
+          developerSecretSelection: null,
           noRequirement: true,
         });
 
@@ -190,7 +190,7 @@ describe("getDefaultConfiguration", () => {
           requiredEnums: {},
           requiredLists: {},
           requiresDustAppConfiguration: false,
-          requiresSecretConfiguration: false,
+          developerSecretSelection: null,
           noRequirement: true,
         });
 
@@ -243,7 +243,7 @@ describe("getDefaultConfiguration", () => {
           },
           requiredLists: {},
           requiresDustAppConfiguration: false,
-          requiresSecretConfiguration: false,
+          developerSecretSelection: null,
           noRequirement: true,
         });
 
@@ -287,7 +287,7 @@ describe("getDefaultConfiguration", () => {
           },
           requiredLists: {},
           requiresDustAppConfiguration: false,
-          requiresSecretConfiguration: false,
+          developerSecretSelection: null,
           noRequirement: true,
         });
 
@@ -333,7 +333,7 @@ describe("getDefaultConfiguration", () => {
           },
           requiredLists: {},
           requiresDustAppConfiguration: false,
-          requiresSecretConfiguration: false,
+          developerSecretSelection: null,
           noRequirement: true,
         });
 
@@ -384,7 +384,7 @@ describe("getDefaultConfiguration", () => {
             },
           },
           requiresDustAppConfiguration: false,
-          requiresSecretConfiguration: false,
+          developerSecretSelection: null,
           noRequirement: true,
         });
 
@@ -432,7 +432,7 @@ describe("getDefaultConfiguration", () => {
           requiredEnums: {},
           requiredLists: {},
           requiresDustAppConfiguration: false,
-          requiresSecretConfiguration: false,
+          developerSecretSelection: null,
           noRequirement: true,
         });
 
@@ -467,7 +467,7 @@ describe("getDefaultConfiguration", () => {
           requiredEnums: {},
           requiredLists: {},
           requiresDustAppConfiguration: false,
-          requiresSecretConfiguration: false,
+          developerSecretSelection: null,
           noRequirement: true,
         });
 
@@ -520,7 +520,7 @@ describe("getDefaultConfiguration", () => {
             },
           },
           requiresDustAppConfiguration: false,
-          requiresSecretConfiguration: false,
+          developerSecretSelection: null,
           noRequirement: true,
         });
 
@@ -633,7 +633,7 @@ describe("getDefaultConfiguration", () => {
             },
           },
           requiresDustAppConfiguration: false,
-          requiresSecretConfiguration: false,
+          developerSecretSelection: null,
           noRequirement: true,
         });
 
@@ -711,7 +711,7 @@ describe("getDefaultConfiguration", () => {
             },
           },
           requiresDustAppConfiguration: false,
-          requiresSecretConfiguration: false,
+          developerSecretSelection: null,
           noRequirement: true,
         });
 

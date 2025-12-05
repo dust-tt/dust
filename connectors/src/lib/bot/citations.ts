@@ -109,3 +109,31 @@ function removeCitations(message: string): string {
   const regex = / ?:cite\[[a-zA-Z0-9, ]+\]/g;
   return message.replace(regex, "");
 }
+
+/**
+ * Converts plain URLs to Markdown links for Teams Adaptive Cards.
+ * Teams Adaptive Cards require Markdown format [text](url) for clickable links.
+ */
+export function convertUrlsToMarkdown(text: string): string {
+  // Regex to match URLs that are NOT already part of a Markdown link.
+  // Negative lookbehind (?<!\() ensures we don't match URLs already in Markdown format.
+  // Negative lookahead (?!\)) ensures we're not inside a Markdown link.
+  const urlRegex = /(?<!\()(https?:\/\/[^\s)]+)(?!\))/g;
+
+  // Use replace with offset parameter to avoid expensive indexOf calls.
+  return text.replace(urlRegex, (url, offset) => {
+    // Check if this URL is already part of a Markdown link by looking at surrounding context.
+    // The offset gives us the position, so we can check directly (O(1) instead of O(n)).
+    const beforeChar = offset > 0 ? text[offset - 1] : "";
+    const afterChar =
+      offset + url.length < text.length ? text[offset + url.length] : "";
+
+    // If URL is already wrapped in () from a Markdown link, don't convert.
+    if (beforeChar === "(" && afterChar === ")") {
+      return url;
+    }
+
+    // Convert to Markdown link with the URL as both text and href.
+    return `[${url}](${url})`;
+  });
+}

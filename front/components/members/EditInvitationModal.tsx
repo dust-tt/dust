@@ -24,8 +24,6 @@ import type {
   WorkspaceType,
 } from "@app/types";
 
-import { isInvitationExpired } from "./utils";
-
 export function EditInvitationModal({
   owner,
   invitation,
@@ -53,6 +51,7 @@ export function EditInvitationModal({
 
   useEffect(() => {
     if (invitation) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedRole(invitation.initialRole);
     }
   }, [invitation]);
@@ -93,7 +92,7 @@ export function EditInvitationModal({
                 <div className="text-muted-foreground dark:text-muted-foreground-night">
                   Invitation sent on{" "}
                   {new Date(invitation.createdAt).toLocaleDateString()}
-                  {isInvitationExpired(invitation.createdAt) && (
+                  {invitation.isExpired && (
                     <span className="ml-2 text-red-500">(expired)</span>
                   )}
                 </div>

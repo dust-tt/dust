@@ -6,18 +6,26 @@ import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 
 export interface PokeConversationsFetchProps extends PokeConditionalFetchProps {
   agentId?: string;
+  triggerId?: string;
 }
 
 export function usePokeConversations({
   disabled,
   owner,
   agentId,
+  triggerId,
 }: PokeConversationsFetchProps) {
   const conversationsFetcher: Fetcher<PokeListConversations> = fetcher;
+
+  let url: string | null = null;
+  if (agentId) {
+    url = `/api/poke/workspaces/${owner.sId}/conversations?agentId=${agentId}`;
+  } else if (triggerId) {
+    url = `/api/poke/workspaces/${owner.sId}/conversations?triggerId=${triggerId}`;
+  }
+
   const { data, error, mutate } = useSWRWithDefaults(
-    agentId
-      ? `/api/poke/workspaces/${owner.sId}/conversations?agentId=${agentId}`
-      : null,
+    url,
     conversationsFetcher,
     { disabled }
   );

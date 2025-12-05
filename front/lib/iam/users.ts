@@ -4,11 +4,11 @@ import type { ExternalUser, SessionWithUser } from "@app/lib/iam/provider";
 import {
   AgentConfiguration,
   AgentUserRelation,
-} from "@app/lib/models/assistant/agent";
+} from "@app/lib/models/agent/agent";
 import {
   ConversationParticipantModel,
   UserMessage,
-} from "@app/lib/models/assistant/conversation";
+} from "@app/lib/models/agent/conversation";
 import { DustAppSecret } from "@app/lib/models/dust_app_secret";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
@@ -154,7 +154,6 @@ export async function createOrUpdateUser({
 
     const u = await UserResource.makeNew({
       sId: generateRandomModelSId(),
-      auth0Sub: externalUser.auth0Sub,
       workOSUserId: existingWorkOSUser ? null : externalUser.workOSUserId,
       provider: null, ///session.provider
       username: externalUser.nickname,
@@ -352,10 +351,7 @@ export async function mergeUserIdentities({
   }
 
   if (revokeSecondaryUser) {
-    await revokeAndTrackMembership(
-      auth.getNonNullableWorkspace(),
-      secondaryUser
-    );
+    await revokeAndTrackMembership(auth, secondaryUser);
   }
 
   return new Ok({

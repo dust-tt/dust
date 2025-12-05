@@ -6,10 +6,7 @@ import {
 import { deleteArticle } from "@connectors/connectors/zendesk/lib/sync_article";
 import { deleteTicket } from "@connectors/connectors/zendesk/lib/sync_ticket";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
-import {
-  fetchZendeskArticle,
-  getZendeskBrandSubdomain,
-} from "@connectors/connectors/zendesk/lib/zendesk_api";
+import { ZendeskClient } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
@@ -137,6 +134,13 @@ export async function removeMissingArticleBatchActivity({
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
   }
+
+  const configuration =
+    await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
+  if (!configuration) {
+    throw new Error(`[Zendesk] Configuration not found.`);
+  }
+
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const loggerArgs = {
     workspaceId: dataSourceConfig.workspaceId,
@@ -149,10 +153,14 @@ export async function removeMissingArticleBatchActivity({
   const { subdomain, accessToken } = await getZendeskSubdomainAndAccessToken(
     connector.connectionId
   );
-  const brandSubdomain = await getZendeskBrandSubdomain({
-    connectorId,
-    brandId,
+
+  const zendeskClient = new ZendeskClient(
     accessToken,
+    connectorId,
+    configuration.rateLimitTransactionsPerSecond
+  );
+  const brandSubdomain = await zendeskClient.getBrandSubdomain({
+    brandId,
     subdomain,
   });
 
@@ -160,19 +168,18 @@ export async function removeMissingArticleBatchActivity({
   await concurrentExecutor(
     articleIds,
     async (articleId) => {
-      const article = await fetchZendeskArticle({
+      const article = await zendeskClient.fetchArticle({
         brandSubdomain,
         articleId,
-        accessToken,
       });
       if (!article) {
-        await deleteArticle(
+        await deleteArticle({
           connectorId,
           brandId,
           articleId,
           dataSourceConfig,
-          loggerArgs
-        );
+          loggerArgs,
+        });
       }
     },
     { concurrency: 10 }

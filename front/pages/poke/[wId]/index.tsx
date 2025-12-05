@@ -23,20 +23,24 @@ import type { ReactElement } from "react";
 
 import { AppDataTable } from "@app/components/poke/apps/table";
 import { AssistantsDataTable } from "@app/components/poke/assistants/table";
+import { CreditsDataTable } from "@app/components/poke/credits/table";
 import { DataSourceViewsDataTable } from "@app/components/poke/data_source_views/table";
 import { DataSourceDataTable } from "@app/components/poke/data_sources/table";
 import { FeatureFlagsDataTable } from "@app/components/poke/features/table";
 import { GroupDataTable } from "@app/components/poke/groups/table";
 import { MCPServerViewsDataTable } from "@app/components/poke/mcp_server_views/table";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
-import { PluginRunsDataTable } from "@app/components/poke/plugins/table";
 import PokeLayout from "@app/components/poke/PokeLayout";
+import {
+  PokeAlert,
+  PokeAlertDescription,
+  PokeAlertTitle,
+} from "@app/components/poke/shadcn/ui/alert";
 import { SpaceDataTable } from "@app/components/poke/spaces/table";
 import {
   ActiveSubscriptionTable,
   PlanLimitationsTable,
 } from "@app/components/poke/subscriptions/table";
-import { TrackerDataTable } from "@app/components/poke/trackers/table";
 import { TriggerDataTable } from "@app/components/poke/triggers/table";
 import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
 import config from "@app/lib/api/config";
@@ -167,9 +171,19 @@ const WorkspacePage = ({
 
   const workspaceRetention = dataRetention?.workspace ?? null;
   const agentsRetention = dataRetention?.agents ?? {};
+  const isInMaintenance = owner.metadata?.maintenance;
 
   return (
     <div className="ml-8 p-6">
+      {isInMaintenance && (
+        <PokeAlert variant="destructive" className="mb-6">
+          <PokeAlertTitle>Workspace in Maintenance Mode</PokeAlertTitle>
+          <PokeAlertDescription>
+            This workspace is currently in maintenance mode and should not be
+            modified, unless you know what you are doing.
+          </PokeAlertDescription>
+        </PokeAlert>
+      )}
       <div className="flex justify-between gap-3">
         <div className="flex-grow">
           <span className="text-2xl font-bold">{owner.name}</span>
@@ -217,7 +231,7 @@ const WorkspacePage = ({
         <div className="flex flex-col space-y-8">
           <div className="mt-4 flex flex-row items-stretch gap-3">
             <Tabs defaultValue="workspace" className="min-w-[512px]">
-              <TabsList>
+              <TabsList className="mb-3">
                 <TabsTrigger value="workspace" label="Workspace" />
                 <TabsTrigger value="subscriptions" label="Subscriptions" />
                 <TabsTrigger value="planlimitations" label="Plan Limitations" />
@@ -264,11 +278,9 @@ const WorkspacePage = ({
               <TabsTrigger value="groups" label="Groups" />
               <TabsTrigger value="mcpviews" label="MCP Server Views" />
               <TabsTrigger value="spaces" label="Spaces" />
-              <TabsTrigger value="trackers" label="Trackers" />
-              <TabsTrigger value="triggers" label="Triggers" />
 
-              {/* Plugin Logs on the far right */}
-              <TabsTrigger value="plugins" label="Plugins Logs" />
+              <TabsTrigger value="triggers" label="Triggers" />
+              <TabsTrigger value="credits" label="Credits" />
             </TabsList>
 
             <TabsContent value="datasources">
@@ -303,14 +315,16 @@ const WorkspacePage = ({
                 loadOnInit
               />
             </TabsContent>
-            <TabsContent value="trackers">
-              <TrackerDataTable owner={owner} loadOnInit />
-            </TabsContent>
+
             <TabsContent value="triggers">
               <TriggerDataTable owner={owner} loadOnInit />
             </TabsContent>
-            <TabsContent value="plugins">
-              <PluginRunsDataTable owner={owner} loadOnInit />
+            <TabsContent value="credits">
+              <CreditsDataTable
+                owner={owner}
+                subscription={activeSubscription}
+                loadOnInit
+              />
             </TabsContent>
           </Tabs>
         </div>

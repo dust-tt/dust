@@ -7,10 +7,13 @@ import type {
   Organization,
   OrganizationDomain,
 } from "@workos-inc/node";
+import { NotFoundException } from "@workos-inc/node";
 import assert from "assert";
 
 import { createAndLogMembership } from "@app/lib/api/signup";
+import { createRegularSpaceAndGroup } from "@app/lib/api/spaces";
 import { determineUserRoleFromGroups } from "@app/lib/api/user";
+import { getWorkOS } from "@app/lib/api/workos/client";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import {
   fetchOrCreateWorkOSUserWithEmail,
@@ -31,6 +34,8 @@ import type { ExternalUser } from "@app/lib/iam/provider";
 import { createOrUpdateUser } from "@app/lib/iam/users";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import mainLogger from "@app/logger/logger";
@@ -403,12 +408,128 @@ export async function handleWorkspaceSubscriptionCreated({
   }
 }
 
+/**
+ * Auto-create a restricted space for a provisioned group if the workspace setting is enabled.
+ * This function ensures idempotency by checking if a space already exists for the group.
+ */
+async function autoCreateSpaceForProvisionedGroup(
+  auth: Authenticator,
+  group: GroupResource,
+  workspace: LightWorkspaceType
+): Promise<void> {
+  // Check if a space already exists for this group
+  const existingSpaces = await SpaceResource.listForGroups(auth, [group]);
+
+  if (existingSpaces.length > 0) {
+    logger.info(
+      {
+        groupId: group.sId,
+        groupName: group.name,
+        spaceId: existingSpaces[0].sId,
+      },
+      "Space already exists for provisioned group, skipping auto-creation"
+    );
+    return;
+  }
+
+  // Create restricted space with group-based management
+  const spaceName = group.name;
+
+  const spaceResult = await createRegularSpaceAndGroup(
+    auth,
+    {
+      name: spaceName,
+      groupIds: [group.sId],
+      isRestricted: true,
+      managementMode: "group",
+    },
+    { ignoreWorkspaceLimit: false }
+  );
+
+  if (spaceResult.isErr()) {
+    // Log error but don't throw - we don't want to fail the group creation
+    // if space creation fails (e.g., due to limit reached or name conflict)
+    logger.error(
+      {
+        error: spaceResult.error,
+        groupId: group.sId,
+        groupName: group.name,
+        workspaceId: workspace.sId,
+      },
+      "Failed to auto-create space for provisioned group"
+    );
+    return;
+  }
+
+  logger.info(
+    {
+      spaceId: spaceResult.value.sId,
+      spaceName: spaceResult.value.name,
+      groupId: group.sId,
+      groupName: group.name,
+      workspaceId: workspace.sId,
+    },
+    "Auto-created space for provisioned group"
+  );
+}
+
 async function handleGroupUpsert(
   workspace: LightWorkspaceType,
   event: DirectoryGroup
 ) {
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  await GroupResource.upsertByWorkOSGroupId(auth, event);
+
+  const groupByName = await GroupResource.fetchByName(auth, event.name);
+  if (groupByName && groupByName.workOSGroupId !== event.id) {
+    // Conflict - another group with the same name already exists.
+
+    // First check if this group still exists in workos.
+    try {
+      await getWorkOS().directorySync.getGroup(event.id);
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        // Group doesn't exist, just ignore the event.
+        return;
+      }
+      throw error;
+    }
+
+    // Another group with the same name exists and is not a provisioned group, throw an error.
+    if (groupByName.kind !== "provisioned" || !groupByName.workOSGroupId) {
+      throw new Error(
+        `Group "${groupByName.name}" already exists and is not a provisioned group`
+      );
+    }
+
+    // Look for this other group in workos and delete it if it doesn't exist anymore.
+    try {
+      await getWorkOS().directorySync.getGroup(groupByName.workOSGroupId);
+      throw new Error(
+        `Group "${groupByName.name}" still exists in workos with id "${groupByName.workOSGroupId}"`
+      );
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        logger.info(
+          {
+            error,
+            workOsGroupId: groupByName.workOSGroupId,
+            groupByName: groupByName.toJSON(),
+          },
+          "Group not found in workos (404), deleting local group"
+        );
+        await groupByName.delete(auth);
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  const group = await GroupResource.upsertByWorkOSGroupId(auth, event);
+
+  // Auto-create space if workspace setting is enabled
+  if (workspace.metadata?.autoCreateSpaceForProvisionedGroups) {
+    await autoCreateSpaceForProvisionedGroup(auth, group, workspace);
+  }
 }
 
 async function handleUserAddedToGroup(
@@ -560,7 +681,6 @@ async function handleCreateOrUpdateWorkOSUser(
 
   const user = await UserResource.fetchByWorkOSUserId(workOSUser.id);
   const externalUser: ExternalUser = {
-    auth0Sub: null,
     email: workOSUser.email,
     email_verified: true,
     name: workOSUser.email ?? "",
@@ -659,6 +779,21 @@ async function handleDeleteWorkOSUser(
       return;
     }
     throw membershipRevokeResult.error;
+  }
+
+  const deleteTriggerResult = await TriggerResource.deleteAllForUser(
+    auth,
+    user
+  );
+  if (deleteTriggerResult.isErr()) {
+    logger.error(
+      {
+        workspaceId: workspace.sId,
+        userId: user.sId,
+        error: deleteTriggerResult.error,
+      },
+      "Failed to delete triggers for revoked user"
+    );
   }
 
   void ServerSideTracking.trackRevokeMembership({

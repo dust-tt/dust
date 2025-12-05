@@ -1,130 +1,15 @@
-import React, { useState } from "react";
+import React from "react";
 
-import {
-  ButtonProps,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  RegularButtonProps,
-} from "@sparkle/components/";
+import { ButtonProps } from "@sparkle/components/";
 import { Button, ButtonVariantType } from "@sparkle/components/Button";
-import { Separator } from "@sparkle/components/Separator";
-import { ChevronDownIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib";
-
-interface SplitButtonActionProps {
-  label: string;
-  icon?: React.ComponentType;
-  tooltip?: string;
-  disabled?: boolean;
-  onClick?: (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
-  isLoading?: boolean;
-}
-
-export interface SplitButtonProps
-  extends Omit<RegularButtonProps, "children" | "onClick"> {
-  /**
-   * List of possible actions, will be displayed in dropdown
-   */
-  actions: SplitButtonActionProps[];
-
-  /**
-   * Current action to use (controlled mode)
-   */
-  action?: SplitButtonActionProps;
-
-  /**
-   * default action to use in uncontrolled mode. If not specified, the first action will be used.
-   */
-  defaultAction?: SplitButtonActionProps;
-
-  /**
-   * Event handler for action change
-   */
-  onActionChange?: (action: SplitButtonActionProps) => void;
-}
-
-const SplitButton = React.forwardRef<HTMLButtonElement, SplitButtonProps>(
-  (
-    {
-      actions,
-      className,
-      size,
-      variant,
-      disabled,
-      action,
-      defaultAction,
-      onActionChange,
-      ...props
-    },
-    ref
-  ) => {
-    // If there are no actions, do not display anything
-    if (actions.length === 0) {
-      return null;
-    }
-
-    // Local state in uncontrolled mode, set to defaultAction or first action
-    const [localAction, setLocalAction] = useState(defaultAction ?? actions[0]);
-
-    // Override and ignore if controlled
-    const actionToUse = action ?? localAction;
-
-    return (
-      <div className="s-flex s-items-center">
-        <Button
-          {...props}
-          size={size || undefined}
-          variant={variant}
-          label={actionToUse.label}
-          icon={actionToUse.icon}
-          disabled={disabled || actionToUse.disabled}
-          onClick={(e) => actionToUse.onClick && actionToUse.onClick(e)}
-          ref={ref}
-          className={cn("s-rounded-r-none s-border-r-0", className)}
-        />
-        <div className="sm">
-          <Separator orientation="vertical" />
-        </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              {...props}
-              size={size || undefined}
-              variant={variant}
-              icon={ChevronDownIcon}
-              disabled={disabled}
-              className={cn("s-rounded-l-none s-border-l-0", className)}
-              isLoading={actionToUse.isLoading}
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {actions.map((action, index) => (
-              <DropdownMenuItem
-                key={index}
-                label={action.label}
-                icon={action.icon}
-                disabled={action.disabled}
-                onClick={() => {
-                  setLocalAction(action);
-                  if (onActionChange) {
-                    onActionChange(action);
-                  }
-                }}
-              />
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    );
-  }
-);
 
 const flexSeparatorVariants: Record<ButtonVariantType, string> = {
   primary: "s-bg-background/50 dark:s-text-background-night/50",
   highlight: "s-bg-background/50 dark:s-text-background-night/50",
+  "highlight-secondary": "s-bg-separator dark:s-bg-separator-night",
   warning: "s-bg-background/50 dark:s-text-background-night/50",
+  "warning-secondary": "s-bg-separator dark:s-bg-separator-night",
   outline: "s-bg-separator dark:s-bg-separator-night",
   ghost: "s-bg-separator dark:s-bg-separator-night",
   "ghost-secondary": "s-bg-separator dark:s-bg-separator-night",
@@ -140,12 +25,25 @@ const FlexSplitButton = React.forwardRef<
   FlexSplitButtonProps
 >(
   (
-    { splitAction, containerClassName, variant, className, ...buttonProps },
+    {
+      splitAction,
+      containerClassName,
+      variant,
+      className,
+      isLoading,
+      ...buttonProps
+    },
     ref
   ) => {
     const separatorStyle = variant
       ? flexSeparatorVariants[variant]
       : flexSeparatorVariants.primary;
+
+    // Clone the splitAction and disable it when main button is loading
+    const clonedSplitAction = React.cloneElement(splitAction, {
+      disabled: isLoading || splitAction.props.disabled,
+    });
+
     return (
       <div className={cn("s-relative s-inline-block", containerClassName)}>
         <Button
@@ -153,11 +51,12 @@ const FlexSplitButton = React.forwardRef<
           variant={variant}
           size="sm"
           className={cn(className, "s-pr-12")}
+          isLoading={isLoading}
           {...buttonProps}
         />
         <span className="s-absolute s-right-1 s-top-1 s-flex s-items-center s-gap-1">
           <div className={cn("s-h-4 s-w-px", separatorStyle)} />
-          {splitAction}
+          {clonedSplitAction}
         </span>
       </div>
     );
@@ -166,4 +65,4 @@ const FlexSplitButton = React.forwardRef<
 
 FlexSplitButton.displayName = "FlexSplitButton";
 
-export { FlexSplitButton, SplitButton };
+export { FlexSplitButton };

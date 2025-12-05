@@ -3,9 +3,9 @@ import TurndownService from "turndown";
 import { filterCustomTags } from "@connectors/connectors/shared/tags";
 import { getTicketInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
 import type {
-  ZendeskFetchedTicket,
-  ZendeskFetchedTicketComment,
-  ZendeskFetchedUser,
+  ZendeskTicket,
+  ZendeskTicketComment,
+  ZendeskUser,
 } from "@connectors/connectors/zendesk/lib/types";
 import {
   deleteDataSourceDocument,
@@ -18,8 +18,7 @@ import type { ConnectorResource } from "@connectors/resources/connector_resource
 import type { ZendeskConfigurationResource } from "@connectors/resources/zendesk_resources";
 import { ZendeskTicketResource } from "@connectors/resources/zendesk_resources";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
-import { stripNullBytes } from "@connectors/types";
-import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import { INTERNAL_MIME_TYPES, stripNullBytes } from "@connectors/types";
 
 const turndownService = new TurndownService();
 
@@ -28,7 +27,7 @@ function apiUrlToDocumentUrl(apiUrl: string): string {
 }
 
 export function shouldSyncTicket(
-  ticket: ZendeskFetchedTicket,
+  ticket: ZendeskTicket,
   configuration: ZendeskConfigurationResource,
   {
     brandId,
@@ -179,7 +178,7 @@ export async function syncTicket({
   comments,
   users,
 }: {
-  ticket: ZendeskFetchedTicket;
+  ticket: ZendeskTicket;
   connector: ConnectorResource;
   configuration: ZendeskConfigurationResource;
   dataSourceConfig: DataSourceConfig;
@@ -187,8 +186,8 @@ export async function syncTicket({
   currentSyncDateMs: number;
   loggerArgs: Record<string, string | number | null>;
   forceResync: boolean;
-  comments: ZendeskFetchedTicketComment[];
-  users: ZendeskFetchedUser[];
+  comments: ZendeskTicketComment[];
+  users: ZendeskUser[];
 }) {
   const connectorId = connector.id;
 
@@ -286,7 +285,7 @@ export async function syncTicket({
         }
         const author =
           users.find((user) => user.id === comment.author_id) ?? null;
-        return `[${comment?.created_at}] ${author ? `${author.name} (${author.email})` : "Unknown User"}:\n${commentContent}`;
+        return `[${comment?.created_at}] ${author ? `${author.name} (${author.email ?? "Unknown email"})` : "Unknown User"}:\n${commentContent}`;
       })
       .join("\n")}`.trim();
 
@@ -298,22 +297,28 @@ export async function syncTicket({
     );
 
     const metadata = [
-      `ticketId:${ticket.id}`,
       `priority:${ticket.priority}`,
       `ticketType:${ticket.type}`,
       `channel:${ticket.via?.channel}`,
       `status:${ticket.status}`,
+      ...(ticket.due_at
+        ? [`dueDate:${new Date(ticket.due_at).toISOString()}`]
+        : []),
+      ...(ticket.satisfaction_rating?.score !== "unoffered" // Special value when no rating was provided.
+        ? [`satisfactionRating:${ticket.satisfaction_rating?.score}`]
+        : []),
+      `hasIncidents:${ticket.has_incidents ? "Yes" : "No"}`,
+    ];
+
+    // Tags are metadata plus some content that have no semantic meaning such as IDs.
+    const tags = [
+      ...metadata,
+      `updatedAt:${updatedAtDate.getTime()}`,
+      `createdAt:${createdAtDate.getTime()}`,
       ...(ticket.group_id ? [`groupId:${ticket.group_id}`] : []),
       ...(ticket.organization_id
         ? [`organizationId:${ticket.organization_id}`]
         : []),
-      ...(ticket.due_at
-        ? [`dueDate:${new Date(ticket.due_at).toISOString()}`]
-        : []),
-      ...(ticket.satisfaction_rating.score !== "unoffered" // Special value when no rating was provided.
-        ? [`satisfactionRating:${ticket.satisfaction_rating.score}`]
-        : []),
-      `hasIncidents:${ticket.has_incidents ? "Yes" : "No"}`,
     ];
 
     // Process custom field tags.
@@ -340,14 +345,7 @@ export async function syncTicket({
       createdAt: createdAtDate,
       updatedAt: updatedAtDate,
       additionalPrefixes: {
-        metadata: metadata
-          // We remove IDs from the prefixes since they do not hold any semantic meaning.
-          .filter(
-            (field) =>
-              !["ticketId", "organizationId", "groupId"].includes(field)
-          )
-          .join(", "),
-        labels: ticket.tags.join(", ") || "none",
+        metadata: metadata.join(", "),
       },
     });
 
@@ -365,9 +363,7 @@ export async function syncTicket({
       documentUrl: ticketUrl,
       timestampMs: updatedAtDate.getTime(),
       tags: [
-        `updatedAt:${updatedAtDate.getTime()}`,
-        `createdAt:${createdAtDate.getTime()}`,
-        ...metadata,
+        ...tags,
         ...filterCustomTags(ticket.tags, logger),
         ...customFieldTags,
       ],

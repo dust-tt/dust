@@ -1,20 +1,22 @@
 import {
   ArrowPathIcon,
   Button,
+  ButtonGroup,
   Chip,
   ClipboardCheckIcon,
   ClipboardIcon,
   ConversationMessage,
-  DocumentIcon,
   InteractiveImageGrid,
   Markdown,
+  MoreIcon,
   Separator,
   StopIcon,
+  TrashIcon,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import { marked } from "marked";
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useContext, useMemo } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
@@ -24,7 +26,8 @@ import { AgentMessageCompletionStatus } from "@app/components/assistant/conversa
 import { AgentMessageInteractiveContentGeneratedFiles } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
-import { useActionValidationContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
+import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
+import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
@@ -32,6 +35,7 @@ import { FeedbackSelectorPopoverContent } from "@app/components/assistant/conver
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/interactive_content/useAutoOpenInteractiveContent";
 import { MCPServerPersonalAuthenticationRequired } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationRequired";
+import { NewConversationMessage } from "@app/components/assistant/conversation/NewConversationMessage";
 import type {
   AgentMessageStateWithControlEvent,
   MessageTemporaryState,
@@ -42,7 +46,9 @@ import {
   getMessageSId,
   isHandoverUserMessage,
   isMessageTemporayState,
+  isUserMessage,
 } from "@app/components/assistant/conversation/types";
+import { ConfirmContext } from "@app/components/Confirm";
 import {
   CitationsContext,
   CiteBlock,
@@ -50,27 +56,45 @@ import {
 } from "@app/components/markdown/CiteBlock";
 import { getImgPlugin, imgDirective } from "@app/components/markdown/Image";
 import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
-import { getCitationIcon } from "@app/components/markdown/MCPReferenceCitation";
 import {
-  getMentionPlugin,
-  mentionDirective,
-} from "@app/components/markdown/MentionBlock";
+  getQuickReplyPlugin,
+  quickReplyDirective,
+} from "@app/components/markdown/QuickReplyBlock";
+import {
+  getToolSetupPlugin,
+  toolDirective,
+} from "@app/components/markdown/tool/tool";
 import {
   getVisualizationPlugin,
   sanitizeVisualizationContent,
   visualizationDirective,
 } from "@app/components/markdown/VisualizationBlock";
-import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
+import { useDeleteAgentMessage } from "@app/hooks/useDeleteAgentMessage";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { useCancelMessage } from "@app/lib/swr/conversations";
-import { useConversationMessage } from "@app/lib/swr/conversations";
+import type { DustError } from "@app/lib/error";
+import {
+  agentMentionDirective,
+  getAgentMentionPlugin,
+  getUserMentionPlugin,
+  userMentionDirective,
+} from "@app/lib/mentions/markdown/plugin";
+import {
+  useCancelMessage,
+  useConversationMessage,
+  usePostOnboardingFollowUp,
+} from "@app/lib/swr/conversations";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type {
+  ContentFragmentsType,
   LightAgentMessageType,
   LightAgentMessageWithActionsType,
   LightWorkspaceType,
   PersonalAuthenticationRequiredErrorContent,
+  Result,
+  RichMention,
   UserType,
   WorkspaceType,
 } from "@app/types";
@@ -90,6 +114,11 @@ interface AgentMessageProps {
   messageFeedback: FeedbackSelectorProps;
   owner: WorkspaceType;
   user: UserType;
+  handleSubmit: (
+    input: string,
+    mentions: RichMention[],
+    contentFragments: ContentFragmentsType
+  ) => Promise<Result<undefined, DustError>>;
 }
 
 export function AgentMessage({
@@ -98,9 +127,10 @@ export function AgentMessage({
   messageStreamState,
   messageFeedback,
   owner,
+  user,
+  handleSubmit,
 }: AgentMessageProps) {
   const sId = getMessageSId(messageStreamState);
-  const { isDark } = useTheme();
 
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
     React.useState<boolean>(false);
@@ -109,13 +139,18 @@ export function AgentMessage({
     { index: number; document: MCPReferenceCitation }[]
   >([]);
   const [isCopied, copy] = useCopyToClipboard();
+  const sendNotification = useSendNotification();
+  const confirm = useContext(ConfirmContext);
 
   const isGlobalAgent = Object.values(GLOBAL_AGENTS_SID).includes(
     messageStreamState.message.configuration.sId as GLOBAL_AGENTS_SID
   );
 
-  const { showBlockedActionsDialog, enqueueBlockedAction } =
-    useActionValidationContext();
+  const {
+    showBlockedActionsDialog,
+    enqueueBlockedAction,
+    mutateBlockedActions,
+  } = useBlockedActionsContext();
 
   const { mutateMessage } = useConversationMessage({
     conversationId,
@@ -160,9 +195,19 @@ export function AgentMessage({
               metadata: eventPayload.data.metadata,
             },
           });
+        } else if (
+          eventType === "tool_error" &&
+          isPersonalAuthenticationRequiredErrorContent(eventPayload.data.error)
+        ) {
+          void mutateBlockedActions();
         }
       },
-      [showBlockedActionsDialog, enqueueBlockedAction, sId]
+      [
+        showBlockedActionsDialog,
+        enqueueBlockedAction,
+        sId,
+        mutateBlockedActions,
+      ]
     ),
     streamId: `message-${sId}`,
     useFullChainOfThought: false,
@@ -172,6 +217,7 @@ export function AgentMessage({
     message: messageStreamState.message,
     messageStreamState: messageStreamState,
   });
+  const isDeleted = agentMessageToRender.visibility === "deleted";
   const cancelMessage = useCancelMessage({ owner, conversationId });
 
   const references = useMemo(
@@ -180,19 +226,13 @@ export function AgentMessage({
         Record<string, MCPReferenceCitation>
       >((acc, [key, citation]) => {
         if (citation) {
-          const IconComponent = getCitationIcon(
-            citation.provider,
-            isDark,
-            citation.faviconUrl,
-            citation.href
-          );
           return {
             ...acc,
             [key]: {
+              provider: citation.provider,
               href: citation.href,
               title: citation.title,
               description: citation.description,
-              icon: <IconComponent />,
               contentType: citation.contentType,
               fileId: key,
             },
@@ -200,7 +240,7 @@ export function AgentMessage({
         }
         return acc;
       }, {}),
-    [agentMessageToRender.citations, isDark]
+    [agentMessageToRender.citations]
   );
 
   // GenerationContext: to know if we are generating or not.
@@ -300,7 +340,12 @@ export function AgentMessage({
     );
   }
 
-  const buttons: React.ReactElement[] = [];
+  const { deleteAgentMessage, isDeleting } = useDeleteAgentMessage({
+    owner,
+    conversationId,
+  });
+
+  const messageButtons: React.ReactElement[] = [];
 
   const hasMultiAgents =
     generationContext.generatingMessages.filter(
@@ -308,10 +353,8 @@ export function AgentMessage({
     ).length > 1;
 
   // Show stop agent button only when streaming with multiple agents
-  // (it feels distractive to show buttons while streaming so we would like to avoid as much as possible.
-  // However, when there are multiple agents there is no other way to stop only single agent so we need to show it here).
   if (hasMultiAgents && shouldStream) {
-    buttons.push(
+    messageButtons.push(
       <Button
         key="stop-msg-button"
         label="Stop agent"
@@ -326,28 +369,6 @@ export function AgentMessage({
     );
   }
 
-  // Show copy & feedback buttons only when streaming is done and it didn't fail
-  if (
-    agentMessageToRender.status !== "created" &&
-    agentMessageToRender.status !== "failed"
-  ) {
-    buttons.push(
-      <Button
-        key="copy-msg-button"
-        tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
-        variant="ghost-secondary"
-        size="xs"
-        onClick={handleCopyToClipboard}
-        icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
-        className="text-muted-foreground"
-      />
-    );
-  }
-
-  // Show the retry button as long as it's not streaming nor failed,
-  // since failed messages have their own retry button in ErrorMessage.
-  // Also, don't show the retry button if the agent message is handing over to another agent since we don't want to retry a message that has generated another agent response.
-  // This is to be removed as soon as we have branching in the conversation.
   const methods = useVirtuosoMethods<
     VirtuosoMessage,
     VirtuosoMessageListContext
@@ -355,49 +376,96 @@ export function AgentMessage({
 
   const isAgentMessageHandingOver = methods.data
     .get()
-    .some((m) => isHandoverUserMessage(m) && m.context.originMessageId === sId);
+    .some(
+      (m) =>
+        isUserMessage(m) &&
+        isHandoverUserMessage(m) &&
+        m.agenticMessageData?.originMessageId === sId
+    );
 
-  if (
+  const isTriggeredByCurrentUser = useMemo(() => {
+    const parentMessageId = agentMessageToRender.parentMessageId;
+    const messages = methods.data.get();
+    const parentUserMessage = messages.find(
+      (m) => isUserMessage(m) && m.sId === parentMessageId
+    );
+    if (!parentUserMessage || !isUserMessage(parentUserMessage)) {
+      return false;
+    }
+
+    return parentUserMessage.user?.sId === user.sId;
+  }, [agentMessageToRender.parentMessageId, methods.data, user.sId]);
+
+  const canDeleteAgentMessage =
+    !isDeleted &&
+    agentMessageToRender.status !== "created" &&
+    isTriggeredByCurrentUser;
+
+  const handleDeleteAgentMessage = useCallback(async () => {
+    if (isDeleted || !canDeleteAgentMessage || isDeleting) {
+      return;
+    }
+
+    const confirmed = await confirm({
+      title: "Delete message",
+      message:
+        "Are you sure you want to delete this message? This action cannot be undone.",
+      validateLabel: "Delete",
+      validateVariant: "warning",
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    await deleteAgentMessage(agentMessageToRender.sId);
+
+    methods.data.map((m) => {
+      if (
+        isMessageTemporayState(m) &&
+        getMessageSId(m) === agentMessageToRender.sId
+      ) {
+        return {
+          ...m,
+          message: {
+            ...m.message,
+            visibility: "deleted",
+          },
+        };
+      }
+      return m;
+    });
+  }, [
+    agentMessageToRender.sId,
+    canDeleteAgentMessage,
+    confirm,
+    isDeleted,
+    deleteAgentMessage,
+    isDeleting,
+    methods.data,
+  ]);
+
+  const shouldShowCopy =
+    !isDeleted &&
+    agentMessageToRender.status !== "created" &&
+    agentMessageToRender.status !== "failed";
+
+  const shouldShowRetry =
+    !isDeleted &&
     agentMessageToRender.status !== "created" &&
     agentMessageToRender.status !== "failed" &&
     !shouldStream &&
-    !isAgentMessageHandingOver
-  ) {
-    buttons.push(
-      <Button
-        key="retry-msg-button"
-        tooltip="Retry"
-        variant="ghost-secondary"
-        size="xs"
-        onClick={() => {
-          void retryHandler({
-            conversationId,
-            messageId: agentMessageToRender.sId,
-          });
-        }}
-        icon={ArrowPathIcon}
-        className="text-muted-foreground"
-        disabled={isRetryHandlerProcessing || shouldStream}
-      />
-    );
-  }
+    !isAgentMessageHandingOver;
 
-  // Add feedback buttons in the end of the array if the agent is not global nor in draft (= inside agent builder)
-  if (
+  const shouldShowFeedback =
+    !isDeleted &&
     agentMessageToRender.status !== "created" &&
     agentMessageToRender.status !== "failed" &&
     !isGlobalAgent &&
-    agentMessageToRender.configuration.status !== "draft"
-  ) {
-    buttons.push(
-      <Separator key="separator" orientation="vertical" />,
-      <FeedbackSelector
-        key="feedback-selector"
-        {...messageFeedback}
-        getPopoverInfo={PopoverContent}
-      />
-    );
-  }
+    agentMessageToRender.configuration.status !== "draft";
+
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const userMentionsEnabled = hasFeature("mentions_v2");
 
   const retryHandler = useCallback(
     async ({
@@ -425,15 +493,129 @@ export function AgentMessage({
     [owner.sId]
   );
 
+  // Add feedback buttons first (thumbs up/down)
+  if (shouldShowFeedback) {
+    messageButtons.push(
+      <FeedbackSelector
+        key="feedback-selector"
+        {...messageFeedback}
+        getPopoverInfo={PopoverContent}
+      />
+    );
+  }
+
+  // Add separator if we have both feedback and copy buttons
+  if (shouldShowFeedback && shouldShowCopy) {
+    messageButtons.push(<Separator key="separator" orientation="vertical" />);
+  }
+
+  // Add copy button or split button with dropdown (only when mentions_v2 is enabled)
+  if (
+    userMentionsEnabled &&
+    shouldShowCopy &&
+    (shouldShowRetry || canDeleteAgentMessage)
+  ) {
+    const dropdownItems = [];
+
+    if (shouldShowRetry) {
+      dropdownItems.push({
+        label: "Retry",
+        icon: ArrowPathIcon,
+        onSelect: () => {
+          void retryHandler({
+            conversationId,
+            messageId: agentMessageToRender.sId,
+          });
+        },
+        disabled: isRetryHandlerProcessing || shouldStream,
+      });
+    }
+
+    if (canDeleteAgentMessage) {
+      dropdownItems.push({
+        label: "Delete message",
+        icon: TrashIcon,
+        onSelect: handleDeleteAgentMessage,
+        disabled: isDeleting,
+        variant: "warning" as const,
+      });
+    }
+
+    messageButtons.push(
+      <ButtonGroup
+        key="split-button-group"
+        variant="outline"
+        items={[
+          {
+            type: "button",
+            props: {
+              tooltip: isCopied ? "Copied!" : "Copy to clipboard",
+              variant: "ghost-secondary",
+              size: "xs",
+              onClick: handleCopyToClipboard,
+              icon: isCopied ? ClipboardCheckIcon : ClipboardIcon,
+              className: "text-muted-foreground",
+            },
+          },
+          {
+            type: "dropdown",
+            triggerProps: {
+              variant: "ghost-secondary",
+              size: "xs",
+              icon: MoreIcon,
+              className: "text-muted-foreground",
+            },
+            dropdownProps: {
+              items: dropdownItems,
+              align: "end",
+            },
+          },
+        ]}
+      />
+    );
+  } else {
+    // if mentions_v2 is disabled, show copy button
+    if (shouldShowCopy) {
+      messageButtons.push(
+        <Button
+          key="copy-msg-button"
+          tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
+          variant="ghost-secondary"
+          size="xs"
+          onClick={handleCopyToClipboard}
+          icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+          className="text-muted-foreground"
+        />
+      );
+    }
+
+    if (shouldShowRetry) {
+      messageButtons.push(
+        <Button
+          key="retry-msg-button"
+          tooltip="Retry"
+          variant="ghost-secondary"
+          size="xs"
+          onClick={() => {
+            void retryHandler({
+              conversationId,
+              messageId: agentMessageToRender.sId,
+            });
+          }}
+          icon={ArrowPathIcon}
+          className="text-muted-foreground"
+          disabled={isRetryHandlerProcessing || shouldStream}
+        />
+      );
+    }
+  }
+
   const { configuration: agentConfiguration } = agentMessageToRender;
 
   const citations = React.useMemo(
     () => getCitations({ activeReferences, owner, conversationId }),
     [activeReferences, conversationId, owner]
   );
-
-  const canMention = agentConfiguration.canRead;
-  const isArchived = agentConfiguration.status === "archived";
 
   let parentAgent = null;
   if (
@@ -443,11 +625,40 @@ export function AgentMessage({
     parentAgent = parentAgentMessage.message.configuration;
   }
 
+  const handleQuickReply = React.useCallback(
+    async (reply: string) => {
+      const mention: RichMention = {
+        id: agentMessageToRender.configuration.sId,
+        type: "agent",
+        label: agentMessageToRender.configuration.name,
+        pictureUrl: agentMessageToRender.configuration.pictureUrl ?? "",
+        description: "",
+      };
+
+      const result = await handleSubmit(reply, [mention], {
+        uploaded: [],
+        contentNodes: [],
+      });
+
+      if (result.isErr()) {
+        sendNotification({
+          type: "error",
+          title: "Message not sent",
+          description: result.error.message,
+        });
+      }
+    },
+    [agentMessageToRender.configuration, handleSubmit, sendNotification]
+  );
+
+  const canMention = agentConfiguration.canRead;
+  const isArchived = agentConfiguration.status === "archived";
+
   const renderName = useCallback(
     () => (
-      <span className="inline-flex items-center text-muted-foreground dark:text-muted-foreground-night">
+      <span className="inline-flex items-center">
         <AgentHandle
-          assistant={{
+          agent={{
             sId: agentConfiguration.sId,
             name: agentConfiguration.name + (isArchived ? " (archived)" : ""),
           }}
@@ -475,11 +686,58 @@ export function AgentMessage({
     ]
   );
 
+  if (userMentionsEnabled) {
+    return (
+      <NewConversationMessage
+        pictureUrl={agentConfiguration.pictureUrl}
+        name={agentConfiguration.name}
+        buttons={messageButtons}
+        avatarBusy={agentMessageToRender.status === "created"}
+        isDisabled={isArchived}
+        renderName={renderName}
+        timestamp={
+          parentAgent
+            ? undefined
+            : formatTimestring(
+                agentMessageToRender.completedTs ?? agentMessageToRender.created
+              )
+        }
+        completionStatus={
+          isDeleted ? undefined : (
+            <AgentMessageCompletionStatus agentMessage={agentMessageToRender} />
+          )
+        }
+        type="agent"
+        citations={isDeleted ? undefined : citations}
+      >
+        {isDeleted ? (
+          <DeletedMessage />
+        ) : (
+          <AgentMessageContent
+            onQuickReplySend={handleQuickReply}
+            owner={owner}
+            conversationId={conversationId}
+            retryHandler={retryHandler}
+            isLastMessage={isLastMessage}
+            messageStreamState={messageStreamState}
+            references={references}
+            streaming={shouldStream}
+            lastTokenClassification={
+              messageStreamState.agentState === "thinking" ? "tokens" : null
+            }
+            activeReferences={activeReferences}
+            setActiveReferences={setActiveReferences}
+          />
+        )}
+      </NewConversationMessage>
+    );
+  }
+
   return (
     <ConversationMessage
       pictureUrl={agentConfiguration.pictureUrl}
       name={agentConfiguration.name}
-      buttons={buttons.length > 0 ? buttons : undefined}
+      buttons={messageButtons.length > 0 ? messageButtons : undefined}
       avatarBusy={agentMessageToRender.status === "created"}
       isDisabled={isArchived}
       renderName={renderName}
@@ -491,12 +749,16 @@ export function AgentMessage({
             )
       }
       completionStatus={
-        <AgentMessageCompletionStatus agentMessage={agentMessageToRender} />
+        isDeleted ? undefined : (
+          <AgentMessageCompletionStatus agentMessage={agentMessageToRender} />
+        )
       }
       type="agent"
-      citations={citations}
+      citations={isDeleted ? undefined : citations}
     >
-      <div>
+      {isDeleted ? (
+        <DeletedMessage />
+      ) : (
         <AgentMessageContent
           owner={owner}
           conversationId={conversationId}
@@ -504,6 +766,7 @@ export function AgentMessage({
           isLastMessage={isLastMessage}
           messageStreamState={messageStreamState}
           references={references}
+          onQuickReplySend={handleQuickReply}
           streaming={shouldStream}
           lastTokenClassification={
             messageStreamState.agentState === "thinking" ? "tokens" : null
@@ -511,7 +774,7 @@ export function AgentMessage({
           activeReferences={activeReferences}
           setActiveReferences={setActiveReferences}
         />
-      </div>
+      )}
     </ConversationMessage>
   );
 }
@@ -527,6 +790,7 @@ function AgentMessageContent({
   activeReferences,
   setActiveReferences,
   retryHandler,
+  onQuickReplySend,
 }: {
   isLastMessage: boolean;
   owner: LightWorkspaceType;
@@ -547,13 +811,20 @@ function AgentMessageContent({
       document: MCPReferenceCitation;
     }[]
   ) => void;
+  onQuickReplySend: (message: string) => Promise<void>;
 }) {
   const methods = useVirtuosoMethods<
     VirtuosoMessage,
     VirtuosoMessageListContext
   >();
+
   const agentMessage = messageStreamState.message;
   const { sId, configuration: agentConfiguration } = agentMessage;
+
+  const { postFollowUp } = usePostOnboardingFollowUp({
+    workspaceId: owner.sId,
+    conversationId,
+  });
 
   const retryHandlerWithResetState = useCallback(
     async (error: PersonalAuthenticationRequiredErrorContent) => {
@@ -601,6 +872,13 @@ function AgentMessageContent({
     }
   }
 
+  const handleToolSetupComplete = React.useCallback(
+    (toolId: string) => {
+      void postFollowUp(toolId);
+    },
+    [postFollowUp]
+  );
+
   const additionalMarkdownComponents: Components = React.useMemo(
     () => ({
       visualization: getVisualizationPlugin(
@@ -610,18 +888,33 @@ function AgentMessageContent({
         sId
       ),
       sup: CiteBlock,
-      mention: getMentionPlugin(owner),
+      // Warning: we can't rename easily `mention` to agent_mention, because the messages DB contains this name
+      mention: getAgentMentionPlugin(owner),
+      mention_user: getUserMentionPlugin(owner),
       dustimg: getImgPlugin(owner),
+      quickReply: getQuickReplyPlugin(onQuickReplySend, isLastMessage),
+      toolSetup: getToolSetupPlugin(owner, handleToolSetupComplete),
     }),
-    [owner, conversationId, sId, agentConfiguration.sId]
+    [
+      owner,
+      conversationId,
+      sId,
+      agentConfiguration.sId,
+      onQuickReplySend,
+      isLastMessage,
+      handleToolSetupComplete,
+    ]
   );
 
   const additionalMarkdownPlugins: PluggableList = React.useMemo(
     () => [
-      mentionDirective,
+      agentMentionDirective,
+      userMentionDirective,
       getCiteDirective(),
       visualizationDirective,
       imgDirective,
+      toolDirective,
+      quickReplyDirective,
     ],
     []
   );
@@ -743,7 +1036,6 @@ function AgentMessageContent({
                 fileId: file.fileId,
                 contentType: file.contentType,
                 href: `/api/w/${owner.sId}/files/${file.fileId}`,
-                icon: <DocumentIcon />,
                 title: file.title,
               },
             })),

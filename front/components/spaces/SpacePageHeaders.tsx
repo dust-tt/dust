@@ -47,6 +47,14 @@ export function SpacePageHeader({
             .
           </>
         );
+      } else if (category === "triggers") {
+        return (
+          <>
+            Here you can add new trigger sources to your workspace. Once
+            created, those sources can be used in the Agent Builder to trigger
+            Agents.
+          </>
+        );
       } else {
         return null;
       }

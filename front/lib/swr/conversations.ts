@@ -5,6 +5,7 @@ import { deleteConversation } from "@app/components/assistant/conversation/lib";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import { getVisualizationRetryMessage } from "@app/lib/client/visualization";
+import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
   fetcher,
@@ -18,6 +19,7 @@ import type {
   PatchConversationsRequestBody,
 } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]";
 import type { GetConversationFilesResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/files";
+import type { FetchConversationMessagesResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages";
 import type { FetchConversationMessageResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]";
 import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/participants";
 import type {
@@ -27,7 +29,6 @@ import type {
 import type {
   ConversationError,
   ConversationWithoutContentType,
-  FetchConversationMessagesResponse,
   LightWorkspaceType,
 } from "@app/types";
 
@@ -146,10 +147,10 @@ export function useConversationMessages({
         }
 
         if (previousPageData === null) {
-          return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?orderDirection=desc&orderColumn=rank&limit=${limit}`;
+          return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?newResponseFormat=1&orderDirection=desc&orderColumn=rank&limit=${limit}`;
         }
 
-        return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?lastValue=${previousPageData.lastValue}&orderDirection=desc&orderColumn=rank&limit=${limit}`;
+        return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?newResponseFormat=1&lastValue=${previousPageData.lastValue}&orderDirection=desc&orderColumn=rank&limit=${limit}`;
       },
       messagesFetcher,
       {
@@ -286,7 +287,7 @@ export function useCancelMessage({
         return;
       }
       try {
-        await fetch(
+        await clientFetch(
           `/api/w/${owner.sId}/assistant/conversations/${conversationId}/cancel`,
           {
             method: "POST",
@@ -294,6 +295,7 @@ export function useCancelMessage({
             body: JSON.stringify({ action: "cancel", messageIds }),
           }
         );
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         sendNotification({ type: "error", title: "Failed to cancel message" });
       }
@@ -324,7 +326,7 @@ export function useAddDeleteConversationTool({
       }
 
       try {
-        const response = await fetch(
+        const response = await clientFetch(
           `/api/w/${workspaceId}/assistant/conversations/${conversationId}/tools`,
           {
             method: "POST",
@@ -365,7 +367,7 @@ export function useAddDeleteConversationTool({
       }
 
       try {
-        const response = await fetch(
+        const response = await clientFetch(
           `/api/w/${workspaceId}/assistant/conversations/${conversationId}/tools`,
           {
             method: "POST",
@@ -418,7 +420,7 @@ export function useVisualizationRevert({
       agentConfigurationId: string;
     }): Promise<boolean> => {
       try {
-        const response = await fetch(
+        const response = await clientFetch(
           `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages`,
           {
             method: "POST",
@@ -478,7 +480,7 @@ export function useVisualizationRetry({
       }
 
       try {
-        const response = await fetch(
+        const response = await clientFetch(
           `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages`,
           {
             method: "POST",
@@ -611,7 +613,7 @@ export function useConversationMarkAsRead({
      */
     async (conversationId: string, mutateList: boolean): Promise<void> => {
       try {
-        const response = await fetch(
+        const response = await clientFetch(
           `/api/w/${workspaceId}/assistant/conversations/${conversationId}`,
           {
             method: "PATCH",
@@ -628,13 +630,16 @@ export function useConversationMarkAsRead({
           throw new Error("Failed to mark conversation as read");
         }
         if (mutateList) {
-          void mutateConversations((prevState) => ({
-            ...prevState,
-            conversations:
-              prevState?.conversations.map((c) =>
-                c.sId === conversationId ? { ...c, unread: false } : c
-              ) ?? [],
-          }));
+          void mutateConversations(
+            (prevState) => ({
+              ...prevState,
+              conversations:
+                prevState?.conversations.map((c) =>
+                  c.sId === conversationId ? { ...c, unread: false } : c
+                ) ?? [],
+            }),
+            { revalidate: false }
+          );
         }
       } catch (error) {
         console.error("Error marking conversation as read:", error);
@@ -688,6 +693,7 @@ export const useConversationParticipationOption = ({
 
   useEffect(() => {
     if (conversationParticipants === undefined) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setOption(null);
       return;
     }
@@ -732,7 +738,7 @@ export const useJoinConversation = ({
       return false;
     }
     try {
-      const response = await fetch(
+      const response = await clientFetch(
         `/api/w/${ownerId}/assistant/conversations/${conversationId}/participants`,
         {
           method: "POST",
@@ -754,6 +760,7 @@ export const useJoinConversation = ({
 
         throw new Error("Failed to subscribe to the conversation.");
       }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       sendNotification({
         type: "error",
@@ -783,3 +790,52 @@ export const useJoinConversation = ({
 
   return joinConversation;
 };
+
+export function usePostOnboardingFollowUp({
+  workspaceId,
+  conversationId,
+}: {
+  workspaceId: string;
+  conversationId: string | null;
+}) {
+  const sendNotification = useSendNotification();
+
+  const postFollowUp = useCallback(
+    async (toolId: string): Promise<boolean> => {
+      if (!conversationId) {
+        return false;
+      }
+      try {
+        const response = await clientFetch(
+          `/api/w/${workspaceId}/assistant/conversations/${conversationId}/onboarding-followup`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ toolId }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to post onboarding follow-up");
+        }
+
+        return true;
+      } catch (error) {
+        datadogLogger.error("Error posting onboarding follow-up", {
+          error,
+          workspaceId,
+          conversationId,
+          toolId,
+        });
+        sendNotification({
+          type: "error",
+          title: "Failed to send follow-up message",
+        });
+        return false;
+      }
+    },
+    [workspaceId, conversationId, sendNotification]
+  );
+
+  return { postFollowUp };
+}

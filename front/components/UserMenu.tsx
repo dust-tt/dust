@@ -91,11 +91,13 @@ export function UserMenu({
           <Avatar
             size="sm"
             visual={
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               user.image
                 ? user.image
                 : "https://gravatar.com/avatar/anonymous?d=mp"
             }
             clickable
+            isRounded
           />
           <div className="flex min-w-0 flex-1 flex-col items-start text-left">
             <span

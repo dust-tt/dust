@@ -16,9 +16,9 @@ import { getDataSourceViewUsage } from "@app/lib/api/agent_data_sources";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { isFolder, isWebsite } from "@app/lib/data_sources";
-import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
-import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
-import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
+import { AgentDataSourceConfiguration } from "@app/lib/models/agent/actions/data_sources";
+import { AgentMCPServerConfiguration } from "@app/lib/models/agent/actions/mcp";
+import { AgentTablesQueryConfigurationTable } from "@app/lib/models/agent/actions/tables_query";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
@@ -146,12 +146,22 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
   }
 
   static async createViewInSpaceFromDataSource(
+    auth: Authenticator,
     space: SpaceResource,
     dataSource: DataSourceResource,
-    parentsIn: string[],
-    editedByUser?: UserResource | null
-  ) {
-    return this.makeNew(
+    parentsIn: string[]
+  ): Promise<Result<DataSourceViewResource, Error>> {
+    if (!dataSource.canAdministrate(auth)) {
+      return new Err(
+        new Error(
+          "You do not have the rights to create a view for this data source."
+        )
+      );
+    }
+
+    const editedByUser = auth.user();
+
+    const resource = await this.makeNew(
       {
         dataSourceId: dataSource.id,
         parentsIn,
@@ -162,6 +172,8 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       dataSource,
       editedByUser?.toJSON()
     );
+
+    return new Ok(resource);
   }
 
   // This view has access to all documents, which is represented by null.

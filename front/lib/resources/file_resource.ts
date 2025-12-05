@@ -7,13 +7,14 @@ import type { Readable, Writable } from "stream";
 import { validate } from "uuid";
 
 import config from "@app/lib/api/config";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import {
   getPrivateUploadBucket,
   getPublicUploadBucket,
   getUpsertQueueBucket,
 } from "@app/lib/file_storage";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import {
   FileModel,
   ShareableFileModel,
@@ -138,7 +139,6 @@ export class FileResource extends BaseResource<FileModel> {
     const shareableFile = await ShareableFileModel.findOne({
       where: { token },
     });
-
     if (!shareableFile) {
       return null;
     }
@@ -146,7 +146,6 @@ export class FileResource extends BaseResource<FileModel> {
     const [workspace] = await WorkspaceResource.fetchByModelIds([
       shareableFile.workspaceId,
     ]);
-
     if (!workspace) {
       return null;
     }
@@ -161,6 +160,31 @@ export class FileResource extends BaseResource<FileModel> {
     const fileRes = file ? new this(this.model, file.get()) : null;
     if (!fileRes) {
       return null;
+    }
+
+    // Check if associated conversation still exist (not soft-deleted).
+    if (
+      fileRes.useCase === "conversation" &&
+      fileRes.useCaseMetadata?.conversationId
+    ) {
+      const conversationId = fileRes.useCaseMetadata.conversationId;
+
+      const auth = await Authenticator.internalBuilderForWorkspace(
+        workspace.sId
+      );
+
+      // Share token access bypasses normal space restrictions. We only need to verify the
+      // conversation exists, but internalBuilderForWorkspace only has global group
+      // access and can't see agents from other groups that this conversation might reference.
+      // Skip permission filtering since share token provides its own authorization.
+      const conversation = await ConversationResource.fetchById(
+        auth,
+        conversationId,
+        { dangerouslySkipPermissionFiltering: true }
+      );
+      if (!conversation) {
+        return null;
+      }
     }
 
     const content = await fileRes.getFileContent(
@@ -426,6 +450,31 @@ export class FileResource extends BaseResource<FileModel> {
     return ["upsert_document", "upsert_table"].includes(this.useCase);
   }
 
+  /**
+   * Check if this file belongs to a specific conversation by comparing the
+   * conversationId stored in useCaseMetadata.
+   *
+   * @param requestedConversationId The conversation ID to check against
+   * @returns Ok(true) if file belongs to the conversation, Ok(false) if it belongs
+   *          to a different conversation, Err if file is not associated with any conversation
+   */
+  belongsToConversation(
+    requestedConversationId: string
+  ): Result<boolean, Error> {
+    const { useCaseMetadata } = this;
+
+    if (!useCaseMetadata?.conversationId) {
+      return new Err(new Error("File is not associated with a conversation"));
+    }
+
+    // Direct access, file belongs to the requested conversation.
+    if (useCaseMetadata.conversationId === requestedConversationId) {
+      return new Ok(true);
+    }
+
+    return new Ok(false);
+  }
+
   getBucketForVersion(version: FileVersion) {
     if (version === "public") {
       return getPublicUploadBucket();
@@ -501,6 +550,7 @@ export class FileResource extends BaseResource<FileModel> {
 
       const content = Buffer.concat(chunks).toString("utf-8");
       return content || null;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       return null;
     }

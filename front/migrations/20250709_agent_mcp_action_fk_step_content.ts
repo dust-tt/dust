@@ -3,8 +3,8 @@
 import { Op } from "sequelize";
 
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
-import { AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
-import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
+import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
+import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";

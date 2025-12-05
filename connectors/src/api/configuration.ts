@@ -11,8 +11,8 @@ import type {
 } from "@connectors/types";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
 import {
-  ioTsParsePayload,
   WebCrawlerConfigurationTypeSchema,
+  zodParsePayload,
 } from "@connectors/types";
 
 type PatchConnectorConfigurationResBody =
@@ -40,7 +40,7 @@ const _patchConnectorConfiguration = async (
   let patchRes: Result<void, Error> | null = null;
   switch (connector.type) {
     case "webcrawler": {
-      const parseRes = ioTsParsePayload(
+      const parseRes = zodParsePayload(
         req.body.configuration,
         WebCrawlerConfigurationTypeSchema
       );
@@ -48,7 +48,7 @@ const _patchConnectorConfiguration = async (
         return apiError(req, res, {
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid configuration: ${parseRes.error.join(", ")}`,
+            message: `Invalid configuration: ${parseRes.error}`,
           },
           status_code: 400,
         });

@@ -13,13 +13,14 @@ import {
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
+import Head from "next/head";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AgentEditBar } from "@app/components/assistant/AgentEditBar";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
-import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { CreateAgentButton } from "@app/components/assistant/CreateAgentButton";
-import { AssistantDetails } from "@app/components/assistant/details/AssistantDetails";
+import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
 import { AssistantsTable } from "@app/components/assistant/manager/AssistantsTable";
 import { TagsFilterMenu } from "@app/components/assistant/TagsFilterMenu";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
@@ -199,7 +200,7 @@ export default function WorkspaceAssistants({
         )
         .sort((a, b) => {
           return compareForFuzzySort(
-            assistantSearch,
+            assistantSearch.toLowerCase(),
             getAgentSearchString(a),
             getAgentSearchString(b)
           );
@@ -299,13 +300,16 @@ export default function WorkspaceAssistants({
       <AppWideModeLayout
         subscription={subscription}
         owner={owner}
-        navChildren={<AssistantSidebarMenu owner={owner} />}
+        navChildren={<AgentSidebarMenu owner={owner} />}
       >
-        <AssistantDetails
+        <Head>
+          <title>Dust - Manage Agents</title>
+        </Head>
+        <AgentDetails
           owner={owner}
           user={user}
           // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          assistantId={showDetails?.sId || null}
+          agentId={showDetails?.sId || null}
           onClose={() => setShowDetails(null)}
         />
         <div className="flex w-full flex-col gap-8 pt-2 lg:pt-8">

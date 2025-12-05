@@ -1,7 +1,7 @@
 import type { NonAttribute } from "sequelize";
 
-import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
-import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
+import { AgentMCPServerConfiguration } from "@app/lib/models/agent/actions/mcp";
+import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 

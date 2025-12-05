@@ -1,39 +1,51 @@
 import type {
+  AgentActionPublicType,
+  APIError,
   ConversationPublicType,
   PublicPostContentFragmentRequestBody,
   PublicPostMessagesRequestBody,
   Result,
   UserMessageType,
 } from "@dust-tt/client";
-import { DustAPI, Err, Ok } from "@dust-tt/client";
-import type { ChatMessage } from "@microsoft/microsoft-graph-types";
+import {
+  DustAPI,
+  Err,
+  isMCPServerPersonalAuthRequiredError,
+  Ok,
+} from "@dust-tt/client";
 import type { Activity, TurnContext } from "botbuilder";
 import removeMarkdown from "remove-markdown";
 
 import { processFileAttachments } from "@connectors/api/webhooks/teams/content_fragments";
-import { getMicrosoftClient } from "@connectors/connectors/microsoft/index";
+import { getMicrosoftClient } from "@connectors/connectors/microsoft";
 import { getMessagesFromConversation } from "@connectors/connectors/microsoft/lib/graph_api";
 import { apiConfig } from "@connectors/lib/api/config";
+import type { MessageFootnotes } from "@connectors/lib/bot/citations";
+import { annotateCitations } from "@connectors/lib/bot/citations";
 import { makeConversationUrl } from "@connectors/lib/bot/conversation_utils";
+import type { MentionMatch } from "@connectors/lib/bot/mentions";
 import { processMessageForMention } from "@connectors/lib/bot/mentions";
 import { MicrosoftBotMessage } from "@connectors/lib/models/microsoft_bot";
 import { getActionName } from "@connectors/lib/tools_utils";
-import logger from "@connectors/logger/logger";
+import type { Logger } from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { getHeaderFromUserEmail } from "@connectors/types";
 
 import {
+  createBasicToolApprovalAdaptiveCard,
+  createPersonalAuthenticationAdaptiveCard,
   createResponseAdaptiveCard,
   createStreamingAdaptiveCard,
 } from "./adaptive_cards";
-import { sendActivity, updateActivity } from "./bot_messaging_utils";
+import { updateActivity } from "./bot_messaging_utils";
 import { validateTeamsUser } from "./user_validation";
 
 export async function botAnswerMessage(
   context: TurnContext,
   message: string,
   connector: ConnectorResource,
-  agentActivityId: string
+  agentActivityId: string,
+  localLogger: Logger
 ): Promise<Result<undefined, Error>> {
   const {
     conversation: { id: conversationId },
@@ -46,7 +58,11 @@ export async function botAnswerMessage(
   }
 
   // Validate user first - this will handle all user validation and error messaging
-  const validatedUser = await validateTeamsUser(context, connector);
+  const validatedUser = await validateTeamsUser(
+    context,
+    connector,
+    localLogger
+  );
   if (!validatedUser) {
     // Error message already sent by validateTeamsUser
     return new Ok(undefined);
@@ -76,7 +92,7 @@ export async function botAnswerMessage(
         ...getHeaderFromUserEmail(email),
       },
     },
-    logger
+    localLogger
   );
 
   const agentConfigurationsRes = await dustAPI.getAgentConfigurations({});
@@ -87,6 +103,21 @@ export async function botAnswerMessage(
   const activeAgentConfigurations = agentConfigurationsRes.value.filter(
     (ac) => ac.status === "active"
   );
+
+  // Teams sends mentions as <at>name</at> XML-style tags
+  const botName = context.activity.recipient?.name;
+  if (botName) {
+    const matches = message.match(/<at>.*?<\/at>/gi);
+    if (matches) {
+      for (const m of matches) {
+        const mentionedName = m.replace(/<\/?at>/gi, "").trim();
+        // Remove mention if it matches the bot's name (case-insensitive)
+        if (mentionedName.toLowerCase() === botName.toLowerCase()) {
+          message = message.replace(m, "").trim();
+        }
+      }
+    }
+  }
 
   // Process mentions in Teams messages (similar to Slack but for Teams format)
   // Teams mentions come in a different format than Slack
@@ -103,17 +134,19 @@ export async function botAnswerMessage(
   }
 
   const mention = mentionResult.value.mention;
+
   message = mentionResult.value.processedMessage;
 
   const buildContentFragmentRes = await makeContentFragments(
     context,
     dustAPI,
     connector,
-    lastMicrosoftBotMessage
+    lastMicrosoftBotMessage,
+    localLogger
   );
 
   if (buildContentFragmentRes.isErr()) {
-    logger.error(
+    localLogger.error(
       {
         error: buildContentFragmentRes.error,
         connectorId: connector.id,
@@ -126,7 +159,7 @@ export async function botAnswerMessage(
 
   const messageReqBody: PublicPostMessagesRequestBody = {
     content: message,
-    mentions: [{ configurationId: mention.assistantId }],
+    mentions: [{ configurationId: mention.agentId }],
     context: {
       timezone: "UTC", // Teams doesn't provide timezone info easily
       username: displayName,
@@ -141,15 +174,6 @@ export async function botAnswerMessage(
   let userMessage: UserMessageType | undefined = undefined;
 
   if (lastMicrosoftBotMessage?.dustConversationId) {
-    logger.info(
-      {
-        connectorId: connector.id,
-        teamsConversationId: conversationId,
-        dustConversationId: lastMicrosoftBotMessage.dustConversationId,
-      },
-      "Reusing existing Dust conversation for Teams conversation"
-    );
-
     // Check conversation existence (it might have been deleted between two messages).
     const conversationRes = await dustAPI.getConversation({
       conversationId: lastMicrosoftBotMessage.dustConversationId,
@@ -165,7 +189,7 @@ export async function botAnswerMessage(
             contentFragment: cf,
           });
           if (contentFragmentRes.isErr()) {
-            logger.error(
+            localLogger.error(
               {
                 error: contentFragmentRes.error,
                 connectorId: connector.id,
@@ -196,7 +220,7 @@ export async function botAnswerMessage(
       }
       conversation = newConversationRes.value;
     } else {
-      logger.warn(
+      localLogger.warn(
         {
           connectorId: connector.id,
           teamsConversationId: conversationId,
@@ -209,14 +233,6 @@ export async function botAnswerMessage(
 
   // If the conversation does not exist, we create a new one.
   if (!conversation || !userMessage) {
-    logger.info(
-      {
-        connectorId: connector.id,
-        teamsConversationId: conversationId,
-      },
-      "Creating new Dust conversation for Teams conversation"
-    );
-
     const newConversationRes = await dustAPI.createConversation({
       title: null,
       visibility: "unlisted",
@@ -235,18 +251,9 @@ export async function botAnswerMessage(
     if (!userMessage) {
       return new Err(new Error("Failed to retrieve the created message."));
     }
-
-    logger.info(
-      {
-        connectorId: connector.id,
-        teamsConversationId: conversationId,
-        dustConversationId: conversation.sId,
-      },
-      "Created new Dust conversation and linked to Teams conversation"
-    );
   }
 
-  await MicrosoftBotMessage.create({
+  const m = await MicrosoftBotMessage.create({
     connectorId: connector.id,
     userAadObjectId: userAadObjectId,
     email: email,
@@ -266,25 +273,34 @@ export async function botAnswerMessage(
     mention,
     connector,
     agentActivityId,
+    localLogger,
   });
 
   if (streamAgentResponseRes.isErr()) {
     return streamAgentResponseRes;
   }
 
-  const finalResponse = streamAgentResponseRes.value;
+  const { formattedContent, footnotes, agentMessageId } =
+    streamAgentResponseRes.value;
+
+  await m.update({
+    dustAgentMessageId: agentMessageId,
+  });
 
   const finalCard = createResponseAdaptiveCard({
-    response: finalResponse,
-    assistantName: mention.assistantName,
+    response: formattedContent,
+    mentionedAgent: mention,
     conversationUrl: makeConversationUrl(
       connector.workspaceId,
       conversation.sId
     ),
     workspaceId: connector.workspaceId,
+    agentConfigurations: activeAgentConfigurations,
+    originalMessage: message,
+    footnotes: footnotes,
   });
 
-  await sendTeamsResponse(context, agentActivityId, finalCard);
+  await sendTeamsResponse(context, agentActivityId, finalCard, localLogger);
 
   // Return the result with streaming info
   return new Ok(undefined);
@@ -298,15 +314,26 @@ async function streamAgentResponse({
   mention,
   connector,
   agentActivityId,
+  localLogger,
 }: {
   context: TurnContext;
   dustAPI: DustAPI;
   conversation: ConversationPublicType;
   userMessage: UserMessageType;
-  mention: { assistantName: string; assistantId: string };
+  mention: MentionMatch;
   connector: ConnectorResource;
   agentActivityId: string;
-}): Promise<Result<string, Error>> {
+  localLogger: Logger;
+}): Promise<
+  Result<
+    {
+      agentMessageId: string;
+      formattedContent: string;
+      footnotes: MessageFootnotes;
+    },
+    Error
+  >
+> {
   // For Bot Framework approach with streaming updates
   const streamRes = await dustAPI.streamAgentAnswerEvents({
     conversation,
@@ -319,11 +346,14 @@ async function streamAgentResponse({
 
   // Collect the full response and stream updates
   let finalResponse = "";
+  let finalFormattedContent = "";
+  let finalFootnotes: MessageFootnotes = [];
   let agentMessageSuccess = undefined;
   let lastUpdateTime = Date.now();
   let chainOfThought = "";
   let agentState = "thinking";
-  const UPDATE_INTERVAL_MS = 100; // Update every 100 millisecond
+  const actions: AgentActionPublicType[] = [];
+  const UPDATE_INTERVAL_MS = 1500;
 
   for await (const event of streamRes.value.eventStream) {
     switch (event.type) {
@@ -333,6 +363,12 @@ async function streamAgentResponse({
       case "agent_message_success": {
         agentMessageSuccess = event;
         finalResponse = event.message.content ?? "";
+        const { formattedContent, footnotes } = annotateCitations(
+          finalResponse,
+          actions
+        );
+        finalFormattedContent = formattedContent;
+        finalFootnotes = footnotes;
         break;
       }
       case "generation_tokens": {
@@ -355,15 +391,25 @@ async function streamAgentResponse({
           const text =
             agentState === "thinking" ? chainOfThought : finalResponse;
           if (text.trim()) {
+            // Process citations for streaming updates (only format content, no footnotes)
+            const { formattedContent } = annotateCitations(text, actions);
+
             const streamingCard = createStreamingAdaptiveCard({
-              response: text,
-              assistantName: mention.assistantName,
+              response: formattedContent,
+              agentName: mention.agentName,
               conversationUrl: null,
               workspaceId: connector.workspaceId,
             });
 
             // Send streaming update to Teams app webhook endpoint
-            await sendTeamsResponse(context, agentActivityId, streamingCard);
+            // Skip retry for streaming updates - if they fail, just ignore silently
+            await sendTeamsResponse(
+              context,
+              agentActivityId,
+              streamingCard,
+              localLogger,
+              true // skipRetry
+            );
           }
         }
         break;
@@ -372,13 +418,108 @@ async function streamAgentResponse({
         const action = getActionName(event.action);
         const streamingCard = createStreamingAdaptiveCard({
           response: action,
-          assistantName: mention.assistantName,
+          agentName: mention.agentName,
           conversationUrl: null,
           workspaceId: connector.workspaceId,
         });
         agentState = "acting";
-        await sendTeamsResponse(context, agentActivityId, streamingCard);
+        await sendTeamsResponse(
+          context,
+          agentActivityId,
+          streamingCard,
+          localLogger
+        );
 
+        break;
+      }
+      case "agent_action_success":
+        actions.push(event.action);
+        break;
+      case "tool_error": {
+        if (isMCPServerPersonalAuthRequiredError(event.error)) {
+          const conversationUrl = makeConversationUrl(
+            connector.workspaceId,
+            conversation.sId
+          );
+          await updateActivity(context, {
+            id: agentActivityId,
+            ...createPersonalAuthenticationAdaptiveCard({
+              conversationUrl,
+              workspaceId: connector.workspaceId,
+            }),
+          });
+          break;
+        }
+        return new Err(
+          new Error(
+            `Tool message error: code: ${event.error.code} message: ${event.error.message}`
+          )
+        );
+      }
+      case "tool_approve_execution": {
+        // Find the MicrosoftBotMessage to get the microsoftBotMessageId
+        const microsoftBotMessage = await MicrosoftBotMessage.findOne({
+          where: {
+            connectorId: connector.id,
+            dustConversationId: conversation.sId,
+          },
+          order: [["createdAt", "DESC"]],
+        });
+
+        if (!microsoftBotMessage) {
+          localLogger.error(
+            {
+              connectorId: connector.id,
+              conversationId: conversation.sId,
+            },
+            "No MicrosoftBotMessage found for tool approval request"
+          );
+          break;
+        }
+
+        // Get the user's AAD Object ID for user-specific view
+        const userAadObjectId = microsoftBotMessage.userAadObjectId;
+
+        if (!userAadObjectId) {
+          localLogger.error(
+            {
+              connectorId: connector.id,
+              conversationId: conversation.sId,
+              microsoftBotMessageId: microsoftBotMessage.id,
+            },
+            "No userAadObjectId found, cannot send approval card with user-specific view"
+          );
+          break;
+        }
+
+        // Send approval card in thread with user-specific view
+        // The original user sees interactive buttons, others see a read-only message
+        const approvalCard = createBasicToolApprovalAdaptiveCard({
+          agentName: event.metadata.agentName,
+          toolName: event.metadata.toolName,
+          conversationId: event.conversationId,
+          messageId: event.messageId,
+          actionId: event.actionId,
+          workspaceId: connector.workspaceId,
+          microsoftBotMessageId: microsoftBotMessage.id,
+          userAadObjectId: context.activity.from.id, // Pass user ID for user-specific views
+        });
+
+        try {
+          await updateActivity(context, {
+            id: agentActivityId,
+            ...approvalCard,
+          });
+        } catch (error) {
+          localLogger.error(
+            {
+              error,
+              connectorId: connector.id,
+              conversationId: conversation.sId,
+            },
+            "Failed to send tool approval card"
+          );
+        }
         break;
       }
       default:
@@ -388,7 +529,11 @@ async function streamAgentResponse({
   }
 
   if (agentMessageSuccess) {
-    return new Ok(finalResponse);
+    return new Ok({
+      agentMessageId: agentMessageSuccess.message.sId,
+      formattedContent: finalFormattedContent,
+      footnotes: finalFootnotes,
+    });
   } else {
     return new Err(new Error("No response generated"));
   }
@@ -396,36 +541,47 @@ async function streamAgentResponse({
 
 const sendTeamsResponse = async (
   context: TurnContext,
-  agentActivityId: string | undefined,
-  adaptiveCard: Partial<Activity>
+  agentActivityId: string,
+  adaptiveCard: Partial<Activity>,
+  localLogger: Logger,
+  skipRetry = false
 ): Promise<Result<string, Error>> => {
   // Update existing message for streaming
-  if (agentActivityId) {
-    try {
-      await updateActivity(context, {
-        ...adaptiveCard,
-        id: agentActivityId,
-      });
-      return new Ok(agentActivityId);
-    } catch (updateError) {
-      logger.warn(
-        { error: updateError },
-        "Failed to update streaming message, sending new one"
-      );
-    }
+  const updateResult = await updateActivity(
+    context,
+    {
+      ...adaptiveCard,
+      id: agentActivityId,
+    },
+    skipRetry
+  );
+
+  if (updateResult.isOk()) {
+    return updateResult;
   }
 
-  // Send new streaming message
-  return sendActivity(context, adaptiveCard);
+  // Only log if not skipping retry (for non-streaming updates)
+  if (!skipRetry) {
+    localLogger.warn(
+      { error: updateResult.error },
+      "Failed to send response message"
+    );
+
+    return updateResult;
+  } else {
+    // For streaming updates, just silently ignore failures
+    return new Ok(agentActivityId);
+  }
 };
 
 async function makeContentFragments(
   context: TurnContext,
   dustAPI: DustAPI,
   connector: ConnectorResource,
-  lastMicrosoftBotMessage: MicrosoftBotMessage | null
+  lastMicrosoftBotMessage: MicrosoftBotMessage | null,
+  localLogger: Logger
 ): Promise<Result<PublicPostContentFragmentRequestBody[] | undefined, Error>> {
-  // Get Microsoft Graph client for authenticated file downloads
+  // Get Microsoft Graph client only for file downloads
   const client = await getMicrosoftClient(connector.connectionId);
   const teamsConversationId = context.activity.conversation.id;
 
@@ -440,14 +596,6 @@ async function makeContentFragments(
   // For regular chats (non-channel), we don't need message history
   // but we still want to process file attachments from the current message
   if (!isChannelConversation) {
-    logger.info(
-      {
-        connectorId: connector.id,
-        teamsConversationId,
-      },
-      "Processing current message attachments for Teams chat"
-    );
-
     // Get current message attachments from the Bot Framework context
     const currentMessageAttachments = context.activity.attachments || [];
 
@@ -458,15 +606,8 @@ async function makeContentFragments(
     const allContentFragments = await processFileAttachments(
       currentMessageAttachments,
       dustAPI,
-      client
-    );
-
-    logger.info(
-      {
-        connectorId: connector.id,
-        attachments: allContentFragments.length,
-      },
-      `Processed ${allContentFragments.length} file attachments from Teams chat message`
+      client,
+      localLogger
     );
 
     return new Ok(
@@ -474,14 +615,14 @@ async function makeContentFragments(
     );
   }
 
-  // Get conversation history using the most reliable API approach
+  // Get conversation history using Microsoft Graph API
   const conversationHistory = await getMessagesFromConversation(
-    logger,
+    localLogger,
     client,
     teamsConversationId
   );
 
-  const messages: ChatMessage[] = conversationHistory.results || [];
+  const messages = conversationHistory.results || [];
 
   const startIndex =
     messages.findIndex((msg) => msg.id === context.activity.id) + 1;
@@ -516,14 +657,15 @@ async function makeContentFragments(
   ];
 
   const allAttachments = allMessagesToCheckForFiles.flatMap(
-    (m: ChatMessage) => m.attachments || []
+    (message) => message.attachments || []
   );
 
   // Upload file attachments
   const fileContentFragments = await processFileAttachments(
     allAttachments,
     dustAPI,
-    client
+    client,
+    localLogger
   );
 
   allContentFragments.push(...fileContentFragments);
@@ -532,12 +674,7 @@ async function makeContentFragments(
   const conversationText = newMessages
     .slice()
     .reverse()
-    .map((msg: unknown) => {
-      const message = msg as {
-        from?: { user?: { displayName?: string } };
-        createdDateTime?: string;
-        body?: { content?: string };
-      };
+    .map((message) => {
       const sender = message.from?.user?.displayName || "Unknown User";
       const timestamp = message.createdDateTime
         ? new Date(message.createdDateTime).toISOString()
@@ -579,4 +716,197 @@ async function makeContentFragments(
   return new Ok(
     allContentFragments.length > 0 ? allContentFragments : undefined
   );
+}
+
+export async function sendFeedback({
+  context,
+  connector,
+  thumbDirection,
+  localLogger,
+}: {
+  context: TurnContext;
+  connector: ConnectorResource;
+  thumbDirection: "up" | "down";
+  localLogger: Logger;
+}) {
+  // Validate user first
+  const validatedUser = await validateTeamsUser(
+    context,
+    connector,
+    localLogger
+  );
+  if (!validatedUser) {
+    return;
+  }
+
+  const { email, displayName } = validatedUser;
+
+  const conversationId = context.activity.conversation?.id;
+  const replyTo = context.activity.replyToId;
+
+  if (!conversationId || !replyTo) {
+    localLogger.error("No conversation ID or reply to ID found in activity");
+    return;
+  }
+
+  // Find the MicrosoftBotMessage to get the Dust conversation ID
+  const microsoftBotMessage = await MicrosoftBotMessage.findOne({
+    where: {
+      connectorId: connector.id,
+      conversationId: conversationId,
+      agentActivityId: replyTo,
+    },
+    order: [["createdAt", "DESC"]],
+  });
+
+  if (
+    !microsoftBotMessage?.dustConversationId ||
+    !microsoftBotMessage?.dustAgentMessageId
+  ) {
+    localLogger.error(
+      "No MicrosoftBotMessage found for conversation ID and reply to ID"
+    );
+    return;
+  }
+
+  const dustAPI = new DustAPI(
+    { url: apiConfig.getDustFrontAPIUrl() },
+    {
+      workspaceId: connector.workspaceId,
+      apiKey: connector.workspaceAPIKey,
+      extraHeaders: {
+        ...getHeaderFromUserEmail(email),
+      },
+    },
+    localLogger
+  );
+
+  const feedbackRes = await dustAPI.postFeedback(
+    microsoftBotMessage.dustConversationId,
+    microsoftBotMessage.dustAgentMessageId,
+    {
+      thumbDirection,
+      feedbackContent: null,
+      isConversationShared: true, // Teams feedback is considered shared
+    }
+  );
+
+  if (feedbackRes.isErr()) {
+    localLogger.error(
+      {
+        error: feedbackRes.error,
+        dustConversationId: microsoftBotMessage.dustConversationId,
+        thumbDirection,
+        userEmail: email,
+        userDisplayName: displayName,
+      },
+      "Failed to submit feedback from Teams"
+    );
+    return;
+  }
+}
+
+export async function botValidateToolExecution({
+  context,
+  connector,
+  approved,
+  conversationId,
+  messageId,
+  actionId,
+  microsoftBotMessageId,
+  localLogger,
+}: {
+  context: TurnContext;
+  connector: ConnectorResource;
+  approved: "approved" | "rejected";
+  conversationId: string;
+  messageId: string;
+  actionId: string;
+  microsoftBotMessageId: number;
+  localLogger: Logger;
+}): Promise<Result<undefined, APIError | Error>> {
+  // Validate user first
+  const validatedUser = await validateTeamsUser(
+    context,
+    connector,
+    localLogger
+  );
+  if (!validatedUser) {
+    return new Ok(undefined);
+  }
+
+  const { email } = validatedUser;
+
+  // Find the MicrosoftBotMessage
+  const microsoftBotMessage = await MicrosoftBotMessage.findOne({
+    where: { id: microsoftBotMessageId },
+  });
+
+  if (!microsoftBotMessage) {
+    localLogger.error(
+      { microsoftBotMessageId },
+      "No MicrosoftBotMessage found for tool validation"
+    );
+    return new Err(new Error("Missing Microsoft bot message"));
+  }
+
+  const dustAPI = new DustAPI(
+    { url: apiConfig.getDustFrontAPIUrl() },
+    {
+      workspaceId: connector.workspaceId,
+      apiKey: connector.workspaceAPIKey,
+      extraHeaders: {
+        ...getHeaderFromUserEmail(email),
+      },
+    },
+    localLogger
+  );
+
+  // Call validateAction on Dust API
+  const res = await dustAPI.validateAction({
+    conversationId,
+    messageId,
+    actionId,
+    approved,
+  });
+
+  if (res.isErr()) {
+    localLogger.error(
+      {
+        error: res.error,
+        conversationId,
+        messageId,
+        actionId,
+      },
+      "Failed to validate action on Dust API"
+    );
+    return res;
+  }
+
+  // Retry blocked actions on the main conversation if it differs from the event's conversation
+  if (
+    microsoftBotMessage.dustConversationId &&
+    microsoftBotMessage.dustConversationId !== conversationId
+  ) {
+    const retryRes = await dustAPI.retryMessage({
+      conversationId,
+      messageId,
+      blockedOnly: true,
+    });
+
+    if (retryRes.isErr()) {
+      localLogger.error(
+        {
+          error: retryRes.error,
+          connectorId: connector.id,
+          mainConversationId: microsoftBotMessage.dustConversationId,
+          eventConversationId: conversationId,
+          agentMessageId: messageId,
+        },
+        "Failed to retry blocked actions on the main conversation"
+      );
+    }
+  }
+
+  return new Ok(undefined);
 }

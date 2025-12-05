@@ -43,7 +43,8 @@ import { cancelMessageGenerationEvent } from "@app/lib/api/assistant/pubsub";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { serializeMention } from "@app/lib/mentions/format";
+import { AgentConfiguration } from "@app/lib/models/agent/agent";
 import { getResourcePrefix } from "@app/lib/resources/string_ids";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
@@ -258,8 +259,12 @@ export default async function createServer(
   const isHandoffConfiguration = isRunAgentHandoffMode(agentLoopContext);
 
   const toolName = `run_${childAgentBlob.name}`;
+  const mentionChild = serializeMention({
+    name: childAgentBlob.name,
+    sId: childAgentId!, // We are sure childAgentId is *not* undefined here, as we check for childAgentBlob above
+  });
   const toolDescription = isHandoffConfiguration
-    ? `Handoff completely to ${childAgentBlob.name} (${childAgentBlob.description}). Inform the user that you are handing off to :mention[${childAgentBlob.name}]{sId=${childAgentId}} before calling the tool since this agent will respond in the conversation.`
+    ? `Handoff completely to ${childAgentBlob.name} (${childAgentBlob.description}). Inform the user that you are handing off to ${mentionChild} before calling the tool since this agent will respond in the conversation.`
     : `Run ${childAgentBlob.name} in the background and pass results back to the main agent. You will have access to the results of the agent in the conversation.`;
 
   server.tool(
@@ -413,10 +418,15 @@ export default async function createServer(
         }
 
         if (isHandoff) {
+          const mentionMain = serializeMention(mainAgent);
+          const mentionChild = serializeMention({
+            name: childAgentBlob.name,
+            sId: childAgentId,
+          });
           return finalizeAndReturn(
             new Ok(
               makeMCPToolExit({
-                message: `Handoff from :mention[${mainAgent.name}]{sId=${mainAgent.sId}} to :mention[${childAgentBlob.name}]{sId=${childAgentId}} successfully launched.`,
+                message: `Handoff from ${mentionMain} to ${mentionChild} successfully launched.`,
                 isError: false,
               }).content
             )
@@ -444,6 +454,7 @@ export default async function createServer(
             return;
           }
 
+          /* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */
           if (!childCancellationPromise) {
             childCancellationPromise = cancelMessageGenerationEvent(auth, {
               messageIds: [agentMessage.sId],
@@ -842,6 +853,7 @@ export default async function createServer(
             if (agentMessage && agentMessage.status === "succeeded") {
               const { finalText, cot, refsFromAgent, files } =
                 getFinishedContent(agentMessage);
+              /* eslint-disable-next-line @typescript-eslint/return-await */
               return await finalizeAndReturn(
                 new Ok(
                   buildSuccessContent({
@@ -859,6 +871,7 @@ export default async function createServer(
           const normalizedError = normalizeError(streamError);
           const isNotConnected = normalizedError.message === "Not connected";
           const errorMessage = `Error processing agent stream: ${normalizedError.message}`;
+          /* eslint-disable-next-line @typescript-eslint/return-await */
           return await finalizeAndReturn(
             new Err(
               new MCPError(errorMessage, {

@@ -5,10 +5,10 @@ import {
 } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
+import type { AgenticMessageData, MentionType } from "@app/types";
 import type {
   AgentMessageType,
   ConversationType,
-  MentionType,
   PubSubError,
   Result,
   UserMessageContext,
@@ -57,6 +57,7 @@ async function waitForAgentCompletion(
       subscriptions.forEach((unsub) => {
         try {
           unsub();
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (error) {
           // Ignore individual unsubscribe errors to ensure all subscriptions are cleaned up.
         }
@@ -113,6 +114,7 @@ async function waitForAgentCompletion(
           );
 
           subscriptions.push(unsubscribe);
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (error) {
           expectedMessageIds.delete(agentMessage.sId);
         }
@@ -143,12 +145,14 @@ export async function postUserMessageAndWaitForCompletion(
   {
     content,
     context,
+    agenticMessageData,
     conversation,
     mentions,
     skipToolsValidation,
   }: {
     content: string;
     context: UserMessageContext;
+    agenticMessageData?: AgenticMessageData;
     conversation: ConversationType;
     mentions: MentionType[];
     skipToolsValidation: boolean;
@@ -165,6 +169,7 @@ export async function postUserMessageAndWaitForCompletion(
   const postResult = await postUserMessage(auth, {
     content,
     context,
+    agenticMessageData,
     conversation,
     mentions,
     skipToolsValidation,

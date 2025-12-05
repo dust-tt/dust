@@ -4,33 +4,32 @@ import type { AgentMention } from "@app/types";
 
 export const InputBarContext = createContext<{
   animate: boolean;
-  selectedAssistant: AgentMention | null;
+  selectedAgent: AgentMention | null;
   setAnimate: React.Dispatch<React.SetStateAction<boolean>>;
-  setSelectedAssistant: (agentMention: AgentMention | null) => void;
+  setSelectedAgent: (agentMention: AgentMention | null) => void;
 }>({
   animate: false,
-  selectedAssistant: null,
+  selectedAgent: null,
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   setAnimate: () => {},
   // eslint-disable-next-line @typescript-eslint/no-empty-function
-  setSelectedAssistant: () => {},
+  setSelectedAgent: () => {},
 });
 
 export function InputBarProvider({ children }: { children: React.ReactNode }) {
   const [animate, setAnimate] = useState<boolean>(false);
-  const [selectedAssistant, setSelectedAssistant] =
-    useState<AgentMention | null>(null);
+  const [selectedAgent, setSelectedAgent] = useState<AgentMention | null>(null);
 
-  const setSelectedAssistantOuter = useCallback(
+  const setSelectedAgentOuter = useCallback(
     (agentMention: AgentMention | null) => {
       if (agentMention) {
         setAnimate(true);
       } else {
         setAnimate(false);
       }
-      setSelectedAssistant(agentMention);
+      setSelectedAgent(agentMention);
     },
-    [setSelectedAssistant]
+    [setSelectedAgent]
   );
 
   return (
@@ -38,8 +37,8 @@ export function InputBarProvider({ children }: { children: React.ReactNode }) {
       value={{
         animate,
         setAnimate,
-        selectedAssistant,
-        setSelectedAssistant: setSelectedAssistantOuter,
+        selectedAgent,
+        setSelectedAgent: setSelectedAgentOuter,
       }}
     >
       {children}

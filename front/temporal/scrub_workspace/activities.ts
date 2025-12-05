@@ -24,6 +24,7 @@ import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { OnboardingTaskResource } from "@app/lib/resources/onboarding_task_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
@@ -107,6 +108,7 @@ export async function scrubWorkspaceData({
   await deleteAllConversations(auth);
   await archiveAssistants(auth);
   await deleteAgentMemories(auth);
+  await deleteOnboardingTasks(auth);
   await deleteTags(auth);
   await deleteTrackers(auth);
   await deleteDatasources(auth);
@@ -183,7 +185,7 @@ export async function deleteAllConversations(auth: Authenticator) {
       }
     },
     {
-      concurrency: 16,
+      concurrency: 8,
     }
   );
 }
@@ -205,6 +207,10 @@ async function archiveAssistants(auth: Authenticator) {
 
 async function deleteAgentMemories(auth: Authenticator) {
   await AgentMemoryResource.deleteAllForWorkspace(auth);
+}
+
+async function deleteOnboardingTasks(auth: Authenticator) {
+  await OnboardingTaskResource.deleteAllForWorkspace(auth);
 }
 
 async function deleteTags(auth: Authenticator) {

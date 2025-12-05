@@ -71,6 +71,7 @@ async function runAllChecks(checks: Check[]) {
   for (const check of checks) {
     const uuid = uuidv4();
     const logger = mainLogger.child({
+      all_check_uuid: allCheckUuid,
       checkName: check.name,
       uuid,
     });
@@ -128,5 +129,5 @@ async function runAllChecks(checks: Check[]) {
       logger.error({ error: e }, "Production check failed");
     }
   }
-  mainLogger.info({ uuid: allCheckUuid }, "Done running all checks");
+  mainLogger.info({ all_check_uuid: allCheckUuid }, "Done running all checks");
 }

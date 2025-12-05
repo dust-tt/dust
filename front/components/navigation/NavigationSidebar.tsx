@@ -39,7 +39,7 @@ interface NavigationSidebarProps {
   subNavigation?: SidebarNavigation[] | null;
   // TODO(2024-06-19 flav) Move subscription to a hook.
   subscription: SubscriptionType;
-  user: UserTypeWithWorkspaces | null;
+  user: (UserTypeWithWorkspaces & { subscriberHash?: string | null }) | null;
   isMobile?: boolean;
 }
 
@@ -95,6 +95,7 @@ export const NavigationSidebar = React.forwardRef<
   const hasIncidentBanner =
     appStatus?.dustStatus !== null || appStatus?.providersStatus !== null;
   const endDate = subscription.endDate;
+  // eslint-disable-next-line react-hooks/purity
   const in30Days = Date.now() + 30 * 24 * 60 * 60 * 1000;
 
   return (
@@ -184,6 +185,7 @@ export const NavigationSidebar = React.forwardRef<
                                       label={nav.label}
                                       icon={nav.icon}
                                       className="grow pl-14 pr-4"
+                                      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                                       href={nav.href ? nav.href : undefined}
                                       onClick={() => handleTabClick(nav.href)}
                                     />

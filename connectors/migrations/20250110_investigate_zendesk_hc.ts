@@ -3,10 +3,8 @@ import { makeScript } from "scripts/helpers";
 import { isZendeskNotFoundError } from "@connectors/connectors/zendesk/lib/errors";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
-  fetchZendeskBrand,
   fetchZendeskCurrentUser,
-  getZendeskBrandSubdomain,
-  listZendeskCategoriesInBrand,
+  ZendeskClient,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { ZENDESK_BATCH_SIZE } from "@connectors/connectors/zendesk/temporal/config";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -24,6 +22,7 @@ makeScript({}, async ({ execute }, logger) => {
       connector.connectionId
     );
     const user = await fetchZendeskCurrentUser({ accessToken, subdomain });
+    const zendeskClient = new ZendeskClient(accessToken, connectorId, null);
     const brandsOnDb = await ZendeskBrandResource.fetchByConnector(connector);
     for (const brandOnDb of brandsOnDb) {
       const { brandId } = brandOnDb;
@@ -32,21 +31,18 @@ makeScript({}, async ({ execute }, logger) => {
         continue;
       }
 
-      const fetchedBrand = await fetchZendeskBrand({
+      const fetchedBrand = await zendeskClient.fetchBrand({
         brandId,
-        accessToken,
         subdomain,
       });
-      const brandSubdomain = await getZendeskBrandSubdomain({
+      const brandSubdomain = await zendeskClient.getBrandSubdomain({
         brandId,
-        connectorId,
-        accessToken,
         subdomain,
       });
 
       let couldFetchCategories;
       try {
-        await listZendeskCategoriesInBrand(accessToken, {
+        await zendeskClient.listCategoriesInBrand({
           brandSubdomain,
           pageSize: ZENDESK_BATCH_SIZE,
         });

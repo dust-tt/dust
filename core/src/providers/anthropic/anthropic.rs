@@ -10,11 +10,13 @@ use crate::providers::anthropic::types::{
 use crate::providers::chat_messages::{AssistantChatMessage, ChatMessage};
 use crate::providers::embedder::{Embedder, EmbedderVector};
 use crate::providers::llm::ChatFunction;
+use crate::providers::llm::TokenizerSingleton;
 use crate::providers::llm::{LLMChatGeneration, LLMGeneration, LLMTokenUsage, LLM};
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::anthropic_base_singleton;
 use crate::providers::tiktoken::tiktoken::{batch_tokenize_async, decode_async, encode_async};
 use crate::run::Credentials;
+use crate::types::tokenizer::{TiktokenTokenizerBase, TokenizerConfig};
 use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -31,6 +33,7 @@ pub struct AnthropicLLM {
     api_key: Option<String>,
     backend: Box<dyn AnthropicBackend + Send + Sync>,
     user_id: Option<String>,
+    tokenizer: Option<TokenizerSingleton>,
 }
 
 fn get_max_tokens(model_id: &str) -> u64 {
@@ -50,12 +53,17 @@ fn get_max_tokens(model_id: &str) -> u64 {
 }
 
 impl AnthropicLLM {
-    pub fn new(id: String) -> Self {
+    pub fn new(id: String, tokenizer: Option<TokenizerSingleton>) -> Self {
         Self {
             id,
             api_key: None,
             user_id: None,
             backend: Box::new(DirectAnthropicBackend::new()),
+            tokenizer: tokenizer.or_else(|| {
+                TokenizerSingleton::from_config(&TokenizerConfig::Tiktoken {
+                    base: TiktokenTokenizerBase::AnthropicBase,
+                })
+            }),
         }
     }
 
@@ -85,7 +93,6 @@ impl AnthropicLLM {
         stream: bool,
         thinking: Option<(String, u64)>,
         beta_flags: &Vec<&str>,
-        prompt_caching: bool,
     ) -> Value {
         let is_claude_4_5 =
             self.id.starts_with("claude-sonnet-4-5") || self.id.starts_with("claude-haiku-4-5");
@@ -116,11 +123,8 @@ impl AnthropicLLM {
         }
 
         if system.is_some() {
-            if prompt_caching {
-                body["system"] = json!([{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}]);
-            } else {
-                body["system"] = json!(system);
-            }
+            body["system"] =
+                json!([{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}]);
         }
 
         if let Some((thinking_type, thinking_budget_tokens)) = thinking {
@@ -169,7 +173,6 @@ impl AnthropicLLM {
         stop_sequences: &Vec<String>,
         max_tokens: i32,
         beta_flags: &Vec<&str>,
-        prompt_caching: bool,
     ) -> Result<(ChatResponse, Option<String>)> {
         assert!(self.api_key.is_some());
 
@@ -185,7 +188,6 @@ impl AnthropicLLM {
             false,
             None,
             beta_flags,
-            prompt_caching,
         );
 
         let body = self.backend.build_request_body(base_body, &self.id);
@@ -251,7 +253,6 @@ impl AnthropicLLM {
         beta_flags: &Vec<&str>,
         event_sender: UnboundedSender<Value>,
         thinking: Option<(String, u64)>,
-        prompt_caching: bool,
     ) -> Result<(ChatResponse, Option<String>)> {
         let base_body = self.build_base_request_body(
             messages,
@@ -265,7 +266,6 @@ impl AnthropicLLM {
             true,
             thinking,
             beta_flags,
-            prompt_caching,
         );
 
         let body = self.backend.build_request_body(base_body, &self.id);
@@ -330,7 +330,7 @@ impl LLM for AnthropicLLM {
     }
 
     fn context_size(&self) -> usize {
-        if self.id.starts_with("claude-2.1") || self.id.starts_with("claude-3") {
+        if self.id.starts_with("claude-3") {
             200000
         } else {
             100000
@@ -357,15 +357,27 @@ impl LLM for AnthropicLLM {
     }
 
     async fn encode(&self, text: &str) -> Result<Vec<usize>> {
-        encode_async(anthropic_base_singleton(), text).await
+        self.tokenizer
+            .as_ref()
+            .ok_or_else(|| anyhow!("Tokenizer not initialized"))?
+            .encode(text)
+            .await
     }
 
     async fn decode(&self, tokens: Vec<usize>) -> Result<String> {
-        decode_async(anthropic_base_singleton(), tokens).await
+        self.tokenizer
+            .as_ref()
+            .ok_or_else(|| anyhow!("Tokenizer not initialized"))?
+            .decode(tokens)
+            .await
     }
 
     async fn tokenize(&self, texts: Vec<String>) -> Result<Vec<Vec<(usize, String)>>> {
-        batch_tokenize_async(anthropic_base_singleton(), texts).await
+        self.tokenizer
+            .as_ref()
+            .ok_or_else(|| anyhow!("Tokenizer not initialized"))?
+            .tokenize(texts)
+            .await
     }
 
     async fn chat(
@@ -409,29 +421,19 @@ impl LLM for AnthropicLLM {
             None => (None, 0),
         };
 
-        let prompt_caching = match &extras {
-            None => false,
-            Some(v) => match v.get("prompt_caching") {
-                Some(Value::Bool(b)) => *b,
-                _ => false,
-            },
-        };
-
         let mut anthropic_messages =
             get_anthropic_chat_messages(messages[slice_from..].to_vec()).await?;
 
-        if prompt_caching {
-            anthropic_messages
-                .last_mut()
-                .map(|last| match last.content.last_mut() {
-                    Some(last_content) => {
-                        last_content.cache_control = Some(AnthropicCacheControl {
-                            r#type: AnthropicCacheControlType::Ephemeral,
-                        })
-                    }
-                    _ => {}
-                });
-        }
+        anthropic_messages
+            .last_mut()
+            .map(|last| match last.content.last_mut() {
+                Some(last_content) => {
+                    last_content.cache_control = Some(AnthropicCacheControl {
+                        r#type: AnthropicCacheControlType::Ephemeral,
+                    })
+                }
+                _ => {}
+            });
 
         let tools = functions
             .iter()
@@ -539,7 +541,6 @@ impl LLM for AnthropicLLM {
                     &beta_flags,
                     es,
                     thinking,
-                    prompt_caching,
                 )
                 .await?
             }
@@ -560,7 +561,6 @@ impl LLM for AnthropicLLM {
                         None => get_max_tokens(self.id.as_str()) as i32,
                     },
                     &beta_flags,
-                    prompt_caching,
                 )
                 .await?
             }
@@ -576,6 +576,7 @@ impl LLM for AnthropicLLM {
                     + c.usage.cache_creation_input_tokens.unwrap_or(0),
                 completion_tokens: c.usage.output_tokens,
                 cached_tokens: c.usage.cache_read_input_tokens,
+                cache_creation_input_tokens: c.usage.cache_creation_input_tokens,
                 // Note: the model can actually use less than that, but best we can do is report
                 // the full budget.
                 reasoning_tokens: thinking_budget,
@@ -660,12 +661,15 @@ impl Provider for AnthropicProvider {
 
     async fn test(&self) -> Result<()> {
         if !utils::confirm(
-            "You are about to make a request for 1 token to `claude-instant-1.2` on the Anthropic API.",
+            "You are about to make a request for 1 token to `claude-4.5-haiku` on the Anthropic API.",
         )? {
             Err(anyhow!("User aborted Anthropic test."))?;
         }
 
-        let mut llm = self.llm(String::from("claude-instant-1.2"));
+        let tokenizer = TokenizerSingleton::from_config(&TokenizerConfig::Tiktoken {
+            base: TiktokenTokenizerBase::AnthropicBase,
+        });
+        let mut llm = self.llm(String::from("claude-4.5-haiku"), tokenizer);
         llm.initialize(Credentials::new()).await?;
 
         let llm_generation = llm
@@ -696,8 +700,8 @@ impl Provider for AnthropicProvider {
         Ok(())
     }
 
-    fn llm(&self, id: String) -> Box<dyn LLM + Sync + Send> {
-        Box::new(AnthropicLLM::new(id))
+    fn llm(&self, id: String, tokenizer: Option<TokenizerSingleton>) -> Box<dyn LLM + Sync + Send> {
+        Box::new(AnthropicLLM::new(id, tokenizer))
     }
 
     fn embedder(&self, id: String) -> Box<dyn Embedder + Sync + Send> {

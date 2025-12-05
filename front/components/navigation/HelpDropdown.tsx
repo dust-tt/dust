@@ -19,6 +19,7 @@ import { InputBarContext } from "@app/components/assistant/conversation/input_ba
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { serializeMention } from "@app/lib/mentions/format";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type {
   AgentMention,
@@ -26,7 +27,7 @@ import type {
   UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@app/types";
-import { GLOBAL_AGENTS_SID } from "@app/types";
+import { GLOBAL_AGENTS_SID, isAgentMention } from "@app/types";
 
 export function HelpDropdown({
   owner,
@@ -38,13 +39,13 @@ export function HelpDropdown({
   const router = useRouter();
   const sendNotification = useSendNotification();
 
-  const { setSelectedAssistant } = useContext(InputBarContext);
+  const { setSelectedAgent } = useContext(InputBarContext);
 
   const handleAskHelp = () => {
     if (router.pathname === "/w/[wId]/conversation/[cId]") {
       // If we're on /conversation/new page, we just set the selected agent on top of what's already there in the input bar if any.
       // This allows to not lose your potential input when you click on the help button.
-      setSelectedAssistant({ configurationId: GLOBAL_AGENTS_SID.HELPER });
+      setSelectedAgent({ configurationId: GLOBAL_AGENTS_SID.HELPER });
     } else {
       // Otherwise we just push the route and prefill the input bar with the @help mention.
       void router.push(
@@ -64,7 +65,9 @@ export function HelpDropdown({
           ? input
           : `@help ${input.trimStart()}`;
         const mentionsWithHelp = mentions.some(
-          (mention) => mention.configurationId === GLOBAL_AGENTS_SID.HELPER
+          (mention) =>
+            isAgentMention(mention) &&
+            mention.configurationId === GLOBAL_AGENTS_SID.HELPER
         )
           ? mentions
           : [
@@ -75,7 +78,10 @@ export function HelpDropdown({
           owner,
           user,
           messageData: {
-            input: inputWithHelp.replace("@help", ":mention[help]{sId=helper}"),
+            input: inputWithHelp.replace(
+              "@help",
+              serializeMention({ name: "help", sId: GLOBAL_AGENTS_SID.HELPER })
+            ),
             mentions: mentionsWithHelp,
             contentFragments: {
               uploaded: [],
@@ -91,7 +97,7 @@ export function HelpDropdown({
           });
         } else {
           void router.push(
-            `/w/${owner.sId}/assistant/${conversationRes.value.sId}`
+            getConversationRoute(owner.sId, conversationRes.value.sId)
           );
         }
       },

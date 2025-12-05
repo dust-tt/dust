@@ -12,13 +12,13 @@ import { Op } from "sequelize";
 
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
-import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
+import type { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
+import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
   AgentMessage,
   ConversationModel,
   Message,
-} from "@app/lib/models/assistant/conversation";
+} from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { makeSId } from "@app/lib/resources/string_ids";
@@ -27,10 +27,10 @@ import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType, ModelId, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 import type {
+  AgentFunctionCallContentType,
   AgentStepContentType,
-  FunctionCallContentType,
 } from "@app/types/assistant/agent_message_content";
-import { isFunctionCallContent } from "@app/types/assistant/agent_message_content";
+import { isAgentFunctionCallContent } from "@app/types/assistant/agent_message_content";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -308,9 +308,9 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
   }
 
   isFunctionCallContent(): this is AgentStepContentResource & {
-    value: FunctionCallContentType;
+    value: AgentFunctionCallContentType;
   } {
-    return isFunctionCallContent(this.value);
+    return isAgentFunctionCallContent(this.value);
   }
 
   async delete(
@@ -390,6 +390,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
           agentMessageId,
           step,
           index,
+          workspaceId,
         },
         order: [["version", "DESC"]],
         attributes: ["version"],

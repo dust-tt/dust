@@ -1,3 +1,4 @@
+import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
 import {
@@ -11,24 +12,27 @@ import {
 } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import {
-  getParticleShapeIndexByName,
-  shapeNames,
-} from "@app/components/home/Particles";
+import { PageMetadata } from "@app/components/home/PageMetadata";
 import { classNames } from "@app/lib/utils";
 
 export async function getStaticProps() {
   return {
     props: {
-      shape: getParticleShapeIndexByName(shapeNames.cube),
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
     },
   };
 }
 
 export default function PlatformPrivacy() {
+  const router = useRouter();
+
   return (
     <>
+      <PageMetadata
+        title="Dust Platform Privacy Policy"
+        description="Learn how Dust collects, uses, and protects your personal data. GDPR compliant with transparent data processing practices and your privacy rights."
+        pathname={router.asPath}
+      />
       <div className="container flex w-full flex-col gap-16 px-6 md:gap-24">
         <Grid>
           <div

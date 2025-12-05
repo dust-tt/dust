@@ -15,12 +15,13 @@ import {
 } from "react";
 
 import { ToolValidationDialogPage } from "@app/components/assistant/conversation/blocked_actions/ToolValidationDialogPage";
-import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import { getIcon } from "@app/components/resources/resources_icons";
+import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useValidateAction } from "@app/hooks/useValidateAction";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { useBlockedActions } from "@app/lib/swr/blocked_actions";
+import { useConversations } from "@app/lib/swr/conversations";
 import type {
   ConversationWithoutContentType,
   LightWorkspaceType,
@@ -46,6 +47,7 @@ function useBlockedActionsQueue({
 
   useEffect(() => {
     if (conversationId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setBlockedActionsQueue(
         blockedActions.flatMap((action): BlockedActionQueueItem[] => {
           if (action.status === "blocked_child_action_input_required") {
@@ -106,25 +108,27 @@ function useBlockedActionsQueue({
   };
 }
 
-type ActionValidationContextType = {
+type BlockedActionsContextType = {
   enqueueBlockedAction: (params: {
     messageId: string;
     blockedAction: BlockedToolExecution;
   }) => void;
   showBlockedActionsDialog: () => void;
   hasBlockedActions: boolean;
+  hasPendingValidations: boolean;
   totalBlockedActions: number;
+  mutateBlockedActions: () => void;
 };
 
-const ActionValidationContext = createContext<
-  ActionValidationContextType | undefined
+const BlockedActionsContext = createContext<
+  BlockedActionsContextType | undefined
 >(undefined);
 
-export function useActionValidationContext() {
-  const context = useContext(ActionValidationContext);
+export function useBlockedActionsContext() {
+  const context = useContext(BlockedActionsContext);
   if (!context) {
     throw new Error(
-      "useActionValidationContext must be used within an ActionValidationContext"
+      "useActionValidationContext must be used within an BlockedActionsContext"
     );
   }
 
@@ -145,7 +149,7 @@ export function BlockedActionsProvider({
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const conversationId = conversation?.sId || null;
 
-  const { blockedActions } = useBlockedActions({
+  const { blockedActions, mutate: mutateBlockedActions } = useBlockedActions({
     conversationId,
     workspaceId: owner.sId,
   });
@@ -175,6 +179,13 @@ export function BlockedActionsProvider({
     useState<MCPValidationOutputType | null>(null);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const { mutateConversations } = useConversations({
+    workspaceId: owner.sId,
+    options: {
+      disabled: true,
+    },
+  });
 
   const { validateAction, isValidating } = useValidateAction({
     owner,
@@ -222,12 +233,32 @@ export function BlockedActionsProvider({
       // Close dialog if no more blocked actions
       setIsDialogOpen(false);
       setCurrentValidationIndex(0);
+
+      // This is to update the unread inbox state in sidebar menu.
+      // We only show the conversation in unread inbox if actionRequired is true (and this happens only when you come back to a conversation
+      // since we don't update this value on frontend side), so we don't have to update the cache if it's not in the unread inbox.
+      if (conversation?.actionRequired === true) {
+        void mutateConversations(
+          (currentData) => {
+            if (!currentData?.conversations) {
+              return currentData;
+            }
+            return {
+              conversations: currentData.conversations.map((c) =>
+                c.sId === conversationId ? { ...c, actionRequired: false } : c
+              ),
+            };
+          },
+          { revalidate: false }
+        );
+      }
     }
   };
 
   // Opens the dialog when there are new pending validations
   useEffect(() => {
     if (pendingValidations.length > 0 && !isDialogOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCurrentValidationIndex(0);
       setIsDialogOpen(true);
     }
@@ -236,6 +267,7 @@ export function BlockedActionsProvider({
   // Close the dialog when there are no more blocked actions
   useEffect(() => {
     if (blockedActionsQueue.length === 0 && isDialogOpen && !isValidating) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsDialogOpen(false);
       setCurrentValidationIndex(0);
     }
@@ -247,9 +279,6 @@ export function BlockedActionsProvider({
       setIsDialogOpen(true);
     }
   }, [blockedActionsQueue.length, pendingValidations.length]);
-
-  const hasBlockedActions = pendingValidations.length > 0;
-  const totalBlockedActions = pendingValidations.length;
 
   const pages = useMemo(() => {
     if (pendingValidations.length > 0) {
@@ -289,12 +318,14 @@ export function BlockedActionsProvider({
   }, [pages, currentValidationIndex, pendingValidations]);
 
   return (
-    <ActionValidationContext.Provider
+    <BlockedActionsContext.Provider
       value={{
         showBlockedActionsDialog,
         enqueueBlockedAction,
-        hasBlockedActions,
-        totalBlockedActions,
+        mutateBlockedActions,
+        hasBlockedActions: blockedActionsQueue.length > 0,
+        hasPendingValidations: pendingValidations.length > 0,
+        totalBlockedActions: blockedActionsQueue.length,
       }}
     >
       {children}
@@ -336,6 +367,6 @@ export function BlockedActionsProvider({
           />
         )}
       </MultiPageDialog>
-    </ActionValidationContext.Provider>
+    </BlockedActionsContext.Provider>
   );
 }

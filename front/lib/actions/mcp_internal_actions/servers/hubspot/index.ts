@@ -615,6 +615,7 @@ function createServer(): McpServer {
             content: [
               {
                 type: "text",
+                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 text: `Communication (channel: ${properties.hs_communication_channel_type || "unknown"}) created successfully.`,
               },
               { type: "text", text: JSON.stringify(result, null, 2) },
@@ -701,14 +702,24 @@ function createServer(): McpServer {
   // Definition for getCompany tool
   server.tool(
     "get_company",
-    "Retrieves a Hubspot company by its ID.",
+    "Retrieves a Hubspot company by its ID. Returns default properties plus any additional properties specified.",
     {
       companyId: z.string().describe("The ID of the company to retrieve."),
+      extraProperties: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "Optional additional properties to retrieve beyond the default set (createdate, domain, name, hubspot_owner_id)."
+        ),
     },
-    async ({ companyId }, { authInfo }) => {
+    async ({ companyId, extraProperties }, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
-          const result = await getCompany(accessToken, companyId);
+          const result = await getCompany(
+            accessToken,
+            companyId,
+            extraProperties
+          );
           if (!result) {
             return {
               isError: true,
@@ -734,14 +745,20 @@ function createServer(): McpServer {
   // Definition for getDeal tool
   server.tool(
     "get_deal",
-    "Retrieves a Hubspot deal by its ID.",
+    "Retrieves a Hubspot deal by its ID. Returns default properties plus any additional properties specified.",
     {
       dealId: z.string().describe("The ID of the deal to retrieve."),
+      extraProperties: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "Optional additional properties to retrieve beyond the default set (amount, hubspot_owner_id, closedate, createdate, dealname, dealstage, hs_lastmodifieddate, hs_object_id, pipeline)."
+        ),
     },
-    async ({ dealId }, { authInfo }) => {
+    async ({ dealId, extraProperties }, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
-          const result = await getDeal(accessToken, dealId);
+          const result = await getDeal(accessToken, dealId, extraProperties);
           if (!result) {
             return {
               isError: true,

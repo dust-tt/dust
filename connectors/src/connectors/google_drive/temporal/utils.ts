@@ -318,6 +318,7 @@ export async function _getLabels(
     logger.warn(
       {
         error: e,
+        connectorId,
       },
       "Error getting labels"
     );

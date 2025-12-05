@@ -243,7 +243,7 @@ export function ConversationContainer({
             />
           </div>
           <div
-            id="assistant-input-header"
+            id="agent-input-header"
             className={cn(
               "sticky bottom-0 pb-4 z-20  w-full",
               "bg-background text-foreground",
@@ -278,7 +278,7 @@ export function ConversationContainer({
         <div className="pb-4 w-full">
           <Page.Header title={greeting} />
         </div>
-        <div id="assistant-input-header" className="w-full pb-4">
+        <div id="agent-input-header" className="w-full pb-4">
           <AssistantInputBar
             owner={owner}
             onSubmit={handlePostConversation}

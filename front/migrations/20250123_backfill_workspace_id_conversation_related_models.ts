@@ -9,7 +9,7 @@ import {
   Message,
   MessageReaction,
   UserMessage,
-} from "@app/lib/models/assistant/conversation";
+} from "@app/lib/models/agent/conversation";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import type { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { Logger } from "@app/logger/logger";

@@ -69,11 +69,13 @@ async function handler(
           paginationRes.error
         );
       }
+      const filter = req.query.filter === "all" ? "all" : "active";
       const feedbacksRes = await getAgentFeedbacks({
         auth,
         agentConfigurationId: aId,
         withMetadata: req.query.withMetadata === "true",
         paginationParams: paginationRes.value,
+        filter,
       });
 
       if (feedbacksRes.isErr()) {

@@ -11,7 +11,7 @@ import {
 import { Context, heartbeat } from "@temporalio/activity";
 import assert from "assert";
 import EventEmitter from "events";
-import type { JSONSchema7 } from "json-schema";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 import {
   calculateContentSize,
@@ -88,7 +88,6 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { fromEvent } from "@app/lib/utils/events";
 import logger from "@app/logger/logger";
-import { TOOL_ACTIVITY_HEARTBEAT_TIMEOUT } from "@app/temporal/agent_loop/workflows";
 import type { ModelId, Result } from "@app/types";
 import { Err, normalizeError, Ok, slugify } from "@app/types";
 
@@ -99,13 +98,13 @@ const MCP_TOOL_DONE_EVENT_NAME = "TOOL_DONE" as const;
 const MCP_TOOL_ERROR_EVENT_NAME = "TOOL_ERROR" as const;
 const MCP_TOOL_HEARTBEAT_EVENT_NAME = "TOOL_HEARTBEAT" as const;
 
-const EMPTY_INPUT_SCHEMA: JSONSchema7 = {
+const EMPTY_INPUT_SCHEMA: JSONSchema = {
   properties: {},
   required: [],
   type: "object",
 };
 
-function isEmptyInputSchema(schema: JSONSchema7): boolean {
+function isEmptyInputSchema(schema: JSONSchema): boolean {
   // By default, empty tools yields an empty input schema.
   const isContentConsideredEmpty =
     schema.properties === undefined &&
@@ -145,10 +144,14 @@ export function getToolExtraFields(
       return r;
     }
     const serverName = r.value.name;
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    toolsStakes = INTERNAL_MCP_SERVERS[serverName].tools_stakes || {};
+    const defaultStakes = INTERNAL_MCP_SERVERS[serverName].tools_stakes ?? {};
+    toolsStakes = { ...defaultStakes };
     toolsRetryPolicies = INTERNAL_MCP_SERVERS[serverName].tools_retry_policies;
     serverTimeoutMs = INTERNAL_MCP_SERVERS[serverName]?.timeoutMs;
+
+    metadata.forEach(
+      ({ toolName, permission }) => (toolsStakes[toolName] = permission)
+    );
   } else {
     metadata.forEach(
       ({ toolName, permission }) => (toolsStakes[toolName] = permission)
@@ -292,6 +295,13 @@ export async function* tryCallMCPTool(
 
   const conversationId = agentLoopRunContext.conversation.sId;
   const messageId = agentLoopRunContext.agentMessage.sId;
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+  const toolLogContext = {
+    conversationId,
+    messageId,
+    toolName: toolConfiguration.originalName,
+    workspaceId,
+  };
 
   const connectionParamsRes = await getMCPClientConnectionParams(
     auth,
@@ -395,11 +405,14 @@ export async function* tryCallMCPTool(
     const getHeartbeatPromise = (): Promise<void> =>
       new Promise((resolve) => {
         setTimeout(() => {
+          logger.info(toolLogContext, "MCP tool heartbeat");
           heartbeat();
           resolve();
-        }, TOOL_ACTIVITY_HEARTBEAT_TIMEOUT / 2);
+          // Reasonable delay to react to cancellation under 10s.
+        }, 10_000);
       });
 
+    logger.info(toolLogContext, "Starting MCP tool notification loop");
     while (!toolDone) {
       const notificationOrDone = await Promise.race([
         notificationPromise,
@@ -430,7 +443,9 @@ export async function* tryCallMCPTool(
 
     let toolCallResult: Awaited<typeof toolPromise>;
     try {
+      logger.info(toolLogContext, "Awaiting MCP tool promise");
       toolCallResult = await toolPromise;
+      logger.info(toolLogContext, "MCP tool promise resolved");
     } catch (toolError) {
       if (abortSignal?.aborted) {
         return makeMCPToolExit({

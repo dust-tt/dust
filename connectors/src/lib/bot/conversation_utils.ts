@@ -1,7 +1,7 @@
 import { apiConfig } from "@connectors/lib/api/config";
 
 export function makeDustAppUrl(path: string) {
-  return `${apiConfig.getDustFrontAPIUrl()}${path}`;
+  return `${apiConfig.getDustClientFacingUrl()}${path}`;
 }
 
 export function makeConversationUrl(
@@ -9,7 +9,7 @@ export function makeConversationUrl(
   conversationId?: string | null
 ) {
   if (workspaceId && conversationId) {
-    return makeDustAppUrl(`/w/${workspaceId}/assistant/${conversationId}`);
+    return makeDustAppUrl(`/w/${workspaceId}/conversation/${conversationId}`);
   }
   return null;
 }

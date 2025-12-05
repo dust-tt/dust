@@ -4,6 +4,8 @@ import { makeColumnsForTriggers } from "@app/components/poke/triggers/columns";
 import { usePokeAgentConfigurations } from "@app/poke/swr/agent_configurations";
 import { usePokeTriggers } from "@app/poke/swr/triggers";
 import type { LightWorkspaceType } from "@app/types";
+import { asDisplayName } from "@app/types";
+import { WEBHOOK_PROVIDERS } from "@app/types/triggers/webhooks";
 
 interface TriggerDataTableProps {
   owner: LightWorkspaceType;
@@ -44,7 +46,28 @@ export function TriggerDataTable({
             )
           : triggers;
 
-        return <PokeDataTable columns={columns} data={filteredTriggers} />;
+        // Create facet options for provider filter
+        const providerFacets = [
+          {
+            columnId: "provider",
+            title: "Provider",
+            options: [
+              ...WEBHOOK_PROVIDERS.map((provider) => ({
+                label: asDisplayName(provider),
+                value: provider,
+              })),
+              { label: "Custom", value: "Custom" },
+            ],
+          },
+        ];
+
+        return (
+          <PokeDataTable
+            columns={columns}
+            data={filteredTriggers}
+            facets={providerFacets}
+          />
+        );
       }}
     </PokeDataTableConditionalFetch>
   );

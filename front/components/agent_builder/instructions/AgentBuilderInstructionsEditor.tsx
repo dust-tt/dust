@@ -1,7 +1,7 @@
 import { cn, markdownStyles } from "@dust-tt/sparkle";
 import type { Editor as CoreEditor } from "@tiptap/core";
-import { CharacterCount } from "@tiptap/extension-character-count";
-import Placeholder from "@tiptap/extension-placeholder";
+import { CharacterCount } from "@tiptap/extensions";
+import { Placeholder } from "@tiptap/extensions";
 import type { Editor as ReactEditor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
@@ -13,13 +13,13 @@ import { useController } from "react-hook-form";
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { BlockInsertDropdown } from "@app/components/agent_builder/instructions/BlockInsertDropdown";
-import { AgentInstructionDiffExtension } from "@app/components/agent_builder/instructions/extensions/AgentInstructionDiffExtension";
-import { BlockInsertExtension } from "@app/components/agent_builder/instructions/extensions/BlockInsertExtension";
-import { HeadingExtension } from "@app/components/agent_builder/instructions/extensions/HeadingExtension";
-import { InstructionBlockExtension } from "@app/components/agent_builder/instructions/extensions/InstructionBlockExtension";
 import { InstructionTipsPopover } from "@app/components/agent_builder/instructions/InstructionsTipsPopover";
 import { useBlockInsertDropdown } from "@app/components/agent_builder/instructions/useBlockInsertDropdown";
-import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
+import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
+import { BlockInsertExtension } from "@app/components/editor/extensions/agent_builder/BlockInsertExtension";
+import { HeadingExtension } from "@app/components/editor/extensions/agent_builder/HeadingExtension";
+import { InstructionBlockExtension } from "@app/components/editor/extensions/agent_builder/InstructionBlockExtension";
+import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
 import {
   plainTextFromTipTapContent,
   tipTapContentFromPlainText,
@@ -80,7 +80,6 @@ export function AgentBuilderInstructionsEditor({
   const extensions = useMemo(() => {
     return [
       StarterKit.configure({
-        paragraph: false, // We use custom ParagraphExtension
         heading: false,
         bulletList: false,
         orderedList: false,
@@ -90,7 +89,7 @@ export function AgentBuilderInstructionsEditor({
         bold: false,
         italic: false,
         strike: false,
-        history: {
+        undoRedo: {
           depth: 100,
         },
         codeBlock: {
@@ -99,7 +98,7 @@ export function AgentBuilderInstructionsEditor({
           },
         },
       }),
-      ParagraphExtension,
+      KeyboardShortcutsExtension,
       InstructionBlockExtension,
       AgentInstructionDiffExtension,
       BlockInsertExtension.configure({
@@ -149,6 +148,7 @@ export function AgentBuilderInstructionsEditor({
         window.dispatchEvent(new CustomEvent(BLUR_EVENT_NAME));
         return false;
       },
+      immediatelyRender: false,
     },
     [extensions]
   );
@@ -164,7 +164,7 @@ export function AgentBuilderInstructionsEditor({
   }, [debouncedUpdate]);
 
   const currentCharacterCount =
-    editor?.storage.characterCount.characters() || 0;
+    editor?.storage.characterCount.characters() ?? 0;
   const displayError =
     currentCharacterCount >= INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT;
 
@@ -194,10 +194,9 @@ export function AgentBuilderInstructionsEditor({
     if (currentContent !== field.value) {
       // Use setTimeout to ensure this runs after any diff mode changes
       setTimeout(() => {
-        editor.commands.setContent(
-          tipTapContentFromPlainText(field.value),
-          false
-        );
+        editor.commands.setContent(tipTapContentFromPlainText(field.value), {
+          emitUpdate: false,
+        });
       }, 0);
     }
   }, [editor, field.value]);

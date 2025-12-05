@@ -9,17 +9,12 @@ import {
   shouldSyncTicket,
   syncTicket,
 } from "@connectors/connectors/zendesk/lib/sync_ticket";
-import type { ZendeskFetchedTicket } from "@connectors/connectors/zendesk/lib/types";
+import type { ZendeskTicket } from "@connectors/connectors/zendesk/lib/types";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
-  fetchZendeskBrand,
   fetchZendeskCurrentUser,
-  fetchZendeskTicket,
-  getZendeskBrandSubdomain,
-  getZendeskTicketCount,
-  listZendeskOrganizations,
-  listZendeskTicketComments,
-  listZendeskUsers,
+  isUserAdmin,
+  ZendeskClient,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { syncZendeskBrandActivity } from "@connectors/connectors/zendesk/temporal/activities";
 import {
@@ -46,6 +41,7 @@ import type {
   ZendeskOrganizationTagResponseType,
 } from "@connectors/types";
 import { normalizeError } from "@connectors/types";
+import { removeNulls } from "@connectors/types/shared/utils/general";
 
 function getTagsArgs(args: ZendeskCommandType["args"]) {
   const tag = args.tag;
@@ -68,16 +64,16 @@ function getTagsArgs(args: ZendeskCommandType["args"]) {
 }
 
 async function checkTicketShouldBeSynced(
-  ticket: ZendeskFetchedTicket | null,
+  ticket: ZendeskTicket | null,
   configuration: ZendeskConfigurationResource,
   {
     brandId,
-    accessToken,
+    zendeskClient,
     brandSubdomain,
   }: {
     brandId?: number;
     brandSubdomain: string;
-    accessToken: string;
+    zendeskClient: ZendeskClient;
   },
   logger: Logger
 ) {
@@ -91,8 +87,7 @@ async function checkTicketShouldBeSynced(
     configuration.enforcesOrganizationTagConstraint() &&
     ticket.organization_id
   ) {
-    const [organization] = await listZendeskOrganizations({
-      accessToken,
+    const [organization] = await zendeskClient.listOrganizations({
       brandSubdomain,
       organizationIds: [ticket.organization_id],
     });
@@ -155,7 +150,7 @@ export const zendesk = async ({
     throw new Error(`Connector ${args.connectorId} is not of type zendesk`);
   }
 
-  // Fetch the configuration.
+  // Fetch the configuration and access token.
   const configuration = await ZendeskConfigurationResource.fetchByConnectorId(
     connector.id
   );
@@ -163,17 +158,25 @@ export const zendesk = async ({
     throw new Error(`No configuration found for connector ${connector.id}`);
   }
 
+  const { subdomain, accessToken } = await getZendeskSubdomainAndAccessToken(
+    connector.connectionId
+  );
+
+  const zendeskClient = new ZendeskClient(
+    accessToken,
+    connector.id,
+    configuration.rateLimitTransactionsPerSecond
+  );
+
   // Run the command.
   switch (command) {
     case "check-is-admin": {
-      const user = await fetchZendeskCurrentUser(
-        await getZendeskSubdomainAndAccessToken(connector.connectionId)
-      );
+      const user = await fetchZendeskCurrentUser({ subdomain, accessToken });
       logger.info({ user }, "User returned by /users/me");
       return {
         userActive: user.active,
         userRole: user.role,
-        userIsAdmin: user.role === "admin" && user.active,
+        userIsAdmin: isUserAdmin(user),
       };
     }
     case "count-tickets": {
@@ -183,18 +186,13 @@ export const zendesk = async ({
       }
       const { retentionPeriodDays } = configuration;
 
-      const { accessToken, subdomain } =
-        await getZendeskSubdomainAndAccessToken(connector.connectionId);
-      const brandSubdomain = await getZendeskBrandSubdomain({
-        connectorId: connector.id,
+      const brandSubdomain = await zendeskClient.getBrandSubdomain({
         brandId,
         subdomain,
-        accessToken,
       });
 
-      const ticketCount = await getZendeskTicketCount({
+      const ticketCount = await zendeskClient.getTicketCount({
         brandSubdomain,
-        accessToken,
         retentionPeriodDays,
         query: args.query || null,
       });
@@ -218,9 +216,6 @@ export const zendesk = async ({
       return { success: true };
     }
     case "fetch-ticket": {
-      const { accessToken, subdomain } =
-        await getZendeskSubdomainAndAccessToken(connector.connectionId);
-
       if (args.ticketUrl) {
         let brandSubdomain, ticketId;
         try {
@@ -240,8 +235,7 @@ export const zendesk = async ({
             isTicketOnDb: false,
           };
         }
-        const ticket = await fetchZendeskTicket({
-          accessToken,
+        const ticket = await zendeskClient.fetchTicket({
           ticketId,
           brandSubdomain,
         });
@@ -260,7 +254,7 @@ export const zendesk = async ({
         const shouldSyncTicket = await checkTicketShouldBeSynced(
           ticket,
           configuration,
-          { accessToken, brandSubdomain },
+          { zendeskClient, brandSubdomain },
           logger
         );
 
@@ -286,16 +280,13 @@ export const zendesk = async ({
           brandId,
           ticketId,
         });
-        brandSubdomain = await getZendeskBrandSubdomain({
-          connectorId: connector.id,
+        brandSubdomain = await zendeskClient.getBrandSubdomain({
           brandId,
           subdomain,
-          accessToken,
         });
       }
 
-      const ticket = await fetchZendeskTicket({
-        accessToken,
+      const ticket = await zendeskClient.fetchTicket({
         ticketId,
         brandSubdomain,
       });
@@ -303,7 +294,7 @@ export const zendesk = async ({
       const shouldSyncTicket = await checkTicketShouldBeSynced(
         ticket,
         configuration,
-        { brandId: brandId ?? undefined, accessToken, brandSubdomain },
+        { brandId: brandId ?? undefined, zendeskClient, brandSubdomain },
         logger
       );
 
@@ -319,9 +310,9 @@ export const zendesk = async ({
         throw new Error(`Missing --brandId argument`);
       }
 
-      const brand = await fetchZendeskBrand({
+      const brand = await zendeskClient.fetchBrand({
+        subdomain,
         brandId,
-        ...(await getZendeskSubdomainAndAccessToken(connector.connectionId)),
       });
       const brandOnDb = await ZendeskBrandResource.fetchByBrandId({
         connectorId: connector.id,
@@ -386,18 +377,12 @@ export const zendesk = async ({
         throw new Error(`Missing --ticketId argument`);
       }
 
-      const { accessToken, subdomain } =
-        await getZendeskSubdomainAndAccessToken(connector.connectionId);
-
-      const brandSubdomain = await getZendeskBrandSubdomain({
-        connectorId: connector.id,
+      const brandSubdomain = await zendeskClient.getBrandSubdomain({
         brandId,
         subdomain,
-        accessToken,
       });
 
-      const ticket = await fetchZendeskTicket({
-        accessToken,
+      const ticket = await zendeskClient.fetchTicket({
         ticketId,
         brandSubdomain,
       });
@@ -408,7 +393,7 @@ export const zendesk = async ({
       const shouldSyncTicket = await checkTicketShouldBeSynced(
         ticket,
         configuration,
-        { brandId, accessToken, brandSubdomain },
+        { brandId, zendeskClient, brandSubdomain },
         logger
       );
 
@@ -420,25 +405,23 @@ export const zendesk = async ({
         return { success: true };
       }
 
-      const comments = await listZendeskTicketComments({
-        accessToken,
+      const comments = await zendeskClient.listTicketComments({
         brandSubdomain,
         ticketId,
       });
 
       const userIds = Array.from(
         new Set(
-          [
+          removeNulls([
             ticket.requester_id,
             ticket.assignee_id,
             ticket.submitter_id,
             ...comments.map((comment) => comment.author_id),
-          ].filter(Boolean)
+          ])
         )
       );
 
-      const users = await listZendeskUsers({
-        accessToken,
+      const users = await zendeskClient.listUsers({
         brandSubdomain,
         userIds,
       });

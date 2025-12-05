@@ -32,6 +32,7 @@ const usageTables = [
   "feedback",
   "all",
 ];
+
 type usageTableType = (typeof usageTables)[number];
 
 function getSupportedUsageTablesCodec(): t.Mixed {
@@ -98,12 +99,17 @@ async function handler(
 
       const query = queryValidation.right;
       const { endDate, startDate } = resolveDates(query);
+      const includeInactiveParam = req.query.includeInactive;
+      const includeInactive = Array.isArray(includeInactiveParam)
+        ? includeInactiveParam[0] === "true"
+        : includeInactiveParam === "true";
 
       const csvData = await fetchUsageData({
         table: query.table,
         start: startDate,
         end: endDate,
         workspace: owner,
+        includeInactive,
       });
       if (query.table === "all") {
         const zip = new JSZip();
@@ -175,15 +181,21 @@ async function fetchUsageData({
   start,
   end,
   workspace,
+  includeInactive = false,
 }: {
   table: usageTableType;
   start: Date;
   end: Date;
   workspace: WorkspaceType;
+  includeInactive?: boolean;
 }): Promise<Partial<Record<usageTableType, string>>> {
   switch (table) {
     case "users":
-      return { users: await getUserUsageData(start, end, workspace) };
+      return {
+        users: await getUserUsageData(start, end, workspace, {
+          includeInactive,
+        }),
+      };
     case "assistant_messages":
       return { mentions: await getMessageUsageData(start, end, workspace) };
     case "builders":
@@ -194,15 +206,17 @@ async function fetchUsageData({
       };
     case "assistants":
       return {
-        assistants: await getAssistantsUsageData(start, end, workspace),
+        assistants: await getAssistantsUsageData(start, end, workspace, {
+          includeInactive,
+        }),
       };
     case "all":
       const [users, assistant_messages, builders, assistants, feedback] =
         await Promise.all([
-          getUserUsageData(start, end, workspace),
+          getUserUsageData(start, end, workspace, { includeInactive }),
           getMessageUsageData(start, end, workspace),
           getBuildersUsageData(start, end, workspace),
-          getAssistantsUsageData(start, end, workspace),
+          getAssistantsUsageData(start, end, workspace, { includeInactive }),
           getFeedbackUsageData(start, end, workspace),
         ]);
       return { users, assistant_messages, builders, assistants, feedback };

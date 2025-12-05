@@ -67,6 +67,7 @@ import type { WithAPIErrorResponse } from "@app/types";
  */
 async function handler(
   req: NextApiRequest,
+
   res: NextApiResponse<WithAPIErrorResponse<RegisterMCPResponseType>>,
   auth: Authenticator
 ): Promise<void> {

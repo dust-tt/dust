@@ -4,12 +4,10 @@ import {
   ResizablePanelGroup,
 } from "@dust-tt/sparkle";
 import { cn } from "@dust-tt/sparkle";
-import Head from "next/head";
 import { useEffect, useRef, useState } from "react";
 import React from "react";
 import type { ImperativePanelHandle } from "react-resizable-panels";
 
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 
@@ -27,7 +25,6 @@ export function AgentBuilderLayout({
   rightPanel,
 }: AgentBuilderLayoutProps) {
   const isMobile = useIsMobile();
-  const { owner } = useAgentBuilderContext();
   const { isPreviewPanelOpen, setIsPreviewPanelOpen } =
     usePreviewPanelContext();
   const previewPanelRef = useRef<ImperativePanelHandle>(null);
@@ -35,6 +32,7 @@ export function AgentBuilderLayout({
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoaded(true);
   }, []);
 
@@ -58,9 +56,6 @@ export function AgentBuilderLayout({
 
   return (
     <div className="h-dvh flex flex-row">
-      <Head>
-        <title>{`Dust - ${owner.name}`}</title>
-      </Head>
       <div
         className={cn(
           "relative h-full w-full flex-1 flex-col overflow-hidden",

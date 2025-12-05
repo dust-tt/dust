@@ -1,12 +1,15 @@
 import {
-  Button,
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
+  Card,
+  CardGrid,
+  cn,
+  Hoverable,
+  Icon,
   Input,
+  Label,
+  PlanetIcon,
+  Tooltip,
+  UserIcon,
 } from "@dust-tt/sparkle";
-import { Hoverable } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
@@ -18,15 +21,20 @@ import type {
 import {
   getProviderRequiredOAuthCredentialInputs,
   isSupportedOAuthCredential,
-  OAUTH_PROVIDER_NAMES,
 } from "@app/types";
 
 export const OAUTH_USE_CASE_TO_LABEL: Record<MCPOAuthUseCase, string> = {
-  platform_actions: "Workspace",
-  personal_actions: "Personal",
+  platform_actions: "Shared",
+  personal_actions: "Individual",
+};
+
+export const OAUTH_USE_CASE_TO_DESCRIPTION: Record<MCPOAuthUseCase, string> = {
+  platform_actions: "All members use the credentials you provide now.",
+  personal_actions: "Each member connects their own account.",
 };
 
 type MCPServerOauthConnexionProps = {
+  toolName: string;
   authorization: AuthorizationInfo;
   authCredentials: OAuthCredentials | null;
   useCase: MCPOAuthUseCase | null;
@@ -37,6 +45,7 @@ type MCPServerOauthConnexionProps = {
 };
 
 export function MCPServerOAuthConnexion({
+  toolName,
   authorization,
   authCredentials,
   useCase,
@@ -45,12 +54,15 @@ export function MCPServerOAuthConnexion({
   setIsFormValid,
   documentationUrl,
 }: MCPServerOauthConnexionProps) {
-  const [containerRef, setContainerRef] = useState<HTMLDivElement | null>(null);
   const [inputs, setInputs] = useState<OAuthCredentialInputs | null>(null);
 
   useEffect(() => {
-    // Pick first choice by default.
-    if (authorization.supported_use_cases.length > 0 && !useCase) {
+    if (useCase) {
+      return;
+    }
+    if (authorization.supported_use_cases.includes("personal_actions")) {
+      setUseCase("personal_actions");
+    } else if (authorization.supported_use_cases.length > 0) {
       setUseCase(authorization.supported_use_cases[0]);
     }
   }, [authorization.supported_use_cases, setUseCase, useCase]);
@@ -110,102 +122,163 @@ export function MCPServerOAuthConnexion({
     }
   }, [authCredentials, inputs, setIsFormValid, useCase]);
 
-  return (
-    <div
-      className="flex flex-col items-center gap-4"
-      id="mcp-server-oauth-connexion-container"
-      ref={setContainerRef}
-    >
-      <>
-        {authorization.supported_use_cases.length > 1 && containerRef && (
-          <div className="w-full space-y-2">
-            <div className="heading-base">Authentication type</div>
-            <div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    isSelect
-                    variant="outline"
-                    label={
-                      useCase
-                        ? OAUTH_USE_CASE_TO_LABEL[useCase]
-                        : "Select credentials type"
-                    }
-                    size="sm"
-                  />
-                </DropdownMenuTrigger>
+  const supportsPersonalActions =
+    authorization.supported_use_cases.includes("personal_actions");
+  const supportsPlatformActions =
+    authorization.supported_use_cases.includes("platform_actions");
+  const supportBoth = supportsPersonalActions && supportsPlatformActions;
 
-                <DropdownMenuContent mountPortalContainer={containerRef}>
-                  {authorization.supported_use_cases.map(
-                    (selectableUseCase) => (
-                      <DropdownMenuCheckboxItem
-                        key={selectableUseCase}
-                        checked={selectableUseCase === useCase}
-                        onCheckedChange={() => setUseCase(selectableUseCase)}
-                      >
-                        {OAUTH_USE_CASE_TO_LABEL[selectableUseCase]}
-                      </DropdownMenuCheckboxItem>
-                    )
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+  return (
+    <div className="flex flex-col items-center gap-4">
+      <>
+        <div className="w-full space-y-4">
+          <div className="heading-lg text-foreground dark:text-foreground-night">
+            {supportBoth ? "How do you want to connect?" : "Connection type"}
           </div>
-        )}
-        <div className="w-full text-muted-foreground dark:text-muted-foreground-night">
-          {useCase === "platform_actions" && (
-            <span className="text-sm">
-              The credentials you provide will be shared by all users of these
-              tools.
-            </span>
-          )}
-          {useCase === "personal_actions" && (
-            <span className="text-sm">
-              Users will connect their own accounts the first time they interact
-              with these tools.
-            </span>
-          )}
+          <CardGrid>
+            <ConditionalTooltip
+              showTooltip={!supportsPersonalActions}
+              label={`${toolName} does not support individual connection.`}
+            >
+              <Card
+                variant={supportsPersonalActions ? "secondary" : "primary"}
+                selected={useCase === "personal_actions"}
+                disabled={!supportsPersonalActions}
+                className={cn(
+                  "h-full",
+                  supportsPersonalActions
+                    ? "cursor-pointer"
+                    : "cursor-not-allowed"
+                )}
+                onClick={
+                  supportsPersonalActions
+                    ? () => setUseCase("personal_actions")
+                    : undefined
+                }
+              >
+                <div className="flex flex-col gap-1 p-1">
+                  <div className="flex items-center gap-2">
+                    <Icon
+                      visual={UserIcon}
+                      className={cn(
+                        supportsPersonalActions
+                          ? "text-highlight"
+                          : "text-muted-foreground dark:text-muted-foreground-night"
+                      )}
+                    />
+                    <span
+                      className={cn(
+                        "font-medium",
+                        supportsPersonalActions
+                          ? "text-highlight"
+                          : "text-muted-foreground dark:text-muted-foreground-night"
+                      )}
+                    >
+                      {OAUTH_USE_CASE_TO_LABEL["personal_actions"]}
+                    </span>
+                  </div>
+                  <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                    {OAUTH_USE_CASE_TO_DESCRIPTION["personal_actions"]}
+                  </span>
+                </div>
+              </Card>
+            </ConditionalTooltip>
+            <ConditionalTooltip
+              showTooltip={!supportsPlatformActions}
+              label={`${toolName} does not support shared connection.`}
+            >
+              <Card
+                variant={supportsPlatformActions ? "secondary" : "primary"}
+                selected={useCase === "platform_actions"}
+                disabled={!supportsPlatformActions}
+                className={cn(
+                  "h-full",
+                  supportsPlatformActions
+                    ? "cursor-pointer"
+                    : "cursor-not-allowed"
+                )}
+                onClick={
+                  supportsPlatformActions
+                    ? () => setUseCase("platform_actions")
+                    : undefined
+                }
+              >
+                <div className="flex flex-col gap-1 p-1">
+                  <div className="flex items-center gap-2">
+                    <Icon
+                      visual={PlanetIcon}
+                      className={cn(
+                        supportsPlatformActions
+                          ? "text-highlight"
+                          : "text-muted-foreground dark:text-muted-foreground-night"
+                      )}
+                    />
+                    <span
+                      className={cn(
+                        "font-medium",
+                        supportsPlatformActions
+                          ? "text-highlight"
+                          : "text-muted-foreground dark:text-muted-foreground-night"
+                      )}
+                    >
+                      {OAUTH_USE_CASE_TO_LABEL["platform_actions"]}
+                    </span>
+                  </div>
+                  <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                    {OAUTH_USE_CASE_TO_DESCRIPTION["platform_actions"]}
+                  </span>
+                </div>
+              </Card>
+            </ConditionalTooltip>
+          </CardGrid>
         </div>
 
-        {inputs &&
-          Object.entries(inputs).map(([key, inputData]) => {
-            if (inputData.value) {
-              // If the credential is already set, we don't need to ask the user for it.
-              return null;
-            }
+        {inputs && (
+          <div className="w-full space-y-4 pt-4">
+            {inputs &&
+              Object.entries(inputs).map(([key, inputData]) => {
+                if (inputData.value) {
+                  // If the credential is already set, we don't need to ask the user for it.
+                  return null;
+                }
 
-            if (!isSupportedOAuthCredential(key)) {
-              // Can't happen but to make typescript happy.
-              return null;
-            }
+                if (!isSupportedOAuthCredential(key)) {
+                  // Can't happen but to make typescript happy.
+                  return null;
+                }
 
-            const value = authCredentials?.[key] ?? "";
-            return (
-              <div key={key} className="w-full space-y-1">
-                <div className="heading-base">{inputData.label}</div>
-                <Input
-                  id={key}
-                  value={value}
-                  onChange={(e) =>
-                    setAuthCredentials({
-                      ...authCredentials,
-                      [key]: e.target.value,
-                    })
-                  }
-                  message={inputData.helpMessage}
-                  messageStatus={
-                    value.length > 0 &&
-                    inputData.validator &&
-                    !inputData.validator(value)
-                      ? "error"
-                      : undefined
-                  }
-                />
-              </div>
-            );
-          })}
+                const value = authCredentials?.[key] ?? "";
+                return (
+                  <div key={key} className="w-full space-y-1">
+                    <Label className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                      {inputData.label}
+                    </Label>
+                    <Input
+                      id={key}
+                      value={value}
+                      onChange={(e) =>
+                        setAuthCredentials({
+                          ...authCredentials,
+                          [key]: e.target.value,
+                        })
+                      }
+                      message={inputData.helpMessage}
+                      messageStatus={
+                        value.length > 0 &&
+                        inputData.validator &&
+                        !inputData.validator(value)
+                          ? "error"
+                          : undefined
+                      }
+                    />
+                  </div>
+                );
+              })}
+          </div>
+        )}
+
         {documentationUrl && (
-          <div className="w-full text-muted-foreground dark:text-muted-foreground-night">
+          <div className="w-full pt-6 text-sm text-muted-foreground dark:text-muted-foreground-night">
             Questions ? Read{" "}
             <Hoverable
               href={documentationUrl}
@@ -214,10 +287,25 @@ export function MCPServerOAuthConnexion({
             >
               our guide
             </Hoverable>{" "}
-            on {OAUTH_PROVIDER_NAMES[authorization.provider]}
+            on {toolName}.
           </div>
         )}
       </>
     </div>
   );
+}
+
+function ConditionalTooltip({
+  showTooltip,
+  label,
+  children,
+}: {
+  showTooltip: boolean;
+  label: string;
+  children: React.ReactElement;
+}) {
+  if (showTooltip) {
+    return <Tooltip label={label} trigger={children} tooltipTriggerAsChild />;
+  }
+  return children;
 }

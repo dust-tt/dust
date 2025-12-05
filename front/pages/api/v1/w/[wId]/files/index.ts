@@ -87,6 +87,7 @@ import {
  */
 async function handler(
   req: NextApiRequest,
+
   res: NextApiResponse<WithAPIErrorResponse<FileUploadRequestResponseType>>,
   auth: Authenticator
 ): Promise<void> {

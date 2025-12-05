@@ -238,6 +238,7 @@ export const GoogleDriveCommandSchema = t.type({
     t.literal("register-webhook"),
     t.literal("register-all-webhooks"),
     t.literal("list-labels"),
+    t.literal("export-folder-structure"),
   ]),
   args: t.record(
     t.string,
@@ -280,6 +281,7 @@ export const IntercomCommandSchema = t.type({
     t.literal("fetch-articles"),
     t.literal("check-missing-conversations"),
     t.literal("check-teams"),
+    t.literal("get-conversations-sliding-window"),
     t.literal("set-conversations-sliding-window"),
   ]),
   args: t.type({
@@ -349,6 +351,13 @@ export const IntercomForceResyncArticlesResponseSchema = t.type({
 });
 export type IntercomForceResyncArticlesResponseType = t.TypeOf<
   typeof IntercomForceResyncArticlesResponseSchema
+>;
+
+export const IntercomGetConversationsSlidingWindowResponseSchema = t.type({
+  conversationsSlidingWindow: t.number,
+});
+export type IntercomGetConversationsSlidingWindowResponseType = t.TypeOf<
+  typeof IntercomGetConversationsSlidingWindowResponseSchema
 >;
 /**
  * </ Intercom>
@@ -569,6 +578,7 @@ export const SlackCommandSchema = t.type({
     t.literal("whitelist-bot"),
     t.literal("run-auto-join"),
     t.literal("whitelist-domains"),
+    t.literal("check-channel"),
   ]),
   args: t.record(
     t.string,
@@ -582,6 +592,17 @@ export const SlackJoinResponseSchema = t.type({
   processed: t.number,
 });
 export type SlackJoinResponseType = t.TypeOf<typeof SlackJoinResponseSchema>;
+
+export const SlackCheckChannelResponseSchema = t.type({
+  success: t.literal(true),
+  channel: t.type({
+    name: t.union([t.string, t.undefined]),
+    isPrivate: t.union([t.boolean, t.undefined]),
+  }),
+});
+export type SlackCheckChannelResponseType = t.TypeOf<
+  typeof SlackCheckChannelResponseSchema
+>;
 /**
  * </Slack>
  */
@@ -826,12 +847,14 @@ export const AdminResponseSchema = t.union([
   IntercomFetchArticlesResponseSchema,
   IntercomFetchConversationResponseSchema,
   IntercomForceResyncArticlesResponseSchema,
+  IntercomGetConversationsSlidingWindowResponseSchema,
   NotionApiRequestResponseSchema,
   NotionCheckUrlResponseSchema,
   NotionDeleteUrlResponseSchema,
   NotionMeResponseSchema,
   NotionSearchPagesResponseSchema,
   NotionUpsertResponseSchema,
+  SlackCheckChannelResponseSchema,
   SalesforceCheckConnectionResponseSchema,
   SalesforceRunSoqlResponseSchema,
   SalesforceSetupSyncedQueryResponseSchema,

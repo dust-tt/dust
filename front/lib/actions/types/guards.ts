@@ -10,6 +10,7 @@ import type {
 } from "@app/lib/actions/mcp";
 import {
   AGENT_MEMORY_SERVER_NAME,
+  INTERNAL_SERVERS_WITH_WEBSEARCH,
   isInternalMCPServerOfName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { UnsavedMCPServerConfigurationType } from "@app/lib/actions/types/agent";
@@ -71,7 +72,9 @@ export function isMCPConfigurationForInternalWebsearch(
 ): arg is ServerSideMCPServerConfigurationType {
   return (
     isServerSideMCPServerConfiguration(arg) &&
-    isInternalMCPServerOfName(arg.internalMCPServerId, "web_search_&_browse")
+    INTERNAL_SERVERS_WITH_WEBSEARCH.some((n) =>
+      isInternalMCPServerOfName(arg.internalMCPServerId, n)
+    )
   );
 }
 
@@ -163,12 +166,23 @@ export function isMCPInternalDataSourceFileSystem(
   );
 }
 
+export function isMCPInternalCatTool(
+  arg: MCPToolConfigurationType
+): arg is ServerSideMCPToolConfigurationType {
+  if (!isMCPInternalDataSourceFileSystem(arg)) {
+    return false;
+  }
+  return arg.originalName === "cat";
+}
+
 export function isMCPInternalWebsearch(
   arg: MCPToolConfigurationType
 ): arg is ServerSideMCPToolConfigurationType {
   return (
     isServerSideMCPToolConfiguration(arg) &&
-    isInternalMCPServerOfName(arg.internalMCPServerId, "web_search_&_browse")
+    INTERNAL_SERVERS_WITH_WEBSEARCH.some((n) =>
+      isInternalMCPServerOfName(arg.internalMCPServerId, n)
+    )
   );
 }
 

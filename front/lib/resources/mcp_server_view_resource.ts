@@ -28,9 +28,9 @@ import {
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
-import { destroyMCPServerViewDependencies } from "@app/lib/models/assistant/actions/mcp_server_view_helper";
-import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/assistant/actions/remote_mcp_server_tool_metadata";
+import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
+import { destroyMCPServerViewDependencies } from "@app/lib/models/agent/actions/mcp_server_view_helper";
+import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
@@ -643,7 +643,9 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return getAvailabilityOfInternalMCPServerById(this.internalMCPServerId);
   }
 
-  static async ensureAllAutoToolsAreCreated(auth: Authenticator) {
+  static async ensureAllAutoToolsAreCreated(auth: Authenticator): Promise<{
+    createdViewsCount: number;
+  }> {
     return tracer.trace("ensureAllAutoToolsAreCreated", async () => {
       const names = AVAILABLE_INTERNAL_MCP_SERVER_NAMES;
 
@@ -667,13 +669,13 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       }
 
       if (autoInternalMCPServerIds.length === 0) {
-        return;
+        return { createdViewsCount: 0 };
       }
 
       // TODO(mcp): Think this through and determine how / when we create the default internal mcp server views
       // For now, only admins can create the default internal mcp server views otherwise, we would have an assert error
       if (!auth.isAdmin()) {
-        return;
+        return { createdViewsCount: 0 };
       }
 
       // Get system and global spaces
@@ -691,53 +693,61 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         },
       });
 
-      // Quick check : there should be 2 views for each default internal mcp server (ensured by unique constraint), if so
-      // no need to check further
-      if (views.length !== autoInternalMCPServerIds.length * 2) {
-        const systemSpace = spaces.find((s) => s.isSystem());
-        const globalSpace = spaces.find((s) => s.isGlobal());
+      // Quick check: there should be 2 views for each default internal MCP server
+      // (enforced by a unique constraint), if already the case, no need to check further
+      if (views.length === autoInternalMCPServerIds.length * 2) {
+        return { createdViewsCount: 0 };
+      }
 
-        if (!systemSpace || !globalSpace) {
-          throw new Error(
-            "System or global space not found. Should never happen."
-          );
+      const systemSpace = spaces.find((s) => s.isSystem());
+      const globalSpace = spaces.find((s) => s.isGlobal());
+
+      if (!systemSpace || !globalSpace) {
+        throw new Error(
+          "System or global space not found. Should never happen."
+        );
+      }
+
+      let createdViewsCount = 0;
+
+      // Create the missing views
+      for (const id of autoInternalMCPServerIds) {
+        // Check if exists in system space.
+        let systemViewModel = views.find(
+          (v) => v.internalMCPServerId === id && v.vaultId === systemSpace.id
+        );
+        if (!systemViewModel) {
+          systemViewModel = await MCPServerViewModel.create({
+            workspaceId: auth.getNonNullableWorkspace().id,
+            serverType: "internal",
+            internalMCPServerId: id,
+            vaultId: systemSpace.id,
+            editedAt: new Date(),
+            editedByUserId: auth.user()?.id,
+            oAuthUseCase: null,
+          });
+          createdViewsCount++;
         }
+        const systemView = new this(
+          MCPServerViewModel,
+          systemViewModel.get(),
+          systemSpace
+        );
 
-        // Create the missing views
-        for (const id of autoInternalMCPServerIds) {
-          // Check if exists in system space.
-          let systemViewModel = views.find(
-            (v) => v.internalMCPServerId === id && v.vaultId === systemSpace.id
-          );
-          if (!systemViewModel) {
-            systemViewModel = await MCPServerViewModel.create({
-              workspaceId: auth.getNonNullableWorkspace().id,
-              serverType: "internal",
-              internalMCPServerId: id,
-              vaultId: systemSpace.id,
-              editedAt: new Date(),
-              editedByUserId: auth.user()?.id,
-              oAuthUseCase: null,
-            });
-          }
-          const systemView = new this(
-            MCPServerViewModel,
-            systemViewModel.get(),
-            systemSpace
-          );
-
-          // Check if exists in global space.
-          const isInGlobalSpace = views.some(
-            (v) => v.internalMCPServerId === id && v.vaultId === globalSpace.id
-          );
-          if (!isInGlobalSpace) {
-            await MCPServerViewResource.create(auth, {
-              systemView,
-              space: globalSpace,
-            });
-          }
+        // Check if exists in global space.
+        const isInGlobalSpace = views.some(
+          (v) => v.internalMCPServerId === id && v.vaultId === globalSpace.id
+        );
+        if (!isInGlobalSpace) {
+          await MCPServerViewResource.create(auth, {
+            systemView,
+            space: globalSpace,
+          });
+          createdViewsCount++;
         }
       }
+
+      return { createdViewsCount };
     });
   }
 

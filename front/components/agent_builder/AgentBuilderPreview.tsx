@@ -1,4 +1,4 @@
-import { Spinner } from "@dust-tt/sparkle";
+import { Spinner, TestTubeIcon } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef } from "react";
 import { useWatch } from "react-hook-form";
 
@@ -8,13 +8,14 @@ import {
   useDraftConversation,
 } from "@app/components/agent_builder/hooks/useAgentPreview";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
+import { EmptyPlaceholder } from "@app/components/agent_builder/observability/shared/EmptyPlaceholder";
+import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
 import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
 import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
-import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import type { DustError } from "@app/lib/error";
 import { useUser } from "@app/lib/swr/user";
@@ -23,6 +24,7 @@ import type {
   ConversationWithoutContentType,
   LightAgentConfigurationType,
   Result,
+  RichMention,
   UserType,
   WorkspaceType,
 } from "@app/types";
@@ -69,7 +71,7 @@ interface PreviewContentProps {
   resetConversation: () => void;
   createConversation: (
     input: string,
-    mentions: EditorMention[],
+    mentions: RichMention[],
     contentFragments: ContentFragmentsType
   ) => Promise<Result<undefined, DustError>>;
   draftAgent: LightAgentConfigurationType | null;
@@ -109,7 +111,7 @@ function PreviewContent({
         {!conversation && (
           <div className="mx-4 flex-shrink-0 py-4">
             <InputBar
-              disable={isSavingDraftAgent}
+              isSubmitting={isSavingDraftAgent}
               owner={owner}
               onSubmit={createConversation}
               stickyMentions={
@@ -195,6 +197,7 @@ export function AgentBuilderPreview() {
 
       // Update existing draft if agent name changed (with debouncing)
       // Normalize names for comparison (empty string becomes "Preview")
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const normalizedCurrentName = agentName?.trim() || "Preview";
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const normalizedDraftName = draftAgent?.name?.trim() || "Preview";
@@ -240,10 +243,13 @@ export function AgentBuilderPreview() {
   const renderContent = () => {
     if (!hasContent) {
       return (
-        <EmptyState
-          message="Ready to test your agent?"
-          description="Add some instructions or actions to your agent to start testing it here."
-        />
+        <TabContentLayout title="Testing">
+          <EmptyPlaceholder
+            icon={TestTubeIcon}
+            title="Ready to test your agent?"
+            description="Add some instructions or actions to your agent to start testing it here."
+          />
+        </TabContentLayout>
       );
     }
 

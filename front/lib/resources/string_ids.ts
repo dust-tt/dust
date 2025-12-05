@@ -36,6 +36,10 @@ const RESOURCES_PREFIX = {
   transcripts_configuration: "tsc",
   agent_step_content: "asc",
   agent_memory: "amm",
+  agent_message_feedback: "amf",
+  onboarding_task: "obt",
+  programmatic_usage_configuration: "puc",
+  credit: "crd",
 
   // Resource relative to triggers.
   trigger: "trg",

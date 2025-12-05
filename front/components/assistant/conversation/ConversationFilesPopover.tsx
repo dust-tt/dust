@@ -1,7 +1,6 @@
 import {
   Button,
   CitationGrid,
-  DocumentIcon,
   FolderIcon,
   FolderOpenIcon,
   PopoverContent,
@@ -102,7 +101,6 @@ const FileRenderer = ({ files, owner, conversationId }: FileRendererProps) => (
     {files.map((file, index) => {
       const attachmentCitation = markdownCitationToAttachmentCitation({
         href: `/api/w/${owner.sId}/files/${file.fileId}`,
-        icon: <DocumentIcon />,
         title: file.title,
         contentType: file.contentType,
         fileId: file.fileId,
@@ -234,7 +232,7 @@ export const ConversationFilesPopover = ({
           }
         }}
       >
-        <ScrollArea className="flex flex-col gap-3">
+        <ScrollArea className="flex max-h-[80vh] flex-col gap-3">
           <div className="heading-base mb-2 text-primary dark:text-primary-night">
             Generated Content
           </div>

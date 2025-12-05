@@ -12,9 +12,9 @@ import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type {
   AgentMessageNewEvent,
   AgentMessageType,
-  ConversationType,
+  ConversationWithoutContentType,
   UserMessageNewEvent,
-  UserMessageType,
+  UserMessageTypeWithContentFragments,
 } from "@app/types";
 import { assertNever } from "@app/types";
 
@@ -143,8 +143,8 @@ export async function publishConversationRelatedEvent(
 }
 
 export async function publishMessageEventsOnMessagePostOrEdit(
-  conversation: ConversationType,
-  userMessage: UserMessageType,
+  conversation: ConversationWithoutContentType,
+  userMessage: UserMessageTypeWithContentFragments,
   agentMessages: AgentMessageType[]
 ) {
   const userMessageEvent: UserMessageNewEvent = {
@@ -154,6 +154,19 @@ export async function publishMessageEventsOnMessagePostOrEdit(
     message: userMessage,
   };
 
+  return Promise.all([
+    publishConversationRelatedEvent({
+      event: userMessageEvent,
+      conversationId: conversation.sId,
+    }),
+    publishAgentMessagesEvents(conversation, agentMessages),
+  ]);
+}
+
+export async function publishAgentMessagesEvents(
+  conversation: ConversationWithoutContentType,
+  agentMessages: AgentMessageType[]
+) {
   const agentMessageEvents: AgentMessageNewEvent[] = agentMessages.map(
     (agentMessage) => {
       return {
@@ -165,35 +178,12 @@ export async function publishMessageEventsOnMessagePostOrEdit(
       };
     }
   );
-
-  return Promise.all([
-    publishConversationRelatedEvent({
-      event: userMessageEvent,
-      conversationId: conversation.sId,
-    }),
-    ...agentMessageEvents.map((event) =>
+  return Promise.all(
+    agentMessageEvents.map((event) =>
       publishConversationRelatedEvent({
         event,
         conversationId: conversation.sId,
       })
-    ),
-  ]);
-}
-
-export async function publishAgentMessageEventOnMessageRetry(
-  conversation: ConversationType,
-  agentMessage: AgentMessageType
-) {
-  const agentMessageEvent: AgentMessageNewEvent = {
-    type: "agent_message_new",
-    created: Date.now(),
-    configurationId: agentMessage.configuration.sId,
-    messageId: agentMessage.sId,
-    message: agentMessage,
-  };
-
-  return publishConversationRelatedEvent({
-    event: agentMessageEvent,
-    conversationId: conversation.sId,
-  });
+    )
+  );
 }

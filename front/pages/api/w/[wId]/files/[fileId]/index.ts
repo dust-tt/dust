@@ -15,6 +15,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { FileType, WithAPIErrorResponse } from "@app/types";
+import { isConversationFileUseCase } from "@app/types";
 
 export interface FileUploadedRequestResponseBody {
   file: FileType;
@@ -117,15 +118,15 @@ async function handler(
   }
 
   // Check permissions based on useCase and useCaseMetadata
-  if (file.useCase === "conversation" && file.useCaseMetadata?.conversationId) {
+  if (
+    isConversationFileUseCase(file.useCase) &&
+    file.useCaseMetadata?.conversationId
+  ) {
     const conversation = await ConversationResource.fetchById(
       auth,
       file.useCaseMetadata.conversationId
     );
-    if (
-      !conversation ||
-      !ConversationResource.canAccessConversation(auth, conversation)
-    ) {
+    if (!conversation) {
       return apiError(req, res, {
         status_code: 404,
         api_error: {

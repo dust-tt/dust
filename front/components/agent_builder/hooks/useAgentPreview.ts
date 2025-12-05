@@ -5,7 +5,6 @@ import { useFormContext } from "react-hook-form";
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
-import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { DustError } from "@app/lib/error";
@@ -15,6 +14,7 @@ import type {
   ConversationType,
   LightAgentConfigurationType,
   Result,
+  RichMention,
 } from "@app/types";
 import { Err, Ok } from "@app/types";
 
@@ -120,7 +120,7 @@ export function useDraftConversation({
   const createConversation = useCallback(
     async (
       input: string,
-      mentions: EditorMention[],
+      mentions: RichMention[],
       contentFragments: ContentFragmentsType
     ): Promise<Result<undefined, DustError>> => {
       if (!user) {
@@ -145,9 +145,10 @@ export function useDraftConversation({
         // Update mentions in the message data to use the current draft agent
         mentions = mentions.map((mention) =>
           mention.id === draftAgent?.sId && currentAgent?.sId
-            ? { ...mention, configurationId: currentAgent.sId }
+            ? { ...mention, id: currentAgent.sId }
             : mention
         );
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         return new Err({
           code: "internal_error",

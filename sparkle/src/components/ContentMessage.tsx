@@ -25,29 +25,28 @@ const CONTENT_MESSAGE_SIZES = ["sm", "md", "lg"] as const;
 type ContentMessageSizeType = (typeof CONTENT_MESSAGE_SIZES)[number];
 
 const sharedVariantStyles = {
-  primary:
-    "s-bg-muted-background dark:s-bg-muted-background-night s-border-border dark:s-border-border-night",
-  success: "s-bg-success-100 dark:s-bg-success-100-night s-border-transparent",
-  warning: "s-bg-warning-100 dark:s-bg-warning-100-night s-border-transparent",
-  highlight:
-    "s-bg-highlight-100 dark:s-bg-highlight-100-night s-border-transparent",
-  info: "s-bg-info-100 dark:s-bg-info-100-night s-border-transparent",
-  green: "s-bg-green-100 dark:s-bg-green-100-night s-border-transparent",
-  blue: "s-bg-blue-100 dark:s-bg-blue-100-night s-border-transparent",
-  rose: "s-bg-rose-100 dark:s-bg-rose-100-night s-border-transparent",
-  golden: "s-bg-golden-100 dark:s-bg-golden-100-night s-border-transparent",
-  outline: "s-bg-transparent s-border-border dark:s-border-border-night",
+  primary: "s-bg-muted-background dark:s-bg-muted-background-night",
+  success: "s-bg-success-100 dark:s-bg-success-100-night",
+  warning: "s-bg-warning-100 dark:s-bg-warning-100-night",
+  highlight: "s-bg-highlight-100 dark:s-bg-highlight-100-night",
+  info: "s-bg-info-100 dark:s-bg-info-100-night",
+  green: "s-bg-green-100 dark:s-bg-green-100-night",
+  blue: "s-bg-blue-100 dark:s-bg-blue-100-night",
+  rose: "s-bg-rose-100 dark:s-bg-rose-100-night",
+  golden: "s-bg-golden-100 dark:s-bg-golden-100-night",
+  outline:
+    "s-bg-transparent s-border s-border-border dark:s-border-border-night",
 };
 
 const contentMessageVariants = cva(
-  "s-flex s-flex-col s-gap-1 s-rounded-xl s-py-4 s-px-5 s-border",
+  "s-flex s-flex-col s-gap-1 s-rounded-2xl s-p-4 s-pl-5 s-min-h-[52px]",
   {
     variants: {
       variant: sharedVariantStyles,
       size: {
         lg: "",
-        md: "s-max-w-[500px]",
-        sm: "s-max-w-[380px]",
+        md: "s-max-w-xl",
+        sm: "s-max-w-sm",
       },
     },
     defaultVariants: {
@@ -58,7 +57,7 @@ const contentMessageVariants = cva(
 );
 
 const contentMessageInlineVariants = cva(
-  "s-flex s-items-center s-gap-3 s-rounded-xl s-py-3 s-px-4 s-border",
+  "s-flex s-items-center s-gap-3 s-rounded-xl s-p-3 s-pl-4 s-min-h-[52px]",
   {
     variants: {
       variant: sharedVariantStyles,
@@ -127,6 +126,7 @@ export interface ContentMessageProps {
   size?: ContentMessageSizeType;
   variant?: ContentMessageVariantType;
   icon?: ComponentType;
+  action?: React.ReactNode;
 }
 
 function ContentMessage({
@@ -136,22 +136,37 @@ function ContentMessage({
   size = "md",
   className = "",
   icon,
+  action,
 }: ContentMessageProps) {
   return (
     <div className={cn(contentMessageVariants({ variant, size }), className)}>
-      {(icon || title) && (
-        <div className="s-flex s-items-center s-gap-1.5">
-          {icon && (
-            <Icon
-              size="xs"
-              visual={icon}
-              className={iconVariants({ variant })}
-            />
+      <div
+        className={cn(
+          "s-flex s-gap-3",
+          action ? "s-items-center s-justify-between" : "s-flex-col"
+        )}
+      >
+        <div className="s-flex s-flex-col s-gap-1">
+          {(icon || title) && (
+            <div className="s-flex s-items-center s-gap-1.5">
+              {icon && (
+                <Icon
+                  size="sm"
+                  visual={icon}
+                  className={iconVariants({ variant })}
+                />
+              )}
+              {title && (
+                <div className={titleVariants({ variant })}>{title}</div>
+              )}
+            </div>
           )}
-          {title && <div className={titleVariants({ variant })}>{title}</div>}
+          {children && (
+            <div className={textVariants({ variant })}>{children}</div>
+          )}
         </div>
-      )}
-      {children && <div className={textVariants({ variant })}>{children}</div>}
+        {action && <div className="s-shrink-0">{action}</div>}
+      </div>
       {/* TODO(2025-08-13 aubin): Allow passing a ContentMessageAction here. */}
     </div>
   );
@@ -202,7 +217,7 @@ function ContentMessageInline({
   return (
     <div className={cn(contentMessageInlineVariants({ variant }), className)}>
       {icon && (
-        <Icon size="xs" visual={icon} className={iconVariants({ variant })} />
+        <Icon size="sm" visual={icon} className={iconVariants({ variant })} />
       )}
       <div className={cn("s-flex-1", textVariants({ variant }))}>
         {title && <span className={titleVariants({ variant })}>{title}</span>}

@@ -1,8 +1,6 @@
-import type { Transaction } from "sequelize";
-
 import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
+import { AgentMCPServerConfiguration } from "@app/lib/models/agent/actions/mcp";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";

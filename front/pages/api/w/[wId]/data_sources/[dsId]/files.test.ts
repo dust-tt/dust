@@ -165,6 +165,72 @@ describe("POST /api/w/[wId]/data_sources/[dsId]/files", () => {
     expect(res._getStatusCode()).toBe(400);
   });
 
+  it("returns 403 if not authorized to write in the data source (admin)", async () => {
+    const { req, res, workspace, user } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+    const space = await SpaceFactory.regular(workspace);
+
+    const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
+    const file = await FileFactory.csv(workspace, user, {
+      useCase: "upsert_table",
+    });
+
+    req.query.dsId = dataSourceView.dataSource.sId;
+    req.body = {
+      fileId: file.sId,
+      upsertArgs: {
+        tableId: "test-table",
+        name: "Test Table",
+        title: "Test Title",
+        description: "Test Description",
+        tags: ["test"],
+        useAppForHeaderDetection: true,
+      },
+    };
+
+    // Set specific content for this test.
+    mockFileContent.setContent("foo,bar,baz\n1,2,3\n4,5,6");
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(403);
+  });
+
+  it("returns 403 if not authorized to write in the data source (user)", async () => {
+    const { req, res, workspace, user } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "user",
+    });
+    const space = await SpaceFactory.regular(workspace);
+
+    const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
+    const file = await FileFactory.csv(workspace, user, {
+      useCase: "upsert_table",
+    });
+
+    req.query.dsId = dataSourceView.dataSource.sId;
+    req.body = {
+      fileId: file.sId,
+      upsertArgs: {
+        tableId: "test-table",
+        name: "Test Table",
+        title: "Test Title",
+        description: "Test Description",
+        tags: ["test"],
+        useAppForHeaderDetection: true,
+      },
+    };
+
+    // Set specific content for this test.
+    mockFileContent.setContent("foo,bar,baz\n1,2,3\n4,5,6");
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(403);
+  });
+
   it("successfully upserts file to data source with the right arguments", async () => {
     const { req, res, workspace, globalGroup, user } =
       await createPrivateApiMockRequest({

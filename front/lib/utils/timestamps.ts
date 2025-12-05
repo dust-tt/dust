@@ -49,6 +49,18 @@ export const formatDurationString = (durationMs: number): string => {
 };
 
 /**
+ * Formats a timestamp to a short date string (e.g., "Jan 15").
+ * @param timestamp - The timestamp to format (number or string in milliseconds)
+ * @returns A formatted string like "Jan 15"
+ */
+export const formatShortDate = (timestamp: number | string): string => {
+  return new Date(timestamp).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+};
+
+/**
  * Formats a date in a calendar-relative way.
  * @param date - The date to format (Date object or timestamp)
  * @returns A formatted string like "Today", "Yesterday", "Last Monday", or "13/10/2025"

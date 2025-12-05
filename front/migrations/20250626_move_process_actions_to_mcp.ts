@@ -1,18 +1,13 @@
-// @ts-nocheck
-// This migration file references deleted process modules but has already been run in production
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
 import type { Logger } from "pino";
 import type { CreationAttributes } from "sequelize";
 import { Op } from "sequelize";
 
-import { DEFAULT_CONVERSATION_EXTRACT_ACTION_NAME } from "@app/lib/actions/constants";
-import type { ActionBaseParams } from "@app/lib/actions/mcp";
 import type {
   ExtractQueryResourceType,
   ExtractResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { ProcessActionOutputsType } from "@app/lib/actions/process";
 import config from "@app/lib/api/config";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
@@ -20,10 +15,9 @@ import {
   AgentMCPActionModel,
   AgentMCPActionOutputItem,
   AgentMCPServerConfiguration,
-} from "@app/lib/models/assistant/actions/mcp";
-import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { AgentMessage } from "@app/lib/models/assistant/conversation";
+} from "@app/lib/models/agent/actions/mcp";
+import { AgentConfiguration } from "@app/lib/models/agent/agent";
+import { AgentMessage } from "@app/lib/models/agent/conversation";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
@@ -37,6 +31,7 @@ const CREATION_CONCURRENCY = 50;
 
 const NOT_FOUND_MCP_SERVER_CONFIGURATION_ID = "unknown";
 
+// @ts-ignore
 function getTimeFrameUnit(processAction: AgentProcessAction): TimeFrame | null {
   if (
     processAction.relativeTimeFrameUnit &&
@@ -52,11 +47,13 @@ function getTimeFrameUnit(processAction: AgentProcessAction): TimeFrame | null {
 }
 
 function agentProcessActionToAgentMCPAction(
+  // @ts-ignore
   processAction: AgentProcessAction,
   agentConfiguration: AgentConfiguration | null,
   mcpServerViewForExtractId: ModelId,
   logger: Logger
 ): {
+  // @ts-ignore
   action: ActionBaseParams & CreationAttributes<AgentMCPAction>;
 } {
   logger.info(
@@ -71,7 +68,9 @@ function agentProcessActionToAgentMCPAction(
       (config) => config.mcpServerViewId === mcpServerViewForExtractId
     );
 
+  // @ts-ignore
   const isJITServerAction =
+    // @ts-ignore
     processAction.functionCallName === DEFAULT_CONVERSATION_EXTRACT_ACTION_NAME;
 
   // Determine the MCP server configuration ID to use.
@@ -134,6 +133,7 @@ function agentProcessActionToAgentMCPAction(
 }
 
 function createQueryOutputItem(
+  // @ts-ignore
   processAction: AgentProcessAction,
   mcpActionId: ModelId
 ): CreationAttributes<AgentMCPActionOutputItem> {
@@ -166,6 +166,7 @@ function createQueryOutputItem(
 }
 
 function createResultOutputItem(
+  // @ts-ignore
   processAction: AgentProcessAction,
   mcpActionId: ModelId,
   auth: Authenticator
@@ -174,12 +175,14 @@ function createResultOutputItem(
     return null;
   }
 
+  // @ts-ignore
   const outputs = processAction.outputs as ProcessActionOutputsType;
 
   const extractResult =
     "PROCESSED OUTPUTS:\n" +
     (outputs.data && outputs.data.length > 0
-      ? outputs.data.map((d) => JSON.stringify(d)).join("\n")
+      ? // @ts-ignore
+        outputs.data.map((d) => JSON.stringify(d)).join("\n")
       : "(none)");
 
   const resultResource: ExtractResultResourceType = {
@@ -207,6 +210,7 @@ function createResultOutputItem(
 async function migrateSingleProcessAction(
   auth: Authenticator,
   agentMessage: AgentMessage,
+  // @ts-ignore
   processAction: AgentProcessAction,
   agentConfiguration: AgentConfiguration | null,
   logger: Logger,
@@ -278,6 +282,7 @@ async function migrateWorkspaceProcessActions(
   let hasMore = false;
   do {
     // Step 1: Retrieve the legacy process actions.
+    // @ts-ignore
     const processActions = await AgentProcessAction.findAll({
       where: {
         workspaceId: workspace.id,
@@ -295,6 +300,7 @@ async function migrateWorkspaceProcessActions(
     const agentMessages = await AgentMessage.findAll({
       where: {
         id: {
+          // @ts-ignore
           [Op.in]: processActions.map((action) => action.agentMessageId),
         },
         workspaceId: workspace.id,
@@ -336,6 +342,7 @@ async function migrateWorkspaceProcessActions(
     await concurrentExecutor(
       processActions,
       async (processAction) => {
+        // @ts-ignore
         const agentMessage = agentMessagesMap.get(processAction.agentMessageId);
         assert(agentMessage, "Agent message must exist");
 
@@ -369,9 +376,11 @@ async function migrateWorkspaceProcessActions(
 
     // Step 5: Delete the legacy process actions.
     if (execute) {
+      // @ts-ignore
       await AgentProcessAction.destroy({
         where: {
           id: {
+            // @ts-ignore
             [Op.in]: processActions.map((action) => action.id),
           },
           workspaceId: workspace.id,

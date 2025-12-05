@@ -33,43 +33,33 @@ async function handler(
 
   switch (method) {
     case "GET": {
-      try {
-        const webhookSourceResource = await WebhookSourceResource.fetchById(
-          auth,
-          webhookSourceId
-        );
+      const webhookSourceResource = await WebhookSourceResource.fetchById(
+        auth,
+        webhookSourceId
+      );
 
-        if (!webhookSourceResource) {
-          return apiError(req, res, {
-            status_code: 404,
-            api_error: {
-              type: "webhook_source_not_found",
-              message: "The webhook source was not found.",
-            },
-          });
-        }
-
-        const viewResources =
-          await WebhookSourcesViewResource.listByWebhookSource(
-            auth,
-            webhookSourceResource.id
-          );
-
-        const views = viewResources.map((view) => view.toJSON());
-
-        return res.status(200).json({
-          success: true,
-          views,
-        });
-      } catch (error) {
+      if (!webhookSourceResource) {
         return apiError(req, res, {
-          status_code: 500,
+          status_code: 404,
           api_error: {
-            type: "internal_server_error",
-            message: "Failed to fetch webhook source views.",
+            type: "webhook_source_not_found",
+            message: "The webhook source was not found.",
           },
         });
       }
+
+      const viewResources =
+        await WebhookSourcesViewResource.listByWebhookSource(
+          auth,
+          webhookSourceResource.id
+        );
+
+      const views = viewResources.map((view) => view.toJSON());
+
+      return res.status(200).json({
+        success: true,
+        views,
+      });
     }
 
     default: {

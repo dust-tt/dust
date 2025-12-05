@@ -3,6 +3,11 @@ import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import * as OutlookApi from "@app/lib/actions/mcp_internal_actions/servers/outlook/outlook_api_helper";
+import {
+  renderAvailabilityCheck,
+  renderOutlookEvent,
+  renderOutlookEventList,
+} from "@app/lib/actions/mcp_internal_actions/servers/outlook/rendering";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -186,9 +191,16 @@ function createServer(
           return new Err(new MCPError(result.error));
         }
 
+        const formattedText = renderOutlookEventList(result.events, {
+          userTimezone,
+          hasMore: result.nextLink !== undefined,
+        });
+
         return new Ok([
-          { type: "text" as const, text: "Events searched successfully" },
-          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+          {
+            type: "text" as const,
+            text: formattedText,
+          },
         ]);
       }
     )
@@ -234,10 +246,9 @@ function createServer(
           return new Err(new MCPError(result.error));
         }
 
-        return new Ok([
-          { type: "text" as const, text: "Event fetched successfully" },
-          { type: "text" as const, text: JSON.stringify(result, null, 2) },
-        ]);
+        const formattedText = renderOutlookEvent(result, userTimezone);
+
+        return new Ok([{ type: "text" as const, text: formattedText }]);
       }
     )
   );
@@ -343,9 +354,13 @@ function createServer(
           return new Err(new MCPError(result.error));
         }
 
+        const formattedText = renderOutlookEvent(result, userTimezone);
+
         return new Ok([
-          { type: "text" as const, text: "Event created successfully" },
-          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+          {
+            type: "text" as const,
+            text: `Event created successfully\n\n${formattedText}`,
+          },
         ]);
       }
     )
@@ -446,9 +461,13 @@ function createServer(
           return new Err(new MCPError(result.error));
         }
 
+        const formattedText = renderOutlookEvent(result, userTimezone);
+
         return new Ok([
-          { type: "text" as const, text: "Event updated successfully" },
-          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+          {
+            type: "text" as const,
+            text: `Event updated successfully\n\n${formattedText}`,
+          },
         ]);
       }
     )
@@ -560,6 +579,72 @@ function createServer(
           { type: "text" as const, text: "Availability checked successfully" },
           { type: "text" as const, text: JSON.stringify(result, null, 2) },
         ]);
+      }
+    )
+  );
+
+  server.tool(
+    "check_self_availability",
+    "Check if the current user is available during a specific time period by analyzing " +
+      "their calendar events. An event is considered blocking if its showAs status is 'busy', " +
+      "'tentative', 'oof' (out of office), or 'workingElsewhere'.",
+    {
+      calendarId: z
+        .string()
+        .optional()
+        .describe(
+          "The calendar ID. If not provided, uses the user's default calendar."
+        ),
+      startTime: z
+        .string()
+        .describe(
+          "ISO 8601 start time to check availability (e.g., 2024-03-20T10:00:00Z)"
+        ),
+      endTime: z
+        .string()
+        .describe(
+          "ISO 8601 end time to check availability (e.g., 2024-03-20T18:00:00Z)"
+        ),
+      userTimezone: z
+        .string()
+        .optional()
+        .describe(
+          "User's timezone (e.g., 'America/New_York'). Call get_user_timezone first to get this value for proper timezone handling."
+        ),
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: OUTLOOK_CALENDAR_TOOL_NAME,
+        agentLoopContext,
+      },
+      async (
+        { calendarId, startTime, endTime, userTimezone },
+        { authInfo }
+      ) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("Authentication required"));
+        }
+
+        const result = await OutlookApi.listEvents(accessToken, {
+          calendarId,
+          startTime,
+          endTime,
+          userTimezone,
+        });
+
+        if ("error" in result) {
+          return new Err(new MCPError(result.error));
+        }
+
+        const formattedText = renderAvailabilityCheck(
+          result.events,
+          startTime,
+          endTime
+        );
+
+        return new Ok([{ type: "text" as const, text: formattedText }]);
       }
     )
   );

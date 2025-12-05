@@ -108,6 +108,7 @@ export async function sendInvitations({
     let data: any = {};
     try {
       data = await res.json();
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
       // ignore
     }
@@ -122,6 +123,7 @@ export async function sendInvitations({
     }
 
     const errorMessage =
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       data?.error?.message || "Failed to invite new members to workspace";
 
     sendNotification({

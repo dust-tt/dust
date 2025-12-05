@@ -2,9 +2,11 @@ import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
 import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
+import { initializeLangfuseInstrumentation } from "@app/lib/api/instrumentation/init";
 import { getTemporalAgentWorkerConnection } from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
+import { launchAgentMessageAnalyticsActivity } from "@app/temporal/agent_loop/activities/analytics";
 import {
   finalizeCancellationActivity,
   notifyWorkflowError,
@@ -15,10 +17,14 @@ import {
   logAgentLoopPhaseStartActivity,
   logAgentLoopStepCompletionActivity,
 } from "@app/temporal/agent_loop/activities/instrumentation";
+import { handleMentionsActivity } from "@app/temporal/agent_loop/activities/mentions";
+import { conversationUnreadNotificationActivity } from "@app/temporal/agent_loop/activities/notification";
 import { publishDeferredEventsActivity } from "@app/temporal/agent_loop/activities/publish_deferred_events";
 import { runModelAndCreateActionsActivity } from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
+import { trackProgrammaticUsageActivity } from "@app/temporal/agent_loop/activities/usage_tracking";
 import { QUEUE_NAME } from "@app/temporal/agent_loop/config";
+import { getWorkflowConfig } from "@app/temporal/bundle_helper";
 
 // We need to give the worker some time to finish the current activity before shutting down.
 const SHUTDOWN_GRACE_TIME = "2 minutes";
@@ -27,17 +33,24 @@ export async function runAgentLoopWorker() {
   const { connection, namespace } = await getTemporalAgentWorkerConnection();
 
   const worker = await Worker.create({
-    workflowsPath: require.resolve("./workflows"),
+    ...getWorkflowConfig({
+      workerName: "agent_loop",
+      getWorkflowsPath: () => require.resolve("./workflows"),
+    }),
     activities: {
+      conversationUnreadNotificationActivity,
       ensureConversationTitleActivity,
+      finalizeCancellationActivity,
+      handleMentionsActivity,
+      launchAgentMessageAnalyticsActivity,
       logAgentLoopPhaseCompletionActivity,
       logAgentLoopPhaseStartActivity,
       logAgentLoopStepCompletionActivity,
       notifyWorkflowError,
-      finalizeCancellationActivity,
       publishDeferredEventsActivity,
       runModelAndCreateActionsActivity,
       runToolActivity,
+      trackProgrammaticUsageActivity,
     },
     taskQueue: QUEUE_NAME,
     connection,
@@ -69,7 +82,11 @@ export async function runAgentLoopWorker() {
     },
   });
 
+  // TODO(2025-11-12 INSTRUMENTATION): Drain Langfuse data before shutdown.
   process.on("SIGTERM", () => worker.shutdown());
+
+  // Initialize LLMs instrumentation for the worker.
+  initializeLangfuseInstrumentation();
 
   try {
     await worker.run(); // this resolves after shutdown completes

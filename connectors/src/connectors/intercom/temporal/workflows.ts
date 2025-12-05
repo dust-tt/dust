@@ -1,4 +1,5 @@
 import {
+  continueAsNew,
   executeChild,
   proxyActivities,
   setHandler,
@@ -21,8 +22,12 @@ const {
   startToCloseTimeout: "5 minutes",
 });
 
+const { syncTeamOnlyActivity } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "10 minutes",
+});
+
 const {
-  syncTeamOnlyActivity,
+  getTeamIdsToSyncActivity,
   getNextConversationBatchToSyncActivity,
   syncConversationBatchActivity,
   getNextOldConversationsBatchToDeleteActivity,
@@ -44,13 +49,17 @@ const {
   startToCloseTimeout: "1 minute",
 });
 
+const TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH = 40_000;
+const TEMPORAL_WORKFLOW_MAX_HISTORY_SIZE_MB = 40;
+
+// We sync conversations over the last 30 minutes, a bit more than the schedule frequency to allow for some overlap.
+const CONVERSATION_SYNC_WINDOW_MINUTES = 30;
+
 /**
- * Sync Workflow for Intercom.
- * This workflow is responsible for syncing all the help centers for a given connector.
- * Lauched on a cron schedule every hour, it will sync all the help centers that are in DB.
- * If a signal is received, it will sync the help centers that were modified.
+ * This workflow is triggered by signals when permissions are updated or when a full sync is triggered.
+ * It processes help centers, teams, and "all conversations" based on the signals received.
  */
-export async function intercomSyncWorkflow({
+export async function intercomFullSyncWorkflow({
   connectorId,
 }: {
   connectorId: ModelId;
@@ -85,18 +94,6 @@ export async function intercomSyncWorkflow({
     }
   );
 
-  const isHourlyExecution =
-    uniqueHelpCenterIds.size === 0 &&
-    uniqueTeamIds.size === 0 &&
-    !hasUpdatedSelectAllConvos;
-
-  // If we got no signal, then we're on the hourly execution
-  // We will only refresh the Help Center data as Conversations have webhooks
-  if (isHourlyExecution) {
-    const helpCenterIds = await getHelpCenterIdsToSyncActivity(connectorId);
-    helpCenterIds.forEach((i) => uniqueHelpCenterIds.add(i));
-  }
-
   const {
     workflowId,
     searchAttributes: parentSearchAttributes,
@@ -120,7 +117,7 @@ export async function intercomSyncWorkflow({
       });
 
       // Async operation yielding control to the Temporal runtime.
-      await executeChild(intercomHelpCenterSyncWorklow, {
+      await executeChild(intercomHelpCenterFullSyncWorkflow, {
         workflowId: `${workflowId}-help-center-${helpCenterId}`,
         searchAttributes: parentSearchAttributes,
         args: [
@@ -167,7 +164,7 @@ export async function intercomSyncWorkflow({
   }
 
   if (hasUpdatedSelectAllConvos) {
-    await executeChild(intercomAllConversationsSyncWorkflow, {
+    await executeChild(intercomAllConversationsFullSyncWorkflow, {
       workflowId: `${workflowId}-all-conversations`,
       searchAttributes: parentSearchAttributes,
       args: [
@@ -180,7 +177,95 @@ export async function intercomSyncWorkflow({
     });
   }
 
-  await intercomOldConversationsCleanup({
+  await saveIntercomConnectorSuccessSync({ connectorId });
+}
+
+/**
+ * This workflow runs on a schedule and syncs the Help Center.
+ */
+export async function intercomHelpCenterSyncWorkflow({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}) {
+  await saveIntercomConnectorStartSync({ connectorId });
+
+  // Add folder node for teams
+  await upsertIntercomTeamsFolderActivity({
+    connectorId,
+  });
+
+  const helpCenterIds = await getHelpCenterIdsToSyncActivity(connectorId);
+
+  const {
+    workflowId,
+    searchAttributes: parentSearchAttributes,
+    memo,
+  } = workflowInfo();
+
+  const currentSyncMs = new Date().getTime();
+
+  for (const helpCenterId of helpCenterIds) {
+    // We full sync the Help Center, we don't have incremental sync here.
+    await executeChild(intercomHelpCenterFullSyncWorkflow, {
+      workflowId: `${workflowId}-help-center-${helpCenterId}`,
+      searchAttributes: parentSearchAttributes,
+      args: [
+        {
+          connectorId,
+          helpCenterId,
+          currentSyncMs,
+          forceResync: false,
+        },
+      ],
+      memo,
+    });
+  }
+
+  await saveIntercomConnectorSuccessSync({ connectorId });
+}
+
+/**
+ * This workflow runs on a schedule and syncs conversations closed over the last CONVERSATION_SYNC_WINDOW_MINUTES.
+ */
+export async function intercomConversationSyncWorkflow({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}) {
+  await saveIntercomConnectorStartSync({ connectorId });
+
+  // Add folder node for teams.
+  await upsertIntercomTeamsFolderActivity({
+    connectorId,
+  });
+
+  const teamIds = await getTeamIdsToSyncActivity({ connectorId });
+
+  const currentSyncMs = new Date().getTime();
+
+  // Sync conversations for each team.
+  for (const teamId of teamIds) {
+    await syncTeamConversations({
+      connectorId,
+      teamId,
+      currentSyncMs,
+    });
+  }
+
+  // If we sync all conversations, we need to check for conversations that are not assign to a team.
+  const syncAllConvosStatus = await getSyncAllConversationsStatusActivity({
+    connectorId,
+  });
+  if (syncAllConvosStatus === "activated") {
+    await syncTeamConversations({
+      connectorId,
+      teamId: undefined,
+      currentSyncMs,
+    });
+  }
+
+  await cleanupOutdatedConversations({
     connectorId,
   });
 
@@ -188,11 +273,10 @@ export async function intercomSyncWorkflow({
 }
 
 /**
- * Sync Workflow for a Help Center.
- * Launched by the IntercomSyncWorkflow, it will sync a given help center.
- * We sync a HelpCenter by fetching all the Collections and Articles.
+ * This workflow is called as a child workflow, it will sync a given Help Center.
+ * We sync a Help Center by fetching all the Collections and Articles.
  */
-export async function intercomHelpCenterSyncWorklow({
+export async function intercomHelpCenterFullSyncWorkflow({
   connectorId,
   helpCenterId,
   currentSyncMs,
@@ -244,8 +328,7 @@ export async function intercomHelpCenterSyncWorklow({
 }
 
 /**
- * Sync Workflow for a Team.
- * Launched by the IntercomSyncWorkflow, it will sync a given Team.
+ * This workflow is called as a child workflow of intercomFullSyncWorkflow, it will sync conversations for a team.
  * We sync a Team by fetching the conversations attached to this team.
  */
 export async function intercomTeamFullSyncWorkflow({
@@ -270,44 +353,31 @@ export async function intercomTeamFullSyncWorkflow({
     return;
   }
 
-  let cursor = null;
-
-  // We loop over the conversations to sync them all, by batch of INTERCOM_CONVO_BATCH_SIZE.
-  do {
-    const { conversationIds, nextPageCursor } =
-      await getNextConversationBatchToSyncActivity({
-        connectorId,
-        teamId,
-        cursor,
-      });
-
-    await syncConversationBatchActivity({
-      connectorId,
-      teamId,
-      conversationIds,
-      currentSyncMs,
-    });
-
-    cursor = nextPageCursor;
-  } while (cursor);
+  await syncTeamConversations({
+    connectorId,
+    teamId,
+    currentSyncMs,
+  });
 }
 
 /**
- * Sync Workflow for a All Conversations.
- * Launched by the IntercomSyncWorkflow if a signal is received (meaning the admin updated the permissions and ticked or unticked the "All Conversations" checkbox).
+ * This workflow is called as a child workflow of intercomFullSyncWorkflow, it will sync conversations for all teams.
+ * It is triggered when the admin updated the permissions and ticked or unticked the "All Conversations" checkbox.
  */
-export async function intercomAllConversationsSyncWorkflow({
+export async function intercomAllConversationsFullSyncWorkflow({
   connectorId,
   currentSyncMs,
+  initialCursor = null,
 }: {
   connectorId: ModelId;
   currentSyncMs: number;
+  initialCursor?: string | null;
 }) {
   const syncAllConvosStatus = await getSyncAllConversationsStatusActivity({
     connectorId,
   });
 
-  let cursor = null;
+  let cursor = initialCursor;
   let convosIdsToDelete = [];
 
   switch (syncAllConvosStatus) {
@@ -317,7 +387,9 @@ export async function intercomAllConversationsSyncWorkflow({
       break;
     case "scheduled_activate":
       // Upserts teams with permission "none" if not already in db and syncs them with data_sources_folders/nodes.
-      await syncAllTeamsActivity({ connectorId, currentSyncMs });
+      if (!initialCursor) {
+        await syncAllTeamsActivity({ connectorId, currentSyncMs });
+      }
       // We loop over the conversations to sync them all.
       do {
         const { conversationIds, nextPageCursor } =
@@ -331,6 +403,20 @@ export async function intercomAllConversationsSyncWorkflow({
           currentSyncMs,
         });
         cursor = nextPageCursor;
+
+        if (
+          cursor &&
+          (workflowInfo().historyLength >
+            TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH ||
+            workflowInfo().historySize >
+              TEMPORAL_WORKFLOW_MAX_HISTORY_SIZE_MB * 1024 * 1024)
+        ) {
+          await continueAsNew<typeof intercomAllConversationsFullSyncWorkflow>({
+            connectorId,
+            currentSyncMs,
+            initialCursor: cursor,
+          });
+        }
       } while (cursor);
       // We mark the status as activated.
       await setSyncAllConversationsStatusActivity({
@@ -361,12 +447,39 @@ export async function intercomAllConversationsSyncWorkflow({
   }
 }
 
-/**
- * Cleaning Workflow to remove old convos.
- * Launched by the IntercomSyncWorkflow, it will sync a given Team.
- * We sync a Team by fetching the conversations attached to this team.
- */
-export async function intercomOldConversationsCleanup({
+async function syncTeamConversations({
+  connectorId,
+  teamId,
+  currentSyncMs,
+}: {
+  connectorId: ModelId;
+  teamId: string | undefined;
+  currentSyncMs: number;
+}) {
+  let cursor = null;
+
+  // We loop over the conversations to sync them all, by batch of INTERCOM_CONVO_BATCH_SIZE.
+  do {
+    const { conversationIds, nextPageCursor } =
+      await getNextConversationBatchToSyncActivity({
+        connectorId,
+        teamId,
+        cursor,
+        closedAfterTimeWindowMinutes: CONVERSATION_SYNC_WINDOW_MINUTES,
+      });
+
+    await syncConversationBatchActivity({
+      connectorId,
+      teamId,
+      conversationIds,
+      currentSyncMs,
+    });
+
+    cursor = nextPageCursor;
+  } while (cursor);
+}
+
+async function cleanupOutdatedConversations({
   connectorId,
 }: {
   connectorId: ModelId;

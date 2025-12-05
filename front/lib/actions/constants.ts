@@ -35,25 +35,18 @@ export const DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME =
 export const DEFAULT_CONVERSATION_SEARCH_ACTION_NAME =
   "search_conversation_files";
 
+export const SEARCH_AVAILABLE_USERS_TOOL_NAME = "search_available_users";
+export const GET_MENTION_MARKDOWN_TOOL_NAME = "get_mention_markdown";
+
 export const DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY =
   "__dust_conversation_history";
-
-export const DEFAULT_DATA_VISUALIZATION_NAME = "data_visualization";
-export const DEFAULT_DATA_VISUALIZATION_DESCRIPTION =
-  "Generate a data visualization.";
 
 export const DEFAULT_MCP_ACTION_NAME = "mcp";
 export const DEFAULT_MCP_ACTION_VERSION = "1.0.0";
 export const DEFAULT_MCP_ACTION_DESCRIPTION =
   "Call a tool to answer a question.";
 
-export const CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS = ["high", "low"] as const;
-export type CustomRemoteMCPToolStakeLevelType =
-  (typeof CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS)[number];
-export const MCP_TOOL_STAKE_LEVELS = [
-  ...CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS,
-  "never_ask",
-] as const;
+export const MCP_TOOL_STAKE_LEVELS = ["high", "low", "never_ask"] as const;
 export type MCPToolStakeLevelType = (typeof MCP_TOOL_STAKE_LEVELS)[number];
 
 export const FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL =

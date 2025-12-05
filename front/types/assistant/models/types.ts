@@ -1,11 +1,14 @@
+import { z } from "zod";
+
 import type {
   AgentReasoningEffort,
   EMBEDDING_PROVIDER_IDS,
   ExtractSpecificKeys,
   MODEL_IDS,
   MODEL_PROVIDER_IDS,
-  REASONING_EFFORT_IDS,
+  REASONING_EFFORTS,
   SUPPORTED_MODEL_CONFIGS,
+  TokenizerConfig,
   WhitelistableFeature,
 } from "@app/types";
 
@@ -53,8 +56,13 @@ export type ModelConfigurationType = {
   // Denotes model is able to take a response format request parameter
   supportsResponseFormat?: boolean;
 
+  // Supports prompt caching feature.
+  supportsPromptCaching?: boolean;
+
   featureFlag?: WhitelistableFeature;
   customAssistantFeatureFlag?: WhitelistableFeature;
+
+  tokenizer: TokenizerConfig;
 };
 
 export type ModelConfig = (typeof SUPPORTED_MODEL_CONFIGS)[number];
@@ -64,11 +72,27 @@ export type SupportedModel = ExtractSpecificKeys<
   (typeof SUPPORTED_MODEL_CONFIGS)[number],
   "providerId" | "modelId"
 >;
-export type ReasoningEffortIdType = (typeof REASONING_EFFORT_IDS)[number];
+export type ReasoningEffort = (typeof REASONING_EFFORTS)[number];
 export type ReasoningModelConfigurationType = {
   modelId: ModelIdType;
   providerId: ModelProviderIdType;
-  reasoningEffort: ReasoningEffortIdType | null;
+  reasoningEffort: ReasoningEffort | null;
   temperature: number | null;
 };
 export type EmbeddingProviderIdType = (typeof EMBEDDING_PROVIDER_IDS)[number];
+
+export const ResponseFormatSchema = z.object({
+  type: z.literal("json_schema"),
+  json_schema: z.object({
+    name: z.string(),
+    schema: z.object({
+      type: z.literal("object"),
+      properties: z.record(z.unknown()),
+      required: z.array(z.string()),
+      additionalProperties: z.boolean(),
+    }),
+    description: z.string().optional(),
+    strict: z.boolean().nullable().optional(),
+  }),
+});
+export type ResponseFormat = z.infer<typeof ResponseFormatSchema>;

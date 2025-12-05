@@ -126,26 +126,29 @@ impl Provider for MCPConnectionProvider {
 
         let expires_in = match raw_json.get("expires_in") {
             Some(serde_json::Value::Number(n)) => match n.as_u64() {
-                Some(n) => n,
+                Some(n) => Some(n),
                 None => Err(anyhow!("Invalid `expires_in` in response from MCP"))?,
             },
             _ => {
-                info!("Missing `expires_in` in response from MCP, using default value of 3600 seconds");
-                3600
+                info!("Missing `expires_in` in response from MCP. It's valid to not return one.");
+                None
             }
         };
 
         // Some MCP servers do not return a refresh token when finalizing an access token.
         let refresh_token = raw_json["refresh_token"].as_str().map(ToString::to_string);
 
+        let access_token_expiry = match expires_in {
+            Some(expires_in) => Some(utils::now() + (expires_in - PROVIDER_TIMEOUT_SECONDS) * 1000),
+            None => None,
+        };
+
         Ok(FinalizeResult {
             redirect_uri: redirect_uri.to_string(),
             code: code.to_string(),
             access_token: access_token.to_string(),
-            access_token_expiry: Some(
-                utils::now() + (expires_in - PROVIDER_TIMEOUT_SECONDS) * 1000,
-            ),
-            refresh_token: refresh_token,
+            access_token_expiry,
+            refresh_token,
             raw_json,
             extra_metadata: None,
         })
@@ -221,15 +224,15 @@ impl Provider for MCPConnectionProvider {
             _ => Err(anyhow!("Invalid `raw_json` stored on connection."))?,
         };
 
-        // Some MCP servers do not return a new refresh token when refreshing an access token.
-        // So we merge the new raw_json information in the existing one to preserve original
-        // refresh token.
-        match raw_json["refresh_token"].as_str() {
-            Some(refresh_token) => {
-                merged_raw_json["refresh_token"] =
-                    serde_json::Value::String(refresh_token.to_string())
+        let final_refresh_token = match raw_json["refresh_token"].as_str() {
+            Some(new_refresh_token) => new_refresh_token.to_string(),
+            None => {
+                // If the MCP server do not return a new refresh token when refreshing an access token.
+                // So we merge the new raw_json information in the existing one to preserve original
+                // refresh token.
+                merged_raw_json["refresh_token"] = serde_json::Value::String(refresh_token.clone());
+                refresh_token
             }
-            None => (),
         };
 
         // We checked above the presence of each of these fields in raw_json or the metadata.
@@ -247,7 +250,7 @@ impl Provider for MCPConnectionProvider {
             access_token_expiry: Some(
                 utils::now() + (expires_in - PROVIDER_TIMEOUT_SECONDS) * 1000,
             ),
-            refresh_token: Some(refresh_token.to_string()),
+            refresh_token: Some(final_refresh_token),
             raw_json: serde_json::Value::Object(merged_raw_json),
         })
     }

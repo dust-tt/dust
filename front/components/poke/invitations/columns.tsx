@@ -12,7 +12,6 @@ export function makeColumnsForInvitations(
       accessorKey: "sId",
       header: "ID",
     },
-
     {
       accessorKey: "inviteEmail",
       header: "email",
@@ -20,6 +19,10 @@ export function makeColumnsForInvitations(
     {
       accessorKey: "status",
       header: "Status",
+    },
+    {
+      accessorKey: "isExpired",
+      header: "Expired",
     },
     {
       accessorKey: "inviteLink",

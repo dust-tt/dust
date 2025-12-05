@@ -12,7 +12,7 @@ import {
 } from "@app/lib/api/assistant/conversation/helper";
 import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import { hasReachedPublicAPILimits } from "@app/lib/api/public_api_limits";
+import { hasReachedProgrammaticUsageLimits } from "@app/lib/api/programmatic_usage_tracking";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
@@ -67,6 +67,7 @@ import { isEmptyString } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
+
   res: NextApiResponse<WithAPIErrorResponse<PostMessagesResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
@@ -102,7 +103,7 @@ async function handler(
         });
       }
 
-      const hasReachedLimits = await hasReachedPublicAPILimits(auth);
+      const hasReachedLimits = await hasReachedProgrammaticUsageLimits(auth);
       if (hasReachedLimits) {
         return apiError(req, res, {
           status_code: 429,
@@ -115,8 +116,14 @@ async function handler(
         });
       }
 
-      const { content, context, mentions, blocking, skipToolsValidation } =
-        r.data;
+      const {
+        content,
+        context,
+        mentions,
+        blocking,
+        skipToolsValidation,
+        agenticMessageData,
+      } = r.data;
 
       if (isEmptyString(context.username)) {
         return apiError(req, res, {
@@ -162,8 +169,7 @@ async function handler(
         }
       }
 
-      const isRunAgent =
-        context.origin === "run_agent" || context.origin === "agent_handover";
+      const isRunAgent = !!agenticMessageData;
       if (isRunAgent && !auth.isSystemKey()) {
         return apiError(req, res, {
           status_code: 401,
@@ -174,6 +180,21 @@ async function handler(
           },
         });
       }
+
+      if (
+        context.origin === "agent_handover" ||
+        context.origin === "run_agent" ||
+        context.originMessageId
+      ) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "use agenticMessageData instead of origin.",
+          },
+        });
+      }
+
       const ctx: UserMessageContext = {
         clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
         email: context.email?.toLowerCase() ?? null,
@@ -190,6 +211,7 @@ async function handler(
           ? await postUserMessageAndWaitForCompletion(auth, {
               content,
               context: ctx,
+              agenticMessageData,
               conversation,
               mentions,
               skipToolsValidation: skipToolsValidation ?? false,
@@ -197,6 +219,7 @@ async function handler(
           : await postUserMessage(auth, {
               content,
               context: ctx,
+              agenticMessageData,
               conversation,
               mentions,
               skipToolsValidation: skipToolsValidation ?? false,

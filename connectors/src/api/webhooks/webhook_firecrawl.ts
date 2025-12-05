@@ -61,13 +61,16 @@ const _webhookFirecrawlAPIHandler = async (
 ) => {
   const { success, type, id, data, metadata, error } = req.body;
 
-  logger.info("Received webhook", {
-    success,
-    type,
-    id,
-    metadata,
-    error,
-  });
+  logger.info(
+    {
+      success,
+      type,
+      id,
+      metadata,
+      error,
+    },
+    "Received webhook"
+  );
 
   if (!metadata.connectorId || isNaN(parseInt(metadata.connectorId))) {
     logger.error(
@@ -86,7 +89,15 @@ const _webhookFirecrawlAPIHandler = async (
   if (!connector) {
     logger.error({ connectorId: metadata.connectorId }, "Connector not found");
     // We ignore the webhook.
-    return res.status(200);
+    return res.status(200).end();
+  }
+
+  if (connector.isPaused()) {
+    logger.info(
+      { connectorId: connector.id },
+      "Connector is paused, ignoring webhook"
+    );
+    return res.status(200).end();
   }
 
   switch (type) {
@@ -120,6 +131,19 @@ const _webhookFirecrawlAPIHandler = async (
     }
     case "batch_scrape.page":
     case "crawl.page": {
+      if (error) {
+        logger.error(
+          {
+            id,
+            metadata,
+            connectorId: connector.id,
+            error,
+          },
+          "Page reported error"
+        );
+        // Accept the webhook.
+        break;
+      }
       if (data && data.length > 0) {
         for (const page of data) {
           logger.info(
@@ -128,7 +152,7 @@ const _webhookFirecrawlAPIHandler = async (
               scrapeId: page.metadata.scrapeId,
               connectorId: connector.id,
             },
-            "[Firecrawl] Page crawled"
+            "Page crawled"
           );
           if (!page.metadata.scrapeId) {
             logger.error(
@@ -136,7 +160,7 @@ const _webhookFirecrawlAPIHandler = async (
                 id,
                 connectorId: connector.id,
               },
-              "[Firecrawl] Page crawled with no scrapeId"
+              "Page crawled with no scrapeId"
             );
             // Interrupt and refuse the webhook.
             return res.status(400).json({

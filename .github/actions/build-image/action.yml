@@ -14,8 +14,17 @@ inputs:
   workload_identity_provider:
     description: "Workload Identity Provider"
     required: true
-  depot_token:
-    description: "Depot project token"
+  depot_eu_project_id:
+    description: "EU Depot project ID"
+    required: false
+  depot_eu_token:
+    description: "EU Depot token"
+    required: false
+  depot_us_project_id:
+    description: "US Depot project ID"
+    required: true
+  depot_us_token:
+    description: "US Depot token"
     required: true
   dd_api_key:
     description: "Datadog api key"
@@ -32,6 +41,27 @@ inputs:
   virtuoso_license_key:
     description: "Virtuoso license key"
     required: false
+  depot_region:
+    description: "Depot region"
+    required: false
+    default: "us"
+  contentful_space_id:
+    description: "Contentful space ID"
+    required: false
+  contentful_access_token:
+    description: "Contentful access token"
+    required: false
+
+outputs:
+  current_version:
+    description: "Previously deployed version"
+    value: ${{ steps.current_version.outputs.current_tag }}
+  commit_diff:
+    description: "Commit diff between versions"
+    value: ${{ steps.commit_info.outputs.commits }}
+  commit_count:
+    description: "Number of commits in diff"
+    value: ${{ steps.commit_info.outputs.commit_count }}
 
 runs:
   using: "composite"
@@ -59,9 +89,16 @@ runs:
     - name: "Build and Push"
       shell: bash
       env:
-        DEPOT_TOKEN: ${{ inputs.depot_token }}
+        DEPOT_TOKEN: ${{ inputs.depot_region == 'eu' && inputs.depot_eu_token || inputs.depot_us_token }}
       run: |
         COMPONENT="${{ inputs.component }}"
+
+        # Set depot project ID based on region
+        if [[ "${{ inputs.depot_region }}" == "us" ]]; then
+          DEPOT_PROJECT_ID="${{ inputs.depot_us_project_id }}"
+        else
+          DEPOT_PROJECT_ID="${{ inputs.depot_eu_project_id }}"
+        fi
 
         # Determine environment and base component name
         if [[ ${COMPONENT} == *"-qa" ]]; then
@@ -81,6 +118,8 @@ runs:
         while IFS='=' read -r key value; do
           [[ -n "$key" ]] && build_args+=("--build-arg" "$(echo "$key" | xargs)=$(echo "$value" | xargs)")
         done < "$CONFIG_FILE"
+        # Handle the last line if file doesn't end with newline
+        [[ -n "$key" ]] && build_args+=("--build-arg" "$(echo "$key" | xargs)=$(echo "$value" | xargs)")
 
         # Only set the Virtuoso license key if provided
         if [[ -n "${{ inputs.virtuoso_license_key }}" ]]; then
@@ -98,16 +137,145 @@ runs:
           build_args+=("--build-arg NEXT_PUBLIC_DATADOG_SERVICE=$COMPONENT")
         fi
 
-        depot build \
-          --project 3vz0lnf16v \
-          --platform linux/amd64 \
-          --provenance=false \
-          --cache-from type=gha,scope=${{ inputs.component }} \
-          --cache-to type=gha,mode=max,scope=${{ inputs.component }} \
-          -f ./dockerfiles/${BASE_COMPONENT}.Dockerfile \
-          -t ${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${{ inputs.component }}:${{ inputs.commit_sha }} \
-          --build-arg COMMIT_HASH=${{ inputs.commit_sha }} \
-          --build-arg COMMIT_HASH_LONG=${{ inputs.commit_sha_long }} \
-          ${build_args[@]} \
-          --push \
-          .
+        # Only set Contentful credentials for front and front-edge builds (needed for ISR)
+        if [[ "$COMPONENT" == "front" || "$COMPONENT" == "front-edge" ]]; then
+          if [[ -n "${{ inputs.contentful_space_id }}" ]]; then
+            build_args+=("--build-arg CONTENTFUL_SPACE_ID=${{ inputs.contentful_space_id }}")
+          fi
+          if [[ -n "${{ inputs.contentful_access_token }}" ]]; then
+            build_args+=("--build-arg CONTENTFUL_ACCESS_TOKEN=${{ inputs.contentful_access_token }}")
+          fi
+        fi
+
+        # Special handling for front component, build both front and workers targets
+        if [[ "$BASE_COMPONENT" == "front" ]]; then
+          echo "🏗️ Building front component with dual targets (front + workers)"
+
+          # Build front target
+          depot build \
+            --project $DEPOT_PROJECT_ID \
+            --platform linux/amd64 \
+            --provenance=false \
+            --target front \
+            --cache-from type=gha,scope=${{ inputs.component }}-deps \
+            --cache-from type=gha,scope=${{ inputs.component }}-front \
+            --cache-to type=gha,mode=max,scope=${{ inputs.component }}-deps \
+            --cache-to type=gha,mode=max,scope=${{ inputs.component }}-front \
+            -f ./dockerfiles/${BASE_COMPONENT}.Dockerfile \
+            -t ${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${{ inputs.component }}:${{ inputs.commit_sha }} \
+            --build-arg COMMIT_HASH=${{ inputs.commit_sha }} \
+            --build-arg COMMIT_HASH_LONG=${{ inputs.commit_sha_long }} \
+            ${build_args[@]} \
+            --push \
+            .
+
+          # Build workers target
+          depot build \
+            --project $DEPOT_PROJECT_ID \
+            --platform linux/amd64 \
+            --provenance=false \
+            --target workers \
+            --cache-from type=gha,scope=${{ inputs.component }}-deps \
+            --cache-from type=gha,scope=${{ inputs.component }}-workers \
+            --cache-to type=gha,mode=max,scope=${{ inputs.component }}-deps \
+            --cache-to type=gha,mode=max,scope=${{ inputs.component }}-workers \
+            -f ./dockerfiles/${BASE_COMPONENT}.Dockerfile \
+            -t ${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${{ inputs.component }}-workers:${{ inputs.commit_sha }} \
+            --build-arg COMMIT_HASH=${{ inputs.commit_sha }} \
+            --build-arg COMMIT_HASH_LONG=${{ inputs.commit_sha_long }} \
+            ${build_args[@]} \
+            --push \
+            .
+
+          # Build optimized workers target
+          depot build \
+            --project $DEPOT_PROJECT_ID \
+            --platform linux/amd64 \
+            --provenance=false \
+            --target workers-optimized \
+            --cache-from type=gha,scope=${{ inputs.component }}-deps \
+            --cache-from type=gha,scope=${{ inputs.component }}-workers-optimized \
+            --cache-to type=gha,mode=max,scope=${{ inputs.component }}-deps \
+            --cache-to type=gha,mode=max,scope=${{ inputs.component }}-workers-optimized \
+            -f ./dockerfiles/${BASE_COMPONENT}.Dockerfile \
+            -t ${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${{ inputs.component }}-workers-optimized:${{ inputs.commit_sha }} \
+            --build-arg COMMIT_HASH=${{ inputs.commit_sha }} \
+            --build-arg COMMIT_HASH_LONG=${{ inputs.commit_sha_long }} \
+            ${build_args[@]} \
+            --push \
+            .
+        else
+          # Standard single-target build for other components
+          depot build \
+            --project $DEPOT_PROJECT_ID \
+            --platform linux/amd64 \
+            --provenance=false \
+            --cache-from type=gha,scope=${{ inputs.component }} \
+            --cache-to type=gha,mode=max,scope=${{ inputs.component }} \
+            -f ./dockerfiles/${BASE_COMPONENT}.Dockerfile \
+            -t ${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${{ inputs.component }}:${{ inputs.commit_sha }} \
+            --build-arg COMMIT_HASH=${{ inputs.commit_sha }} \
+            --build-arg COMMIT_HASH_LONG=${{ inputs.commit_sha_long }} \
+            ${build_args[@]} \
+            --push \
+            .
+        fi
+
+    - name: Get current deployed version
+      id: current_version
+      shell: bash
+      run: |
+        echo "🔍 Getting current deployed version for ${{ inputs.component }} in ${{ inputs.region }}..."
+
+        # Get all tags, exclude the current one we're building, get the most recent
+        ALL_TAGS=$(gcloud container images list-tags "${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${{ inputs.component }}" \
+          --limit=10 \
+          --sort-by=~timestamp \
+          --format="value(tags[0])" 2>/dev/null || echo "")
+
+        # Filter out current tag and get the first remaining one
+        CURRENT_TAG=""
+        while IFS= read -r tag; do
+          if [ -n "$tag" ] && [ "$tag" != "${{ inputs.commit_sha }}" ]; then
+            CURRENT_TAG="$tag"
+            break
+          fi
+        done <<< "$ALL_TAGS"
+
+        echo "Current deployed version: ${CURRENT_TAG:-'none found'}"
+        echo "current_tag=$CURRENT_TAG" >> $GITHUB_OUTPUT
+
+    - name: Get commit diff
+      if: steps.current_version.outputs.current_tag != ''
+      id: commit_info
+      shell: bash
+      run: |
+        CURRENT_TAG="${{ steps.current_version.outputs.current_tag }}"
+        TARGET_TAG="${{ inputs.commit_sha }}"
+
+        echo "📋 Getting commit diff: $CURRENT_TAG → $TARGET_TAG"
+
+        # Get commits between versions (handle case where CURRENT_TAG might not exist in git)
+        if git rev-parse --verify "$CURRENT_TAG" >/dev/null 2>&1; then
+          COMMITS_RAW=$(git log --oneline --pretty=format:"%h (%an)" $CURRENT_TAG..$TARGET_TAG 2>/dev/null | head -10 || true)
+        else
+          echo "Previous tag $CURRENT_TAG not found in git history, showing recent commits"
+          COMMITS_RAW=$(git log --oneline --pretty=format:"%h (%an)" -10 $TARGET_TAG 2>/dev/null || true)
+        fi
+
+        # Store raw commits data
+        COMMITS="$COMMITS_RAW"
+
+        # Count commits safely
+        if [ -n "$COMMITS" ]; then
+          COMMIT_COUNT=$(echo "$COMMITS" | wc -l | tr -d ' ')
+        else
+          COMMIT_COUNT=0
+        fi
+
+        # Store results
+        echo "commits<<EOF" >> $GITHUB_OUTPUT
+        echo "$COMMITS" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+        echo "commit_count=$COMMIT_COUNT" >> $GITHUB_OUTPUT

@@ -19,7 +19,13 @@ import type {
   Result,
   TrackerIdWorkspaceId,
 } from "@app/types";
-import { CoreAPI, Err, GPT_4O_MODEL_CONFIG, Ok } from "@app/types";
+import {
+  CoreAPI,
+  Err,
+  GPT_3_5_TURBO_MODEL_CONFIG,
+  GPT_4O_MODEL_CONFIG,
+  Ok,
+} from "@app/types";
 import { withRetries } from "@app/types";
 
 // If a diff is less than this number of characters, we don't run the tracker.
@@ -102,7 +108,9 @@ export async function trackersGenerationActivity(
   }
 
   const dataSourceDocument = dataSourceDocumentRes.value;
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const documentText = dataSourceDocument.document.text || "";
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const documentSourceUrl = dataSourceDocument.document.source_url || undefined;
   if (!documentText) {
     localLogger.warn(
@@ -176,8 +184,9 @@ export async function trackersGenerationActivity(
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const tokensInDiff = await coreAPI.tokenize({
     text: diffString,
-    providerId: "openai",
-    modelId: "gpt-3.5-turbo",
+    providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
+    modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
+    tokenizer: GPT_3_5_TURBO_MODEL_CONFIG.tokenizer,
   });
   if (tokensInDiff.isErr()) {
     throw tokensInDiff.error;

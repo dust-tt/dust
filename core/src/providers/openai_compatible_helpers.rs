@@ -761,6 +761,7 @@ pub async fn openai_compatible_chat_completion(
                 .prompt_tokens_details
                 .and_then(|details| details.cached_tokens),
             reasoning_tokens: None,
+            cache_creation_input_tokens: None,
         }),
         provider_request_id: request_id,
         logprobs: logprobs_from_choices(&c.choices),

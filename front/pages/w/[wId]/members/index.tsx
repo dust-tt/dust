@@ -28,6 +28,7 @@ import { getWorkspaceVerifiedDomains } from "@app/lib/api/workspace_domains";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSearchMembers } from "@app/lib/swr/memberships";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   PlanType,
   SubscriptionPerSeatPricing,
@@ -94,6 +95,10 @@ export default function WorkspaceAdmin({
   const hasVerifiedDomains = workspaceVerifiedDomains.length > 0;
   const isProvisioningEnabled =
     plan.limits.users.isSCIMAllowed && hasVerifiedDomains;
+  const isManualInvitationsEnabled =
+    owner.metadata?.disableManualInvitations !== true;
+
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
 
   const onInviteClick = useCallback(
     (event: MouseEvent) => {
@@ -115,7 +120,11 @@ export default function WorkspaceAdmin({
     <AppCenteredLayout
       subscription={subscription}
       owner={owner}
-      subNavigation={subNavigationAdmin({ owner, current: "members" })}
+      subNavigation={subNavigationAdmin({
+        owner,
+        current: "members",
+        featureFlags,
+      })}
     >
       <div className="mb-4">
         <Page.Vertical gap="lg" align="stretch">
@@ -139,18 +148,21 @@ export default function WorkspaceAdmin({
                 name="search"
                 onChange={setSearchTerm}
               />
-              <InviteEmailButtonWithModal
-                owner={owner}
-                prefillText=""
-                perSeatPricing={perSeatPricing}
-                onInviteClick={onInviteClick}
-              />
+              {isManualInvitationsEnabled && (
+                <InviteEmailButtonWithModal
+                  owner={owner}
+                  prefillText=""
+                  perSeatPricing={perSeatPricing}
+                  onInviteClick={onInviteClick}
+                />
+              )}
             </div>
             <WorkspaceMembersGroupsList
               currentUser={user}
               owner={owner}
               searchTerm={searchTerm}
               isProvisioningEnabled={isProvisioningEnabled}
+              isManualInvitationsEnabled={isManualInvitationsEnabled}
             />
           </WorkspaceSection>
           {inviteBlockedPopupReason && (
@@ -173,6 +185,7 @@ const DEFAULT_PAGE_SIZE = 25;
 interface WorkspaceMembersGroupsListProps {
   currentUser: UserType | null;
   isProvisioningEnabled: boolean;
+  isManualInvitationsEnabled: boolean;
   owner: WorkspaceType;
   searchTerm: string;
 }
@@ -180,6 +193,7 @@ interface WorkspaceMembersGroupsListProps {
 function WorkspaceMembersGroupsList({
   currentUser,
   isProvisioningEnabled,
+  isManualInvitationsEnabled,
   owner,
   searchTerm,
 }: WorkspaceMembersGroupsListProps) {
@@ -188,7 +202,9 @@ function WorkspaceMembersGroupsList({
       <Tabs defaultValue="members">
         <TabsList className="mb-4">
           <TabsTrigger value="members" label="Members" />
-          <TabsTrigger value="invitations" label="Invitations" />
+          {isManualInvitationsEnabled && (
+            <TabsTrigger value="invitations" label="Invitations" />
+          )}
         </TabsList>
         <TabsContent value="members">
           <WorkspaceMembersList
@@ -198,9 +214,11 @@ function WorkspaceMembersGroupsList({
             isProvisioningEnabled={isProvisioningEnabled}
           />
         </TabsContent>
-        <TabsContent value="invitations">
-          <InvitationsList owner={owner} searchText={searchTerm} />
-        </TabsContent>
+        {isManualInvitationsEnabled && (
+          <TabsContent value="invitations">
+            <InvitationsList owner={owner} searchText={searchTerm} />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
@@ -236,6 +254,7 @@ function WorkspaceMembersList({
   });
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPagination({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE });
   }, [setPagination]);
 

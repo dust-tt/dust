@@ -519,26 +519,42 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
       );
     }
 
-    // Prepare space members update request if provided.
     const spaceMembersUrl = `/api/w/${owner.sId}/spaces/${space.sId}/members`;
-    if (managementMode && isRestricted) {
-      const { memberIds, groupIds, isRestricted } = params;
 
-      updatePromises.push(
-        fetch(spaceMembersUrl, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            memberIds,
-            groupIds,
-            managementMode,
-            isRestricted,
-          }),
-        })
-      );
+    if (isRestricted) {
+      // Restricted space: send full membership payload
+      if (managementMode === "manual") {
+        updatePromises.push(
+          fetch(spaceMembersUrl, {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              isRestricted: true,
+              managementMode,
+              memberIds: params.memberIds,
+            }),
+          })
+        );
+      } else if (managementMode === "group") {
+        updatePromises.push(
+          fetch(spaceMembersUrl, {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              isRestricted: true,
+              managementMode,
+              groupIds: params.groupIds,
+            }),
+          })
+        );
+      }
     } else {
+      // Unrestricted space: only send isRestricted flag, no
+      // members/groups needed.
       updatePromises.push(
         fetch(spaceMembersUrl, {
           method: "PATCH",
@@ -546,8 +562,7 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            managementMode: "manual",
-            isRestricted,
+            isRestricted: false,
           }),
         })
       );
@@ -768,7 +783,9 @@ export function useSpacesSearch({
     mutate,
     isSearchValidating: isValidating,
     warningCode: data?.warningCode,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     nextPageCursor: data?.nextPageCursor || null,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     resultsCount: data?.resultsCount || null,
   };
 }

@@ -12,7 +12,7 @@ import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activiti
 import type { ToolExecutionResult } from "@app/temporal/agent_loop/lib/deferred_events";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import type { ModelId } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever, ConversationError } from "@app/types";
 import type { AgentLoopArgsWithTiming } from "@app/types/assistant/agent_run";
 import { getAgentLoopData } from "@app/types/assistant/agent_run";
 
@@ -36,7 +36,10 @@ export async function runToolActivity(
   const runAgentDataRes = await getAgentLoopData(authType, runAgentArgs);
   if (runAgentDataRes.isErr()) {
     // If the conversation is not found, we cannot run the tool and should stop execution here.
-    if (runAgentDataRes.error.message === "conversation_not_found") {
+    if (
+      runAgentDataRes.error instanceof ConversationError &&
+      runAgentDataRes.error.type === "conversation_not_found"
+    ) {
       logger.warn(
         {
           actionId,
@@ -115,6 +118,7 @@ export async function runToolActivity(
 
         return { deferredEvents };
       case "tool_early_exit":
+        let updatedAgentMessage = agentMessage;
         if (!event.isError && event.text && !agentMessage.content) {
           // Save and post the tool's text content only if the execution stopped
           // before any text was generated.
@@ -129,6 +133,21 @@ export async function runToolActivity(
               value: event.text,
             },
           });
+
+          // Include the newly created step content in the agentMessage.contents array
+          // to ensure it's included in the agent_message_success event
+          const newStepContent = {
+            step: step + 1,
+            content: {
+              type: "text_content" as const,
+              value: event.text,
+            },
+          };
+          updatedAgentMessage = {
+            ...agentMessage,
+            content: event.text, // Update the content field so it's visible in the UI
+            contents: [...(agentMessage.contents || []), newStepContent],
+          };
         }
 
         await updateResourceAndPublishEvent(auth, {
@@ -154,8 +173,8 @@ export async function runToolActivity(
                 configurationId: agentConfiguration.sId,
                 messageId: agentMessage.sId,
                 message: {
-                  ...agentMessage,
-                  content: agentMessage.content,
+                  ...updatedAgentMessage,
+                  content: updatedAgentMessage.content,
                   completedTs: event.created,
                 },
                 runIds: runIds ?? [],
@@ -170,7 +189,7 @@ export async function runToolActivity(
 
       case "tool_personal_auth_required":
       case "tool_approve_execution":
-        // Note from seb to pr: is it still possible to reach that place now that we block on approval https://github.com/dust-tt/dust/blob/15fac5beeb615f37c90bc81871699ee0b6466721/front/temporal/agent_loop/workflows.ts#L277 ?
+        // Update and publish deferred events for these types.
         // Defer personal auth events to be sent after all tools complete.
         deferredEvents.push({
           event,

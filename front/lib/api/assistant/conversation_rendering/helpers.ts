@@ -7,6 +7,7 @@ import { isTextContent } from "@app/lib/actions/mcp_internal_actions/output_sche
 import { rewriteContentForModel } from "@app/lib/actions/mcp_utils";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
+import { replaceMentionsWithAt } from "@app/lib/mentions/format";
 import { renderLightContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
 import logger from "@app/logger/logger";
 import type {
@@ -17,19 +18,20 @@ import type {
   ModelConfigurationType,
   ModelMessageTypeMultiActions,
   UserMessageType,
+  UserMessageTypeModel,
 } from "@app/types";
 import { removeNulls } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
   AgentContentItemType,
-  ErrorContentType,
+  AgentErrorContentType,
 } from "@app/types/assistant/agent_message_content";
 
 /**
  * Type for a step in agent message processing
  */
 export type Step = {
-  contents: Exclude<AgentContentItemType, ErrorContentType>[];
+  contents: Exclude<AgentContentItemType, AgentErrorContentType>[];
   actions: {
     call: FunctionCallType;
     result: FunctionMessageTypeModel;
@@ -40,25 +42,8 @@ export type Step = {
  * Renders an action result for multi-actions model
  */
 export function renderActionForMultiActionsModel(
-  action: AgentMCPActionWithOutputType,
-  model: ModelConfigurationType
+  action: AgentMCPActionWithOutputType
 ): FunctionMessageTypeModel {
-  const totalTextLength =
-    action.output?.reduce(
-      (acc, curr) => acc + (curr.type === "text" ? curr.text?.length ?? 0 : 0),
-      0
-    ) ?? 0;
-
-  if (totalTextLength > model.contextSize * 0.9) {
-    return {
-      role: "function" as const,
-      name: action.functionCallName,
-      function_call_id: action.functionCallId,
-      content:
-        "The tool returned too much content. The response cannot be processed.",
-    };
-  }
-
   if (action.status === "denied") {
     return {
       role: "function" as const,
@@ -133,7 +118,7 @@ export async function getSteps(
         name: action.functionCallName,
         arguments: JSON.stringify(action.params),
       },
-      result: renderActionForMultiActionsModel(action, model),
+      result: renderActionForMultiActionsModel(action),
     });
   }
 
@@ -229,18 +214,11 @@ export async function getSteps(
 /**
  * Renders a user message with metadata
  */
-export function renderUserMessage(
-  m: UserMessageType
-): ModelMessageTypeMultiActions {
-  // Replace all `:mention[{name}]{.*}` with `@name`.
-  const content = m.content.replaceAll(
-    /:mention\[([^\]]+)\]\{[^}]+\}/g,
-    (_, name) => {
-      return `@${name}`;
-    }
-  );
+export function renderUserMessage(m: UserMessageType): UserMessageTypeModel {
+  const content = replaceMentionsWithAt(m.content);
 
   const metadataItems: string[] = [];
+  let additionalInstructions = "";
 
   const identityTokens: string[] = [];
   if (m.context.fullName) {
@@ -289,12 +267,23 @@ export function renderUserMessage(
     }
   } else if (m.context.origin) {
     metadataItems.push(`- Source: ${m.context.origin}`);
+    if (m.context.origin === "slack") {
+      additionalInstructions +=
+        "This message originated from Slack: make sure to retrieve the context from the attached thread content.";
+    }
   }
 
-  let systemContext = "";
+  const systemContext = [];
   if (metadataItems.length > 0) {
-    systemContext = `<dust_system>\n${metadataItems.join("\n")}\n</dust_system>\n\n`;
+    systemContext.push(`${metadataItems.join("\n")}`);
   }
+  if (additionalInstructions.length > 0) {
+    systemContext.push(`${additionalInstructions}`);
+  }
+  const systemContextInstructions =
+    systemContext.length > 0
+      ? `<dust_system>\n${systemContext.join("\n\n")}\n</dust_system>\n\n`
+      : "";
 
   return {
     role: "user" as const,
@@ -303,7 +292,7 @@ export function renderUserMessage(
     content: [
       {
         type: "text",
-        text: systemContext + content,
+        text: systemContextInstructions + content,
       },
     ],
   };

@@ -8,7 +8,7 @@ import { TemplateResource } from "@app/lib/resources/template_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
-import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
+import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { WithAPIErrorResponse } from "@app/types";
 
 export type PullTemplatesResponseBody = {
@@ -79,7 +79,7 @@ async function handler(
           continue;
         }
 
-        const template: FetchAssistantTemplateResponse =
+        const template: FetchAgentTemplateResponse =
           await templateResponse.json();
 
         await TemplateResource.upsertByHandle(template);

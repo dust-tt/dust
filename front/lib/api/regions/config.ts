@@ -14,7 +14,7 @@ export function isRegionType(region: string): region is RegionType {
 
 export const config = {
   getCurrentRegion: (): RegionType => {
-    return EnvironmentConfig.getEnvVariable("DUST_REGION") as RegionType;
+    return EnvironmentConfig.getEnvVariable("REGION") as RegionType;
   },
   getLookupApiSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("REGION_RESOLVER_SECRET");
@@ -40,7 +40,7 @@ export const config = {
   },
   getDustRegionSyncEnabled: (): boolean => {
     return (
-      EnvironmentConfig.getEnvVariable("DUST_REGION") !== "us-central1" ||
+      EnvironmentConfig.getEnvVariable("REGION") !== "us-central1" ||
       isDevelopment()
     );
   },

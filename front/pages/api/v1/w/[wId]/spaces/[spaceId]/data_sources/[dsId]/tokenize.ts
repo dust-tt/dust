@@ -31,6 +31,7 @@ const CORE_TOKENIZE_TIMEOUT_MS = 270000;
 
 async function handler(
   req: NextApiRequest,
+
   res: NextApiResponse<WithAPIErrorResponse<TokenizeResponseType>>,
   auth: Authenticator
 ): Promise<void> {

@@ -26,10 +26,7 @@ import { unpauseConnectorAPIHandler } from "@connectors/api/unpause_connector";
 import { postConnectorUpdateAPIHandler } from "@connectors/api/update_connector";
 import { webhookDiscordAppHandler } from "@connectors/api/webhooks/webhook_discord_app";
 import { webhookGithubAPIHandler } from "@connectors/api/webhooks/webhook_github";
-import {
-  webhookIntercomAPIHandler,
-  webhookIntercomUninstallAPIHandler,
-} from "@connectors/api/webhooks/webhook_intercom";
+import { webhookNotionAPIHandler } from "@connectors/api/webhooks/webhook_notion";
 import { webhookSlackAPIHandler } from "@connectors/api/webhooks/webhook_slack";
 import { webhookSlackBotAPIHandler } from "@connectors/api/webhooks/webhook_slack_bot";
 import { webhookSlackBotInteractionsAPIHandler } from "@connectors/api/webhooks/webhook_slack_bot_interaction";
@@ -43,6 +40,9 @@ import {
   getConnectorConfigAPIHandler,
   setConnectorConfigAPIHandler,
 } from "./api/connector_config";
+import { getNotionWorkspaceIdHandler } from "./api/get_notion_workspace_id";
+import { getWebhookRouterEntryHandler } from "./api/get_webhook_router_config";
+import { syncWebhookRouterEntryHandler } from "./api/sync_webhook_router_config";
 import { webhookFirecrawlAPIHandler } from "./api/webhooks/webhook_firecrawl";
 
 export function startServer(port: number) {
@@ -79,7 +79,7 @@ export function startServer(port: number) {
         const clientIp = req.ip;
         const remainingRequests = await rateLimiter({
           key: `rate_limit:${clientIp}`,
-          maxPerTimeframe: 1000,
+          maxPerTimeframe: req.path.endsWith("/notion") ? 3000 : 1000,
           timeframeSeconds: 60,
           logger: logger,
         });
@@ -132,6 +132,10 @@ export function startServer(port: number) {
   );
 
   app.get("/notion/url/status", getNotionUrlStatusHandler);
+  app.get(
+    "/connectors/:connector_id/notion/workspace_id",
+    getNotionWorkspaceIdHandler
+  );
 
   // (legacy) "Dust Data-sync" for indexing and handling calls to the dust bot.
   app.post("/webhooks/:webhook_secret/slack", webhookSlackAPIHandler);
@@ -156,14 +160,9 @@ export function startServer(port: number) {
     webhookGithubAPIHandler
   );
   app.post(
-    "/webhooks/:webhooks_secret/intercom",
+    "/webhooks/:webhooks_secret/notion",
     bodyParser.raw({ type: "application/json" }),
-    webhookIntercomAPIHandler
-  );
-  app.post(
-    "/webhooks/:webhooks_secret/intercom/uninstall",
-    bodyParser.raw({ type: "application/json" }),
-    webhookIntercomUninstallAPIHandler
+    webhookNotionAPIHandler
   );
   app.post(
     "/webhooks/:webhooks_secret/firecrawl",
@@ -176,7 +175,20 @@ export function startServer(port: number) {
     webhookDiscordAppHandler
   );
 
-  app.post("/webhooks/:webhook_secret/teams_messages", webhookTeamsAPIHandler);
+  app.post(
+    "/webhooks/:webhook_secret/microsoft_teams_bot",
+    webhookTeamsAPIHandler
+  );
+
+  app.post(
+    "/webhooks_router_entries/:webhook_secret/:provider/:providerWorkspaceId",
+    syncWebhookRouterEntryHandler
+  );
+
+  app.get(
+    "/webhooks_router_entries/:webhook_secret/:provider/:providerWorkspaceId",
+    getWebhookRouterEntryHandler
+  );
 
   // /configuration/ is the new configration method, replacing the old /config/ method
   app.patch(

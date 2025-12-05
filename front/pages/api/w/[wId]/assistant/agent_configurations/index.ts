@@ -4,12 +4,15 @@ import _ from "lodash";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
-import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
-import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
+import type {
+  MCPServerConfigurationType,
+  ServerSideMCPServerConfigurationType,
+} from "@app/lib/actions/mcp";
 import { getAgentsUsage } from "@app/lib/api/assistant/agent_usage";
 import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
 import {
   createAgentConfiguration,
+  restoreAgentConfiguration,
   unsafeHardDeleteAgentConfiguration,
 } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
@@ -89,6 +92,7 @@ async function handler(
         withEditors,
         sort,
       } = queryValidation.right;
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       let viewParam = view ? view : "all";
       // @ts-expect-error: added for backwards compatibility
       viewParam = viewParam === "assistant-search" ? "list" : viewParam;
@@ -315,14 +319,12 @@ export async function createOrUpgradeAgentConfiguration({
     name: assistant.name,
     description: assistant.description,
     instructions: assistant.instructions ?? null,
-    visualizationEnabled: assistant.visualizationEnabled,
     pictureUrl: assistant.pictureUrl,
     status: assistant.status,
     scope: assistant.scope,
     model: assistant.model,
     agentConfigurationId,
     templateId: assistant.templateId ?? null,
-    requestedGroupIds: requirements.requestedGroupIds,
     requestedSpaceIds: requirements.requestedSpaceIds,
     tags: assistant.tags,
     editors,
@@ -371,6 +373,38 @@ export async function createOrUpgradeAgentConfiguration({
         auth,
         agentConfigurationRes.value
       );
+      // If we were upgrading an existing agent (i.e., creating a new
+      // version for an existing `agentConfigurationId`), we archived the
+      // previous version just before creating this one. Since creation of
+      // an action failed and we are cleaning up the new version, restore
+      // the previous version back to `active` status so the agent remains
+      // available.
+      if (agentConfigurationId) {
+        try {
+          const restored = await restoreAgentConfiguration(
+            auth,
+            agentConfigurationRes.value.sId
+          );
+          if (!restored) {
+            logger.error(
+              {
+                workspaceId: auth.getNonNullableWorkspace().sId,
+                agentConfigurationId: agentConfigurationRes.value.sId,
+              },
+              "Failed to restore previous agent version after action creation error"
+            );
+          }
+        } catch (e) {
+          logger.error(
+            {
+              error: e,
+              workspaceId: auth.getNonNullableWorkspace().sId,
+              agentConfigurationId: agentConfigurationRes.value.sId,
+            },
+            "Error while restoring previous agent version after rollback"
+          );
+        }
+      }
       return res;
     }
     actionConfigs.push(res.value);

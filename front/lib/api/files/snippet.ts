@@ -74,10 +74,7 @@ export async function generateSnippet(
     }
 
     if (isPastedFile(file.contentType)) {
-      // Include up to 2^16 characters in pasted text snippet
-      if (content.length > 65536) {
-        return new Ok(content.slice(0, 65536) + "... (truncated)");
-      }
+      // Include all the text content, as if they were pasted directly in the conversation.
       return new Ok(content);
     }
 
@@ -107,6 +104,7 @@ export async function generateSnippet(
       text: content,
       providerId: model.providerId,
       modelId: model.modelId,
+      tokenizer: model.tokenizer,
     });
 
     if (resTokenize.isErr()) {

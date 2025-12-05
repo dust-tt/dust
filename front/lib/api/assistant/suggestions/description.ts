@@ -1,12 +1,17 @@
+import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { SuggestionResults } from "@app/lib/api/assistant/suggestions/types";
 import type { Authenticator } from "@app/lib/auth";
-import type { BuilderSuggestionInputType, Result } from "@app/types";
+import type {
+  BuilderSuggestionInputType,
+  ModelConversationTypeMultiActions,
+  Result,
+} from "@app/types";
 import { Err, GPT_3_5_TURBO_MODEL_ID, Ok } from "@app/types";
 
 const FUNCTION_NAME = "send_suggestion";
 
-const specifications = [
+const specifications: AgentActionSpecification[] = [
   {
     name: FUNCTION_NAME,
     description: "Send a suggestion of description for the assistant",
@@ -25,7 +30,9 @@ const specifications = [
   },
 ];
 
-function getConversationContext(inputs: BuilderSuggestionInputType) {
+function getConversationContext(
+  inputs: BuilderSuggestionInputType
+): ModelConversationTypeMultiActions {
   const instructions = "instructions" in inputs ? inputs.instructions : "";
 
   const instructionsText = instructions
@@ -36,7 +43,8 @@ function getConversationContext(inputs: BuilderSuggestionInputType) {
     messages: [
       {
         role: "user",
-        content: instructionsText,
+        content: [{ type: "text", text: instructionsText }],
+        name: "",
       },
     ],
   };
@@ -62,6 +70,14 @@ export async function getBuilderDescriptionSuggestions(
         "The assistant has been given instructions by the user. Based on the provided " +
         "instructions suggest a short description of the assistant.",
       specifications,
+      forceToolCall: FUNCTION_NAME,
+    },
+    {
+      context: {
+        operationType: "agent_builder_description_suggestion",
+        userId: auth.user()?.sId,
+        workspaceId: auth.getNonNullableWorkspace().sId,
+      },
     }
   );
 

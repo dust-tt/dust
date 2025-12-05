@@ -1,10 +1,13 @@
 import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
-import type { AllSupportedFileContentType } from "@app/types";
+import type {
+  AllSupportedWithDustSpecificFileContentType,
+  ContentFragmentType,
+  MentionType,
+  ModelId,
+} from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 
-import type { ContentFragmentType } from "../content_fragment";
-import type { ModelId } from "../shared/model_id";
 import type { UserType, WorkspaceType } from "../user";
 import type {
   AgentConfigurationStatus,
@@ -13,21 +16,7 @@ import type {
 } from "./agent";
 import type { AgentContentItemType } from "./agent_message_content";
 
-/**
- * Mentions
- */
-
-export type AgentMention = {
-  configurationId: string;
-};
-
-export type MentionType = AgentMention;
-
 export type MessageVisibility = "visible" | "deleted";
-
-export function isAgentMention(arg: MentionType): arg is AgentMention {
-  return (arg as AgentMention).configurationId !== undefined;
-}
 
 export type ConversationMessageReactions = {
   messageId: string;
@@ -48,40 +37,64 @@ export type MessageType =
   | UserMessageType
   | ContentFragmentType;
 
-export type LightMessageType =
+// This is the old format where content fragments are separated from the user messages.
+export type LegacyLightMessageType =
   | LightAgentMessageType
   | UserMessageType
   | ContentFragmentType;
 
-export type MessageWithContentFragmentsType =
+// This is the new format where content fragments are attached to the user messages.
+export type LightMessageType =
   | LightAgentMessageType
-  | (UserMessageType & {
-      contentFragments?: ContentFragmentType[];
-    });
+  | UserMessageTypeWithContentFragments;
 
 /**
  * User messages
  */
 
+/**
+ * User message origins indicate which means the user (be it human or program)
+ * used to send the message.
+ *
+ * They should be mutually exclusive and commonly exhaustive, i.e. any new
+ * origin here should not overlap with another existing origin and all user
+ * messages should have an origin.
+ *
+ * Avoid adding an origin that:
+ * - is not directly linked to how the original user sent the message;
+ * - overlaps with existing origins (e.g. "linux" and "mac-os" would be terrible
+ *   orgins in that respect, overlapping with almost all origins).
+ *
+ * Origins are also used for programmatic usage tracking, so ideally a new
+ * origin should be easily categorizable as either "programmatic" or "user".
+ *
+ */
 export type UserMessageOrigin =
+  // TODO(2025-11-24 PPUL): Remove run_agent and agent_handover from allowed origin values.
+  | "agent_handover" // soon to be removed (not a fitting origin).
+  // "api" is Custom API usage, while e.g. extension, gsheets and many other origins
+  // below are API usages dedicated to standard product features.
   | "api"
   | "email"
+  | "excel"
   | "extension"
   | "github-copilot-chat"
   | "gsheet"
   | "make"
   | "n8n"
+  | "powerpoint"
   | "raycast"
+  | "run_agent" // soon to be removed (not a fitting origin).
   | "slack"
+  | "slack_workflow"
   | "teams"
+  | "transcript"
+  | "triggered_programmatic"
   | "triggered"
   | "web"
   | "zapier"
   | "zendesk"
-  | "excel"
-  | "powerpoint"
-  | "run_agent"
-  | "agent_handover";
+  | "onboarding_conversation";
 
 export type UserMessageContext = {
   username: string;
@@ -96,6 +109,11 @@ export type UserMessageContext = {
   selectedMCPServerViewIds?: string[];
 };
 
+export type AgenticMessageData = {
+  type: "run_agent" | "agent_handover";
+  originMessageId: string;
+};
+
 export type UserMessageType = {
   id: ModelId;
   created: number;
@@ -108,12 +126,23 @@ export type UserMessageType = {
   mentions: MentionType[];
   content: string;
   context: UserMessageContext;
+  agenticMessageData?: AgenticMessageData;
+};
+
+export type UserMessageTypeWithContentFragments = UserMessageType & {
+  contentFragments: ContentFragmentType[];
 };
 
 export function isUserMessageType(
-  arg: MessageType | LightMessageType
+  arg: MessageType | LegacyLightMessageType | LightMessageType
 ): arg is UserMessageType {
   return arg.type === "user_message";
+}
+
+export function isUserMessageTypeWithContentFragments(
+  arg: MessageType | LightMessageType
+): arg is UserMessageTypeWithContentFragments {
+  return arg.type === "user_message" && "contentFragments" in arg;
 }
 
 /**
@@ -130,11 +159,7 @@ export interface CitationType {
   href?: string;
   title: string;
   provider: string;
-  faviconUrl?: string;
-  contentType:
-    | AllSupportedFileContentType
-    | "application/vnd.dust.tool-output.data-source-search-result"
-    | "application/vnd.dust.tool-output.websearch-result";
+  contentType: AllSupportedWithDustSpecificFileContentType;
 }
 
 /**
@@ -151,12 +176,13 @@ export type BaseAgentMessageType = {
   rank: number;
   created: number;
   completedTs: number | null;
-  parentMessageId: string | null;
+  parentMessageId: string;
   parentAgentMessageId: string | null; // If handover, this is the agent message that summoned this agent.
   status: AgentMessageStatus;
   content: string | null;
   chainOfThought: string | null;
   error: GenericErrorContent | null;
+  visibility: MessageVisibility;
 };
 
 export type ParsedContentItem =
@@ -177,6 +203,7 @@ export type AgentMessageType = BaseAgentMessageType & {
   }>;
   contents: Array<{ step: number; content: AgentContentItemType }>;
   parsedContents: Record<number, Array<ParsedContentItem>>;
+  modelInteractionDurationMs: number | null;
 };
 
 export type LightAgentMessageType = BaseAgentMessageType & {
@@ -186,8 +213,6 @@ export type LightAgentMessageType = BaseAgentMessageType & {
     pictureUrl: string;
     status: AgentConfigurationStatus;
     canRead: boolean;
-    requestedGroupIds: string[][];
-    requestedSpaceIds: string[];
   };
   citations: Record<string, CitationType>;
   generatedFiles: Omit<ActionGeneratedFileType, "snippet">[];
@@ -228,17 +253,16 @@ export type ConversationVisibility = "unlisted" | "deleted" | "test";
 export type ConversationWithoutContentType = {
   id: ModelId;
   created: number;
-  updated?: number;
+  updated: number;
   unread: boolean;
   actionRequired: boolean;
   hasError: boolean;
-  owner: WorkspaceType;
   sId: string;
   title: string | null;
-  visibility: ConversationVisibility;
+  spaceId: string | null;
   depth: number;
-  triggerId: string | null;
-  requestedGroupIds: string[][];
+
+  // Ideally, this property should be moved to the ConversationType.
   requestedSpaceIds: string[];
 };
 
@@ -247,6 +271,8 @@ export type ConversationWithoutContentType = {
  * messages).
  */
 export type ConversationType = ConversationWithoutContentType & {
+  owner: WorkspaceType;
+  visibility: ConversationVisibility;
   content: (UserMessageType[] | AgentMessageType[] | ContentFragmentType[])[];
 };
 
@@ -280,6 +306,8 @@ export const CONVERSATION_ERROR_TYPES = [
   "conversation_access_restricted",
   "conversation_with_unavailable_agent",
   "user_already_participant",
+  "message_not_found",
+  "message_deletion_not_authorized",
 ] as const;
 
 export type ConversationErrorType = (typeof CONVERSATION_ERROR_TYPES)[number];
@@ -304,12 +332,6 @@ export type SubmitMessageError = {
   message: string;
 };
 
-export interface FetchConversationMessagesResponse {
-  hasMore: boolean;
-  lastValue: number | null;
-  messages: LightMessageType[];
-}
-
 /**
  * Conversation events.
  */
@@ -319,7 +341,7 @@ export type UserMessageNewEvent = {
   type: "user_message_new";
   created: number;
   messageId: string;
-  message: UserMessageType;
+  message: UserMessageTypeWithContentFragments;
 };
 
 // Event sent when the user message is created.

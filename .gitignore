@@ -17,7 +17,7 @@ yalc.lock
 front/public/sitemap.xml
 front/public/robots.txt
 mprocs.log
-tsconfig.tsbuildinfo
+**/tsconfig.tsbuildinfo
 front/.npm-cache
 CLAUDE.md
 AGENTS.md

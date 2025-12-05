@@ -8,6 +8,7 @@ import { ConversationLayout } from "@app/components/assistant/conversation/Conve
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import { createOnboardingConversationIfNeeded } from "@app/lib/api/assistant/onboarding";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isString } from "@app/types";
@@ -67,6 +68,32 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 
   const { cId } = context.params;
 
+  // If the user is coming from the welcome flow to a "new" conversation,
+  // we may need to create the onboarding conversation on the backend,
+  // then redirect them to it if it exists.
+  if (
+    typeof cId === "string" &&
+    cId === "new" &&
+    context.query.welcome === "true"
+  ) {
+    await createOnboardingConversationIfNeeded(auth);
+
+    const userResource = auth.user();
+    const metadata = userResource
+      ? await userResource.getMetadata("onboarding:conversation")
+      : null;
+
+    const onboardingConversationId = metadata?.value ?? null;
+    if (onboardingConversationId) {
+      return {
+        redirect: {
+          destination: `/w/${owner.sId}/conversation/${onboardingConversationId}`,
+          permanent: false,
+        },
+      };
+    }
+  }
+
   return {
     props: {
       user,
@@ -90,7 +117,7 @@ export default function AgentConversation({
 
   const { activeConversationId } = useConversationsNavigation();
 
-  const { setSelectedAssistant } = useContext(InputBarContext);
+  const { setSelectedAgent } = useContext(InputBarContext);
 
   const { agent } = router.query;
 
@@ -101,6 +128,7 @@ export default function AgentConversation({
   useEffect(() => {
     if (activeConversationId) {
       // Set conversation id as key if it exists.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setConversationKey(activeConversationId);
     } else if (!activeConversationId) {
       // Force re-render by setting a new key with a random number.
@@ -109,16 +137,16 @@ export default function AgentConversation({
 
     const agentId = agent ?? null;
     if (agentId && typeof agentId === "string") {
-      setSelectedAssistant({ configurationId: agentId });
+      setSelectedAgent({ configurationId: agentId });
     } else {
-      setSelectedAssistant(null);
+      setSelectedAgent(null);
     }
   }, [
     agent,
     setConversationKey,
     initialConversationId,
     activeConversationId,
-    setSelectedAssistant,
+    setSelectedAgent,
   ]);
 
   return (

@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { ZENDESK_CONFIG_KEYS } from "@app/lib/constants/zendesk";
@@ -34,8 +34,14 @@ export function useZendeskOrganizationTagFilters({
     owner,
   });
 
-  const includedTags = includedTagsConfig ? JSON.parse(includedTagsConfig) : [];
-  const excludedTags = excludedTagsConfig ? JSON.parse(excludedTagsConfig) : [];
+  const includedTags = useMemo(
+    () => (includedTagsConfig ? JSON.parse(includedTagsConfig) : []),
+    [includedTagsConfig]
+  );
+  const excludedTags = useMemo(
+    () => (excludedTagsConfig ? JSON.parse(excludedTagsConfig) : []),
+    [excludedTagsConfig]
+  );
 
   const addOrganizationTag = useCallback(
     async (tag: string, type: "include" | "exclude") => {
@@ -82,10 +88,12 @@ export function useZendeskOrganizationTagFilters({
             type: "error",
             title: "Failed to add tag",
             description:
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               err.error?.connectors_error?.message ||
               "An unknown error occurred",
           });
         }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         sendNotification({
           type: "error",
@@ -101,6 +109,7 @@ export function useZendeskOrganizationTagFilters({
       excludedTags,
       mutateIncludedTags,
       mutateExcludedTags,
+      sendNotification,
     ]
   );
 
@@ -149,10 +158,12 @@ export function useZendeskOrganizationTagFilters({
             type: "error",
             title: "Failed to remove tag",
             description:
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               err.error?.connectors_error?.message ||
               "An unknown error occurred",
           });
         }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         sendNotification({
           type: "error",
@@ -161,6 +172,7 @@ export function useZendeskOrganizationTagFilters({
         });
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       owner.sId,
       dataSource.sId,

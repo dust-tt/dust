@@ -1,7 +1,7 @@
 import assert from "assert";
-//import { default as cls } from "cls-hooked";
-import { Sequelize } from "sequelize";
+import type { Sequelize } from "sequelize";
 
+import { SequelizeWithComments } from "@app/lib/api/database";
 import { dbConfig } from "@app/lib/resources/storage/config";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import { isDevelopment } from "@app/types";
@@ -9,7 +9,7 @@ import { isDevelopment } from "@app/types";
 // Directly require 'pg' here to make sure we are using the same version of the
 // package as the one used by pg package.
 // The doc recommends doing this : https://github.com/brianc/node-pg-types?tab=readme-ov-file#use
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
 const types = require("pg").types;
 
 const acquireAttempts = new WeakMap();
@@ -36,12 +36,13 @@ types.setTypeParser(types.builtins.INT8, function (val: unknown) {
 export const statsDClient = getStatsDClient();
 const CONNECTION_ACQUISITION_THRESHOLD_MS = 100;
 
-export const frontSequelize = new Sequelize(
+export const frontSequelize = new SequelizeWithComments(
   dbConfig.getRequiredFrontDatabaseURI(),
   {
     pool: {
       // Default is 5.
-      max: 16,
+      // TODO(2025-11-29 flav) Revisit all Sequelize pool settings.
+      max: 25,
     },
     logging: isDevelopment() && DB_LOGGING_ENABLED ? sequelizeLogger : false,
     hooks: {
@@ -67,8 +68,9 @@ export const frontSequelize = new Sequelize(
 let frontReplicaDbInstance: Sequelize | null = null;
 
 export function getFrontReplicaDbConnection() {
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!frontReplicaDbInstance) {
-    frontReplicaDbInstance = new Sequelize(
+    frontReplicaDbInstance = new SequelizeWithComments(
       dbConfig.getRequiredFrontReplicaDatabaseURI() as string,
       {
         logging: false,

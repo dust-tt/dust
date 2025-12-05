@@ -197,6 +197,7 @@ export class NotionOAuthProvider implements BaseOAuthStrategyProvider {
             (currentNotionWorkspaceName || "Unknown") +
             ").",
         });
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         return new Err({
           message:

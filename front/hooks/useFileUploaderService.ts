@@ -219,6 +219,7 @@ export function useFileUploaderService({
                 isAPIErrorResponse(res) ? res.error.message : undefined
               )
             );
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
           } catch (err) {
             return new Err(new FileBlobUploadError(fileBlob.file));
           }

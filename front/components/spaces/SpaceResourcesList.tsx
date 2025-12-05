@@ -22,7 +22,7 @@ import React, {
   useState,
 } from "react";
 
-import { AssistantDetails } from "@app/components/assistant/details/AssistantDetails";
+import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
 import { ConnectorPermissionsModal } from "@app/components/data_source/ConnectorPermissionsModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
@@ -38,10 +38,10 @@ import { ViewFolderAPIModal } from "@app/components/ViewFolderAPIModal";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import {
-  CONNECTOR_CONFIGURATIONS,
+  CONNECTOR_UI_CONFIGURATIONS,
   getConnectorProviderLogoWithFallback,
   isConnectorPermissionsEditable,
-} from "@app/lib/connector_providers";
+} from "@app/lib/connector_providers_ui";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import {
   useDeleteFolderOrWebsite,
@@ -118,9 +118,10 @@ function getTableColumns(
     header: "Managed by",
     accessorFn: (row) =>
       isGlobalOrSystemSpace
-        ? row.dataSourceView.dataSource.editedByUser?.imageUrl ??
-          ANONYMOUS_USER_IMAGE_URL
-        : row.dataSourceView.editedByUser?.imageUrl ?? ANONYMOUS_USER_IMAGE_URL,
+        ? (row.dataSourceView.dataSource.editedByUser?.imageUrl ??
+          ANONYMOUS_USER_IMAGE_URL)
+        : (row.dataSourceView.editedByUser?.imageUrl ??
+          ANONYMOUS_USER_IMAGE_URL),
     cell: (ctx) => {
       const { dataSourceView } = ctx.row.original;
       const editedByUser = isGlobalOrSystemSpace
@@ -170,10 +171,9 @@ function getTableColumns(
           )}
           {ds.connector && info.row.original.workspaceId && ds.name && (
             <ConnectorSyncingChip
-              initialState={ds.connector}
-              workspaceId={info.row.original.workspaceId}
-              dataSource={ds}
               activeSeats={activeSeats}
+              connector={ds.connector}
+              connectorError={ds.fetchConnectorErrorMessage}
             />
           )}
         </DataTable.CellContent>
@@ -239,6 +239,7 @@ function getTableColumns(
       actionColumn,
     ];
   }
+
   if (isManaged || isWebsite) {
     return [
       nameColumn,
@@ -292,6 +293,7 @@ export const SpaceResourcesList = ({
   const [sorting, setSorting] = useState<SortingState>([
     { id: "name", desc: false },
   ]);
+
   const [isLoadingByProvider, setIsLoadingByProvider] = useState<
     Partial<Record<ConnectorProvider, boolean>>
   >({});
@@ -365,7 +367,7 @@ export const SpaceResourcesList = ({
     return spaceDataSourceViews
       .filter((dataSourceView) => {
         const connectorConfig = dataSourceView.dataSource.connectorProvider
-          ? CONNECTOR_CONFIGURATIONS[
+          ? CONNECTOR_UI_CONFIGURATIONS[
               dataSourceView.dataSource.connectorProvider
             ]
           : null;
@@ -572,10 +574,10 @@ export const SpaceResourcesList = ({
 
   return (
     <>
-      <AssistantDetails
+      <AgentDetails
         owner={owner}
         user={user}
-        assistantId={assistantSId}
+        agentId={assistantSId}
         onClose={() => setAssistantSId(null)}
       />
 

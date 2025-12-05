@@ -1,8 +1,4 @@
-import {
-  CommandLineIcon,
-  DocumentIcon,
-  DocumentTextIcon,
-} from "@dust-tt/sparkle";
+import { CodeBlockIcon, CodeSlashIcon, HeadingIcon } from "@dust-tt/sparkle";
 import type { Editor as CoreEditor } from "@tiptap/core";
 import type { Editor as ReactEditor } from "@tiptap/react";
 import type {
@@ -10,6 +6,7 @@ import type {
   SuggestionOptions,
   SuggestionProps,
 } from "@tiptap/suggestion";
+import type { ComponentType, MutableRefObject } from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
 
 type CompatibleEditor = CoreEditor | ReactEditor;
@@ -32,7 +29,7 @@ function isSelectionInInstructionBlock(
 export interface BlockSuggestion {
   id: string;
   label: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: ComponentType<{ className?: string }>;
   command: (
     editor: CompatibleEditor,
     range: { from: number; to: number }
@@ -43,7 +40,7 @@ const BLOCK_SUGGESTIONS: BlockSuggestion[] = [
   {
     id: "heading",
     label: "Heading",
-    icon: DocumentTextIcon,
+    icon: HeadingIcon,
     command: (editor, range) => {
       editor.chain().focus().deleteRange(range).setHeading({ level: 1 }).run();
     },
@@ -51,7 +48,7 @@ const BLOCK_SUGGESTIONS: BlockSuggestion[] = [
   {
     id: "xml-block",
     label: "XML Tag",
-    icon: DocumentIcon,
+    icon: CodeSlashIcon,
     command: (editor, range) => {
       editor
         .chain()
@@ -64,7 +61,7 @@ const BLOCK_SUGGESTIONS: BlockSuggestion[] = [
   {
     id: "code-block",
     label: "Code Block",
-    icon: CommandLineIcon,
+    icon: CodeBlockIcon,
     command: (editor, range) => {
       editor.chain().focus().deleteRange(range).setCodeBlock().run();
     },
@@ -85,7 +82,7 @@ export type BlockInsertDropdownView = Pick<
 >;
 
 export const useBlockInsertDropdown = (
-  editorRef: React.MutableRefObject<ReactEditor | null>
+  editorRef: MutableRefObject<ReactEditor | null>
 ) => {
   const [state, setState] = useState<BlockInsertDropdownState>({
     isOpen: false,
@@ -98,6 +95,7 @@ export const useBlockInsertDropdown = (
   const rangeRef = useRef<{ from: number; to: number } | null>(null);
 
   const currentStateRef = useRef(state);
+  // eslint-disable-next-line react-hooks/refs
   currentStateRef.current = state;
 
   const filterSuggestions = useCallback(
@@ -174,11 +172,7 @@ export const useBlockInsertDropdown = (
 
         const $from = state.doc.resolve(range.from);
 
-        if ($from.parent.type.name === "codeBlock") {
-          return false;
-        }
-
-        return true;
+        return $from.parent.type.name !== "codeBlock";
       },
       command: ({ editor, range, props }) => {
         const suggestion = props as Partial<BlockSuggestion>;

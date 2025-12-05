@@ -1,19 +1,16 @@
-use std::sync::Arc;
-
 use crate::providers::chat_messages::ChatMessage;
 use crate::providers::embedder::Embedder;
 use crate::providers::llm::ChatFunction;
+use crate::providers::llm::TokenizerSingleton;
 use crate::providers::llm::{LLMChatGeneration, LLMGeneration, LLM};
 use crate::providers::provider::{Provider, ProviderID};
-use crate::providers::tiktoken::tiktoken::{batch_tokenize_async, o200k_base_singleton, CoreBPE};
-use crate::providers::tiktoken::tiktoken::{decode_async, encode_async};
 use crate::run::Credentials;
+use crate::types::tokenizer::{TiktokenTokenizerBase, TokenizerConfig};
 use crate::utils;
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use hyper::Uri;
-use parking_lot::RwLock;
 use serde_json::Value;
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -28,20 +25,24 @@ const MODEL_IDS_WITH_TOOLS_SUPPORT: &[&str] = &["deepseek-chat"];
 pub struct DeepseekLLM {
     id: String,
     api_key: Option<String>,
+    tokenizer: Option<TokenizerSingleton>,
 }
 
 impl DeepseekLLM {
-    pub fn new(id: String) -> Self {
-        DeepseekLLM { id, api_key: None }
+    pub fn new(id: String, tokenizer: Option<TokenizerSingleton>) -> Self {
+        DeepseekLLM {
+            id,
+            api_key: None,
+            tokenizer: tokenizer.or_else(|| {
+                TokenizerSingleton::from_config(&TokenizerConfig::Tiktoken {
+                    base: TiktokenTokenizerBase::O200kBase,
+                })
+            }),
+        }
     }
 
     fn chat_uri(&self) -> Result<Uri> {
         Ok(format!("https://api.deepseek.com/v1/chat/completions",).parse::<Uri>()?)
-    }
-
-    fn tokenizer(&self) -> Arc<RwLock<CoreBPE>> {
-        // TODO(@fontanierh): TBD
-        o200k_base_singleton()
     }
 
     pub fn deepseek_context_size(_model_id: &str) -> usize {
@@ -80,15 +81,27 @@ impl LLM for DeepseekLLM {
     }
 
     async fn encode(&self, text: &str) -> Result<Vec<usize>> {
-        encode_async(self.tokenizer(), text).await
+        self.tokenizer
+            .as_ref()
+            .ok_or_else(|| anyhow!("Tokenizer not initialized"))?
+            .encode(text)
+            .await
     }
 
     async fn decode(&self, tokens: Vec<usize>) -> Result<String> {
-        decode_async(self.tokenizer(), tokens).await
+        self.tokenizer
+            .as_ref()
+            .ok_or_else(|| anyhow!("Tokenizer not initialized"))?
+            .decode(tokens)
+            .await
     }
 
     async fn tokenize(&self, texts: Vec<String>) -> Result<Vec<Vec<(usize, String)>>> {
-        batch_tokenize_async(self.tokenizer(), texts).await
+        self.tokenizer
+            .as_ref()
+            .ok_or_else(|| anyhow!("Tokenizer not initialized"))?
+            .tokenize(texts)
+            .await
     }
 
     async fn generate(
@@ -210,7 +223,10 @@ impl Provider for DeepseekProvider {
             Err(anyhow!("User aborted Deepseek test."))?;
         }
 
-        let mut llm = self.llm(String::from("deepseek-chat"));
+        let tokenizer = TokenizerSingleton::from_config(&TokenizerConfig::Tiktoken {
+            base: TiktokenTokenizerBase::O200kBase,
+        });
+        let mut llm = self.llm(String::from("deepseek-chat"), tokenizer);
         llm.initialize(Credentials::new()).await?;
 
         let _ = llm
@@ -234,8 +250,8 @@ impl Provider for DeepseekProvider {
         Ok(())
     }
 
-    fn llm(&self, id: String) -> Box<dyn LLM + Sync + Send> {
-        Box::new(DeepseekLLM::new(id))
+    fn llm(&self, id: String, tokenizer: Option<TokenizerSingleton>) -> Box<dyn LLM + Sync + Send> {
+        Box::new(DeepseekLLM::new(id, tokenizer))
     }
 
     fn embedder(&self, _id: String) -> Box<dyn Embedder + Sync + Send> {

@@ -19,86 +19,11 @@ export const CLAUDE_3_5_HAIKU_20241022_MODEL_ID =
   "claude-3-5-haiku-20241022" as const;
 export const CLAUDE_4_5_HAIKU_20251001_MODEL_ID =
   "claude-haiku-4-5-20251001" as const;
-export const CLAUDE_2_1_MODEL_ID = "claude-2.1" as const;
-export const CLAUDE_INSTANT_1_2_MODEL_ID = "claude-instant-1.2" as const;
+export const CLAUDE_4_5_OPUS_20251101_MODEL_ID =
+  "claude-opus-4-5-20251101" as const;
+
 export const ANTHROPIC_TOKEN_COUNT_ADJUSTMENT = 1.3;
-export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
-  providerId: "anthropic",
-  modelId: CLAUDE_3_OPUS_2024029_MODEL_ID,
-  displayName: "Claude 3 Opus",
-  contextSize: 180_000,
-  recommendedTopK: 32,
-  recommendedExhaustiveTopK: 64, // 32_768
-  largeModel: true,
-  description: "Anthropic's Claude 3 Opus model (200k context).",
-  shortDescription: "Anthropic's largest model.",
-  isLegacy: false,
-  isLatest: false,
-  generationTokensCount: 4096,
-  supportsVision: true,
-  minimumReasoningEffort: "light",
-  maximumReasoningEffort: "light",
-  defaultReasoningEffort: "light",
-  tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
-};
-export const CLAUDE_3_5_SONNET_20240620_DEPRECATED_MODEL_CONFIG: ModelConfigurationType =
-  {
-    providerId: "anthropic",
-    modelId: CLAUDE_3_5_SONNET_20240620_MODEL_ID,
-    displayName: "Claude 3.5 Sonnet",
-    contextSize: 180_000,
-    recommendedTopK: 32,
-    recommendedExhaustiveTopK: 64, // 32_768
-    largeModel: true,
-    description: "Anthropic's latest Claude 3.5 Sonnet model (200k context).",
-    shortDescription: "Anthropic's latest model.",
-    isLegacy: false,
-    isLatest: false,
-    generationTokensCount: 8192,
-    supportsVision: true,
-    minimumReasoningEffort: "light",
-    maximumReasoningEffort: "light",
-    defaultReasoningEffort: "light",
-    tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
-  };
-export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
-  providerId: "anthropic",
-  modelId: CLAUDE_3_5_SONNET_20241022_MODEL_ID,
-  displayName: "Claude 3.5 Sonnet",
-  contextSize: 180_000,
-  recommendedTopK: 32,
-  recommendedExhaustiveTopK: 64, // 32_768
-  largeModel: true,
-  description: "Anthropic's latest Claude 3.5 Sonnet model (200k context).",
-  shortDescription: "Anthropic's latest model.",
-  isLegacy: false,
-  isLatest: false,
-  generationTokensCount: 8192,
-  supportsVision: true,
-  minimumReasoningEffort: "light",
-  maximumReasoningEffort: "light",
-  defaultReasoningEffort: "light",
-  tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
-};
-export const CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
-  providerId: "anthropic",
-  modelId: CLAUDE_3_7_SONNET_20250219_MODEL_ID,
-  displayName: "Claude 3.7 Sonnet",
-  contextSize: 200_000,
-  recommendedTopK: 16,
-  recommendedExhaustiveTopK: 64, // 32_768
-  largeModel: true,
-  description: "Anthropic's latest Claude 3.7 Sonnet model (200k context).",
-  shortDescription: "Anthropic's best model.",
-  isLegacy: false,
-  isLatest: false,
-  generationTokensCount: 64_000,
-  supportsVision: true,
-  minimumReasoningEffort: "light",
-  maximumReasoningEffort: "light",
-  defaultReasoningEffort: "light",
-  tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
-};
+
 export const CLAUDE_4_NATIVE_REASONING_META_PROMPT =
   `
 When executing multiple tool calls, output text only after all tools have completed.
@@ -143,6 +68,7 @@ export const CLAUDE_4_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   nativeReasoningMetaPrompt: CLAUDE_4_NATIVE_REASONING_META_PROMPT,
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   featureFlag: "claude_4_opus_feature",
+  tokenizer: { type: "tiktoken", base: "anthropic_base" },
 };
 export const CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -164,6 +90,7 @@ export const CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
   nativeReasoningMetaPrompt: CLAUDE_4_NATIVE_REASONING_META_PROMPT,
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
+  tokenizer: { type: "tiktoken", base: "anthropic_base" },
 };
 export const CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -180,11 +107,14 @@ export const CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: true,
   generationTokensCount: 64_000,
   supportsVision: true,
+  supportsResponseFormat: true,
   minimumReasoningEffort: "light",
   maximumReasoningEffort: "high",
   defaultReasoningEffort: "light",
   nativeReasoningMetaPrompt: CLAUDE_4_NATIVE_REASONING_META_PROMPT,
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
+  supportsPromptCaching: true,
+  tokenizer: { type: "tiktoken", base: "anthropic_base" },
 };
 export const CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -205,6 +135,7 @@ export const CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   maximumReasoningEffort: "light",
   defaultReasoningEffort: "light",
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
+  tokenizer: { type: "tiktoken", base: "anthropic_base" },
 };
 export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -225,6 +156,7 @@ export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   maximumReasoningEffort: "light",
   defaultReasoningEffort: "light",
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
+  tokenizer: { type: "tiktoken", base: "anthropic_base" },
 };
 export const CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -246,43 +178,116 @@ export const CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
   nativeReasoningMetaPrompt: CLAUDE_4_NATIVE_REASONING_META_PROMPT,
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
+  tokenizer: { type: "tiktoken", base: "anthropic_base" },
+};
+export const CLAUDE_4_5_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "anthropic",
+  modelId: CLAUDE_4_5_OPUS_20251101_MODEL_ID,
+  displayName: "Claude 4.5 Opus",
+  contextSize: 200_000,
+  recommendedTopK: 16,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description:
+    "Anthropic's Claude 4.5 Opus model, the most advanced model with state-of-the-art coding and reasoning (200k context).",
+  shortDescription: "Anthropic's most advanced model.",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 64_000,
+  supportsVision: true,
+  supportsResponseFormat: true,
+  minimumReasoningEffort: "light",
+  maximumReasoningEffort: "high",
+  defaultReasoningEffort: "light",
+  nativeReasoningMetaPrompt: CLAUDE_4_NATIVE_REASONING_META_PROMPT,
+  tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
+  supportsPromptCaching: true,
+  featureFlag: "claude_4_5_opus_feature",
+  tokenizer: { type: "tiktoken", base: "anthropic_base" },
 };
 
-// Deprecated
-export const CLAUDE_2_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
+/**
+ * Deprecated
+ */
+
+export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
-  modelId: CLAUDE_2_1_MODEL_ID,
-  displayName: "Claude 2.1",
+  modelId: CLAUDE_3_OPUS_2024029_MODEL_ID,
+  displayName: "Claude 3 Opus",
   contextSize: 180_000,
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 64, // 32_768
   largeModel: true,
-  description: "Anthropic's Claude 2 model (200k context).",
-  shortDescription: "Anthropic's legacy model.",
+  description: "Anthropic's Claude 3 Opus model (200k context).",
+  shortDescription: "Anthropic's largest model.",
   isLegacy: true,
   isLatest: false,
-  generationTokensCount: 2048,
-  supportsVision: false,
+  generationTokensCount: 4096,
+  supportsVision: true,
   minimumReasoningEffort: "light",
   maximumReasoningEffort: "light",
   defaultReasoningEffort: "light",
+  tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
+  tokenizer: { type: "tiktoken", base: "anthropic_base" },
 };
-export const CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
+export const CLAUDE_3_5_SONNET_20240620_DEPRECATED_MODEL_CONFIG: ModelConfigurationType =
+  {
+    providerId: "anthropic",
+    modelId: CLAUDE_3_5_SONNET_20240620_MODEL_ID,
+    displayName: "Claude 3.5 Sonnet",
+    contextSize: 180_000,
+    recommendedTopK: 32,
+    recommendedExhaustiveTopK: 64, // 32_768
+    largeModel: true,
+    description: "Anthropic's latest Claude 3.5 Sonnet model (200k context).",
+    shortDescription: "Anthropic's latest model.",
+    isLegacy: true,
+    isLatest: false,
+    generationTokensCount: 8192,
+    supportsVision: true,
+    minimumReasoningEffort: "light",
+    maximumReasoningEffort: "light",
+    defaultReasoningEffort: "light",
+    tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
+    tokenizer: { type: "tiktoken", base: "anthropic_base" },
+  };
+export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
-  modelId: CLAUDE_INSTANT_1_2_MODEL_ID,
-  displayName: "Claude Instant 1.2",
-  contextSize: 90_000,
+  modelId: CLAUDE_3_5_SONNET_20241022_MODEL_ID,
+  displayName: "Claude 3.5 Sonnet",
+  contextSize: 180_000,
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 64, // 32_768
-  largeModel: false,
-  description:
-    "Anthropic's low-latency and high throughput model (100k context)",
-  shortDescription: "Anthropic's legacy model.",
+  largeModel: true,
+  description: "Anthropic's latest Claude 3.5 Sonnet model (200k context).",
+  shortDescription: "Anthropic's latest model.",
   isLegacy: true,
   isLatest: false,
-  generationTokensCount: 2048,
-  supportsVision: false,
+  generationTokensCount: 8192,
+  supportsVision: true,
   minimumReasoningEffort: "light",
   maximumReasoningEffort: "light",
   defaultReasoningEffort: "light",
+  tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
+  tokenizer: { type: "tiktoken", base: "anthropic_base" },
+};
+export const CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "anthropic",
+  modelId: CLAUDE_3_7_SONNET_20250219_MODEL_ID,
+  displayName: "Claude 3.7 Sonnet",
+  contextSize: 200_000,
+  recommendedTopK: 16,
+  recommendedExhaustiveTopK: 64, // 32_768
+  largeModel: true,
+  description: "Anthropic's latest Claude 3.7 Sonnet model (200k context).",
+  shortDescription: "Anthropic's best model.",
+  isLegacy: true,
+  isLatest: false,
+  generationTokensCount: 64_000,
+  supportsVision: true,
+  minimumReasoningEffort: "light",
+  maximumReasoningEffort: "light",
+  defaultReasoningEffort: "light",
+  tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
+  tokenizer: { type: "tiktoken", base: "anthropic_base" },
 };

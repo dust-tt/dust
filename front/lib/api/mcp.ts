@@ -21,6 +21,7 @@ import {
 } from "@app/lib/actions/types/guards";
 import type { EditedByUser, MCPOAuthUseCase, ModelId } from "@app/types";
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const MCP_TOOL_RETRY_POLICY_TYPES = ["retry_on_interrupt", "no_retry"] as const;
 export type MCPToolRetryPolicyType =
   (typeof MCP_TOOL_RETRY_POLICY_TYPES)[number];
@@ -79,15 +80,16 @@ export type MCPServerType = {
   availability: MCPServerAvailability;
   allowMultipleInstances: boolean;
   documentationUrl: string | null;
-  requiresSecret?: boolean;
+  developerSecretSelection?: DeveloperSecretSelectionType | null;
+  developerSecretSelectionDescription?: string;
+  sharedSecret?: string | null;
+  customHeaders?: Record<string, string> | null;
 };
 
 export type RemoteMCPServerType = MCPServerType & {
   url?: string;
-  sharedSecret?: string | null;
   lastSyncAt?: Date | null;
   lastError?: string | null;
-  customHeaders?: Record<string, string> | null;
   icon: CustomResourceIconType | InternalAllowedIconType;
   // Always manual and allow multiple instances.
   availability: "manual";
@@ -136,3 +138,5 @@ export type InternalMCPServerDefinitionType = Omit<
 export type MCPServerTypeWithViews = MCPServerType & {
   views: MCPServerViewType[];
 };
+
+export type DeveloperSecretSelectionType = "required" | "optional";

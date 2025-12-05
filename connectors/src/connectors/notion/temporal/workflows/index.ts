@@ -13,7 +13,6 @@ import {
   INTERVAL_BETWEEN_SYNCS_MS,
   MAX_CONCURRENT_CHILD_WORKFLOWS,
   MAX_SEARCH_PAGE_INDEX,
-  PROCESS_ALL_DISCOVERED_RESOURCES,
   SYNC_PERIOD_DURATION_MS,
 } from "@connectors/connectors/notion/temporal/config";
 import { performUpserts } from "@connectors/connectors/notion/temporal/workflows/upserts";
@@ -23,6 +22,7 @@ import type { ModelId } from "@connectors/types";
 export * from "./admins";
 export * from "./check_resources_accessibility";
 export * from "./children";
+export * from "./deletion_crawl";
 export * from "./garbage_collection";
 export * from "./upsert_database_queue";
 
@@ -176,35 +176,32 @@ export async function notionSyncWorkflow({
   // wait for all child workflows to finish
   await Promise.all(promises);
 
-  if (isInitialSync) {
-    // These are resources (pages/DBs) that we didn't get from the search API but that are
-    // child/parent pages/DBs of other pages that we did get from the search API. We upsert those as
-    // well.
-    let discoveredResources: {
-      pageIds: string[];
-      databaseIds: string[];
-    } | null;
-    do {
-      discoveredResources = await getDiscoveredResourcesFromCache({
+  // These are resources (pages/DBs) that we didn't get from the search API but that are
+  // child/parent pages/DBs of other pages that we did get from the search API. We upsert those as
+  // well.
+  let discoveredResources: { pageIds: string[]; databaseIds: string[] } | null;
+  do {
+    discoveredResources = await getDiscoveredResourcesFromCache({
+      connectorId,
+      topLevelWorkflowId,
+    });
+    if (discoveredResources) {
+      await performUpserts({
         connectorId,
+        pageIds: discoveredResources.pageIds,
+        databaseIds: discoveredResources.databaseIds,
+        runTimestamp,
+        pageIndex: null,
+        isBatchSync: isInitialSync,
+        queue: childWorkflowQueue,
+        childWorkflowsNameSuffix: "discovered",
         topLevelWorkflowId,
+        // Force resync to ensure DBs are processed immediately, which then allows discovery
+        // of their child pages (effectively doing a crawl).
+        forceResync: true,
       });
-      if (discoveredResources) {
-        await performUpserts({
-          connectorId,
-          pageIds: discoveredResources.pageIds,
-          databaseIds: discoveredResources.databaseIds,
-          runTimestamp,
-          pageIndex: null,
-          isBatchSync: isInitialSync,
-          queue: childWorkflowQueue,
-          childWorkflowsNameSuffix: "discovered",
-          topLevelWorkflowId,
-          forceResync,
-        });
-      }
-    } while (discoveredResources && PROCESS_ALL_DISCOVERED_RESOURCES);
-  }
+    }
+  } while (discoveredResources);
 
   // Drain the upsert queue before updating parents to ensure all document upserts are complete
   await executeChild(notionDrainDocumentUpsertQueueWorkflow, {

@@ -2,16 +2,25 @@ import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import {
+  emptyArray,
+  fetcher,
+  getErrorFromResponse,
+  useSWRWithDefaults,
+} from "@app/lib/swr/swr";
 import type { GetWebhookRequestsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/triggers/[tId]/webhook_requests";
 import type { GetWebhookSourceViewsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/webhook_source_views";
-import type { GetWebhookSourcesResponseBody } from "@app/pages/api/w/[wId]/webhook_sources";
+import type {
+  GetWebhookSourcesResponseBody,
+  PostWebhookSourcesBody,
+} from "@app/pages/api/w/[wId]/webhook_sources";
 import type { DeleteWebhookSourceResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/[webhookSourceId]";
 import type { GetWebhookSourceViewsResponseBody as GetSpecificWebhookSourceViewsResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/[webhookSourceId]/views";
+import type { GetWebhookSourceViewsListResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/views";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 import type {
-  PostWebhookSourcesBody,
-  WebhookSourceType,
+  WebhookSourceForAdminType,
+  WebhookSourceViewForAdminType,
   WebhookSourceViewType,
 } from "@app/types/triggers/webhooks";
 
@@ -45,6 +54,29 @@ export function useWebhookSourceViews({
     webhookSourceViews,
     isWebhookSourceViewsLoading: !error && !data && !disabled,
     isWebhookSourceViewsError: error,
+    mutateWebhookSourceViews: mutate,
+  };
+}
+
+export function useWebhookSourceViewsFromSpaces(
+  owner: LightWorkspaceType,
+  spaces: SpaceType[],
+  disabled?: boolean
+) {
+  const configFetcher: Fetcher<GetWebhookSourceViewsListResponseBody> = fetcher;
+
+  const spaceIds = spaces.map((s) => s.sId).join(",");
+
+  const url = `/api/w/${owner.sId}/webhook_sources/views?spaceIds=${spaceIds}`;
+  const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
+    disabled,
+  });
+
+  return {
+    webhookSourceViews:
+      data?.webhookSourceViews ?? emptyArray<WebhookSourceViewType>(),
+    isLoading: !error && !data && spaces.length !== 0,
+    isError: error,
     mutateWebhookSourceViews: mutate,
   };
 }
@@ -95,37 +127,35 @@ export function useCreateWebhookSource({
   const sendNotification = useSendNotification();
   const createWebhookSource = async (
     input: PostWebhookSourcesBody
-  ): Promise<WebhookSourceType | null> => {
-    try {
-      const response = await fetch(`/api/w/${owner.sId}/webhook_sources`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(input),
-      });
+  ): Promise<WebhookSourceForAdminType | null> => {
+    const response = await fetch(`/api/w/${owner.sId}/webhook_sources`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(input),
+    });
 
-      if (!response.ok) {
-        throw new Error("Network response was not ok");
-      }
+    if (!response.ok) {
+      const errorData = await getErrorFromResponse(response);
 
-      sendNotification({
-        type: "success",
-        title: `Successfully created webhook source`,
-      });
-
-      void mutateWebhookSourcesWithViews();
-
-      const result = await response.json();
-      return result.webhookSource;
-    } catch (error) {
       sendNotification({
         type: "error",
         title: `Failed to create webhook source`,
+        description: `Error: ${errorData.message}`,
       });
-
       return null;
     }
+
+    sendNotification({
+      type: "success",
+      title: "Successfully created webhook source",
+    });
+
+    void mutateWebhookSourcesWithViews();
+
+    const result = await response.json();
+    return result.webhookSource;
   };
 
   return createWebhookSource;
@@ -165,6 +195,7 @@ export function useUpdateWebhookSourceView({
         });
 
         return true;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         sendNotification({
           type: "error",
@@ -228,6 +259,7 @@ export function useDeleteWebhookSource({
         } else {
           throw new Error("Delete operation failed");
         }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         sendNotification({
           type: "error",
@@ -291,7 +323,7 @@ export function useAddWebhookSourceViewToSpace({
       webhookSource,
     }: {
       space: SpaceType;
-      webhookSource: WebhookSourceType;
+      webhookSource: WebhookSourceForAdminType;
     }): Promise<void> => {
       try {
         const response = await fetch(
@@ -315,6 +347,7 @@ export function useAddWebhookSourceViewToSpace({
         });
 
         await mutateWebhookSourcesWithViews();
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         sendNotification({
           type: "error",
@@ -346,7 +379,7 @@ export function useRemoveWebhookSourceViewFromSpace({
       webhookSourceView,
       space,
     }: {
-      webhookSourceView: WebhookSourceViewType;
+      webhookSourceView: WebhookSourceViewForAdminType;
       space: SpaceType;
     }): Promise<void> => {
       try {
@@ -387,11 +420,13 @@ export function useRemoveWebhookSourceViewFromSpace({
               type: "error",
               title: "Failed to remove webhook source",
               description:
+                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 res.error?.message ||
                 `Could not remove ${webhookSourceView.webhookSource.name} from the ${space.name} space. Please try again.`,
             });
           }
         }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         sendNotification({
           type: "error",

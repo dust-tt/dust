@@ -1,0 +1,42 @@
+{
+  "name": "webhook-router",
+  "version": "1.0.0",
+  "description": "Webhook router for multi-region deployment.",
+  "type": "module",
+  "main": "dist/firebase.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "npm run build && firebase emulators:start --only functions,storage,database",
+    "dev": "npm run start",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "deploy": "./deploy.sh"
+  },
+  "author": "Dust",
+  "license": "ISC",
+  "engines": {
+    "node": "20"
+  },
+  "dependencies": {
+    "@google-cloud/secret-manager": "^5.6.0",
+    "@google-cloud/storage": "^7.17.3",
+    "express": "^5.1.0",
+    "firebase-admin": "^13.4.0",
+    "firebase-functions": "^6.3.2",
+    "jose": "^5.0.0",
+    "raw-body": "^3.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@types/express": "^5.0.0",
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0",
+    "eslint-plugin-import": "^2.29.0",
+    "eslint-plugin-simple-import-sort": "^12.0.0",
+    "globals": "^15.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
+}

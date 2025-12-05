@@ -184,6 +184,7 @@ export function InviteEmailButtonWithModal({
 
   useEffect(() => {
     if (open && prefillText && isEmailValid(prefillText)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setInviteEmails((prev) => {
         if (prev.includes(prefillText)) {
           return prev;
@@ -192,6 +193,10 @@ export function InviteEmailButtonWithModal({
       });
     }
   }, [prefillText, open]);
+
+  const shouldDisableButton = useMemo(() => {
+    return !inviteEmailsList || inviteEmailsList.length === 0 || emailError;
+  }, [inviteEmailsList, emailError]);
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -249,6 +254,7 @@ export function InviteEmailButtonWithModal({
           }}
           rightButtonProps={{
             label: "Send Invite",
+            disabled: shouldDisableButton,
             onClick: async (event: MouseEvent) => {
               event.preventDefault();
               if (!inviteEmailsList) {

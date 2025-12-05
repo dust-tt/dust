@@ -4,13 +4,13 @@ import {
 } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
 import {
   assertNever,
-  CLAUDE_2_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
+  CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
+  CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
-  CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   GEMINI_2_5_PRO_MODEL_CONFIG,
   GLOBAL_AGENTS_SID,
   GPT_3_5_TURBO_MODEL_CONFIG,
@@ -120,22 +120,6 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         description: O3_MODEL_CONFIG.description,
         pictureUrl: "https://dust.tt/static/systemavatar/o1_avatar_full.png",
       };
-    case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
-      return {
-        sId: GLOBAL_AGENTS_SID.CLAUDE_INSTANT,
-        name: "claude-instant",
-        description: CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG.description,
-        pictureUrl:
-          "https://dust.tt/static/systemavatar/claude_avatar_full.png",
-      };
-    case GLOBAL_AGENTS_SID.CLAUDE_2:
-      return {
-        sId: GLOBAL_AGENTS_SID.CLAUDE_2,
-        name: "claude-2",
-        description: CLAUDE_2_DEFAULT_MODEL_CONFIG.description,
-        pictureUrl:
-          "https://dust.tt/static/systemavatar/claude_avatar_full.png",
-      };
     case GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU:
       return {
         sId: GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU,
@@ -165,6 +149,22 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         sId: GLOBAL_AGENTS_SID.CLAUDE_4_SONNET,
         name: "claude-4-sonnet",
         description: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.description,
+        pictureUrl:
+          "https://dust.tt/static/systemavatar/claude_avatar_full.png",
+      };
+    case GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET:
+      return {
+        sId: GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET,
+        name: "claude-4.5-sonnet",
+        description: CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.description,
+        pictureUrl:
+          "https://dust.tt/static/systemavatar/claude_avatar_full.png",
+      };
+    case GLOBAL_AGENTS_SID.CLAUDE_4_5_HAIKU:
+      return {
+        sId: GLOBAL_AGENTS_SID.CLAUDE_4_5_HAIKU,
+        name: "claude-4.5-haiku",
+        description: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.description,
         pictureUrl:
           "https://dust.tt/static/systemavatar/claude_avatar_full.png",
       };
@@ -255,6 +255,22 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         description: "An agent with context on your Intercom Help Center data.",
         pictureUrl:
           "https://dust.tt/static/systemavatar/intercom_avatar_full.png",
+      };
+    case GLOBAL_AGENTS_SID.DUST_EDGE:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_EDGE,
+        name: "dust-edge",
+        description:
+          "Same as dust but on another model to experiment internally.",
+        pictureUrl: "https://dust.tt/static/systemavatar/dust_avatar_full.png",
+      };
+    case GLOBAL_AGENTS_SID.DUST_QUICK:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_QUICK,
+        name: "dust-quick",
+        description:
+          "Same as dust but running Gemini 3 with minimal reasoning for faster responses.",
+        pictureUrl: "https://dust.tt/static/systemavatar/dust_avatar_full.png",
       };
     case GLOBAL_AGENTS_SID.DUST:
       return {

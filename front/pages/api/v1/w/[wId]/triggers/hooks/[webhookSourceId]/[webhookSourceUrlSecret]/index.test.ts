@@ -22,17 +22,10 @@ vi.mock("@app/logger/statsDClient", () => ({
   },
 }));
 
-// Mock temporal client to avoid workflow execution
-vi.mock("@app/lib/triggers/temporal/common/client", () => ({
-  launchAgentTriggerWorkflow: vi.fn(async () => ({
-    isOk: () => true,
-    isErr: () => false,
-    value: undefined,
-  })),
-}));
-
 vi.mock("@app/lib/file_storage", () => ({
-  getWebhookRequestsBucket: vi.fn(() => ({})),
+  getWebhookRequestsBucket: () => ({
+    uploadRawContentToBucket: vi.fn().mockResolvedValue(undefined),
+  }),
 }));
 
 import handler from ".";
@@ -48,21 +41,13 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
 
     // Create a webhook source
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
-    const webhookSourceResult = await webhookSourceFactory.create({
+    const webhookSource = await webhookSourceFactory.create({
       name: "Test Webhook Source",
     });
 
-    if (webhookSourceResult.isErr()) {
-      throw new Error(
-        `Failed to create webhook source: ${webhookSourceResult.error.message}`
-      );
-    }
-
-    const webhookSource = webhookSourceResult.value;
-
     req.query = {
       wId: workspace.sId,
-      webhookSourceId: webhookSource.sId(),
+      webhookSourceId: webhookSource.sId,
       webhookSourceUrlSecret: webhookSource.urlSecret,
     };
     req.body = { any: "payload" };
@@ -155,21 +140,13 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
 
     // Create a webhook source
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
-    const webhookSourceResult = await webhookSourceFactory.create({
+    const webhookSource = await webhookSourceFactory.create({
       name: "Test Webhook Source",
     });
 
-    if (webhookSourceResult.isErr()) {
-      throw new Error(
-        `Failed to create webhook source: ${webhookSourceResult.error.message}`
-      );
-    }
-
-    const webhookSource = webhookSourceResult.value;
-
     req.query = {
       wId: workspace.sId,
-      webhookSourceId: webhookSource.sId(),
+      webhookSourceId: webhookSource.sId,
       webhookSourceUrlSecret: "invalid-secret", // Using wrong secret
     };
     req.body = { any: "payload" };
@@ -196,21 +173,13 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
 
     // Create a webhook source
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
-    const webhookSourceResult = await webhookSourceFactory.create({
+    const webhookSource = await webhookSourceFactory.create({
       name: "Test Webhook Source",
     });
 
-    if (webhookSourceResult.isErr()) {
-      throw new Error(
-        `Failed to create webhook source: ${webhookSourceResult.error.message}`
-      );
-    }
-
-    const webhookSource = webhookSourceResult.value;
-
     req.query = {
       wId: workspace.sId,
-      webhookSourceId: webhookSource.sId(),
+      webhookSourceId: webhookSource.sId,
       // Missing webhookSourceUrlSecret parameter (it will be undefined)
     };
     req.body = { any: "payload" };
@@ -240,22 +209,14 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
     // Create a webhook source with a custom URL secret
     const customUrlSecret = "my-custom-url-secret-123";
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
-    const webhookSourceResult = await webhookSourceFactory.create({
+    const webhookSource = await webhookSourceFactory.create({
       name: "Test Webhook Source with URL Secret",
       urlSecret: customUrlSecret,
     });
 
-    if (webhookSourceResult.isErr()) {
-      throw new Error(
-        `Failed to create webhook source: ${webhookSourceResult.error.message}`
-      );
-    }
-
-    const webhookSource = webhookSourceResult.value;
-
     req.query = {
       wId: workspace.sId,
-      webhookSourceId: webhookSource.sId(),
+      webhookSourceId: webhookSource.sId,
       webhookSourceUrlSecret: customUrlSecret, // Using the correct secret
     };
     req.body = { any: "payload" };
@@ -305,23 +266,15 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
 
     // Create a GitHub webhook source that doesn't subscribe to pull_request events
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
-    const webhookSourceResult = await webhookSourceFactory.create({
+    const webhookSource = await webhookSourceFactory.create({
       name: "Test GitHub Webhook Source",
-      kind: "github",
+      provider: "github",
       subscribedEvents: ["issues"], // Subscribe to issues but not pull_request
     });
 
-    if (webhookSourceResult.isErr()) {
-      throw new Error(
-        `Failed to create webhook source: ${webhookSourceResult.error.message}`
-      );
-    }
-
-    const webhookSource = webhookSourceResult.value;
-
     req.query = {
       wId: workspace.sId,
-      webhookSourceId: webhookSource.sId(),
+      webhookSourceId: webhookSource.sId,
       webhookSourceUrlSecret: webhookSource.urlSecret,
     };
     req.body = {

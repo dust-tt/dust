@@ -24,6 +24,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/schema";
 import { getAgentDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import { ensureAuthorizedDataSourceViews } from "@app/lib/actions/mcp_internal_actions/utils/data_source_views";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
@@ -104,6 +105,14 @@ function createServer(
 
         const agentDataSourceConfigurations =
           dataSourceConfigurationsResult.value;
+
+        const authRes = await ensureAuthorizedDataSourceViews(
+          auth,
+          agentDataSourceConfigurations.map((c) => c.dataSourceViewId)
+        );
+        if (authRes.isErr()) {
+          return new Err(authRes.error);
+        }
 
         const result =
           nodeId === null
@@ -212,6 +221,14 @@ function createServer(
         const agentDataSourceConfigurations =
           dataSourceConfigurationsResult.value;
 
+        const authRes = await ensureAuthorizedDataSourceViews(
+          auth,
+          agentDataSourceConfigurations.map((c) => c.dataSourceViewId)
+        );
+        if (authRes.isErr()) {
+          return new Err(authRes.error);
+        }
+
         const result = await getWarehouseNodes(
           auth,
           agentDataSourceConfigurations,
@@ -259,8 +276,8 @@ function createServer(
         .array(z.string())
         .min(1)
         .describe(
-          "Array of table identifiers in the format 'table-<dataSourceSId>-<nodeId>'. " +
-            "All tables must be from the same warehouse (same dataSourceSId)."
+          "Array of table identifiers in the format 'table-<dataSourceId>-<nodeId>'. " +
+            "All tables must be from the same warehouse (same dataSourceId)."
         ),
     },
     withToolLogging(
@@ -289,6 +306,14 @@ function createServer(
         const agentDataSourceConfigurations =
           dataSourceConfigurationsResult.value;
 
+        const authRes = await ensureAuthorizedDataSourceViews(
+          auth,
+          agentDataSourceConfigurations.map((c) => c.dataSourceViewId)
+        );
+        if (authRes.isErr()) {
+          return new Err(authRes.error);
+        }
+
         const validationResult = await validateTables(
           auth,
           tableIds,
@@ -296,7 +321,7 @@ function createServer(
         );
 
         if (validationResult.isErr()) {
-          return new Err(new MCPError(validationResult.error.message));
+          return validationResult;
         }
 
         const { validatedNodes, dataSourceId } = validationResult.value;
@@ -307,7 +332,11 @@ function createServer(
         );
 
         if (!dataSource) {
-          return new Err(new MCPError("Data source not found"));
+          return new Err(
+            new MCPError("Data source not found", {
+              tracked: false,
+            })
+          );
         }
 
         const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
@@ -350,8 +379,8 @@ function createServer(
         .array(z.string())
         .min(1)
         .describe(
-          "Array of table identifiers in the format 'table-<dataSourceSId>-<nodeId>'. " +
-            "All tables must be from the same warehouse (same dataSourceSId)."
+          "Array of table identifiers in the format 'table-<dataSourceId>-<nodeId>'. " +
+            "All tables must be from the same warehouse (same dataSourceId)."
         ),
       query: z
         .string()
@@ -396,6 +425,14 @@ function createServer(
         const agentDataSourceConfigurations =
           dataSourceConfigurationsResult.value;
 
+        const authRes = await ensureAuthorizedDataSourceViews(
+          auth,
+          agentDataSourceConfigurations.map((c) => c.dataSourceViewId)
+        );
+        if (authRes.isErr()) {
+          return new Err(authRes.error);
+        }
+
         const validationResult = await validateTables(
           auth,
           tableIds,
@@ -403,7 +440,7 @@ function createServer(
         );
 
         if (validationResult.isErr()) {
-          return new Err(new MCPError(validationResult.error.message));
+          return validationResult;
         }
 
         const { validatedNodes, dataSourceId } = validationResult.value;
@@ -414,7 +451,11 @@ function createServer(
         );
 
         if (!dataSource) {
-          return new Err(new MCPError("Data source not found"));
+          return new Err(
+            new MCPError("Data source not found", {
+              tracked: false,
+            })
+          );
         }
 
         const connectorProvider = dataSource.connectorProvider;

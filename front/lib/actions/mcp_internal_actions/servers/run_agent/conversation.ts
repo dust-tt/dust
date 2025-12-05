@@ -1,4 +1,5 @@
 import type {
+  APIError,
   ConversationPublicType,
   DustAPI,
   PublicPostContentFragmentRequestBody,
@@ -13,14 +14,28 @@ import {
   isFileAttachmentType,
 } from "@app/lib/api/assistant/conversation/attachments";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
+import { serializeMention } from "@app/lib/mentions/format";
 import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
   AgentMessageType,
   ConversationType,
   Result,
+  UserMessageOrigin,
 } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, isUserMessageType, Ok } from "@app/types";
+
+/**
+ * Determines if an error should be considered user-side.
+ * User-side errors should not trigger alerts and their messages should be
+ * surfaced to the model.
+ */
+function isUserSideError(error: APIError): boolean {
+  return (
+    error.type === "invalid_request_error" ||
+    error.type === "plan_message_limit_exceeded"
+  );
+}
 
 export async function getOrCreateConversation(
   api: DustAPI,
@@ -65,10 +80,7 @@ export async function getOrCreateConversation(
     });
 
     if (convRes.isErr()) {
-      // Do not track invalid request errors, since they are user-side and should
-      // not trigger an alert on our end. For user-side errors, surface the
-      // underlying message to the model.
-      const isUserSide = convRes.error.type === "invalid_request_error";
+      const isUserSide = isUserSideError(convRes.error);
       const message = isUserSide
         ? convRes.error.message
         : "Failed to get conversation";
@@ -119,11 +131,39 @@ export async function getOrCreateConversation(
     }
   }
 
+  let parentOrigin: UserMessageOrigin | null = null;
+  const parentMessage = mainConversation.content
+    .flat()
+    .find((m) => m.sId === originMessage.parentMessageId);
+
+  if (!parentMessage) {
+    return new Err(new MCPError("Parent message not found."));
+  }
+
+  if (!isUserMessageType(parentMessage)) {
+    return new Err(new MCPError("Parent message is not a user message."));
+  }
+
+  parentOrigin = parentMessage.context.origin ?? null;
+
+  if (parentOrigin === "run_agent" || parentOrigin === "agent_handover") {
+    logger.error(
+      {
+        parentMessage: parentMessage?.sId,
+        origin: parentOrigin,
+        originMessageId: originMessage.sId,
+      },
+      "Invalid parent origin."
+    );
+  }
+
   if (conversationId) {
+    const agenticMessageType =
+      mainConversation.sId !== conversationId ? "run_agent" : "agent_handover";
     const messageRes = await api.postUserMessage({
       conversationId,
       message: {
-        content: `:mention[${childAgentBlob.name}]{sId=${childAgentId}} ${query}`,
+        content: `${serializeMention({ name: childAgentBlob.name, sId: childAgentId })} ${query}`,
         mentions: [{ configurationId: childAgentId }],
         context: {
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -131,22 +171,19 @@ export async function getOrCreateConversation(
           fullName: `@${mainAgent.name}`,
           email: null,
           profilePictureUrl: mainAgent.pictureUrl,
-          // `run_agent` origin will skip adding the conversation to the user history.
-          origin:
-            mainConversation.sId !== conversationId
-              ? "run_agent"
-              : "agent_handover",
+          origin: parentOrigin,
           selectedMCPServerViewIds: toolsetsToAdd,
+        },
+        agenticMessageData: {
+          // `run_agent` type will skip adding the conversation to the user history.
+          type: agenticMessageType,
           originMessageId: originMessage.sId,
         },
       },
     });
 
     if (messageRes.isErr()) {
-      // Do not track invalid request errors, since they are user-side and should
-      // not trigger an alert on our end. For user-side errors, surface the
-      // underlying message to the model.
-      const isUserSide = messageRes.error.type === "invalid_request_error";
+      const isUserSide = isUserSideError(messageRes.error);
       const message = isUserSide
         ? messageRes.error.message
         : "Failed to create message";
@@ -163,10 +200,7 @@ export async function getOrCreateConversation(
     });
 
     if (convRes.isErr()) {
-      // Do not track invalid request errors, since they are user-side and should
-      // not trigger an alert on our end. For user-side errors, surface the
-      // underlying message to the model.
-      const isUserSide = convRes.error.type === "invalid_request_error";
+      const isUserSide = isUserSideError(convRes.error);
       const message = isUserSide
         ? convRes.error.message
         : "Failed to get conversation";
@@ -190,7 +224,7 @@ export async function getOrCreateConversation(
     visibility: "unlisted",
     depth: mainConversation.depth + 1,
     message: {
-      content: `:mention[${childAgentBlob.name}]{sId=${childAgentId}} ${query}`,
+      content: `${serializeMention({ name: childAgentBlob.name, sId: childAgentId })} ${query}`,
       mentions: [{ configurationId: childAgentId }],
       context: {
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -198,9 +232,12 @@ export async function getOrCreateConversation(
         fullName: `@${mainAgent.name}`,
         email: null,
         profilePictureUrl: mainAgent.pictureUrl,
-        // `run_agent` origin will skip adding the conversation to the user history.
-        origin: "run_agent",
+        origin: parentOrigin,
         selectedMCPServerViewIds: toolsetsToAdd,
+      },
+      agenticMessageData: {
+        // `run_agent` type will skip adding the conversation to the user history.
+        type: "run_agent",
         originMessageId: originMessage.sId,
       },
     },
@@ -217,10 +254,7 @@ export async function getOrCreateConversation(
       "Failed to create conversation"
     );
 
-    // Do not track invalid request errors, since they are user-side and should
-    // not trigger an alert on our end. For user-side errors, surface the
-    // underlying message to the model.
-    const isUserSide = convRes.error.type === "invalid_request_error";
+    const isUserSide = isUserSideError(convRes.error);
     const message = isUserSide
       ? convRes.error.message
       : "Failed to create conversation";

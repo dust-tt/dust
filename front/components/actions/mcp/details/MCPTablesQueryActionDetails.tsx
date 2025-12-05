@@ -100,7 +100,6 @@ export function MCPTablesQueryActionDetails({
                 <ToolGeneratedFileDetails
                   key={file.fileId}
                   resource={file}
-                  icon={TableIcon}
                   owner={owner}
                 />
               ))}

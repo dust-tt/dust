@@ -26,7 +26,7 @@ import { ProviderWorkflowError, TablesError } from "@connectors/lib/error";
 import type { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import { GoogleDriveSheet } from "@connectors/lib/models/google_drive";
 import type { Logger } from "@connectors/logger/logger";
-import logger from "@connectors/logger/logger";
+import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 import type { GoogleDriveObjectType } from "@connectors/types";
@@ -116,7 +116,7 @@ function findDataRangeAndSelectRows(allRows: string[][]): string[][] {
   return nonEmptyRow;
 }
 
-function getValidRows(allRows: string[][], loggerArgs: object): string[][] {
+function getValidRows(allRows: string[][], localLogger: Logger): string[][] {
   const filteredRows = findDataRangeAndSelectRows(allRows);
 
   const maxCols = filteredRows.reduce(
@@ -128,10 +128,7 @@ function getValidRows(allRows: string[][], loggerArgs: object): string[][] {
   // Headers are used to assert the number of cells per row.
   const [rawHeaders] = filteredRows;
   if (!rawHeaders || rawHeaders.length === 0) {
-    logger.info(
-      loggerArgs,
-      "[Spreadsheet] Skipping due to empty initial rows."
-    );
+    localLogger.info("[Spreadsheet] Skipping due to empty initial rows.");
     return [];
   }
 
@@ -147,8 +144,8 @@ function getValidRows(allRows: string[][], loggerArgs: object): string[][] {
     });
 
     if (validRows.length > MAXIMUM_NUMBER_OF_GSHEET_ROWS) {
-      logger.info(
-        { ...loggerArgs, rowCount: validRows.length },
+      localLogger.info(
+        { rowCount: validRows.length },
         `[Spreadsheet] Found sheet with more than ${MAXIMUM_NUMBER_OF_GSHEET_ROWS}, skipping further processing.`
       );
 
@@ -158,10 +155,7 @@ function getValidRows(allRows: string[][], loggerArgs: object): string[][] {
 
     return validRows;
   } catch (err) {
-    logger.info(
-      { ...loggerArgs, err },
-      `[Spreadsheet] Failed to retrieve valid rows.`
-    );
+    localLogger.info({ err }, `[Spreadsheet] Failed to retrieve valid rows.`);
 
     // If the headers are invalid, return an empty array to ignore it.
     if (err instanceof InvalidStructuredDataHeaderError) {
@@ -181,24 +175,18 @@ async function processSheet(
   if (!sheet.values) {
     return false;
   }
-
   const { id, spreadsheet, title } = sheet;
-  const loggerArgs = {
-    connectorType: "google_drive",
-    connectorId: connector.id,
+  const localLogger = getActivityLogger(connector).child({
     sheet: {
       id,
       spreadsheet,
       title,
     },
-  };
+  });
 
-  logger.info(
-    loggerArgs,
-    "[Spreadsheet] Processing sheet in Google Spreadsheet."
-  );
+  localLogger.info("[Spreadsheet] Processing sheet in Google Spreadsheet.");
 
-  const rows = getValidRows(sheet.values, loggerArgs);
+  const rows = getValidRows(sheet.values, localLogger);
   // Assuming the first line as headers, at least one additional data line is required.
   if (rows.length > 1) {
     let upsertError = null;
@@ -212,14 +200,14 @@ async function processSheet(
       );
     } catch (err) {
       if (err instanceof TablesError) {
-        logger.warn(
-          { ...loggerArgs, error: err },
+        localLogger.warn(
+          { error: err },
           "[Spreadsheet] Tables error - skipping (but not failing)."
         );
         upsertError = err;
       } else {
-        logger.error(
-          { ...loggerArgs, error: err },
+        localLogger.error(
+          { error: err },
           "[Spreadsheet] Failed to upsert table."
         );
         throw err;
@@ -231,8 +219,7 @@ async function processSheet(
     return true;
   }
 
-  logger.info(
-    loggerArgs,
+  localLogger.info(
     "[Spreadsheet] Failed to import sheet. Will be deleted if already synced."
   );
 
@@ -310,7 +297,7 @@ async function batchGetSheets(
 async function getAllSheetsFromSpreadSheet(
   sheetsAPI: sheets_v4.Sheets,
   spreadsheet: sheets_v4.Schema$Spreadsheet,
-  loggerArgs: object
+  logger: Logger
 ): Promise<Sheet[]> {
   const { spreadsheetId, properties } = spreadsheet;
   if (!spreadsheetId || !properties) {
@@ -320,7 +307,6 @@ async function getAllSheetsFromSpreadSheet(
   const { title: spreadsheetTitle } = properties;
 
   const localLogger = logger.child({
-    ...loggerArgs,
     spreadsheet: {
       id: spreadsheet.spreadsheetId,
     },
@@ -432,12 +418,7 @@ export async function syncSpreadSheet(
         throw new Error("Connector not found.");
       }
 
-      const loggerArgs = {
-        connectorId,
-      };
-
-      const localLogger = logger.child({
-        ...loggerArgs,
+      const localLogger = getActivityLogger(connector).child({
         spreadsheet: {
           id: file.id,
           size: file.size,
@@ -491,6 +472,7 @@ export async function syncSpreadSheet(
               }
             } else {
               // Allow locally retrying the API call.
+              continue;
             }
           } else if (isGAxiosNotFoundError(err)) {
             localLogger.info(
@@ -517,7 +499,7 @@ export async function syncSpreadSheet(
       const sheets = await getAllSheetsFromSpreadSheet(
         sheetsAPI,
         spreadsheet.data,
-        loggerArgs
+        localLogger
       );
 
       // List synced sheets.
@@ -588,9 +570,9 @@ async function deleteSheetForSpreadsheet(
 ) {
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
-  logger.info(
+  const localLogger = getActivityLogger(connector);
+  localLogger.info(
     {
-      connectorId: connector.id,
       sheet,
       spreadsheet: {
         id: spreadsheetFileId,
@@ -639,10 +621,9 @@ export async function deleteSpreadsheet(
       connectorId: connector.id,
     },
   });
-
-  logger.info(
+  const localLogger = getActivityLogger(connector);
+  localLogger.info(
     {
-      connectorId: connector.id,
       spreadsheet: file,
     },
     "[Spreadsheet] Deleting Google Spreadsheet."

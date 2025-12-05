@@ -2,6 +2,11 @@ import { useRouter } from "next/router";
 import { useCallback, useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  trackEvent,
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+} from "@app/lib/tracking";
 import logger from "@app/logger/logger";
 import type { LightWorkspaceType } from "@app/types";
 import { normalizeError } from "@app/types";
@@ -51,6 +56,7 @@ export function useYAMLUpload({ owner }: UseYAMLUploadOptions) {
           {
             workspaceId: owner.sId,
           },
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           normalizeError(errorData).message ||
             "Failed to create agent from YAML file."
         );
@@ -65,6 +71,19 @@ export function useYAMLUpload({ owner }: UseYAMLUploadOptions) {
       }
 
       const result = await response.json();
+
+      trackEvent({
+        area: TRACKING_AREAS.BUILDER,
+        object: "create_agent",
+        action: TRACKING_ACTIONS.SUBMIT,
+        extra: {
+          agent_id: result.agentConfiguration.sId,
+          source: "yaml_upload",
+          scope: result.agentConfiguration.scope,
+          has_skipped_actions: result.skippedActions?.length > 0,
+        },
+      });
+
       if (result.skippedActions && result.skippedActions.length > 0) {
         sendNotification({
           title: "Agent created with warnings",

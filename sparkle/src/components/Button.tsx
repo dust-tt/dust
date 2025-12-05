@@ -24,7 +24,9 @@ const PULSE_ANIMATION_DURATION = 1;
 export const BUTTON_VARIANTS = [
   "primary",
   "highlight",
+  "highlight-secondary",
   "warning",
+  "warning-secondary",
   "outline",
   "ghost",
   "ghost-secondary",
@@ -59,12 +61,42 @@ const buttonVariants = cva(
           "active:s-bg-highlight-dark",
           "disabled:s-bg-highlight-muted disabled:s-text-highlight-50/60 dark:disabled:s-bg-highlight-muted-night"
         ),
+        "highlight-secondary": cn(
+          "s-border",
+          "s-border-border dark:s-border-border-night",
+          "s-text-highlight-500 dark:s-text-highlight-500-night",
+          "s-bg-background dark:s-bg-background-night",
+          "hover:s-text-highlight-500 dark:hover:s-text-highlight-500-night",
+          "hover:s-bg-highlight-50 dark:hover:s-bg-highlight-900",
+          "hover:s-border-primary-150 dark:hover:s-border-border-night",
+          "active:s-bg-primary-300 dark:active:s-bg-primary-900",
+          "disabled:s-text-primary-muted dark:disabled:s-text-primary-muted-night",
+          "disabled:s-border-primary-100 dark:disabled:s-border-primary-100-night",
+          "disabled:hover:s-bg-background dark:disabled:hover:s-bg-background-night",
+          "disabled:hover:s-border-primary-100 dark:disabled:hover:s-border-primary-100-night",
+          "disabled:hover:s-text-primary-muted dark:disabled:hover:s-text-primary-muted-night"
+        ),
         warning: cn(
           "s-bg-warning",
           "s-text-warning-50",
           "hover:s-bg-warning-light",
           "active:s-bg-warning-dark",
           "disabled:s-bg-warning-muted disabled:s-text-highlight-50/60 dark:disabled:s-bg-warning-muted-night"
+        ),
+        "warning-secondary": cn(
+          "s-border",
+          "s-border-border dark:s-border-border-night",
+          "s-text-warning-500 dark:s-text-warning-500-night",
+          "s-bg-background dark:s-bg-background-night",
+          "hover:s-text-warning-500 dark:hover:s-text-warning-500-night",
+          "hover:s-bg-warning-50 dark:hover:s-bg-warning-900",
+          "hover:s-border-primary-150 dark:hover:s-border-border-night",
+          "active:s-bg-primary-300 dark:active:s-bg-primary-900",
+          "disabled:s-text-primary-muted dark:disabled:s-text-primary-muted-night",
+          "disabled:s-border-primary-100 dark:disabled:s-border-primary-100-night",
+          "disabled:hover:s-bg-background dark:disabled:hover:s-bg-background-night",
+          "disabled:hover:s-border-primary-100 dark:disabled:hover:s-border-primary-100-night",
+          "disabled:hover:s-text-primary-muted dark:disabled:hover:s-text-primary-muted-night"
         ),
         outline: cn(
           "s-border",
@@ -76,7 +108,10 @@ const buttonVariants = cva(
           "hover:s-border-primary-150 dark:hover:s-border-border-night",
           "active:s-bg-primary-300 dark:active:s-bg-primary-900",
           "disabled:s-text-primary-muted dark:disabled:s-text-primary-muted-night",
-          "disabled:s-border-primary-100 dark:disabled:s-border-primary-100-night"
+          "disabled:s-border-primary-100 dark:disabled:s-border-primary-100-night",
+          "disabled:hover:s-bg-background dark:disabled:hover:s-bg-background-night",
+          "disabled:hover:s-border-primary-100 dark:disabled:hover:s-border-primary-100-night",
+          "disabled:hover:s-text-primary-muted dark:disabled:hover:s-text-primary-muted-night"
         ),
         ghost: cn(
           "s-border",
@@ -86,7 +121,10 @@ const buttonVariants = cva(
           "hover:s-text-primary-900 dark:hover:s-text-white",
           "hover:s-border-border-dark dark:hover:s-border-border-night",
           "active:s-bg-primary-300 dark:active:s-bg-primary-900",
-          "disabled:s-text-primary-400 dark:disabled:s-text-primary-400-night"
+          "disabled:s-text-primary-400 dark:disabled:s-text-primary-400-night",
+          "disabled:hover:s-bg-transparent dark:disabled:hover:s-bg-transparent",
+          "disabled:hover:s-border-border/0 dark:disabled:hover:s-border-border-night/0",
+          "disabled:hover:s-text-primary-400 dark:disabled:hover:s-text-primary-400-night"
         ),
         "ghost-secondary": cn(
           "s-border",
@@ -96,7 +134,10 @@ const buttonVariants = cva(
           "hover:s-text-primary-900 dark:hover:s-text-primary-900-night",
           "hover:s-border-border-dark dark:hover:s-border-border-night",
           "active:s-bg-primary-300 dark:active:s-bg-primary-900",
-          "disabled:s-text-primary-400 dark:disabled:s-text-primary-400-night"
+          "disabled:s-text-primary-400 dark:disabled:s-text-primary-400-night",
+          "disabled:hover:s-bg-transparent dark:disabled:hover:s-bg-transparent",
+          "disabled:hover:s-border-border/0 dark:disabled:hover:s-border-border-night/0",
+          "disabled:hover:s-text-primary-400 dark:disabled:hover:s-text-primary-400-night"
         ),
       },
       size: {
@@ -143,7 +184,9 @@ type SpinnerVariant = NonNullable<SpinnerProps["variant"]>;
 const spinnerVariantsMap: Record<ButtonVariantType, SpinnerVariant> = {
   primary: "revert",
   highlight: "light",
+  "highlight-secondary": "mono",
   warning: "light",
+  "warning-secondary": "mono",
   outline: "mono",
   ghost: "mono",
   "ghost-secondary": "mono",
@@ -155,7 +198,9 @@ const chevronVariantMap = {
   ghost: "s-text-faint",
   "ghost-secondary": "s-text-faint",
   highlight: "s-text-white/60",
+  "highlight-secondary": "s-text-highlight-500 dark:s-text-highlight-500-night",
   warning: "s-text-white/60",
+  "warning-secondary": "s-text-warning-500 dark:s-text-warning-500-night",
 } as const;
 
 export interface MetaButtonProps

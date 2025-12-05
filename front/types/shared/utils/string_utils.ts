@@ -25,6 +25,7 @@ export function safeSubstring(
   while (isTrailingLoneSurrogate(str.charCodeAt(start))) {
     start++;
   }
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (end === undefined) {
     end = str.length;
   }
@@ -167,6 +168,10 @@ export function asDisplayToolName(name?: string | null) {
     return "Create Slideshows";
   }
 
+  if (name === "deep_dive") {
+    return "Go deep";
+  }
+
   return formatAsDisplayName(name);
 }
 
@@ -175,5 +180,39 @@ export function asDisplayName(name?: string | null) {
     return "";
   }
 
-  return formatAsDisplayName(name);
+  return asDisplayToolName(name);
+}
+
+// Replace lone surrogates (actual Unicode surrogates, not escaped ones) with placeholder
+// High surrogates: \uD800-\uDBFF
+// Low surrogates: \uDC00-\uDFFF
+export function toWellFormed(content: string): string {
+  const placeholder = "\uFFFD";
+  let result = "";
+
+  for (let i = 0; i < content.length; i++) {
+    const char = content[i];
+    const charCode = content.charCodeAt(i);
+
+    // Check for high surrogate
+    if (charCode >= 0xd800 && charCode <= 0xdbff) {
+      // Check if it's followed by a low surrogate to form a valid pair
+      if (i + 1 < content.length) {
+        const nextCharCode = content.charCodeAt(i + 1);
+        if (nextCharCode >= 0xdc00 && nextCharCode <= 0xdfff) {
+          // Valid surrogate pair, keep both characters
+          result += char + content[i + 1];
+          i++; // Skip the next character as we've processed it
+          continue;
+        }
+      }
+      result += placeholder;
+    } else if (charCode >= 0xdc00 && charCode <= 0xdfff) {
+      result += placeholder;
+    } else {
+      result += char;
+    }
+  }
+
+  return result;
 }

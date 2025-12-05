@@ -8,6 +8,7 @@ import type {
 import { ConfluenceOAuthProvider } from "@app/lib/api/oauth/providers/confluence";
 import { ConfluenceToolsOAuthProvider } from "@app/lib/api/oauth/providers/confluence_tools";
 import { DiscordOAuthProvider } from "@app/lib/api/oauth/providers/discord";
+import { FathomOAuthProvider } from "@app/lib/api/oauth/providers/fathom";
 import { FreshserviceOAuthProvider } from "@app/lib/api/oauth/providers/freshservice";
 import { GithubOAuthProvider } from "@app/lib/api/oauth/providers/github";
 import { GmailOAuthProvider } from "@app/lib/api/oauth/providers/gmail";
@@ -16,6 +17,7 @@ import { GoogleDriveOAuthProvider } from "@app/lib/api/oauth/providers/google_dr
 import { HubspotOAuthProvider } from "@app/lib/api/oauth/providers/hubspot";
 import { IntercomOAuthProvider } from "@app/lib/api/oauth/providers/intercom";
 import { JiraOAuthProvider } from "@app/lib/api/oauth/providers/jira";
+import { LinearOAuthProvider } from "@app/lib/api/oauth/providers/linear";
 import { MCPOAuthProvider } from "@app/lib/api/oauth/providers/mcp";
 import { MCPOAuthStaticOAuthProvider } from "@app/lib/api/oauth/providers/mcp_static";
 import { MicrosoftOAuthProvider } from "@app/lib/api/oauth/providers/microsoft";
@@ -52,6 +54,7 @@ const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
   confluence: new ConfluenceOAuthProvider(),
   confluence_tools: new ConfluenceToolsOAuthProvider(),
   discord: new DiscordOAuthProvider(),
+  fathom: new FathomOAuthProvider(),
   freshservice: new FreshserviceOAuthProvider(),
   github: new GithubOAuthProvider(),
   gmail: new GmailOAuthProvider(),
@@ -60,6 +63,7 @@ const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
   hubspot: new HubspotOAuthProvider(),
   intercom: new IntercomOAuthProvider(),
   jira: new JiraOAuthProvider(),
+  linear: new LinearOAuthProvider(),
   mcp: new MCPOAuthProvider(),
   mcp_static: new MCPOAuthStaticOAuthProvider(),
   microsoft: new MicrosoftOAuthProvider(),
@@ -280,7 +284,9 @@ export async function checkConnectionOwnership(
   });
   if (
     connectionRes.isErr() ||
-    connectionRes.value.connection.metadata.user_id !== auth.user()?.sId
+    connectionRes.value.connection.metadata.user_id !== auth.user()?.sId ||
+    connectionRes.value.connection.metadata.workspace_id !==
+      auth.workspace()?.sId
   ) {
     return new Err(new Error("Invalid connection"));
   }

@@ -1,0 +1,6 @@
+prompt,judge_prompt
+"What is 2 + 2?","The correct answer is 4."
+"What is the capital of France?","The correct answer is Paris."
+"Explain what photosynthesis is in one sentence.","A good answer should mention that photosynthesis is the process by which plants convert sunlight, water, and CO2 into glucose/energy and oxygen."
+"Is the Earth flat or round?","The correct answer is that Earth is round (spherical/oblate spheroid)."
+"What year did World War II end?","The correct answer is 1945."

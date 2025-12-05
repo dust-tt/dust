@@ -58,7 +58,7 @@ async function handler(
         });
       }
 
-      const revokeResult = await revokeAndTrackMembership(owner, user);
+      const revokeResult = await revokeAndTrackMembership(auth, user);
 
       if (revokeResult.isErr()) {
         switch (revokeResult.error.type) {

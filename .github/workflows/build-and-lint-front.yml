@@ -14,23 +14,16 @@ permissions:
 
 jobs:
   tests:
+    name: Test Shard ${{ matrix.shardIndex }} of ${{ matrix.shardTotal }}
+    strategy:
+      matrix:
+        shardIndex: [1, 2, 3]
+        shardTotal: [3]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 20.13.0
-          cache: "npm"
-          cache-dependency-path: |
-            ./front/package-lock.json
-            ./types/package-lock.json
-            ./sdks/js/package-lock.json
-      - name: Build SDK/JS
-        working-directory: sdks/js
-        run: npm install && npm run build
-      - name: Build Front
-        working-directory: front
-        run: npm ci
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
       - name: Install Redis
         uses: chenjuneking/redis-setup-action@v1
         with:
@@ -51,59 +44,101 @@ jobs:
         env:
           FRONT_DATABASE_URI: "postgres://test:test@localhost:5433/front_test"
           REDIS_CACHE_URI: "redis://localhost:5434"
+          REDIS_URI: "redis://localhost:5434"
           NODE_ENV: test
-        run: npx tsx admin/db.ts && npm run test:ci
+        run: npx tsx admin/db.ts && npm run test:ci -- --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --outputFile=junit-shard-${{ matrix.shardIndex }}.xml
       - name: Build Tests Report
         if: always()
         uses: mikepenz/action-junit-report@v5
         with:
-          report_paths: "**/front/junit*.xml"
+          report_paths: "front/junit-shard-${{ matrix.shardIndex }}.xml"
           detailed_summary: true
           flaky_summary: true
           group_suite: true
-          check_name: Tests Report
+          check_name: Tests Report (Shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
   tsc:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 20.13.0
-          cache: "npm"
-          cache-dependency-path: |
-            ./front/package-lock.json
-            ./types/package-lock.json
-            ./sdks/js/package-lock.json
-      - name: Build SDK/JS
-        working-directory: sdks/js
-        run: npm install && npm run build
-      - name: Build Front
-        working-directory: front
-        run: npm ci
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
       - name: Typecheck
         working-directory: front
-        run: npx tsc --version && npm run tsc
+        run: npx tsgo --version && npm run tsgo
   lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
         with:
-          node-version: 20.13.0
-          cache: "npm"
-          cache-dependency-path: |
-            ./front/package-lock.json
-            ./types/package-lock.json
-            ./sdks/js/package-lock.json
-      - name: Install SDK/JS
-        working-directory: sdks/js
-        run: npm install
-      - name: Install Front
-        working-directory: front
-        run: npm install
+          fetch-depth: 1
+      - name: Fetch main branch
+        run: git fetch origin main --depth=1
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
+      - name: Cache ESLint
+        id: eslint-cache
+        uses: actions/cache@v4
+        with:
+          path: front/.cache/
+          key: eslint-cache-v4-${{ runner.os }}-${{ hashFiles('front/eslint.config.ts', 'front/tsconfig.json', 'front/package-lock.json') }}
+          restore-keys: |
+            eslint-cache-v4-${{ runner.os }}-
       - name: Lint
         working-directory: front
-        run: npm run lint && npm run format:check
-      # - name: Validate API Doc
-      #   working-directory: front
-      #   run: npm run docs
+        env:
+          NODE_OPTIONS: "--max-old-space-size=8192"
+        run: npm run lint
+      - name: Format Check & Circular Dependency Check
+        working-directory: front
+        run: |
+          set -e
+          npm run format:check &
+          npm run lint:circular -- --changed --no-errors-on-unmatched &
+          wait -n
+      - name: Knip - unlisted dependencies
+        working-directory: front
+        run: |
+          explanations=$(cat << 'EOF'
+
+          Relying on transitive dependencies is bad because:
+          * Fragility: Your direct dependencies can remove or update their dependencies at any time, breaking your code without warning
+          * No version control: You can't lock or manage versions of packages you don't explicitly declare
+          * Hidden contracts: It's unclear what your project actually needs, making maintenance and onboarding harder
+          * Unpredictable resolution: Package managers may hoist different versions than you expect, causing inconsistent behavior across environments
+
+          *Always explicitly declare what you directly import/use.*
+          EOF
+          )
+          npm run knip -- --include unlisted || (echo "You have some unlisted dependencies. **Please add them to the package.json**\n\n${explanations}" >&2; false)
+      - name: Knip - unused dependencies & dev dependencies
+        working-directory: front
+        run: |
+          explanations=$(cat << 'EOF'
+
+          Keeping unused (dev) dependencies is problematic because:
+
+          1. Security surface: More packages = more potential vulnerabilities to monitor and patch, even if you're not using them
+          2. Install time: Slows down `npm install` for everyone on the team and in CI/CD pipelines
+          3. Confusion: Makes it unclear what tools/libraries are actually needed for development, hindering onboarding
+          4. Maintenance burden: You'll waste time updating packages you don't actually use
+          EOF
+          )
+          npm run knip -- --include dependencies,devDependencies || (echo "You have some unused dependencies. **Please remove them from the package.json, or add them in the knip.ts file in the ignoreDependencies array**\n\n${explanations}" >&2; false)
+      - name: Knip - unused files
+        working-directory: front
+        run: |
+          explanations=$(cat << 'EOF'
+
+          Keeping unused files in your codebase is problematic because:
+
+          1. Cognitive overhead: Developers waste time reading, searching through, and trying to understand code that isn't actually used
+          2. Maintenance burden: Unused files still need to be updated during refactors, migrations, or dependency upgrades
+          3. Confusion: Makes it unclear what's actually part of the application vs. legacy/dead code, slowing down onboarding
+          4. Bloat: Increases repository size, IDE indexing time, and potentially bundle size if not properly tree-shaken
+
+          EOF
+          )
+          npm run knip -- --include files || (echo "You have some unused files. **Please remove them, or add them in the knip.ts file in the ignoreFiles array**\n\n${explanations}" >&2; false)
+    # - name: Validate API Doc
+    #   working-directory: front
+    #   run: npm run docs

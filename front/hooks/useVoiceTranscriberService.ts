@@ -5,6 +5,7 @@ import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { AugmentedMessage } from "@app/lib/utils/find_agents_in_message";
 import type { LightWorkspaceType } from "@app/types";
+import { normalizeError } from "@app/types";
 
 // We are using webm with Opus codec
 // In general browsers are using a 48 kbps bitrate
@@ -16,6 +17,7 @@ interface UseVoiceTranscriberServiceParams {
   owner: LightWorkspaceType;
   onTranscribeDelta?: (delta: string) => void;
   onTranscribeComplete?: (transcript: AugmentedMessage[]) => void;
+  onError?: (error: Error) => void;
   fileUploaderService: FileUploaderService;
 }
 
@@ -23,6 +25,7 @@ export function useVoiceTranscriberService({
   owner,
   onTranscribeDelta,
   onTranscribeComplete,
+  onError,
   fileUploaderService,
 }: UseVoiceTranscriberServiceParams) {
   const [status, setStatus] = useState<
@@ -207,9 +210,16 @@ export function useVoiceTranscriberService({
         body,
         onTranscribeDelta,
         onTranscribeComplete,
+        onError,
       });
     },
-    [onTranscribeDelta, onTranscribeComplete, owner.sId, sendNotification]
+    [
+      onTranscribeDelta,
+      onTranscribeComplete,
+      onError,
+      owner.sId,
+      sendNotification,
+    ]
   );
 
   const finalizeRecordingAddAsAttachment = useCallback(
@@ -351,10 +361,12 @@ const readSSEFromPostRequest = async ({
   body,
   onTranscribeDelta,
   onTranscribeComplete,
+  onError,
 }: {
   body: ReadableStream<Uint8Array>;
   onTranscribeDelta?: (delta: string) => void;
   onTranscribeComplete?: (transcript: AugmentedMessage[]) => void;
+  onError?: (error: Error) => void;
 }) => {
   const reader = body.getReader();
   const decoder = new TextDecoder();
@@ -403,14 +415,21 @@ const readSSEFromPostRequest = async ({
           try {
             const parsed = JSON.parse(payload) as
               | { type: "delta"; delta: string }
-              | { type: "fullTranscript"; fullTranscript: AugmentedMessage[] };
+              | { type: "fullTranscript"; fullTranscript: AugmentedMessage[] }
+              | { type: "error"; error: string };
 
             if (parsed.type === "delta") {
+              // eslint-disable-next-line no-unused-expressions
               onTranscribeDelta && onTranscribeDelta(parsed.delta);
             } else if (parsed.type === "fullTranscript") {
+              // eslint-disable-next-line no-unused-expressions
               onTranscribeComplete &&
                 onTranscribeComplete(parsed.fullTranscript);
 
+              doneStreaming = true;
+            } else if (parsed.type === "error") {
+              // eslint-disable-next-line no-unused-expressions
+              onError && onError(normalizeError(parsed.error));
               doneStreaming = true;
             }
           } catch {

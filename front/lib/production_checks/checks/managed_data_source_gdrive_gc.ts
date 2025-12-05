@@ -29,6 +29,14 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
   await concurrentExecutor(
     GdriveDataSources,
     async (ds) => {
+      logger.info(
+        {
+          reportPayload: {
+            connectorId: ds.connectorId,
+          },
+        },
+        "Check started"
+      );
       heartbeat();
 
       // Retrieve all documents from the connector (first) in batches using an id cursor

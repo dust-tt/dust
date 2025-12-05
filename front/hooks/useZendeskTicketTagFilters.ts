@@ -1,8 +1,8 @@
 import { useCallback } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useConnectorConfig } from "@app/lib/swr/connectors";
 import { ZENDESK_CONFIG_KEYS } from "@app/lib/constants/zendesk";
+import { useConnectorConfig } from "@app/lib/swr/connectors";
 import type { DataSourceType, WorkspaceType } from "@app/types";
 
 export function useZendeskTicketTagFilters({
@@ -82,10 +82,12 @@ export function useZendeskTicketTagFilters({
             type: "error",
             title: "Failed to add tag",
             description:
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               err.error?.connectors_error?.message ||
               "An unknown error occurred",
           });
         }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         sendNotification({
           type: "error",
@@ -94,6 +96,7 @@ export function useZendeskTicketTagFilters({
         });
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       owner.sId,
       dataSource.sId,
@@ -149,10 +152,12 @@ export function useZendeskTicketTagFilters({
             type: "error",
             title: "Failed to remove tag",
             description:
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               err.error?.connectors_error?.message ||
               "An unknown error occurred",
           });
         }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         sendNotification({
           type: "error",
@@ -161,6 +166,7 @@ export function useZendeskTicketTagFilters({
         });
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       owner.sId,
       dataSource.sId,

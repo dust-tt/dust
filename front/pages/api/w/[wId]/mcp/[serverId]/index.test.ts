@@ -1,8 +1,10 @@
 import type { RequestMethod } from "node-mocks-http";
 import { describe, expect, it } from "vitest";
 
+import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -65,7 +67,7 @@ describe("GET /api/w/[wId]/mcp/[serverId]", () => {
 });
 
 describe("PATCH /api/w/[wId]/mcp/[serverId]", () => {
-  it("should return update headers when headers are provided", async () => {
+  it("should return update headers when headers are provided for a remote server", async () => {
     const { req, res, workspace } = await setupTest("admin", "PATCH");
 
     const server = await RemoteMCPServerFactory.create(workspace);
@@ -86,6 +88,34 @@ describe("PATCH /api/w/[wId]/mcp/[serverId]", () => {
     expect(responseData.server.customHeaders).toMatchObject({
       "test-key-1": "value1",
       "test-key-2": "value2",
+    });
+  });
+
+  it("should return update headers when headers are provided for an internal server", async () => {
+    const { req, res, auth, workspace } = await setupTest("admin", "PATCH");
+
+    await FeatureFlagFactory.basic("slab_mcp", workspace);
+    const server = await InternalMCPServerInMemoryResource.makeNew(auth, {
+      name: "slab",
+      useCase: null,
+    });
+    req.query.serverId = server.id;
+    req.body = {
+      customHeaders: [
+        { key: "test-key-1", value: "value1" },
+        { key: "test-key-2", value: "value2" },
+      ],
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const responseData = res._getJSONData();
+    expect(responseData.server).toHaveProperty("customHeaders");
+    expect(responseData.server.customHeaders).toBeDefined();
+    expect(responseData.server.customHeaders).toMatchObject({
+      "test-key-1": "••lue1",
+      "test-key-2": "••lue2",
     });
   });
 });

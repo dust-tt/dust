@@ -25,7 +25,6 @@ const {
 
 export async function gongSyncWorkflow({
   connectorId,
-  fromTs,
   forceResync,
 }: {
   connectorId: ModelId;
@@ -34,11 +33,9 @@ export async function gongSyncWorkflow({
 }) {
   await gongSaveStartSyncActivity({ connectorId });
 
-  // Only run the users sync if we are not resuming from a previous sync. New users will be added
-  // through the transcripts incremental sync.
-  if (!fromTs) {
-    await gongListAndSaveUsersActivity({ connectorId });
-  }
+  // Only syncs the users if we are not resuming from a previous sync.
+  // New users will be added through the transcript incremental sync.
+  await gongListAndSaveUsersActivity({ connectorId });
 
   const {
     workflowId,

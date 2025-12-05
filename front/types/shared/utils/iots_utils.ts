@@ -14,6 +14,7 @@ export function ioTsEnum<EnumType>(
     enumValues.includes(input as string);
 
   return new t.Type<EnumType>(
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     enumName || uuidv4(),
     isEnumValue,
     (input, context) =>
@@ -22,7 +23,7 @@ export function ioTsEnum<EnumType>(
   );
 }
 
-export interface BrandedRange {
+interface BrandedRange {
   readonly Range: unique symbol;
 }
 
@@ -34,16 +35,6 @@ export function createRangeCodec(min: number, max: number) {
     "Range"
   );
 }
-
-interface SlugifiedStringBrand {
-  readonly SlugifiedString: unique symbol;
-}
-
-export const SlugifiedString = t.brand(
-  t.string,
-  (s): s is t.Branded<string, SlugifiedStringBrand> => /^[a-z0-9_]+$/.test(s),
-  "SlugifiedString"
-);
 
 export function ioTsParsePayload<T>(
   payload: unknown,

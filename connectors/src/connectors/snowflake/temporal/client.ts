@@ -32,7 +32,18 @@ export async function launchSnowflakeSyncWorkflow(
   // hourOffset ensures jobs are distributed across the day based on connector ID
   const hourOffset = connector.id % 6;
 
-  try {
+  const workflowAlreadyRunning = await (async () => {
+    try {
+      const wfHandle: WorkflowHandle<typeof snowflakeSyncWorkflow> =
+        client.workflow.getHandle(workflowId);
+      const description = await wfHandle.describe();
+      return description.status.name === "RUNNING";
+    } catch (err) {
+      return false;
+    }
+  })();
+
+  const signaWithStart = async () => {
     await client.workflow.signalWithStart(snowflakeSyncWorkflow, {
       args: [
         {
@@ -53,11 +64,20 @@ export async function launchSnowflakeSyncWorkflow(
       // Every 6 hours, with hour offset based on connector ID
       cronSchedule: `${connector.id % 60} ${hourOffset},${(hourOffset + 6) % 24},${(hourOffset + 12) % 24},${(hourOffset + 18) % 24} * * *`,
     });
+  };
+
+  try {
+    await signaWithStart();
+
+    if (!workflowAlreadyRunning) {
+      // We signal the workflow again, so we skip the timer.
+      await signaWithStart();
+    }
+
+    return new Ok(workflowId);
   } catch (err) {
     return new Err(normalizeError(err));
   }
-
-  return new Ok(workflowId);
 }
 
 export async function stopSnowflakeSyncWorkflow(

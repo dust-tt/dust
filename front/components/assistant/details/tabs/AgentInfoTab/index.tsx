@@ -1,17 +1,9 @@
-import {
-  Button,
-  Chip,
-  Cog6ToothIcon,
-  Page,
-  ReadOnlyTextArea,
-} from "@dust-tt/sparkle";
+import { Chip, Page, ReadOnlyTextArea } from "@dust-tt/sparkle";
 
 import { AssistantEditedSection } from "@app/components/assistant/details/tabs/AgentInfoTab/AssistantEditedSection";
 import { AssistantKnowledgeSection } from "@app/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection";
 import { AssistantToolsSection } from "@app/components/assistant/details/tabs/AgentInfoTab/AssistantToolsSection";
-import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type { AgentConfigurationType, WorkspaceType } from "@app/types";
-import { GLOBAL_AGENTS_SID, isAdmin } from "@app/types";
 
 export function AgentInfoTab({
   agentConfiguration,
@@ -20,7 +12,6 @@ export function AgentInfoTab({
   agentConfiguration: AgentConfigurationType;
   owner: WorkspaceType;
 }) {
-  const isConfigurable = agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST;
   return (
     <div className="flex flex-col gap-4">
       {agentConfiguration.tags.length > 0 && (
@@ -37,22 +28,7 @@ export function AgentInfoTab({
       {agentConfiguration && (
         <AssistantEditedSection agentConfiguration={agentConfiguration} />
       )}
-      {isConfigurable && (
-        <div className="text-sm text-foreground dark:text-foreground-night">
-          {isAdmin(owner) ? (
-            <Button
-              label={`Manage ${agentConfiguration.name} configuration`}
-              icon={Cog6ToothIcon}
-              href={getAgentBuilderRoute(owner.sId, agentConfiguration.sId)}
-            />
-          ) : (
-            <Chip
-              color="blue"
-              label={`Your admin(s) can manage ${agentConfiguration.name} configuration.`}
-            />
-          )}
-        </div>
-      )}
+      {/* No per-agent configuration button for global Dust agent anymore. */}
       <Page.Separator />
 
       {agentConfiguration.scope !== "global" && (

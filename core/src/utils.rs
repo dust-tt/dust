@@ -1,12 +1,14 @@
 use anyhow::Result;
 use async_std::path::PathBuf;
 use axum::{Extension, Json};
+use http::Response;
 use hyper::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqids::Sqids;
+use std::time::Duration;
 use std::{io::Write, sync::Arc};
-use tower_http::trace::MakeSpan;
+use tower_http::trace::{MakeSpan, OnResponse};
 use tracing::error;
 use uuid::Uuid;
 
@@ -180,6 +182,34 @@ impl<B> MakeSpan<B> for CoreRequestMakeSpan {
             .map(|ext| ext.as_ref().as_str())
             .unwrap_or("unknown")
         )
+    }
+}
+
+/// Core requests response tracing.
+#[derive(Debug, Clone)]
+pub struct CoreRequestOnResponse {}
+
+impl CoreRequestOnResponse {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl Default for CoreRequestOnResponse {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<B> OnResponse<B> for CoreRequestOnResponse {
+    fn on_response(self, response: &Response<B>, latency: Duration, _span: &tracing::Span) {
+        let status = response.status();
+        let latency_ms = latency.as_millis();
+        tracing::info!(
+            status = %status,
+            latency = latency_ms,
+            "core request response"
+        );
     }
 }
 

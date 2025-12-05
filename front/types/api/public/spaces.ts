@@ -29,6 +29,7 @@ export type LightContentNode = {
   sourceUrl: string | null;
   title: string;
   type: ContentNodeType;
+  mimeType?: string | null;
 };
 
 export const DATA_SOURCE_VIEW_CATEGORIES = [
@@ -51,6 +52,18 @@ export function isValidDataSourceViewCategory(
   );
 }
 
+export const DATA_SOURCE_VIEW_CATEGORIES_DISPLAY_NAMES: Record<
+  DataSourceViewCategory,
+  string
+> = {
+  managed: "Connections",
+  folder: "Folders",
+  website: "Websites",
+  apps: "Apps",
+  actions: "Tools",
+  triggers: "Triggers",
+};
+
 export type DataSourceViewCategoryWithoutApps = Exclude<
   DataSourceViewCategory,
   "apps" | "actions"
@@ -71,4 +84,13 @@ export function isWebsiteOrFolderCategory(
   category: unknown
 ): category is Extract<DataSourceViewCategory, "website" | "folder"> {
   return category === "website" || category === "folder";
+}
+
+export function isSpreadsheetFolderContentNode(
+  contentNode: LightContentNode
+): boolean {
+  return (
+    contentNode.type === "folder" &&
+    contentNode.mimeType === "application/vnd.dust.folder.spreadsheet"
+  );
 }

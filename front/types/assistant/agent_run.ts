@@ -5,13 +5,14 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
-import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
+import { AgentMessage, Message } from "@app/lib/models/agent/conversation";
 import type { Result } from "@app/types";
 import { Err, isGlobalAgentId, Ok } from "@app/types";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentMessageType,
   ConversationType,
+  UserMessageOrigin,
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import {
@@ -24,8 +25,16 @@ export type AgentLoopArgs = {
   agentMessageVersion: number;
   conversationId: string;
   conversationTitle: string | null;
+
+  // Note that the original user message may not be the same as the parent message as agent might mention other agents.
   userMessageId: string;
   userMessageVersion: number;
+  userMessageOrigin?: UserMessageOrigin | null;
+};
+
+export type AgentMessageRef = {
+  agentMessageId: string;
+  conversationId: string;
 };
 
 export type AgentLoopExecutionData = {

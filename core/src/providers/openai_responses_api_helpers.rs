@@ -115,11 +115,32 @@ pub struct OpenAIResponseAPITool {
     pub strict: Option<bool>,
 }
 
+type ResponseFormatSchema = serde_json::Map<String, serde_json::Value>;
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct ResponseFormatJSONSchemaConfig {
+    #[serde(rename = "type")]
+    pub r#type: String,
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub strict: Option<bool>,
+    pub schema: ResponseFormatSchema,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct OpenAIResponseAPITextConfig {
+    pub format: Option<ResponseFormatJSONSchemaConfig>,
+}
+
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct OpenAIResponsesRequest {
     pub model: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub input: Option<Vec<OpenAIResponseInputItem>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub text: Option<OpenAIResponseAPITextConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reasoning: Option<OpenAIResponseReasoningConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -476,8 +497,8 @@ pub async fn openai_responses_api_completion(
         || model_id.starts_with("o4")
         || model_id.starts_with("gpt-5");
 
-    let (openai_org_id, instructions, reasoning_effort, store) = match &extras {
-        None => (None, None, None, true),
+    let (openai_org_id, instructions, response_format, reasoning_effort, store) = match &extras {
+        None => (None, None, None, None, true),
         Some(v) => (
             match v.get("openai_organization_id") {
                 Some(Value::String(o)) => Some(o.to_string()),
@@ -485,6 +506,10 @@ pub async fn openai_responses_api_completion(
             },
             match v.get("instructions") {
                 Some(Value::String(i)) => Some(i.to_string()),
+                _ => None,
+            },
+            match v.get("response_format") {
+                Some(Value::Object(f)) => Some(f.clone()),
                 _ => None,
             },
             match v.get("reasoning_effort") {
@@ -511,6 +536,31 @@ pub async fn openai_responses_api_completion(
             },
         ),
     };
+
+    let text_config = response_format.and_then(|f| {
+        let json_schema = f.get("json_schema")?;
+        let name = json_schema
+            .get("name")
+            .and_then(|n| n.as_str())
+            .map(|s| s.to_string())?;
+        let schema = json_schema.get("schema")?;
+
+        let description = json_schema
+            .get("description")
+            .and_then(|d| d.as_str())
+            .map(|s| s.to_string());
+        let strict = json_schema.get("strict").and_then(|s| s.as_bool());
+
+        Some(OpenAIResponseAPITextConfig {
+            format: Some(ResponseFormatJSONSchemaConfig {
+                name,
+                schema: schema.as_object()?.clone(),
+                r#type: "json_schema".to_string(),
+                description: description,
+                strict: strict,
+            }),
+        })
+    });
 
     let input = responses_api_input_from_chat_messages(
         messages,
@@ -551,6 +601,7 @@ pub async fn openai_responses_api_completion(
     let request = OpenAIResponsesRequest {
         model: model_id.clone(),
         input: Some(input),
+        text: text_config,
         reasoning: reasoning_config,
         tools: if tools.is_empty() { None } else { Some(tools) },
         instructions,
@@ -595,6 +646,7 @@ pub async fn openai_responses_api_completion(
             reasoning_tokens: usage
                 .output_tokens_details
                 .and_then(|details| details.reasoning_tokens),
+            cache_creation_input_tokens: None,
         }),
         provider_request_id: request_id,
         logprobs: None,

@@ -7,7 +7,11 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { FileShareScope, WithAPIErrorResponse } from "@app/types";
-import { fileShareScopeSchema, frameContentType } from "@app/types";
+import {
+  fileShareScopeSchema,
+  frameContentType,
+  isConversationFileUseCase,
+} from "@app/types";
 
 const ShareFileRequestBodySchema = z.object({
   shareScope: fileShareScopeSchema,
@@ -46,16 +50,16 @@ async function handler(
     });
   }
 
-  if (file.useCase === "conversation" && file.useCaseMetadata?.conversationId) {
+  if (
+    isConversationFileUseCase(file.useCase) &&
+    file.useCaseMetadata?.conversationId
+  ) {
     // For conversation files, check if the user has access to the conversation.
     const conversation = await ConversationResource.fetchById(
       auth,
       file.useCaseMetadata.conversationId
     );
-    if (
-      !conversation ||
-      !ConversationResource.canAccessConversation(auth, conversation)
-    ) {
+    if (!conversation) {
       return apiError(req, res, {
         status_code: 404,
         api_error: {
@@ -67,7 +71,7 @@ async function handler(
   }
 
   // Only allow sharing Frame files.
-  if (!file.isInteractiveContent && file.contentType === frameContentType) {
+  if (!file.isInteractiveContent || file.contentType !== frameContentType) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {

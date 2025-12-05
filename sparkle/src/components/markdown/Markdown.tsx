@@ -4,7 +4,6 @@ import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import type { ReactMarkdownProps } from "react-markdown/lib/ast-to-react";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
-import rehypeKatex from "rehype-katex";
 import remarkDirective from "remark-directive";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -17,6 +16,7 @@ import { LiBlock, OlBlock, UlBlock } from "@sparkle/components/markdown/List";
 import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
 import { ParagraphBlock } from "@sparkle/components/markdown/ParagraphBlock";
 import { PreBlock } from "@sparkle/components/markdown/PreBlock";
+import { safeRehypeKatex } from "@sparkle/components/markdown/safeRehypeKatex";
 import {
   TableBlock,
   TableBodyBlock,
@@ -24,7 +24,10 @@ import {
   TableHeadBlock,
   TableHeaderBlock,
 } from "@sparkle/components/markdown/TableBlock";
-import { sanitizeContent } from "@sparkle/components/markdown/utils";
+import {
+  preprocessDollarSigns,
+  sanitizeContent,
+} from "@sparkle/components/markdown/utils";
 import { cn } from "@sparkle/lib/utils";
 
 export const markdownHeaderClasses = {
@@ -70,7 +73,10 @@ export function Markdown({
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
 }) {
-  const processedContent = useMemo(() => sanitizeContent(content), [content]);
+  const processedContent = useMemo(() => {
+    const sanitized = sanitizeContent(content);
+    return preprocessDollarSigns(sanitized);
+  }, [content]);
 
   // Note on re-renderings. A lot of effort has been put into preventing rerendering across markdown
   // AST parsing rounds (happening at each token being streamed).
@@ -214,14 +220,16 @@ export function Markdown({
     () => [
       remarkDirective,
       remarkGfm,
-      [remarkMath, { singleDollarTextMath: false }],
+      [remarkMath, { singleDollarTextMath: true }],
       ...(additionalMarkdownPlugins || []),
       showUnsupportedDirective,
     ],
     [additionalMarkdownPlugins]
   );
 
-  const rehypePlugins = [[rehypeKatex, { output: "mathml" }]] as PluggableList;
+  const rehypePlugins = [
+    [safeRehypeKatex, { output: "mathml" }],
+  ] as PluggableList;
 
   try {
     return (
@@ -266,6 +274,7 @@ function LinkBlock({
   return (
     <a
       href={href}
+      title={href}
       target="_blank"
       rel="noopener noreferrer"
       className={cn(

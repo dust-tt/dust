@@ -4,7 +4,10 @@ import * as reporter from "io-ts-reporters";
 
 import { runAction } from "@app/lib/actions/server";
 import { getBuilderDescriptionSuggestions } from "@app/lib/api/assistant/suggestions/description";
+import { getBuilderEmojiSuggestions } from "@app/lib/api/assistant/suggestions/emoji";
+import { getBuilderInstructionsSuggestions } from "@app/lib/api/assistant/suggestions/instructions";
 import { getBuilderNameSuggestions } from "@app/lib/api/assistant/suggestions/name";
+import { getBuilderTagSuggestions } from "@app/lib/api/assistant/suggestions/tags";
 import type { SuggestionResults } from "@app/lib/api/assistant/suggestions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdActionRegistry } from "@app/lib/registry";
@@ -15,12 +18,12 @@ import type {
   Result,
   WorkspaceType,
 } from "@app/types";
+import { GEMINI_2_5_FLASH_MODEL_CONFIG } from "@app/types";
 import {
   assertNever,
   BuilderEmojiSuggestionsResponseBodySchema,
   BuilderSuggestionsResponseBodySchema,
   Err,
-  GEMINI_2_FLASH_MODEL_CONFIG,
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
   Ok,
@@ -42,7 +45,7 @@ function getModelForSuggestionType(
       return getLargeWhitelistedModel(owner);
 
     case "autocompletion":
-      return GEMINI_2_FLASH_MODEL_CONFIG;
+      return GEMINI_2_5_FLASH_MODEL_CONFIG;
 
     case "name":
     case "description":
@@ -76,9 +79,15 @@ export async function getBuilderSuggestions(
     case "description":
       return getBuilderDescriptionSuggestions(auth, inputs);
 
-    case "emoji":
     case "tags":
+      return getBuilderTagSuggestions(auth, inputs);
+
+    case "emoji":
+      return getBuilderEmojiSuggestions(auth, inputs);
+
     case "instructions":
+      return getBuilderInstructionsSuggestions(auth, inputs);
+
     case "autocompletion": {
       const config = cloneBaseConfig(
         getDustProdActionRegistry()[`assistant-builder-${type}-suggestions`]

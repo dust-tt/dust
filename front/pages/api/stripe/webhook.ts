@@ -1,7 +1,9 @@
+import assert from "assert";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { pipeline, Writable } from "stream";
 import type Stripe from "stripe";
 import { promisify } from "util";
+import { z } from "zod";
 
 import apiConfig from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
@@ -12,11 +14,24 @@ import {
 } from "@app/lib/api/email";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
+import {
+  startCreditFromProOneOffInvoice,
+  voidFailedProCreditPurchaseInvoice,
+} from "@app/lib/credits/committed";
+import { grantFreeCreditsOnSubscriptionRenewal } from "@app/lib/credits/free";
+import {
+  allocatePAYGCreditsOnCycleRenewal,
+  invoiceEnterprisePAYGCredits,
+  isPAYGEnabled,
+} from "@app/lib/credits/payg";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import {
   assertStripeSubscriptionIsValid,
   createCustomerPortalSession,
   getStripeClient,
+  getStripeSubscription,
+  isCreditPurchaseInvoice,
+  isEnterpriseSubscription,
 } from "@app/lib/plans/stripe";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
@@ -28,6 +43,7 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import { statsDClient } from "@app/logger/statsDClient";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import {
   launchScheduleWorkspaceScrubWorkflow,
@@ -48,6 +64,11 @@ export const config = {
   },
 };
 
+export const StripeBillingPeriodSchema = z.object({
+  current_period_start: z.number(),
+  current_period_end: z.number(),
+});
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetResponseBody>>
@@ -65,7 +86,7 @@ async function handler(
       // Collect raw body using stream pipeline
       let rawBody = Buffer.from("");
       const collector = new Writable({
-        write(chunk, encoding, callback) {
+        write(chunk, _encoding, callback) {
           rawBody = Buffer.concat([rawBody, chunk]);
           callback();
         },
@@ -79,18 +100,16 @@ async function handler(
           apiConfig.getStripeSecretWebhookKey()
         );
       } catch (error) {
-        logger.error(
-          { error, stripeError: true },
-          "Error constructing Stripe event in Webhook."
-        );
+        logger.error({ error }, "Error constructing Stripe event in Webhook.");
       }
 
       if (!event) {
         return apiError(req, res, {
-          status_code: 500,
+          status_code: 403,
           api_error: {
             type: "internal_server_error",
-            message: "Error constructing Stripe Webhook event.",
+            message:
+              "Invalid Stripe Webhook event, the signature may not be valid.",
           },
         });
       }
@@ -295,13 +314,13 @@ async function handler(
               },
             });
           }
-        case "invoice.paid":
+        case "invoice.paid": {
           // This is what confirms the subscription is active and payments are being made.
           logger.info(
             { event },
             "[Stripe Webhook] Received customer.invoice.paid event."
           );
-          invoice = event.data.object as Stripe.Invoice;
+          const invoice = event.data.object as Stripe.Invoice;
           if (typeof invoice.subscription !== "string") {
             return _returnStripeApiError(
               req,
@@ -311,11 +330,12 @@ async function handler(
             );
           }
           // Setting subscription payment status to succeeded
-          subscription = await Subscription.findOne({
+          const subscription = await Subscription.findOne({
             where: { stripeSubscriptionId: invoice.subscription },
             include: [WorkspaceModel],
           });
-          if (!subscription) {
+
+          if (!subscription || !subscription.stripeSubscriptionId) {
             logger.warn(
               {
                 event,
@@ -327,8 +347,54 @@ async function handler(
             // the warnings and create an alert if this log appears in all regions
             return res.status(200).json({ success: true });
           }
-          await subscription.update({ paymentFailingSince: null });
+
+          const stripeSubscription = await getStripeSubscription(
+            subscription.stripeSubscriptionId
+          );
+
+          if (!stripeSubscription) {
+            logger.warn(
+              {
+                event,
+                stripeSubscriptionId: invoice.subscription,
+              },
+              "[Stripe Webhook] Stripe subscription not found."
+            );
+            // We return a 200 here to handle multiple regions, DD will watch
+            // the warnings and create an alert if this log appears in all regions
+            return res.status(200).json({ success: true });
+          }
+
+          const isProCreditPurchaseInvoice =
+            isCreditPurchaseInvoice(invoice) &&
+            !isEnterpriseSubscription(stripeSubscription);
+
+          const auth = await Authenticator.internalAdminForWorkspace(
+            subscription.workspace.sId
+          );
+
+          if (isProCreditPurchaseInvoice) {
+            const creditPurchaseResult = await startCreditFromProOneOffInvoice({
+              auth,
+              invoice,
+              stripeSubscription,
+            });
+
+            if (creditPurchaseResult.isErr()) {
+              logger.error(
+                {
+                  error: creditPurchaseResult.error,
+                  invoiceId: invoice.id,
+                  stripeSubscriptionId: invoice.subscription,
+                },
+                "[Stripe Webhook] Error processing credit purchase"
+              );
+            }
+          } else if (!isCreditPurchaseInvoice(invoice)) {
+            await subscription.update({ paymentFailingSince: null });
+          }
           break;
+        }
         case "invoice.payment_failed":
           // Occurs when payment failed or the user does not have a valid payment method.
           // The stripe subscription becomes "past_due".
@@ -386,8 +452,24 @@ async function handler(
           const auth = await Authenticator.internalAdminForWorkspace(
             subscription.workspace.sId
           );
+
+          // Handle Pro credit purchase invoice failures
+          stripeSubscription = await getStripeSubscription(
+            invoice.subscription
+          );
+
+          if (!stripeSubscription) {
+            logger.warn(
+              {
+                event,
+                stripeSubscriptionId: invoice.subscription,
+              },
+              "[Stripe Webhook] Stripe Subscription not found."
+            );
+          }
           const owner = auth.workspace();
           const subscriptionType = auth.subscription();
+
           if (!owner || !subscriptionType) {
             return _returnStripeApiError(
               req,
@@ -415,6 +497,42 @@ async function handler(
               portalUrl
             );
           }
+
+          if (stripeSubscription) {
+            const isProCreditPurchaseInvoice =
+              isCreditPurchaseInvoice(invoice) &&
+              !isEnterpriseSubscription(stripeSubscription);
+
+            if (isProCreditPurchaseInvoice) {
+              const result = await voidFailedProCreditPurchaseInvoice({
+                auth,
+                invoice,
+              });
+              if (result.isErr()) {
+                // For eng-oncall
+                // This case is supposed to be extremely rare, as there are not a lot of things that can fail
+                // during an invoice void, you will need to inspect the invoice directly in stripe to see what
+                // happened, and invoice it by hand, with the added metadata put in `voidFailedProCreditPurchase`
+                // contact Stripe owners in case of doubt
+                logger.error(
+                  {
+                    error: result.error,
+                    panic: true,
+                    stripeError: true,
+                    invoiceId: invoice.id,
+                  },
+                  "[Stripe Webhook] Error handling failed credit purchase"
+                );
+              } else if (result.value.voided) {
+                logger.warn(
+                  { invoiceId: invoice.id },
+                  "[Stripe Webhook] Voided Pro credit purchase invoice after 3 failures"
+                );
+                return res.status(200).json({ success: true });
+              }
+            }
+          }
+
           break;
         case "charge.dispute.created":
           const dispute = event.data.object as Stripe.Dispute;
@@ -426,16 +544,27 @@ async function handler(
 
         case "customer.subscription.created": {
           const stripeSubscription = event.data.object as Stripe.Subscription;
+          const priceId =
+            stripeSubscription.items.data.length > 0
+              ? stripeSubscription.items.data[0].price?.id
+              : null;
           // on the odd chance the change is not compatible with our logic, we panic
           const validStatus =
             assertStripeSubscriptionIsValid(stripeSubscription);
+
           if (validStatus.isErr()) {
+            statsDClient.increment("stripe.subscription.invalid", 1, [
+              "event_type:customer.subscription.created",
+            ]);
+
             logger.error(
               {
-                stripeError: true,
-                event,
+                invalidStripeSubscriptionError: true,
+                workspaceId: event.data.object.metadata?.workspaceId,
                 stripeSubscriptionId: stripeSubscription.id,
+                priceId,
                 invalidity_message: validStatus.error.invalidity_message,
+                event,
               },
               "[Stripe Webhook] Received customer.subscription.created event with invalid subscription."
             );
@@ -458,6 +587,100 @@ async function handler(
           if (!previousAttributes) {
             break;
           } // should not happen by definition of the subscription.updated event
+
+          // Billing cycle changed
+          if ("current_period_start" in previousAttributes) {
+            const subscription = await Subscription.findOne({
+              where: { stripeSubscriptionId: stripeSubscription.id },
+              include: [WorkspaceModel],
+            });
+
+            if (subscription) {
+              const auth = await Authenticator.internalAdminForWorkspace(
+                subscription.workspace.sId
+              );
+
+              const freeCreditsResult =
+                await grantFreeCreditsOnSubscriptionRenewal({
+                  auth,
+                  stripeSubscription,
+                });
+
+              if (freeCreditsResult.isErr()) {
+                logger.error(
+                  {
+                    panic: true,
+                    stripeError: true,
+                    error: freeCreditsResult.error,
+                    subscriptionId: stripeSubscription.id,
+                    workspaceId: subscription.workspace.sId,
+                  },
+                  "[Stripe Webhook] Error granting free credits on renewal"
+                );
+              }
+
+              // TODO(PPUL): should we enforce that enterprise always has PAYG enabled?
+              const paygEnabled = await isPAYGEnabled(auth);
+
+              if (isEnterpriseSubscription(stripeSubscription) && paygEnabled) {
+                // Allocate PAYG credits for the new billing cycle
+                const currentPeriod = StripeBillingPeriodSchema.safeParse({
+                  current_period_start: stripeSubscription.current_period_start,
+                  current_period_end: stripeSubscription.current_period_end,
+                });
+
+                assert(
+                  currentPeriod.success,
+                  "Unexpected current period missing or malformed"
+                );
+                await allocatePAYGCreditsOnCycleRenewal({
+                  auth,
+                  nextPeriodStartSeconds:
+                    currentPeriod.data.current_period_start,
+                  nextPeriodEndSeconds: currentPeriod.data.current_period_end,
+                });
+
+                const previousPeriod =
+                  StripeBillingPeriodSchema.safeParse(previousAttributes);
+                assert(
+                  previousPeriod.success,
+                  "Unexpected previous period missing or malformed"
+                );
+                const previousPeriodStartSeconds =
+                  previousPeriod.data.current_period_start;
+                const previousPeriodEndSeconds =
+                  previousPeriod.data.current_period_end;
+                const paygResult = await invoiceEnterprisePAYGCredits({
+                  auth,
+                  stripeSubscription,
+                  previousPeriodStartSeconds,
+                  previousPeriodEndSeconds,
+                });
+
+                if (paygResult.isErr()) {
+                  logger.error(
+                    {
+                      panic: true,
+                      stripeError: true,
+                      error: paygResult.error,
+                      subscriptionId: stripeSubscription.id,
+                      workspaceId: subscription.workspace.sId,
+                    },
+                    "[Stripe Webhook] Error invoicing PAYG credits"
+                  );
+                }
+              }
+            } else {
+              logger.warn(
+                {
+                  stripeEventId: event.id,
+                  stripeEventType: event.type,
+                  stripeSubscriptionId: stripeSubscription.id,
+                },
+                "[Stripe Webhook] Subscription not found for billing cycle change."
+              );
+            }
+          }
 
           if (stripeSubscription.status === "trialing") {
             // We check if the trialing subscription is being canceled.
@@ -617,12 +840,22 @@ async function handler(
           const validStatus =
             assertStripeSubscriptionIsValid(stripeSubscription);
           if (validStatus.isErr()) {
+            statsDClient.increment("stripe.subscription.invalid", 1, [
+              "event_type:customer.subscription.updated",
+            ]);
+
+            const priceId =
+              stripeSubscription.items.data.length > 0
+                ? stripeSubscription.items.data[0].price?.id
+                : null;
             logger.error(
               {
-                stripeError: true,
-                event,
+                invalidStripeSubscriptionError: true,
+                workspaceId: event.data.object.metadata?.workspaceId,
                 stripeSubscriptionId: stripeSubscription.id,
+                priceId,
                 invalidity_message: validStatus.error.invalidity_message,
+                event,
               },
               "[Stripe Webhook] Received customer.subscription.updated event with invalid subscription."
             );
@@ -702,7 +935,12 @@ async function handler(
                 });
               if (scheduleScrubRes.isErr()) {
                 logger.error(
-                  { stripeError: true, error: scheduleScrubRes.error },
+                  {
+                    stripeError: true,
+                    workspaceId: matchingSubscription.workspace.sId,
+                    stripeSubscriptionId: stripeSubscription.id,
+                    error: scheduleScrubRes.error,
+                  },
                   "Error launching scrub workspace workflow"
                 );
                 return apiError(req, res, {

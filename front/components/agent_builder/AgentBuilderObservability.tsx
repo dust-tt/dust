@@ -1,5 +1,7 @@
+import { cn, LoadingBlock } from "@dust-tt/sparkle";
+
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import { UsageMetricsChart } from "@app/components/agent_builder/observability/UsageMetricsChart";
+import { AgentObservability } from "@app/components/observability/AgentObservability";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 
 interface AgentBuilderObservabilityProps {
@@ -10,30 +12,45 @@ export function AgentBuilderObservability({
   agentConfigurationSId,
 }: AgentBuilderObservabilityProps) {
   const { owner } = useAgentBuilderContext();
-
-  const { agentConfiguration } = useAgentConfiguration({
-    workspaceId: owner.sId,
-    agentConfigurationId: agentConfigurationSId,
-  });
+  const { agentConfiguration, isAgentConfigurationLoading } =
+    useAgentConfiguration({
+      workspaceId: owner.sId,
+      agentConfigurationId: agentConfigurationSId,
+    });
 
   if (!agentConfiguration) {
     return null;
   }
 
-  return (
-    <div className="flex h-full flex-col space-y-6 overflow-y-auto">
-      <div>
-        <h2 className="text-lg font-semibold text-foreground">Observability</h2>
-        <p className="text-sm text-muted-foreground">
-          Monitor key metrics and performance indicators for your agent.
-        </p>
-      </div>
+  return isAgentConfigurationLoading || !agentConfiguration ? (
+    <div className="grid grid-cols-1 gap-6">
+      <ChartContainerSkeleton />
+      <ChartContainerSkeleton />
+      <ChartContainerSkeleton />
+      <ChartContainerSkeleton />
+      <ChartContainerSkeleton />
+    </div>
+  ) : (
+    <AgentObservability
+      workspaceId={owner.sId}
+      agentConfigurationId={agentConfiguration.sId}
+      isCustomAgent={agentConfiguration.scope !== "global"}
+    />
+  );
+}
 
-      <div className="grid grid-cols-1 gap-6">
-        <UsageMetricsChart
-          workspaceId={owner.sId}
-          agentConfigurationId={agentConfiguration.sId}
-        />
+function ChartContainerSkeleton() {
+  return (
+    <div
+      className={cn(
+        "bg-card flex flex-col rounded-lg border border-border p-4 dark:border-border-night"
+      )}
+    >
+      <div className="mb-4 flex items-center justify-between">
+        <LoadingBlock className="h-6 w-40 rounded-md" />
+      </div>
+      <div className="flex-1">
+        <LoadingBlock className="h-full w-full rounded-xl" />
       </div>
     </div>
   );

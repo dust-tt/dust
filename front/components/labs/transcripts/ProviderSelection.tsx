@@ -96,6 +96,7 @@ export function ProviderSelection({
           title: "Failed to connect provider",
           description:
             "Unexpected error trying to connect to your transcripts provider. Please try again. Error: " +
+            // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
             error,
         });
       }
@@ -253,6 +254,7 @@ export function ProviderSelection({
         });
 
         await mutateTranscriptsConfiguration();
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         sendNotification({
           type: "error",

@@ -8,9 +8,9 @@ import { URLStorageExtension } from "@app/ui/components/input_bar/editor/extensi
 import { createMarkdownSerializer } from "@app/ui/components/input_bar/editor/markdownSerializer";
 import type { EditorSuggestions } from "@app/ui/components/input_bar/editor/suggestion";
 import type { SuggestionProps } from "@app/ui/components/input_bar/editor/useMentionDropdown";
-import { MentionPluginKey } from "@tiptap/extension-mention";
 import Paragraph from "@tiptap/extension-paragraph";
 import Placeholder from "@tiptap/extension-placeholder";
+import { PluginKey } from "@tiptap/pm/state";
 import type { Editor, JSONContent } from "@tiptap/react";
 import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
@@ -95,7 +95,7 @@ function getTextAndMentionsFromNode(node?: JSONContent) {
   if (node.type === "pastedAttachment") {
     const title = node.attrs?.title ?? "";
     const fileId = node.attrs?.fileId ?? "";
-    textContent += `:pasted_attachment[${title}]{fileId=${fileId}}`;
+    textContent += `:pasted_content[${title}]{pastedId=${fileId}}`;
   }
 
   // If the node has content, recursively get text and mentions from each child node
@@ -238,6 +238,8 @@ const useEditorService = (editor: Editor | null) => {
 
 export type EditorService = ReturnType<typeof useEditorService>;
 
+export const mentionPluginKey = new PluginKey("mention-suggestion");
+
 export interface CustomEditorProps {
   onEnterKeyDown: (
     isEmpty: boolean,
@@ -280,7 +282,10 @@ const useCustomEditor = ({
         class:
           "min-w-0 px-0 py-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-highlight-500 font-semibold",
       },
-      suggestion: suggestionHandler,
+      suggestion: {
+        ...suggestionHandler,
+        pluginKey: mentionPluginKey,
+      },
     }),
     Placeholder.configure({
       placeholder: "Ask an @agent a question, or get some @help",
@@ -298,6 +303,7 @@ const useCustomEditor = ({
   const editor = useEditor({
     autofocus: disableAutoFocus ? false : "end",
     extensions,
+    immediatelyRender: false,
   });
 
   // Sync the extension's MentionStorage suggestions whenever the local suggestions state updates.
@@ -320,7 +326,7 @@ const useCustomEditor = ({
           !event.metaKey &&
           !event.altKey
         ) {
-          const mentionPluginState = MentionPluginKey.getState(view.state);
+          const mentionPluginState = mentionPluginKey.getState(view.state);
           // Let the mention extension handle the event if its dropdown is currently opened.
           if (mentionPluginState?.active) {
             return false;

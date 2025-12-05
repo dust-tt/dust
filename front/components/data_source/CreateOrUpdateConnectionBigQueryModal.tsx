@@ -26,6 +26,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
+import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import { useBigQueryLocations } from "@app/lib/swr/bigquery";
 import type { PostCredentialsBody } from "@app/pages/api/w/[wId]/credentials";
 import type {
@@ -99,6 +100,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
           errorMessage: formatValidationErrors(r.left).join(" "),
         };
       }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       return {
         credentials: null,
@@ -110,7 +112,11 @@ export function CreateOrUpdateConnectionBigQueryModal({
 
   // Region picking
   const [selectedLocation, setSelectedLocation] = useState<string>();
-  const { locations, isLocationsLoading } = useBigQueryLocations({
+  const {
+    locations,
+    isLocationsLoading,
+    error: locationsError,
+  } = useBigQueryLocations({
     owner,
     credentials: credentialsState.credentials,
   });
@@ -121,18 +127,36 @@ export function CreateOrUpdateConnectionBigQueryModal({
 
   useEffect(() => {
     if (locations && Object.keys(locations).length === 1) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedLocation(Object.keys(locations)[0]);
     }
-  }, [locations]);
+    if (
+      locations &&
+      !locationsError &&
+      Object.keys(locations ?? {}).length === 0
+    ) {
+      setError(
+        "No locations found - make sure you follow the instructions in the guide."
+      );
+    }
+  }, [locations, locationsError]);
 
   useEffect(() => {
-    setError(credentialsState.errorMessage);
-  }, [credentialsState.errorMessage]);
+    const errorMessage =
+      credentialsState.errorMessage ?? locationsError?.message;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setError(errorMessage);
+  }, [credentialsState.errorMessage, locationsError]);
 
   if (connectorProviderConfiguration.connectorProvider !== "bigquery") {
     // Should never happen.
     return null;
   }
+
+  const connectorUIConfiguration =
+    CONNECTOR_UI_CONFIGURATIONS[
+      connectorProviderConfiguration.connectorProvider
+    ];
 
   function onSuccess(ds: DataSourceType) {
     setCredentials("");
@@ -289,7 +313,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
           <SheetTitle className="flex items-center gap-2">
             <span className="[&>svg]:h-6 [&>svg]:w-6">
               <Icon
-                visual={connectorProviderConfiguration.getLogoComponent(isDark)}
+                visual={connectorUIConfiguration.getLogoComponent(isDark)}
               />
             </span>
             Connecting {connectorProviderConfiguration.name}
@@ -301,20 +325,20 @@ export function CreateOrUpdateConnectionBigQueryModal({
               <Button
                 label="Read our guide"
                 size="sm"
-                href={connectorProviderConfiguration.guideLink ?? ""}
+                href={connectorUIConfiguration.guideLink ?? ""}
                 variant="outline"
                 target="_blank"
                 rel="noopener noreferrer"
                 icon={BookOpenIcon}
               />
 
-              {connectorProviderConfiguration.limitations && (
+              {connectorUIConfiguration.limitations && (
                 <ContentMessage
                   variant="primary"
                   title="Limitations"
                   className="border-none"
                 >
-                  {connectorProviderConfiguration.limitations}
+                  {connectorUIConfiguration.limitations}
                 </ContentMessage>
               )}
             </div>
@@ -341,7 +365,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
                   value={selectedLocation}
                   onValueChange={setSelectedLocation}
                 >
-                  {Object.entries(locations).map(([location, tables]) => (
+                  {Object.entries(locations ?? {}).map(([location, tables]) => (
                     <RadioGroupCustomItem
                       key={location}
                       id={location}

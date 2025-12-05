@@ -1,4 +1,4 @@
-import { updateAllWorkspaceUsersRegionMetadata } from "@app/admin/relocate_users";
+import { updateWorkspaceRegionMetadata } from "@app/admin/relocate_users";
 import {
   pauseAllManagedDataSources,
   unpauseAllManagedDataSources,
@@ -33,8 +33,6 @@ const RELOCATION_STEPS = [
   "compute-statistics",
 ] as const;
 type RelocationStep = (typeof RELOCATION_STEPS)[number];
-
-const AUTH0_DEFAULT_RATE_LIMIT_THRESHOLD = 3;
 
 function assertCorrectRegion(region: RegionType) {
   if (config.getCurrentRegion() !== region) {
@@ -73,14 +71,7 @@ makeScript(
     },
   },
   async (
-    {
-      destinationRegion,
-      sourceRegion,
-      step,
-      workspaceId,
-      execute,
-      forceUsersWithMultipleMemberships,
-    },
+    { destinationRegion, sourceRegion, step, workspaceId, execute },
     logger
   ) => {
     if (!isRegionType(sourceRegion) || !isRegionType(destinationRegion)) {
@@ -155,13 +146,11 @@ makeScript(
 
           await removeAllWorkspaceDomains(owner);
 
-          // 3) Update all users' region metadata.
+          // 2) Update all users' region metadata.
           const updateUsersRegionToDestRes =
-            await updateAllWorkspaceUsersRegionMetadata(auth, logger, {
+            await updateWorkspaceRegionMetadata(auth, logger, {
               execute,
               newRegion: destinationRegion,
-              rateLimitThreshold: AUTH0_DEFAULT_RATE_LIMIT_THRESHOLD,
-              forceUsersWithMultipleMemberships,
             });
           if (updateUsersRegionToDestRes.isErr()) {
             logger.error(
@@ -206,8 +195,12 @@ makeScript(
           assertCorrectRegion(sourceRegion);
 
           // 1) Clear workspace maintenance metadata in source region.
-          const clearSrcWorkspaceMetadataRes =
-            await setWorkspaceRelocated(owner);
+          const clearSrcWorkspaceMetadataRes = await updateWorkspaceMetadata(
+            owner,
+            {
+              maintenance: undefined,
+            }
+          );
           if (clearSrcWorkspaceMetadataRes.isErr()) {
             logger.error(
               `Failed to clear workspace maintenance metadata: ${clearSrcWorkspaceMetadataRes.error.message}`
@@ -226,13 +219,14 @@ makeScript(
           }
 
           // 3) Update all users' region metadata.
-          const updateUsersRegionToSrcRes =
-            await updateAllWorkspaceUsersRegionMetadata(auth, logger, {
+          const updateUsersRegionToSrcRes = await updateWorkspaceRegionMetadata(
+            auth,
+            logger,
+            {
               execute,
               newRegion: sourceRegion,
-              rateLimitThreshold: AUTH0_DEFAULT_RATE_LIMIT_THRESHOLD,
-              forceUsersWithMultipleMemberships: false,
-            });
+            }
+          );
           if (updateUsersRegionToSrcRes.isErr()) {
             logger.error(
               `Failed to update users' region metadata: ${updateUsersRegionToSrcRes.error.message}`

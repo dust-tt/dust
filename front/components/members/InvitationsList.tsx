@@ -18,8 +18,6 @@ import { sendInvitations } from "@app/lib/invitations";
 import { useWorkspaceInvitations } from "@app/lib/swr/memberships";
 import type { MembershipInvitationType, WorkspaceType } from "@app/types";
 
-import { isInvitationExpired } from "./utils";
-
 type RowData = MembershipInvitationType & {
   onClick: () => void;
 };
@@ -31,7 +29,9 @@ export function InvitationsList({
   owner: WorkspaceType;
   searchText?: string;
 }) {
-  const { invitations, isInvitationsLoading } = useWorkspaceInvitations(owner);
+  const { invitations, isInvitationsLoading } = useWorkspaceInvitations(owner, {
+    includeExpired: true,
+  });
   const [selectedInvite, setSelectedInvite] =
     useState<MembershipInvitationType | null>(null);
   const sendNotification = useSendNotification();
@@ -64,7 +64,7 @@ export function InvitationsList({
       header: "Invitation Email",
       accessorKey: "inviteEmail",
       cell: (info: CellContext<RowData, string>) => {
-        const isExpired = isInvitationExpired(info.row.original.createdAt);
+        const isExpired = info.row.original.isExpired;
         return (
           <DataTable.CellContent>
             <div className="flex items-center gap-2">
@@ -133,7 +133,7 @@ export function InvitationsList({
               )}
             >
               <div className="hidden sm:block">
-                <Avatar size="xs" />
+                <Avatar size="xs" isRounded />
               </div>
               <div className="copy-base flex grow flex-col gap-1 sm:flex-row sm:gap-3">
                 <div className="font-semibold text-foreground dark:text-foreground-night">

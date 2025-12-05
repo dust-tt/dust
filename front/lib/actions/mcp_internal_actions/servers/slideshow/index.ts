@@ -293,9 +293,12 @@ function createServer(
       },
       async ({ file_id }) => {
         const result = await getClientExecutableFileContent(auth, file_id);
-
         if (result.isErr()) {
-          return new Err(new MCPError(result.error.message));
+          return new Err(
+            new MCPError(result.error.message, {
+              tracked: result.error.tracked,
+            })
+          );
         }
 
         const { fileResource, content } = result.value;

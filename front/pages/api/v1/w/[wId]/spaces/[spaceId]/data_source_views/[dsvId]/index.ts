@@ -149,6 +149,7 @@ import { assertNever } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
+
   res: NextApiResponse<WithAPIErrorResponse<DataSourceViewResponseType>>,
   auth: Authenticator,
   { dataSourceView }: { dataSourceView: DataSourceViewResource }

@@ -730,6 +730,7 @@ export const createNote = async ({
     );
   }
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!propertiesForApi.hs_timestamp) {
     propertiesForApi.hs_timestamp = new Date().toISOString();
   }
@@ -903,6 +904,7 @@ export const createCommunication = async ({
 
   const finalProperties = { ...properties }; // Create a copy
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!finalProperties.hs_engagement_type) {
     finalProperties.hs_engagement_type = "COMMUNICATION"; // Default if not provided, mutate the copy
   }
@@ -985,6 +987,7 @@ export const createMeeting = async ({
   const finalProperties = { ...properties }; // Create a copy
 
   // Ensure hs_engagement_type is set for meetings
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!finalProperties.hs_engagement_type) {
     finalProperties.hs_engagement_type = "MEETING"; // Mutate the copy
   }
@@ -1109,13 +1112,22 @@ export const getContact = async (
 
 export const getCompany = async (
   accessToken: string,
-  companyId: string
+  companyId: string,
+  extraProperties?: string[]
 ): Promise<SimplePublicObject | null> => {
   const hubspotClient = new Client({ accessToken });
   try {
+    const defaultProperties = [
+      "createdate",
+      "domain",
+      "name",
+      "hubspot_owner_id",
+    ];
     const company = await hubspotClient.crm.companies.basicApi.getById(
       companyId,
-      ["createdate", "domain", "name", "hubspot_owner_id"]
+      extraProperties
+        ? [...defaultProperties, ...extraProperties]
+        : defaultProperties
     );
     return company;
   } catch (error: any) {
@@ -1132,11 +1144,12 @@ export const getCompany = async (
 
 export const getDeal = async (
   accessToken: string,
-  dealId: string
+  dealId: string,
+  extraProperties?: string[]
 ): Promise<SimplePublicObject | null> => {
   const hubspotClient = new Client({ accessToken });
   try {
-    const deal = await hubspotClient.crm.deals.basicApi.getById(dealId, [
+    const defaultProperties = [
       "amount",
       "hubspot_owner_id",
       "closedate",
@@ -1146,7 +1159,13 @@ export const getDeal = async (
       "hs_lastmodifieddate",
       "hs_object_id",
       "pipeline",
-    ]);
+    ];
+    const deal = await hubspotClient.crm.deals.basicApi.getById(
+      dealId,
+      extraProperties
+        ? [...defaultProperties, ...extraProperties]
+        : defaultProperties
+    );
     return deal;
   } catch (error: any) {
     if (error.code === 404) {
@@ -1493,6 +1512,7 @@ export const getUserActivity = async ({
             if (result?.results && result.results.length > 0) {
               break; // Found results with this property name
             }
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
           } catch (propertyError) {
             // Try next property name
             continue;
@@ -1831,6 +1851,7 @@ export const listAssociations = async ({
                 associations: result.results,
               });
             }
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
           } catch (error) {
             // Continue if this association type doesn't exist
             continue;

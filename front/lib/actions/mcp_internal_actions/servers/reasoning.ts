@@ -31,7 +31,7 @@ import {
   isModelId,
   isModelProviderId,
   isProviderWhitelisted,
-  isReasoningEffortId,
+  isReasoningEffort,
   Ok,
 } from "@app/types";
 
@@ -69,7 +69,7 @@ function createServer(
         if (
           !isModelId(modelId) ||
           !isModelProviderId(providerId) ||
-          (reasoningEffort !== null && !isReasoningEffortId(reasoningEffort))
+          (reasoningEffort !== null && !isReasoningEffort(reasoningEffort))
         ) {
           return new Err(new MCPError("Invalid model ID."));
         }

@@ -34,7 +34,10 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { AgentConfigurationType, ConversationType } from "@app/types";
+import type {
+  AgentConfigurationType,
+  ConversationWithoutContentType,
+} from "@app/types";
 import { CoreAPI } from "@app/types";
 
 export async function getJITServers(
@@ -45,7 +48,7 @@ export async function getJITServers(
     attachments,
   }: {
     agentConfiguration: AgentConfigurationType;
-    conversation: ConversationType;
+    conversation: ConversationWithoutContentType;
     attachments: ConversationAttachmentType[];
   }
 ): Promise<MCPServerConfigurationType[]> {
@@ -421,7 +424,7 @@ export async function getJITServers(
  */
 async function getConversationDataSourceViews(
   auth: Authenticator,
-  conversation: ConversationType,
+  conversation: ConversationWithoutContentType,
   attachments: ConversationAttachmentType[]
 ): Promise<Map<string, DataSourceViewResource>> {
   const conversationIdToDataSourceViewMap = new Map<

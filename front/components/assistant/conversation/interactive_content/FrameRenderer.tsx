@@ -136,6 +136,7 @@ export function FrameRenderer({
   const { closePanel, panelRef } = useConversationSidePanelContext();
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
+  // eslint-disable-next-line react-hooks/refs
   const panel = panelRef?.current;
 
   const [fullScreenHash, setFullScreenHash] = useHashParam(
@@ -222,6 +223,7 @@ export function FrameRenderer({
         restoreLayout();
       }
     }
+    // eslint-disable-next-line react-hooks/refs
   }, [
     panel,
     isFullScreen,
@@ -243,24 +245,6 @@ export function FrameRenderer({
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [isFullScreen, exitFullScreen]);
-
-  const getFileBlob = useCallback(
-    async (fileId: string): Promise<Blob | null> => {
-      const response = await fetch(
-        `/api/w/${owner.sId}/files/${fileId}?action=view`
-      );
-      if (!response.ok) {
-        return null;
-      }
-
-      const resBuffer = await response.arrayBuffer();
-
-      return new Blob([resBuffer], {
-        type: response.headers.get("Content-Type") ?? undefined,
-      });
-    },
-    [owner.sId]
-  );
 
   if (error) {
     return (
@@ -322,7 +306,6 @@ export function FrameRenderer({
               conversationId={conversation.sId}
               isInDrawer={true}
               ref={iframeRef}
-              getFileBlob={getFileBlob}
             />
             <PreviewActionButtons
               owner={owner}

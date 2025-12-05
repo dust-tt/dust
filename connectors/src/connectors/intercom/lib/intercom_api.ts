@@ -16,6 +16,7 @@ import logger from "@connectors/logger/logger";
 /**
  * Utility function to call the Intercom API.
  * It centralizes calling the API and handling global errors.
+ * Returns null in case of 404 errors.
  */
 async function queryIntercomAPI({
   accessToken,
@@ -89,13 +90,12 @@ async function queryIntercomAPI({
         `405 - ${isCaptchaError ? "Captcha error" : text}`,
         "transient_upstream_activity_error"
       );
-    } else {
-      logger.info(
-        { path, response: text, status: rawResponse.status },
-        "Failed to parse Intercom JSON response."
-      );
-      throw e;
     }
+    logger.info(
+      { path, response: text, status: rawResponse.status },
+      "Failed to parse Intercom JSON response."
+    );
+    throw e;
   }
 }
 
@@ -321,9 +321,9 @@ export async function fetchIntercomConversations({
   accessToken: string;
   teamId?: string;
   slidingWindow: number;
+  closedAfter?: number;
   cursor: string | null;
   pageSize?: number;
-  closedAfter?: number;
   state?: string;
 }): Promise<IntercomFetchConversationsResponseType> {
   const minCreatedAtDate = new Date(
@@ -388,6 +388,12 @@ export async function fetchIntercomConversations({
         },
       },
     });
+
+  if (!response || !response.conversations) {
+    // response might be null in case of 404
+    // conversations might not be defined if there is no conversations
+    return { conversations: [], pages: {} };
+  }
 
   return response;
 }

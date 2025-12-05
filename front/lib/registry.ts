@@ -45,27 +45,6 @@ export const BaseDustProdActionRegistry = {
       },
     },
   },
-  "assistant-v2-process": {
-    app: {
-      appId: "953b79fe89",
-      appHash:
-        "689c0cde9d4962a57b5a38caab6244fdd4b30ce5e52af0f40333a03a847a91f1",
-    },
-    config: {
-      DATASOURCE: {
-        data_sources: [],
-        top_k: 128,
-        filter: { tags: null, parents: null, timestamp: null },
-        use_cache: false,
-      },
-      MODEL: {
-        // `provider_id` and `model_id` must be set by caller.
-        function_call: "extract_data",
-        use_cache: false,
-      },
-    },
-  },
-
   "doc-tracker-retrieval": {
     app: {
       appId: "4180309c80",
@@ -135,20 +114,6 @@ export const BaseDustProdActionRegistry = {
       },
     },
   },
-  "assistant-builder-instructions-suggestions": {
-    app: {
-      appId: "d995d868a8",
-      appHash:
-        "7fb9c826d9de74c98de2a675093f66eab9da93a1a2cb9bc0bcc919fd074cd7eb",
-    },
-    config: {
-      CREATE_SUGGESTIONS: {
-        // `provider_id` and `model_id` must be set by caller.
-        function_call: "send_ranked_suggestions",
-        use_cache: false,
-      },
-    },
-  },
   "assistant-builder-autocompletion-suggestions": {
     app: {
       appId: "eDoafmNqwn",
@@ -159,48 +124,6 @@ export const BaseDustProdActionRegistry = {
       CREATE_SUGGESTIONS: {
         // `provider_id` and `model_id` must be set by caller.
         function_call: "autocomplete_instructions",
-        use_cache: false,
-      },
-    },
-  },
-  "assistant-builder-emoji-suggestions": {
-    app: {
-      appId: "b69YdlJ3PJ",
-      appHash:
-        "0b6b63def0224321f2bece0751bad632baca33f6d5bb596bbeb3f95b6bea5966",
-    },
-    config: {
-      CREATE_SUGGESTIONS: {
-        // `provider_id` and `model_id` must be set by caller.
-        function_call: "send_suggestions",
-        use_cache: false,
-      },
-    },
-  },
-  "assistant-builder-tags-suggestions": {
-    app: {
-      appId: "7mjFTd4e45",
-      appHash:
-        "7f1b2f6b514d2309954dd9a92ef01761ff500f81d600eeb716a2ff8d13a76c67",
-    },
-    config: {
-      CREATE_SUGGESTIONS: {
-        // `provider_id` and `model_id` must be set by caller.
-        function_call: "send_suggestions",
-        use_cache: false,
-      },
-    },
-  },
-  "assistant-builder-process-action-schema-generator": {
-    app: {
-      appId: "b36c7416bd",
-      appHash:
-        "decdb1f2c554b78fee580f826adefc06fac9c936a3c71980d5cdf81aa33bdcc8",
-    },
-    config: {
-      MODEL: {
-        // `provider_id` and `model_id` must be set by caller.
-        function_call: "set_extraction_schema",
         use_cache: false,
       },
     },
@@ -242,82 +165,6 @@ export const BaseDustProdActionRegistry = {
     config: {
       MODEL: {
         // `provider_id` and `model_id` must be set by caller.
-        use_cache: false,
-        use_stream: true,
-      },
-    },
-  },
-  "suggest-agent-from-message": {
-    app: {
-      appId: "fcYLVzSHdU",
-      appHash:
-        "5764c8eb5d325e01213b3af3cc2230c88f5264ac6ebf438d1ad64e4c71b3a296",
-    },
-    config: {
-      MODEL: {
-        // `provider_id` and `model_id` must be set by caller.
-        function_call: "suggest_agents",
-        use_cache: false,
-        use_stream: true,
-      },
-    },
-  },
-  "tag-manager-initial-suggestions": {
-    app: {
-      appId: "Huz76iC3FJ",
-      appHash:
-        "4c86322b20fa685fcbd87b23c5220e9be14fd56014a3f356a6cfe07b3573ab5d",
-    },
-    config: {
-      CREATE_SUGGESTIONS: {
-        function_call: "send_tags",
-        use_cache: false,
-        use_stream: true,
-      },
-    },
-  },
-  "assistant-builder-cron-timezone-generator": {
-    app: {
-      appId: "T454vmSliN",
-      appHash:
-        "a7183268ee1d99e56774a5c93e6d715eb684bbfab9d34da99e0b92d299bfbde7",
-    },
-    config: {
-      CREATE_CRON: {
-        function_call: "set_schedule",
-        use_cache: false,
-        use_stream: true,
-      },
-      CREATE_TZ: {
-        function_call: "set_tz",
-        use_cache: false,
-        use_stream: true,
-      },
-    },
-  },
-  "assistant-builder-webhook-filter-generator": {
-    app: {
-      appId: "XNcJCE7lUj",
-      appHash:
-        "9fa1ef11941288335a3cfcdcef9b4c811464ba3dddd8d72e2c0ca7922f7a0e93",
-    },
-    config: {
-      CREATE_FILTER: {
-        function_call: "set_filter",
-        use_cache: false,
-        use_stream: true,
-      },
-    },
-  },
-  "voice-find-agent-and-tools": {
-    app: {
-      appId: "F15zoc9d8a",
-      appHash:
-        "ce806cd503d298c64ae97a8f786a60be62d81aa000fca02c363efec51356926f",
-    },
-    config: {
-      GET_AUGMENTED_MESSAGE: {
-        function_call: "find_agents_and_tools",
         use_cache: false,
         use_stream: true,
       },

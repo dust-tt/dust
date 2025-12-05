@@ -24,6 +24,7 @@ export function DropzoneContainer({
 
   const { getRootProps, isDragActive } = useDropzone({
     onDrop,
+    noKeyboard: true, // To avoid stealing focus when you try to scroll page by arrow keys.
     noClick: true, // Prevent default click behavior.
   });
 

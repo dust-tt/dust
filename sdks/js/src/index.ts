@@ -50,6 +50,7 @@ import {
   GetDataSourcesResponseSchema,
   GetFeedbacksResponseSchema,
   GetMCPServerViewsResponseSchema,
+  GetMentionSuggestionsResponseBodySchema,
   GetSpacesResponseSchema,
   GetWorkspaceFeatureFlagsResponseSchema,
   GetWorkspaceVerifiedDomainsResponseSchema,
@@ -58,6 +59,8 @@ import {
   LoggerInterface,
   MeResponseSchema,
   Ok,
+  ParseMentionsRequestBodySchema,
+  ParseMentionsResponseBodySchema,
   PatchConversationRequestType,
   PatchConversationResponseSchema,
   PatchDataSourceViewRequestType,
@@ -658,6 +661,78 @@ export class DustAPI {
     return new Ok(r.value.agentConfigurations);
   }
 
+  /**
+   * Parses mentions in markdown text and converts them to the proper mention format.
+   * Matches @agentName or @userName patterns against available agents and users.
+   *
+   * @param markdown - Markdown text containing @ mentions to parse
+   * @returns A promise that resolves to a Result containing the parsed markdown with mentions converted to proper format
+   */
+  async parseForMentions({ markdown }: { markdown: string }) {
+    const body = ParseMentionsRequestBodySchema.parse({ markdown });
+
+    const res = await this.request({
+      method: "POST",
+      path: "assistant/mentions/parse",
+      body,
+    });
+
+    const r = await this._resultFromResponse(
+      ParseMentionsResponseBodySchema,
+      res
+    );
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value.markdown);
+  }
+
+  /**
+   * Get suggestions for mentions (agents and users) based on a query string.
+   *
+   * @param query - Search query string to filter suggestions
+   * @param select - Optional array of mention types to include. Can be "agents", "users", or both.
+   * @param conversationId - Optional conversation ID to scope suggestions to a specific conversation
+   * @returns A promise that resolves to a Result containing an array of mention suggestions
+   */
+  async getMentionsSuggestions({
+    query,
+    select,
+    conversationId,
+  }: {
+    query: string;
+    select?: "agents" | "users" | ("agents" | "users")[];
+    conversationId?: string;
+  }) {
+    const queryParams = new URLSearchParams({ query });
+    if (select) {
+      if (Array.isArray(select)) {
+        select.forEach((s) => queryParams.append("select", s));
+      } else {
+        queryParams.append("select", select);
+      }
+    }
+
+    const path = conversationId
+      ? `assistant/conversations/${conversationId}/mentions/suggestions`
+      : "assistant/mentions/suggestions";
+
+    const res = await this.request({
+      method: "GET",
+      path,
+      query: queryParams.toString() ? queryParams : undefined,
+    });
+
+    const r = await this._resultFromResponse(
+      GetMentionSuggestionsResponseBodySchema,
+      res
+    );
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value.suggestions);
+  }
+
   async postContentFragment({
     conversationId,
     contentFragment,
@@ -782,6 +857,31 @@ export class DustAPI {
       return r;
     }
     return new Ok(r.value.message);
+  }
+
+  async postConversationTools({
+    conversationId,
+    action,
+    mcpServerViewId,
+  }: {
+    conversationId: string;
+    action: "add" | "delete";
+    mcpServerViewId: string;
+  }) {
+    const res = await this.request({
+      method: "POST",
+      path: `assistant/conversations/${conversationId}/tools`,
+      body: { action, mcp_server_view_id: mcpServerViewId },
+    });
+
+    const r = await this._resultFromResponse(
+      PatchConversationResponseSchema,
+      res
+    );
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value);
   }
 
   async streamAgentAnswerEvents({
@@ -1227,7 +1327,10 @@ export class DustAPI {
 
   private _validateRedirectUrl(url: string): boolean {
     const urlObj = new URL(url);
-    if (urlObj.protocol !== 'https:' || urlObj.hostname !== 'storage.googleapis.com') {
+    if (
+      urlObj.protocol !== "https:" ||
+      urlObj.hostname !== "storage.googleapis.com"
+    ) {
       return false;
     }
     return true;
@@ -1238,7 +1341,7 @@ export class DustAPI {
       method: "GET",
       path: `files/${fileID}?action=download`,
     });
-    
+
     if (res.isErr()) {
       return res;
     }
@@ -1246,7 +1349,7 @@ export class DustAPI {
     // Handle redirect response (the API redirects to a signed URL)
     if (res.value.response.status >= 200 && res.value.response.status < 400) {
       const redirectUrl = res.value.response.url;
-      
+
       // Validate the redirect URL format to prevent SSRF attacks
       if (!this._validateRedirectUrl(redirectUrl)) {
         return new Err({
@@ -1254,7 +1357,7 @@ export class DustAPI {
           message: `Invalid redirect URL format. Expected format: https://storage.googleapis.com/... Got: ${redirectUrl}`,
         });
       }
-      
+
       // Fetch the actual file content from the signed URL
       try {
         const fileResponse = await fetch(redirectUrl);
@@ -1264,7 +1367,7 @@ export class DustAPI {
             message: `Failed to download file from signed URL: ${fileResponse.status}`,
           });
         }
-        
+
         const buffer = Buffer.from(await fileResponse.arrayBuffer());
         return new Ok(buffer);
       } catch (error) {
@@ -1274,6 +1377,31 @@ export class DustAPI {
         });
       }
     }
+  }
+
+  async getFileContent({
+    fileId,
+    version = "original",
+  }: {
+    fileId: string;
+    version?: "original" | "processed";
+  }) {
+    const res = await this.request({
+      method: "GET",
+      path: `files/${fileId}?action=view&version=${version}`,
+      stream: true,
+    });
+
+    if (res.isErr()) {
+      return res;
+    }
+
+    const { body } = res.value.response;
+    if (typeof body === "string") {
+      return new Ok(new Blob([body]));
+    }
+
+    return new Ok(await new Response(body).blob());
   }
 
   async uploadFile({

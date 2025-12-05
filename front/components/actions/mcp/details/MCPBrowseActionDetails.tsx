@@ -1,4 +1,4 @@
-import { GlobeAltIcon } from "@dust-tt/sparkle";
+import { FaviconIcon, GlobeAltIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
@@ -8,6 +8,7 @@ import {
   isBrowseResultResourceType,
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { isWebbrowseInputType } from "@app/lib/actions/mcp_internal_actions/types";
 import { validateUrl } from "@app/types/shared/utils/url_utils";
 
 export function MCPBrowseActionDetails({
@@ -16,7 +17,8 @@ export function MCPBrowseActionDetails({
   viewType,
   owner,
 }: ToolExecutionDetailsProps) {
-  const urls = toolParams.urls as string[];
+  const urls = isWebbrowseInputType(toolParams) ? toolParams.urls : null;
+
   const browseResults =
     toolOutput?.filter(isBrowseResultResourceType).map((o) => o.resource) ?? [];
   const generatedFiles =
@@ -36,9 +38,12 @@ export function MCPBrowseActionDetails({
             {(viewType === "conversation" || browseResults.length === 0) && urls
               ? urls.map((url, idx) => (
                   <div
-                    className="flex max-h-60 flex-col overflow-y-auto overflow-x-hidden pb-1"
+                    className="group flex max-h-60 flex-row gap-x-1 overflow-y-auto overflow-x-hidden pb-1"
                     key={idx}
                   >
+                    <span className="grayscale transition-all duration-150 ease-in-out group-hover:grayscale-0">
+                      <FaviconIcon websiteUrl={url} />
+                    </span>
                     <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                       {url}
                     </span>
@@ -93,7 +98,6 @@ export function MCPBrowseActionDetails({
               <ToolGeneratedFileDetails
                 key={file.fileId}
                 resource={file}
-                icon={GlobeAltIcon}
                 owner={owner}
               />
             ))}

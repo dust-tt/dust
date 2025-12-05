@@ -64,7 +64,16 @@ export function EnumSelect({
           </PokeButton>
         </PokeFormControl>
       </PopoverTrigger>
-      <PopoverContent className="w-[400px] p-0" align="start">
+      <PopoverContent
+        className="w-[var(--radix-dropdown-menu-trigger-width)]"
+        // Ensure wheel events don't bubble to parent overlays
+        onWheelCapture={(e) => {
+          e.stopPropagation();
+        }}
+        onTouchMoveCapture={(e) => {
+          e.stopPropagation();
+        }}
+      >
         <PokeCommand className="gap-2 py-3">
           <PokeCommandInput placeholder={label} className="h-9 p-2" />
           <PokeCommandList>
@@ -74,7 +83,7 @@ export function EnumSelect({
                 const isSelected = values?.includes(option.value);
                 return (
                   <PokeCommandItem
-                    value={option.value}
+                    value={option.label}
                     key={option.value}
                     onSelect={() => {
                       onValuesChange([option.value]);

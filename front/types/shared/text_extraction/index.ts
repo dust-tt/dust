@@ -104,6 +104,12 @@ export class TextExtraction {
       duplex: "half",
     } as RequestInitWithDuplex);
 
+    if (!response.ok) {
+      throw new Error(
+        `Text extraction failed with status ${response.status} ${response.statusText}`
+      );
+    }
+
     if (!response.body) {
       throw new Error("Response body is null");
     }

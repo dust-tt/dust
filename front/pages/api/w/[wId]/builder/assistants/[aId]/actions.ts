@@ -1,10 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import type { AgentBuilderMCPConfiguration } from "@app/components/agent_builder/types";
 import {
   buildInitialActions,
   getAccessibleSourcesAndAppsForActions,
-} from "@app/components/assistant_builder/server_side_props_helpers";
-import type { AssistantBuilderMCPConfiguration } from "@app/components/assistant_builder/types";
+} from "@app/lib/agent_builder/server_side_props_helpers";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -12,7 +12,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
 export type GetActionsResponseBody = {
-  actions: AssistantBuilderMCPConfiguration[];
+  actions: AgentBuilderMCPConfiguration[];
 };
 
 async function handler(
@@ -74,6 +74,7 @@ async function handler(
     }
 
     res.status(200).json({ actions });
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     return apiError(req, res, {
       status_code: 500,

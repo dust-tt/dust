@@ -28,6 +28,7 @@ export const PostRetryRequestBodySchema = t.union([
 
 async function handler(
   req: NextApiRequest,
+
   res: NextApiResponse<WithAPIErrorResponse<RetryMessageResponseType>>,
   auth: Authenticator
 ): Promise<void> {

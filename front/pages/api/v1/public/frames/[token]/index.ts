@@ -3,11 +3,12 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getAuthForSharedEndpointWorkspaceMembersOnly } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
+import { generateVizAccessToken } from "@app/lib/api/viz/access_tokens";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
-import { apiError } from "@app/logger/withlogging";
+import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { frameContentType } from "@app/types";
 
@@ -65,10 +66,10 @@ async function handler(
     });
   }
 
-  const { file, content: fileContent, shareScope } = result;
+  const { file, shareScope } = result;
 
   // Only allow conversation Frame files.
-  if (!file.isInteractiveContent && file.contentType === frameContentType) {
+  if (!file.isInteractiveContent || file.contentType !== frameContentType) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -139,8 +140,16 @@ async function handler(
     }
   }
 
+  // Generate access token for viz rendering.
+  const accessToken = generateVizAccessToken({
+    fileToken: token,
+    userId: user?.sId,
+    shareScope,
+    workspaceId: workspace.sId,
+  });
+
   res.status(200).json({
-    content: fileContent,
+    accessToken,
     file: file.toJSON(),
     // Only return the conversation URL if the user is a participant of the conversation.
     conversationUrl: isParticipant
@@ -154,4 +163,4 @@ async function handler(
   });
 }
 
-export default handler;
+export default withLogging(handler);

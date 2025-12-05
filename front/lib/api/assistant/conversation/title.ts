@@ -1,3 +1,6 @@
+import clone from "lodash/clone";
+
+import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
@@ -47,9 +50,27 @@ export async function ensureConversationTitle(
   }
   const auth = await Authenticator.fromJSON(authType);
 
+  // If the last message is a function call without tool output,
+  // We strip it for title generation otherwise the model will throw.
+  const conversationContent = clone(conversation.content);
+  const lastConversationBatch =
+    conversationContent[conversationContent.length - 1];
+  const lastConversationBatchMessage =
+    lastConversationBatch[lastConversationBatch.length - 1];
+  if (lastConversationBatchMessage?.type === "agent_message") {
+    while (
+      lastConversationBatchMessage.contents[
+        lastConversationBatchMessage.contents.length - 1
+      ]?.content.type === "function_call"
+    ) {
+      lastConversationBatchMessage.contents =
+        lastConversationBatchMessage.contents.slice(0, -1);
+    }
+  }
+
   const titleRes = await generateConversationTitle(auth, {
     ...conversation,
-    content: [...conversation.content, [userMessage]],
+    content: [...conversationContent, [userMessage]],
   });
 
   if (titleRes.isErr()) {
@@ -86,7 +107,7 @@ const MODEL_ID: ModelIdType = GPT_4O_MINI_MODEL_ID;
 
 const FUNCTION_NAME = "update_title";
 
-const specifications = [
+const specifications: AgentActionSpecification[] = [
   {
     name: FUNCTION_NAME,
     description: "Update the title of the conversation",
@@ -157,6 +178,14 @@ async function generateConversationTitle(
         "Generate a concise conversation title (3-8 words) based on the user's message and context. " +
         "The title should capture the main topic or request without being too generic.",
       specifications,
+    },
+    {
+      context: {
+        operationType: "conversation_title_suggestion",
+        contextId: conversation.sId,
+        userId: auth.user()?.sId,
+        workspaceId: owner.sId,
+      },
     }
   );
 

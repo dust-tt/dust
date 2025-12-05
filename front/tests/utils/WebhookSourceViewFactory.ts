@@ -27,11 +27,9 @@ export class WebhookSourceViewFactory {
     let webhookSourceId = options.webhookSourceId;
     if (!webhookSourceId) {
       const webhookSourceFactory = new WebhookSourceFactory(this.workspace);
-      const webhookSourceResult = await webhookSourceFactory.create();
-      if (webhookSourceResult.isErr()) {
-        throw webhookSourceResult.error;
-      }
-      webhookSourceId = webhookSourceResult.value.sId();
+      const webhookSource = await webhookSourceFactory.create();
+
+      webhookSourceId = webhookSource.sId;
     }
 
     const systemView =

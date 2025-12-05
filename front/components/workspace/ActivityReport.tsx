@@ -1,5 +1,6 @@
 import {
   Button,
+  Checkbox,
   ContextItem,
   GoogleSpreadsheetLogo,
   Icon,
@@ -13,6 +14,8 @@ interface ActivityReportProps {
   monthOptions: string[];
   downloadingMonth: string | null;
   handleDownload: (selectedMonth: string | null) => void;
+  includeInactive: boolean;
+  onIncludeInactiveChange: (value: boolean) => void;
 }
 
 const maxItemsPerPage = 4;
@@ -21,6 +24,8 @@ export function ActivityReport({
   monthOptions,
   downloadingMonth,
   handleDownload,
+  includeInactive,
+  onIncludeInactiveChange,
 }: ActivityReportProps) {
   const [pagination, setPagination] = useState({
     pageIndex: 0,
@@ -58,6 +63,18 @@ export function ActivityReport({
             <Page.P variant="secondary">
               Download workspace activity details.
             </Page.P>
+            <div className="flex flex-row items-center gap-2">
+              <Checkbox
+                label="Include inactive users and assistants"
+                checked={includeInactive}
+                onCheckedChange={() => {
+                  onIncludeInactiveChange(!includeInactive);
+                }}
+              />
+              <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                Include members and agents without messages.
+              </div>
+            </div>
           </div>
           <div className="flex h-full flex-col">
             <ContextItem.List>

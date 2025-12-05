@@ -13,6 +13,7 @@ import { DEEP_DIVE_NAME } from "@app/lib/api/assistant/global_agents/configurati
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
+import { serializeMention } from "@app/lib/mentions/format";
 import logger from "@app/logger/logger";
 import {
   Err,
@@ -32,7 +33,7 @@ function createServer(
 
   server.tool(
     "handoff",
-    `Launch a handoff to the :mention[${DEEP_DIVE_NAME}]{sId=${GLOBAL_AGENTS_SID.DEEP_DIVE}} agent`,
+    `Hand off the task to @${DEEP_DIVE_NAME} agent for comprehensive analysis across company data, databases, and web sources.`,
     {},
     withToolLogging(
       auth,
@@ -97,7 +98,7 @@ function createServer(
         }
 
         const response = makeMCPToolExit({
-          message: `Handoff from :mention[${agentConfiguration.name}]{sId=${agentConfiguration.sId}} to :mention[${DEEP_DIVE_NAME}]{sId=${GLOBAL_AGENTS_SID.DEEP_DIVE}} successfully launched.`,
+          message: `Handoff from ${serializeMention(agentConfiguration)} to ${serializeMention({ name: DEEP_DIVE_NAME, sId: GLOBAL_AGENTS_SID.DEEP_DIVE })}successfully launched.`,
           isError: false,
         });
 

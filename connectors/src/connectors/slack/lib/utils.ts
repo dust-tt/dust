@@ -98,18 +98,6 @@ export function slackThreadInternalIdFromSlackThreadIdentifier({
   return `slack-${channelId}-thread-${threadTs}`;
 }
 
-export function slackThreadIdentifierFromSlackThreadInternalId(
-  internalId: SlackThreadInternalId
-): SlackThreadIdentifier {
-  const parts = internalId.split("-thread-");
-  const channelId = _.last(parts[0]!.split("slack-"))!;
-  const threadTs = parts[1];
-  return {
-    channelId,
-    threadTs: threadTs!,
-  };
-}
-
 export type SlackNonThreadedMessagesIdentifier = {
   channelId: string;
   startDate: Date;
@@ -124,13 +112,6 @@ export function slackNonThreadedMessagesInternalIdFromSlackNonThreadedMessagesId
   const startDateStr = `${startDate.getFullYear()}-${startDate.getMonth()}-${startDate.getDate()}`;
   const endDateStr = `${endDate.getFullYear()}-${endDate.getMonth()}-${endDate.getDate()}`;
   return `slack-${channelId}-messages-${startDateStr}-${endDateStr}`;
-}
-
-export function slackChannelIdFromSlackNonThreadedMessagesInternalId(
-  internalId: SlackNonThreadedMessagesInternalId
-): string {
-  const parts = internalId.split("-messages-");
-  return _.last(parts[0]!.split("slack-"))!;
 }
 
 export function getSlackChannelSourceUrl(

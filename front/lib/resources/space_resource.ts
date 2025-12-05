@@ -23,7 +23,6 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import { launchUpdateSpacePermissionsWorkflow } from "@app/temporal/permissions_queue/client";
 import type {
   CombinedResourcePermissions,
   GroupPermission,
@@ -32,7 +31,7 @@ import type {
   SpaceKind,
   SpaceType,
 } from "@app/types";
-import { Err, GLOBAL_SPACE_NAME, Ok } from "@app/types";
+import { Err, GLOBAL_SPACE_NAME, Ok, removeNulls } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -329,17 +328,33 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     sId: string,
     { includeDeleted }: { includeDeleted?: boolean } = {}
   ): Promise<SpaceResource | null> {
-    const spaceModelId = getResourceIdFromSId(sId);
-    if (!spaceModelId) {
-      return null;
-    }
+    const [space] = await this.fetchByIds(auth, [sId], { includeDeleted });
+    return space ?? null;
+  }
 
-    const [space] = await this.baseFetch(auth, {
-      where: { id: spaceModelId },
+  static async fetchByIds(
+    auth: Authenticator,
+    ids: string[],
+    { includeDeleted }: { includeDeleted?: boolean } = {}
+  ): Promise<SpaceResource[]> {
+    return this.baseFetch(auth, {
+      where: {
+        id: removeNulls(ids.map(getResourceIdFromSId)),
+      },
       includeDeleted,
     });
+  }
 
-    return space;
+  static async fetchByModelIds(auth: Authenticator, ids: ModelId[]) {
+    const spaces = await this.baseFetch(auth, {
+      where: {
+        id: {
+          [Op.in]: ids,
+        },
+      },
+    });
+
+    return spaces ?? [];
   }
 
   static async isNameAvailable(
@@ -379,6 +394,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     await concurrentExecutor(
       this.groups,
       async (group) => {
+        // Provisioned groups are not tied to any space, we don't delete them.
+        if (group.kind === "provisioned") {
+          return;
+        }
         // As the model allows it, ensure the group is not associated with any other space.
         const count = await GroupSpaceModel.count({
           where: {
@@ -483,7 +502,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     const [defaultSpaceGroup] = regularGroups;
 
     const wasRestricted = this.groups.every((g) => !g.isGlobal());
-    const hasRestrictionChanged = wasRestricted !== isRestricted;
 
     const groupRes = await GroupResource.fetchWorkspaceGlobalGroup(auth);
     if (groupRes.isErr()) {
@@ -598,12 +616,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
             transaction: t,
           });
         }
-      }
-
-      // If the restriction has changed, start a workflow to update all associated resource
-      // permissions.
-      if (hasRestrictionChanged) {
-        await launchUpdateSpacePermissionsWorkflow(auth, this);
       }
 
       return new Ok(undefined);

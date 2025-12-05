@@ -1,7 +1,6 @@
 import { BigQuery } from "@google-cloud/bigquery";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -52,12 +51,11 @@ async function handler(
   );
 
   if (isLeft(bodyValidation)) {
-    const pathError = reporter.formatValidationErrors(bodyValidation.left);
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error" as APIErrorType,
-        message: `Invalid request body: ${pathError}`,
+        message: `Invalid request body.`,
       },
     });
   }
@@ -67,14 +65,11 @@ async function handler(
   );
 
   if (isLeft(credentialsValidation)) {
-    const pathError = reporter.formatValidationErrors(
-      credentialsValidation.left
-    );
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error" as APIErrorType,
-        message: `Invalid credentials: ${pathError}`,
+        message: `Invalid credentials.`,
       },
     });
   }

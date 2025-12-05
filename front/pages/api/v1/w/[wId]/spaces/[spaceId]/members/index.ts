@@ -20,6 +20,7 @@ import { assertNever, isString } from "@app/types";
  */
 async function handler(
   req: NextApiRequest,
+
   res: NextApiResponse<
     WithAPIErrorResponse<
       PostSpaceMembersResponseBody | GetSpaceMembersResponseBody

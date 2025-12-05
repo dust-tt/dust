@@ -5,17 +5,18 @@ import {
   getMCPApprovalStateFromUserApprovalState,
   isMCPApproveExecutionEvent,
 } from "@app/lib/actions/mcp";
-import { setUserAlwaysApprovedTool } from "@app/lib/actions/utils";
+import { setUserAlwaysApprovedTool } from "@app/lib/actions/tool_status";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { Message } from "@app/lib/models/assistant/conversation";
+import { Message } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
-import type { ConversationType, Result } from "@app/types";
+import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 async function getUserMessageIdFromMessageId(
@@ -62,7 +63,7 @@ async function getUserMessageIdFromMessageId(
 
 export async function validateAction(
   auth: Authenticator,
-  conversation: ConversationType,
+  conversation: ConversationResource,
   {
     actionId,
     approvalState,
@@ -161,6 +162,26 @@ export async function validateAction(
       : false;
   }, getMessageChannelId(messageId));
 
+  // We only launch the agent loop if there are no remaining blocked actions.
+  const blockedActions =
+    await AgentMCPActionResource.listBlockedActionsForConversation(
+      auth,
+      conversation
+    );
+
+  // Harmless very rare race condition here where 2 validations get
+  // blockedActions.length === 0. launchAgentLoopWorkflow will be called twice,
+  // but only one will succeed.
+  if (blockedActions.length > 0) {
+    logger.info(
+      {
+        blockedActions,
+      },
+      "Skipping agent loop launch because there are remaining blocked actions"
+    );
+    return new Ok(undefined);
+  }
+
   await launchAgentLoopWorkflow({
     auth,
     agentLoopArgs: {
@@ -173,6 +194,11 @@ export async function validateAction(
     },
     // Resume from the step where the action was created.
     startStep: agentStepContent.step,
+    // Wait for completion of the agent loop workflow that triggered the
+    // validation. This avoids race conditions where validation re-triggers the
+    // agent loop before it completes, and thus throws a workflow already
+    // started error.
+    waitForCompletion: true,
   });
 
   logger.info(

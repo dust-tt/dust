@@ -8,6 +8,16 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Fallback to Vertex Anthropic for some Anthropic models",
     stage: "dust_only",
   },
+  dust_edge_global_agent: {
+    description:
+      "Access to dust-edge global agent that we use internally to test other models on dust",
+    stage: "dust_only",
+  },
+  dust_quick_global_agent: {
+    description:
+      "Access to dust-quick global agent running Gemini 3 with minimal reasoning",
+    stage: "dust_only",
+  },
   notion_private_integration: {
     description: "Setup Notion private integration tokens",
     stage: "on_demand",
@@ -16,17 +26,17 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Export and Import agents to/from YAML format",
     stage: "dust_only",
   },
-  agent_builder_instructions_autocomplete: {
-    description: "Autocomplete feature for agent builder instructions (wip)",
+  ashby_tool: {
+    description: "Ashby tool for ATS integration",
     stage: "dust_only",
   },
   claude_4_opus_feature: {
     description: "Access to Claude 4 Opus model in the agent builder",
     stage: "on_demand",
   },
-  co_edition: {
-    description: "Collaborative editing features",
-    stage: "dust_only",
+  claude_4_5_opus_feature: {
+    description: "Access to Claude 4.5 Opus model in the agent builder",
+    stage: "on_demand",
   },
   confluence_tool: {
     description: "Confluence MCP tool",
@@ -35,6 +45,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   deepseek_feature: {
     description:
       "Access to DeepSeek models (they cannot use tool so can't be selected in the agent builder)",
+    stage: "on_demand",
+  },
+  fireworks_new_model_feature: {
+    description: "Access to Fireworks new model",
     stage: "on_demand",
   },
   deepseek_r1_global_agent_feature: {
@@ -54,13 +68,17 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Prevent users from creating agents, allowing only admins and builders",
     stage: "on_demand",
   },
-  google_ai_studio_experimental_models_feature: {
-    description: "Access to experimental Google AI Studio models",
+  restrict_agents_publishing: {
+    description: "Restrict publishing agents to builders and admins",
     stage: "on_demand",
   },
   google_sheets_tool: {
     description: "Google Sheets MCP tool",
     stage: "rolling_out",
+  },
+  http_client_tool: {
+    description: "HTTP Client MCP tool for making external API requests",
+    stage: "on_demand",
   },
   index_private_slack_channel: {
     description: "Allow indexing of private Slack channels",
@@ -87,10 +105,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to OpenAI o1 model",
     stage: "on_demand",
   },
-  openai_o1_high_reasoning_custom_assistants_feature: {
-    description: "OpenAI o1 high reasoning model for custom assistants",
-    stage: "on_demand",
-  },
   openai_o1_high_reasoning_feature: {
     description: "Access to OpenAI o1 high reasoning model",
     stage: "on_demand",
@@ -99,14 +113,28 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "OpenAI tool for tracking API consumption and costs",
     stage: "on_demand",
   },
+  ppul: {
+    description:
+      "Enable the API & Programmatic section in the admin panel with credits purchase flow, usage metrics, and cost charts",
+    stage: "dust_only",
+  },
   salesforce_synced_queries: {
     description: "Salesforce Connection: retrieval on Synchronized queries",
     stage: "on_demand",
+  },
+  self_created_slack_app_connector_rollout: {
+    description:
+      "Slack Connection: rollout for self-created Slack app connector",
+    stage: "rolling_out",
   },
   salesforce_tool: {
     description:
       "Salesforce MCP tool (activated by default on most plans, FF to override the plan config)",
     stage: "on_demand",
+  },
+  salesloft_tool: {
+    description: "Salesloft MCP tool",
+    stage: "dust_only",
   },
   salesforce_tool_write: {
     description: "Salesforce MCP tool: write operations (update_object)",
@@ -137,24 +165,17 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Freshservice MCP tool",
     stage: "rolling_out",
   },
+  front_tool: {
+    description:
+      "Front MCP tool for managing support conversations, messages, and customer interactions.",
+    stage: "rolling_out",
+  },
   agent_management_tool: {
     description: "MCP tool for creating and managing agent configurations",
     stage: "dust_only",
   },
-  research_agent: {
-    description: "Activate @deepDive agent.",
-    stage: "rolling_out",
-  },
-  deep_research_as_a_tool: {
-    description: "Activate Deep Dive tool",
-    stage: "dust_only",
-  },
   hootl_subscriptions: {
     description: "Subscription feature for Schedule & Triggers.",
-    stage: "dust_only",
-  },
-  hootl_dev_webhooks: {
-    description: "GitHub webhooks for Human Out Of The Loop (aka Triggers)",
     stage: "dust_only",
   },
   slack_enhanced_default_agent: {
@@ -171,42 +192,17 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable splitting agent responses into multiple Slack messages for Slack (instead of truncation)",
     stage: "dust_only",
   },
-  hootl_webhooks: {
-    description: "Webhooks for Human Out Of The Loop (aka Triggers) / webhooks",
-    stage: "dust_only",
-  },
   slack_bot_mcp: {
     description: "Slack bot MCP server for workspace-level Slack integration",
     stage: "on_demand",
   },
-  slack_semantic_search: {
-    description: "Slack semantic search feature",
+  slab_mcp: {
+    description: "Slab MCP server",
     stage: "on_demand",
   },
   web_summarization: {
     description: "AI-powered web page summarization in the web browser tool",
     stage: "on_demand",
-  },
-  elevenlabs_tool: {
-    description: "Elevenlabs MCP tool for voice synthesis",
-    stage: "on_demand",
-  },
-  microsoft_teams_bot: {
-    description: "Microsoft Teams bot connector for workspace integration",
-    stage: "dust_only",
-  },
-  microsoft_drive_mcp_server: {
-    description: "Microsoft Drive MCP server",
-    stage: "dust_only",
-  },
-  microsoft_teams_mcp_server: {
-    description: "Microsoft Teams MCP server",
-    stage: "dust_only",
-  },
-  agent_builder_observability: {
-    description:
-      "Observability tab in the Agent Builder (charts powered by Elasticsearch)",
-    stage: "dust_only",
   },
   legacy_dust_apps: {
     description: "Access to legacy Dust Apps (editor and associated tools)",
@@ -217,14 +213,23 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Discord bot integration for workspace-level Discord integration",
     stage: "dust_only",
   },
-  dust_default_haiku_feature: {
-    description:
-      "Use Claude 4.5 Haiku as the default model for the @dust global agent",
+  mentions_v2: {
+    description: "Enable mentions v2, aka mention users",
     stage: "on_demand",
   },
-  llm_router_direct_requests: {
-    description: "Use direct LLM call over Dust app run in a conversation.",
-    stage: "on_demand",
+  notifications: {
+    description: "Enable notifications",
+    stage: "dust_only",
+  },
+  skills: {
+    description:
+      "Access to Skills, which are packaged sets of instructions and tools",
+    stage: "dust_only",
+  },
+  universal_search: {
+    description:
+      "WIP - Search from Input bar search in Knowledge and MCP tools. ",
+    stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;
 

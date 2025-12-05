@@ -32,11 +32,22 @@ import type {
 } from "@app/types";
 import { assertNever, isVisualizationRPCRequest } from "@app/types";
 
-export type Visualization = {
-  code: string;
+interface BaseVisualization {
   complete: boolean;
   identifier: string;
+}
+
+type PublicVisualization = BaseVisualization & {
+  accessToken: string | null;
+  code?: undefined;
 };
+
+type ProtectedVisualization = BaseVisualization & {
+  accessToken?: undefined;
+  code: string;
+};
+
+export type Visualization = PublicVisualization | ProtectedVisualization;
 
 const sendResponseToIframe = <T extends VisualizationRPCCommand>(
   request: { command: T } & VisualizationRPCRequest,
@@ -119,6 +130,7 @@ function useVisualizationDataHandler({
           title: "Export Failed",
           type: "error",
           description:
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             data.errorMessage ||
             "An error occurred while exporting the content.",
         });
@@ -225,7 +237,6 @@ interface VisualizationActionIframeProps {
   visualization: Visualization;
   workspaceId: string;
   isPublic?: boolean;
-  getFileBlob: (fileId: string) => Promise<Blob | null>;
 }
 
 export const VisualizationActionIframe = forwardRef<
@@ -259,12 +270,29 @@ export const VisualizationActionIframe = forwardRef<
   const {
     agentConfigurationId,
     conversationId,
-    getFileBlob,
     isInDrawer = false,
     isPublic = false,
     visualization,
     workspaceId,
   } = props;
+
+  const getFileBlob = useCallback(
+    async (fileId: string) => {
+      const response = await fetch(
+        `/api/w/${workspaceId}/files/${fileId}?action=view`
+      );
+      if (!response.ok) {
+        return null;
+      }
+
+      const resBuffer = await response.arrayBuffer();
+
+      return new Blob([resBuffer], {
+        type: response.headers.get("Content-Type") ?? undefined,
+      });
+    },
+    [workspaceId]
+  );
 
   useVisualizationDataHandler({
     getFileBlob,
@@ -303,6 +331,21 @@ export const VisualizationActionIframe = forwardRef<
       setRetryClicked(false);
     }
   }, [errorMessage, handleVisualizationRetry, retryClicked]);
+
+  const vizUrl = useMemo(() => {
+    const params = new URLSearchParams();
+    params.set("identifier", visualization.identifier);
+
+    if (visualization.accessToken) {
+      params.set("accessToken", visualization.accessToken);
+    }
+
+    if (isInDrawer) {
+      params.set("fullHeight", "true");
+    }
+
+    return `${process.env.NEXT_PUBLIC_VIZ_URL}/content?${params.toString()}`;
+  }, [visualization, isInDrawer]);
 
   return (
     <div className={cn("relative flex flex-col", isInDrawer && "h-full")}>
@@ -355,8 +398,8 @@ export const VisualizationActionIframe = forwardRef<
                   <iframe
                     ref={combinedRef}
                     className={cn("h-full w-full", !errorMessage && "min-h-96")}
-                    src={`${process.env.NEXT_PUBLIC_VIZ_URL}/content?identifier=${visualization.identifier}${isInDrawer ? "&fullHeight=true" : ""}`}
-                    sandbox="allow-scripts allow-popups"
+                    src={vizUrl}
+                    sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
                   />
                 </div>
               )}

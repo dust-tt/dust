@@ -2,6 +2,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { getDefaultRemoteMCPServerByURL } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { connectToMCPServer } from "@app/lib/actions/mcp_metadata";
 import { MCPOAuthRequiredError } from "@app/lib/actions/mcp_oauth_error";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -72,10 +73,29 @@ async function handler(
       });
       if (r2.isErr()) {
         if (r2.error instanceof MCPOAuthRequiredError) {
+          // Check if this URL matches a default remote MCP server configuration
+          const defaultServerConfig = getDefaultRemoteMCPServerByURL(url);
+          const connectionMetadata = r2.error.connectionMetadata;
+
+          // Merge scopes: combine server-provided scopes with default scopes
+          if (defaultServerConfig?.scope) {
+            const serverScopes =
+              connectionMetadata.scope?.split(/\s+/).filter(Boolean) ?? [];
+            const defaultScopes = defaultServerConfig.scope
+              .split(/\s+/)
+              .filter(Boolean);
+
+            // Merge and deduplicate scopes
+            const mergedScopes = Array.from(
+              new Set([...serverScopes, ...defaultScopes])
+            );
+            connectionMetadata.scope = mergedScopes.join(" ");
+          }
+
           return res.status(200).json({
             oauthRequired: true,
             // Return the oauth connectionMetadata to the client to allow them to handle the oauth flow.
-            connectionMetadata: r2.error.connectionMetadata,
+            connectionMetadata,
           });
         } else {
           return apiError(req, res, {
