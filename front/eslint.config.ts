@@ -130,6 +130,7 @@ export default defineConfig(
         },
       ],
       "simple-import-sort/exports": "error",
+      "import/no-cycle": ["error", { maxDepth: 1, ignoreExternal: true }],
 
       // TypeScript rules
       "@typescript-eslint/consistent-type-imports": "error",
