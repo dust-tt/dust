@@ -18,11 +18,9 @@ import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_reso
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { UserModel } from "@app/lib/resources/storage/models/user";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger, { auditLog } from "@app/logger/logger";
 import type {
-  AgentMention,
   AgentMessageType,
   ContentFragmentType,
   ConversationWithoutContentType,
@@ -31,7 +29,7 @@ import type {
   LightAgentMessageType,
   MessageType,
   Result,
-  UserMention,
+  RichMention,
   UserMessageType,
 } from "@app/types";
 import {
@@ -41,6 +39,7 @@ import {
   isUserMessageType,
   Ok,
   removeNulls,
+  toMentionType,
 } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
@@ -148,30 +147,42 @@ async function batchRenderUserMessages(
     (m) => m.userMessage !== null && m.userMessage !== undefined
   );
 
+  const mentionRows = await Mention.findAll({
+    where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      messageId: userMessages.map((m) => m.id),
+    },
+  });
+
   const userIds = [
     ...new Set(
-      userMessages
-        .map((m) => m.userMessage?.userId)
-        .filter((id) => !!id) as number[]
+      removeNulls([
+        ...userMessages.map((m) => m.userMessage?.userId),
+        ...mentionRows.map((m) => m.userId),
+      ])
     ),
   ];
 
-  const [mentions, users] = await Promise.all([
-    Mention.findAll({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        messageId: userMessages.map((m) => m.id),
-      },
-      include: {
-        model: UserModel,
-        as: "user",
-        attributes: ["sId"],
-      },
-    }),
-    userIds.length === 0
-      ? []
-      : UserResource.fetchByModelIds([...new Set(userIds)]),
+  const agentConfigurationSIds = [
+    ...new Set(
+      removeNulls([...mentionRows.map((m) => m.agentConfigurationId)])
+    ),
+  ];
+
+  const [users, agentConfigurations] = await Promise.all([
+    userIds.length > 0 ? UserResource.fetchByModelIds(userIds) : [],
+    agentConfigurationSIds.length > 0
+      ? getAgentConfigurations(auth, {
+          agentIds: agentConfigurationSIds,
+          variant: "extra_light",
+        })
+      : [],
   ]);
+
+  const usersById = new Map(users.map((u) => [u.id, u.toJSON()]));
+  const agentConfigurationsById = new Map(
+    agentConfigurations.map((a) => [a.sId, a])
+  );
 
   return userMessages.map((message) => {
     if (!message.userMessage) {
@@ -180,9 +191,46 @@ async function batchRenderUserMessages(
       );
     }
     const userMessage = message.userMessage;
-    const messageMentions = mentions.filter((m) => m.messageId === message.id);
-    const user = users.find((u) => u.id === userMessage.userId) ?? null;
+    const messageMentions = mentionRows.filter(
+      (m) => m.messageId === message.id
+    );
+    const user = userMessage.userId ? usersById.get(userMessage.userId) : null;
 
+    const richMentions = removeNulls(
+      messageMentions.map((m) => {
+        if (m.agentConfigurationId) {
+          const agentConfiguration = agentConfigurationsById.get(
+            m.agentConfigurationId
+          );
+          if (agentConfiguration) {
+            return {
+              id: m.agentConfigurationId,
+              type: "agent",
+              label: agentConfiguration.name,
+              pictureUrl: agentConfiguration.pictureUrl ?? "",
+              description: agentConfiguration.description ?? "",
+            } satisfies RichMention;
+          }
+        } else if (m.userId) {
+          const mentionnedUser = usersById.get(m.userId);
+          if (mentionnedUser) {
+            return {
+              id: mentionnedUser.sId,
+              type: "user",
+              label: mentionnedUser.fullName,
+              pictureUrl: mentionnedUser.image ?? "",
+              description: "",
+            } satisfies RichMention;
+          }
+        } else {
+          throw new Error(
+            "Unreachable: Mention type not supported, it must either be an agent mention or a user mention"
+          );
+        }
+      })
+    );
+
+    const mentions = richMentions.map(toMentionType);
     return {
       id: message.id,
       sId: message.sId,
@@ -191,23 +239,9 @@ async function batchRenderUserMessages(
       version: message.version,
       rank: message.rank,
       created: message.createdAt.getTime(),
-      user: user ? user.toJSON() : null,
-      mentions: messageMentions
-        ? messageMentions.map((m) => {
-            if (m.agentConfigurationId) {
-              return {
-                configurationId: m.agentConfigurationId,
-              } satisfies AgentMention;
-            }
-            if (m.user) {
-              return {
-                type: "user",
-                userId: m.user.sId,
-              } satisfies UserMention;
-            }
-            throw new Error("Mention Must Be An Agent or User: Unreachable.");
-          })
-        : [],
+      user: user ?? null,
+      mentions,
+      richMentions,
       content: userMessage.content,
       context: {
         username: userMessage.userContextUsername,
