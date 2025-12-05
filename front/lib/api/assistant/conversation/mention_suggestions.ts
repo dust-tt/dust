@@ -61,6 +61,7 @@ export const suggestionsOfMentions = async (
   }
 ): Promise<RichMention[]> => {
   const normalizedQuery = query.toLowerCase();
+  const currentUserSId = auth.getNonNullableUser().sId;
 
   const agentSuggestions: RichAgentMention[] = [];
   let userSuggestions: RichUserMention[] = [];
@@ -105,6 +106,8 @@ export const suggestionsOfMentions = async (
 
   // If we have a conversation context, favor participants (users and agents)
   // by moving them to the top of their respective lists.
+  let participantUserIds: Set<string> | null = null;
+  let participantAgentIds: Set<string> | null = null;
   if (conversation && (select.users || select.agents)) {
     const participantsRes = await fetchConversationParticipants(
       auth,
@@ -115,11 +118,14 @@ export const suggestionsOfMentions = async (
       const participants = participantsRes.value;
 
       if (select.users) {
-        const participantUserIds = new Set(
-          participants.users.map((u) => u.sId)
+        participantUserIds = new Set(
+          participants.users
+            .map((u) => u.sId)
+            .filter((id) => id !== currentUserSId)
         );
 
         const participantUserMentions: RichUserMention[] = participants.users
+          .filter((u) => u.sId !== currentUserSId)
           .map(
             (u) =>
               ({
@@ -147,7 +153,7 @@ export const suggestionsOfMentions = async (
       }
 
       if (select.agents && filteredAgents.length > 0) {
-        const participantAgentIds = new Set(
+        participantAgentIds = new Set(
           participants.agents.map((a) => a.configurationId)
         );
 
@@ -170,35 +176,67 @@ export const suggestionsOfMentions = async (
     return filteredAgents.slice(0, SUGGESTION_DISPLAY_LIMIT);
   }
 
-  // Compute a target 30% / 70% split over the first N items.
-  const totalAvailable = filteredAgents.length + userSuggestions.length;
-  const maxResults = Math.min(SUGGESTION_DISPLAY_LIMIT, totalAvailable);
+  // Build a participant tier (up to 5 items) when we have conversation context.
+  const participantMentions: RichMention[] = [];
+  const participantUserIdSet = participantUserIds ?? new Set<string>();
+  const participantAgentIdSet = participantAgentIds ?? new Set<string>();
 
-  const targetUserCount = Math.min(
-    userSuggestions.length,
-    Math.max(1, Math.round(0.3 * maxResults))
-  );
-  const targetAgentCount = Math.min(
-    filteredAgents.length,
-    maxResults - targetUserCount
-  );
+  if (conversation) {
+    const participantUsers =
+      participantUserIds === null
+        ? []
+        : userSuggestions.filter((u) => participantUserIdSet.has(u.id));
+    const participantAgents =
+      participantAgentIds === null
+        ? []
+        : filteredAgents.filter((a) => participantAgentIdSet.has(a.id));
 
-  const selectedUsers = userSuggestions.slice(0, targetUserCount);
-  const selectedAgents = filteredAgents.slice(0, targetAgentCount);
-
-  // Mix users and agents with a simple shuffle while:
-  // - preserving the 30/70 counts
-  // - keeping the first item as a user when possible.
-  if (selectedUsers.length === 0) {
-    return [...selectedAgents];
+    participantMentions.push(...participantUsers, ...participantAgents);
   }
 
-  const [firstUser, ...remainingUsers] = selectedUsers;
+  const uniqueParticipantIds = new Set(
+    participantMentions.map((m) => `${m.type}:${m.id}`)
+  );
+
+  const cappedParticipantMentions = participantMentions.slice(
+    0,
+    Math.min(5, SUGGESTION_DISPLAY_LIMIT)
+  );
+
+  const remainingLimit =
+    SUGGESTION_DISPLAY_LIMIT - cappedParticipantMentions.length;
+  if (remainingLimit <= 0) {
+    return cappedParticipantMentions;
+  }
+
+  // Remove participants from the remaining pools to avoid duplicates.
+  const remainingUsers = userSuggestions.filter(
+    (u) => !uniqueParticipantIds.has(`user:${u.id}`)
+  );
+  const remainingAgents = filteredAgents.filter(
+    (a) => !uniqueParticipantIds.has(`agent:${a.id}`)
+  );
+
+  // Compute a target 30% / 70% split over the remaining slots.
+  const totalAvailableRest = remainingAgents.length + remainingUsers.length;
+  const maxResultsRest = Math.min(remainingLimit, totalAvailableRest);
+
+  const targetUserCountRest = Math.min(
+    remainingUsers.length,
+    Math.round(0.3 * maxResultsRest)
+  );
+  const targetAgentCountRest = Math.min(
+    remainingAgents.length,
+    maxResultsRest - targetUserCountRest
+  );
+
+  const selectedUsersRest = remainingUsers.slice(0, targetUserCountRest);
+  const selectedAgentsRest = remainingAgents.slice(0, targetAgentCountRest);
 
   const rest: RichMention[] = shuffle<RichMention>([
-    ...remainingUsers,
-    ...selectedAgents,
+    ...selectedUsersRest,
+    ...selectedAgentsRest,
   ]);
 
-  return [firstUser, ...rest];
+  return [...cappedParticipantMentions, ...rest];
 };
