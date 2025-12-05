@@ -177,7 +177,7 @@ function getTimestampsInRange(startOfMonth: Date, endDate: Date): number[] {
   for (
     let timestamp = current;
     timestamp < endDate;
-    timestamp.setHours(timestamp.getHours() + 1)
+    timestamp.setHours(timestamp.getHours() + 4)
   ) {
     timestamps.push(timestamp.getTime());
   }
@@ -229,7 +229,8 @@ function buildAggregation(
               by_hour: {
                 date_histogram: {
                   field: "timestamp",
-                  calendar_interval: "hour",
+                  fixed_interval: "4h",
+                  time_zone: "UTC",
                 },
                 aggs: buildMetricAggregates(["costMicroUsd"]),
               },
@@ -329,7 +330,8 @@ export async function handleProgrammaticCostRequest(
           by_hour: {
             date_histogram: {
               field: "timestamp",
-              calendar_interval: "hour",
+              fixed_interval: "4h",
+              time_zone: "UTC",
             },
             aggs: buildMetricAggregates(["costMicroUsd"]),
           },
