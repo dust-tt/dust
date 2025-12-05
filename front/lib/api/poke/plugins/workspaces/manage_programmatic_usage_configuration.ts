@@ -19,8 +19,8 @@ import {
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { Err, Ok } from "@app/types";
 
-const MAX_FREE_CREDITS_DOLLARS = 10000;
-const MAX_PAYG_CAP_DOLLARS = 100000;
+const MAX_FREE_CREDITS_DOLLARS = 1_000;
+const MAX_PAYG_CAP_DOLLARS = 10_000;
 
 const ManageProgrammaticUsageConfigurationSchema = z
   .object({
