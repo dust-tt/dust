@@ -97,7 +97,7 @@ jobs:
       - name: Format Check
         working-directory: front
         run: |
-          npm run format:check &
+          npm run format:check
       - name: Knip
         uses: ./.github/actions/knip
         with:
