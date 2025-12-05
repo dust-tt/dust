@@ -19,6 +19,7 @@ import {
   createSchedule,
   deleteSchedule,
   pauseSchedule,
+  scheduleExists,
   unpauseAndTriggerSchedule,
 } from "@connectors/lib/temporal_schedules";
 import logger from "@connectors/logger/logger";
@@ -152,10 +153,10 @@ export async function stopIntercomSchedulesAndWorkflows(
   return new Ok(undefined);
 }
 
-export async function launchIntercomSchedules(
+async function launchIntercomHelpCenterSchedule(
   connector: ConnectorResource
-): Promise<Result<void, Error>> {
-  const helpCenterResult = await createSchedule({
+): Promise<Result<string, Error>> {
+  return createSchedule({
     connector,
     action: {
       type: "startWorkflow",
@@ -180,12 +181,12 @@ export async function launchIntercomSchedules(
       ],
     },
   });
+}
 
-  if (helpCenterResult.isErr()) {
-    return helpCenterResult;
-  }
-
-  const conversationResult = await createSchedule({
+async function launchIntercomConversationSchedule(
+  connector: ConnectorResource
+): Promise<Result<string, Error>> {
+  return createSchedule({
     connector,
     action: {
       type: "startWorkflow",
@@ -210,7 +211,17 @@ export async function launchIntercomSchedules(
       ],
     },
   });
+}
 
+export async function launchIntercomSchedules(
+  connector: ConnectorResource
+): Promise<Result<void, Error>> {
+  const helpCenterResult = await launchIntercomHelpCenterSchedule(connector);
+  if (helpCenterResult.isErr()) {
+    return helpCenterResult;
+  }
+  const conversationResult =
+    await launchIntercomConversationSchedule(connector);
   if (conversationResult.isErr()) {
     return conversationResult;
   }
@@ -221,22 +232,34 @@ export async function launchIntercomSchedules(
 export async function unpauseIntercomSchedules(
   connector: ConnectorResource
 ): Promise<Result<void, Error>> {
-  const helpCenterResult = await unpauseAndTriggerSchedule({
-    scheduleId: makeIntercomHelpCenterScheduleId(connector),
-    connector,
+  const helpCenterScheduleId = makeIntercomHelpCenterScheduleId(connector);
+  const conversationScheduleId = makeIntercomConversationScheduleId(connector);
+
+  const helpCenterExists = await scheduleExists({
+    scheduleId: helpCenterScheduleId,
   });
+  const helpCenterResult = !helpCenterExists
+    ? await launchIntercomHelpCenterSchedule(connector)
+    : await unpauseAndTriggerSchedule({
+        scheduleId: helpCenterScheduleId,
+        connector,
+      });
   if (helpCenterResult.isErr()) {
     return helpCenterResult;
   }
 
-  const conversationResult = await unpauseAndTriggerSchedule({
-    scheduleId: makeIntercomConversationScheduleId(connector),
-    connector,
+  const conversationExists = await scheduleExists({
+    scheduleId: conversationScheduleId,
   });
+  const conversationResult = !conversationExists
+    ? await launchIntercomConversationSchedule(connector)
+    : await unpauseAndTriggerSchedule({
+        scheduleId: conversationScheduleId,
+        connector,
+      });
   if (conversationResult.isErr()) {
     return conversationResult;
   }
-
   return new Ok(undefined);
 }
 
