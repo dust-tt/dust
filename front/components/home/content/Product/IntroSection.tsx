@@ -1,4 +1,4 @@
-import { ArrowUpIcon, PlayIcon } from "@dust-tt/sparkle";
+import { PlayIcon } from "@dust-tt/sparkle";
 import Image from "next/image";
 
 import { ScrollProgressSection } from "@app/components/home/content/Product/ScrollProgressSection";
@@ -22,9 +22,10 @@ const HeroContent = () => {
         <br />
         for{" "}
         <span
+          className="pr-1"
           style={{
             background:
-              "linear-gradient(90deg, #1C91FF 34.13%, #8B5CF6 46.15%, #E14322 59.13%, #6AA668 71.63%)",
+              "linear-gradient(90deg, #1C91FF 0%, #8B5CF6 35%, #E14322 65%, #6AA668 100%)",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
             backgroundClip: "text",
@@ -49,23 +50,8 @@ const HeroContent = () => {
           className="flex-1 border-none bg-transparent text-base text-gray-700 placeholder-gray-400 outline-none focus:ring-0"
         />
         <button className="rounded-full bg-blue-500 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-600">
-          Get a custom demo
+          Start with Dust
         </button>
-      </div>
-
-      {/* Ask anything textarea */}
-      <div className="mt-10 flex w-full max-w-3xl flex-col rounded-3xl bg-white p-3 shadow-sm">
-        <textarea
-          placeholder="Ask anything"
-          rows={3}
-          className="w-full resize-none border-none bg-transparent text-base text-gray-700 placeholder-gray-400 outline-none focus:ring-0"
-        />
-        <div className="flex justify-end">
-          <button className="flex items-center gap-1.5 rounded-full bg-blue-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-600">
-            <ArrowUpIcon className="h-4 w-4" />
-            Try it
-          </button>
-        </div>
       </div>
     </div>
   );
