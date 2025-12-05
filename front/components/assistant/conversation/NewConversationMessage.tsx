@@ -34,7 +34,6 @@ interface NewConversationMessageProps
   renderName?: (name: string | null) => React.ReactNode;
   infoChip?: React.ReactNode;
   type: ConversationMessageType;
-  isEditing?: boolean;
 }
 
 const wrapperVariants = cva("flex flex-col min-w-60 w-full @container", {

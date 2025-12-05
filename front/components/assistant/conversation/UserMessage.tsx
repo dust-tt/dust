@@ -164,6 +164,8 @@ export function UserMessage({
   const isCurrentUser = message.user?.sId === currentUserId;
   const canDelete =
     (isCurrentUser || isAdmin) && !isDeleted && userMentionsEnabled;
+  const canEdit =
+    isCurrentUser && !isDeleted && showEditing && userMentionsEnabled;
 
   const handleDeleteMessage = useCallback(async () => {
     if (isDeleting || isDeleted) {
@@ -210,7 +212,7 @@ export function UserMessage({
   const showActions = !isDeleted && !isEditing;
   const actions = showActions
     ? [
-        ...(showEditing
+        ...(canEdit
           ? [
               {
                 icon: PencilSquareIcon,
@@ -301,7 +303,6 @@ export function UserMessage({
               isCurrentUser={isCurrentUser}
               citations={citations}
               actions={actions}
-              isEditing={isEditing}
             >
               <UserMessageContent
                 message={message}
