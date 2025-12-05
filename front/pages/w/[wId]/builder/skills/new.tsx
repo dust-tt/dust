@@ -3,6 +3,7 @@ import Head from "next/head";
 import React from "react";
 
 import SkillBuilder from "@app/components/skill_builder/SkillBuilder";
+import { SkillBuilderProvider } from "@app/components/skill_builder/SkillBuilderContext";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -45,12 +46,14 @@ export default function CreateSkill({
   user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
-    <>
-      <Head>
-        <title>Dust - New Skill</title>
-      </Head>
-      <SkillBuilder owner={owner} user={user} />
-    </>
+    <SkillBuilderProvider owner={owner} user={user}>
+      <>
+        <Head>
+          <title>Dust - New Skill</title>
+        </Head>
+        <SkillBuilder />
+      </>
+    </SkillBuilderProvider>
   );
 }
 

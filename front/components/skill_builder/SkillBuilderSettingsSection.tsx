@@ -8,6 +8,7 @@ export function SkillBuilderSettingsSection() {
       title="Skill settings"
       fieldName="name"
       description="Specialized tools that agents can use to accomplish their tasks."
+      triggerValidationOnChange={false}
     >
       {({ registerRef, registerProps, onChange, errorMessage, hasError }) => (
         <Input
