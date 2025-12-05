@@ -252,6 +252,4 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthentication(handler, {
-  requiredScopes: { POST: "update:conversation" },
-});
+export default withPublicAPIAuthentication(handler);

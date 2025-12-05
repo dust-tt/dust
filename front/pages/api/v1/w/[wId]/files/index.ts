@@ -196,6 +196,4 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthentication(handler, {
-  requiredScopes: { POST: "create:file" },
-});
+export default withPublicAPIAuthentication(handler);
