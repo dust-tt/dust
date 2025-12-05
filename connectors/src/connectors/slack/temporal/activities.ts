@@ -2,6 +2,7 @@ import type { DataSourceViewType } from "@dust-tt/client";
 import { DustAPI, Err, Ok } from "@dust-tt/client";
 import type {
   CodedError,
+  ConversationsInfoResponse,
   WebAPIPlatformError,
   WebClient,
 } from "@slack/web-api";
@@ -27,6 +28,7 @@ import {
   updateSlackChannelInConnectorsDb,
   updateSlackChannelInCoreDb,
 } from "@connectors/connectors/slack/lib/channels";
+import { isWebAPIPlatformError } from "@connectors/connectors/slack/lib/errors";
 import { formatMessagesForUpsert } from "@connectors/connectors/slack/lib/messages";
 import {
   getSlackClient,
@@ -1304,9 +1306,33 @@ export async function autoReadChannelActivity(
     channelId,
   });
 
-  const remoteChannel = await slackClient.conversations.info({
-    channel: channelId,
-  });
+  let remoteChannel: ConversationsInfoResponse | undefined;
+  try {
+    remoteChannel = await slackClient.conversations.info({
+      channel: channelId,
+    });
+  } catch (error) {
+    if (
+      isWebAPIPlatformError(error) &&
+      error.data.error === "channel_not_found"
+    ) {
+      // If the channel is not found, we can't auto-read it.
+      // We gracefully exit the activity in this case, with a warning log.
+      logger.warn(
+        {
+          connectorId,
+          channelId,
+        },
+        "Channel not found, skipping auto-read activity."
+      );
+      return false;
+    }
+    throw error;
+  }
+
+  if (!remoteChannel) {
+    throw new Error("Could not get the Slack channel information.");
+  }
 
   const channelName = remoteChannel.channel?.name;
   const isPrivate = remoteChannel.channel?.is_private ?? false;
