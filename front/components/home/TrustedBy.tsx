@@ -1,6 +1,5 @@
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
 
 import { H4 } from "@app/components/home/ContentComponents";
 import { isEUCountry } from "@app/lib/geo/eu-detection";
@@ -194,13 +193,12 @@ interface TrustedByProps {
 
 export default function TrustedBy({ logoSet = "default" }: TrustedByProps) {
   const { geoData } = useGeolocation();
-  const [region, setRegion] = useState<"us" | "eu">("us");
 
-  useEffect(() => {
-    if (geoData?.countryCode) {
-      setRegion(isEUCountry(geoData.countryCode) ? "eu" : "us");
-    }
-  }, [geoData?.countryCode]);
+  const region = geoData?.countryCode
+    ? isEUCountry(geoData.countryCode)
+      ? "eu"
+      : "us"
+    : "us";
 
   const logos = LOGO_SETS[logoSet][region];
 
@@ -249,12 +247,14 @@ export default function TrustedBy({ logoSet = "default" }: TrustedByProps) {
           })}
         </div>
       </div>
-      <a
-        href="/api/workos/login?screenHint=sign-up"
+      <button
+        onClick={() => {
+          window.location.href = "/api/workos/login?screenHint=sign-up";
+        }}
         className="mt-8 rounded-full bg-blue-500 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-600"
       >
         Join them
-      </a>
+      </button>
     </div>
   );
 }

@@ -281,26 +281,6 @@ const ConnectMenuConfig: MenuConfig = {
   ],
 };
 
-const CompanyMenuConfig: MenuConfig = {
-  title: "Company",
-  items: [
-    {
-      title: CareersMenuConfig.title,
-    },
-    CareersMenuConfig.items[0],
-    CareersMenuConfig.items[1],
-    {
-      title: SocialMenuConfig.title,
-    },
-    SocialMenuConfig.items[0],
-    SocialMenuConfig.items[1],
-    {
-      title: "Legal",
-    },
-    LegalMenuConfig.items[1],
-  ],
-};
-
 const ResourcesMenuConfig: MenuConfig = {
   title: "Resources",
   items: [

@@ -2,9 +2,6 @@ import { PlayIcon, Spinner } from "@dust-tt/sparkle";
 import Image from "next/image";
 import { useState } from "react";
 
-import { clientFetch } from "@app/lib/egress/client";
-import { appendUTMParams } from "@app/lib/utils/utm";
-
 import { ScrollProgressSection } from "@app/components/home/content/Product/ScrollProgressSection";
 import { ValuePropSection } from "@app/components/home/content/Product/ValuePropSection";
 import {
@@ -16,7 +13,9 @@ import { FunctionsSection } from "@app/components/home/FunctionsSection";
 import TrustedBy from "@app/components/home/TrustedBy";
 import { BorderBeam } from "@app/components/magicui/border-beam";
 import UTMButton from "@app/components/UTMButton";
+import { clientFetch } from "@app/lib/egress/client";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import { appendUTMParams } from "@app/lib/utils/utm";
 
 const HeroContent = () => {
   const [email, setEmail] = useState("");
