@@ -351,25 +351,54 @@ export function BaseProgrammaticCostChart({
   });
 
   // Transform points into chart data using labels from availableGroups
-  const chartData = points.map((point) => {
-    const date = new Date(point.timestamp);
-    const dataPoint: ChartDataPoint = {
-      date: date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      }),
-      timestamp: point.timestamp,
-      totalInitialCreditsMicroUsd: point.totalInitialCreditsMicroUsd,
-    };
+  const chartData = useMemo(() => {
+    const nowTimestamp = Date.now();
 
-    // Add each group's cumulative cost to the data point using labels from availableGroups
-    // Keep undefined values as-is so Recharts doesn't render those points
-    point.groups.forEach((g) => {
-      dataPoint[g.groupKey] = g.cumulatedCostMicroUsd;
+    // First pass: compute max cost value (excluding totalInitialCreditsMicroUsd)
+    let maxCostValue = 0;
+    for (const point of points) {
+      for (const group of point.groups) {
+        if (group.cumulatedCostMicroUsd !== undefined) {
+          maxCostValue = Math.max(maxCostValue, group.cumulatedCostMicroUsd);
+        }
+      }
+    }
+
+    const FUTURE_CREDITS_THRESHOLD_MULTIPLIER = 2;
+    const threshold = maxCostValue * FUTURE_CREDITS_THRESHOLD_MULTIPLIER;
+
+    // Check if ALL future total credit points are above the threshold
+    const futurePoints = points.filter((point) => point.timestamp > nowTimestamp);
+    const shouldExcludeFutureCredits =
+      futurePoints.length > 0 &&
+      futurePoints.every((point) => point.totalInitialCreditsMicroUsd > threshold);
+
+    return points.map((point) => {
+      const date = new Date(point.timestamp);
+      const isFuture = point.timestamp > nowTimestamp;
+
+      const dataPoint: ChartDataPoint = {
+        date: date.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        }),
+        timestamp: point.timestamp,
+        // Exclude future credits if condition is met
+        totalInitialCreditsMicroUsd:
+          shouldExcludeFutureCredits && isFuture
+            ? (undefined as unknown as number)
+            : point.totalInitialCreditsMicroUsd,
+      };
+
+      // Add each group's cumulative cost to the data point
+      // Keep undefined values as-is so Recharts doesn't render those points
+      point.groups.forEach((g) => {
+        dataPoint[g.groupKey] = g.cumulatedCostMicroUsd;
+      });
+
+      return dataPoint;
     });
-
-    return dataPoint;
-  });
+  }, [points]);
 
   const ChartComponent = groupBy ? AreaChart : LineChart;
 
