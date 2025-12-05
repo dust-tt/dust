@@ -104,4 +104,3 @@ export function useUpdateSkillEditors({
 
   return updateSkillEditors;
 }
-
