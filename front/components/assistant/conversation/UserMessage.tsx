@@ -1,15 +1,18 @@
-import type { ConversationMessageAction } from "@dust-tt/sparkle";
 import {
   BoltIcon,
+  Button,
   classNames,
   ConversationMessage,
   Icon,
   Markdown,
+  PencilSquareIcon,
   Tooltip,
   TrashIcon,
 } from "@dust-tt/sparkle";
+import { EditorContent } from "@tiptap/react";
+import { BubbleMenu } from "@tiptap/react/menus";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
-import { useCallback, useContext, useMemo } from "react";
+import { useCallback, useContext, useMemo, useState } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
@@ -22,6 +25,7 @@ import {
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
 import { ConfirmContext } from "@app/components/Confirm";
+import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import {
   CiteBlock,
   getCiteDirective,
@@ -45,6 +49,45 @@ import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type { UserMessageType, WorkspaceType } from "@app/types";
 
+import { Toolbar } from "./input_bar/toolbar/Toolbar";
+
+// TODO (yuka:2025-12-04): we should show editing UI when the message is editable
+const showEditing = false;
+
+interface UserMessageContentProps {
+  message: UserMessageType;
+  isDeleted: boolean;
+  isLastMessage: boolean;
+  additionalMarkdownComponents: Components;
+  additionalMarkdownPlugins: PluggableList;
+}
+
+function UserMessageContent({
+  message,
+  isDeleted,
+  isLastMessage,
+  additionalMarkdownComponents,
+  additionalMarkdownPlugins,
+}: UserMessageContentProps) {
+  if (isDeleted) {
+    return (
+      <div className="italic text-muted-foreground">
+        This message has been deleted
+      </div>
+    );
+  }
+
+  return (
+    <Markdown
+      content={message.content}
+      isStreaming={false}
+      isLastMessage={isLastMessage}
+      additionalMarkdownComponents={additionalMarkdownComponents}
+      additionalMarkdownPlugins={additionalMarkdownPlugins}
+    />
+  );
+}
+
 interface UserMessageProps {
   citations?: React.ReactElement[];
   conversationId: string;
@@ -62,6 +105,7 @@ export function UserMessage({
   message,
   owner,
 }: UserMessageProps) {
+  const [isEditing, setIsEditing] = useState(false);
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const userMentionsEnabled = hasFeature("mentions_v2");
   const { deleteMessage, isDeleting } = useDeleteMessage({
@@ -69,6 +113,13 @@ export function UserMessage({
     conversationId,
   });
   const confirm = useContext(ConfirmContext);
+  const { editor, editorService } = useCustomEditor({
+    owner,
+    conversationId,
+    // TODO (yuka:2025-12-04): we should fire save edit event here
+    onEnterKeyDown: () => {},
+    disableAutoFocus: false,
+  });
 
   const additionalMarkdownComponents: Components = useMemo(
     () => ({
@@ -138,19 +189,30 @@ export function UserMessage({
     }
   }, [isDeleting, isDeleted, confirm, deleteMessage, message.sId, methods]);
 
-  const actions: ConversationMessageAction[] = useMemo(() => {
-    if (!isCurrentUser || isDeleted || !userMentionsEnabled) {
-      return [];
-    }
+  const handleEditMessage = () => {
+    setIsEditing(true);
+    editorService.setContent(message.content);
+  };
 
-    return [
-      {
-        icon: TrashIcon,
-        label: "Delete message",
-        onClick: handleDeleteMessage,
-      },
-    ];
-  }, [isCurrentUser, isDeleted, userMentionsEnabled, handleDeleteMessage]);
+  const showActions = !isDeleted && !isEditing;
+  const actions = showActions
+    ? [
+        ...(showEditing
+          ? [
+              {
+                icon: PencilSquareIcon,
+                label: "Edit message",
+                onClick: handleEditMessage,
+              },
+            ]
+          : []),
+        {
+          icon: TrashIcon,
+          label: "Delete message",
+          onClick: handleDeleteMessage,
+        },
+      ]
+    : [];
 
   if (userMentionsEnabled) {
     return (
@@ -161,40 +223,78 @@ export function UserMessage({
             isCurrentUser ? "items-end" : "items-start"
           )}
         >
-          <NewConversationMessage
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            pictureUrl={
-              message.context.profilePictureUrl ?? message.user?.image
-            }
-            name={message.context.fullName ?? undefined}
-            renderName={renderName}
-            timestamp={formatTimestring(message.created)}
-            infoChip={
-              isTriggeredOrigin(message.context.origin) && (
-                <span className="translate-y-1 text-muted-foreground dark:text-muted-foreground-night">
-                  <TriggerChip message={message} />
-                </span>
-              )
-            }
-            type="user"
-            isCurrentUser={isCurrentUser}
-            citations={citations}
-            actions={actions}
-          >
-            {isDeleted ? (
-              <div className="italic text-muted-foreground">
-                This message has been deleted
+          {isEditing ? (
+            <div
+              className="dark:focus-within:ring-highlight/30-night w-full rounded-2xl bg-muted-background py-2 pl-4 pr-2 focus-within:ring-1 focus-within:ring-highlight/30 dark:bg-muted-background-night dark:ring-border-dark-night dark:focus-within:ring-1 sm:focus-within:ring-2 dark:sm:focus-within:ring-2"
+              onClick={(e) => {
+                // If e.target is not a child of a div with class "tiptap", then focus on the editor
+                if (
+                  !(
+                    e.target instanceof HTMLElement &&
+                    e.target.closest(".tiptap")
+                  )
+                ) {
+                  editorService.focusEnd();
+                }
+              }}
+            >
+              <EditorContent
+                editor={editor}
+                className={`inline-block max-h-[40vh] min-h-14 w-full overflow-y-auto whitespace-pre-wrap scrollbar-hide`}
+              />
+
+              <BubbleMenu
+                editor={editor ?? undefined}
+                className="hidden sm:flex"
+              >
+                <Toolbar editor={editor} className="hidden sm:inline-flex" />
+              </BubbleMenu>
+
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="ghost-secondary"
+                  size="xs"
+                  onClick={() => setIsEditing(false)}
+                  label="Cancel"
+                />
+                <Button
+                  variant="highlight"
+                  size="xs"
+                  onClick={() => setIsEditing(false)}
+                  label="Save"
+                />
               </div>
-            ) : (
-              <Markdown
-                content={message.content}
-                isStreaming={false}
+            </div>
+          ) : (
+            <NewConversationMessage
+              pictureUrl={
+                message.context.profilePictureUrl ?? message.user?.image
+              }
+              name={message.context.fullName ?? undefined}
+              renderName={renderName}
+              timestamp={formatTimestring(message.created)}
+              infoChip={
+                isTriggeredOrigin(message.context.origin) && (
+                  <span className="translate-y-1 text-muted-foreground dark:text-muted-foreground-night">
+                    <TriggerChip message={message} />
+                  </span>
+                )
+              }
+              type="user"
+              isCurrentUser={isCurrentUser}
+              citations={citations}
+              actions={actions}
+              isEditing={isEditing}
+            >
+              <UserMessageContent
+                message={message}
+                isDeleted={isDeleted}
                 isLastMessage={isLastMessage}
                 additionalMarkdownComponents={additionalMarkdownComponents}
                 additionalMarkdownPlugins={additionalMarkdownPlugins}
               />
-            )}
-          </NewConversationMessage>
+            </NewConversationMessage>
+          )}
         </div>
         {showAgentSuggestions && (
           <AgentSuggestion
